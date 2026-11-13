@@ -39,6 +39,25 @@ export function sendPasswordResetEmail(to: string, url: string): void {
   );
 }
 
+/** The invitation to an address with no account yet. */
+export function sendInviteEmail(
+  to: string,
+  args: { inviterName: string; langName: string; capabilities: string[]; url: string },
+): void {
+  const { inviterName, langName, capabilities, url } = args;
+  sendEmail(
+    to,
+    `You're invited to work on ${langName} on Spoken`,
+    [
+      `${inviterName} invited you to work on ${langName} on Spoken, as: ${capabilities.join(", ")}.`,
+      "",
+      `Accept here: ${url}`,
+      "",
+      `If you have no account yet, register from that link with this address. The link works once and expires in 14 days. If you don't know ${inviterName}, ignore this email.`,
+    ].join("\n"),
+  );
+}
+
 async function send(to: string, subject: string, text: string): Promise<void> {
   const apiKey = process.env.RESEND_API_KEY;
   const from = process.env.RESEND_FROM;

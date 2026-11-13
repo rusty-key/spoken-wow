@@ -9,9 +9,19 @@
 import { headers } from "next/headers";
 
 import { auth } from "@/lib/auth";
-import { addGrants, listGrants, refusedGrant, removeGrant, userByEmail, viewerOf } from "@/lib/grants/store";
-import { isLang } from "@/lib/lang";
-import { isAdmin, isCapability, langsWhere, removesOwnAdmin, type Viewer } from "@/lib/permissions";
+import { recordActivity } from "@/lib/activity/store";
+import { sendInviteEmail } from "@/lib/email";
+import { addGrants, refusedGrant, removeGrant, userByEmail, viewerOf } from "@/lib/grants/store";
+import { listingFor } from "@/lib/invites/listing";
+import {
+  createInvite,
+  InviteExistsError,
+  InviteRateError,
+  inviteUrl,
+  normalEmail,
+} from "@/lib/invites/store";
+import { isLang, langName } from "@/lib/lang";
+import { capabilityLabel, isAdmin, isCapability, removesOwnAdmin, type Viewer } from "@/lib/permissions";
 
 export const dynamic = "force-dynamic";
 
@@ -23,16 +33,9 @@ async function viewer(): Promise<{ viewer: Viewer; userId: string } | null> {
   return session && seen ? { viewer: seen, userId: session.user.id } : null;
 }
 
-/** What `viewer` may see: every grant for an admin, their own languages' for a language admin. */
-async function listing(viewer: Viewer): Promise<Response> {
-  const langs = langsWhere(viewer, "admin");
-  if (langs.length === 0) return FORBIDDEN();
-  return Response.json({ grants: await listGrants(isAdmin(viewer.role) ? undefined : langs) });
-}
-
 export async function GET() {
   const who = await viewer();
-  return who ? listing(who.viewer) : FORBIDDEN();
+  return who ? listingFor(who.viewer) : FORBIDDEN();
 }
 
 export async function PUT(request: Request) {
@@ -54,15 +57,48 @@ export async function PUT(request: Request) {
   ) {
     return Response.json({ error: "expected { email, lang, capabilities: [...] }" }, { status: 400 });
   }
+  const address = normalEmail(email);
+  if (!address) return Response.json({ error: `${email} is not an email address` }, { status: 400 });
   if (await refusedGrant(who.viewer, capabilities, lang)) return FORBIDDEN();
 
   // By email, not by id: a language admin cannot list the users, and an address is what
   // a translator gives somebody when asking to be let in.
-  const user = await userByEmail(email);
-  if (!user) return Response.json({ error: `nobody has registered as ${email}` }, { status: 404 });
+  const user = await userByEmail(address);
+  if (user) {
+    await addGrants(user.id, lang, capabilities, who.userId);
+    return listingFor(who.viewer, { invited: false });
+  }
 
-  await addGrants(user.id, lang, capabilities, who.userId);
-  return listing(who.viewer);
+  // Nobody has registered as it: invite the address instead.
+  try {
+    const { invite, token } = await createInvite({
+      email: address,
+      lang,
+      capabilities,
+      invitedBy: who.userId,
+      limited: !isAdmin(who.viewer.role),
+    });
+    await recordActivity({
+      kind: "invite.sent",
+      lang,
+      subject: invite.id,
+      actorId: who.userId,
+      detail: { email: address, capabilities },
+    });
+    sendInviteEmail(address, {
+      inviterName: invite.invitedByName ?? "A Spoken team member",
+      langName: langName(lang),
+      capabilities: capabilities.map(capabilityLabel),
+      url: inviteUrl(token),
+    });
+  } catch (error) {
+    if (error instanceof InviteExistsError || error instanceof InviteRateError) {
+      if (error instanceof InviteRateError) console.warn(`invites: ${who.userId} refused: ${error.message}`);
+      return Response.json({ error: error.message }, { status: error instanceof InviteExistsError ? 409 : 429 });
+    }
+    throw error;
+  }
+  return listingFor(who.viewer, { invited: true });
 }
 
 export async function DELETE(request: Request) {
@@ -82,5 +118,5 @@ export async function DELETE(request: Request) {
   }
 
   await removeGrant(userId, lang, capability, who.userId);
-  return listing(who.viewer);
+  return listingFor(who.viewer);
 }
