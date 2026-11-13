@@ -151,6 +151,7 @@ describe("requireToken", () => {
     viewer.grants = [];
     const result = await requireToken(request(`Bearer ${token}`), { need: "any" });
     expect(result.denied?.status).toBe(403);
+    expect(await result.denied?.json()).toEqual({ error: "this token's owner is not a text maintainer in deDE" });
   });
 
   it("403 for a read token asking to generate", async () => {
