@@ -121,6 +121,15 @@ describe("generations", () => {
     expect((await halt("not-a-uuid")).status).toBe(404);
   });
 
+  it("400s any query string on all three routes", async () => {
+    const id = await seed(owner.id);
+    expect((await list(req("?lang=deDE", generateToken))).status).toBe(400);
+    expect((await one(req(`/${id}?x=1`, generateToken), { params: Promise.resolve({ batchId: id }) })).status).toBe(400);
+    expect(
+      (await stop(req(`/${id}/stop?x=1`, generateToken, "POST"), { params: Promise.resolve({ batchId: id }) })).status,
+    ).toBe(400);
+  });
+
   it("403s a read token", async () => {
     const id = await seed(owner.id);
     expect((await get(id, readToken)).status).toBe(403);

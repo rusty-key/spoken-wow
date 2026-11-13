@@ -6,6 +6,7 @@ import { readApiKey } from "@/lib/api-key";
 import { requireSpeaker } from "@/lib/generation/authz";
 import {
   estimatePlan,
+  filterError,
   planCatalogue,
   planQuestsByFilters,
   planQuestsByItems,
@@ -29,6 +30,9 @@ export async function POST(request: Request, { params }: { params: Promise<{ sec
   const { context, denied } = await requireToken(request, { need: "generate" });
   if (denied) return denied;
 
+  // The language comes from the token, and nothing else here is read from the URL.
+  if (new URL(request.url).search) return invalid("this takes a JSON body and no query string");
+
   const found = sectionOf((await params).section);
   if (found instanceof Response) return found;
   const { section } = found;
@@ -43,6 +47,10 @@ export async function POST(request: Request, { params }: { params: Promise<{ sec
   if (hasItems === hasFilters) return invalid("send either items or filters, not both and not neither");
   if (hasFilters && (section !== "quests" || typeof body.filters !== "string")) {
     return invalid("filters is an Explorer query string, and only quests take it");
+  }
+  if (hasFilters) {
+    const problem = await filterError(body.filters as string, context.lang);
+    if (problem) return invalid(problem);
   }
   if (body.dryRun !== undefined && typeof body.dryRun !== "boolean") return invalid("dryRun must be true or false");
   if (
@@ -62,6 +70,8 @@ export async function POST(request: Request, { params }: { params: Promise<{ sec
       if (!raw || typeof raw !== "object" || typeof raw.id !== "string" || raw.id === "") {
         return invalid("every item needs a string id");
       }
+      const extra = Object.keys(raw).find((key) => key !== "id" && key !== "variant");
+      if (extra) return invalid(`unknown item key ${extra}: an item takes id and variant`);
       if (raw.variant !== undefined && (section !== "quests" || !isVariant(raw.variant))) {
         return invalid(section === "quests" ? BAD_VARIANT : "only quests take a variant");
       }

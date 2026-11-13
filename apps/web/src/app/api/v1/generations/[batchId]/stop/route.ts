@@ -9,6 +9,7 @@ export const dynamic = "force-dynamic";
 export async function POST(request: Request, { params }: { params: Promise<{ batchId: string }> }) {
   const { context, denied } = await requireToken(request, { need: "generate" });
   if (denied) return denied;
+  if (new URL(request.url).search) return Response.json({ error: "this takes no query string" }, { status: 400 });
 
   const { batchId } = await params;
   const batch = isUuid(batchId) ? await ownBatch(batchId, context.userId, context.lang) : null;
