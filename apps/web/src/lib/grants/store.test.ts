@@ -123,4 +123,13 @@ describe("removeGrant", () => {
       { lang: "ptBR", actorId: GRANTER, detail: { capability: "text" } },
     ]);
   });
+
+  it("grants nothing when the step that runs first throws", async () => {
+    await expect(
+      addGrants(GRANTEE, "frFR", ["ignore"], GRANTER, async () => {
+        throw new Error("no");
+      }),
+    ).rejects.toThrow("no");
+    expect((await grantsOf(GRANTEE)).filter((g) => g.capability === "ignore")).toEqual([]);
+  });
 });

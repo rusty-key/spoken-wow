@@ -1,0 +1,43 @@
+/**
+ * Accepting an invite: the signed-in account must be the one whose address it names.
+ *
+ * A button on /invite posts here, not the page load, so a link preview cannot use the invite up.
+ */
+import { headers } from "next/headers";
+
+import { auth } from "@/lib/auth";
+import { acceptInvite } from "@/lib/invites/store";
+
+export const dynamic = "force-dynamic";
+
+const STATUS = {
+  unknown: 404,
+  expired: 410,
+  revoked: 410,
+  accepted: 409,
+  "wrong-email": 403,
+  "inviter-cannot-grant": 409,
+} as const;
+
+export async function POST(request: Request) {
+  const session = await auth.api.getSession({ headers: await headers() });
+  if (!session) return Response.json({ error: "sign in to accept the invite" }, { status: 401 });
+
+  const { token } = (await request.json().catch(() => ({}))) as { token?: unknown };
+  if (typeof token !== "string" || !token) return Response.json({ error: "expected { token }" }, { status: 400 });
+
+  const outcome = await acceptInvite(token, session.user);
+  if (outcome.ok) return Response.json({ lang: outcome.lang, capabilities: outcome.capabilities });
+
+  const { reason } = outcome;
+  const who = outcome.inviterName ?? "The person who invited you";
+  const error = {
+    unknown: "This link is not valid any more.",
+    expired: "This invite has expired; ask for a new one.",
+    revoked: "This invite was withdrawn.",
+    accepted: "This invite was accepted already.",
+    "wrong-email": `This invite is for ${outcome.email}; you are signed in as ${session.user.email}.`,
+    "inviter-cannot-grant": `${who} can no longer give ${outcome.capability}; ask a team admin to send a new invite.`,
+  }[reason];
+  return Response.json({ error, reason }, { status: STATUS[reason] });
+}

@@ -40,6 +40,19 @@ export async function viewerOf(
   return { role: session.user.role, grants: await cachedGrants(session.user.id) };
 }
 
+/**
+ * Somebody by id, as `viewerOf` sees a session: null for no such user and for one with a live
+ * ban, who may not hand anything out (the test `findLiveToken` applies to a token's owner).
+ */
+export async function viewerById(userId: string): Promise<Viewer | null> {
+  const rows = await query<{ role: string | null }>(
+    `select "role" from "user"
+      where "id" = $1 and not (coalesce("banned", false) and ("banExpires" is null or "banExpires" > now()))`,
+    [userId],
+  );
+  return rows[0] ? viewerOf({ user: { id: userId, role: rows[0].role } }) : null;
+}
+
 export type GrantRow = {
   userId: string;
   email: string;
@@ -92,11 +105,14 @@ export async function addGrants(
   lang: string,
   capabilities: readonly Capability[],
   grantedBy: string,
+  within?: (client: ClientBase) => Promise<void>,
 ): Promise<void> {
   if (!isLang(lang)) throw new Error(`${lang} is not a language this site knows`);
   const members = capabilities.filter((capability) => capability !== "text");
   const team = members.length ? await teamOf(lang) : await ownerOrAll(lang);
   await withTeam(team, async (client) => {
+    // First, so that a throw from it grants nothing.
+    await within?.(client);
     const added = await grantOn(client, team, userId, lang, capabilities, grantedBy);
     await recordActivities(
       added.map((capability) => ({
