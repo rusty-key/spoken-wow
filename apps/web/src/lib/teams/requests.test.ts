@@ -175,6 +175,7 @@ describe("rejectRequest", () => {
     expect(rejected).toMatchObject({ state: "rejected", reason: "Not a language", branch: null });
     const mail = mailTo(requester).find((m) => m.subject === "Your team request for Xq Test");
     expect(mail?.text).toContain("Not a language");
+    expect(mail?.text).toContain("/request-team");
     await expect(rejectRequest(request.id, admin.id, null)).rejects.toSatisfy(refused(409));
     const { rows } = await listActivity({ lang: "deDE", global: true, actorId: admin.id });
     expect(rows.filter((row) => row.kind === "request.rejected")).toHaveLength(1);

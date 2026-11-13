@@ -213,7 +213,7 @@ export async function rejectRequest(id: string, actorId: string, reason: string 
       `Your request for the team ${row.teamName} in ${nameOf(row)} was not approved.`,
       ...(reason ? ["", `Reason: ${reason}`] : []),
       "",
-      `Your requests: ${SITE}/teams/request`,
+      `Your requests: ${SITE}/request-team`,
     ].join("\n"),
   );
   return withBranch((await read(id))!);
