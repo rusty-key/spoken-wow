@@ -484,10 +484,13 @@ export function matchingLines(
   const query = q.trim();
 
   let lines = corpus.lines;
+  // One line by its id is a lookup, not a search: the defaults that hide progress text and
+  // ignored lines would make a report about such a line read as "the corpus dropped it".
+  const lookup = Boolean(lineId);
   // First, and whichever way round: a line nobody will voice is not an answer to any other
   // question either, so every count and every "regenerate everything matching" is computed
   // over a corpus without them unless they are what was asked for.
-  if (ignores?.size) {
+  if (ignores?.size && (ignored || !lookup)) {
     lines = ignored
       ? lines.filter((line) => ignores.has(baseLineId(line.lineId)))
       : lines.filter((line) => !ignores.has(baseLineId(line.lineId)));
@@ -502,7 +505,7 @@ export function matchingLines(
   if (source?.length) lines = lines.filter((line) => source.includes(line.source));
   // After the source filter and not before it, so asking for progress explicitly still works:
   // `source=progress` alone would otherwise return nothing at all.
-  if (!includeProgress && !source?.includes("progress")) {
+  if (!includeProgress && !lookup && !source?.includes("progress")) {
     lines = lines.filter((line) => line.source !== "progress");
   }
   if (client !== "all" && !lineId) lines = lines.filter((line) => lineMatchesClient(line, client));

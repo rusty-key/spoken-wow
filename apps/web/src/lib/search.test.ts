@@ -576,6 +576,12 @@ describe("ignored lines", () => {
     expect(gaps.some((l) => l.lineId === TALLY)).toBe(false);
   });
 
+  it("finds an ignored line by its id, with the reason on the row", () => {
+    // A report about an ignored line must still resolve to it.
+    const found = search(corpus, store, { line: TALLY, limit: 5 }, ignoring(TALLY));
+    expect(found.lines.map((l) => [l.lineId, l.ignored])).toEqual([[TALLY, "war-effort tally"]]);
+  });
+
   it("carries the reason onto the row, so the chip can say why", () => {
     const found = search(corpus, store, { ignored: true, limit: 5 }, ignoring(TALLY, "counter"));
     expect(found.lines[0].ignored).toBe("counter");
@@ -614,6 +620,12 @@ describe("search by line id", () => {
     const rows = all({ line: shared.lineId });
     expect(rows.length).toBeGreaterThan(1);
     expect(new Set(rows.map((l) => l.lineId))).toEqual(new Set([shared.lineId]));
+  });
+
+  it("finds a progress line by its id without asking for progress", () => {
+    // How a report reaches the corpus: hidden by default must not read as dropped.
+    const progress = corpus.lines.find((l) => l.source === "progress")!;
+    expect(asShipped({ line: progress.lineId }).map((l) => l.lineId)).toEqual([progress.lineId]);
   });
 
   it("matches nothing when no line carries the id", () => {
