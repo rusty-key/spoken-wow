@@ -311,6 +311,33 @@ function SpokenReadables:BookForItem(itemID)
 	return nil
 end
 
+--- The item that owns a readable, if it is a carried book, letter or note.
+function SpokenReadables:ItemForBook(bookID)
+	local data = self:Data()
+	if self.itemForBookData ~= data then
+		self.itemForBookData = data
+		self.itemForBook = {}
+		local owners = data and data.owners and data.owners.item or {}
+		for itemID, owner in pairs(owners) do
+			if self.itemForBook[owner] == nil then self.itemForBook[owner] = itemID end
+		end
+	end
+	return self.itemForBook and self.itemForBook[bookID]
+end
+
+--- The client's icon for a carried readable, or nil for a world object.
+function SpokenReadables:ItemIcon(bookID)
+	local itemID = self:ItemForBook(bookID)
+	if not itemID then return nil end
+	local getInfo = (C_Item and C_Item.GetItemInfoInstant) or GetItemInfoInstant
+	if getInfo then
+		local _, _, _, _, icon = getInfo(itemID)
+		if icon then return icon end
+	end
+	local getIcon = (C_Item and C_Item.GetItemIconByID) or GetItemIcon
+	return getIcon and getIcon(itemID) or nil
+end
+
 --- Spoken's site, or nil when Spoken is not loaded: no page is read aloud without it, so there
 --- is no report to send.
 function SpokenReadables:SiteURL()
