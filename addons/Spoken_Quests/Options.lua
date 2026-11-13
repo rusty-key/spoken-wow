@@ -92,9 +92,7 @@ local GeneralTab =
                     name = L.OPT_PANEL_PROGRESS,
                     disabled = function(info) return not Addon:IsAutoplayOn() end,
                     get = function(info) return Addon.db.profile.Audio.ProgressText ~= false end,
-                    set = function(info, value)
-                        Addon.db.profile.Audio.ProgressText = value
-                    end,
+                    set = function(info, value) Addon:SetProgressText(value) end,
                 },
                 OGThrall = {
                     type = "toggle",

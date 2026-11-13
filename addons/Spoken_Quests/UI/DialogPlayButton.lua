@@ -122,6 +122,7 @@ function DialogPlayButton:Refresh()
     self.line = nil
 
     local line, event = Addon:GetVisibleLine()
+    self.event = event
     -- Shown only where the page does not read itself, so the player can still play it.
     local held = not Addon:ReadsItself(event) or (event and Addon:PartOfPage(event) == "gossip" and Addon:IsNever())
     -- The panel itself, not merely the event: under DialogueUI the event arrives and the
@@ -186,7 +187,10 @@ function DialogPlayButton:Setup()
             GameTooltip:SetText(L.OPT_DIALOG_STOP_TIP)
         else
             GameTooltip:SetText(L.OPT_READ_TIP)
-            GameTooltip:AddLine(Addon:IsAutoplayOn() and L.OPT_NEVER_TIP or L.OPT_AUTOPLAY_OFF_TIP, 1, 0.8, 0.2, true)
+            local why = not Addon:IsAutoplayOn() and L.OPT_AUTOPLAY_OFF_TIP
+                or DialogPlayButton.event == "QUEST_PROGRESS" and L.OPT_PROGRESS_OFF_TIP
+                or L.OPT_NEVER_TIP
+            GameTooltip:AddLine(why, 1, 0.8, 0.2, true)
         end
         GameTooltip:Show()
     end)
@@ -205,8 +209,8 @@ function DialogPlayButton:Setup()
         DialogPlayButton:Refresh()
         -- Again a moment later: a Classic quest event can arrive before GetQuestID and the
         -- text globals change (VoiceOver.lua's directEvents comment), and the first look
-        -- would label the previous quest. Not with autoplay on, when there is no button.
-        if Addon.ScheduleTimer and not Addon:IsAutoplayOn() then
+        -- would label the previous quest.
+        if Addon.ScheduleTimer then
             Addon:ScheduleTimer(Refresh, 0.2)
         end
     end)

@@ -363,6 +363,13 @@ function Addon:IsNever()
     return self.db.profile.Audio.GossipFrequency == Enums.GossipFrequency.Never
 end
 
+function Addon:SetProgressText(on)
+    self.db.profile.Audio.ProgressText = on and true or false
+    if DialogPlayButton and DialogPlayButton.Refresh then
+        DialogPlayButton:Refresh()
+    end
+end
+
 function Addon:SetAutoplay(on)
     self.db.profile.Audio.Autoplay = on and true or false
     -- The Play button stands in for autoplay, so it appears or goes with the setting even

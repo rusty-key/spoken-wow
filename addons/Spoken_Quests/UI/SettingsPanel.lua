@@ -60,7 +60,7 @@ function SettingsPanel:Setup()
         function(value) audio().FollowupLines = value end)
     local progress = layout:Checkbox(L.OPT_PANEL_PROGRESS, nil,
         function() return audio().ProgressText ~= false end,
-        function(value) audio().ProgressText = value end)
+        function(value) Addon:SetProgressText(value) end)
     layout:Outdent()
     layout:Requires(followup, function() return Addon:IsAutoplayOn() end, L.REASON_AUTOPLAY)
     layout:Requires(progress, function() return Addon:IsAutoplayOn() end, L.REASON_AUTOPLAY)
