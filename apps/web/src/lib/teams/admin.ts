@@ -70,6 +70,14 @@ export async function listTeams(only?: TeamId): Promise<TeamSummary[]> {
  * Writes the team alone: membership is per language, so the admin is granted once a language
  * is handed over, and only their id is returned.
  */
+/** The id of the user `adminEmail` names, null for none; a TeamError when nobody has it. */
+export async function resolveAdmin(adminEmail: string | null): Promise<string | null> {
+  if (adminEmail === null) return null;
+  const admin = await userByEmail(adminEmail);
+  if (!admin) throw new TeamError(`No user has the email ${adminEmail}.`);
+  return admin.id;
+}
+
 export async function createTeam(
   input: { slug: string; name: string; adminEmail: string | null },
   actorId: string,
@@ -77,12 +85,7 @@ export async function createTeam(
   if (!SLUG.test(input.slug)) {
     throw new TeamError("A team's slug is lowercase letters, digits and dashes, starting with a letter.");
   }
-  let adminId: string | null = null;
-  if (input.adminEmail !== null) {
-    const admin = await userByEmail(input.adminEmail);
-    if (!admin) throw new TeamError(`No user has the email ${input.adminEmail}.`);
-    adminId = admin.id;
-  }
+  const adminId = await resolveAdmin(input.adminEmail);
   const id = await withTeam(ALL_TEAMS, async (client) => {
     try {
       const { rows } = await client.query<{ id: TeamId }>(`select new_team($1, $2) as "id"`, [input.slug, input.name]);

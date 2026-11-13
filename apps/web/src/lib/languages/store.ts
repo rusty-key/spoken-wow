@@ -17,7 +17,7 @@ import type { ClientBase } from "pg";
 
 import { recordActivity } from "@/lib/activity/store";
 import { inTransaction, query } from "@/lib/db";
-import { BASE_LANG, BUILTIN, allLangs, isLang, type Lang } from "@/lib/lang";
+import { BASE_LANG, BUILTIN, allLangs, derivedTags, isLang, type Lang } from "@/lib/lang";
 import { loadLanguages } from "@/lib/languages/catalogue";
 import { adoptEveryLang, adoptLang, forgetTeams } from "@/lib/teams/store";
 
@@ -108,7 +108,7 @@ export type NewLanguage = { code: string; name: string; native: string; bcp47: s
 
 /** A language from its code and names: jaJP is ja-JP to a browser and ja to the speech provider. */
 export function describeNew(code: string, name: string, native: string): NewLanguage {
-  return { code, name, native, bcp47: `${code.slice(0, 2)}-${code.slice(2)}`, provider: code.slice(0, 2) };
+  return { code, name, native, ...derivedTags(code) };
 }
 
 /**

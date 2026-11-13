@@ -2,10 +2,9 @@
 import { objectOf } from "@/lib/api-body";
 import { BASE_LANG, isLang, type Lang } from "@/lib/lang";
 import { ALL_TEAMS, withTeam } from "@/lib/db";
-import { userByEmail } from "@/lib/grants/store";
 import { loadLanguages } from "@/lib/languages/catalogue";
-import { describedName, newLanguageError } from "@/lib/languages/validate";
-import { createTeamWithLangs, listTeams, SLUG, TeamError } from "@/lib/teams/admin";
+import { checkNewLanguage, describedName } from "@/lib/languages/validate";
+import { createTeamWithLangs, listTeams, resolveAdmin, SLUG, TeamError } from "@/lib/teams/admin";
 import { afterFounded, foundTeam } from "@/lib/teams/found";
 
 import { bad, bodyOf, withAdmin } from "./guard";
@@ -55,25 +54,20 @@ async function foundNew(
   const given = objectOf(newLanguage);
   const code = given?.code;
   if (typeof code !== "string") return bad("newLanguage is { code, name, native }.");
-  const problem = newLanguageError(code, given?.name, given?.native);
-  if (problem) return bad(problem);
+  const checked = checkNewLanguage(code, given?.name, given?.native);
+  if ("error" in checked) return bad(checked.error);
   await loadLanguages();
   if (isLang(code)) throw new TeamError(`${code} is already a language.`, 409);
 
   const email = typeof adminEmail === "string" && adminEmail.trim() ? adminEmail.trim() : null;
-  let adminId: string | null = null;
-  if (email) {
-    const admin = await userByEmail(email);
-    if (!admin) return bad(`No user has the email ${email}.`);
-    adminId = admin.id;
-  }
+  const adminId = await resolveAdmin(email);
 
   const founded = await withTeam(ALL_TEAMS, (client) =>
     foundTeam(
       client,
       {
         lang: code,
-        language: { name: describedName(given?.name)!, native: describedName(given?.native)! },
+        language: { name: checked.language.name, native: checked.language.native },
         team: { slug, name: teamName },
         adminId,
       },

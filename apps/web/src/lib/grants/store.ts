@@ -15,7 +15,8 @@ import { query, withTeam } from "@/lib/db";
 import { deleteMember, insertMembers } from "@/lib/teams/members";
 import { ownerOrAll, teamOf, type TeamId } from "@/lib/teams/store";
 import { isLang, type Lang } from "@/lib/lang";
-import { isCapability, type Capability, type Grant, type Viewer } from "@/lib/permissions";
+import { textByTeam } from "@/lib/languages/store";
+import { canGrant, isCapability, type Capability, type Grant, type Viewer } from "@/lib/permissions";
 
 export async function grantsOf(userId: string): Promise<Grant[]> {
   const rows = await query<{ lang: string; capability: string }>(
@@ -108,6 +109,16 @@ export async function addGrants(
       client,
     );
   });
+}
+
+/** The first of `capabilities` that `viewer` may not grant in `lang`, or null when they may grant them all. */
+export async function refusedGrant(
+  viewer: Viewer | null,
+  capabilities: readonly Capability[],
+  lang: Lang,
+): Promise<Capability | null> {
+  const byTeam = await textByTeam(lang);
+  return capabilities.find((capability) => !canGrant(viewer, capability, lang, byTeam)) ?? null;
 }
 
 /**
