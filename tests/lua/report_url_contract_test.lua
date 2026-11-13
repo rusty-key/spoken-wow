@@ -37,6 +37,9 @@ local urls = {
     R:Link(R:TargetForQuest(9123, E.SoundEvent.QuestComplete), "zhTW"),
     R:Link(R:TargetForGUID("Creature-0-1-2-3-68-0000000001")),
     R:Link(R:TargetForGUID("GameObject-0-1-2-3-68-0000000001"), "ruRU"),
+    -- With the file that played, which picks one line out of an address several answer to.
+    R:Link(R:TargetForQuest(96774, E.SoundEvent.QuestAccept), nil, "96774-accept-troll-male-shaman"),
+    R:Link(R:TargetForGUID("Creature-0-1-2-3-68-0000000001"), "deDE", "f-1a2b3c"),
     Z:ReportURL(1411, nil, "enUS"),
     Z:ReportURL(1411, "valley of trials", "esMX"),
     Z:ReportURL(1413, "razorfen downs", "koKR"),
@@ -57,6 +60,6 @@ local file = assert(io.open(FIXTURE, "rb"))
 local kept = file:read("*a"):gsub("\r\n", "\n")
 file:close()
 Expect("every address is one the site is tested against (make contribute-fixtures)", built, kept)
-Expect("...twelve of them, none missing", #urls, 12)
+Expect("...fourteen of them, none missing", #urls, 14)
 
 os.exit(Failures() == 0 and 0 or 1)

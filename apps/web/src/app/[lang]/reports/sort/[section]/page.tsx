@@ -6,11 +6,15 @@ import { notFound } from "next/navigation";
 import SortQueue from "@/components/reports/SortQueue";
 import { auth } from "@/lib/auth";
 import { viewerOf } from "@/lib/grants/store";
+import type { Lang } from "@/lib/lang";
 import { can, isAdmin } from "@/lib/permissions";
 import { queuesOf } from "@/lib/reports/reports";
 import { sortQueue } from "@/lib/reports/sort";
 import { latestPackVersions } from "@/lib/releases/store";
 import { listReports, skippedIds } from "@/lib/reports/store";
+import { lineIdsOfAddress } from "@/lib/reports/target";
+import { corpus, isCorpusEmpty } from "@/lib/quests/catalogue";
+import type { ReportGroup } from "@/lib/reports/rows";
 import { isSource } from "@/lib/sections";
 
 export const metadata: Metadata = { title: "Sort reports · Spoken" };
@@ -31,7 +35,7 @@ export default async function Page({ params }: { params: Promise<{ lang: string;
     skippedIds(session.user.id, lang),
     latestPackVersions(section),
   ]);
-  const groups = sortQueue(reports, skipped);
+  const groups = section === "quests" ? await withAddressLines(sortQueue(reports, skipped), lang) : sortQueue(reports, skipped);
   const canRegenerate = can(viewer, "regenerate", lang);
 
   return (
@@ -44,5 +48,25 @@ export default async function Page({ params }: { params: Promise<{ lang: string;
       showNpcPage={isAdmin(session.user.role)}
       latestPacks={latestPacks}
     />
+  );
+}
+
+/**
+ * A quests report filed without a line picked names an address several lines can answer to (a
+ * quest given in two voices, every line of an NPC), or one the corpus had no line for until
+ * later. Its card shows each line the address means now.
+ */
+async function withAddressLines(groups: ReportGroup[], lang: Lang): Promise<ReportGroup[]> {
+  if (!groups.some((group) => !group.reports[0].lineId && group.reports[0].target)) return groups;
+  const lines = await corpus(lang).catch((error) => {
+    if (isCorpusEmpty(error)) return null;
+    throw error;
+  });
+  if (!lines) return groups;
+  return Promise.all(
+    groups.map(async (group) => {
+      const { lineId, target } = group.reports[0];
+      return lineId || !target ? group : { ...group, lineIds: await lineIdsOfAddress(target, lines) };
+    }),
   );
 }

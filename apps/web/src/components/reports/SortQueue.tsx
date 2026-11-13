@@ -2,7 +2,8 @@
 
 /**
  * The sorting queue: one line with open reports at a time, everything needed to decide on
- * it, and the three answers pinned under the thumb.
+ * it, and the three answers pinned under the thumb. A report filed without a line picked shows
+ * every line its address means, and the keys and the player act on the one last used.
  *
  * Walks the list the server sorted without navigating, so answering a card costs one
  * request and no page load, and the next card's line is fetched while this one is read.
@@ -131,14 +132,22 @@ export default function SortQueue({
   const playWhenReady = useRef(false);
 
   const group = groups[index] as ReportGroup | undefined;
-  const lineId = group?.reports[0].lineId ?? null;
-  const looked = lineId === null ? undefined : lines[lineId];
-  const line = looked && looked !== "error" ? looked : null;
-  // The take this session made or restored, else the live one: either way a cache buster, since
-  // a new take keeps its path and the browser would replay the one it replaced.
-  const version = line ? (versions[lineId!] ?? line.take?.version) : undefined;
-  const detail = line ? detailOf(source, line, version, lang) : null;
+  const ids = group ? lineIdsOf(group) : [];
+  /** Which of the card's lines the keys, the player and the editor act on. */
+  const [picked, setPicked] = useState(0);
+  const lineId = ids[picked] ?? null;
+  const { line, version, detail } = viewOf(lineId);
   const answer = answers[index];
+
+  function viewOf(id: string | null) {
+    const looked = id === null ? undefined : lines[id];
+    const line = looked && looked !== "error" ? looked : null;
+    // The take this session made or restored, else the live one: either way a cache buster,
+    // since a new take keeps its path and the browser would replay the one it replaced.
+    const version = line ? (versions[id!] ?? line.take?.version) : undefined;
+    const detail = line ? detailOf(source, line, version, lang) : null;
+    return { looked, line, version, detail };
+  }
 
   const load = useCallback(
     async (id: string) => {
@@ -154,8 +163,7 @@ export default function SortQueue({
 
   useEffect(() => {
     for (const next of groups.slice(index, index + 2)) {
-      const id = next.reports[0].lineId;
-      if (id && !requested.current.has(id)) void load(id);
+      for (const id of lineIdsOf(next)) if (!requested.current.has(id)) void load(id);
     }
   }, [groups, index, load]);
 
@@ -169,6 +177,7 @@ export default function SortQueue({
     audio.current?.pause();
     playWhenReady.current = false;
     setIndex(next);
+    setPicked(0);
     setError(null);
     setNotice(null);
     setEditing(false);
@@ -205,8 +214,8 @@ export default function SortQueue({
     return response?.ok ? null : "Couldn't skip. Try again.";
   }
 
-  async function regenerate() {
-    if (!lineId || busy) return;
+  async function regenerate(lineId: string) {
+    if (busy) return;
     setBusy("regenerate");
     setError(null);
     setNotice(null);
@@ -220,6 +229,18 @@ export default function SortQueue({
     // Refetched rather than patched: a line that had no take until now only gains its audio
     // path from the search.
     void load(lineId);
+  }
+
+  /** Another of the card's lines becomes the one acted on, and plays once the player has it. */
+  function playLine(at: number) {
+    const next = viewOf(ids[at] ?? null).detail?.audioSrc;
+    if (at === picked || next === detail?.audioSrc) {
+      setPicked(at);
+      return togglePlay();
+    }
+    audio.current?.pause();
+    setPicked(at);
+    playWhenReady.current = true;
   }
 
   function togglePlay() {
@@ -241,7 +262,7 @@ export default function SortQueue({
   const keys: Record<string, () => void> = {
     " ": togglePlay,
     e: () => canEdit && !busy && setEditing(true),
-    r: () => canRegenerateLine && void regenerate(),
+    r: () => canRegenerateLine && lineId !== null && void regenerate(lineId),
     x: () => setExpanded((current) => !current),
     p: previous,
     ...Object.fromEntries(ANSWERS.map((each) => [each.key, () => void give(each.answer)])),
@@ -297,9 +318,6 @@ export default function SortQueue({
 
   const total = groups.length;
   const reports = expanded ? group.reports : group.reports.slice(0, PREVIEW);
-  const text = detail?.text ?? "";
-  const unwritten = detail !== null && detail.text === null;
-
   return (
     <main className="mx-auto flex max-w-xl flex-col gap-4 px-4 pt-4 pb-56">
       <header className="flex flex-col gap-2">
@@ -325,110 +343,58 @@ export default function SortQueue({
         </p>
       ) : null}
 
-      <section className="bg-card flex flex-col gap-2 rounded-xl border p-4">
-        {lineId === null ? (
-          <>
-            <p className="font-medium">{group.reports[0].target ? "No line picked" : "About the project"}</p>
-            {group.reports[0].target ? (
-              <p className="text-muted-foreground font-mono text-xs break-all">{group.reports[0].target}</p>
-            ) : null}
-          </>
-        ) : looked === undefined ? (
-          <p className="text-muted-foreground text-sm">Looking up the line…</p>
-        ) : looked === "error" ? (
-          <p className="text-sm">
-            Couldn&apos;t load the line.{" "}
-            <button type="button" className="underline underline-offset-2" onClick={() => void load(lineId)}>
-              Retry
-            </button>
-          </p>
-        ) : line === null || detail === null ? (
-          <p className="text-muted-foreground text-sm">
-            No line in the corpus carries <span className="font-mono">{lineId}</span> any more.
-          </p>
-        ) : (
-          <>
-            <div className="flex flex-col">
-              <LineHeading
-                detail={detail}
-                showNpcPage={showNpcPage}
-                className="leading-snug"
-                asideClassName="mt-0.5"
-              />
-            </div>
-            {/* The text is the expand control, as each report below is: [X] does the same from
-                the keyboard. */}
-            {unwritten ? (
-              <p className="text-muted-foreground text-sm italic">No story in this language yet.</p>
-            ) : (
-              <p
-                className={cn(
-                  "cursor-pointer text-sm whitespace-pre-wrap",
-                  !expanded && text.length > LONG_TEXT && "line-clamp-5",
-                )}
-                aria-expanded={expanded}
-                onClick={() => !endsSelection() && setExpanded(!expanded)}
-              >
-                {text}
-              </p>
-            )}
-            <div className="text-muted-foreground flex items-center gap-3 text-xs">
-              <Link href={explorerHref(source, lineId)} className="font-mono underline-offset-2 hover:underline">
-                {lineId}
-              </Link>
-              <TakeSelector
-                source={source}
-                file={fileOf(source, line)}
-                version={version ?? null}
-                takes={line.take?.takes ?? 0}
-                canRestore={canRegenerate}
-                onRestored={(restored) => {
-                  setVersions((current) => ({ ...current, [lineId]: restored }));
-                  void load(lineId);
-                }}
-              />
-              {detail.stale ? <OutdatedNote /> : null}
-            </div>
-          </>
-        )}
-
-        <div className="mt-1 grid grid-cols-3 gap-2">
-          <Button variant="outline" className="h-11" disabled={!detail?.audioSrc} onClick={togglePlay}>
-            {playing ? <Pause /> : <Play />}
-            {playing ? "Pause" : "Play"}
-            <Hint>[Space]</Hint>
-          </Button>
-          <Button
-            variant="outline"
-            className="h-11"
-            disabled={!canEdit || busy !== null}
-            onClick={() => setEditing(true)}
-          >
-            <Pencil />
-            Edit
-            <Hint>[E]</Hint>
-          </Button>
-          <Button
-            variant="outline"
-            className="h-11"
-            disabled={!canRegenerateLine || busy !== null}
-            onClick={() => void regenerate()}
-            title={
-              !canRegenerate
-                ? "You can't regenerate in this language"
-                : unwritten
-                  ? "No story in this language to voice"
-                  : "Regenerate this line"
-            }
-          >
-            <RefreshCw className={cn(busy === "regenerate" && "animate-spin")} />
-            {busy === "regenerate" ? "Working…" : "Regenerate"}
-            <Hint>[R]</Hint>
-          </Button>
-        </div>
-        {detail && !detail.audioSrc ? <p className="text-muted-foreground text-xs">No audio on file.</p> : null}
-        {notice ? <p className="text-xs text-emerald-500">{notice}</p> : null}
-      </section>
+      {ids.length === 0 ? (
+        <section className="bg-card flex flex-col gap-2 rounded-xl border p-4">
+          <p className="font-medium">{group.reports[0].target ? "No line picked" : "About the project"}</p>
+          {group.reports[0].target ? (
+            <p className="text-muted-foreground font-mono text-xs break-all">{group.reports[0].target}</p>
+          ) : null}
+        </section>
+      ) : null}
+      {!group.reports[0].lineId && ids.length > 0 ? (
+        <p className="text-muted-foreground text-sm">
+          Filed against <span className="font-mono">{group.reports[0].target}</span> without a line picked.{" "}
+          {ids.length === 1 ? "One line answers to it:" : `All ${ids.length} lines that answer to it:`}
+        </p>
+      ) : null}
+      {ids.map((id, at) => {
+        const view = viewOf(id);
+        return (
+          <LineCard
+            key={id}
+            source={source}
+            lineId={id}
+            looked={view.looked}
+            line={view.line}
+            version={view.version}
+            detail={view.detail}
+            active={ids.length > 1 && at === picked}
+            playing={playing && at === picked}
+            expanded={expanded}
+            onExpand={() => setExpanded(!expanded)}
+            showNpcPage={showNpcPage}
+            busy={busy}
+            regenerating={busy === "regenerate" && at === picked}
+            canEditText={canEditText}
+            canRegenerate={canRegenerate}
+            notice={at === picked ? notice : null}
+            onPlay={() => playLine(at)}
+            onEdit={() => {
+              setPicked(at);
+              setEditing(true);
+            }}
+            onRegenerate={() => {
+              setPicked(at);
+              void regenerate(id);
+            }}
+            onRetry={() => void load(id)}
+            onRestored={(restored) => {
+              setVersions((current) => ({ ...current, [id]: restored }));
+              void load(id);
+            }}
+          />
+        );
+      })}
 
       <section className="flex flex-col gap-2">
         <p className="text-sm font-medium">
@@ -554,6 +520,154 @@ function EditDialog({
       onCancel={onClose}
     />
   );
+}
+
+/** One line on the card: its text, its takes, and the three things to do about it. */
+function LineCard({
+  source,
+  lineId,
+  looked,
+  line,
+  version,
+  detail,
+  active,
+  playing,
+  expanded,
+  onExpand,
+  showNpcPage,
+  busy,
+  regenerating,
+  canEditText,
+  canRegenerate,
+  notice,
+  onPlay,
+  onEdit,
+  onRegenerate,
+  onRetry,
+  onRestored,
+}: {
+  source: Source;
+  lineId: string;
+  looked: Looked | undefined;
+  line: SourceLine | null;
+  version: number | undefined;
+  detail: ReturnType<typeof detailOf> | null;
+  /** Ringed when the card holds several lines, to show which the keys act on. */
+  active: boolean;
+  playing: boolean;
+  expanded: boolean;
+  onExpand: () => void;
+  showNpcPage: boolean;
+  busy: Busy;
+  regenerating: boolean;
+  canEditText: boolean;
+  canRegenerate: boolean;
+  notice: string | null;
+  onPlay: () => void;
+  onEdit: () => void;
+  onRegenerate: () => void;
+  onRetry: () => void;
+  onRestored: (version: number) => void;
+}) {
+  const text = detail?.text ?? "";
+  const unwritten = detail !== null && detail.text === null;
+  // A quest line with no text in the language has nothing to override.
+  const canEdit = canEditText && line !== null && !(source === "quests" && (line as QuestLine).missing?.text);
+  // An unwritten boss has nothing to voice, and the server would refuse it.
+  const canRegenerateLine = canRegenerate && line !== null && detail?.text !== null;
+
+  return (
+    <section className={cn("bg-card flex flex-col gap-2 rounded-xl border p-4", active && "ring-foreground/40 ring-2")}>
+      {looked === undefined ? (
+        <p className="text-muted-foreground text-sm">Looking up the line…</p>
+      ) : looked === "error" ? (
+        <p className="text-sm">
+          Couldn&apos;t load the line.{" "}
+          <button type="button" className="underline underline-offset-2" onClick={onRetry}>
+            Retry
+          </button>
+        </p>
+      ) : line === null || detail === null ? (
+        <p className="text-muted-foreground text-sm">
+          No line in the corpus carries <span className="font-mono">{lineId}</span> any more.
+        </p>
+      ) : (
+        <>
+          <div className="flex flex-col">
+            <LineHeading detail={detail} showNpcPage={showNpcPage} className="leading-snug" asideClassName="mt-0.5" />
+          </div>
+          {/* The text is the expand control, as each report below is: [X] does the same from
+              the keyboard. */}
+          {unwritten ? (
+            <p className="text-muted-foreground text-sm italic">No story in this language yet.</p>
+          ) : (
+            <p
+              className={cn(
+                "cursor-pointer text-sm whitespace-pre-wrap",
+                !expanded && text.length > LONG_TEXT && "line-clamp-5",
+              )}
+              aria-expanded={expanded}
+              onClick={() => !endsSelection() && onExpand()}
+            >
+              {text}
+            </p>
+          )}
+          <div className="text-muted-foreground flex items-center gap-3 text-xs">
+            <Link href={explorerHref(source, lineId)} className="font-mono underline-offset-2 hover:underline">
+              {lineId}
+            </Link>
+            <TakeSelector
+              source={source}
+              file={fileOf(source, line)}
+              version={version ?? null}
+              takes={line.take?.takes ?? 0}
+              canRestore={canRegenerate}
+              onRestored={onRestored}
+            />
+            {detail.stale ? <OutdatedNote /> : null}
+          </div>
+        </>
+      )}
+
+      <div className="mt-1 grid grid-cols-3 gap-2">
+        <Button variant="outline" className="h-11" disabled={!detail?.audioSrc} onClick={onPlay}>
+          {playing ? <Pause /> : <Play />}
+          {playing ? "Pause" : "Play"}
+          <Hint>[Space]</Hint>
+        </Button>
+        <Button variant="outline" className="h-11" disabled={!canEdit || busy !== null} onClick={onEdit}>
+          <Pencil />
+          Edit
+          <Hint>[E]</Hint>
+        </Button>
+        <Button
+          variant="outline"
+          className="h-11"
+          disabled={!canRegenerateLine || busy !== null}
+          onClick={onRegenerate}
+          title={
+            !canRegenerate
+              ? "You can't regenerate in this language"
+              : unwritten
+                ? "No story in this language to voice"
+                : "Regenerate this line"
+          }
+        >
+          <RefreshCw className={cn(regenerating && "animate-spin")} />
+          {regenerating ? "Working…" : "Regenerate"}
+          <Hint>[R]</Hint>
+        </Button>
+      </div>
+      {detail && !detail.audioSrc ? <p className="text-muted-foreground text-xs">No audio on file.</p> : null}
+      {notice ? <p className="text-xs text-emerald-500">{notice}</p> : null}
+    </section>
+  );
+}
+
+/** The lines a card shows: the one its reports picked, else every one their address means. */
+function lineIdsOf(group: ReportGroup): string[] {
+  const picked = group.reports[0].lineId;
+  return picked ? [picked] : (group.lineIds ?? []);
 }
 
 /** Only where there is a keyboard to press it with: a phone has no use for the hint. */

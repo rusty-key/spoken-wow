@@ -165,6 +165,9 @@ Spoken Player until 3.0.0, when it became Spoken and took its modules into one d
 
 ## 3.7.0 — 2026-10-31
 
+- **A report names the line you heard.** When a quest is read in more than one voice, or an NPC has
+  several lines, the Report link now carries the recording that played, so the report lands on that
+  line rather than asking you to pick one.
 - **World Chatter voices what people say out loud in the world.** Guards, farmers and others who talk
   without a quest are matched by who says what, and the line plays when a voice pack has it, only when
   nothing else is being read. The game's chat bubble stays the only thing on screen, and lights the word

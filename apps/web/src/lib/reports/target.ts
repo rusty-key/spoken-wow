@@ -88,3 +88,13 @@ export async function resolveTarget(target: Target, corpus?: Corpus): Promise<Co
     ? speakers
     : lines.lines.filter((line) => line.npcType === "gameobject" && line.npcId === target.npcId);
 }
+
+/**
+ * Each line a stored address could mean, once: what triage shows for a report filed without a
+ * line picked. Every one, since the report alone cannot say which the reporter heard.
+ */
+export async function lineIdsOfAddress(raw: string, corpus?: Corpus): Promise<string[]> {
+  const target = parseTarget(raw.split("/"));
+  if (!target) return [];
+  return [...new Set((await resolveTarget(target, corpus)).map((line) => line.lineId))];
+}

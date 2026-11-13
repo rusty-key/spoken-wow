@@ -16,8 +16,13 @@ export function applyResolutions(
   return rows.map((row) => resolved[row.id] ?? row);
 }
 
-/** Every report about one line, newest first, under the key the table tracks it by. */
-export type ReportGroup = { key: string; reports: Report[] };
+/**
+ * Every report about one line, newest first, under the key the table tracks it by.
+ *
+ * `lineIds` is filled in by the sorting page for a group keyed on an address: every line the
+ * address means, since the reporter picked none.
+ */
+export type ReportGroup = { key: string; reports: Report[]; lineIds?: string[] };
 
 /**
  * The triage list, one entry per line rather than per report.

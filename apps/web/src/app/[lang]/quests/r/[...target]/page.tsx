@@ -34,11 +34,11 @@ export default async function ReportPage({
   searchParams,
 }: {
   params: Promise<{ lang: string; target: string[] }>;
-  searchParams: Promise<{ line?: string }>;
+  searchParams: Promise<{ line?: string; file?: string }>;
 }) {
   const lang = await pageLang(params);
   const segments = (await params).target;
-  const chosen = (await searchParams).line ?? null;
+  const { line: chosen = null, file: played = null } = await searchParams;
   const target = parseTarget(segments);
 
   if (!target) {
@@ -71,9 +71,11 @@ export default async function ReportPage({
   // one id and one file, and listing each would offer the same words twice (and give React
   // two children with one key).
   const choices = [...new Map(lines.map((candidate) => [candidate.lineId, candidate])).values()];
-  // One candidate needs no choosing; several mean the reporter picked one from the list below.
+  // One candidate needs no choosing. Of several, the one the reporter picked from the list
+  // below, else the one whose file the addon says it played.
   const line =
     choices.find((candidate) => candidate.lineId === chosen) ??
+    choices.find((candidate) => candidate.fileName === played) ??
     (choices.length === 1 ? choices[0] : null);
   // Which take is live, to bust the audio cache: without it someone returning to hear a fix
   // hears the browser's copy of the very clip they complained about, and reports it again.
