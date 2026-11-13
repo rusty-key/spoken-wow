@@ -1879,8 +1879,10 @@ over the English. An English client keeps progress text because the shipped corp
 text; its accept and complete words are already included. The player's name, class and race go back
 to `$N`, `$C` and `$R` where the English has them, so another character sees its own. A text kept by
 a character of the other sex is not shown where the English has a `$G`. Progress text without a
-shipped template also records the capturing character's name and sex, and is shown only to that
-same character; accept and complete text remains shareable after its placeholders are generalized.
+shipped template is kept per character GUID (with the name-and-realm fallback used by clients that
+do not expose one), and is shown only to that character; the earlier name-and-sex record format is
+still read for compatibility. Accept and complete text remains shareable after its placeholders are
+generalized.
 
 ## Tests
 

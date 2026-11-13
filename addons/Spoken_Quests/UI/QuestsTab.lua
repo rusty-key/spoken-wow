@@ -134,7 +134,8 @@ end
 -- Whether a voice pack has a part of a quest, as its page's Play finds one.
 local AnyVoiced
 
--- The words and titles kept in this client's language, by quest: { title, accept/progress/complete = { text, sex, name? } ... }.
+-- The words and titles kept in this client's language, by quest: { title, accept/complete = { text,
+-- sex }, progress = { text, sex } or { characters = { [characterID] = { text, sex, name? } } } ... }.
 -- An English client keeps only progress, which has no shipped English text; its accept and complete
 -- words are already in the addon.
 local function Kept(moment, create)
@@ -942,6 +943,17 @@ local function PlayerName()
     return UnitName and VO.NotSecret(UnitName("player")) or nil
 end
 
+-- A GUID remains the same when a character changes name. The name and realm fallback is for
+-- clients that do not expose the player's GUID, and is still distinct from another realm's name.
+local function CharacterID()
+    local guid = UnitGUID and VO.NotSecret(UnitGUID("player"))
+    if type(guid) == "string" and guid ~= "" then return guid end
+    local name = PlayerName()
+    local realm = GetRealmName and VO.NotSecret(GetRealmName())
+    if type(name) ~= "string" or name == "" then return nil end
+    return type(realm) == "string" and realm ~= "" and name .. "-" .. realm or name
+end
+
 local function Plain(text)
     return (text:gsub("[%^%$%(%)%%%.%[%]%*%+%-%?]", "%%%0"))
 end
@@ -979,8 +991,18 @@ local function Stored(id, moment)
     local own = kept and kept[moment]
     local text = english[moment]
     local personalProgress = moment == "progress" and (type(text) ~= "string" or text == "")
-    local sameCharacter = not personalProgress or (own and own.name == PlayerName() and own.sex == Sex())
-    if type(own) == "table" and own.text and sameCharacter
+    if personalProgress and type(own) == "table" then
+        local characters = own.characters
+        if type(characters) == "table" then
+            local character = CharacterID()
+            own = character and characters[character]
+        elseif own.name == PlayerName() and own.sex == Sex() then
+            -- Compatibility with the first character-specific format, which held one record.
+        else
+            own = nil
+        end
+    end
+    if type(own) == "table" and own.text
         and not (own.sex ~= Sex() and (text or ""):find("%$[Gg]")) then
         text = own.text
     end
@@ -1021,6 +1043,17 @@ function QuestsTab:Keep(moment, text, title)
         local record = { text = Generalise(text, english[moment]), sex = Sex() }
         if moment == "progress" and (type(english.progress) ~= "string" or english.progress == "") then
             record.name = PlayerName()
+            local character = CharacterID()
+            if not character then return end
+            local progress = kept[id].progress
+            if type(progress) ~= "table" or type(progress.text) == "string" then
+                progress = { characters = {} }
+                kept[id].progress = progress
+            elseif type(progress.characters) ~= "table" then
+                progress.characters = {}
+            end
+            progress.characters[character] = record
+            return
         end
         kept[id][moment] = record
     end

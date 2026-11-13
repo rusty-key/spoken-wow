@@ -10,8 +10,9 @@ carries that version. The heading says which.
 
 - Quest pages in Azeroth's Compendium now show and play captured progress text alongside the
   description and completion. Progress-only voice packs count in Voiced Only and shift-click.
-- Captured progress text without a shipped template is kept to the character who saw it, while
-  generalized accept and completion text remains shareable.
+- Captured progress text without a shipped template is kept per character, including more than one
+  character's wording for the same quest, while generalized accept and completion text remains
+  shareable.
 
 ## 2.5.0 — Spoken Quests Audio — 2026-10-31
 

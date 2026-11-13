@@ -50,6 +50,7 @@ end
 -- A human mage, Tester, who has completed Kobold Camp Cleanup.
 local KOBOLDS, CANDLES, SHARPTALON, JENNEA = 7, 60, 2, 1860
 stub.world.playerName = "Tester"
+stub.world.playerGUID = "Player-0-0-0-0-Tester-0"
 _G.UnitRace = function() return "Human", "Human", 1 end
 _G.UnitClass = function() return "Mage", "MAGE", 8 end
 local completed = { [KOBOLDS] = true }
@@ -1417,13 +1418,33 @@ Click("Koboldkerzen")
 Expect("progress text is shown for the character who captured it",
     (PageWords() or ""):find("Tester, habt Ihr die Kerzen schon gesammelt?", 1, true) ~= nil, true)
 Expect("...and keeps that character's name and sex",
-    kept.deDE[CANDLES].progress.name == "Tester" and kept.deDE[CANDLES].progress.sex == 2, true)
+    kept.deDE[CANDLES].progress.characters[stub.world.playerGUID].name == "Tester"
+        and kept.deDE[CANDLES].progress.characters[stub.world.playerGUID].sex == 2, true)
 stub.world.playerName = "Zweite"
+stub.world.playerGUID = "Player-0-0-0-0-Zweite-0"
 Tab:Refresh()
 Expect("progress text is hidden for another character",
     (PageWords() or ""):find("Tester, habt Ihr die Kerzen schon gesammelt?", 1, true) == nil, true)
+stub.world.progressText = "Zweite, habt Ihr die Kerzen schon gesammelt?"
+stub.world.questID = CANDLES
+stub.FireEvent("QUEST_PROGRESS")
+stub.world.questID = 0
+Tab:Refresh()
+Click("Koboldkerzen")
+Expect("the other character keeps its own progress text",
+    (PageWords() or ""):find("Zweite, habt Ihr die Kerzen schon gesammelt?", 1, true) ~= nil, true)
 stub.world.playerName = "Tester"
+stub.world.playerGUID = "Player-0-0-0-0-Tester-0"
 stub.world.progressText = ""
+Tab:Refresh()
+Click("Koboldkerzen")
+Expect("the first character's progress text is retained",
+    (PageWords() or ""):find("Tester, habt Ihr die Kerzen schon gesammelt?", 1, true) ~= nil, true)
+kept.deDE[CANDLES].progress = { text = "Tester, alter Fortschritt.", name = "Tester", sex = 2 }
+Tab:Refresh()
+Click("Koboldkerzen")
+Expect("the previous character-specific record remains compatible",
+    (PageWords() or ""):find("Tester, alter Fortschritt.", 1, true) ~= nil, true)
 -- A window whose id, title and words the game hands over as secrets keeps nothing.
 stub.world.questID = JENNEA
 stub.world.title = "Versiegelte Befehle"
