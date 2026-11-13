@@ -46,17 +46,10 @@ vi.mock("@/lib/activity/store", () => ({ recordActivity: mocks.recordActivity })
 vi.mock("./authz", () => ({ requireApiKey: mocks.requireApiKey }));
 vi.mock("./boot", () => ({ queueWorker: () => null }));
 vi.mock("./calibration", () => ({ observedRate: mocks.observedRate, observedFishRate: mocks.observedFishRate }));
-vi.mock("./preference", () => ({
-  readPreference: async () => ({
-    provider: "elevenlabs",
-    elevenlabs: { modelId: "m" },
-    fish: { model: "fm" },
-  }),
-}));
-
 import type { CorpusLine } from "@/lib/corpus";
 
 import { estimatePlan, filterError, linesForItems, planCatalogue, planQuestsByItems, queuePlan, type Plan } from "./batch-plan";
+import type { Preference } from "./preference";
 
 const line = (lineId: string, variant?: number) => ({ lineId, variant }) as unknown as CorpusLine;
 const job = (file: string, characters: number, provider?: "fish") => ({
@@ -134,19 +127,21 @@ describe("queuePlan", () => {
 });
 
 describe("estimatePlan", () => {
+  const preference = { provider: "elevenlabs", elevenlabs: { modelId: "m" }, fish: { model: "fm" } } as unknown as Preference;
+
   beforeEach(() => {
     mocks.observedRate.mockResolvedValue({ rate: 0.5, samples: 10, modelId: "m" });
     mocks.observedFishRate.mockResolvedValue({ rate: 0.00001, samples: 10, modelId: "fm", unit: "usd" });
   });
 
   it("prices distinct files at the observed rate", async () => {
-    const result = await estimatePlan(plan([job("a", 100), job("b", 50)]), "u", "deDE", "elevenlabs");
+    const result = await estimatePlan(plan([job("a", 100), job("b", 50)]), preference, "deDE", "elevenlabs");
     expect(result.elevenlabs).toMatchObject({ characters: 150, credits: 75 });
     expect(result.fish).toBeUndefined();
   });
 
   it("splits out fish jobs", async () => {
-    const result = await estimatePlan(plan([job("a", 100), job("b", 50, "fish")]), "u", "deDE", "elevenlabs");
+    const result = await estimatePlan(plan([job("a", 100), job("b", 50, "fish")]), preference, "deDE", "elevenlabs");
     expect(Object.keys(result).sort()).toEqual(["elevenlabs", "fish"]);
     expect(result.fish?.characters).toBe(50);
   });
@@ -231,7 +226,7 @@ describe("filterError", () => {
   it.each(["", "state=stale&source=accept&page=3", "?q=hello&client=all&progress=1", "minLevel=10&before=2026-01-01"])(
     "accepts %s",
     async (query) => {
-      expect(await filterError(query, "enUS")).toBeNull();
+      expect((await filterError(query, "enUS")).error).toBeNull();
     },
   );
 
@@ -245,6 +240,6 @@ describe("filterError", () => {
     ["before=yesterday", "before"],
     ["ignored=yes", "ignored"],
   ])("refuses %s, naming %s", async (query, named) => {
-    expect(await filterError(query, "enUS")).toContain(named);
+    expect((await filterError(query, "enUS")).error).toContain(named);
   });
 });

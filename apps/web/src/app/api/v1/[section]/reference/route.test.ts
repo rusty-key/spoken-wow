@@ -16,8 +16,7 @@ vi.mock("@/lib/grants/store", async (importOriginal) => ({
   viewerOf: async () => ({ role: null, grants: viewer.grants }),
 }));
 
-import { createFixtures, type Fixtures } from "@/lib/text-api/testing";
-import { createToken } from "@/lib/tokens/store";
+import { createFixtures, mintToken, type Fixtures } from "@/lib/text-api/testing";
 
 import { GET } from "./route";
 
@@ -26,27 +25,15 @@ let generateToken: string;
 let readNoRows: string;
 let readKo: string;
 
-const mint = async (lang: "koKR" | "qaXX", access: "none" | "read", generate: boolean) =>
-  (
-    await createToken({
-      userId: f.user,
-      lang,
-      access,
-      generate,
-      label: "agent",
-      expiresAt: new Date(Date.now() + 86_400_000),
-    })
-  ).token;
-
 beforeAll(async () => {
   f = await createFixtures();
   await asSystem.query(
     `insert into "language" ("code", "enabled", "name", "native", "bcp47", "provider", "client")
      values ('qaXX', true, 'Test', 'Test', 'qa-XX', 'ja', true) on conflict do nothing`,
   );
-  generateToken = await mint("koKR", "none", true);
-  readKo = await mint("koKR", "read", false);
-  readNoRows = await mint("qaXX", "read", false);
+  generateToken = await mintToken(f.user, "koKR", "none", true);
+  readKo = await mintToken(f.user, "koKR", "read", false);
+  readNoRows = await mintToken(f.user, "qaXX", "read", false);
 });
 
 beforeEach(() => {

@@ -2,6 +2,7 @@
  * Queue regeneration through a token: the same derivation and limits as the site's Regenerate
  * button (lib/generation/batch-plan.ts), on the token owner's own key.
  */
+import { bodyOf, objectOf } from "@/lib/api-body";
 import { readApiKey } from "@/lib/api-key";
 import { requireSpeaker } from "@/lib/generation/authz";
 import {
@@ -16,9 +17,10 @@ import {
 import { ensureQueueRunning } from "@/lib/generation/boot";
 import { readPreference } from "@/lib/generation/preference";
 import type { Provider } from "@/lib/generation/speakers/speaker";
+import type { LineFilters } from "@/lib/search";
 import { MAX_ITEMS } from "@/lib/text-api/apply";
 import { requireToken } from "@/lib/text-api/guard";
-import { invalid, sectionOf } from "@/lib/text-api/respond";
+import { invalid, noQuery, sectionOf } from "@/lib/text-api/respond";
 import { BAD_VARIANT, isVariant } from "@/lib/text-api/types";
 
 export const dynamic = "force-dynamic";
@@ -31,14 +33,15 @@ export async function POST(request: Request, { params }: { params: Promise<{ sec
   if (denied) return denied;
 
   // The language comes from the token, and nothing else here is read from the URL.
-  if (new URL(request.url).search) return invalid("this takes a JSON body and no query string");
+  const refused = noQuery(request, "this takes a JSON body and no query string");
+  if (refused) return refused;
 
   const found = sectionOf((await params).section);
   if (found instanceof Response) return found;
   const { section } = found;
 
-  const body = (await request.json().catch(() => null)) as Record<string, unknown> | null;
-  if (!body || typeof body !== "object" || Array.isArray(body)) return invalid("send a JSON object");
+  const body = objectOf(await bodyOf(request));
+  if (!body) return invalid("send a JSON object");
   for (const key of Object.keys(body)) {
     if (!KEYS.has(key)) return invalid(`unknown key ${key}: this takes items, filters, label and dryRun`);
   }
@@ -48,9 +51,11 @@ export async function POST(request: Request, { params }: { params: Promise<{ sec
   if (hasFilters && (section !== "quests" || typeof body.filters !== "string")) {
     return invalid("filters is an Explorer query string, and only quests take it");
   }
+  let parsed: LineFilters | undefined;
   if (hasFilters) {
-    const problem = await filterError(body.filters as string, context.lang);
-    if (problem) return invalid(problem);
+    const checked = await filterError(body.filters as string, context.lang);
+    if (checked.error !== null) return invalid(checked.error);
+    parsed = checked.filters;
   }
   if (body.dryRun !== undefined && typeof body.dryRun !== "boolean") return invalid("dryRun must be true or false");
   if (
@@ -82,18 +87,18 @@ export async function POST(request: Request, { params }: { params: Promise<{ sec
   ensureQueueRunning();
   const { lang, userId, tokenId } = context;
 
-  const preference = await readPreference(userId, lang);
   const derive = (provider: Provider): Promise<Plan> => {
     if (section !== "quests") return planCatalogue(section, items.map((item) => item.id), lang);
     return hasFilters
-      ? planQuestsByFilters(body.filters as string, lang, provider)
+      ? planQuestsByFilters(body.filters as string, lang, provider, parsed)
       : planQuestsByItems(items, lang, provider);
   };
 
   if (body.dryRun === true) {
+    const preference = await readPreference(userId, lang);
     const provider = preference.provider;
     const plan = await derive(provider);
-    const estimate = await estimatePlan(plan, userId, lang, provider);
+    const estimate = await estimatePlan(plan, preference, lang, provider);
     const missingKeys: Provider[] = [];
     for (const key of Object.keys(estimate) as Provider[]) {
       const stored = await readApiKey(userId, key).catch(() => null);

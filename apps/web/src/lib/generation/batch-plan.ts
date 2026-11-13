@@ -17,7 +17,7 @@ import { catalogue as bookCatalogue } from "@/lib/readables/catalogue";
 import { corpus } from "@/lib/quests/catalogue";
 import { searchContext } from "@/lib/quests/context";
 import { recordingsFor } from "@/lib/recordings/store";
-import { batchPlan, matchingLines } from "@/lib/search";
+import { batchPlan, matchingLines, type LineFilters } from "@/lib/search";
 import { audioStateFromParams } from "@/lib/audio-state";
 import { CLIENT_FILTERS } from "@/lib/contributions/client";
 import { filtersFromParams, needsLevels, needsStale } from "@/lib/search-request";
@@ -28,7 +28,7 @@ import { requireApiKey } from "./authz";
 import { observedFishRate, observedRate } from "./calibration";
 import { estimate, type Estimate } from "./billing";
 import { queueWorker } from "./boot";
-import { readPreference } from "./preference";
+import type { Preference } from "./preference";
 import { createBatch, enqueue, type QueueEntry } from "./queue";
 import type { Provider } from "./speakers/speaker";
 
@@ -71,14 +71,7 @@ async function pinnedFor(lang: Lang, provider: Provider): Promise<Set<string>> {
   return provider === "fish" ? new Set<string>() : pinnedVoices(lang);
 }
 
-function questPlan(
-  lines: CorpusLine[],
-  overrides: Parameters<typeof batchPlan>[1],
-  pinned: Set<string>,
-  extraDropped: Record<string, number> = {},
-  unknown: string[] = [],
-  matched = lines.length,
-): Plan {
+function questPlan(lines: CorpusLine[], overrides: Parameters<typeof batchPlan>[1], pinned: Set<string>): Plan {
   const { jobs, skipped } = batchPlan(lines, overrides);
   return {
     // BatchLine calls it audioPath and the queue calls it file: a job is one mp3 on either side.
@@ -90,9 +83,9 @@ function questPlan(
       characters: job.characters,
       provider: pinned.has(job.voice) ? "fish" : undefined,
     })),
-    matched,
-    dropped: { ...skipped, ...extraDropped },
-    unknown,
+    matched: lines.length,
+    dropped: skipped,
+    unknown: [],
   };
 }
 
@@ -110,16 +103,22 @@ const DAY = /^\d{4}-\d{2}-\d{2}$/;
 /**
  * For the API only: the button's derivation drops what it does not understand, which for a typed
  * query would quietly widen the batch to the whole language. Here a key nobody reads, or a value
- * that matches nothing, is named instead. Null when the string is fine.
+ * that matches nothing, is named instead. A null error comes with the parsed filters, for
+ * planQuestsByFilters to reuse.
  */
-export async function filterError(query: string, lang: Lang): Promise<string | null> {
+export async function filterError(
+  query: string,
+  lang: Lang,
+): Promise<{ error: string } | { error: null; filters: LineFilters }> {
   const params = new URLSearchParams(query.startsWith("?") ? query.slice(1) : query);
   for (const key of params.keys()) {
     if (EXPLORER_ONLY.has(key)) continue;
     if (!FILTER_KEYS.has(key)) {
-      return `unknown filter ${key}: filters is an Explorer query string, and ${
-        key === "lang" ? "the language comes from the token" : "this one is not read"
-      }`;
+      return {
+        error: `unknown filter ${key}: filters is an Explorer query string, and ${
+          key === "lang" ? "the language comes from the token" : "this one is not read"
+        }`,
+      };
     }
   }
   const parsed = await filtersFromParams(params, lang);
@@ -144,17 +143,23 @@ export async function filterError(query: string, lang: Lang): Promise<string | n
   };
   for (const [key, value] of Object.entries(parsedTo)) {
     const given = params.get(key);
-    if (given !== null && given !== "" && value === undefined) return `${key}=${given} is not a valid value`;
+    if (given !== null && given !== "" && value === undefined) return { error: `${key}=${given} is not a valid value` };
   }
   for (const key of FLAGS) {
     const given = params.get(key);
-    if (given !== null && given !== "1" && given !== "0") return `${key}=${given} is not a valid value: use 1`;
+    if (given !== null && given !== "1" && given !== "0") return { error: `${key}=${given} is not a valid value: use 1` };
   }
-  return null;
+  return { error: null, filters: parsed };
 }
 
-export async function planQuestsByFilters(filters: string, lang: Lang, provider: Provider): Promise<Plan> {
-  let parsed = await filtersFromParams(new URLSearchParams(filters), lang);
+/** `parsed` is `filters` already parsed, by filterError. */
+export async function planQuestsByFilters(
+  filters: string,
+  lang: Lang,
+  provider: Provider,
+  parsed?: LineFilters,
+): Promise<Plan> {
+  parsed ??= await filtersFromParams(new URLSearchParams(filters), lang);
   const [catalogue, { voiced, context }, recordings, broadcast, pinned] = await Promise.all([
     corpus(lang),
     // Behind `regenerate`, which is working in the language, so the model and author
@@ -176,22 +181,46 @@ export async function planQuestsByItems(
   lang: Lang,
   provider: Provider,
 ): Promise<Plan> {
-  const catalogue = await corpus(lang);
+  const [catalogue, defaults, pinned] = await Promise.all([
+    corpus(lang),
+    filtersFromParams(new URLSearchParams(), lang),
+    pinnedFor(lang, provider),
+  ]);
   const { lines: narrowed, unknown } = linesForItems(catalogue.lines, items);
   // The default view, but for every client and with progress lines in: an item is one the caller
   // named, so only a line nobody voices (an ignore) is hidden, and batchPlan says why the rest drops.
-  const filters = {
-    ...(await filtersFromParams(new URLSearchParams(), lang)),
-    client: "all" as const,
-    includeProgress: true,
-  };
-  const [{ voiced, context }, pinned] = await Promise.all([
-    searchContext(needsStale(filters), false, lang, true, needsLevels(filters)),
-    pinnedFor(lang, provider),
-  ]);
+  const filters = { ...defaults, client: "all" as const, includeProgress: true };
+  const { voiced, context } = await searchContext(needsStale(filters), false, lang, true, needsLevels(filters));
   const lines = matchingLines({ lines: narrowed }, voiced, filters, context);
   const hidden = narrowed.length - lines.length;
-  return questPlan(lines, context.overrides, pinned, hidden > 0 ? { hidden } : {}, unknown, narrowed.length);
+  const plan = questPlan(lines, context.overrides, pinned);
+  return {
+    ...plan,
+    matched: narrowed.length,
+    dropped: { ...plan.dropped, ...(hidden > 0 ? { hidden } : {}) },
+    unknown,
+  };
+}
+
+type Planned = { job: QueueEntry } | { drop: string };
+
+/**
+ * The entries are looked up rather than trusted from the body: what is queued is what exists, and
+ * an id nobody recognises is dropped rather than becoming a job that can only fail.
+ */
+function planEntries<T extends { id: string }>(entries: readonly T[], ids: string[], plan: (entry: T) => Planned): Plan {
+  const wanted = new Set(ids);
+  const dropped: Record<string, number> = {};
+  const jobs: QueueEntry[] = [];
+  const seen = new Set<string>();
+  for (const entry of entries) {
+    if (!wanted.has(entry.id)) continue;
+    seen.add(entry.id);
+    const planned = plan(entry);
+    if ("drop" in planned) dropped[planned.drop] = (dropped[planned.drop] ?? 0) + 1;
+    else jobs.push(planned.job);
+  }
+  return { jobs, matched: seen.size, dropped, unknown: [...new Set(ids.filter((id) => !seen.has(id)))] };
 }
 
 export async function planCatalogue(
@@ -199,70 +228,50 @@ export async function planCatalogue(
   ids: string[],
   lang: Lang,
 ): Promise<Plan> {
-  const wanted = new Set(ids);
-  const dropped: Record<string, number> = {};
-  const drop = (why: string) => (dropped[why] = (dropped[why] ?? 0) + 1);
-  const jobs: QueueEntry[] = [];
-  const seen = new Set<string>();
-
-  // The entries are looked up rather than trusted from the body: what is queued is what
-  // exists, and an id nobody recognises is dropped rather than becoming a job that can only fail.
-  if (section === "places") {
-    for (const entry of await zoneCatalogue(lang)) {
-      if (!wanted.has(entry.id)) continue;
-      seen.add(entry.id);
-      if (entry.spoken.trim() === "") {
-        drop("no-text");
-        continue;
-      }
-      jobs.push({
-        lineId: entry.id,
-        file: entry.file,
-        // There is no NPC here; the zone's name labels the progress readout.
-        npcName: entry.zoneName,
-        preview: entry.short || entry.full.slice(0, 120),
-        characters: entry.spoken.length,
+  switch (section) {
+    case "places":
+      return planEntries(await zoneCatalogue(lang), ids, (entry) =>
+        entry.spoken.trim() === ""
+          ? { drop: "no-text" }
+          : {
+              job: {
+                lineId: entry.id,
+                file: entry.file,
+                // There is no NPC here; the zone's name labels the progress readout.
+                npcName: entry.zoneName,
+                preview: entry.short || entry.full.slice(0, 120),
+                characters: entry.spoken.length,
+              },
+            },
+      );
+    case "readables":
+      return planEntries(await bookCatalogue(lang), ids, (page) => {
+        if (!page.generatable) return { drop: "not-generatable" };
+        if (page.spoken.trim() === "") return { drop: "no-text" };
+        return {
+          job: {
+            lineId: page.id,
+            file: page.file,
+            npcName: page.pageCount > 1 ? `${page.title} (${page.pageNumber}/${page.pageCount})` : page.title,
+            preview: page.spoken.slice(0, 120),
+            characters: page.spoken.length,
+          },
+        };
       });
-    }
-  } else if (section === "readables") {
-    for (const page of await bookCatalogue(lang)) {
-      if (!wanted.has(page.id)) continue;
-      seen.add(page.id);
-      if (!page.generatable) {
-        drop("not-generatable");
-        continue;
-      }
-      if (page.spoken.trim() === "") {
-        drop("no-text");
-        continue;
-      }
-      jobs.push({
-        lineId: page.id,
-        file: page.file,
-        npcName: page.pageCount > 1 ? `${page.title} (${page.pageNumber}/${page.pageCount})` : page.title,
-        preview: page.spoken.slice(0, 120),
-        characters: page.spoken.length,
+    default:
+      return planEntries(await bossCatalogue(lang), ids, (entry) => {
+        if (entry.text === null || entry.spoken === null || entry.spoken.trim() === "") return { drop: "no-text" };
+        return {
+          job: {
+            lineId: entry.id,
+            file: entry.file,
+            npcName: entry.name,
+            preview: entry.text.slice(0, 120),
+            characters: entry.spoken.length,
+          },
+        };
       });
-    }
-  } else {
-    for (const entry of await bossCatalogue(lang)) {
-      if (!wanted.has(entry.id)) continue;
-      seen.add(entry.id);
-      if (entry.text === null || entry.spoken === null || entry.spoken.trim() === "") {
-        drop("no-text");
-        continue;
-      }
-      jobs.push({
-        lineId: entry.id,
-        file: entry.file,
-        npcName: entry.name,
-        preview: entry.text.slice(0, 120),
-        characters: entry.spoken.length,
-      });
-    }
   }
-
-  return { jobs, matched: seen.size, dropped, unknown: [...new Set(ids.filter((id) => !seen.has(id)))] };
 }
 
 /**
@@ -310,7 +319,7 @@ export async function queuePlan(args: {
 /** The quote for a plan, priced like the Regenerate dialog, one entry per provider it uses. */
 export async function estimatePlan(
   plan: Plan,
-  userId: string,
+  preference: Preference,
   lang: Lang,
   provider: Provider,
 ): Promise<Partial<Record<Provider, Estimate>>> {
@@ -323,7 +332,6 @@ export async function estimatePlan(
   }
   if (byProvider.size === 0) return {};
 
-  const preference = await readPreference(userId, lang);
   const out: Partial<Record<Provider, Estimate>> = {};
   for (const [key, jobs] of byProvider) {
     const rate =

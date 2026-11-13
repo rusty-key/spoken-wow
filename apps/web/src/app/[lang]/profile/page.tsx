@@ -40,12 +40,13 @@ export default async function Page({ params }: { params: Promise<{ lang: string 
     text: textLangs.includes(code),
     generate: regenerateLangs.includes(code),
   }));
-  const tokens = tokenLangs.length ? await listTokens(session.user.id) : [];
   // The status, never the key. Sent to a client component as props, so this is the shape
   // that decides what the browser can possibly learn.
-  const [status, fishStatus] = spends
-    ? await Promise.all([apiKeyStatus(session.user.id), apiKeyStatus(session.user.id, "fish")])
-    : [null, null];
+  const [tokens, status, fishStatus] = await Promise.all([
+    tokenLangs.length ? listTokens(session.user.id) : [],
+    spends ? apiKeyStatus(session.user.id) : null,
+    spends ? apiKeyStatus(session.user.id, "fish") : null,
+  ]);
 
   return (
     <main className="pt-6 pb-36">
