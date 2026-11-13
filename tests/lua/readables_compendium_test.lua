@@ -539,6 +539,22 @@ Expect("...where it is", page.sub.text.text, L.READABLES_IN_FMT:format("Stormwin
 Expect("...on one line", page.sub.text.wordWrap, false)
 Expect("...no line before its words saying it is in the world", (page.body.text.text or ""):find("In the World", 1, true), nil)
 Expect("...and its words", page.body.text.text ~= nil and #page.body.text.text > 40, true)
+do
+    local itemIcon = B.ItemIcon
+    B.ItemIcon = function(_, id) return id == KURDRAN and 123456 or nil end
+    B:ShowReadables(KURDRAN)
+    Expect("a found readable's page uses its item icon", page.headFace.speaker.icon, 123456)
+    SpokenReadablesCharacter.found[KURDRAN] = nil
+    B:ShowReadables(KURDRAN)
+    Expect("a locked readable's page also uses its item icon", page.headFace.speaker.icon, 123456)
+    B.ItemIcon = function() return nil end
+    B:ShowReadables(KURDRAN)
+    Expect("an unavailable item icon falls back to the category icon", page.headFace.speaker.icon,
+        [[Interface\Icons\INV_Misc_Note_06]])
+    SpokenReadablesCharacter.found[KURDRAN] = true
+    B.ItemIcon = itemIcon
+    B:ShowReadables(KURDRAN)
+end
 -- A page that names its reader shows this character's name, class and gender word, as in the game.
 do
     local kurdranPage = SpokenReadablesData.books[KURDRAN].pages[1]
