@@ -266,6 +266,16 @@ stub.FireEvent("QUEST_FINISHED")
 stub.Advance(0.6)
 ExpectCurrent("accepting before the window closes leaves its audio playing", "104-accept")
 
+-- The snapshot can capture the previous quest while the dispatched page resolves to the current
+-- one. The dispatched ID must own the offer's close tracking and stop its sound.
+StartScenario()
+VO.Addon.openQuestOffer = { questID = full, title = world.title }
+world.questID = followUp
+VO.Addon:QUEST_DETAIL()
+VO.Addon:QUEST_FINISHED()
+stub.Advance(0.6)
+ExpectCurrent("a dispatched offer ID replaces a stale snapshot ID", "")
+
 -- Closing a turn-in window without handing in the quest stops its pages, but the turn-in event
 -- cancels that stop just as QUEST_ACCEPTED does for an offer. Test both event orders.
 StartScenario()
@@ -321,6 +331,29 @@ stub.Advance(0.2)
 ExpectCurrent("a turn-in line without a snapshot keeps playing during close grace", "104-complete")
 stub.Advance(0.6)
 ExpectCurrent("a turn-in line without a snapshot stops after close grace", "")
+
+-- A newer turn-in must not replace an earlier pending record: its queued line remains available
+-- for the earlier quest's own QUEST_TURNED_IN event.
+lookup[string.format("%d-complete", followUp)] = 1
+StartScenario()
+world.questID = full
+VO.Addon:QUEST_PROGRESS()
+world.questID = followUp
+VO.Addon:QUEST_COMPLETE()
+VO.Addon:QUEST_FINISHED()
+stub.Advance(0.6)
+local hasEarlierTurnIn = false
+for _, turnIn in ipairs(VO.Addon.openQuestTurnIns or {}) do
+    if turnIn.questID == full and #turnIn.soundData == 1 then
+        hasEarlierTurnIn = true
+    end
+end
+if hasEarlierTurnIn then
+    print("ok   a newer turn-in preserves an earlier pending record")
+else
+    failures = failures + 1
+    print("FAIL a newer turn-in preserves an earlier pending record")
+end
 
 -- QUEST_FINISHED can also be reported while the NPC window is changing from its greeting to the
 -- turn-in panel. That is not a close: the line must keep playing until the panel really goes away.

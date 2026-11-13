@@ -90,8 +90,8 @@ Spoken's own page. Gossip adds no saved variable.
   shares what was heard.
   Entries kept under a creature's or object's GUID, as they were before, move to that key as the
   addon loads. A key marked `true` dates from when only the NPC was kept, and counts as unheard.
-- Stop When Window Closes is on the Quests page and covers the quest, gossip and greeting windows.
-  Closing the quest frame also stops a greeting, but never a quest's own line.
+- Stop When Window Closes is on the Quests page and covers quest windows only. Gossip and greeting
+  audio continues after its window closes.
 
 ## Commands
 

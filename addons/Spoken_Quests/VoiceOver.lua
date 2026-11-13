@@ -112,6 +112,35 @@ local function CurrentQuestID()
     return NotSecret(GetQuestID()) or 0
 end
 
+-- More than one quest can have a queued turn-in line while an addon moves straight from one
+-- dialog to the next. Keep each record until its own turn-in event or close timer handles it;
+-- replacing the record would strand the earlier line without a record to mark or stop.
+local function QuestTurnInRecords()
+    Addon.openQuestTurnIns = Addon.openQuestTurnIns or {}
+    return Addon.openQuestTurnIns
+end
+
+local function SameQuest(questID, title, otherID, otherTitle)
+    local id, other = tonumber(questID), tonumber(otherID)
+    return id and other and id == other and (id ~= 0 or title == otherTitle)
+end
+
+local function FindQuestTurnIn(questID, title, includeTurnedIn)
+    for i = #QuestTurnInRecords(), 1, -1 do
+        local turnIn = QuestTurnInRecords()[i]
+        if (includeTurnedIn or not turnIn.turnedIn) and SameQuest(questID, title, turnIn.questID, turnIn.title) then
+            return turnIn
+        end
+    end
+end
+
+local function NewQuestTurnIn(questID, title)
+    local turnIn = { questID = questID, title = title, soundData = {} }
+    table.insert(QuestTurnInRecords(), turnIn)
+    Addon.openQuestTurnIn = turnIn
+    return turnIn
+end
+
 local EVENT_OF_SOUND = {}
 for event, quest in pairs(QUEST_EVENTS) do
     EVENT_OF_SOUND[quest.sound] = event
@@ -160,11 +189,11 @@ local function CaptureQuestSnapshot(event)
             Addon.openQuestOffer = { questID = questID, title = questTitle }
         end
     elseif event == "QUEST_PROGRESS" or event == "QUEST_COMPLETE" then
-        local turnIn = Addon.openQuestTurnIn
-        local sameQuest = turnIn and turnIn.questID == questID
-            and (questID ~= 0 or turnIn.title == questTitle)
-        if not turnIn or turnIn.turnedIn or not sameQuest then
-            Addon.openQuestTurnIn = { questID = questID, title = questTitle, soundData = {} }
+        local turnIn = FindQuestTurnIn(questID, questTitle)
+        if not turnIn then
+            NewQuestTurnIn(questID, questTitle)
+        else
+            Addon.openQuestTurnIn = turnIn
         end
     end
     -- The same page shown again replaces its record, and keeps what was done with it, so a page
@@ -1190,18 +1219,28 @@ local function QuestSoundDataAdded(soundData)
     -- Save current quest sound data for dialog/frame sync option
     currentQuestSoundData = soundData
     local offer = Addon.openQuestOffer
-    if offer and soundData.event == Enums.SoundEvent.QuestAccept and soundData.questID == offer.questID then
+    if offer and soundData.event == Enums.SoundEvent.QuestAccept then
+        -- CaptureQuestSnapshot may have seen the previous quest's globals. The dispatched page's
+        -- resolved ID is authoritative for the offer that is now being queued.
+        offer.questID = soundData.questID
         offer.soundData = soundData
     end
-    local turnIn = Addon.openQuestTurnIn
-    if turnIn and IsQuestTurnInSoundData(soundData) and soundData.questID == turnIn.questID then
+    if IsQuestTurnInSoundData(soundData) then
+        local turnIn = FindQuestTurnIn(soundData.questID, soundData.title)
+        if not turnIn then
+            turnIn = NewQuestTurnIn(soundData.questID, soundData.title)
+        else
+            Addon.openQuestTurnIn = turnIn
+        end
         table.insert(turnIn.soundData, soundData)
     end
 end
 
---- QUEST_FINISHED arrives just before QUEST_ACCEPTED on the normal click path. Keep the offer alive
---- briefly so the acceptance event can cancel its close stop; a declined offer is removed only
---- when Stop When Window Closes is on.
+--- QUEST_FINISHED has no accepted/turned-in flag. QUEST_ACCEPTED and QUEST_TURNED_IN are the
+--- signals that prove completion, but the normal click path reports QUEST_FINISHED first, while
+--- other clients report the completion signal first. Keep the offer alive briefly so the direct
+--- signal can cancel its close stop; a declined offer is removed only when Stop When Window Closes
+--- is on.
 function Addon:MarkQuestOfferAccepted(questID)
     local offer = self.openQuestOffer
     local acceptedID, offerID = tonumber(questID), tonumber(offer and offer.questID)
@@ -1213,12 +1252,16 @@ function Addon:MarkQuestOfferAccepted(questID)
     end
 end
 
---- QUEST_FINISHED can arrive before QUEST_TURNED_IN, just as it can before QUEST_ACCEPTED.
---- Keep the turn-in pages alive briefly so the turn-in event can cancel their close stop.
+--- QUEST_FINISHED can arrive before QUEST_TURNED_IN, just as it can before QUEST_ACCEPTED. There
+--- is no separate decline event, so keep the turn-in pages alive briefly so the direct
+--- QUEST_TURNED_IN signal can cancel their close stop.
 function Addon:MarkQuestTurnedIn(questID)
-    local turnIn = self.openQuestTurnIn
-    local turnedInID, recordID = tonumber(questID), tonumber(turnIn and turnIn.questID)
-    if not turnIn or turnedInID and turnedInID ~= 0 and recordID and recordID ~= turnedInID then return end
+    local turnIn = FindQuestTurnIn(questID)
+    local turnedInID = tonumber(questID)
+    if not turnIn and (not turnedInID or turnedInID == 0) then
+        turnIn = self.openQuestTurnIn
+    end
+    if not turnIn then return end
     turnIn.turnedIn = true
     if turnIn.closeTimer then
         self:CancelTimer(turnIn.closeTimer)
@@ -1751,15 +1794,15 @@ function Addon:QUEST_FINISHED()
     -- use the queued line as the turn-in record so closing the window does not remove it at once.
     if IsQuestTurnInSoundData(currentQuestSoundData) then
         local currentQuestID = tonumber(currentQuestSoundData.questID)
-        local turnInID = tonumber(turnIn and turnIn.questID)
-        if not turnIn or turnInID ~= currentQuestID then
-            turnIn = {
-                questID = currentQuestSoundData.questID,
-                title = currentQuestSoundData.title,
-                soundData = { currentQuestSoundData },
-            }
+        local currentTurnIn = FindQuestTurnIn(currentQuestID, currentQuestSoundData.title, true)
+        if not currentTurnIn then
+            currentTurnIn = NewQuestTurnIn(currentQuestSoundData.questID, currentQuestSoundData.title)
+            table.insert(currentTurnIn.soundData, currentQuestSoundData)
+        else
+            turnIn = currentTurnIn
             self.openQuestTurnIn = turnIn
         end
+        turnIn = currentTurnIn
     end
     if turnIn and not turnIn.turnedIn and not turnIn.closeTimer then
         turnIn.stopOnClose = Addon.db.profile.Audio.StopAudioOnDisengage
@@ -1775,6 +1818,12 @@ function Addon:QUEST_FINISHED()
             end
             if self.openQuestTurnIn == turnIn then
                 self.openQuestTurnIn = nil
+            end
+            for i = #QuestTurnInRecords(), 1, -1 do
+                if QuestTurnInRecords()[i] == turnIn then
+                    table.remove(QuestTurnInRecords(), i)
+                    break
+                end
             end
         end, QUEST_ACCEPT_GRACE)
     end
