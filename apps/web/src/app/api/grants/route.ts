@@ -9,20 +9,18 @@
 import { headers } from "next/headers";
 
 import { auth } from "@/lib/auth";
-import { sendInviteEmail } from "@/lib/email";
 import { addGrants, refusedGrant, removeGrant, userByEmail, viewerOf } from "@/lib/grants/store";
 import { listingFor } from "@/lib/invites/listing";
 import {
   createInvite,
+  emailInvite,
   InviteExistsError,
   InviteRateError,
-  inviteUrl,
   revokeOpenFor,
   normalEmail,
 } from "@/lib/invites/store";
-import { langName } from "@/lib/lang";
 import { knownLang } from "@/lib/languages/catalogue";
-import { capabilityLabel, isAdmin, isCapability, removesOwnAdmin, type Viewer } from "@/lib/permissions";
+import { isAdmin, isCapability, removesOwnAdmin, type Viewer } from "@/lib/permissions";
 
 export const dynamic = "force-dynamic";
 
@@ -80,12 +78,7 @@ export async function PUT(request: Request) {
       invitedBy: who.userId,
       limited: !isAdmin(who.viewer.role),
     });
-    sendInviteEmail(address, {
-      inviterName: invite.invitedByName ?? "A Spoken team member",
-      langName: langName(lang),
-      capabilities: capabilities.map(capabilityLabel),
-      url: inviteUrl(token),
-    });
+    emailInvite(invite, token);
   } catch (error) {
     if (error instanceof InviteExistsError || error instanceof InviteRateError) {
       if (error instanceof InviteRateError) console.warn(`invites: ${who.userId} refused: ${error.message}`);

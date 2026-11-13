@@ -64,6 +64,11 @@ function grantName(value: unknown): string | null {
   return isCapability(value) ? capabilityLabel(value) : str(value);
 }
 
+/** A logged list of capabilities, as the table names them. */
+function grantNames(value: unknown): string {
+  return (Array.isArray(value) ? value : []).map(grantName).join(", ");
+}
+
 function str(value: unknown): string | null {
   return typeof value === "string" && value !== "" ? value : null;
 }
@@ -254,14 +259,14 @@ export function describe(row: ActivityRow): { what: string; quote: string | null
       return { what: `took ${grantName(d.capability)} from ${row.subjectName ?? "someone"}`, quote: null };
     case "invite.sent":
       return {
-        what: `invited ${str(d.email) ?? "someone"} as ${(Array.isArray(d.capabilities) ? d.capabilities : []).map(grantName).join(", ")}`,
+        what: `invited ${str(d.email) ?? "someone"} as ${grantNames(d.capabilities)}`,
         quote: null,
       };
     case "invite.resent":
       return { what: `sent the invite to ${str(d.email) ?? "someone"} again`, quote: null };
     case "invite.accepted":
       return {
-        what: `accepted the invite as ${(Array.isArray(d.capabilities) ? d.capabilities : []).map(grantName).join(", ")}`,
+        what: `accepted the invite as ${grantNames(d.capabilities)}`,
         quote: null,
       };
     case "invite.revoked":

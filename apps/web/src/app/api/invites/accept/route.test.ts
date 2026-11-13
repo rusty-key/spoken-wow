@@ -11,7 +11,17 @@ import { asSystem, testUser } from "@/lib/teams/testing";
 
 const session = vi.hoisted(() => ({ current: null as null | { user: { id: string; email: string; role: null } } }));
 
-vi.mock("next/headers", () => ({ headers: async () => new Headers() }));
+const jar = vi.hoisted(() => ({ cookie: null as string | null }));
+
+vi.mock("next/headers", () => ({
+  headers: async () => new Headers(),
+  cookies: async () => ({
+    get: (name: string) => {
+      const pair = jar.cookie?.split(";").map((part) => part.trim()).find((part) => part.startsWith(`${name}=`));
+      return pair === undefined ? undefined : { name, value: pair.slice(name.length + 1) };
+    },
+  }),
+}));
 vi.mock("@/lib/auth", () => ({ auth: { api: { getSession: async () => session.current } } }));
 
 import { POST } from "./route";
@@ -21,13 +31,10 @@ let invitee: Awaited<ReturnType<typeof testUser>>;
 let other: Awaited<ReturnType<typeof testUser>>;
 let token = "";
 
-const post = (cookie: string | null = `spoken_invite=${token}`) =>
-  POST(
-    new Request("https://example.com/api/invites/accept", {
-      method: "POST",
-      headers: cookie ? { cookie } : {},
-    }),
-  );
+const post = (cookie: string | null = `spoken_invite=${token}`) => {
+  jar.cookie = cookie;
+  return POST();
+};
 const as = (user: { id: string }) => ({ user: { id: user.id, email: `${user.id}@example.invalid`, role: null } });
 
 beforeAll(async () => {

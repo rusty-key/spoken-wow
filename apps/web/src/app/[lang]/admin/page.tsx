@@ -51,6 +51,7 @@ export default async function Page({
   const team = asked ?? (global ? null : administered[0]);
 
   if (team) {
+    const [grants, invites, byTeam] = await Promise.all([listGrants([team]), listInvites([team]), textByTeam(team)]);
     return (
       <main className="pb-36">
         <AdminHeader
@@ -68,10 +69,10 @@ export default async function Page({
           <TeamMatrix
             key={team}
             lang={team}
-            grants={await listGrants([team])}
-            invites={await listInvites([team])}
+            grants={grants}
+            invites={invites}
             viewer={viewer}
-            textByTeam={await textByTeam(team)}
+            textByTeam={byTeam}
             currentUserId={session.user.id}
           />
         </Contained>
