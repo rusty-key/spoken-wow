@@ -7,7 +7,7 @@ import PackQueue from "@/components/packs/PackQueue";
 import { Toaster } from "@/components/ui/toast";
 import { Contained, Wide } from "@/components/Width";
 import { historyByPack, listAll, queueOf } from "@/lib/community/store";
-import { CODES } from "@/lib/lang";
+import { allLangs } from "@/lib/lang";
 import { isAdmin } from "@/lib/permissions";
 import { currentSession } from "@/lib/session";
 import { namesOf } from "@/lib/users/store";
@@ -33,7 +33,7 @@ export default async function Page() {
     <main className="pb-36">
       <AdminHeader
         lang={null}
-        administered={CODES}
+        administered={allLangs()}
         global
         tab="packs"
         pendingPacks={pending.length}

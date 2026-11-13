@@ -12,7 +12,7 @@
 -- name, native, bcp47 and provider stay NULLABLE for now: the previous release's setEnabled
 -- upserts (code, enabled) only, and Postgres checks NOT NULL before conflict detection, so
 -- after a rollback every toggle would fail. A later migration sets them NOT NULL once no
--- pre-0106 release runs.
+-- pre-0107 release runs.
 --
 -- The notify trigger lets a running server learn of a language added or changed by another
 -- process without polling.

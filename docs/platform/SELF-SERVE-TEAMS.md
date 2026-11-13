@@ -162,6 +162,6 @@ site. The rest of phase 2 is distribution and stays out.
 
 ## Follow-ups
 
-- A later migration sets language `name`, `native`, `bcp47` and `provider` NOT NULL once no pre-0106 release runs.
+- A later migration sets language `name`, `native`, `bcp47` and `provider` NOT NULL once no pre-0107 release runs.
 - The CLI `apps/web/scripts/seed-voice-sources.mts` knows only the built-in languages; it does not load the registry.
 - Listener state is per module instance, so each process opens two LISTEN connections.
