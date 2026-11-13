@@ -1114,7 +1114,7 @@ function Options:AddProfiles(layout)
         layout:Button(L.OPT_PROFILE_NEW, 200, function() StaticPopup_Show("SPOKEN_NEW_PROFILE") end)
     end
     if Addon.db then
-        layout:Dropdown(L.OPT_NEW_CHARACTER_PROFILE, L.OPT_NEW_CHARACTER_PROFILE_TIP,
+        layout:Dropdown(L.OPT_NEW_CHARACTER_PROFILE, nil,
             -- Only Spoken's saved profiles: it reads the choice before any other settings load.
             function()
                 local names = {}
