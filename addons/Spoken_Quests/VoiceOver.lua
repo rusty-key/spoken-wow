@@ -353,9 +353,25 @@ function Addon:IsAutoplayOn()
     return self.db.profile.Audio.Autoplay ~= false
 end
 
+function Addon:IsProgressTextOn()
+    return self.db.profile.Audio.ProgressText ~= false
+end
+
 --- Autoplay on, and for the progress page Read Quest Progress Text too.
 function Addon:ReadsItself(event)
-    return self:IsAutoplayOn() and (event ~= "QUEST_PROGRESS" or self.db.profile.Audio.ProgressText ~= false)
+    return self:IsAutoplayOn() and (event ~= "QUEST_PROGRESS" or self:IsProgressTextOn())
+end
+
+--- Why this page waits for its Play button, as the button's tip says it, or nil when it reads
+--- itself.
+function Addon:WhyHeld(event)
+    if not self:IsAutoplayOn() then
+        return L.OPT_AUTOPLAY_OFF_TIP
+    elseif event == "QUEST_PROGRESS" and not self:IsProgressTextOn() then
+        return L.OPT_PROGRESS_OFF_TIP
+    elseif event and self:PartOfPage(event) == "gossip" and self:IsNever() then
+        return L.OPT_NEVER_TIP
+    end
 end
 
 --- Read Greetings is at Never: no NPC window reads itself, whatever Read Automatically says.
@@ -363,20 +379,21 @@ function Addon:IsNever()
     return self.db.profile.Audio.GossipFrequency == Enums.GossipFrequency.Never
 end
 
-function Addon:SetProgressText(on)
-    self.db.profile.Audio.ProgressText = on and true or false
+-- The Play button stands in for autoplay, so it appears or goes with these settings even while
+-- a dialog is already open.
+local function SetAudioFlag(key, on)
+    Addon.db.profile.Audio[key] = on and true or false
     if DialogPlayButton and DialogPlayButton.Refresh then
         DialogPlayButton:Refresh()
     end
 end
 
+function Addon:SetProgressText(on)
+    SetAudioFlag("ProgressText", on)
+end
+
 function Addon:SetAutoplay(on)
-    self.db.profile.Audio.Autoplay = on and true or false
-    -- The Play button stands in for autoplay, so it appears or goes with the setting even
-    -- while a dialog is already open.
-    if DialogPlayButton and DialogPlayButton.Refresh then
-        DialogPlayButton:Refresh()
-    end
+    SetAudioFlag("Autoplay", on)
 end
 
 --- The quest panels and the gossip frame, in the priority GetVisibleQuestEvent gives them.
