@@ -57,6 +57,82 @@ local function ItemID(bag, slot)
 	end
 end
 
+-- Bump when the quest-to-readable lookup changes so characters that already ran an older
+-- backfill are rescanned automatically after an addon update.
+local QUEST_BACKFILL_VERSION = 3
+
+local function CompletedQuests()
+	local completed = {}
+	if C_QuestLog and C_QuestLog.GetAllCompletedQuestIDs then
+		for _, questID in ipairs(C_QuestLog.GetAllCompletedQuestIDs() or {}) do
+			completed[questID] = true
+		end
+		return completed
+	end
+	if GetQuestsCompleted then
+		local quests = GetQuestsCompleted({})
+		for questID, isCompleted in pairs(quests or {}) do
+			if isCompleted then completed[questID] = true end
+		end
+		return completed
+	end
+	return nil
+end
+
+--- Backfill readable items received from direct quest rewards before this feature existed.
+function SpokenReadables:BackfillQuestReadables()
+	if not SpokenReadablesCharacter or SpokenReadablesCharacter.questReadableBackfill == QUEST_BACKFILL_VERSION then
+		return
+	end
+	local completed = CompletedQuests()
+	local places = _G.SpokenReadablesPlaces and SpokenReadablesPlaces.books
+	if not completed then return end
+	if places then
+		for book, place in pairs(places) do
+			for _, questID in ipairs(place.quests or {}) do
+				if completed[questID] then
+					self:MarkBookFound(book)
+					break
+				end
+			end
+		end
+	end
+
+	-- Questie is optional, but when installed it can fill this in before Places.lua has been
+	-- regenerated with quest metadata. Its item reverse index includes quest rewards, and its
+	-- quest index identifies source items. The latter is exact; the former may include a choice
+	-- reward because the client does not preserve which choice was selected.
+	local questie = _G.QuestieDB
+	local data = self:Data()
+	local owners = data and data.owners and data.owners.item
+	local itemQuery = questie and questie.QueryItemSingle
+	local questQuery = questie and questie.QueryQuestSingle
+	if not itemQuery and _G.LibQuestieDB and _G.LibQuestieDB.Item then
+		itemQuery = _G.LibQuestieDB.Item.Get
+	end
+	if not questQuery and _G.LibQuestieDB and _G.LibQuestieDB.Quest then
+		questQuery = _G.LibQuestieDB.Quest.Get
+	end
+	if owners then
+		if itemQuery then
+			for itemID, book in pairs(owners) do
+				local quests = itemQuery(itemID, "questRewards")
+				for _, questID in ipairs(quests or {}) do
+					if completed[questID] then self:MarkBookFound(book); break end
+				end
+			end
+		end
+		if questQuery then
+			for questID in pairs(completed) do
+				local itemID = questQuery(questID, "sourceItemId")
+				local book = itemID and owners[itemID]
+				if book then self:MarkBookFound(book) end
+			end
+		end
+	end
+	SpokenReadablesCharacter.questReadableBackfill = QUEST_BACKFILL_VERSION
+end
+
 --- The readable items currently in the player's bags, counted by item ID.
 function SpokenReadables:ReadableItemSnapshot()
 	local current = {}
@@ -214,6 +290,7 @@ frame:SetScript("OnEvent", function(_, name, payload, second)
 		-- Establish the starting inventory so items already owned when the character logs in are
 		-- not treated as newly received. Later BAG_UPDATE events record newly acquired notes.
 		SpokenReadables.readableItemCounts = SpokenReadables:ReadableItemSnapshot()
+		SpokenReadables:BackfillQuestReadables()
 	elseif name == "BAG_UPDATE" then
 		SpokenReadables:OnBagUpdate()
 	elseif name == "PLAYER_ENTERING_WORLD" then

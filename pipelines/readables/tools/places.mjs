@@ -68,7 +68,8 @@ const UNSPAWNED = { "Dark Keeper Nameplate": 230 };
 const NOT_PLACING = new Set([678602]);
 // Sources the world DB cannot see, by book id: an item a spell or a machine makes, a quest whose
 // giver it does not spawn. Each names a quest or an object, checked against the world DB, and
-// the zones, where the object's spawns do not give them.
+// the zones, where the object's spawns do not give them. Direct quest rewards are retained in the
+// generated data so an existing character's completed quests can backfill found readables.
 const SOURCES_BY_HAND = {
   394: [{ how: "quest", quest: 1016, zones: [1440] }], // Divined Scroll: the Divining Scroll, used in Ashenvale
   1171: [{ how: "quest", quest: 2944, zones: [1425] }], // Snapshot of Gammerita: taken in the Hinterlands
@@ -216,12 +217,18 @@ const q = async (sql, params = []) => (await db.query(sql, params))[0];
 const list = (xs) => [...new Set(xs)].length ? [...new Set(xs)] : [-1];
 
 const sources = new Map(); // book -> Set of zones it is had in, for those carried
+const questRewards = new Map(); // book -> Set of quests that directly reward its item
 const bookItems = new Map(); // book -> [ item ids ]
 const where = new Map();   // book -> Set of zones it stands in, for those in the world
 const kind = new Map();    // book -> "world" | "carried"
 function add(book, zones) {
   if (!sources.has(book)) sources.set(book, new Set());
   for (const z of zones) if (z) sources.get(book).add(z);
+}
+function addQuestReward(book, quest) {
+  if (!book || !quest) return;
+  if (!questRewards.has(book)) questRewards.set(book, new Set());
+  questRewards.get(book).add(quest);
 }
 
 async function names(tableName, idColumn, nameColumn, ids) {
@@ -299,9 +306,9 @@ try {
   // crate's: [{ how, name, zones }] by item.
   async function sourcesOf(wanted) {
     const out = new Map();
-    const put = (item, how, name, zones) => {
+    const put = (item, how, name, zones, quest) => {
       if (!out.has(item)) out.set(item, []);
-      out.get(item).push({ how, name, zones: [...(zones ?? [])] });
+      out.get(item).push({ how, name, quest, zones: [...(zones ?? [])] });
     };
     // Creatures, killed or pickpocketed.
     for (const [column, how] of [["LootID", "drop"], ["PickPocketLootID", "pickpocket"]]) {
@@ -341,7 +348,10 @@ try {
         if (!want.has(Number(r[c]))) continue;
         const how = c === "StartItem" ? "quest start" : c.startsWith("Reward") ? "quest reward" : "quest";
         if (!questItems.has(Number(r.ID))) questItems.set(Number(r.ID), []);
-        questItems.get(Number(r.ID)).push([Number(r[c]), how]);
+        // Choice rewards are deliberately not retained: completed-quest history cannot tell
+        // which choice the player selected, so backfilling them would create false positives.
+        const directReward = /^RewardItem[1-4]$/.test(c) ? Number(r.ID) : undefined;
+        questItems.get(Number(r.ID)).push([Number(r[c]), how, directReward]);
       }
     }
     const mail = new Map();
@@ -367,7 +377,7 @@ try {
     for (const [quest, its] of questItems) {
       let zones = givers.get(quest);
       if (!zones?.size && questSort.get(quest) > 0) zones = [zoneOfArea(questSort.get(quest))].filter(Boolean);
-      for (const [i, how] of its) put(i, how, undefined, zones);
+      for (const [i, how, directReward] of its) put(i, how, undefined, zones, directReward);
     }
     // Sold.
     const vendors = await q("SELECT entry, item FROM npc_vendor WHERE item IN (?)", [list(wanted)]);
@@ -384,11 +394,17 @@ try {
   // Inside another item: the container's sources.
   const contained = await q("SELECT Entry, Item FROM item_loot_template WHERE Item IN (?)", [list(items)]);
   const viaContainer = await sourcesOf(contained.map((r) => Number(r.Entry)));
-  for (const [item, list_] of direct) for (const s of list_) add(itemBook.get(item), s.zones);
+  for (const [item, list_] of direct) for (const s of list_) {
+    const book = itemBook.get(item);
+    add(book, s.zones);
+    if (s.quest) addQuestReward(book, s.quest);
+  }
   for (const r of contained) {
     const book = itemBook.get(Number(r.Item));
-    const zones = new Set((viaContainer.get(Number(r.Entry)) ?? []).flatMap((s) => s.zones));
+    const containerSources = viaContainer.get(Number(r.Entry)) ?? [];
+    const zones = new Set(containerSources.flatMap((s) => s.zones));
     add(book, zones);
+    for (const s of containerSources) if (s.quest) addQuestReward(book, s.quest);
   }
 
   // And what the DB cannot see. A hand source that matches one the DB found gives it its zones.
@@ -401,6 +417,7 @@ try {
       const name = s.quest ? handQuests.get(s.quest) : handObjects.get(s.object);
       if (!name) throw new Error(`book ${book}: no ${s.quest ? `quest ${s.quest}` : `object ${s.object}`} in the world DB`);
       add(Number(book), s.zones ?? handObjectZones.get(s.object) ?? []);
+      if (s.how === "quest reward") addQuestReward(Number(book), s.quest);
     }
     if (!kind.has(Number(book))) kind.set(Number(book), "carried");
   }
@@ -429,6 +446,8 @@ for (const [id, book] of [...books].sort((a, b) => a[0] - b[0])) {
     icons: (bookItems.get(id) ?? []).map((item) => itemIcon.get(item) ?? "") });
   counts.types[type] = (counts.types[type] ?? 0) + 1;
   const parts = [`kind = "${k}"`, `type = "${type}"`];
+  const rewards = questRewards.get(id);
+  if (rewards?.size) parts.push(`quests = { ${[...rewards].sort((a, b) => a - b).join(", ")} }`);
   if (EVENTS.has(id)) { parts.push(`event = "${EVENTS.get(id)}"`); counts.event++; }
   if (wide) parts.push("wide = true");
   else if (zones.size) {
@@ -448,6 +467,9 @@ const out = `-- AUTO-GENERATED by pipelines/readables/tools/places.mjs. Do not e
 -- plaque, a book on a shelf); "carried" ones are had in them (a letter dropped, a note handed
 -- over). \`type\` is what it is: book, journal, letter, note, scroll, tablet, plaque, grave,
 -- exhibit, picture or other. \`wide\` is a readable had in too many zones to list under each.
+-- \`quests\` are direct quest IDs that reward the carried readable, used to backfill characters
+-- whose quest history predates the addon. Choice rewards are excluded because the selected item
+-- is not recoverable from completed-quest history.
 -- \`event\` is the seasonal event one is had only during, listed under Holidays and Events, a line
 -- for each event, rather than its zones. Zones are uiMapIDs.
 -- \`dungeons\` are the instance maps of the dungeons and raids a readable is had in from inside

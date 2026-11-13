@@ -390,5 +390,6 @@ SpokenReadablesPlaces = {
 		[2888] = { kind = "carried", type = "letter", event = "scourgeinvasion" },
 		[2889] = { kind = "carried", type = "letter", event = "scourgeinvasion" },
 		[2890] = { kind = "carried", type = "letter", event = "scourgeinvasion" },
+		["nc0bf109d-e5d1-494d-ba1b-12a6b27352a8"] = { kind = "carried", type = "journal", zones = { 1426 }, quests = { 97277 } },
 	},
 }

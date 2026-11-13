@@ -50,7 +50,27 @@ _G.NUM_BAG_SLOTS = 4
 _G.GetContainerNumSlots = function(bag) return bag == 0 and 4 or 0 end
 _G.GetContainerItemID = function(bag, slot) return bag == 0 and bagItems[slot] or nil end
 _G.GetItemInfoInstant = function(itemID) return itemID, "Quest", "Note", "", 123456 end
+_G.SpokenReadablesPlaces = { books = {} }
+_G.C_QuestLog = { GetAllCompletedQuestIDs = function() return { 12345, 97277 } end }
+_G.LibQuestieDB = {
+    Item = { Get = function() return nil end },
+    Quest = {
+        Get = function(questID, field)
+            if field ~= "sourceItemId" then return nil end
+            if questID == 12345 then return 745 end
+            if questID == 97277 then return 277976 end
+        end,
+    },
+}
 SpokenReadablesCharacter.found = {}
+SpokenReadablesCharacter.questReadableBackfill = nil
+stub.FireEvent("PLAYER_LOGIN")
+Expect("a completed source-item quest backfills its readable", B:IsBookFound(209), true)
+Expect("a completed Forever source-item quest backfills its readable", B:IsBookFound("nc0bf109d-e5d1-494d-ba1b-12a6b27352a8"), true)
+
+_G.C_QuestLog.GetAllCompletedQuestIDs = function() return {} end
+SpokenReadablesCharacter.found = {}
+SpokenReadablesCharacter.questReadableBackfill = nil
 stub.FireEvent("PLAYER_LOGIN")
 Expect("items already in the bags are not mistaken for newly received notes",
     B:IsBookFound(209), false)

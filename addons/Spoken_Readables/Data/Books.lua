@@ -4113,6 +4113,9 @@ SpokenReadablesData = {
 		[2888] = { book = 2888, number = 1, text = "The Keeper passed on the letter you discovered, $n, and I thought you might appreciate an update. The last surviving family member of the \"Vargus\" mentioned has been tracked to the desert of Silithus, dwelling in Cenarion Hold. He goes by the name of Garon Hutchins. You should speak with him during your next excursion to the wastes. He may be interested to hear what we've learned." },
 		[2889] = { book = 2889, number = 1, text = "Salutations. I've at last found the time to look into that missive you found on the Scourge. Though it took some doing, I believe I have discovered a living relative of the deceased. Maxwell's sister, one Zarena Cromwind by name, runs a small weaponsmith shop out of Booty Bay. I'm unsure how close she was to her brother, but if you find yourself passing through, you should arrange a meeting. Closure on these matters is precious and rare in this day and age." },
 		[2890] = { book = 2890, number = 1, text = "I've finally unearthed some information on the former soldier you fought. The trail was difficult to follow, as this particular family tree was not properly documented, but I've found a blood relative at last. Would you believe Caretaker Alen at Light's Hope Chapel is, in fact, Christoph's son? It might ease his mind to hear of his father. If ever you find yourself in service to the Argent Dawn within the Plaguelands once more, please, speak with him. It would be a kindness." },
+		["n8dc66862-0045-43fd-81f4-a662261123e1"] = { book = "nc0bf109d-e5d1-494d-ba1b-12a6b27352a8", number = 1, text = "Mechanic's Log\010\010<The small leatherbound journal is covered in oil and grease stains. There are sketches of schematics and mechanical configurations, each with notation and written descriptions. You flip to a random page.>\010\010This commission will pay the bills for years. I just have to figure out how to keep the oscillation neutralizer from overheating or grinding itself to metal shavings. What I need to do is vortex transfer the excess heat into the combustion core, but I've been putting that off cause I'll need to dismantle the entire walker and then take the whole engine apart.\010\010Page 17" },
+		["n4b6297b7-4196-481a-9e95-9ffe9eb7f21b"] = { book = "nc0bf109d-e5d1-494d-ba1b-12a6b27352a8", number = 2, text = "<You thumb through more of the bound paper and land on a diagram spread across both pages.>\010\010Weapons System Modifications\010\010Ice Turret - Operational\010Flame Thrower - Operational\010Electro Pulse - Operational\010Radiation Spray - Operational\010Auto Rifle - Operational\010Laser Cutting Beam - EXPERIMENTAL\010Sonic Cannon - EXPERIMENTAL\010Phase Ray - CONCEPT ONLY\010\010Page 34                                      Page 35" },
+		["n1208f38d-f4cf-412e-b4b9-c765116e6079"] = { book = "nc0bf109d-e5d1-494d-ba1b-12a6b27352a8", number = 3, text = "TO-DO\010\010Pack equipment for hunting trip\010Make utility hooks for Grund's belt\010Fix welding visor\010Send Mom a card\010\010Page 45" },
 	},
 
 	books = {
@@ -4489,6 +4492,7 @@ SpokenReadablesData = {
 		[2888] = { title = "Sealed Research Report", pages = { 2888 } },
 		[2889] = { title = "Sealed Research Report", pages = { 2889 } },
 		[2890] = { title = "Sealed Research Report", pages = { 2890 } },
+		["nc0bf109d-e5d1-494d-ba1b-12a6b27352a8"] = { title = "Gozwin's Mechanic's Log", pages = { "n8dc66862-0045-43fd-81f4-a662261123e1", "n4b6297b7-4196-481a-9e95-9ffe9eb7f21b", "n1208f38d-f4cf-412e-b4b9-c765116e6079" } },
 	},
 
 	owners = {
@@ -4762,6 +4766,7 @@ SpokenReadablesData = {
 			[23012] = 2888,
 			[23013] = 2889,
 			[23016] = 2890,
+			[277976] = "nc0bf109d-e5d1-494d-ba1b-12a6b27352a8",
 		},
 		object = {
 			[37] = 731,
