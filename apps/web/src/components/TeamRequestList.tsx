@@ -5,11 +5,12 @@ import { useState } from "react";
 
 import Link from "@/components/LocaleLink";
 import { Button } from "@/components/ui/button";
+import { langName } from "@/lib/lang";
 import { send } from "@/lib/send";
 import { branchText } from "@/lib/teams/branch-text";
 import type { TeamRequest } from "@/lib/teams/requests";
 
-const label = (request: TeamRequest) => request.langName ?? request.lang;
+const label = (request: TeamRequest) => request.langName ?? langName(request.lang);
 
 export default function TeamRequestList({ initial }: { initial: TeamRequest[] }) {
   const router = useRouter();
