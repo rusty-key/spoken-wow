@@ -13,6 +13,11 @@ export function invalid(error: string): Response {
   return Response.json({ error }, { status: 400 });
 }
 
+/** The 400 for a request with a query string, or null when it has none. */
+export function noQuery(request: Request, error = "this takes no query string"): Response | null {
+  return new URL(request.url).search ? invalid(error) : null;
+}
+
 export function sectionOf(name: string): { section: Source; api: SectionApi } | Response {
   if (!isSource(name)) return Response.json({ error: `no section ${name}` }, { status: 404 });
   return { section: name, api: sections[name] };

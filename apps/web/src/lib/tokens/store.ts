@@ -5,10 +5,9 @@
  */
 import "server-only";
 
-import { createHash, randomBytes } from "node:crypto";
-
 import { query } from "@/lib/db";
 import type { Lang } from "@/lib/lang";
+import { hashSecret as hashOf, mintSecret } from "@/lib/secret-token";
 
 import type { ApiToken, TokenAccess } from "./types";
 
@@ -36,10 +35,6 @@ function toToken({ createdAt, expiresAt, lastUsedAt, revokedAt, ...rest }: Row):
   };
 }
 
-function hashOf(token: string): string {
-  return createHash("sha256").update(token).digest("hex");
-}
-
 export async function createToken(args: {
   userId: string;
   lang: Lang;
@@ -50,7 +45,7 @@ export async function createToken(args: {
 }): Promise<{ token: string; row: ApiToken }> {
   if (!(args.expiresAt.getTime() > Date.now())) throw new Error("the expiry must be in the future");
 
-  const token = `spk_${randomBytes(32).toString("base64url")}`;
+  const token = `spk_${mintSecret()}`;
   const rows = await query<Row>(
     `insert into "api_token" as t ("userId", "lang", "access", "generate", "label", "tokenHash", "hint", "expiresAt")
      values ($1, $2, $3, $4, $5, $6, $7, $8)

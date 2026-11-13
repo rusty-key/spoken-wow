@@ -1,16 +1,15 @@
-import { ownBatch } from "@/lib/generation/batch-status";
+import { ownGeneration } from "@/lib/generation/batch-status";
 import { requireToken } from "@/lib/text-api/guard";
-import { isUuid } from "@/lib/uuid";
+import { noQuery } from "@/lib/text-api/respond";
 
 export const dynamic = "force-dynamic";
 
 export async function GET(request: Request, { params }: { params: Promise<{ batchId: string }> }) {
   const { context, denied } = await requireToken(request, { need: "generate" });
   if (denied) return denied;
-  if (new URL(request.url).search) return Response.json({ error: "this takes no query string" }, { status: 400 });
+  const refused = noQuery(request);
+  if (refused) return refused;
 
-  const { batchId } = await params;
-  const batch = isUuid(batchId) ? await ownBatch(batchId, context.userId, context.lang) : null;
-  if (!batch) return Response.json({ error: "no such generation" }, { status: 404 });
-  return Response.json(batch);
+  const batch = await ownGeneration(context, (await params).batchId);
+  return batch instanceof Response ? batch : Response.json(batch);
 }

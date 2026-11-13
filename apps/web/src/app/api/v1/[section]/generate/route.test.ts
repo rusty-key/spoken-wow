@@ -45,8 +45,7 @@ vi.mock("@/lib/api-key", async (importOriginal) => ({
 }));
 vi.mock("@/lib/activity/store", () => ({ recordActivity: async () => {} }));
 
-import { createFixtures, type Fixtures } from "@/lib/text-api/testing";
-import { createToken } from "@/lib/tokens/store";
+import { createFixtures, mintToken, type Fixtures } from "@/lib/text-api/testing";
 
 import { POST } from "./route";
 
@@ -61,19 +60,8 @@ beforeAll(async () => {
      values ($1, 'enUS', 1, true, 'rewritten', 'The boss speaks at some length.', 'test')`,
     [f.boss.id],
   );
-  const mint = async (access: "none" | "read", generate: boolean) =>
-    (
-      await createToken({
-        userId: f.user,
-        lang: "enUS",
-        access,
-        generate,
-        label: "agent",
-        expiresAt: new Date(Date.now() + 86_400_000),
-      })
-    ).token;
-  generateToken = await mint("none", true);
-  readToken = await mint("read", false);
+  generateToken = await mintToken(f.user, "enUS", "none", true);
+  readToken = await mintToken(f.user, "enUS", "read", false);
 });
 
 beforeEach(() => {

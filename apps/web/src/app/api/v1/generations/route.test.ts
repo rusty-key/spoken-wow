@@ -21,7 +21,7 @@ vi.mock("@/lib/grants/store", async (importOriginal) => ({
 }));
 
 import { cancelPending, createBatch, enqueue } from "@/lib/generation/queue";
-import { createToken } from "@/lib/tokens/store";
+import { mintToken } from "@/lib/text-api/testing";
 
 import { GET as one } from "./[batchId]/route";
 import { POST as stop } from "./[batchId]/stop/route";
@@ -33,18 +33,6 @@ let other: Awaited<ReturnType<typeof testUser>>;
 let generateToken: string;
 let readToken: string;
 const prefix = `test-gen-${Math.random().toString(36).slice(2, 8)}`;
-
-const mint = async (access: "none" | "read", generate: boolean) =>
-  (
-    await createToken({
-      userId: owner.id,
-      lang: "koKR",
-      access,
-      generate,
-      label: "agent",
-      expiresAt: new Date(Date.now() + 86_400_000),
-    })
-  ).token;
 
 async function seed(userId: string): Promise<string> {
   const id = await createBatch("api batch", userId, "quests", "koKR");
@@ -61,8 +49,8 @@ async function seed(userId: string): Promise<string> {
 beforeAll(async () => {
   owner = await testUser("test-gen-owner");
   other = await testUser("test-gen-other");
-  generateToken = await mint("none", true);
-  readToken = await mint("read", false);
+  generateToken = await mintToken(owner.id, "koKR", "none", true);
+  readToken = await mintToken(owner.id, "koKR", "read", false);
 });
 
 afterEach(async () => {
