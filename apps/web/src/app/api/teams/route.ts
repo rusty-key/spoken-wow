@@ -1,4 +1,5 @@
 /** Site owners only. */
+import { objectOf } from "@/lib/api-body";
 import { BASE_LANG, isLang, type Lang } from "@/lib/lang";
 import { ALL_TEAMS, withTeam } from "@/lib/db";
 import { userByEmail } from "@/lib/grants/store";
@@ -8,8 +9,6 @@ import { createTeamWithLangs, listTeams, SLUG, TeamError } from "@/lib/teams/adm
 import { afterFounded, foundTeam } from "@/lib/teams/found";
 
 import { bad, bodyOf, withAdmin } from "./guard";
-import { objectOf } from "@/lib/api-body";
-
 export const dynamic = "force-dynamic";
 
 export const GET = withAdmin(async () => Response.json({ teams: await listTeams() }));

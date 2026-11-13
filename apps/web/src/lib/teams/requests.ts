@@ -170,22 +170,34 @@ export async function approveRequest(id: string, actorId: string): Promise<TeamR
     );
     return { row, founded };
   });
-  await afterFounded(founded, actorId);
-  await recordActivity({
-    kind: "request.approved",
-    lang: null,
-    actorId,
-    subject: id,
-    detail: { requestId: id, lang: row.lang, slug: founded.slug, branch: founded.branch },
-  });
-  sendEmail(
-    row.email,
-    `Your team for ${nameOf(row)} is approved`,
-    [
-      `Your request for the team ${row.teamName} in ${nameOf(row)} was approved. You are its admin.`,
-      "",
-      `Start here: ${SITE}/admin?lang=${row.lang}`,
-    ].join("\n"),
+  // The approval is committed: a failing step is logged, and must not skip the next or fail the response.
+  const afterCommit = async (step: string, work: () => unknown) => {
+    try {
+      await work();
+    } catch (error) {
+      console.error(`approveRequest ${id}: ${step} failed`, error);
+    }
+  };
+  await afterCommit("afterFounded", () => afterFounded(founded, actorId));
+  await afterCommit("activity", () =>
+    recordActivity({
+      kind: "request.approved",
+      lang: null,
+      actorId,
+      subject: id,
+      detail: { requestId: id, lang: row.lang, slug: founded.slug, branch: founded.branch },
+    }),
+  );
+  await afterCommit("email", () =>
+    sendEmail(
+      row.email,
+      `Your team for ${nameOf(row)} is approved`,
+      [
+        `Your request for the team ${row.teamName} in ${nameOf(row)} was approved. You are its admin.`,
+        "",
+        `Start here: ${SITE}/admin?lang=${row.lang}`,
+      ].join("\n"),
+    ),
   );
   return withBranch((await read(id))!);
 }

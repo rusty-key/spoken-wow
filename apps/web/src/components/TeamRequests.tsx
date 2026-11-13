@@ -63,11 +63,16 @@ export default function TeamRequests({ initial }: { initial: TeamRequest[] }) {
             {request.note && <p className="text-muted-foreground">{request.note}</p>}
             {request.branch && <p>{branchText(request.branch, nameOf(request))}</p>}
             <div className="flex flex-wrap items-center gap-2">
-              <Button size="sm" disabled={busy === request.id} onClick={() => decide(request, "approve")}>
+              <Button
+                size="sm"
+                aria-label={`Approve ${request.teamName}`}
+                disabled={busy === request.id}
+                onClick={() => decide(request, "approve")}
+              >
                 Approve
               </Button>
               <Input
-                aria-label="Reason"
+                aria-label={`Reason for ${request.teamName}`}
                 placeholder="Reason (optional)"
                 className="w-64"
                 value={reasons[request.id] ?? ""}
@@ -76,6 +81,7 @@ export default function TeamRequests({ initial }: { initial: TeamRequest[] }) {
               <Button
                 size="sm"
                 variant="outline"
+                aria-label={`Reject ${request.teamName}`}
                 disabled={busy === request.id}
                 onClick={() => decide(request, "reject")}
               >
