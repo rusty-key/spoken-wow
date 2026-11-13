@@ -4,6 +4,9 @@ Spoken Player until 3.0.0, when it became Spoken and took its modules into one d
 
 ## Unreleased
 
+- **Leatrix Maps' dungeon scan no longer hooks `OnClick` on ordinary frames.** Spoken Bosses now
+  checks that a scanned object supports click scripts before adding its optional integration hook.
+  *([edemen](https://github.com/edemen))*
 - **Subtitles and Compendium text now follow your sound packs.** A pack carries the words of the
   lines it voices, so new audio no longer plays under old text. This applies when the pack is in
   the language you read; a German player with English voices keeps German text. In English, quest
