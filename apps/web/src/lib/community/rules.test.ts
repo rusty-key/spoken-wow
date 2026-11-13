@@ -22,6 +22,16 @@ function input(extra: Record<string, unknown> = {}): Record<string, unknown> {
 }
 
 describe("validateNewPack", () => {
+  it("collapses whitespace runs in the description", () => {
+    const res = validateNewPack(input({ description: " a\nb\t\tc  d\r\n " }));
+    expect(res).toMatchObject({ ok: true, value: { description: "a b c d" } });
+  });
+
+  it("still refuses other control characters in the description", () => {
+    expect(validateNewPack(input({ description: "a\u0000b" })).ok).toBe(false);
+    expect(validateNewPack(input({ description: "a\u001bb" })).ok).toBe(false);
+  });
+
   it("accepts a good entry and lower-cases the checksum", () => {
     const res = validateNewPack(input({ sha256: "AB".repeat(32) }));
     expect(res).toMatchObject({

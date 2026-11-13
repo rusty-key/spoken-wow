@@ -76,7 +76,7 @@ export type ManagerEntry = {
   addedAt: string;
 };
 
-const SITE = "https://spoken.quest";
+const SITE = (process.env.BETTER_AUTH_URL ?? "https://spoken.quest").replace(/\/$/, "");
 const MAX_REASON = 500;
 
 type Client = Pick<PoolClient, "query">;
@@ -342,7 +342,7 @@ export async function decide(
   }
   if (!/^\d+$/.test(submissionId)) throw new PackError("No such submission.", 404);
 
-  const { submission, to } = await act(async (client) => {
+  const { submission, to, unlisted } = await act(async (client) => {
     await requireAdmin(client, adminId);
     const { rows } = await client.query<SubmissionRow>(
       `update "community_pack_submission" s
@@ -369,14 +369,25 @@ export async function decide(
     const { rows: submitter } = await client.query<{ email: string }>(`select "email" from "user" where "id" = $1`, [
       submission.submittedBy,
     ]);
-    return { submission, to: submitter[0]?.email ?? null };
+    const { rows: pack } = await client.query<{ unlisted: boolean }>(
+      `select "unlistedAt" is not null as "unlisted" from "community_pack" where "id" = $1`,
+      [submission.packId],
+    );
+    return { submission, to: submitter[0]?.email ?? null, unlisted: pack[0]?.unlisted ?? false };
   });
 
   if (to) {
     const name = `${submission.title} ${submission.version}`;
     const [subject, ...lines] =
       decision === "approve"
-        ? [`Your pack ${name} was approved`, `${name} is approved and listed in Spoken Manager.`, "", `Your packs: ${SITE}/packs`]
+        ? [
+            `Your pack ${name} was approved`,
+            unlisted
+              ? `${name} is approved, but the pack is unlisted, so Spoken Manager does not show it until an admin lists it again.`
+              : `${name} is approved and listed in Spoken Manager.`,
+            "",
+            `Your packs: ${SITE}/packs`,
+          ]
         : [
             `Your pack ${name} was not approved`,
             `${name} was not approved. The reviewer wrote:`,
@@ -397,6 +408,8 @@ export async function setOwner(adminId: string, packId: string, ownerId: string 
     if (ownerId !== null) {
       const user = await client.query(`select 1 from "user" where "id" = $1`, [ownerId]);
       if (!user.rowCount) throw new PackError("No such user.", 404);
+      // An owner who cannot submit could not add versions to the pack they own.
+      if (!canSubmitPacks(await roleOf(ownerId, client))) throw new PackError("Give them the Pack author role first.", 400);
     }
     const updated = await client.query(`update "community_pack" set "ownerId" = $2 where "id" = $1`, [packId, ownerId]);
     if (!updated.rowCount) throw new PackError("No such pack.", 404);

@@ -1,6 +1,6 @@
 // Community pack rules, browser-safe: the submit form and the API route run the same checks.
-// They mirror manager/src/main/community.ts validatePack, because the Manager drops any registry
-// entry that fails its own copy. Keep this in step with that file, not the other way round.
+// The Manager drops any registry entry that fails its own check, so these rules must accept
+// exactly what it accepts.
 
 import { objectOf } from "@/lib/api-body";
 
@@ -34,10 +34,7 @@ function text(v: unknown, max: number): string | null {
   return s.length > 0 && s.length <= max && !CONTROL.test(s) ? s : null;
 }
 
-/**
- * `https://github.com/<owner>/<repo>/releases/download/<tag>/<file>` or an objects.githubusercontent.com link.
- * Copy of isAllowedPackUrl in manager/src/main/community.ts; keep the two in step.
- */
+/** `https://github.com/<owner>/<repo>/releases/download/<tag>/<file>` or an objects.githubusercontent.com link. */
 export function isAllowedPackUrl(value: unknown): value is string {
   if (typeof value !== "string" || value.length > 500) return false;
   let u: URL;
@@ -66,7 +63,6 @@ function isHttps(value: string): boolean {
   }
 }
 
-// Copy of manager/src/shared/version.ts; keep the two in step, since the Manager decides what counts as an update.
 interface Parsed {
   core: number[];
   pre: (string | number)[];
@@ -118,7 +114,8 @@ function fields(r: Record<string, unknown>, errors: Errors): Partial<PackFields>
   if (author) out.author = author;
   else errors.author = "Give an author name of 1 to 80 characters.";
 
-  const description = text(r.description, 400);
+  // Line breaks are control characters, and a pasted blurb has them.
+  const description = text(typeof r.description === "string" ? r.description.replace(/\s+/g, " ") : r.description, 400);
   if (description) out.description = description;
   else errors.description = "Describe the pack in 1 to 400 characters.";
 

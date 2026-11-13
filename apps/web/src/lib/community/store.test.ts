@@ -208,6 +208,22 @@ describe("a new version", () => {
   });
 });
 
+describe("an owner without the Pack author role", () => {
+  it("is refused until the role is granted", async () => {
+    const id = nextId();
+    await approved(id);
+    const plain = await testUser("test-pack-plain");
+    try {
+      await expect(setOwner(admin.id, id, plain.id)).rejects.toSatisfy(refused(400));
+      await asSystem.query(`update "user" set "role" = 'pack_author' where "id" = $1`, [plain.id]);
+      expect(await setOwner(admin.id, id, plain.id)).toMatchObject({ ownerId: plain.id });
+    } finally {
+      await asSystem.query(`update "community_pack" set "ownerId" = null where "id" = $1`, [id]);
+      await plain.cleanup();
+    }
+  });
+});
+
 describe("an unlisted pack", () => {
   it("takes no submissions and leaves the Manager's list", async () => {
     const id = nextId();
@@ -352,6 +368,16 @@ describe("email", () => {
     expect(emailed(`Your pack Title of ${id} 1.1.0 was not approved`)).toEqual([emailOf(author)]);
     const body = info.mock.calls.map((c: unknown[]) => String(c[0])).find((l: string) => l.includes("was not approved"));
     expect(body).toContain("Broken zip.");
-    expect(body).toContain("https://spoken.quest/packs");
+    expect(body).toContain("/packs");
+  });
+
+  it("does not say an unlisted pack is listed", async () => {
+    const id = nextId();
+    const pack = await createPack(author.id, newPack(id));
+    await setListed(admin.id, id, false);
+    await decide(admin.id, pack.pending!.id, "approve");
+    const body = info.mock.calls.map((c: unknown[]) => String(c[0])).find((l: string) => l.includes("was approved"));
+    expect(body).toContain("unlisted");
+    expect(body).not.toContain("approved and listed");
   });
 });
