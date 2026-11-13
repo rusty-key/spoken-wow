@@ -286,6 +286,14 @@ export function describe(row: ActivityRow): { what: string; quote: string | null
         what: d.ownerId ? `handed the community pack ${row.subject} to another owner` : `left the community pack ${row.subject} with no owner`,
         quote: null,
       };
+    case "request.made":
+      return { what: `asked for a team in ${str(d.lang) ?? "a language"}`, quote: str(d.teamName) };
+    case "request.withdrawn":
+      return { what: `withdrew a request for a team in ${str(d.lang) ?? "a language"}`, quote: null };
+    case "request.approved":
+      return { what: `approved a request for a team in ${str(d.lang) ?? "a language"}`, quote: str(d.slug) };
+    case "request.rejected":
+      return { what: `turned down a request for a team in ${str(d.lang) ?? "a language"}`, quote: str(d.reason) };
     case "contribution.resolved":
       return {
         what: `${str(d.status) ?? "resolved"} a ${d.correction ? "correction from the game" : "contribution"}`,
@@ -322,6 +330,7 @@ function target(row: ActivityRow): { href: string; label: string } | null {
   if (row.kind.startsWith("grant.") || row.kind.startsWith("user.")) return { href: "/admin", label: "Users" };
   if (row.kind.startsWith("report.")) return { href: "/reports?view=all", label: `report ${row.subject}` };
   if (row.kind.startsWith("pack.")) return { href: "/admin/packs", label: "Community packs" };
+  if (row.kind.startsWith("request.")) return { href: "/admin/teams", label: "Team requests" };
   if (row.kind.startsWith("contribution.")) return { href: "/contributions", label: `contribution ${row.subject}` };
   return null;
 }

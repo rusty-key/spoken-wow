@@ -13,6 +13,7 @@
  * every field a backfill could not supply is optional.
  */
 import type { Capability } from "@/lib/permissions";
+import type { Branch } from "@/lib/teams/found";
 
 export type ApiAudit = { tokenId: string; batchId?: string };
 
@@ -165,6 +166,11 @@ export type ActivityDetail = {
   "pack.unlisted": { packId: string };
   /** `ownerId` null when the admin left the pack with nobody. */
   "pack.owner": { packId: string; ownerId: string | null };
+  // Team requests: site-wide, the subject is the request id.
+  "request.made": { requestId: string; lang: string; teamName: string; newLanguage: boolean };
+  "request.withdrawn": { requestId: string; lang: string };
+  "request.approved": { requestId: string; lang: string; slug: string; branch: Branch };
+  "request.rejected": { requestId: string; lang: string; reason?: string };
 
   // Accounts, through better-auth's admin plugin rather than this app's routes. Every
   // language's, so a global admin's alone to read: see `global` in store.ts.
@@ -232,6 +238,7 @@ const CATEGORY_OF: Record<string, Category> = {
   team: "admin",
   release: "admin",
   pack: "admin",
+  request: "admin",
   contribution: "admin",
   report: "admin",
   user: "admin",
