@@ -9,7 +9,7 @@ export type Listing = { grants: GrantRow[]; invites: InviteRow[]; invited?: bool
  * `error` is undefined when the route gave no reason, so each table keeps its own wording.
  */
 export async function sendGrants(
-  method: "PUT" | "DELETE" | "POST",
+  method: "GET" | "PUT" | "DELETE" | "POST",
   target: string,
   body?: unknown,
 ): Promise<Listing | { grants?: undefined; invites?: undefined; invited?: undefined; error?: string }> {

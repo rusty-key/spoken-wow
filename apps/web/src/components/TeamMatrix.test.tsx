@@ -54,7 +54,7 @@ test("submitting sends the chosen capabilities, and an invite is toasted as one"
   fetchMock.mockResolvedValue(reply({ grants: [], invites: [invite()], invited: true }));
   const user = userEvent.setup();
   matrix(DE_ADMIN);
-  await user.type(screen.getByPlaceholderText("their registered email"), "ana@example.com");
+  await user.type(screen.getByPlaceholderText("their email"), "ana@example.com");
   await user.click(within(screen.getByRole("form", { name: /Add someone/ })).getByLabelText("voice actor"));
   await user.click(screen.getByRole("button", { name: "Add" }));
 
@@ -81,4 +81,21 @@ test("a pending invite lists its address and can be resent, and Revoke removes i
 test("an expired invite says so", () => {
   matrix(DE_ADMIN, [invite({ expired: true })]);
   expect(screen.getByText(/expired/)).toBeTruthy();
+});
+
+test("a failed Resend refetches the listing, so a stale row goes", async () => {
+  fetchMock
+    .mockResolvedValueOnce(reply({ error: "That invite was accepted or revoked already." }, 409))
+    .mockResolvedValueOnce(reply({ grants: [], invites: [] }));
+  const user = userEvent.setup();
+  matrix(DE_ADMIN, [invite()]);
+  await user.click(screen.getByRole("button", { name: /Resend/ }));
+  await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(2));
+  expect(fetchMock.mock.calls[1][0]).toBe("/api/grants");
+  await waitFor(() => expect(screen.queryByText("ana@example.com")).toBeNull());
+});
+
+test("dates are ISO, the same on server and client", () => {
+  matrix(DE_ADMIN, [invite()]);
+  expect(screen.getByText(/sent 2026-11-01, expires 2099-11-15/)).toBeTruthy();
 });

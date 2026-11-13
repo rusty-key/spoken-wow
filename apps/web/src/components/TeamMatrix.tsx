@@ -7,7 +7,7 @@ import { CAPABILITY_COLOURS } from "@/components/GrantCell";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Toaster, useToast } from "@/components/ui/toast";
-import { giveGrants, resendInvite, revokeInvite, takeGrant } from "@/lib/grants/client";
+import { giveGrants, resendInvite, revokeInvite, sendGrants, takeGrant } from "@/lib/grants/client";
 import type { GrantRow } from "@/lib/grants/store";
 import type { InviteRow } from "@/lib/invites/store";
 import { langName, type Lang } from "@/lib/lang";
@@ -164,6 +164,8 @@ function Matrix({ lang, grants: initial, invites: initialInvites, viewer, textBy
   async function manage(invite: InviteRow, send: typeof resendInvite, done: string) {
     setBusy(`invite:${invite.id}`);
     const failed = adopt(await send(invite.id));
+    // Somebody else may have resent, revoked or accepted it: show what is there now.
+    if (failed) adopt(await sendGrants("GET", "/api/grants"));
     setBusy(null);
     toast(
       failed
@@ -183,7 +185,7 @@ function Matrix({ lang, grants: initial, invites: initialInvites, viewer, textBy
             id="team-add"
             type="email"
             required
-            placeholder="their registered email"
+            placeholder="their email"
             value={email}
             onChange={(event) => setEmail(event.target.value)}
             aria-describedby={error ? "team-add-error" : "team-add-hint"}
@@ -236,8 +238,8 @@ function Matrix({ lang, grants: initial, invites: initialInvites, viewer, textBy
                   <span className="font-semibold">{invite.email}</span>
                   <span>{invite.capabilities.map(capabilityLabel).join(", ")}</span>
                   <span className="text-muted-foreground text-xs">
-                    invited by {invite.invitedByName ?? "someone"}, sent {new Date(invite.sentAt).toLocaleDateString()},{" "}
-                    {invite.expired ? "expired" : `expires ${new Date(invite.expiresAt).toLocaleDateString()}`}
+                    invited by {invite.invitedByName ?? "someone"}, sent {invite.sentAt.slice(0, 10)},{" "}
+                    {invite.expired ? "expired" : `expires ${invite.expiresAt.slice(0, 10)}`}
                   </span>
                   <span className="ml-auto flex gap-2">
                     <Button
