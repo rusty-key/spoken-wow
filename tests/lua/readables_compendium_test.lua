@@ -111,7 +111,6 @@ SpokenReadablesCharacter.found[KURDRAN] = true
 B:SetupReadables()
 stub.SetZone({ map = 1436 })
 B:ShowReadables()
-_G.SpokenCompendium.treeLines = true
 local window = _G.SpokenCompendium.window
 local panel = B.readables
 Expect("the readables are a tab of Azeroth's Compendium", window.title, SpokenEnv.L.OPT_COMPENDIUM_TITLE)
@@ -520,9 +519,6 @@ Click(L.TYPE_PLAQUE)
 Expect("...its page in the place that holds it", panel.page.sub.text.text:find(L.READABLES_IN_FMT:format("Stormwind City") .. " · ", 1, true), 1)
 Expect("...opened by a click on its writings", RowFor(L.TYPE_PLAQUE).row.open and Has(Shown(), "Kurdran Wildhammer"), true)
 Expect("...its writings rows inside that", RowFor("Kurdran Wildhammer").row.leaf and RowFor("Kurdran Wildhammer").row.nest, 3)
-Expect("...a line down each open card's contents beside them, a step in from the banner",
-    RowFor("Kurdran Wildhammer").rails[3] ~= nil
-    and RowFor("Kurdran Wildhammer").rails[3]:IsShown() and RowFor("Kurdran Wildhammer").rails[3].anchor.x, 64.4)
 Expect("...a readable not found greyed, with the padlock", RowFor("Ranger Captain Alleria Windrunner").row.locked, true)
 Expect("...one found open to read", RowFor("Kurdran Wildhammer").row.locked, false)
 do

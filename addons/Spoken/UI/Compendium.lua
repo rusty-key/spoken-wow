@@ -9,7 +9,7 @@
 -- a banner (a continent, a section, a type of writing), and a line for everything
 -- else: a group of lines (a place, a chain, a kind of quest or of writing) with its plus or minus
 -- and numbers, and each single thing with its tick, quest mark or padlock. What is inside an open
--- group is indented under it, a faint gold line down its left. What the rows are, what a click
+-- group is indented under it. What the rows are, what a click
 -- does and the page beside them are each
 -- tab's own.
 --
@@ -27,8 +27,6 @@
 -- up in the calling function's environment.
 
 local C = { tabs = {} }
--- The faint lines down what an open group holds. Off: the steps in and the plus and minus show the levels.
-C.treeLines = false
 SpokenCompendium = C
 
 --- Runs `dress(skin)`, with EllesmereUI's skinning API, while Spoken's windows wear its look; never
@@ -64,18 +62,16 @@ local BANNER_TEXT = 32        -- a banner's name from its left
 local FIRST_GAP = 2           -- above the first row
 local LEAF_ROW = 22
 -- A group (a place, a quest chain, a zone's dungeons, a zone's letters): one line, its plus or
--- minus on the line down its contents, its name over theirs, its numbers on the right.
+-- minus at the left, its name over theirs, its numbers on the right.
 local GROUP_ROW = 24
-local GROUP_FOOT = 0          -- the line down its contents starts under the row, clear of its light
 -- The quest log's plus and minus are drawn 2 left of their picture's middle: the picture moves
--- right by that, so the sign sits on the line down what it opens.
+-- right by that, so the sign sits in the step's column.
 local TOGGLE_SHIFT = 2
 local LEAF_GAP = 4            -- between a banner and the first line under it
 local NEST_AFTER = 2          -- more under an open group's contents, for each one closed there
 local NEST_STEP = 16          -- what an open group holds, this far in under it
--- The line down an open group's contents, this far into the step.
+-- The plus or minus and the chosen row's light stand this far into the step.
 local RAIL_X = 12
-local FOOT, BANNER_FOOT = 3, 0
 -- A line's name stands this much over its middle, which the font's own spacing leaves a little low; its
 -- numbers, in a smaller face, one more so that their foot is the name's, and its tick or quest mark as
 -- far as the name.
@@ -89,8 +85,6 @@ local BAR_SIDE, BAR_HEAD, BAR_FOOT, BAR_ROOM = 6, 8, 4, 7
 -- What a banner holds sits this far in from it, one step down the tree; with no banners, nothing
 -- is set in.
 local UNDER_BANNER_IN = 20.4
--- The line down what a banner holds, this far in.
-local BANNER_RAIL_X = 16.4
 local LIST_TOP, LIST_FOOT = 6, 8
 local SCROLL_STEP = 60
 local GRABBER_SIZE = 16
@@ -935,27 +929,6 @@ local function Pixels(frame, size, least)
 	return SpokenLayout and SpokenLayout.Pixels and SpokenLayout.Pixels(frame, size, least) or size
 end
 
--- A piece of the faint gold line down an open group's contents: solid, or where the line ends,
--- fading out to its foot.
-local RAIL_INK = { 0.84, 0.71, 0.31, 0.2 }
--- Both ends set every time, solid or not: a row drawn again keeps its texture, and a fade left on
--- it from when it ended the line showed through once more rows came under it.
-local function PaintRail(texture, ends)
-	local r, g, b, a = RAIL_INK[1], RAIL_INK[2], RAIL_INK[3], RAIL_INK[4]
-	local foot = ends and 0 or a
-	texture.fades = ends and true or false
-	texture:SetColorTexture(1, 1, 1, 1)
-	if CreateColor and texture.SetGradient and pcall(texture.SetGradient, texture, "VERTICAL",
-		CreateColor(r, g, b, foot), CreateColor(r, g, b, a)) then
-		return
-	end
-	if texture.SetGradientAlpha then
-		texture:SetGradientAlpha("VERTICAL", r, g, b, foot, r, g, b, a)
-		return
-	end
-	texture:SetColorTexture(r, g, b, (foot + a) / 2)
-end
-
 local function Tint(fontString, colour)
 	fontString:SetTextColor(colour[1], colour[2], colour[3])
 end
@@ -964,14 +937,14 @@ local NAME_INK = { 1, 0.82, 0 }
 local MISSING_INK = { 0.84, 0.71, 0.31 }
 -- The chosen row's edge.
 local EDGE_INK = { 1, 0.82, 0, 0.9 }
--- In EllesmereUI's look: names white and the line down an open group white, as its windows draw
+-- In EllesmereUI's look: names white, as its windows draw
 -- them, the chosen row's edge in its accent, banners as flat boxes and the rows in its
 -- font, where it writes the client's language.
 local flatBanners, listFont
 -- Every list and page built, for what follows EllesmereUI's live changes (OnLooksChanged).
 local lists, pages = {}, {}
 C.Ellesmere(function(skin)
-	NAME_INK, MISSING_INK, RAIL_INK = { 1, 1, 1 }, { 0.62, 0.62, 0.62 }, { 1, 1, 1, 0.15 }
+	NAME_INK, MISSING_INK = { 1, 1, 1 }, { 0.62, 0.62, 0.62 }
 	local r, g, b = skin.GetAccentColor()
 	EDGE_INK = { r, g, b, 0.9 }
 	flatBanners = true
@@ -1429,55 +1402,6 @@ local function ShowStyle(row, style)
 	row.bannerArt = style == "banner" and row.bannerArt
 end
 
--- The faint line down the left of each open group's contents, one for every group a row is inside.
--- Each row draws its share of the line, `gap` up to the row above; a group's or banner's first row
--- draws it on up to that group or banner. The row a line ends at fades it out: the first
--- `goesOn` lines go on into the next row, and the banner's with `bannerGoesOn`.
--- A line's top hangs from the foot of `above`, the row over this one, so that it meets that row's art at any
--- interface scale: placed from this row's own top, it fell a pixel short or over where the rows' fractions
--- rounded apart.
-local function Rails(row, count, gap, held, underBanner, afterBanner, foot, goesOn, bannerGoesOn, above)
-	local function Hang(rail, x, extra)
-		if above then
-			rail:SetPoint("TOPLEFT", above, "BOTTOMLEFT", x, extra)
-		else
-			rail:SetPoint("TOPLEFT", row, "TOPLEFT", x, gap + extra)
-		end
-	end
-	-- In EllesmereUI's look a line starts at the foot of its banner's or group's box, not inside it,
-	-- where it would cross the box's edge or run into the group's plus or minus.
-	local flat = flatBanners
-	if underBanner and not row.bannerRail then
-		row.bannerRail = row:CreateTexture(nil, "BORDER")
-		row.bannerRail:SetWidth(Pixels(row, 1))
-	end
-	if row.bannerRail then
-		PaintRail(row.bannerRail, not bannerGoesOn)
-		row.bannerRail:ClearAllPoints()
-		Hang(row.bannerRail, Pixels(row, BANNER_RAIL_X, 0), (afterBanner and not flat) and BANNER_FOOT or 0)
-		row.bannerRail:SetPoint("BOTTOMLEFT", row, "BOTTOMLEFT", Pixels(row, BANNER_RAIL_X, 0), 0)
-		row.bannerRail:SetShown(C.treeLines and underBanner and true or false)
-	end
-	row.rails = row.rails or {}
-	for i = 1, math.max(count, #row.rails) do
-		local rail = row.rails[i]
-		if i <= count then
-			if not rail then
-				rail = row:CreateTexture(nil, "BORDER")
-				rail:SetWidth(Pixels(row, 1))
-				row.rails[i] = rail
-			end
-			PaintRail(rail, i > (goesOn or 0))
-			local x = Pixels(row, (underBanner and UNDER_BANNER_IN or 0) + (i - 1) * NEST_STEP + RAIL_X, 0)
-			rail:ClearAllPoints()
-			Hang(rail, x, (i <= held or flat) and 0 or (foot or FOOT))
-			rail:SetPoint("BOTTOMLEFT", row, "BOTTOMLEFT", x, 0)
-			rail:SetShown(C.treeLines)
-		elseif rail then
-			rail:Hide()
-		end
-	end
-end
 
 -- The quest log's own expand and collapse, on a banner or a group. Where nothing inside
 -- opens -- locked, empty, or none found with the tab's only switch on -- greyed, as the name
@@ -1520,15 +1444,15 @@ local function Toggle(row, item, onlyFound, bar)
 	row.toggle:Show()
 end
 
--- The room above the row for `items[i]`, and how many open groups hold both it and the row above.
+-- The room above the row for `items[i]`.
 local function GapAbove(items, i)
 	local item, before = items[i], items[i - 1]
-	if not before then return FIRST_GAP, 0 end
-	if item.style == "banner" then return BANNER_GAP, 0 end
-	if before.style == "banner" then return LEAF_GAP, 0 end
+	if not before then return FIRST_GAP end
+	if item.style == "banner" then return BANNER_GAP end
+	if before.style == "banner" then return LEAF_GAP end
 	local was, now = before.nest or 0, item.nest or 0
 	-- Lines one under another, as a list: none between them, a little where a group closes.
-	return now < was and (was - now) * NEST_AFTER or 0, math.min(now, was)
+	return now < was and (was - now) * NEST_AFTER or 0
 end
 
 local function RowHeight(item)
@@ -1597,7 +1521,7 @@ local function DrawBanner(row, item, onlyFound)
 	row.label:SetText(item.label)
 end
 
--- A group: its plus or minus on the line down what it holds, its name in gold over
+-- A group: its plus or minus at the left, its name in gold over
 -- the names of what it holds, and on the right what is found out of all and the share, the quest
 -- mark with how many are under way, a tick once all are found, a padlock on what does not open.
 local function DrawGroup(row, item, indent, onlyFound)
@@ -1692,7 +1616,7 @@ function List:Render()
 		if item.style == "banner" then underBanner = true end
 		local row = self:AcquireRow(i)
 		row.row = item
-		local gap, held = GapAbove(items, i)
+		local gap = GapAbove(items, i)
 		gap = Pixels(self.child, gap, 0)
 		local height = Pixels(self.child, RowHeight(item), 1)
 		y = y + gap
@@ -1704,12 +1628,6 @@ function List:Render()
 
 		ShowStyle(row, item.style)
 		local nest = item.style ~= "banner" and item.nest or 0
-		local before, after = items[i - 1], items[i + 1]
-		local _, goesOn = 0, 0
-		if after and after.style ~= "banner" then _, goesOn = GapAbove(items, i + 1) end
-		Rails(row, nest, gap, held, item.style ~= "banner" and underBanner,
-			before and before.style == "banner", before and before.style == "group" and GROUP_FOOT or FOOT,
-			goesOn, after ~= nil and after.style ~= "banner", self.rows[i - 1])
 		local indent = (underBanner and UNDER_BANNER_IN or 0) + nest * NEST_STEP
 		row.indent = indent
 		row.label:ClearAllPoints()
@@ -1723,7 +1641,7 @@ function List:Render()
 		else
 			DrawLeaf(row, item, indent)
 		end
-		-- A single row's light starts on the line down its left, its gold edge over that line.
+		-- A single row's light starts at the step's column, its gold edge over it.
 		local lit = indent
 		if item.style ~= "banner" and (nest > 0 or underBanner) then lit = indent - (NEST_STEP - RAIL_X) - 0.5 end
 		row.wash:ClearAllPoints()
