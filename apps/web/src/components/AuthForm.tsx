@@ -30,13 +30,14 @@ const COPY = {
   },
 } as const;
 
-export default function AuthForm({ mode }: { mode: Mode }) {
+/** `invite`: a pending invite the form answers; only its token is carried on, never a free path. */
+export default function AuthForm({ mode, invite }: { mode: Mode; invite?: { token: string; email: string } }) {
   const router = useRouter();
   const lang = useLang();
   const copy = COPY[mode];
 
   const [name, setName] = useState("");
-  const [email, setEmail] = useState("");
+  const [email, setEmail] = useState(invite?.email ?? "");
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
@@ -59,13 +60,15 @@ export default function AuthForm({ mode }: { mode: Mode }) {
 
     // refresh() re-runs the server components, so a page guarded on the server (/admin)
     // sees the new session immediately rather than on the next full load.
-    router.push(localeHref(lang, "/"));
+    router.push(localeHref(lang, invite ? `/invite?token=${encodeURIComponent(invite.token)}` : "/"));
     router.refresh();
   }
 
   return (
     <>
       <h1 className="text-xl font-semibold">{copy.title}</h1>
+
+      {invite && <p className="text-muted-foreground mt-2 text-sm">You&apos;re answering an invite to {invite.email}.</p>}
 
       <form onSubmit={onSubmit} className="mt-6 flex max-w-sm flex-col gap-4">
         {mode === "register" && (
@@ -87,6 +90,8 @@ export default function AuthForm({ mode }: { mode: Mode }) {
             id="email"
             type="email"
             required
+            // Registering from an invite is for its address; signing in may be another login's.
+            readOnly={mode === "register" && !!invite}
             autoComplete="email"
             value={email}
             onChange={(event) => setEmail(event.target.value)}
@@ -132,7 +137,7 @@ export default function AuthForm({ mode }: { mode: Mode }) {
         <p className="text-muted-foreground text-sm">
           {copy.switchText}{" "}
           <Link
-            href={copy.switchHref}
+            href={invite ? `${copy.switchHref}?invite=${encodeURIComponent(invite.token)}` : copy.switchHref}
             className="text-foreground underline underline-offset-4"
           >
             {copy.switchLabel}
