@@ -293,6 +293,34 @@ do
     Layout.Confirm("Reset?", "Reset", "Cancel", function() end)
     frame:Hide()
     Expect("in combat the focus manager is left alone, as it refuses addons then", #calls, 0)
+    restricted = false
+    stub.FireEvent("PLAYER_REGEN_ENABLED")
+    Expect("...and a dialog it never took is not handed back after", #calls, 0)
+
+    -- Open before combat, closed in it (B, or Escape): the manager still lists it as shown,
+    -- and would not move the focus to it the next time it opens.
+    calls = {}
+    Layout.Confirm("Reset?", "Reset", "Cancel", function() end)
+    restricted = true
+    frame:Hide()
+    Expect("a dialog closed in combat hands nothing back then", #calls, 1)
+    restricted = false
+    stub.FireEvent("PLAYER_REGEN_ENABLED")
+    Expect("...but once combat ends", calls[2] and calls[2][1], "hide")
+    stub.FireEvent("PLAYER_REGEN_ENABLED")
+    Expect("...once", #calls, 2)
+
+    -- Closed in combat and opened again before it ends: still the manager's popup, kept.
+    calls = {}
+    Layout.Confirm("Reset?", "Reset", "Cancel", function() end)
+    restricted = true
+    frame:Hide()
+    Layout.Confirm("Reset?", "Reset", "Cancel", function() end)
+    restricted = false
+    stub.FireEvent("PLAYER_REGEN_ENABLED")
+    Expect("a dialog open again by then stays the manager's", #calls, 1)
+    frame:Hide()
+    Expect("...and hands the focus back when it closes", calls[2] and calls[2][1], "hide")
 
     _G.InputUtil.IsGamepadUIEnabled = function() return false end
     Expect("without the controller UI the caller asks as before", Layout.Ask("Name it:", "Accept", "Cancel",

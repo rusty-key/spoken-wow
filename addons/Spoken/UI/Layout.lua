@@ -972,17 +972,45 @@ end
 --- Let the controller drive `frame` while it is shown, with B pressing `close`. The controller
 --- moves only between windows the frame controls manager knows of, so the frame registers as a
 --- popup, as Blizzard's own (GuildInviteFrame, ReadyCheck) do: focus moves to it on show and back
---- to the window under it on hide. The manager refuses addons in combat.
+--- to the window under it on hide. The manager refuses addons in combat: a frame closed then is
+--- handed back once combat ends, or the manager keeps it listed as shown and does not move the
+--- focus to it when it opens again.
+local afterCombat, afterCombatFrame
+
+local function HandBack(frame)
+    local manager = GamepadUI() and GamepadMode and GamepadMode.FrameControlsManager
+    if not manager then frame.followed = nil; return end
+    if CombatRestricted() then
+        if not afterCombatFrame then
+            afterCombat, afterCombatFrame = {}, CreateFrame("Frame")
+            afterCombatFrame:SetScript("OnEvent", function(self)
+                self:UnregisterEvent("PLAYER_REGEN_ENABLED")
+                local waiting = afterCombat
+                afterCombat = {}
+                for each in pairs(waiting) do
+                    if each.followed and not each:IsShown() then HandBack(each) end
+                end
+            end)
+        end
+        afterCombat[frame] = true
+        afterCombatFrame:RegisterEvent("PLAYER_REGEN_ENABLED")
+        return
+    end
+    frame.followed = nil
+    manager:HandlePopupHide(frame)
+end
+
 function Layout.FollowController(frame, close)
     frame.CloseButton = close
-    local function Focus()
-        return GamepadUI() and GamepadMode and GamepadMode.FrameControlsManager and not CombatRestricted()
-    end
     frame:HookScript("OnShow", function(self)
-        if Focus() then GamepadMode.FrameControlsManager:HandlePopupShown(self) end
+        if self.followed then return end
+        if GamepadUI() and GamepadMode and GamepadMode.FrameControlsManager and not CombatRestricted() then
+            self.followed = true
+            GamepadMode.FrameControlsManager:HandlePopupShown(self)
+        end
     end)
     frame:HookScript("OnHide", function(self)
-        if Focus() then GamepadMode.FrameControlsManager:HandlePopupHide(self) end
+        if self.followed then HandBack(self) end
     end)
 end
 
