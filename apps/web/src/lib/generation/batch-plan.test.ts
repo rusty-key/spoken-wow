@@ -13,6 +13,30 @@ const mocks = vi.hoisted(() => ({
   observedFishRate: vi.fn(),
 }));
 
+const catalogues = vi.hoisted(() => ({
+  corpusLines: [] as unknown[],
+  ignores: new Map<string, unknown>(),
+  places: [] as unknown[],
+  books: [] as unknown[],
+  bosses: [] as unknown[],
+}));
+
+vi.mock("@/lib/quests/catalogue", () => ({ corpus: async () => ({ lines: catalogues.corpusLines }) }));
+vi.mock("@/lib/quests/context", () => ({
+  searchContext: async () => ({
+    voiced: new Set<string>(),
+    context: { overrides: new Map(), ignores: catalogues.ignores },
+  }),
+}));
+vi.mock("@/lib/search-request", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/lib/search-request")>()),
+  filtersFromParams: async () => ({ client: "focus" }),
+}));
+vi.mock("@/lib/places/catalogue", () => ({ catalogue: async () => catalogues.places }));
+vi.mock("@/lib/readables/catalogue", () => ({ catalogue: async () => catalogues.books }));
+vi.mock("@/lib/bosses/catalogue", () => ({ catalogue: async () => catalogues.bosses }));
+vi.mock("@/lib/voices/references", () => ({ pinnedVoices: async () => new Set<string>() }));
+
 vi.mock("./queue", () => ({ createBatch: mocks.createBatch, enqueue: mocks.enqueue }));
 vi.mock("@/lib/activity/store", () => ({ recordActivity: mocks.recordActivity }));
 vi.mock("./authz", () => ({ requireApiKey: mocks.requireApiKey }));
@@ -28,7 +52,7 @@ vi.mock("./preference", () => ({
 
 import type { CorpusLine } from "@/lib/corpus";
 
-import { estimatePlan, linesForItems, queuePlan, type Plan } from "./batch-plan";
+import { estimatePlan, linesForItems, planCatalogue, planQuestsByItems, queuePlan, type Plan } from "./batch-plan";
 
 const line = (lineId: string, variant?: number) => ({ lineId, variant }) as unknown as CorpusLine;
 const job = (file: string, characters: number, provider?: "fish") => ({
@@ -43,6 +67,7 @@ const plan = (jobs: Plan["jobs"]): Plan => ({ jobs, matched: jobs.length, droppe
 
 beforeEach(() => {
   vi.clearAllMocks();
+  catalogues.ignores = new Map();
   mocks.requireApiKey.mockResolvedValue({ key: "k", denied: null });
 });
 
@@ -119,5 +144,76 @@ describe("estimatePlan", () => {
     const result = await estimatePlan(plan([job("a", 100), job("b", 50, "fish")]), "u", "deDE", "elevenlabs");
     expect(Object.keys(result).sort()).toEqual(["elevenlabs", "fish"]);
     expect(result.fish?.characters).toBe(50);
+  });
+});
+
+describe("planQuestsByItems", () => {
+  const quest = (lineId: string, extra: Record<string, unknown> = {}) =>
+    ({
+      lineId,
+      source: "accept",
+      questId: 5,
+      npcName: "n",
+      npcType: "creature",
+      race: "orc",
+      gender: "m",
+      flavor: null,
+      voice: "orc-male",
+      playerGender: null,
+      text: "Hello there, traveller.",
+      originalText: "Hello there, traveller.",
+      fileName: lineId.replace(/\W/g, "-"),
+      generatable: true,
+      skipReason: null,
+      lang: "enUS",
+      ...extra,
+    }) as unknown as CorpusLine;
+
+  it("counts an ignored line as hidden, and nothing else", async () => {
+    catalogues.corpusLines = [quest("q:5:accept"), quest("q:6:accept")];
+    catalogues.ignores = new Map([["q:6:accept", {}]]);
+    const result = await planQuestsByItems(
+      [{ id: "q:5:accept", variant: 0 }, { id: "q:6:accept", variant: 0 }],
+      "enUS",
+      "elevenlabs",
+    );
+    expect(result.jobs).toHaveLength(1);
+    expect(result.matched).toBe(2);
+    expect(result.dropped).toEqual({ hidden: 1 });
+  });
+
+  it("does not hide a line of a client the default view leaves out", async () => {
+    catalogues.corpusLines = [quest("q:5:accept", { clientFamily: "anniversary" })];
+    const result = await planQuestsByItems([{ id: "q:5:accept", variant: 0 }], "enUS", "elevenlabs");
+    expect(result.jobs).toHaveLength(1);
+    expect(result.dropped).toEqual({});
+  });
+
+  it("reports a progress line as progress, not hidden", async () => {
+    catalogues.corpusLines = [quest("q:5:accept", { source: "progress", skipReason: "progress" })];
+    const result = await planQuestsByItems([{ id: "q:5:accept", variant: 0 }], "enUS", "elevenlabs");
+    expect(result.jobs).toHaveLength(0);
+    expect(result.dropped).toEqual({ progress: 1 });
+  });
+});
+
+describe("planCatalogue", () => {
+  it("counts matched, drops by reason and lists each unknown id once", async () => {
+    catalogues.places = [
+      { id: "z:1", file: "places/1.mp3", spoken: "text", zoneName: "Z", short: "s", full: "f" },
+      { id: "z:2", file: "places/2.mp3", spoken: "  ", zoneName: "Z", short: "s", full: "f" },
+    ];
+    const result = await planCatalogue("places", ["z:1", "z:2", "z:9", "z:9"], "enUS");
+    expect(result.jobs.map((job) => job.lineId)).toEqual(["z:1"]);
+    expect(result).toMatchObject({ matched: 2, dropped: { "no-text": 1 }, unknown: ["z:9"] });
+  });
+
+  it("drops an ungeneratable readable as not-generatable", async () => {
+    catalogues.books = [
+      { id: "b:1", file: "r/1.mp3", spoken: "text", title: "T", pageCount: 1, pageNumber: 1, generatable: false },
+    ];
+    const result = await planCatalogue("readables", ["b:1"], "enUS");
+    expect(result).toMatchObject({ matched: 1, dropped: { "not-generatable": 1 }, unknown: [] });
+    expect(result.jobs).toEqual([]);
   });
 });

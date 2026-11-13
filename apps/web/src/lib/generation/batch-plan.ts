@@ -119,9 +119,15 @@ export async function planQuestsByItems(
 ): Promise<Plan> {
   const catalogue = await corpus(lang);
   const { lines: narrowed, unknown } = linesForItems(catalogue.lines, items);
-  const [filters, { voiced, context }, pinned] = await Promise.all([
-    filtersFromParams(new URLSearchParams(), lang),
-    searchContext(false, false, lang, true, false),
+  // The default view, but for every client and with progress lines in: an item is one the caller
+  // named, so only a line nobody voices (an ignore) is hidden, and batchPlan says why the rest drops.
+  const filters = {
+    ...(await filtersFromParams(new URLSearchParams(), lang)),
+    client: "all" as const,
+    includeProgress: true,
+  };
+  const [{ voiced, context }, pinned] = await Promise.all([
+    searchContext(needsStale(filters), false, lang, true, needsLevels(filters)),
     pinnedFor(lang, provider),
   ]);
   const lines = matchingLines({ lines: narrowed }, voiced, filters, context);
@@ -197,7 +203,7 @@ export async function planCatalogue(
     }
   }
 
-  return { jobs, matched: seen.size, dropped, unknown: ids.filter((id) => !seen.has(id)) };
+  return { jobs, matched: seen.size, dropped, unknown: [...new Set(ids.filter((id) => !seen.has(id)))] };
 }
 
 /**
@@ -252,7 +258,9 @@ export async function estimatePlan(
   const byProvider = new Map<Provider, QueueEntry[]>();
   for (const job of plan.jobs) {
     const key = job.provider ?? provider;
-    byProvider.set(key, [...(byProvider.get(key) ?? []), job]);
+    const group = byProvider.get(key);
+    if (group) group.push(job);
+    else byProvider.set(key, [job]);
   }
   if (byProvider.size === 0) return {};
 

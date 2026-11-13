@@ -93,7 +93,8 @@ limits, one job per audio file. It stops working when you lose the right to rege
 `POST /api/v1/{section}/generate` takes either `items`, up to 1000 of `{id, variant?}` as the text
 update takes them, or, for quests only, `filters`: the query string of an Explorer URL in the
 language, since "every stale line" is a filter and not seventeen thousand ids. A quest item covers
-every speaker's line of that id and variant. Add `label` (up to 100 characters) to name the batch
+every speaker's line of that id and variant; give the base id (`q:5:accept`), not a voiced
+`~voice` id. Add `label` (up to 100 characters) to name the batch
 and `"dryRun": true` to price it without queueing anything.
 
 ```sh
