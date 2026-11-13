@@ -23,10 +23,10 @@ import { GET } from "./route";
 
 let f: Fixtures;
 let generateToken: string;
-let readJa: string;
+let readNoRows: string;
 let readKo: string;
 
-const mint = async (lang: "koKR" | "jaJP", access: "none" | "read", generate: boolean) =>
+const mint = async (lang: "koKR" | "qaXX", access: "none" | "read", generate: boolean) =>
   (
     await createToken({
       userId: f.user,
@@ -42,23 +42,24 @@ beforeAll(async () => {
   f = await createFixtures();
   await asSystem.query(
     `insert into "language" ("code", "enabled", "name", "native", "bcp47", "provider", "client")
-     values ('jaJP', true, 'Japanese', 'Japanese', 'ja-JP', 'ja', true) on conflict do nothing`,
+     values ('qaXX', true, 'Test', 'Test', 'qa-XX', 'ja', true) on conflict do nothing`,
   );
   generateToken = await mint("koKR", "none", true);
   readKo = await mint("koKR", "read", false);
-  readJa = await mint("jaJP", "read", false);
+  readNoRows = await mint("qaXX", "read", false);
 });
 
 beforeEach(() => {
   viewer.grants = [
     { lang: "koKR", capability: "text" },
     { lang: "koKR", capability: "regenerate" },
-    { lang: "jaJP", capability: "text" },
+    { lang: "qaXX", capability: "text" },
   ];
 });
 
 afterAll(async () => {
   await f.remove();
+  await asSystem.query(`delete from "language" where "code" = 'qaXX'`);
   await closeDb();
 });
 
@@ -81,8 +82,8 @@ describe("GET /api/v1/[section]/reference", () => {
     }
   });
 
-  it("gives a language with no rows of its own the same English items", async () => {
-    const body = (await (await get(readJa, `?zone=${f.map}`)).json()) as { items: { id: string }[] };
+  it("gives a language with no rows of its own (a code only this file uses) the same English items", async () => {
+    const body = (await (await get(readNoRows, `?zone=${f.map}`)).json()) as { items: { id: string }[] };
     expect(body.items.map((item) => item.id)).toContain(f.zone);
   });
 
