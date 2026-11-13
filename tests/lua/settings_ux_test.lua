@@ -313,7 +313,16 @@ do
     env.print = print_
     local help = table.concat(said, "\n")
     Expect("/sp help names each command by its setting", help:find("/sp style subtitles | small | large | dialogueui | voice: "
-        .. L.OPT_PLAYER_STYLE, 1, true) ~= nil and help:find("/sp stopall: " .. L.BIND_STOP, 1, true) ~= nil, true)
+        .. L.OPT_PLAYER_STYLE, 1, true) ~= nil and help:find("/sp stopall: " .. L.BIND_STOP, 1, true) ~= nil
+        and help:find("/sp mute [on | off]: " .. L.MUTE_AUDIO, 1, true) ~= nil, true)
+    SlashCmdList.SPOKEN("mute")
+    Expect("/sp mute pauses Spoken audio", env.SoundQueue:IsPaused(), true)
+    SlashCmdList.SPOKEN("mute")
+    Expect("/sp mute toggles Spoken audio back on", env.SoundQueue:IsPaused(), false)
+    SlashCmdList.SPOKEN("mute on")
+    Expect("/sp mute on pauses Spoken audio", env.SoundQueue:IsPaused(), true)
+    SlashCmdList.SPOKEN("mute off")
+    Expect("/sp mute off resumes Spoken audio", env.SoundQueue:IsPaused(), false)
     SlashCmdList.SPOKEN("style small")
     Expect("/sp style takes the styles' names", env.Addon:PlayerStyle(), "minimal")
     SlashCmdList.SPOKEN("player subtitle")
