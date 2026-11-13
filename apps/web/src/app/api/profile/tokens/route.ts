@@ -32,7 +32,7 @@ export async function POST(request: Request) {
     expiresAt?: unknown;
   };
   if (!isLang(body.lang)) return invalid("lang must be a language");
-  if (!isTokenAccess(body.access)) return invalid("access must be read or write");
+  if (body.access === "none" || !isTokenAccess(body.access)) return invalid("access must be read or write");
 
   const label = typeof body.label === "string" ? body.label.trim() : "";
   if (!label || label.length > MAX_LABEL) return invalid(`label is required, at most ${MAX_LABEL} characters`);
@@ -43,6 +43,6 @@ export async function POST(request: Request) {
   if (!can(await viewerOf(session), "text", body.lang)) return FORBIDDEN();
 
   return Response.json(
-    await createToken({ userId: session.user.id, lang: body.lang, access: body.access, label, expiresAt }),
+    await createToken({ userId: session.user.id, lang: body.lang, access: body.access, generate: false, label, expiresAt }),
   );
 }

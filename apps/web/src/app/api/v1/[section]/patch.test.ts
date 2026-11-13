@@ -26,7 +26,7 @@ let writeId: string;
 let read: string;
 
 const token = (access: "read" | "write") =>
-  createToken({ userId: f.user, lang: LANG, access, label: "agent", expiresAt: new Date(Date.now() + 86_400_000) });
+  createToken({ userId: f.user, lang: LANG, access, generate: false, label: "agent", expiresAt: new Date(Date.now() + 86_400_000) });
 
 beforeAll(async () => {
   f = await createFixtures();

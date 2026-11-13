@@ -32,6 +32,7 @@ function make(access: TokenAccess = "write", userId = USER) {
     userId,
     lang: "deDE",
     access,
+    generate: false,
     label: "agent",
     expiresAt: new Date(Date.now() + 86_400_000),
   });

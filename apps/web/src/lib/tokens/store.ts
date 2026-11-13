@@ -13,7 +13,7 @@ import type { Lang } from "@/lib/lang";
 import type { ApiToken, TokenAccess } from "./types";
 
 export function isTokenAccess(value: unknown): value is TokenAccess {
-  return value === "read" || value === "write";
+  return value === "none" || value === "read" || value === "write";
 }
 
 type Row = Omit<ApiToken, "createdAt" | "expiresAt" | "lastUsedAt" | "revokedAt"> & {
@@ -23,7 +23,7 @@ type Row = Omit<ApiToken, "createdAt" | "expiresAt" | "lastUsedAt" | "revokedAt"
   revokedAt: Date | null;
 };
 
-const COLUMNS = `t."id", t."userId", t."lang", t."access", t."label", t."hint",
+const COLUMNS = `t."id", t."userId", t."lang", t."access", t."generate", t."label", t."hint",
                  t."createdAt", t."expiresAt", t."lastUsedAt", t."revokedAt"`;
 
 function toToken({ createdAt, expiresAt, lastUsedAt, revokedAt, ...rest }: Row): ApiToken {
@@ -44,6 +44,7 @@ export async function createToken(args: {
   userId: string;
   lang: Lang;
   access: TokenAccess;
+  generate: boolean;
   label: string;
   expiresAt: Date;
 }): Promise<{ token: string; row: ApiToken }> {
@@ -51,10 +52,10 @@ export async function createToken(args: {
 
   const token = `spk_${randomBytes(32).toString("base64url")}`;
   const rows = await query<Row>(
-    `insert into "api_token" as t ("userId", "lang", "access", "label", "tokenHash", "hint", "expiresAt")
-     values ($1, $2, $3, $4, $5, $6, $7)
+    `insert into "api_token" as t ("userId", "lang", "access", "generate", "label", "tokenHash", "hint", "expiresAt")
+     values ($1, $2, $3, $4, $5, $6, $7, $8)
      returning ${COLUMNS}`,
-    [args.userId, args.lang, args.access, args.label, hashOf(token), token.slice(-4), args.expiresAt],
+    [args.userId, args.lang, args.access, args.generate, args.label, hashOf(token), token.slice(-4), args.expiresAt],
   );
   return { token, row: toToken(rows[0]) };
 }

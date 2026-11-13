@@ -16,7 +16,7 @@ const OTHER = `${USER}-other`;
 const TOMORROW = () => new Date(Date.now() + 86_400_000);
 
 function make(userId = USER, expiresAt = TOMORROW()) {
-  return createToken({ userId, lang: "deDE", access: "write", label: "agent", expiresAt });
+  return createToken({ userId, lang: "deDE", access: "write", generate: false, label: "agent", expiresAt });
 }
 
 beforeAll(async () => {
@@ -43,6 +43,51 @@ describe("createToken", () => {
     const { rows } = await asSystem.query(`select * from "api_token" where "id" = $1`, [row.id]);
     expect(JSON.stringify(rows[0])).not.toContain(token);
     expect((await listTokens(USER)).find((t) => t.id === row.id)).not.toHaveProperty("tokenHash");
+  });
+
+  it("carries a generate-only token through create and find", async () => {
+    const { token, row } = await createToken({
+      userId: USER,
+      lang: "deDE",
+      access: "none",
+      generate: true,
+      label: "generator",
+      expiresAt: TOMORROW(),
+    });
+    expect(row).toMatchObject({ access: "none", generate: true });
+    expect(await findLiveToken(token)).toMatchObject({ id: row.id, access: "none", generate: true });
+  });
+
+  it("gives a read token generate false", async () => {
+    const { row } = await createToken({
+      userId: USER,
+      lang: "deDE",
+      access: "read",
+      generate: false,
+      label: "reader",
+      expiresAt: TOMORROW(),
+    });
+    expect(row.generate).toBe(false);
+  });
+
+  it("refuses a token with no scope at all", async () => {
+    await expect(
+      asSystem.query(
+        `insert into "api_token" ("userId", "lang", "access", "label", "tokenHash", "hint", "expiresAt")
+         values ($1, 'deDE', 'none', 'x', $2, 'abcd', now() + interval '1 day')`,
+        [USER, `hash-${Math.random()}`],
+      ),
+    ).rejects.toThrow(/api_token_has_scope|check constraint/);
+  });
+
+  it("reads back generate false for a row inserted without the column", async () => {
+    const hash = `hash-${Math.random()}`;
+    const { rows } = await asSystem.query(
+      `insert into "api_token" ("userId", "lang", "access", "label", "tokenHash", "hint", "expiresAt")
+       values ($1, 'deDE', 'read', 'old', $2, 'abcd', now() + interval '1 day') returning "generate"`,
+      [USER, hash],
+    );
+    expect(rows[0].generate).toBe(false);
   });
 
   it("refuses an expiry in the past", async () => {
