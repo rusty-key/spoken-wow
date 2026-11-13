@@ -4,9 +4,9 @@ Spoken Player until 3.0.0, when it became Spoken and took its modules into one d
 
 ## Unreleased
 
-- **Area Highlight no longer draws Blizzard's raw zone art over OpenMap's stitched map.** OpenMap
-  already draws those pieces masked and graded, so Places now leaves its exploration layer alone
-  while OpenMap is active. *([Loukky](https://github.com/Loukky))*
+- **Area Highlight stays visible on OpenMap without drawing Blizzard's raw zone art.** Places now
+  uses the exploration texture only as a mask for its own solid highlight color, leaving OpenMap's
+  stitched art visible underneath. *([Loukky](https://github.com/Loukky))*
 - **Subtitles and Compendium text now follow your sound packs.** A pack carries the words of the
   lines it voices, so new audio no longer plays under old text. This applies when the pack is in
   the language you read; a German player with English voices keeps German text. In English, quest
