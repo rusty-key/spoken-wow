@@ -145,6 +145,40 @@ describe("POST /api/v1/[section]/generate", () => {
     expect(mocks.createBatch).not.toHaveBeenCalled();
   });
 
+  it.each([
+    ["a typo key", "stat=stale"],
+    ["a bad value", "state=bogus"],
+    ["a pasted full URL", "https://spoken.quest/quests?state=stale"],
+    ["lang=", "state=stale&lang=frFR"],
+    ["a bad client", "client=nonsense"],
+  ])("400 on filters with %s", async (_name, filters) => {
+    const response = await post(generateToken, { filters }, "quests");
+    expect(response.status).toBe(400);
+    expect(mocks.createBatch).not.toHaveBeenCalled();
+  });
+
+  it("names the key it refused", async () => {
+    const response = await post(generateToken, { filters: "stat=stale" }, "quests");
+    expect(((await response.json()) as { error: string }).error).toContain("stat");
+  });
+
+  it("400 on a query string", async () => {
+    const response = await POST(
+      new Request("https://example.com/api/v1/bosses/generate?lang=deDE", {
+        method: "POST",
+        headers: { authorization: `Bearer ${generateToken}`, "content-type": "application/json" },
+        body: JSON.stringify({ items: [{ id: f.boss.lineId }] }),
+      }),
+      { params: Promise.resolve({ section: "bosses" }) },
+    );
+    expect(response.status).toBe(400);
+    expect(mocks.enqueue).not.toHaveBeenCalled();
+  });
+
+  it("400 on an item with another key", async () => {
+    expect((await post(generateToken, { items: [{ id: f.boss.lineId, lang: "deDE" }] })).status).toBe(400);
+  });
+
   it("400 on 1001 items", async () => {
     const items = Array.from({ length: 1001 }, (_, i) => ({ id: `z:${-i}` }));
     expect((await post(generateToken, { items }, "places")).status).toBe(400);

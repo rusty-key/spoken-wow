@@ -18,6 +18,8 @@ import { corpus } from "@/lib/quests/catalogue";
 import { searchContext } from "@/lib/quests/context";
 import { recordingsFor } from "@/lib/recordings/store";
 import { batchPlan, matchingLines } from "@/lib/search";
+import { audioStateFromParams } from "@/lib/audio-state";
+import { CLIENT_FILTERS } from "@/lib/contributions/client";
 import { filtersFromParams, needsLevels, needsStale } from "@/lib/search-request";
 import type { Source } from "@/lib/sections";
 import { pinnedVoices } from "@/lib/voices/references";
@@ -92,6 +94,63 @@ function questPlan(
     dropped: { ...skipped, ...extraDropped },
     unknown,
   };
+}
+
+/** Every key `filtersFromParams` reads. */
+const FILTER_KEYS = new Set([
+  "q", "filter", "state", "missing", "outdated", "race", "gender", "flavor", "voice", "source", "type",
+  "narration", "progress", "client", "line", "overridden", "ignored", "dirty", "fb", "before", "after",
+  "model", "author", "rec", "bt", "minLevel", "maxLevel", "playerGender",
+]);
+/** Keys an Explorer URL carries that mean nothing to a batch. */
+const EXPLORER_ONLY = new Set(["page"]);
+const FLAGS = ["narration", "progress", "overridden", "ignored", "dirty", "missing", "outdated"];
+const DAY = /^\d{4}-\d{2}-\d{2}$/;
+
+/**
+ * For the API only: the button's derivation drops what it does not understand, which for a typed
+ * query would quietly widen the batch to the whole language. Here a key nobody reads, or a value
+ * that matches nothing, is named instead. Null when the string is fine.
+ */
+export async function filterError(query: string, lang: Lang): Promise<string | null> {
+  const params = new URLSearchParams(query.startsWith("?") ? query.slice(1) : query);
+  for (const key of params.keys()) {
+    if (EXPLORER_ONLY.has(key)) continue;
+    if (!FILTER_KEYS.has(key)) {
+      return `unknown filter ${key}: filters is an Explorer query string, and ${
+        key === "lang" ? "the language comes from the token" : "this one is not read"
+      }`;
+    }
+  }
+  const parsed = await filtersFromParams(params, lang);
+  const parsedTo: Record<string, unknown> = {
+    filter: parsed.filter === "any" && params.get("filter") !== "any" ? undefined : parsed.filter,
+    state: audioStateFromParams(params),
+    race: parsed.race,
+    gender: parsed.gender,
+    flavor: parsed.flavor,
+    voice: parsed.voice,
+    source: parsed.source,
+    type: parsed.npcType,
+    client: (CLIENT_FILTERS as readonly string[]).includes(params.get("client") ?? "") ? parsed.client : undefined,
+    fb: parsed.reports,
+    rec: parsed.recorded,
+    bt: parsed.broadcast,
+    minLevel: parsed.minLevel,
+    maxLevel: parsed.maxLevel,
+    playerGender: parsed.playerGender,
+    before: params.get("before") && DAY.test(params.get("before")!) ? true : undefined,
+    after: params.get("after") && DAY.test(params.get("after")!) ? true : undefined,
+  };
+  for (const [key, value] of Object.entries(parsedTo)) {
+    const given = params.get(key);
+    if (given !== null && given !== "" && value === undefined) return `${key}=${given} is not a valid value`;
+  }
+  for (const key of FLAGS) {
+    const given = params.get(key);
+    if (given !== null && given !== "1" && given !== "0") return `${key}=${given} is not a valid value: use 1`;
+  }
+  return null;
 }
 
 export async function planQuestsByFilters(filters: string, lang: Lang, provider: Provider): Promise<Plan> {
