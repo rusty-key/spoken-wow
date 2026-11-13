@@ -245,15 +245,6 @@ describe("an NPC split by body", WHOLE_CORPUS, () => {
     }
   });
 
-  it("lists a line nobody voices once", async () => {
-    await line([{ npcId: npcIds[0], race: "human", gender: "male", flavor: "official" }], "progress");
-    await npc(npcIds[0], { race: "human", gender: "male", flavor: "official", provenance: "corpus" });
-    await body(npcIds[0], "human", 2, "official");
-    await body(npcIds[0], "human", 3, "official");
-
-    expect(await byBody()).toEqual([`human-male ${lineId} human-male-official`]);
-  });
-
   it("leaves the NPC's other speakers in one voice", async () => {
     await line(npcIds.slice(0, 2).map((npcId) => ({ npcId, race: "human", gender: "male", flavor: "official" })), "gossip");
     await npc(npcIds[0], { race: "human", gender: "male", flavor: "official", provenance: "corpus" });

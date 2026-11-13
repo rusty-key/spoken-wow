@@ -234,8 +234,8 @@ def test_a_split_npc_speaks_a_line_per_sex_the_other_sexs_once_its_file_is_store
         (68, 2, "human-male", "q:109:accept"),
         # Not stored yet: the man's file until it is.
         (68, 3, "human-female", "q:109:accept"),
-        # Never voiced, so never split.
-        (68, None, None, "q:109:progress"),
+        (68, 2, "human-male", "q:109:progress"),
+        (68, 3, "human-female", "q:109:progress"),
         # Somebody else's NPC is as it was.
         (7, None, None, "g:abc~human-female-official"),
     ]
@@ -249,7 +249,9 @@ def test_a_split_npcs_line_is_found_by_its_own_stem_and_each_sex_asked_after():
     assert tables["npc_sex_gossip_file_lookups"][1] == {
         68: {2: {"abc": "abc"}, 3: {"abc": "abc-human-female-official"}}}
     assert tables["npc_sex_quest_file_lookups"][1] == {
-        "109-accept": {68: {2: "109-accept", 3: "109-accept-human-female-official"}}}
+        "109-accept": {68: {2: "109-accept", 3: "109-accept-human-female-official"}},
+        # Not stored yet in the woman's voice: the man's file until it is.
+        "109-progress": {68: {2: "109-progress", 3: "109-progress"}}}
     # The giver table an older addon reads still names no voice for the split NPC.
     assert tables["npc_quest_file_lookups"][1] == {}
     # Every other creature's sex, for the addon to notice a voice of the wrong one.

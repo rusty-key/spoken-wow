@@ -20,7 +20,7 @@ CORPUS = {
         {"lineId": "q:7:progress", "source": "progress", "questId": 7,
          "questTitle": "Growling Gut", "npcId": 288, "npcName": "Jitters",
          "npcType": "creature", "fileName": "7-progress",
-         "originalText": "Not yet.", "generatable": False},
+         "originalText": "Not yet.", "generatable": True},
         {"lineId": "g:abc123", "source": "gossip", "questId": None, "questTitle": None,
          "npcId": 68, "npcName": "Stormwind City Guard", "npcType": "creature",
          "fileName": "abc123", "originalText": 'Move along, "citizen".',
@@ -100,9 +100,9 @@ def test_quest_id_lookup_is_keyed_by_source_then_title():
     assert table["complete"]["Growling Gut"] == 5
 
 
-def test_quest_id_lookup_omits_progress():
-    """Progress text is never voiced, so an entry for it would resolve to silence."""
-    assert "progress" not in _tables()["quest_id_lookups"]
+def test_quest_id_lookup_includes_progress():
+    """Progress text is voiced, so the addon can resolve its quest like any other line."""
+    assert "progress" in _tables()["quest_id_lookups"]
 
 
 def test_followup_lookup_maps_speaker_and_broadcast_id_to_the_bare_stem():
@@ -319,10 +319,10 @@ WORDINGS = {"lines": [
      "generatable": True},
     {"lineId": "q:21:progress", "source": "progress", "questId": 21, "questTitle": "T",
      "npcId": 1, "npcName": "Celindra", "npcType": "creature", "fileName": "21-progress",
-     "originalText": "Well?", "generatable": False},
+     "originalText": "Well?", "generatable": True},
     {"lineId": "q:21:progress:w1", "source": "progress", "questId": 21, "questTitle": "T",
      "npcId": 2, "npcName": "Modera", "npcType": "creature", "fileName": "21-progress-w1",
-     "originalText": "Back so soon?", "generatable": False},
+     "originalText": "Back so soon?", "generatable": True},
 ]}
 
 
@@ -333,6 +333,7 @@ def _wording_tables(corpus=WORDINGS, ignored=()):
 def test_a_moment_s_wordings_map_each_text_to_its_file():
     assert _wording_tables()["quest_wording_lookups"] == {
         "20-accept": {"You are the Horde, $c.": "20-accept", "Oh, you are back.": "20-accept-w1"},
+        "21-progress": {"Well?": "21-progress", "Back so soon?": "21-progress-w1"},
     }
 
 

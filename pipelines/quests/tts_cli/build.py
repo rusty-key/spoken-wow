@@ -209,7 +209,7 @@ def name_rank(line: dict) -> int:
 def build_tables(corpus: dict, ignored=()) -> dict:
     """Every lookup table, as {output filename: (lua table name, data)}.
 
-    Ignored lines are left out entirely, the way progress text is below: an entry pointing
+    Ignored lines are left out entirely: an entry pointing
     at a sound that will never be produced resolves to silence, and the addon has no way to
     tell that apart from a broken lookup.
     """
@@ -306,10 +306,6 @@ def build_tables(corpus: dict, ignored=()) -> dict:
             # own file, never a voice's that only some of them speak.
             gossip_by_name[kind].setdefault(
                 escape_lua_string(speaker_name(line["npcName"])), {})[text] = own
-            continue
-
-        # Progress text is never voiced, so an entry would resolve to silence.
-        if line["source"] == "progress":
             continue
 
         stem = quest_stem_from_line_id(base_id)
