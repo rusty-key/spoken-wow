@@ -5,8 +5,9 @@ Spoken Player until 3.0.0, when it became Spoken and took its modules into one d
 ## Unreleased
 
 - **When Stop When Window Closes is enabled, unaccepted quest offers and unturned-in quest pages stop
-  when their dialog closes.** Accepted offers and turned-in quest pages continue playing; with the
-  option off, closing the dialog behaves as before.
+  when their dialog closes.** Accepted offers and turned-in quest pages continue playing. Gossip
+  audio is unaffected and continues after its window closes; with the option off, quest behavior
+  remains as before.
   New profiles have the option enabled by default; existing saved choices are kept.
   *([rusty-key](https://github.com/rusty-key))*
 - **Subtitles and Compendium text now follow your sound packs.** A pack carries the words of the

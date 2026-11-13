@@ -1785,13 +1785,9 @@ function Addon:QUEST_FINISHED()
         if currentQuestSoundData and not deferOfferStop and not deferTurnInStop then
             Player:Remove(currentQuestSoundData)
         end
-        -- A quest giver's greeting is read in the quest frame, so it ends with the frame.
-        if currentGossipSoundData and currentGossipSoundData.event == Enums.SoundEvent.QuestGreeting then
-            Player:Remove(currentGossipSoundData)
-            currentGossipSoundData = nil
-        end
     end
     currentQuestSoundData = nil
+    currentGossipSoundData = nil
     EndGreetingTextWait()
     local pending = pendingRead
     pendingRead = nil
@@ -1803,9 +1799,6 @@ function Addon:QUEST_FINISHED()
 end
 
 function Addon:GOSSIP_CLOSED()
-    if Addon.db.profile.Audio.StopAudioOnDisengage and currentGossipSoundData then
-        Player:Remove(currentGossipSoundData)
-    end
     currentGossipSoundData = nil
     EndGreetingTextWait()
 
