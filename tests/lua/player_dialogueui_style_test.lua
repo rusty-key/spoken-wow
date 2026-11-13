@@ -535,12 +535,16 @@ Expect("...Report after Skip, as large and as strong, as the subtitle shows it",
 local extra = {}
 local function Walk(frame)
     for _, child in ipairs({ frame:GetChildren() }) do
-        if child:GetObjectType() == "Button" then
-            local known = false
-            for _, button in ipairs(Skin.row) do known = known or button == child end
-            if not known then table.insert(extra, child) end
+        -- The transcript docked under the face (Transcript:Dock) is its own window, not one of
+        -- the header's buttons.
+        if child ~= T.frame then
+            if child:GetObjectType() == "Button" then
+                local known = false
+                for _, button in ipairs(Skin.row) do known = known or button == child end
+                if not known then table.insert(extra, child) end
+            end
+            Walk(child)
         end
-        Walk(child)
     end
 end
 Walk(Skin.frame)

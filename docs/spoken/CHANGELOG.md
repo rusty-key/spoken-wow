@@ -31,6 +31,14 @@ Spoken Player until 3.0.0, when it became Spoken and took its modules into one d
   play a pack in such a language, such as Hebrew, pick it there. "Auto" follows your client and no
   longer takes that pack for English.
   *([rusty-key](https://github.com/rusty-key))*
+- **Azeroth's Compendium works with a controller.** With the controller UI on, the d-pad moves
+  through the window: the search box, the filter menu, the list's rows, the page's buttons and the
+  tabs. A opens a row or a group, B closes the window, the right stick scrolls the page, and moving
+  down the list scrolls it. LB and RB switch tabs, View goes into the search box and Menu opens
+  the filter, as in the game's own windows; any controller button leaves the search box again. The
+  filter opens as a menu like the game's own that the cursor moves into: A ticks a row, B closes it.
+  Opened in combat, the window takes the d-pad once combat ends.
+  *([nobbs](https://github.com/nobbs))*
 
 ## 3.8.7 — 2026-11-12
 
