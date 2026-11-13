@@ -41,9 +41,13 @@ export const dynamic = "force-dynamic";
 /** `file` only for a quests line: nothing else can have an override. */
 type Address = { lineId: string | null; target: string; file?: string | null };
 
-/** Deliberately not configurable: a knob nobody turns is a knob set wrong. */
-const PER_HOUR = 10;
-const WINDOW_MS = 60 * 60 * 1000;
+/**
+ * Deliberately not configurable: a knob nobody turns is a knob set wrong. A short window
+ * because reports come in bursts, one quest chain's bad lines at a time: a burst gets through,
+ * and someone who hits the limit waits minutes, not an hour.
+ */
+const PER_WINDOW = 10;
+const WINDOW_MS = 10 * 60 * 1000;
 
 export async function POST(request: Request) {
   const body = (await request.json().catch(() => ({}))) as Record<string, unknown>;
@@ -101,15 +105,19 @@ export async function POST(request: Request) {
     return Response.json({ error: validated.error }, { status: 400 });
   }
 
-  const ip = clientIp(request);
-  if ((await countRecent(ip, WINDOW_MS)) >= PER_HOUR) {
-    return Response.json({ error: "too many reports" }, { status: 429 });
-  }
-
   // A signed-in reporter's identity comes from the session, and any name or email in the body
   // is dropped rather than merged: letting someone sign in and then type a different name is a
   // way to put words in another person's mouth.
   const session = await auth.api.getSession({ headers: await headers() });
+
+  const ip = clientIp(request);
+  const reporter = session ? { userId: session.user.id } : { ip };
+  const recent = await countRecent(reporter, WINDOW_MS);
+  if (recent >= PER_WINDOW) {
+    // The only record of a refusal: pm2's log, which is how a shared bucket shows up.
+    console.warn("report rate-limited", { ...reporter, recent });
+    return Response.json({ error: "too many reports" }, { status: 429 });
+  }
 
   const identity = {
     userId: session?.user.id ?? null,
