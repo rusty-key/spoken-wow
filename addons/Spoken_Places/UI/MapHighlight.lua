@@ -33,8 +33,8 @@ local function FileSize(n)
 end
 
 -- A zone map's explored overlays and the area each is of, asked for once per map and again
--- whenever the map opens. Kept for every zone the cursor crosses: on OpenMap's map it moves
--- between neighbours, and matching overlays to areas is the costly part.
+-- whenever the map opens. Kept for every zone the cursor crosses. The exploration textures are
+-- used as masks below, so the raw Blizzard art is never drawn over OpenMap's stitched art.
 local function Known(mapID)
 	local known = state.known[mapID]
 	if not known then
@@ -160,12 +160,16 @@ local function Light(info, layer)
 				local tile = state.tiles[n]
 				if not tile then
 					tile = state.frame:CreateTexture(nil, "OVERLAY")
+					tile:SetColorTexture(1, 0.82, 0.25, 1)
 					tile:SetBlendMode("ADD")
+					tile.mask = state.frame:CreateMaskTexture()
+					tile.mask:SetAllPoints(tile)
+					tile:AddMaskTexture(tile.mask)
 					state.tiles[n] = tile
 				end
-				tile:SetTexture(file, nil, nil, "TRILINEAR")
+				tile.mask:SetTexture(file, "CLAMPTOBLACKADDITIVE", "CLAMPTOBLACKADDITIVE", "TRILINEAR")
 				tile:SetSize(w, h)
-				tile:SetTexCoord(0, w / fileW, 0, h / fileH)
+				tile.mask:SetTexCoord(0, w / fileW, 0, h / fileH)
 				tile:ClearAllPoints()
 				tile:SetPoint("TOPLEFT", state.frame, "TOPLEFT", info.offsetX + tileW * (col - 1),
 					-(info.offsetY + tileH * (row - 1)))
@@ -194,7 +198,6 @@ local function OnUpdate()
 		info = nil
 	end
 	if info then
-		-- OpenMap's art, which this has to show over, is only built once its map first shows.
 		local level = SpokenPlaces:OverArtLevel(state.level)
 		if level ~= state.levelSet and pcall(state.frame.SetFrameLevel, state.frame, level) then
 			state.levelSet = level
