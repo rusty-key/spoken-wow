@@ -1,14 +1,6 @@
-// Words the main process puts in front of the player: the errors it throws, and the few messages
-// that ride on a job. The window's own words are in renderer/strings.*; these are the ones built
-// here, where a failure happens, and they reach the window through `job.message` and an IPC
-// rejection's message.
-//
-// The language is one module-level value, set when the settings load or change, the same way the
-// window keeps its own. Nothing has to thread a language through the installer, the downloader or
-// the guards, which take no settings at all.
-//
-// English is the source and the default, so a failure built before any setting was read -- and
-// every test that asserts a message -- reads as it always did.
+// Words the main process puts in front of the player: the errors it throws and the messages a job
+// carries. The language is one module-level value set from the settings, so the installer, the
+// downloader and the guards need no settings passed in. English is the default.
 import { DEFAULT_SETTINGS, bcp47Of, type UiLanguage } from '../shared/types'
 
 type Params = Record<string, string | number>
@@ -19,14 +11,11 @@ function fill(text: string, params?: Params): string {
 }
 
 const EN = {
-  // errors.ts
   'errors.cancelled': 'Cancelled.',
   'errors.failed': 'Something went wrong: {text}',
 
-  // jobs.ts
   'jobs.waiting': 'Waiting for another job on this game',
 
-  // games.ts
   'games.chooseFirst': 'Choose a folder first.',
   'games.notThere': 'That folder does not exist.',
   'games.notWow':
@@ -35,7 +24,6 @@ const EN = {
   'games.notSupported': 'Spoken runs on WoW: Forever, Classic Era and Anniversary. {folder} is not one of them.',
   'games.addFailed': 'That folder could not be added.',
 
-  // guard.ts
   'guard.linked': 'This folder is linked to a development checkout. The manager will not change it.',
   'guard.noSpace': 'Not enough free space on {drive} for {what}: about {needed} needed, {free} free.',
   'guard.dlBadName': 'That is not a usable folder name for downloads.',
@@ -48,14 +36,12 @@ const EN = {
   'guard.dlNoWrite': 'The manager cannot write to that folder.',
   'guard.dlNoDrive': 'That drive does not exist.',
 
-  // download.ts
   'download.mismatch':
     'The downloaded file does not match what {source} published, so it was deleted. Try again; if it keeps happening, check your connection.',
   'download.stopped': 'The download stopped before it finished ({why}). The part that arrived is kept; press the button again to continue.',
   'download.gone': '{source} no longer has this file. Refresh the list and try again.',
   'download.refused': '{source} refused the download ({status}).',
 
-  // install.ts
   'install.damaged': 'The downloaded zip file is damaged or holds unsafe paths, so nothing was installed.',
   'install.rollbackCancelled':
     'Cancelled, but the manager could not put back {failed}. The previous version is in {backupDir}. Copy it back into the AddOns folder before installing again.',
@@ -81,7 +67,6 @@ const EN = {
   'install.hintInUse':
     ' A file may be in use: close the game and anything else that has the add-on open, then try again.',
 
-  // service.ts
   'service.channelUnreadable': 'The voice pack channel could not be read.',
   'service.needsSpoken': '{product} needs Spoken {need} or newer, which is not released yet.',
   'service.notOnServer': '{product} is not on the voice pack server right now. Press refresh and try again.',
@@ -96,11 +81,9 @@ const EN = {
   'service.turnOnSharing': 'Turn on Sharing first.',
   'service.upToDate': 'Spoken is up to date.',
 
-  // packs-remote.ts
   'packs.notTrusted': 'The voice pack list could not be trusted ({why}), so it was not used.',
   'packs.serverStatus': 'The voice pack server answered {status}. Try again later.',
 
-  // contributor.ts
   'contributor.reachSite': 'Could not reach the site.',
   'contributor.reachSiteCheck': 'Could not reach the site to check your account. Try again.',
   'contributor.signInFirst': 'Sign in to the site first.',
@@ -118,11 +101,9 @@ const EN = {
   'contributor.stepZip': 'zipping',
   'contributor.stepUpload': 'uploading',
 
-  // share.ts
   'share.reachSite': 'The site could not be reached ({why}).',
   'share.siteStatus': 'The site answered {status}.',
 
-  // contributor-upload.ts
   'upload.reachStore': 'Could not reach {store}.',
   'upload.storeHttp': '{store} answered HTTP {status}{text}',
   'upload.linkInPack': '{path} is a link, which a pack cannot hold.',
@@ -143,21 +124,18 @@ const EN = {
   'upload.badAnswer': "GitHub's answer could not be read.",
   'upload.noReleaseId': "GitHub's answer names no release id.",
 
-  // contributor-store.ts
   'store.duplicateProject': '{other} and {folder} have the same CurseForge project id, {id}. Each pack needs its own project.',
   'store.cannotKeep':
     'Spoken Manager cannot keep secrets on this computer right now. If your system asked for access, allow it and try again.',
   'store.digitsOnly': 'The CurseForge project id for {lang} must be digits only.',
 
-  // updater.ts
   'updater.installFailed': 'Could not install the update. Try again, or close the manager and open it again.',
   'updater.checkFailed': 'Could not check for a newer manager. Check your connection and try again.',
   'updater.notInstalled': 'The manager can only update itself when it is installed.',
 
-  // index.ts, the tray menu
   'tray.show': 'Show Spoken Manager',
   'tray.quit': 'Quit Spoken Manager'
-} as const
+}
 
 export type MessageKey = keyof typeof EN
 
@@ -279,25 +257,20 @@ const ZH: Record<MessageKey, string> = {
   'tray.quit': '退出 Spoken 管理器'
 }
 
-const MESSAGES: Record<UiLanguage, Record<MessageKey, string>> = { enUS: EN as Record<MessageKey, string>, zhCN: ZH }
+const MESSAGES: Record<UiLanguage, Record<MessageKey, string>> = { enUS: EN, zhCN: ZH }
 
 let current: UiLanguage = DEFAULT_SETTINGS.uiLanguage
 
-/** Set when the settings load or change. A language with no dictionary leaves English in place. */
 export function setMainLanguage(lang: UiLanguage): void {
-  if (MESSAGES[lang]) current = lang
+  current = lang
 }
 
-/** The tag `Intl` wants, for the numbers and dates this process writes into a message. */
+/** The tag `Intl` wants, for the numbers this process writes into a message. */
 export function mainLocale(): string {
   return bcp47Of(current)
 }
 
-export function mainLanguage(): UiLanguage {
-  return current
-}
-
 /** The words for `key`, with `{name}` filled from `params`. */
 export function t(key: MessageKey, params?: Params): string {
-  return fill((MESSAGES[current] ?? EN)[key] ?? EN[key], params)
+  return fill(MESSAGES[current][key], params)
 }

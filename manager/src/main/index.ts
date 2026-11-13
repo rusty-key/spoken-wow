@@ -128,9 +128,12 @@ function syncTray(enabled: boolean): void {
     tray = null
     return
   }
-  if (tray) return
-  tray = new Tray(trayIcon())
-  tray.setToolTip('Spoken Manager')
+  if (!tray) {
+    tray = new Tray(trayIcon())
+    tray.setToolTip('Spoken Manager')
+    tray.on('click', showWindow)
+  }
+  // Built on every call, so a language change relabels the menu without replacing the icon.
   tray.setContextMenu(
     Menu.buildFromTemplate([
       { label: t('tray.show'), click: showWindow },
@@ -138,19 +141,11 @@ function syncTray(enabled: boolean): void {
       { label: t('tray.quit'), click: () => app.quit() }
     ])
   )
-  tray.on('click', showWindow)
 }
 
 function startupSettingsChanged(settings: Settings, previous: Settings): void {
   const startupChanged = settings.startAtLogin !== previous.startAtLogin || settings.minimizeToTray !== previous.minimizeToTray
-  // The tray menu's words follow the window's language, so it is thrown away and built again. Done
-  // once, at the end, rather than in each branch: `syncTray` returns early when a tray exists, so
-  // a second call here would quietly keep the old words.
   const languageChanged = settings.uiLanguage !== previous.uiLanguage
-  if (languageChanged) {
-    tray?.destroy()
-    tray = null
-  }
   if (!startupChanged && !languageChanged) return
   if (startupChanged) applyAutoStart(settings)
   syncTray(settings.minimizeToTray)

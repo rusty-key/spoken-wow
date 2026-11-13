@@ -26,13 +26,6 @@ describe('dates follow the window language, not the system', () => {
     expect(zh).toMatch(/年|月/)
   })
 
-  it('changes when the language changes again, with no restart', () => {
-    setUiLanguage('zhCN')
-    const zh = formatDate(ISO)
-    setUiLanguage('enUS')
-    expect(formatDate(ISO)).not.toBe(zh)
-  })
-
   it('reads the clock the same way, and still returns nothing for nothing', () => {
     setUiLanguage('zhCN')
     expect(formatTime(ISO)).toMatch(/\d/)

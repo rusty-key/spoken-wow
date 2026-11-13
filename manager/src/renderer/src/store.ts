@@ -59,7 +59,6 @@ export const jobKey = (gameId: string, productId: string): string => `${gameId}|
 const EMPTY_CATALOG: Catalog = { fetchedAt: null, offline: false, releases: {} }
 const EMPTY_COMMUNITY: CommunityCatalog = { fetchedAt: null, offline: false, packs: [] }
 
-/** Exported for its test, which starts from it like the window does. */
 export const initial: State = {
   ready: false,
   games: [],
@@ -82,7 +81,6 @@ export const initial: State = {
   contributorError: ''
 }
 
-/** Exported for its test: this is where a language change reaches `S`, before React redraws. */
 export function reducer(s: State, a: Action): State {
   switch (a.type) {
     case 'init':

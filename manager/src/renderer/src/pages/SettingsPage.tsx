@@ -8,6 +8,7 @@ import { RestartButton } from '../components/RestartButton'
 import { IconChevron, IconChevronRight, IconDownload, IconGames, IconGear, IconHeart, IconInfo, IconRefresh, IconUser } from '../components/Icons'
 import type { Settings, UiLanguage } from '@shared/types'
 import { UI_LANGUAGES } from '@shared/types'
+import { languageName } from '@shared/products'
 import { useStore } from '../store'
 import { ContributorSection } from './ContributorSection'
 import { REPO_URL, S, SITE_URL } from '../strings'
@@ -177,7 +178,7 @@ function GeneralSection(): ReactNode {
       <Select label={S.settings.languageName} value={settings.uiLanguage} onChange={(v) => set({ uiLanguage: v as UiLanguage })}>
         {UI_LANGUAGES.map((l) => (
           <option key={l.code} value={l.code}>
-            {l.name}
+            {languageName(l.code)}
           </option>
         ))}
       </Select>

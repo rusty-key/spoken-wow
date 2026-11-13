@@ -172,8 +172,8 @@ export interface ProductStatus {
  * `Intl` does not, so a date asked for with one would quietly fall back to the system's.
  */
 export const UI_LANGUAGES = [
-  { code: 'enUS', name: 'English', bcp47: 'en-US' },
-  { code: 'zhCN', name: '中文', bcp47: 'zh-CN' }
+  { code: 'enUS', bcp47: 'en-US' },
+  { code: 'zhCN', bcp47: 'zh-CN' }
 ] as const
 
 export type UiLanguage = (typeof UI_LANGUAGES)[number]['code']

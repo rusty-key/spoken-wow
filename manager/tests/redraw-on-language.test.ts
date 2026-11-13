@@ -6,8 +6,6 @@ import { DEFAULT_SETTINGS } from '../src/shared/types'
 
 afterEach(() => setUiLanguage('enUS'))
 
-const start = () => initial
-
 /**
  * The window has no React test renderer here, so this checks the link the redraw hangs on: the
  * reducer swaps `S`'s words and returns a new state object, which is what makes React draw again.
@@ -18,7 +16,7 @@ describe('a settings change redraws the window in the new language', () => {
     const before = S.tabs.home
     expect(before).toBe('Home')
 
-    const next = reducer(start(), { type: 'settings', settings: { ...DEFAULT_SETTINGS, uiLanguage: 'zhCN' } })
+    const next = reducer(initial, { type: 'settings', settings: { ...DEFAULT_SETTINGS, uiLanguage: 'zhCN' } })
 
     // The same object every component holds now says Chinese.
     expect(S.tabs.home).toBe(S_ZH.tabs.home)
@@ -28,7 +26,7 @@ describe('a settings change redraws the window in the new language', () => {
   })
 
   it('an unchanged language leaves the words alone', () => {
-    reducer(start(), { type: 'settings', settings: { ...DEFAULT_SETTINGS, uiLanguage: 'enUS' } })
+    reducer(initial, { type: 'settings', settings: { ...DEFAULT_SETTINGS, uiLanguage: 'enUS' } })
     expect(S.tabs.home).toBe('Home')
   })
 
@@ -43,7 +41,7 @@ describe('a settings change redraws the window in the new language', () => {
       platform: 'win32' as const,
       dataPath: ''
     }
-    const next = reducer(start(), { type: 'init', snap, statuses: {}, page: 'home', gameId: '' })
+    const next = reducer(initial, { type: 'init', snap, statuses: {}, page: 'home', gameId: '' })
     expect(next.ready).toBe(true)
     expect(S.tabs.home).toBe(S_ZH.tabs.home)
   })

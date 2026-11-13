@@ -1,20 +1,23 @@
 // Every word the window shows, in Simplified Chinese. Same shape as `strings.en.ts`; a key that
 // file has must be here too, or the window shows nothing where it should show words.
-import { FLAVOR_FOLDER_LIST, type Section } from '@shared/types'
+import { FLAVOR_FOLDER_LIST, type Section, type Snapshot } from '@shared/types'
+import type { Dict } from './strings'
+
+type Platform = Snapshot['platform']
 
 /** What the system calls its file browser, for text that says where a folder opens. */
-function fileManager(platform: 'win32' | 'darwin' | 'linux'): string {
+function fileManager(platform: Platform): string {
   return platform === 'darwin' ? '访达' : platform === 'linux' ? '文件管理器' : '资源管理器'
 }
 
 /** Where the game usually lives, for the help text of the empty state. */
-function gameFolderExample(platform: 'win32' | 'darwin' | 'linux'): string {
+function gameFolderExample(platform: Platform): string {
   if (platform === 'darwin') return '/Applications/World of Warcraft'
   if (platform === 'linux') return 'Wine 前缀或 Lutris/Bottles 游戏目录里的 World of Warcraft 文件夹'
   return '游戏目录（例如 C:\\Program Files (x86)\\World of Warcraft）'
 }
 
-export const S_ZH = {
+export const S_ZH: Dict = {
   appName: 'Spoken 管理器',
   tabs: { main: '主导航', home: '游戏', spoken: 'Spoken', voices: '语音包', community: '社区', release: '发布', settings: '设置' },
   refresh: {
@@ -51,13 +54,13 @@ export const S_ZH = {
     game: '游戏',
     version: '版本',
     readOnly: '此文件夹对你的账户是只读的。',
-    showIn: (platform: 'win32' | 'darwin' | 'linux') => `在${fileManager(platform)}中显示`
+    showIn: (platform: Platform) => `在${fileManager(platform)}中显示`
   },
   window: { minimize: '最小化', maximize: '最大化', restore: '还原', close: '关闭' },
   strip: { add: '添加游戏目录', missing: (label: string) => `这台电脑上没有安装 ${label}` },
   empty: {
     title: '没有找到 Spoken 可用的游戏',
-    text: (platform: 'win32' | 'darwin' | 'linux') =>
+    text: (platform: Platform) =>
       `Spoken 可在《魔兽世界》正式服（Forever）、经典旧世和周年纪念版上运行。请添加游戏的安装目录：${gameFolderExample(platform)}、${FLAVOR_FOLDER_LIST} 文件夹，或 AddOns 文件夹。`,
     add: '添加游戏目录',
     scan: '重新扫描',
