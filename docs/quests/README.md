@@ -1878,7 +1878,9 @@ window's title and words in `SpokenQuestsSettings.global.CompendiumText[locale][
 over the English. An English client keeps progress text because the shipped corpus has no progress
 text; its accept and complete words are already included. The player's name, class and race go back
 to `$N`, `$C` and `$R` where the English has them, so another character sees its own. A text kept by
-a character of the other sex is not shown where the English has a `$G`.
+a character of the other sex is not shown where the English has a `$G`. Progress text without a
+shipped template also records the capturing character's name and sex, and is shown only to that
+same character; accept and complete text remains shareable after its placeholders are generalized.
 
 ## Tests
 

@@ -134,7 +134,7 @@ end
 -- Whether a voice pack has a part of a quest, as its page's Play finds one.
 local AnyVoiced
 
--- The words and titles kept in this client's language, by quest: { title, accept/progress/complete = { text, sex } ... }.
+-- The words and titles kept in this client's language, by quest: { title, accept/progress/complete = { text, sex, name? } ... }.
 -- An English client keeps only progress, which has no shipped English text; its accept and complete
 -- words are already in the addon.
 local function Kept(moment, create)
@@ -938,6 +938,10 @@ local function Sex()
     return UnitSex and UnitSex("player") or 2
 end
 
+local function PlayerName()
+    return UnitName and VO.NotSecret(UnitName("player")) or nil
+end
+
 local function Plain(text)
     return (text:gsub("[%^%$%(%)%%%.%[%]%*%+%-%?]", "%%%0"))
 end
@@ -974,7 +978,10 @@ local function Stored(id, moment)
     kept = kept and kept[id]
     local own = kept and kept[moment]
     local text = english[moment]
-    if type(own) == "table" and own.text and not (own.sex ~= Sex() and (text or ""):find("%$[Gg]")) then
+    local personalProgress = moment == "progress" and (type(text) ~= "string" or text == "")
+    local sameCharacter = not personalProgress or (own and own.name == PlayerName() and own.sex == Sex())
+    if type(own) == "table" and own.text and sameCharacter
+        and not (own.sex ~= Sex() and (text or ""):find("%$[Gg]")) then
         text = own.text
     end
     if text and text ~= "" then return text end
@@ -1010,7 +1017,12 @@ function QuestsTab:Keep(moment, text, title)
         titles[id] = title
     end
     if type(text) == "string" and text ~= "" then
-        kept[id][moment] = { text = Generalise(text, English(id)[moment]), sex = Sex() }
+        local english = English(id)
+        local record = { text = Generalise(text, english[moment]), sex = Sex() }
+        if moment == "progress" and (type(english.progress) ~= "string" or english.progress == "") then
+            record.name = PlayerName()
+        end
+        kept[id][moment] = record
     end
 end
 

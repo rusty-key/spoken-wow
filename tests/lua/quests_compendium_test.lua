@@ -1407,6 +1407,23 @@ Expect("...another character's name where the player's was", (PageWords() or "")
 stub.world.playerName = "Tester"
 local kept = VO.Addon.db.global.CompendiumText
 Expect("...kept by language", kept.deDE[KOBOLDS] ~= nil and kept.enUS == nil, true)
+stub.world.questID = CANDLES
+stub.world.title = "Koboldkerzen"
+stub.world.progressText = "Tester, habt Ihr die Kerzen schon gesammelt?"
+stub.FireEvent("QUEST_PROGRESS")
+stub.world.questID = 0
+Tab:Refresh()
+Click("Koboldkerzen")
+Expect("progress text is shown for the character who captured it",
+    (PageWords() or ""):find("Tester, habt Ihr die Kerzen schon gesammelt?", 1, true) ~= nil, true)
+Expect("...and keeps that character's name and sex",
+    kept.deDE[CANDLES].progress.name == "Tester" and kept.deDE[CANDLES].progress.sex == 2, true)
+stub.world.playerName = "Zweite"
+Tab:Refresh()
+Expect("progress text is hidden for another character",
+    (PageWords() or ""):find("Tester, habt Ihr die Kerzen schon gesammelt?", 1, true) == nil, true)
+stub.world.playerName = "Tester"
+stub.world.progressText = ""
 -- A window whose id, title and words the game hands over as secrets keeps nothing.
 stub.world.questID = JENNEA
 stub.world.title = "Versiegelte Befehle"
