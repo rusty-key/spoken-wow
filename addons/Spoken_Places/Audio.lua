@@ -442,6 +442,15 @@ function SpokenPlaces:GetPackLanguage()
 	return pack and pack.language or self:GetLanguage()
 end
 
+--- The .toc Version of the pack narration plays from, or "none" with no pack: what a report
+--- says the player was hearing, so the site can tell them a newer pack is out.
+function SpokenPlaces:GetPackVersion()
+	local pack = self:GetActiveAudioPack()
+	local metadata = (C_AddOns and C_AddOns.GetAddOnMetadata) or GetAddOnMetadata
+	local version = pack and pack.addon and metadata and metadata(pack.addon, "Version")
+	return type(version) == "string" and version ~= "" and version or "none"
+end
+
 -- The button the player shows under a lore clip: this addon's own Report, told which
 -- entry it now stands beside. There is no Read button. The text is reached from the map,
 -- the minimap menu and /spp, and a button on the player that opened a window over the very

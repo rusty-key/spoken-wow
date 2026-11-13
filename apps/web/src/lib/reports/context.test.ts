@@ -2,7 +2,7 @@ import { readFileSync } from "node:fs";
 
 import { describe, expect, it } from "vitest";
 
-import { addonVersion, contextFacts, contextFrom, isOlder } from "./context";
+import { addonVersion, contextFacts, contextFrom, isOlder, lineNews, outdatedPack, packName, packVersion, questPart } from "./context";
 
 const fixture = (name: string) =>
   readFileSync(new URL(`../../../../../tests/fixtures/contributions/${name}`, import.meta.url), "utf8");
@@ -26,6 +26,113 @@ describe("addonVersion", () => {
     expect(addonVersion({ fields: { addon: "SpokenQuests/3.4.0" }, text: null })).toBe("3.4.0");
     expect(addonVersion({ fields: { addon: "SpokenBooks/3.0.0-beta.2" }, text: null })).toBe("3.0.0-beta.2");
     expect(addonVersion({ fields: { addon: "SpokenZones/dev" }, text: null })).toBeNull();
+  });
+});
+
+describe("outdatedPack", () => {
+  const heard = (pack: string, packVersion?: string) => ({
+    fields: { pack, ...(packVersion ? { packVersion } : {}) },
+    text: null,
+  });
+
+  it("names the newer release of the pack language the player was hearing", () => {
+    expect(outdatedPack(heard("deDE", "1.2.0"), { deDE: [{ version: "1.10.0", at: "2026-11-10T00:00:00Z" }, { version: "1.2.0", at: "2026-11-01T00:00:00Z" }], enUS: [{ version: "1.0.0", at: "2026-11-01T00:00:00Z" }] })).toEqual({
+      version: "1.2.0",
+      latest: "1.10.0",
+    });
+  });
+
+  it("is nothing for a current pack, no pack, an older addon or a language never released", () => {
+    expect(outdatedPack(heard("deDE", "1.10.0"), { deDE: [{ version: "1.10.0", at: "2026-11-10T00:00:00Z" }] })).toBeNull();
+    expect(outdatedPack(heard("deDE", "none"), { deDE: [{ version: "1.10.0", at: "2026-11-10T00:00:00Z" }] })).toBeNull();
+    expect(outdatedPack(heard("deDE"), { deDE: [{ version: "1.10.0", at: "2026-11-10T00:00:00Z" }] })).toBeNull();
+    expect(outdatedPack(heard("frFR", "1.0.0"), { deDE: [{ version: "1.10.0", at: "2026-11-10T00:00:00Z" }] })).toBeNull();
+    expect(outdatedPack(heard("deDE", "1.0.0"), undefined)).toBeNull();
+  });
+});
+
+describe("packName", () => {
+  it("names the pack as its store page does", () => {
+    expect(packName("quests", "enUS")).toBe("Spoken Audio: Quests");
+    expect(packName("places", "deDE")).toBe("Spoken German Audio: Places");
+    expect(packName("readables", "esMX")).toBe("Spoken Spanish (AL) Audio: Readables");
+  });
+});
+
+describe("the line's folder", () => {
+  const sent = (fields: Record<string, string>) => ({ fields, text: null });
+
+  it("is the quests part its folder names, in any language, and none for the old single folder", () => {
+    expect(questPart(sent({ packFolder: "SpokenQuestsAudioHorde" }))).toBe("Horde");
+    expect(questPart(sent({ packFolder: "SpokenQuestsAudioGossip_deDE" }))).toBe("Gossip");
+    expect(questPart(sent({ packFolder: "SpokenQuestsAudio_deDE" }))).toBeNull();
+    expect(questPart(sent({}))).toBeNull();
+  });
+
+  it("gives its version before the language's newest", () => {
+    expect(packVersion(sent({ packVersion: "1.3.0", packFolderVersion: "1.1.0" }))).toBe("1.1.0");
+    expect(packVersion(sent({ packVersion: "1.3.0", packFolderVersion: "none" }))).toBe("1.3.0");
+  });
+
+  it("names the pack as its store page does", () => {
+    expect(packName("quests", "enUS", "Horde")).toBe("Spoken Audio: Quests - Horde");
+    expect(packName("quests", "deDE", "Gossip")).toBe("Spoken German Audio: Gossip");
+    expect(packName("places", "deDE", "Horde")).toBe("Spoken German Audio: Places");
+  });
+});
+
+describe("lineNews", () => {
+  const releases = [
+    { version: "1.3.0", at: "2026-11-10T00:00:00Z" },
+    { version: "1.2.0", at: "2026-11-05T00:00:00Z" },
+    { version: "1.1.0", at: "2026-11-01T00:00:00Z" },
+  ];
+  const heard = (packVersion?: string) => ({ fields: { pack: "enUS", ...(packVersion ? { packVersion } : {}) }, text: null });
+
+  it("finds a take recorded after the player's pack in the release that followed it", () => {
+    expect(lineNews(heard("1.1.0"), releases, "2026-11-03T00:00:00Z")).toEqual({
+      version: "1.1.0",
+      exact: false,
+      latest: "1.3.0",
+      recordedAt: "2026-11-03T00:00:00Z",
+      shipsIn: "1.2.0",
+      inYours: false,
+    });
+  });
+
+  it("knows a take in the player's pack, and one in no release yet", () => {
+    expect(lineNews(heard("1.2.0"), releases, "2026-11-03T00:00:00Z")).toMatchObject({ shipsIn: "1.2.0", inYours: true });
+    expect(lineNews(heard("1.3.0"), releases, "2026-11-12T00:00:00Z")).toMatchObject({
+      latest: null,
+      shipsIn: null,
+      inYours: false,
+    });
+  });
+
+  it("with the line's folder named, weighs that folder's version and names the release carrying the take", () => {
+    const folder = (packFolderVersion: string) => ({
+      fields: { pack: "enUS", packVersion: "1.3.0", packFolder: "SpokenQuestsAudioHorde", packFolderVersion },
+      text: null,
+    });
+    expect(lineNews(folder("1.1.0"), releases, "2026-11-03T00:00:00Z")).toMatchObject({
+      version: "1.1.0",
+      exact: true,
+      latest: "1.2.0",
+      inYours: false,
+    });
+    // 1.3.0 left the Horde folder alone: its 1.2.0 is the newest it has.
+    expect(lineNews(folder("1.2.0"), releases, "2026-11-03T00:00:00Z")).toMatchObject({ latest: null, inYours: true });
+  });
+
+  it("cannot place a take older than every release in a pack older than all of them", () => {
+    expect(lineNews(heard("1.0.0"), releases, "2026-10-01T00:00:00Z")).toMatchObject({ shipsIn: "1.1.0", inYours: null });
+    expect(lineNews(heard("1.1.0"), releases, "2026-10-01T00:00:00Z")).toMatchObject({ inYours: true });
+  });
+
+  it("says nothing of the pack without a version or releases, and nothing at all without a take", () => {
+    expect(lineNews(heard(), releases, "2026-11-03T00:00:00Z")).toMatchObject({ version: null, inYours: null });
+    expect(lineNews(heard("1.1.0"), undefined, "2026-11-03T00:00:00Z")).toMatchObject({ latest: null, shipsIn: null, inYours: null });
+    expect(lineNews(heard("1.1.0"), releases, null)).toBeNull();
   });
 });
 

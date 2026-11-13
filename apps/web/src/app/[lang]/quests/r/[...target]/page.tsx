@@ -18,10 +18,11 @@ import type { Metadata } from "next";
 import Link from "@/components/LocaleLink";
 
 import ReportForm from "@/components/ReportForm";
+import { packReleases } from "@/lib/releases/store";
 import ListenFirst from "@/components/reports/ListenFirst";
 import { audioRelPath } from "@/lib/audio";
 import { formatTarget, parseTarget, resolveTarget } from "@/lib/reports/target";
-import { liveVersion } from "@/lib/takes/store";
+import { liveTake } from "@/lib/takes/store";
 import { Contained } from "@/components/Width";
 
 export const metadata: Metadata = { title: "Report a voice line · VoiceOver" };
@@ -74,7 +75,11 @@ export default async function ReportPage({
     (choices.length === 1 ? choices[0] : null);
   // Which take is live, to bust the audio cache: without it someone returning to hear a fix
   // hears the browser's copy of the very clip they complained about, and reports it again.
-  const version = line ? await liveVersion("quests", audioRelPath(line), lang) : null;
+  const [take, releases] = await Promise.all([
+    line ? liveTake("quests", audioRelPath(line), lang) : null,
+    packReleases("quests"),
+  ]);
+  const version = take?.version ?? null;
 
   return (
     <main className="pt-6 pb-24">
@@ -84,7 +89,7 @@ export default async function ReportPage({
           You came here from the game. Tell us what sounded wrong and someone will listen to it.
         </p>
 
-        {line && version !== null ? <ListenFirst className="mb-4" /> : null}
+        {line && version !== null ? <ListenFirst className="mb-4" source="quests" recordedAt={take?.createdAt} releases={releases} /> : null}
 
         {line ? (
           <section className="mb-6 rounded border p-4">

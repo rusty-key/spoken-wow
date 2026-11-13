@@ -9,7 +9,7 @@ import BrandIcon from "@/components/landing/BrandIcon";
 import Gallery from "@/components/landing/Gallery";
 import HeroLine from "@/components/landing/HeroLine";
 import InstallTabs, { type InstallLanguage, type InstallLink, type InstallRow } from "@/components/landing/InstallTabs";
-import { CURSEFORGE, GITHUB, WAGO } from "@/components/landing/links";
+import { CURSEFORGE, GITHUB, MANAGER_URL, RELEASES, WAGO, githubReleases } from "@/components/landing/links";
 import LoginPanel from "@/components/landing/LoginPanel";
 import ManagerWindow from "@/components/landing/ManagerWindow";
 import NavMenu from "@/components/landing/NavMenu";
@@ -19,7 +19,7 @@ import Showcase from "@/components/landing/Showcase";
 import { DISCORD_INVITE as DISCORD } from "@/lib/discord";
 import { LOCALES, type Lang } from "@/lib/lang";
 import { pageLang } from "@/lib/lang-server";
-import { packFor, type Section } from "@/lib/packs";
+import { packDownloads, packFor, type Section } from "@/lib/packs";
 import "@/components/landing/landing.css";
 
 export const metadata: Metadata = {
@@ -28,8 +28,6 @@ export const metadata: Metadata = {
     "Spoken reads quest dialogue, NPC greetings, zone lore and in-world books aloud in WoW: Forever and Classic Era. Install it with the Spoken Manager, CurseForge or by hand.",
 };
 
-const RELEASES = `${GITHUB}/releases`;
-const MANAGER_URL = `${RELEASES}/tag/manager-latest`;
 const MANAGER_FILES = `${RELEASES}/download/manager-latest/Spoken-Manager`;
 const MANAGER_DOWNLOADS = {
   windows: `${MANAGER_FILES}-Setup.exe`,
@@ -53,7 +51,7 @@ const META: Partial<Record<Lang, string>> = {
   zhTW: "spoken-chinese-traditional",
 };
 
-const github = (release: string) => `${RELEASES}?q=${encodeURIComponent(release)}`;
+const github = githubReleases;
 
 const SECTIONS: { section: Section; name: string; note: string }[] = [
   { section: "quests", name: "Quests and Gossip", note: "Quest dialogue and what NPCs say" },
@@ -76,15 +74,7 @@ function installRows(lang: Lang): InstallRow[] {
   ];
   for (const { section, name, note } of SECTIONS) {
     const pack = packFor(section, lang);
-    const links: InstallLink[] = [];
-    if (pack?.split) {
-      for (const part of pack.split) {
-        links.push({ label: `CurseForge: ${part.label}`, href: `${CURSEFORGE}/${part.slug}` });
-      }
-    } else if (pack?.curseforge) {
-      links.push({ label: "CurseForge", href: `${CURSEFORGE}/${pack.curseforge}` });
-    }
-    if (pack) links.push({ label: pack.split ? "GitHub: all" : "GitHub", href: github(pack.release) });
+    const links: InstallLink[] = pack ? packDownloads(pack) : [];
     rows.push({ name: `${name} voices`, note, links });
   }
   return rows;

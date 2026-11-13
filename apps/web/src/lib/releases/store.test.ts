@@ -4,7 +4,16 @@ import { closeDb, db } from "@/lib/db";
 import { forgetTeams } from "@/lib/teams/store";
 import { asSystem, ownTeam, unowned, systemRows, testUser } from "@/lib/teams/testing";
 
-import { ReleaseBusyError, activeRun, lastDoneRuns, lastReleasedAt, recentRuns, startRun, updateRun } from "./store";
+import {
+  ReleaseBusyError,
+  activeRun,
+  lastDoneRuns,
+  lastReleasedAt,
+  packReleases,
+  recentRuns,
+  startRun,
+  updateRun,
+} from "./store";
 
 // Only this file touches release_run, and vitest.config runs files one at a time, so the
 // one-active index cannot be tripped by another suite.
@@ -57,6 +66,24 @@ describe("release runs", () => {
     }
     const runs = await lastDoneRuns("deDE");
     expect(runs.map((run) => [run.section, run.version])).toEqual([["bosses", "1.0.0"]]);
+  });
+
+  it("lists each language's released pack versions newest first, across teams", async () => {
+    const run = async (section: string, lang: "frFR" | "deDE", patch: Parameters<typeof updateRun>[1]) =>
+      updateRun((await startRun(section, lang, user.id)).id, patch);
+    await run("quests", "frFR", { state: "done", version: "1.2.0" });
+    await run("quests", "frFR", { state: "done", version: "1.3.0" });
+    await run("quests", "frFR", { state: "unchanged" });
+    await run("quests", "frFR", { state: "failed", error: "no" });
+    await run("quests", "deDE", { state: "done", version: "2.0.1" });
+    await run("places", "deDE", { state: "done", version: "9.0.0" });
+    const releases = await packReleases("quests");
+    expect(Object.fromEntries(Object.entries(releases).map(([lang, list]) => [lang, list.map((r) => r.version)]))).toEqual({
+      frFR: ["1.3.0", "1.2.0"],
+      deDE: ["2.0.1"],
+    });
+    expect(Date.parse(releases.frFR[0].at)).toBeGreaterThan(Date.parse(releases.frFR[1].at));
+    expect(await packReleases("readables")).toEqual({});
   });
 
   it("counts a section as released from a run that released or found nothing, not one that failed", async () => {
