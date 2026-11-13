@@ -259,6 +259,11 @@ export function describe(row: ActivityRow): { what: string; quote: string | null
       };
     case "invite.resent":
       return { what: `sent the invite to ${str(d.email) ?? "someone"} again`, quote: null };
+    case "invite.accepted":
+      return {
+        what: `accepted the invite as ${(Array.isArray(d.capabilities) ? d.capabilities : []).map(grantName).join(", ")}`,
+        quote: null,
+      };
     case "invite.revoked":
       return { what: `revoked the invite to ${str(d.email) ?? "someone"}`, quote: null };
     case "language.toggled":

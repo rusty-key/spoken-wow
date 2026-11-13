@@ -8,12 +8,14 @@ import "server-only";
 
 import { createHash, randomBytes } from "node:crypto";
 
-import type { PoolClient } from "pg";
+import type { ClientBase, PoolClient } from "pg";
 
 import { recordActivity } from "@/lib/activity/store";
 import { actAs, ALL_TEAMS, inTransaction, query } from "@/lib/db";
-import type { Lang } from "@/lib/lang";
-import { isCapability, type Capability } from "@/lib/permissions";
+import { addGrants, viewerById } from "@/lib/grants/store";
+import { isLang, type Lang } from "@/lib/lang";
+import { textByTeam } from "@/lib/languages/store";
+import { canGrant, isCapability, type Capability } from "@/lib/permissions";
 
 export const INVITE_DAYS = 14;
 export const INVITES_PER_DAY = 20;
@@ -253,4 +255,67 @@ export async function lookupInvite(token: string): Promise<InviteLookup | null> 
     inviterName: row.invitedByName,
     state: row.acceptedAt ? "accepted" : row.revokedAt ? "revoked" : row.expiresAt.getTime() <= Date.now() ? "expired" : "pending",
   };
+}
+
+export type AcceptOutcome =
+  | { ok: true; lang: string; capabilities: Capability[] }
+  | {
+      ok: false;
+      reason: "unknown" | "expired" | "revoked" | "accepted" | "wrong-email" | "inviter-cannot-grant";
+      email?: string;
+      inviterName?: string | null;
+      capability?: Capability;
+    };
+
+class NotClaimed extends Error {}
+
+/**
+ * Give `user` what the invite names, as the inviter, once. The inviter is checked again here
+ * with `canGrant`, all or none: if they may no longer give every capability, nothing is given
+ * and the invite stays pending. The invite is claimed in the same transaction as the grants,
+ * so two presses give them once.
+ */
+export async function acceptInvite(token: string, user: { id: string; email: string }): Promise<AcceptOutcome> {
+  const found = await query<Row & { acceptedAt: Date | null; revokedAt: Date | null }>(
+    `select ${COLUMNS}, i."acceptedAt", i."revokedAt"
+       from "invite" i join "user" u on u."id" = i."invitedBy" where i."tokenHash" = $1`,
+    [hashOf(token)],
+  );
+  const row = found[0];
+  if (!row) return { ok: false, reason: "unknown" };
+  const invite = toInvite(row);
+  if (row.acceptedAt) return { ok: false, reason: "accepted" };
+  if (row.revokedAt) return { ok: false, reason: "revoked" };
+  if (invite.expired) return { ok: false, reason: "expired" };
+  if (normalEmail(user.email) !== invite.email) return { ok: false, reason: "wrong-email", email: invite.email };
+
+  const { lang, capabilities } = invite;
+  const inviterName = invite.invitedByName;
+  const viewer = await viewerById(invite.invitedById);
+  const byTeam = isLang(lang) ? await textByTeam(lang) : false;
+  const refused = viewer && isLang(lang) ? capabilities.find((c) => !canGrant(viewer, c, lang, byTeam)) : capabilities[0];
+  if (refused) return { ok: false, reason: "inviter-cannot-grant", inviterName, capability: refused };
+
+  const claim = async (client: ClientBase) => {
+    await actAs(client, ALL_TEAMS);
+    const { rowCount } = await client.query(
+      `update "invite" set "acceptedAt" = now(), "acceptedBy" = $2
+        where "id" = $1 and "acceptedAt" is null and "revokedAt" is null and "expiresAt" > now()`,
+      [invite.id, user.id],
+    );
+    if (!rowCount) throw new NotClaimed();
+    await recordActivity(
+      { kind: "invite.accepted", lang: lang as Lang, subject: invite.id, actorId: user.id, detail: { email: invite.email, capabilities } },
+      client,
+    );
+  };
+  try {
+    await addGrants(user.id, lang, capabilities, invite.invitedById, claim);
+  } catch (error) {
+    if (!(error instanceof NotClaimed)) throw error;
+    // Somebody else's press, a revoke or the clock got there first: say which.
+    const state = (await lookupInvite(token))?.state;
+    return { ok: false, reason: state === "revoked" || state === "expired" ? state : "accepted" };
+  }
+  return { ok: true, lang, capabilities };
 }
