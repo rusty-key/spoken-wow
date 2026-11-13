@@ -34,7 +34,7 @@ type Row = {
 
 /**
  * A row as a language. name, native, bcp47 and provider are null on a row an older release
- * wrote (migration 0106 keeps them nullable), so each falls back to what the code implies.
+ * wrote (migration 0107 keeps them nullable), so each falls back to what the code implies.
  */
 function describe(row: Row): LanguageInfo {
   const name = row.name ?? row.code;

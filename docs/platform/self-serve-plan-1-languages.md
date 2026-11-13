@@ -20,7 +20,7 @@
 
 ## Global Constraints
 
-- Migrations: plain SQL, next number `0106`, applied by `deploy/web/bin/migrate.sh`, one transaction each, additive. A release must run against the schema of the release after it.
+- Migrations: plain SQL, next number `0107`, applied by `deploy/web/bin/migrate.sh`, one transaction each, additive. A release must run against the schema of the release after it.
 - Language code: `^[a-z]{2}[A-Z]{2}$` (existing check on `language.code`, `team_language.lang`).
 - Provider language code: ISO 639-1, `^[a-z]{2}$`, sent as ElevenLabs `language_code`.
 - English (`enUS`) is always on and is what a bare URL means.
@@ -41,7 +41,7 @@
 ### Task 1: The `language` table describes a language
 
 **Files:**
-- Create: `apps/web/migrations/0106_language_catalogue.sql`
+- Create: `apps/web/migrations/0107_language_catalogue.sql`
 - Test: `apps/web/src/lib/languages/seed.test.ts`
 
 **Interfaces:**
@@ -49,7 +49,7 @@
 
 - [ ] **Step 1: Write the failing test** `seed.test.ts`: for every entry of `LOCALES` from `@tools/lib/locales.mjs`, `select … from "language" where "code" = $1` returns `{ name, bcp47, provider: elevenLabs, client: client !== false }`, and `native` is non-empty. The native names to seed: English, Deutsch, Español (EU), Español (AL), Français, Italiano, Polski, Português, Русский, 한국어, 简体中文, 繁體中文, Tiếng Việt.
 - [ ] **Step 2: Run it.** `pnpm --dir apps/web vitest run src/lib/languages/seed.test.ts`. Expected: FAIL, `column "name" does not exist`.
-- [ ] **Step 3: Write the migration.** Add the columns nullable, upsert the thirteen rows (`on conflict ("code") do update` of the descriptive columns only), leaving name, native, bcp47 and provider nullable until a later migration tightens them (rollback safety for a pre-0106 release). The trigger function is `plpgsql`, `perform pg_notify('spoken_language', coalesce(new."code", old."code"))`.
+- [ ] **Step 3: Write the migration.** Add the columns nullable, upsert the thirteen rows (`on conflict ("code") do update` of the descriptive columns only), leaving name, native, bcp47 and provider nullable until a later migration tightens them (rollback safety for a pre-0107 release). The trigger function is `plpgsql`, `perform pg_notify('spoken_language', coalesce(new."code", old."code"))`.
 - [ ] **Step 4: Apply and run.** `deploy/web/bin/migrate.sh $PWD/apps/web` against `spoken_ci_pin`, then the test. Expected: PASS.
 - [ ] **Step 5: Commit.** `feat(languages): describe languages in the language table`
 
