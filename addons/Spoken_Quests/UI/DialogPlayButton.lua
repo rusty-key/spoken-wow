@@ -122,8 +122,7 @@ function DialogPlayButton:Refresh()
     self.line = nil
 
     local line, event = Addon:GetVisibleLine()
-    -- Nothing reads itself with Read Automatically off, nor the progress page with Read Quest
-    -- Progress Text off, and no NPC window does at Never.
+    -- Shown only where the page does not read itself, so the player can still play it.
     local held = not Addon:ReadsItself(event) or (event and Addon:PartOfPage(event) == "gossip" and Addon:IsNever())
     -- The panel itself, not merely the event: under DialogueUI the event arrives and the
     -- panel never shows. Switched off, the window's part puts no button on it.

@@ -54,8 +54,7 @@ def spawn_key(entity_type: str, entity_id) -> str:
 def _skip_reason(row):
     """Why the generator would not synthesize this row, or None.
 
-    Unresolved template tokens would be read aloud. Progress text is voiced like any other
-    line; whether a pack ships it is a separate decision.
+    Unresolved template tokens would be read aloud.
 
     A line in a model voice (flavors.model_voice) has nobody to speak it yet: which voice a
     model gets is still to be chosen, so the line is gathered - it has a line id, a file name

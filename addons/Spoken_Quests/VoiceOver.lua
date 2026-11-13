@@ -353,8 +353,7 @@ function Addon:IsAutoplayOn()
     return self.db.profile.Audio.Autoplay ~= false
 end
 
---- Whether this dialog reads itself: autoplay is on, and for the progress page, Read Quest
---- Progress Text too. Off, the page is left to its Play button.
+--- Autoplay on, and for the progress page Read Quest Progress Text too.
 function Addon:ReadsItself(event)
     return self:IsAutoplayOn() and (event ~= "QUEST_PROGRESS" or self.db.profile.Audio.ProgressText ~= false)
 end
@@ -469,8 +468,7 @@ local defaults = {
             -- What NPCs say in chat after this player accepts or turns in a quest
             -- (Followup.lua). Autoplay off silences these too: they read themselves.
             FollowupLines = true,
-            -- Off, the progress page (QUEST_PROGRESS) does not read itself; its Play button
-            -- and /spq read still play it (ReadsItself).
+            -- Off, the progress page does not read itself; its Play button and /spq read still play it.
             ProgressText = true,
             -- Follow the client, and fall back on English. Every pack that exists today
             -- is English and declares no language, so an English-speaking player with the
@@ -815,7 +813,7 @@ function Addon:OnInitialize()
             return
         end
 
-        -- A page that does not read itself is done with, once, or the watcher would ask again every poll.
+        -- Finished once, or the watcher would ask again every poll.
         if not self:ReadsItself(event) then
             if key ~= state.completedKey then
                 FinishPage(state, key, event, questID)

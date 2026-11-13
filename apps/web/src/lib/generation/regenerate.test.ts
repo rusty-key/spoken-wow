@@ -35,7 +35,6 @@ const SOLO = "q:5:accept";
 const SHARED = "q:109:accept";
 /** A dwarf line: "Hiccup! Ho Ho!", spoken by Grimand Elmore. The race with an accent tag. */
 const DWARF = "q:48:complete";
-/** Progress text, voiced like any other line. */
 const PROGRESS = "q:6:progress";
 /** A whole line of stage direction: "<Sirra begins translating…>". The narrator reads it. */
 const STAGE_DIRECTION = "q:251:complete";

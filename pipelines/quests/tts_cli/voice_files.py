@@ -20,9 +20,6 @@ from tts_cli.naming import (moment_of, subfolder_from_line_id, variant_file_name
                             variant_line_id)
 from tts_cli.npc_bodies import body_name, sex_bodies
 
-#: Every line an NPC speaks is in its own voice. A quest moment's giver is found through QuestFileLookupBy*; a greeting's speaker and
-#: a follow-up's are looked up per NPC already, so their tables simply name its own file.
-
 
 def npc_voices(corpus: dict) -> dict:
     """(npcType, npcId) -> the voice the NPC's answer names, for every NPC with one."""

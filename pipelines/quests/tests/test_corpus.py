@@ -24,7 +24,6 @@ ROWS = [
      "player_gender": None, "cleanedText": "Hello there.",
      "text": "Hello there.", "original_text": "Hello there.",
      "templateText_race_gender_hash": "deadbeef"},
-    # progress text, voiced like any other line
     {"quest": "7", "source": "progress", "quest_title": "Growling Gut", "name": "Jitters",
      "type": "creature", "id": 288, "race": "human", "gender": "male",
      "voice_name": "human-male-standard", "flavor": "standard",
