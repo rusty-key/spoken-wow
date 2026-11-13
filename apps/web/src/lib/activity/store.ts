@@ -143,9 +143,11 @@ export type ActivityFilter = {
 };
 
 /**
- * Kinds of every language's that only a global admin reads: account events, and community
- * packs, whose moderation page a team admin cannot open. A team admin shown them would read
- * rejection reasons and owner hand-overs that are not theirs, and follow links that 404.
+ * Kinds of every language's that only a global admin reads: account events, community packs,
+ * whose moderation page a team admin cannot open, and team requests, which are logged without a
+ * language and must not leak a pending request into a language team's log. A team admin shown
+ * them would read rejection reasons and owner hand-overs that are not theirs, and follow links
+ * that 404.
  */
 const GLOBAL_ONLY_PREFIXES = ["user.", "pack.", "request."];
 

@@ -39,9 +39,6 @@ function people(team: TeamSummary): Person[] {
   return [...byUser.values()];
 }
 
-/** The select's last choice: not a language, but a way to name one the site lacks. */
-const NEW_LANGUAGE = "new" as Lang;
-
 const liveTakes = (count: number) => `${count} live take${count === 1 ? "" : "s"}`;
 
 export default function TeamsTable({ initial, takes, languages }: Props) {
@@ -50,6 +47,7 @@ export default function TeamsTable({ initial, takes, languages }: Props) {
   const [busy, setBusy] = useState(false);
   const [names, setNames] = useState(() => Object.fromEntries(initial.map((team) => [team.id, team.name])));
   const [form, setForm] = useState({ slug: "", name: "", adminEmail: "", langs: [] as Lang[] });
+  const [newLanguage, setNewLanguage] = useState(false);
   const [fresh, setFresh] = useState<NewLanguage>({ code: "", name: "", native: "" });
   const [moving, setMoving] = useState<{ lang: Lang; target: TeamSummary } | null>(null);
 
@@ -80,8 +78,6 @@ export default function TeamsTable({ initial, takes, languages }: Props) {
     void run(() => send(`/api/teams/${target.id}/languages`, "PUT", { lang }));
   }
 
-  const newLanguage = form.langs.includes(NEW_LANGUAGE);
-
   async function create(event: React.FormEvent) {
     event.preventDefault();
     await run(async () => {
@@ -96,6 +92,7 @@ export default function TeamsTable({ initial, takes, languages }: Props) {
       if (result.ok) {
         setForm({ slug: "", name: "", adminEmail: "", langs: [] });
         setFresh({ code: "", name: "", native: "" });
+        setNewLanguage(false);
       }
       return result;
     });
@@ -199,6 +196,7 @@ export default function TeamsTable({ initial, takes, languages }: Props) {
         <select
           multiple
           aria-label="Languages"
+          disabled={newLanguage}
           className="border-input bg-background h-40 rounded-md border px-2 py-1 text-sm"
           value={form.langs}
           onChange={(event) =>
@@ -210,8 +208,11 @@ export default function TeamsTable({ initial, takes, languages }: Props) {
               {language.name} ({language.code})
             </option>
           ))}
-          <option value={NEW_LANGUAGE}>New language…</option>
         </select>
+        <label className="flex items-center gap-2 text-sm">
+          <input type="checkbox" checked={newLanguage} onChange={(event) => setNewLanguage(event.target.checked)} />
+          New language…
+        </label>
         {newLanguage && <NewLanguageFields value={fresh} onChange={setFresh} />}
         <Input
           aria-label="Admin email"

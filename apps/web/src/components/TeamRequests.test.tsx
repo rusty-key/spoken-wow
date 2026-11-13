@@ -40,8 +40,8 @@ test("rejecting sends the reason and removes the row", async () => {
   const user = userEvent.setup();
   render(<TeamRequests initial={[request()]} />);
 
-  await user.type(screen.getByLabelText("Reason"), "Not a language");
-  await user.click(screen.getByRole("button", { name: "Reject" }));
+  await user.type(screen.getByLabelText("Reason for Crew"), "Not a language");
+  await user.click(screen.getByRole("button", { name: "Reject Crew" }));
 
   await waitFor(() => expect(fetchMock).toHaveBeenCalled());
   expect(fetchMock.mock.calls[0][0]).toBe("/api/team-requests/r1");
@@ -56,7 +56,7 @@ test("a refusal shows on the row and the row stays", async () => {
   const user = userEvent.setup();
   render(<TeamRequests initial={[request()]} />);
 
-  await user.click(screen.getByRole("button", { name: "Approve" }));
+  await user.click(screen.getByRole("button", { name: "Approve Crew" }));
 
   expect((await screen.findByRole("alert")).textContent).toBe("Already decided.");
   expect(screen.getByText("Crew")).toBeTruthy();
