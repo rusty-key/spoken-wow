@@ -14,6 +14,7 @@
  * benefit.
  */
 import { requireIn, requireSpeaker } from "@/lib/generation/authz";
+import { pinnedProvider } from "@/lib/generation/pinned";
 import { regenerateLine } from "@/lib/generation/regenerate";
 
 export const dynamic = "force-dynamic";
@@ -22,14 +23,19 @@ export async function POST(request: Request) {
   const { session, lang, denied } = await requireIn(request, "regenerate");
   if (denied) return denied;
 
-  // After the role check, never instead of it: a key is a credential, not a permission.
-  const { speaker, denied: noKey } = await requireSpeaker(session.user.id, lang);
-  if (noKey) return noKey;
-
   const body = (await request.json().catch(() => ({}))) as { lineId?: unknown };
   if (typeof body.lineId !== "string" || !body.lineId) {
     return Response.json({ error: "lineId is required", kind: "bad-request" }, { status: 400 });
   }
+
+  // After the role check, never instead of it: a key is a credential, not a permission. After
+  // the line is known, because a pinned voice decides whose key that is.
+  const { speaker, denied: noKey } = await requireSpeaker(
+    session.user.id,
+    lang,
+    await pinnedProvider(body.lineId, lang),
+  );
+  if (noKey) return noKey;
 
   const result = await regenerateLine(body.lineId, session.user.id, { speaker, lang });
 

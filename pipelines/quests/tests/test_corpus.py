@@ -47,6 +47,11 @@ ROWS = [
      "templateText_race_gender_hash": "abc123"},
 ]
 
+# The NPC's own flavor, which preprocess_dataframe reads off its greeting sounds alongside the
+# line's agreed one.
+for _row in ROWS:
+    _row.setdefault("npc_flavor", _row["flavor"])
+
 SPAWNS = [
     ("creature", 288, 0, -9465.5, 74.0),
     ("creature", 288, 0, -9000.0, 100.0),   # same NPC, second spawn
@@ -147,3 +152,89 @@ def test_area_filter_matches_when_any_spawn_is_inside():
 def test_area_filter_respects_the_map():
     corpus = build_corpus(pd.DataFrame(ROWS), SPAWNS)
     assert lines_in_area(corpus, map_id=1, x_range=(-10000, 0), y_range=(-10000, 10000)) == []
+
+
+def test_a_follow_up_speaker_with_no_humanoid_display_is_voiced_by_its_model():
+    """Kum'isha (a Broken, model 29) beside a quest row that has no ModelID column value:
+    preprocess puts the slot in the race column, and naming and the skip rule follow."""
+    from tts_cli.tts_utils import TTSProcessor
+
+    base = {"quest_title": "To Serve Kum'isha", "type": "creature", "npc_sound_name": None}
+    quest = {**base, "source": "complete", "quest": 3481, "text": "Well done.",
+             "original_text": "Well done.", "DisplayRaceID": 1, "DisplaySexID": 0,
+             "name": "Human", "id": 1}
+    followup = pd.DataFrame([{**base, "source": "followup", "quest": 3481,
+                              "text": "The rift opens.", "original_text": "The rift opens.",
+                              "DisplayRaceID": None, "DisplaySexID": 0, "ModelID": 29,
+                              "name": "Kum'isha the Collector", "id": 7363,
+                              "broadcast_text_id": 3475}])
+    df = pd.concat([pd.DataFrame([quest]), followup], ignore_index=True)
+    df = TTSProcessor.preprocess_dataframe(TTSProcessor.__new__(TTSProcessor), df)
+
+    corpus = build_corpus(df, [])
+    line = corpus["lines"][1]
+    assert {k: line[k] for k in ("lineId", "race", "gender", "flavor", "voice", "fileName",
+                                 "generatable", "skipReason")} == {
+        "lineId": "f:3475:model-29", "race": "model-29", "gender": "male", "flavor": None,
+        "voice": "model-29", "fileName": "3475-model-29", "generatable": False,
+        "skipReason": "no-voice"}
+    assert corpus["lines"][0]["race"] == "human"
+
+
+def _extracted(source, quest, name, entry, race, model=None, type_="creature"):
+    # A creature with no humanoid display comes back with no race and its display's model.
+    return {"source": source, "quest": quest, "name": name, "type": type_, "id": entry,
+            "DisplayRaceID": race, "DisplaySexID": 0, "ModelID": model}
+
+
+def _speakers(rows):
+    return [(r["name"], None if pd.isna(r["ModelID"]) else int(r["ModelID"]))
+            for r in rows.to_dict("records")]
+
+
+def test_a_quest_giver_with_no_humanoid_display_is_kept_after_every_other_row():
+    from tts_cli.corpus import extraction_rows
+
+    quests = pd.DataFrame([
+        _extracted("accept", 1, "Jitters", 288, 1),
+        _extracted("complete", 1024, "Shael'dryn", 3916, None, 77),
+        _extracted("accept", 2, "Wanted Poster", 50, -1, type_="gameobject"),
+    ])
+    followups = pd.DataFrame([_extracted("followup", 3481, "Kum'isha", 7363, None, 29)])
+
+    rows = extraction_rows(quests, followups)
+
+    # Existing rows keep their place: import-corpus records it as each row's `ord`.
+    assert _speakers(rows) == [
+        ("Jitters", None), ("Wanted Poster", None), ("Kum'isha", 29), ("Shael'dryn", 77)]
+
+
+def test_a_model_row_beside_a_humanoid_variant_of_the_same_npc_is_dropped():
+    # Patch variants of one NPC: the humanoid display is its voice.
+    from tts_cli.corpus import extraction_rows
+
+    quests = pd.DataFrame([
+        _extracted("accept", 1, "Belgrum", 1, 3),
+        _extracted("accept", 1, "Belgrum", 1, None, 50),
+        _extracted("accept", 1, "Wanted Poster", 1, -1, type_="gameobject"),
+    ])
+
+    rows = extraction_rows(quests, pd.DataFrame(columns=quests.columns))
+
+    assert _speakers(rows) == [("Belgrum", None), ("Wanted Poster", None)]
+
+
+def test_lists_each_npc_once_with_its_own_flavor_in_kind_then_id_order():
+    rows = [dict(row) for row in COLLIDING_ROWS]
+    rows[3]["npc_flavor"] = None  # the guard: the game names no flavor for it
+    rows[4]["npc_flavor"] = None  # the poster: narrators have none
+    corpus = build_corpus(pd.DataFrame(rows), SPAWNS)
+    assert corpus["npcs"] == [
+        {"npcType": "creature", "npcId": 68, "race": "human", "gender": "male", "flavor": None,
+         "provenance": "corpus", "voice": "human-male-standard"},
+        {"npcType": "creature", "npcId": 288, "race": "human", "gender": "male",
+         "flavor": "standard", "provenance": "corpus", "voice": "human-male-standard"},
+        # A billboard is a gameobject, which the narrator reads.
+        {"npcType": "gameobject", "npcId": 68, "race": "gameobject", "gender": None,
+         "flavor": None, "provenance": "corpus", "voice": "narrator-male"},
+    ]

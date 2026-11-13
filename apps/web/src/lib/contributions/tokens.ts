@@ -3,7 +3,7 @@
  * pipelines/quests/tts_cli/tts_utils.py, which is what the extract does to every line it reads.
  *
  * A contribution arrives with the reader's name, class and race already put back as `$N`, `$C`
- * and `$R` (addons/SpokenQuests/Contribute.lua, Detemplate), so it is the same kind of text the
+ * and `$R` (addons/Spoken_Quests/Contribute.lua, Detemplate), so it is the same kind of text the
  * extract starts from: the template is the line's `originalText`, and this is its `text`. Left
  * as tokens, `text` would be refused as `invalid-chars` (text-gate.ts) and never voiced.
  *

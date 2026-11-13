@@ -16,18 +16,35 @@ on:
       # How a quest line is voiced ships too, so a change to one of these has to produce a
       # new release.
       - "pipelines/quests/voice/*.json"
-      # The zones half is COMPILED INTO the bundle -- lib/zones/tools.ts imports it -- so a
+      # The places half is COMPILED INTO the bundle -- lib/places/tools.ts imports it -- so a
       # change here is a change to the app, not merely to a script beside it.
-      - "pipelines/zones/**"
-      # The books half is the same arrangement: lib/books/tools.ts imports its text and
+      - "pipelines/places/**"
+      # The readables half is the same arrangement: lib/readables/tools.ts imports its text and
       # naming modules, so what normalises a page and what hashes it ship in the bundle.
-      - "pipelines/books/**"
+      - "pipelines/readables/**"
       # What both halves above import from: the .env reader and the language list, which
       # lib/lang.ts is also checked against. Bundled the same way.
       - "pipelines/lib/**"
       # The lore corpus lives in the database, but the Lua the addon ships is exported from
       # it and the deploy seeds CI's throwaway database from those files.
-      - "addons/SpokenZones/Data/**"
+      - "addons/Spoken_Places/Data/**"
+      # Its version is read into the bundle, so a report page knows what the latest release is.
+      - "addons/Spoken/Spoken.toc"
+      # What the Release button runs on the droplet. A pack's version is on its store page, so
+      # a page changed without a deploy would publish the old one.
+      - "scripts/manager/**"
+      - "scripts/lib/**"
+      - "scripts/audio/**"
+      - "publishers/**"
+      - "addons/SpokenPlacesAudio/**"
+      - "addons/SpokenReadablesAudio/**"
+      - "addons/SpokenBossesAudio/**"
+      - "pipelines/quests/cli-main.py"
+      - "pipelines/quests/tts_cli/**"
+      - "pipelines/quests/assets/icon/**"
+      - "pipelines/quests/requirements-release.txt"
+      - "addons/Spoken_Quests/Data/Compendium.lua"
+      - "docs/quests/CHANGELOG.md"
       - "deploy/web/**"
       - ".github/workflows/deploy-web.yaml"
   workflow_dispatch:
@@ -37,17 +54,14 @@ on:
 # a push that modifies it, so a freshly cloned or recreated repo needs one such push before
 # dispatch works.
 
-# Never let two deploys interleave a symlink swap. The group is shared with the two frozen
-# workflows on purpose: while they can still be dispatched against the freeze tag, a hotfix
-# to an old site and a deploy of this one must not swap symlinks at the same moment.
-concurrency:
-  group: deploy-web
-  cancel-in-progress: false
-
+# Two jobs, so an approval on the production environment comes after the proof and before the
+# droplet: GitHub can only pause a whole job. build holds no secrets, and ship runs nothing from
+# the repository, only this file and the bundle.
 jobs:
-  deploy:
+  build:
     runs-on: ubuntu-latest
-    environment: production
+    outputs:
+      stamp: ${{ steps.stamp.outputs.stamp }}
 
     # A throwaway database for the build and the smoke test. The droplet's real one is
     # bound to localhost and unreachable from here, which is the point: CI proves the
@@ -92,7 +106,7 @@ jobs:
           cache: pnpm
           cache-dependency-path: pnpm-lock.yaml
 
-      # One install for the whole workspace: the app and the zones pipeline it compiles in.
+      # One install for the whole workspace: the app and the places pipeline it compiles in.
       - name: Install
         run: pnpm install --frozen-lockfile
 
@@ -100,11 +114,11 @@ jobs:
         working-directory: apps/web
         run: pnpm typecheck
 
-      # The zones pipeline's own checks: that the Lua and the JS agree on slugs, locales
+      # The places pipeline's own checks: that the Lua and the JS agree on slugs, locales
       # and normalisation. The addon's report links are built by the Lua half and resolved
       # by the JS half, so a drift here is a link that 404s in a player's browser.
-      - name: Validate the zones pipeline
-        run: node pipelines/zones/tools/validate.mjs
+      - name: Validate the places pipeline
+        run: node pipelines/places/tools/validate.mjs
 
       # Applied with the same script the droplet uses, so a migration that only works under
       # a hand-run psql fails here instead of mid-deploy.
@@ -115,10 +129,10 @@ jobs:
       - name: Migrate
         run: deploy/web/bin/migrate.sh "$PWD/apps/web"
 
-      # The zones catalogue is built from lore_line, so an empty table is a /zones that
+      # The places catalogue is built from lore_line, so an empty table is a /places that
       # cannot render. Seeded from the committed Lua, which is an export of that table.
-      - name: Seed the zones corpus
-        run: node pipelines/zones/tools/lore/import.mjs
+      - name: Seed the places corpus
+        run: node pipelines/places/tools/lore/import.mjs
 
       # The quests catalogue is built from quest_line, the same way. Seeded from the
       # committed export, exactly as `make quests-import-corpus` does it and as ci.yaml does.
@@ -132,7 +146,7 @@ jobs:
           pip install -r requirements-extract.txt
           python cli-main.py import-corpus
 
-      # The gate. range.test.ts covers Safari's bytes=0-1 probe, and the zones catalogue
+      # The gate. range.test.ts covers Safari's bytes=0-1 probe, and the places catalogue
       # tests cover the stamp that keeps two workers agreeing; none should reach the
       # droplet red.
       - name: Test
@@ -170,27 +184,30 @@ jobs:
           mkdir -p "$R"/pipelines/quests/voice
           cp pipelines/quests/voice/*.json "$R"/pipelines/quests/voice/
 
-          # THE FILES THE ZONES PIPELINE READS AT RUNTIME. Its modules resolve paths from
-          # SPOKEN_ZONES_ROOT, which points at the release, and pronunciation.json decides
+          # THE FILES THE PLACES PIPELINE READS AT RUNTIME. Its modules resolve paths from
+          # SPOKEN_PLACES_ROOT, which points at the release, and pronunciation.json decides
           # what is actually sent to ElevenLabs. activate.sh refuses a release without it,
-          # because a release missing it serves a /zones that works badly rather than one
+          # because a release missing it serves a /places that works badly rather than one
           # that fails. The tools/seed area names are not among these: they are inputs to
-          # the zones CLIs, and nothing the app imports opens them.
-          mkdir -p "$R"/pipelines/zones/tools/voice
-          cp pipelines/zones/tools/voice/*.json "$R"/pipelines/zones/tools/voice/
+          # the places CLIs, and nothing the app imports opens them.
+          mkdir -p "$R"/pipelines/places/tools/voice
+          cp pipelines/places/tools/voice/*.json "$R"/pipelines/places/tools/voice/
 
           # Migrations ship with the release too: activate.sh runs migrate.sh against the
           # release directory, so without this a deploy has nothing to apply.
           cp -a apps/web/migrations "$R"/migrations
 
+          deploy/web/assemble-release-tools.sh "$R"/release-tools
+
+          test -f "$R"/release-tools/scripts/manager/release-job.mjs
           test -f "$R"/apps/web/server.js
-          test -f "$R"/apps/web/public/icons/zones.svg   # public/ survived the copy
+          test -f "$R"/apps/web/public/icons/places.png   # public/ survived the copy
           test -L "$R"/apps/web/node_modules/next   # symlink survived the copy
           test -f "$R"/migrations/0001_auth.sql
           test -f "$R"/migrations/0020_take.sql
           test -f "$R"/pipelines/quests/voice/generation.json
           test -f "$R"/pipelines/quests/voice/pronunciation.json
-          test -f "$R"/pipelines/zones/tools/voice/pronunciation.json
+          test -f "$R"/pipelines/places/tools/voice/pronunciation.json
           du -sh "$R"
 
           # THE TRACER GATE. next.config.ts excludes pipelines/quests from the trace, and
@@ -223,7 +240,6 @@ jobs:
           HOSTNAME: 127.0.0.1
           NODE_ENV: production
           SPOKEN_QUESTS_AUDIO: /nonexistent
-          SPOKEN_ZONES_SOUNDS: /nonexistent
           # Better Auth rejects any request whose Origin is not this, so the smoke test
           # below must send exactly this value. Getting it wrong on the droplet is the
           # failure mode that makes every sign-in return "Invalid origin".
@@ -231,7 +247,7 @@ jobs:
         run: |
           set -euo pipefail
           SPOKEN_QUESTS_CORPUS="$PWD/pipelines/quests/corpus/corpus.json.gz" \
-          SPOKEN_ZONES_ROOT="$PWD" \
+          SPOKEN_PLACES_ROOT="$PWD" \
             node apps/web/server.js &
           pid=$!
           trap 'kill $pid 2>/dev/null || true' EXIT
@@ -247,13 +263,13 @@ jobs:
             | grep -q '"npcName":"Thrall"'
           echo "the quests corpus is served"
 
-          # The zones half, which proves rather more: the catalogue is built from the rows
+          # The places half, which proves rather more: the catalogue is built from the rows
           # seeded above, through pipeline modules compiled into this bundle. A tracing
           # mistake that left them out fails here.
-          total=$(curl -fsS "http://127.0.0.1:3999/api/zones/search" \
+          total=$(curl -fsS "http://127.0.0.1:3999/api/places/search" \
             | node -e 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>process.stdout.write(String(JSON.parse(s).total)))')
-          echo "the zones catalogue has $total lines"
-          [ "$total" -gt 800 ] || { echo "::error::expected the whole zones corpus, got $total"; exit 1; }
+          echo "the places catalogue has $total lines"
+          [ "$total" -gt 800 ] || { echo "::error::expected the whole places corpus, got $total"; exit 1; }
 
           # Auth has to survive the standalone bundle too: pg and better-auth are traced
           # into it, and the schema has to be the one migrate.sh just applied. A registered
@@ -271,7 +287,7 @@ jobs:
           # Nothing that spends money may be reachable without a key. A member is refused
           # by role and a keyless collaborator by credential; this covers the first, which
           # is the one a bug in a route guard would open.
-          for path in /api/quests/regenerate /api/zones/regenerate /api/regenerate/queue; do
+          for path in /api/quests/regenerate /api/places/regenerate /api/regenerate/queue; do
             code=$(curl -s -o /dev/null -w '%{http_code}' -X POST "http://127.0.0.1:3999$path" \
               -H 'Content-Type: application/json' -d '{}')
             [ "$code" = "403" ] || { echo "::error::$path answered $code to a signed-out POST"; exit 1; }
@@ -284,11 +300,53 @@ jobs:
           # And an icon, for the same reason one directory over: public/ is copied by hand
           # and a missing one is three broken images on the front page, which nothing else
           # here would notice.
-          curl -fsS -o /dev/null http://127.0.0.1:3999/icons/zones.svg
+          curl -fsS -o /dev/null http://127.0.0.1:3999/icons/places.png
           echo "bundle boots and serves"
 
       - name: Set release name
-        run: echo "STAMP=$(date -u +%Y%m%d-%H%M)-${GITHUB_SHA::7}" >> "$GITHUB_ENV"
+        id: stamp
+        run: echo "stamp=$(date -u +%Y%m%d-%H%M)-${GITHUB_SHA::7}" >> "$GITHUB_OUTPUT"
+
+      # A tar, because upload-artifact drops symlinks and the bundle dies at boot without
+      # node_modules/next. Artifacts of a public repository can be downloaded by anyone, which
+      # the env-file check in "Assemble release" is what makes acceptable.
+      - name: Pack release
+        run: tar -czf release.tar.gz release
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: release
+          path: release.tar.gz
+          if-no-files-found: error
+          compression-level: 0
+          # Long enough to outlast a weekend's wait for approval.
+          retention-days: 7
+
+  ship:
+    needs: build
+    runs-on: ubuntu-latest
+    environment: production
+    # Never let two deploys interleave a symlink swap. The group is shared with the two frozen
+    # workflows on purpose: while they can still be dispatched against the freeze tag, a hotfix
+    # to an old site and a deploy of this one must not swap symlinks at the same moment. It sits
+    # on this job so that builds do not queue behind a deploy waiting for approval.
+    concurrency:
+      group: deploy-web
+      cancel-in-progress: false
+    env:
+      STAMP: ${{ needs.build.outputs.stamp }}
+
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: release
+
+      # Checked here, before anything touches the droplet.
+      - name: Unpack release
+        run: |
+          tar -xzf release.tar.gz
+          test -L release/apps/web/node_modules/next
+          test -f release/apps/web/server.js
 
       # The key goes to a file rather than into an agent so the workflow controls its exact
       # bytes: a secret pasted through a browser commonly loses its trailing newline or
@@ -328,7 +386,7 @@ jobs:
             "/srv/spoken/bin/activate.sh /srv/spoken/releases/$STAMP"
 
       # A bad deploy should heal itself rather than sit broken until someone notices. Both
-      # sections are checked: a release that serves quests and 500s on zones is a bad
+      # sections are checked: a release that serves quests and 500s on places is a bad
       # release, and rolling back is the right answer to either.
       #
       # THE PORT IS READ FROM app.env RATHER THAN ASSUMED, with the same precedence pm2
@@ -348,12 +406,12 @@ jobs:
           PORT=${PORT:-3000}
           echo "checking the app on port $PORT"
 
-          # Quests must serve. Zones must ANSWER: 200 when the corpus is loaded, or 503
+          # Quests must serve. Places must ANSWER: 200 when the corpus is loaded, or 503
           # with `corpus_empty` before the cutover import has been run, which is a
           # deployment state rather than a bad release. Anything else -- a 500, a refused
           # connection, a 404 from some other app on that port -- fails and rolls back.
           #
-          # That the zones half is compiled into the bundle at all is proven earlier, by
+          # That the places half is compiled into the bundle at all is proven earlier, by
           # the in-CI smoke test against a seeded throwaway database. This step is about
           # whether the release boots and serves on the droplet, not about whether somebody
           # has run a one-time import.
@@ -362,12 +420,12 @@ jobs:
             if ssh -i ~/.ssh/deploy_key "$TARGET" \
               "set -e
                curl -fsS --max-time 10 -o /dev/null 'http://127.0.0.1:$PORT/api/quests/search?q=thrall'
-               code=\$(curl -s --max-time 10 -o /tmp/zones-smoke -w '%{http_code}' 'http://127.0.0.1:$PORT/api/zones/search?state=current')
+               code=\$(curl -s --max-time 10 -o /tmp/places-smoke -w '%{http_code}' 'http://127.0.0.1:$PORT/api/places/search?state=current')
                case \$code in
                  200) exit 0 ;;
-                 503) grep -q corpus_empty /tmp/zones-smoke && { echo '  zones: not seeded yet, which is expected before the cutover'; exit 0; } ;;
+                 503) grep -q corpus_empty /tmp/places-smoke && { echo '  places: not seeded yet, which is expected before the cutover'; exit 0; } ;;
                esac
-               echo \"  zones answered \$code\"; exit 1"
+               echo \"  places answered \$code\"; exit 1"
             then ok=1; break; fi
             echo "attempt $i failed, retrying..."
             sleep 3

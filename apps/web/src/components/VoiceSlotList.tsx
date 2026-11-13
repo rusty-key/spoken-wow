@@ -11,9 +11,11 @@ import { Input } from "@/components/ui/input";
 
 import FishReference, { type ReferenceView } from "./FishReference";
 import VoiceSamples from "./VoiceSamples";
+import AccountVoicePicker from "./voices/AccountVoicePicker";
 import { cloneVoice } from "./voices/PopulateDialog";
 import { Badge } from "@/components/ui/badge";
 import type { Provider } from "@/lib/generation/providers";
+import { bareDirection } from "@/lib/generation/narration";
 import { cn } from "@/lib/utils";
 import { displayName } from "@/lib/voices/names";
 import type { Sample } from "@/lib/voices/samples";
@@ -25,16 +27,16 @@ import type { VoiceSlot } from "@/lib/voices/slots";
  * What a row shows depends on the tab. On ElevenLabs it is the clips a voice is cloned from
  * and whether the clone is in the viewer's own account; on fish.audio it is the reference
  * that is sent with every line. Either way the sources are only heard here: changing them is
- * an admin's, behind `editing`, because every collaborator's voices are made from them.
+ * the language admin's, behind `editing`, because every collaborator's voices are made from them.
  *
  * Ordered by name (see slots.ts): with a voice per race, gender and flavor the list is long
- * enough that finding one row matters more than knowing which to create first. One row
- * expands at a time: the clips carry <audio> elements, and fifty slots' worth open at once
- * would be both unreadable and a lot of metadata requests.
+ * enough that finding one row matters more than knowing which to create first. Any number of
+ * rows can be open, to compare two voices' clips side by side; the <audio> elements are
+ * preload="none", so an open row costs no request until it is played.
  *
- * Grouped by race, collapsed, so the page opens as eleven rows rather than fifty - and
- * because the accent direction is a property of the race rather than of any one of its
- * voices, so the group header is the only row it belongs on.
+ * Grouped by race, every group open: the races are the headings to scan by, and the voices
+ * under them are rows to click into. A race's direction is on its header and a voice's own on
+ * its row, the two places they apply.
  */
 
 /** A race and the voices under it, in the order slots.ts already sorted them. */
@@ -66,6 +68,11 @@ function groups(slots: VoiceSlot[]): Group[] {
   return [...byRace.values()];
 }
 
+/** Every direction without its square brackets, as the boxes show and take them. */
+function bare(tags: Record<string, string>): Record<string, string> {
+  return Object.fromEntries(Object.entries(tags).map(([key, tag]) => [key, bareDirection(tag)]));
+}
+
 type Props = {
   tab: Provider;
   slots: VoiceSlot[];
@@ -77,14 +84,19 @@ type Props = {
   setPresent: Dispatch<SetStateAction<Set<string> | null>>;
   samples: Record<string, Sample[]>;
   setSamples: Dispatch<SetStateAction<Record<string, Sample[]>>>;
+  /** Slots with seed clips to import in this language. */
+  seedSlots: string[];
   /** This language's fish.audio references, by voice. */
   references: Record<string, ReferenceView>;
   setReferences: Dispatch<SetStateAction<Record<string, ReferenceView>>>;
-  /** The accent direction per race, as the settings currently in force hold it. */
+  /** The directions per race and per voice, as the settings currently in force hold them. */
   raceTags: Record<string, string>;
-  /** May change the sources and the accent tags. */
-  manager: boolean;
-  /** The sources' editors are showing: a manager asked for them. */
+  /**
+   * May change this language's directions: a `configure` grant in it, not only a global admin,
+   * since the directions are the language's own.
+   */
+  directs: boolean;
+  /** The sources' editors are showing: an admin asked for them. */
   editing: boolean;
   /** Whether the viewer has an ElevenLabs key to clone into. */
   canClone: boolean;
@@ -97,21 +109,25 @@ export default function VoiceSlotList({
   setPresent,
   samples,
   setSamples,
+  seedSlots,
   references,
   setReferences,
   raceTags,
-  manager,
+  directs,
   editing,
   canClone,
 }: Props) {
   const lang = useLang();
-  const [open, setOpen] = useState<string | null>(null);
-  const [openRace, setOpenRace] = useState<string | null>(null);
-  const [tags, setTags] = useState(raceTags);
+  const [open, setOpen] = useState<ReadonlySet<string>>(new Set());
+  const [openRaces, setOpenRaces] = useState<ReadonlySet<string>>(
+    () => new Set(groups(slots).map((group) => group.race)),
+  );
+  // Bare, as typed: settings.ts puts the brackets back on save.
+  const [tags, setTags] = useState(() => bare(raceTags));
   // The last value written, so a box that was edited and put back does not claim a save.
-  const [saved, setSaved] = useState(raceTags);
+  const [saved, setSaved] = useState(() => bare(raceTags));
   const [tagError, setTagError] = useState<string | null>(null);
-  const [savingRace, setSavingRace] = useState<string | null>(null);
+  const [savingKey, setSavingKey] = useState<string | null>(null);
   const [sweep, setSweep] = useState<{
     done: number;
     total: number;
@@ -119,8 +135,7 @@ export default function VoiceSlotList({
   } | null>(null);
   const [confirmingSweep, setConfirmingSweep] = useState(false);
 
-  // Only flavored voices have game clips - see hasGameClips in VoiceSamples.
-  const seedable = slots.filter((slot) => slot.name.split("-").length === 3);
+  const seedable = slots.filter((slot) => seedSlots.includes(slot.name));
 
   // Voices that do not exist in the account yet. Empty while the account could not be read,
   // because "missing" would then mean "unknown" and the button would offer to rebuild
@@ -128,7 +143,7 @@ export default function VoiceSlotList({
   const missing = present === null ? [] : seedable.filter((slot) => !present.has(slot.name));
 
   /**
-   * Seed and clone a list of voices from the game's clips.
+   * Seed and clone a list of voices from voice/seed-clips.
    *
    * Sequential rather than parallel: each iteration is an ffmpeg merge and an ElevenLabs
    * voice creation, and fifty of those at once is neither kind to the rate limit nor
@@ -169,20 +184,27 @@ export default function VoiceSlotList({
   const sweeping = sweep !== null && sweep.done < sweep.total;
   const races = groups(slots);
 
+  /** The set with `key` in it if it was not, and without it if it was. */
+  function toggled(set: ReadonlySet<string>, key: string): ReadonlySet<string> {
+    const next = new Set(set);
+    if (!next.delete(key)) next.add(key);
+    return next;
+  }
+
   /**
-   * Write the whole map, on blur, when this race's box actually changed.
+   * Write the whole map, on blur, when this race's or voice's box actually changed.
    *
    * The whole map rather than the one race because removing a direction is as much an edit as
    * adding one, and the endpoint takes what the tags should now be. On blur rather than per
    * keystroke because every save is a row write and a half-typed "[Scot" is not a direction
    * anyone meant to store.
    */
-  async function saveTags(race: string) {
+  async function saveTags(key: string) {
     const next = { ...tags };
-    if (!next[race]?.trim()) delete next[race];
-    if ((saved[race] ?? "") === (next[race] ?? "")) return;
+    if (!next[key]?.trim()) delete next[key];
+    if ((saved[key] ?? "") === (next[key] ?? "")) return;
 
-    setSavingRace(race);
+    setSavingKey(key);
     setTagError(null);
     try {
       const response = await fetch(withLang(lang, "/api/generation/settings/race-tags"), {
@@ -198,15 +220,50 @@ export default function VoiceSlotList({
         setTags(saved);
         return;
       }
-      const stored = body.config.raceTags as Record<string, string>;
+      const stored = bare(body.config.raceTags as Record<string, string>);
       setTags(stored);
       setSaved(stored);
     } catch (caught) {
       setTagError(caught instanceof Error ? caught.message : String(caught));
       setTags(saved);
     } finally {
-      setSavingRace(null);
+      setSavingKey(null);
     }
+  }
+
+  /**
+   * The direction box for a race or one voice: editable for whoever configures the language,
+   * read-only otherwise.
+   *
+   * On both tabs: the language holds one set, and speakers/shape.ts puts it in front of the
+   * NPC's words whichever provider speaks them.
+   */
+  function direction(key: string, placeholder: string) {
+    if (!directs) {
+      return tags[key] ? (
+        <span
+          title="Direction"
+          className="text-muted-foreground w-56 shrink-0 truncate font-mono text-xs"
+        >
+          {tags[key]}
+        </span>
+      ) : (
+        <span className="w-56 shrink-0" />
+      );
+    }
+    return (
+      <Input
+        aria-label={`Direction for ${key}`}
+        title="Direction, sent to ElevenLabs and fish.audio alike; a voice's follows its race's"
+        value={tags[key] ?? ""}
+        // No brackets: they are added on save, and typing them is harmless.
+        placeholder={placeholder}
+        disabled={savingKey !== null}
+        onChange={(event) => setTags((current) => ({ ...current, [key]: event.target.value }))}
+        onBlur={() => void saveTags(key)}
+        className="h-7 w-56 shrink-0 font-mono text-xs"
+      />
+    );
   }
 
   return (
@@ -234,7 +291,7 @@ export default function VoiceSlotList({
           {confirmingSweep && (
             <>
               <span className="text-xs text-amber-400">
-                This replaces the clips and the ElevenLabs voice for all {seedable.length} flavored{" "}
+                This replaces the clips and the ElevenLabs voice for all {seedable.length}{" "}
                 {langName(lang)} voices ({cloneName(seedable[0]?.name ?? "dwarf-male-grim", lang)}
                 {" "}and the rest). Existing {langName(lang)} voices are deleted and re-created, so
                 they will not sound the same afterwards.
@@ -268,7 +325,7 @@ export default function VoiceSlotList({
 
       <div className="divide-y overflow-hidden rounded-md border">
         {races.map((group) => {
-          const openGroup = openRace === group.race;
+          const openGroup = openRaces.has(group.race);
 
           return (
             <div key={group.race}>
@@ -281,7 +338,7 @@ export default function VoiceSlotList({
                 )}
               >
                 <button
-                  onClick={() => setOpenRace(openGroup ? null : group.race)}
+                  onClick={() => setOpenRaces((current) => toggled(current, group.race))}
                   aria-expanded={openGroup}
                   className={cn(
                     "hover:text-foreground flex min-w-0 flex-1 items-center gap-3 text-left",
@@ -301,81 +358,67 @@ export default function VoiceSlotList({
                   </span>
                 </button>
 
-                {/* On both tabs: the language holds one set, and speakers/shape.ts puts it in
-                    front of the NPC's words whichever provider speaks them. */}
-                {manager ? (
-                  <Input
-                    aria-label={`Accent direction for ${group.race}`}
-                    title="Accent direction, sent to ElevenLabs and fish.audio alike"
-                    value={tags[group.race] ?? ""}
-                    placeholder="no accent direction"
-                    disabled={savingRace !== null}
-                    onChange={(event) =>
-                      setTags((current) => ({ ...current, [group.race]: event.target.value }))
-                    }
-                    onBlur={() => void saveTags(group.race)}
-                    className="h-7 w-56 shrink-0 font-mono text-xs"
-                  />
-                ) : (
-                  tags[group.race] && (
-                    <span
-                      title="Accent direction"
-                      className="text-muted-foreground w-56 shrink-0 truncate font-mono text-xs"
-                    >
-                      {tags[group.race]}
-                    </span>
-                  )
-                )}
+                {direction(group.race, "no accent direction")}
               </div>
 
               {openGroup &&
                 group.slots.map((slot) => {
                   const clips = samples[slot.name] ?? [];
-                  const expanded = open === slot.name;
+                  const expanded = open.has(slot.name);
 
                   return (
                     <div key={slot.name} className="border-t">
-                      <button
-                        onClick={() => setOpen(expanded ? null : slot.name)}
-                        aria-expanded={expanded}
+                      {/* Not one <button>, for the same reason as the race header: the
+                          voice's own direction box lives on this row. */}
+                      <div
                         className={cn(
-                          "hover:bg-muted/50 flex w-full items-center gap-3 py-2 pr-3 pl-9 text-left text-sm",
-                          "focus-visible:ring-ring/50 focus-visible:ring-[3px] focus-visible:outline-none",
+                          "hover:bg-muted/50 flex w-full items-center gap-3 py-2 pr-3 pl-9 text-sm",
                           expanded && "bg-muted/50",
                         )}
                       >
-                        {expanded ? (
-                          <ChevronDown className="size-4 shrink-0" />
-                        ) : (
-                          <ChevronRight className="text-muted-foreground size-4 shrink-0" />
-                        )}
-                        <span className="min-w-0 flex-1 font-medium">{slot.name}</span>
-                        <span className="text-muted-foreground shrink-0 text-xs tabular-nums">
-                          {slot.npcCount.toLocaleString()} NPCs ·{" "}
-                          {slot.lineCount.toLocaleString()} lines
-                        </span>
-                        <span className="w-36 shrink-0 text-right">
-                          {tab === "fish" ? (
-                            references[slot.name] ? (
-                              <Badge variant="outline" className="text-sky-400">
-                                reference
-                              </Badge>
-                            ) : (
-                              <span className="text-muted-foreground text-xs">no reference</span>
-                            )
-                          ) : clips.length === 0 ? (
-                            <span className="text-muted-foreground text-xs">no clips</span>
-                          ) : present === null ? (
-                            <span className="text-muted-foreground text-xs">unknown</span>
-                          ) : present.has(slot.name) ? (
-                            <Badge variant="outline" className="text-emerald-400">
-                              in your account
-                            </Badge>
-                          ) : (
-                            <span className="text-muted-foreground text-xs">not in your account</span>
+                        <button
+                          onClick={() => setOpen((current) => toggled(current, slot.name))}
+                          aria-expanded={expanded}
+                          className={cn(
+                            "flex min-w-0 flex-1 items-center gap-3 text-left",
+                            "focus-visible:ring-ring/50 focus-visible:ring-[3px] focus-visible:outline-none",
                           )}
-                        </span>
-                      </button>
+                        >
+                          {expanded ? (
+                            <ChevronDown className="size-4 shrink-0" />
+                          ) : (
+                            <ChevronRight className="text-muted-foreground size-4 shrink-0" />
+                          )}
+                          <span className="min-w-0 flex-1 font-medium">{slot.name}</span>
+                          <span className="text-muted-foreground shrink-0 text-xs tabular-nums">
+                            {slot.npcCount.toLocaleString()} NPCs ·{" "}
+                            {slot.lineCount.toLocaleString()} lines
+                          </span>
+                          <span className="w-36 shrink-0 text-right">
+                            {tab === "fish" ? (
+                              references[slot.name] ? (
+                                <Badge variant="outline" className="text-sky-400">
+                                  reference
+                                </Badge>
+                              ) : (
+                                <span className="text-muted-foreground text-xs">no reference</span>
+                              )
+                            ) : present?.has(slot.name) ? (
+                              // Before the clips: a voice adopted from the account has none.
+                              <Badge variant="outline" className="text-emerald-400">
+                                in your account
+                              </Badge>
+                            ) : clips.length === 0 ? (
+                              <span className="text-muted-foreground text-xs">no clips</span>
+                            ) : present === null ? (
+                              <span className="text-muted-foreground text-xs">unknown</span>
+                            ) : (
+                              <span className="text-muted-foreground text-xs">not in your account</span>
+                            )}
+                          </span>
+                        </button>
+                        {direction(slot.name, "only the race's")}
+                      </div>
 
                       {expanded && tab === "elevenlabs" && !editing && (
                         <ClonePanel
@@ -395,6 +438,7 @@ export default function VoiceSlotList({
                         <VoiceSamples
                           voice={slot.name}
                           samples={clips}
+                          hasSeedClips={seedSlots.includes(slot.name)}
                           exists={present?.has(slot.name) ?? false}
                           onChange={(next) =>
                             setSamples((current) => ({ ...current, [slot.name]: next }))
@@ -408,6 +452,10 @@ export default function VoiceSlotList({
                         <FishReference
                           voice={slot.name}
                           samples={clips}
+                          hasSeedClips={seedSlots.includes(slot.name)}
+                          onSamples={(next) =>
+                            setSamples((current) => ({ ...current, [slot.name]: next }))
+                          }
                           initial={references[slot.name] ?? null}
                           onChange={(next) =>
                             setReferences((current) => {
@@ -462,9 +510,16 @@ function ClonePanel({
 
   if (samples.length === 0) {
     return (
-      <p className="text-muted-foreground border-t py-3 pr-3 pl-9 text-xs">
-        No clips for this voice in {langName(lang)} yet, so there is nothing to clone.
-      </p>
+      <div className="border-t py-3 pr-3 pl-9 text-xs">
+        <p className="text-muted-foreground">
+          No clips for this voice in {langName(lang)} yet, so there is nothing to clone.
+        </p>
+        {canClone && (
+          <div className="mt-2 flex flex-wrap items-center gap-3">
+            <AccountVoicePicker voice={voice} exists={exists} onAdopted={onCloned} />
+          </div>
+        )}
+      </div>
     );
   }
 
@@ -497,6 +552,9 @@ function ClonePanel({
             {busy ? <Loader2 className="animate-spin" /> : <Sparkles />}
             {confirming ? "Confirm replace" : exists ? "Replace in my account" : "Add to my account"}
           </Button>
+          {!confirming && (
+            <AccountVoicePicker voice={voice} exists={exists} disabled={busy} onAdopted={onCloned} />
+          )}
           {confirming ? (
             <>
               <span className="text-xs text-amber-400">
@@ -543,6 +601,11 @@ function ReferencePlayer({ voice, reference }: { voice: string; reference: Refer
         src={withLang(lang, `/api/voices/${voice}/reference/audio?v=${reference.clipHash}`)}
         className="h-8 w-full max-w-md"
       />
+      {reference.pinned && (
+        <p className="text-muted-foreground mt-2 text-xs">
+          Pinned: every line of this voice is spoken by fish.audio, whichever generator is active.
+        </p>
+      )}
     </div>
   );
 }

@@ -2,13 +2,16 @@
 .DS_Store
 .env
 .env*.local
+scripts/maintainers/spoken-release.env
 .vscode/settings.json
 node_modules/
 RELEASE
+# RELEASE is a file name, but a case-insensitive filesystem also matches the release page's folder.
+!apps/web/src/app/*/admin/release/
 
 # Packaged addon zips and the data modules built into them. Both projects'
 # Makefiles write here from the repo root; `make quests-package` and
-# `make zones-package` do not yet partition it.
+# `make places-package` do not yet partition it.
 /dist/
 generated
 
@@ -43,6 +46,9 @@ superpowers/
 # samples if lost, but a take records the clip's hash, so a re-cut is a different reference.
 /pipelines/quests/voice/references/
 
+# NPC voice lines kept locally while working on voices. Audio never goes in git.
+/pipelines/quests/voice/npc-lines/
+
 # Every take of every line, pulled from the droplet: the only quests audio there is. Some of
 # it predates this project's ability to reproduce it - back it up too.
 /pipelines/quests/audio-history/
@@ -56,13 +62,15 @@ superpowers/
 # audio-history/ is not.
 /pipelines/quests/audio-transcoded/
 
-# Blizzard's own NPC barks and the script that pulls them. Local reference material for
-# tuning voices, not part of what this project ships.
-/pipelines/quests/tools/fetch_npc_lines.py
-/pipelines/quests/tools/fetch_voice_sets.py
-/pipelines/quests/voice/npc-lines/
+# Local clips that voices are seeded from. Not part of what this project ships.
+/pipelines/quests/voice/seed-clips/
 
 /pipelines/quests/tools/.lines_cache.pkl
+
+# The client's map tables from wago.tools, for `make quests-compendium`.
+/pipelines/quests/tools/cache/
+# The client's tables from wago.tools (pipelines/lib/wago.mjs), for every pipeline.
+/pipelines/lib/cache/
 
 # The hiccup scan's output. One command rebuilds it from a corpus that is committed, and it
 # exists to be filled in while reviewing - a committed copy would conflict with every
@@ -73,38 +81,45 @@ superpowers/
 /docs/quests/specs/
 
 
-# --- zones --------------------------------------------------------------------
+# --- places -------------------------------------------------------------------
 
-# Raw MediaWiki API responses. Regenerate with `node pipelines/zones/tools/scrape.mjs`.
-/pipelines/zones/tools/cache/
+# Raw MediaWiki API responses. Regenerate with `node pipelines/places/tools/scrape.mjs`.
+/pipelines/places/tools/cache/
 
-# The pack's clips, assembled from the take archive by `make zones-sounds`.
+# The client's map tables from wago.tools, for `make readables-places`.
+/pipelines/readables/tools/cache/
+
+# The pack's clips, assembled from the take archive by `make places-sounds`.
 # No trailing slash: a test client is pointed at this pack by symlinking its audio in,
 # and a trailing slash matches only a real directory, leaving the link to be committed.
-/addons/SpokenZonesAudio/Sounds
+/addons/SpokenPlacesAudio/Sounds
+/addons/SpokenBossesAudio/Sounds
 # Another language's pack, staged by `make <section>-sounds LOCALE=xx` and the lookups and
 # manifests built beside it. Build output, never committed: the pages under publishers/ are
 # what says a language has a pack.
 /build/
 
-# The books narration, in the pack folder the client loads. Same rule and same reason as
-# the zones pack above, including the missing trailing slash: a test client is pointed at
+# The readables narration, in the pack folder the client loads. Same rule and same reason as
+# the places pack above, including the missing trailing slash: a test client is pointed at
 # this pack by symlinking it, and a trailing slash matches only a real directory, leaving
-# the link to be committed. Filled by `make books-pull-history && make books-sounds`.
-/addons/SpokenBooksAudio/Sounds
+# the link to be committed. Filled by `make readables-pull-history && make readables-sounds`.
+/addons/SpokenReadablesAudio/Sounds
 
-# Every books take, pulled from the droplet.
-/pipelines/books/audio-history/
+# Every readables take, pulled from the droplet.
+/pipelines/readables/audio-history/
 
 # Transcoded sound-pack clips, keyed by the checksum of the master they came from.
-# A build cache: scripts/zones/package-audio.sh refills it, and prunes entries whose
+# A build cache: scripts/places/package-audio.sh refills it, and prunes entries whose
 # master has been re-cut. Outside dist/ so `make clean` does not cost a five-minute
 # re-encode. Roughly half the size of Sounds/ per tier.
-/pipelines/zones/audio-transcoded/
+/pipelines/places/audio-transcoded/
 
-# Every zones take, pulled from the droplet: the only zones audio there is. Grows without
+# Every places take, pulled from the droplet: the only places audio there is. Grows without
 # bound -- re-cutting the whole corpus adds ~700MB.
-/pipelines/zones/audio-history/
+/pipelines/places/audio-history/
+
+# Every boss story take, pulled from the droplet.
+/pipelines/places/bosses-audio-history/
 
 # --- apps ---------------------------------------------------------------------
 

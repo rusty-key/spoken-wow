@@ -7,10 +7,10 @@
  * `language` table -- and is asked on the server.
  *
  * THE SAME LIST AS pipelines/lib/locales.mjs, restated here as a literal so the type of a
- * code is the ten codes rather than `string`. lang.test.ts fails if the two drift, the way
- * pipelines/zones/tools/validate.mjs guards the addon's copy.
+ * code is the twelve codes rather than `string`. lang.test.ts fails if the two drift, the way
+ * pipelines/places/tools/validate.mjs guards the addon's copy.
  *
- * It was here before as lib/zones/lang.ts, and went when zones lost its language axis in
+ * It was here before as lib/places/lang.ts, and went when zones lost its language axis in
  * 4939d3f because nothing had been translated. It comes back for all three sections at once.
  */
 export const LOCALES = [
@@ -19,11 +19,14 @@ export const LOCALES = [
   { code: "esES", name: "Spanish (EU)", bcp47: "es-ES", elevenLabs: "es" },
   { code: "esMX", name: "Spanish (AL)", bcp47: "es-MX", elevenLabs: "es" },
   { code: "frFR", name: "French", bcp47: "fr-FR", elevenLabs: "fr" },
+  { code: "itIT", name: "Italian", bcp47: "it-IT", elevenLabs: "it", client: false },
+  { code: "plPL", name: "Polish", bcp47: "pl-PL", elevenLabs: "pl", client: false },
   { code: "ptBR", name: "Portuguese", bcp47: "pt-BR", elevenLabs: "pt" },
   { code: "ruRU", name: "Russian", bcp47: "ru-RU", elevenLabs: "ru" },
   { code: "koKR", name: "Korean", bcp47: "ko-KR", elevenLabs: "ko" },
   { code: "zhCN", name: "Chinese (S)", bcp47: "zh-CN", elevenLabs: "zh" },
   { code: "zhTW", name: "Chinese (T)", bcp47: "zh-TW", elevenLabs: "zh" },
+  { code: "viVN", name: "Vietnamese", bcp47: "vi-VN", elevenLabs: "vi", client: false },
 ] as const;
 
 export type Lang = (typeof LOCALES)[number]["code"];
@@ -41,14 +44,25 @@ export function isLang(value: unknown): value is Lang {
 }
 
 /**
+ * Whether a game client runs in this language. Italian and Vietnamese are translated by a
+ * community and chosen by a player in the addons; no client ever reports it, so nothing that comes from a
+ * client -- a contribution above all -- is in it. See `client` in pipelines/lib/locales.mjs.
+ */
+export function isClientLang(lang: Lang): boolean {
+  const locale = LOCALES.find((entry) => entry.code === lang);
+  return !(locale && "client" in locale && locale.client === false);
+}
+
+/**
  * The language a WoW client's GetLocale() stands for, or null for one the site does not know.
  *
  * enGB is the EU English client: the same text and the same English packs as enUS, so a
- * contribution from it is an English one. Anything else must already be one of ours.
+ * contribution from it is an English one. Anything else must already be one of ours, and one a
+ * client runs in: an envelope claiming Italian was not written by the game.
  */
 export function clientLang(locale: string): Lang | null {
   if (locale === "enGB") return BASE_LANG;
-  return isLang(locale) ? locale : null;
+  return isLang(locale) && isClientLang(locale) ? locale : null;
 }
 
 export function langName(lang: Lang): string {

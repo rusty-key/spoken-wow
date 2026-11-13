@@ -12,9 +12,12 @@ export type QueueLine = {
   name: string;
   pending: number;
   running: number;
-  /** Whether it is among the QUEUE_MAX_ACTIVE queues draining now. */
-  status: "active" | "waiting";
-  /** Queues ranked before this one; 0 for an active queue. */
+  /**
+   * Whether it is among the QUEUE_MAX_ACTIVE queues draining now, or has nothing it may run
+   * because all its work is in a paused language.
+   */
+  status: "active" | "waiting" | "paused";
+  /** Queues ranked before this one; 0 for an active or paused queue. */
   ahead: number;
   /** Whether the viewer owns it, so the panel can pick out theirs without a client session. */
   mine: boolean;
@@ -24,5 +27,10 @@ export type QueueLine = {
 export function queueStatus(queue: QueueLine): string {
   const pending = `${queue.pending.toLocaleString("en-US")} pending`;
   if (queue.status === "waiting") return `waiting, ${queue.ahead} ahead · ${pending}`;
+  if (queue.status === "paused") {
+    return queue.running > 0
+      ? `paused, ${queue.running.toLocaleString("en-US")} finishing · ${pending}`
+      : `paused · ${pending}`;
+  }
   return `${queue.running.toLocaleString("en-US")} running · ${pending}`;
 }

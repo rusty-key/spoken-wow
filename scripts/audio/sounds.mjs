@@ -2,9 +2,9 @@
 // Assemble a section's Sounds folder from the database: every live take, copied out of the
 // archive under the path the addon plays it from.
 //
-//   node scripts/audio/sounds.mjs <quests|zones|books>          (LOCAL_DB names the database)
-//   node scripts/audio/sounds.mjs --list <quests|zones|books>   the archive files it would copy
-//   node scripts/audio/sounds.mjs --lang=esMX zones               another language's pack
+//   node scripts/audio/sounds.mjs <quests|places|readables|bosses>        (LOCAL_DB names the database)
+//   node scripts/audio/sounds.mjs --list <quests|places|readables|bosses> the archive files it would copy
+//   node scripts/audio/sounds.mjs --lang=esMX places            another language's pack
 //
 // A language other than English is assembled into `build/<section>/<lang>/`, never into
 // English's folder; its takes are archived under `<archive>/<lang>/` (`historyDirOf` in
@@ -26,29 +26,33 @@
 // next to no time, and unlike a hard link, a tool that later writes into Sounds/ cannot
 // reach the archive. The database is asked through psql, as scripts/db/ does, so this needs
 // no node_modules.
+//
+// SPOKEN_CLIP_POINTERS=1 writes pointers instead (scripts/lib/clip-pointer.mjs), for a Manager
+// pack built without its clips on this machine. A quests pointer names the take's encoding, the Ogg
+// its pack ships, and durations.json carries what the build would otherwise read from the clips.
 import { execFileSync } from "node:child_process";
 import { constants, existsSync, readdirSync } from "node:fs";
 import { copyFile, mkdir, rm, writeFile } from "node:fs/promises";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
+import { readLines, shipped } from "../../pipelines/places/tools/lib/loredata.mjs";
+import { assignFiles } from "../../pipelines/places/tools/voice/naming.mjs";
+import { packTimes } from "../../pipelines/lib/word-times.mjs";
+import { archiveOf, ENCODING_PROFILE, sourceOf } from "../lib/archives.mjs";
+import { pointerText, writePointers } from "../lib/clip-pointer.mjs";
+import { eachParallel } from "../lib/download.mjs";
+import { CURRENT_TEXT_SQL, NAMED_QUESTS_SQL, currentTextFor, namedBy } from "./relevant.mjs";
+
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "../..");
 
 const BASE_LANG = "enUS";
 
 const SECTIONS = {
-  quests: {
-    archive: process.env.SPOKEN_QUESTS_AUDIO_HISTORY ?? join(ROOT, "pipelines/quests/audio-history"),
-    out: join(ROOT, "pipelines/quests/audio"),
-  },
-  zones: {
-    archive: process.env.SPOKEN_ZONES_AUDIO_HISTORY ?? join(ROOT, "pipelines/zones/audio-history"),
-    out: join(ROOT, "addons/SpokenZonesAudio/Sounds"),
-  },
-  books: {
-    archive: process.env.SPOKEN_BOOKS_AUDIO_HISTORY ?? join(ROOT, "pipelines/books/audio-history"),
-    out: join(ROOT, "addons/SpokenBooksAudio/Sounds"),
-  },
+  quests: { archive: archiveOf("quests"), out: join(ROOT, "pipelines/quests/audio") },
+  places: { archive: archiveOf("places"), out: join(ROOT, "addons/SpokenPlacesAudio/Sounds") },
+  readables: { archive: archiveOf("readables"), out: join(ROOT, "addons/SpokenReadablesAudio/Sounds") },
+  bosses: { archive: archiveOf("bosses"), out: join(ROOT, "addons/SpokenBossesAudio/Sounds") },
 };
 
 // --list prints, relative to the archive, every file this would copy, and copies nothing.
@@ -60,7 +64,7 @@ const section = args.find((arg) => !arg.startsWith("--"));
 const lang = args.find((arg) => arg.startsWith("--lang="))?.slice("--lang=".length) || BASE_LANG;
 const english = SECTIONS[section];
 if (!english || !/^[a-z]{2}[A-Z]{2}$/.test(lang)) {
-  console.error("usage: sounds.mjs [--list] [--lang=<code>] <quests|zones|books>");
+  console.error("usage: sounds.mjs [--list] [--lang=<code>] <quests|places|readables|bosses>");
   process.exit(1);
 }
 // Another language never writes where English's pack is assembled: its folder is a work area
@@ -80,30 +84,66 @@ if (!database) {
   process.exit(1);
 }
 
-// file <tab> archiveFile, for every live take. A quests file carries its extension and the
-// other two do not; the archive directory is the file without it either way.
-const listing = execFileSync(
-  "psql",
-  [database, "-tA", "-F", "\t", "-v", `source=${section}`, "-v", `lang=${lang}`, "-f", "-"],
-  {
-    input: `select "file", coalesce("archiveFile", '') from "take"
-             where "source" = :'source' and "lang" = :'lang' and "isCurrent"
-             order by "file"`,
-    encoding: "utf8",
-    maxBuffer: 64 * 1024 * 1024,
-  },
-);
+function psql(sql) {
+  return execFileSync(
+    "psql",
+    [database, "-tA", "-F", "\t", "-v", `source=${section}`, "-v", `lang=${lang}`, "-v", `profile=${ENCODING_PROFILE}`, "-f", "-"],
+    { input: sql, encoding: "utf8", maxBuffer: 64 * 1024 * 1024 },
+  )
+    .split("\n")
+    .filter(Boolean);
+}
 
-// The archive path of a live take: the take's own directory -- its file without the
-// extension -- holding the archive file. Blank when the take's clip was never kept.
-const live = listing
-  .split("\n")
-  .filter(Boolean)
-  .map((row) => {
-    const [file, name] = row.split("\t");
-    const stem = file.replace(/\.mp3$/, "");
-    return { file, stem, archived: name ? join(prefix, stem, name) : "" };
-  });
+// A quests file carries its extension and the other two do not; the archive directory is the file
+// without it either way. Only quests takes have an Ogg.
+const listing = psql(`select t."file", coalesce(t."archiveFile", ''),
+                             coalesce(array_to_json(t."wordTimes")::text, ''), coalesce(t."sha256", ''),
+                             coalesce(e."encodedSha256", ''), coalesce(e."bytes"::text, ''), coalesce(e."durationSec"::text, ''),
+                             coalesce(to_json(t."shownText")::text, '')
+                        from "take" t
+                        left join "take_encoding" e
+                          on e."source" = t."source" and e."sha256" = t."sha256" and e."profile" = :'profile'
+                       where t."source" = :'source' and t."lang" = :'lang' and t."isCurrent"
+                         and t."teamId" = team_of_lang(:'lang')
+                       order by t."file"`);
+
+// A live take's archive path: its bucket object, or the take's own directory (its file without
+// the extension) holding the archive file. Blank when the take's clip was never kept.
+const takes = listing.map((row) => {
+  const [file, name, times, sha256, encodedSha256, bytes, durationSec, shownText] = row.split("\t");
+  const stem = file.replace(/\.mp3$/, "");
+  return {
+    file, stem, sha256, archived: sourceOf("takes", sha256, name ? join(prefix, stem, name) : ""), times,
+    encodedSha256, bytes, durationSec, shownText: shownText ? JSON.parse(shownText) : null,
+  };
+});
+
+// Quests carry only the audio a current line names (relevant.mjs), and places only the areas the
+// committed lore has words for: a take stays live after its place leaves the lore, and the lookup
+// (build-lookup.mjs) does not list it.
+async function placesShipped() {
+  const entries = await readLines();
+  const lore = shipped(entries);
+  const files = new Set([...assignFiles(entries)].filter(([id]) => lore.has(id)).map(([, file]) => file));
+  return (stem) => files.has(stem);
+}
+// Bosses carry the live bosses' takes only, the ones bosses/build-lookup.mjs lists: a retired
+// boss keeps its take, and shipping it would be a clip no entry points at.
+function bossesShipped() {
+  const files = new Set(psql(`select t."file" from "take" t
+                                join "boss" b on t."lineId" = 'boss:' || b."map" || ':' || b."key"
+                               where t."source" = :'source' and t."lang" = :'lang' and t."isCurrent"
+                                 and t."teamId" = team_of_lang(:'lang')
+                                 and not b."retired"`));
+  return (stem) => files.has(stem);
+}
+const relevant =
+  section === "quests" ? namedBy(psql(NAMED_QUESTS_SQL))
+    : section === "places" ? await placesShipped()
+    : section === "bosses" ? bossesShipped()
+    : () => true;
+const live = takes.filter((take) => relevant(take.stem));
+const unnamed = takes.length - live.length;
 
 if (list) {
   for (const take of live) if (take.archived) console.log(take.archived);
@@ -121,6 +161,75 @@ if (existsSync(paths.out) && !existsSync(marker) && readdirSync(paths.out).lengt
 await rm(paths.out, { recursive: true, force: true });
 await mkdir(paths.out, { recursive: true });
 await writeFile(marker, "");
+
+// The quests build reads no database (tts_cli/build.py), so the takes' word times go beside
+// their clips; places and readables read them from the take table when they write their lookup.
+async function writeWordTimes() {
+  const times = Object.fromEntries(
+    live.filter((take) => take.times).map((take) => [take.stem, packTimes(JSON.parse(take.times))]),
+  );
+  await writeFile(join(paths.out, "word-times.json"), `${JSON.stringify(times)}\n`);
+}
+
+async function writeTakeText() {
+  const rows = psql(CURRENT_TEXT_SQL).map((row) => {
+    const [stem, text, playerGender] = row.split("\t");
+    return { stem, text: JSON.parse(text), playerGender };
+  });
+  const textOf = currentTextFor(rows, lang);
+  const texts = {};
+  for (const take of live) {
+    const text = take.shownText ?? textOf(take.stem);
+    if (text) texts[take.stem] = text;
+  }
+  await writeFile(join(paths.out, "take-text.json"), `${JSON.stringify(texts)}\n`);
+}
+
+async function writeEncodingPointers(pointed) {
+  // Encoding one here instead would make players download it again: oggenc's bytes differ every run.
+  const lacking = pointed.filter((take) => !take.encodedSha256 || !take.durationSec);
+  if (lacking.length) {
+    console.error(`error: ${lacking.length} live takes have no Ogg in take_encoding or no duration on it, e.g. ${lacking[0].file}`);
+    for (const { file, sha256 } of lacking.slice(0, 10)) console.error(`  ${file} (${sha256})`);
+    process.exit(1);
+  }
+  let done = 0;
+  await eachParallel(pointed, async ({ stem, encodedSha256, bytes }) => {
+    await writeFile(join(paths.out, `${stem}.ogg`), pointerText(encodedSha256, bytes, "encodings"));
+    if (++done % 5000 === 0) console.log(`  ${done}/${pointed.length} pointers`);
+  });
+  const durations = Object.fromEntries(pointed.map(({ stem, durationSec }) => [stem, Number(durationSec)]));
+  await writeFile(join(paths.out, "durations.json"), `${JSON.stringify(durations)}\n`);
+}
+
+if (process.env.SPOKEN_CLIP_POINTERS) {
+  if (!process.env.SPOKEN_ARCHIVE_URL) {
+    console.error("SPOKEN_CLIP_POINTERS needs SPOKEN_ARCHIVE_URL");
+    process.exit(1);
+  }
+  const unhashed = live.filter((take) => take.archived && !take.sha256);
+  if (unhashed.length) {
+    console.error(`${unhashed.length} live takes are only on the droplet's volume, e.g. ${unhashed[0].file}: build with their clips instead`);
+    process.exit(1);
+  }
+  const pointed = live.filter((take) => take.sha256);
+  await Promise.all([...new Set(pointed.map(({ stem }) => dirname(join(paths.out, stem))))].map((dir) => mkdir(dir, { recursive: true })));
+  let absent = [];
+  if (section === "quests") {
+    await writeEncodingPointers(pointed);
+    await writeWordTimes();
+    await writeTakeText();
+  } else absent = await writePointers(pointed.map(({ stem, sha256 }) => ({ sha256, target: join(paths.out, `${stem}.mp3`) })), process.env.SPOKEN_ARCHIVE_URL);
+  console.log(`${section}: ${pointed.length - absent.length} pointers in ${paths.out.slice(ROOT.length + 1)}`);
+  if (unnamed) console.log(`  ${unnamed} live takes left out: no current line names their file, no lore their place, or their boss is retired`);
+  if (live.length > pointed.length) console.log(`  ${live.length - pointed.length} live takes had their clip discarded before the archive kept every take; shipped silent`);
+  if (absent.length) {
+    console.error(`  ${absent.length} live takes are not in the archive, e.g.:`);
+    for (const { target, reason } of absent.slice(0, 5)) console.error(`    ${target}: ${reason}`);
+    process.exit(1);
+  }
+  process.exit(0);
+}
 
 let copied = 0;
 const gone = [];
@@ -147,7 +256,13 @@ for (const { file, stem, archived } of live) {
   }
 }
 
+if (section === "quests") {
+  await writeWordTimes();
+  await writeTakeText();
+}
+
 console.log(`${section}: ${copied} clips in ${paths.out.slice(ROOT.length + 1)}`);
+if (unnamed) console.log(`  ${unnamed} live takes left out: no current line names their file, no lore their place, or their boss is retired`);
 if (gone.length) {
   // Known, and not this machine's fault: the take's clip was not kept before the archive
   // was the record. The line ships without audio, the same as one never generated.

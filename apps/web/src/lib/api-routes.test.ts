@@ -1,7 +1,7 @@
 /**
  * Every /api/… path the client asks for has a route behind it.
  *
- * Written after a real failure: the merge moved the zones routes under /api/zones/, and
+ * Written after a real failure: the merge moved the zones routes under /api/places/, and
  * the explorer's Player kept requesting /api/audio/<file>.mp3. Nothing caught it. The
  * types could not -- a URL is a string -- and neither could a build, a typecheck or a lint.
  * The page rendered, every line reported its take, and clicking play did nothing at all,
@@ -13,8 +13,8 @@
  * A route that moves without its callers now fails a test rather than a click.
  *
  * It reads paths that are LITERAL up to their first interpolation, which is what makes it
- * both sound and cheap: `/api/zones/audio/${file}.mp3` is checked as far as
- * /api/zones/audio, and that prefix is the part a route move breaks.
+ * both sound and cheap: `/api/places/audio/${file}.mp3` is checked as far as
+ * /api/places/audio, and that prefix is the part a route move breaks.
  */
 import { readdirSync, readFileSync, statSync } from "node:fs";
 import { join } from "node:path";
@@ -104,5 +104,5 @@ describe("the API paths the app references", () => {
 it("knows a missing route when it sees one", () => {
   // The bug this file exists for, as data: the path the Player used to build.
   expect(routes(API).some((route) => servedBy(["audio", "1411"], route))).toBe(false);
-  expect(statSync(join(API, "zones", "audio")).isDirectory()).toBe(true);
+  expect(statSync(join(API, "places", "audio")).isDirectory()).toBe(true);
 });

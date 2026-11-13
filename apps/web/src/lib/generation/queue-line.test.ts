@@ -22,4 +22,10 @@ describe("queueStatus", () => {
       "waiting, 3 ahead · 1,200 pending",
     );
   });
+
+  it("says a paused queue is paused, whatever is still finishing", () => {
+    // Running jobs outlive the pause; the row says what the queue will do next.
+    expect(queueStatus({ ...base, status: "paused" })).toBe("paused, 4 finishing · 1,200 pending");
+    expect(queueStatus({ ...base, status: "paused", running: 0 })).toBe("paused · 1,200 pending");
+  });
 });

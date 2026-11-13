@@ -72,9 +72,12 @@ SQL
                                       from fish_reference where (lang, voice) in ($values)) to stdout"
   cat <<SQL
 \\.
-insert into fish_reference (voice, lang, sample, "startSec", "endSec", transcript, "clipHash", "updatedBy", "updatedAt")
-select s.*, (select id from "user" where email = '$ADMIN_EMAIL'), now() from seeded s
-on conflict (voice, lang) do update set
+insert into fish_reference (voice, lang, sample, "startSec", "endSec", transcript, "clipHash", "updatedBy", "updatedAt",
+                            "teamId")
+select s.*, (select id from "user" where email = '$ADMIN_EMAIL'), now(),
+       team_of_lang(s.lang)
+  from seeded s
+on conflict ("teamId", voice, lang) do update set
   sample = excluded.sample, "startSec" = excluded."startSec", "endSec" = excluded."endSec",
   transcript = excluded.transcript, "clipHash" = excluded."clipHash",
   "updatedBy" = excluded."updatedBy", "updatedAt" = now();

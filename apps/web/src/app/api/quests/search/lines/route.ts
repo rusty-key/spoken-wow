@@ -8,24 +8,37 @@
  */
 import { NextRequest, NextResponse } from "next/server";
 
-import { langParam } from "@/lib/lang-server";
+import { langParam, worksHere } from "@/lib/lang-server";
 import { corpus } from "@/lib/quests/catalogue";
 import { searchContext } from "@/lib/quests/context";
-import { filtersFromParams, needsStale } from "@/lib/search-request";
-import { batchJobs, matchingLines } from "@/lib/search";
+import { broadcastStatuses } from "@/lib/broadcast/store";
+import { recordingsFor } from "@/lib/recordings/store";
+import { filtersFromParams, needsLevels, needsStale, withoutMadeBy } from "@/lib/search-request";
+import { batchPlan, matchingLines } from "@/lib/search";
 
 export const dynamic = "force-dynamic";
 
 export async function GET(request: NextRequest) {
   const { lang, denied } = await langParam(request);
   if (denied) return denied;
-  const filters = await filtersFromParams(request.nextUrl.searchParams);
-  const [catalogue, { voiced, context }] = await Promise.all([
+  // Gated like the search itself, or narrowing by author here would say whose lines are whose.
+  const seesMadeBy = await worksHere(lang);
+  let filters = await filtersFromParams(request.nextUrl.searchParams, lang);
+  if (!seesMadeBy) filters = withoutMadeBy(filters);
+  const [catalogue, { voiced, context }, recordings, broadcast] = await Promise.all([
     corpus(lang),
-    searchContext(needsStale(filters), false, lang),
+    searchContext(needsStale(filters), false, lang, seesMadeBy, needsLevels(filters)),
+    // So "regenerate everything not yet recorded" means what the page showed. Only asked
+    // when filtering on it; recordingsFor is undefined for anybody who may not see them, and
+    // the filter then matches on nothing -- recordedMatches without the recordings.
+    filters.recorded ? recordingsFor("quests", lang) : undefined,
+    filters.broadcast ? broadcastStatuses() : undefined,
   ]);
-  const lines = matchingLines(catalogue, voiced, filters, context);
+  if (!recordings) filters = { ...filters, recorded: undefined };
+  const lines = matchingLines(catalogue, voiced, filters, { ...context, recordings, broadcast });
   // The same overrides the estimate is built from, so the quote prices the text that will
   // actually be sent rather than the text the corpus happens to hold.
-  return NextResponse.json({ jobs: batchJobs(lines, context.overrides) });
+  // `matched` and `skipped` account for the gap between the button's count and the jobs.
+  const { jobs, skipped } = batchPlan(lines, context.overrides);
+  return NextResponse.json({ jobs, matched: lines.length, skipped });
 }

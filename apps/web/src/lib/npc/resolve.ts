@@ -1,24 +1,30 @@
 /**
  * Who is speaking a contributed line.
  *
- * Three sources, in this order, and the order is the whole design:
+ * Four sources, in this order, and the order is the whole design:
  *
  *   1. A moderator's answer, if one exists. They may know something no data source does.
  *   2. The corpus, for an NPC it already carries. Exact, including the flavor, which is
  *      recovered from display data no client API exposes.
- *   3. What the client saw: a model file id, which names a race and a gender but says nothing
- *      about flavor, so the flavor is defaulted and the row is left unconfirmed.
+ *   3. The appearances the addon rolled with SetCreature, kept where they match the body the
+ *      client reported, and mapped through display-voices.json. Exact when one voice is left.
+ *   4. What the client saw: a model file id, which names a race and a gender. The flavor is
+ *      narrowed by step 3 where it offered several, defaulted otherwise, and left unconfirmed.
  *
  * An NPC that answers to none of them resolves to no race, which is a normal outcome rather
  * than a failure: the corpus already carries `narrator-male` for things that are not a race.
  */
-import { defaultFlavorFor, npcVoiceFromCorpus } from "@/lib/quests/catalogue";
+import type { Lang } from "@/lib/lang";
+import { defaultFlavorFor } from "@/lib/quests/catalogue";
 
+import { isGenericCreatureType } from "./creature-types";
+import { voiceFromDisplays } from "./display-voices";
 import { raceForModel } from "./models";
 import { INT32_MAX } from "./npc";
-import { getResolution, NPC_KINDS, upsertResolution, type NpcKind, type NpcResolution } from "./store";
+import { splitByBody } from "./split";
+import { getResolution, NPC_ROW_KINDS, upsertResolution, type NpcResolution, type NpcRowKind } from "./store";
 
-// The three integer columns npc_resolution and contribution both ultimately feed from an
+// The three integer columns npc and contribution both ultimately feed from an
 // unauthenticated envelope: an id this large is still "a digit run ending at a space" as far
 // as checkEnvelope is concerned, but Postgres's `integer` tops out at 2147483647, and a value
 // past that 500s every reader of the row (the triage page's Promise.all, the export's
@@ -27,10 +33,12 @@ import { getResolution, NPC_KINDS, upsertResolution, type NpcKind, type NpcResol
 // this rule exists.
 
 export type Observed = {
-  npcKind: NpcKind | null;
+  npcKind: NpcRowKind | null;
   npcId: number | null;
   npcName: string | null;
   modelFileId: number | null;
+  /** Appearance ids the addon rolled for this creature; empty when it sent none. */
+  displayIds: number[];
   sex: number | null;
   creatureType: string | null;
   build: string | null;
@@ -41,7 +49,7 @@ const DIGITS = /^\d+$/;
 // npcId, modelFileId and sex all land in an `integer` column (migration 0030), and all three
 // come straight from an unauthenticated envelope: checkEnvelope only requires a digit run, with
 // no magnitude bound. Past 2147483647 Postgres rejects the insert, but that only protects the
-// npc_resolution row -- the contribution itself already stored, permanently, with the
+// npc row -- the contribution itself already stored, permanently, with the
 // oversized value in its meta. Bounding here, before either column is ever written, is what
 // keeps a single out-of-range paste from turning into a row that 500s every reader of it: the
 // triage page's Promise.all (page.tsx) and the export's unnest($::int[]) (export/route.ts) both
@@ -52,11 +60,28 @@ function digits(value: string | undefined): number | null {
   return Number.isSafeInteger(n) && n <= INT32_MAX ? n : null;
 }
 
+// A creature has at most four appearances (Creature.DisplayID_0..3). The addon rolls a dozen
+// times, so more distinct ids than this can only be a hand-edited envelope, and each one costs
+// a table lookup.
+const MAX_DISPLAYS = 16;
+
+// Each entry through digits(), like every other number an envelope carries: one bad entry
+// drops that entry, not the list.
+function displayIdsFrom(value: string | undefined): number[] {
+  const ids: number[] = [];
+  for (const part of (value ?? "").split(",")) {
+    const id = digits(part.trim());
+    if (id !== null && id > 0 && !ids.includes(id)) ids.push(id);
+    if (ids.length === MAX_DISPLAYS) break;
+  }
+  return ids;
+}
+
 export function observedFrom(meta: Record<string, string>): Observed {
   // `npc` is "<id> <name>" -- the id, then whatever the client called them.
   const npc = meta.npc?.match(/^(\d+)(?:\s+(.*))?$/);
-  const kind = (NPC_KINDS as readonly string[]).includes(meta.kind ?? "")
-    ? (meta.kind as NpcKind)
+  const kind = (NPC_ROW_KINDS as readonly string[]).includes(meta.kind ?? "")
+    ? (meta.kind as NpcRowKind)
     : null;
   // Through the same bound as modelFileId and sex, not a bare Number(): the regex only proves
   // digits, not that they fit in `integer`, and npcId is the one of the three that gets used as
@@ -73,13 +98,19 @@ export function observedFrom(meta: Record<string, string>): Observed {
     npcId,
     npcName: npc?.[2]?.trim() || null,
     modelFileId: digits(meta.model),
+    displayIds: displayIdsFrom(meta.displays),
     sex: digits(meta.sex),
     creatureType: meta.creature || null,
     build: meta.build || null,
   };
 }
 
-export async function resolveNpc(observed: Observed): Promise<NpcResolution | null> {
+/**
+ * `lang` is the language of the client that observed the NPC, and so of its name. An NPC seen
+ * drawn as a body its voice is not is split by body instead: answered, a client's guess would be
+ * retyped as the sex just seen, and its voice would flip with every report.
+ */
+export async function resolveNpc(observed: Observed, lang: Lang | null): Promise<NpcResolution | null> {
   const { npcKind, npcId } = observed;
   // `npcId === null`, not a truthiness check: id 0 is a real id and must not be mistaken for
   // "no npc at all". A kind-less envelope (see observedFrom) also fails here since npcKind is
@@ -91,23 +122,31 @@ export async function resolveNpc(observed: Observed): Promise<NpcResolution | nu
   if (!npcKind || npcId === null) return null;
 
   const existing = await getResolution(npcKind, npcId);
+  if (await splitByBody(observed, existing)) return existing;
   // The store's upsert already ranks provenance and would refuse a lower-ranked write on its
   // own, so this is not what keeps a moderator's answer safe -- it is here so a moderator-owned
-  // NPC skips the corpus scan and the write entirely, rather than doing both to arrive back
-  // where it started.
+  // NPC skips the write entirely, rather than arriving back where it started.
   if (existing?.provenance === "moderator") return existing;
 
-  const corpus = await npcVoiceFromCorpus(npcKind, npcId);
+  // The extract's answer is the npc table's `corpus` row (migration 0070). Only extracted NPCs
+  // have one: an NPC a contribution named was answered from its own resolution at the time, and
+  // reading that back as the corpus would confirm a guess. Its name is in entity_name already.
+  // A generic corpus row -- a gameobject, or a creature typed `creature` -- has no gender: its
+  // type is its kind, and the type has none.
+  const corpus = existing?.provenance === "corpus" && existing.race && (existing.gender || existing.race === npcKind)
+    ? existing
+    : null;
   if (corpus) {
     return upsertResolution({
       npcKind,
       npcId,
-      npcName: corpus.npcName,
+      npcName: null,
       race: corpus.race,
       gender: corpus.gender,
       flavor: corpus.flavor,
       provenance: "corpus",
       confirmed: true,
+      doubtful: false,
       modelFileId: observed.modelFileId,
       sex: observed.sex,
       creatureType: observed.creatureType,
@@ -117,7 +156,66 @@ export async function resolveNpc(observed: Observed): Promise<NpcResolution | nu
     });
   }
 
-  const fromModel = raceForModel(observed.modelFileId);
+  // A gameobject or an item is read as one whatever it looks like, as the corpus types its own
+  // (tts_cli/corpus.py GENERIC_TYPES). Not confirmed: the kind is the envelope's word.
+  if (npcKind === "gameobject" || npcKind === "item") {
+    return upsertResolution({
+      npcKind,
+      npcId,
+      npcName: lang ? observed.npcName : null,
+      nameLang: lang ?? undefined,
+      race: npcKind,
+      gender: null,
+      flavor: null,
+      provenance: "client",
+      confirmed: false,
+      doubtful: false,
+      modelFileId: observed.modelFileId,
+      sex: observed.sex,
+      creatureType: observed.creatureType,
+      build: observed.build,
+      note: null,
+      resolvedBy: null,
+    });
+  }
+
+  // The appearances the addon rolled, filtered to the body the player saw. One voice left is
+  // the game's own answer, as exact as the corpus: display-voices.json reads it from the same
+  // NPCSounds data tts_cli/flavors.py reads for the corpus.
+  //
+  // Only creatures get here: a gameobject id is its own id space, and SetCreature would have
+  // described whichever creature shares the number. And confirmed only with a body the server
+  // knows: the envelope is unauthenticated, and appearances alone would let a hand-edited one
+  // plant a confirmed voice that no player report can ever outrank.
+  const fromDisplays = observed.displayIds.length
+    ? await voiceFromDisplays(observed.displayIds, observed.modelFileId)
+    : null;
+  const body = raceForModel(observed.modelFileId);
+  if (fromDisplays?.exact && body) {
+    return upsertResolution({
+      npcKind,
+      npcId,
+      npcName: lang ? observed.npcName : null,
+      nameLang: lang ?? undefined,
+      ...fromDisplays.voice,
+      provenance: "display",
+      confirmed: true,
+      doubtful: false,
+      modelFileId: observed.modelFileId,
+      sex: observed.sex,
+      creatureType: observed.creatureType,
+      build: observed.build,
+      note: null,
+      resolvedBy: null,
+    });
+  }
+
+  // Several voices on one body, or one voice with no body to vouch for it, still settle the
+  // race and gender, and narrow the flavor to the ones this NPC can actually speak with.
+  const narrowed = fromDisplays?.exact
+    ? { ...fromDisplays.voice, flavors: fromDisplays.voice.flavor ? [fromDisplays.voice.flavor] : [] }
+    : fromDisplays;
+  const fromModel = narrowed ?? body;
   // A flavor nobody has confirmed, derived the way tts_cli/flavors.py's fallback_flavors
   // derives its own: "standard" where the race-gender has it, otherwise its busiest flavor,
   // from the corpus rather than a constant. A constant would leave four race-genders
@@ -126,16 +224,24 @@ export async function resolveNpc(observed: Observed): Promise<NpcResolution | nu
   // "tauren-male-standard", which nothing can produce. defaultFlavorFor answers null for a race
   // the corpus has never carried a flavored line for at all, and null is left alone rather than
   // guessed at: the row is unconfirmed regardless, and a moderator or the pipeline can decide.
-  const flavor = fromModel ? await defaultFlavorFor(fromModel.race, fromModel.gender) : null;
+  const fallback = fromModel ? await defaultFlavorFor(fromModel.race, fromModel.gender) : null;
+  // The default wins when the appearances offer it, so a narrowed row and a model-only row
+  // agree wherever they can.
+  const offered = narrowed?.flavors ?? [];
+  const flavor = offered.length && !offered.includes(fallback ?? "") ? offered[0] : fallback;
+  // No race from the body, but an animal or a thing by its type: read as a generic creature.
+  const generic = !fromModel && isGenericCreatureType(observed.creatureType);
   return upsertResolution({
     npcKind,
     npcId,
-    npcName: observed.npcName,
-    race: fromModel?.race ?? null,
+    npcName: lang ? observed.npcName : null,
+    nameLang: lang ?? undefined,
+    race: fromModel?.race ?? (generic ? "creature" : null),
     gender: fromModel?.gender ?? null,
     flavor,
-    provenance: fromModel ? "client" : "none",
+    provenance: fromModel || generic ? "client" : "none",
     confirmed: false,
+    doubtful: false,
     modelFileId: observed.modelFileId,
     sex: observed.sex,
     creatureType: observed.creatureType,

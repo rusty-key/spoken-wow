@@ -10,12 +10,14 @@ import { isProvider } from "@/lib/generation/providers";
 import { readSettings } from "@/lib/generation/settings";
 import { generationRoster } from "@/lib/generation/status";
 import { viewerOf } from "@/lib/grants/store";
-import { canManageVoices, canViewVoices } from "@/lib/permissions";
+import { can, canManageVoices, canViewVoices } from "@/lib/permissions";
 import { currentSession } from "@/lib/session";
 import { FISH_MODELS } from "@/lib/voices/fish";
+import { seedClips } from "@/lib/voices/seedClips";
 import { listReferences } from "@/lib/voices/references";
 import { listSamples, type Sample } from "@/lib/voices/samples";
 import { slots } from "@/lib/voices/slots";
+import { Contained } from "@/components/Width";
 
 export const metadata: Metadata = { title: "Voices · Spoken" };
 
@@ -35,14 +37,15 @@ export default async function Page({
 
   // 404 rather than a redirect, matching /admin: a member has no business learning that
   // this page exists. Open to whoever spends in the language, because this is where they
-  // choose what they spend with; what the voices are made from stays an admin's, inside.
-  if (!session || !canViewVoices(await viewerOf(session), lang)) notFound();
+  // choose what they spend with; what the voices are made from stays the language admin's, inside.
+  const viewer = session ? await viewerOf(session) : null;
+  if (!session || !canViewVoices(viewer, lang)) notFound();
   const userId = session.user.id;
 
   // The statuses, never the keys: sent to a client component as props.
   const [all, elevenStatus, fishStatus, preference, elevenKey, settings, references] =
     await Promise.all([
-      slots(),
+      slots(lang),
       apiKeyStatus(userId),
       apiKeyStatus(userId, "fish"),
       readPreference(userId, lang),
@@ -70,38 +73,53 @@ export default async function Page({
     ),
   );
 
+  // The slots voice/seed-clips can seed, read off the directory rather than guessed from the
+  // name: a bare slot like bloodelf-female has clips and bloodelf-male has none, and another
+  // language's set is only there once it has been fetched and pushed.
+  const seedSlots = (
+    await Promise.all(
+      all.map(async (slot) =>
+        (await seedClips(cloneName(slot.name, lang))).length > 0 ? slot.name : null,
+      ),
+    )
+  ).filter((name) => name !== null);
+
   const { tab } = await searchParams;
 
   return (
-    <main className="mx-auto max-w-6xl px-5 pt-6 pb-36">
-      <h1 className="mb-4 text-xl font-semibold">Voices</h1>
-      <VoicesTabs
-        initialTab={isProvider(tab) ? tab : preference.provider}
-        active={preference.provider}
-        keys={{ elevenlabs: elevenStatus !== null, fish: fishStatus !== null }}
-        settings={{ elevenlabs: preference.elevenlabs, fish: preference.fish }}
-        elevenLabsModels={
-          readable ? account.models.map((model) => ({ id: model.id, name: model.name })) : null
-        }
-        fishModels={FISH_MODELS.map((model) => ({
-          id: model.id,
-          label: model.label,
-          preview: model.preview,
-          price:
-            model.usdPerMillionBytes === null
-              ? "price not published"
-              : model.usdPerMillionBytes === 0
-                ? "free"
-                : `$${model.usdPerMillionBytes} per million bytes`,
-        }))}
-        slots={all}
-        initialSamples={samples}
-        initialReferences={Object.fromEntries(references)}
-        raceTags={settings.config.raceTags}
-        existing={readable ? [...account.voiceIds.keys()] : null}
-        accountError={account?.error ?? null}
-        manager={canManageVoices(session.user.role)}
-      />
+    <main className="pt-6 pb-36">
+      <Contained>
+        <h1 className="mb-4 text-xl font-semibold">Voices</h1>
+        <VoicesTabs
+          initialTab={isProvider(tab) ? tab : preference.provider}
+          active={preference.provider}
+          keys={{ elevenlabs: elevenStatus !== null, fish: fishStatus !== null }}
+          settings={{ elevenlabs: preference.elevenlabs, fish: preference.fish }}
+          elevenLabsModels={
+            readable ? account.models.map((model) => ({ id: model.id, name: model.name })) : null
+          }
+          fishModels={FISH_MODELS.map((model) => ({
+            id: model.id,
+            label: model.label,
+            preview: model.preview,
+            price:
+              model.usdPerMillionBytes === null
+                ? "price not published"
+                : model.usdPerMillionBytes === 0
+                  ? "free"
+                  : `$${model.usdPerMillionBytes} per million bytes`,
+          }))}
+          slots={all}
+          initialSamples={samples}
+          seedSlots={seedSlots}
+          initialReferences={Object.fromEntries(references)}
+          raceTags={settings.config.raceTags}
+          existing={readable ? [...account.voiceIds.keys()] : null}
+          accountError={account?.error ?? null}
+          manager={canManageVoices(viewer, lang)}
+          directs={can(viewer, "configure", lang)}
+        />
+      </Contained>
     </main>
   );
 }

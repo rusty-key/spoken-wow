@@ -2,7 +2,7 @@
 # Build the data module from transcoded copies of the audio store, and zip it.
 #
 #   make package-audio                 # the four shipping packs, Ogg Vorbis, into dist/
-#   make package-audio-complete        # every line in one folder, for the site
+
 #   make package-audio VERSION=1.4.0   # the version written into the .toc
 #   ENCODE=copy make package-audio     # the masters, untranscoded, for a listening check
 #   JOBS=1 make package-audio          # serial, when a failing encode needs readable output
@@ -10,7 +10,7 @@
 # The store is 3.2 GB of mono speech, almost all of it 128 kbps CBR from ElevenLabs;
 # 48 files are still the 64 kbps pack this project inherited. Shipping that as-is
 # asks a player to download three gigabytes for audio most of them hear once per
-# quest. docs/pack-size.md measures every encode that was considered.
+# quest. docs/quests/docs/pack-size.md measures every encode that was considered.
 #
 # THE SHIPPING PACK IS OGG VORBIS AT 44.1 kHz (`ogg-q0-44k`), which make passes in:
 # 3.2 GB of masters become ~1.3 GB, split five ways. Vorbis is worth 1.3-1.5x over
@@ -20,7 +20,7 @@
 # A 22.05 kHz downsample halves that again and speech survives an 11 kHz ceiling, so
 # it shipped as a second family for a while. It is retired - one family is one set of
 # projects, one set of folder names and one answer to "which do I install" - and the
-# profile stays available here for anyone measuring. docs/pack-size.md has the numbers.
+# profile stays available here for anyone measuring. docs/quests/docs/pack-size.md has the numbers.
 #
 # The masters stay in audio/ untouched, so raising the shipped quality later is a
 # re-run of this script rather than a second purchase from ElevenLabs, which bills
@@ -64,10 +64,12 @@ MODULE="${MODULE:-SpokenQuestsAudio}"
 VERSION="${VERSION:-2.0.0}"
 # Which packs to build; each becomes MODULE plus the suffix tts_cli/factions.py gives it.
 #
-# The four that ship. 'all' - one folder holding every line - is deliberately not among them:
-# it cannot be uploaded (577 MB is a Cloudflare 413), and on CurseForge that project ships the
-# meta addon from scripts/package-meta.sh instead. Build it with PACKS=all when you want the
-# whole thing in one folder locally, which is also the fast way to try an encode change.
+# The four that ship. 'all' - one folder holding every line - is not among them: CurseForge
+# cannot take it (577 MB is a Cloudflare 413) and ships the meta addon from
+# scripts/package-meta.sh under that project instead, and GitHub gets the four folders bundled
+# into one zip (below), so a player who moves between the two overwrites the same folders. Build
+# it with PACKS=all when you want the whole thing in one folder locally, which is also the fast
+# way to try an encode change.
 PACKS="${PACKS:-alliance horde shared gossip}"
 ENCODE="${ENCODE:-ogg-q0-44k}"
 ZIP="${ZIP:-1}"
@@ -95,12 +97,19 @@ THRESHOLD="${THRESHOLD:-80}"
 LANGUAGE="${LANGUAGE:-enUS}"
 if [ "$LANGUAGE" != enUS ]; then
   STORE="$REPO/build/quests/$LANGUAGE/audio"
-  PACKS="$(node "$REPO/scripts/lib/packs.mjs" list quests "$LANGUAGE" | tr '\n' ' ')"
+  PACKS="$(node "$REPO/scripts/lib/packs.mjs" list quests "$LANGUAGE" curseforge | tr '\n' ' ')"
 fi
-# A language's Gossip pack also carries that language's gossip text, so a client in it matches
-# the NPC's words (tts_cli/locale_text.py). make writes the file first (export-locale-text).
+# A language's Gossip pack also carries that language's
+# gossip text, so a client in it matches the NPC's words (tts_cli/locale_text.py). make writes
+# the file first (export-locale-text).
+# A language no client runs in has none: no client shows its words to match.
 LOCALE_TEXT="$REPO/build/quests/$LANGUAGE/locale-text.json.gz"
-if [ "$LANGUAGE" != enUS ] && [[ " $PACKS " == *" gossip "* ]] && [ ! -f "$LOCALE_TEXT" ]; then
+CLIENT_LANGUAGE="$(node --input-type=module -e 'const { isClientLocale } = await import(process.argv[1]); console.log(isClientLocale(process.argv[2]) ? "yes" : "no")' "$REPO/pipelines/lib/locales.mjs" "$LANGUAGE")"
+if [ "$CLIENT_LANGUAGE" = no ]; then
+  LOCALE_TEXT=""
+fi
+if [ "$LANGUAGE" != enUS ] && [ -n "$LOCALE_TEXT" ] && [[ " $PACKS " == *" gossip "* ]] \
+    && [ ! -f "$LOCALE_TEXT" ]; then
   echo "error: no $LANGUAGE gossip text at $LOCALE_TEXT -- run: make quests-export-locale-text LOCALE=$LANGUAGE" >&2
   exit 1
 fi
@@ -168,6 +177,9 @@ count="$(wc -l <"$plan" | tr -d ' ')"
 # Directories first in one pass, so placing the clips below is a flat run of cp rather
 # than thousands of mkdir processes.
 rsync -a -f'+ */' -f'- *' "$STORE/" "$staging/"
+# The takes' word times and words, written beside the clips by scripts/audio/sounds.mjs.
+[ ! -f "$STORE/word-times.json" ] || cp "$STORE/word-times.json" "$staging/"
+[ ! -f "$STORE/take-text.json" ] || cp "$STORE/take-text.json" "$staging/"
 
 if [ "$ENCODE" = copy ]; then
   echo "copying $count masters (ENCODE=copy)..."
@@ -273,7 +285,7 @@ fi
 # ONE STAGED STORE, SEVERAL PACKS. 600 MB is more than CurseForge takes in one upload and more
 # than a player wants for lines their character cannot reach, so the store is transcoded once
 # and built into a pack per side of the war, one for the quests both sides share, one for
-# gossip, and one holding everything. Each is an addon folder of its own - a second file on
+# gossip. Each is an addon folder of its own - a second file on
 # one project would let an addon manager move a player from the pack they chose to whichever
 # was uploaded last. tts_cli/factions.py holds the split and explains it.
 #
@@ -300,7 +312,7 @@ for pack in $PACKS; do
     title="$(pack_field "$pack" name)"
     version="$(pack_field "$pack" version)"
     language_args=(--language "$LANGUAGE")
-    if [ "$pack" = gossip ]; then language_args+=(--locale-text "$LOCALE_TEXT"); fi
+    if [ -n "$LOCALE_TEXT" ] && [ "$pack" = gossip ]; then language_args+=(--locale-text "$LOCALE_TEXT"); fi
   fi
 
   echo
@@ -324,5 +336,29 @@ for pack in $PACKS; do
   rm -f "$zip_path"
   echo "  zipping $(basename "$zip_path")..."
   (cd "$DIST" && zip -r -q -X "$zip_path" "$module" -x '*.DS_Store' '*.part')
+  # The folder was built before its zip; scripts/manager/publish.mjs refuses a folder older than
+  # its zip as a stale build, so mark this one as current.
+  touch "$DIST/$module/$module.toc"
   echo "  ==> $zip_path ($(du -h "$zip_path" | cut -f1))"
 done
+
+# THE GITHUB BUNDLE. A language's quests go to GitHub as one download, but one holding the four split
+# packs' own folders rather than a fifth folder with every line: the same folders CurseForge
+# installs, so a player who takes one channel and then the other overwrites them instead of
+# installing every line twice. Made from the folders this run just built, so it is only made
+# when the run built all four; scripts/lib/packs.mjs names the zip and the folders in it.
+if [ "$ZIP" = 1 ] && [ -z "$MODULE_NAME" ] && [ -z "$LABEL" ]; then
+  bundled="$(node "$REPO/scripts/lib/packs.mjs" get quests "$LANGUAGE" all bundles)"
+  built=1
+  for pack in alliance horde shared gossip; do [[ " $PACKS " == *" $pack "* ]] || built=0; done
+  if [ "$built" = 1 ] && [ "$MODULE" = SpokenQuestsAudio ]; then
+    if [ "$LANGUAGE" = enUS ]; then bundle_version="$VERSION"; else bundle_version="$(pack_field all version)"; fi
+    bundle_path="$(cd "$DIST" && pwd)/$(pack_field all folder)-$bundle_version.zip"
+    rm -f "$bundle_path"
+    echo
+    echo "bundling $bundled into $(basename "$bundle_path")..."
+    # shellcheck disable=SC2086 -- bundled is a list of folder names
+    (cd "$DIST" && zip -r -q -X "$bundle_path" $bundled -x '*.DS_Store' '*.part')
+    echo "  ==> $bundle_path ($(du -h "$bundle_path" | cut -f1))"
+  fi
+fi

@@ -6,6 +6,7 @@ describe("path safety", () => {
   it("accepts store-relative mp3 paths", () => {
     expect(isSafeAudioPath("quests/123-complete.mp3")).toBe(true);
     expect(isSafeAudioPath("gossip/m-abc123.mp3")).toBe(true);
+    expect(isSafeAudioPath("followup/f-4377-dwarf-male-standard.mp3")).toBe(true);
   });
 
   it("rejects traversal and anything outside the two subfolders", () => {

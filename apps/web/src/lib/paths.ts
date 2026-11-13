@@ -47,15 +47,14 @@ export const VOICE_REFERENCES_DIR =
   process.env.SPOKEN_QUESTS_VOICE_REFERENCES ?? path.join(DATA_ROOT, "voice", "references");
 
 /**
- * Blizzard's own NPC greeting barks, as `<race-gender>/<flavor>/<Title>.ogg`.
+ * The clips a voice is seeded from, as `<race-gender>/<flavor>/<Title>.ogg`.
  *
- * Written by tools/fetch_npc_lines.py and gitignored. This is the ground truth for what a
- * voice should sound like, and the material every clone is seeded from - which is the only
- * reason the web app can see it. In production it is shared/npc-lines, pushed from a
- * checkout with `make web-push-npc-lines`: a release never carries it.
+ * Local and gitignored. It is the material every clone is seeded from - which is the only
+ * reason the web app can see it. In production it is shared/seed-clips, pushed from a
+ * checkout with `make web-push-seed-clips`: a release never carries it.
  */
-export const NPC_LINES_DIR =
-  process.env.SPOKEN_QUESTS_NPC_LINES ?? path.join(DATA_ROOT, "voice", "npc-lines");
+export const SEED_CLIPS_DIR =
+  process.env.SPOKEN_QUESTS_SEED_CLIPS ?? path.join(DATA_ROOT, "voice", "seed-clips");
 
 /**
  * Every take of every quests line, the live one included, one directory per file:

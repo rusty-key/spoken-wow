@@ -8,6 +8,7 @@ import { viewerOf } from "@/lib/grants/store";
 import { BASE_LANG } from "@/lib/lang";
 import { can } from "@/lib/permissions";
 import { currentSession } from "@/lib/session";
+import { Contained, Wide } from "@/components/Width";
 
 export const metadata: Metadata = { title: "Game data · Spoken" };
 
@@ -28,16 +29,20 @@ export default async function Page() {
   const pending = await listUnconfirmed("creature");
 
   return (
-    <main className="mx-auto max-w-6xl px-5 pt-6 pb-24">
-      <h1 className="text-xl font-semibold">Game data</h1>
-      <p className="text-muted-foreground mt-1 mb-6 text-sm">
-        Resolve NPCs from what a game client knows about them: the appearance its server sends,
-        which names the model and the voice set the NPC speaks with.
-      </p>
-      <GameData
-        pending={pending.map((row) => ({ npcId: row.npcId, npcName: row.npcName, provenance: row.provenance }))}
-        script={gameScript(pending.map((row) => row.npcId))}
-      />
+    <main className="pt-6 pb-24">
+      <Contained>
+        <h1 className="text-xl font-semibold">Game data</h1>
+        <p className="text-muted-foreground mt-1 mb-6 text-sm">
+          Resolve NPCs from what a game client knows about them: the appearance its server sends,
+          which names the model and the voice set the NPC speaks with.
+        </p>
+      </Contained>
+      <Wide>
+        <GameData
+          pending={pending.map((row) => ({ npcId: row.npcId, npcName: row.npcName, provenance: row.provenance }))}
+          script={gameScript(pending.map((row) => row.npcId))}
+        />
+      </Wide>
     </main>
   );
 }

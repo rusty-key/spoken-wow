@@ -15,3 +15,35 @@ export function applyResolutions(
 ): Report[] {
   return rows.map((row) => resolved[row.id] ?? row);
 }
+
+/** Every report about one line, newest first, under the key the table tracks it by. */
+export type ReportGroup = { key: string; reports: Report[] };
+
+/**
+ * The triage list, one entry per line rather than per report.
+ *
+ * Three people reporting one line is the most useful signal the table carries (see
+ * migration 0021), and as three rows scattered by date it read as three problems to answer
+ * three times. Grouped, it is one line to listen to once, with its reports under it.
+ *
+ * Keyed on the line where the report resolved one, and on the raw address where it did
+ * not - a gossip NPC reported twice before anyone picked a take is still one NPC. A report
+ * about the project has neither and stands alone. Groups keep the order of their newest
+ * report, which is the server's order, so the queue still reads newest first.
+ */
+export function groupByLine(rows: Report[]): ReportGroup[] {
+  const groups = new Map<string, ReportGroup>();
+
+  for (const row of rows) {
+    const key = row.lineId
+      ? `${row.source}:line:${row.lineId}`
+      : row.target
+        ? `${row.source}:target:${row.target}`
+        : `report:${row.id}`;
+    const group = groups.get(key);
+    if (group) group.reports.push(row);
+    else groups.set(key, { key, reports: [row] });
+  }
+
+  return [...groups.values()];
+}

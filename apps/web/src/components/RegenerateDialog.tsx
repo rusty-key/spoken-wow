@@ -10,16 +10,40 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import type { Estimate } from "@/lib/generation/billing";
-import type { GenerationStatusResponse } from "@/lib/generation/client";
+import type { BatchSkip, GenerationStatusResponse } from "@/lib/generation/client";
 import { usd } from "@/lib/generation/money";
 
 function n(value: number): string {
   return value.toLocaleString();
 }
 
+/** Each reason a matched line is not a job of its own, worded for the dialog. */
+const SKIP_REASONS: [BatchSkip, string][] = [
+  ["no-voice", "no voice"],
+  ["untranslated", "not translated"],
+  ["invalid-chars", "unspeakable characters ($, < or >)"],
+  ["shared-file", "same audio file as another line, generated once"],
+];
+
+export type PendingBatch = {
+  label: string;
+  /** Null while the set is still being fetched, so the dialog opens on the click. */
+  estimate: Estimate | null;
+  /**
+   * The lines of voices pinned to fish.audio, priced in its dollars apart from `estimate`,
+   * which then holds the rest. Null or absent when the batch has none.
+   */
+  pinnedEstimate?: Estimate | null;
+  /** The fetch failed, which the dialog says rather than waiting forever. */
+  failed?: boolean;
+  /** Lines matched, and why some of them are not in `estimate`. Quests only. */
+  matched?: number;
+  skipped?: Partial<Record<BatchSkip, number>>;
+};
+
 type Props = {
   /** The batch awaiting confirmation, or null when nothing is pending. */
-  pending: { label: string; estimate: Estimate } | null;
+  pending: PendingBatch | null;
   status: GenerationStatusResponse | null;
   onConfirm: () => void;
   onCancel: () => void;
@@ -34,8 +58,18 @@ type Props = {
  */
 export default function RegenerateDialog({ pending, status, onConfirm, onCancel }: Props) {
   if (!pending) return null;
+  if (!pending.estimate) {
+    return <Waiting label={pending.label} failed={!!pending.failed} onCancel={onCancel} />;
+  }
 
   const { estimate, label } = pending;
+  const pinned = pending.pinnedEstimate ?? null;
+  const total = (count: "lines" | "files" | "characters") => estimate[count] + (pinned?.[count] ?? 0);
+  const skips = SKIP_REASONS.flatMap(([why, text]) => {
+    const count = pending.skipped?.[why] ?? 0;
+    return count > 0 ? [{ why, text, count }] : [];
+  });
+  const skippedTotal = skips.reduce((sum, skip) => sum + skip.count, 0);
   // Dollars for fish.audio, credits for ElevenLabs: the estimate, the balance it is weighed
   // against, and the words around them all follow the rate's unit.
   const dollars = estimate.rate.unit === "usd";
@@ -67,13 +101,13 @@ export default function RegenerateDialog({ pending, status, onConfirm, onCancel 
 
         <dl className="grid grid-cols-[auto_1fr] gap-x-6 gap-y-1.5 text-sm">
           <dt className="text-muted-foreground">Lines</dt>
-          <dd className="text-right font-mono">{n(estimate.lines)}</dd>
+          <dd className="text-right font-mono">{n(total("lines"))}</dd>
 
           <dt className="text-muted-foreground">Audio files</dt>
-          <dd className="text-right font-mono">{n(estimate.files)}</dd>
+          <dd className="text-right font-mono">{n(total("files"))}</dd>
 
           <dt className="text-muted-foreground">Characters</dt>
-          <dd className="text-right font-mono">{n(estimate.characters)}</dd>
+          <dd className="text-right font-mono">{n(total("characters"))}</dd>
 
           <dt className="text-muted-foreground">Estimated cost</dt>
           <dd className="text-right font-mono">
@@ -83,6 +117,21 @@ export default function RegenerateDialog({ pending, status, onConfirm, onCancel 
                 ? `up to ${amount(cost)}`
                 : `~${amount(cost)}`}
           </dd>
+
+          {pinned && (
+            <>
+              <dt className="text-muted-foreground">
+                Pinned to fish.audio, {n(pinned.files)} {pinned.files === 1 ? "file" : "files"}
+              </dt>
+              <dd className="text-right font-mono">
+                {pinned.usd === null
+                  ? "unknown"
+                  : pinned.rate.samples === 0
+                    ? `up to ${usd(pinned.usd)}`
+                    : `~${usd(pinned.usd)}`}
+              </dd>
+            </>
+          )}
 
           {remaining !== null && (
             <>
@@ -96,13 +145,24 @@ export default function RegenerateDialog({ pending, status, onConfirm, onCancel 
           )}
         </dl>
 
-        {/* Files, not lines: 1,076 files in the corpus are spoken by more than one NPC, and
-            each is generated once however many lines point at it. */}
-        {estimate.files < estimate.lines && (
-          <p className="text-muted-foreground text-xs">
-            {n(estimate.lines - estimate.files)} of these lines share audio with another, so
-            fewer files are generated than there are lines.
-          </p>
+        {/* Why the button's count and the files differ: lines nothing voices, and files
+            spoken by more than one NPC, each generated once. */}
+        {skippedTotal > 0 && (
+          <div className="text-muted-foreground text-xs">
+            <p>
+              {n(skippedTotal)}
+              {pending.matched !== undefined && ` of ${n(pending.matched)}`} matching{" "}
+              {skippedTotal === 1 ? "line" : "lines"} skipped:
+            </p>
+            <ul className="mt-1 grid grid-cols-[auto_1fr] gap-x-3 pl-3">
+              {skips.map(({ why, text, count }) => (
+                <li key={why} className="contents">
+                  <span className="text-right font-mono">{n(count)}</span>
+                  <span>{text}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
         )}
 
         {dollars ? (
@@ -146,8 +206,42 @@ export default function RegenerateDialog({ pending, status, onConfirm, onCancel 
           <Button variant="ghost" size="sm" onClick={onCancel}>
             Cancel
           </Button>
-          <Button size="sm" onClick={onConfirm}>
-            Regenerate {n(estimate.files)} {estimate.files === 1 ? "file" : "files"}
+          <Button size="sm" onClick={onConfirm} disabled={total("files") === 0}>
+            Regenerate {n(total("files"))} {total("files") === 1 ? "file" : "files"}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+/** The dialog between the click and the set arriving, which on the whole corpus is seconds. */
+function Waiting({
+  label,
+  failed,
+  onCancel,
+}: {
+  label: string;
+  failed: boolean;
+  onCancel: () => void;
+}) {
+  return (
+    <Dialog open onOpenChange={(open) => !open && onCancel()}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Regenerate {label}?</DialogTitle>
+          <DialogDescription>
+            {failed
+              ? "Could not work out what this would regenerate."
+              : "Counting what this would regenerate…"}
+          </DialogDescription>
+        </DialogHeader>
+        <DialogFooter>
+          <Button variant="ghost" size="sm" onClick={onCancel}>
+            {failed ? "Close" : "Cancel"}
+          </Button>
+          <Button size="sm" disabled>
+            Regenerate
           </Button>
         </DialogFooter>
       </DialogContent>

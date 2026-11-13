@@ -1,10 +1,12 @@
-## Interface: 11509, 20506, 30403, 100007, 16001
-## Title: |cff888888Spoken Contributions|r
-## Notes: Where Spoken keeps the lines it gathered for you. Upload SavedVariables/SpokenContributions.lua at spoken.rusty.one/contribute.
-## Version: 2.2.1
+## Interface: 11509, 20506, 30403, 16001
+## Title: |cffb48cffSpoken|r |cff6cb8ffContributions|r
+## Notes: Where Spoken keeps the lines it gathered for you. Upload SavedVariables/SpokenContributions.lua at spoken.quest/contribute.
+## Version: 3.8.7
 ## SavedVariables: SpokenContributionsDB
+## IconTexture: Interface\AddOns\SpokenContributions\icon.tga
+## Group: Spoken
 ## X-Part-Of: Spoken
-# No Lua at all, like the tombstones. The client names a SavedVariables file after the addon
+# No Lua at all. The client names a SavedVariables file after the addon
 # folder that declares it, never after the variable, so anything the player stored would land
-# in SpokenPlayer.lua beside its settings. This folder exists only so the file a player is told
+# in Spoken.lua beside its settings. This folder exists only so the file a player is told
 # to upload is named for what it holds. Gather.lua in the player reads and writes the table.

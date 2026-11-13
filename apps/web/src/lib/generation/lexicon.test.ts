@@ -132,19 +132,9 @@ describe("respelled entries", () => {
     expect(() => validateEntry(neither, 0)).toThrow(/either IPA or a respelling/);
   });
 
-  /**
-   * An alias is read aloud as written, so the conventions that make a respelling legible to
-   * a person make it worse as speech: capitals can read as an acronym, a hyphen as a pause.
-   * The stress-capitals form belongs in `say`, which is never sent.
-   */
-  it("rejects a respelling written in stress capitals", () => {
-    expect(() => validateEntry({ ...RESPELLED, alias: "NOME-reh-gan" }, 0)).toThrow(
-      /not in stress capitals/,
-    );
-  });
-
-  it("keeps a leading capital, which is ordinary spelling rather than stress", () => {
-    expect(validateEntry({ ...RESPELLED, alias: "Nomeregan" }, 0).alias).toBe("Nomeregan");
+  /** Stress capitals steer the model, so a respelling keeps them. */
+  it("keeps a respelling written in stress capitals", () => {
+    expect(validateEntry({ ...RESPELLED, alias: "NOME-reh-gan" }, 0).alias).toBe("NOME-reh-gan");
   });
 
   it("lets one lexicon hold both kinds", () => {

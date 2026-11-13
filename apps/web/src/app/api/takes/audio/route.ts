@@ -1,6 +1,6 @@
 /**
  * Playing an archived take, in whichever section owns it:
- * /api/takes/audio?source=zones&file=1411/razor-hill&version=2
+ * /api/takes/audio?source=places&file=1411/razor-hill&version=2
  *
  * The point of a history is hearing the alternative before committing to it, so this is
  * what makes "restore" a decision rather than a gamble. Quests had it and the other two did
@@ -43,7 +43,7 @@ export async function GET(request: NextRequest) {
   if (!isSource(source) || !file || !Number.isInteger(version) || version < 1) {
     return new Response("bad take", { status: 400 });
   }
-  if (!(await isAddressableFile(source, file))) {
+  if (!(await isAddressableFile(source, file, lang))) {
     return new Response("unknown file", { status: 404 });
   }
 

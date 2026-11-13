@@ -21,9 +21,11 @@ import { langParam } from "@/lib/lang-server";
 import { NO_API_KEY } from "@/lib/no-api-key";
 import { currentSession } from "@/lib/session";
 import { viewerOf } from "@/lib/grants/store";
+import { queuesOf, type Queue } from "@/lib/reports/reports";
 import {
   can,
   canConfigureGeneration,
+  isAdmin,
   langsWhere,
   spendsCredits,
   type Capability,
@@ -63,6 +65,15 @@ export async function requireCapability(
   return { session, denied: null };
 }
 
+/**
+ * Whether this session may ignore a line in `lang`, the ignore route's rule: in English an
+ * ignore holds in every language, which only whoever configures generation decides.
+ */
+export async function mayIgnoreIn(session: NonNullable<Session>, lang: Lang): Promise<boolean> {
+  if (lang === BASE_LANG) return canConfigureGeneration(session.user.role);
+  return can(await viewerOf(session), "ignore", lang);
+}
+
 export async function requireConfigure(): Promise<
   { session: NonNullable<Session>; denied: null } | { session: null; denied: Response }
 > {
@@ -71,6 +82,36 @@ export async function requireConfigure(): Promise<
     return { session: null, denied: FORBIDDEN() };
   }
   return { session, denied: null };
+}
+
+/**
+ * The session, or a 403, for what only a global admin may do: say who an NPC is, and edit the
+ * types an NPC can be. An NPC's type and voice hold in every language, so no language grant is
+ * enough to set them.
+ */
+export async function requireAdminSession(): Promise<
+  { session: NonNullable<Session>; denied: null } | { session: null; denied: Response }
+> {
+  const session = await currentSession();
+  if (!session || !isAdmin(session.user.role)) return { session: null, denied: FORBIDDEN() };
+  return { session, denied: null };
+}
+
+/**
+ * requireAdminSession, with the page's language (`?lang=`): a rename is saved in it, and the
+ * activity log files the answer under it.
+ */
+export async function requireAdmin(
+  request: Request,
+): Promise<
+  | { lang: Lang; session: NonNullable<Session>; denied: null }
+  | { lang: null; session: null; denied: Response }
+> {
+  const { lang, denied } = await langParam(request);
+  if (denied) return { lang: null, session: null, denied };
+  const guard = await requireAdminSession();
+  if (guard.denied) return { lang: null, session: null, denied: guard.denied };
+  return { lang, session: guard.session, denied: null };
 }
 
 //------------------------------------------------------------------------------
@@ -144,17 +185,20 @@ export type SpeakerGuard =
  * The signed-in user's Speaker: the provider they activated for `lang` on /voices, with their
  * own key for it. The 428 names that provider, so a collaborator who switched to fish.audio
  * without a key is told which key is missing.
+ *
+ * `provider` replaces the activated one for a line whose voice is pinned (pinned.ts). Still
+ * their key and their settings: a pin decides who speaks, not who pays.
  */
-export async function requireSpeaker(userId: string, lang: Lang): Promise<SpeakerGuard> {
+export async function requireSpeaker(
+  userId: string,
+  lang: Lang,
+  provider?: Provider,
+): Promise<SpeakerGuard> {
   const preference = await readPreference(userId, lang);
-  const { key, denied } = await requireApiKey(userId, preference.provider);
-  if (denied) return { speaker: null, provider: preference.provider, key: null, denied };
-  return {
-    speaker: speakerFrom(preference.provider, key, preference),
-    provider: preference.provider,
-    key,
-    denied: null,
-  };
+  const chosen = provider ?? preference.provider;
+  const { key, denied } = await requireApiKey(userId, chosen);
+  if (denied) return { speaker: null, provider: chosen, key: null, denied };
+  return { speaker: speakerFrom(chosen, key, preference), provider: chosen, key, denied: null };
 }
 
 //------------------------------------------------------------------------------
@@ -178,6 +222,24 @@ export async function requireIn(
   const guard = await requireCapability(capability, lang);
   if (guard.denied) return { lang: null, session: null, denied: guard.denied };
   return { lang, session: guard.session, denied: null };
+}
+
+/**
+ * The language from `?lang=`, the session if it works either queue there, and which it works:
+ * one queue's reports are not the other's to touch.
+ */
+export async function requireQueues(
+  request: Request,
+): Promise<
+  | { lang: Lang; session: NonNullable<Session>; queues: Queue[]; denied: null }
+  | { lang: null; session: null; queues: null; denied: Response }
+> {
+  const { lang, denied } = await langParam(request);
+  if (denied) return { lang: null, session: null, queues: null, denied };
+  const session = await currentSession();
+  const queues = session ? queuesOf(await viewerOf(session), lang) : [];
+  if (!session || !queues.length) return { lang: null, session: null, queues: null, denied: FORBIDDEN() };
+  return { lang, session, queues, denied: null };
 }
 
 /**

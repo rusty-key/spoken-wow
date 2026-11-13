@@ -1,47 +1,67 @@
-import Link from "next/link";
-
+import { SECTIONS, type Section } from "@/lib/contributions/query";
+import type { PendingCounts } from "@/lib/contributions/pending";
 import { localeHref, type Lang } from "@/lib/lang";
-import { cn } from "@/lib/utils";
 
-const TABS = [
-  { key: "contributions", label: "Contributions", href: "/contributions" },
-  { key: "npcs", label: "NPCs", href: "/contributions/npcs" },
-] as const;
+import { LinkTabs } from "@/components/StatusTabs";
+
+const SECTION_LABELS: Record<Section, string> = {
+  quests: "Quests",
+  readables: "Readables",
+  places: "Places",
+};
+
+function viewsOf(section: "quests" | "readables") {
+  return [
+    { key: "contributions", label: "Contributions", href: `/contributions/${section}` },
+    { key: "corrections", label: "Corrections", href: `/contributions/${section}/corrections` },
+  ] as const;
+}
+
+type View = ReturnType<typeof viewsOf>[number]["key"];
 
 /**
- * The two views of /contributions: the triage queue, and every NPC it has named. Links, not
- * client state -- each is its own page with its own gate, and the NPC tab is left out for
- * somebody that page would 404 for. Styled as VoicesTabs's own tab strip.
+ * The sections of /contributions, and under Quests and Readables their two views: lines the corpus
+ * lacks and corrections to lines it has, which only quests and readables can have. Links, not
+ * client state: each is its own page with its own gate. Each tab carries how many new rows wait in it,
+ * when given.
  */
 export default function ContributionsTabs({
   lang,
-  active,
-  showNpcs,
+  section,
+  view,
+  pending,
 }: {
   lang: Lang;
-  active: (typeof TABS)[number]["key"];
-  showNpcs: boolean;
+  section: Section;
+  view?: View;
+  pending?: PendingCounts;
 }) {
-  const tabs = TABS.filter((tab) => tab.key !== "npcs" || showNpcs);
-  if (tabs.length < 2) return null;
-
+  const sections = SECTIONS.map((key) => ({
+    key,
+    label: counted(SECTION_LABELS[key], pending?.sections[key]),
+    href: `/contributions/${key}`,
+  }));
   return (
-    <nav aria-label="Contributions" className="mb-4 flex gap-1 border-b">
-      {tabs.map((tab) => (
-        <Link
-          key={tab.key}
-          href={localeHref(lang, tab.href)}
-          aria-current={tab.key === active ? "page" : undefined}
-          className={cn(
-            "-mb-px border-b-2 px-3 py-2 text-sm",
-            tab.key === active
-              ? "border-foreground font-medium"
-              : "text-muted-foreground hover:text-foreground border-transparent",
+    <>
+      <LinkTabs label="Contributions" tabs={localised(lang, sections)} active={section} />
+      {section === "quests" || section === "readables" ? (
+        <LinkTabs
+          label={SECTION_LABELS[section]}
+          tabs={localised(
+            lang,
+            viewsOf(section).map((tab) => ({ ...tab, label: counted(tab.label, pending?.[section][tab.key]) })),
           )}
-        >
-          {tab.label}
-        </Link>
-      ))}
-    </nav>
+          active={view ?? "contributions"}
+        />
+      ) : null}
+    </>
   );
+}
+
+function counted(label: string, count: number | undefined): string {
+  return count === undefined ? label : `${label} (${count})`;
+}
+
+function localised(lang: Lang, tabs: readonly { key: string; label: string; href: string }[]) {
+  return tabs.map((tab) => ({ value: tab.key, label: tab.label, href: localeHref(lang, tab.href) }));
 }

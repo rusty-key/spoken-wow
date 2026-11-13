@@ -1,0 +1,271 @@
+name: Manager
+
+# Builds, tests and releases Spoken Manager (manager/) for Windows, macOS and Linux.
+#
+#   workflow_dispatch     test and package on all three systems; the installers are kept as
+#                         workflow artifacts, nothing is released.
+#   tag manager/vX.Y.Z    the same, then a release for the tag with every installer, then the
+#                         `manager-latest` release is refreshed: the manager's own updater reads
+#                         latest*.yml from there (manager/src/main/updater.ts, FEED_URL).
+#
+# The tag has to match "version" in manager/package.json; the release job checks it.
+#
+# First release: `manager-latest` does not exist yet and the release job creates it as a normal
+# release (not a draft, not a pre-release) that is not marked "latest", so the repo's "latest"
+# release stays Spoken's own. Later runs only swap its assets.
+on:
+  workflow_dispatch:
+  push:
+    tags:
+      - "manager/v*"
+
+permissions:
+  contents: read
+
+defaults:
+  run:
+    working-directory: manager
+
+jobs:
+  test:
+    name: Test (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [windows-latest, macos-latest, ubuntu-latest]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: manager/package-lock.json
+      - run: npm ci
+      - run: npm run typecheck
+      - run: npm test
+      - run: npm run build
+
+  package:
+    name: Package (${{ matrix.os }})
+    needs: test
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: windows-latest
+            script: dist:win
+            artifact: manager-windows
+            files: |
+              manager/release/*.exe
+              manager/release/*.exe.blockmap
+              manager/release/latest.yml
+          - os: macos-latest
+            script: dist:mac
+            artifact: manager-macos
+            files: |
+              manager/release/*.dmg
+              manager/release/*.dmg.blockmap
+              manager/release/*.zip
+              manager/release/*.zip.blockmap
+              manager/release/latest-mac.yml
+          - os: ubuntu-latest
+            script: dist:linux
+            artifact: manager-linux
+            files: |
+              manager/release/*.AppImage
+              manager/release/*.tar.gz
+              manager/release/*.deb
+              manager/release/*.rpm
+              manager/release/latest-linux.yml
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: manager/package-lock.json
+      - run: npm ci
+      - name: Install RPM packaging tools
+        if: runner.os == 'Linux'
+        run: sudo apt-get update && sudo apt-get install -y rpm
+      # The macOS app icon is an Icon Composer file (build/icon.icon), which only Xcode 26's actool
+      # compiles. The runner may default to an older Xcode next to a newer one.
+      - name: Use Xcode 26 or newer
+        if: runner.os == 'macOS'
+        shell: bash
+        run: |
+          major="$(xcodebuild -version | awk 'NR==1 { split($2, v, "."); print v[1] }')"
+          if [ "$major" -lt 26 ]; then
+            xcode="$(ls -d /Applications/Xcode_2[6-9]*.app 2>/dev/null | sort -V | tail -1)"
+            [ -n "$xcode" ] || { echo "No Xcode 26 or newer on this runner." >&2; exit 1; }
+            sudo xcode-select -s "$xcode"
+          fi
+          xcodebuild -version
+      # macOS is signed with the Developer ID certificate and notarized with an App Store Connect
+      # API key. A run without the secrets (a fork) builds it unsigned; a release tag never does.
+      # When Apple refuses to notarize (an agreement it says is unsigned, an outage), the build is
+      # made again signed only, with a warning: players get "could not verify" and Open Anyway
+      # instead of no release.
+      - name: Build the installers
+        shell: bash
+        run: |
+          if [ "$RUNNER_OS" = macOS ] && [ -n "$MAC_CSC_LINK" ]; then
+            # The certificate goes into a keychain of this run's own; electron-builder finds the
+            # Developer ID identity there. (Its CSC_LINK import fails on the runner's keychain.)
+            keychain="$RUNNER_TEMP/signing.keychain-db"
+            pass="$(openssl rand -hex 24)"
+            security create-keychain -p "$pass" "$keychain"
+            security set-keychain-settings -lut 21600 "$keychain"
+            security unlock-keychain -p "$pass" "$keychain"
+            printf '%s' "$MAC_CSC_LINK" | base64 --decode > "$RUNNER_TEMP/cert.p12"
+            security import "$RUNNER_TEMP/cert.p12" -k "$keychain" -P "$MAC_CSC_KEY_PASSWORD" -f pkcs12 -T /usr/bin/codesign -T /usr/bin/security
+            rm -f "$RUNNER_TEMP/cert.p12"
+            security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k "$pass" "$keychain" > /dev/null
+            security list-keychains -d user -s "$keychain" $(security list-keychains -d user | tr -d '"')
+            security find-identity -v -p codesigning "$keychain"
+            export APPLE_API_KEY="$RUNNER_TEMP/AuthKey.p8"
+            printf '%s' "$APPLE_API_KEY_P8" > "$APPLE_API_KEY"
+          elif [ "$RUNNER_OS" = macOS ] && [[ "$GITHUB_REF" == refs/tags/manager/v* ]]; then
+            echo "A release needs the macOS signing secrets (MAC_CSC_LINK and the rest)." >&2
+            exit 1
+          else
+            export CSC_IDENTITY_AUTO_DISCOVERY=false
+          fi
+          if [ -z "${APPLE_API_KEY:-}" ]; then
+            npm run ${{ matrix.script }}
+          elif npm run ${{ matrix.script }} 2>&1 | tee "$RUNNER_TEMP/build.log"; then
+            echo "NOTARIZED=true" >> "$GITHUB_ENV"
+          elif grep -q "Failed to notarize" "$RUNNER_TEMP/build.log"; then
+            echo "::warning title=Not notarized::Apple refused to notarize the macOS build; it ships signed only. See the log above."
+            rm -rf release
+            # electron-builder notarizes only when these are set.
+            unset APPLE_API_KEY APPLE_API_KEY_ID APPLE_API_ISSUER
+            npm run ${{ matrix.script }}
+          else
+            exit 1
+          fi
+        env:
+          MAC_CSC_LINK: ${{ secrets.MAC_CSC_LINK }}
+          MAC_CSC_KEY_PASSWORD: ${{ secrets.MAC_CSC_KEY_PASSWORD }}
+          APPLE_API_KEY_P8: ${{ secrets.APPLE_API_KEY_P8 }}
+          APPLE_API_KEY_ID: ${{ secrets.APPLE_API_KEY_ID }}
+          APPLE_API_ISSUER: ${{ secrets.APPLE_API_ISSUER }}
+      - name: Check the macOS signature and notarization
+        if: runner.os == 'macOS' && env.SIGNED == 'true'
+        shell: bash
+        run: |
+          for app in release/mac*/*.app; do
+            codesign --verify --deep --strict --verbose=2 "$app"
+            # Read whole first: grep -q stopping early would break codesign's pipe, and pipefail is on.
+            info="$(codesign -dvv "$app" 2>&1)"
+            grep -q '^Authority=Developer ID Application:' <<< "$info"
+            if [ "${NOTARIZED:-}" = true ]; then
+              xcrun stapler validate "$app"
+              spctl --assess --type execute --verbose=2 "$app"
+            fi
+          done
+        env:
+          SIGNED: ${{ secrets.MAC_CSC_LINK != '' }}
+      # upload-artifact fails only when no pattern matches, and the release job's globs need each one.
+      - name: Check every installer was built
+        working-directory: .
+        shell: bash
+        run: |
+          missing=0
+          while read -r pattern; do
+            [ -n "$pattern" ] || continue
+            compgen -G "$pattern" > /dev/null || { echo "Nothing matches $pattern." >&2; missing=1; }
+          done <<< "$FILES"
+          exit "$missing"
+        env:
+          FILES: ${{ matrix.files }}
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.artifact }}
+          path: ${{ matrix.files }}
+          if-no-files-found: error
+          # Every installer is compressed already.
+          compression-level: 0
+
+  release:
+    name: Release
+    needs: [test, package]
+    if: startsWith(github.ref, 'refs/tags/manager/v')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    concurrency:
+      group: manager-release
+      cancel-in-progress: false
+    env:
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      GH_REPO: ${{ github.repository }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Check the tag against package.json
+        working-directory: .
+        run: |
+          version="${GITHUB_REF_NAME#manager/v}"
+          have="$(node -p "require('./manager/package.json').version")"
+          if [ "$version" != "$have" ]; then
+            echo "Tag ${GITHUB_REF_NAME} says ${version} but manager/package.json says ${have}." >&2
+            exit 1
+          fi
+
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: manager-*
+          path: dist
+          merge-multiple: true
+
+      - name: Create the release for the tag
+        working-directory: .
+        run: |
+          ls -l dist
+          flags=""
+          case "${GITHUB_REF_NAME}" in *-*) flags="--prerelease" ;; esac
+          # The installers only: the update feed files and block maps go to manager-latest.
+          mapfile -t installers < <(find dist -type f ! -name 'latest*.yml' ! -name '*.blockmap' | sort)
+          if gh release view "${GITHUB_REF_NAME}" >/dev/null 2>&1; then
+            # A re-run: the release is there already, so only its files are replaced.
+            gh release upload "${GITHUB_REF_NAME}" "${installers[@]}" --clobber
+          else
+            gh release create "${GITHUB_REF_NAME}" "${installers[@]}" \
+              --title "Spoken Manager ${GITHUB_REF_NAME#manager/v}" \
+              --notes "Installers for Windows, macOS and Linux. See manager/README.md for how to install them." \
+              --verify-tag --latest=false $flags
+          fi
+
+      # What the manager's updater reads: latest.yml, latest-mac.yml, latest-linux.yml and the files
+      # they name. A pre-release tag does not touch it, so only stable versions reach players.
+      - name: Refresh the manager-latest release
+        working-directory: .
+        run: |
+          case "${GITHUB_REF_NAME}" in
+            *-*) echo "Pre-release tag: manager-latest is left alone."; exit 0 ;;
+          esac
+          # The site's download buttons link to these names, so a release cannot leave them on a
+          # version this release has just deleted. A renamed installer fails here, before the upload.
+          version="${GITHUB_REF_NAME#manager/v}"
+          cp "dist/Spoken-Manager-Setup-$version.exe" dist/Spoken-Manager-Setup.exe
+          cp "dist/Spoken-Manager-$version-mac-arm64.dmg" dist/Spoken-Manager-mac-arm64.dmg
+          cp "dist/Spoken-Manager-$version-mac-x64.dmg" dist/Spoken-Manager-mac-x64.dmg
+          cp "dist/Spoken-Manager-$version-linux.AppImage" dist/Spoken-Manager-linux.AppImage
+          if gh release view manager-latest >/dev/null 2>&1; then
+            # Upload first, then drop what the new version no longer ships, so a failed upload
+            # leaves the old feed working and a re-run picks up from there.
+            gh release upload manager-latest dist/* --clobber
+            gh release view manager-latest --json assets --jq '.assets[].name' | while read -r name; do
+              [ -e "dist/$name" ] || gh release delete-asset manager-latest "$name" --yes
+            done
+          else
+            # First run: a normal release (not a draft, not a pre-release), and not "latest".
+            gh release create manager-latest dist/* \
+              --title "Spoken Manager (update feed)" \
+              --notes "The files the manager downloads its own updates from. Replaced by each manager release; do not edit." \
+              --latest=false
+          fi
+          gh release edit manager-latest --draft=false --prerelease=false --latest=false

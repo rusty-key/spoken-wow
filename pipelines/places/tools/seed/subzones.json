@@ -1,0 +1,213 @@
+{
+  "_comment": [
+    "Which parent zones to scrape subzone lore for, keyed by uiMapID.",
+    "Subzones are enumerated from 'Category:<name> subzones' on warcraft.wiki.gg;",
+    "set `category` to override that, and `exclude` to drop specific pages.",
+    "",
+    "A category also lists places that are not areas of its zone: a city that is a zone",
+    "of its own (Orgrimmar in Durotar), or an area of a neighbour (Ruins of Alterac in",
+    "Hillsbrad). Those are excluded, so each place has one line, under the zone the",
+    "client puts it in. Passages that join two places (Deeprun Tram, a city's gates)",
+    "stay at both ends.",
+    "",
+    "Covers all 46 Classic Era zone maps. Azeroth (947), Kalimdor (1414) and",
+    "Eastern Kingdoms (1415) are deliberately absent: they are not Zone-type maps,",
+    "a click on them is Blizzard's own navigation, and UI/SubzoneClick.lua ignores",
+    "non-Zone maps anyway.",
+    "",
+    "44 of the 46 resolve from the zone name directly. The two exceptions are The",
+    "Barrens and The Hinterlands, where the wiki drops the leading article. For the",
+    "Barrens the vanilla 'Barrens subzones' category (34 pages) is correct, NOT the",
+    "Cataclysm-split 'Northern Barrens subzones' (28).",
+    "",
+    "`aliases` maps a name the CLIENT reports to the wiki page title, for cases",
+    "where normalisation is not enough to make them meet. Normalisation already",
+    "handles case, a leading 'the', and apostrophes, so 'The Bulwark' finds the",
+    "page titled 'Bulwark' with no alias needed. Use `/spz debug` in-game to see",
+    "the raw name the client reports for an area."
+  ],
+  "zones": {
+    "1411": {
+      "name": "Durotar",
+      "exclude": [
+        "Orgrimmar"
+      ]
+    },
+    "1412": {
+      "name": "Mulgore",
+      "exclude": [
+        "Thunder Bluff"
+      ]
+    },
+    "1413": {
+      "name": "The Barrens",
+      "category": "Barrens subzones"
+    },
+    "1416": {
+      "name": "Alterac Mountains"
+    },
+    "1417": {
+      "name": "Arathi Highlands"
+    },
+    "1418": {
+      "name": "Badlands"
+    },
+    "1419": {
+      "name": "Blasted Lands"
+    },
+    "1420": {
+      "name": "Tirisfal Glades",
+      "exclude": [
+        "Undercity"
+      ]
+    },
+    "1421": {
+      "name": "Silverpine Forest"
+    },
+    "1422": {
+      "name": "Western Plaguelands",
+      "exclude": [
+        "Plaguemist Ravine"
+      ]
+    },
+    "1423": {
+      "name": "Eastern Plaguelands"
+    },
+    "1424": {
+      "name": "Hillsbrad Foothills",
+      "exclude": [
+        "Alterac Mountains",
+        "Dandred's Fold",
+        "Lordamere Lake",
+        "Ruins of Alterac",
+        "Uplands"
+      ]
+    },
+    "1425": {
+      "name": "The Hinterlands",
+      "category": "Hinterlands subzones"
+    },
+    "1426": {
+      "name": "Dun Morogh",
+      "exclude": [
+        "Ironforge"
+      ]
+    },
+    "1427": {
+      "name": "Searing Gorge"
+    },
+    "1428": {
+      "name": "Burning Steppes"
+    },
+    "1429": {
+      "name": "Elwynn Forest",
+      "exclude": [
+        "Stormwind City"
+      ]
+    },
+    "1430": {
+      "name": "Deadwind Pass"
+    },
+    "1431": {
+      "name": "Duskwood"
+    },
+    "1432": {
+      "name": "Loch Modan",
+      "exclude": [
+        "South Gate Outpost"
+      ]
+    },
+    "1433": {
+      "name": "Redridge Mountains"
+    },
+    "1434": {
+      "name": "Stranglethorn Vale"
+    },
+    "1435": {
+      "name": "Swamp of Sorrows"
+    },
+    "1436": {
+      "name": "Westfall"
+    },
+    "1437": {
+      "name": "Wetlands"
+    },
+    "1438": {
+      "name": "Teldrassil",
+      "exclude": [
+        "Darnassus"
+      ]
+    },
+    "1439": {
+      "name": "Darkshore"
+    },
+    "1440": {
+      "name": "Ashenvale",
+      "exclude": [
+        "Mor'shan Rampart"
+      ]
+    },
+    "1441": {
+      "name": "Thousand Needles",
+      "exclude": [
+        "South Seas"
+      ]
+    },
+    "1442": {
+      "name": "Stonetalon Mountains"
+    },
+    "1443": {
+      "name": "Desolace"
+    },
+    "1444": {
+      "name": "Feralas"
+    },
+    "1445": {
+      "name": "Dustwallow Marsh"
+    },
+    "1446": {
+      "name": "Tanaris"
+    },
+    "1447": {
+      "name": "Azshara"
+    },
+    "1448": {
+      "name": "Felwood"
+    },
+    "1449": {
+      "name": "Un'Goro Crater"
+    },
+    "1450": {
+      "name": "Moonglade"
+    },
+    "1451": {
+      "name": "Silithus"
+    },
+    "1452": {
+      "name": "Winterspring"
+    },
+    "1453": {
+      "name": "Stormwind City"
+    },
+    "1454": {
+      "name": "Orgrimmar"
+    },
+    "1455": {
+      "name": "Ironforge"
+    },
+    "1456": {
+      "name": "Thunder Bluff"
+    },
+    "1457": {
+      "name": "Darnassus"
+    },
+    "1458": {
+      "name": "Undercity"
+    }
+  },
+  "aliases": {
+    "1420": {},
+    "1421": {},
+    "_comment": "parent uiMapID -> { client-reported name: wiki page title }"
+  }
+}

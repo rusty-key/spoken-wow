@@ -30,7 +30,7 @@ type Props = {
  *
  * It was three dialogs and two of them existed: quests carried the lineId as well as the
  * address, because an NPC address names every line that speaker has and a reporter coming
- * from the game picks one by hand, while the zones one passed a file path and had a
+ * from the game picks one by hand, while the places one passed a file path and had a
  * never-used "general" mode. Both of those are the same shape once the address is asked for
  * per source, which is what reportTargetOf does.
  */
@@ -44,6 +44,7 @@ export default function ReportDialog({ subject, onClose }: Props) {
   if (!subject || !target) return null;
 
   const detail = detailOf(subject.source, subject.line, undefined, lang);
+  const context = [detail.speaker?.name, detail.aside].filter(Boolean).join(" · ");
 
   return (
     <Dialog open onOpenChange={(open) => !open && onClose()}>
@@ -52,7 +53,7 @@ export default function ReportDialog({ subject, onClose }: Props) {
           <DialogTitle>Report this line</DialogTitle>
           <DialogDescription>
             {detail.heading}
-            {detail.context ? ` — ${detail.context}` : ""} ({target})
+            {context ? ` — ${context}` : ""} ({target})
           </DialogDescription>
         </DialogHeader>
 

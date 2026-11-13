@@ -8,11 +8,11 @@ local stub = require("wow_client_stub")
 local H = require("queue_helpers")
 local print = stub.print
 local world = stub.world
-local QUESTS = here .. "/../../addons/SpokenQuests/"
-local SPOKEN = here .. "/../../addons/SpokenPlayer/"
+local QUESTS = here .. "/../../addons/Spoken_Quests/"
+local SPOKEN = here .. "/../../addons/Spoken/"
 local Expect, Failures = H.Expecter(print)
 
-local BOOK = [[Interface\AddOns\SpokenQuests\Textures\Book]]
+local BOOK = [[Interface\AddOns\Spoken_Quests\Textures\Book]]
 
 local lookup = {}
 for _, q in ipairs({ 101, 102, 103 }) do
@@ -24,7 +24,7 @@ local GREETING_HASH = "9fdeb82237b72e8801030487901e690f"
 lookup[GREETING_HASH] = 3
 
 local function Boot()
-    stub.SetClient("11509"); stub.ResetSound(); stub.ResetTimers()
+    stub.SetClient("16001"); stub.ResetSound(); stub.ResetTimers()
     stub.ldbObjects = {}; stub.dbIcons = {}
     -- The client state the previous scenario left: a quest ID and a visible panel would
     -- have the new addon's 10 Hz watcher queue a line before the scenario starts.
@@ -33,6 +33,7 @@ local function Boot()
     VO.Addon:OnInitialize()
     VO.DataModules:Register("TestPack", {
         SoundLengthLookupByFileName = lookup,
+        WordTimesByFileName = { ["101-accept"] = "0 .5 1.25", [GREETING_HASH] = "0 .4" },
         GetSoundPath = function(_, fileName) return fileName .. ".ogg" end,
         GossipLookupByNPCID = { [1234] = { ["Greetings, traveller."] = GREETING_HASH } },
     })
@@ -46,6 +47,7 @@ end
 local VO, env, Spoken = Boot()
 local source = Spoken:GetSource("quests")
 Expect("the quests addon registers a source", source ~= nil and source == VO.Player.source, true)
+Expect("...headed in the minimap menu by its page's name, in the player's language", source.title, VO.L.OPT_PAGE_TITLE)
 Expect("...probing files before queueing, as it always did", source.testBeforeQueue, true)
 Expect("...on the configured channel, as a string", source:GetChannel(), "Master")
 
@@ -62,9 +64,73 @@ Expect("...bullet is the accept bullet", clip.present.bullet, "quest-accept")
 Expect("...portrait is the NPC's model", clip.present.portrait.kind .. ":" .. tostring(clip.present.portrait.creatureID), "model:1234")
 Expect("...with the book as fallback", clip.present.portrait.fallback.texture, BOOK)
 Expect("...and the Report action", clip.present.actions[1].id, "report")
+Expect("...timed by the pack's word times", clip.present.timings, "0 .5 1.25")
 Expect("...the original fields survive for the dispatcher", clip.questID .. "/" .. clip.event, "101/1")
 Expect("the watcher's stage is recorded", VO.Debug.runtime.stage, "playing")
 Expect("the player shows it", env.PlayerFrame.frame.container.name:GetText(), "Innkeeper Test")
+
+---------------------------------------------------------------- word times under other words
+stub.SetLocale("deDE")
+VO, env, Spoken = Boot()
+world.questID = 101
+stub.ShowPanel("QuestFrameDetailPanel")
+VO.Addon:QUEST_DETAIL()
+Expect("an English recording on a German client plays", Spoken:GetCurrent() and Spoken:GetCurrent().fileName, "101-accept")
+Expect("...untimed, the window's words being German", Spoken:GetCurrent() and Spoken:GetCurrent().present.timings, nil)
+stub.SetLocale("enUS")
+
+---------------------------------------------------------------- a quest from an object or an item
+-- A wanted poster's line shows a posted notice, never a captured face (the game paints an object
+-- black). A quest from an item shows the item's icon.
+VO, env, Spoken = Boot()
+local unitExists = _G.UnitExists
+_G.UnitExists = function(unit) return unit ~= "npc" and unit ~= "questnpc" end
+world.npcGUID = "GameObject-0-0-0-0-5555-0"; world.playerMapID = 1429
+world.questID = 102
+stub.ShowPanel("QuestFrameDetailPanel")
+VO.Addon:QUEST_DETAIL()
+local poster = Spoken:GetCurrent()
+Expect("a quest from an object shows a posted notice", poster and poster.present.portrait.kind .. ":"
+    .. tostring(poster.present.portrait.texture), "texture:" .. [[Interface\Icons\INV_Misc_Note_01]])
+Expect("...not a face captured from the object", env.StaticPortrait:Capture(poster), nil)
+-- A creature's GUID has its face, an object's has none.
+do
+    local unitGUID, portrait, shown = _G.UnitGUID, _G.SetPortraitTexture, nil
+    _G.SetPortraitTexture = function() end
+    _G.UnitGUID = function(unit) return unit == "npc" and shown or nil end
+    local function Model(guid) return { present = { portrait = { kind = "model", unitGUID = guid } } } end
+    shown = "Creature-0-1-2-3-3000-0000000123"
+    Expect("a creature's GUID captures its face", env.StaticPortrait:Capture(Model(shown)) ~= nil, true)
+    shown = "GameObject-0-1-2-3-3000-0000000123"
+    Expect("...an object's does not", env.StaticPortrait:Capture(Model(shown)), nil)
+    -- The subtitle and the Small Window share one texture per face; each takes it back in turn.
+    shown = "Creature-0-1-2-3-3000-0000000123"
+    local subtitle, small = _G.CreateFrame("Frame"), _G.CreateFrame("Frame")
+    env.StaticPortrait:Configure(subtitle, Model(shown))
+    env.StaticPortrait:Configure(small, Model(shown))
+    env.StaticPortrait:Configure(subtitle, Model(shown))
+    Expect("a face shown in the Small Window comes back to the subtitle", subtitle.activeFrame
+        and subtitle.activeFrame:GetParent() == subtitle, true)
+    _G.UnitGUID, _G.SetPortraitTexture = unitGUID, portrait
+end
+_G.C_Container = {
+    GetContainerNumSlots = function(bag) return bag == 1 and 3 or 0 end,
+    GetContainerItemInfo = function(bag, slot) return slot == 2 and { iconFileID = 134939, hyperlink = "|cffffffff|Hitem:1307::|h[Gold Pickup Schedule]|h|r" } or nil end,
+    GetContainerItemQuestInfo = function(bag, slot) return { isQuestItem = slot == 2, questID = slot == 2 and 103 or nil } end,
+}
+world.questID = 103
+VO.Addon:QUEST_DETAIL()
+local fromItem
+for _, queued in ipairs(env.SoundQueue.sounds) do if queued.questID == 103 then fromItem = queued end end
+Expect("a quest from an item shows the item's icon", fromItem and fromItem.present.portrait.texture, 134939)
+Expect("...the icon found by name too, for a book read from the bags", Spoken:BagItemIcon("Gold Pickup Schedule"), 134939)
+_G.C_Container = nil
+Expect("a city has an icon of its own", Spoken:ZoneIcon(1455), [[Interface\AddOns\Spoken\Textures\Zones\Ironforge]])
+Expect("...an area the icon of the zone it is in", Spoken:ZoneIcon(1426), [[Interface\AddOns\Spoken\Textures\Zones\DunMorogh]])
+Expect("...a Forever zone the icon drawn for it", Spoken:ZoneIcon(2524), [[Interface\AddOns\Spoken\Textures\Zones\DarkspearIslands]])
+Expect("...and a map with none, itself or above it, none", Spoken:ZoneIcon(9999), nil)
+_G.UnitExists = unitExists
+world.npcGUID = "Creature-0-0-0-0-1234-0"; world.playerMapID = nil
 
 ---------------------------------------------------------------- gossip yields at the door
 VO, env, Spoken = Boot()
@@ -91,28 +157,257 @@ VO, env, Spoken = Boot()
 VO.Addon.db.profile.Audio.AutoToggleDialog = true
 world.questID = 101
 VO.Addon:QUEST_DETAIL()
-Expect("the first quest clip mutes the dialog channel", world.cvars.Sound_EnableDialog, "0")
+-- Cut, not faded: the line is read off the NPC's open window, and none of its greeting is heard.
+Expect("the first quest clip cuts the NPC's voice as it starts", world.cvars.Sound_EnableDialog, "0")
+stub.Advance(0.6)
+Expect("...and keeps the dialog channel muted", world.cvars.Sound_EnableDialog, "0")
 Spoken:StopAll()
 Expect("...and the last leaving restores it", world.cvars.Sound_EnableDialog, "1")
+
+-- The CVar outlives the session and the record of muting it does not: a logout or /reload
+-- mid-line has to lift the mute itself, or the next session starts with dialog off.
+VO, env, Spoken = Boot()
+VO.Addon.db.profile.Audio.AutoToggleDialog = true
+world.questID = 101
+VO.Addon:QUEST_DETAIL()
+stub.Advance(0.6)
+Expect("a quest line speaking mutes dialog before the logout", world.cvars.Sound_EnableDialog, "0")
+stub.Logout()
+Expect("...and logging out mid-line restores it", world.cvars.Sound_EnableDialog, "1")
 
 -- Another addon's clip on the Dialog channel, queued behind a quest line, must be heard:
 -- the mute covers a quest line speaking, not the quests source having a backlog.
 VO, env, Spoken = Boot()
 VO.Addon.db.profile.Audio.AutoToggleDialog = true
-local zones = Spoken:RegisterSource("zones", { title = "Zones", addon = "SpokenZones", channel = function() return "Dialog" end })
+local places = Spoken:RegisterSource("places", { title = "Places", addon = "Spoken_Places", channel = function() return "Dialog" end })
 world.questID = 101
 VO.Addon:QUEST_DETAIL()
+stub.Advance(0.6)
 Expect("a quest line speaking mutes dialog", world.cvars.Sound_EnableDialog, "0")
 local z = H.Clip()
-Expect("a Dialog-channel clip is still admitted behind it", zones:Enqueue(z), z)
+Expect("a Dialog-channel clip is still admitted behind it", places:Enqueue(z), z)
 world.questID = 102
 VO.Addon:QUEST_DETAIL()
 Spoken:Skip()
-Expect("the zones clip behind it speaks with dialog restored", world.cvars.Sound_EnableDialog, "1")
+Expect("the places clip behind it speaks with dialog restored", world.cvars.Sound_EnableDialog, "1")
 Spoken:Skip()
+stub.Advance(0.6)
 Expect("the next quest line mutes it again", world.cvars.Sound_EnableDialog, "0")
 Spoken:Skip()
 Expect("...and the empty queue restores it", world.cvars.Sound_EnableDialog, "1")
+
+---------------------------------------------------------------- muting the greeting ahead
+-- The NPC's greeting starts as its dialog opens; the line is read off the dialog 0.1s (gossip)
+-- or 0.4s (quests) later. Muting only when the line started cut the greeting off mid-word, so
+-- the mute is taken in the frame the dialog opens.
+-- The dialog opening as the client delivers it: to this boot's event frames only, since
+-- every earlier boot's frames are still registered with the stub.
+local function Open(VO, event)
+    for _, frame in ipairs({ VO.Addon.questEventRecorderFrame, VO.Addon.directEventFrame }) do
+        if frame.events[event] then
+            frame.scripts.OnEvent(frame, event)
+        end
+    end
+end
+local function MuteBoot(autoToggle)
+    local VO, env, Spoken = Boot()
+    -- The player's setting: the player is what mutes.
+    env.Addon.db.profile.Audio.AutoToggleDialog = autoToggle ~= false
+    world.cvars.Sound_EnableDialog = "1"
+    return VO, env, Spoken
+end
+VO, env, Spoken = MuteBoot()
+stub.ShowGossip("Greetings, traveller.")
+Open(VO, "GOSSIP_SHOW")
+Expect("a voiced NPC's gossip opening mutes it before its line is queued", Spoken:GetQueueSize() == 0 and world.cvars.Sound_EnableDialog, "0")
+stub.Advance(0.2)
+Expect("...the line is then read", Spoken:GetCurrent() and Spoken:GetCurrent().fileName, GREETING_HASH)
+stub.Advance(0.4)
+Expect("...under the NPC's voice, still muted", world.cvars.Sound_EnableDialog, "0")
+stub.Advance(2)
+Expect("...past the mute's own deadline too", world.cvars.Sound_EnableDialog, "0")
+Spoken:StopAll()
+Expect("...and the empty queue restores it", world.cvars.Sound_EnableDialog, "1")
+
+-- The mute is taken for the NPC's lines; the page then read, its text on screen, has none a pack
+-- holds. Nothing is coming, so the greeting is not held back.
+VO, env, Spoken = MuteBoot()
+VO.Addon.db.char.hasSeenGossipForNPC = {}
+stub.ShowGossip("Greetings, traveller.")
+Open(VO, "GOSSIP_SHOW")
+Expect("a voiced NPC's gossip opening mutes it...", world.cvars.Sound_EnableDialog, "0")
+lookup[GREETING_HASH] = nil
+stub.Advance(0.2)
+Expect("...and its voice is back as soon as the read finds no line", world.cvars.Sound_EnableDialog, "1")
+lookup[GREETING_HASH] = 3
+
+VO, env, Spoken = MuteBoot()
+world.npcGUID = "Creature-0-0-0-0-9999-0"
+stub.ShowGossip("Well met.")
+Open(VO, "GOSSIP_SHOW")
+Expect("an NPC no pack voices keeps its greeting", world.cvars.Sound_EnableDialog, "1")
+
+VO, env, Spoken = MuteBoot()
+VO.Addon.db.profile.Audio.GossipFrequency = VO.Enums.GossipFrequency.OncePerNPC
+VO.Addon:MarkGreetingHeard(world.npcGUID, "Greetings, traveller.")
+stub.ShowGossip("Greetings, traveller.")
+Open(VO, "GOSSIP_SHOW")
+Expect("gossip the frequency rule will skip keeps its greeting", world.cvars.Sound_EnableDialog, "1")
+-- A page the player picked an option to reach is read whatever the frequency, so the mute is
+-- taken for it as for any line that is going to be read.
+stub.ShowGossip("Greetings, traveller.", { "Where is the inn?" })
+stub.SelectGossipOption("Where is the inn?")
+stub.ShowGossip("You are standing in it.")
+Open(VO, "GOSSIP_SHOW")
+Expect("a page reached by an option mutes dialog, greeting heard or not", world.cvars.Sound_EnableDialog, "0")
+stub.Advance(3)
+Spoken:StopAll()
+VO.Addon.db.char.hasSeenGossipForNPC = {}   -- saved too
+
+VO, env, Spoken = MuteBoot()
+VO.Addon:SetAutoplay(false)
+stub.ShowGossip("Greetings, traveller.")
+Open(VO, "GOSSIP_SHOW")
+Expect("with autoplay off nothing is muted", world.cvars.Sound_EnableDialog, "1")
+VO.Addon:SetAutoplay(true)   -- saved with the profile, which the next boot reads
+
+VO, env, Spoken = MuteBoot(false)
+stub.ShowGossip("Greetings, traveller.")
+Open(VO, "GOSSIP_SHOW")
+Expect("with the mute setting off nothing is muted", world.cvars.Sound_EnableDialog, "1")
+
+VO, env, Spoken = MuteBoot()
+world.questID = 101
+stub.ShowPanel("QuestFrameDetailPanel")
+Open(VO, "QUEST_DETAIL")
+-- Cut, not faded: a fade lets the first half-second of the greeting through.
+Expect("a quest dialog opening cuts the NPC's voice at once", world.cvars.Sound_EnableDialog, "0")
+stub.Advance(1.0)
+Expect("...and its line is read under the mute", Spoken:GetCurrent() and Spoken:GetCurrent().fileName, "101-accept")
+Expect("...still muted", world.cvars.Sound_EnableDialog, "0")
+
+VO, env, Spoken = MuteBoot()
+world.questID = 999
+Open(VO, "QUEST_DETAIL")
+Expect("a quest no pack holds keeps its greeting", world.cvars.Sound_EnableDialog, "1")
+
+VO, env, Spoken = MuteBoot()
+Spoken:SetPartOn("quests", false)
+world.questID = 101
+stub.ShowPanel("QuestFrameDetailPanel")
+Open(VO, "QUEST_DETAIL")
+Expect("a quest dialog keeps its greeting while Quests is switched off", world.cvars.Sound_EnableDialog, "1")
+Expect("...and expects no line to hold the words back for", VO.Addon:ExpectedLine("QUEST_DETAIL"), nil)
+Spoken:SetPartOn("quests", true)
+
+---------------------------------------------------------------- muting at the click
+-- A first talk's greeting can be heard before the window's event arrives.
+local function ClickBoot()
+    local VO, env, Spoken = MuteBoot()
+    VO.Addon.db.char.hasSeenGossipForNPC = {}
+    VO.Addon.db.profile.Audio.GossipFrequency = VO.Enums.GossipFrequency.OncePerNPC
+    world.npcFriendly = true
+    return VO, env, Spoken
+end
+local function Dialog() return world.cvars.Sound_EnableDialog end
+
+VO, env, Spoken = ClickBoot()
+VO.Addon:MuteGreetingOnClick("RightButton")
+Expect("a right-click on a voiced NPC mutes it before any window", Dialog(), "0")
+stub.ShowGossip("Greetings, traveller.")
+Open(VO, "GOSSIP_SHOW")
+stub.Advance(0.6)
+Expect("...its line is read", Spoken:GetCurrent() and Spoken:GetCurrent().fileName, GREETING_HASH)
+Expect("...under the same mute", Dialog(), "0")
+Spoken:StopAll()
+Expect("...and the empty queue restores it", Dialog(), "1")
+
+VO, env, Spoken = ClickBoot()
+VO.Addon:MuteGreetingOnClick("RightButton")
+stub.Advance(2)
+Expect("a right-click that opens no window gives the voice back at the deadline", Dialog(), "1")
+stub.Advance(0.1)
+world.questID = 101
+VO.Addon:QUEST_DETAIL()
+stub.Advance(0.6)
+Expect("...and leaves later lines able to mute", Dialog(), "0")
+Spoken:StopAll()
+
+lookup["101-accept"] = 10   -- outlasts the click's deadline
+VO, env, Spoken = ClickBoot()
+world.questID = 101
+VO.Addon:QUEST_DETAIL()
+stub.Advance(0.6)
+VO.Addon:MuteGreetingOnClick("RightButton")
+stub.Advance(2)
+Expect("a right-click under a speaking line keeps the line's mute past the deadline", Spoken:IsPlaying() and Dialog(), "0")
+Spoken:StopAll()
+lookup["101-accept"] = 2
+
+VO, env, Spoken = ClickBoot()
+VO.Addon:MuteGreetingOnClick("RightButton")
+VO.Addon:MarkGreetingHeard(world.npcGUID, "Greetings, traveller.")
+stub.ShowGossip("Greetings, traveller.")
+Open(VO, "GOSSIP_SHOW")
+Expect("a window with nothing to read gives the voice back as it opens", Dialog(), "1")
+
+VO, env, Spoken = ClickBoot()
+VO.Addon:MuteGreetingOnClick("LeftButton")
+Expect("a left-click only targets, and mutes nothing", Dialog(), "1")
+
+VO, env, Spoken = ClickBoot()
+VO.Addon:MarkGreetingHeard(world.npcGUID, "Greetings, traveller.")
+VO.Addon:MuteGreetingOnClick("RightButton")
+Expect("an NPC already heard keeps its greeting under a once-per setting", Dialog(), "1")
+VO.Addon.db.profile.Audio.GossipFrequency = VO.Enums.GossipFrequency.Always
+VO.Addon:MuteGreetingOnClick("RightButton")
+Expect("...and is muted when greetings always read", Dialog(), "0")
+
+VO, env, Spoken = ClickBoot()
+world.npcGUID = "Creature-0-0-0-0-9999-0"
+VO.Addon:MuteGreetingOnClick("RightButton")
+Expect("an NPC no pack voices keeps its greeting at the click", Dialog(), "1")
+
+VO, env, Spoken = ClickBoot()
+world.npcFriendly = nil
+VO.Addon:MuteGreetingOnClick("RightButton")
+Expect("a right-click on an enemy mutes nothing", Dialog(), "1")
+
+VO, env, Spoken = ClickBoot()
+VO.Addon.db.profile.Audio.GreetingFirst = true
+VO.Addon:MuteGreetingOnClick("RightButton")
+Expect("with Game Greeting First on the click mutes nothing", Dialog(), "1")
+VO.Addon.db.profile.Audio.GreetingFirst = false
+
+VO, env, Spoken = ClickBoot()
+VO.Addon:SetAutoplay(false)
+VO.Addon:MuteGreetingOnClick("RightButton")
+Expect("with autoplay off the click mutes nothing", Dialog(), "1")
+VO.Addon:SetAutoplay(true)
+
+VO, env, Spoken = ClickBoot()
+stub.Secrets(world.npcGUID)
+VO.Addon:MuteGreetingOnClick("RightButton")
+stub.Secrets()
+Expect("a GUID the client keeps secret mutes nothing and raises nothing", Dialog(), "1")
+
+VO, env, Spoken = ClickBoot()
+world.npcFriendly = nil
+stub.Secrets(true)
+VO.Addon:MuteGreetingOnClick("RightButton")
+stub.Secrets()
+Expect("a secret answer to whether it can be attacked reads as no answer", Dialog(), "0")
+
+VO, env, Spoken = ClickBoot()
+Spoken:RegisterSource("words", { title = "Words", addon = "Spoken_Bosses", textOnly = true }):Enqueue(H.Clip({ length = 10 }))
+stub.Advance(0.1)
+VO.Addon:MuteGreetingOnClick("RightButton")
+Expect("a right-click during a line of words alone still mutes ahead", Dialog(), "0")
+stub.Advance(2)
+Expect("...and the deadline gives the voice back, the line holding no mute", Spoken:IsPlaying() and Dialog(), "1")
+Spoken:StopAll()
+world.npcFriendly = nil
+VO.Addon.db.profile.Audio.GossipFrequency = VO.Enums.GossipFrequency.OncePerQuestNPC
 
 ---------------------------------------------------------------- disengage and abandon
 VO, env, Spoken = Boot()
@@ -126,14 +421,39 @@ VO.Addon:QUEST_DETAIL()
 VO.Addon:QUEST_FINISHED()
 Expect("...and leaves it otherwise", Spoken:GetQueueSize(), 1)
 
+-- Read Automatically off: the Play button starts the line, and the event still ends it.
+VO, env, Spoken = Boot()
+VO.Addon.db.profile.Audio.StopAudioOnDisengage = true
+VO.Addon:SetAutoplay(false)
+world.questID = 101
+VO.Addon:QUEST_DETAIL(nil, true)
+Expect("a line the Play button started is queued", Spoken:GetQueueSize(), 1)
+VO.Addon:DispatchDirectEvent("QUEST_FINISHED", "test")
+Expect("closing the quest frame stops it with Read Automatically off", Spoken:GetQueueSize(), 0)
+
+-- Read When Window Closes: an automatic read waits for the window to close, and is not read twice.
+VO, env, Spoken = Boot()
+VO.Addon.db.profile.Audio.ReadAfterClose = true
+world.questID = 101
+VO.Addon:QUEST_DETAIL(nil, nil)
+Expect("with Read When Window Closes on, an automatic read waits while the window is open", Spoken:GetQueueSize(), 0)
+VO.Addon:DispatchDirectEvent("QUEST_FINISHED", "test")
+Expect("...and starts when it closes", Spoken:GetQueueSize(), 1)
+VO.Addon:DispatchDirectEvent("QUEST_FINISHED", "test")
+Expect("...once", Spoken:GetQueueSize(), 1)
+Spoken:StopAll()
+VO.Addon:QUEST_DETAIL(nil, true)
+Expect("a read the player asks for does not wait", Spoken:GetQueueSize(), 1)
+
 ---------------------------------------------------------------- the easter egg
 VO, env, Spoken = Boot()
 VO.Addon.db.profile.Audio.OGThrall = true
 world.gossipText = "Greetings, traveller."
 VO.Addon:GOSSIP_SHOW()
 Expect("the easter egg swaps the path before the player sees it", Spoken:GetCurrent().path,
-    [[Interface\AddOns\SpokenQuests\Sounds\og-thrall.mp3]])
+    [[Interface\AddOns\Spoken_Quests\Sounds\og-thrall.mp3]])
 Expect("...and the length", Spoken:GetCurrent().length, 33.802375)
+Expect("...and drops the pack clip's word times, which are not its", Spoken:GetCurrent().present.timings, nil)
 
 ---------------------------------------------------------------- the quest-log overlay
 VO, env, Spoken = Boot()
@@ -151,7 +471,7 @@ VO, env, Spoken = Boot()
 local labels = {}
 for _, entry in ipairs(env.Minimap:BuildMenu()) do table.insert(labels, entry.text) end
 Expect("the quests addon adds its entries to the one button", table.concat(labels, "|"),
-    "Play/Pause|Stop|Settings|Read visible quest|Spoken Quests settings")
+    "Stop or Replay|Skip Line|Stop All|Settings|Quests Settings|Gossip Settings")
 Expect("...and registers no button of its own", stub.ldbObjects.SpokenQuests, nil)
 
 if Failures() > 0 then print(string.format("\n%d failure(s)", Failures())); os.exit(1) end

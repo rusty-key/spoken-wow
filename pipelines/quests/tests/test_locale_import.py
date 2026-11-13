@@ -5,7 +5,7 @@ import uuid
 import pytest
 
 from tts_cli.locale_import import (clean_localized, decide, extracted_lines, extracted_names,
-                                   import_locale)
+                                   import_locale, own_lines)
 from tts_cli.utils import language_code_to_language_number
 
 LOCALES_MJS = os.path.join(os.path.dirname(__file__), "..", "..", "lib", "locales.mjs")
@@ -19,6 +19,22 @@ def row(**overrides):
     }
     base.update(overrides)
     return base
+
+
+class TestOwnLines:
+    def speak(self, gender):
+        return f"said to {gender}"
+
+    def test_a_g_splits_a_plain_english_line(self):
+        assert own_lines("g:abc", None, "Hi $gm:f;", self.speak) == [
+            ("g:abc:m", "m", "said to m"), ("g:abc:f", "f", "said to f")]
+
+    def test_a_g_keeps_each_side_of_a_split_english_line(self):
+        assert own_lines("g:abc:f", "f", "Hi $gm:f;", self.speak) == [("g:abc:f", "f", "said to f")]
+
+    def test_no_g_is_one_line_read_beside_the_english_male_side(self):
+        assert own_lines("g:abc:m", "m", "Hi", self.speak) == [("g:abc", None, "said to None")]
+        assert own_lines("g:abc:f", "f", "Hi", self.speak) == []
 
 
 class TestCleaning:
@@ -63,6 +79,17 @@ class TestExtractedLines:
     def test_a_player_name_makes_the_line_unvoiceable(self):
         [line] = extracted_lines([row(loc_text="Danke, $N.")])
         assert (line["generatable"], line["skipReason"]) == (False, "invalid-chars")
+
+    def test_a_translation_without_a_g_is_one_line_beside_the_english_male_one(self):
+        rows = [row(player_gender="m", original_text="Hi, lad.", loc_text="Hallo."),
+                row(player_gender="f", original_text="Hi, lass.", loc_text="Hallo.")]
+        assert [(line["lineId"], line["originalText"]) for line in extracted_lines(rows)] == [
+            ("q:33:accept", "Hi, lad.")]
+
+    def test_a_translation_with_a_g_is_two_lines_where_the_english_is_one(self):
+        lines = extracted_lines([row(loc_text="Willkommen, $GHerr:Dame;.")])
+        assert [(line["lineId"], line["text"]) for line in lines] == [
+            ("q:33:accept:m", "Willkommen, Herr."), ("q:33:accept:f", "Willkommen, Dame.")]
 
     def test_progress_text_is_voiced_in_every_language(self):
         [line] = extracted_lines([row(source="progress", loc_text="Noch nicht?")])
@@ -134,11 +161,21 @@ def db():
     conn = _database()
     if conn is None:
         pytest.skip("needs DATABASE_URL, the web migrations and the corpus imported")
-    # A language nothing else writes, cleared either side.
+    # zhTW may hold real text, so a test takes back only what it changed: the rows it wrote
+    # go, and the rows it retired are live again.
+    before = {}
+    with conn, conn.cursor() as cur:
+        for table in ("quest_line", "entity_name"):
+            cur.execute(f"""select coalesce(max("id"), 0) from "{table}" """)
+            highest = cur.fetchone()[0]
+            cur.execute(f"""select "id" from "{table}" where "lang" = 'zhTW' and "isCurrent" """)
+            before[table] = (highest, [r[0] for r in cur.fetchall()])
     yield conn
     with conn, conn.cursor() as cur:
-        cur.execute("""delete from "quest_line" where "lang" = 'zhTW'""")
-        cur.execute("""delete from "entity_name" where "lang" = 'zhTW'""")
+        for table, (highest, live) in before.items():
+            cur.execute(f"""delete from "{table}" where "lang" = 'zhTW' and "id" > %s""", (highest,))
+            cur.execute(f"""update "{table}" set "isCurrent" = true
+                             where "id" = any(%s) and not "isCurrent" """, (live,))
     conn.close()
 
 
@@ -190,3 +227,115 @@ def test_a_line_the_corpus_does_not_carry_is_left_alone(db):
              "localeText": "x", "generatable": True, "skipReason": None}
     counts = import_locale(db, "zhTW", [stray], {})
     assert counts["lines without an English line"] == 1
+
+
+def _variants(conn, line_id):
+    with conn.cursor() as cur:
+        cur.execute("""select "variant", "originalText" from "quest_line"
+                        where "lineId" = %s and "lang" = 'enUS' and "isCurrent"
+                        order by "variant" """, (line_id,))
+        return cur.fetchall()
+
+
+def _translated_variants(conn, line_id):
+    with conn.cursor() as cur:
+        cur.execute("""select "variant", "text" from "quest_line"
+                        where "lineId" = %s and "lang" = 'zhTW' and "isCurrent"
+                        order by "variant" """, (line_id,))
+        return cur.fetchall()
+
+
+def _line(line_id, original, text="你好"):
+    return {"lineId": line_id, "originalText": original, "text": text, "localeText": text,
+            "generatable": True, "skipReason": None}
+
+
+# Quest 4265 has a row per content patch, so the corpus carries two variants of each of its
+# lines: the same English under two titles for complete, two different Englishes for accept.
+def test_a_line_with_two_variants_of_one_english_text_is_translated_once(db):
+    variants = _variants(db, "q:4265:complete")
+    if len(variants) != 2 or variants[0][1] != variants[1][1]:
+        pytest.skip("needs q:4265:complete as two variants of one English text")
+    import_locale(db, "zhTW", [_line("q:4265:complete", variants[0][1])], {})
+    assert _translated_variants(db, "q:4265:complete") == [(0, "你好")]
+
+
+def test_a_line_with_two_variants_of_different_english_is_translated_once(db):
+    variants = _variants(db, "q:4265:accept")
+    if len(variants) != 2 or variants[0][1] == variants[1][1]:
+        pytest.skip("needs q:4265:accept as two variants of different English texts")
+    lines = [_line("q:4265:accept", original) for _, original in reversed(variants)]
+    counts = import_locale(db, "zhTW", lines, {})
+    assert _translated_variants(db, "q:4265:accept") == [(0, "你好")]
+    assert counts["lines promote"] == 1
+
+    again = import_locale(db, "zhTW", lines, {})
+    assert again["lines promote"] == 0
+
+
+def test_a_community_release_replaces_its_own_rows_and_keeps_an_edit(db):
+    line_id, original, _ = _english_line(db)
+    line = {"lineId": line_id, "originalText": original, "text": "一", "localeText": None,
+            "generatable": True, "skipReason": None}
+    import_locale(db, "zhTW", [line], {}, origin="community", note="QuestIT 1")
+    assert _live(db, line_id) == ("一", "community")
+
+    counts = import_locale(db, "zhTW", [dict(line, text="二")], {}, origin="community", note="QuestIT 2")
+    assert counts["lines promote"] == 1
+    assert _live(db, line_id) == ("二", "community")
+
+    with db, db.cursor() as cur:
+        cur.execute("""update "quest_line" set "origin" = 'edited', "text" = '改'
+                        where "lineId" = %s and "lang" = 'zhTW' and "isCurrent" """, (line_id,))
+    counts = import_locale(db, "zhTW", [dict(line, text="三")], {}, origin="community", note="QuestIT 3")
+    assert counts["lines record"] == 1
+    assert _live(db, line_id) == ("改", "edited")
+
+
+def _english_by_player_gender(conn):
+    with conn.cursor() as cur:
+        cur.execute("""select m."lineId", m."originalText", f."originalText", m."fileName"
+                         from "quest_line" m
+                         join "quest_line" f on f."lineId" = left(m."lineId", -2) || ':f'
+                          and f."lang" = 'enUS' and f."isCurrent" and f."variant" = 0
+                        where m."lang" = 'enUS' and m."isCurrent" and m."variant" = 0
+                          and m."lineId" like 'q:%%:m'
+                        order by m."lineId" limit 1""")
+        return cur.fetchone()
+
+
+def _forms(conn, moment):
+    with conn.cursor() as cur:
+        cur.execute("""select "lineId", "playerGender", "fileName", "text" from "quest_line"
+                        where "lineId" like %s and "lang" = 'zhTW' and "isCurrent"
+                        order by "lineId" """, (moment + "%",))
+        return cur.fetchall()
+
+
+def test_a_translation_is_one_line_where_its_english_is_two(db):
+    found = _english_by_player_gender(db)
+    if found is None:
+        pytest.skip("needs an English line split by player gender")
+    male_id, male_original, _, male_file = found
+    moment = male_id[:-2]
+    import_locale(db, "zhTW", [_line(moment, male_original)], {})
+    assert _forms(db, moment) == [(moment, None, male_file[2:], "你好")]
+
+
+def test_a_new_shape_retires_the_old_unless_it_was_edited_here(db):
+    found = _english_by_player_gender(db)
+    if found is None:
+        pytest.skip("needs an English line split by player gender")
+    male_id, male_original, female_original, _ = found
+    moment = male_id[:-2]
+    import_locale(db, "zhTW", [_line(male_id, male_original), _line(f"{moment}:f", female_original)], {})
+    counts = import_locale(db, "zhTW", [_line(moment, male_original)], {})
+    assert counts["lines of another shape retired"] == 2
+    assert [row[0] for row in _forms(db, moment)] == [moment]
+
+    with db, db.cursor() as cur:
+        cur.execute("""update "quest_line" set "origin" = 'edited'
+                        where "lineId" = %s and "lang" = 'zhTW' and "isCurrent" """, (moment,))
+    counts = import_locale(db, "zhTW", [_line(male_id, male_original), _line(f"{moment}:f", female_original)], {})
+    assert counts["moments kept as edited here"] == 1
+    assert [row[0] for row in _forms(db, moment)] == [moment]

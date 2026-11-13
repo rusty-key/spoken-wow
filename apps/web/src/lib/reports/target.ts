@@ -10,16 +10,22 @@ import type { Corpus, CorpusLine } from "@/lib/corpus";
 import { corpus as questCorpus } from "@/lib/quests/catalogue";
 
 /**
- * The three of lib/line-fields.ts's SOURCES that a quest address can name. The fourth,
- * `gossip`, has no quest to hang an id on and travels as an NPC address instead.
+ * The three of lib/line-fields.ts's SOURCES that a quest address can name. `gossip` has no
+ * quest to hang an id on and travels as an NPC address instead, and so do `chatter` and
+ * `followup`, which has a quest but is neither of its dialogs (lib/reports/line-target.ts).
  */
 const QUEST_EVENTS = ["accept", "progress", "complete"] as const;
 
 type QuestEvent = (typeof QUEST_EVENTS)[number];
 
+/**
+ * Creature and gameobject ids overlap (creature 68 is a guard, gameobject 68 a poster), so
+ * each has its own address: npc/{id} and object/{id}.
+ */
 export type Target =
   | { kind: "quest"; questId: number; event: QuestEvent }
-  | { kind: "npc"; npcId: number };
+  | { kind: "npc"; npcId: number }
+  | { kind: "object"; objectId: number };
 
 function positiveInt(value: string): number | null {
   const parsed = Number(value);
@@ -41,14 +47,18 @@ export function parseTarget(segments: string[]): Target | null {
     if (npcId === null) return null;
     return { kind: "npc", npcId };
   }
+  if (segments[0] === "object" && segments.length === 2) {
+    const objectId = positiveInt(segments[1]);
+    if (objectId === null) return null;
+    return { kind: "object", objectId };
+  }
   return null;
 }
 
 /** The form stored in report."target", and the path the addon builds. */
 export function formatTarget(target: Target): string {
-  return target.kind === "quest"
-    ? `quest/${target.questId}/${target.event}`
-    : `npc/${target.npcId}`;
+  if (target.kind === "quest") return `quest/${target.questId}/${target.event}`;
+  return target.kind === "object" ? `object/${target.objectId}` : `npc/${target.npcId}`;
 }
 
 /**
@@ -64,5 +74,17 @@ export async function resolveTarget(target: Target, corpus?: Corpus): Promise<Co
       (line) => line.questId === target.questId && line.source === target.event,
     );
   }
-  return lines.lines.filter((line) => line.npcId === target.npcId);
+  if (target.kind === "object") {
+    return lines.lines.filter(
+      (line) => line.npcType === "gameobject" && line.npcId === target.objectId,
+    );
+  }
+  const speakers = lines.lines.filter(
+    (line) => line.npcType !== "gameobject" && line.npcId === target.npcId,
+  );
+  // Builds up to 3.4.0 sent npc/{id} for an object too: with no creature of that id, the
+  // address can only have meant the object.
+  return speakers.length > 0
+    ? speakers
+    : lines.lines.filter((line) => line.npcType === "gameobject" && line.npcId === target.npcId);
 }

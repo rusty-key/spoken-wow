@@ -1,0 +1,13 @@
+!SPOKEN1 quests
+addon=SpokenQuests/9.9.9
+build=1.15.9/69109
+locale=enUS
+pack=enUS
+npc=12345 Deathguard Linnea
+kind=creature
+sex=2
+creature=Humanoid
+text<<
+We stand ready.
+>>
+sum=1248087734

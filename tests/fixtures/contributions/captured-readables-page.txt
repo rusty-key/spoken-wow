@@ -1,0 +1,15 @@
+!SPOKEN1 readables
+addon=Spoken_Readables/
+build=1.60.1/70338
+locale=enUS
+pack=enUS
+packVersion=none
+page=927515100
+book=Ledger of Nothing
+number=2
+text<<
+A page no corpus has ever held.
+
+Written for this test alone.
+>>
+sum=1094747948

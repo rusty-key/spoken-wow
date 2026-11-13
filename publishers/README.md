@@ -1,9 +1,9 @@
 # Publishers
 
 The description of each project, as markdown, one file per project, for every store the
-addons are published on. **Two of them**: CurseForge and Wago Addons, which carry the same
-eleven projects under the same slugs, and this directory is the source for both sets of
-pages. It was `curseforge/` while there was only one store, and the frontmatter still names
+addons are published on. **Two of them**: CurseForge and Wago Addons, which carry the addons
+and the English packs under the same slugs (the language packs and Spoken: English are on
+CurseForge alone), and this directory is the source for both sets of pages. It was `curseforge/` while there was only one store, and the frontmatter still names
 each store's own project id separately -- `curseforge:` and `wago:` -- because the ids are
 the one thing the two do not share.
 
@@ -26,25 +26,48 @@ Each directory keeps its own `published.json`, and a release prints the pages in
 that have moved on since they were last pasted.
 
 ONE BODY, TWO SETS OF LINKS. A page links to its sibling projects, and a link is only right on
-the store it is read on: a player on the Wago page for Spoken Zones should be offered the Wago
+the store it is read on: a player on the Wago page for Spoken Places should be offered the Wago
 page for its sound pack, not sent somewhere their addon manager cannot install from. The
 slugs are identical on both stores, so the Wago copy is the same text with one substitution --
 which is why there is one file per project here and not two.
 
 | File | Project | CurseForge id | Wago id | Slug |
 | --- | --- | --- | --- | --- |
-| `spoken/spoken.md` | Spoken Player | 1700375 | QN53yXKB | `spoken-player` |
-| `quests/player.md` | Spoken Quests (was VoiceOver Redux) | 1655859 | aN0XPlNj | `spoken-quests` |
-| `quests/audio-all.md` | Spoken Quests Audio: All | 1660196 | ANzkpD64 | `spoken-quests-audio-all` |
-| `quests/audio-alliance.md` | Spoken Quests Audio: Alliance | 1660197 | 5NR8mJK3 | `spoken-quests-audio-alliance` |
-| `quests/audio-horde.md` | Spoken Quests Audio: Horde | 1660198 | vNAg3OKo | `spoken-quests-audio-horde` |
-| `quests/audio-shared.md` | Spoken Quests Audio: Shared Quests | 1660199 | QNlz3YKe | `spoken-quests-audio-shared` |
-| `quests/audio-gossip.md` | Spoken Quests Audio: Gossip | 1660202 | XKqA45Ky | `spoken-quests-audio-gossip` |
-| `zones/spoken-zones.md` | Spoken Zones (was ZoneLore) | 1636521 | mNw7b5No | `spoken-zones` |
-| `zones/spoken-zones-audio.md` | Spoken Zones Audio | 1636532 | b6mvD9KP | `spoken-zones-audio` |
-| `zones/spoken-zones-audio-esmx.md` | Spoken Zones Audio: Spanish (AL) | 1711067 | — | `spoken-zones-audio-esmx` |
-| `books/spoken-books.md` | Spoken Books | 1701514 | qGYZnRNg | `spoken-books` |
-| `books/spoken-books-audio.md` | Spoken Books Audio | 1701520 | qGZOrvNd | `spoken-books-audio` |
+| `spoken/spoken.md` | Spoken | 1700375 | QN53yXKB | `spoken` |
+| `spoken/all.md` | Spoken: English | 1721569 | — | `spoken-english` |
+| `spoken/all-<lang>.md` | `Spoken <Language>`, a language's meta addon: Spoken and that language's packs on CurseForge | each page's `curseforge:` | — | `spoken-<language>` |
+| `quests/player.md` | Spoken Quests (retired; was VoiceOver Redux) | 1655859 | aN0XPlNj | `spoken-quests` |
+| `quests/audio-all.md` | Spoken Quests Audio: All | 1660196 | ANzkpD64 | `spoken-audio-quests-all` |
+| `quests/audio-alliance.md` | Spoken Audio: Quests - Alliance | 1660197 | 5NR8mJK3 | `spoken-audio-quests-alliance` |
+| `quests/audio-horde.md` | Spoken Audio: Quests - Horde | 1660198 | vNAg3OKo | `spoken-audio-quests-horde` |
+| `quests/audio-shared.md` | Spoken Audio: Quests - Shared | 1660199 | QNlz3YKe | `spoken-audio-quests-shared` |
+| `quests/audio-gossip.md` | Spoken Audio: Gossip | 1660202 | XKqA45Ky | `spoken-audio-gossip` |
+| `quests/audio-<pack>-<lang>.md` | `Spoken <Language> Audio: Quests - <Side>` for Alliance, Horde and Shared, and `Spoken <Language> Audio: Gossip` | each page's `curseforge:` | — | `<language>-spoken-quests-<pack>` |
+| `quests/audio-<lang>.md` | Spoken Quests Audio: `<Language>`, the bundle of the language's four packs, GitHub only | — | — | — |
+| `zones/spoken-zones.md` | Spoken Zones (retired; was ZoneLore) | 1636521 | mNw7b5No | `spoken-zones` |
+| `zones/spoken-places-audio.md` | Spoken Audio: Places and Bosses, which carries the bosses pack | 1636532 | b6mvD9KP | `spoken-audio-places` |
+| `bosses/spoken-bosses-audio.md` | Spoken Audio: Bosses, inside Spoken Audio: Places and Bosses on CurseForge (`bundledIn:`) | — | — | `spoken-audio-bosses` (not a project) |
+| `bosses/spoken-bosses-audio-<lang>.md` | `Spoken <Language> Audio: Bosses`, on GitHub and the Manager only | — | — | `spoken-<language>-audio-bosses` (not a project) |
+| `zones/spoken-places-audio-dede.md` | Spoken German Audio: Places | 1713131 | — | `spoken-german-audio-places` |
+| `zones/spoken-places-audio-eses.md` | Spoken Spanish (EU) Audio: Places | 1712807 | — | `spoken-spanish-eu-audio-places` |
+| `zones/spoken-places-audio-esmx.md` | Spoken Spanish (AL) Audio: Places | 1711067 | — | `spoken-spanish-al-audio-places` |
+| `zones/spoken-places-audio-frfr.md` | Spoken French Audio: Places | 1713125 | — | `spoken-french-audio-places` |
+| `zones/spoken-places-audio-kokr.md` | Spoken Korean Audio: Places | 1723252 | — | `spoken-korean-audio-places` |
+| `zones/spoken-places-audio-ptbr.md` | Spoken Portuguese Audio: Places | 1713138 | — | `spoken-portuguese-audio-places` |
+| `zones/spoken-places-audio-ruru.md` | Spoken Russian Audio: Places | 1713143 | — | `spoken-russian-audio-places` |
+| `zones/spoken-places-audio-zhcn.md` | Spoken Chinese (Simplified) Audio: Places | 1723273 | — | `spoken-chinese-simplified-audio-places` |
+| `zones/spoken-places-audio-zhtw.md` | Spoken Chinese (Traditional) Audio: Places | 1723276 | — | `spoken-chinese-traditional-audio-places` |
+| `books/spoken-books.md` | Spoken Books (retired) | 1701514 | qGYZnRNg | `spoken-books` |
+| `books/spoken-readables-audio.md` | Spoken Audio: Readables | 1701520 | qGZOrvNd | `spoken-audio-readables` |
+| `books/spoken-readables-audio-dede.md` | Spoken German Audio: Readables | 1723279 | — | `spoken-german-audio-readables` |
+| `books/spoken-readables-audio-eses.md` | Spoken Spanish (EU) Audio: Readables | 1723280 | — | `spoken-spanish-eu-audio-readables` |
+| `books/spoken-readables-audio-esmx.md` | Spoken Spanish (AL) Audio: Readables | 1723282 | — | `spoken-spanish-al-audio-readables` |
+| `books/spoken-readables-audio-frfr.md` | Spoken French Audio: Readables | 1723284 | — | `spoken-french-audio-readables` |
+| `books/spoken-readables-audio-ruru.md` | Spoken Russian Audio: Readables | 1723285 | — | `spoken-russian-audio-readables` |
+| `books/spoken-readables-audio-ptbr.md` | Spoken Portuguese Audio: Readables | 1723287 | — | `spoken-portuguese-audio-readables` |
+| `books/spoken-readables-audio-kokr.md` | Spoken Korean Audio: Readables | 1723288 | — | `spoken-korean-audio-readables` |
+| `books/spoken-readables-audio-zhcn.md` | Spoken Chinese (Simplified) Audio: Readables | 1723289 | — | `spoken-chinese-simplified-audio-readables` |
+| `books/spoken-readables-audio-zhtw.md` | Spoken Chinese (Traditional) Audio: Readables | 1723295 | — | `spoken-chinese-traditional-audio-readables` |
 
 **A sound pack's page is also its registry entry.** `section:` (quests, zones or books), `lang:`
 and, on a quests pack, `pack:` say which pack it is; a language other than English also carries
@@ -54,8 +77,24 @@ release tag (English's, plus `-<lang>`), and every build and release script asks
 keeping a table of its own. Adding a language's pack is its page -- one per pack, four for quests
 -- plus the CurseForge project it names.
 
-The slugs follow the projects' names, `-all` included: the meta addon is the "All" pack as far
-as a player is concerned, so it is the one project whose slug names a pack that holds no audio.
+**A pack can live inside another's CurseForge project.** The English bosses pack has no project
+of its own: its page says `bundledIn: spoken-audio-places`, and CurseForge's Spoken Audio: Places
+and Bosses is sent a zip carrying its `SpokenBossesAudio` folder beside `SpokenPlacesAudio`.
+Players sent to CurseForge for it go there. Its page keeps its slug so its README is still
+written, but nothing uploads it to CurseForge on its own. On GitHub the two stay apart:
+`places-audio` holds Places only and `bosses-audio` the bosses pack, and the manager installs them
+as separate products.
+
+The slugs follow the projects' names: lowercased, with the colon, the dash and the brackets
+dropped, so `Spoken German Audio: Quests - Horde` is `spoken-german-audio-quests-horde`.
+The retired projects keep the slugs they were published under.
+
+**Gossip has no project of its own.** It is a part of Spoken Quests, in Spoken's zip, and its
+voices are the Gossip pack above, which every language's quests pack also holds.
+
+**Three projects are retired and keep a page.** `quests/player.md`, `zones/spoken-zones.md` and
+`books/spoken-books.md` tell a visitor to install Spoken instead. Nothing uploads to them
+again.
 
 **Six more projects exist and are retired.** 1655867, 1658236, 1658237, 1658239 and 1658235 held
 the second set of quest packs, back when the audio shipped at two qualities, and 1636548 the
@@ -74,14 +113,15 @@ project name and the summary, so "VoiceOver Redux" is findable only because each
 *Formerly VoiceOver Redux*. That clause is the one place an old name belongs. Everywhere else -
 prose, headings, comments, new identifiers - it reads as a name the project still uses.
 
-**Spoken Player is the project everything else depends on**, and it had to exist *and be
+**Spoken is the project everything else depends on**, and it had to exist *and be
 approved* before any upload could name it: the errorCode 1018 gate below. It was created first
-for that reason and its id is in `target_curseforge()` in `scripts/quests/release.sh`. Every Spoken
-addon declares it in `relations`, which is what makes addon managers install it.
+for that reason and its id is in `target_curseforge()` in `scripts/quests/release.sh`, whose
+`spoken` target `scripts/spoken/release.sh` (`make release-spoken`) runs. Every Spoken addon
+declares it in `relations`, which is what makes addon managers install it.
 
 `audio-all` is the odd one: that project ships a **meta addon** rather than audio, because the
-complete pack is too big to upload. It is a few kilobytes declaring the other four as required
-dependencies, which `scripts/release.sh` sends as part of the upload metadata - relations are
+complete pack is too big to upload. It is a few kilobytes declaring Spoken and the four packs as required
+dependencies, which `scripts/quests/release.sh` sends as part of the upload metadata - relations are
 per file, so they need no web-UI step and cannot drift from the file that shipped.
 
 **A dependency has to be an approved project**, which is a one-time gate rather than a
@@ -91,19 +131,20 @@ is not accessible"). Once approved it stays approved, and every later `audio-all
 resolves immediately - file moderation is separate and does not gate relations, which is why
 the four packs uploaded fine while their own projects were still pending.
 
-`release.sh` uploads `audio-all` last for the same reason: its dependencies are resolved at
+`scripts/quests/release.sh` uploads `audio-all` last for the same reason: its dependencies are resolved at
 upload time, so it goes after the things it depends on.
 
 The slugs are what the pages and the addon link to, so they are read off the live projects
 rather than guessed. They were all changed when the projects were renamed; the old ones redirect, but a redirect is not something to
 depend on, and CurseForge resolves a `relations` slug at upload time. `scripts/quests/release.sh`
-carries the same slugs in `target_dependencies()`, `SpokenQuests/DataModules.lua` the same URLs,
+carries the same slugs in `target_dependencies()`, `Spoken_Quests/DataModules.lua` the same URLs,
 and `.github/workflows/release-addons.yaml` the same links, so a slug that changes has to change
-in all four. The project names are the addons' `## Title` too - `tts_cli/factions.py:pack_title` -
-so a player sees the same name in the AddOns list as on the site.
+in all four. The project names are the addons' `## Title` too (`pack_title` in
+`pipelines/quests/tts_cli/factions.py`), so a player sees the same name in the AddOns list as on
+the site.
 
 **The folder names moved with them.** The packs ship as `SpokenQuestsAudio*` and the zones pack as
-`SpokenZonesAudio`, where they were `VoiceOverReduxHQAudio*` and `ZoneLoreAudio`. A renamed folder
+`SpokenPlacesAudio`, where they were `VoiceOverReduxHQAudio*` and `ZoneLoreAudio`. A renamed folder
 is a re-download of every clip in it, which the release doing the renaming costs anyway; what it
 is not is a broken path, because nothing stores one built from a folder name.
 
@@ -113,9 +154,9 @@ the same wall the complete quests pack meets on CurseForge. Every pack is 280-45
 `scripts/*/release.sh` uploads the addons to both stores and the packs to CurseForge alone.
 The Wago ids for the pack projects are listed above anyway: the projects exist, and the day
 that endpoint takes a larger file they are what it uploads to.
-A language's pack -- Spoken Zones Audio: Spanish (AL) is the first -- has no Wago project at all:
+A language's pack -- Spoken Spanish (AL) Audio: Places is the first -- has no Wago project at all:
 its page leaves `wago:` out, `scripts/descriptions.mjs` writes no Wago copy of it, and
-`scripts/zones/release.sh` skips the Wago upload for it.
+`scripts/places/release.sh` skips the Wago upload for it.
 
 **So the packs have a third channel**, `scripts/audio-github-release.sh` (`make audio-release`),
 one GitHub release per pack under `<pack>/vX.Y.Z` — the ceiling there is 2 GB a file. It runs
@@ -124,6 +165,58 @@ no runner can rebuild it. A pack page's `release:` line names its tag prefix, an
 makes the Wago copy of every page linking that pack point at the GitHub releases for it
 instead of at a Wago project holding no files. The link is the releases query rather than a
 tag, so it survives the next audio build.
+
+**Quests are one download on GitHub and four on CurseForge in every language -- the same four
+folders either way.** GitHub takes a file up to 2 GB, so there one download is the whole answer:
+`SpokenQuestsAudioAll-<version>.zip`, tagged `quests-audio/vX.Y.Z`, and a language's name and tag
+carry its code. It is a
+bundle rather than a fifth pack: inside are `SpokenQuestsAudioAlliance`, `...Horde`, `...Shared`
+and `...Gossip`, exactly as CurseForge installs them, so a player who moves between the stores
+overwrites the same folders instead of holding every line twice. CurseForge cannot take that
+file, so it keeps the four split packs and the meta addon that pulls them in.
+`quests/audio-all.md` is therefore both: the meta addon's project page, and the registry entry
+for the bundle (`pack: all`, `release: quests-audio`; `scripts/lib/packs.mjs` names its folders
+under `bundles`). The four split pages say `github: false`, which keeps them out of
+`scripts/audio-github-release.sh`. The zip is not called `SpokenQuestsAudio-<version>.zip`
+because that is the meta addon's.
+
+**A maintainer publishes from their own machine and to their own stores.** The Release button
+puts a pack on the Manager channel and commits nothing. `scripts/maintainers/spoken-release.sh`
+then takes what the Manager installed in `AddOns`, zips each folder at the version in its `.toc`,
+and uploads it to the maintainer's CurseForge projects, their GitHub repository, or both, with
+their own tokens. It is one bash file with no Node and no checkout, for a maintainer to download
+along with `spoken-release.env.example`, and on Windows it runs in Git Bash, where Windows' own
+`tar` makes the zip. CurseForge may refuse the largest packs at its upload limit; the script says
+which and carries on. It uploads files only, so a project's page is still pasted by hand.
+
+**The Spoken Manager does the same from its Release page, set up in Settings under Contributor.** A
+maintainer signs in with their Spoken site account. The account needs the `admin` grant in a language
+(a global admin has every language), and only those languages show. In Settings the maintainer saves
+a CurseForge token and project ids per pack, with a tab per language, a GitHub token and an
+`owner/repo`, or both; saving checks the token and refuses one that fails. Tokens and the site session
+are kept encrypted with the operating system's secret store, and are refused when there is none. One
+project id belongs to one pack: saving the same id on two packs is refused. The Release page appears
+next to Community once a store can take a pack: CurseForge needs a token and at least one project id,
+GitHub a token and a repository. It lists each pack of the chosen language as "Unreleased", "Live",
+"Uploaded, awaiting CurseForge" or "Could not check", or says why it cannot be released ("Not
+installed" in the selected game, "Not on the newest version from the Manager", "Developer's checkout",
+"No project id"). One button per store publishes every "Unreleased" row, and each such row has its
+own Upload button. A run shows the bytes sent of the pack in hand. It reads the channel again first,
+and stops if it cannot. It uses the script's tag, asset and file names, so the two can be mixed. The
+script stays for anyone not using the Manager. These limits hold:
+
+- CurseForge's upload token cannot list files, so the Manager reads the public list from
+  `api.cfwidget.com`, a third party, and keeps its own record of what it uploaded. When cfwidget
+  fails and no upload is recorded, the row reads "Could not check" and is left out of Release, so an
+  outage cannot cause a run of duplicates. "Upload Again" is available on that row.
+- A file in moderation that was uploaded from anywhere else, such as the script, looks unreleased
+  until it goes public. Releasing it again makes a duplicate for CurseForge to moderate.
+- A file CurseForge rejects stays "Uploaded, awaiting CurseForge", since nothing reports a
+  rejection. "Upload Again" is the way out.
+- This traffic (the site, cfwidget, CurseForge and GitHub) does not use the system proxy.
+- A GitHub repository that was renamed reads as unreachable until the new name is saved.
+- No real upload has run from the Manager yet, or from the script. The first one needs a
+  maintainer's own project and token.
 
 **These are pasted by hand and the site is the live copy.** There is no API for descriptions —
 `release.sh` uploads files and nothing else, deliberately, because a script that rewrote project
@@ -145,5 +238,5 @@ which meant two places to edit and one of them silently authoritative.
 re-recorded, and a number in prose nothing checks is a number that goes stale on the site while
 looking authoritative. CurseForge shows the file size on the Files tab anyway.
 
-Every page carries the same table of the five packs, with the row for that page marked and the
-other four linked.
+The five English quests pages (`audio-all` and the four split packs) carry the same table of the
+five packs, with the row for that page marked and the other four linked.

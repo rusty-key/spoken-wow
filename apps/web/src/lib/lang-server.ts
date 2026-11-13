@@ -27,6 +27,15 @@ async function mayPreview(lang: Lang): Promise<boolean> {
   return worksIn(await viewerOf(await currentSession()), lang);
 }
 
+/**
+ * Whether the person asking works in a language: an admin, or anybody holding a grant in
+ * it. The same people mayPreview lets see it switched off, and who the explorers show who
+ * and what made each take (lib/takes/made-by.ts).
+ */
+export async function worksHere(lang: Lang): Promise<boolean> {
+  return mayPreview(lang);
+}
+
 /** Cached per render: the layout and the page under it both ask, of the same language. */
 const visible = cache(async (lang: Lang): Promise<boolean> => {
   if (lang === BASE_LANG) return true;

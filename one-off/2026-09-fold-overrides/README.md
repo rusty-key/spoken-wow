@@ -15,6 +15,9 @@ live version and inserts one carrying the override's text, with the override's a
 the override's text is left alone, so a second run writes nothing. Production had 4 overrides
 when this was written.
 
+It folds English's only. Another language's overrides are a team's spoken text, not fixes to its
+original, and stay where they are.
+
 ## When to run it: not before the site stops reading `line_override`
 
 As of PR #29 the site still reads and writes overrides: the line editor writes a
@@ -24,7 +27,7 @@ same fix would live in two places, and **clearing an override would leave the li
 it**, because the folded version is now the line's own text.
 
 So it runs as part of the change that moves the quests line editor onto `quest_line`
-versions (writing and restoring them like `lib/zones/lore.ts` does) and drops the reads of
+versions (writing and restoring them like `lib/places/lore.ts` does) and drops the reads of
 `line_override`. At that point, in order:
 
 1. deploy that change;

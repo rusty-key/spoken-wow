@@ -3,7 +3,7 @@
  *
  * A lexicon edit changes how a name SOUNDS without changing a character of the text it
  * appears in, so no hash this project compares can see one: `spokenHash` on the quests side
- * and `textHash` on zones and books both move with the text and stand still with the
+ * and `textHash` on places and readables both move with the text and stand still with the
  * dictionary. Migration 0006 recorded `dictionaryVersion` on every take for exactly this
  * question, and until this module nothing read it.
  *
@@ -19,9 +19,11 @@
  * postdates the change -- but the app never decides that audio nobody has listened to is
  * fine, because deciding that is the whole content of the mark.
  */
+import { randomUUID } from "node:crypto";
+
 import { recordActivities } from "@/lib/activity/store";
-import { db } from "@/lib/db";
 import { BASE_LANG, type Lang } from "@/lib/lang";
+import { asTeamOf, queryAs, readAs } from "@/lib/teams/store";
 
 import { kindOf, type LexiconEntry } from "./lexicon";
 import type { Source } from "@/lib/sections";
@@ -82,7 +84,7 @@ function normalise(text: string): string {
  * Of these takes, the ones a pronunciation change has overtaken.
  *
  * Pure, and takes the changes rather than reading them, so this is testable with no database
- * -- the split lib/search.ts and lib/zones/search.ts already make.
+ * -- the split lib/search.ts and lib/places/search.ts already make.
  *
  * The loop is over what CHANGED, not over the lexicon: the filter's normal case is a sweep
  * of the whole corpus, and a take older than no change at all is answered without its text
@@ -128,6 +130,12 @@ export function isDirty(take: SpokenTake, context: DirtyContext): boolean {
  * The changes and the acknowledgements, for one section in one language. Two selects, both
  * small.
  *
+ * Only the newest change of each word, because it is the only one the rule can turn on: an
+ * older change to the same word is newer than a take only when the newest one is too, and it
+ * matches exactly the same text. The log itself grows by every save, so without this the
+ * sweep grows with it -- 78,000 rows for 145 words once made the dirty check of one page
+ * take 26 seconds (2026-10-03). Grouped by the case the matcher ignores.
+ *
  * Both halves are per language: a German lexicon edit says nothing about how an English take
  * sounds, and clearing the English take of a file does not clear the German one.
  */
@@ -136,27 +144,40 @@ export async function loadDirtyContext(
   lang: Lang = BASE_LANG,
 ): Promise<DirtyContext> {
   const [changes, acks] = await Promise.all([
-    db().query<{ grapheme: string; changedAt: Date }>(
-      `select "grapheme", "changedAt" from "lexicon_change" where "lang" = $1
+    readAs<{ grapheme: string; changedAt: Date }>(
+      lang,
+      `select "grapheme", "changedAt" from (
+         select distinct on (lower("grapheme")) "grapheme", "changedAt"
+           from "lexicon_change" where "lang" = $1
+          order by lower("grapheme"), "changedAt" desc
+       ) newest
         order by "changedAt" desc`,
       [lang],
     ),
-    db().query<{ file: string; ackedAt: Date }>(
+    readAs<{ file: string; ackedAt: Date }>(
+      lang,
       `select "file", "ackedAt" from "take_ack" where "source" = $1 and "lang" = $2`,
       [source, lang],
     ),
   ]);
 
   return {
-    changes: changes.rows.map((row) => ({
+    changes: changes.map((row) => ({
       grapheme: row.grapheme,
       changedAt: row.changedAt.getTime(),
     })),
-    acks: new Map(acks.rows.map((row) => [row.file, row.ackedAt.getTime()])),
+    acks: new Map(acks.map((row) => [row.file, row.ackedAt.getTime()])),
   };
 }
 
-/** Say that these takes are fine as they stand. Idempotent; a second clear moves the date. */
+/**
+ * Say that these takes are fine as they stand. Idempotent; a second clear moves the date.
+ *
+ * Several files are one click, logged as one "marks.cleared" row with every file's row
+ * grouped under it for the page to fold (migration 0057). The marks and their log rows are
+ * one transaction: a click's row lost while its files' rows landed would hide those files
+ * from the log for good, so a failed log write fails the clear rather than being swallowed.
+ */
 export async function acknowledge(
   source: Source,
   files: string[],
@@ -164,17 +185,33 @@ export async function acknowledge(
   lang: Lang = BASE_LANG,
 ): Promise<void> {
   if (!files.length) return;
-  await db().query(
-    `insert into "take_ack" ("source", "lang", "file", "ackedAt", "ackedBy")
-     select $1, $4, unnest($2::text[]), now(), $3
-     on conflict ("source", "lang", "file") do update set
-       "ackedAt" = excluded."ackedAt",
-       "ackedBy" = excluded."ackedBy"`,
-    [source, files, userId, lang],
-  );
-  await recordActivities(
-    files.map((file) => ({ kind: "take.acked" as const, lang, source, subject: file, actorId: userId, detail: {} })),
-  );
+  const groupId = files.length > 1 ? randomUUID() : null;
+  await asTeamOf(lang, async (client) => {
+    await client.query(
+      `insert into "take_ack" ("source", "lang", "file", "ackedAt", "ackedBy")
+       select $1, $4, unnest($2::text[]), now(), $3
+       on conflict ("teamId", "source", "lang", "file") do update set
+         "ackedAt" = excluded."ackedAt",
+         "ackedBy" = excluded."ackedBy"`,
+      [source, files, userId, lang],
+    );
+    await recordActivities(
+      [
+        ...(groupId
+          ? [{ kind: "marks.cleared" as const, lang, source, actorId: userId, detail: { groupId, count: files.length } }]
+          : []),
+        ...files.map((file) => ({
+          kind: "take.acked" as const,
+          lang,
+          source,
+          subject: file,
+          actorId: userId,
+          detail: groupId ? { groupId } : {},
+        })),
+      ],
+      client,
+    );
+  });
 }
 
 /**
@@ -250,7 +287,8 @@ export async function logSoundChanges(
   lang: Lang = BASE_LANG,
 ): Promise<void> {
   if (!changes.length) return;
-  await db().query(
+  await queryAs(
+    lang,
     `insert into "lexicon_change" ("grapheme", "kind", "versionId", "changedBy", "lang")
      select "grapheme", "kind", $3, $4, $5
        from unnest($1::text[], $2::text[]) as c("grapheme", "kind")`,

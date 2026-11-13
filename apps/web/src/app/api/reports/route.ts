@@ -12,21 +12,42 @@
  */
 import { headers } from "next/headers";
 
+import { audioRelPath } from "@/lib/audio";
 import { auth } from "@/lib/auth";
 import { clientIp } from "@/lib/reports/client-ip";
 import { validateSubmission } from "@/lib/reports/reports";
 import { langParam } from "@/lib/lang-server";
 import { countRecent, createReport } from "@/lib/reports/store";
+import { envelopeFor } from "@/lib/reports/context";
+import type { Envelope } from "@/lib/contributions/envelope";
+import { keepClassWords } from "@/lib/contributions/class-words";
+import { submissionFrom } from "@/lib/contributions/submission";
+import {
+  CONTRIBUTION_WINDOW_MS,
+  CONTRIBUTIONS_PER_HOUR,
+  type Identity,
+  knownSubmissions,
+  storeSubmission,
+} from "@/lib/contributions/intake";
+import { countRecentContributions, recordContributionHit } from "@/lib/contributions/store";
 import { formatTarget, parseTarget, resolveTarget } from "@/lib/reports/target";
-import { pageById } from "@/lib/books/catalogue";
-import { lineByPath } from "@/lib/zones/catalogue";
+import { pageById } from "@/lib/readables/catalogue";
+import { lineByPath } from "@/lib/places/catalogue";
+import { lineByPath as bossByPath } from "@/lib/bosses/catalogue";
 import { type Source, isSource } from "@/lib/sections";
 
 export const dynamic = "force-dynamic";
 
-/** Deliberately not configurable: a knob nobody turns is a knob set wrong. */
-const PER_HOUR = 10;
-const WINDOW_MS = 60 * 60 * 1000;
+/** `file` only for a quests line: nothing else can have an override. */
+type Address = { lineId: string | null; target: string; file?: string | null };
+
+/**
+ * Deliberately not configurable: a knob nobody turns is a knob set wrong. A short window
+ * because reports come in bursts, one quest chain's bad lines at a time: a burst gets through,
+ * and someone who hits the limit waits minutes, not an hour.
+ */
+const PER_WINDOW = 10;
+const WINDOW_MS = 10 * 60 * 1000;
 
 export async function POST(request: Request) {
   const body = (await request.json().catch(() => ({}))) as Record<string, unknown>;
@@ -54,22 +75,26 @@ export async function POST(request: Request) {
    * load there is no sound data at all, and that is the failure most worth reporting. So it
    * is validated for shape and the lineId is filled in only if it resolves.
    *
-   * A zones address is the line's own audio path, because that is what the report link is,
+   * A places address is the line's own audio path, because that is what the report link is,
    * and it either names a line or it does not. Accepting one that names nothing would put a
    * row in triage that nobody can act on -- there is no equivalent of a data module having
    * failed to load, since the address came from a page this site rendered.
    *
-   * A books address is the page id the addon built its link from, and is resolved as strictly
-   * as a zones one for the same reason: the reporter got here from a page this site rendered,
+   * A readables address is the page id the addon built its link from, and is resolved as strictly
+   * as a places one for the same reason: the reporter got here from a page this site rendered,
    * so an id naming nothing is a typo in the URL bar rather than a corpus that failed to load.
+   *
+   * A bosses address is the boss's audio path, resolved as strictly as a places one.
    */
   const raw = typeof body.target === "string" ? body.target : null;
   const addressed =
-    source === "zones"
-      ? await zonesTarget(raw)
-      : source === "books"
-        ? await booksTarget(raw)
-        : await questsTarget(raw, body.lineId);
+    source === "places"
+      ? await placesTarget(raw)
+      : source === "readables"
+        ? await readablesTarget(raw)
+        : source === "bosses"
+          ? await bossesTarget(raw)
+          : await questsTarget(raw, body.lineId);
 
   if (!addressed) {
     return Response.json({ error: "unknown target" }, { status: 400 });
@@ -80,30 +105,80 @@ export async function POST(request: Request) {
     return Response.json({ error: validated.error }, { status: 400 });
   }
 
-  const ip = clientIp(request);
-  if ((await countRecent(ip, WINDOW_MS)) >= PER_HOUR) {
-    return Response.json({ error: "too many reports" }, { status: 429 });
-  }
-
   // A signed-in reporter's identity comes from the session, and any name or email in the body
   // is dropped rather than merged: letting someone sign in and then type a different name is a
   // way to put words in another person's mouth.
   const session = await auth.api.getSession({ headers: await headers() });
+
+  const ip = clientIp(request);
+  const reporter = session ? { userId: session.user.id } : { ip };
+  const recent = await countRecent(reporter, WINDOW_MS);
+  if (recent >= PER_WINDOW) {
+    // The only record of a refusal: pm2's log, which is how a shared bucket shows up.
+    console.warn("report rate-limited", { ...reporter, recent });
+    return Response.json({ error: "too many reports" }, { status: 429 });
+  }
+
+  const identity = {
+    userId: session?.user.id ?? null,
+    name: session ? null : validated.value.name,
+    email: session ? null : validated.value.email,
+    ip,
+  };
+
+  // parseEnvelope refuses anything past its own MAX_BYTES before reading it.
+  const envelope = envelopeFor(body.context, source);
+  const context = envelope && { fields: envelope.fields, text: envelope.text };
 
   await createReport({
     source,
     lang,
     lineId: addressed.lineId,
     target: addressed.target,
+    file: addressed.file,
     category: validated.value.category,
     body: validated.value.body,
-    userId: session?.user.id ?? null,
-    name: session ? null : validated.value.name,
-    email: session ? null : validated.value.email,
-    ip,
+    ...identity,
+    context,
   });
 
+  // The report is filed by now: a failure here must not answer 500 and invite a second one.
+  if (envelope && validated.value.category === "missing") {
+    await contributeMissing(envelope, body.context as string, validated.value.body, identity).catch((error) =>
+      console.error("filing a missing report as a contribution failed", error),
+    );
+  }
+
   return Response.json({ ok: true });
+}
+
+/**
+ * "Nothing played" with the text attached is also a contribution: the player's client holds a
+ * line the corpus may not. Filed through the contribute route's own checks and allowance, and
+ * dropped as that route drops it when the corpus already has the line -- then the audio, not
+ * the text, is what is missing, and the report says so. Places never: a places report is about
+ * lore that exists, and a places contribution is a description someone wrote. Readables never
+ * in practice: a readables report names a corpus page by `id`, so submissionFrom finds no `page`.
+ */
+async function contributeMissing(
+  envelope: Envelope,
+  raw: string,
+  complaint: string,
+  identity: Omit<Identity, "body"> & { ip: string },
+): Promise<void> {
+  if (envelope.source === "places") return;
+  const sent = submissionFrom(envelope, raw);
+  if (!sent) return;
+  const [recent, [submission]] = await Promise.all([
+    countRecentContributions(identity.ip, CONTRIBUTION_WINDOW_MS),
+    keepClassWords([sent]),
+  ]);
+  if (recent >= CONTRIBUTIONS_PER_HOUR) return;
+  const [known] = await knownSubmissions([submission]);
+  if (!known) {
+    await storeSubmission(submission, { ...identity, body: complaint });
+  }
+  await recordContributionHit(identity.ip);
 }
 
 /**
@@ -115,41 +190,57 @@ export async function POST(request: Request) {
 async function questsTarget(
   raw: string | null,
   claimed: unknown,
-): Promise<{ lineId: string | null; target: string } | null> {
+): Promise<Address | null> {
   const target = raw ? parseTarget(raw.split("/")) : null;
   if (!target) return null;
 
   const wanted = typeof claimed === "string" ? claimed : null;
   const lines = await resolveTarget(target);
-  const lineId = lines.find((line) => line.lineId === wanted)?.lineId ?? null;
-  return { lineId, target: formatTarget(target) };
+  const line = lines.find((each) => each.lineId === wanted);
+  return { lineId: line?.lineId ?? null, target: formatTarget(target), file: line ? audioRelPath(line) : null };
 }
 
 /**
- * A books address: the page id, '261'.
+ * A readables address: the page id, '261'.
  *
  * The lineId is taken from the page the id resolves to rather than from the body, as the
- * zones branch does. Nothing the reporter can edit decides which row triage sees.
+ * places branch does. Nothing the reporter can edit decides which row triage sees.
  */
-async function booksTarget(
+async function readablesTarget(
   raw: string | null,
-): Promise<{ lineId: string | null; target: string } | null> {
+): Promise<Address | null> {
   if (!raw) return null;
 
-  const page = await pageById(Number(raw));
+  const page = await pageById(raw);
   if (!page) return null;
 
   return { lineId: page.id, target: page.file };
 }
 
-/** A zones address: the line's own audio path, '1411/razor-hill'. */
-async function zonesTarget(
+/** A places address: the line's own audio path, '1411/razor-hill'. */
+async function placesTarget(
   raw: string | null,
-): Promise<{ lineId: string | null; target: string } | null> {
+): Promise<Address | null> {
   if (!raw) return null;
 
   const [mapID, slug] = raw.split("/");
   const entry = await lineByPath(Number(mapID), slug ?? "");
+  if (!entry) return null;
+
+  return { lineId: entry.id, target: entry.file };
+}
+
+/** A bosses address: the boss's own audio path, '36/edwin-vancleef'. */
+async function bossesTarget(
+  raw: string | null,
+): Promise<Address | null> {
+  if (!raw) return null;
+
+  // Exactly '<map>/<slug>', as targetExplorerHref reads it: a trailing segment is no address.
+  const segments = raw.split("/");
+  if (segments.length !== 2) return null;
+  const [map, slug] = segments;
+  const entry = await bossByPath(Number(map), slug);
   if (!entry) return null;
 
   return { lineId: entry.id, target: entry.file };

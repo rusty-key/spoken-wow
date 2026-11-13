@@ -110,7 +110,10 @@ function methods:StartMoving() self.moving=true end
 function methods:StartSizing() self.sizing=true end
 function methods:StopMovingOrSizing() self.moving=false;self.sizing=false end
 function methods:SetResizeBounds(...) self.resizeBounds={...} end
-function methods:SetCreature(id) self.fileID=id and id>0 and 119563 or nil end
+function methods:SetCreature(id) self.creature=id; self.fileID=id and id>0 and 119563 or nil end
+-- Creature id -> the appearance GetDisplayInfo names; absent reads 0, as an uncached creature does.
+MockDisplays={}
+function methods:GetDisplayInfo() return MockDisplays[self.creature] or 0 end
 function methods:GetModelFileID() return self.fileID end
 function methods:ClearModel() self.fileID=nil end
 function methods:SetAnimation(value) self.animation=value end
@@ -138,6 +141,10 @@ function SetPortraitTexture(texture,unit)
     texture.nativeCalls=(texture.nativeCalls or 0)+1
     texture:SetTexture('portrait:'..MockUnits[unit])
 end
+function SetPortraitTextureFromCreatureDisplayID(texture,display)
+    texture.nativeDisplay=display
+    texture:SetTexture('display:'..display)
+end
 function GetRealmName() return 'Test' end
 function SetCVar() end
 SlashCmdList={}
@@ -149,7 +156,6 @@ function timerMethods:ScheduleRepeatingTimer(fn,delay)
     local id=self:ScheduleTimer(fn,delay);timers[id].interval=delay;return id
 end
 function timerMethods:CancelTimer(id) timers[id]=nil end
-function timerMethods:TimeLeft(id) assert(timers[id],'invalid timer');return math.max(0,timers[id].due-clock) end
 function LibStub() return {Embed=function(_,object) for key,fn in pairs(timerMethods) do object[key]=fn end;return object end} end
 function Advance(seconds)
     clock=clock+seconds

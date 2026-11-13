@@ -19,9 +19,11 @@ file: leaving it out of a pack would strand the line that still needs it.
 import json
 import os
 
-from tts_cli.naming import subfolder_from_line_id
+from tts_cli.naming import moment_of, split_voice, subfolder_from_line_id
+from tts_cli.quest_text import MOMENTS, PROGRESS, left_out, removed_quests
 
 DEFAULT_IGNORED_PATH = "corpus/ignored.json"
+DEFAULT_OVERRIDES_PATH = "corpus/compendium_overrides.json"
 
 
 def load_ignored(path: str = DEFAULT_IGNORED_PATH) -> dict:
@@ -38,14 +40,53 @@ def ignored_line_ids(path: str = DEFAULT_IGNORED_PATH) -> set:
     return set(load_ignored(path))
 
 
+def pack_ignored(corpus: dict, ignored: dict, removed=()) -> dict:
+    """The pack's list: line_ignore's, and the lines no pack voices though nobody listed them.
+
+    A quest the Compendium leaves out (quest_text.left_out: Blizzard's <NYI> debris and the
+    hand corrections' removals) has no page and is not served, yet its offer was voiced and
+    the quest log named its giver. `removed` is removed_quests(), the hand corrections' list.
+    """
+    out = dict(ignored)
+    dropped = left_out(corpus, ignored, removed)
+    for line in corpus["lines"]:
+        base = split_voice(line["lineId"])[0]
+        if base in out:
+            continue
+        if line.get("source") in MOMENTS + (PROGRESS,) and line.get("questId") in dropped:
+            out[base] = "a quest the Compendium leaves out"
+    return out
+
+
+def wordless(corpus: dict) -> dict:
+    """Lines with no words, as {lineId: reason}: 3646's offer is one line break, and its file
+    was a breath. A pack leaves their audio out but keeps their lookup entries, because the
+    quest log's giver comes from the offer and still names the quest's hand-in."""
+    return {split_voice(line["lineId"])[0]: "no words to say" for line in corpus["lines"]
+            if not (line.get("originalText") or "").strip()}
+
+
+def load_pack_ignored(corpus: dict, ignored_path: str = DEFAULT_IGNORED_PATH,
+                      overrides_path: str = DEFAULT_OVERRIDES_PATH) -> dict:
+    """pack_ignored over the committed export and the hand corrections."""
+    return pack_ignored(corpus, load_ignored(ignored_path), removed_quests(overrides_path))
+
+
 def ignored_files(corpus: dict, ignored: dict) -> list:
     """Addon-relative paths whose every corpus line is ignored, sorted, so two runs differ
     only where the decisions do.
     """
-    owners = {}
+    owners, moment_owners = {}, {}
     for line in corpus["lines"]:
-        rel = f'{subfolder_from_line_id(line["lineId"])}/{line["fileName"]}.mp3'
-        owners.setdefault(rel, []).append(line["lineId"])
+        folder = subfolder_from_line_id(line["lineId"])
+        # A line in another voice is ignored with the line it is a voice of.
+        base = split_voice(line["lineId"])[0]
+        owners.setdefault(f'{folder}/{line["fileName"]}.mp3', []).append(base)
+        # A language's own text may make the moment one file where English has two, or two
+        # where it has one, so each form of the moment's file goes once all of its lines do.
+        plain = line["fileName"][2:] if moment_of(base) != base else line["fileName"]
+        for form in (plain, f"m-{plain}", f"f-{plain}"):
+            moment_owners.setdefault(f"{folder}/{form}.mp3", []).append(base)
 
-    return sorted(rel for rel, line_ids in owners.items()
-                  if all(line_id in ignored for line_id in line_ids))
+    return sorted({rel for named in (owners, moment_owners) for rel, line_ids in named.items()
+                   if all(line_id in ignored for line_id in line_ids)})

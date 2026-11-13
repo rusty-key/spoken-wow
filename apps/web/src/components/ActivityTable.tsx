@@ -19,12 +19,14 @@ import Link from "@/components/LocaleLink";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { usePendingPush } from "@/components/usePendingPush";
-import { CATEGORIES, categoryOf, type Category } from "@/lib/activity/kinds";
+import { useLocalDates } from "@/components/useLocalDates";
+import { CATEGORIES, categoryOf, FOLDS, type Category, type Group } from "@/lib/activity/kinds";
 import type { ActivityRow } from "@/lib/activity/store";
 import { usd } from "@/lib/generation/money";
 import { isProvider, PROVIDER_NAME } from "@/lib/generation/providers";
 import { localeHref, withLang } from "@/lib/lang";
 import { explorerHref, lexiconHref } from "@/lib/links";
+import { capabilityLabel, isCapability } from "@/lib/permissions";
 import { SOURCE_LABELS } from "@/lib/reports/reports";
 import { SOURCES, type Source } from "@/lib/sections";
 import { cn } from "@/lib/utils";
@@ -54,17 +56,12 @@ const SOURCE_OPTIONS = SOURCES.map((source) => ({ value: source, label: SOURCE_L
 /** One take the transport bar can be pointed at. */
 type Take = { source: Source; file: string; version: number };
 
-function time(at: string): string {
-  return new Date(at).toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" });
-}
+const TIME: Intl.DateTimeFormatOptions = { hour: "2-digit", minute: "2-digit" };
+const DAY: Intl.DateTimeFormatOptions = { weekday: "short", month: "short", day: "numeric", year: "numeric" };
 
-function day(at: string): string {
-  return new Date(at).toLocaleDateString(undefined, {
-    weekday: "short",
-    month: "short",
-    day: "numeric",
-    year: "numeric",
-  });
+/** A capability the way /admin names it, or the raw string when a later release wrote one. */
+function grantName(value: unknown): string | null {
+  return isCapability(value) ? capabilityLabel(value) : str(value);
 }
 
 function str(value: unknown): string | null {
@@ -73,6 +70,22 @@ function str(value: unknown): string | null {
 
 function num(value: unknown): number | null {
   return typeof value === "number" ? value : null;
+}
+
+/** "1 line", "2 lines", or "? lines" for a count the row does not carry. */
+function plural(n: number | null, noun: string, nouns = `${noun}s`): string {
+  return `${n === null ? "?" : n.toLocaleString()} ${n === 1 ? noun : nouns}`;
+}
+
+/** A body a row names, "gnome woman". */
+function bodyWords(d: Record<string, unknown>): string {
+  return [str(d.race), num(d.sex) === 3 ? "woman" : "man"].join(" ");
+}
+
+/** An NPC an activity names, by name or else by kind and id. */
+function speakerName(d: Record<string, unknown>): string {
+  const id = num(d.npcId);
+  return str(d.npcName) ?? (id === null ? "an NPC" : `${str(d.npcType) ?? "NPC"} ${id}`);
 }
 
 /** "a → b", or whichever half is known: rows backfilled from older tables carry neither. */
@@ -85,7 +98,7 @@ function change(before: string | null, after: string | null): string | null {
  * What one row says happened, in words, plus the text it quotes. The quoted part is kept
  * apart so the row can clamp it without clamping the verb.
  */
-function describe(row: ActivityRow): { what: string; quote: string | null } {
+export function describe(row: ActivityRow): { what: string; quote: string | null } {
   const d = row.detail;
   const version = num(d.version);
   switch (row.kind) {
@@ -104,26 +117,53 @@ function describe(row: ActivityRow): { what: string; quote: string | null } {
         what: num(d.from) ? `restored take v${version} over v${num(d.from)}` : `restored take v${version}`,
         quote: null,
       };
+    case "take.encode_failed":
+      return { what: `could not encode take v${version} for its pack`, quote: str(d.error) };
+    case "recording.uploaded":
+      return { what: `recorded v${version}`, quote: null };
+    case "recording.removed":
+      return { what: `removed recording v${version}`, quote: null };
     case "take.acked":
-      return { what: "marked the audio fine after a pronunciation change", quote: null };
+      return { what: "marked the audio fine after a pronunciation change", quote: row.lineId ? null : row.subject };
+    case "marks.cleared":
+      return {
+        what: `marked ${plural(num(d.count), "file")} fine after a pronunciation change`,
+        quote: null,
+      };
     case "batch.queued":
       return {
-        what: `queued ${num(d.count)?.toLocaleString() ?? "?"} lines for regeneration`,
+        what: `queued ${plural(num(d.count), "line")} for regeneration`,
         quote: str(d.label),
       };
     case "batch.stopped":
       return {
-        what: num(d.cancelled)
-          ? `stopped a batch, cancelling ${num(d.cancelled)!.toLocaleString()} lines`
-          : "stopped a batch",
+        what: num(d.cancelled) ? `stopped a batch, cancelling ${plural(num(d.cancelled), "line")}` : "stopped a batch",
         quote: str(d.reason) ?? str(d.label),
       };
+    case "queue.stopped":
+      return {
+        what: `stopped ${plural(num(d.batches), "batch", "batches")}, cancelling ${plural(num(d.cancelled), "line")}`,
+        quote: str(d.reason),
+      };
+    case "queue.paused":
+      return { what: "paused the regeneration queue", quote: null };
+    case "queue.resumed":
+      return { what: "resumed the regeneration queue", quote: null };
     case "text.edited":
+      if (num(d.contribution)) {
+        return { what: `took a correction from the game (contribution #${num(d.contribution)})`, quote: str(d.text) };
+      }
       return { what: version ? `edited the text (v${version})` : "edited the text", quote: str(d.text) };
     case "text.restored":
       return { what: `restored text v${version}`, quote: null };
+    case "text.retired":
+      return { what: `took back text v${version}`, quote: null };
     case "name.edited":
       return { what: "renamed", quote: str(d.name) };
+    case "name.restored":
+      return { what: `restored name v${version}`, quote: null };
+    case "name.retired":
+      return { what: `took back name v${version}`, quote: null };
     case "lexicon.added":
       return { what: `added a pronunciation for “${row.subject}”`, quote: str(d.after) };
     case "lexicon.edited":
@@ -134,6 +174,9 @@ function describe(row: ActivityRow): { what: string; quote: string | null } {
     case "lexicon.removed":
       return { what: `removed the pronunciation of “${row.subject}”`, quote: str(d.before) };
     case "override.set":
+      if (num(d.contribution)) {
+        return { what: `took a correction from the game (contribution #${num(d.contribution)})`, quote: str(d.text) };
+      }
       return { what: "overrode the English text", quote: str(d.text) };
     case "override.cleared":
       return { what: "cleared the English text override", quote: str(d.before) };
@@ -151,12 +194,21 @@ function describe(row: ActivityRow): { what: string; quote: string | null } {
         what: `cloned the voice “${row.subject}”${num(d.sampleCount) ? ` from ${num(d.sampleCount)} samples` : ""}`,
         quote: null,
       };
+    case "voice.adopted":
+      return {
+        what: `set the voice “${row.subject}”${str(d.from) ? ` to “${str(d.from)}” from their account` : " from their account"}`,
+        quote: null,
+      };
     case "reference.set":
       return { what: `set the fish.audio reference for “${row.subject}”`, quote: str(d.transcript) };
     case "reference.edited":
       return { what: `edited the reference transcript for “${row.subject}”`, quote: str(d.transcript) };
     case "reference.deleted":
       return { what: `deleted the fish.audio reference for “${row.subject}”`, quote: null };
+    case "reference.pinned":
+      return { what: `pinned “${row.subject}” to fish.audio`, quote: null };
+    case "reference.unpinned":
+      return { what: `unpinned “${row.subject}” from fish.audio`, quote: null };
     case "sample.added":
     case "sample.deleted":
     case "sample.imported":
@@ -169,23 +221,94 @@ function describe(row: ActivityRow): { what: string; quote: string | null } {
         quote: files.join(", ") || null,
       };
     }
+    case "npc.split":
+      return d.race
+        ? { what: `gave ${str(d.npcName) ?? row.subject} another body`, quote: bodyWords(d) }
+        : { what: `split ${str(d.npcName) ?? row.subject} into a man and a woman`, quote: null };
+    case "npc.unsplit":
+      return d.race
+        ? { what: `took a body from ${str(d.npcName) ?? row.subject}`, quote: bodyWords(d) }
+        : { what: `gave ${str(d.npcName) ?? row.subject} one voice again`, quote: null };
+    case "npc.speaker_added":
+      return { what: `made ${speakerName(d)} a speaker of ${row.subject}`, quote: null };
+    case "npc.speaker_removed":
+      return { what: `took ${speakerName(d)} off ${row.subject}`, quote: null };
+    case "npc.speaker_replaced":
+      return {
+        what: `put ${speakerName(d)} in place of ${speakerName((d.from ?? {}) as Record<string, unknown>)} on ${row.subject}`,
+        quote: null,
+      };
     case "npc.resolved":
       return {
-        what: `set who ${str(d.npcName) ?? row.subject} is`,
+        what: `set who ${str(d.npcName) ?? row.subject} is${num(d.sex) === 3 ? " as a woman" : num(d.sex) === 2 ? " as a man" : ""}`,
         quote: [str(d.race), str(d.gender), str(d.flavor)].filter(Boolean).join(" · ") || null,
       };
+    case "type.changed":
+      return {
+        what: `${str(d.action)?.replace("-", " ") ?? "changed"} ${row.subject}`,
+        quote: [str(d.gender), str(d.flavor), str(d.voice)].filter(Boolean).join(" · ") || null,
+      };
     case "grant.added":
-      return { what: `gave ${row.subjectName ?? "someone"} ${str(d.capability)}`, quote: null };
+      return { what: `gave ${row.subjectName ?? "someone"} ${grantName(d.capability)}`, quote: null };
     case "grant.removed":
-      return { what: `took ${str(d.capability)} from ${row.subjectName ?? "someone"}`, quote: null };
+      return { what: `took ${grantName(d.capability)} from ${row.subjectName ?? "someone"}`, quote: null };
     case "language.toggled":
       return { what: d.enabled ? "switched the language on" : "switched the language off", quote: null };
+    case "team.created":
+      return { what: `created the team ${str(d.slug) ?? ""}`.trim(), quote: null };
+    case "team.renamed":
+      return { what: "renamed the team", quote: str(d.name) };
+    case "team.language_moved":
+      return { what: `handed the language from ${str(d.from) ?? "?"} to ${str(d.to) ?? "?"}`, quote: null };
+    case "release.started":
+      return { what: `pressed Release for ${str(d.section) ?? "a section"}`, quote: null };
+    case "release.finished":
+      return {
+        what: `release of ${str(d.section) ?? "a section"} ${d.state === "failed" ? "failed" : d.state === "unchanged" ? "found nothing to release" : "finished"}`,
+        quote: str(d.version),
+      };
+    case "pack.submitted":
+      return { what: `submitted the community pack ${row.subject} ${str(d.version) ?? ""}`.trim(), quote: null };
+    case "pack.approved":
+      return { what: `approved the community pack ${row.subject} ${str(d.version) ?? ""}`.trim(), quote: null };
+    case "pack.rejected":
+      return { what: `turned down the community pack ${row.subject} ${str(d.version) ?? ""}`.trim(), quote: str(d.reason) };
+    case "pack.withdrawn":
+      return { what: `withdrew the community pack ${row.subject} ${str(d.version) ?? ""}`.trim(), quote: null };
+    case "pack.listed":
+      return { what: `listed the community pack ${row.subject}`, quote: null };
+    case "pack.unlisted":
+      return { what: `unlisted the community pack ${row.subject}`, quote: null };
+    case "pack.owner":
+      return {
+        what: d.ownerId ? `handed the community pack ${row.subject} to another owner` : `left the community pack ${row.subject} with no owner`,
+        quote: null,
+      };
     case "contribution.resolved":
-      return { what: `${str(d.status) ?? "resolved"} a contribution`, quote: str(d.key) };
+      return {
+        what: `${str(d.status) ?? "resolved"} a ${d.correction ? "correction from the game" : "contribution"}`,
+        quote: str(d.key),
+      };
     case "contribution.edited":
       return { what: `changed a contribution's ${str(d.field) ?? "details"}`, quote: null };
     case "report.resolved":
       return { what: `marked a report ${str(d.status) ?? "resolved"}`, quote: str(d.category) };
+    case "report.passed":
+      return { what: `passed a report to ${d.to === "text" ? "text maintainers" : "the team"}`, quote: null };
+    case "user.role_changed":
+      return { what: `made ${row.subjectName ?? "a removed user"} ${str(d.role) ?? "?"}`, quote: null };
+    case "user.banned":
+      return { what: `banned ${row.subjectName ?? "a removed user"}`, quote: str(d.banReason) };
+    case "user.unbanned":
+      return { what: `unbanned ${row.subjectName ?? "a removed user"}`, quote: null };
+    case "user.removed":
+      return { what: "removed a user", quote: null };
+    case "user.impersonated":
+      return { what: `signed in as ${row.subjectName ?? "a removed user"}`, quote: null };
+    // A kind this page does not know: one a newer release wrote before a rollback to this
+    // one. Shown by its name rather than breaking the page.
+    default:
+      return { what: String(row.kind), quote: null };
   }
 }
 
@@ -194,10 +317,27 @@ function target(row: ActivityRow): { href: string; label: string } | null {
   if (row.source && row.lineId) return { href: explorerHref(row.source, row.lineId), label: row.lineId };
   if (categoryOf(row.kind) === "voices") return row.subject ? { href: "/voices", label: row.subject } : null;
   if (row.kind.startsWith("lexicon.") && row.subject) return { href: lexiconHref(row.subject), label: "Pronunciation" };
-  if (row.kind.startsWith("grant.")) return { href: "/admin", label: "Users" };
+  if (row.kind.startsWith("grant.") || row.kind.startsWith("user.")) return { href: "/admin", label: "Users" };
   if (row.kind.startsWith("report.")) return { href: "/reports?view=all", label: `report ${row.subject}` };
+  if (row.kind.startsWith("pack.")) return { href: "/admin/packs", label: "Community packs" };
   if (row.kind.startsWith("contribution.")) return { href: "/contributions", label: `contribution ${row.subject}` };
   return null;
+}
+
+const FOLD_OF = new Map(
+  (Object.entries(FOLDS) as [Group, (typeof FOLDS)[Group]][]).map(([kind, fold]) => [fold.parent as string, { kind, ...fold }]),
+);
+
+/**
+ * The rows a row opens onto, if it folds any (FOLDS). For a batch, `count` is what the
+ * server counted for the page's day range.
+ */
+function groupOf(row: ActivityRow): { kind: Group; id: string; count: number; noun: readonly [string, string] } | null {
+  const fold = FOLD_OF.get(row.kind);
+  const id = fold && str(row.detail[fold.key]);
+  if (!fold || !id) return null;
+  const count = fold.count === null ? row.takes : num(row.detail[fold.count]);
+  return { kind: fold.kind, id, count: count ?? 0, noun: fold.noun };
 }
 
 /** The takes a row lets you hear: the new one, and for a restore the one it replaced. */
@@ -244,6 +384,7 @@ export default function ActivityTable({
   filter: Filter;
   actors: { id: string; name: string }[];
 }) {
+  const date = useLocalDates();
   const lang = useLang();
   const { pending, push } = usePendingPush();
   const audio = useRef<HTMLAudioElement>(null);
@@ -252,7 +393,9 @@ export default function ActivityTable({
   const [pressed, setPressed] = useState(0);
   const [open, setOpen] = useState<string | null>(null);
   const loading = useRef(new Set<string>());
-  const [batches, setBatches] = useState<Record<string, ActivityRow[] | "failed">>({});
+  // Keyed by group and day range: the same batch lists different takes under another range.
+  const [groups, setGroups] = useState<Record<string, ActivityRow[] | "failed">>({});
+  const rangeKey = `${filter.from ?? ""}:${filter.to ?? ""}`;
 
   useEffect(() => {
     if (pressed === 0) return;
@@ -289,18 +432,24 @@ export default function ActivityTable({
     push(localeHref(lang, `/activity${params.size ? `?${params}` : ""}`));
   }
 
-  async function toggleBatch(row: ActivityRow) {
-    const batchId = str(row.detail.batchId);
-    if (!batchId) return;
+  const keyOf = (group: { kind: Group; id: string }) => `${group.kind}:${group.id}:${rangeKey}`;
+
+  async function toggleGroup(row: ActivityRow) {
+    const group = groupOf(row);
+    if (!group) return;
+    const key = keyOf(group);
     const opening = open !== row.id;
     setOpen(opening ? row.id : null);
     // A failed load is tried again on the next open; one still in flight is not.
-    if (!opening || Array.isArray(batches[batchId]) || loading.current.has(batchId)) return;
-    loading.current.add(batchId);
-    const response = await fetch(withLang(lang, `/api/activity/batch?id=${batchId}`)).catch(() => null);
+    if (!opening || Array.isArray(groups[key]) || loading.current.has(key)) return;
+    loading.current.add(key);
+    const params = new URLSearchParams({ id: group.id, kind: group.kind });
+    if (filter.from) params.set("from", filter.from);
+    if (filter.to) params.set("to", filter.to);
+    const response = await fetch(withLang(lang, `/api/activity/batch?${params}`)).catch(() => null);
     const takes = response?.ok ? ((await response.json()) as { takes: ActivityRow[] }).takes : null;
-    loading.current.delete(batchId);
-    setBatches((current) => ({ ...current, [batchId]: takes ?? "failed" }));
+    loading.current.delete(key);
+    setGroups((current) => ({ ...current, [key]: takes ?? "failed" }));
   }
 
   // Day headings between rows, so a column of bare clock times can be read.
@@ -344,7 +493,7 @@ export default function ActivityTable({
         >
           <tbody>
             {rows.flatMap((row) => {
-              const heading = day(row.at);
+              const heading = date(row.at, DAY);
               const out = [];
               if (heading !== lastDay) {
                 lastDay = heading;
@@ -363,13 +512,13 @@ export default function ActivityTable({
               const { what, quote } = describe(row);
               const link = target(row);
               const takes = takesOf(row);
-              const batchId = row.kind === "batch.queued" ? str(row.detail.batchId) : null;
-              const expanded = batchId !== null && open === row.id;
+              const group = groupOf(row);
+              const expanded = group !== null && open === row.id;
 
               out.push(
                 <tr key={row.id} className="align-top [&>td]:border-b [&>td]:py-2 [&>td]:leading-5">
                   <td className="text-muted-foreground w-14 pr-3 text-xs whitespace-nowrap tabular-nums">
-                    {time(row.at)}
+                    {date(row.at, TIME)}
                   </td>
                   <td className="w-40 max-w-[10rem] truncate pr-3 font-medium">
                     {row.actorName ?? <span className="text-muted-foreground font-normal">system</span>}
@@ -402,38 +551,48 @@ export default function ActivityTable({
                     {takes.map((take) => (
                       <PlayTake key={take.version} take={take} onPlay={play} />
                     ))}
-                    {batchId && (row.takes ?? 0) > 0 && (
+                    {group && group.count > 0 && (
                       <Button
                         size="sm"
                         variant="ghost"
                         className="h-7 px-2"
                         aria-expanded={expanded}
-                        onClick={() => void toggleBatch(row)}
+                        onClick={() => void toggleGroup(row)}
                       >
                         {expanded ? <ChevronDown className="size-3.5" /> : <ChevronRight className="size-3.5" />}
-                        {row.takes!.toLocaleString()} {row.takes === 1 ? "take" : "takes"}
+                        {plural(group.count, ...group.noun)}
                       </Button>
                     )}
                   </td>
                 </tr>,
               );
 
-              if (expanded && batchId) {
-                const inner = batches[batchId];
+              if (expanded && group) {
+                const inner = groups[keyOf(group)];
                 out.push(
                   <tr key={`${row.id}-takes`}>
                     <td />
                     <td colSpan={3} className="border-b pb-2">
                       {inner === undefined ? (
-                        <p className="text-muted-foreground py-2 text-xs">Loading takes…</p>
+                        <p className="text-muted-foreground py-2 text-xs">Loading {group.noun[1]}…</p>
                       ) : inner === "failed" ? (
-                        <p className="text-destructive py-2 text-xs">Could not load this batch's takes.</p>
+                        <p className="text-destructive py-2 text-xs">Could not load these {group.noun[1]}.</p>
                       ) : (
                         <ul className="max-h-80 overflow-y-auto text-xs">
                           {inner.map((take) => (
                             <li key={take.id} className="flex items-center gap-2 py-0.5">
-                              <span className="text-muted-foreground w-12 tabular-nums">{time(take.at)}</span>
-                              {take.source && take.lineId ? (
+                              <span className="text-muted-foreground w-12 tabular-nums">{date(take.at, TIME)}</span>
+                              {take.kind === "batch.stopped" ? (
+                                <span className="truncate">
+                                  {str(take.detail.label) ?? "a batch"}
+                                  {num(take.detail.cancelled) !== null && (
+                                    <span className="text-muted-foreground">
+                                      {" "}
+                                      · {plural(num(take.detail.cancelled), "line")} cancelled
+                                    </span>
+                                  )}
+                                </span>
+                              ) : take.source && take.lineId ? (
                                 <Link
                                   href={explorerHref(take.source, take.lineId)}
                                   className="truncate font-mono underline-offset-2 hover:underline"

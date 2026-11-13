@@ -49,7 +49,7 @@ describe("the language in the URL", () => {
       "/_next/static/chunk.js",
       "/downloads/SpokenQuestsAudioComplete-latest.zip",
       "/logo.png",
-      "/icons/quests.svg",
+      "/icons/quests.png",
     ]) {
       expect(route(localeRewrites, path), path).toBeNull();
     }

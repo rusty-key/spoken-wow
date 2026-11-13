@@ -1,6 +1,6 @@
 "use client";
 
-import { Loader2, X } from "lucide-react";
+import { Loader2, Pause, Play, X } from "lucide-react";
 import { useState } from "react";
 
 import { Button } from "@/components/ui/button";
@@ -12,12 +12,19 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { dismissQueue, type QueueSnapshot } from "@/lib/generation/client";
+import { dismissQueue, pauseQueue, resumeQueue, type QueueSnapshot } from "@/lib/generation/client";
 import { usd } from "@/lib/generation/money";
 import { queueStatus } from "@/lib/generation/queue-line";
+import { LOCALES } from "@/lib/lang";
+
+import { Contained } from "./Width";
 
 function n(value: number): string {
   return value.toLocaleString();
+}
+
+function languageName(code: string): string {
+  return LOCALES.find((locale) => locale.code === code)?.name ?? code;
 }
 
 /**
@@ -41,7 +48,11 @@ function n(value: number): string {
  * The X means "I am done with this". On a live queue that is a request to stop it, which spends
  * nobody's money but throws away a run someone may be waiting on, so it asks first. On a
  * settled one it closes the panel and dismisses the run on the server, so the next reload does
- * not bring it back. The panel does both itself rather than leaving them to each explorer:
+ * not bring it back.
+ *
+ * Pause sits beside it for the case Stop is too blunt for: hold the queue without losing its
+ * place. It reaches the viewer's own languages, as Stop does, so a pause someone else put on
+ * a language the viewer cannot regenerate in is shown but outlives their Resume. The panel does both itself rather than leaving them to each explorer:
  * three copies of the dismissal had drifted into three different bugs.
  */
 export default function RegenerationPanel({
@@ -57,6 +68,9 @@ export default function RegenerationPanel({
   onDismiss: () => void;
 }) {
   const [confirming, setConfirming] = useState(false);
+  // Held while a pause or resume is in flight, so a second click cannot undo the first before
+  // the poll has shown what it did.
+  const [toggling, setToggling] = useState(false);
   // The run this tab closed, hidden at once rather than on the next poll: at the idle pace
   // that is up to fifteen seconds of an X that seems to do nothing. Keyed by the run's newest
   // job, so anything that settles afterwards shows itself again.
@@ -74,7 +88,7 @@ export default function RegenerationPanel({
     if (!note) return null;
     return (
       <div className="bg-card/95 border-t backdrop-blur">
-        <div className="text-muted-foreground mx-auto max-w-6xl px-5 py-2.5 text-sm">{note}</div>
+        <Contained className="text-muted-foreground py-2.5 text-sm">{note}</Contained>
       </div>
     );
   }
@@ -92,15 +106,20 @@ export default function RegenerationPanel({
   // A server from before per-owner queues sends no `queues`, and a tab can poll one for the
   // seconds of a pm2 reload or for as long as a rollback lasts. No list beats a crashed panel.
   const queues = snapshot.queues ?? [];
+  // Optional for the same reason as `queues`.
+  const pauses = snapshot.paused ?? [];
+  // Paused rather than regenerating once the pause has taken hold: nothing left in flight.
+  // Until then the jobs it let finish are still running, and the spinner says so.
+  const paused = active && pauses.length > 0 && running === 0;
 
   return (
     <div className="bg-card/95 border-t backdrop-blur">
-      <div className="mx-auto max-w-6xl px-5 py-2.5">
+      <Contained className="py-2.5">
         <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm">
-          {active && <Loader2 className="size-4 shrink-0 animate-spin" />}
+          {active && !paused && <Loader2 className="size-4 shrink-0 animate-spin" />}
 
           <span className="font-medium">
-            {active ? "Regenerating" : stopped ? "Stopped" : "Finished"}
+            {paused ? "Paused" : active ? "Regenerating" : stopped ? "Stopped" : "Finished"}
           </span>
 
           <span className="text-muted-foreground font-mono text-xs">
@@ -122,6 +141,24 @@ export default function RegenerationPanel({
             {snapshot.unpriced > 0 && ` · ${n(snapshot.unpriced)} unpriced`}
           </span>
 
+          {(active || pauses.length > 0) && (
+            <Button
+              size="icon-xs"
+              variant="ghost"
+              disabled={toggling}
+              aria-label={pauses.length > 0 ? "Resume the queue" : "Pause the queue"}
+              title={pauses.length > 0 ? "Resume" : "Pause, keeping what is waiting"}
+              onClick={() => {
+                setToggling(true);
+                void (pauses.length > 0 ? resumeQueue() : pauseQueue()).finally(() =>
+                  setToggling(false),
+                );
+              }}
+            >
+              {pauses.length > 0 ? <Play /> : <Pause />}
+            </Button>
+          )}
+
           <Button
             size="icon-xs"
             variant="ghost"
@@ -142,12 +179,21 @@ export default function RegenerationPanel({
 
         <div className="bg-muted mt-2 h-1 overflow-hidden rounded-full">
           <div
-            className="bg-primary h-full transition-[width] duration-300"
+            className="bg-primary-ink h-full transition-[width] duration-300"
             style={{ width: `${percent}%` }}
           />
         </div>
 
         {note && <div className="text-muted-foreground mt-1.5 text-xs">{note}</div>}
+
+        {pauses.length > 0 && (
+          <div className="text-muted-foreground mt-1.5 text-xs">
+            Paused:{" "}
+            {pauses
+              .map((pause) => `${languageName(pause.lang)}${pause.by ? ` by ${pause.by}` : ""}`)
+              .join(" · ")}
+          </div>
+        )}
 
         {snapshot.running.length > 0 && active && (
           <div className="text-muted-foreground mt-1.5 truncate text-xs">
@@ -187,7 +233,7 @@ export default function RegenerationPanel({
             ))}
           </ul>
         )}
-      </div>
+      </Contained>
 
       {/* Held open only while there is still something to stop: a queue that drains while the
           question is up has nothing left to cancel, and the X then closes it as usual. */}

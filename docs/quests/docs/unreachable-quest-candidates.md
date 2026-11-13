@@ -24,11 +24,11 @@ Counts are corpus lines and how many of them already have audio in the local sto
 
 | Quest | Title | Lines | Audio | Reason |
 | --- | --- | --- | --- | --- |
-| [787](https://voiceover.rusty.one/?q=787&filter=quest&progress=1) | The New Horde | 2 | 2 | Eitrigg does not offer it. Questie #830 |
-| [6606](https://voiceover.rusty.one/?q=6606&filter=quest&progress=1) | A Little Luck | 3 | 3 | Not in the game. Questie #1338 |
-| [6072](https://voiceover.rusty.one/?q=6072&filter=quest&progress=1) | The Hunter's Path | 2 | 2 | Ayanna Everstride does not start it. Questie #700 |
-| [7668](https://voiceover.rusty.one/?q=7668&filter=quest&progress=1) | The Darkreaver Menace | 3 | 2 | Replaced by 8258 in phase 4. Questie #1805 |
-| [1155](https://voiceover.rusty.one/?q=1155&filter=quest&progress=1) | <NYI> <TXT> bug crystal side quest | 1 | 0 | Never implemented; the text is the single letter "x" |
+| [787](https://spoken.rusty.one/quests?q=787&filter=quest&progress=1) | The New Horde | 2 | 2 | Eitrigg does not offer it. Questie #830 |
+| [6606](https://spoken.rusty.one/quests?q=6606&filter=quest&progress=1) | A Little Luck | 3 | 3 | Not in the game. Questie #1338 |
+| [6072](https://spoken.rusty.one/quests?q=6072&filter=quest&progress=1) | The Hunter's Path | 2 | 2 | Ayanna Everstride does not start it. Questie #700 |
+| [7668](https://spoken.rusty.one/quests?q=7668&filter=quest&progress=1) | The Darkreaver Menace | 3 | 2 | Replaced by 8258 in phase 4. Questie #1805 |
+| [1155](https://spoken.rusty.one/quests?q=1155&filter=quest&progress=1) | <NYI> <TXT> bug crystal side quest | 1 | 0 | Never implemented; the text is the single letter "x" |
 
 - 787: `q:787:accept`, `q:787:complete`
 - 6606: `q:6606:accept`, `q:6606:accept`, `q:6606:complete`
@@ -41,9 +41,9 @@ Counts are corpus lines and how many of them already have audio in the local sto
 
 | Quest | Title | Lines | Audio | Reason |
 | --- | --- | --- | --- | --- |
-| [1](https://voiceover.rusty.one/?q=1&filter=quest&progress=1) | The "Chow" Quest (123)aa | 1 | 0 | A test quest. Already ignored by migration 0017 |
-| [3482](https://voiceover.rusty.one/?q=3482&filter=quest&progress=1) | <NYI> <TXT> The Pocked Black Box | 1 | 0 | Never implemented |
-| [620](https://voiceover.rusty.one/?q=620&filter=quest&progress=1) | The Monogrammed Sash | 1 | 0 | Marked UNUSED |
+| [1](https://spoken.rusty.one/quests?q=1&filter=quest&progress=1) | The "Chow" Quest (123)aa | 1 | 0 | A test quest. Already ignored by migration 0017 |
+| [3482](https://spoken.rusty.one/quests?q=3482&filter=quest&progress=1) | <NYI> <TXT> The Pocked Black Box | 1 | 0 | Never implemented |
+| [620](https://spoken.rusty.one/quests?q=620&filter=quest&progress=1) | The Monogrammed Sash | 1 | 0 | Marked UNUSED |
 
 - 1: `q:1:accept`
 - 3482: `q:3482:accept`
@@ -54,16 +54,16 @@ Counts are corpus lines and how many of them already have audio in the local sto
 
 | Quest | Title | Lines | Audio | Reason |
 | --- | --- | --- | --- | --- |
-| [7462](https://voiceover.rusty.one/?q=7462&filter=quest&progress=1) | The Treasure of the Shen'dralar | 1 | 0 | Duplicate of 7877, which the corpus has. Questie #1583 |
-| [615](https://voiceover.rusty.one/?q=615&filter=quest&progress=1) | The Captain's Cutlass | 1 | 1 | Duplicate of 8553, which the corpus has. Questie #2215 |
-| [618](https://voiceover.rusty.one/?q=618&filter=quest&progress=1) | Facing Negolash | 1 | 1 | Duplicate of 8554, which the corpus has |
-| [934](https://voiceover.rusty.one/?q=934&filter=quest&progress=1) | Crown of the Earth | 3 | 2 | Duplicate of 7383, which the corpus has. Questie #2386 |
-| [4601](https://voiceover.rusty.one/?q=4601&filter=quest&progress=1) | The Sparklematic 5200! | 3 | 0 | Duplicate of 2951, which the corpus has |
-| [4602](https://voiceover.rusty.one/?q=4602&filter=quest&progress=1) | The Sparklematic 5200! | 3 | 0 | Duplicate of 2951, which the corpus has |
-| [4603](https://voiceover.rusty.one/?q=4603&filter=quest&progress=1) | More Sparklematic Action | 2 | 0 | Duplicate of 2953, which the corpus has |
-| [4604](https://voiceover.rusty.one/?q=4604&filter=quest&progress=1) | More Sparklematic Action | 2 | 0 | Duplicate of 2953, which the corpus has |
-| [4605](https://voiceover.rusty.one/?q=4605&filter=quest&progress=1) | The Sparklematic 5200! | 1 | 0 | Duplicate of 2952, which the corpus has |
-| [4606](https://voiceover.rusty.one/?q=4606&filter=quest&progress=1) | The Sparklematic 5200! | 1 | 0 | Duplicate of 2952, which the corpus has |
+| [7462](https://spoken.rusty.one/quests?q=7462&filter=quest&progress=1) | The Treasure of the Shen'dralar | 1 | 0 | Duplicate of 7877, which the corpus has. Questie #1583 |
+| [615](https://spoken.rusty.one/quests?q=615&filter=quest&progress=1) | The Captain's Cutlass | 1 | 1 | Duplicate of 8553, which the corpus has. Questie #2215 |
+| [618](https://spoken.rusty.one/quests?q=618&filter=quest&progress=1) | Facing Negolash | 1 | 1 | Duplicate of 8554, which the corpus has |
+| [934](https://spoken.rusty.one/quests?q=934&filter=quest&progress=1) | Crown of the Earth | 3 | 2 | Duplicate of 7383, which the corpus has. Questie #2386 |
+| [4601](https://spoken.rusty.one/quests?q=4601&filter=quest&progress=1) | The Sparklematic 5200! | 3 | 0 | Duplicate of 2951, which the corpus has |
+| [4602](https://spoken.rusty.one/quests?q=4602&filter=quest&progress=1) | The Sparklematic 5200! | 3 | 0 | Duplicate of 2951, which the corpus has |
+| [4603](https://spoken.rusty.one/quests?q=4603&filter=quest&progress=1) | More Sparklematic Action | 2 | 0 | Duplicate of 2953, which the corpus has |
+| [4604](https://spoken.rusty.one/quests?q=4604&filter=quest&progress=1) | More Sparklematic Action | 2 | 0 | Duplicate of 2953, which the corpus has |
+| [4605](https://spoken.rusty.one/quests?q=4605&filter=quest&progress=1) | The Sparklematic 5200! | 1 | 0 | Duplicate of 2952, which the corpus has |
+| [4606](https://spoken.rusty.one/quests?q=4606&filter=quest&progress=1) | The Sparklematic 5200! | 1 | 0 | Duplicate of 2952, which the corpus has |
 
 - 7462: `q:7462:complete`
 - 615: `q:615:complete`
@@ -81,9 +81,9 @@ Counts are corpus lines and how many of them already have audio in the local sto
 
 | Quest | Title | Lines | Audio | Reason |
 | --- | --- | --- | --- | --- |
-| [8556](https://voiceover.rusty.one/?q=8556&filter=quest&progress=1) | Signet of Unyielding Strength | 3 | 2 | Signet of Unyielding Strength |
-| [8557](https://voiceover.rusty.one/?q=8557&filter=quest&progress=1) | Drape of Unyielding Strength | 3 | 2 | Drape of Unyielding Strength |
-| [8558](https://voiceover.rusty.one/?q=8558&filter=quest&progress=1) | Sickle of Unyielding Strength | 3 | 2 | Sickle of Unyielding Strength |
+| [8556](https://spoken.rusty.one/quests?q=8556&filter=quest&progress=1) | Signet of Unyielding Strength | 3 | 2 | Signet of Unyielding Strength |
+| [8557](https://spoken.rusty.one/quests?q=8557&filter=quest&progress=1) | Drape of Unyielding Strength | 3 | 2 | Drape of Unyielding Strength |
+| [8558](https://spoken.rusty.one/quests?q=8558&filter=quest&progress=1) | Sickle of Unyielding Strength | 3 | 2 | Sickle of Unyielding Strength |
 
 - 8556: `q:8556:accept`, `q:8556:complete`, `q:8556:progress`
 - 8557: `q:8557:accept`, `q:8557:complete`, `q:8557:progress`

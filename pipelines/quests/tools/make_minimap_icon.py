@@ -1,7 +1,7 @@
 """Turn the project artwork into the BLP the minimap button wears.
 
     python3 tools/make_minimap_icon.py assets/icon/spoken-player-512.png \
-        ../../addons/SpokenPlayer/Textures/MinimapButton.blp
+        ../../addons/Spoken/Textures/MinimapButton.blp
 
 NO FRAME. LibDBIcon draws the icon 17x17 inside "Interface\\Minimap\\MiniMap-TrackingBorder",
 so the octagonal gold frame the AddOns-list mark wears would sit inside a second, rounder
@@ -11,8 +11,7 @@ artwork of its own: one mark, two crops. LibDBIcon also trims a further 5% off e
 while the button is not pressed, so nothing that matters may touch the border.
 
 WHY BLP AND NOT TGA. The AddOns-list icon is read by the client's addon list, which takes
-either; a texture a frame loads is BLP on every client this ships to, and the 1.12/2.4.3
-clients are the reason not to experiment.
+either; a texture a frame loads is BLP on every client this ships to.
 
 WHY DXT5 AND NOT A PALETTE. A palettized BLP2 (colour encoding 1) is legal by the format's
 own rules and is what vanilla's interface art used, but the Classic beta client -- build
@@ -39,17 +38,18 @@ import zlib
 
 SIZE = 32
 
-# The field polygon in spoken-player.svg runs 20..236 of 256 with 42-unit corner chamfers, so
-# the largest square lying wholly inside it starts at 41 -- 82 of 512. A looser crop keeps a
-# sliver of frame gold in each corner, which at 17 pixels reads as dirt rather than as a frame.
-CROP = 82
+# The largest square lying wholly inside the render's dark field starts at 84 of 512, measured
+# on its corners; 86 leaves the antialiased edge out too. A looser crop keeps a sliver of
+# frame gold in each corner, which at 17 pixels reads as dirt rather than as a frame.
+CROP = 86
 
-# The glyph reaches within a few pixels of that square's right edge and LibDBIcon trims a
-# further 5% off each side while the button is idle, so the crop is scaled to 28/32 of the
-# texture and the rest is field. The colour is the middle stop of the field gradient; the four
-# added pixels sit against the gradient's darkest corner, where the difference does not show.
-INNER = 28
-FIELD = (0x12, 0x17, 0x27, 0xFF)
+# The glyphs fill most of that square, and LibDBIcon trims a further 5% off each side while the
+# button is idle, inside a round border that hides the corners. The crop is scaled to 24/32 of
+# the texture and the rest is field, so the glyph is about 60% of the button, as the minimap
+# buttons of other addons are. The colour is the middle stop of the field gradient; the added
+# pixels sit against the gradient's darkest corner, where the difference does not show.
+INNER = 24
+FIELD = (0x16, 0x1C, 0x2E, 0xFF)
 
 
 # --- the source render ------------------------------------------------------------------

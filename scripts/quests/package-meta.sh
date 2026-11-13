@@ -1,10 +1,10 @@
 #!/usr/bin/env bash
 # Builds the meta addon: an install of nothing, which drags the four sound packs in behind it.
 #
-#   make package-meta                 # dist/VoiceOverReduxAudio-<version>.zip
-#   VERSION=1.4.0 make package-meta   # the version written into the .toc
+#   make quests-package-meta          # dist/SpokenQuestsAudio-<version>.zip
+#   VERSION=1.4.0 make quests-package-meta   # the version written into the .toc
 #
-# WHY THIS EXISTS. The complete pack cannot be uploaded: 577 MB comes back from Cloudflare as
+# WHY THIS EXISTS. One folder holding every line cannot be uploaded: 577 MB comes back from Cloudflare as
 # a 413 before CurseForge sees the body, which is why the audio ships split four ways in the
 # first place. But "install everything with one click" is still worth having, and CurseForge
 # already has the mechanism - a file can declare required dependencies on other projects, and
@@ -20,8 +20,8 @@
 # stub carrying it would count as an installed pack: somebody holding only this would be told
 # nothing is missing while hearing silence. See DataModules:EnumerateAddons.
 #
-# IT TAKES THE BARE VoiceOverReduxAudio NAME, which the split packs left free. That name is
-# what the pre-split pack used, so a player updating from it has their old 1.5 GB folder
+# IT TAKES THE BARE SpokenQuestsAudio NAME (make passes NAME=SpokenQuestsAudio), which the split
+# packs left free. That name is what the pre-split pack used, so a player updating from it has their old 1.5 GB folder
 # replaced by this stub and the packs installed alongside - the migration falls out of the
 # rename rather than needing anything.
 set -euo pipefail
@@ -55,14 +55,14 @@ LUA
 cp "$REPO/pipelines/quests/assets/icon/spoken-quests.tga" "$module_dir/icon.tga"
 
 cat > "$module_dir/$NAME.toc" <<TOC
-## Interface: 100000
-## Title: $TITLE
-## Notes: Installs every Spoken Quests sound pack$VARIANT - Alliance, Horde, Shared Quests and Gossip.|n|nThis addon holds no audio itself. If your addon manager did not fetch the four packs with it, install them yourself; |cFFFFD200Spoken Quests|r plays whatever it finds.
+## Interface: 11509, 20506, 16001
+## Title: ${TITLE/#Spoken/|cffb48cffSpoken|r}
+## Notes: Installs every Spoken Quests sound pack$VARIANT - Alliance, Horde, Shared Quests and Gossip.|n|nThis addon holds no audio itself. If your addon manager did not fetch the four packs with it, install them yourself; Spoken Quests plays whatever it finds.
 ## Version: $VERSION
 ## IconTexture: Interface\\AddOns\\$NAME\\icon.tga
-## Group: SpokenQuests
+## Group: Spoken
 ## X-Part-Of: Spoken
-## X-Child-Of: SpokenQuests
+## X-Child-Of: Spoken_Quests
 
 Meta.lua
 TOC

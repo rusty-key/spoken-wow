@@ -17,6 +17,13 @@ describe("raceForModel", () => {
     expect(raceForModel(1022598)).toEqual({ race: "draenei", gender: "female" });
   });
 
+  // The Forever client's Skybourne bodies. Without them a Skybourne NPC whose appearance has
+  // no voice set (Quel'ana Quickgale) resolved to no race at all.
+  it("resolves the Skybourne elf bodies", () => {
+    expect(raceForModel(7478487)).toEqual({ race: "skybourneelf", gender: "male" });
+    expect(raceForModel(7478494)).toEqual({ race: "skybourneelf", gender: "female" });
+  });
+
   it("answers nothing for a creature model that is not a character", () => {
     // A murloc, a dragon, an elemental: a normal outcome, not an error.
     expect(raceForModel(1)).toBe(null);

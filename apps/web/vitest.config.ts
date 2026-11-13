@@ -31,6 +31,11 @@ function localEnv(): Record<string, string> {
     }
   }
 
+  // A checkout set up to try the R2 archive must not have its tests write to the bucket.
+  values.set("SPOKEN_ARCHIVE_STORE", "disk");
+  // As the app role, so row-level security binds the suite as it binds the site: the local and
+  // CI users are superusers, who bypass it. DATABASE_ROLE= (empty) runs as the connecting user.
+  values.set("DATABASE_ROLE", "spoken_app");
   return Object.fromEntries([...values].filter(([key]) => !(key in process.env)));
 }
 
@@ -50,7 +55,7 @@ export default defineConfig({
      */
     fileParallelism: false,
     // Removes the activity rows a run writes as nobody; see the file for why.
-    globalSetup: ["./vitest.activity.ts"],
+    globalSetup: ["./vitest.activity.ts", "./vitest.teams.ts"],
   },
   resolve: {
     alias: {
@@ -65,12 +70,12 @@ export default defineConfig({
        * to load. Pointed at the same empty module the server condition selects.
        */
       "server-only": path.resolve(__dirname, "./node_modules/server-only/empty.js"),
-      // The zones pipeline, as tsconfig.json resolves it. Vitest reads neither that file's
+      // The places pipeline, as tsconfig.json resolves it. Vitest reads neither that file's
       // paths nor next.config.ts's tracing root, so the alias has to be stated twice or a
-      // test that touches lib/zones cannot load at all.
-      "@tools": path.resolve(__dirname, "../../pipelines/zones/tools"),
-      // The books pipeline, for the same reason and with the same caveat.
-      "@books-tools": path.resolve(__dirname, "../../pipelines/books/tools"),
+      // test that touches lib/places cannot load at all.
+      "@tools": path.resolve(__dirname, "../../pipelines/places/tools"),
+      // The readables pipeline, for the same reason and with the same caveat.
+      "@readables-tools": path.resolve(__dirname, "../../pipelines/readables/tools"),
     },
   },
 });

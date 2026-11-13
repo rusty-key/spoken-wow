@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 
+import * as leadin from "./leadin";
 import {
   buildDialoguePayload,
   buildPayload,
@@ -8,6 +9,11 @@ import {
   textToSpeech,
 } from "./tts";
 import { LEAD_IN } from "./leadin";
+
+vi.mock("./leadin", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("./leadin")>();
+  return { ...actual, trimLeadIn: vi.fn(actual.trimLeadIn) };
+});
 
 const SETTINGS = {
   stability: 0.5,
@@ -24,10 +30,29 @@ const REQUEST = {
   seed: 1163733943,
 };
 
-function audioResponse(body = "ID3fake-mp3-bytes", cost = "17"): Response {
-  return new Response(body, {
+/** An alignment of `text`, each character 0.1s after the one before. */
+function alignmentOf(text: string) {
+  const characters = [...text];
+  return {
+    characters,
+    character_start_times_seconds: characters.map((_, index) => index / 10),
+    character_end_times_seconds: characters.map((_, index) => (index + 1) / 10),
+  };
+}
+
+/** What the with-timestamps endpoints answer: the audio in base64, beside its alignment. */
+function timedBody(audio: string, extra: Record<string, unknown> = {}): string {
+  return JSON.stringify({ audio_base64: Buffer.from(audio).toString("base64"), ...extra });
+}
+
+function audioResponse(
+  body = "ID3fake-mp3-bytes",
+  cost = "17",
+  extra: Record<string, unknown> = { alignment: alignmentOf("Hmm. The") },
+): Response {
+  return new Response(timedBody(body, extra), {
     status: 200,
-    headers: { "content-type": "audio/mpeg", "character-cost": cost },
+    headers: { "content-type": "application/json", "character-cost": cost },
   });
 }
 
@@ -126,10 +151,14 @@ describe("textToSpeech", () => {
       leadIn: false,
       leadInSec: null,
       credits: 17,
+      words: [
+        { word: "Hmm.", start: 0 },
+        { word: "The", start: 0.5 },
+      ],
     });
 
     const [url, init] = (fetchImpl as unknown as ReturnType<typeof vi.fn>).mock.calls[0];
-    expect(url).toBe("https://stub.invalid/v1/text-to-speech/voice-abc");
+    expect(url).toBe("https://stub.invalid/v1/text-to-speech/voice-abc/with-timestamps");
     expect(init.method).toBe("POST");
     expect(init.headers["xi-api-key"]).toBe("test-key");
     expect(JSON.parse(init.body)).toEqual(buildPayload(REQUEST));
@@ -174,7 +203,7 @@ describe("textToSpeech", () => {
 
   it("refuses an empty 200 rather than storing a zero-byte mp3", async () => {
     const fetchImpl = stub(
-      new Response("", { status: 200, headers: { "content-type": "audio/mpeg" } }),
+      new Response(timedBody(""), { status: 200, headers: { "content-type": "application/json" } }),
     );
 
     const result = await textToSpeech(REQUEST, { ...OPTIONS, fetchImpl });
@@ -183,11 +212,26 @@ describe("textToSpeech", () => {
     expect(result.failure.message).toContain("empty");
   });
 
-  it("accepts any audio content type, not only audio/mpeg", async () => {
-    const fetchImpl = stub(
-      new Response("bytes", { status: 200, headers: { "content-type": "audio/mp3" } }),
-    );
-    expect((await textToSpeech(REQUEST, { ...OPTIONS, fetchImpl })).ok).toBe(true);
+  it("keeps the audio, without times, when no alignment came with it", async () => {
+    const result = await textToSpeech(REQUEST, { ...OPTIONS, fetchImpl: stub(audioResponse("bytes", "17", {})) });
+    expect(result.ok && result.words).toBeNull();
+  });
+
+  // The alignment is of the audio as it arrived; the addon plays it with the lead-in cut off.
+  it("moves the times back by the lead-in that was cut", async () => {
+    vi.mocked(leadin.trimLeadIn).mockResolvedValueOnce({
+      audio: Buffer.from("trimmed"),
+      leadIn: true,
+      leadInSec: 2.5,
+    });
+    const text = "[clears throat] [long pause] Hi there.";
+    const fetchImpl = stub(audioResponse("raw", "17", { alignment: alignmentOf(text) }));
+    const result = await textToSpeech({ ...REQUEST, modelId: "eleven_v3" }, { ...OPTIONS, fetchImpl });
+
+    expect(result.ok && result.words).toEqual([
+      { word: "Hi", start: text.indexOf("Hi") / 10 - 2.5 },
+      { word: "there.", start: text.indexOf("there") / 10 - 2.5 },
+    ]);
   });
 
   // A dropped connection says nothing about the next line, so it must not stop a batch.
@@ -237,7 +281,7 @@ describe("what a request actually cost", () => {
   // this is read rather than computed is that the rate cannot be derived from the request.
   it("reports nothing rather than guessing when the header is absent", async () => {
     const fetchImpl = stub(
-      new Response("ID3bytes", { status: 200, headers: { "content-type": "audio/mpeg" } }),
+      new Response(timedBody("ID3bytes"), { status: 200, headers: { "content-type": "application/json" } }),
     );
     const result = await textToSpeech(REQUEST, { ...OPTIONS, fetchImpl });
 
@@ -319,6 +363,24 @@ describe("dialogueCharacters", () => {
 });
 
 describe("textToDialogue", () => {
+  // The endpoint joins the turns' characters with no space between them: "Excellent.He".
+  it("starts a word at each turn, which the alignment does not separate", async () => {
+    const fetchImpl = stub(
+      audioResponse("ID3bytes", "9", {
+        alignment: alignmentOf("Excellent.He reads."),
+        voice_segments: [{ character_start_index: 0 }, { character_start_index: 10 }],
+      }),
+    );
+    const result = await textToDialogue(
+      { ...base, modelId: "eleven_multilingual_v2" },
+      { ...OPTIONS, fetchImpl },
+    );
+
+    expect(result.ok && result.words?.map((word) => word.word)).toEqual(["Excellent.", "He", "reads."]);
+    const [url] = (fetchImpl as unknown as ReturnType<typeof vi.fn>).mock.calls[0];
+    expect(url).toBe("https://stub.invalid/v1/text-to-dialogue/with-timestamps");
+  });
+
   it("refuses to send more than the endpoint accepts, without calling it", async () => {
     let called = false;
     const result = await textToDialogue(

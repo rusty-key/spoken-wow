@@ -41,3 +41,25 @@ describe("paths", () => {
     }
   });
 });
+
+describe("bosses", () => {
+  const BOSSES = path.join(root, "bosses-history");
+
+  it("archives under SPOKEN_BOSSES_AUDIO_HISTORY, another language one level down", () => {
+    process.env.SPOKEN_BOSSES_AUDIO_HISTORY = BOSSES;
+    try {
+      expect(historyDirOf("bosses", "36/edwin-vancleef")).toBe(path.join(BOSSES, "36", "edwin-vancleef"));
+      expect(historyDirOf("bosses", "36/edwin-vancleef", "deDE")).toBe(
+        path.join(BOSSES, "deDE", "36", "edwin-vancleef"),
+      );
+    } finally {
+      delete process.env.SPOKEN_BOSSES_AUDIO_HISTORY;
+    }
+  });
+
+  it("falls back to the places pipeline's bosses-audio-history, apart from places' own takes", () => {
+    expect(historyDirOf("bosses", "36/edwin-vancleef")).toBe(
+      path.resolve(process.cwd(), "..", "..", "pipelines", "places", "bosses-audio-history", "36", "edwin-vancleef"),
+    );
+  });
+});

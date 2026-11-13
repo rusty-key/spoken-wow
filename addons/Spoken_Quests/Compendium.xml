@@ -1,0 +1,12 @@
+<Ui xsi:schemaLocation="http://www.blizzard.com/wow/ui/ ..\FrameXML\UI.xsd">
+    <!--
+        The Quests tab of Azeroth's Compendium (UI/QuestsTab.lua), in Spoken's window. Listed only
+        by the Blizzard-client .toc files, as Spoken's Compendium.xml is: the words are 3 MB of Lua,
+        parsed at every login, for a tab that cannot open without the window.
+    -->
+    <Include file="Data\Compendium.lua"/>
+    <Include file="Data\QuestText.lua"/>
+    <Include file="Data\QuestFaces.lua"/>
+    <Include file="UI\QuestsTab.lua"/>
+    <Include file="UI\OpenInCompendium.lua"/>
+</Ui>

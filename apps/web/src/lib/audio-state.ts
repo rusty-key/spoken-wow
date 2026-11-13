@@ -1,5 +1,5 @@
 /**
- * Where a line's audio stands, as all three explorers filter on it: quests, zones and books.
+ * Where a line's audio stands, as all three explorers filter on it: quests, places and readables.
  *
  * One vocabulary and one set of labels, so the "audio" chip reads the same on every page.
  * Client-safe, like lib/line-fields.ts: the filter bars import it.
@@ -14,7 +14,7 @@ export const AUDIO_STATES = ["missing", "stale", "current"] as const;
 export type AudioState = (typeof AUDIO_STATES)[number];
 
 // The chip reads "audio: outdated". The URL keeps the value (?state=stale), which is what
-// zones and books links already carry.
+// places and readables links already carry.
 export const AUDIO_STATE_LABELS: Record<AudioState, string> = {
   missing: "missing",
   stale: "outdated",
@@ -27,7 +27,7 @@ export const AUDIO_STATE_OPTIONS = AUDIO_STATES.map((state) => ({
 }));
 
 /**
- * The audio state off a query string, as `state` -- the key zones and books use -- or from
+ * The audio state off a query string, as `state` -- the key places and readables use -- or from
  * the two checkboxes quests had before the three explorers were aligned (?missing=1 and
  * ?outdated=1), so a link made then still opens the view it was made of.
  */

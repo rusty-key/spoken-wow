@@ -3,19 +3,18 @@ import { notFound } from "next/navigation";
 
 import ActivityTable from "@/components/ActivityTable";
 import { isCategory } from "@/lib/activity/kinds";
-import { activityActors, listActivity, type Cursor } from "@/lib/activity/store";
+import { activityActors, isDay, listActivity, type Cursor } from "@/lib/activity/store";
 import { viewerOf } from "@/lib/grants/store";
 import { pageLang } from "@/lib/lang-server";
-import { can } from "@/lib/permissions";
+import { can, isAdmin } from "@/lib/permissions";
 import { isSource } from "@/lib/sections";
 import { currentSession } from "@/lib/session";
+import { Contained, Wide } from "@/components/Width";
 
 export const metadata: Metadata = { title: "Activity · Spoken" };
 
 // Every act lands here as it happens; nothing about it can be cached between views.
 export const dynamic = "force-dynamic";
-
-const DAY = /^\d{4}-\d{2}-\d{2}$/;
 
 /**
  * "at|id", as the table's Older link writes it. Anything else reads as the first page rather
@@ -58,32 +57,38 @@ export default async function Page({
     category: isCategory(raw.category) ? raw.category : undefined,
     actorId: raw.actor || undefined,
     source: isSource(raw.source) ? raw.source : undefined,
-    from: raw.from && DAY.test(raw.from) ? raw.from : undefined,
-    to: raw.to && DAY.test(raw.to) ? raw.to : undefined,
+    from: isDay(raw.from) ? raw.from : undefined,
+    to: isDay(raw.to) ? raw.to : undefined,
   };
+  // Account events (roles, bans, removals) span every language and name ban reasons, so only
+  // a global admin sees them; an admin in this language alone does not.
+  const global = isAdmin(viewer?.role);
 
   const [{ rows, next }, actors] = await Promise.all([
-    listActivity({ lang, ...filter, before: cursorOf(raw.before) }),
-    activityActors(lang),
+    listActivity({ lang, ...filter, before: cursorOf(raw.before), global }),
+    activityActors(lang, global),
   ]);
 
   return (
-    <main className="mx-auto max-w-6xl px-5 pt-6 pb-24">
-      <h1 className="text-xl font-semibold">Activity</h1>
-      <p className="text-muted-foreground mt-1 mb-5 text-sm">
-        Everything done in this language, newest first, and who did it: takes cut and put
-        back, text and pronunciation changes, voices, and who was given what. Changes that
-        apply to every language are listed here too. Anything older than this log was
-        rebuilt from what the site kept, so restores and removals before it began are missing.
-      </p>
-
-      <ActivityTable
-        rows={rows}
-        next={next ? `${next.at}|${next.id}` : null}
-        paged={Boolean(raw.before)}
-        filter={filter}
-        actors={actors}
-      />
+    <main className="pt-6 pb-24">
+      <Contained>
+        <h1 className="text-xl font-semibold">Activity</h1>
+        <p className="text-muted-foreground mt-1 mb-5 text-sm">
+          Everything done in this language, newest first, and who did it: takes cut and put
+          back, text and pronunciation changes, voices, and who was given what. Changes that
+          apply to every language are listed here too. Anything older than this log was
+          rebuilt from what the site kept, so restores and removals before it began are missing.
+        </p>
+      </Contained>
+      <Wide>
+        <ActivityTable
+          rows={rows}
+          next={next ? `${next.at}|${next.id}` : null}
+          paged={Boolean(raw.before)}
+          filter={filter}
+          actors={actors}
+        />
+      </Wide>
     </main>
   );
 }

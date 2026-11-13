@@ -1,7 +1,7 @@
 /**
  * The envelopes inside the saved variables file the addon gathers into.
  *
- * The addon's background gathering (addons/SpokenPlayer/Gather.lua) keeps every envelope it
+ * The addon's background gathering (addons/Spoken/Gather.lua) keeps every envelope it
  * would have offered a Contribute link for, and the game writes them into
  * WTF/Account/<account>/SavedVariables/SpokenContributions.lua as Lua string literals. The player
  * uploads that file as it is, so this reads it as it is: every string literal in it, decoded,
@@ -9,12 +9,15 @@
  * later change to the store's shape cannot make an older file unreadable.
  *
  * Browser-safe on purpose: the page runs this to preview the upload before anything is sent,
- * and only the envelopes -- never the rest of the file -- leave the player's machine.
+ * and only the envelopes -- never the rest of the file -- leave the player's machine. The Spoken
+ * Manager imports this file too (manager/electron.vite.config.ts, `@site-contributions`), to
+ * read the same file the same way, so it imports nothing and passes the manager's stricter
+ * compiler settings.
  */
 
 const ENVELOPE_PREFIX = "!SPOKEN";
 
-/** Gather.lua's CAP: the most a file the addon wrote can hold, and so the most one upload takes. */
+/** Gather.lua's CAP, and the most one request to the batch route takes. */
 export const MAX_ENVELOPES = 2000;
 
 // A double-quoted Lua string: anything but a quote or backslash, or a backslash and whatever
@@ -60,7 +63,7 @@ export function decodeLuaString(body: string): string {
     } else if (next === "\r" && body[at + 2] === "\n") {
       byte(10);
       from = at + 3;
-    } else if (next !== undefined && next in SIMPLE) {
+    } else if (next !== undefined && SIMPLE[next] !== undefined) {
       byte(SIMPLE[next]);
       from = at + 2;
     } else {
@@ -86,8 +89,9 @@ export function envelopesFromSavedVariables(source: string): string[] {
   for (const match of source.matchAll(LITERAL)) {
     // Checked before decoding: almost every string in the file is a setting's value, and the
     // prefix has no escapes in it to get in the way.
-    if (!match[1].startsWith(ENVELOPE_PREFIX)) continue;
-    seen.add(decodeLuaString(match[1]));
+    const body = match[1] ?? "";
+    if (!body.startsWith(ENVELOPE_PREFIX)) continue;
+    seen.add(decodeLuaString(body));
   }
   return [...seen];
 }

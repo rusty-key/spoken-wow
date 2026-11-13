@@ -27,6 +27,13 @@ describe("hasInvalidChars", () => {
 });
 
 describe("isVoiceable", () => {
+  it("refuses a line in a model slot, whatever its row's skipReason says", () => {
+    // A translation's row has its own skipReason, decided from its text alone.
+    expect(isVoiceable({ skipReason: "no-voice", voice: "model-29" }, "The rift opens.")).toBe(false);
+    expect(isVoiceable({ skipReason: null, voice: "model-29", lang: "deDE" }, "Der Riss.")).toBe(false);
+    expect(isVoiceable({ skipReason: null, voice: "orc-male-shady" }, "Lok'tar.")).toBe(true);
+  });
+
   it("rescues an invalid-chars line whose text has been rewritten", () => {
     const line = { skipReason: "invalid-chars" };
     expect(isVoiceable(line, "Meet me in $B Ironforge")).toBe(false);

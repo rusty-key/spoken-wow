@@ -21,7 +21,7 @@ import {
  * surfacing a status code next to a row.
  *
  * Shared by both sections, because the guard is: requireApiKey refuses a quests
- * regeneration exactly as it refuses a zones one. Worded for either provider, because the
+ * regeneration exactly as it refuses a places one. Worded for either provider, because the
  * message it is handed -- requireApiKey's -- already names which key is missing.
  */
 export default function ApiKeyRequiredDialog({

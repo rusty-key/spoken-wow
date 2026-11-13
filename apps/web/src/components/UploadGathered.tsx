@@ -11,21 +11,22 @@
 import { useRef, useState } from "react";
 
 import { Button } from "@/components/ui/button";
-import { envelopesFromSavedVariables, MAX_ENVELOPES } from "@/lib/contributions/saved-variables";
+import { envelopesFromSavedVariables } from "@/lib/contributions/saved-variables";
+import { sendFailureMessage } from "@/lib/contributions/send-failure";
+import { sendInChunks } from "@/lib/contributions/upload";
 
 import { previewOf } from "./ContributeForm";
 
-const SOURCE_LABELS: Record<string, string> = { quests: "quest and conversation lines", books: "book pages" };
+const SOURCE_LABELS: Record<string, string> = { quests: "quest and conversation lines", readables: "book pages" };
 
 type Loaded = { envelopes: string[]; counts: Record<string, number>; unreadable: number; titles: string[] };
 
-function load(text: string): Loaded {
+function summarise(candidates: readonly string[]): Loaded {
   const counts: Record<string, number> = {};
   const titles = new Set<string>();
   const envelopes: string[] = [];
   let unreadable = 0;
-  // Cut to the cap first, so the preview counts exactly what Send will send.
-  for (const envelope of envelopesFromSavedVariables(text).slice(0, MAX_ENVELOPES)) {
+  for (const envelope of candidates) {
     const preview = previewOf(envelope);
     if (!preview.ok) {
       unreadable += 1;
@@ -39,9 +40,13 @@ function load(text: string): Loaded {
   return { envelopes, counts, unreadable, titles: [...titles] };
 }
 
+const NOTHING_CARRIED = { accepted: 0, refused: 0 };
+
 export default function UploadGathered({ signedInAs }: { signedInAs: string | null }) {
   const [loaded, setLoaded] = useState<Loaded | null>(null);
   const [busy, setBusy] = useState(false);
+  const [progress, setProgress] = useState(0);
+  const [carried, setCarried] = useState(NOTHING_CARRIED);
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<{ accepted: number; refused: number } | null>(null);
   const [dragging, setDragging] = useState(false);
@@ -49,11 +54,14 @@ export default function UploadGathered({ signedInAs }: { signedInAs: string | nu
   const input = useRef<HTMLInputElement>(null);
 
   async function read(file: File | undefined) {
+    // A send finishing would overwrite whatever was picked while it ran.
+    if (busy) return;
     setError(null);
     setResult(null);
+    setCarried(NOTHING_CARRIED);
     if (!file) return;
     setFileName(file.name);
-    const next = load(await file.text());
+    const next = summarise(envelopesFromSavedVariables(await file.text()));
     if (next.envelopes.length === 0) {
       setLoaded(null);
       setError(
@@ -70,42 +78,57 @@ export default function UploadGathered({ signedInAs }: { signedInAs: string | nu
     event.preventDefault();
     if (!loaded) return;
     setBusy(true);
+    setProgress(0);
     setError(null);
     const data = new FormData(event.currentTarget);
-    const response = await fetch("/api/contributions/batch", {
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify({
-        envelopes: loaded.envelopes,
-        name: signedInAs ? null : data.get("name"),
-        email: signedInAs ? null : data.get("email"),
-        website: data.get("website"),
-      }),
-    }).catch(() => null);
+    const outcome = await sendInChunks(
+      loaded.envelopes,
+      (envelopes) =>
+        fetch("/api/contributions/batch", {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({
+            envelopes,
+            name: signedInAs ? null : data.get("name"),
+            email: signedInAs ? null : data.get("email"),
+            website: data.get("website"),
+          }),
+        }).catch(() => null),
+      setProgress,
+      carried,
+    );
     setBusy(false);
 
-    if (response?.ok) {
-      const body = (await response.json()) as { accepted: number; refused: Record<string, number> };
-      setResult({ accepted: body.accepted, refused: Object.values(body.refused).reduce((a, b) => a + b, 0) });
+    if (outcome.failedWith === undefined) {
+      setResult({ accepted: outcome.accepted, refused: outcome.refused });
+      setCarried(NOTHING_CARRIED);
       setLoaded(null);
       return;
     }
-    setError(
-      response?.status === 429
-        ? "That is a lot of sending for one hour. Try again later."
-        : "That did not go through. Try again in a minute.",
-    );
+    const message = sendFailureMessage(outcome.failedWith);
+    if (outcome.sent === 0) {
+      setError(message);
+      return;
+    }
+    // Only what did not arrive stays, so nobody is told to clear lines the site never got.
+    const rest = loaded.envelopes.slice(outcome.sent);
+    setLoaded(summarise(rest));
+    setCarried({ accepted: outcome.accepted, refused: outcome.refused });
+    const unused = outcome.refused ? ` ${outcome.refused} could not be used.` : "";
+    setError(`${outcome.accepted} lines arrived.${unused} ${message} The other ${rest.length} are still here to send.`);
   }
 
   if (result) {
     return (
       <p role="status" className="rounded border p-4 text-sm">
         Got {result.accepted} {result.accepted === 1 ? "line" : "lines"} — thank you.
-        {result.refused ? ` ${result.refused} could not be used.` : ""} You can clear the gathered lines
-        in the game now: Spoken Player settings, Clear gathered lines.
+        {result.refused ? ` ${result.refused} could not be used.` : ""} You can clear the collected lines
+        in the game now: Spoken's settings, Clear Collected Lines.
       </p>
     );
   }
+
+  const total = loaded?.envelopes.length ?? 0;
 
   return (
     <form onSubmit={submit} className="flex max-w-xl flex-col gap-4">
@@ -134,7 +157,7 @@ export default function UploadGathered({ signedInAs }: { signedInAs: string | nu
         }}
         className={
           "flex cursor-pointer flex-col items-center gap-2 rounded-lg border-2 border-dashed px-6 py-8 text-center text-sm transition-colors outline-none focus-visible:ring-3 " +
-          (dragging ? "border-primary bg-muted" : "border-muted-foreground/40 hover:border-muted-foreground hover:bg-muted/50")
+          (dragging ? "border-primary-ink bg-muted" : "border-muted-foreground/40 hover:border-muted-foreground hover:bg-muted/50")
         }
       >
         <strong>{fileName ?? "Drop SpokenContributions.lua here"}</strong>
@@ -197,7 +220,7 @@ export default function UploadGathered({ signedInAs }: { signedInAs: string | nu
       {loaded ? (
         <div>
           <Button type="submit" disabled={busy}>
-            {busy ? "Sending…" : `Send ${loaded.envelopes.length} ${loaded.envelopes.length === 1 ? "line" : "lines"}`}
+            {busy ? `Sending…${progress ? ` ${progress}/${total}` : ""}` : `Send ${total} ${total === 1 ? "line" : "lines"}`}
           </Button>
         </div>
       ) : null}

@@ -109,6 +109,14 @@ export default function AuthForm({ mode }: { mode: Mode }) {
           {mode === "register" && (
             <p className="text-muted-foreground text-xs">At least 8 characters.</p>
           )}
+          {mode === "login" && (
+            <Link
+              href="/forgot-password"
+              className="text-muted-foreground self-start text-xs underline underline-offset-4"
+            >
+              Forgot your password?
+            </Link>
+          )}
         </div>
 
         {error && (

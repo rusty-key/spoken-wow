@@ -5,7 +5,7 @@
  *   cd apps/web
  *   ADMIN_EMAIL=you@example.com npx tsx --conditions=react-server scripts/seed-voice-sources.mts
  *
- * Per <lang>/<race-gender>/<flavor>/ in SRC (default ~/code/own/npc-lines), or <lang>/<slot>/
+ * Per <lang>/<race-gender>/<flavor>/ in SRC (default ~/code/own/seed-clips), or <lang>/<slot>/
  * for a slot with no flavor such as narrator-male: the clips in name order, 0.5 s apart,
  * until 30 s, replace the slot's clips; the reference is cut from all of
  * it and transcribed on ADMIN_EMAIL's stored fish.audio key (or FISH_API_KEY), and recorded
@@ -28,7 +28,7 @@ process.loadEnvFile(".env.local");
 
 const run = promisify(execFile);
 
-const SRC = process.env.SRC ?? path.join(os.homedir(), "code/own/npc-lines");
+const SRC = process.env.SRC ?? path.join(os.homedir(), "code/own/seed-clips");
 const LANGS = process.env.LANGS?.split(",");
 const VOICES = process.env.VOICES?.split(",");
 const CONCURRENCY = Number(process.env.CONCURRENCY ?? 4);
@@ -70,7 +70,7 @@ async function duration(file: string): Promise<number> {
   return Number(stdout.trim());
 }
 
-/** The barks in order, GAP apart, cut at TARGET; mono mp3. No gap after the last. */
+/** The clips in order, GAP apart, cut at TARGET; mono mp3. No gap after the last. */
 async function concat(clips: string[], out: string) {
   const picked: string[] = [];
   let total = 0;
@@ -116,7 +116,7 @@ async function seed({ lang, voice, clips }: Job): Promise<string> {
   const stored = await storeSample(clone, path.basename(out), await fs.readFile(out));
   seeded.push(await voiceDir(clone));
 
-  const summary = `${used}/${clips.length} barks, ${length.toFixed(1)} s`;
+  const summary = `${used}/${clips.length} clips, ${length.toFixed(1)} s`;
   if (length < MIN_REFERENCE) return `${summary}, clips only: too short for a reference`;
   await saveReference({
     voice,

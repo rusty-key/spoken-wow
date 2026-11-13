@@ -6,10 +6,11 @@
  * out of the shipped module. That is the same reach as the generation settings, so it is
  * gated the same way.
  *
- * Keyed on the corpus's own lineId, and lineIndex() is the whitelist: an id either names
+ * Keyed on the corpus's own lineId, and isKnownLine() is the whitelist: an id either names
  * lines the corpus has or it does not exist. Nothing here touches a path, so there is no
  * traversal to defend against - only a table that should not fill with ids nobody can resolve.
  */
+import { query } from "@/lib/db";
 import { requireConfigure, requireIn } from "@/lib/generation/authz";
 import type { Lang } from "@/lib/lang";
 import { lineIndex } from "@/lib/quests/catalogue";
@@ -43,6 +44,16 @@ async function guard(
   return { lang, userId: session.user.id, denied: null };
 }
 
+/**
+ * A line of the language's explorer, or at `scope=all` (no language) of any language's: an
+ * ignore everywhere may be of a line only one language has, which English's index lacks.
+ */
+async function isKnownLine(lineId: string, lang: Lang | null): Promise<boolean> {
+  if (lang) return (await lineIndex(lang)).has(lineId);
+  const rows = await query(`select 1 from "quest_line" where "lineId" = $1 and "isCurrent" limit 1`, [lineId]);
+  return rows.length > 0;
+}
+
 export async function PUT(request: Request) {
   const { lang, userId, denied } = await guard(request);
   if (denied) return denied;
@@ -55,7 +66,7 @@ export async function PUT(request: Request) {
   }
 
   const { lineId, reason } = (body ?? {}) as { lineId?: unknown; reason?: unknown };
-  if (typeof lineId !== "string" || !(await lineIndex()).has(lineId)) {
+  if (typeof lineId !== "string" || !(await isKnownLine(lineId, lang))) {
     return Response.json({ error: "unknown line" }, { status: 404 });
   }
   if (typeof reason !== "string" || !reason.trim()) {
@@ -75,7 +86,7 @@ export async function DELETE(request: Request) {
   if (denied) return denied;
 
   const lineId = new URL(request.url).searchParams.get("lineId");
-  if (!lineId || !(await lineIndex()).has(lineId)) {
+  if (!lineId || !(await isKnownLine(lineId, lang))) {
     return Response.json({ error: "unknown line" }, { status: 404 });
   }
 

@@ -1,8 +1,8 @@
 /**
  * The rule, with no database: dirtiness is a comparison between three plain facts -- when a
  * take was made, when a word's pronunciation last moved, and whether anyone has said the
- * take is fine since. Everything that reads Postgres is loadDirtyContext, which is a pair of
- * selects and has nothing to get wrong that a query test would catch.
+ * take is fine since. Everything that reads Postgres is loadDirtyContext, a pair of selects,
+ * tested against a real database in dirty-context.test.ts.
  */
 import { describe, expect, it } from "vitest";
 

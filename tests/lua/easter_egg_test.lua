@@ -7,7 +7,7 @@ local here = arg[0]:match("^(.*)/[^/]*$") or "."
 package.path = here .. "/?.lua;" .. package.path
 local stub = require("wow_client_stub")
 local print = stub.print
-local VO = stub.LoadPlayer(here .. "/../../addons/SpokenQuests/")
+local VO = stub.LoadPlayer(here .. "/../../addons/Spoken_Quests/")
 
 local failures = 0
 
@@ -25,7 +25,7 @@ VO.Addon:OnInitialize()
 stub.Advance(2) -- Wait out the deferred data module load that OnInitialize schedules.
 
 local THRALL = "9fdeb82237b72e8801030487901e690f"
-local EGG_PATH = [[Interface\AddOns\SpokenQuests\Sounds\og-thrall.mp3]]
+local EGG_PATH = [[Interface\AddOns\Spoken_Quests\Sounds\og-thrall.mp3]]
 
 -- The option ships off, so a fresh install hears whatever the pack holds.
 local soundData = { fileName = THRALL, filePath = "pack-path" }
@@ -47,7 +47,7 @@ Expect("other lines untouched", VO.EasterEggs:Apply(soundData) or soundData.file
 -- addon, because SoundQueue logs the module a sound came from.
 soundData = { fileName = THRALL }
 VO.EasterEggs:Apply(soundData)
-Expect("egg without a pack names an addon", soundData.module.METADATA.AddonName, "SpokenQuests")
+Expect("egg without a pack names an addon", soundData.module.METADATA.AddonName, "Spoken_Quests")
 
 -- And the swap is actually wired into the resolve, not just callable on its own. Keyed on a
 -- quest file name here only because that is the one PrepareSound can be handed directly.

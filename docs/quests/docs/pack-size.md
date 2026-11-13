@@ -5,11 +5,11 @@ speech. The pack shipped that day, `VoiceOverReduxAudio-1.0.0.zip`, was 1.5 GB. 
 record of what was tried and what each option actually costs, so the next person deciding does
 not re-run the experiment.
 
-**What was chosen.** `make package-audio` ships `ogg-q-1-22k` — Ogg Vorbis at 22.05 kHz — and
-`make package-audio-complete` builds `ogg-q0-44k`, the same codec without the downsample, about
-1.3 GB. The first pack built this way, 1.1.0, is **599 MB of module and a 564 MB zip** over
-11,189 clips, against 1.5 GB for the mp3 pack it replaces. The rest of this file is the
-evidence behind that, and the encodes that were rejected.
+**What was chosen.** `make quests-package-audio` ships `ogg-q0-44k`, Ogg Vorbis at 44.1 kHz,
+about 1.3 GB. The first packs built this way were Ogg Vorbis at 22.05 kHz (`ogg-q-1-22k`, 1.1.0:
+**599 MB of module and a 564 MB zip** over 11,189 clips, against 1.5 GB for the mp3 pack it
+replaced); that 22.05 kHz set was retired in favour of the full-band one. The rest of this file
+is the evidence behind that, and the encodes that were rejected.
 
 The sizes below are measured, and **ogg playback is confirmed**: the split packs were loaded in
 Classic Era 1.15.9 on 2026-08-19 and play. That was the one open risk in the whole exercise.
@@ -17,7 +17,7 @@ Classic Era 1.15.9 on 2026-08-19 and play. That was the one open risk in the who
 
 ## The store is no longer half inherited
 
-`scripts/package-audio.sh` and `tools/plan_transcode.py` exist because two thirds of the store
+`scripts/quests/package-audio.sh` and `tools/plan_transcode.py` exist because two thirds of the store
 used to be the 64 kbps pack this project inherited, which `-q:a 6` cannot beat. **That is no
 longer true.** Every file has since been regenerated:
 
@@ -41,7 +41,7 @@ closely.
 | Encode | Bitrate | Pack | Note |
 | --- | --- | --- | --- |
 | master, untouched | 128 kbps 44.1 kHz | 3.24 GB | what `audio/` holds |
-| mp3 `-q:a 6` | 68 kbps 44.1 kHz | 1.66 GB | **ships today** |
+| mp3 `-q:a 6` | 68 kbps 44.1 kHz | 1.66 GB | what shipped on 2026-08-18 |
 | ogg `-q 0` | 49 kbps 44.1 kHz | 1.26 GB | full band, parity with the old 64 kbps pack |
 | mp3 `-q:a 8` at 22.05 kHz | 35 kbps 22.05 kHz | 0.93 GB | no format change to make |
 | mp3 `-b:a 32k` at 22.05 kHz | 32 kbps 22.05 kHz | 0.82 GB | CBR, worse than the VBR above it |
@@ -61,18 +61,18 @@ Samples for an A/B — five voices, every encode above, named `0` (master) throu
 — are reproduced by the commands at the end of this file.
 
 
-## And then it shipped in five pieces
+## And then it shipped in four pieces
 
 Encoding was not the end of it: CurseForge answered the 564 MB upload with a Cloudflare `413`
 before the API saw it, so the audio now ships as four addons — Alliance, Horde, Shared Quests
 and Gossip — which partition it exactly, and a player installing their side plus Shared lands
-near half of what the whole thing costs. A fifth project carries a few kilobytes declaring the
-four as dependencies, since one folder holding everything cannot be uploaded at all. The
-full-bandwidth `SpokenQuestsAudioComplete` is built by hand for distribution outside CurseForge.
+near half of what the whole thing costs. A meta addon, a fifth CurseForge project, carries a few
+kilobytes declaring the four as dependencies, since one folder holding everything cannot be
+uploaded to CurseForge at all.
 
 That makes the size question two questions. This file is about how many bytes a *line* costs,
 and the split is about how many lines a *player* needs; both were worth doing, and the second
-does not retire the first. README's *The pack ships in five pieces* has the mechanics, and
+does not retire the first. README's *The pack ships in four pieces* has the mechanics, and
 `tools/export_factions.py` has the derivation of which side a quest is on.
 
 
@@ -91,15 +91,15 @@ decision.
 
 ## How the two profiles are built
 
-`ENCODE` names a profile in `scripts/package-audio.sh`, and a profile is a format plus the flags
+`ENCODE` names a profile in `scripts/quests/package-audio.sh`, and a profile is a format plus the flags
 that produce it and nothing else:
 
 | Profile | Encoder flags | Built by |
 | --- | --- | --- |
-| `ogg-q-1-22k` | `oggenc -q -1 --resample 22050` | `make package-audio` |
-| `ogg-q0-44k` | `oggenc -q 0` | `make package-audio`, and `package-audio-complete` as one `SpokenQuestsAudioComplete` folder |
+| `ogg-q-1-22k` | `oggenc -q -1 --resample 22050` | `ENCODE=ogg-q-1-22k`, retired |
+| `ogg-q0-44k` | `oggenc -q 0` | `make quests-package-audio`, the default |
 | `vbr-v6` | `ffmpeg -codec:a libmp3lame -q:a 6` | what shipped before this |
-| `copy` | none — the masters | `ENCODE=copy make package-audio` |
+| `copy` | none — the masters | `ENCODE=copy make quests-package-audio` |
 
 Four things follow from a pack being able to hold something other than mp3:
 
@@ -121,7 +121,7 @@ Encoding is `oggenc` from `vorbis-tools`, not ffmpeg: Homebrew's ffmpeg is built
 still decodes. Both are checked before a run starts.
 
 The store stays mp3 throughout. `audio/` holds the masters and is never transcoded in place, so
-raising the shipped quality later is a re-run of `make package-audio` rather than another
+raising the shipped quality later is a re-run of `make quests-package-audio` rather than another
 purchase from ElevenLabs — which is also why the old `audio-transcoded/vbr-v6/` cache can be
 deleted whenever the disk is wanted.
 

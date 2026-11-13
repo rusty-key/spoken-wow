@@ -5,7 +5,8 @@ table it fed, the /issues review queue and the Issue column on the explorer were
 removed in favour of feedback, which is now the only way a problem with a line is
 recorded. The scan itself is still the useful half -- it finds what nobody has complained
 about yet -- so the plan is to point it at `report` instead, filing what it finds the way
-a listener would. Until then it writes two files nothing loads.
+a listener would. Until then it writes the CSV, and the JSON only where --json names a file:
+corpus/*.json.gz ships inside every site release.
 
 The table and its rows are still there; migrations here are forward-only and drop
 nothing.
@@ -13,9 +14,8 @@ nothing.
 Two outputs, same findings:
 
   docs/corpus-hiccups.csv    one row per finding, for reading offline. Gitignored.
-  corpus/hiccups.json.gz     the same findings with every line each one occurs on, which
-                             is what the web app loads into Postgres. Committed, and it
-                             ships inside a release beside the corpus.
+  --json <file>              the same findings with every line each one occurs on, in the
+                             shape the web app once loaded into Postgres.
 
 Name rows are token-level; line-level findings (role-play, abbreviations, source bugs)
 carry the offending fragment in `item`. docs/corpus-hiccups.md explains the columns.
@@ -43,7 +43,7 @@ ROOT = Path(__file__).resolve().parent.parent
 
 parser = argparse.ArgumentParser(description=__doc__)
 parser.add_argument("--csv", type=Path, default=ROOT / "docs" / "corpus-hiccups.csv")
-parser.add_argument("--json", type=Path, default=ROOT / "corpus" / "hiccups.json.gz")
+parser.add_argument("--json", type=Path, default=None)
 args = parser.parse_args()
 
 SCHEMA_VERSION = 1
@@ -210,27 +210,29 @@ with open(args.csv, "w", newline="") as f:
     w.writeheader()
     w.writerows(rows)
 
-# mtime=0 so re-running without a corpus change produces a byte-identical file. gzip
-# stamps the source mtime by default, which would make every scan look like a change.
-with gzip.GzipFile(args.json, "wb", mtime=0) as f:
-    f.write(json.dumps({
-        "schemaVersion": SCHEMA_VERSION,
-        "generatedAt": datetime.now(timezone.utc).isoformat(timespec="seconds"),
-        "corpusGeneratedAt": corpus["generatedAt"],
-        "findings": [{
-            "category": r["category"],
-            "item": r["item"],
-            "severity": r["priority"],
-            "note": r["note"],
-            "occurrences": r["occurrences"],
-            "variants": r["variants_in_source"] or None,
-            "grapheme": r["grapheme"] or None,
-            "lineIds": r["line_ids"],
-        } for r in rows],
-    }, separators=(",", ":")).encode())
+if args.json:
+    # mtime=0 so re-running without a corpus change produces a byte-identical file. gzip
+    # stamps the source mtime by default, which would make every scan look like a change.
+    with gzip.GzipFile(args.json, "wb", mtime=0) as f:
+        f.write(json.dumps({
+            "schemaVersion": SCHEMA_VERSION,
+            "generatedAt": datetime.now(timezone.utc).isoformat(timespec="seconds"),
+            "corpusGeneratedAt": corpus["generatedAt"],
+            "findings": [{
+                "category": r["category"],
+                "item": r["item"],
+                "severity": r["priority"],
+                "note": r["note"],
+                "occurrences": r["occurrences"],
+                "variants": r["variants_in_source"] or None,
+                "grapheme": r["grapheme"] or None,
+                "lineIds": r["line_ids"],
+            } for r in rows],
+        }, separators=(",", ":")).encode())
 
 pairs = sum(len(r["line_ids"]) for r in rows)
 print(f"{len(rows)} findings over {pairs} finding-line pairs")
 print(f"  -> {args.csv}")
-print(f"  -> {args.json}")
+if args.json:
+    print(f"  -> {args.json}")
 print(Counter(r["category"] for r in rows).most_common())

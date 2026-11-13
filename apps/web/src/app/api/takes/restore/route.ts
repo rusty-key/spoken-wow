@@ -8,7 +8,7 @@
  * RESTORING MOVES THE LIVE FLAG, and does nothing else: no new take, no file read or
  * written. Every take is its own archived file, so the history is the set of takes this
  * line has had, and restoring says which of them is right. It is the same thing `restore`
- * means for a lore version (lib/zones/lore.ts).
+ * means for a lore version (lib/places/lore.ts).
  *
  * Holds the same lock a regeneration does. A restore landing while a regeneration of the
  * same file is in flight would race it to decide which take is live, and whichever wrote
@@ -34,11 +34,11 @@ export async function POST(request: Request) {
   };
 
   if (!isSource(body.source)) {
-    return Response.json({ error: "source must be quests, zones or books" }, { status: 400 });
+    return Response.json({ error: "source must be quests, places, readables or bosses" }, { status: 400 });
   }
   const source = body.source;
 
-  if (typeof body.file !== "string" || !(await isAddressableFile(source, body.file))) {
+  if (typeof body.file !== "string" || !(await isAddressableFile(source, body.file, lang))) {
     return Response.json({ error: "unknown file" }, { status: 404 });
   }
   if (typeof body.version !== "number" || !Number.isInteger(body.version) || body.version < 1) {

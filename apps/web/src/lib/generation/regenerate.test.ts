@@ -14,11 +14,13 @@ import { afterAll, afterEach, beforeEach, describe, expect, it, vi } from "vites
 const root = fs.mkdtempSync(path.join(os.tmpdir(), "voice-regen-"));
 process.env.SPOKEN_QUESTS_AUDIO_HISTORY = path.join(root, "audio-history");
 
-const { closeDb, db } = await import("@/lib/db");
+const { closeDb } = await import("@/lib/db");
+const { asSystem } = await import("@/lib/teams/testing");
 const { historyDirOf } = await import("@/lib/takes/adapters");
 const historyDir = (file: string) => historyDirOf("quests", file);
 const { archiveName } = await import("@/lib/takes/bytes");
 const { listTakes } = await import("@/lib/takes/store");
+const { corpus } = await import("@/lib/quests/catalogue");
 const { regenerateLine } = await import("./regenerate");
 const { elevenLabsSpeaker } = await import("./speakers/elevenlabs");
 const { defaultElevenLabs } = await import("./preference");
@@ -52,6 +54,7 @@ const MP3 = Buffer.from("ID3generated-audio");
 type StubOptions = {
   voices?: Record<string, string>;
   speech?: () => Response;
+  dictionary?: () => Response;
 };
 
 /** Stands in for the three ElevenLabs endpoints this path touches. */
@@ -67,7 +70,17 @@ const DEFAULT_VOICES = {
   "dwarf-male-grim": "voice-dwarf-male-grim",
 };
 
-function stub({ voices = DEFAULT_VOICES, speech }: StubOptions = {}) {
+function timed(text: string, extra: Record<string, unknown> = {}): Response {
+  const characters = [...text];
+  const alignment = {
+    characters,
+    character_start_times_seconds: characters.map((_, index) => index / 10),
+    character_end_times_seconds: characters.map((_, index) => (index + 1) / 10),
+  };
+  return Response.json({ audio_base64: MP3.toString("base64"), alignment, ...extra });
+}
+
+function stub({ voices = DEFAULT_VOICES, speech, dictionary }: StubOptions = {}) {
   const calls: { url: string; body?: unknown }[] = [];
 
   const fetchImpl = vi.fn(async (url: string, init?: RequestInit) => {
@@ -86,15 +99,21 @@ function stub({ voices = DEFAULT_VOICES, speech }: StubOptions = {}) {
         { model_id: "eleven_multilingual_v2", name: "Multilingual v2", can_do_text_to_speech: true },
       ]);
     }
-    if (url.endsWith("/v1/text-to-dialogue")) {
+    if (url.includes("/v1/pronunciation-dictionaries/")) {
+      return dictionary ? dictionary() : Response.json({ latest_version_id: "ver-1", rules: [] });
+    }
+    // Each character of what was sent 0.1s after the one before, as the with-timestamps
+    // endpoints time it; the dialogue endpoint joins its turns with nothing between them.
+    const body = calls[calls.length - 1].body as { text?: string; inputs?: { text: string }[] };
+    if (url.endsWith("/v1/text-to-dialogue/with-timestamps")) {
+      const texts = body.inputs!.map((input) => input.text);
+      const offsets = texts.map((_, index) => texts.slice(0, index).join("").length);
       return speech
         ? speech()
-        : new Response(MP3, { status: 200, headers: { "content-type": "audio/mpeg" } });
+        : timed(texts.join(""), { voice_segments: offsets.map((at) => ({ character_start_index: at })) });
     }
     if (url.includes("/v1/text-to-speech/")) {
-      return speech
-        ? speech()
-        : new Response(MP3, { status: 200, headers: { "content-type": "audio/mpeg" } });
+      return speech ? speech() : timed(body.text!);
     }
     throw new Error(`stub got an unexpected url: ${url}`);
   });
@@ -137,7 +156,7 @@ beforeEach(async () => {
   fs.mkdirSync(path.join(root, "audio", "gossip"), { recursive: true });
 
   const files = await fixtureFiles();
-  const { rows } = await db().query(
+  const { rows } = await asSystem.query(
     `delete from "take" where "file" = any($1::text[]) returning *`,
     [files],
   );
@@ -146,17 +165,17 @@ beforeEach(async () => {
 
 afterEach(async () => {
   const files = await fixtureFiles();
-  await db().query(`delete from "take" where "file" = any($1::text[])`, [files]);
+  await asSystem.query(`delete from "take" where "file" = any($1::text[])`, [files]);
 
   for (const row of displaced) {
     const columns = Object.keys(row).filter((key) => key !== "id");
-    await db().query(
+    await asSystem.query(
       `insert into "take" (${columns.map((c) => `"${c}"`).join(", ")})
        values (${columns.map((_, i) => `$${i + 1}`).join(", ")})`,
       columns.map((column) => {
         const value = (row as Record<string, unknown>)[column];
-        // jsonb comes back parsed and has to go in as text again.
-        return value !== null && typeof value === "object" && !(value instanceof Date)
+        // jsonb comes back parsed and has to go in as text again; an array (wordTimes) goes in as it is.
+        return value !== null && typeof value === "object" && !(value instanceof Date) && !Array.isArray(value)
           ? JSON.stringify(value)
           : value;
       }),
@@ -192,7 +211,9 @@ describe("a line with no audio yet", () => {
     expect(fs.readFileSync(path.join(historyDir(result.file), archiveName(1, MP3)))).toEqual(MP3);
 
     const speech = calls.find((call) => call.url.includes("text-to-speech"))!;
-    expect(speech.url).toBe("https://stub.invalid/v1/text-to-speech/voice-human-male-standard");
+    expect(speech.url).toBe(
+      "https://stub.invalid/v1/text-to-speech/voice-human-male-standard/with-timestamps",
+    );
   });
 
   // The lead-in is the one thing sent that the take does NOT record: it is a constant, it
@@ -209,6 +230,68 @@ describe("a line with no audio yet", () => {
       .text;
     expect(spoken).toBe(`${LEAD_IN}${result.spokenText}`);
     expect(result.characters).toBe(result.spokenText.length);
+  });
+});
+
+describe("a lexicon uploaded to ElevenLabs", () => {
+  let previous:
+    | { dictionaryId: string | null; versionId: string | null; syncedDigest: string | null }
+    | undefined;
+
+  beforeEach(async () => {
+    const { rows } = await asSystem.query(
+      `select "dictionaryId", "versionId", "syncedDigest" from "pronunciation_lexicon" where "teamId" = (select "id" from "team" where "slug" = 'english')`,
+    );
+    previous = rows[0];
+    await asSystem.query(`delete from "lexicon_account_dictionary" where "lang" = 'enUS'`);
+    await asSystem.query(
+      `update "pronunciation_lexicon" set "dictionaryId" = 'dict-abc', "versionId" = 'ver-1',
+              "syncedDigest" = md5("entries"::text)
+       where "teamId" = (select "id" from "team" where "slug" = 'english')`,
+    );
+  });
+
+  afterEach(async () => {
+    await asSystem.query(
+      `update "pronunciation_lexicon" set "dictionaryId" = $1, "versionId" = $2, "syncedDigest" = $3 where "teamId" = (select "id" from "team" where "slug" = 'english')`,
+      [previous?.dictionaryId ?? null, previous?.versionId ?? null, previous?.syncedDigest ?? null],
+    );
+    await asSystem.query(`delete from "lexicon_account_dictionary" where "lang" = 'enUS'`);
+  });
+
+  // The version alone cannot be looked up: ElevenLabs addresses a version through its
+  // dictionary, so a take that dropped the id could not say which rules it was made with.
+  it("records the dictionary it sent, id as well as version", async () => {
+    const { options, calls } = stub();
+    const result = await regenerate(SOLO, options);
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    const body = calls.find((c) => c.url.includes("text-to-speech"))!.body as {
+      pronunciation_dictionary_locators: unknown;
+    };
+    expect(body.pronunciation_dictionary_locators).toEqual([
+      { pronunciation_dictionary_id: "dict-abc", version_id: "ver-1" },
+    ]);
+
+    const { rows } = await asSystem.query(
+      `select "dictionaryId", "dictionaryVersion" from "take" where "file" = $1`,
+      [result.file],
+    );
+    expect(rows).toEqual([{ dictionaryId: "dict-abc", dictionaryVersion: "ver-1" }]);
+  });
+
+  // A line without the language's rules would say its names wrong, and nothing would mark it.
+  it("fails the line, spending nothing, when the account cannot get the dictionary", async () => {
+    const { options, calls } = stub({
+      dictionary: () => new Response('{"detail":"busy"}', { status: 500 }),
+    });
+    const result = await regenerate(SOLO, options);
+
+    expect(result.ok).toBe(false);
+    if (result.ok) return;
+    expect(result.failure.message).toMatch(/preparing the enUS dictionary/);
+    expect(calls.some((c) => c.url.includes("text-to-speech"))).toBe(false);
   });
 });
 
@@ -237,6 +320,20 @@ describe("a race with an accent tag", () => {
     if (!result.ok) return;
     expect(result.spokenText).toBe("[Scottish accent] Hiccup! Ho Ho!");
     expect(result.characters).toBe("[Scottish accent] Hiccup! Ho Ho!".length);
+  });
+
+  // The tag is timed by ElevenLabs as though it were said; the addon shows only the words.
+  it("times the words the addon shows, and not the tag", async () => {
+    const { options } = stub();
+
+    const result = await regenerate(DWARF, options);
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    const { rows } = await asSystem.query(`select "wordTimes" from "take" where "file" = $1`, [result.file]);
+    // The fake mp3 cannot be trimmed, so the lead-in's 29 characters stay ahead of the words.
+    const at = (word: string) => `${LEAD_IN}[Scottish accent] Hiccup! Ho Ho!`.indexOf(word) / 10;
+    expect(rows[0].wordTimes).toEqual([at("Hiccup!"), at("Ho Ho"), at("Ho!")]);
   });
 
   it("leaves a race with no tag exactly as it was", async () => {
@@ -288,9 +385,11 @@ describe("a line several NPCs share", () => {
 
     expect(result.ok).toBe(true);
     if (!result.ok) return;
-    expect(result.sharedWith).toBe(5);
+    // Everyone else speaking the line in its voice: a giver of another voice speaks its own.
+    const speakers = (await corpus()).lines.filter((line) => line.lineId === SHARED).length;
+    expect(result.sharedWith).toBe(speakers - 1);
 
-    // zlib.crc32("233"), the lowest of the six.
+    // zlib.crc32("233"), the lowest of them.
     const { default: zlib } = await import("node:zlib");
     expect(result.seed).toBe(zlib.crc32("233"));
     expect((calls.find((c) => c.url.includes("text-to-speech"))!.body as { seed: number }).seed).toBe(
@@ -381,15 +480,15 @@ describe("when ElevenLabs refuses", () => {
  */
 describe("a line whose spoken text has been rewritten", () => {
   afterEach(async () => {
-    await clearOverride(await fileFor(SOLO), null);
-    await clearOverride(await fileFor(STAGE_DIRECTION), null);
-    await clearOverride(await fileFor(PROGRESS), null);
-    await clearOverride(await fileFor(TEMPLATE_TOKEN), null);
+    await clearOverride("enUS", await fileFor(SOLO), null);
+    await clearOverride("enUS", await fileFor(STAGE_DIRECTION), null);
+    await clearOverride("enUS", await fileFor(PROGRESS), null);
+    await clearOverride("enUS", await fileFor(TEMPLATE_TOKEN), null);
   });
 
   it("speaks the rewrite rather than what the corpus says", async () => {
     const { options, calls } = stub();
-    await writeOverride(await fileFor(SOLO), SOLO, "Say this instead.", null);
+    await writeOverride("enUS", await fileFor(SOLO), SOLO, "Say this instead.", null);
 
     const result = await regenerate(SOLO, options);
 
@@ -402,6 +501,23 @@ describe("a line whose spoken text has been rewritten", () => {
     expect(result.characters).toBe("Say this instead.".length);
   });
 
+  it("saves the line's normal text on the take, because a rewrite can hold respellings", async () => {
+    const { options } = stub();
+    await writeOverride("enUS", await fileFor(SOLO), SOLO, "Say this instead.", null);
+
+    const result = await regenerate(SOLO, options);
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    const { rows } = await asSystem.query(
+      `select "shownText" from "take" where "file" = $1 order by "version" desc limit 1`,
+      [result.file],
+    );
+    const [line] = (await lineIndex()).get(SOLO)!;
+    expect(rows[0].shownText).toBe(line.text);
+    expect(rows[0].shownText).not.toBe("Say this instead.");
+  });
+
   it("voices a line the corpus had given up on, once the template token is gone", async () => {
     const { options } = stub();
 
@@ -411,7 +527,7 @@ describe("a line whose spoken text has been rewritten", () => {
     if (before.ok) return;
     expect(before.failure.message).toContain("rewrite it");
 
-    await writeOverride(await fileFor(TEMPLATE_TOKEN), TEMPLATE_TOKEN, "Well done, adventurer.", null);
+    await writeOverride("enUS", await fileFor(TEMPLATE_TOKEN), TEMPLATE_TOKEN, "Well done, adventurer.", null);
     const after = await regenerate(TEMPLATE_TOKEN, options);
 
     expect(after.ok).toBe(true);
@@ -438,7 +554,7 @@ describe("a line whose spoken text has been rewritten", () => {
     expect(result.ok).toBe(true);
 
     // The dialogue endpoint, not text-to-speech: two voices, one file.
-    const dialogue = calls.find((call) => call.url.endsWith("/v1/text-to-dialogue"));
+    const dialogue = calls.find((call) => call.url.endsWith("/v1/text-to-dialogue/with-timestamps"));
     expect(dialogue).toBeDefined();
     expect(calls.some((call) => call.url.includes("/v1/text-to-speech/"))).toBe(false);
 
@@ -463,7 +579,7 @@ describe("a line whose spoken text has been rewritten", () => {
     const { options } = stub();
     await regenerate(STAGE_DIRECTION, options);
 
-    const { rows } = await db().query<{ narratorVoice: string | null; settings: unknown }>(
+    const { rows } = await asSystem.query<{ narratorVoice: string | null; settings: unknown }>(
       `select "narratorVoice", "settings" from "take" where "file" = $1`,
       [await fileFor(STAGE_DIRECTION)],
     );
@@ -471,17 +587,52 @@ describe("a line whose spoken text has been rewritten", () => {
     expect(rows[0].settings).toEqual({ stability: expect.any(Number) });
   });
 
+  it("hands a marked stretch to the slot it names, with that slot's accent", async () => {
+    const { options, calls } = stub();
+    await writeOverride(
+      "enUS",
+      await fileFor(SOLO),
+      SOLO,
+      "A voice crackles.\n\n_dwarf-male-grim_\nHiccup! <Static.> Ho Ho!",
+      null,
+    );
+
+    const result = await regenerate(SOLO, options);
+    expect(result.ok).toBe(true);
+
+    const dialogue = calls.find((call) => call.url.endsWith("/v1/text-to-dialogue/with-timestamps"));
+    const body = dialogue!.body as { inputs: { text: string; voice_id: string }[] };
+    expect(body.inputs).toEqual([
+      { text: `${LEAD_IN}A voice crackles.`, voice_id: "voice-human-male-standard" },
+      { text: "[Scottish accent] Hiccup!", voice_id: "voice-dwarf-male-grim" },
+      { text: "Static.", voice_id: "voice-narrator-male" },
+      { text: "[Scottish accent] Ho Ho!", voice_id: "voice-dwarf-male-grim" },
+    ]);
+  });
+
+  it("refuses a marker naming a slot that does not exist, before spending anything", async () => {
+    const { options, calls } = stub();
+    await writeOverride("enUS", await fileFor(SOLO), SOLO, "Hi. _goblin-male-zany_ Wizbang here!", null);
+
+    const result = await regenerate(SOLO, options);
+
+    expect(result.ok).toBe(false);
+    if (result.ok) return;
+    expect(result.failure.message).toContain("goblin-male-zany");
+    expect(calls.some((call) => call.url.includes("/v1/text-to"))).toBe(false);
+  });
+
   it("leaves an ordinary line on text-to-speech", async () => {
     const { options, calls } = stub();
     await regenerate(SOLO, options);
 
     expect(calls.some((call) => call.url.includes("/v1/text-to-speech/"))).toBe(true);
-    expect(calls.some((call) => call.url.endsWith("/v1/text-to-dialogue"))).toBe(false);
+    expect(calls.some((call) => call.url.endsWith("/v1/text-to-dialogue/with-timestamps"))).toBe(false);
   });
 
   it("voices progress text like any other line", async () => {
     const { options, calls } = stub();
-    await writeOverride(await fileFor(PROGRESS), PROGRESS, "perfectly ordinary text", null);
+    await writeOverride("enUS", await fileFor(PROGRESS), PROGRESS, "perfectly ordinary text", null);
 
     const result = await regenerate(PROGRESS, options);
 
@@ -491,7 +642,7 @@ describe("a line whose spoken text has been rewritten", () => {
 
   it("refuses a rewrite that puts the offending characters back", async () => {
     const { options, calls } = stub();
-    await writeOverride(await fileFor(SOLO), SOLO, "Meet me in $B Ironforge", null);
+    await writeOverride("enUS", await fileFor(SOLO), SOLO, "Meet me in $B Ironforge", null);
 
     const result = await regenerateLine(SOLO, "user", options);
 

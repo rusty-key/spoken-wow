@@ -1,0 +1,12 @@
+https://spoken.quest/quests/r/quest/9123/accept
+https://spoken.quest/deDE/quests/r/quest/9123/progress
+https://spoken.quest/zhTW/quests/r/quest/9123/complete
+https://spoken.quest/quests/r/npc/68
+https://spoken.quest/ruRU/quests/r/object/68
+https://spoken.quest/places/r/1411/zone
+https://spoken.quest/esMX/places/r/1411/valley-of-trials
+https://spoken.quest/koKR/places/r/1413/razorfen-downs
+https://spoken.quest/readables/r/261
+https://spoken.quest/itIT/readables/r/261
+https://spoken.quest/bosses/r/36/edwin-vancleef
+https://spoken.quest/frFR/bosses/r/409/majordomo-executus

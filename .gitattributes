@@ -1,2 +1,14 @@
 # Set the default behavior, in case people don't have core.autocrlf set.
 * text=auto
+
+# LF in every checkout, Windows included, for files read by tools that expect it: bash
+# refuses a script with CRs; scripts/descriptions.mjs reads the store pages' frontmatter and
+# compares the READMEs it generates byte for byte; pipelines/places/tools/validate.mjs and
+# locale/check-strings.mjs parse the zones data and strings line by line.
+*.sh text eol=lf
+publishers/**/*.md text eol=lf
+addons/*/README.md text eol=lf
+addons/Spoken_Places/Data/** text eol=lf
+addons/Spoken_Places/Locale/*.lua text eol=lf
+# The contribution and report-URL fixtures are compared byte for byte by the site tests.
+tests/fixtures/** text eol=lf

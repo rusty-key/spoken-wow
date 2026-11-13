@@ -6,16 +6,19 @@
  * that alters how a line SOUNDS without altering a character of it -- is invisible to every
  * comparison that module makes.
  *
- * The rule itself is lib/generation/dirty.ts, shared with zones and books. This is the
+ * The rule itself is lib/generation/dirty.ts, shared with places and readables. This is the
  * quests-shaped half: the corpus is a file index rather than a table, and the text that
  * matters is the text that would be SENT, overrides and regex rules applied, because that is
  * the string the dictionary is applied to.
  */
 import { BASE_LANG, type Lang } from "../lang";
 import { fileIndex } from "../audio";
-import { db } from "../db";
+import type { CorpusLine } from "../corpus";
+import { readAs } from "../teams/store";
 import { dirtyFiles, loadDirtyContext } from "../generation/dirty";
 import { sentText } from "../generation/files";
+import { overrideOf } from "./override";
+import type { LineOverride } from "./override";
 import { readOverrides } from "./overrides";
 
 /**
@@ -29,18 +32,23 @@ import { readOverrides } from "./overrides";
 export async function dirtyQuestFiles(
   files?: string[],
   lang: Lang = BASE_LANG,
+  // A caller that read them this request saves the stamp checks.
+  known?: Map<string, LineOverride>,
+  index?: Map<string, CorpusLine>,
 ): Promise<Set<string>> {
   if (files?.length === 0) return new Set();
 
-  const [{ rows }, context, overrides] = await Promise.all([
+  const [rows, context, overrides] = await Promise.all([
     files
-      ? db().query<{ file: string; generatedAt: Date | null }>(
+      ? readAs<{ file: string; generatedAt: Date | null }>(
+          lang,
           `select "file", "createdAt" as "generatedAt" from "take"
             where "source" = 'quests' and "lang" = $2 and "isCurrent"
               and "file" = any($1::text[])`,
           [files, lang],
         )
-      : db().query<{ file: string; generatedAt: Date | null }>(
+      : readAs<{ file: string; generatedAt: Date | null }>(
+          lang,
           `select "file", "createdAt" as "generatedAt" from "take"
             where "source" = 'quests' and "lang" = $1 and "isCurrent"`,
           [lang],
@@ -48,19 +56,18 @@ export async function dirtyQuestFiles(
     loadDirtyContext("quests", lang),
     // In the same round as the rest: memoised behind a stamp, so this is a timestamp check
     // rather than a table read, but it is still a round trip to sit behind the others.
-    // English's alone: overrides rewrite the English corpus.
-    readOverrides(lang),
+    known ?? readOverrides(lang),
   ]);
 
   if (!context.changes.length) return new Set();
 
-  const lines = await fileIndex(lang);
+  const lines = index ?? (await fileIndex(lang));
 
   const takes = [];
   for (const row of rows) {
     const line = lines.get(row.file);
     if (!line) continue;
-    const text = overrides.get(row.file)?.text ?? line.text;
+    const text = overrideOf(overrides, row.file)?.text ?? line.text;
     takes.push({
       file: row.file,
       // The regex rules, as regenerate.ts applies them: a rule that rewrites a name before

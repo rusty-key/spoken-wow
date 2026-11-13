@@ -1,10 +1,10 @@
 /**
- * Seed a voice's clips from the game's own barks.
+ * Seed a voice's clips from voice/seed-clips.
  *
  * A static segment like `merge`, so it takes precedence over [file] and can never be read as
  * a clip name.
  *
- * The clips are copied server-side from voice/npc-lines rather than uploaded, then joined
+ * The clips are copied server-side from voice/seed-clips rather than uploaded, then joined
  * into one file straight away. Two reasons for merging here rather than leaving it to a
  * second call: a flavor has up to 27 clips, well past the 25 an upload may carry, and a
  * clone reads whatever is in the folder - so the steady state has to be the one merged file
@@ -12,13 +12,12 @@
  */
 import { recordActivities } from "@/lib/activity/store";
 import { cloneName } from "@/lib/voices/clone-name";
-import { langParam } from "@/lib/lang-server";
 import fs from "node:fs/promises";
 import path from "node:path";
 
 import { requireVoiceManager } from "@/lib/voices/authz";
 import { DEFAULT_PAUSE_SECONDS, mergeSamples } from "@/lib/voices/merge";
-import { npcLineClips } from "@/lib/voices/npcLines";
+import { seedClips } from "@/lib/voices/seedClips";
 import { deleteSample, listSamples, storeSample } from "@/lib/voices/samples";
 
 export const dynamic = "force-dynamic";
@@ -27,11 +26,9 @@ type Context = { params: Promise<{ voice: string }> };
 
 export async function POST(request: Request, context: Context) {
   const { voice } = await context.params;
-  const { session, denied } = await requireVoiceManager(voice);
-  if (denied) return denied;
   // A slot is shared; its clips and its clone are the language\'s own (clone-name.ts).
-  const { lang, denied: noLang } = await langParam(request);
-  if (noLang) return noLang;
+  const { session, lang, denied } = await requireVoiceManager(request, voice);
+  if (denied) return denied;
   const clone = cloneName(voice, lang);
 
   let replace = false;
@@ -50,10 +47,10 @@ export async function POST(request: Request, context: Context) {
     );
   }
 
-  const clips = await npcLineClips(clone);
+  const clips = await seedClips(clone);
   if (clips.length === 0) {
     return Response.json(
-      { error: `no game clips for ${voice} in voice/npc-lines` },
+      { error: `no seed clips for ${voice} in voice/seed-clips` },
       { status: 404 },
     );
   }
@@ -94,7 +91,7 @@ export async function POST(request: Request, context: Context) {
     ...(existing.length
       ? [{ ...act, kind: "sample.deleted" as const, detail: { files: existing.map((s) => s.file) } }]
       : []),
-    // The one clip the import leaves behind, not the game clips it was joined from.
+    // The one clip the import leaves behind, not the seed clips it was joined from.
     { ...act, kind: "sample.imported" as const, detail: { files: [merged.file] } },
   ]);
 

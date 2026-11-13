@@ -36,7 +36,7 @@ import { createHash } from "node:crypto";
 import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 
-import { parseFrontmatter } from "./lib/frontmatter.mjs";
+import { forStore, parseFrontmatter } from "./lib/frontmatter.mjs";
 import { loadPacks } from "./lib/packs.mjs";
 
 // The monorepo root, two levels up from scripts/.
@@ -64,11 +64,16 @@ const WAGO_ADDON_URL = "https://addons.wago.io/addons/";
 const GITHUB_RELEASES_URL = "https://github.com/rusty-key/spoken-wow/releases?q=";
 
 // slug -> the URL the Wago copy should use, for pages whose frontmatter names a `release:`
-// tag prefix. Everything else is rewritten to the Wago page of the same slug.
+// tag prefix. Everything else is rewritten to the Wago page of the same slug. A pack kept off
+// GitHub (`github: false`, English's four split quests packs) has no releases there to find,
+// so its link stays on CurseForge, the one place that has it.
 function wagoUrls(pages) {
   const urls = new Map();
   for (const page of pages) {
-    if (page.meta.release) urls.set(page.meta.slug, GITHUB_RELEASES_URL + page.meta.release);
+    if (!page.meta.release) continue;
+    urls.set(page.meta.slug, page.meta.github === "false"
+      ? CURSEFORGE_ADDON_URL + page.meta.slug
+      : GITHUB_RELEASES_URL + page.meta.release);
   }
   return urls;
 }
@@ -86,17 +91,6 @@ function wagoUrls(pages) {
 //
 // Deliberately blunt: no nesting, no conditions beyond the two store names. A page that needs
 // more than a paragraph of difference is two pages, and should say so by being two pages.
-// Two shapes, because a block is either whole lines or part of a sentence, and getting the
-// newlines wrong shows up as a blank row in the middle of a markdown table.
-const ONLY_LINES =
-  /^[ \t]*<!--\s*only:(curseforge|wago)\s*-->[ \t]*\r?\n([\s\S]*?)^[ \t]*<!--\s*\/only\s*-->[ \t]*\r?\n/gm;
-const ONLY_INLINE = /<!--\s*only:(curseforge|wago)\s*-->([\s\S]*?)<!--\s*\/only\s*-->/g;
-
-function forStore(body, store) {
-  const keep = (_, named, inner) => (named === store ? inner : "");
-  return body.replace(ONLY_LINES, keep).replace(ONLY_INLINE, keep);
-}
-
 function forWago(body, urls) {
   return forStore(body, "wago").replace(
     new RegExp(`${CURSEFORGE_ADDON_URL}([a-z0-9-]+)`, "g"),
@@ -110,7 +104,8 @@ const GENERATED_NOTE =
 
 // `wago` is not among them: a language's sound pack is on CurseForge alone, since Wago refuses
 // a file its size and the page's `release:` already sends a Wago reader to GitHub instead.
-const REQUIRED = ["curseforge", "slug", "name", "summary", "categories", "license"];
+// Nor is `curseforge`, for a pack released on GitHub before its CurseForge project exists.
+const REQUIRED = ["slug", "name", "summary", "categories", "license"];
 
 // CurseForge's summary field. Enforced here rather than discovered in the form,
 // where the failure is a truncated sentence nobody re-reads.
@@ -147,7 +142,7 @@ async function loadGroups() {
           `${name}/${file}: summary is ${meta.summary.length} characters, over CurseForge's ${SUMMARY_LIMIT}`,
         );
       }
-      if (!/^\d+$/.test(meta.curseforge)) {
+      if (meta.curseforge !== undefined && !/^\d+$/.test(meta.curseforge)) {
         throw new Error(
           `${name}/${file}: 'curseforge' should be the numeric CurseForge project id`,
         );
@@ -222,7 +217,7 @@ async function reportDrift(groups) {
 
 // --group=quests limits the run to one directory under publishers/. Only --drift uses it, and
 // only so that a release prints the pages that release is about: every project's pages are
-// tracked here now, and a zones upload listing five unpasted quests pages is noise at exactly
+// tracked here now, and a places upload listing five unpasted quests pages is noise at exactly
 // the moment somebody is working through a checklist.
 function groupFilter() {
   const arg = process.argv.find((a) => a.startsWith("--group="));
@@ -280,8 +275,8 @@ async function main() {
   if (write) {
     await mkdir(OUT_DIR, { recursive: true });
     await mkdir(WAGO_OUT_DIR, { recursive: true });
-    // Built from every page, not from the ones being written: --group=zones still has to know
-    // that spoken-quests-audio-horde is a pack, or a zones-only run would link it to a Wago
+    // Built from every page, not from the ones being written: --group=places still has to know
+    // that spoken-audio-quests-horde is a pack, or a zones-only run would link it to a Wago
     // page holding nothing.
     const urls = wagoUrls(all.flatMap((g) => g.pages));
     for (const page of pages) {
@@ -306,7 +301,7 @@ async function main() {
     for (const group of groups) {
       for (const page of group.pages) {
         console.log(
-          `     ${page.meta.slug} (CurseForge ${page.meta.curseforge}, ` +
+          `     ${page.meta.slug} (${page.meta.curseforge ? `CurseForge ${page.meta.curseforge}` : "not on CurseForge yet"}, ` +
             `${page.meta.wago ? `Wago ${page.meta.wago}` : "not on Wago"}): ` +
             `summary ${page.meta.summary.length}/${SUMMARY_LIMIT} chars`,
         );

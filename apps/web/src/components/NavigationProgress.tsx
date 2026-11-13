@@ -92,7 +92,7 @@ export default function NavigationProgress() {
   return (
     <div aria-hidden className="pointer-events-none fixed inset-x-0 top-0 z-50 h-0.5">
       <div
-        className="bg-primary h-full"
+        className="bg-primary-ink h-full"
         style={
           phase === "loading"
             ? // Slows as it goes and never reaches the end on its own: how long the server

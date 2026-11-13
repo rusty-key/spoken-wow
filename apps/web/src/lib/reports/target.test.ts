@@ -36,6 +36,23 @@ const corpus = {
     line({}),
     line({ lineId: "q:1:complete", source: "complete", fileName: "1-complete" }),
     line({ lineId: "g:abc", source: "gossip", questId: null, npcId: 9, fileName: "abc" }),
+    line({ lineId: "g:guard", source: "gossip", questId: null, npcId: 68, fileName: "guard" }),
+    line({
+      lineId: "g:poster",
+      source: "gossip",
+      questId: null,
+      npcId: 68,
+      npcType: "gameobject",
+      fileName: "poster",
+    }),
+    line({
+      lineId: "g:chest",
+      source: "gossip",
+      questId: null,
+      npcId: 70,
+      npcType: "gameobject",
+      fileName: "chest",
+    }),
   ],
 } as Corpus;
 
@@ -50,6 +67,10 @@ describe("parseTarget", () => {
 
   it("parses an npc address", () => {
     expect(parseTarget(["npc", "5678"])).toEqual({ kind: "npc", npcId: 5678 });
+  });
+
+  it("parses an object address", () => {
+    expect(parseTarget(["object", "68"])).toEqual({ kind: "object", objectId: 68 });
   });
 
   it("rejects gossip as a quest event, since gossip has no quest", () => {
@@ -73,6 +94,9 @@ describe("formatTarget", () => {
     const target = { kind: "quest", questId: 12, event: "complete" } as const;
     expect(formatTarget(target)).toBe("quest/12/complete");
     expect(parseTarget(formatTarget(target).split("/"))).toEqual(target);
+    const object = { kind: "object", objectId: 68 } as const;
+    expect(formatTarget(object)).toBe("object/68");
+    expect(parseTarget(formatTarget(object).split("/"))).toEqual(object);
   });
 });
 
@@ -85,6 +109,18 @@ describe("resolveTarget", () => {
   it("finds every line for an npc address", async () => {
     const found = await resolveTarget({ kind: "npc", npcId: 9 }, corpus);
     expect(found.map((l) => l.lineId)).toEqual(["g:abc"]);
+  });
+
+  it("keeps a creature's address and an object's of the same id apart", async () => {
+    const creature = await resolveTarget({ kind: "npc", npcId: 68 }, corpus);
+    expect(creature.map((found) => found.lineId)).toEqual(["g:guard"]);
+    const object = await resolveTarget({ kind: "object", objectId: 68 }, corpus);
+    expect(object.map((found) => found.lineId)).toEqual(["g:poster"]);
+  });
+
+  it("reads an npc address naming only an object as that object, as older builds sent it", async () => {
+    const found = await resolveTarget({ kind: "npc", npcId: 70 }, corpus);
+    expect(found.map((line) => line.lineId)).toEqual(["g:chest"]);
   });
 
   it("returns an empty array when nothing matches, rather than throwing", async () => {

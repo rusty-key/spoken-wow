@@ -11,11 +11,15 @@ const { mergeSamples, storeSample } = vi.hoisted(() => ({
 }));
 
 vi.mock("@/lib/voices/authz", () => ({
-  requireVoiceManager: async () => ({ session: { user: { id: "admin" } }, denied: null }),
+  requireVoiceManager: async (request: Request) => ({
+    session: { user: { id: "admin" } },
+    lang: new URL(request.url).searchParams.get("lang") ?? "enUS",
+    denied: null,
+  }),
 }));
 vi.mock("@/lib/activity/store", () => ({ recordActivities: async () => {} }));
-vi.mock("@/lib/voices/npcLines", () => ({
-  npcLineClips: async () => ["/clips/A01.ogg", "/clips/A02.ogg"],
+vi.mock("@/lib/voices/seedClips", () => ({
+  seedClips: async () => ["/clips/A01.ogg", "/clips/A02.ogg"],
 }));
 vi.mock("@/lib/voices/samples", () => ({
   listSamples: async () => [],

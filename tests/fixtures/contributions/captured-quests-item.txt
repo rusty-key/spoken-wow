@@ -1,0 +1,16 @@
+!SPOKEN1 quests
+addon=SpokenQuests/9.9.9
+build=1.15.9/69109
+locale=enUS
+pack=enUS
+quest=96391
+event=accept
+npc=211315 Underground Map
+kind=item
+sex=2
+creature=Humanoid
+title=Guarded Words
+text<<
+Nothing on file for this one.
+>>
+sum=100111067

@@ -7,6 +7,10 @@ different actors. The game picks between them per NPC: a creature's display info
 NPCSoundID, that row names four SoundEntries, and those entries are called things like
 `DwarfFemaleMaternalNPCGreetings`. The personality in the middle is the flavor.
 
+The point is that each flavor gets a voice of its own: two NPCs the game voices differently -
+a dwarf guard and a grim dwarf - should not end up sounding the same here, so every flavor
+is a separate voice slot rather than one voice per race-gender.
+
 This module turns those names into flavor tokens and decides what to do where the game data
 does not answer. It deliberately knows nothing about dataframes or SQL so that the rules can
 be tested on their own.
@@ -18,9 +22,10 @@ import re
 from collections import Counter
 from typing import Iterable, Mapping
 
-# Wowhead and the sound files spell undead "Undead"; the corpus uses the client's internal
-# race name. Same mapping as RACE_TO_SLOT in tools/fetch_npc_lines.py, which named the
-# directories under voice/npc-lines that these flavors have to match.
+from tts_cli.naming import BROADCAST_SOURCES, followup_stem
+
+# The sound entry names spell undead "Undead"; the corpus and the voice slots use the
+# client's internal race name.
 RACE_TO_SLOT = {
     "Human": "human",
     "Dwarf": "dwarf",
@@ -45,8 +50,7 @@ RACE_TO_SLOT = {
 # characters: `DwarfMaleStandardVendorNPCGreet`, `NightElfFemalePriestessNPCGreet`. Anchoring
 # on the kind would silently drop every name long enough to be cut, which is all of the
 # vendor variants. Requiring the literal `NPC` is filter enough - it matches 207 of the 1,197
-# sound entries that begin with a race and gender, and yields exactly the 52 flavors that
-# have clips in voice/npc-lines.
+# sound entries that begin with a race and gender, and yields exactly 52 flavors.
 SOUND_NAME = re.compile(
     r"^(?P<race>" + "|".join(RACE_TO_SLOT) + r")"
     r"(?P<gender>Male|Female)"
@@ -117,18 +121,49 @@ def consensus_flavor(flavors: Iterable[str | None]) -> str | None:
     existing files and orphan the audio already generated for them. See tts_cli/naming.py
     for why a filename is not free to change.
     """
-    tally = Counter(f for f in flavors if f)
-    if not tally:
-        return None
-    return min(tally.items(), key=lambda kv: (-kv[1], kv[0]))[0]
+    return busiest(Counter(f for f in flavors if f))
+
+
+def busiest(tally: Mapping[str, float]) -> str | None:
+    """The flavor with the most weight, ties broken alphabetically so the choice does not drift
+    between runs; None for an empty tally."""
+    return min(tally.items(), key=lambda kv: (-kv[1], kv[0]))[0] if tally else None
+
+
+#: A voice keyed by the creature's model rather than by a humanoid race: `model-{ModelID}`.
+MODEL_VOICE = re.compile(r"^model-\d+$")
+
+
+def model_voice(model_id) -> str:
+    """The voice slot of a creature with no humanoid display, e.g. 'model-29'.
+
+    A creature whose display has no CreatureDisplayInfoExtra has no race or sex to pick a
+    voice by - Kum'isha is a Broken, the OOX robots are robots - so the model it is drawn with
+    names the voice instead, and every NPC on one model shares it. The slot is carried as the
+    row's *race* with no flavor, and voice_name answers the race alone for it, so the corpus's
+    race-gender-flavor columns need no new one and the voice comes out bare: a follow-up file is
+    `{broadcastTextID}-model-29` and a gossip hash is taken over it (tts_cli/naming.py), frozen
+    once shipped like every other.
+
+    int() because the id reaches here from a DataFrame column that is NaN on every other row.
+    """
+    return f"model-{int(model_id)}"
+
+
+def is_model_voice(name: str | None) -> bool:
+    return bool(name) and MODEL_VOICE.match(name) is not None
 
 
 def voice_name(race: str, gender: str, flavor: str | None) -> str:
     """The ElevenLabs voice name for a race, gender and flavor.
 
     Two parts when there is no flavor: narrator-male is a pseudo-race for gameobjects, and
-    races outside vanilla (a bloodelf model used for Sylvanas) have no NPC voice sets.
+    races outside vanilla (a bloodelf model used for Sylvanas) have no NPC voice sets. One
+    part for a model slot (model_voice): its gender is a placeholder the schema needs, not
+    something the game said, so it stays out of the name.
     """
+    if is_model_voice(race):
+        return race
     return f"{race}-{gender}-{flavor}" if flavor else f"{race}-{gender}"
 
 
@@ -142,3 +177,27 @@ def apply_fallbacks(
         flavor or fallbacks.get(race_gender)
         for race_gender, flavor in zip(race_genders, flavors)
     ]
+
+
+def file_key(source: str, quest, text_hash: str, broadcast_text_id,
+             race_gender: str, flavor: str | None) -> tuple:
+    """The group of rows that must agree on one flavor, because they share one audio file.
+
+    The file as tts_cli/naming.py derives it, paired with the race-gender. The player-gender
+    prefix is irrelevant here: both variants of a line are the same NPC.
+
+    Keyed on race-gender as well as the file because a quest given by a dwarf and a troll is
+    one file with two voices already, and always has been. Agreeing a flavor across that pair
+    does not make it one voice, it just hands the dwarf the troll's flavor - a
+    dwarf-male-dark that no clips exist for.
+
+    A follow-up line's file is named after its voice, flavor included, so its group is only
+    ever NPCs that already agree: same words, same race-gender-flavor. Keyed on the quest or
+    on the text hash instead, a dwarf-male-grim ender would be recorded in the standard
+    voice of whoever else says the line - the one thing its naming exists to prevent.
+    """
+    if source in BROADCAST_SOURCES:
+        # rsplit: a model slot's race has a dash of its own (model-29-male).
+        return followup_stem(broadcast_text_id, voice_name(*race_gender.rsplit("-", 1), flavor)), \
+            race_gender
+    return (f"{quest}-{source}" if quest else text_hash), race_gender

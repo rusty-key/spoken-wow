@@ -13,7 +13,7 @@ import "server-only";
 
 import { db } from "@/lib/db";
 import type { Lang } from "@/lib/lang";
-import { DEFAULT_FISH_MODEL, isFishModel } from "@/lib/voices/fish";
+import { DEFAULT_FISH_MODEL, isFishModel, RENAMED_FISH_MODELS } from "@/lib/voices/fish";
 
 import type { GenerationConfig } from "./config";
 import { fileDefaults } from "./files";
@@ -61,7 +61,8 @@ const RANGES = {
  */
 export function validateFish(input: unknown): FishSettings {
   if (!input || typeof input !== "object") throw new PreferenceError("fish settings must be an object");
-  const raw = input as Record<string, unknown>;
+  const raw = { ...(input as Record<string, unknown>) };
+  if (typeof raw.model === "string") raw.model = RENAMED_FISH_MODELS[raw.model] ?? raw.model;
   if (!isFishModel(raw.model)) throw new PreferenceError(`unknown fish.audio model ${String(raw.model)}`);
 
   const number = (key: keyof typeof RANGES) => {

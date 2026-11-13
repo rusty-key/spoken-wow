@@ -21,10 +21,11 @@ import path from "node:path";
 import { promisify } from "node:util";
 
 import { recordActivity } from "@/lib/activity/store";
-import { db } from "@/lib/db";
+import { blobBytes, blobKey, blobOrFile, keep, readsBlobs, type Stored } from "@/lib/blobs/store";
+import { withTeam } from "@/lib/db";
 import type { Lang } from "@/lib/lang";
 import { VOICE_REFERENCES_DIR } from "@/lib/paths";
-import { writeAtomic } from "@/lib/takes/bytes";
+import { queryAs, readAs, teamOf } from "@/lib/teams/store";
 
 import { FFMPEG, ffmpegError, OUTPUT_BITRATE, OUTPUT_RATE } from "./merge";
 import { rejectWindow } from "./reference-window";
@@ -42,6 +43,10 @@ export type Reference = {
   endSec: number;
   transcript: string;
   clipHash: string;
+  /** Always spoken by fish.audio in this language, whichever generator the collaborator chose. */
+  pinned: boolean;
+  /** Null for a clip only on the volume. */
+  sha256: string | null;
   updatedAt: string;
 };
 
@@ -63,10 +68,28 @@ function fromRow(row: Row): Reference {
   return { ...row, lang: row.lang as Lang, updatedAt: row.updatedAt.toISOString() };
 }
 
-const COLUMNS = `"voice", "lang", "sample", "startSec", "endSec", "transcript", "clipHash", "updatedAt"`;
+const COLUMNS = `"voice", "lang", "sample", "startSec", "endSec", "transcript", "clipHash", "pinned", "sha256", "updatedAt"`;
+
+export async function readReferenceAudio(
+  voice: string,
+  lang: Lang,
+  sha256: string | null,
+): Promise<Buffer | null> {
+  if (readsBlobs()) return sha256 ? blobBytes(blobKey("references", sha256)) : null;
+  return fs.readFile(referencePath(voice, lang)).catch((error: NodeJS.ErrnoException) => {
+    if (error.code === "ENOENT") return null;
+    throw error;
+  });
+}
+
+/** In r2 mode a row with no hash has no clip, whatever the volume still holds. */
+export function referenceClip(reference: Reference): Stored {
+  return blobOrFile("references", reference.sha256, readsBlobs() ? null : referencePath(reference.voice, reference.lang));
+}
 
 export async function readReference(voice: string, lang: Lang): Promise<Reference | null> {
-  const { rows } = await db().query<Row>(
+  const rows = await readAs<Row>(
+    lang,
     `select ${COLUMNS} from "fish_reference" where "voice" = $1 and "lang" = $2`,
     [voice, lang],
   );
@@ -95,13 +118,19 @@ export function forgetReferences(lang: Lang): void {
 export function listReferences(lang: Lang): Promise<Map<string, Reference>> {
   const cached = lists.get(lang);
   if (cached && Date.now() - cached.at < LIST_TTL_MS) return cached.value;
-  const value = db()
-    .query<Row>(`select ${COLUMNS} from "fish_reference" where "lang" = $1`, [lang])
-    .then(({ rows }) => new Map(rows.map((row) => [row.voice, fromRow(row)])));
+  const value = readAs<Row>(lang, `select ${COLUMNS} from "fish_reference" where "lang" = $1`, [lang]).then(
+    (rows) => new Map(rows.map((row) => [row.voice, fromRow(row)])),
+  );
   // A failed read is not remembered: the next line asks again.
   value.catch(() => lists.delete(lang));
   lists.set(lang, { at: Date.now(), value });
   return value;
+}
+
+/** The slots spoken by fish.audio in `lang` whoever generates: the pinned references. */
+export async function pinnedVoices(lang: Lang): Promise<Set<string>> {
+  const references = await listReferences(lang);
+  return new Set([...references.values()].filter((ref) => ref.pinned).map((ref) => ref.voice));
 }
 
 /**
@@ -125,8 +154,9 @@ export type LoadedReferences = {
 };
 
 export async function loadReferences(lang: Lang, hashes: string[]): Promise<LoadedReferences> {
-  const { rows } = await db().query<{ voice: string; transcript: string; clipHash: string }>(
-    `select "voice", "transcript", "clipHash" from "fish_reference"
+  const rows = await readAs<{ voice: string; transcript: string; clipHash: string; sha256: string | null }>(
+    lang,
+    `select "voice", "transcript", "clipHash", "sha256" from "fish_reference"
       where "lang" = $1 and "clipHash" = any($2::text[])`,
     [lang, hashes],
   );
@@ -135,12 +165,7 @@ export async function loadReferences(lang: Lang, hashes: string[]): Promise<Load
     rows.map(async (row): Promise<Outcome> => {
       const cached = clips.get(row.clipHash);
       if (cached) return { hash: row.clipHash, clip: cached };
-      const audio = await fs
-        .readFile(referencePath(row.voice, lang))
-        .catch((error: NodeJS.ErrnoException) => {
-          if (error.code === "ENOENT") return null;
-          throw error;
-        });
+      const audio = await readReferenceAudio(row.voice, lang, row.sha256);
       if (!audio) return { lost: row.voice };
       // Checked against the hash before it is kept: the file is written before the row, so
       // a re-cut in progress can leave new audio beside an old row for a moment, and that
@@ -224,26 +249,29 @@ export type SaveReference = {
  * failure between the two leaves a file nothing points at, which the next save overwrites.
  */
 export async function saveReference(input: SaveReference): Promise<Reference> {
-  if (!(await isVoiceSlot(input.voice))) throw new Error(`unknown voice slot ${input.voice}`);
+  if (!(await isVoiceSlot(input.voice, input.lang))) throw new Error(`unknown voice slot ${input.voice}`);
   const rejected = rejectWindow(input.startSec, input.endSec);
   if (rejected) throw new Error(rejected);
+  // Before the transcription is paid for, so a language nobody owns is refused for nothing.
+  const team = await teamOf(input.lang);
 
   const audio = await cutClip(input.sourcePath, input.startSec, input.endSec);
   const transcript = (await input.transcribe(audio)).trim();
   if (!transcript) throw new Error("fish.audio heard nothing in that window");
 
-  await writeAtomic(referencePath(input.voice, input.lang), audio);
-  await db().query(
+  const sha256 = await keep("references", audio, "audio/mpeg", referencePath(input.voice, input.lang));
+  await withTeam(team, (client) => client.query(
     `insert into "fish_reference"
-       ("voice", "lang", "sample", "startSec", "endSec", "transcript", "clipHash", "updatedBy", "updatedAt")
-     values ($1, $2, $3, $4, $5, $6, $7, $8, now())
-     on conflict ("voice", "lang") do update set
+       ("voice", "lang", "sample", "startSec", "endSec", "transcript", "clipHash", "updatedBy", "updatedAt", "sha256")
+     values ($1, $2, $3, $4, $5, $6, $7, $8, now(), $9)
+     on conflict ("teamId", "voice", "lang") do update set
        "sample" = excluded."sample",
        "startSec" = excluded."startSec",
        "endSec" = excluded."endSec",
        "transcript" = excluded."transcript",
        "clipHash" = excluded."clipHash",
        "updatedBy" = excluded."updatedBy",
+       "sha256" = excluded."sha256",
        "updatedAt" = now()`,
     [
       input.voice,
@@ -254,8 +282,9 @@ export async function saveReference(input: SaveReference): Promise<Reference> {
       transcript,
       clipHash(audio, transcript),
       input.userId,
+      sha256,
     ],
-  );
+  ));
   lists.delete(input.lang);
   // Cutting one changes what every fish.audio line in the language is spoken from, so who
   // cut it and from which clip is worth a row; after the upsert, which has no transaction.
@@ -278,10 +307,13 @@ export async function saveTranscript(
 ): Promise<Reference | null> {
   const text = transcript.trim();
   if (!text) throw new Error("a transcript cannot be empty");
-  const audio = await fs.readFile(referencePath(voice, lang)).catch(() => null);
+  const current = await readReference(voice, lang);
+  if (!current) return null;
+  const audio = await readReferenceAudio(voice, lang, current.sha256).catch(() => null);
   if (!audio) return null;
 
-  const { rowCount } = await db().query(
+  const { rowCount } = await queryAs(
+    lang,
     `update "fish_reference"
         set "transcript" = $3, "clipHash" = $4, "updatedBy" = $5, "updatedAt" = now()
       where "voice" = $1 and "lang" = $2`,
@@ -299,17 +331,47 @@ export async function saveTranscript(
   return readReference(voice, lang);
 }
 
+/** Pin a slot to fish.audio in `lang`, or unpin it. Null when the slot has no reference. */
+export async function savePinned(
+  voice: string,
+  lang: Lang,
+  pinned: boolean,
+  userId: string,
+): Promise<Reference | null> {
+  const { rowCount } = await queryAs(
+    lang,
+    `update "fish_reference" set "pinned" = $3, "updatedBy" = $4, "updatedAt" = now()
+      where "voice" = $1 and "lang" = $2 and "pinned" <> $3`,
+    [voice, lang, pinned, userId],
+  );
+  lists.delete(lang);
+  // Only on a change, so pressing it twice is not logged twice. It moves every line of the
+  // slot from one bill to another, which is why it is logged at all.
+  if (rowCount) {
+    await recordActivity({
+      kind: pinned ? "reference.pinned" : "reference.unpinned",
+      lang,
+      actorId: userId,
+      subject: voice,
+      detail: {},
+    });
+  }
+  return readReference(voice, lang);
+}
+
 /**
  * The row and the cut clip. The sample it was cut from stays.
  *
  * `by` is who removed it, for the activity log: the delete leaves nothing else behind.
  */
 export async function deleteReference(voice: string, lang: Lang, by: string | null): Promise<void> {
-  const { rowCount } = await db().query(`delete from "fish_reference" where "voice" = $1 and "lang" = $2`, [
-    voice,
+  const { rowCount } = await queryAs(
     lang,
-  ]);
-  await fs.rm(referencePath(voice, lang), { force: true });
+    `delete from "fish_reference" where "voice" = $1 and "lang" = $2`,
+    [voice, lang],
+  );
+  // The object stays: it is named by its bytes, and a re-cut of the same window reuses it.
+  if (!readsBlobs()) await fs.rm(referencePath(voice, lang), { force: true });
   lists.delete(lang);
   // Only when there was a row, so deleting nothing is not logged as a delete.
   if (rowCount) {

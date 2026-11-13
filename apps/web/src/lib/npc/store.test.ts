@@ -8,7 +8,10 @@ import { afterAll, afterEach, beforeEach, describe, expect, it } from "vitest";
 
 import { closeDb, db } from "@/lib/db";
 
-import { getResolution, getResolutionsById, listResolutions, PROVENANCES, upsertResolution } from "./store";
+import {
+  deleteBody, getBodies, getResolution, getResolutionsById, listBodies, listResolutions, PROVENANCES, unsplit, upsertBody,
+  upsertResolution,
+} from "./store";
 
 // A bucket no other run shares: these ids are the primary key, so a fixed one would collide
 // between concurrent runs against the shared dev database.
@@ -19,7 +22,8 @@ beforeEach(() => {
 });
 
 afterEach(async () => {
-  await db().query(`delete from "npc_resolution" where "npcId" = $1`, [npcId]);
+  await db().query(`delete from "npc" where "npcId" = $1`, [npcId]);
+  await db().query(`delete from "entity_name" where "entityId" = $1`, [String(npcId)]);
 });
 
 afterAll(async () => {
@@ -36,6 +40,7 @@ function resolution(overrides: Record<string, unknown> = {}) {
     flavor: "standard",
     provenance: "client" as const,
     confirmed: false,
+    doubtful: false,
     modelFileId: 122055,
     sex: 2,
     creatureType: "Humanoid",
@@ -55,6 +60,15 @@ describe("upsertResolution", () => {
     expect(row?.confirmed).toBe(false);
   });
 
+  it("names the npc in the language it was named in, not in English", async () => {
+    await upsertResolution({ ...resolution({ npcName: "Eberton Schattentotem" }), nameLang: "deDE" });
+    const { rows } = await db().query<{ lang: string; name: string }>(
+      `select "lang", "name" from "entity_name" where "kind" = 'creature' and "entityId" = $1`,
+      [String(npcId)],
+    );
+    expect(rows).toEqual([{ lang: "deDE", name: "Eberton Schattentotem" }]);
+  });
+
   it("replaces an earlier answer for the same npc", async () => {
     await upsertResolution(resolution());
     await upsertResolution(
@@ -71,7 +85,8 @@ describe("upsertResolution", () => {
     await upsertResolution(resolution({ npcKind: "gameobject", race: null, npcName: "A Sign" }));
     expect((await getResolution("creature", npcId))?.race).toBe("tauren");
     expect((await getResolution("gameobject", npcId))?.race).toBe(null);
-    await db().query(`delete from "npc_resolution" where "npcId" = $1`, [npcId]);
+    await db().query(`delete from "npc" where "npcId" = $1`, [npcId]);
+    await db().query(`delete from "entity_name" where "entityId" = $1`, [String(npcId)]);
   });
 
   it("answers null for an npc nobody has resolved", async () => {
@@ -151,16 +166,39 @@ describe("upsertResolution provenance precedence", () => {
     expect((await getResolution("creature", npcId))?.provenance).toBe("corpus");
   });
 
-  // Equal rank still updates: a fresh corpus read refreshing a name is not a downgrade.
-  it("lets a corpus write over a corpus row update", async () => {
+  // Equal rank still updates; a name is the extract's to change, so a second one is not written.
+  it("lets a corpus write over a corpus row update, keeping the name it first had", async () => {
     await upsertResolution(
-      resolution({ npcName: "Boarton Shadetotem", provenance: "corpus" }),
+      resolution({ npcName: "Boarton Shadetotem", provenance: "corpus", flavor: "elder" }),
     );
     const result = await upsertResolution(
-      resolution({ npcName: "Boarton the Elder", provenance: "corpus" }),
+      resolution({ npcName: "Boarton the Elder", provenance: "corpus", flavor: "shaman" }),
     );
-    expect(result.npcName).toBe("Boarton the Elder");
-    expect((await getResolution("creature", npcId))?.npcName).toBe("Boarton the Elder");
+    expect(result).toMatchObject({ flavor: "shaman", npcName: "Boarton Shadetotem" });
+  });
+
+  // `display` is the game's own voice set for the appearance a player saw: exact, like the
+  // corpus, but the corpus is the older authority for the NPCs it carries, so it stays above.
+  it("lets a display answer replace a client guess", async () => {
+    await upsertResolution(resolution({ flavor: "standard", provenance: "client" }));
+    const result = await upsertResolution(
+      resolution({ flavor: "warrior", provenance: "display", confirmed: true }),
+    );
+    expect(result).toMatchObject({ flavor: "warrior", provenance: "display", confirmed: true });
+  });
+
+  it("does not let a client guess from an older addon overwrite a display answer", async () => {
+    await upsertResolution(resolution({ flavor: "warrior", provenance: "display", confirmed: true }));
+    const result = await upsertResolution(resolution({ flavor: "standard", provenance: "client" }));
+    expect(result).toMatchObject({ flavor: "warrior", provenance: "display" });
+  });
+
+  it("does not let a display answer overwrite the corpus", async () => {
+    await upsertResolution(resolution({ flavor: "grim", provenance: "corpus", confirmed: true }));
+    const result = await upsertResolution(
+      resolution({ flavor: "warrior", provenance: "display", confirmed: true }),
+    );
+    expect(result).toMatchObject({ flavor: "grim", provenance: "corpus" });
   });
 });
 
@@ -194,7 +232,8 @@ describe("getResolutionsById", () => {
     const grouped = await getResolutionsById([npcId]);
     expect(grouped.get(npcId)?.length).toBe(2);
     expect(grouped.get(npcId)?.map((r) => r.npcKind).sort()).toEqual(["creature", "gameobject"]);
-    await db().query(`delete from "npc_resolution" where "npcId" = $1`, [npcId]);
+    await db().query(`delete from "npc" where "npcId" = $1`, [npcId]);
+    await db().query(`delete from "entity_name" where "entityId" = $1`, [String(npcId)]);
   });
 
   it("answers nothing for an id nobody has resolved", async () => {
@@ -207,34 +246,113 @@ describe("listResolutions", () => {
   it("lists every kind of an id, whatever its provenance", async () => {
     await upsertResolution(resolution());
     await upsertResolution(resolution({ npcKind: "gameobject", provenance: "moderator", confirmed: true }));
+    // An item has a type of its own now, and an admin answers it like any NPC.
+    await upsertResolution(resolution({ npcKind: "item", provenance: "moderator", confirmed: true }));
     const ours = (await listResolutions()).filter((row) => row.npcId === npcId);
     expect(ours.map((row) => [row.npcKind, row.provenance])).toEqual([
       ["creature", "client"],
       ["gameobject", "moderator"],
+      ["item", "moderator"],
     ]);
   });
 });
 
-describe("npc_resolution invariants", () => {
+describe("npc invariants", () => {
+  it("rejects a doubtful row that is not a moderator's", async () => {
+    await expect(
+      upsertResolution(resolution({ provenance: "client", confirmed: false, doubtful: true })),
+    ).rejects.toThrow(/npc_doubtful_provenance_check/);
+  });
+
   it("rejects a client row marked confirmed", async () => {
     await expect(
       db().query(
-        `insert into "npc_resolution"
+        `insert into "npc"
            ("npcKind", "npcId", "provenance", "confirmed")
          values ($1, $2, 'client', true)`,
         ["creature", npcId],
       ),
-    ).rejects.toThrow(/npc_resolution_confirmed_provenance_check/);
+    ).rejects.toThrow(/npc_confirmed_provenance_check/);
   });
 
   it("rejects a 'none' row carrying a race", async () => {
     await expect(
       db().query(
-        `insert into "npc_resolution"
+        `insert into "npc"
            ("npcKind", "npcId", "provenance", "race")
          values ($1, $2, 'none', 'tauren')`,
         ["creature", npcId],
       ),
-    ).rejects.toThrow(/npc_resolution_none_is_empty_check/);
+    ).rejects.toThrow(/npc_none_is_empty_check/);
+  });
+});
+
+describe("upsertBody", () => {
+  function body(overrides: Record<string, unknown> = {}) {
+    return {
+      npcKind: "creature" as const,
+      npcId,
+      race: "gnome",
+      sex: 3 as const,
+      weight: null,
+      flavor: null,
+      provenance: "corpus" as const,
+      confirmed: true,
+      doubtful: false,
+      note: null,
+      resolvedBy: null,
+      ...overrides,
+    };
+  }
+
+  it("answers a body of an NPC, gendered by the sex", async () => {
+    await upsertResolution(resolution({ race: "dwarf", gender: "male" }));
+    const stored = await upsertBody(body());
+    expect(stored).toMatchObject({ race: "gnome", sex: 3, gender: "female" });
+    expect((await listBodies()).get(`creature:${npcId}`)?.map((row) => [row.race, row.sex])).toEqual([["gnome", 3]]);
+  });
+
+  it("keeps two races of one sex apart", async () => {
+    await upsertResolution(resolution({ race: "dwarf", gender: "male" }));
+    await upsertBody(body({ race: "dwarf", sex: 2, weight: 25 }));
+    await upsertBody(body({ race: "gnome", sex: 2, weight: 25 }));
+    expect((await getBodies("creature", npcId)).map((row) => row.race)).toEqual(["dwarf", "gnome"]);
+  });
+
+  it("orders a sex's bodies by weight, the unweighted last", async () => {
+    await upsertResolution(resolution({ race: "dwarf", gender: "male" }));
+    await upsertBody(body({ race: "gnome", sex: 2, weight: null }));
+    await upsertBody(body({ race: "dwarf", sex: 2, weight: 10 }));
+    expect((await getBodies("creature", npcId)).map((row) => row.race)).toEqual(["dwarf", "gnome"]);
+  });
+
+  it("refuses a body of an NPC nobody answered for", async () => {
+    await expect(upsertBody(body())).rejects.toThrow();
+  });
+
+  it("keeps a moderator's body over a client's guess", async () => {
+    await upsertResolution(resolution({ race: "dwarf", gender: "male" }));
+    await upsertBody(body({ provenance: "moderator", flavor: "warrior" }));
+    const stored = await upsertBody(body({ provenance: "client", confirmed: false, flavor: "standard" }));
+    expect(stored).toMatchObject({ provenance: "moderator", flavor: "warrior" });
+  });
+
+  it("deleting the second-last body unsplits the NPC", async () => {
+    await upsertResolution(resolution({ race: "dwarf", gender: "male" }));
+    await upsertBody(body({ race: "dwarf", sex: 2 }));
+    await upsertBody(body({ race: "gnome", sex: 2 }));
+    await upsertBody(body({ race: "gnome", sex: 3 }));
+    await deleteBody("creature", npcId, "gnome", 3);
+    expect((await getBodies("creature", npcId)).length).toBe(2);
+    await deleteBody("creature", npcId, "gnome", 2);
+    expect(await getBodies("creature", npcId)).toEqual([]);
+  });
+
+  it("goes with the NPC, and unsplit takes every body away", async () => {
+    await upsertResolution(resolution({ race: "dwarf", gender: "male" }));
+    await upsertBody(body({ race: "dwarf", sex: 2 }));
+    await upsertBody(body());
+    await unsplit("creature", npcId);
+    expect(await getBodies("creature", npcId)).toEqual([]);
   });
 });

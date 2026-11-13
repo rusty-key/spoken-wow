@@ -8,7 +8,10 @@
  * `new Pool()` does not open a connection until the first query, so importing this during
  * `next build` does not need a reachable database.
  */
-import { Pool, type QueryResultRow } from "pg";
+import { Pool, type PoolClient, type QueryResultRow } from "pg";
+
+/** "team"."id". Defined here so withTeam need not import the teams module. */
+export type TeamId = string;
 
 /**
  * How many connections one process may hold.
@@ -39,13 +42,22 @@ export const POOL_CONNECTION_TIMEOUT_MS = 10_000;
 const poolKey = Symbol.for("wow-voiceover.pool");
 type PoolHolder = { [poolKey]?: Pool };
 
+/** For the pool and for connections of their own, such as the team listener's LISTEN. */
+export function connectionOptions(): { connectionString?: string; options?: string } {
+  return {
+    connectionString: process.env.DATABASE_URL,
+    // Lets tests and CI act as the unprivileged app role, so row-level security applies to them.
+    ...(process.env.DATABASE_ROLE ? { options: `-c role=${process.env.DATABASE_ROLE}` } : {}),
+  };
+}
+
 export function db(): Pool {
   const holder = globalThis as PoolHolder;
   // Memoised on globalThis because the dev server re-evaluates modules on hot reload, and
   // a fresh pool per reload leaks connections until Postgres refuses new ones.
   if (!holder[poolKey]) {
     holder[poolKey] = new Pool({
-      connectionString: process.env.DATABASE_URL,
+      ...connectionOptions(),
       max: POOL_MAX,
       connectionTimeoutMillis: POOL_CONNECTION_TIMEOUT_MS,
     });
@@ -69,14 +81,88 @@ export async function query<T extends QueryResultRow = QueryResultRow>(
   return result.rows;
 }
 
+/** `work` in one transaction on one client: committed when it returns, rolled back when it throws. */
+export async function inTransaction<T>(work: (client: PoolClient) => Promise<T>): Promise<T> {
+  const client = await db().connect();
+  try {
+    await client.query("begin");
+    const result = await work(client);
+    await client.query("commit");
+    return result;
+  } catch (error) {
+    // Its own failure (a dropped connection) would hide the error that matters.
+    await client.query("rollback").catch(() => {});
+    throw error;
+  } finally {
+    client.release();
+  }
+}
+
+/** The team value for system work that legitimately spans teams: the queue leader's claim, owner views. */
+export const ALL_TEAMS = "*";
+
 /**
- * Close the pool and forget it, so the next db() builds a fresh one.
+ * `work` in a transaction that acts as `team`. The setting is transaction-local, so it cannot
+ * leak onto the next user of the pooled connection. Row-level security policies read it.
+ */
+export async function withTeam<T>(
+  team: TeamId | typeof ALL_TEAMS,
+  work: (client: PoolClient) => Promise<T>,
+): Promise<T> {
+  return inTransaction(async (client) => {
+    await actAs(client, team);
+    return work(client);
+  });
+}
+
+/**
+ * Act as `team` for the rest of `client`'s open transaction, for one opened by hand that learns
+ * its team from a row it locks. Transaction-local too, so it ends with the commit or rollback.
+ */
+export async function actAs(client: Pick<PoolClient, "query">, team: TeamId | typeof ALL_TEAMS): Promise<void> {
+  await client.query(`select set_config('spoken.team', $1, true)`, [team]);
+}
+
+/**
+ * Rows of the team this transaction acts as, or every team under ALL_TEAMS, for the tables that
+ * keep one copy per team. Row-level security draws the same line; this keeps the read right on
+ * a connection it does not bind, and matches nothing outside withTeam.
+ */
+export const TEAM_ROWS = `"teamId" in (select "id" from "team" where current_setting('spoken.team', true) in ('*', "id"::text))`;
+
+/** One query, rows only, as `team`. */
+export async function queryIn<T extends QueryResultRow = QueryResultRow>(
+  team: TeamId | typeof ALL_TEAMS,
+  text: string,
+  params?: unknown[],
+): Promise<T[]> {
+  return withTeam(team, async (client) => (await client.query<T>(text, params)).rows);
+}
+
+const hooksKey = Symbol.for("wow-voiceover.close-hooks");
+type HooksHolder = { [hooksKey]?: Set<() => Promise<void>> };
+
+/** On globalThis like the pool: a script run by tsx can load this module twice, ESM and CJS. */
+function closeHooks(): Set<() => Promise<void>> {
+  const holder = globalThis as HooksHolder;
+  return (holder[hooksKey] ??= new Set());
+}
+
+/** For connections closeDb must close but this module cannot import without a cycle. */
+export function onCloseDb(hook: () => Promise<void>): void {
+  closeHooks().add(hook);
+}
+
+/**
+ * Close the pool and every onCloseDb connection, and forget the pool, so the next db() builds a
+ * fresh one.
  *
  * For tests. Ending the pool without clearing the memo leaves a closed pool on globalThis,
  * and vitest reuses workers between files - so one test file finishing would break the next
  * one to run in that worker, as an intermittent "Cannot use a pool after calling end".
  */
 export async function closeDb(): Promise<void> {
+  await Promise.all([...closeHooks()].map((hook) => hook()));
   const holder = globalThis as PoolHolder;
   const pool = holder[poolKey];
   if (!pool) return;

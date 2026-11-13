@@ -1,6 +1,6 @@
 /**
- * The query string /contributions's filter dropdowns write to, and the Speaker dropdown's
- * one sentinel value.
+ * The query string /contributions's tabs and filter dropdowns write to, and the rule that sorts
+ * new rows into ready and blocked.
  *
  * A free function, not inlined in ContributionTable's click handler, so the mapping -- combine
  * whichever dimension just changed with the other as it stands, the same rule ReportTable's own
@@ -8,58 +8,166 @@
  * contributions.ts and npc.ts, whose types this one only composes: ContributionTable is a client
  * component and calls this directly on every dropdown change.
  */
-import type { ClientFamily } from "./client";
+import { listParam } from "../line-fields";
+import type { ClientFilter } from "./client";
 import type { ContributionStatus } from "./contributions";
 import type { EnvelopeSource } from "./envelope";
-import type { Provenance } from "../npc/npc";
+import type { Roster } from "../voices/roster";
+import type { Filter } from "../search";
+import type { QuestSummary } from "./triage";
 
 /**
- * "Everything a moderator still owes a decision" -- not a fifth provenance, a sentinel over the
- * four real ones. `client` (a guess nobody has looked at) and `none` (nothing known at all) are
- * exactly the two provenances `confirmed` can never be true for, which is the whole reason this
- * queue exists: the brief's own words for it are "tweak unconfirmed NPCs later".
- *
- * A single-select Speaker dropdown of the four provenances alone cannot express that union --
- * picking "Client guess" or "No race" narrows to one of the two, never both in one click -- so
- * dropping the old Confirmed/Unconfirmed axis entirely (both of which were themselves unions of
- * two provenances, not renamed single ones) would have quietly removed a real view rather than
- * a duplicate one. This sentinel restores the "unconfirmed" half of that view without bringing
- * back a second dropdown or the "confirmed" half: nobody triages the settled rows, so there is
- * no queue that ever wants "corpus or moderator" as one filter.
- *
- * Kept off `isProvenance`'s own union on purpose: a value it doesn't recognise must fall back to
- * "all" (page.tsx's own parsing already does this for any unrecognised string), not silently
- * mean "needs a decision" -- the two are handled by two separate checks in matchesSpeaker so a
- * typo in the query string can never masquerade as this filter.
+ * Whether a row of the New tab can be accepted as it stands, the same in every language:
+ * - a quest moment that already has the row's NPC as a speaker, in any language, needs nothing
+ *   more (one whose speakers are others makes the NPC one more, so it needs an answer);
+ * - any other quests row needs a speaker whose type, gender and flavor a voice reads, whoever
+ *   set them (accept.ts's speakerFor);
+ * - places and readables rows have no speaker to check.
  */
-export const NEEDS_DECISION = "needs-decision" as const;
+export const BUCKETS = ["ready", "blocked"] as const;
 
-/**
- * "A quest row whose envelope never named an NPC at all" -- the one speaker state with no
- * provenance, because there is no npc_resolution row to have one. What the manual NPC form in
- * the triage table exists for. Zones and books never name an NPC, so they are never missing one.
- */
-export const MISSING = "missing" as const;
+export type Bucket = (typeof BUCKETS)[number];
 
-export type SpeakerFilter = Provenance | "all" | typeof NEEDS_DECISION | typeof MISSING;
-
-/** The Speaker dropdown's two sentinels, for page.tsx's parsing of the query string. */
-export function isSpeakerSentinel(value: unknown): value is typeof NEEDS_DECISION | typeof MISSING {
-  return value === NEEDS_DECISION || value === MISSING;
+export function isBucket(value: unknown): value is Bucket {
+  return BUCKETS.includes(value as Bucket);
 }
 
-export type ClientFilter = ClientFamily | "all";
+export function bucketOf(
+  row: { source: EnvelopeSource; locale: string; quest: QuestSummary | null; hasSpeaker: boolean },
+  npc: { race: string | null; gender: string | null; flavor: string | null; conflict: readonly unknown[] } | null,
+  roster: Roster,
+): Bucket {
+  if (row.source !== "quests") return "ready";
+  if (row.quest !== "gossip" && row.hasSpeaker) return "ready";
+  if (!npc || npc.conflict.length > 0) return "blocked";
+  return roster.voiceFor(npc.race, npc.gender, npc.flavor) ? "ready" : "blocked";
+}
 
-export type ContributionFilters = {
-  status: ContributionStatus | "all";
-  provenance: SpeakerFilter;
-  client: ClientFilter;
+export type { ClientFilter };
+
+/** A section of /contributions, which is the page's path: an envelope source. */
+export const SECTIONS = ["quests", "readables", "places"] as const satisfies readonly EnvelopeSource[];
+
+export type Section = (typeof SECTIONS)[number];
+
+export function isSection(value: unknown): value is Section {
+  return SECTIONS.includes(value as Section);
+}
+
+/** Whether a section's rows name a speaker, so they split into buckets and search by NPC. */
+export function namesSpeaker(section: Section): boolean {
+  return section === "quests";
+}
+
+/**
+ * The quest panel a quests row was read off, as the addon's `event` field names it (SpokenQuests'
+ * EVENT_PATHS): the detail, progress or reward panel.
+ */
+export const QUEST_STAGES = ["accept", "progress", "complete"] as const;
+
+export type QuestStage = (typeof QUEST_STAGES)[number];
+
+export function isQuestStage(value: unknown): value is QuestStage {
+  return QUEST_STAGES.includes(value as QuestStage);
+}
+
+/** What the Stage dropdown offers: a quest panel, or gossip -- the quests rows tied to no quest. */
+export const STAGES = [...QUEST_STAGES, "gossip"] as const;
+
+export type Stage = (typeof STAGES)[number];
+
+/** The stages picked, none meaning every row. */
+export type StageFilter = readonly Stage[];
+
+/** The `stage` query parameter, comma-separated, in STAGES order; anything else is dropped. */
+export function stagesOf(value: unknown): Stage[] {
+  return listParam(value, STAGES);
+}
+
+/**
+ * Whether one row's Quest column satisfies the Stage dropdown. Any narrowed view drops every
+ * row with no quest concept at all (places, readables).
+ */
+export function matchesStage(quest: QuestSummary | null, filter: StageFilter): boolean {
+  if (filter.length === 0) return true;
+  if (quest === null) return false;
+  if (quest === "gossip") return filter.includes("gossip");
+  return quest.stage !== null && filter.includes(quest.stage);
+}
+
+/**
+ * The columns the table can be ordered by -- only the ones that are columns of the stored row,
+ * so the database does the ordering before the page is cut. NPC, quest and client are worked
+ * out per row after the query, and paging a list sorted on them would mean resolving every row
+ * in the queue first.
+ */
+export const SORT_COLUMNS = ["filed", "count"] as const;
+
+export type SortColumn = (typeof SORT_COLUMNS)[number];
+
+export type SortDirection = "asc" | "desc";
+
+export type ContributionSort = { column: SortColumn; direction: SortDirection };
+
+export function isSortColumn(value: unknown): value is SortColumn {
+  return SORT_COLUMNS.includes(value as SortColumn);
+}
+
+export function isSortDirection(value: unknown): value is SortDirection {
+  return value === "asc" || value === "desc";
+}
+
+/**
+ * Most sent first: what triage works down, since a line many players pasted is one many
+ * players are missing.
+ */
+export const DEFAULT_SORT: ContributionSort = { column: "count", direction: "desc" };
+
+/**
+ * The direction a column starts in when its header is first clicked: biggest and newest first.
+ */
+const FIRST_DIRECTION: Record<SortColumn, SortDirection> = {
+  filed: "desc",
+  count: "desc",
 };
 
-type FilterChange = {
-  status?: ContributionStatus | "all";
-  provenance?: SpeakerFilter;
+/** A header click: the column already sorted on flips, any other starts in its own direction. */
+export function nextSort(current: ContributionSort, column: SortColumn): ContributionSort {
+  if (current.column === column) return { column, direction: current.direction === "asc" ? "desc" : "asc" };
+  return { column, direction: FIRST_DIRECTION[column] };
+}
+
+/** The `sort` and `dir` query parameters as a sort, falling back to DEFAULT_SORT. */
+export function sortOf(column: unknown, direction: unknown): ContributionSort {
+  if (!isSortColumn(column)) return DEFAULT_SORT;
+  return { column, direction: isSortDirection(direction) ? direction : FIRST_DIRECTION[column] };
+}
+
+export type ContributionFilters = {
+  status: ContributionStatus;
+  bucket: Bucket;
+  client: ClientFilter;
+  /** A client build number; absent is every build. */
+  build?: string;
+  /** The section, which is the page's path rather than a filter. */
+  source: Section;
+  stage: StageFilter;
+  sort: ContributionSort;
+  /** Absent or blank searches nothing. */
+  q?: string;
+  /** Which field `q` is matched in; absent is "any". */
+  searchIn?: Filter;
+};
+
+export type FilterChange = {
+  status?: ContributionStatus;
+  bucket?: Bucket;
   client?: ClientFilter;
+  build?: string;
+  stage?: StageFilter;
+  sort?: ContributionSort;
+  q?: string;
+  searchIn?: Filter;
 };
 
 /**
@@ -67,42 +175,103 @@ type FilterChange = {
  *
  * A key present in `next` always wins, even set to `undefined` -- FilterChip's own way of
  * saying "reset to any", which this maps back to "all". A key simply absent from `next` (the
- * dimensions that did not change) is the only case that falls back to `current`.
+ * dimensions that did not change) is the only case that falls back to `current`. `sort` and
+ * `status` and `bucket` have no "all": unset, they go back to DEFAULT_SORT, the new rows' tab
+ * and the ready rows.
  */
 export function nextContributionFilters(
   current: ContributionFilters,
   next: FilterChange,
 ): ContributionFilters {
   return {
-    status: "status" in next ? (next.status ?? "all") : current.status,
-    provenance: "provenance" in next ? (next.provenance ?? "all") : current.provenance,
+    status: "status" in next ? (next.status ?? "new") : current.status,
+    bucket: "bucket" in next ? (next.bucket ?? "ready") : current.bucket,
     client: "client" in next ? (next.client ?? "all") : current.client,
+    build: "build" in next ? next.build : current.build,
+    source: current.source,
+    stage: "stage" in next ? (next.stage ?? []) : current.stage,
+    sort: "sort" in next ? (next.sort ?? DEFAULT_SORT) : current.sort,
+    q: "q" in next ? next.q : current.q,
+    searchIn: "searchIn" in next ? next.searchIn : current.searchIn,
   };
 }
 
-/** nextContributionFilters, turned into the href /contributions's own rows read back. */
-export function contributionsHref(current: ContributionFilters, next: FilterChange): string {
-  const filters = nextContributionFilters(current, next);
-  const params = new URLSearchParams({
-    status: filters.status,
-    provenance: filters.provenance,
-    client: filters.client,
-  });
-  return `/contributions?${params}`;
+/** How many rows one page of /contributions shows. */
+export const PAGE_SIZE = 100;
+
+/** The `page` query parameter as a page number: 1 for anything that is not a positive integer. */
+export function pageOf(value: unknown): number {
+  const page = Number(value);
+  return Number.isInteger(page) && page > 0 ? page : 1;
 }
 
 /**
- * Whether one row's NPC provenance satisfies a Speaker dropdown selection -- the server-side
- * half of the filter, called from page.tsx's own row projection, not just the UI's idea of what
- * is selected.
+ * nextContributionFilters, turned into the href /contributions's own rows read back.
  *
- * `undefined` (a row with no npc at all) matches MISSING when it is a quests row, and no other
- * real filter.
+ * `page` only when asked for: a filter change starts again from the first page, since the
+ * page it was on may not exist in the new view. `sort` and `dir` likewise only when they
+ * are not the default, so a link from before there was a choice still reads the same.
  */
-export function matchesSpeaker(provenance: Provenance | undefined, filter: SpeakerFilter, source: EnvelopeSource): boolean {
-  if (filter === "all") return true;
-  if (filter === MISSING) return provenance === undefined && source === "quests";
-  if (provenance === undefined) return false;
-  if (filter === NEEDS_DECISION) return provenance === "client" || provenance === "none";
-  return provenance === filter;
+export function contributionsHref(current: ContributionFilters, next: FilterChange, page = 1): string {
+  const filters = nextContributionFilters(current, next);
+  const params = new URLSearchParams({
+    status: filters.status,
+    client: filters.client,
+  });
+  if (filters.build) params.set("build", filters.build);
+  if (filters.stage.length) params.set("stage", filters.stage.join(","));
+  if (filters.bucket !== "ready") params.set("bucket", filters.bucket);
+  if (filters.q?.trim()) params.set("q", filters.q.trim());
+  if (filters.searchIn && filters.searchIn !== "any") params.set("filter", filters.searchIn);
+  if (filters.sort.column !== DEFAULT_SORT.column || filters.sort.direction !== DEFAULT_SORT.direction) {
+    params.set("sort", filters.sort.column);
+    params.set("dir", filters.sort.direction);
+  }
+  if (page > 1) params.set("page", String(page));
+  return `/contributions/${filters.source}?${params}`;
+}
+
+export function isSearchIn(value: unknown): value is Filter {
+  return value === "any" || value === "npc" || value === "quest" || value === "text";
+}
+
+/**
+ * A bare number is an NPC or quest id, never a substring, so "240" finds that NPC rather than
+ * every line mentioning 240 gold. Words match the NPC's name, the quest's title or the text.
+ */
+export function matchesSearch(
+  row: { text: string | null; npc: { npcId: number; npcName: string | null } | undefined; quest: QuestSummary | null },
+  q: string,
+  filter: Filter = "any",
+): boolean {
+  const query = q.trim();
+  if (!query) return true;
+  const needle = query.toLowerCase();
+  const textHit = (row.text ?? "").toLowerCase().includes(needle);
+  if (filter === "text") return textHit;
+
+  const quest = row.quest === null || row.quest === "gossip" ? null : row.quest;
+  const asNumber = /^\d+$/.test(query) ? Number(query) : null;
+  if (asNumber !== null) {
+    const npcHit = row.npc?.npcId === asNumber;
+    const questHit = quest?.questId === asNumber;
+    if (filter === "npc") return npcHit;
+    if (filter === "quest") return questHit;
+    return npcHit || questHit;
+  }
+
+  const npcHit = (row.npc?.npcName ?? "").toLowerCase().includes(needle);
+  const questHit = (quest?.title ?? "").toLowerCase().includes(needle);
+  if (filter === "npc") return npcHit;
+  if (filter === "quest") return questHit;
+  return npcHit || questHit || textHit;
+}
+
+/** A page's searchParams as a query string, for a redirect that keeps them. */
+export function queryOf(search: Record<string, string | string[] | undefined>): URLSearchParams {
+  const query = new URLSearchParams();
+  for (const [key, value] of Object.entries(search)) {
+    for (const one of [value].flat()) if (one !== undefined) query.append(key, one);
+  }
+  return query;
 }

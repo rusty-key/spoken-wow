@@ -14,6 +14,26 @@
  */
 import type { Capability } from "@/lib/permissions";
 
+export type ApiAudit = { tokenId: string; batchId?: string };
+
+/**
+ * `apiBatchId` is not `batchId`, which already means a voice queue batch in this log. `previous`
+ * is the version the edit replaced, because the version number below it may not be: a restore
+ * moves the live version without writing a row.
+ */
+type ApiAuditDetail = { previous?: number | null; apiTokenId?: string; apiBatchId?: string };
+
+export function auditDetail(audit: ApiAudit | undefined, previous: number | null): ApiAuditDetail {
+  if (!audit) return {};
+  return {
+    previous,
+    apiTokenId: audit.tokenId,
+    ...(audit.batchId ? { apiBatchId: audit.batchId } : {}),
+  };
+}
+
+type PackSubmissionDetail = { packId: string; version: string; submissionId: string };
+
 export type ActivityDetail = {
   // Audio.
   "take.generated": {
@@ -25,9 +45,26 @@ export type ActivityDetail = {
     batchId?: string;
   };
   "take.restored": { version: number; from?: number | null };
-  "take.acked": Record<string, never>;
+  /** The site could not make the Ogg a quests pack ships for this take; `error` says why. */
+  "take.encode_failed": { version: number; error: string };
+  /** `groupId` when the take was one of several cleared in one click; the page folds it there. */
+  "take.acked": { groupId?: string };
+  "marks.cleared": { groupId: string; count: number };
   "batch.queued": { batchId: string; label?: string | null; count: number };
-  "batch.stopped": { batchId?: string; label?: string | null; reason?: string | null; cancelled?: number };
+  /** `groupId` when one Stop stopped several batches; the page folds it under that press. */
+  "batch.stopped": {
+    batchId?: string;
+    label?: string | null;
+    reason?: string | null;
+    cancelled?: number;
+    groupId?: string;
+  };
+  "queue.stopped": { groupId: string; batches: number; cancelled: number; reason?: string | null };
+  "queue.paused": Record<string, never>;
+  /** A voice actor's upload (migration 0062), beside the generated takes rather than one of them. */
+  "recording.uploaded": { version: number; format?: string; durationSec?: number };
+  "recording.removed": { version: number };
+  "queue.resumed": Record<string, never>;
 
   // Text and pronunciation.
   "text.edited": {
@@ -37,13 +74,21 @@ export type ActivityDetail = {
     note?: string | null;
     variant?: number;
     origin?: string;
-  };
+    /** The plain line a split by player gender stopped being current. */
+    replaces?: string[];
+    /** The contribution whose text this is, for a correction accepted from the game. */
+    contribution?: number;
+  } & ApiAuditDetail;
   "text.restored": { version: number; from?: number | null };
-  "name.edited": { version: number; name?: string; note?: string | null };
+  /** An undone first translation: the line has no current version in the language any more. */
+  "text.retired": { version: number };
+  "name.edited": { version: number; name?: string; note?: string | null } & ApiAuditDetail;
+  "name.restored": { version: number; from?: number | null };
+  "name.retired": { version: number };
   "lexicon.added": { after?: string };
   "lexicon.edited": { before?: string; after?: string };
   "lexicon.removed": { before?: string };
-  "override.set": { text: string; before?: string | null };
+  "override.set": { text: string; before?: string | null; contribution?: number };
   "override.cleared": { before?: string | null };
   "ignore.set": { reason?: string | null };
   "ignore.cleared": Record<string, never>;
@@ -51,30 +96,108 @@ export type ActivityDetail = {
 
   // Voices.
   "voice.cloned": { voiceId?: string; sampleCount?: number | null };
+  /** A voice already in the account, renamed into the slot; `from` is its name before. */
+  "voice.adopted": { voiceId?: string; from?: string };
   "reference.set": { sample?: string; transcript?: string | null };
   "reference.edited": { transcript?: string | null };
   "reference.deleted": Record<string, never>;
+  "reference.pinned": Record<string, never>;
+  "reference.unpinned": Record<string, never>;
   "sample.added": { files: string[] };
   "sample.deleted": { files: string[] };
   "sample.imported": { files: string[] };
   "sample.merged": { files: string[]; into?: string };
   "npc.resolved": {
     npcName?: string | null;
+    /** For one body of an NPC split by body (migration 0075): its sex, UnitSex's 2 or 3. */
+    sex?: number;
     race?: string | null;
     gender?: string | null;
     flavor?: string | null;
+    doubtful?: boolean;
+  };
+  "npc.split": { npcName?: string | null; race?: string; sex?: number };
+  "npc.unsplit": { npcName?: string | null; race?: string; sex?: number };
+  /** An NPC made one more speaker of a line by hand, or taken off it. Subject: the line. */
+  "npc.speaker_added": { npcName?: string | null; npcType: string; npcId: number };
+  "npc.speaker_removed": { npcName?: string | null; npcType: string; npcId: number };
+  /** One NPC put in another's place on a line, `from` being the one taken off. */
+  "npc.speaker_replaced": {
+    npcName?: string | null;
+    npcType: string;
+    npcId: number;
+    from: { npcName?: string | null; npcType: string; npcId: number };
+  };
+  "type.changed": {
+    action: string;
+    gender?: string | null;
+    flavor?: string | null;
+    voice?: string | null;
+    /** For a split voice: whether the new combination took it over or it went unused. */
+    existing?: string | null;
   };
 
   // Admin.
   "grant.added": { capability: Capability };
   "grant.removed": { capability: Capability };
   "language.toggled": { enabled: boolean };
-  "contribution.resolved": { status: string; key?: string };
+  "team.created": { slug: string };
+  "team.renamed": { name: string };
+  /** A language handed to another team, by team slug. */
+  "team.language_moved": { from: string; to: string };
+  "contribution.resolved": { status: string; key?: string; correction?: boolean };
   "contribution.edited": { field: string; value?: unknown };
   "report.resolved": { status: string; category?: string };
+  /** Between a language's text maintainers and its team. */
+  "report.passed": { to: "text" | "audio" };
+
+  // Releases.
+  "release.started": { section: string };
+  "release.finished": { section: string; state: "done" | "unchanged" | "failed"; version?: string };
+
+  // Community packs: every language's, the subject is the pack id.
+  "pack.submitted": PackSubmissionDetail;
+  "pack.approved": PackSubmissionDetail;
+  "pack.rejected": PackSubmissionDetail & { reason: string };
+  "pack.withdrawn": PackSubmissionDetail;
+  "pack.listed": { packId: string };
+  "pack.unlisted": { packId: string };
+  /** `ownerId` null when the admin left the pack with nobody. */
+  "pack.owner": { packId: string; ownerId: string | null };
+
+  // Accounts, through better-auth's admin plugin rather than this app's routes. Every
+  // language's, so a global admin's alone to read: see `global` in store.ts.
+  /** `role` as set-role received it: one role, or several joined with ", ". */
+  "user.role_changed": { role: string };
+  "user.banned": { banReason?: string; banExpiresIn?: number };
+  "user.unbanned": Record<string, never>;
+  "user.removed": Record<string, never>;
+  "user.impersonated": Record<string, never>;
 };
 
 export type ActivityKind = keyof ActivityDetail;
+
+/**
+ * Rows that open onto others: `parent` is shown, every `child` carrying the same `key` in
+ * its detail is left off the page and listed when the parent is opened. The page's filter
+ * (store.ts), its lookup (api/activity/batch) and its rows (ActivityTable) all read this.
+ *
+ * `count` is the parent's detail field saying how many children it has; a batch has none,
+ * because it cuts takes for as long as the queue runs, so the server counts them per range.
+ */
+export const FOLDS = {
+  batch: { parent: "batch.queued", child: "take.generated", key: "batchId", count: null, noun: ["take", "takes"] },
+  marks: { parent: "marks.cleared", child: "take.acked", key: "groupId", count: "count", noun: ["file", "files"] },
+  stops: { parent: "queue.stopped", child: "batch.stopped", key: "groupId", count: "batches", noun: ["batch", "batches"] },
+} as const satisfies Record<
+  string,
+  { parent: ActivityKind; child: ActivityKind; key: string; count: string | null; noun: readonly [string, string] }
+>;
+export type Group = keyof typeof FOLDS;
+
+export function isGroup(value: unknown): value is Group {
+  return typeof value === "string" && Object.hasOwn(FOLDS, value);
+}
 
 export const CATEGORIES = ["audio", "text", "voices", "admin"] as const;
 export type Category = (typeof CATEGORIES)[number];
@@ -90,6 +213,9 @@ export function isCategory(value: unknown): value is Category {
 const CATEGORY_OF: Record<string, Category> = {
   take: "audio",
   batch: "audio",
+  marks: "audio",
+  queue: "audio",
+  recording: "audio",
   text: "text",
   name: "text",
   lexicon: "text",
@@ -102,8 +228,12 @@ const CATEGORY_OF: Record<string, Category> = {
   npc: "voices",
   grant: "admin",
   language: "admin",
+  team: "admin",
+  release: "admin",
+  pack: "admin",
   contribution: "admin",
   report: "admin",
+  user: "admin",
 };
 
 export function categoryOf(kind: string): Category | null {

@@ -6,8 +6,9 @@
  * model and sliders are set once in the settings form. Sharing a write would let a tag edit
  * revert a model change made a minute earlier in another tab.
  *
- * `admin`, matching PUT beside it and for the same reason: a direction applies to every line
- * of that race anyone generates afterwards.
+ * `configure` in the page's language, not `regenerate`: a direction applies to every line of
+ * that race anyone generates in the language afterwards. The language's own, so its grant is
+ * enough, as for its lexicon.
  */
 import { requireIn } from "@/lib/generation/authz";
 import { readSettings, SettingsError, validateRaceTags, writeRaceTags } from "@/lib/generation/settings";

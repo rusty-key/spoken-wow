@@ -2,15 +2,23 @@
 
 import { forwardRef, useCallback, useMemo } from "react";
 
+import ClientSelect from "@/components/ClientSelect";
 import DateChip from "@/components/DateChip";
+import { MadeByChips } from "@/components/MadeBy";
+import LevelBound from "@/components/LevelBound";
+import RecordedChip from "@/components/RecordedChip";
+import { DEFAULT_CLIENT_FILTER } from "@/lib/contributions/client";
+import { BROADCAST_OPTIONS, type BroadcastStatus } from "@/lib/broadcast/status";
+import type { MadeByFacets } from "@/lib/takes/made-by";
 import FilterChip, { type ChipOption } from "@/components/FilterChip";
+import MultiFilterChip from "@/components/MultiFilterChip";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import type { Facets } from "@/lib/facets";
 import { AUDIO_STATE_OPTIONS } from "@/lib/audio-state";
-import { NPC_TYPES, SOURCES } from "@/lib/line-fields";
+import { NPC_TYPES, SOURCE_LABELS, SOURCES } from "@/lib/line-fields";
 import { activeFilterCount } from "@/lib/active-filters";
 import type { Filter, LineFilters } from "@/lib/search";
 
@@ -23,12 +31,22 @@ type Props = {
   onClearAll: () => void;
   /** Editor and up: the ones who act on reports, so the ones who filter by them. */
   canTriage: boolean;
+  /** The model and author chips' options; present only for somebody working in the language. */
+  madeBy?: MadeByFacets;
+  /** The viewer records here, so the search answers whether each line is recorded. */
+  recordable?: boolean;
 };
 
 /** Corpus values, which label themselves. */
 function plainOptions(values: readonly string[]): ChipOption[] {
   return values.map((value) => ({ value, label: value }));
 }
+
+/** The sources in corpus order, each under the name SOURCE_LABELS gives it. */
+const SOURCE_OPTIONS: ChipOption[] = SOURCES.map((value) => ({
+  value,
+  label: SOURCE_LABELS[value],
+}));
 
 /** Where the free-text query is matched. "any" is the idle state, so it is not an option. */
 const SCOPE_OPTIONS: ChipOption[] = [
@@ -37,8 +55,13 @@ const SCOPE_OPTIONS: ChipOption[] = [
   { value: "text", label: "Line text only" },
 ];
 
+const PLAYER_GENDER_OPTIONS: ChipOption[] = [
+  { value: "m", label: "male" },
+  { value: "f", label: "female" },
+];
+
 const SearchBar = forwardRef<HTMLInputElement, Props>(function SearchBar(
-  { query, filters, facets, onQuery, onFilters, onClearAll, canTriage },
+  { query, filters, facets, onQuery, onFilters, onClearAll, canTriage, madeBy, recordable },
   ref,
 ) {
   const active = activeFilterCount({ ...filters, q: query });
@@ -109,6 +132,12 @@ const SearchBar = forwardRef<HTMLInputElement, Props>(function SearchBar(
           onChange={(gender) => onFilters({ gender, flavor: keptFlavor({ gender }) })}
         />
         <FilterChip
+          label="player"
+          value={filters.playerGender}
+          options={PLAYER_GENDER_OPTIONS}
+          onChange={(playerGender) => onFilters({ playerGender: playerGender as LineFilters["playerGender"] })}
+        />
+        <FilterChip
           label="flavor"
           value={filters.flavor}
           options={plainOptions(flavorOptions)}
@@ -120,10 +149,10 @@ const SearchBar = forwardRef<HTMLInputElement, Props>(function SearchBar(
           options={plainOptions(facets.voices)}
           onChange={(voice) => onFilters({ voice })}
         />
-        <FilterChip
+        <MultiFilterChip
           label="source"
-          value={filters.source}
-          options={plainOptions(SOURCES)}
+          values={filters.source}
+          options={SOURCE_OPTIONS}
           onChange={(source) => onFilters({ source: source as LineFilters["source"] })}
         />
         <FilterChip
@@ -151,6 +180,39 @@ const SearchBar = forwardRef<HTMLInputElement, Props>(function SearchBar(
           value={filters.generatedBefore}
           onChange={(generatedBefore) => onFilters({ generatedBefore })}
         />
+        {madeBy && (
+          <MadeByChips
+            facets={madeBy}
+            model={filters.model}
+            author={filters.author}
+            onChange={onFilters}
+          />
+        )}
+        {recordable && (
+          <RecordedChip value={filters.recorded} onChange={(recorded) => onFilters({ recorded })} />
+        )}
+        {/* Only gossip has ids, so any pick here narrows to gossip too. */}
+        <FilterChip
+          label="broadcast id"
+          value={filters.broadcast}
+          options={BROADCAST_OPTIONS}
+          onChange={(broadcast) => onFilters({ broadcast: broadcast as BroadcastStatus | undefined })}
+        />
+        <div className="flex items-center gap-1.5 whitespace-nowrap">
+          <span className="text-muted-foreground text-sm">level</span>
+          <LevelBound
+            label="minimum quest level"
+            placeholder="from"
+            value={filters.minLevel}
+            onChange={(minLevel) => onFilters({ minLevel })}
+          />
+          <LevelBound
+            label="maximum quest level"
+            placeholder="to"
+            value={filters.maxLevel}
+            onChange={(maxLevel) => onFilters({ maxLevel })}
+          />
+        </div>
 
         <div className="flex items-center gap-2 whitespace-nowrap">
           <Checkbox
@@ -197,7 +259,7 @@ const SearchBar = forwardRef<HTMLInputElement, Props>(function SearchBar(
             ignored only
           </Label>
         </div>
-        {/* Triagers only, as in the zones and books bars: the count on a row is public, but
+        {/* Triagers only, as in the places and readables bars: the count on a row is public, but
             a list of what people have complained about is a worklist. */}
         {canTriage && (
           <div className="flex items-center gap-2 whitespace-nowrap">
@@ -222,6 +284,16 @@ const SearchBar = forwardRef<HTMLInputElement, Props>(function SearchBar(
           <Label htmlFor="include-progress" className="text-muted-foreground text-sm">
             show progress text
           </Label>
+        </div>
+        {/* Era + Forever by default, the clients the site voices (lib/quests/line-client.ts); the
+            same bins as the Contributions pages. */}
+        {/* Wrapped, so its own ml-auto (right-aligned on the Contributions pages) does not split
+            the row's free space with the Clear button's. */}
+        <div className="flex items-center">
+          <ClientSelect
+            value={filters.client ?? DEFAULT_CLIENT_FILTER}
+            onChange={(client) => onFilters({ client })}
+          />
         </div>
 
         {/* Only when there is something to clear: a button that does nothing on most visits

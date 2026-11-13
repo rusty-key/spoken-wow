@@ -1,0 +1,65 @@
+{
+  "about": "Bosses named in the game as their creature is, not as the client's encounter table names the fight: encounter id -> the creature whose names (world.creature_template and its _locale rows in the Forever repack) the boss takes. The key stays the encounter's, so stories and found bosses keep theirs. Read by bosses.mjs.",
+  "renamed": {
+    "3355": {
+      "creature": 250660,
+      "names": {
+        "enUS": "The Baron"
+      }
+    },
+    "3495": {
+      "creature": 261316,
+      "names": {
+        "enUS": "Magmatus"
+      }
+    },
+    "2805": {
+      "creature": 10506,
+      "names": {
+        "enUS": "Kirtonos the Herald",
+        "deDE": "Kirtonos der Herold",
+        "esES": "Kirtonos el Heraldo",
+        "esMX": "Kirtonos el Heraldo",
+        "frFR": "Kirtonos le Héraut",
+        "itIT": "Kirtonos l'Alfiere",
+        "koKR": "사자 키르토노스",
+        "ptBR": "Kirtonos, o Arauto",
+        "ruRU": "Киртонос Глашатай",
+        "zhCN": "传令官基尔图诺斯",
+        "zhTW": "傳令官基爾圖諾斯"
+      }
+    },
+    "2810": {
+      "creature": 10508,
+      "names": {
+        "enUS": "Ras Frostwhisper",
+        "deDE": "Ras Frostraunen",
+        "esES": "Ras Murmuhielo",
+        "esMX": "Ras Murmuhielo",
+        "frFR": "Ras Murmegivre",
+        "itIT": "Ras Soffiogelo",
+        "koKR": "라스 프로스트위스퍼",
+        "ptBR": "Ras Friomúrmuro",
+        "ruRU": "Рас Ледяной Шепот",
+        "zhCN": "莱斯·霜语",
+        "zhTW": "萊斯‧霜語"
+      }
+    },
+    "717": {
+      "creature": 15727,
+      "names": {
+        "enUS": "C'Thun",
+        "deDE": "C'Thun",
+        "esES": "C'Thun",
+        "esMX": "C'Thun",
+        "frFR": "C'Thun",
+        "itIT": "C'thun",
+        "koKR": "크툰",
+        "ptBR": "C'Thun",
+        "ruRU": "К'Тун",
+        "zhCN": "克苏恩",
+        "zhTW": "克蘇恩"
+      }
+    }
+  }
+}

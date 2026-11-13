@@ -1,0 +1,114 @@
+name: Announce release
+
+# Posts a published release to the Discord #announcements channel, and for a language's sound
+# pack, replaces the pinned "Audio packs" post in that language's channel
+# (scripts/lib/language-post.mjs). Both post as the server's bot, DISCORD_BOT_TOKEN.
+#
+# Fires on `published`, not `created`: release-addons.yaml makes drafts with GITHUB_TOKEN,
+# which could not trigger this workflow anyway, so an addon is announced the moment a human
+# publishes its draft. The sound packs are released by scripts/audio-github-release.sh under
+# the user's own token and arrive here already published.
+#
+# The name and notes come from scripts/lib/announce.mjs: the store page's name and the
+# CHANGELOG section for the version, never the release body (see that file for why).
+on:
+  release:
+    types: [published]
+  # For a release published while this workflow did not exist or could not post: `published`
+  # fires once, and toggling a release back to draft to fire it again would hide the downloads.
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Release tag to announce, e.g. quests/v2.2.0"
+        required: true
+
+jobs:
+  discord:
+    if: ${{ !github.event.release.prerelease }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          sparse-checkout: |
+            publishers
+            docs
+            scripts/lib
+            pipelines/lib
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 24
+          # v5 turns on the package manager's cache by itself when package.json names one, and
+          # this job installs no pnpm to cache with: announce.mjs needs nothing beyond Node.
+          package-manager-cache: false
+
+      - name: Resolve the name and notes from the tag
+        env:
+          TAG: ${{ inputs.tag || github.event.release.tag_name }}
+        run: node scripts/lib/announce.mjs "$TAG" > announcement.json
+
+      - name: Post to Discord
+        env:
+          DISCORD_BOT_TOKEN: ${{ secrets.DISCORD_BOT_TOKEN }}
+          TAG: ${{ inputs.tag || github.event.release.tag_name }}
+          URL: ${{ github.event.release.html_url || format('{0}/{1}/releases/tag/{2}', github.server_url, github.repository, inputs.tag) }}
+        run: |
+          if jq -e .skip announcement.json > /dev/null; then
+            echo "::warning::not announcing: $(jq -r .skip announcement.json)"
+            exit 0
+          fi
+          api() {
+            curl -fsS -H "Authorization: Bot $DISCORD_BOT_TOKEN" -H 'Content-Type: application/json' "$@"
+          }
+          # Found by name, as the language channels are, decorated or not (📢｜announcements).
+          CHANNEL=$(for guild in $(api https://discord.com/api/v10/users/@me/guilds | jq -r '.[].id'); do
+            api "https://discord.com/api/v10/guilds/$guild/channels" \
+              | jq -r '.[] | select(.name == "announcements" or (.name | endswith("｜announcements"))) | .id'
+          done | head -n 1)
+          if [ -z "$CHANNEL" ]; then
+            echo "::error::the bot sees no #announcements channel"
+            exit 1
+          fi
+          # An embed description holds 4096 characters; long notes are cut and linked.
+          jq --arg u "$URL" --arg tag "$TAG" '
+            (.notes // "") as $n
+            | (if ($n | length) > 3800 then $n[0:3800] + "…\n\n[Full release notes](\($u))" else $n end) as $d
+            | { embeds: [{ title: "\(.name) \(.version)", url: $u, color: 5814783,
+                           footer: { text: $tag } }
+                         + (if $d == "" then {} else { description: $d } end)],
+                allowed_mentions: { parse: [] } }
+          ' announcement.json | api -d @- "https://discord.com/api/v10/channels/$CHANNEL/messages" > /dev/null
+
+  language-channel:
+    if: ${{ !github.event.release.prerelease }}
+    runs-on: ubuntu-latest
+    # A language's three packs are usually released minutes apart. Run side by side, each
+    # would find no post yet and pin its own. GitHub keeps only one pending run per group, so
+    # the middle of three shows as cancelled; nothing is lost, as the last run reads every release.
+    concurrency:
+      group: language-channel
+      cancel-in-progress: false
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          sparse-checkout: |
+            publishers
+            scripts/lib
+            pipelines/lib
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 24
+          package-manager-cache: false
+
+      - name: Replace the language channel's pinned post
+        env:
+          DISCORD_BOT_TOKEN: ${{ secrets.DISCORD_BOT_TOKEN }}
+          GITHUB_TOKEN: ${{ github.token }}
+          TAG: ${{ inputs.tag || github.event.release.tag_name }}
+        run: |
+          if [ -z "$DISCORD_BOT_TOKEN" ]; then
+            echo "::warning::DISCORD_BOT_TOKEN is not set; no language channel post"
+            exit 0
+          fi
+          node scripts/lib/language-post.mjs "$TAG"

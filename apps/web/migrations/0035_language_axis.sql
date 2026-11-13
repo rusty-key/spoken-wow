@@ -46,8 +46,8 @@ alter table "take_ack" add column "lang" text not null default 'enUS';
 create unique index "take_ack_lang_idx" on "take_ack" ("source", "lang", "file");
 
 -- A voice slot -- dwarf-male-grim -- is the same slot in every language, but the clone
--- behind it is not: each locale's client was voiced by its own actors, so a language's
--- clones are made from that language's clips and are that language's alone.
+-- behind it is not: a language's clones are made from that language's own clips and are
+-- that language's alone.
 alter table "voice_clone" add column "lang" text not null default 'enUS';
 create unique index "voice_clone_lang_idx" on "voice_clone" ("voice", "lang");
 

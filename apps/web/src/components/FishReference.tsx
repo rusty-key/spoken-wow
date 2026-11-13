@@ -1,10 +1,11 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Loader2, Scissors, Trash2 } from "lucide-react";
+import { Download, Loader2, Scissors, Trash2 } from "lucide-react";
 
 import { useLang } from "@/components/LangProvider";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { withLang } from "@/lib/lang";
@@ -27,17 +28,28 @@ import type { Sample } from "@/lib/voices/samples";
  */
 export type ReferenceView = Pick<
   Reference,
-  "sample" | "startSec" | "endSec" | "transcript" | "clipHash"
+  "sample" | "startSec" | "endSec" | "transcript" | "clipHash" | "pinned"
 >;
 
 type Props = {
   voice: string;
   samples: Sample[];
+  /** Whether voice/seed-clips has clips for this voice in this language. */
+  hasSeedClips: boolean;
+  /** The clips after an import, for the page to hold. */
+  onSamples: (samples: Sample[]) => void;
   initial: ReferenceView | null;
   onChange: (reference: ReferenceView | null) => void;
 };
 
-export default function FishReference({ voice, samples, initial, onChange }: Props) {
+export default function FishReference({
+  voice,
+  samples,
+  hasSeedClips,
+  onSamples,
+  initial,
+  onChange,
+}: Props) {
   const lang = useLang();
   const [reference, setReference] = useState(initial);
   const [chosen, setChosen] = useState(initial?.sample ?? "");
@@ -51,7 +63,7 @@ export default function FishReference({ voice, samples, initial, onChange }: Pro
   );
   const [duration, setDuration] = useState<number | null>(null);
   const [transcript, setTranscript] = useState(initial?.transcript ?? "");
-  const [busy, setBusy] = useState<"cut" | "transcript" | "delete" | null>(null);
+  const [busy, setBusy] = useState<"import" | "cut" | "transcript" | "pin" | "delete" | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   // The chosen clip's length, from its metadata, so a window past its end is refused here
@@ -86,7 +98,7 @@ export default function FishReference({ voice, samples, initial, onChange }: Pro
         ? `That clip is only ${duration.toFixed(1)} s long.`
         : null));
 
-  async function send(kind: "cut" | "transcript" | "delete", init: RequestInit) {
+  async function send(kind: "cut" | "transcript" | "pin" | "delete", init: RequestInit) {
     setBusy(kind);
     setError(null);
     try {
@@ -100,6 +112,30 @@ export default function FishReference({ voice, samples, initial, onChange }: Pro
       setReference(next);
       setTranscript(next?.transcript ?? "");
       onChange(next);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err));
+    } finally {
+      setBusy(null);
+    }
+  }
+
+  /**
+   * Seed the clips from voice/seed-clips, the same import the ElevenLabs tab offers, so a
+   * reference can be cut without a detour there. Only ever from empty: replacing clips is
+   * that tab's, where they are listed.
+   */
+  async function importSeedClips() {
+    setBusy("import");
+    setError(null);
+    try {
+      const response = await fetch(withLang(lang, `/api/voices/${voice}/samples/import`), {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ replace: false }),
+      });
+      const body = (await response.json()) as { samples?: Sample[]; error?: string };
+      if (!response.ok) throw new Error(body.error ?? `import failed (${response.status})`);
+      onSamples(body.samples ?? []);
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
     } finally {
@@ -123,7 +159,29 @@ export default function FishReference({ voice, samples, initial, onChange }: Pro
       )}
 
       {samples.length === 0 ? (
-        <p className="text-muted-foreground text-xs">Add a clip above to cut a reference from.</p>
+        hasSeedClips ? (
+          <div className="flex flex-wrap items-center gap-3">
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              disabled={busy !== null}
+              title={`Import the seed clips for ${voice}, merged into one take`}
+              onClick={importSeedClips}
+            >
+              {busy === "import" ? <Loader2 className="animate-spin" /> : <Download />}
+              Import seed clips
+            </Button>
+            <span className="text-muted-foreground text-xs">
+              No clips yet; import the seed clips to cut a reference from.
+            </span>
+          </div>
+        ) : (
+          <p className="text-muted-foreground text-xs">
+            No clips yet, and no seed clips for this voice. Upload some on the ElevenLabs tab to
+            cut a reference from.
+          </p>
+        )
       ) : (
         <div className="flex flex-wrap items-end gap-3">
           <div className="grid gap-1">
@@ -230,6 +288,24 @@ export default function FishReference({ voice, samples, initial, onChange }: Pro
               {busy === "delete" ? <Loader2 className="animate-spin" /> : <Trash2 />}
               Remove
             </Button>
+          </div>
+          <div className="flex items-start gap-2">
+            <Checkbox
+              id={`${voice}-reference-pinned`}
+              checked={reference.pinned}
+              disabled={busy !== null}
+              onCheckedChange={(on) =>
+                send("pin", { method: "PATCH", body: JSON.stringify({ pinned: on === true }) })
+              }
+            />
+            <Label htmlFor={`${voice}-reference-pinned`} className="grid gap-0.5 text-xs font-normal">
+              <span className="font-medium">Always speak this voice with fish.audio</span>
+              <span className="text-muted-foreground">
+                Its lines go to fish.audio even for somebody generating with ElevenLabs, on their
+                own fish.audio key and settings. A narrated line goes with it, so the narrator needs
+                a reference too.
+              </span>
+            </Label>
           </div>
         </div>
       )}

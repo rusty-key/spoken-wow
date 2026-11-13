@@ -2,7 +2,9 @@ import type { NextConfig } from "next";
 import fs from "node:fs";
 import path from "node:path";
 
+import { discordRedirects } from "./src/lib/discord";
 import { localeRedirects, localeRewrites } from "./src/lib/locale-routes";
+import { sectionRedirects } from "./src/lib/section-routes";
 
 // The monorepo root, two levels up from apps/web/.
 const repoRoot = path.resolve(__dirname, "..", "..");
@@ -28,7 +30,16 @@ if (fs.existsSync(rootEnv)) {
   }
 }
 
+// The Spoken release this checkout is, for the report pages' "might already be fixed": read
+// at build, since the standalone bundle carries no addons/ to read it from at runtime.
+const spokenToc = path.join(repoRoot, "addons", "Spoken", "Spoken.toc");
+const spokenVersion = fs.existsSync(spokenToc)
+  ? (fs.readFileSync(spokenToc, "utf8").match(/^## Version:\s*(\S+)/m)?.[1] ?? "")
+  : "";
+
 const config: NextConfig = {
+  env: { NEXT_PUBLIC_SPOKEN_VERSION: spokenVersion },
+
   // The corpus and the audio store are read at runtime through node:fs, never bundled,
   // so they need no asset config. See src/lib/paths.ts for how they are located.
 
@@ -46,7 +57,7 @@ const config: NextConfig = {
   // and pm2's `script` all name that path.
   outputFileTracingRoot: repoRoot,
 
-  // `pg` stays a real require rather than being bundled. The zones pipeline's db.mjs reaches
+  // `pg` stays a real require rather than being bundled. The places pipeline's db.mjs reaches
   // for it too, and two copies in one process would each install their own type parsers.
   serverExternalPackages: ["pg"],
 
@@ -67,16 +78,18 @@ const config: NextConfig = {
   // reach the droplet: the deploy workflow copies them into the release by glob, so a
   // rollback moves data and code together. Tracing them in as well would ship them twice
   // and let a stale copy win.
-  // pipelines/quests, NOT pipelines/**. The zones half of that directory is compiled INTO
-  // this bundle -- lib/zones/tools.ts imports it, webpack follows those imports, and
+  // pipelines/quests, NOT pipelines/**. The places half of that directory is compiled INTO
+  // this bundle -- lib/places/tools.ts imports it, webpack follows those imports, and
   // excluding it here would exclude nothing webpack had already pulled in while making the
   // exclusion list read as though the whole pipelines tree were out. The Python side is what
   // has to stay out, and for a reason worth repeating: its .env holds the ElevenLabs key and
   // the database password, and a release bundle is rsynced to a droplet.
   // The language in the URL: a bare path is English. See src/lib/locale-routes.ts, and for
   // why this is config and not middleware.
+  // The old section addresses first, so /enUS/zones/... lands on /places/... in two hops
+  // rather than missing both. See src/lib/section-routes.ts.
   async redirects() {
-    return localeRedirects;
+    return [...discordRedirects, ...sectionRedirects, ...localeRedirects];
   },
   async rewrites() {
     return { beforeFiles: localeRewrites, afterFiles: [], fallback: [] };

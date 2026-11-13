@@ -17,11 +17,20 @@
  * THE LANGUAGE RIDES ON EACH JOB TOO, and is the guard's third term for the same reason: a
  * Portuguese take of a file is a different recording from the English one, and queueing both
  * is two jobs rather than a duplicate. It is what the generator is asked to speak in.
+ *
+ * AND THE TEAM. Batches, jobs and pauses belong to their language's team and take it from the
+ * column default; a pause holds back only its team's work. The leader's claim, its lanes and the
+ * panel run as ALL_TEAMS; settling a job runs as its team, in the transaction the worker opens.
  */
-import { recordActivities } from "@/lib/activity/store";
-import { db } from "@/lib/db";
+import { randomUUID } from "node:crypto";
+
+import type { PoolClient } from "pg";
+
+import { recordActivities, type ActivityEvent } from "@/lib/activity/store";
+import { ALL_TEAMS, queryIn, withTeam } from "@/lib/db";
 import { BASE_LANG, type Lang } from "@/lib/lang";
 import type { Source } from "@/lib/sections";
+import { asTeamOf, byTeam, queryAs, teamLangs, type TeamId } from "@/lib/teams/store";
 import { maxActiveFrom } from "./concurrency";
 import type { QueueLine } from "./queue-line";
 import type { Provider } from "./speakers/speaker";
@@ -33,7 +42,7 @@ export type JobState = "pending" | "running" | "done" | "failed" | "cancelled";
  * One unit of work, in terms both sections can express.
  *
  * npcName and preview are denormalised from whatever corpus this came from, so that polling
- * every two seconds - and the worker itself - never need to load one. The zones side has no
+ * every two seconds - and the worker itself - never need to load one. The places side has no
  * NPC and puts the zone's name there; what the column is for is a label the panel can show.
  */
 export type QueueEntry = {
@@ -42,12 +51,16 @@ export type QueueEntry = {
   npcName: string;
   preview: string;
   characters: number;
+  /** The batch's provider when absent: only a voice pinned to fish.audio overrides it. */
+  provider?: Provider;
 };
 
 /** A claimed job, with the batch's owner joined in so the take records who paid for it. */
 export type QueueJob = {
   /** bigserial, which `pg` returns as a string. Kept as one so nothing rounds it. */
   id: string;
+  /** The team whose queue it is in: what the worker runs it as. */
+  teamId: TeamId;
   batchId: string;
   source: Source;
   lang: Lang;
@@ -103,6 +116,11 @@ export type QueueSnapshot = {
    */
   latestBatch: { cancelled: number; stoppedBecause: string | null } | null;
   /**
+   * The languages paused now, whoever paused them. Global like the counts: a queue that has
+   * stopped moving should say why, even to someone who cannot resume it.
+   */
+  paused: { lang: Lang; pausedAt: string; by: string | null }[];
+  /**
    * Each owner's queue, in the order they drain: the first QUEUE_MAX_ACTIVE are active, the
    * rest wait. Ranked exactly as activeLanes ranks them, so the panel says what the worker does.
    */
@@ -157,7 +175,8 @@ export async function createBatch(
   source: Source,
   lang: Lang = BASE_LANG,
 ): Promise<string> {
-  const { rows } = await db().query<{ id: string }>(
+  const { rows } = await queryAs<{ id: string }>(
+    lang,
     `insert into "regeneration_batch" ("label", "createdBy", "source", "lang")
      values ($1, $2, $3, $4) returning "id"`,
     [label, createdBy, source, lang],
@@ -182,35 +201,45 @@ export async function enqueue(
 ): Promise<{ queued: number; skipped: number }> {
   if (jobs.length === 0) return { queued: 0, skipped: 0 };
 
-  // Old batches are pruned here rather than on a schedule, because this is the only path
-  // that grows the table and there is no cron on the droplet.
-  await db().query(
-    `delete from "regeneration_batch" where "createdAt" < now() - interval '${RETENTION}'`,
-  );
+  const { rowCount } = await asTeamOf(lang, async (client) => {
+    // Old batches are pruned here rather than on a schedule, because this is the only path
+    // that grows the table and there is no cron on the droplet. A team prunes its own.
+    await client.query(
+      `delete from "regeneration_batch" where "createdAt" < now() - interval '${RETENTION}'`,
+    );
 
-  const { rowCount } = await db().query(
-    `insert into "regeneration_job"
-       ("batchId", "source", "lang", "provider", "owner", "lineId", "file", "npcName", "preview", "characters")
-     select $1, $2, $8, $9,
-            (select "createdBy" from "regeneration_batch" where "id" = $1),
-            * from unnest($3::text[], $4::text[], $5::text[], $6::text[], $7::int[])
-     on conflict ("source", "lang", "file") where "state" in ('pending', 'running') do nothing`,
-    [
-      batchId,
-      source,
-      jobs.map((job) => job.lineId),
-      jobs.map((job) => job.file),
-      jobs.map((job) => job.npcName),
-      jobs.map((job) => job.preview),
-      jobs.map((job) => job.characters),
-      lang,
-      provider,
-    ],
-  );
+    return client.query(
+      `insert into "regeneration_job"
+         ("batchId", "source", "lang", "provider", "owner", "lineId", "file", "npcName", "preview", "characters")
+       select $1, $2, $8, "provider",
+              (select "createdBy" from "regeneration_batch" where "id" = $1),
+              "lineId", "file", "npcName", "preview", "characters"
+         from unnest($3::text[], $4::text[], $5::text[], $6::text[], $7::int[], $9::text[])
+           as job ("lineId", "file", "npcName", "preview", "characters", "provider")
+       on conflict ("teamId", "source", "lang", "file") where "state" in ('pending', 'running') do nothing`,
+      [
+        batchId,
+        source,
+        jobs.map((job) => job.lineId),
+        jobs.map((job) => job.file),
+        jobs.map((job) => job.npcName),
+        jobs.map((job) => job.preview),
+        jobs.map((job) => job.characters),
+        lang,
+        jobs.map((job) => job.provider ?? provider),
+      ],
+    );
+  });
 
   const queued = rowCount ?? 0;
   return { queued, skipped: jobs.length - queued };
 }
+
+/**
+ * Both columns are required of either table, so the row comparison under `not in` never meets
+ * a null.
+ */
+const UNPAUSED = `("teamId", "lang") not in (select "teamId", "lang" from "regeneration_pause")`;
 
 /**
  * The lanes of the queues allowed to drain now: the first `max` owners, ranked by their oldest
@@ -221,17 +250,23 @@ export async function enqueue(
  * unfinished job, their oldest one is older than anything queued after them, so a queue that
  * started keeps its place until its older work is done. A job backing off after a 429 is still
  * pending, so it keeps its owner's place too.
+ *
+ * Work in a paused language is left out of the ranking, so a paused queue gives its place to
+ * the next one instead of holding a slot it will not use, and takes it back on Resume if its
+ * oldest job is still older than everyone else's.
  */
 export async function activeLanes(max: number): Promise<Lane[]> {
   // One grouped pass over the lane index rather than a self-join on the owner: the join had
   // to match a null owner to a null owner with `is not distinct from`, which no index serves.
   // Each lane carries its owner's oldest job as `first`, and dense_rank over it gives both
   // lanes of one owner the same place, so `rank <= $1` keeps the first `max` owners whole.
-  const { rows } = await db().query<Lane>(
+  return queryIn<Lane>(
+    ALL_TEAMS,
     `with lanes as (
        select "owner", "provider", min(min("id")) over (partition by "owner") as first
          from "regeneration_job"
         where "state" in ('pending', 'running')
+          and ${UNPAUSED}
         group by "owner", "provider"
      ),
      ranked as (
@@ -243,7 +278,6 @@ export async function activeLanes(max: number): Promise<Lane[]> {
       order by first, "provider"`,
     [max],
   );
-  return rows;
 }
 
 /**
@@ -255,6 +289,9 @@ export async function activeLanes(max: number): Promise<Lane[]> {
  * stood one process down and another has not yet stood up.
  *
  * The lane is optional so that "anything due" stays expressible; the worker always passes one.
+ *
+ * Nothing in a paused language is due, an expired lease included: reclaiming one is a fresh
+ * attempt, and a fresh attempt is the spending the pause was pressed to hold back.
  *
  * A negative `leaseMs` is how the tests produce an already-expired lease.
  */
@@ -274,7 +311,9 @@ export async function claimNext(
     inLane = `and "owner" = $2 and "provider" = $3`;
     params.push(lane.owner, lane.provider);
   }
-  const { rows } = await db().query<QueueJob>(
+  // As ALL_TEAMS: the leader claims from every team's queue.
+  const rows = await queryIn<QueueJob>(
+    ALL_TEAMS,
     `update "regeneration_job" as j set
         "state"      = 'running',
         "attempts"   = j."attempts" + 1,
@@ -284,12 +323,15 @@ export async function claimNext(
         select "id" from "regeneration_job"
          where (("state" = 'pending' and "notBefore" <= now())
             or ("state" = 'running' and "leaseUntil" < now()))
+           and ${UNPAUSED}
            ${inLane}
          order by "id"
          for update skip locked
          limit 1
       )
-      returning j."id"::text, j."batchId", j."source", j."lang", j."lineId", j."file", j."npcName",
+      returning j."id"::text,
+                j."teamId",
+                j."batchId", j."source", j."lang", j."lineId", j."file", j."npcName",
                 j."preview", j."characters", j."attempts", j."provider", j."owner",
                 (select b."createdBy" from "regeneration_batch" b where b."id" = j."batchId")
                   as "createdBy"`,
@@ -298,11 +340,15 @@ export async function claimNext(
   return rows[0] ?? null;
 }
 
+/** The transaction the worker opened as the job's team: settling a job runs on it. */
+type Queryable = Pick<PoolClient, "query">;
+
 export async function finishJob(
   id: string,
   result: { version: number; credits: number | null; costUsd?: number | null },
+  client: Queryable,
 ): Promise<void> {
-  await db().query(
+  await client.query(
     `update "regeneration_job"
         set "state" = 'done', "version" = $2, "credits" = $3, "costUsd" = $4,
             "finishedAt" = now(), "leaseUntil" = null
@@ -314,8 +360,9 @@ export async function finishJob(
 export async function failJob(
   id: string,
   failure: { kind: string; message: string },
+  client: Queryable,
 ): Promise<void> {
-  await db().query(
+  await client.query(
     `update "regeneration_job"
         set "state" = 'failed', "errorKind" = $2, "error" = $3,
             "finishedAt" = now(), "leaseUntil" = null
@@ -325,8 +372,8 @@ export async function failJob(
 }
 
 /** Put a job back, due after `delayMs`. Used only to back off a rate limit. */
-export async function retryJob(id: string, delayMs: number): Promise<void> {
-  await db().query(
+export async function retryJob(id: string, delayMs: number, client: Queryable): Promise<void> {
+  await client.query(
     `update "regeneration_job"
         set "state" = 'pending', "notBefore" = now() + make_interval(secs => $2),
             "leaseUntil" = null
@@ -353,49 +400,162 @@ export async function cancelPending(
   scope: { batchId?: string; langs?: readonly Lang[]; by?: string | null } = {},
 ): Promise<number> {
   const batchId = scope.batchId ?? null;
-  const langs = scope.langs ?? null;
-  const { rowCount } = await db().query(
-    `update "regeneration_job" set "state" = 'cancelled', "finishedAt" = now()
-      where "state" = 'pending'
-        and ($1::uuid is null or "batchId" = $1)
-        and ($2::text[] is null or "lang" = any($2))`,
-    [batchId, langs],
-  );
+  // Every language means every language some team owns: nothing is queued in any other.
+  const teams = await byTeam(scope.langs ?? [...(await teamLangs()).keys()]);
 
-  // Only batches that actually lost work are stamped. Stamping every unstopped batch would
-  // put "Stopped by an admin" on ones that had already finished cleanly, and the panel reads
-  // the most recent reason it can find.
-  const { rows: stopped } = await db().query<{
-    id: string;
-    label: string;
-    source: Source;
-    lang: Lang;
-    cancelled: number;
-  }>(
-    `update "regeneration_batch" as b
-        set "stoppedAt" = now(), "stoppedBecause" = $1
-      where b."stoppedAt" is null
-        and ($2::uuid is null or b."id" = $2)
-        and ($3::text[] is null or b."lang" = any($3))
-        and exists (select 1 from "regeneration_job" j
-                     where j."batchId" = b."id" and j."state" = 'cancelled')
-      returning b."id", b."label", b."source", b."lang",
-                (select count(*)::int from "regeneration_job" j
-                  where j."batchId" = b."id" and j."state" = 'cancelled') as "cancelled"`,
-    [because, batchId, langs],
+  let cancelled = 0;
+  const stopped: { id: string; label: string; source: Source; lang: Lang; cancelled: number }[] = [];
+  // One team at a time, each as itself: a Stop across languages is several teams' queues.
+  for (const [team, langs] of teams) {
+    await withTeam(team, async (client) => {
+      const { rowCount } = await client.query(
+        `update "regeneration_job" set "state" = 'cancelled', "finishedAt" = now()
+          where "state" = 'pending'
+            and ($1::uuid is null or "batchId" = $1)
+            and "lang" = any($2)`,
+        [batchId, langs],
+      );
+      cancelled += rowCount ?? 0;
+
+      // Only batches that actually lost work are stamped. Stamping every unstopped batch would
+      // put "Stopped by an admin" on ones that had already finished cleanly, and the panel reads
+      // the most recent reason it can find.
+      const { rows } = await client.query<(typeof stopped)[number]>(
+        `update "regeneration_batch" as b
+            set "stoppedAt" = now(), "stoppedBecause" = $1
+          where b."stoppedAt" is null
+            and ($2::uuid is null or b."id" = $2)
+            and b."lang" = any($3)
+            and exists (select 1 from "regeneration_job" j
+                         where j."batchId" = b."id" and j."state" = 'cancelled')
+          returning b."id", b."label", b."source", b."lang",
+                    (select count(*)::int from "regeneration_job" j
+                      where j."batchId" = b."id" and j."state" = 'cancelled') as "cancelled"`,
+        [because, batchId, langs],
+      );
+      stopped.push(...rows);
+    });
+  }
+  await recordActivities(stopEvents(stopped, because, scope.by ?? null));
+
+  return cancelled;
+}
+
+/**
+ * The log rows for one Stop. One press stops every batch with work waiting, and a batch
+ * per Regenerate click is a batch of one or two lines, so one press was a screenful of
+ * "stopped a batch" rows. Several batches in a language are one "queue.stopped" row, with
+ * each batch's row carrying its group id for the page to fold, as cleared marks are
+ * (migration 0057). One statement, so a group row never lands without its batches.
+ */
+function stopEvents(
+  stopped: { id: string; label: string; source: Source; lang: Lang; cancelled: number }[],
+  reason: string,
+  actorId: string | null,
+): ActivityEvent[] {
+  const byLang = new Map<Lang, typeof stopped>();
+  for (const batch of stopped) {
+    const batches = byLang.get(batch.lang);
+    if (batches) batches.push(batch);
+    else byLang.set(batch.lang, [batch]);
+  }
+
+  return [...byLang.entries()].flatMap(([lang, batches]) => {
+    const groupId = batches.length > 1 ? randomUUID() : null;
+    const sources = new Set(batches.map((batch) => batch.source));
+    const group: ActivityEvent[] = groupId
+      ? [
+          {
+            kind: "queue.stopped",
+            lang,
+            // A press can stop quests and places batches alike; the row then names neither.
+            source: sources.size === 1 ? batches[0].source : null,
+            actorId,
+            detail: {
+              groupId,
+              batches: batches.length,
+              cancelled: batches.reduce((sum, batch) => sum + batch.cancelled, 0),
+              reason,
+            },
+          },
+        ]
+      : [];
+    return [
+      ...group,
+      ...batches.map(
+        (batch): ActivityEvent => ({
+          kind: "batch.stopped",
+          lang,
+          source: batch.source,
+          subject: batch.id,
+          actorId,
+          detail: {
+            batchId: batch.id,
+            label: batch.label,
+            reason,
+            cancelled: batch.cancelled,
+            ...(groupId ? { groupId } : {}),
+          },
+        }),
+      ),
+    ];
+  });
+}
+
+/**
+ * Stop claiming work in these languages until they are resumed.
+ *
+ * Jobs already running finish, as they do on Stop: their characters are at the provider and
+ * billed either way. Pending work stays pending, and keeps its files under the credit guard.
+ *
+ * Answers with the languages this call paused, leaving out any already paused, so the
+ * activity log records one pause per press that changed something rather than one per click.
+ */
+export async function pauseQueue(langs: readonly Lang[], by: string | null): Promise<Lang[]> {
+  const paused = await eachTeam(langs, (client, own) =>
+    client.query<{ lang: Lang }>(
+      `insert into "regeneration_pause" ("lang", "pausedBy")
+       select unnest($1::text[]), $2
+       on conflict ("teamId", "lang") do nothing
+       returning "lang"`,
+      [own, by],
+    ),
   );
   await recordActivities(
-    stopped.map((batch) => ({
-      kind: "batch.stopped" as const,
-      lang: batch.lang,
-      source: batch.source,
-      subject: batch.id,
-      actorId: scope.by ?? null,
-      detail: { batchId: batch.id, label: batch.label, reason: because, cancelled: batch.cancelled },
-    })),
+    paused.map((lang) => ({ kind: "queue.paused" as const, lang, actorId: by, detail: {} })),
   );
+  return paused;
+}
 
-  return rowCount ?? 0;
+/** Lift the pause on these languages. Answers with the ones that were paused. */
+export async function resumeQueue(langs: readonly Lang[], by: string | null): Promise<Lang[]> {
+  const resumed = await eachTeam(langs, (client, own) =>
+    client.query<{ lang: Lang }>(
+      `delete from "regeneration_pause" where "lang" = any($1::text[]) returning "lang"`,
+      [own],
+    ),
+  );
+  await recordActivities(
+    resumed.map((lang) => ({ kind: "queue.resumed" as const, lang, actorId: by, detail: {} })),
+  );
+  return resumed;
+}
+
+/**
+ * `statement` once per team owning some of `langs`, as that team, with its languages; the
+ * languages it answers, in the order they were asked. A language nobody owns has no queue,
+ * so it is skipped.
+ */
+async function eachTeam(
+  langs: readonly Lang[],
+  statement: (client: PoolClient, own: Lang[]) => Promise<{ rows: { lang: Lang }[] }>,
+): Promise<Lang[]> {
+  const answered = new Set<Lang>();
+  for (const [team, own] of await byTeam(langs)) {
+    const { rows } = await withTeam(team, (client) => statement(client, own));
+    for (const row of rows) answered.add(row.lang);
+  }
+  return langs.filter((lang) => answered.has(lang));
 }
 
 /**
@@ -405,8 +565,8 @@ export async function cancelPending(
  * `pending` after Stop ran would be claimed and paid for later, which is not what the person
  * who pressed it asked for.
  */
-export async function batchStopped(batchId: string): Promise<boolean> {
-  const { rows } = await db().query<{ stopped: boolean }>(
+export async function batchStopped(batchId: string, client: Queryable): Promise<boolean> {
+  const { rows } = await client.query<{ stopped: boolean }>(
     `select "stoppedAt" is not null as stopped from "regeneration_batch" where "id" = $1`,
     [batchId],
   );
@@ -424,7 +584,15 @@ type JobAggregateRow = {
   unpriced: string;
   running: { source: Source; lang: Lang; lineId: string; npcName: string; preview: string }[];
   failures: { source: Source; lang: Lang; lineId: string; message: string }[];
-  queues: { owner: string | null; name: string; pending: number; running: number; rank: number }[];
+  queues: {
+    owner: string | null;
+    name: string;
+    pending: number;
+    running: number;
+    /** Null when everything the owner has left is in a paused language. */
+    rank: number | null;
+  }[];
+  paused: { lang: Lang; pausedAt: string; by: string | null }[];
   finished: { id: string; source: Source; lang: Lang; lineId: string; file: string; version: number }[];
   cursor: string | null;
   through: string | null;
@@ -448,12 +616,16 @@ type JobAggregateRow = {
  *
  * Takes the id rather than reading the maximum itself, so what is dismissed is what the panel
  * was showing when the X was pressed. A job that finished in between stays news.
+ *
+ * Each team keeps its own mark. The one panel every team watches (snapshot) is cut at the
+ * latest of them, so a dismissal still hides the news for everybody.
  */
-export async function dismissThrough(jobId: string, userId: string | null): Promise<void> {
-  await db().query(
-    `insert into "queue_dismissal" ("id", "throughJobId", "dismissedBy")
-     values (true, $1, $2)
-     on conflict ("id") do update
+export async function dismissThrough(jobId: string, userId: string | null, lang: Lang): Promise<void> {
+  await queryAs(
+    lang,
+    `insert into "queue_dismissal" ("throughJobId", "dismissedBy")
+     values ($1, $2)
+     on conflict ("teamId") do update
         set "throughJobId" = greatest("queue_dismissal"."throughJobId", excluded."throughJobId"),
             "dismissedAt" = now(),
             "dismissedBy" = excluded."dismissedBy"`,
@@ -463,10 +635,14 @@ export async function dismissThrough(jobId: string, userId: string | null): Prom
 
 export async function snapshot(
   since: string | null,
-  options: { viewerId?: string | null; maxActive?: number } = {},
+  options: { viewerId?: string | null; maxActive?: number; linesOf?: string } = {},
 ): Promise<QueueSnapshot> {
   const maxActive = options.maxActive ?? maxActiveFrom(process.env.QUEUE_MAX_ACTIVE);
   const viewerId = options.viewerId ?? null;
+  // Whose running lines and failures to list: one owner's, or everybody's when unset. The
+  // counts and the per-person queues stay whole either way, so a waiting batch still says
+  // what it is waiting behind - only what is being said, and why it failed, is private.
+  const linesOf = options.linesOf ?? null;
   // Live work first, then whatever finished recently: the two halves of what the panel is
   // for. Never just the age, for the reason WINDOW records.
   //
@@ -479,10 +655,12 @@ export async function snapshot(
     `("state" in ('pending', 'running') or ("queuedAt" > now() - interval '${WINDOW}' ` +
     `and "id" > (select through from dismissal)))`;
 
-  const [job, latest] = await Promise.all([
-    db().query<JobAggregateRow>(
+  // As ALL_TEAMS: one panel shows every team's queue.
+  const [[row], [latestBatch]] = await Promise.all([
+    queryIn<JobAggregateRow>(
+      ALL_TEAMS,
       `with dismissal as (
-         select coalesce((select "throughJobId" from "queue_dismissal" where "id"), 0) as through
+         select coalesce((select max("throughJobId") from "queue_dismissal"), 0) as through
        ),
        job_counts as (
          select
@@ -500,11 +678,13 @@ export async function snapshot(
        ),
        running_jobs as (
          select "source", "lang", "lineId", "npcName", "preview" from "regeneration_job"
-          where "state" = 'running' order by "id" limit 20
+          where "state" = 'running' and ($2::text is null or "owner" = $2)
+          order by "id" limit 20
        ),
        recent_failures as (
          select "source", "lang", "lineId", "error" as message from "regeneration_job"
-          where "state" = 'failed' and ${window} order by "id" desc limit 20
+          where "state" = 'failed' and ${window} and ($2::text is null or "owner" = $2)
+          order by "id" desc limit 20
        ),
        finished_page as (
          select "id"::text as "id", "source", "lang", "lineId", "file", "version" from "regeneration_job"
@@ -517,7 +697,10 @@ export async function snapshot(
           where "state" in ('done', 'failed') and "id" > (select through from dismissal)
        ),
        queue_owners as (
-         select "owner", min("id") as first,
+         -- Ranked by the oldest job the worker may claim, as activeLanes ranks them, so a
+         -- queue whose work is all paused has no place rather than one it is not using.
+         select "owner",
+                min("id") filter (where ${UNPAUSED}) as first,
                 count(*) filter (where "state" = 'pending')::int as pending,
                 count(*) filter (where "state" = 'running')::int as running
            from "regeneration_job"
@@ -526,9 +709,14 @@ export async function snapshot(
        ),
        ranked_queues as (
          select q."owner", coalesce(u."name", 'Deleted account') as name, q.pending, q.running,
-                (row_number() over (order by q.first) - 1)::int as rank
+                case when q.first is not null
+                     then (row_number() over (order by q.first nulls last) - 1)::int end as rank
            from queue_owners q
            left join "user" u on u."id" = q."owner"
+       ),
+       pauses as (
+         select p."lang", p."pausedAt", u."name" as by from "regeneration_pause" p
+           left join "user" u on u."id" = p."pausedBy"
        ),
        shown as (
          select max("id")::text as max from "regeneration_job"
@@ -539,13 +727,16 @@ export async function snapshot(
          coalesce((select json_agg(r) from running_jobs r), '[]') as running,
          coalesce((select json_agg(f) from recent_failures f), '[]') as failures,
          coalesce((select json_agg(p) from finished_page p), '[]') as finished,
-         coalesce((select json_agg(r order by r.rank) from ranked_queues r), '[]') as queues,
+         coalesce((select json_agg(r order by r.rank nulls last, r.name) from ranked_queues r), '[]')
+           as queues,
+         coalesce((select json_agg(p order by p."lang") from pauses p), '[]') as paused,
          (select max from terminal) as cursor,
          (select max from shown) as through
        from job_counts jc`,
-      [since],
+      [since, linesOf],
     ),
-    db().query<{ stoppedBecause: string | null; cancelled: string }>(
+    queryIn<{ stoppedBecause: string | null; cancelled: string }>(
+      ALL_TEAMS,
       `select b."stoppedBecause",
               (select count(*)::text from "regeneration_job" j
                 where j."batchId" = b."id" and j."state" = 'cancelled') as cancelled
@@ -553,7 +744,6 @@ export async function snapshot(
     ),
   ]);
 
-  const row = job.rows[0];
   const finished = row.finished;
 
   return {
@@ -570,19 +760,20 @@ export async function snapshot(
     unpriced: Number(row.unpriced),
     running: row.running,
     failures: row.failures,
-    latestBatch: latest.rows[0]
+    latestBatch: latestBatch
       ? {
-          cancelled: Number(latest.rows[0].cancelled),
-          stoppedBecause: latest.rows[0].stoppedBecause,
+          cancelled: Number(latestBatch.cancelled),
+          stoppedBecause: latestBatch.stoppedBecause,
         }
       : null,
+    paused: row.paused,
     queues: row.queues.map((queue) => ({
       owner: queue.owner,
       name: queue.name,
       pending: queue.pending,
       running: queue.running,
-      status: queue.rank < maxActive ? "active" : "waiting",
-      ahead: queue.rank < maxActive ? 0 : queue.rank,
+      status: queue.rank === null ? "paused" : queue.rank < maxActive ? "active" : "waiting",
+      ahead: queue.rank === null || queue.rank < maxActive ? 0 : queue.rank,
       mine: viewerId !== null && queue.owner === viewerId,
     })),
     finished,

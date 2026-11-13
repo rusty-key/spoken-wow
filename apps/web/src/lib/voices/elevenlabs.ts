@@ -7,8 +7,7 @@
  * `fetch` and the base URL are both injectable: no test should need an ElevenLabs account,
  * and none should ever spend money.
  */
-import { parseCloneName } from "./clone-name";
-import { isVoiceSlot } from "./slots";
+import { slotClones } from "./slots";
 
 export const DEFAULT_BASE_URL = "https://api.elevenlabs.io";
 
@@ -60,15 +59,75 @@ export async function listVoices(options: ElevenLabsOptions = {}): Promise<Map<s
 
   const body = (await response.json()) as { voices?: { name?: string; voice_id?: string }[] };
 
-  const found = new Map<string, string>();
-  for (const voice of body.voices ?? []) {
-    // Stock voices are skipped rather than reported: their names ("Roger - Laid-Back,
-    // Casual, Resonant") cannot express a race-gender mapping, so they are not candidates.
-    if (!voice.name || !voice.voice_id) continue;
-    const clone = parseCloneName(voice.name);
-    if (clone && (await isVoiceSlot(clone.voice))) found.set(voice.name, voice.voice_id);
-  }
-  return found;
+  const named = (body.voices ?? []).flatMap((voice) =>
+    voice.name && voice.voice_id ? [{ name: voice.name, id: voice.voice_id }] : [],
+  );
+  // Stock voices are skipped rather than reported: their names ("Roger - Laid-Back,
+  // Casual, Resonant") cannot express a race-gender mapping, so they are not candidates.
+  const slotted = await slotClones(named.map((voice) => voice.name));
+  return new Map(named.filter((voice) => slotted.has(voice.name)).map((voice) => [voice.name, voice.id]));
+}
+
+/** A voice in the account, whatever it is called: what the picker offers to fill a slot with. */
+export type AccountVoice = {
+  voiceId: string;
+  name: string;
+  /** ElevenLabs' own: "cloned", "generated", "professional", "premade" and so on. */
+  category: string;
+};
+
+/**
+ * Every voice in the account, slot-named or not, by name.
+ *
+ * listVoices is the roster; this is the account as the ElevenLabs dashboard shows it, so a
+ * voice designed or added from the library there can be adopted into a slot (renameVoice).
+ */
+export async function listAccountVoices(options: ElevenLabsOptions = {}): Promise<AccountVoice[]> {
+  const { apiKey, baseUrl, fetchImpl } = config(options);
+
+  const response = await fetchImpl(`${baseUrl}/v1/voices`, {
+    headers: { "xi-api-key": apiKey },
+    cache: "no-store",
+  });
+  if (!response.ok) throw await failure(response, "listing ElevenLabs voices");
+
+  const body = (await response.json()) as {
+    voices?: { name?: string; voice_id?: string; category?: string }[];
+  };
+  return (body.voices ?? [])
+    .flatMap((voice) =>
+      voice.name && voice.voice_id
+        ? [{ voiceId: voice.voice_id, name: voice.name, category: voice.category ?? "unknown" }]
+        : [],
+    )
+    .sort((a, b) => a.name.localeCompare(b.name));
+}
+
+/**
+ * Premade voices are ElevenLabs' own and cannot be edited, so they cannot take a slot's name.
+ * Their ids are shared by every account, which is what binding one would need instead.
+ */
+export function isRenamable(voice: AccountVoice): boolean {
+  return voice.category !== "premade";
+}
+
+/** Rename a voice in the account. Only the name changes: samples and settings stay. */
+export async function renameVoice(
+  voiceId: string,
+  name: string,
+  options: ElevenLabsOptions = {},
+): Promise<void> {
+  const { apiKey, baseUrl, fetchImpl } = config(options);
+
+  // The edit endpoint takes multipart only, even with no files in it.
+  const form = new FormData();
+  form.append("name", name);
+  const response = await fetchImpl(`${baseUrl}/v1/voices/${voiceId}/edit`, {
+    method: "POST",
+    headers: { "xi-api-key": apiKey },
+    body: form,
+  });
+  if (!response.ok) throw await failure(response, `renaming voice ${voiceId} to "${name}"`);
 }
 
 /**
@@ -167,9 +226,8 @@ export type Clip = { name: string; data: Buffer };
 /**
  * Create an instant voice clone.
  *
- * Background noise removal is always on: the clips are extracted game audio, which carries
- * music beds and ambience, and similarity_boost at synthesis time reproduces whatever is in
- * the source — including the tavern behind the innkeeper.
+ * Background noise removal is always on: the clips can carry music beds and ambience, and
+ * similarity_boost at synthesis time reproduces whatever is in the source.
  */
 export async function addVoice(
   name: string,
@@ -236,6 +294,12 @@ export async function createPronunciationDictionary(
   return { dictionaryId: body.id, versionId: body.version_id };
 }
 
+/** Not 401, which is a key missing the permission and would fail again on a dictionary of its own. */
+const UNREADABLE_STATUSES = new Set([400, 403, 404, 422]);
+
+/** The id is not one this key's account can use, as opposed to the read having failed. */
+export class DictionaryUnreadable extends Error {}
+
 /** What a stored dictionary holds right now: its newest version, and the rules in it. */
 export type StoredDictionary = { latestVersionId: string; ruleStrings: string[] };
 
@@ -257,7 +321,10 @@ export async function readDictionary(
     headers: { "xi-api-key": apiKey },
     cache: "no-store",
   });
-  if (!response.ok) throw await failure(response, `reading pronunciation dictionary ${dictionaryId}`);
+  if (!response.ok) {
+    const error = await failure(response, `reading pronunciation dictionary ${dictionaryId}`);
+    throw UNREADABLE_STATUSES.has(response.status) ? new DictionaryUnreadable(error.message) : error;
+  }
 
   const body = (await response.json()) as {
     latest_version_id?: string;

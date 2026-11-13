@@ -6,7 +6,7 @@
  *
  * KEYED ON (source, file), not on a line id. That is what `take_current_idx` is on, and it
  * is the honest key on all three sides: 1,192 quests files are spoken by more than one NPC,
- * so "the takes of this line" is really "the takes of this file". Zones and books give
+ * so "the takes of this line" is really "the takes of this file". Places and readables give
  * every line a file of its own, which is a special case of the same thing.
  *
  * Behind requireRegenerate, as the quests versions route was: a take history is the shape
@@ -29,9 +29,9 @@ export async function GET(request: Request) {
   const file = params.get("file");
 
   if (!isSource(source)) {
-    return Response.json({ error: "source must be quests, zones or books" }, { status: 400 });
+    return Response.json({ error: "source must be quests, places, readables or bosses" }, { status: 400 });
   }
-  if (!file || !(await isAddressableFile(source, file))) {
+  if (!file || !(await isAddressableFile(source, file, lang))) {
     return Response.json({ error: "unknown file" }, { status: 404 });
   }
 

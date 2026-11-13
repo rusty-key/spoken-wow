@@ -22,6 +22,7 @@
 
 import { BASE_LANG, type Lang } from "./lang";
 import { speakPlayerTokens } from "./player-words";
+import { isModelVoice } from "./voices/voices";
 
 /** Kept as a string, character for character, so the two files can be diffed by eye. */
 export const INVALID_CHARS = "$<>";
@@ -36,8 +37,15 @@ export const INVALID_CHARS = "$<>";
  */
 const DIRECTION = /<[^<>]*>/g;
 
+const DIRECTION_SPACED = new RegExp(String.raw`\s*` + DIRECTION.source, "g");
+
+/** `text` as spoken; `spaceBefore` also takes the space before each direction, so none is left doubled. */
+export function withoutDirections(text: string, spaceBefore = false): string {
+  return text.replace(spaceBefore ? DIRECTION_SPACED : DIRECTION, "");
+}
+
 export function hasInvalidChars(text: string): boolean {
-  const spoken = text.replace(DIRECTION, "");
+  const spoken = withoutDirections(text);
   return [...INVALID_CHARS].some((c) => spoken.includes(c));
 }
 
@@ -51,15 +59,30 @@ export function hasInvalidChars(text: string): boolean {
  * English, shown so the explorer has something to show, and voicing it would file an English
  * recording under another language.
  */
-export function isVoiceable(
-  line: { skipReason: string | null; lang?: Lang; playerGender?: "m" | "f" | null },
-  effectiveText: string,
-): boolean {
-  if (line.skipReason === "untranslated") return false;
+export function isVoiceable(line: GatedLine, effectiveText: string): boolean {
+  return unvoicedReason(line, effectiveText) === null;
+}
+
+type GatedLine = {
+  skipReason: string | null;
+  voice?: string;
+  lang?: Lang;
+  playerGender?: "m" | "f" | null;
+};
+
+export type UnvoicedReason = "untranslated" | "no-voice" | "invalid-chars";
+
+/** Why isVoiceable says no, or null when it says yes. */
+export function unvoicedReason(line: GatedLine, effectiveText: string): UnvoicedReason | null {
+  if (line.skipReason === "untranslated") return "untranslated";
+  // A model slot has no voice chosen yet (voices.ts isModelVoice). Asked of the voice rather
+  // than of the corpus's "no-voice" skipReason, because a translation's row carries its own
+  // skipReason, decided from its text alone, and would otherwise be voiced in English's stead.
+  if (line.voice !== undefined && isModelVoice(line.voice)) return "no-voice";
   // Judged on what would be sent: a translation's $N is spoken as its language's word
   // (player-words.ts), so it is not what stops the line.
   const spoken = speakPlayerTokens(effectiveText, line.lang ?? BASE_LANG, line.playerGender ?? null);
-  return !hasInvalidChars(spoken);
+  return hasInvalidChars(spoken) ? "invalid-chars" : null;
 }
 
 /**

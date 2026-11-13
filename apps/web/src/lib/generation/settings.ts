@@ -9,10 +9,15 @@
  * Validation mirrors save_generation in tts_cli/voice_config.py. It lives on the write path
  * rather than the read path on purpose: a value already in the database is a fact, and
  * refusing to read it would take the settings page down exactly when it is needed to fix it.
+ *
+ * Every team has a base generation_setting row, and a language's own locale row is its team's
+ * too. A language nobody has configured reads its team's base, never another team's row.
  */
 import { recordActivity } from "@/lib/activity/store";
-import { db } from "@/lib/db";
+import { ALL_TEAMS, queryIn, TEAM_ROWS } from "@/lib/db";
 import { BASE_LANG, type Lang } from "@/lib/lang";
+import { bareDirection } from "@/lib/generation/narration";
+import { queryAs, readAs, teamOrEnglish } from "@/lib/teams/store";
 
 import {
   isSeedStrategy,
@@ -46,14 +51,21 @@ type Row = {
 
 export async function readSettings(lang: Lang = BASE_LANG): Promise<EffectiveSettings> {
   if (lang !== BASE_LANG) return readLanguageSettings(lang);
-  const defaults = fileDefaults().config;
+  return baseSettings(await readBase(BASE_LANG));
+}
 
-  const { rows } = await db().query<Row>(
+/** The base row of the team that owns `lang`, or English's for a language nobody owns. */
+async function readBase(lang: Lang): Promise<Row | undefined> {
+  const rows = await queryIn<Row>(
+    await teamOrEnglish(lang),
     `select "modelId", "voiceSettings", "seedStrategy", "raceTags", "updatedAt", "updatedBy"
-       from "generation_setting" where "id"`,
+       from "generation_setting" where ${TEAM_ROWS}`,
   );
+  return rows[0];
+}
 
-  const row = rows[0];
+function baseSettings(row: Row | undefined): EffectiveSettings {
+  const defaults = fileDefaults().config;
   if (!row) {
     return { config: defaults, source: "file", defaults, updatedAt: null, updatedBy: null };
   }
@@ -78,16 +90,17 @@ export async function readSettings(lang: Lang = BASE_LANG): Promise<EffectiveSet
 }
 
 /**
- * Another language's settings: its own row, or English's until somebody saves one.
+ * Another language's settings: its own row, or its team's base until somebody saves one.
  *
- * English's without the accent tags, though. A tag like "[Scottish accent]" is a direction
+ * The base without the accent tags, though. A tag like "[Scottish accent]" is a direction
  * about how English is spoken, and a language that has not chosen its own should not start
  * with someone else's.
  */
 async function readLanguageSettings(lang: Lang): Promise<EffectiveSettings> {
-  const [english, { rows }] = await Promise.all([
-    readSettings(BASE_LANG),
-    db().query<Row>(
+  const [english, rows] = await Promise.all([
+    readBase(lang).then(baseSettings),
+    readAs<Row>(
+      lang,
       `select "modelId", "voiceSettings", "seedStrategy", "raceTags", "updatedAt", "updatedBy"
          from "generation_setting_locale" where "lang" = $1`,
       [lang],
@@ -177,10 +190,10 @@ export function validateConfig(input: unknown): GenerationConfig {
 /**
  * The accent directions, checked for the ways a tag can quietly do the wrong thing.
  *
- * Shape only: the race keys are not checked against the corpus. Validating them would mean
- * loading the corpus on every settings write, and the form offers the races it already knows
- * from facets, so a name no line carries is not reachable through the UI - it would simply
- * match nothing, which is the same as not setting it.
+ * Shape only: the keys - a race, or one voice slot of it - are not checked against the
+ * corpus. Validating them would mean loading the corpus on every settings write, and the form
+ * offers only the races and slots on the roster, so a name no line carries is not reachable
+ * through the UI - it would simply match nothing, which is the same as not setting it.
  */
 export function validateRaceTags(raw: unknown): Record<string, string> {
   if (!raw || typeof raw !== "object" || Array.isArray(raw)) {
@@ -191,15 +204,36 @@ export function validateRaceTags(raw: unknown): Record<string, string> {
   for (const [race, tag] of Object.entries(raw as Record<string, unknown>)) {
     if (typeof tag !== "string") throw new SettingsError(`the ${race} tag must be a string`);
     const trimmed = tag.trim();
-    if (!trimmed) throw new SettingsError(`the ${race} tag is empty; remove it instead`);
+    if (!bareDirection(trimmed)) {
+      throw new SettingsError(`the ${race} tag is empty; remove it instead`);
+    }
     // narration.ts splits speech from stage directions on angle brackets, so a tag carrying
     // one would be read by the narrator rather than tagging the race it belongs to.
     if (/[<>]/.test(trimmed)) {
       throw new SettingsError(`the ${race} tag must not contain an angle bracket`);
     }
-    tags[race] = trimmed;
+    tags[race] = storedDirection(trimmed, race);
   }
   return tags;
+}
+
+/**
+ * A direction as typed, in the square brackets eleven_v3 performs rather than reads.
+ *
+ * The brackets are added here rather than at generation, so the stored form - and so every
+ * spoken text and take hash made from it - is what it was when people typed them by hand.
+ * Rewriting the rows bare instead would need a migration the release before this one cannot
+ * read: it would send "Scottish accent" to be spoken aloud.
+ *
+ * A value already bracketed is kept as it is: the form sends the whole map on every save,
+ * other entries included, and one typed before this change may be "[fast] [nasal]".
+ */
+function storedDirection(tag: string, key: string): string {
+  if (tag.startsWith("[") && tag.endsWith("]")) return tag;
+  if (/[[\]]/.test(tag)) {
+    throw new SettingsError(`the ${key} tag must not contain a square bracket; they are added for you`);
+  }
+  return `[${tag}]`;
 }
 
 /**
@@ -214,11 +248,12 @@ async function upsertLanguage(
   columns: ("modelId" | "voiceSettings" | "seedStrategy" | "raceTags")[],
 ): Promise<void> {
   const set = columns.map((column) => `"${column}" = excluded."${column}"`).join(", ");
-  await db().query(
+  await queryAs(
+    lang,
     `insert into "generation_setting_locale"
        ("lang", "modelId", "voiceSettings", "seedStrategy", "raceTags", "updatedAt", "updatedBy")
      values ($1, $2, $3, $4, $5, now(), $6)
-     on conflict ("lang") do update set
+     on conflict ("teamId", "lang") do update set
        ${set}, "updatedAt" = excluded."updatedAt", "updatedBy" = excluded."updatedBy"`,
     [
       lang,
@@ -261,12 +296,14 @@ export async function writeRaceTags(
     await recordRaceTags(lang, updatedBy);
     return;
   }
+  // Every team's base, as one: each began as a copy of English's, so an edit keeps them alike.
   const defaults = fileDefaults().config;
-  await db().query(
+  await queryIn(
+    ALL_TEAMS,
     `insert into "generation_setting"
-       ("id", "modelId", "voiceSettings", "seedStrategy", "raceTags", "updatedAt", "updatedBy")
-     values (true, $1, $2, $3, $4, now(), $5)
-     on conflict ("id") do update set
+       ("teamId", "modelId", "voiceSettings", "seedStrategy", "raceTags", "updatedAt", "updatedBy")
+     select "id", $1, $2, $3, $4, now(), $5 from "team"
+     on conflict ("teamId") do update set
        "raceTags"  = excluded."raceTags",
        "updatedAt" = excluded."updatedAt",
        "updatedBy" = excluded."updatedBy"`,

@@ -1,0 +1,10 @@
+!SPOKEN1 places
+addon=SpokenZones/2.0.1
+build=11509
+locale=enUS
+map=1537
+zone=Ironforge
+subzone=A Nook With No Lore
+x=0.55
+y=0.47
+sum=1366446420

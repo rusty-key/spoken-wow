@@ -6,14 +6,30 @@
  * body is msgpack -- fish.audio takes inline references only as msgpack, never JSON.
  *
  * Several speakers are one request, not several: the turns are joined with fish.audio's
- * `<|speaker:N|>` tags and it returns one file. Stitching separate files would measure wrong
- * for the reason tts.ts gives for ElevenLabs' dialogue endpoint.
+ * `<|speaker:N|>` tags and it returns one file.
+ *
+ * Several paragraphs are several requests. fish.audio's S2 models fill a paragraph break
+ * with a sound nobody wrote -- a laugh, a moan, a mumble -- in roughly a third of takes, and
+ * flattening the break removes the sound and the pause with it: fish.audio pauses no longer
+ * there than at any full stop, and neither [pause] nor [long pause] changes that. So each
+ * paragraph is spoken on its own and the parts are joined with a silence of our choosing
+ * (stitch.ts, which re-encodes, so the result measures right).
  */
 import { encode } from "@msgpack/msgpack";
 
 import { fishConfig, type FishOptions } from "@/lib/voices/fish";
 
 import { classifyFish, failure, type Failure } from "./errors";
+import { PARAGRAPH_BREAK } from "./speakers/shape";
+import { stitchMp3 } from "./stitch";
+
+/**
+ * The silence between two paragraphs, in seconds.
+ *
+ * fish.audio leaves about 0.06 s of silence at the start of a take and none at the end, so
+ * this is very nearly the pause heard. A full stop inside a paragraph pauses about 0.47 s.
+ */
+export const PARAGRAPH_PAUSE_SEC = 0.9;
 
 /** 10-30 seconds of one voice, and exactly what is said in it. */
 export type FishReference = { audio: Buffer; text: string };
@@ -52,10 +68,10 @@ export function buildFishPayload(request: FishSpeechRequest): Record<string, unk
   const single = request.references.length === 1;
   return {
     text: fishText(request),
-    // fish.audio takes a list of clips for one speaker and a list of lists for several, which
-    // it pairs with reference_id by position. The ids themselves may be anything for zero-shot.
+    // fish.audio takes a list of clips for one speaker and a list of lists for several, the
+    // outer index being the N of `<|speaker:N|>`. No reference_id: fish.audio looks every id
+    // up as a saved model and answers 400 "Reference not found" for anything else.
     references: single ? request.references : request.references.map((clip) => [clip]),
-    ...(single ? {} : { reference_id: request.references.map((_, index) => String(index)) }),
     temperature: settings.temperature,
     top_p: settings.topP,
     prosody: { speed: settings.speed },
@@ -74,9 +90,70 @@ export type FishSpeechResult =
   | { ok: true; audio: Buffer; bytes: number }
   | { ok: false; failure: Failure };
 
+/**
+ * The request as one request per paragraph, in order.
+ *
+ * A turn with a break in it is cut there, so a paragraph may hold the ends of several turns.
+ * Each part carries only the references its own turns use, renumbered from 0, because
+ * fish.audio reads `<|speaker:N|>` against the references it is sent, and a part spoken by
+ * one voice is then sent bare, as a single-speaker line always is.
+ */
+export function paragraphs(request: FishSpeechRequest): FishSpeechRequest[] {
+  const parts: FishSpeechRequest["turns"][] = [[]];
+  for (const turn of request.turns) {
+    turn.text.split(PARAGRAPH_BREAK).forEach((piece, i) => {
+      if (i > 0) parts.push([]);
+      const text = piece.trim();
+      if (text) parts[parts.length - 1].push({ text, speaker: turn.speaker });
+    });
+  }
+  return parts
+    .filter((turns) => turns.length > 0)
+    .map((turns) => {
+      const used = [...new Set(turns.map((turn) => turn.speaker))];
+      return {
+        turns: turns.map((turn) => ({ text: turn.text, speaker: used.indexOf(turn.speaker) })),
+        references: used.map((speaker) => request.references[speaker]),
+        settings: request.settings,
+      };
+    });
+}
+
+/**
+ * The line, spoken: one request per paragraph, one after another, joined into one mp3.
+ *
+ * In turn rather than at once, because fish.audio limits the requests an account has in
+ * flight and the batch's concurrency is already set to that limit. Any part failing fails the
+ * line: half a line is not a take. The bytes are every part's, which is what is billed.
+ */
 export async function fishSpeech(
   request: FishSpeechRequest,
-  options: FishOptions = {},
+  options: FishOptions & { stitch?: typeof stitchMp3 } = {},
+): Promise<FishSpeechResult> {
+  const parts = paragraphs(request);
+  if (parts.length <= 1) return speakOnce(parts[0] ?? request, options);
+
+  const audio: Buffer[] = [];
+  let bytes = 0;
+  for (const part of parts) {
+    const spoken = await speakOnce(part, options);
+    if (!spoken.ok) return spoken;
+    audio.push(spoken.audio);
+    bytes += spoken.bytes;
+  }
+  try {
+    return { ok: true, audio: await (options.stitch ?? stitchMp3)(audio, PARAGRAPH_PAUSE_SEC), bytes };
+  } catch (error) {
+    return {
+      ok: false,
+      failure: failure("upstream", error instanceof Error ? error.message : String(error)),
+    };
+  }
+}
+
+async function speakOnce(
+  request: FishSpeechRequest,
+  options: FishOptions,
 ): Promise<FishSpeechResult> {
   if (!options.apiKey) {
     // "auth" because it is fatal to a batch: every later job would fail the same way.

@@ -1,62 +1,89 @@
 ---
 curseforge: 1700375
 wago: QN53yXKB
-slug: spoken-player
-name: Spoken Player
-summary: The voice player every Spoken addon speaks through: one queue, one window, one minimap button.
+slug: spoken
+name: Spoken
+summary: Expressive, character-driven AI voiceover for WoW Forever. Quest dialogue, NPC gossip, zone lore and books, read aloud. Spoken Quests, Gossip, Places and Readables in one download.
 categories:
   - Audio & Video
   - Roleplay
   - Miscellaneous
 license: MIT
+addonReadme: addons/Spoken/README.md
 ---
 
-**The voice player every Spoken addon speaks through.** One queue, one window, one minimap button — whichever Spoken addons you install.
+**Expressive, character-driven AI voiceover for WoW Forever.** NPCs speak their quest text and gossip, places tell their stories, and books read themselves aloud.
 
-This addon plays nothing by itself. It is installed automatically as a dependency of:
+Spoken is made and tested on WoW Forever. It also installs on Classic Era and Anniversary, as it is.
 
-| Addon | Voices |
-| --- | --- |
-| [Spoken Quests](https://www.curseforge.com/wow/addons/spoken-quests) | quest dialogue and NPC gossip (formerly VoiceOver Redux) |
-| [Spoken Zones](https://www.curseforge.com/wow/addons/spoken-zones) | zone and subzone lore (formerly ZoneLore) |
-| [Spoken Books](https://www.curseforge.com/wow/addons/spoken-books) | books, letters, notes and the plaques out in the world |
+**Voiced with care:**
 
-Install one of those and your addon manager brings Spoken Player with it. Installing by hand? Get this too, or the addons above will load and tell you what is missing.
+- **Voices fit the character**, not just race and gender: a dwarf warrior and a dwarf official don't sound alike.
+- **A narrator** reads quests from objects such as wanted posters, and stage directions like `<Advisor Belgrum opens the note.>`
+- **Sounds are performed**, not spelled out: `*hic*` is a hiccup, not "asterisk hic asterisk".
+- **Names and places are pronounced right**, from a pronunciation dictionary.
+- **A more natural performance** throughout.
 
-## What it does
+## What's inside
 
-- **One queue.** Quest lines, zone narration and the book you are reading wait their turn behind each other; nothing interrupts anything. NPC gossip yields to a queued quest line, and a book queued whole reads on while you walk away from it.
-- **One window.** Who is speaking, what is waiting, pause, and each addon's own buttons — Read and Report for lore, Report and Stop Gossip for quests, Report for a page of a book. Movable, resizable, lockable; or hide the portrait, or the whole window.
-- **Two layouts.** **Minimal Classic** is what it opens in on the modern clients: a compact panel with a round portrait of the speaker drawn from the client's own art, the name, the line's title and a slim cast bar, with the controls and the waiting queue appearing when you click. Turn it off under **Minimal Classic player** for the original window, which is also what the 1.12, 2.4.3 and 3.3.5 clients draw.
-- **One minimap button.** Left-click opens a menu with every installed Spoken addon's entries. Right-click opens settings. All three clicks are rebindable.
-- **Narration waits for combat.** Zone narration held for a fight does not block a quest line queued behind it.
+Four modules, each can be switched off in the settings. **The voices are not included:** install the voice pack for each module you want to hear, or the addon stays silent.
 
-## Settings
+| Module | Voices | Voice pack |
+| --- | --- | --- |
+| **Spoken Quests** | quest dialogue, and what NPCs say when you talk to them | [All](https://www.curseforge.com/wow/addons/spoken-audio-quests-all), or [Alliance](https://www.curseforge.com/wow/addons/spoken-audio-quests-alliance) · [Horde](https://www.curseforge.com/wow/addons/spoken-audio-quests-horde) · [Shared](https://www.curseforge.com/wow/addons/spoken-audio-quests-shared) |
+| **Spoken Places** | zone and area lore, on the world map | [Spoken Audio: Places and Bosses](https://www.curseforge.com/wow/addons/spoken-audio-places) |
+| **Spoken Readables** | books, letters, notes and the plaques out in the world | [Spoken Audio: Readables](https://www.curseforge.com/wow/addons/spoken-audio-readables) |
+| **Spoken Bosses** | the story of each dungeon and raid boss, when it falls | [Spoken Audio: Places and Bosses](https://www.curseforge.com/wow/addons/spoken-audio-places) |
 
-Game Menu → Options → AddOns → **Spoken**, or `/spoken options`. Each Spoken addon keeps its own settings beside it.
+<!-- only:curseforge -->
+Want everything in English at once? Install [Spoken: English](https://www.curseforge.com/wow/addons/spoken-english) instead: it brings this addon and every English pack.
 
-On first login, the window position, scale and lock, the minimap button and the sound channel are carried over from VoiceOver Redux or ZoneLore.
+<!-- /only -->
+Voice packs in German, Spanish, French, Korean, Portuguese, Russian and Chinese are separate downloads.
+
+## More details
+
+- **Quests**: the quest text plays as the dialog opens. Every quest in the log has a Play button.
+- **Gossip**: what an NPC says when you talk to them, and the greeting before it.
+- **Places**: the story of each zone and area in a panel beside the world map, with a picture of the place. An area you discover for the first time is narrated once.
+- **Azeroth's Compendium**: every quest, place story and book in one window, to browse, search and play without going there.
+- **Readables**: open a book and it reads every page in order, following you as you turn them. Your mail is never read.
+- **One queue**: quest lines, place stories and books wait their turn; nothing talks over anything. Stop, Replay and Skip from the screen, the minimap button or a key binding.
+- **Your choice of display**: subtitles low on screen with the speaker's picture, a small window, a large window, a window in DialogueUI's art when that addon is installed, or voice only.
+- **The game makes room**: music, ambience and NPC voices are turned down while a line plays.
+- **Interface in nine languages**: English, German, Spanish, French, Korean, Portuguese, Russian and both Chinese scripts.
+
+## Coming from the separate downloads?
+
+Spoken Quests, Spoken Zones (now Spoken Places) and Spoken Books are no longer separate downloads. Install this one, then uninstall those and delete the `SpokenQuests`, `SpokenZones` and `SpokenBooks` folders from `Interface\AddOns`. Your voice packs keep working.
+
+## Settings and commands
+
+Game Menu → Options → AddOns → **Spoken**, or `/sp settings`.
 
 ```
-/spoken, /sp         play/pause
-/spoken stop         clear the queue
-/spoken skip         skip the current line
-/spoken options      settings
-/spoken share        how to send gathered lines
-/spoken diagnostics  version, queue, sources
+/sp            stop or replay the line
+/sp skip       skip the current line
+/sp stopall    stop and clear the queue
+/sp compendium open Azeroth's Compendium
+/sp settings   settings
+/sp reset      put the window and subtitles back in place
+/sp collect    turn Collect Missing Lines on or off
+/sp send       how to send collected lines
+/sp help       every command
+/spq, /spp, /spr   each module's own commands
 ```
 
 ## Contributing
 
-When a Spoken addon has no voice for something on screen, it shows a **Contribute** button that hands you a link carrying the game's text. The Contributions section of the settings controls it:
+**Bugs.** Something wrong with a line, a wrong voice, a mispronounced name or a broken quest? Press the **bug** button on the subtitle or the window while the line plays. It hands you a short link to that exact line; the page has the text, the audio and a form.
 
-- **Hide the Contribute buttons** turns every one of those buttons off, in one place.
-- **Gather missing lines in the background** keeps every line Spoken has no voice for as you play, so you can send them all at once instead of one button at a time.
-- **How to send them** shows the steps: log out or `/reload`, then upload `SavedVariables/SpokenContributions.lua` at spoken.rusty.one/contribute.
-- **Clear gathered lines** empties that file once you have sent it.
+**Missing lines and corrections.** When Spoken has no voice for something on screen, it shows a **Contribute** button that hands you a link carrying the game's text; open it and press Send. Or leave **Collect Missing Lines** on in the settings, play as usual, then upload `SavedVariables/SpokenContributions.lua` at [spoken.quest/contribute](https://spoken.quest/contribute). Text that reads wrong can be corrected the same way. Nothing leaves your game until you send it yourself.
 
-Nothing leaves your game until you upload it yourself. The zip carries a small **SpokenContributions** folder, which exists only to hold that file.
+**Code.** The addon is open source on [GitHub](https://github.com/rusty-key/spoken-wow): issues and pull requests are welcome.
 
-## Compatibility
+**Voices and translations.** Want to help a voice sound right, or the addon read well in your language? Come to the [Discord](https://spoken.quest/discord).
 
-Classic Era 1.15.9 and the Anniversary client (2.5.6). Also carries TOCs for Wrath Classic and retail, and — for private 1.12, 2.4.3 and 3.3.5 servers — ships inside Spoken Quests' zips for those clients, since they have no addon manager to install it.
+---
+
+[Join the Discord](https://spoken.quest/discord) · [Buy Me a Coffee](https://buymeacoffee.com/rustykey)

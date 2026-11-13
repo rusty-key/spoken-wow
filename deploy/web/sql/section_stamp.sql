@@ -11,10 +11,16 @@
 -- use: an edit or a new take inserts a row so the highest id moves, a delete moves the
 -- count, and a restore moves the live flag between rows that already exist -- which only
 -- the sum of live ids notices.
+--
+-- A third, the section's voice-actor recordings (migration 0062), the same way: an upload
+-- inserts a row, and a removal only sets deletedAt, which the count of live rows notices.
 select (select coalesce(max("id"), 0) || ':' || count(*) || ':'
                || coalesce(sum("id") filter (where "isCurrent"), 0)
           from :"corpus")
        || ' / takes ' ||
        (select coalesce(max("id"), 0) || ':' || count(*) || ':'
                || coalesce(sum("id") filter (where "isCurrent"), 0)
-          from "take" where "source" = :'source');
+          from "take" where "source" = :'source')
+       || ' / recordings ' ||
+       (select coalesce(max("id"), 0) || ':' || count(*) filter (where "deletedAt" is null)
+          from "recording" where "source" = :'source');

@@ -1,15 +1,16 @@
 """Building a module over a staged store, which may hold mp3 or ogg.
 
-The store on disk is always mp3; scripts/package-audio.sh stages a transcoded copy and
+The store on disk is always mp3; scripts/quests/package-audio.sh stages a transcoded copy and
 hands that to `build --store`, and that copy is ogg for the packs this project ships. So
 the module's sound paths have to follow the files rather than assume an extension.
 """
+import json
 import os
 import shutil
 
 import pytest
 
-from tts_cli.build import build_module
+from tts_cli.build import build_module, icon_source
 
 FIXTURES = os.path.join(os.path.dirname(__file__), "fixtures")
 
@@ -130,6 +131,36 @@ def test_a_pack_ships_only_the_audio_it_was_given(tmp_path):
     assert report["audioFiles"] == 1
 
 
+def test_a_whole_store_pack_ships_a_take_the_english_corpus_does_not_name(tmp_path):
+    # A language's pack is the whole store (include=None), and a quest line only that
+    # language has is in no English corpus. The addon finds a quest sound by its file name
+    # alone, so the file and its length entry are all it needs.
+    store = _store(tmp_path, "quests/5-accept.ogg", "quests/77-accept.ogg")
+
+    report = build_module(CORPUS, store, str(tmp_path / "dist"), "Mod")
+
+    sounds = tmp_path / "dist" / "Mod" / "generated" / "sounds"
+    assert (sounds / "quests" / "77-accept.ogg").exists()
+    assert "77-accept" in _sound_length_table(tmp_path)
+    assert report["audioFiles"] == 2
+
+
+def test_a_line_with_no_words_ships_no_audio_but_keeps_its_giver(tmp_path):
+    corpus = {"lines": CORPUS["lines"] + [
+        {"lineId": "q:3646:accept", "source": "accept", "questId": 3646,
+         "questTitle": "Membership Card Renewal", "npcId": 8738, "npcName": "Vazario Linkgrease",
+         "npcType": "creature", "fileName": "3646-accept", "originalText": "\n",
+         "generatable": True}]}
+    store = _store(tmp_path, "quests/5-accept.ogg", "quests/3646-accept.ogg")
+
+    report = build_module(corpus, store, str(tmp_path / "dist"), "Mod")
+
+    generated = tmp_path / "dist" / "Mod" / "generated"
+    assert not (generated / "sounds" / "quests" / "3646-accept.ogg").exists()
+    assert report["audioFiles"] == 1
+    assert "[3646] = 8738" in (generated / "questlog_npc_lookups.lua").read_text(encoding="utf-8")
+
+
 def test_a_pack_still_drops_ignored_audio(tmp_path):
     store = _store(tmp_path, "quests/5-accept.ogg", "gossip/abc123.ogg")
 
@@ -146,10 +177,21 @@ def test_the_toc_title_says_which_pack_this_is(tmp_path):
     store = _store(tmp_path, "quests/5-accept.ogg")
 
     build_module(CORPUS, store, str(tmp_path / "dist"), "Mod",
-                 title="Spoken Quests Audio (Horde)")
+                 title="Spoken Audio: Quests - Horde")
 
     with open(tmp_path / "dist" / "Mod" / "Mod.toc", encoding="utf-8") as f:
-        assert "## Title: Spoken Quests Audio (Horde)\n" in f.read()
+        assert "## Title: |cffb48cffSpoken|r Audio: Quests - Horde\n" in f.read()
+
+
+def test_the_toc_names_the_forever_client(tmp_path):
+    # Forever marks a pack whose Interface it does not list incompatible, which the player's
+    # checkAddonVersion switch cannot override, so every client the packs ship for is named.
+    store = _store(tmp_path, "quests/5-accept.ogg")
+
+    build_module(CORPUS, store, str(tmp_path / "dist"), "Mod")
+
+    with open(tmp_path / "dist" / "Mod" / "Mod.toc", encoding="utf-8") as f:
+        assert f.read().startswith("## Interface: 11509, 20506, 16001\n")
 
 
 def test_the_pack_ships_an_icon_the_toc_points_at(tmp_path):
@@ -165,12 +207,103 @@ def test_the_pack_ships_an_icon_the_toc_points_at(tmp_path):
     assert (module / "icon.tga").is_file()
 
 
+def test_a_language_pack_wears_its_badged_icon(tmp_path):
+    # Otherwise a language's packs look like English's in the AddOns list.
+    store = _store(tmp_path, "quests/5-accept.ogg")
+
+    build_module(CORPUS, store, str(tmp_path / "dist"), "Mod", language="esMX")
+
+    with open(tmp_path / "dist" / "Mod" / "icon.tga", "rb") as shipped, \
+            open(icon_source("esMX"), "rb") as badged, open(icon_source(), "rb") as english:
+        data = shipped.read()
+        assert data == badged.read()
+        assert data != english.read()
+
+
 def test_the_length_table_measures_ogg(tmp_path):
     store = _store(tmp_path, "quests/5-accept.ogg")
 
     build_module(CORPUS, store, str(tmp_path / "dist"), "Mod")
 
     assert '["5-accept"] = 0.3' in _sound_length_table(tmp_path)
+
+
+def test_a_store_of_pointers_takes_its_lengths_from_durations_json(tmp_path):
+    root = tmp_path / "store"
+    (root / "quests").mkdir(parents=True)
+    (root / "gossip").mkdir()
+    (root / "gossip" / "abc123.ogg").write_text("spoken-clip-pointer encodings/aa 5\n")
+    (root / "quests" / "5-accept.ogg").write_text("spoken-clip-pointer encodings/bb 5\n")
+    (root / "durations.json").write_text('{"quests/5-accept": 26, "gossip/abc123": 1.25}')
+    build_module(CORPUS, str(root), str(tmp_path / "dist"), "Mod")
+    table = _sound_length_table(tmp_path)
+    assert '["5-accept"] = 26.0' in table
+    assert '["abc123"] = 1.25' in table
+    assert table.index("5-accept") < table.index("abc123")
+
+
+def test_word_times_ship_for_the_clips_a_pack_carries(tmp_path):
+    store = _store(tmp_path, "quests/5-accept.ogg")
+    # The gossip clip has times but is not in this store, so its times would be dead weight.
+    with open(os.path.join(store, "word-times.json"), "w", encoding="utf-8") as f:
+        json.dump({"quests/5-accept": "0 0 .42 1.5", "gossip/abc123": "0 .5"}, f)
+
+    report = build_module(CORPUS, store, str(tmp_path / "dist"), "Mod")
+
+    with open(tmp_path / "dist" / "Mod" / "generated" / "word_times_table.lua",
+              encoding="utf-8") as f:
+        lua = f.read()
+    assert "Mod.WordTimesByFileName = " in lua
+    assert '["5-accept"] = "0 0 .42 1.5"' in lua
+    assert "abc123" not in lua
+    assert "generated\\word_times_table.lua" in _toc(tmp_path)
+    assert report["tableRows"]["word_times_table"] == 1
+
+
+def _text_table(tmp_path, take_text):
+    store = _store(tmp_path, "quests/5-accept.ogg")
+    with open(os.path.join(store, "take-text.json"), "w", encoding="utf-8") as f:
+        json.dump(take_text, f)
+    report = build_module(CORPUS, store, str(tmp_path / "dist"), "Mod")
+    with open(tmp_path / "dist" / "Mod" / "generated" / "text_table.lua", encoding="utf-8") as f:
+        return f.read(), report
+
+
+def test_text_ships_for_the_clips_a_pack_carries(tmp_path):
+    # The gossip clip is not in this store, so its text would be dead weight.
+    lua, report = _text_table(tmp_path, {"quests/5-accept": "Pack words.", "gossip/abc123": "No."})
+
+    assert "Mod.TextByFileName = " in lua
+    assert '["5-accept"] = "Pack words."' in lua
+    assert 'GetClientLanguage() ~= "enUS" then return end' in lua
+    assert "abc123" not in lua
+    assert "generated\\text_table.lua" in _toc(tmp_path)
+    assert report["tableRows"]["text_table"] == 1
+
+
+def test_text_survives_lua_quoting(tmp_path):
+    # A raw newline or an unescaped quote stops the whole pack from loading.
+    lua, _ = _text_table(tmp_path, {"quests/5-accept": 'Say "hi"\nC:\\x \tПривет'})
+
+    assert '\\"hi\\"' in lua
+    assert "\\n" in lua
+    assert "\\\\x" in lua
+    assert "Привет" in lua
+    assert "hi\"\n" not in lua
+
+
+def test_a_store_without_text_ships_an_empty_table(tmp_path):
+    store = _store(tmp_path, "quests/5-accept.ogg")
+    report = build_module(CORPUS, store, str(tmp_path / "dist"), "Mod")
+    assert report["tableRows"]["text_table"] == 0
+
+
+def test_a_store_without_word_times_ships_an_empty_table(tmp_path):
+    store = _store(tmp_path, "quests/5-accept.ogg")
+
+    report = build_module(CORPUS, store, str(tmp_path / "dist"), "Mod")
+
+    assert report["tableRows"]["word_times_table"] == 0
 
 
 def _toc(tmp_path):

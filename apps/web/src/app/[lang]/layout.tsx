@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import "../globals.css";
-import { Geist } from "next/font/google";
+import localFont from "next/font/local";
 import Image from "next/image";
 import Script from "next/script";
 import { Suspense } from "react";
@@ -9,12 +9,15 @@ import { GrantsProvider } from "@/components/GrantsProvider";
 import { LangProvider } from "@/components/LangProvider";
 import Link from "@/components/LocaleLink";
 import NavigationProgress from "@/components/NavigationProgress";
+import SiteHeader from "@/components/SiteHeader";
 import UserMenu from "@/components/UserMenu";
 import { langTag } from "@/lib/lang";
 import { pageLang } from "@/lib/lang-server";
 import { cn } from "@/lib/utils";
+import { Contained } from "@/components/Width";
 
-const geist = Geist({ subsets: ["latin"], variable: "--font-sans" });
+// The whole font rather than a subset: Russian pages render in it too.
+const geist = localFont({ src: "../../fonts/geist-sans.woff2", weight: "100 900", variable: "--font-sans" });
 
 export const metadata: Metadata = {
   title: "Spoken",
@@ -55,37 +58,49 @@ export default async function RootLayout({
         </Suspense>
         <LangProvider lang={lang}>
           <GrantsProvider>
-            <header className="border-b">
-              <div className="mx-auto flex h-12 max-w-6xl items-center justify-between gap-3 px-5">
-                <Link href="/" aria-label="Spoken">
-                  {/* Intrinsic 1024x187; height is what the header constrains, so the
-                      width below is that ratio and only exists to stop the reflow. */}
-                  <Image
-                    src="/logo.png"
-                    alt="Spoken"
-                    width={142}
-                    height={26}
-                    priority
-                    className="h-[26px] w-auto"
-                  />
-                </Link>
-                <div className="flex items-center gap-1">
-                  <LanguageSwitcher />
-                  <UserMenu />
-                </div>
-              </div>
-            </header>
+            <SiteHeader>
+              <header className="border-b">
+                <Contained className="flex h-12 items-center justify-between gap-3">
+                  <Link href="/" aria-label="Spoken">
+                    {/* Intrinsic 1024x187; height is what the header constrains, so the
+                        width below is that ratio and only exists to stop the reflow. */}
+                    <Image
+                      src="/logo.png"
+                      alt="Spoken"
+                      width={142}
+                      height={26}
+                      priority
+                      className="h-[26px] w-auto"
+                    />
+                  </Link>
+                  <div className="flex items-center gap-1">
+                    {/* On a phone the switch lives in UserMenu's burger, with the links. */}
+                    <div className="hidden md:block">
+                      <LanguageSwitcher />
+                    </div>
+                    <UserMenu />
+                  </div>
+                </Contained>
+              </header>
+            </SiteHeader>
             {children}
           </GrantsProvider>
         </LangProvider>
-        {/* Cloudflare Web Analytics. Production only, so local page views don't
-            land in the same dashboard as real traffic. */}
+        {/* Cloudflare Web Analytics and Ahrefs Analytics. Production only, so local page
+            views don't land in the same dashboards as real traffic. */}
         {process.env.NODE_ENV === "production" && (
-          <Script
-            type="module"
-            src="https://static.cloudflareinsights.com/beacon.min.js"
-            data-cf-beacon='{"token": "e4a25ce72fd94bf8a0ed83e1d34c0b1c"}'
-          />
+          <>
+            <Script
+              type="module"
+              src="https://static.cloudflareinsights.com/beacon.min.js"
+              data-cf-beacon='{"token": "e4a25ce72fd94bf8a0ed83e1d34c0b1c"}'
+            />
+            <Script
+              src="https://analytics-staging.ahrefs.dev/analytics.js"
+              data-key="ptQ75WOQAU3T/ui1ab/faA"
+              strategy="afterInteractive"
+            />
+          </>
         )}
       </body>
     </html>

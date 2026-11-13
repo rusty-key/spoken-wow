@@ -1,0 +1,26 @@
+## Interface: 20506
+## Title: |cffb48cffSpoken|r
+## Notes: Reads the game aloud: quests, gossip, places and readables. One queue, one narrator, one minimap button, and the settings for all of it.
+## Notes-deDE: Liest das Spiel vor: Quests, Gespräche, Orte und Lesestoff. Eine Warteschlange, ein Erzähler, ein Minimap-Button und die Einstellungen für alles.
+## Notes-esES: Lee el juego en voz alta: Misiones, Charlas, Lugares y Lecturas. Una cola, un narrador, un botón del minimapa y los ajustes de todo.
+## Notes-esMX: Lee el juego en voz alta: Misiones, Charlas, Lugares y Lecturas. Una cola, un narrador, un botón del minimapa y los ajustes de todo.
+## Notes-frFR: Lit le jeu à voix haute : Quêtes, Discussions, Lieux et Lectures. Une file, un narrateur, un bouton de minicarte et les réglages de tout.
+## Notes-ptBR: Lê o jogo em voz alta: Missões, Conversas, Lugares e Leituras. Uma fila, um narrador, um botão do minimapa e as configurações de tudo.
+## Notes-ruRU: Озвучивает игру: Задания, Разговоры, Места и Тексты. Одна очередь, один рассказчик, одна кнопка у миникарты и настройки для всего.
+## Notes-koKR: 게임을 소리 내어 읽습니다: 퀘스트, 잡담, 장소, 읽을거리. 하나의 대기열, 하나의 내레이터, 하나의 미니맵 버튼, 그리고 모든 설정.
+## Notes-zhCN: 朗读游戏内容：任务、闲聊、地点和读物。一个队列、一个旁白、一个小地图按钮，以及所有设置。
+## Notes-zhTW: 朗讀遊戲內容：任務、閒聊、地點和讀物。一個佇列、一個旁白、一個小地圖按鈕，以及所有設定。
+## Version: 3.8.7
+## IconTexture: Interface\AddOns\Spoken\icon.tga
+## SavedVariables: SpokenSettings
+## OptionalDeps: DialogueUI
+# DialogueUI, when installed, loads first so the DialogueUI window can read its art and size: UI/DialogueUITheme.lua.
+## Group: Spoken
+## X-Part-Of: Spoken
+## X-Spoken-Player: 1
+
+embeds.xml
+addon.xml
+Transcript.xml
+Contribute.xml
+Compendium.xml

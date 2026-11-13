@@ -60,13 +60,15 @@ describe("cost", () => {
   });
 
   it("is unknown for a model fish.audio has not priced, rather than a guess", () => {
-    expect(fishCost("drama-3-preview", 1000)).toBeNull();
+    expect(fishCost("drama-3", 1000)).toBeNull();
     expect(fishCost("no-such-model", 1000)).toBeNull();
   });
 
   it("knows which models may be chosen", () => {
     expect(isFishModel("s2.1-pro")).toBe(true);
     expect(isFishModel("s1")).toBe(false);
+    // Gone from fish.audio's list: sent, it would be spoken and billed as s2.1-pro.
+    expect(isFishModel("drama-3-preview")).toBe(false);
   });
 });
 

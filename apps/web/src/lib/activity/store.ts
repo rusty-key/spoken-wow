@@ -15,11 +15,12 @@ import "server-only";
 
 import type { PoolClient } from "pg";
 
-import { db } from "@/lib/db";
+import { ALL_TEAMS, withTeam } from "@/lib/db";
 import type { Lang } from "@/lib/lang";
 import type { Source } from "@/lib/sections";
+import { freshOwners, readAs, type TeamId } from "@/lib/teams/store";
 
-import { prefixesOf, type ActivityDetail, type ActivityKind, type Category } from "./kinds";
+import { FOLDS, prefixesOf, type ActivityDetail, type ActivityKind, type Category, type Group } from "./kinds";
 
 export type ActivityEvent<K extends ActivityKind = ActivityKind> = {
   kind: K;
@@ -33,10 +34,14 @@ export type ActivityEvent<K extends ActivityKind = ActivityKind> = {
   detail: ActivityDetail[K];
 };
 
-const INSERT = `insert into "activity" ("lang", "kind", "source", "subject", "lineId", "detail", "actorId")
-                select "lang", "kind", "source", "subject", "lineId", coalesce("detail", '{}'), "actorId"
+/**
+ * "teamId" comes from each row, not the column default: one call can carry acts in several
+ * languages, and an act on every language belongs to no team.
+ */
+const INSERT = `insert into "activity" ("lang", "kind", "source", "subject", "lineId", "detail", "actorId", "teamId")
+                select "lang", "kind", "source", "subject", "lineId", coalesce("detail", '{}'), "actorId", "teamId"
                   from jsonb_to_recordset($1::jsonb) as r("lang" text, "kind" text, "source" text,
-                       "subject" text, "lineId" text, "detail" jsonb, "actorId" text)`;
+                       "subject" text, "lineId" text, "detail" jsonb, "actorId" text, "teamId" uuid)`;
 
 /** Record one act, as part of `client`'s transaction when given. */
 export async function recordActivity<K extends ActivityKind>(
@@ -55,7 +60,22 @@ export async function recordActivities(
   client?: Pick<PoolClient, "query">,
 ): Promise<void> {
   if (!events.length) return;
-  const rows = JSON.stringify(
+  if (client) {
+    await client.query(INSERT, [rowsOf(events, await freshOwners(events.map((event) => event.lang)))]);
+    return;
+  }
+  try {
+    // As no one team: every row names its own.
+    const rows = rowsOf(events, await freshOwners(events.map((event) => event.lang)));
+    await withTeam(ALL_TEAMS, (scoped) => scoped.query(INSERT, [rows]));
+  } catch (error) {
+    console.error(`activity: could not record ${events.length} ${events[0].kind}`, error);
+  }
+}
+
+/** A language nobody owns has no team to file under, so its act is kept with none. */
+function rowsOf(events: ActivityEvent[], owners: Map<Lang, TeamId>): string {
+  return JSON.stringify(
     events.map((event) => ({
       lang: event.lang,
       kind: event.kind,
@@ -64,17 +84,9 @@ export async function recordActivities(
       lineId: event.lineId ?? null,
       detail: event.detail,
       actorId: event.actorId,
+      teamId: (event.lang && owners.get(event.lang)) || null,
     })),
   );
-  if (client) {
-    await client.query(INSERT, [rows]);
-    return;
-  }
-  try {
-    await db().query(INSERT, [rows]);
-  } catch (error) {
-    console.error(`activity: could not record ${events.length} ${events[0].kind}`, error);
-  }
 }
 
 export type ActivityRow = {
@@ -101,6 +113,21 @@ export type ActivityRow = {
  */
 export type Cursor = { at: string; id: string };
 
+/**
+ * A calendar day as the page's filters write it, "2026-03-10". A real date, not only its
+ * shape: "2026-02-30" passes a pattern and then fails the ::date cast, which is a 500 for a
+ * hand-edited link rather than the filter being ignored.
+ */
+export function isDay(value: unknown): value is string {
+  if (typeof value !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(value)) return false;
+  const [year, month, day] = value.split("-").map(Number);
+  // setUTCFullYear rather than Date.UTC, which reads years 0-99 as 1900-1999.
+  const date = new Date(0);
+  date.setUTCFullYear(year, month - 1, day);
+  // Postgres has no year 0, and toISOString writes years past 9999 with a sign.
+  return year >= 1 && date.toISOString().slice(0, 10) === value;
+}
+
 export type ActivityFilter = {
   lang: Lang;
   category?: Category;
@@ -111,14 +138,62 @@ export type ActivityFilter = {
   to?: string;
   before?: Cursor;
   limit?: number;
+  /** Whether the viewer is a global admin, the only one who sees GLOBAL_ONLY_PREFIXES' events. */
+  global?: boolean;
 };
+
+/**
+ * Kinds of every language's that only a global admin reads: account events, and community
+ * packs, whose moderation page a team admin cannot open. A team admin shown them would read
+ * rejection reasons and owner hand-overs that are not theirs, and follow links that 404.
+ */
+const GLOBAL_ONLY_PREFIXES = ["user.", "pack."];
+
+/** SQL true when alias `a`'s row is one a viewer who is not a global admin may see. */
+const NOT_GLOBAL_ONLY = GLOBAL_ONLY_PREFIXES.map((prefix) => `a."kind" not like '${prefix}%'`).join(" and ");
 
 const COLUMNS = `a."id"::text as "id", a."at", a."lang", a."kind", a."source", a."subject",
                  a."lineId", a."detail", a."actorId", u."name" as "actorName",
                  s."name" as "subjectName", a."at"::text as "cursorAt"`;
 
 const JOINS = `left join "user" u on u."id" = a."actorId"
-               left join "user" s on a."kind" like 'grant.%' and s."id" = a."subject"`;
+               left join "user" s on (a."kind" like 'grant.%' or a."kind" like 'user.%')
+                                 and s."id" = a."subject"`;
+
+/**
+ * How far before a `from` day a batch can have been queued and still be found by the takes
+ * it cut in range. The queue's own retention (lib/generation/queue.ts): a batch older than
+ * that is gone, so nothing it cut is still coming. Bounding it keeps "at" a range the index
+ * can read rather than every row the language has.
+ */
+const BATCH_REACH = "30 days";
+
+/** The rows a group row folds away, from FOLDS: a child counts only when it carries the key. */
+const FOLDED = Object.values(FOLDS)
+  .map(({ child, key }) => `(a."kind" = '${child}' and a."detail" ? '${key}')`)
+  .join(" or ");
+
+/**
+ * A day range as SQL: `from` and `to` as bounds, and `cut(row)` as the condition that puts
+ * that row's "at" inside them. The whole of the last day, not its first instant.
+ */
+function dayRange(param: (value: unknown) => string, range: { from?: string; to?: string }) {
+  const from = range.from ? `${param(range.from)}::date` : null;
+  const to = range.to ? `${param(range.to)}::date + 1` : null;
+  const cut = (row: string) =>
+    [from && `${row}."at" >= ${from}`, to && `${row}."at" < ${to}`].filter(Boolean).join(" and ");
+  return { from, to, cut };
+}
+
+/** A query's positional parameters, and the function that adds one and names it. */
+function params(...initial: unknown[]) {
+  const values = [...initial];
+  const param = (value: unknown) => {
+    values.push(value);
+    return `$${values.length}`;
+  };
+  return { values, param };
+}
 
 type Row = Omit<ActivityRow, "at"> & { at: Date; cursorAt: string };
 
@@ -128,7 +203,12 @@ type Row = Omit<ActivityRow, "at"> & { at: Date; cursorAt: string };
  *
  * TAKES A BATCH CUT ARE LEFT OUT and counted on the batch's row instead. A batch of three
  * hundred lines would otherwise be three hundred rows, pushing everything else that
- * happened that day off the page; batchTakes lists them when the row is opened.
+ * happened that day off the page; groupRows lists them when the row is opened. Marks
+ * cleared together, and batches stopped by one Stop, are folded under their click's row
+ * the same way, for the same reason.
+ *
+ * A batch keeps the time it was queued, so a day filter that finds it by a take cut that
+ * day still sorts it under the day it was queued: moving it would break the keyset order.
  *
  * Keyset rather than offset: rows are added at the top while somebody pages down, and an
  * offset would show them the same rows twice.
@@ -137,27 +217,36 @@ export async function listActivity(
   filter: ActivityFilter,
 ): Promise<{ rows: ActivityRow[]; next: Cursor | null }> {
   const limit = filter.limit ?? 50;
-  const where = [`not (a."kind" = 'take.generated' and a."detail" ? 'batchId')`];
-  const values: unknown[] = [filter.lang];
-  const add = (clause: (n: number) => string, value: unknown) => {
-    values.push(value);
-    where.push(clause(values.length));
-  };
+  const where = [`not (${FOLDED})`];
+  const { values, param } = params(filter.lang);
 
+  if (!filter.global) where.push(NOT_GLOBAL_ONLY);
   if (filter.category) {
-    add((n) => `split_part(a."kind", '.', 1) = any($${n}::text[])`, prefixesOf(filter.category));
+    where.push(`split_part(a."kind", '.', 1) = any(${param(prefixesOf(filter.category))}::text[])`);
   }
-  if (filter.actorId) add((n) => `a."actorId" = $${n}`, filter.actorId);
-  if (filter.source) add((n) => `a."source" = $${n}`, filter.source);
-  if (filter.from) add((n) => `a."at" >= $${n}::date`, filter.from);
-  // The whole of the last day, not its first instant.
-  if (filter.to) add((n) => `a."at" < $${n}::date + 1`, filter.to);
+  if (filter.actorId) where.push(`a."actorId" = ${param(filter.actorId)}`);
+  if (filter.source) where.push(`a."source" = ${param(filter.source)}`);
+
+  const { from, to, cut } = dayRange(param, filter);
+  if (to) where.push(`a."at" < ${to}`);
+  if (from) {
+    // A batch queued before `from` still belongs to the range when it cut a take there:
+    // a night's queue is that morning's audio. The first bound is implied by the second and
+    // stays apart from the OR so that the index still reads only a range of "at".
+    where.push(`a."at" >= ${from} - interval '${BATCH_REACH}'`);
+    where.push(`(a."at" >= ${from} or (a."kind" = 'batch.queued'
+                  and exists (select 1 from "activity" t
+                               where t."kind" = 'take.generated'
+                                 and t."detail"->>'batchId' = a."detail"->>'batchId'
+                                 and t."lang" is not distinct from a."lang"
+                                 and ${cut("t")})))`);
+  }
   if (filter.before) {
-    values.push(filter.before.at, filter.before.id);
-    where.push(`(a."at", a."id") < ($${values.length - 1}::timestamptz, $${values.length}::bigint)`);
+    const at = param(filter.before.at);
+    const id = param(filter.before.id);
+    where.push(`(a."at", a."id") < (${at}::timestamptz, ${id}::bigint)`);
   }
-  values.push(limit + 1);
-  const n = values.length;
+  const n = param(limit + 1);
 
   // The language's rows and the every-language rows as two branches, each newest first
   // under its own index and stopping at a page, merged afterwards. One `lang = $1 or lang
@@ -167,18 +256,33 @@ export async function listActivity(
       select a.* from "activity" a
        where ${lang} and ${where.join(" and ")}
        order by a."at" desc, a."id" desc
-       limit $${n})`;
+       limit ${n})`;
 
-  const { rows } = await db().query<Row>(
-    `select ${COLUMNS},
-            case when a."kind" = 'batch.queued' then (
-              select count(*)::int from "activity" t
-               where t."kind" = 'take.generated' and t."detail"->>'batchId' = a."detail"->>'batchId'
-            ) end as "takes"
-       from (${branch(`a."lang" = $1`)} union all ${branch(`a."lang" is null`)}) a
+  // A batch's count is of the takes in the range, so that it matches what opening it lists.
+  // Counted for the whole page at once, on the language's index from the oldest batch on: a
+  // batch's takes are in its language and cut after it was queued. Under the team policy the
+  // batch index is never used, and a count per batch read the whole log once for each.
+  const rows = await readAs<Row>(
+    filter.lang,
+    `with "page" as (
+       select * from (${branch(`a."lang" = $1`)} union all ${branch(`a."lang" is null`)}) a
+        order by a."at" desc, a."id" desc
+        limit ${n}
+     ), "batches" as (
+       select t."detail"->>'batchId' as "batchId", count(*)::int as "takes"
+         from "activity" t
+        where t."kind" = 'take.generated' and t."lang" = $1
+          and t."at" >= (select min(p."at") from "page" p where p."kind" = 'batch.queued')
+          and t."detail"->>'batchId' in (select p."detail"->>'batchId' from "page" p where p."kind" = 'batch.queued')
+          ${from || to ? `and ${cut("t")}` : ""}
+        group by 1
+     )
+     select ${COLUMNS},
+            case when a."kind" = 'batch.queued' then coalesce(b."takes", 0) end as "takes"
+       from "page" a
+       left join "batches" b on a."kind" = 'batch.queued' and b."batchId" = a."detail"->>'batchId'
        ${JOINS}
-      order by a."at" desc, a."id" desc
-      limit $${n}`,
+      order by a."at" desc, a."id" desc`,
     values,
   );
 
@@ -190,29 +294,52 @@ export async function listActivity(
   };
 }
 
-/** The takes one queue batch cut, newest first. What a batch's row shows when opened. */
-export async function batchTakes(lang: Lang, batchId: string): Promise<ActivityRow[]> {
-  const { rows } = await db().query<Row>(
+/**
+ * What one group row lists when opened, newest first: a queue batch's takes, the marks
+ * one click cleared, or the batches one Stop stopped. Given the page's day range, only what
+ * happened in it, which is what the row counted.
+ */
+export async function groupRows(
+  lang: Lang,
+  group: Group,
+  id: string,
+  range: { from?: string; to?: string } = {},
+): Promise<ActivityRow[]> {
+  const { child, key } = FOLDS[group];
+  const { values, param } = params(lang, child, id);
+  const where = [`a."lang" = $1`, `a."kind" = $2`, `a."detail"->>'${key}' = $3`];
+  const { cut } = dayRange(param, range);
+  if (range.from || range.to) where.push(cut("a"));
+  const rows = await readAs<Row>(
+    lang,
     `select ${COLUMNS}
        from "activity" a
        ${JOINS}
-      where a."lang" = $1 and a."kind" = 'take.generated' and a."detail"->>'batchId' = $2
+      where ${where.join(" and ")}
       order by a."at" desc, a."id" desc`,
-    [lang, batchId],
+    values,
   );
   return rows.map(serialise);
 }
 
-/** Everybody who has done anything in a language, for the person filter. */
-export async function activityActors(lang: Lang): Promise<{ id: string; name: string }[]> {
-  const { rows } = await db().query<{ id: string; name: string }>(
+/**
+ * Everybody who has done anything in a language, for the person filter. Without `global`,
+ * not somebody whose only acts were on accounts or packs: listing them would say an event
+ * exists that this viewer is not shown.
+ */
+export async function activityActors(
+  lang: Lang,
+  global = false,
+): Promise<{ id: string; name: string }[]> {
+  return readAs<{ id: string; name: string }>(
+    lang,
     `select u."id", u."name" from "user" u
       where exists (select 1 from "activity" a
-                     where a."actorId" = u."id" and (a."lang" = $1 or a."lang" is null))
+                     where a."actorId" = u."id" and (a."lang" = $1 or a."lang" is null)
+                       and ($2 or (${NOT_GLOBAL_ONLY})))
       order by u."name"`,
-    [lang],
+    [lang, global],
   );
-  return rows;
 }
 
 function serialise(row: Row): ActivityRow {

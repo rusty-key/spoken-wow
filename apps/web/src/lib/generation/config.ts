@@ -30,8 +30,9 @@ export type GenerationConfig = {
   /**
    * An accent direction per race, e.g. `{ dwarf: "[Scottish accent]" }`.
    *
-   * Keyed by the corpus's spelling of the race rather than the voice slot, so one entry
-   * covers every gender and flavor of that race. eleven_v3 performs a square-bracketed tag
+   * Keyed by the corpus's spelling of the race, so one entry covers every gender and flavor of
+   * that race, or by a voice slot (`gnome-male-young`) for a direction one flavor needs on
+   * top of its race's - see directionFor in narration.ts. eleven_v3 performs a square-bracketed tag
    * instead of reading it; narration.ts puts them on the words the NPC says.
    *
    * Data rather than a constant because whether a model honours a tag on a ten-word greeting

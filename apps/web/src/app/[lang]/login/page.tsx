@@ -1,13 +1,16 @@
 import type { Metadata } from "next";
 
 import AuthForm from "@/components/AuthForm";
+import { Contained } from "@/components/Width";
 
 export const metadata: Metadata = { title: "Sign in · Spoken" };
 
 export default function Page() {
   return (
-    <main className="mx-auto max-w-6xl px-5 pt-6 pb-36">
-      <AuthForm mode="login" />
+    <main className="pt-6 pb-36">
+      <Contained>
+        <AuthForm mode="login" />
+      </Contained>
     </main>
   );
 }

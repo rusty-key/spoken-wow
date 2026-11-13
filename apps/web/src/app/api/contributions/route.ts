@@ -17,10 +17,12 @@ import { auth } from "@/lib/auth";
 import { clientIp } from "@/lib/reports/client-ip";
 import { COMPLAINT_MAX, descriptionFrom } from "@/lib/contributions/contributions";
 import { MAX_BYTES, parseEnvelope } from "@/lib/contributions/envelope";
+import { keepClassWords } from "@/lib/contributions/class-words";
 import { submissionFrom } from "@/lib/contributions/submission";
 import {
   CONTRIBUTION_WINDOW_MS,
   CONTRIBUTIONS_PER_HOUR,
+  knownSubmissions,
   storeSubmission,
   stringOrNull,
 } from "@/lib/contributions/intake";
@@ -56,13 +58,13 @@ export async function POST(request: Request) {
 
   // A place with no lore is only worth filing with something said about it: the addon names
   // the place, and the description is the contribution.
-  const description = parsed.value.source === "zones" ? descriptionFrom(body.description) : null;
-  if (parsed.value.source === "zones" && !description) {
+  const description = parsed.value.source === "places" ? descriptionFrom(body.description) : null;
+  if (parsed.value.source === "places" && !description) {
     return Response.json({ error: "describe" }, { status: 400 });
   }
 
-  const submission = submissionFrom(parsed.value, raw, description);
-  if (!submission) {
+  const sent = submissionFrom(parsed.value, raw, description);
+  if (!sent) {
     return Response.json({ error: "incomplete" }, { status: 400 });
   }
 
@@ -76,15 +78,24 @@ export async function POST(request: Request) {
   // Identity from the session when there is one, and the typed fields dropped rather than
   // merged -- the reports route's reasoning: signing in and typing someone else's name is a
   // way to put words in their mouth.
-  const session = await auth.api.getSession({ headers: await headers() });
+  const [session, [submission]] = await Promise.all([
+    auth.api.getSession({ headers: await headers() }),
+    keepClassWords([sent]),
+  ]);
 
-  await storeSubmission(submission, {
-    body: complaint || null,
-    userId: session?.user.id ?? null,
-    name: session ? null : stringOrNull(body.name, 200),
-    email: session ? null : stringOrNull(body.email, 320),
-    ip,
-  });
+  // A line the corpus already has is thanked for and dropped, the same answer as a stored one:
+  // the player did nothing wrong, there is just nothing to triage. A complaint about it is
+  // still kept -- that is a report about the line, not a copy of it.
+  const [known] = await knownSubmissions([submission]);
+  if (!known || complaint) {
+    await storeSubmission(submission, {
+      body: complaint || null,
+      userId: session?.user.id ?? null,
+      name: session ? null : stringOrNull(body.name, 200),
+      email: session ? null : stringOrNull(body.email, 320),
+      ip,
+    });
+  }
 
   // After the write, and unconditionally: the hit is what the limiter counts, and an identical
   // paste that only bumped a count is still a paste.

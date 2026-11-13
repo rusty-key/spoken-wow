@@ -15,7 +15,7 @@ import { fishUse, type FishUse } from "@/lib/generation/fish-lexicon";
 import { PREVIEW_MODES, type PreviewMode } from "@/lib/generation/preview-modes";
 import type { CacheState } from "@/lib/generation/preview";
 import { Toaster, useToast } from "@/components/ui/toast";
-import { booksHref, questsHref, zonesHref } from "@/lib/links";
+import { readablesHref, questsHref, placesHref } from "@/lib/links";
 import {
   honoursPhonemes,
   kindOf,
@@ -70,8 +70,8 @@ const OK_FILTERS: { value: OkFilter; label: string }[] = [
  */
 const SECTIONS = [
   { letter: "Q", what: "quest lines", href: (q: string) => questsHref({ q, filter: "text" }) },
-  { letter: "Z", what: "zone lore", href: (q: string) => zonesHref({ q, field: "text" }) },
-  { letter: "B", what: "book pages", href: (q: string) => booksHref({ q, field: "text" }) },
+  { letter: "Z", what: "zone lore", href: (q: string) => placesHref({ q, field: "text" }) },
+  { letter: "B", what: "book pages", href: (q: string) => readablesHref({ q, field: "text" }) },
 ] as const;
 
 // Starts as a respelling, not IPA. Anyone who can write IPA can switch in one click, and
@@ -664,7 +664,8 @@ function SyncBanner({
 
   return (
     <p className="text-muted-foreground text-xs">
-      In force since {saved.syncedAt ? new Date(saved.syncedAt).toLocaleString() : "—"} · version{" "}
+      In force since {saved.syncedAt ? new Date(saved.syncedAt).toLocaleString() : "—"} ·
+      dictionary <code>{saved.locator?.dictionaryId}</code> · version{" "}
       <code>{saved.locator?.versionId}</code>
       {saved.rulesKept !== null && <> · {saved.rulesKept} rules</>}
     </p>
@@ -818,7 +819,7 @@ function Row({
                 onChange={(event) => onChange({ alias: event.target.value })}
                 placeholder="nomeregan"
                 aria-label="Respelling"
-                title="Respell it as it should be said — “nomeregan”, not “NOME-reh-gan”."
+                title="Respell it as it should be said. Capitals mark stress — “NOME-reh-gan”."
                 className={cn("flex-1", FIELD)}
               />
             )}
@@ -859,7 +860,7 @@ function Row({
           <span className="w-40 shrink-0 truncate text-sm font-medium">
             {entry.grapheme || <span className="text-muted-foreground">(new entry)</span>}
           </span>
-          <span className="text-primary w-52 shrink-0 truncate text-sm">
+          <span className="text-primary-ink w-52 shrink-0 truncate text-sm">
             {entry.alias ? `“${entry.alias}”` : `/${entry.ipa}/`}
           </span>
           <FishBadge use={fishUse(entry, lang)} />
@@ -886,7 +887,7 @@ function Row({
         <Button
           size="icon"
           variant="ghost"
-          className={cn("size-6", editing ? "text-primary" : "text-muted-foreground")}
+          className={cn("size-6", editing ? "text-primary-ink" : "text-muted-foreground")}
           title={editing ? "Done editing" : `Edit ${entry.grapheme || "this entry"}`}
           aria-label={editing ? "Done editing" : `Edit ${entry.grapheme || "this entry"}`}
           onClick={editing ? onClose : onOpen}

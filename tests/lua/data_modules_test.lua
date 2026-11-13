@@ -8,15 +8,15 @@ package.path = here .. "/?.lua;" .. package.path
 local stub = require("wow_client_stub")
 local H = require("queue_helpers")
 local print = stub.print
-local QUESTS = here .. "/../../addons/SpokenQuests/"
-local SPOKEN = here .. "/../../addons/SpokenPlayer/"
+local QUESTS = here .. "/../../addons/Spoken_Quests/"
+local SPOKEN = here .. "/../../addons/Spoken/"
 local Expect, Failures = H.Expecter(print)
 
 local OLD, NEW = "X-VoiceOver-DataModule-", "X-SpokenQuests-DataModule-"
 
 --- Install one pack carrying exactly the given TOC keys, and enumerate.
 local function Enumerate(meta)
-    stub.SetClient("11509"); stub.ResetSound(); stub.ResetTimers()
+    stub.SetClient("16001"); stub.ResetSound(); stub.ResetTimers()
     meta.Title = meta.Title or "TestPack"
     meta.Version = meta.Version or "1.2.1"
     stub.SetAddOns({ { folder = "TestPack", meta = meta } })
@@ -58,9 +58,106 @@ VO = Enumerate({ [NEW .. "Version"] = "1" })
 local ok = pcall(function() VO.DataModules:Register("TestPack", { GetSoundPath = function() end }) end)
 Expect("a new-key pack can register its data", ok, true)
 
+---------------------------------------------------------------- switched off in the AddOns list
+stub.SetClient("16001"); stub.ResetSound(); stub.ResetTimers()
+stub.SetAddOns({
+    { folder = "OnPack", meta = { [OLD .. "Version"] = "1", Title = "OnPack", Version = "1.2.1" } },
+    { folder = "OffPack", loadable = false, reason = "DISABLED",
+        meta = { [OLD .. "Version"] = "1", Title = "OffPack", Version = "1.2.1" } },
+})
+VO = stub.LoadQuests(QUESTS, SPOKEN)
+VO.DataModules:EnumerateAddons(false)
+Expect("a pack switched off in the AddOns list is not found", VO.DataModules.presentModules["OffPack"], nil)
+Expect("...while one switched on is", VO.DataModules.presentModules["OnPack"] ~= nil, true)
+Expect("...and nothing was switched on to load it", #stub.enabledAddOns, 0)
+
+---------------------------------------------------------------- loading after login, a pack at a time
+-- Several packs in one callback ran past Hardcore's script-time limit, and a pack that does not
+-- register must not be retried every frame.
+stub.SetClient("16001"); stub.ResetSound(); stub.ResetTimers(); stub.ResetFrames()
+_G.UISpecialFrames = _G.UISpecialFrames or {}
+stub.settingsCategories = {}; stub.ldbObjects = {}; stub.dbIcons = {}
+local callback, loadedIn, loads = 0, {}, 0
+local after, isLoaded = C_Timer.After, _G.IsAddOnLoaded
+_G.IsAddOnLoaded = function(folder) return loadedIn[folder] ~= nil end
+C_Timer.After = function(delay, fn)
+    after(delay, function(...) callback = callback + 1; return fn(...) end)
+end
+local function Pack(folder, registers)
+    return { folder = folder, loadOnDemand = true,
+        meta = { [OLD .. "Version"] = "1", Title = folder, Version = "1.2.1" },
+        onLoad = function()
+            loads = loads + 1
+            loadedIn[folder] = callback
+            if registers then VO.DataModules:Register(folder, { GetSoundPath = function() end }) end
+            return true
+        end }
+end
+stub.SetAddOns({ Pack("PackA", true), Pack("PackBroken", false), Pack("PackC", true) })
+VO = stub.LoadQuests(QUESTS, SPOKEN)
+VO.Addon:OnInitialize()
+Expect("no pack is loaded during initialization", loads, 0)
+stub.Advance(2)
+C_Timer.After, _G.IsAddOnLoaded = after, isLoaded
+Expect("every pack is tried once", loads, 3)
+Expect("...each in its own callback", loadedIn.PackA ~= loadedIn.PackBroken
+    and loadedIn.PackBroken ~= loadedIn.PackC and loadedIn.PackA ~= loadedIn.PackC, true)
+Expect("the packs either side of a broken one register",
+    VO.DataModules:GetModule("PackA") ~= nil and VO.DataModules:GetModule("PackC") ~= nil, true)
+Expect("...the broken one keeps its reason", VO.DataModules:GetModuleLoadError("PackBroken"), "DID_NOT_REGISTER")
+Expect("...and loading finishes", VO.Addon.dataModulesPending, nil)
+
 ---------------------------------------------------------------- not a pack at all
 VO, found = Enumerate({ Title = "Some other addon" })
 Expect("an addon carrying neither key is not a pack", found, nil)
+
+---------------------------------------------------------------- offering updates
+-- The versions the addon offers are written into it, so a pack can be newer than the addon
+-- knows. Only an older pack is offered an update; a newer one must not be sent back.
+local D = VO.DataModules
+Expect("an older pack is out of date", D:IsOlderContent("2.0.0", "2.1.0"), true)
+Expect("...by any component", D:IsOlderContent("2.1.9", "2.10.0"), true)
+Expect("the same version is not", D:IsOlderContent("2.1.0", "2.1.0"), false)
+Expect("a newer pack is not", D:IsOlderContent("2.1.0", "2.0.0"), false)
+Expect("a missing trailing part counts as zero", D:IsOlderContent("2.1", "2.1.0"), false)
+Expect("a version that is not numbers is never out of date", D:IsOlderContent("dev", "2.1.0"), false)
+Expect("...nor is a missing one", D:IsOlderContent(nil, "2.1.0"), false)
+
+--- Install one shipping pack at a version, and collect what the options offer for it.
+local function Offered(version)
+    stub.SetClient("16001"); stub.ResetSound(); stub.ResetTimers()
+    stub.SetAddOns({ { folder = "SpokenQuestsAudioShared",
+        meta = { Title = "Spoken Audio: Quests - Shared", Version = version, [NEW .. "Version"] = "1" } } })
+    local vo = stub.LoadQuests(QUESTS, SPOKEN)
+    local offered = {}
+    vo.Options = setmetatable({
+        AddAvailableDataModule = function(_, module, _, update) offered[module.AddonName] = update end,
+    }, { __index = function() return function() end end })
+    vo.DataModules:EnumerateAddons(false)
+    return offered, vo.DataModules
+end
+local known
+for _, module in VO.DataModules:GetAvailableModules() do
+    if module.AddonName == "SpokenQuestsAudioShared" then known = module.ContentVersion end
+end
+local offered = Offered("1.0.0")
+Expect("an older installed pack is offered its update", offered.SpokenQuestsAudioShared, true)
+offered = Offered(known)
+Expect("a current pack is offered nothing", offered.SpokenQuestsAudioShared, nil)
+offered = Offered("99.0.0")
+Expect("a pack newer than the addon knows is offered nothing", offered.SpokenQuestsAudioShared, nil)
+Expect("...and having a pack silences the others", offered.SpokenQuestsAudioHorde, nil)
+
+---------------------------------------------------------------- a pack's label
+local DM = VO.DataModules
+Expect("a language's pack is labelled by what it holds",
+    DM:GetPackLabel({ AddonName = "SpokenQuestsAudioHorde_deDE", Title = "Spoken German Audio: Quests - Horde" }),
+    "Quests - Horde")
+Expect("...and so is a pack built under the old title",
+    DM:GetPackLabel({ AddonName = "SpokenQuestsAudioHorde_deDE", Title = "Spoken Quests Audio: Horde" }), "Horde")
+Expect("...and so is a pack whose title is coloured",
+    DM:GetPackLabel({ AddonName = "SpokenQuestsAudioHorde_deDE", Title = "|cffb48cffSpoken|r German Audio: Quests - Horde" }),
+    "Quests - Horde")
 
 stub.ResetAddOns()
 if Failures() > 0 then print(string.format("\n%d failure(s)", Failures())); os.exit(1) end

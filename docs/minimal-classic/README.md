@@ -1,18 +1,24 @@
 # Minimal Classic player
 
-The compact layout SpokenPlayer draws by default on the modern clients, shipped
-in the player since 2.2.0. Contributed by
+The compact layout Spoken offers as the **Small Window** narrator style on
+the modern clients, shipped in the player since 2.2.0. Contributed by
 [shorley-gm](https://github.com/shorley-gm), written against 2.0.4 and ported
 onto 2.1.0 before it was merged.
 
-The player shows a round native still portrait, gold speaker name, narration
-title and narrow cast-style progress bar. There is no permanent button row.
-The dark rock background and metal trim use WoW artwork.
+The player shows a round native still portrait, the speaker name, the narration
+title and its words, with the progress line along their foot. Stop or Replay,
+Skip and Report are round buttons in the header, as in the DialogueUI window
+and the subtitles. Its Background setting draws it on parchment, the
+default, with dark words, or on the dark rock, with light words; in EllesmereUI's look it is dark
+whichever is chosen and the setting is hidden. The
+parchment is a band of the spellbook's page shipped with Spoken
+(`Textures/MinimalParchment.tga`); it, the rock and the metal trim are WoW
+artwork. The window fades in and out, and from one line to the next.
 
-Nothing is installed separately: it is part of the player's zip. Turning
-**Minimal Classic player** off in `/sp options` restores the original layout.
-The 1.12, 2.4.3 and 3.3.5 clients draw the original layout and have no such
-setting.
+Nothing is installed separately: it is part of the player's zip. Choose it as
+the narrator style on Spoken's settings page, in the welcome window, or with
+`/sp player minimal`; `/sp player classic` gives the original layout (Large
+Window), `subtitle` the subtitles and `none` the voice alone.
 
 In-game validation used the 2.0.4-based layout in the modern Classic beta
 client; the port onto 2.1.0 is checked with the offline suites. Other modern
@@ -22,24 +28,27 @@ flavors have not been visually verified.
 
 | Interaction | Action |
 |---|---|
-| Click portrait | Pause, or restart the line from the beginning |
-| Click narration title | Skip the line, as in the original player |
-| Click plus/minus button | Expand/collapse the waiting queue; the number beside it counts waiting lines |
-| Scroll expanded queue | Browse more than four waiting lines |
-| Click waiting line | Remove it from the queue |
-| Right-click portrait, speaker, title or panel | Playback menu and source actions, including Report/Stop Gossip |
+| Stop or Replay button | Stop the line, or Replay it from the beginning; "• (Stopped)" follows the title meanwhile |
+| Skip button | Skip the line |
+| Report button | Report a problem with the line, where its module offers it |
+| "• +N" after the title | How many lines wait behind this one; point at it for the list |
+| Right-click portrait, speaker, title or panel outside the words | Playback menu and source actions |
+| Right-click the words | Skip the line; with Shift, the playback menu |
 | Drag speaker name or panel | Move the unlocked player |
 | Hover collapsed player | Reveal the resize grip |
-| `/sp options` | Toggle **Minimal Classic player**, scale, lock and visibility settings |
-| `/sp reset` | Reset the active layout's position and width |
+| Ctrl and the mouse wheel | Window Size; with Shift too, Text Size (not while locked) |
+| `/sp options` | Narrator style, scale, lock and the window's other settings |
+| `/sp player minimal` | Switch to this layout (`classic`, `subtitle` or `none` for the others) |
+| `/sp reset` | Reset every window's position, and the Small Window's width |
 | `/sp diagnostics` | Inspect playback, UI state and captured callback errors |
 
-The hidden-portrait, hidden-player and optional-action settings remain
-effective in this layout.
+The hidden-portrait and optional-action settings remain effective in this
+layout.
 
 An empty queue hides the player. Test a quest with available narration when
-checking it. WoW cannot resume a sound partway through: play after pause
-restarts the line, and the progress bar resets accordingly.
+checking it. WoW cannot resume a sound partway through, so there is no pause:
+Stop keeps the line, Replay plays it from the beginning, and the progress bar
+resets accordingly.
 
 ## Design previews
 
@@ -52,9 +61,9 @@ not captures of the WoW client. Actual portrait appearance comes from the game.
 
 ## Implementation
 
-- `addons/SpokenPlayer/UI/MinimalPlayer.lua`: layout, menu, queue drawer,
-  progress and fades over the existing queue/actions services.
-- `addons/SpokenPlayer/UI/StaticPortrait.lua`: native `SetPortraitTexture`
+- `addons/Spoken/UI/MinimalPlayer.lua`: layout, menu, progress and fades over
+  the existing queue/actions services.
+- `addons/Spoken/UI/StaticPortrait.lua`: native `SetPortraitTexture`
   snapshots captured while the speaker's unit token still exists.
 - Small integration changes in `addon.xml`, `API.lua`, `Core.lua`,
   `Strings.lua`, `UI/Options.lua` and `UI/PlayerFrame.lua`.
@@ -63,8 +72,13 @@ not captures of the WoW client. Actual portrait appearance comes from the game.
 Portraits are cached as native Texture regions, keyed by exact unit GUID,
 with at most 32 entries. Queued/current portraits are protected from eviction.
 Synthetic quest-log identities may use an encountered portrait of the same
-creature type. Missing portraits use the source image/book fallback rather
-than borrowing an unrelated target's face.
+creature type. A quest-log giver not met this session is drawn from its
+creature id instead (`SetCreature` on a hidden `DressUpModel`, then
+`SetPortraitTextureFromCreatureDisplayID`). An uncached creature is asked
+for again every 0.05 s for up to 5 s while the client fetches it, and the
+quest log asks for each giver as it draws their play button, so the fetch is
+usually done before the click. Missing portraits use the source
+image/book fallback rather than borrowing an unrelated target's face.
 
 Source-owned action buttons retain their original handlers. The public player
 frame API returns the selected layout. The queue and narration producer are

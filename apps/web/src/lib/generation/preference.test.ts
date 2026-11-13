@@ -43,6 +43,10 @@ describe("fish.audio settings", () => {
     expect(validateFish(FISH)).toEqual(FISH);
   });
 
+  it("read a renamed model as what replaced it", () => {
+    expect(validateFish({ ...FISH, model: "drama-3-preview" })).toEqual({ ...FISH, model: "drama-3" });
+  });
+
   it.each([
     [{ ...FISH, model: "s1" }, /unknown fish.audio model/],
     [{ ...FISH, model: "s2.1-pr0" }, /unknown fish.audio model/],

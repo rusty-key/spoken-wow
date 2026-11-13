@@ -4,27 +4,17 @@ The three addon icons the landing page puts on its cards. The same art CurseForg
 and the in-game addon list show, so somebody arriving from either recognises what
 they came for.
 
-Copied, not authored. The sources are the exported SVGs beside each pipeline's
-other assets:
+Copied, not authored. Each is the 512 px PNG beside its pipeline's other assets,
+scaled to 84 px: the cards draw it at 28 px, and 84 is that at 3x.
 
 | Here | From |
 |---|---|
-| `quests.svg` | `pipelines/quests/assets/icon/spoken-quests.svg` |
-| `zones.svg` | `pipelines/zones/assets/spoken-zones.svg` |
-| `books.svg` | `pipelines/books/assets/spoken-books.svg` |
+| `quests.png` | `pipelines/quests/assets/icon/spoken-quests-512.png` |
+| `zones.png` | `pipelines/places/assets/spoken-zones-512.png` |
+| `books.png` | `pipelines/readables/assets/spoken-books-512.png` |
 
-Two things were done to them on the way in, and both should be done again if one is
-re-exported:
-
-- **The C2PA provenance blob is stripped.** The books export carried ~8 KB of it in a
-  `<metadata>` element, which is most of the file at this size.
-- **Gradient ids are namespaced** — `gold` became `books-gold`, and so on. Served as
-  separate documents they cannot collide, but all three declare the same ids, so
-  inlining two of them into one page would hand both the last one's gradient. The
-  prefix costs nothing and removes the trap.
-
-SVG rather than the 512px PNGs beside them: these render at 40px, and a vector is
-both smaller and sharp on a retina display without a second file.
+The favicon (`src/app/icon.png`, `favicon.ico`, `apple-icon.png`) and the shield in
+`public/logo.png` are the same play mark as `spoken-player-512.png`, scaled the same way.
 
 `public/` is not part of Next's standalone output, so
 `.github/workflows/deploy-web.yaml` copies this directory into the release

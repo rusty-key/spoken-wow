@@ -5,7 +5,7 @@ import { audioStateFromParams } from "./audio-state";
 const read = (query: string) => audioStateFromParams(new URLSearchParams(query));
 
 describe("audioStateFromParams", () => {
-  it("reads the state zones and books links carry", () => {
+  it("reads the state places and readables links carry", () => {
     expect(read("state=missing")).toBe("missing");
     expect(read("state=stale")).toBe("stale");
     expect(read("state=current")).toBe("current");

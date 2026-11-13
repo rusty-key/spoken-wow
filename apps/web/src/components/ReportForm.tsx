@@ -21,8 +21,11 @@
  * reached with the line already identified.
  */
 import { useLang } from "@/components/LangProvider";
+import ReportContextFacts from "@/components/reports/ReportContextFacts";
+import { useGameContext } from "@/components/reports/useGameContext";
 import { withLang } from "@/lib/lang";
-import { useState } from "react";
+import { contextFrom } from "@/lib/reports/context";
+import { useMemo, useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import { useSession } from "@/lib/auth-client";
@@ -33,11 +36,14 @@ export default function ReportForm({
   source,
   target,
   lineId,
+  fromGame = false,
 }: {
   source: Source;
   /** The raw address the report came in on, or null where the section has none. */
   target: string | null;
   lineId: string | null;
+  /** On an /r/ page the game links to, whose address may carry the addon's context. */
+  fromGame?: boolean;
 }) {
   const lang = useLang();
   // isPending rather than a bare null check: while the session is still loading, showing
@@ -47,6 +53,8 @@ export default function ReportForm({
   const [sent, setSent] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const raw = useGameContext(fromGame);
+  const context = useMemo(() => contextFrom(raw, source), [raw, source]);
 
   async function submit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -66,6 +74,7 @@ export default function ReportForm({
         name: data.get("name"),
         email: data.get("email"),
         website: data.get("website"),
+        context: context ? raw : null,
       }),
     }).catch(() => null);
 
@@ -77,7 +86,7 @@ export default function ReportForm({
     }
     setError(
       response?.status === 429
-        ? "That is a lot of reports in one hour. Try again later."
+        ? "That is a lot of reports in a short time. Try again in a few minutes."
         : "The report was not accepted. Check the category and try again.",
     );
   }
@@ -93,6 +102,15 @@ export default function ReportForm({
 
   return (
     <form onSubmit={submit} className="flex max-w-xl flex-col gap-4">
+      {context ? (
+        <details className="rounded border p-3 text-sm">
+          <summary className="cursor-pointer">Sent with this report, from your game</summary>
+          <div className="mt-2">
+            <ReportContextFacts context={context} />
+          </div>
+        </details>
+      ) : null}
+
       <label className="flex flex-col gap-1 text-sm">
         What went wrong?
         <select

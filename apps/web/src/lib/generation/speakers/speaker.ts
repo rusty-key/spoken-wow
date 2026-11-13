@@ -17,6 +17,7 @@ import type { Lang } from "@/lib/lang";
 import type { Failure } from "../errors";
 import type { SeedStrategy } from "../config";
 import type { Provider } from "../providers";
+import type { WordStart } from "../word-times";
 
 export type { Provider } from "../providers";
 
@@ -32,8 +33,8 @@ export type SpeakRequest = {
   lang: Lang;
   seed: number | null;
   /**
-   * Whether the line holds narration. A line that is all stage direction is one turn and
-   * still narration, so this is not `turns.length > 1`.
+   * Whether the line holds narration or a voice marker. A line that is all stage direction,
+   * or all one marked slot, is one turn and still this, so it is not `turns.length > 1`.
    */
   dialogue: boolean;
 };
@@ -67,6 +68,11 @@ export type Spoken =
        * to credits would be wrong without looking wrong.
        */
       costUsd: number | null;
+      /**
+       * Each spoken word's start in `audio`, from a provider that says. Null, the take is
+       * stored without times and the captions estimate them.
+       */
+      words: WordStart[] | null;
       made: Made;
     }
   | { ok: false; failure: Failure };

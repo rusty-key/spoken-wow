@@ -18,11 +18,27 @@ import json
 import os
 from datetime import datetime, timezone
 
+from tts_cli.flavors import is_model_voice
 from tts_cli.naming import filename_for_row, line_id_for_row
+from tts_cli.npc_bodies import npc_bodies
 
-SCHEMA_VERSION = 2
+#: 3: a row a player contributed carries its "contributionId". The extract has none to mark,
+#: but the number says the file's unmarked rows are all the dump's -- which is what lets
+#: corpus_db's import let them overtake a contribution (see CONTRIBUTIONS_MARKED there).
+#: A speaker an admin added by hand carries its "addedBy" the same way; no number marks that,
+#: since a file without the key has no such speaker to keep.
+#: 4: "npcs", each NPC once with its own race, gender and flavor and whose answer that is
+#: (`provenance`), which every line the NPC speaks is voiced in (the npc table, migration 0070).
+#: The extract's are `corpus`; an export carries every answer the site has.
+#: 5: "npcSexes", each sex of an NPC drawn as a man and as a woman under one id, answered as an
+#: NPC is (the npc_sex table, migration 0072). Every line such an NPC speaks is voiced per sex.
+#: 6: "npcBodies" replaces "npcSexes": each body (race and sex) of an NPC drawn as two or more
+#: under one id (the npc_body table, migration 0075). A file of schema 5 still imports.
+SCHEMA_VERSION = 6
 DEFAULT_CORPUS_PATH = "corpus/corpus.json.gz"
 INVALID_CHARS = "$<>"
+#: The skipReason of a line whose voice is a model slot nobody has chosen a voice for yet.
+NO_VOICE = "no-voice"
 
 
 def spawn_key(entity_type: str, entity_id) -> str:
@@ -40,14 +56,23 @@ def _skip_reason(row):
 
     Unresolved template tokens would be read aloud. Progress text is voiced like any other
     line; whether a pack ships it is a separate decision.
+
+    A line in a model voice (flavors.model_voice) has nobody to speak it yet: which voice a
+    model gets is still to be chosen, so the line is gathered - it has a line id, a file name
+    and a place in the explorer - but not generated. Ahead of invalid-chars because it is the
+    reason no rewrite of the text can lift; the site asks the voice, not this, for the same
+    answer (apps/web/src/lib/text-gate.ts).
     """
+    if is_model_voice(row.get("voice_name")):
+        return NO_VOICE
     if any(c in row["cleanedText"] for c in INVALID_CHARS):
         return "invalid-chars"
     return None
 
 
-def build_corpus(df, spawn_rows) -> dict:
-    """Turn the preprocessed dataframe and raw spawn rows into the corpus document."""
+def build_corpus(df, spawn_rows, display_rows=()) -> dict:
+    """Turn the preprocessed dataframe, raw spawn rows and creature displays into the corpus
+    document."""
     lines = []
     for row in df.to_dict("records"):
         reason = _skip_reason(row)
@@ -80,13 +105,41 @@ def build_corpus(df, spawn_rows) -> dict:
         spawns.setdefault(key, []).append(
             {"map": int(map_id), "x": round(float(x), 1), "y": round(float(y), 1)})
 
+    npcs = npcs_of(df)
     return {
         "schemaVersion": SCHEMA_VERSION,
         "generatedAt": datetime.now(timezone.utc).isoformat(timespec="seconds"),
         "lineCount": len(lines),
         "lines": lines,
         "spawns": spawns,
+        "npcs": npcs,
+        "npcBodies": npc_bodies(display_rows, npcs),
     }
+
+
+#: Kinds that are what they are, whoever reads them: a billboard is a gameobject the narrator
+#: reads, not a narrator (apps/web migration 0071).
+GENERIC_TYPES = ("gameobject", "item")
+
+
+def npcs_of(df) -> list:
+    """Each NPC once: its type (its display's race, or its kind for a gameobject or an item)
+    and gender, its own flavor or None where the game names none, and the voice its lines
+    were made in. In kind-then-id order, which the export reproduces."""
+    npcs = {}
+    for row in df.to_dict("records"):
+        key = (row["type"], int(row["id"]))
+        generic = row["type"] in GENERIC_TYPES
+        npcs.setdefault(key, {
+            "npcType": row["type"],
+            "npcId": int(row["id"]),
+            "race": row["type"] if generic else row["race"],
+            "gender": None if generic else row["gender"],
+            "flavor": row["npc_flavor"],
+            "provenance": "corpus",
+            "voice": row["voice_name"],
+        })
+    return [npcs[key] for key in sorted(npcs)]
 
 
 def write_corpus(path: str, corpus: dict) -> None:
@@ -125,17 +178,35 @@ def lines_in_area(corpus: dict, map_id: int, x_range, y_range) -> list:
             if spawn_key(line["npcType"], line["npcId"]) in inside]
 
 
-def extract(path: str = DEFAULT_CORPUS_PATH) -> dict:
-    """Query the world database and write the corpus. The only step that needs MySQL."""
-    from tts_cli.sql_queries import (query_dataframe_for_all_quests_and_gossip,
-                                     query_spawns)
+def extraction_rows(quests, followups):
+    """Quest and gossip rows, then follow-ups, then the rows of creatures voiced by their model.
+
+    Each kind goes after the last so existing rows keep their place: the import records it as
+    each row's `ord`. A model row is dropped where a patch variant of the same NPC has a
+    humanoid display, so one NPC never speaks a line in two voices.
+    """
+    import pandas as pd
+
+    model = quests["ModelID"].notna()
+    humanoid = set(zip(quests.loc[~model, "type"], quests.loc[~model, "id"]))
+    beside_humanoid = pd.Series([key in humanoid for key in zip(quests["type"], quests["id"])],
+                                index=quests.index)
+    return pd.concat([quests[~model], followups, quests[model & ~beside_humanoid]],
+                     ignore_index=True)
+
+
+def extract() -> dict:
+    """The world database as a corpus, for import_corpus_data to take into Postgres. The only
+    step that needs MySQL; the committed file is written by export-corpus alone."""
+    from tts_cli.sql_queries import (query_creature_displays,
+                                     query_dataframe_for_all_quests_and_gossip,
+                                     query_followup_dataframe, query_spawns)
     from tts_cli.tts_utils import TTSProcessor
 
-    df = query_dataframe_for_all_quests_and_gossip(0)
+    df = extraction_rows(query_dataframe_for_all_quests_and_gossip(0),
+                         query_followup_dataframe())
     # preprocess_dataframe only uses self for handle_gender_options, so skip __init__ and
     # avoid requiring an ElevenLabs key just to extract text.
     df = TTSProcessor.preprocess_dataframe(TTSProcessor.__new__(TTSProcessor), df)
 
-    corpus = build_corpus(df, query_spawns())
-    write_corpus(path, corpus)
-    return corpus
+    return build_corpus(df, query_spawns(), query_creature_displays())

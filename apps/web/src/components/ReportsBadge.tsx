@@ -20,6 +20,7 @@ import { useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { resolveReport } from "@/lib/reports/client";
 import { CATEGORY_COLUMN, STATUS_LABELS, type Report, type Status } from "@/lib/reports/reports";
 import type { Source } from "@/lib/sections";
 import { cn } from "@/lib/utils";
@@ -85,15 +86,10 @@ export default function ReportsBadge({ source, lineId, count, canTriage }: Props
   async function resolve(id: number, status: Status) {
     setBusy(id);
     setError(null);
-    const response = await fetch("/api/reports/resolve", {
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify({ id, status }),
-    }).catch(() => null);
+    const report = await resolveReport(id, status);
     setBusy(null);
 
-    if (!response?.ok) return setError("could not change that report");
-    const { report } = (await response.json()) as { report: Report };
+    if (!report) return setError("could not change that report");
     setReports((current) => current?.map((known) => (known.id === report.id ? report : known)));
   }
 
@@ -169,6 +165,14 @@ export default function ReportsBadge({ source, lineId, count, canTriage }: Props
                         onClick={() => void resolve(report.id, "not_an_issue")}
                       >
                         Not a problem
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        disabled={busy === report.id}
+                        onClick={() => void resolve(report.id, "minor")}
+                      >
+                        Minor
                       </Button>
                     </>
                   ) : (

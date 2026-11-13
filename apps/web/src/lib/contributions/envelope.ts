@@ -1,10 +1,10 @@
 /**
- * The reader for the envelope addons/SpokenPlayer/Contribute.lua writes.
+ * The reader for the envelope addons/Spoken/Contribute.lua writes.
  *
  * THE TWO MUST AGREE EXACTLY, and the fixtures under tests/fixtures/contributions are what
  * holds them together -- the Lua writes them, this reads them, and a format change that
  * touches only one side fails in the commit that makes it. The same arrangement, and the same
- * reason, as SpokenBooks/Checksum.lua and pipelines/books/tools/lib/naming.mjs.
+ * reason, as Spoken_Readables/Checksum.lua and pipelines/readables/tools/lib/naming.mjs.
  *
  * Free of node imports: the paste box is a client component and previews the parse before
  * anything is sent.
@@ -13,8 +13,18 @@
 /** Large enough for a long quest, small enough that a pasted log is refused rather than stored. */
 export const MAX_BYTES = 64 * 1024;
 
-const SOURCES = ["quests", "zones", "books"] as const;
+export const SOURCES = ["quests", "places", "readables"] as const;
 export type EnvelopeSource = (typeof SOURCES)[number];
+
+/**
+ * The keys addons released before the rename write, and every raw envelope stored before it
+ * carries. Read as the new key forever: a player can paste from a years-old saved file.
+ */
+const LEGACY_SOURCES: Record<string, EnvelopeSource> = { zones: "places", books: "readables" };
+
+export function isEnvelopeSource(value: unknown): value is EnvelopeSource {
+  return typeof value === "string" && (SOURCES as readonly string[]).includes(value);
+}
 
 export type Envelope = {
   source: EnvelopeSource;
@@ -57,6 +67,10 @@ export function parseEnvelope(raw: string): Result {
   if (new TextEncoder().encode(raw).length > MAX_BYTES) {
     return { ok: false, error: "oversize" };
   }
+  // Postgres text cannot hold NUL, and one in a file would fail every line stored beside it.
+  if (raw.includes("\u0000")) {
+    return { ok: false, error: "malformed" };
+  }
 
   // A paste picks up blank lines and \r\n at both ends and neither is the player's fault.
   const normalised = raw.replace(/\r\n/g, "\n").replace(/\r/g, "\n").trim() + "\n";
@@ -71,7 +85,7 @@ export function parseEnvelope(raw: string): Result {
   if (!headerMatch) return { ok: false, error: "malformed" };
   if (headerMatch[1] !== "1") return { ok: false, error: "version" };
 
-  const source = headerMatch[2] as EnvelopeSource;
+  const source = LEGACY_SOURCES[headerMatch[2]] ?? (headerMatch[2] as EnvelopeSource);
   if (!SOURCES.includes(source)) return { ok: false, error: "source" };
 
   // The checksum is verified before the body is trusted, but after the header: a 2.x envelope
@@ -111,11 +125,26 @@ export function parseEnvelope(raw: string): Result {
   return { ok: true, value: { source, fields, text } };
 }
 
+/**
+ * The envelope written back out, as Contribute.lua's Envelope writes it: for an envelope the
+ * site kept only parsed, as a report keeps its context, and now stores as a contribution's raw.
+ * Parsing what this writes gives the same envelope back.
+ */
+export function formatEnvelope(envelope: Envelope): string {
+  const out = [`!SPOKEN1 ${envelope.source}`];
+  for (const [key, value] of Object.entries(envelope.fields)) out.push(`${key}=${value}`);
+  if (envelope.text) {
+    out.push("text<<", ...envelope.text.split("\n").map((line) => (/^\\*>>$/.test(line) ? `\\${line}` : line)), ">>");
+  }
+  const body = out.join("\n") + "\n";
+  return `${body}sum=${checksum(body)}\n`;
+}
+
 export type DecodeError = "malformed" | "corrupt" | "unsupported";
 type DecodeResult = { ok: true; text: string } | { ok: false; error: DecodeError };
 
 /**
- * The reader for the `#e1=` fragment addons/SpokenPlayer/Contribute.lua's Link builds:
+ * The reader for the `#e1=` fragment addons/Spoken/Contribute.lua's Link builds:
  * base64url -> raw deflate -> the same plaintext parseEnvelope already reads.
  *
  * Deliberately stops at plaintext rather than also calling parseEnvelope: ContributeForm feeds
@@ -130,6 +159,17 @@ type DecodeResult = { ok: true; text: string } | { ok: false; error: DecodeError
  * Async because DecompressionStream is a stream API with no synchronous form; every caller
  * already awaits the fetch this replaces, so that costs nothing a paste didn't already have.
  */
+/**
+ * The payload of a #e1= fragment, taken out of the address bar as it is read so the game text
+ * does not linger in history or get shared onward. Null when the address carries none.
+ */
+export function takeFragment(): string | null {
+  const hash = window.location.hash;
+  if (!hash.startsWith("#e1=")) return null;
+  window.history.replaceState(null, "", window.location.pathname + window.location.search);
+  return hash.slice("#e1=".length);
+}
+
 export async function decodeFragment(fragment: string): Promise<DecodeResult> {
   // Older Safari (pre-16.4) has no DecompressionStream at all. Reported plainly rather than
   // thrown -- ContributeForm's job is to say so and point at the paste box, not to crash on

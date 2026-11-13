@@ -1,0 +1,7 @@
+<Ui xsi:schemaLocation="http://www.blizzard.com/wow/ui/ ..\FrameXML\UI.xsd">
+    <!-- Captions. -->
+    <Include file="UI\Transcript.lua"/>
+    <Include file="UI\Subtitle.lua"/>
+    <Include file="UI\WordMarks.lua"/>
+    <Include file="UI\Search.lua"/>
+</Ui>

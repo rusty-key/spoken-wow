@@ -13,6 +13,7 @@ import { previewCache, voicePicker } from "@/lib/generation/preview";
 import { generationStatus } from "@/lib/generation/status";
 import { can } from "@/lib/permissions";
 import { readGenerationSettings, speakingConfig } from "@/lib/generation/preference";
+import { Contained, Wide } from "@/components/Width";
 
 export const metadata: Metadata = { title: "Pronunciation · Spoken" };
 
@@ -55,16 +56,19 @@ export default async function Page({ params }: { params: Promise<{ lang: string 
     : {};
 
   return (
-    <main className="mx-auto max-w-6xl px-5 pt-6 pb-36">
-      <h1 className="text-xl font-semibold">Pronunciation</h1>
-      <p className="text-muted-foreground mt-1 mb-5 text-sm">
-        How ElevenLabs should say the names the corpus uses. Each entry becomes a phoneme rule
-        in a pronunciation dictionary, matched case-insensitively at word boundaries, and every
-        line generated afterwards is spoken with it. Only names a plain reader gets wrong belong
-        here — a rule for a name it already handles can only make that name worse.
-      </p>
-
-      <LexiconEditor initial={lexicon} modelId={config.modelId} initialCache={cached} />
+    <main className="pt-6 pb-36">
+      <Contained>
+        <h1 className="text-xl font-semibold">Pronunciation</h1>
+        <p className="text-muted-foreground mt-1 mb-5 text-sm">
+          How ElevenLabs should say the names the corpus uses. Each entry becomes a phoneme rule
+          in a pronunciation dictionary, matched case-insensitively at word boundaries, and every
+          line generated afterwards is spoken with it. Only names a plain reader gets wrong belong
+          here — a rule for a name it already handles can only make that name worse.
+        </p>
+      </Contained>
+      <Wide>
+        <LexiconEditor initial={lexicon} modelId={config.modelId} initialCache={cached} />
+      </Wide>
     </main>
   );
 }

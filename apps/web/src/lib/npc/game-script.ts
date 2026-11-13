@@ -3,7 +3,7 @@
  *
  * `DressUpModel:SetCreature(id)` asks the server about a creature the client has not cached,
  * and the answer lands in creaturecache.wdb with the appearance ids /contributions/game-data
- * reads -- the same call the addon's portraits rely on (SpokenPlayer/UI/Portrait.lua). The last
+ * reads -- the same call the addon's portraits rely on (Spoken/UI/Portrait.lua). The last
  * command walks the list one NPC at a time, retrying each until its model loads or five
  * seconds pass, and prints `id modelFileId` so progress is visible.
  *

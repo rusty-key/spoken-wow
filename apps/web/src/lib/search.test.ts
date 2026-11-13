@@ -2,8 +2,11 @@ import { describe, expect, it } from "vitest";
 
 import { audioRelPath } from "./audio";
 import { npcKey } from "./corpus";
+import { spokenHash } from "./generation/spoken-hash";
 import { corpus as catalogue } from "./quests/catalogue";
-import { batchJobs, isGap, matchingLines, search } from "./search";
+import { batchJobs, batchPlan, isGap, matchingLines, search } from "./search";
+import { madeByOf } from "./takes/made-by";
+import { isModelVoice } from "./voices/voices";
 
 const corpus = await catalogue();
 /**
@@ -21,11 +24,11 @@ const find = (options: Parameters<typeof search>[2]) => search(corpus, store, op
  * weaker fact than the one the test means to pin. The default has tests of its own below.
  */
 const all = (options: Parameters<typeof search>[2] = {}) =>
-  find({ includeProgress: true, ...options, limit: 20_000 }).lines;
+  find({ includeProgress: true, ...options, limit: 50_000 }).lines;
 
 /** The same, with the app's real defaults, for the tests that are about those defaults. */
 const asShipped = (options: Parameters<typeof search>[2] = {}) =>
-  find({ ...options, limit: 20_000 }).lines;
+  find({ ...options, limit: 50_000 }).lines;
 
 const npcKeys = (lines: { npcType: "creature" | "gameobject" | "item"; npcId: number }[]) =>
   [...new Set(lines.map(npcKey))].sort();
@@ -34,14 +37,14 @@ describe("search by npc", () => {
   it("finds an npc by name, case-insensitively", () => {
     // includeProgress so the total stays a fact about how many lines Dughan has, rather
     // than how many of them happen not to be progress text.
-    const result = find({ q: "dughan", filter: "npc", includeProgress: true, limit: 20_000 });
+    const result = find({ q: "dughan", filter: "npc", includeProgress: true, limit: 50_000 });
     expect(npcKeys(result.lines)).toEqual(["creature:240"]);
     expect(result.npcCount).toBe(1);
-    expect(result.total).toBe(22);
+    expect(result.total).toBe(28);
   });
 
   it("finds the same npc by id", () => {
-    const byId = find({ q: "240", filter: "npc", limit: 20_000 });
+    const byId = find({ q: "240", filter: "npc", limit: 50_000 });
     expect(npcKeys(byId.lines)).toEqual(["creature:240"]);
     expect(byId.total).toBe(find({ q: "dughan", filter: "npc" }).total);
   });
@@ -116,13 +119,13 @@ describe("filter scoping", () => {
 describe("field filters", () => {
   it("narrows to a race", () => {
     const lines = all({ race: "tauren" });
-    expect(lines).toHaveLength(2064);
+    expect(lines).toHaveLength(2181);
     expect(lines.every((l) => l.race === "tauren")).toBe(true);
   });
 
   it("intersects rather than widening", () => {
     const both = all({ race: "tauren", gender: "female" });
-    expect(both).toHaveLength(630);
+    expect(both).toHaveLength(674);
     expect(both.length).toBeLessThan(all({ race: "tauren" }).length);
     expect(both.every((l) => l.race === "tauren" && l.gender === "female")).toBe(true);
   });
@@ -130,18 +133,24 @@ describe("field filters", () => {
   it("filters by voice, source and entity type", () => {
     // A voice is race-gender-flavor, so it narrows within the pair rather than matching it:
     // tauren-female speaks with three different voices.
-    expect(all({ voice: "tauren-female-shaman" })).toHaveLength(145);
+    expect(all({ voice: "tauren-female-shaman" })).toHaveLength(196);
     expect(all({ voice: "tauren-female-shaman" }).every((l) => l.race === "tauren")).toBe(true);
     // A flavor cuts across races - three of them have a shaman voice - so it narrows on its
     // own axis rather than standing in for a voice.
-    expect(all({ flavor: "shaman" })).toHaveLength(766);
-    expect(all({ flavor: "shaman", race: "tauren" })).toHaveLength(416);
-    expect(all({ source: "gossip" }).every((l) => l.source === "gossip")).toBe(true);
+    expect(all({ flavor: "shaman" })).toHaveLength(867);
+    expect(all({ flavor: "shaman", race: "tauren" })).toHaveLength(486);
+    expect(all({ source: ["gossip"] }).every((l) => l.source === "gossip")).toBe(true);
     expect(all({ npcType: "item" }).every((l) => l.npcType === "item")).toBe(true);
   });
 
+  it("takes several sources at once, as lines of any of them", () => {
+    const both = all({ source: ["accept", "gossip"] });
+    expect(both).toHaveLength(all({ source: ["accept"] }).length + all({ source: ["gossip"] }).length);
+    expect(new Set(both.map((l) => l.source))).toEqual(new Set(["accept", "gossip"]));
+  });
+
   it("combines with a query", () => {
-    const lines = all({ q: "dughan", filter: "npc", source: "gossip" });
+    const lines = all({ q: "dughan", filter: "npc", source: ["gossip"] });
     expect(lines.length).toBeGreaterThan(0);
     expect(lines.every((l) => l.npcId === 240 && l.source === "gossip")).toBe(true);
   });
@@ -154,7 +163,8 @@ describe("field filters", () => {
     const narrated = asShipped({ narration: true });
     expect(narrated.length).toBeGreaterThan(0);
     expect(narrated.some((l) => !l.generatable)).toBe(true);
-    expect(narrated.every((l) => l.voiceable)).toBe(true);
+    // A model slot has no voice to read the NPC's words in yet, narrator or not.
+    expect(narrated.every((l) => l.voiceable || isModelVoice(l.voice))).toBe(true);
   });
 
   it("narrows to lines a narrator would read", () => {
@@ -169,16 +179,42 @@ describe("field filters", () => {
   it("hides progress text unless asked for", () => {
     // 3,096 of the corpus's 17,564 lines. Hidden as a view default, not because they are silent.
     expect(asShipped().every((l) => l.source !== "progress")).toBe(true);
-    expect(asShipped()).toHaveLength(14468);
-    expect(all()).toHaveLength(17564);
+    expect(asShipped()).toHaveLength(17479);
+    expect(all()).toHaveLength(21132);
   });
 
   it("treats asking for the progress source as asking to see them", () => {
     // Otherwise picking `progress` in the source filter would return nothing at all, which
     // reads as a broken filter rather than as a default doing its job.
-    const lines = asShipped({ source: "progress" });
-    expect(lines).toHaveLength(3096);
+    const lines = asShipped({ source: ["progress"] });
+    expect(lines).toHaveLength(3653);
     expect(lines.every((l) => l.source === "progress")).toBe(true);
+  });
+});
+
+describe("follow-up lines", () => {
+  it("are in the default view, which hides only progress text", () => {
+    const lines = asShipped().filter((l) => l.source === "followup");
+    expect(lines.length).toBeGreaterThan(0);
+  });
+
+  it("narrow by source, and are voiceable lines with a quest and a speaker", () => {
+    const lines = asShipped({ source: ["followup"] });
+    expect(lines).toHaveLength(corpus.lines.filter((l) => l.source === "followup").length);
+    expect(lines.every((l) => l.source === "followup")).toBe(true);
+    // What the row draws: the quest it follows and the NPC who says it. A null quest would
+    // leave the quest column a dash and the row with no context at all.
+    expect(lines.every((l) => l.questId !== null && l.npcId > 0)).toBe(true);
+    expect(lines.every((l) => l.lineId.startsWith("f:"))).toBe(true);
+  });
+
+  it("come back when narrowing to the quest they follow", () => {
+    // Narrowing a row to its quest is a quest-id search; a follow-up line belongs in that
+    // answer beside the quest's own dialog.
+    const sample = asShipped({ source: ["followup"] })[0];
+    const lines = asShipped({ q: String(sample.questId), filter: "quest" });
+    expect(lines.some((l) => l.source === "followup")).toBe(true);
+    expect(lines.some((l) => l.source !== "followup")).toBe(true);
   });
 });
 
@@ -294,6 +330,13 @@ describe("batch jobs", () => {
     expect(new Set(jobs.map((j) => j.audioPath)).size).toBe(jobs.length);
     expect(jobs.length).toBeLessThan(corpus.lines.filter((l) => l.generatable).length);
   });
+
+  it("accounts for every matched line that is not a job", () => {
+    const { jobs, skipped } = batchPlan(corpus.lines);
+    const total = Object.values(skipped).reduce((sum, count) => sum + count, 0);
+    expect(jobs.length + total).toBe(corpus.lines.length);
+    expect(skipped["shared-file"]).toBeGreaterThan(0);
+  });
 });
 
 /**
@@ -304,6 +347,39 @@ describe("overrides", () => {
   /** An override is keyed on the audio file, because one mp3 is spoken by many NPCs. */
   const rewrite = (file: string, text: string) => ({
     overrides: new Map([[file, { file, lineId: "", text, updatedAt: "", updatedBy: null }]]),
+  });
+
+  it("says when the original has changed since the override was saved", () => {
+    const file = "quests/123-complete.mp3";
+    const flagged = (originalHash: string | null) =>
+      search(
+        corpus,
+        store,
+        { limit: 50_000, includeProgress: true },
+        { overrides: new Map([[file, { file, lineId: "", text: "x", updatedAt: "", updatedBy: null, originalHash }]]) },
+      ).lines.find((line) => line.audioPath === file)?.driftedOverride !== null;
+    const text = corpus.lines.find((line) => audioRelPath(line) === file)!.text;
+
+    expect(flagged(spokenHash(text))).toBe(false);
+    expect(flagged(spokenHash(`${text} changed`))).toBe(true);
+    expect(flagged(null)).toBe(false);
+  });
+
+  it("names the row holding the override, which a voice's row inherits from its line's", () => {
+    const owner = "quests/123.mp3";
+    const row = (file: string) =>
+      search(
+        corpus,
+        store,
+        { limit: 50_000, includeProgress: true },
+        {
+          overrides: new Map([
+            [owner, { file: owner, lineId: "q:123", text: "x", updatedAt: "", updatedBy: null, originalHash: "old" }],
+          ]),
+        },
+      ).lines.find((line) => line.audioPath === file);
+
+    expect(row("quests/123-complete.mp3")?.driftedOverride).toEqual({ file: owner, lineId: "q:123" });
   });
 
   it("narrows to audio the current text would no longer produce", () => {
@@ -494,6 +570,12 @@ describe("ignored lines", () => {
     expect(gaps.some((l) => l.lineId === TALLY)).toBe(false);
   });
 
+  it("finds an ignored line by its id, with the reason on the row", () => {
+    // A report about an ignored line must still resolve to it.
+    const found = search(corpus, store, { line: TALLY, limit: 5 }, ignoring(TALLY));
+    expect(found.lines.map((l) => [l.lineId, l.ignored])).toEqual([[TALLY, "war-effort tally"]]);
+  });
+
   it("carries the reason onto the row, so the chip can say why", () => {
     const found = search(corpus, store, { ignored: true, limit: 5 }, ignoring(TALLY, "counter"));
     expect(found.lines[0].ignored).toBe("counter");
@@ -534,6 +616,12 @@ describe("search by line id", () => {
     expect(new Set(rows.map((l) => l.lineId))).toEqual(new Set([shared.lineId]));
   });
 
+  it("finds a progress line by its id without asking for progress", () => {
+    // How a report reaches the corpus: hidden by default must not read as dropped.
+    const progress = corpus.lines.find((l) => l.source === "progress")!;
+    expect(asShipped({ line: progress.lineId }).map((l) => l.lineId)).toEqual([progress.lineId]);
+  });
+
   it("matches nothing when no line carries the id", () => {
     // What a report about a line the corpus has since dropped resolves to. The whole
     // corpus would be the wrong answer: it reads as "here it is" for something gone.
@@ -558,5 +646,114 @@ describe("reported lines", () => {
 
   it("matches nothing when the counts were never fetched, rather than everything", () => {
     expect(matchingLines(corpus, store, { reports: "open" })).toEqual([]);
+  });
+});
+
+describe("quest level", () => {
+  const quests = [...new Set(corpus.lines.flatMap((line) => line.questId ?? []))];
+  const [low, high, unknown] = quests;
+  const levels = new Map([[low, 5], [high, 40]]);
+  const context = { overrides: new Map(), levels };
+  const questsIn = (filters: { minLevel?: number; maxLevel?: number }) =>
+    new Set(matchingLines(corpus, store, filters, context).map((line) => line.questId));
+
+  it("includes both bounds, and takes either alone", () => {
+    expect(questsIn({ minLevel: 5, maxLevel: 40 })).toEqual(new Set([low, high]));
+    expect(questsIn({ maxLevel: 5 })).toEqual(new Set([low]));
+    expect(questsIn({ minLevel: 6 })).toEqual(new Set([high]));
+  });
+
+  it("treats a bound of 0 as a bound", () => {
+    expect(questsIn({ maxLevel: 0 })).toEqual(new Set());
+  });
+
+  it("hides gossip and quests with no known level", () => {
+    const found = questsIn({ minLevel: 0 });
+    expect(found.has(unknown)).toBe(false);
+    expect(found.has(null)).toBe(false);
+  });
+
+  it("matches nothing when the levels were never fetched, so a batch cannot widen", () => {
+    expect(matchingLines(corpus, store, { maxLevel: 60 })).toEqual([]);
+  });
+
+  it("filters nothing with no bound", () => {
+    expect(matchingLines(corpus, store, {}, context)).toEqual(matchingLines(corpus, store, {}));
+  });
+});
+
+describe("player gender", () => {
+  const [plain, male, female] = matchingLines(corpus, store, {});
+  const split = {
+    ...corpus,
+    lines: [
+      { ...plain, playerGender: null },
+      { ...male, playerGender: "m" as const },
+      { ...female, playerGender: "f" as const },
+    ],
+  };
+  const heardBy = (playerGender?: "m" | "f") => new Set(matchingLines(split, store, { playerGender }).map((line) => line.lineId));
+
+  it("keeps the chosen side and the lines heard by both", () => {
+    expect(heardBy("m")).toEqual(new Set([plain.lineId, male.lineId]));
+    expect(heardBy("f")).toEqual(new Set([plain.lineId, female.lineId]));
+  });
+
+  it("filters nothing when no side is chosen", () => {
+    expect(heardBy()).toEqual(new Set([plain.lineId, male.lineId, female.lineId]));
+  });
+});
+
+describe("broadcast id status", () => {
+  const gossip = corpus.lines.filter((line) => line.source === "gossip");
+  const [exact, guessed] = gossip.map((line) => line.lineId).filter((id, i, ids) => ids.indexOf(id) === i);
+  const context = {
+    overrides: new Map(),
+    broadcast: new Map([[exact, "extract" as const], [guessed, "text" as const]]),
+  };
+  const ids = (found: { lineId: string }[]) => [...new Set(found.map((line) => line.lineId))];
+
+  it("narrows gossip to how its ids were found", () => {
+    expect(ids(matchingLines(corpus, store, { broadcast: "extract" }, context))).toEqual([exact]);
+    expect(ids(matchingLines(corpus, store, { broadcast: "text" }, context))).toEqual([guessed]);
+  });
+
+  it("counts only gossip as having no id", () => {
+    const none = matchingLines(corpus, store, { broadcast: "none", includeProgress: true }, context);
+    expect(none.every((line) => line.source === "gossip")).toBe(true);
+    expect(ids(none)).not.toContain(exact);
+    expect(none.length).toBe(gossip.filter((line) => line.lineId !== exact && line.lineId !== guessed).length);
+  });
+
+  it("matches nothing when the statuses were never fetched", () => {
+    expect(matchingLines(corpus, store, { broadcast: "none" })).toEqual([]);
+  });
+});
+
+describe("made by", () => {
+  const lines = all().slice(0, 3);
+  const file = (line: (typeof lines)[number]) => line.audioPath;
+  const context = {
+    overrides: new Map(),
+    madeBy: new Map([
+      [file(lines[0]), madeByOf({ provider: "fish", modelId: "s2.1-pro-free", createdBy: "u1", createdByName: "Amy", createdAt: new Date("2026-10-01T12:00:00Z") })],
+      [file(lines[1]), madeByOf({ provider: "elevenlabs", modelId: "eleven_v3", createdBy: null, createdByName: null, createdAt: new Date("2026-10-01T12:00:00Z") })],
+    ]),
+  };
+
+  it("narrows to the files that model or author made, and labels the rows", () => {
+    const byModel = search(corpus, store, { model: "eleven:v3", limit: 50_000 }, context);
+    expect(new Set(byModel.lines.map(file))).toEqual(new Set([file(lines[1])]));
+    expect(byModel.lines[0].madeBy?.model).toBe("eleven:v3");
+    expect(byModel.madeBy?.authors).toEqual([{ id: "u1", name: "Amy" }]);
+
+    const byAuthor = matchingLines(corpus, store, { author: "u1" }, context);
+    expect(new Set(byAuthor.map(audioRelPath))).toEqual(new Set([file(lines[0])]));
+  });
+
+  it("sends no names and no facets without the map", () => {
+    const result = search(corpus, store, { limit: 5 });
+    expect(result.madeBy).toBeUndefined();
+    expect(result.lines.every((line) => line.madeBy === null)).toBe(true);
   });
 });

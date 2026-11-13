@@ -2,7 +2,7 @@
  * What a voiceline is: the shape every reader of the quest corpus agrees on.
  *
  * TYPES AND PURE HELPERS ONLY. The rows themselves come from lib/quests/catalogue.ts now,
- * which reads quest_line the way the zones and books catalogues read theirs. This module
+ * which reads quest_line the way the places and readables catalogues read theirs. This module
  * used to read and memoise corpus/corpus.json.gz; that file is an export of the table
  * these days, and the only things that still read it are the Python CLI and the addon
  * build, neither of which runs here.
@@ -12,6 +12,7 @@
  * fails silently.
  */
 import type { Lang } from "./lang";
+import type { ClientFamily } from "./contributions/client";
 import type { NpcType, Source } from "./line-fields";
 
 /** Mirrors the line schema built in tts_cli/corpus.py:build_corpus. */
@@ -40,6 +41,18 @@ export type CorpusLine = {
    * because many tests build a CorpusLine by hand for questions this has no bearing on.
    */
   contributionId?: number | null;
+  /** An admin added this speaker by hand in the explorer (migration 0076), and may take it back. */
+  added?: boolean;
+  /**
+   * No other NPC speaks this line's moment, so the explorer offers no way to take this one off:
+   * a line is there only through its speakers.
+   */
+  soleSpeaker?: boolean;
+  /**
+   * The game client this row came from (lib/quests/line-client.ts). Absent for the extract's
+   * rows, which are with the focus bin; the explorer shows Era + Forever unless asked.
+   */
+  clientFamily?: ClientFamily;
   /**
    * What a language other than English has not translated yet. The row then carries the
    * English in its place, for the explorer to show and mark -- never to voice: a line whose
@@ -58,7 +71,14 @@ export type CorpusLine = {
    * language's word (player-words.ts), so the gate has to know which. Absent means English.
    */
   lang?: Lang;
-  /** The English names, for a translator to work from. Absent when reading English. */
+  /** The sex this row is for (2 man, 3 woman), on an NPC split by body. */
+  npcSex?: 2 | 3;
+  /** The body this row is for ("gnome-female"), on an NPC split by body. */
+  npcBody?: string;
+  /**
+   * The English names, for a translator to work from. Absent when reading English, and on a
+   * line only this language has.
+   */
   english?: { questTitle: string | null; npcName: string };
 };
 

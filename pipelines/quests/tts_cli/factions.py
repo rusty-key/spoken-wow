@@ -11,22 +11,33 @@ they chose to whichever was uploaded last. The player needs no change to read th
 walks every registered module and takes the first whose SoundLengthLookupByFileName has the
 file, which is how upstream shipped one pack per expansion.
 
-WHICH SIDE A QUEST IS ON IS NOT DERIVED HERE. corpus/factions.json is the export, written by
-tools/export_factions.py from the world DB and committed beside the corpus the way
-corpus/ignored.json is - so building a pack needs no database. Its header explains how a quest
-gets a side. Absent from that file means shared, which is the common case.
+WHICH SIDE A QUEST IS ON IS NOT DERIVED HERE. It is read from two committed files, so building a
+pack needs no database. First the Compendium's own data (addons/Spoken_Quests/Data/Compendium.lua,
+tools/export_compendium.py): a quest whose `races` are all one side's is that side's. It has
+Forever's quests, which the vmangos world DB lacks, and Forever's client's race masks. Then, for
+a quest the Compendium does not list, corpus/factions.json, the export tools/export_factions.py
+writes from the vmangos world DB; its header explains how a quest gets a side there. Absent
+from both means shared, which is the common case.
 
 STEMS, NOT FILENAMES. Everything here talks in 'quests/5-accept' without an extension, because
 a staged store holds ogg where the corpus names mp3.
 """
 import json
 import os
+import re
 
-from tts_cli.naming import subfolder_from_line_id
+from tts_cli.naming import CHATTER, subfolder_from_line_id
 
 DEFAULT_FACTIONS_PATH = "corpus/factions.json"
+DEFAULT_COMPENDIUM_PATH = os.path.normpath(os.path.join(
+    os.path.dirname(os.path.abspath(__file__)), "..", "..", "..", "addons", "Spoken_Quests", "Data",
+    "Compendium.lua"))
 
-#: 'all' is every line; the other four partition the same set.
+#: Each side's races as the Compendium's `races` bits (ChrRaces.PlayableRaceBit): Human, Dwarf,
+#: Night Elf, Gnome and High Order Skyborne; Orc, Undead, Tauren, Troll and Windshaper Skyborne.
+SIDE_RACES = {"alliance": 1 | 4 | 8 | 64 | 1 << 32, "horde": 2 | 16 | 32 | 128 | 1 << 33}
+
+#: 'all' is every line; the next four partition the same set.
 PACKS = ("all", "alliance", "horde", "shared", "gossip")
 
 #: Appended to the module name to make each pack's addon folder. Every pack carries one,
@@ -44,14 +55,15 @@ PACK_SUFFIXES = {
 #: pack_title - which is a parameter because a set of packs built together is named together.
 PACK_LABELS = {
     "all": "All",
-    "alliance": "Alliance",
-    "horde": "Horde",
-    "shared": "Shared Quests",
+    "alliance": "Quests - Alliance",
+    "horde": "Quests - Horde",
+    "shared": "Quests - Shared",
     "gossip": "Gossip",
 }
 
-#: The family every pack belongs to unless told otherwise, which is every shipping build.
-DEFAULT_TITLE_FAMILY = "Spoken Quests Audio"
+#: The family every pack belongs to unless told otherwise: English's. Another language's is
+#: "Spoken <Language> Audio", and its titles come from its pages (scripts/lib/packs.mjs).
+DEFAULT_TITLE_FAMILY = "Spoken Audio"
 
 
 def pack_title(pack: str, family: str = DEFAULT_TITLE_FAMILY) -> str:
@@ -63,18 +75,42 @@ def pack_title(pack: str, family: str = DEFAULT_TITLE_FAMILY) -> str:
     return f"{family}: {PACK_LABELS[pack]}"
 
 
-def load_sides(path: str = DEFAULT_FACTIONS_PATH) -> dict:
-    """The export as {questId: 'alliance'|'horde'}, or {} where there is none to read."""
+def compendium_sides(path: str = DEFAULT_COMPENDIUM_PATH) -> dict:
+    """{questId: side} for every quest the Compendium lists, None where either side may take it,
+    or {} where there is no file to read."""
     if not os.path.isfile(path):
         return {}
     with open(path, encoding="utf-8") as f:
-        document = json.load(f)
-    return {int(quest): side for quest, side in document.get("sides", {}).items()}
+        text = f.read()
+    quests = text.split("\tquests = {", 1)[-1].split("\tsorts = {", 1)[0]
+    sides = {}
+    for quest, fields in re.findall(r"^\t\t\[(\d+)\] = \{ (.*) \},$", quests, re.M):
+        races = re.search(r"\braces = (\d+)", fields)
+        races = int(races.group(1)) if races else 0
+        sides[int(quest)] = next((side for side, mask in SIDE_RACES.items()
+                                  if races and not races & ~mask), None)
+    return sides
+
+
+def load_sides(path: str = DEFAULT_FACTIONS_PATH, compendium: str = DEFAULT_COMPENDIUM_PATH) -> dict:
+    """{questId: 'alliance'|'horde'}: the Compendium's side for each quest it lists, else the
+    export's; {} where there is neither to read."""
+    sides = {}
+    if os.path.isfile(path):
+        with open(path, encoding="utf-8") as f:
+            sides = {int(quest): side for quest, side in json.load(f).get("sides", {}).items()}
+    for quest, side in compendium_sides(compendium).items():
+        if side:
+            sides[quest] = side
+        else:
+            sides.pop(quest, None)
+    return sides
 
 
 def pack_of_line(line: dict, sides: dict) -> str:
-    """The pack a corpus line's audio ships in."""
-    if line["source"] == "gossip":
+    """The pack a corpus line's audio ships in. NPC chat has no quest to side with, and is an NPC
+    talking as gossip is."""
+    if line["source"] in ("gossip", CHATTER):
         return "gossip"
     return sides.get(line["questId"], "shared")
 
@@ -83,11 +119,19 @@ def stem_of_line(line: dict) -> str:
     return f'{subfolder_from_line_id(line["lineId"])}/{line["fileName"]}'
 
 
-def pack_stems(corpus: dict, sides: dict, pack: str) -> set:
+def pack_stems(corpus: dict, sides: dict, pack: str, aliases: dict = None) -> set:
     """Every store-relative stem a pack contains.
 
     A file addressed by lines in two packs is shared, not duplicated and not dropped: being
     generous costs a player megabytes, and being strict costs them a line that never plays.
+
+    `aliases` is GossipAliases ({stem: [stems]}, tts_cli/gossip_text.py): a gossip file's
+    aliases ship beside it, since the addon plays one when the file itself has no take, and a
+    merged line's file is only reachable that way.
+
+    A stem's player-gender forms ship with it, whichever form the corpus names: the addon tries a
+    player's m-/f- file and then the plain one, and a language's store holds the forms of its own
+    text, which need not be English's.
     """
     if pack not in PACKS:
         raise ValueError(f"unknown pack '{pack}' (expected: {', '.join(PACKS)})")
@@ -100,5 +144,12 @@ def pack_stems(corpus: dict, sides: dict, pack: str) -> set:
             packs_by_stem[stem] = "shared"
 
     if pack == "all":
-        return set(packs_by_stem)
-    return {stem for stem, found in packs_by_stem.items() if found == pack}
+        stems = set(packs_by_stem)
+    else:
+        stems = {stem for stem, found in packs_by_stem.items() if found == pack}
+    for stem in list(stems):
+        folder, name = stem.split("/", 1)
+        plain = re.sub(r"^[mf]-", "", name)
+        files = [plain, *((aliases or {}).get(plain, ()) if folder == "gossip" else ())]
+        stems.update(f"{folder}/{prefix}{file}" for file in files for prefix in ("", "m-", "f-"))
+    return stems

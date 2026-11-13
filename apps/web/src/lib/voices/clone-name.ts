@@ -2,8 +2,7 @@
  * What a voice clone is called in the ElevenLabs account, per language.
  *
  * The slot is shared -- dwarf-male-grim is the same NPC voice set in every language -- but
- * the clone is not: each locale's client was voiced by its own actors, so a German slot is
- * cloned from German clips. English's clones keep the names they have always had, so
+ * the clone is not: a German slot is cloned from German clips. English's clones keep the names they have always had, so
  * nothing already in the account moves; another language's carries its code after an @,
  * `dwarf-male-grim@deDE`, which no slot name can contain.
  *

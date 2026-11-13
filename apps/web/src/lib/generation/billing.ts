@@ -112,7 +112,7 @@ export function estimate(
 /**
  * The same estimate, from figures already counted.
  *
- * For a caller that has the totals but not the lines. The zones section is one: its search
+ * For a caller that has the totals but not the lines. The places section is one: its search
  * already sums the characters it matched, every line there has a file of its own, and
  * shipping 1,353 per-line records to the browser to add them up again would be work for an
  * answer it was already given.

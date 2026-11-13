@@ -36,7 +36,7 @@ def fold_overrides():
     shared = 0
     try:
         with conn, conn.cursor() as cur:
-            cur.execute('select "file", "text", "updatedBy" from "line_override" order by "file"')
+            cur.execute("""select "file", "text", "updatedBy" from "line_override" where "lang" = 'enUS' order by "file" """)
             overrides = cur.fetchall()
 
             for path_, text, updated_by in overrides:

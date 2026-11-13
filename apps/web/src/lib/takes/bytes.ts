@@ -13,6 +13,7 @@ import "server-only";
 
 import { createHash } from "node:crypto";
 import fs from "node:fs/promises";
+import os from "node:os";
 import path from "node:path";
 
 /** First eight hex digits of the SHA-256 of `data`. Enough to tell takes of one line apart. */
@@ -21,7 +22,8 @@ export function contentId(data: Buffer): string {
 }
 
 /**
- * The name a take's bytes are archived under: `v3-1a2b3c4d.mp3`.
+ * The name a take's bytes are archived under: `v3-1a2b3c4d.mp3`. A voice actor's recording
+ * is named the same way, with its own extension: `v2-9f8e7d6c.ogg`.
  *
  * The version keeps it readable; the content hash makes it unique. Before this, archive
  * names were derived from something that could be missing or collide -- a take version,
@@ -33,8 +35,8 @@ export function contentId(data: Buffer): string {
  * Only takes cut from here on are named this way. Files already on disk keep whatever
  * name they were written under, and their rows record it in `archiveFile`.
  */
-export function archiveName(version: number, data: Buffer): string {
-  return `v${version}-${contentId(data)}.mp3`;
+export function archiveName(version: number, data: Buffer, ext = "mp3"): string {
+  return `v${version}-${contentId(data)}.${ext}`;
 }
 
 /** Write `data` to `target` through a dotted `.part` beside it, renamed into place. */
@@ -47,5 +49,21 @@ export async function writeAtomic(target: string, data: Buffer): Promise<void> {
   } catch (error) {
     await fs.rm(partial, { force: true });
     throw error;
+  }
+}
+
+/** For ffmpeg and ffprobe, which read files, when the bytes have none on the volume. */
+export async function withLocalCopy<T>(
+  data: Buffer,
+  ext: string,
+  use: (file: string) => Promise<T>,
+): Promise<T> {
+  const dir = await fs.mkdtemp(path.join(os.tmpdir(), "spoken-clip-"));
+  const file = path.join(dir, `clip.${ext}`);
+  try {
+    await fs.writeFile(file, data);
+    return await use(file);
+  } finally {
+    await fs.rm(dir, { recursive: true, force: true });
   }
 }

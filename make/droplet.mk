@@ -1,5 +1,5 @@
 # Where the droplet is, and how to reach it. Included by web.mk, quests.mk,
-# zones.mk and books.mk.
+# places.mk and readables.mk.
 #
 # NOTHING HERE NAMES THE HOST. This file is public, and a hostname in it is a
 # standing invitation to knock on the door -- so the address arrives from the
@@ -17,7 +17,7 @@
 # Override per invocation when it is a one-off, which is what the IP is for when the
 # name is ever pointed at something that will not proxy SSH:
 #
-#     make zones-pull-history DROPLET=deploy@203.0.113.10
+#     make places-pull-history DROPLET=deploy@203.0.113.10
 
 DROPLET ?= $(SPOKEN_DROPLET)
 
@@ -47,6 +47,6 @@ require-droplet:
 
 # The database a pack is built from, and what the sync and freshness scripts need to reach
 # production. One definition for every section: scripts/db/sync-section.sh and
-# scripts/db/check-synced.sh are the same recipe for quests, zones and books.
+# scripts/db/check-synced.sh are the same recipe for quests, places and readables.
 LOCAL_DB ?= postgres://localhost/spoken_dev
 DB_ENV    = DROPLET="$(DROPLET)" SSH="$(SSH)" REMOTE_ROOT="$(REMOTE_ROOT)" LOCAL_DB="$(LOCAL_DB)"

@@ -1,8 +1,10 @@
 "use client";
 
-import { nameSubject, TranslateDialog, type TranslateSubject } from "@/components/TranslateDialog";
+import { TranslateDialog, type TranslateSubject } from "@/components/TranslateDialog";
+import { isTypingTarget } from "@/lib/keyboard";
 import { useLang } from "@/components/LangProvider";
 import { BASE_LANG, withLang } from "@/lib/lang";
+import { clientFilterOf, DEFAULT_CLIENT_FILTER } from "@/lib/contributions/client";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 
@@ -10,17 +12,23 @@ import LineRow from "./LineRow";
 import Key from "./Key";
 import Pagination from "./Pagination";
 import Player from "./Player";
+import AddSpeakerDialog from "./AddSpeakerDialog";
 import IgnoreDialog from "./IgnoreDialog";
 import ReportDialog from "./ReportDialog";
 import OverrideDialog from "./OverrideDialog";
-import RegenerateDialog from "./RegenerateDialog";
+import RegenerateDialog, { type PendingBatch } from "./RegenerateDialog";
 import RegenerationPanel from "./RegenerationPanel";
 import SearchBar from "./SearchBar";
+import { Contained, Wide } from "./Width";
 import { Loading, Refreshing } from "@/components/Loading";
 import { Button } from "@/components/ui/button";
 import { audioStateFromParams } from "@/lib/audio-state";
 import { useSession } from "@/lib/auth-client";
+import RecordingDropZone from "@/components/RecordingDropZone";
+import { RECORDED, type Recorded } from "@/lib/recordings/live";
+import { BROADCAST_STATUSES } from "@/lib/broadcast/status";
 import type { Facets } from "@/lib/facets";
+import { levelFromParam, sourcesFromParam } from "@/lib/line-fields";
 import { NARRATOR_VOICE } from "@/lib/generation/narration";
 import { PROVIDER_NAME } from "@/lib/generation/providers";
 import {
@@ -30,17 +38,20 @@ import {
   queueBatch,
   regenerate,
   stopQueue,
-  type BatchJob,
   type GenerationStatusResponse,
   type QueueSnapshot,
 } from "@/lib/generation/client";
-import { estimate as estimateBatch, LIST_RATE, type Estimate } from "@/lib/generation/billing";
+import { estimate as estimateBatch, LIST_RATE } from "@/lib/generation/billing";
 import { useClearDirty } from "@/lib/generation/use-clear-dirty";
 import { useCan } from "@/components/useCan";
-import { canConfigureGeneration } from "@/lib/permissions";
+import { useHistoryMode } from "@/components/useHistoryMode";
+import { canConfigureGeneration, isAdmin } from "@/lib/permissions";
 import { isVoiceable } from "@/lib/text-gate";
+import { isModelVoice } from "@/lib/voices/voices";
 import type { Filter, LineFilters, ResultLine, SearchResult } from "@/lib/search";
+import { fetchRows, patchRows } from "@/lib/row-refresh";
 import { type Pending, receive, target, write } from "@/lib/url-echo";
+import { triages } from "@/lib/reports/reports";
 
 /** What a line's Regenerate button is doing, keyed by lineId. */
 export type LineState =
@@ -64,9 +75,10 @@ function filterParams(filters: LineFilters): URLSearchParams {
   if (filters.gender) params.set("gender", filters.gender);
   if (filters.flavor) params.set("flavor", filters.flavor);
   if (filters.voice) params.set("voice", filters.voice);
-  if (filters.source) params.set("source", filters.source);
+  if (filters.source?.length) params.set("source", filters.source.join(","));
   if (filters.npcType) params.set("type", filters.npcType);
   if (filters.includeProgress) params.set("progress", "1");
+  if (filters.client && filters.client !== DEFAULT_CLIENT_FILTER) params.set("client", filters.client);
   if (filters.narration) params.set("narration", "1");
   if (filters.line) params.set("line", filters.line);
   if (filters.overridden) params.set("overridden", "1");
@@ -75,7 +87,47 @@ function filterParams(filters: LineFilters): URLSearchParams {
   if (filters.reports) params.set("fb", filters.reports);
   if (filters.generatedBefore) params.set("before", filters.generatedBefore);
   if (filters.generatedAfter) params.set("after", filters.generatedAfter);
+  if (filters.model) params.set("model", filters.model);
+  if (filters.author) params.set("author", filters.author);
+  if (filters.recorded) params.set("rec", filters.recorded);
+  if (filters.minLevel !== undefined) params.set("minLevel", String(filters.minLevel));
+  if (filters.maxLevel !== undefined) params.set("maxLevel", String(filters.maxLevel));
+  if (filters.broadcast) params.set("bt", filters.broadcast);
+  if (filters.playerGender) params.set("playerGender", filters.playerGender);
   return params;
+}
+
+/**
+ * How many rows each row's speaker cells span: adjacent rows of one line and speaker are its
+ * player-gender wordings, and say the same thing in every column but the text.
+ */
+function speakerSpans(lines: ResultLine[]): number[] {
+  // A $g line's two rows are <id>:m and <id>:f.
+  const key = (line: ResultLine) =>
+    `${line.playerGender ? line.lineId.replace(/:[mf]$/, "") : line.lineId}|${line.npcType}|${line.npcId}|${line.voice}`;
+  const spans = lines.map(() => 1);
+  for (let start = 0; start < lines.length; ) {
+    let end = start + 1;
+    while (end < lines.length && key(lines[end]) === key(lines[start])) spans[end++] = 0;
+    spans[start] = end - start;
+    start = end;
+  }
+  return spans;
+}
+
+/**
+ * The URL change that narrows to one NPC.
+ *
+ * The entity type goes with the id because the two id spaces overlap - creature 68 is a
+ * Stormwind City Guard, gameobject 68 is a Wanted Poster - so the id alone would pull in a
+ * stranger.
+ */
+function npcNarrowing(line: ResultLine) {
+  return { q: String(line.npcId), filter: "npc", type: line.npcType };
+}
+
+function questNarrowing(line: ResultLine) {
+  return { q: String(line.questId), filter: "quest", type: undefined };
 }
 
 export default function Explorer({ facets }: { facets: Facets }) {
@@ -89,11 +141,14 @@ export default function Explorer({ facets }: { facets: Facets }) {
   // LineRows and the answer is the same for all of them.
   const may = useCan();
   const showRegenerate = may("regenerate");
-  const canEdit = may("edit");
+  const canName = may("text");
+  const canTriage = triages(may);
   // Ignoring hides a line from everyone and takes it out of the module, which is the reach
   // the generation settings have rather than the reach a rewrite has. Same gate as the API.
   const canConfigure = canConfigureGeneration(session?.user.role);
   const canIgnore = may("ignore");
+  // Who speaks a line holds in every language, as an NPC's answer does: admins only, as the API.
+  const canSpeakers = isAdmin(session?.user.role);
 
   // The URL is the source of truth for a search, so a result is linkable and survives a
   // reload; `query` is the uncommitted keystroke state in front of it.
@@ -111,9 +166,10 @@ export default function Explorer({ facets }: { facets: Facets }) {
       gender: params.get("gender") ?? undefined,
       flavor: params.get("flavor") ?? undefined,
       voice: params.get("voice") ?? undefined,
-      source: (params.get("source") as LineFilters["source"]) ?? undefined,
+      source: sourcesFromParam(params.get("source")),
       npcType: (params.get("type") as LineFilters["npcType"]) ?? undefined,
       includeProgress: params.get("progress") === "1",
+      client: clientFilterOf(params.get("client")),
       narration: params.get("narration") === "1",
       line: params.get("line") ?? undefined,
       overridden: params.get("overridden") === "1",
@@ -122,6 +178,13 @@ export default function Explorer({ facets }: { facets: Facets }) {
       reports: params.get("fb") === "open" ? "open" : undefined,
       generatedBefore: params.get("before") ?? undefined,
       generatedAfter: params.get("after") ?? undefined,
+      model: params.get("model") ?? undefined,
+      author: params.get("author") ?? undefined,
+      recorded: RECORDED.find((value) => value === params.get("rec")),
+      broadcast: BROADCAST_STATUSES.find((value) => value === params.get("bt")),
+      minLevel: levelFromParam(params.get("minLevel")),
+      maxLevel: levelFromParam(params.get("maxLevel")),
+      playerGender: (["m", "f"] as const).find((value) => value === params.get("playerGender")),
     }),
     [params, urlQuery],
   );
@@ -139,74 +202,63 @@ export default function Explorer({ facets }: { facets: Facets }) {
   // Per-line regeneration state, and per-file version numbers used to bust the audio cache.
   const [lineStates, setLineStates] = useState<Record<string, LineState>>({});
   const [versions, setVersions] = useState<Record<string, number>>({});
-  // Bumped to fetch the page again after something changed what it shows -- a new take, a
-  // restore -- the way the zones and books explorers do. Take counts, staleness and the
-  // pronunciation mark all arrive on the rows themselves now; there is no second copy of
-  // them held here to keep in step.
+  // Bumped to fetch the page again after a recording upload, which can touch any row.
   const [refreshKey, setRefreshKey] = useState(0);
   const refetch = useCallback(() => setRefreshKey((key) => key + 1), []);
+  const resultRef = useRef(result);
+  resultRef.current = result;
   // What has been cleared since this page was fetched, laid over the rows' own marks until
   // the next fetch brings the acknowledgement back from the server.
   const { cleared, clear: clearDirty } = useClearDirty("quests");
   // The line whose spoken text is being rewritten, or null.
   const [editing, setEditing] = useState<ResultLine | null>(null);
-  // Another language's text or names, which are written as versions rather than as
-  // English's overrides. See TranslateDialog.
-  const [translating, setTranslating] = useState<TranslateSubject | null>(null);
-  const editText = useCallback(
-    (line: ResultLine) => {
-      if (lang === BASE_LANG) {
-        setEditing(line);
-        return;
-      }
-      setTranslating({
-        title: line.npcName,
-        subtitle: line.lineId,
-        english: line.originalText,
-        current: line.missing?.text ? null : line.text,
-        endpoint: "/api/quests/lines/text",
-        address: { lineId: line.lineId, variant: line.variant ?? 0 },
-        field: "text",
-        multiline: true,
-      });
-    },
-    [lang],
-  );
+  // Another language's names, which are written as versions.
+  // `touches` picks the rows on this page that show what is being translated.
+  const [translating, setTranslating] = useState<{
+    subject: TranslateSubject;
+    touches: (row: ResultLine) => boolean;
+  } | null>(null);
   const rename = useCallback((line: ResultLine, what: "npc" | "quest") => {
-    setTranslating(
-      what === "npc"
-        ? nameSubject({
+    setTranslating({
+      touches:
+        what === "npc"
+          ? (row) => row.npcType === line.npcType && row.npcId === line.npcId
+          : (row) => row.questId === line.questId,
+      subject: what === "npc"
+        ? {
             kind: line.npcType,
             entityId: String(line.npcId),
             title: line.npcName,
             subtitle: `${line.npcType} ${line.npcId}`,
             english: line.english?.npcName ?? "",
             current: line.missing?.npcName ? null : line.npcName,
-          })
-        : nameSubject({
+          }
+        : {
             kind: "quest",
             entityId: String(line.questId),
             title: line.questTitle ?? `quest ${line.questId}`,
             subtitle: `quest ${line.questId}`,
             english: line.english?.questTitle ?? "",
             current: line.missing?.questTitle ? null : line.questTitle,
-          }),
-    );
+          },
+    });
   }, []);
   const [ignoring, setIgnoring] = useState<ResultLine | null>(null);
+  const [speakerDialog, setSpeakerDialog] = useState<{ line: ResultLine; replace: boolean } | null>(null);
   // Anyone can open this one, signed in or not - see ReportDialog.
   const [reporting, setReporting] = useState<ResultLine | null>(null);
-  const [pendingBatch, setPendingBatch] = useState<{
-    label: string;
-    /**
-     * The filters the estimate was quoted for, carried rather than re-read at confirm time.
-     * The dialog can sit open while someone keeps typing, and enqueuing whatever the search
-     * box says at the moment of the click would spend money on a set nobody was shown.
-     */
-    filters: string;
-    jobs: BatchJob[];
-    estimate: Estimate;
-  } | null>(null);
+  const [pendingBatch, setPendingBatch] = useState<
+    | (PendingBatch & {
+        /**
+         * The filters the estimate was quoted for, carried rather than re-read at confirm
+         * time. The dialog can sit open while someone keeps typing, and enqueuing whatever
+         * the search box says at the moment of the click would spend money on a set nobody
+         * was shown.
+         */
+        filters: string;
+      })
+    | null
+  >(null);
   // The queue, as the server sees it. Null until the first poll answers.
   const [queue, setQueue] = useState<QueueSnapshot | null>(null);
   // What the enqueue request itself answered, as opposed to what the queue is doing: a
@@ -237,14 +289,14 @@ export default function Explorer({ facets }: { facets: Facets }) {
    * a different result set is not where they were - and often does not exist. Only the pager
    * itself passes `page`.
    */
-  const updateUrl = useCallback(
+  const hrefFor = useCallback(
     (next: { page?: number } & Record<string, string | number | undefined>) => {
       const search = new URLSearchParams(params.toString());
 
       for (const [key, value] of Object.entries(next)) {
         if (key === "page") continue;
-        if (value) search.set(key, String(value));
-        else search.delete(key);
+        if (value === undefined || value === "") search.delete(key);
+        else search.set(key, String(value));
       }
 
       if (next.page !== undefined && next.page > 1) search.set("page", String(next.page));
@@ -253,9 +305,18 @@ export default function Explorer({ facets }: { facets: Facets }) {
       // The current path, never a literal "/": this explorer was the site root until the
       // merge moved it to /quests, and a hardcoded "/" sent every narrowing click to the
       // landing page carrying the filters it was asked for.
-      router.replace(search.toString() ? `${pathname}?${search}` : pathname, { scroll: false });
+      return search.toString() ? `${pathname}?${search}` : pathname;
     },
-    [params, pathname, router],
+    [params, pathname],
+  );
+
+  const historyMode = useHistoryMode();
+
+  /** `typed` for the search box's own writes; see useHistoryMode. */
+  const updateUrl = useCallback(
+    (next: { page?: number } & Record<string, string | number | undefined>, typed = false) =>
+      router[historyMode(typed)](hrefFor(next), { scroll: false }),
+    [historyMode, hrefFor, router],
   );
 
   const updateFilters = useCallback(
@@ -269,12 +330,13 @@ export default function Explorer({ facets }: { facets: Facets }) {
         ...("gender" in next ? { gender: next.gender } : {}),
         ...("flavor" in next ? { flavor: next.flavor } : {}),
         ...("voice" in next ? { voice: next.voice } : {}),
-        ...("source" in next ? { source: next.source } : {}),
+        ...("source" in next ? { source: next.source?.join(",") } : {}),
         ...("npcType" in next ? { type: next.npcType } : {}),
         ...("narration" in next ? { narration: next.narration ? "1" : undefined } : {}),
         ...("includeProgress" in next
           ? { progress: next.includeProgress ? "1" : undefined }
           : {}),
+        ...("client" in next ? { client: next.client === DEFAULT_CLIENT_FILTER ? undefined : next.client } : {}),
         ...("line" in next ? { line: next.line } : {}),
         ...("overridden" in next ? { overridden: next.overridden ? "1" : undefined } : {}),
         ...("dirty" in next ? { dirty: next.dirty ? "1" : undefined } : {}),
@@ -282,6 +344,13 @@ export default function Explorer({ facets }: { facets: Facets }) {
         ...("ignored" in next ? { ignored: next.ignored ? "1" : undefined } : {}),
         ...("generatedBefore" in next ? { before: next.generatedBefore } : {}),
         ...("generatedAfter" in next ? { after: next.generatedAfter } : {}),
+        ...("model" in next ? { model: next.model } : {}),
+        ...("author" in next ? { author: next.author } : {}),
+        ...("recorded" in next ? { rec: next.recorded } : {}),
+        ...("broadcast" in next ? { bt: next.broadcast } : {}),
+        ...("minLevel" in next ? { minLevel: next.minLevel } : {}),
+        ...("maxLevel" in next ? { maxLevel: next.maxLevel } : {}),
+        ...("playerGender" in next ? { playerGender: next.playerGender } : {}),
       });
     },
     [updateUrl],
@@ -301,8 +370,8 @@ export default function Explorer({ facets }: { facets: Facets }) {
   const clearAll = useCallback(() => {
     setQuery("");
     pending.current = write(pending.current, "");
-    router.replace(pathname, { scroll: false });
-  }, [pathname, router]);
+    router[historyMode(false)](pathname, { scroll: false });
+  }, [historyMode, pathname, router]);
 
   // Held in a ref so the debounce below restarts on keystrokes only. `updateUrl` changes
   // identity on every param change, and letting that reset the timer would let a filter
@@ -316,7 +385,7 @@ export default function Explorer({ facets }: { facets: Facets }) {
     if (query === target(pending.current, urlQuery)) return;
     const timer = setTimeout(() => {
       pending.current = write(pending.current, query);
-      updateUrlRef.current({ q: query });
+      updateUrlRef.current({ q: query }, true);
     }, DEBOUNCE_MS);
     return () => clearTimeout(timer);
   }, [query, urlQuery]);
@@ -383,6 +452,52 @@ export default function Explorer({ facets }: { facets: Facets }) {
   }, []);
 
   /**
+   * Fetch the rows `touches` picks again and swap them in where they sit. See lib/row-refresh.
+   *
+   * The id alone, not the page's filters, so a row the change moved out of the filter stays.
+   * `progress` and `ignored` because the search hides those rows unless asked.
+   */
+  const refreshRows = useCallback(
+    async (touches: (row: ResultLine) => boolean) => {
+      const rows = resultRef.current?.lines.filter(touches) ?? [];
+      if (!rows.length) return;
+      const ignored = new Set(rows.filter((row) => row.ignored).map((row) => row.lineId));
+      const fresh = await fetchRows<ResultLine>(
+        (id) => {
+          const search = new URLSearchParams({ line: id, progress: "1" });
+          if (ignored.has(id)) search.set("ignored", "1");
+          return withLang(lang, `/api/quests/search?${search}`);
+        },
+        rows.map((row) => row.lineId),
+      );
+      setResult((current) =>
+        current && { ...current, lines: patchRows(current.lines, fresh, (row) => row.lineId, (row) => row.key) },
+      );
+    },
+    [lang],
+  );
+
+  /**
+   * Take a speaker off a line. Every row of the line and of its file is fetched again: the
+   * speaker's row goes, and the file may pass to another speaker's voice.
+   */
+  const removeSpeaker = useCallback(
+    async (line: ResultLine) => {
+      const params = new URLSearchParams({ lineId: line.lineId, npcType: line.npcType, npcId: String(line.npcId) });
+      const response = await fetch(withLang(lang, `/api/quests/lines/speakers?${params}`), { method: "DELETE" }).catch(
+        () => null,
+      );
+      if (!response?.ok) {
+        const body = (await response?.json().catch(() => ({}))) as { error?: string } | undefined;
+        setQueueNote(body?.error ?? "Could not take the speaker off.");
+        return;
+      }
+      void refreshRows((row) => row.lineId === line.lineId || row.audioPath === line.audioPath);
+    },
+    [lang, refreshRows],
+  );
+
+  /**
    * Adopt an ignore decision without a reload.
    *
    * The row stays where it is rather than vanishing: a search is a snapshot, and having the
@@ -413,9 +528,9 @@ export default function Explorer({ facets }: { facets: Facets }) {
   const handleRestored = useCallback(
     (file: string, version: number) => {
       setVersions((current) => ({ ...current, [file]: version }));
-      refetch();
+      void refreshRows((row) => row.audioPath === file);
     },
-    [refetch],
+    [refreshRows],
   );
 
   /**
@@ -437,28 +552,36 @@ export default function Explorer({ facets }: { facets: Facets }) {
         return `Ignored: ${line.ignored}`;
       }
       if (!line.voiceable) {
+        // Named from the voice: a translation's row carries its own skipReason, which knows
+        // nothing of the model slot that is why it is refused (text-gate.ts).
+        if (isModelVoice(line.voice)) return `No voice chosen for ${line.voice} yet`;
         return `Never voiced: ${line.skipReason}`;
       }
       // Before the voice checks: with no key the roster is empty, so every line would
       // otherwise be blocked for the wrong reason - "no voice named orc-male-shady" when
       // the truth is that nothing has been asked.
       if (!status) return null;
-      // Named for the generator this collaborator has chosen, not always ElevenLabs: someone
-      // on fish.audio with a key and references was otherwise told to go and set up a
-      // provider they do not use.
-      const provider = PROVIDER_NAME[status.provider];
+      // A voice pinned to fish.audio is spoken there whatever this collaborator chose, so it
+      // is fish.audio's key and references that decide, exactly as the server will.
+      const pinned = status.pinned?.voices.includes(line.voice) ? status.pinned : null;
+      const fish = pinned !== null || status.provider === "fish";
+      // Named for the generator this line goes to, not always ElevenLabs: someone on
+      // fish.audio with a key and references was otherwise told to go and set up a provider
+      // they do not use.
+      const provider = PROVIDER_NAME[fish ? "fish" : status.provider];
+      const voices = pinned ? pinned.references : status.voices;
       const missing = (voice: string) =>
-        status.provider === "fish"
+        fish
           ? `No fish.audio reference for "${voice}" in this language yet — cut one on /voices`
           : `No ElevenLabs voice named "${voice}" yet — create it on /voices`;
-      if (status.noApiKey) {
-        return `No ${provider} key on your account — set one in your profile`;
+      if (pinned ? pinned.noApiKey : status.noApiKey) {
+        return `${pinned ? `${line.voice} is pinned to fish.audio: n` : "N"}o ${provider} key on your account — set one in your profile`;
       }
-      if (!status.voices.includes(line.voice)) {
+      if (!voices.includes(line.voice)) {
         return missing(line.voice);
       }
       // A narrated line needs both voices, and the server refuses it for the same reason.
-      if (line.narration && !status.voices.includes(NARRATOR_VOICE)) {
+      if (line.narration && !voices.includes(NARRATOR_VOICE)) {
         return `Narrated line: ${missing(NARRATOR_VOICE)}`;
       }
       return null;
@@ -475,12 +598,12 @@ export default function Explorer({ facets }: { facets: Facets }) {
   const applySuccess = useCallback(
     (file: string, version: number, lineId: string) => {
       // The version busts the audio cache at once; everything else the row shows -- that it
-      // has audio, how many takes, whether it is stale -- comes back with the refetch.
+      // has audio, how many takes, whether it is stale -- comes back with the rows.
       setVersions((current) => ({ ...current, [file]: version }));
       setLineStates((current) => ({ ...current, [lineId]: { phase: "done", version } }));
-      refetch();
+      void refreshRows((row) => row.audioPath === file || row.lineId === lineId);
     },
-    [refetch],
+    [refreshRows],
   );
 
   /**
@@ -561,7 +684,7 @@ export default function Explorer({ facets }: { facets: Facets }) {
    * Clear every dirty file the current search matches, not just this page's.
    *
    * The search route answers `ids=1` with the dirty files of the whole match set, the same
-   * question the zones explorer asks its own route -- so nothing is cleared that the server
+   * question the places explorer asks its own route -- so nothing is cleared that the server
    * would not have called dirty.
    */
   const clearAllDirty = useCallback(async () => {
@@ -583,21 +706,34 @@ export default function Explorer({ facets }: { facets: Facets }) {
    */
   const requestBatch = useCallback(async () => {
     const quoted = filterQuery;
-    const jobs = await fetchBatchJobs(new URLSearchParams(quoted), undefined, lang);
-    if (!jobs || jobs.length === 0) return;
+    // Open on the click: on the whole corpus the set takes seconds to come back.
+    setPendingBatch({ label: "every line this search matches", filters: quoted, estimate: null });
+    const batch = await fetchBatchJobs(new URLSearchParams(quoted), undefined, lang);
 
-    // The same arithmetic the server would do, from the rate it reported. Falls back to
-    // the list rate, which overstates - the right direction for a number meant to give
-    // someone pause.
-    const rate = status?.rate ?? { rate: LIST_RATE, samples: 0, modelId: null };
-    setPendingBatch({
-      label: `every line this search matches`,
-      filters: quoted,
-      jobs,
-      estimate: estimateBatch(
-        jobs.map((job) => ({ file: job.audioPath, characters: job.characters })),
-        rate,
-      ),
+    // Only into the dialog this request opened, which may have been cancelled, or replaced
+    // by a later click, while the set was on its way.
+    setPendingBatch((open) => {
+      if (open?.filters !== quoted || open.estimate) return open;
+      if (!batch) return { ...open, failed: true };
+      // The same arithmetic the server would do, from the rate it reported. Falls back to
+      // the list rate, which overstates - the right direction for a number meant to give
+      // someone pause.
+      const rate = status?.rate ?? { rate: LIST_RATE, samples: 0, modelId: null };
+      // Pinned voices' lines are priced apart, in fish.audio's dollars: credits and dollars
+      // are never added together.
+      const pinned = status?.pinned ?? null;
+      const isPinned = (job: (typeof batch.jobs)[number]) => pinned?.voices.includes(job.voice) ?? false;
+      const priced = (jobs: typeof batch.jobs) =>
+        jobs.map((job) => ({ file: job.audioPath, characters: job.characters }));
+      const fishJobs = batch.jobs.filter(isPinned);
+      return {
+        ...open,
+        matched: batch.matched,
+        skipped: batch.skipped,
+        estimate: estimateBatch(priced(batch.jobs.filter((job) => !isPinned(job))), rate),
+        pinnedEstimate:
+          pinned && fishJobs.length > 0 ? estimateBatch(priced(fishJobs), pinned.rate) : null,
+      };
     });
   }, [filterQuery, status, lang]);
 
@@ -610,7 +746,7 @@ export default function Explorer({ facets }: { facets: Facets }) {
    * which may have moved on while the dialog was open.
    */
   const startBatch = useCallback(async () => {
-    if (!pendingBatch) return;
+    if (!pendingBatch?.estimate) return;
     setPendingBatch(null);
     setQueueNote(null);
 
@@ -646,32 +782,19 @@ export default function Explorer({ facets }: { facets: Facets }) {
     queueMicrotask(() => void audio.current?.play().catch(() => {}));
   }, []);
 
-  /**
-   * Narrow to one NPC.
-   *
-   * The entity type goes with the id because the two id spaces overlap - creature 68 is a
-   * Stormwind City Guard, gameobject 68 is a Wanted Poster - so the id alone would pull in a
-   * stranger.
-   */
-  const narrowToNpc = useCallback(
-    (line: ResultLine) => {
-      setQuery(String(line.npcId));
-      pending.current = write(pending.current, String(line.npcId));
-      updateUrl({ q: String(line.npcId), filter: "npc", type: line.npcType });
+  const narrowTo = useCallback(
+    (next: { q: string } & Record<string, string | undefined>) => {
+      setQuery(next.q);
+      pending.current = write(pending.current, next.q);
+      updateUrl(next);
     },
     [updateUrl],
   );
 
-  const narrowToQuest = useCallback(
-    (line: ResultLine) => {
-      if (line.questId === null) return;
-      const q = String(line.questId);
-      setQuery(q);
-      pending.current = write(pending.current, q);
-      updateUrl({ q, filter: "quest", type: undefined });
-    },
-    [updateUrl],
-  );
+  const narrowToNpc = useCallback((line: ResultLine) => narrowTo(npcNarrowing(line)), [narrowTo]);
+  const narrowToQuest = useCallback((line: ResultLine) => narrowTo(questNarrowing(line)), [narrowTo]);
+  const npcHref = useCallback((line: ResultLine) => hrefFor(npcNarrowing(line)), [hrefFor]);
+  const questHref = useCallback((line: ResultLine) => hrefFor(questNarrowing(line)), [hrefFor]);
 
   // A flat, in-display-order list of what can actually be played, for j/k. This page only:
   // paging is a deliberate act, not something arrow keys should do behind your back.
@@ -692,14 +815,7 @@ export default function Explorer({ facets }: { facets: Facets }) {
 
   useEffect(() => {
     function onKeyDown(event: KeyboardEvent) {
-      // The shadcn Select trigger is a <button role="combobox">, not a <select>, so
-      // checking tagName alone would let space both toggle audio and open the dropdown.
-      const target = event.target instanceof HTMLElement ? event.target : null;
-      const typing =
-        !!target &&
-        (["INPUT", "SELECT", "TEXTAREA"].includes(target.tagName) ||
-          target.isContentEditable ||
-          !!target.closest('[role="combobox"],[role="listbox"],[role="dialog"]'));
+      const typing = isTypingTarget(event.target);
 
       if (event.key === "/" && !typing) {
         event.preventDefault();
@@ -735,6 +851,7 @@ export default function Explorer({ facets }: { facets: Facets }) {
   }, [current]);
 
   const pageCount = result ? Math.max(1, Math.ceil(result.total / result.limit)) : 1;
+  const groupSpans = speakerSpans(result?.lines ?? []);
   // This page's marks, minus what has been cleared without a refetch since.
   const marked = new Set(
     (result?.lines ?? [])
@@ -742,165 +859,215 @@ export default function Explorer({ facets }: { facets: Facets }) {
       .map((line) => line.audioPath),
   ).size;
 
+  // The search sends facets only to somebody working in the language; see MadeBy.tsx.
+  const showMadeBy = result?.madeBy !== undefined;
+  const showRecordings = result?.recordable === true;
+
   return (
     <>
-      <SearchBar
-        ref={searchInput}
-        query={query}
-        filters={filters}
-        facets={facets}
-        onQuery={setQuery}
-        onFilters={updateFilters}
-        onClearAll={clearAll}
-        canTriage={showRegenerate}
-      />
+      <Contained>
+        <SearchBar
+          ref={searchInput}
+          query={query}
+          filters={filters}
+          facets={facets}
+          onQuery={setQuery}
+          onFilters={updateFilters}
+          onClearAll={clearAll}
+          canTriage={showRegenerate}
+          madeBy={result?.madeBy}
+          recordable={showRecordings}
+        />
 
-      {/* No dropdown to sit in: a line id arrives by link from /reports, so without this
-          the list would be narrowed with nothing on the page saying so. */}
-      {filters.line && (
-        <div className="text-muted-foreground mt-3 flex items-center gap-2 rounded-md border border-amber-500/40 bg-amber-500/10 px-3 py-1.5 text-xs">
-          <span>
-            Showing one line: <span className="font-mono">{filters.line}</span>
-          </span>
-          <Button size="xs" variant="ghost" onClick={() => updateFilters({ line: undefined })}>
-            Show everything
-          </Button>
-        </div>
-      )}
+        {showRecordings && <RecordingDropZone source="quests" onUploaded={refetch} />}
 
-      <div className="flex flex-wrap items-center gap-x-3 gap-y-1 pt-3 pb-1">
-        <div className="text-muted-foreground flex items-center gap-2 text-sm">
-          {result && `${plural(result.total, "line")} across ${plural(result.npcCount, "NPC")}`}
-          {loading && result && <Refreshing />}
-        </div>
-        {/* This page's marks, which is what the row-level question was asked for. The
-            corpus-wide count is what the "pronunciation moved" filter is for. */}
-        {showRegenerate && marked > 0 && (
-          <span className="flex items-center gap-1 text-sm text-amber-300">
-            {marked} pronunciation on this page
-            <Button size="xs" variant="ghost" onClick={() => void clearAllDirty()}>
-              clear all matching
+        {/* No dropdown to sit in: a line id arrives by link from /reports, so without this
+            the list would be narrowed with nothing on the page saying so. */}
+        {filters.line && (
+          <div className="text-muted-foreground mt-3 flex items-center gap-2 rounded-md border border-amber-500/40 bg-amber-500/10 px-3 py-1.5 text-xs">
+            <span>
+              Showing one line: <span className="font-mono">{filters.line}</span>
+            </span>
+            <Button size="xs" variant="ghost" onClick={() => updateFilters({ line: undefined })}>
+              Show everything
             </Button>
-          </span>
+          </div>
         )}
-        {showRegenerate && result && result.total > 0 && (
-          <Button
-            size="xs"
-            variant="secondary"
-            className="ml-auto"
-            onClick={() => void requestBatch()}
+
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-1 pt-3 pb-1">
+          <div className="text-muted-foreground flex items-center gap-2 text-sm">
+            {result && `${plural(result.total, "line")} across ${plural(result.npcCount, "NPC")}`}
+            {loading && result && <Refreshing />}
+          </div>
+          {/* This page's marks, which is what the row-level question was asked for. The
+              corpus-wide count is what the "pronunciation moved" filter is for. */}
+          {showRegenerate && marked > 0 && (
+            <span className="flex items-center gap-1 text-sm text-amber-300">
+              {marked} pronunciation on this page
+              <Button size="xs" variant="ghost" onClick={() => void clearAllDirty()}>
+                clear all matching
+              </Button>
+            </span>
+          )}
+          {showRegenerate && result && result.total > 0 && (
+            <Button
+              size="xs"
+              variant="secondary"
+              className="ml-auto"
+              onClick={() => void requestBatch()}
+            >
+              Regenerate all {result.total.toLocaleString()}
+            </Button>
+          )}
+        </div>
+
+        <Pagination
+          page={page}
+          pageCount={pageCount}
+          onPage={(next) => updateUrl({ page: next })}
+        />
+      </Contained>
+
+      <Wide>
+        {/* Fixed layout, because the point of the columns is that they line up down the page:
+            left to auto sizing, one long quest title would widen its column for every row. The
+            text column takes whatever the named columns leave. */}
+        {loading && !result && <Loading />}
+
+        {result && result.lines.length > 0 && (
+          <table
+            aria-busy={loading}
+            className={`w-full table-fixed border-collapse text-sm transition-opacity ${loading ? "opacity-60" : ""}`}
           >
-            Regenerate all {result.total.toLocaleString()}
-          </Button>
+            <colgroup>
+              <col className="w-52" />
+              <col className="w-48" />
+              <col className="w-32" />
+              {/* The line text takes whatever the named columns leave, which is what anyone
+                  here to read came for. */}
+              <col />
+              {/* Audio: a state word, or the take selector. Both are short. */}
+              <col className="w-28" />
+              {/* Made by: "fish:2.1-pro-free" over a name. Only when the search sent it. */}
+              {showMadeBy && <col className="w-36" />}
+              {/* Voice actor: play, the version, upload; the credit under them. */}
+              {showRecordings && <col className="w-32" />}
+              {/* Wide enough for what the cell actually holds, which the old w-20 was not:
+                  icon buttons are 32px, and a collaborator can have four side by side --
+                  report, edit, ignore, regenerate -- plus the report count. Anything narrower
+                  pushes them left over the line text. w-16 for everyone else, who has the
+                  report button and the count; never w-0, since that button is not gated. */}
+              <col className={showRegenerate ? "w-40" : "w-16"} />
+            </colgroup>
+            <thead>
+              <tr className="text-muted-foreground border-border border-b text-left text-xs">
+                <th className="px-2 pb-1 font-medium">NPC / object</th>
+                <th className="px-2 pb-1 font-medium">Quest / broadcast</th>
+                <th className="px-2 pb-1 font-medium">Race / gender / flavor</th>
+                <th className="px-2 pb-1 font-medium">Line</th>
+                <th className="px-2 pb-1 font-medium">Audio</th>
+                {showMadeBy && <th className="px-2 pb-1 font-medium">Made by</th>}
+                {showRecordings && <th className="px-2 pb-1 font-medium">Voice actor</th>}
+                <th className="sr-only">Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {result.lines.map((line, index) => (
+                <LineRow
+                  key={line.key}
+                  line={line}
+                  current={line.key === current?.key}
+                  showMadeBy={showMadeBy}
+                  showRecordings={showRecordings}
+                  onRecordingChanged={(l) => void refreshRows((row) => row.audioPath === l.audioPath)}
+                  canRegenerate={showRegenerate}
+                  canTriage={canTriage}
+                  onOverrideAnswered={(l) =>
+                    void refreshRows((row) => row.driftedOverride?.file === l.driftedOverride?.file)
+                  }
+                  state={lineStates[line.lineId]}
+                  blocked={blockedReason(line)}
+                  takes={line.take?.takes ?? 0}
+                  version={versions[line.audioPath] ?? line.take?.version ?? null}
+                  stale={line.stale}
+                  dirty={line.dirty && !cleared.has(line.audioPath)}
+                  onClearDirty={(l) => clearDirty([l.audioPath])}
+                  onPlay={play}
+                  onEditText={setEditing}
+                  onRename={lang !== BASE_LANG && canName ? rename : null}
+                  onIgnore={canIgnore ? setIgnoring : null}
+                  onAddSpeaker={canSpeakers ? (l) => setSpeakerDialog({ line: l, replace: false }) : null}
+                  onReplaceSpeaker={canSpeakers ? (l) => setSpeakerDialog({ line: l, replace: true }) : null}
+                  onRemoveSpeaker={canSpeakers ? (l) => void removeSpeaker(l) : null}
+                  onReport={setReporting}
+                  onRegenerate={regenerateLine}
+                  onRestored={handleRestored}
+                  onNarrowToNpc={narrowToNpc}
+                  npcHref={npcHref}
+                  showNpcPage={isAdmin(session?.user.role)}
+                  groupSpan={groupSpans[index]}
+                  onNarrowToQuest={narrowToQuest}
+                  questHref={questHref}
+                />
+              ))}
+            </tbody>
+          </table>
         )}
-      </div>
 
-      <Pagination
-        page={page}
-        pageCount={pageCount}
-        onPage={(next) => updateUrl({ page: next })}
-      />
+        {result && result.lines.length === 0 && (
+          <div className="text-muted-foreground py-2 text-sm">No matches.</div>
+        )}
+      </Wide>
 
-      {/* Fixed layout, because the point of the columns is that they line up down the page:
-          left to auto sizing, one long quest title would widen its column for every row. The
-          text column takes whatever the named columns leave. */}
-      {loading && !result && <Loading />}
+      <Contained>
+        <Pagination
+          page={page}
+          pageCount={pageCount}
+          onPage={(next) => updateUrl({ page: next })}
+        />
 
-      {result && result.lines.length > 0 && (
-        <table
-          aria-busy={loading}
-          className={`w-full table-fixed border-collapse text-sm transition-opacity ${loading ? "opacity-60" : ""}`}
-        >
-          <colgroup>
-            <col className="w-52" />
-            <col className="w-48" />
-            <col className="w-32" />
-            {/* The line text takes whatever the named columns leave, which is what anyone
-                here to read came for. */}
-            <col />
-            {/* Audio: a state word, or the take selector. Both are short. */}
-            <col className="w-28" />
-            {/* Wide enough for what the cell actually holds, which the old w-20 was not:
-                icon buttons are 32px, and a collaborator can have four side by side --
-                report, edit, ignore, regenerate -- plus the report count. Anything narrower
-                pushes them left over the line text. w-16 for everyone else, who has the
-                report button and the count; never w-0, since that button is not gated. */}
-            <col className={showRegenerate ? "w-40" : "w-16"} />
-          </colgroup>
-          <thead>
-            <tr className="text-muted-foreground border-border border-b text-left text-xs">
-              <th className="px-2 pb-1 font-medium">NPC / object</th>
-              <th className="px-2 pb-1 font-medium">Quest</th>
-              <th className="px-2 pb-1 font-medium">Race / gender / flavor</th>
-              <th className="px-2 pb-1 font-medium">Line</th>
-              <th className="px-2 pb-1 font-medium">Audio</th>
-              <th className="sr-only">Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            {result.lines.map((line) => (
-              <LineRow
-                key={line.key}
-                line={line}
-                current={line.key === current?.key}
-                canRegenerate={showRegenerate}
-                canEdit={canEdit}
-                canTriage={canEdit}
-                state={lineStates[line.lineId]}
-                blocked={blockedReason(line)}
-                takes={line.take?.takes ?? 0}
-                version={versions[line.audioPath] ?? line.take?.version ?? null}
-                stale={line.stale}
-                dirty={line.dirty && !cleared.has(line.audioPath)}
-                onClearDirty={(l) => clearDirty([l.audioPath])}
-                onPlay={play}
-                onEditText={editText}
-                onRename={lang !== BASE_LANG && canEdit ? rename : null}
-                onIgnore={canIgnore ? setIgnoring : null}
-                onReport={setReporting}
-                onRegenerate={regenerateLine}
-                onRestored={handleRestored}
-                onNarrowToNpc={narrowToNpc}
-                onNarrowToQuest={narrowToQuest}
-              />
-            ))}
-          </tbody>
-        </table>
-      )}
-
-      {result && result.lines.length === 0 && (
-        <div className="text-muted-foreground py-2 text-sm">No matches.</div>
-      )}
-
-      <Pagination
-        page={page}
-        pageCount={pageCount}
-        onPage={(next) => updateUrl({ page: next })}
-      />
-
-      <p className="text-muted-foreground mt-6 flex flex-wrap items-center gap-1.5 text-xs">
-        <Key>/</Key> search · <Key>space</Key> play/pause · <Key>j</Key> <Key>k</Key> next
-        and previous line on this page
-      </p>
+        <p className="text-muted-foreground mt-6 flex flex-wrap items-center gap-1.5 text-xs">
+          <Key>/</Key> search · <Key>space</Key> play/pause · <Key>j</Key> <Key>k</Key> next
+          and previous line on this page
+        </p>
+      </Contained>
 
       <OverrideDialog
         line={editing}
         onSaved={handleOverrideSaved}
+        onRewritten={() => {
+          const file = editing?.audioPath;
+          setEditing(null);
+          void refreshRows((row) => row.audioPath === file);
+        }}
         onCancel={() => setEditing(null)}
       />
 
       <TranslateDialog
-        subject={translating}
+        subject={translating?.subject ?? null}
         onClose={() => setTranslating(null)}
-        // A name is on many rows and a line's text changes whether it can be voiced, so the
-        // page is fetched again rather than patched.
-        onSaved={() => refetch()}
+        // Fetched again rather than patched: a line's text changes whether it can be voiced.
+        onSaved={() => {
+          if (translating) void refreshRows(translating.touches);
+        }}
       />
 
       <IgnoreDialog
         line={ignoring}
         onSaved={handleIgnoreSaved}
         onCancel={() => setIgnoring(null)}
+      />
+
+      <AddSpeakerDialog
+        line={speakerDialog?.line ?? null}
+        replace={speakerDialog?.replace}
+        // Fetched again: a speaker in another voice is a new row of its own.
+        onSaved={() => {
+          const line = speakerDialog?.line;
+          setSpeakerDialog(null);
+          if (line) void refreshRows((row) => row.lineId === line.lineId || row.audioPath === line.audioPath);
+        }}
+        onCancel={() => setSpeakerDialog(null)}
       />
 
       <ReportDialog
@@ -928,7 +1095,7 @@ export default function Explorer({ facets }: { facets: Facets }) {
         <Player
           ref={audio}
           line={current}
-          version={current ? versions[current.audioPath] : undefined}
+          version={current ? (versions[current.audioPath] ?? current.take?.version) : undefined}
         />
       </div>
     </>

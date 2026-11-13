@@ -1,15 +1,11 @@
 -- Turning autoplay off: opening a quest dialog, a greeting or gossip reads nothing by itself,
 -- and the Play button on the window is how the player starts it instead. Run with `make test-player`.
---
--- Both dispatch routes are covered, because the setting has to hold on each: the 10 Hz
--- watcher a Blizzard client reads quests through, and the direct events a private-server
--- client reads them through (VoiceOver.lua's directEvents says why the two differ).
 local here = arg[0]:match("^(.*)/[^/]*$") or "."
 package.path = here .. "/?.lua;" .. package.path
 local stub = require("wow_client_stub")
 local print = stub.print
-local QUESTS = here .. "/../../addons/SpokenQuests/"
-local SPOKEN = here .. "/../../addons/SpokenPlayer/"
+local QUESTS = here .. "/../../addons/Spoken_Quests/"
+local SPOKEN = here .. "/../../addons/Spoken/"
 
 local world = stub.world
 local failures = 0
@@ -29,11 +25,10 @@ local function Boot(client)
     world.questID = 0
     stub.ShowPanel(nil)
     -- A fresh install each time: the previous client's run turned autoplay off.
-    _G.SpokenQuestsDB = nil
+    _G.SpokenQuestsSettings = nil
     local VO = stub.LoadQuests(QUESTS, SPOKEN)
     dofile(QUESTS .. "UI/DialogPlayButton.lua")
     VO.Addon:OnInitialize()
-    -- By id and by name: the 1.12 client has no GUID for the lookup to key on.
     local gossip = { ["We stand ready."] = "gossip-hash", ["Welcome, traveller."] = "greeting-hash" }
     VO.DataModules:Register("TestPack", {
         SoundLengthLookupByFileName = { ["101-accept"] = 1, ["101-complete"] = 1,
@@ -96,7 +91,7 @@ local function Close()
     _G.Spoken:StopAll()
 end
 
-for _, client in ipairs({ "11509", "1.12" }) do
+for _, client in ipairs({ "16001", "11509" }) do
     local VO, played = Boot(client)
     local button = VO.DialogPlayButton.button
 
@@ -117,7 +112,7 @@ for _, client in ipairs({ "11509", "1.12" }) do
     Open(101, "QuestFrameDetailPanel", "QUEST_DETAIL")
     Expect(client .. ": autoplay off, an offer reads nothing", Played(played), "(nothing)")
     Expect(client .. ": autoplay off, the dialog shows Play", button:IsShown(), true)
-    Expect(client .. ": ...labelled Play", button:GetText(), "Play")
+    Expect(client .. ": ...labelled Listen", button:GetText(), "Listen")
 
     button:Click()
     stub.Advance(0.2)
@@ -127,7 +122,7 @@ for _, client in ipairs({ "11509", "1.12" }) do
     button:Click()
     stub.Advance(0.2)
     Expect(client .. ": Stop stops it", _G.Spoken:GetCurrent() == nil, true)
-    Expect(client .. ": ...and the button is Play again", button:GetText(), "Play")
+    Expect(client .. ": ...and the button is Listen again", button:GetText(), "Listen")
     Close()
     Expect(client .. ": closing the dialog hides the button", button:IsShown(), false)
 
@@ -143,7 +138,7 @@ for _, client in ipairs({ "11509", "1.12" }) do
     Expect(client .. ": a quest with no line shows no Play button", button:IsShown(), false)
     Close()
 
-    -- Gossip already heard once from this NPC: the Once per NPC default would hold it back
+    -- Gossip already heard once from this NPC: the Once per Greeting default would hold it back
     -- from autoplay, but Play is the player asking for it.
     OpenGossip("We stand ready.")
     Expect(client .. ": autoplay off, gossip reads nothing", Played(played), "(nothing)")
@@ -177,7 +172,7 @@ for _, client in ipairs({ "11509", "1.12" }) do
 
     -- An auto-accept addon closes the dialog in the frame it opened. The snapshot that
     -- replays it is automatic playback too, and must be held back with the rest.
-    if client == "11509" then
+    if client == "16001" then
         world.questID = 101
         stub.FireEvent("QUEST_DETAIL")
         world.questID = 0

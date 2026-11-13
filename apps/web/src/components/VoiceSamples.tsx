@@ -6,6 +6,7 @@ import { useRef, useState } from "react";
 import { Combine, Download, Loader2, Sparkles, Trash2, Upload } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
+import AccountVoicePicker from "@/components/voices/AccountVoicePicker";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -20,7 +21,7 @@ import type { Sample } from "@/lib/voices/samples";
  * ElevenLabs' guidance is that the number of samples is irrelevant and the combined length
  * is what decides clone quality, so that total is the thing this panel exists to show.
  *
- * Merging is here because the realistic source for these voices is wowhead NPC greetings, a
+ * Merging is here because the realistic source for these voices is short greeting clips, a
  * second or less each. Fifty separate one-second files give the model no continuity; one
  * take with a beat between them does.
  */
@@ -35,13 +36,22 @@ type Action = "upload" | "import" | "merge" | "delete" | "clone";
 type Props = {
   voice: string;
   samples: Sample[];
+  /** Whether voice/seed-clips has clips for this voice in this language. */
+  hasSeedClips: boolean;
   /** Whether a voice of this name already exists in the ElevenLabs account. */
   exists: boolean;
   onChange: (samples: Sample[]) => void;
   onCloned: () => void;
 };
 
-export default function VoiceSamples({ voice, samples, exists, onChange, onCloned }: Props) {
+export default function VoiceSamples({
+  voice,
+  samples,
+  hasSeedClips,
+  exists,
+  onChange,
+  onCloned,
+}: Props) {
   const lang = useLang();
   const input = useRef<HTMLInputElement>(null);
   const [busy, setBusy] = useState<Action | null>(null);
@@ -82,7 +92,7 @@ export default function VoiceSamples({ voice, samples, exists, onChange, onClone
     if (input.current) input.current.value = "";
   }
 
-  async function importGameClips() {
+  async function importSeedClips() {
     const payload = await request("import", () =>
       fetch(withLang(lang, `/api/voices/${voice}/samples/import`), {
         method: "POST",
@@ -153,19 +163,13 @@ export default function VoiceSamples({ voice, samples, exists, onChange, onClone
   const pauseSeconds = Number(pause);
   const pauseValid =
     Number.isFinite(pauseSeconds) && pauseSeconds >= 0 && pauseSeconds <= MAX_PAUSE;
-  // Only a flavored voice has game clips to seed from: narrator-male is a pseudo-race for
-  // gameobjects and bloodelf-female a later expansion's model, and the game recorded NPC
-  // voice sets for neither. Read off the name rather than fetched, since that is exactly how
-  // the server locates the directory.
-  const hasGameClips = voice.split("-").length === 3;
-
   return (
     <div className="bg-muted/30 border-t px-4 py-3">
       {samples.length === 0 ? (
         <p className="text-muted-foreground mb-3 text-sm">
           No clips yet.{" "}
-          {hasGameClips
-            ? "Import the game's own barks for this voice, or upload your own — short greeting clips are fine, and several merge into one take."
+          {hasSeedClips
+            ? "Import the seed clips for this voice, or upload your own — short greeting clips are fine, and several merge into one take."
             : "Short greeting clips are fine — upload several and merge them into one take."}
         </p>
       ) : (
@@ -252,16 +256,23 @@ export default function VoiceSamples({ voice, samples, exists, onChange, onClone
           Add clips
         </Button>
 
-        {hasGameClips && (
+        <AccountVoicePicker
+          voice={voice}
+          exists={exists}
+          disabled={busy !== null}
+          onAdopted={onCloned}
+        />
+
+        {hasSeedClips && (
           <Button
             variant="outline"
             size="xs"
             disabled={busy !== null}
-            title={`Replace these clips with the game's own ${voice} barks, merged into one take`}
-            onClick={importGameClips}
+            title={`Replace these clips with the seed clips for ${voice}, merged into one take`}
+            onClick={importSeedClips}
           >
             {busy === "import" ? <Loader2 className="animate-spin" /> : <Download />}
-            {samples.length > 0 ? "Re-import game clips" : "Import game clips"}
+            {samples.length > 0 ? "Re-import seed clips" : "Import seed clips"}
           </Button>
         )}
 

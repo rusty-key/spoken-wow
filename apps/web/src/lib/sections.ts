@@ -1,7 +1,7 @@
 /**
- * The three sections of the site, declared once.
+ * The sections of the site, declared once.
  *
- * Quests, zones and books share one take table, one queue, one report inbox and one take
+ * Quests, places and readables share one take table, one queue, one report inbox and one take
  * layer, and every one of those needs to name a section. This used to be declared three
  * times -- by the queue, by the client-side generation types and by the reports module --
  * agreeing only by convention, and the take routes validated their input with the reports
@@ -13,7 +13,7 @@
  * Not to be confused with `Source` in lib/line-fields.ts, which is a quest EVENT kind --
  * accept, progress, complete, gossip -- and nothing to do with sections.
  */
-export const SOURCES = ["quests", "zones", "books"] as const;
+export const SOURCES = ["quests", "places", "readables", "bosses"] as const;
 
 export type Source = (typeof SOURCES)[number];
 

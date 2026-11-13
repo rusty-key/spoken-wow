@@ -1,8 +1,9 @@
 name: CI
 
-# Path-filtered so a Lua change does not wait on a Postgres service, and a corpus edit
-# does not rebuild both apps. The deploy workflows re-run the checks that gate a release;
-# this one is what a pull request sees.
+# Each job runs only when something it reads changed, so a site change does not wait on the
+# Lua harness and an addon change does not start Postgres. The filter lives in a job rather
+# than in `on: paths`: all four jobs are required checks, and a workflow skipped by `paths`
+# reports nothing, which leaves the PR waiting forever. A job skipped by `if` reports success.
 on:
   pull_request:
   push:
@@ -13,18 +14,101 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  changes:
+    name: Changed paths
+    runs-on: ubuntu-latest
+    permissions:
+      pull-requests: read
+    outputs:
+      addons: ${{ steps.filter.outputs.addons }}
+      quests: ${{ steps.filter.outputs.quests }}
+      web: ${{ steps.filter.outputs.web }}
+      places: ${{ steps.filter.outputs.places }}
+    steps:
+      - uses: actions/checkout@v5
+      - uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          # Each list is what its job reads, not only where its code lives. Every list names
+          # this file, so a change to CI runs all of it.
+          filters: |
+            addons:
+              - .github/workflows/ci.yaml
+              - Makefile
+              - addons/**
+              - tests/**
+              - scripts/check-addon-xml.mjs
+              - pipelines/places/tools/lua-syntax-check.py
+              - docs/spoken/CHANGELOG.md
+              - scripts/lib/changelog.mjs
+              - scripts/spoken/check-changelog.sh
+            quests:
+              - .github/workflows/ci.yaml
+              - pipelines/quests/**
+              # test_package.py runs the packaging scripts over the real addon folders.
+              - addons/**
+              - scripts/**
+              # build.py turns a model's file id into a body with the site's model map.
+              - apps/web/src/lib/npc/character-models.json
+            web:
+              - .github/workflows/ci.yaml
+              - apps/web/**
+              # The site bundles the places and readables pipelines and pipelines/lib, and CI
+              # seeds its database from the quests corpus through the Python importer.
+              - pipelines/**
+              - deploy/web/**
+              # Pack metadata (scripts/lib/packs.mjs reads publishers/) and the envelopes the
+              # Lua harness writes for the contribution tests.
+              - scripts/lib/**
+              - publishers/**
+              - tests/fixtures/**
+              - package.json
+              - pnpm-lock.yaml
+              - pnpm-workspace.yaml
+            places:
+              - .github/workflows/ci.yaml
+              - pipelines/places/**
+              - pipelines/lib/**
+              - addons/Spoken_Places/**
+              # The readables pipeline's and the scripts' Node tests run in this job too.
+              - pipelines/readables/**
+              - scripts/**
+              # descriptions --check compares publishers/ with the READMEs generated from it.
+              - publishers/**
+              - addons/*/README.md
+              - scripts/descriptions.mjs
+              - scripts/lib/**
+              - package.json
+              - pnpm-lock.yaml
+              - pnpm-workspace.yaml
+
   addons:
     name: Addons (Lua)
+    needs: changes
+    if: needs.changes.outputs.addons == 'true'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
       - name: Install luajit
         run: sudo apt-get update && sudo apt-get install -y luajit
-      # The stub client is Lua 5.1, which is what 1.12 through retail all run.
+      # The stub client is Lua 5.1, which is what every supported client runs.
       - run: make test-player
+      # No "--" inside an XML comment and every comment closed: one stray "--" makes the client
+      # load none of the files that .xml lists. globSync needs Node 22 or later.
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 24
+          package-manager-cache: false
+      - run: node scripts/check-addon-xml.mjs
+      # Block balance in Spoken_Places' Lua (make places-lint).
+      - run: python3 pipelines/places/tools/lua-syntax-check.py
+      # The changelog's rules: credits under Unreleased, and the .toc's version has a section.
+      - run: ./scripts/spoken/check-changelog.sh
 
   quests-python:
     name: Quests pipeline (Python)
+    needs: changes
+    if: needs.changes.outputs.quests == 'true'
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -44,6 +128,8 @@ jobs:
 
   web:
     name: Web
+    needs: changes
+    if: needs.changes.outputs.web == 'true'
     runs-on: ubuntu-latest
     services:
       postgres:
@@ -80,10 +166,16 @@ jobs:
         working-directory: pipelines/quests
       - run: python cli-main.py import-corpus
         working-directory: pipelines/quests
+      # As the app role, which row-level security binds; postgres, a superuser, bypasses it.
       - run: pnpm --filter @spoken/web test
+        env:
+          DATABASE_ROLE: spoken_app
 
-  zones-pipeline:
+  places-pipeline:
+    # The old name, kept because the master ruleset requires a check by that name.
     name: Zones pipeline
+    needs: changes
+    if: needs.changes.outputs.places == 'true'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
@@ -96,6 +188,9 @@ jobs:
       - run: pnpm install --frozen-lockfile
       # validate.mjs is what asserts no square bracket survives into spoken text -- the one
       # normalisation rule that is not cosmetic, since eleven_v3 reads [...] as a tag.
-      - run: node pipelines/zones/tools/validate.mjs
+      - run: node pipelines/places/tools/validate.mjs
       - run: node scripts/descriptions.mjs --check
-      - run: node pipelines/zones/tools/locale/check-strings.mjs
+      - run: node pipelines/places/tools/locale/check-strings.mjs
+      - run: pnpm --filter @spoken/readables-pipeline test
+      - run: pnpm --filter @spoken/places-pipeline test
+      - run: node --test scripts/lib/*.test.mjs scripts/audio/*.test.mjs scripts/maintainers/*.test.mjs

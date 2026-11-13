@@ -6,7 +6,7 @@
 // and the error that reaches the player names a library nobody touched. This is what it looked
 // like in practice, from one stray "--" in a comment beside a <Script> line:
 //
-//     Interface/AddOns/SpokenPlayer/Core.lua:8: Cannot find a library instance of "AceTimer-3.0"
+//     Interface/AddOns/Spoken/Core.lua:8: Cannot find a library instance of "AceTimer-3.0"
 //
 // Deliberately narrow. This is not a schema check and not a parser: Blizzard's UI.xsd is not
 // vendored here, and a real parser would be a dependency for one rule. It checks the rule that

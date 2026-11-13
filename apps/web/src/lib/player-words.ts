@@ -1,82 +1,16 @@
 /**
- * What a line says where the game would say the reader's name, class or race.
- *
- * Blizzard writes `$N`, `$C` and `$R` into quest text and the client puts the player's own
- * words there. A recording is one file for everybody, so it says a word that fits anybody.
- * The English quest extract writes "Adventurer" and "Traveler" into its text once, at
- * extraction (REPLACE_DICT in pipelines/quests/tts_cli/tts_utils.py; contributions/tokens.ts),
- * so English quest text reaches here with nothing left to replace. Everything else -- a quest
- * translation, and a book page in any language -- keeps its tokens as stored, and this puts
- * the language's word in at the point the text is judged and sent: the gate, the request and
- * the staleness hash all see the same string. Kept out of the rows on purpose: a translation
- * reaches the tables from the dump, from another source for Portuguese, from a player and
- * from a translator, and one place to substitute covers all four without rewriting any of
- * them; the words themselves are a native speaker's call, and changing one here reaches
- * every line at once (and marks its takes stale, which is what they then are).
- *
- * About nine tokens in ten are the reader being addressed ("Gut gemacht, $C."), where any
- * "adventurer" reads naturally. The rest read as awkwardly as the English does and are fixed
- * per line by a translator.
- *
- * A token glued to a following letter ("$Nama", ruRU's broken "$nдруг:подруга") is left
- * alone, so the text gate still refuses the line: substituting would voice "adventurerama".
- *
- * CLIENT-SAFE: the explorer asks the text gate, and the gate asks this.
+ * The site's typed face of pipelines/lib/player-words.mjs, which pack builds run without a
+ * TypeScript loader. CLIENT-SAFE: the explorer asks the text gate, and the gate asks this.
  */
+import * as words from "../../../../pipelines/lib/player-words.mjs";
 import type { Lang } from "./lang";
 
-type Words = { name: string; race: string };
+export const branchesOnPlayerGender = words.branchesOnPlayerGender as (text: string) => boolean;
 
-/**
- * `name` stands for $N and $C, `race` for $R, lowercase as they read mid-sentence.
- *
- * The feminine form is what a line's female variant says: where the English line branches on
- * $G, the translation is imported twice, `playerGender` "m" and "f", and the addon plays the
- * one matching the reader. Every other line is one file for both, and its words are the
- * masculine ones, which is what Blizzard's own translations default to around them
- * ("vous êtes venu").
- */
-const WORDS: Partial<Record<Lang, { m: Words; f: Words }>> = {
-  enUS: { m: { name: "adventurer", race: "traveler" }, f: { name: "adventurer", race: "traveler" } },
-  deDE: { m: { name: "Abenteurer", race: "Reisender" }, f: { name: "Abenteurerin", race: "Reisende" } },
-  esES: { m: { name: "aventurero", race: "viajero" }, f: { name: "aventurera", race: "viajera" } },
-  esMX: { m: { name: "aventurero", race: "viajero" }, f: { name: "aventurera", race: "viajera" } },
-  frFR: { m: { name: "aventurier", race: "voyageur" }, f: { name: "aventurière", race: "voyageuse" } },
-  ptBR: { m: { name: "aventureiro", race: "viajante" }, f: { name: "aventureira", race: "viajante" } },
-  ruRU: { m: { name: "путник", race: "странник" }, f: { name: "путница", race: "странница" } },
-  koKR: { m: { name: "모험가", race: "여행자" }, f: { name: "모험가", race: "여행자" } },
-  zhCN: { m: { name: "冒险者", race: "旅行者" }, f: { name: "冒险者", race: "旅行者" } },
-  zhTW: { m: { name: "冒險者", race: "旅行者" }, f: { name: "冒險者", race: "旅行者" } },
-};
+export const playerGenderSides = words.playerGenderSides as (text: string) => [string, string];
 
-/** German capitalises every noun; the rest only at the start of a sentence. */
-const ALWAYS_CAPITAL: ReadonlySet<Lang> = new Set(["deDE"]);
-
-// Not followed by a letter: see "glued" above.
-const TOKEN = /\$([NnCcRr])(?!\p{L})/gu;
-// $gmale:female; and ruRU's $gmale:female:c; whose third field names the token the
-// adjective agrees with. The import resolves the two-field form already; the three-field
-// form slips past its pattern and arrives here.
-const GENDER = /\$[Gg]\s*([^:;]+?)\s*:\s*([^:;]+?)\s*(?::[^:;]*)?;/g;
-// Whatever may stand between a sentence's end and its first word: space, a line break, an
-// opening quote or Spanish's inverted marks.
-const SENTENCE_START = /(?:^|[.!?…。！？]|\n)[\s"'«„“¡¿]*$/u;
-
-/** The text as it is spoken in `lang`, by a reader of `playerGender` where the line has one. */
-export function speakPlayerTokens(
+export const speakPlayerTokens = words.speakPlayerTokens as (
   text: string,
   lang: Lang,
-  playerGender: "m" | "f" | null = null,
-): string {
-  const forms = WORDS[lang];
-  if (!forms) return text;
-  const words = playerGender === "f" ? forms.f : forms.m;
-
-  return text
-    .replace(GENDER, (_, male: string, female: string) => (playerGender === "f" ? female : male))
-    .replace(TOKEN, (_, token: string, at: number, whole: string) => {
-      const word = token.toUpperCase() === "R" ? words.race : words.name;
-      const capital = ALWAYS_CAPITAL.has(lang) || SENTENCE_START.test(whole.slice(0, at));
-      return capital ? word[0].toUpperCase() + word.slice(1) : word;
-    });
-}
+  playerGender?: "m" | "f" | null,
+) => string;

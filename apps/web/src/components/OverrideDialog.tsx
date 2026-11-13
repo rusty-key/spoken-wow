@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 
+import { useLang } from "@/components/LangProvider";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -11,14 +12,19 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { OverrideError, validateOverride } from "@/lib/quests/override";
-import { hasInvalidChars, INVALID_CHARS } from "@/lib/text-gate";
+import { branchesOnPlayerGender } from "@/lib/player-words";
+import { OverrideError, rewriteHasInvalidChars, validateRewrite } from "@/lib/quests/override";
+import { dropOverride, saveOverride } from "@/lib/quests/override-client";
+import { INVALID_CHARS } from "@/lib/text-gate";
 import type { ResultLine } from "@/lib/search";
+import { isModelVoice } from "@/lib/voices/voices";
 
 type Props = {
   /** The line being rewritten, or null when the dialog is closed. */
   line: ResultLine | null;
   onSaved: (file: string, text: string | null) => void;
+  /** Text with a `$G` branch was written to the moment's lines rather than this file's override. */
+  onRewritten: () => void;
   onCancel: () => void;
 };
 
@@ -33,7 +39,8 @@ type Props = {
  * question while editing is "what did it say before", and because the corpus text is the thing
  * this can always be reverted to.
  */
-export default function OverrideDialog({ line, onSaved, onCancel }: Props) {
+export default function OverrideDialog({ line, onSaved, onRewritten, onCancel }: Props) {
+  const lang = useLang();
   const [draft, setDraft] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -54,7 +61,9 @@ export default function OverrideDialog({ line, onSaved, onCancel }: Props) {
   // Whether this rewrite is what makes the line voiceable, asked of its live state rather
   // than the corpus's baked flag - otherwise a narrated line, which is already voiceable,
   // would claim every edit rescued it.
-  const rescues = !line.voiceable && !hasInvalidChars(draft);
+  // No rewrite rescues a line in a model slot, which is refused for its voice, not its text.
+  const rescues = !line.voiceable && !isModelVoice(line.voice) && !rewriteHasInvalidChars(draft, lang);
+  const gendered = branchesOnPlayerGender(draft);
 
   async function send(method: "PUT" | "DELETE") {
     if (!line) return;
@@ -65,25 +74,20 @@ export default function OverrideDialog({ line, onSaved, onCancel }: Props) {
       if (method === "PUT") {
         // Checked here so the message lands next to the field, and again on the server
         // because that is the copy that counts.
-        validateOverride({ file: line.audioPath, lineId: line.lineId, text: draft });
+        validateRewrite({ file: line.audioPath, lineId: line.lineId, text: draft }, lang);
       }
 
-      const url =
-        method === "PUT"
-          ? "/api/quests/lines/override"
-          : `/api/quests/lines/override?file=${encodeURIComponent(line.audioPath)}`;
-      const response = await fetch(url, {
-        method,
-        headers: { "Content-Type": "application/json" },
-        body:
-          method === "PUT"
-            ? JSON.stringify({ file: line.audioPath, lineId: line.lineId, text: draft })
-            : undefined,
-      });
+      const response = await (method === "PUT"
+        ? saveOverride(lang, line.audioPath, line.lineId, draft)
+        : dropOverride(lang, line.audioPath));
 
-      const body = (await response.json().catch(() => ({}))) as { error?: string };
+      const body = (await response.json().catch(() => ({}))) as { error?: string; files?: string[] };
       if (!response.ok) {
         setError(body.error ?? `request failed (${response.status})`);
+        return;
+      }
+      if (body.files) {
+        onRewritten();
         return;
       }
       onSaved(line.audioPath, method === "PUT" ? draft.trim() : null);
@@ -133,6 +137,14 @@ export default function OverrideDialog({ line, onSaved, onCancel }: Props) {
           <p className="text-xs text-emerald-400">
             This line is not voiced today because its text holds one of {INVALID_CHARS}. Saving
             this makes it generatable.
+          </p>
+        )}
+
+        {gendered && (
+          <p className="text-muted-foreground text-xs">
+            {line.playerGender
+              ? "This branches on the reader's gender: each side of this line gets its own words."
+              : "This branches on the reader's gender: saving splits the line into a male and a female reader's line, each with its own file, and the speakers come along."}
           </p>
         )}
 

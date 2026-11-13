@@ -1,0 +1,23 @@
+{
+  "_comment": [
+    "Where Forever's client names a place differently from the key the lore has kept it under,",
+    "and the places the lore lists that no Forever player can reach. Kept by hand, each with its",
+    "reason. Read by tools/lore/export-forever-areas.mjs (Data/ForeverAreas.lua),",
+    "tools/locale/build-aliases.mjs (every language's names for Forever's spelling) and",
+    "tools/lore/export.mjs (a renamed place's second, pending entry is not exported)."
+  ],
+  "renamed": {
+    "legashi encampment": {
+      "key": "legash encampment",
+      "why": "AreaTable 1219 in Azshara: Legash Encampment on Era, Legashi Encampment on Forever. One place; its lines, clip and picture are frozen under the Era key."
+    }
+  },
+  "notOnForever": {
+    "1429": {
+      "northshire valley camelot": "AreaTable 16537 is on map 2940, which Forever's Map table lacks: a hidden copy of Elwynn no player reaches."
+    },
+    "1447": {
+      "storm cliffs": "Only an instance row (map 2791, a Season of Discovery raid). Kept for Era, whose client names it; never reported on Forever's Azshara."
+    }
+  }
+}

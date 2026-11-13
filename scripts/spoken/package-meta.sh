@@ -1,0 +1,80 @@
+#!/usr/bin/env bash
+# Builds the English meta addon: an install of nothing, which drags every Spoken addon and every
+# English sound pack in behind it.
+#
+#   make package-spoken-all                 # dist/SpokenAll-<version>.zip
+#   VERSION=3.1.0 make package-spoken-all   # the version written into the .toc
+#   LANG_CODE=deDE make package-spoken-all  # "Spoken: German", dist/SpokenAll_deDE-<version>.zip
+#
+# A LANGUAGE'S META ADDON is the same stub under its own folder, title and version, all read off
+# publishers/spoken/all-<lang>.md through scripts/lib/packs.mjs, which also lists the packs it
+# depends on. It names that language's packs only: the English set is Spoken: English's.
+#
+# The same mechanism as Spoken Quests Audio: All (scripts/quests/package-meta.sh), one level up:
+# a CurseForge file can declare required dependencies, and both the CurseForge app and WowUp
+# install them. This folder owns nothing; scripts/quests/release.sh holds the dependency list
+# (target_dependencies, spoken-all) and sends it with the upload. A manual download gets the
+# stub alone, which is why the page says to install it through the app.
+#
+# CurseForge only. Wago's uploads carry no dependency list, so there it would install an empty
+# folder and nothing else -- it has no Wago project and release.sh names none.
+#
+# NO DataModule KEYS, for the reason package-meta.sh gives: the quests player enumerates packs
+# by that key, and a stub carrying it would count as an installed pack.
+set -euo pipefail
+
+REPO="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
+cd "$REPO"
+
+LANG_CODE="${LANG_CODE:-enUS}"
+meta_field() { node "$REPO/scripts/lib/packs.mjs" meta "$LANG_CODE" "$1"; }
+
+DIST="${DIST:-$REPO/dist}"
+ZIP="${ZIP:-1}"
+if [ "$LANG_CODE" = enUS ]; then
+  NAME="${NAME:-SpokenAll}"
+  VERSION="${VERSION:-3.1.0}"
+  TITLE="${TITLE:-Spoken: English}"
+  NOTES="Installs every Spoken addon with its English audio - quests, gossip, zone lore, books and boss stories."
+else
+  NAME="${NAME:-$(meta_field folder)}"
+  VERSION="${VERSION:-$(meta_field version)}"
+  TITLE="${TITLE:-$(meta_field name)}"
+  NOTES="Installs Spoken with every ${TITLE#Spoken: } voice pack."
+fi
+
+module_dir="$DIST/$NAME"
+rm -rf "$module_dir"
+mkdir -p "$module_dir"
+
+cat > "$module_dir/Meta.lua" <<'LUA'
+-- Intentionally empty. This addon exists to pull in Spoken and a language's sound packs
+-- as CurseForge dependencies; it holds no audio and no code of its own.
+LUA
+
+# The player's artwork, since this is the Spoken family as a whole rather than one addon of it,
+# with the language's badge on a language's stub.
+icon="spoken-player.tga"
+[ "$LANG_CODE" = enUS ] || icon="spoken-player-$LANG_CODE.tga"
+cp "$REPO/pipelines/quests/assets/icon/$icon" "$module_dir/icon.tga"
+
+cat > "$module_dir/$NAME.toc" <<TOC
+## Interface: 11509, 20506, 16001
+## Title: ${TITLE/#Spoken/|cffb48cffSpoken|r}
+## Notes: $NOTES|n|nThis addon holds no audio itself. If your addon manager did not fetch the rest with it, install them from CurseForge; Spoken says what is missing.
+## Version: $VERSION
+## IconTexture: Interface\\AddOns\\$NAME\\icon.tga
+## Group: Spoken
+## X-Part-Of: Spoken
+
+Meta.lua
+TOC
+
+echo "built $module_dir ($(du -sh "$module_dir" | cut -f1))"
+
+if [ "$ZIP" = 1 ]; then
+  zip_path="$(cd "$DIST" && pwd)/$NAME-$VERSION.zip"
+  rm -f "$zip_path"
+  (cd "$DIST" && zip -r -q -X "$zip_path" "$NAME" -x '*.DS_Store')
+  echo "==> $zip_path ($(du -h "$zip_path" | cut -f1))"
+fi

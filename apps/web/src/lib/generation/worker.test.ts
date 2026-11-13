@@ -8,15 +8,26 @@
  * Needs DATABASE_URL and migrations applied:
  *   docker compose up -d postgres && deploy/bin/migrate.sh "$PWD/web"
  */
+import fs from "node:fs";
+import os from "node:os";
+import path from "node:path";
+
 import { afterAll, afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import { closeDb, db, POOL_MAX } from "@/lib/db";
+import { closeDb, db, POOL_MAX, withTeam } from "@/lib/db";
 import * as queue from "./queue";
 import { createBatch, enqueue, type QueueEntry } from "./queue";
 import { clampToPool } from "./concurrency";
 import type { RegenerateResult } from "./regenerate";
 import { backoffFor, startWorker } from "./worker";
 import type { Source } from "@/lib/sections";
+import { commitTake } from "@/lib/takes/commit";
+import { asSystem, ownTeam } from "@/lib/teams/testing";
+
+// The real boss generator would reach the catalogue and a provider; the dispatch to it is
+// what is under test here, and lib/bosses/regenerate.test.ts covers what it does.
+const regenerateBossLine = vi.hoisted(() => vi.fn());
+vi.mock("@/lib/bosses/regenerate", () => ({ regenerateBossLine }));
 
 let prefix: string;
 const batches: string[] = [];
@@ -64,7 +75,7 @@ const users: string[] = [];
 /** A real user row, because regeneration_batch."createdBy" references one. */
 async function newUser(): Promise<string> {
   const id = `test-owner-${Math.random().toString(36).slice(2, 10)}`;
-  await db().query(
+  await asSystem.query(
     `insert into "user" ("id", "name", "email", "emailVerified") values ($1, $2, $3, false)`,
     [id, `Owner ${id}`, `${id}@example.invalid`],
   );
@@ -90,7 +101,7 @@ async function seedFor(
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
 async function statesOf(batchId: string): Promise<Record<string, number>> {
-  const { rows } = await db().query<{ state: string; n: string }>(
+  const { rows } = await asSystem.query<{ state: string; n: string }>(
     `select "state", count(*)::text as n from "regeneration_job"
       where "batchId" = $1 group by "state"`,
     [batchId],
@@ -115,11 +126,11 @@ beforeEach(() => {
 afterEach(async () => {
   vi.restoreAllMocks();
   if (batches.length) {
-    await db().query(`delete from "regeneration_batch" where "id" = any($1::uuid[])`, [batches]);
+    await asSystem.query(`delete from "regeneration_batch" where "id" = any($1::uuid[])`, [batches]);
     batches.length = 0;
   }
   if (users.length) {
-    await db().query(`delete from "user" where "id" = any($1::text[])`, [users]);
+    await asSystem.query(`delete from "user" where "id" = any($1::text[])`, [users]);
     users.length = 0;
   }
 });
@@ -196,7 +207,46 @@ describe("startWorker", () => {
     await worker.stop();
   });
 
-  it("cancels the rest of a batch after a fatal failure", async () => {
+  /**
+   * One job's failure is that job's, whatever its kind. A missing voice is one NPC's slot
+   * in a batch that spans dozens of them, and even an account-wide failure - out of credits,
+   * a bad key - is refused before anything is spent, so letting the rest fail on their own
+   * costs nothing and never takes down lines that would have worked.
+   */
+  it("skips a job whose voice is missing and generates the rest", async () => {
+    const batch = await seed(5);
+    const worker = startWorker(() => true, {
+      apiKeyFor: KEYED,
+      budget: async () => 1,
+      regenerate: { quests: async (lineId) =>
+        lineId === "q:3:accept"
+          ? {
+              ok: false,
+              failure: {
+                kind: "voice-missing",
+                message: 'no voice for "orc-female"',
+                status: 409,
+                fatal: true,
+              },
+            }
+          : OK },
+    });
+
+    await until(async () => {
+      const states = await statesOf(batch);
+      return (states.done ?? 0) === 4 && (states.failed ?? 0) === 1;
+    });
+    await worker.stop();
+
+    expect((await statesOf(batch)).cancelled).toBeUndefined();
+    const { rows } = await asSystem.query<{ stoppedBecause: string | null }>(
+      `select "stoppedBecause" from "regeneration_batch" where "id" = $1`,
+      [batch],
+    );
+    expect(rows[0].stoppedBecause).toBeNull();
+  });
+
+  it("fails each job on its own after a fatal failure rather than cancelling the batch", async () => {
     const batch = await seed(5);
     const worker = startWorker(() => true, {
       apiKeyFor: KEYED,
@@ -212,26 +262,17 @@ describe("startWorker", () => {
       }) },
     });
 
-    await until(async () => {
-      const states = await statesOf(batch);
-      return (states.cancelled ?? 0) === 4 && (states.failed ?? 0) === 1;
-    });
+    await until(async () => (await statesOf(batch)).failed === 5);
     await worker.stop();
 
-    const { rows } = await db().query<{ stoppedBecause: string }>(
-      `select "stoppedBecause" from "regeneration_batch" where "id" = $1`,
-      [batch],
-    );
-    expect(rows[0].stoppedBecause).toContain("out of credits");
+    expect((await statesOf(batch)).cancelled).toBeUndefined();
   });
 
   /**
-   * The batch is enqueued by someone who had a key at the time, so reaching the worker
-   * without one means it was cleared or the master key changed underneath it. Every
-   * remaining job would be refused identically, which is what makes this fatal - and no
-   * request is made, so nothing is spent finding out.
+   * No request is made when the owner has no usable key, so nothing is spent by failing
+   * each job in turn - and the batch's other lines are not cancelled on its account.
    */
-  it("abandons a batch whose owner has no usable key, without generating", async () => {
+  it("fails every job of an owner with no usable key, without generating", async () => {
     const batch = await seed(4);
     let generated = 0;
     const worker = startWorker(() => true, {
@@ -243,19 +284,17 @@ describe("startWorker", () => {
       } },
     });
 
-    await until(async () => {
-      const states = await statesOf(batch);
-      return (states.cancelled ?? 0) === 3 && (states.failed ?? 0) === 1;
-    });
+    await until(async () => (await statesOf(batch)).failed === 4);
     await worker.stop();
 
     expect(generated).toBe(0);
+    expect((await statesOf(batch)).cancelled).toBeUndefined();
 
-    const { rows } = await db().query<{ stoppedBecause: string }>(
-      `select "stoppedBecause" from "regeneration_batch" where "id" = $1`,
+    const { rows } = await asSystem.query<{ error: string }>(
+      `select "error" from "regeneration_job" where "batchId" = $1 limit 1`,
       [batch],
     );
-    expect(rows[0].stoppedBecause).toContain("ElevenLabs key");
+    expect(rows[0].error).toContain("ElevenLabs key");
   });
 
   // The job's language is what the generator is asked to speak: a Portuguese job handed on
@@ -281,12 +320,12 @@ describe("startWorker", () => {
   });
 
   /**
-   * The dispatch, which is what the source column is for. Handing a zones job to the quests
+   * The dispatch, which is what the source column is for. Handing a places job to the quests
    * generator would ask that corpus for a line id it has never heard of, and it would
    * answer "no line" once per job for the length of the batch.
    */
   it("sends a job to the generator for its own section", async () => {
-    const batch = await seed(2, "zones");
+    const batch = await seed(2, "places");
     const seen: string[] = [];
 
     const worker = startWorker(() => true, {
@@ -297,8 +336,8 @@ describe("startWorker", () => {
           seen.push(`quests:${lineId}`);
           return OK;
         },
-        zones: async (lineId) => {
-          seen.push(`zones:${lineId}`);
+        places: async (lineId) => {
+          seen.push(`places:${lineId}`);
           return OK;
         },
       },
@@ -308,7 +347,23 @@ describe("startWorker", () => {
     await worker.stop();
 
     expect(seen).toHaveLength(2);
-    expect(seen.every((entry) => entry.startsWith("zones:"))).toBe(true);
+    expect(seen.every((entry) => entry.startsWith("places:"))).toBe(true);
+  });
+
+  it("hands a bosses job to regenerateBossLine when no generator is injected for it", async () => {
+    const batch = await seed(2, "bosses");
+    regenerateBossLine.mockImplementation(async (lineId: string) => ({ ...OK, lineId }));
+
+    const worker = startWorker(() => true, {
+      apiKeyFor: KEYED,
+      budget: async () => 1,
+    });
+
+    await until(async () => (await statesOf(batch)).done === 2);
+    await worker.stop();
+
+    expect(regenerateBossLine).toHaveBeenCalledTimes(2);
+    expect(regenerateBossLine.mock.calls.map((call) => call[2].lang)).toEqual(["enUS", "enUS"]);
   });
 
   it("keeps going after a failure that is not fatal", async () => {
@@ -363,7 +418,7 @@ describe("startWorker", () => {
     await until(async () => (await statesOf(batch)).failed === 1);
     await worker.stop();
 
-    const { rows } = await db().query<{ attempts: number }>(
+    const { rows } = await asSystem.query<{ attempts: number }>(
       `select "attempts" from "regeneration_job" where "batchId" = $1`,
       [batch],
     );
@@ -372,7 +427,7 @@ describe("startWorker", () => {
 
   it("fails a rate-limited job rather than requeueing it once its batch is stopped", async () => {
     const batch = await seed(1);
-    await db().query(
+    await asSystem.query(
       `update "regeneration_batch" set "stoppedAt" = now(), "stoppedBecause" = 'Stopped'
         where "id" = $1`,
       [batch],
@@ -399,7 +454,7 @@ describe("startWorker", () => {
     // One attempt, not three: a retry would put the row back to `pending`, where it would be
     // claimed and paid for after someone pressed Stop - and where it would flip the queue
     // back to active, so the panel would return to "Regenerating" having just said "Stopped".
-    const { rows } = await db().query<{ attempts: number }>(
+    const { rows } = await asSystem.query<{ attempts: number }>(
       `select "attempts" from "regeneration_job" where "batchId" = $1`,
       [batch],
     );
@@ -595,7 +650,7 @@ describe("per-owner queues", () => {
     await seedFor(waiting, 1);
     const b = await seedFor(other, 3);
     const backedOff = await queue.claimNext(undefined, { owner: waiting, provider: "elevenlabs" });
-    await queue.retryJob(backedOff!.id, 60_000);
+    await withTeam(backedOff!.teamId, (client) => queue.retryJob(backedOff!.id, 60_000, client));
     const seen: string[] = [];
 
     const worker = startWorker(() => true, {
@@ -743,26 +798,26 @@ describe("a fish.audio batch", () => {
     // happen to ask the same lane's key here because there is only one job.
     expect(asked).toEqual(["fish", "fish"]);
     expect(seen).toEqual(["fish"]);
-    const { rows } = await db().query(`select "costUsd"::float8 as usd from "regeneration_job" where "batchId" = $1`, [batch]);
+    const { rows } = await asSystem.query(`select "costUsd"::float8 as usd from "regeneration_job" where "batchId" = $1`, [batch]);
     expect(rows[0].usd).toBeCloseTo(0.001);
   });
 
-  it("stops, naming fish.audio, when the owner has no fish.audio key", async () => {
+  it("fails, naming fish.audio, when the owner has no fish.audio key", async () => {
     const batch = await seed(2, "quests", "fish");
     const worker = startWorker(() => true, {
       apiKeyFor: async (_user, provider) => (provider === "fish" ? null : "eleven-key"),
       budget: async () => 1,
       regenerate: { quests: async () => OK },
     });
-    await until(async () => (await statesOf(batch)).failed === 1);
+    await until(async () => (await statesOf(batch)).failed === 2);
     await worker.stop();
 
-    const { rows } = await db().query<{ error: string }>(
+    const { rows } = await asSystem.query<{ error: string }>(
       `select "error" from "regeneration_job" where "batchId" = $1 and "state" = 'failed'`,
       [batch],
     );
     expect(rows[0].error).toMatch(/no usable fish\.audio key/);
-    expect((await statesOf(batch)).cancelled).toBe(1);
+    expect((await statesOf(batch)).cancelled).toBeUndefined();
   });
 
   it("sizes a lane by its owner's provider and model", async () => {
@@ -843,7 +898,7 @@ describe("a settings read that fails", () => {
     });
     await worker.stop();
 
-    const { rows } = await db().query<{ error: string }>(
+    const { rows } = await asSystem.query<{ error: string }>(
       `select "error" from "regeneration_job" where "batchId" = $1 and "state" = 'failed'`,
       [batch],
     );
@@ -877,5 +932,46 @@ describe("an ElevenLabs batch", () => {
     await worker.stop();
 
     expect(seen).toEqual([{ provider: "elevenlabs", seed: "none" }]);
+  });
+});
+
+describe("a job's team", () => {
+  it("is the team its take is committed under", async () => {
+    // German on a team of its own, so a take stamped with any other team would show.
+    const german = await ownTeam("deDE");
+    const archive = fs.mkdtempSync(path.join(os.tmpdir(), "worker-team-"));
+    const before = process.env.SPOKEN_BOSSES_AUDIO_HISTORY;
+    process.env.SPOKEN_BOSSES_AUDIO_HISTORY = archive;
+    try {
+      const batch = await createBatch("test", null, "bosses", "deDE");
+      batches.push(batch);
+      await enqueue(batch, [line(1)], "bosses", "deDE");
+
+      const worker = startWorker(() => true, {
+        apiKeyFor: KEYED,
+        budget: async () => 1,
+        regenerate: {
+          bosses: async (lineId, _user, { lang, batchId }) => {
+            const committed = await commitTake("bosses", line(1).file, Buffer.from("take"), { lineId }, { lang, batchId });
+            return { ...OK, lineId, version: committed.version };
+          },
+        },
+      });
+      await until(async () => (await statesOf(batch)).done === 1);
+      await worker.stop();
+
+      const { rows } = await asSystem.query(
+        `select "teamId", "lang" from "take" where "source" = 'bosses' and "file" = $1`,
+        [line(1).file],
+      );
+      expect(rows).toEqual([{ teamId: german.team, lang: "deDE" }]);
+    } finally {
+      if (before === undefined) delete process.env.SPOKEN_BOSSES_AUDIO_HISTORY;
+      else process.env.SPOKEN_BOSSES_AUDIO_HISTORY = before;
+      fs.rmSync(archive, { recursive: true, force: true });
+      await asSystem.query(`delete from "regeneration_batch" where "id" = any($1::uuid[])`, [batches]);
+      batches.length = 0;
+      await german.restore();
+    }
   });
 });

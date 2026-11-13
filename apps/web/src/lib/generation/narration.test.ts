@@ -2,10 +2,13 @@ import { describe, expect, it } from "vitest";
 
 import {
   accentTagged,
+  bareDirection,
+  directionFor,
   audioTags,
   hasNarration,
   restoresOnlyNarration,
   segments,
+  voiceAfter,
 } from "./narration";
 
 describe("audioTags", () => {
@@ -158,5 +161,99 @@ describe("accentTagged", () => {
     expect(accentTagged("What < is this", "[Scottish accent]")).toBe(
       "[Scottish accent] What < is this",
     );
+  });
+});
+
+describe("voice markers", () => {
+  const wizbang = [
+    "A tiny voice crackles from deep within the machine.",
+    "",
+    "_goblin-male-zany_",
+    '"Wizbang here! <Static fills the line.> *Hic*... What? No, I\'m fine!"',
+  ].join("\n");
+
+  it("hands the rest of the line to the marked slot, directions still to the narrator", () => {
+    expect(segments(wizbang)).toEqual([
+      { speaker: "npc", text: "A tiny voice crackles from deep within the machine." },
+      { speaker: "npc", voice: "goblin-male-zany", text: '"Wizbang here!' },
+      { speaker: "narrator", text: "Static fills the line." },
+      { speaker: "npc", voice: "goblin-male-zany", text: '*Hic*... What? No, I\'m fine!"' },
+    ]);
+  });
+
+  it("switches again at the next marker", () => {
+    expect(segments("_gnome-female-1_ One. _narrator-male_ Two.")).toEqual([
+      { speaker: "npc", voice: "gnome-female-1", text: "One." },
+      { speaker: "npc", voice: "narrator-male", text: "Two." },
+    ]);
+  });
+
+  it("is not a marker inside a word, or without a hyphen", () => {
+    expect(segments("snake_case-thing_ and _emphasis_ stay words.")).toEqual([
+      { speaker: "npc", text: "snake_case-thing_ and _emphasis_ stay words." },
+    ]);
+  });
+
+  it("is not narration", () => {
+    expect(hasNarration("_goblin-male-zany_ Hello.")).toBe(false);
+  });
+
+  it("gives a marked stretch its own race's accent", () => {
+    const tags = { dwarf: "[Scottish accent]", goblin: "[fast, nasal]" };
+    expect(accentTagged("Aye. _goblin-male-zany_ Wizbang here!", tags.dwarf, tags)).toBe(
+      "[Scottish accent] Aye. _goblin-male-zany_ [fast, nasal] Wizbang here!",
+    );
+  });
+
+  it("gives a marked stretch its own flavor's direction after its race's", () => {
+    const tags = { goblin: "[fast, nasal]", "goblin-male-zany": "[manic]" };
+    expect(accentTagged("Hm. _goblin-male-zany_ Wizbang here!", undefined, tags)).toBe(
+      "Hm. _goblin-male-zany_ [fast, nasal] [manic] Wizbang here!",
+    );
+  });
+
+  it("leaves a stretch untagged when the marked race has no direction", () => {
+    expect(accentTagged("Aye. _narrator-male_ He left.", "[Scottish accent]", {})).toBe(
+      "[Scottish accent] Aye. _narrator-male_ He left.",
+    );
+  });
+
+  it("reports who is speaking at the end, for the next paragraph", () => {
+    expect(voiceAfter("Hi. _goblin-male-zany_ Yo.")).toBe("goblin-male-zany");
+    expect(voiceAfter("Still going.", "goblin-male-zany")).toBe("goblin-male-zany");
+    expect(voiceAfter("Plain.")).toBeUndefined();
+  });
+});
+
+describe("directionFor", () => {
+  const tags = { dwarf: "[Scottish accent]", "dwarf-female-young": "[girlish]", "gnome-male-young": "[boyish]" };
+
+  it("is the race's direction for a flavor with none of its own", () => {
+    expect(directionFor("dwarf-male-grim", tags)).toBe("[Scottish accent]");
+  });
+
+  it("adds a flavor's direction after its race's", () => {
+    expect(directionFor("dwarf-female-young", tags)).toBe("[Scottish accent] [girlish]");
+  });
+
+  it("is a flavor's own direction when its race has none", () => {
+    expect(directionFor("gnome-male-young", tags)).toBe("[boyish]");
+    expect(directionFor("gnome-male-zany", tags)).toBeUndefined();
+  });
+
+  it("does not read a race's direction twice for a slot named by the race alone", () => {
+    expect(directionFor("dwarf", tags)).toBe("[Scottish accent]");
+  });
+});
+
+describe("bareDirection", () => {
+  it("drops the brackets around a stored direction", () => {
+    expect(bareDirection("[Scottish accent]")).toBe("Scottish accent");
+    expect(bareDirection(" [ boyish ] ")).toBe("boyish");
+  });
+
+  it("leaves a bare direction, and one that is not a single span, as they are", () => {
+    expect(bareDirection("Scottish accent")).toBe("Scottish accent");
+    expect(bareDirection("[fast] [nasal]")).toBe("[fast] [nasal]");
   });
 });

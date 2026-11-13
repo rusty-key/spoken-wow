@@ -4,20 +4,108 @@ Filenames are load-bearing: the addon resolves a sound by looking its filename u
 SoundLengthLookupByFileName, so a name that differs by one character silently plays
 nothing. Every filename in this project is derived here and nowhere else.
 
-    quest lines   {questID}-{accept|complete}      optional m-/f- prefix
-    gossip lines  md5(original_text+race+gender)   optional m-/f- prefix
+    quest lines     {questID}-{accept|complete}[-w{n}]   optional m-/f- prefix
+    gossip lines    md5(original_text+race+gender)   optional m-/f- prefix
+                    b{broadcastTextID}-{voice}
+                    {lang}-md5(locale_text+race+gender)
+    follow-up lines {broadcastTextID}-{voice}        optional m-/f- prefix
 
 lineId is a stable handle used by the corpus, the audio store and the web app. It is
 deliberately not the filename, so references survive a naming change.
 
-    q:{questID}:{source}[:{m|f}]
+    q:{questID}:{source}[:w{n}][:{m|f}]
     g:{hash}[:{m|f}]
+    g:b{broadcastTextID}-{voice}[:{m|f}]
+    g:{lang}-{hash}[:{m|f}]
+    f:{broadcastTextID}:{voice}[:{m|f}]
+
+A gossip line's stem is whatever follows `g:`, in all three forms. The hash form is every
+line that exists today. The other two are only minted for lines that have no English text to
+hash: one whose BroadcastText id is known when it is created, named after the id and the
+whole voice like a follow-up, and failing that one named after its own language's text. A
+line keeps the form it was minted with; when it later turns out to be the same moment as
+another, the two are linked (GossipAliases), never renamed. The dashes keep both new forms
+from ever equalling a 32-hex hash.
+
+A quest moment the game shows in more than one wording (another giver, or the same NPC to
+another player) keeps its first as the plain id and file, and each other as `:w{n}` and
+`-w{n}`, n from 1. Ordinals rather than text hashes, so every language shares the id: one
+language's w1 translates another's. The addon picks a wording by the text on screen
+(QuestWordingLookup), as it picks a gossip line.
+
+Any of them in one more voice than the one its file was made in:
+
+    {lineId}~{voice}                 file {fileName}-{voice}
+
+An NPC speaks a line in its own voice. Where NPCs of different voices share a line, the file
+already made keeps the voice it was made in, and each other voice is a file of its own: the
+same words, named after the voice, as a follow-up line has always been. `~` sits outside every
+other id's alphabet, so the plain id and the player-gender suffix read the same as ever.
+
+A follow-up line - what an NPC says in chat after a quest is accepted or turned in, see
+tts_cli/followup.py - is named after its words and the voice saying them, not after the quest
+and not after md5(text + race + gender) the way gossip is. The words already have an id,
+broadcast_text's, which the addon is handed by its own export; and the voice is the whole
+voice, flavor included, because the rule for sharing a recording is that the same words share
+a clip only among NPCs that sound alike. A quest file or a gossip hash is shared across
+flavors and forces them to agree on one (tts_utils.resolve_flavors); this one never needs to.
+
+What an NPC says in chat with no quest behind it (source "chatter", the addon's Chatter.lua) is
+named the same way, for the same reason: the words have a broadcast_text id and no quest. It shares
+the follow-up's id, file and folder, so a chat line and a follow-up line of the same words in the
+same voice are one recording.
 """
+
+FOLLOWUP = "followup"
+CHATTER = "chatter"
+#: The sources named after their broadcast_text id and voice: f:{broadcastTextId}:{voice}.
+BROADCAST_SOURCES = frozenset({FOLLOWUP, CHATTER})
+
+
+def followup_stem(broadcast_text_id, voice: str) -> str:
+    """The follow-up filename before any player-gender prefix, e.g. '4377-dwarf-male-standard'.
+
+    int() because the id reaches here from a DataFrame column that holds NaN for every
+    non-follow-up row, which makes pandas carry it as a float.
+    """
+    return f"{int(broadcast_text_id)}-{voice}"
+
+
+def broadcast_gossip_stem(broadcast_text_id, voice: str) -> str:
+    """A gossip line minted from its BroadcastText id, e.g. 'b6029-orc-female-standard'."""
+    return f"b{int(broadcast_text_id)}-{voice}"
+
+
+def localized_gossip_stem(lang: str, text_hash: str) -> str:
+    """A gossip line minted in a language with neither English nor an id, e.g. 'deDE-<md5>'.
+
+    `text_hash` is md5(locale text + race + gender), get_hash's shape for English.
+    """
+    return f"{lang}-{text_hash}"
+
+
+def gossip_stem_rank(stem: str) -> int:
+    """0 for a broadcast stem, 1 for an English hash, 2 for a localized one.
+
+    The order in which one moment's stems are preferred: the id is the most stable name, and
+    English is the corpus every pack has always been built from.
+    """
+    if stem.startswith("b") and "-" in stem:
+        return 0
+    if "-" in stem:
+        return 2
+    return 1
 
 
 def filename_for_row(row) -> str:
     """Filename (without extension) the generator would produce for a dataframe row."""
-    base = f'{row["quest"]}-{row["source"]}' if row["quest"] else row["templateText_race_gender_hash"]
+    # Follow-up first: its row carries a quest, and would otherwise be named after it.
+    if row["source"] in BROADCAST_SOURCES:
+        base = followup_stem(row["broadcast_text_id"], row["voice_name"])
+    elif row["quest"]:
+        base = f'{row["quest"]}-{row["source"]}'
+    else:
+        base = row["templateText_race_gender_hash"]
     if row["player_gender"]:
         base = f'{row["player_gender"]}-{base}'
     return base
@@ -25,7 +113,9 @@ def filename_for_row(row) -> str:
 
 def line_id_for_row(row) -> str:
     """Stable identity for a dataframe row."""
-    if row["quest"]:
+    if row["source"] in BROADCAST_SOURCES:
+        parts = ["f", str(int(row["broadcast_text_id"])), row["voice_name"]]
+    elif row["quest"]:
         parts = ["q", str(row["quest"]), row["source"]]
     else:
         parts = ["g", row["templateText_race_gender_hash"]]
@@ -34,15 +124,93 @@ def line_id_for_row(row) -> str:
     return ":".join(parts)
 
 
+VOICE_SEPARATOR = "~"
+
+
+def moment_of(line_id: str) -> str:
+    """A line id without its :m/:f player-gender suffix: what its forms share in every language."""
+    return line_id[:-2] if line_id[-2:] in (":m", ":f") else line_id
+
+
+WORDING_PREFIX = "w"
+
+
+def _wording(part: str):
+    """n for a `w{n}` id part, else None."""
+    if part.startswith(WORDING_PREFIX) and part[1:].isdigit() and part[1:] != "0":
+        return int(part[1:])
+    return None
+
+
+def quest_wording_line_id(quest, source: str, n: int) -> str:
+    """Another wording of a quest moment, e.g. 'q:97287:accept:w1'."""
+    return f"q:{quest}:{source}:{WORDING_PREFIX}{n}"
+
+
+def quest_wording_file_name(quest, source: str, n: int) -> str:
+    """Its file before any player-gender prefix, e.g. '97287-accept-w1'."""
+    return f"{quest}-{source}-{WORDING_PREFIX}{n}"
+
+
+def _quest_parts(line_id: str):
+    """(the moment's stem, the line's stem, player gender or None) of an unvoiced quest id."""
+    kind, quest, source, *rest = line_id.split(":")
+    if kind != "q":
+        raise ValueError(f"{line_id!r} is not a quest line")
+    moment = f"{quest}-{source}"
+    n = _wording(rest[0]) if rest else None
+    if n is not None:
+        rest = rest[1:]
+    return moment, quest_wording_file_name(quest, source, n) if n else moment, rest[0] if rest else None
+
+
+def quest_stem_from_line_id(line_id: str) -> str:
+    """A quest line's file without player-gender prefix or voice: what the addon looks up."""
+    return _quest_parts(split_voice(line_id)[0])[1]
+
+
+def quest_moment_stem(line_id: str) -> str:
+    """The stem of a quest line's moment, the same for every wording: QuestWordingLookup's key."""
+    return _quest_parts(split_voice(line_id)[0])[0]
+
+
+def several_wordings(moments: dict) -> dict:
+    """{moment stem: {text: stem}} keeping only the moments with more than one wording: with one
+    there is nothing to tell apart, and the addon names the file from the quest id alone."""
+    return {moment: texts for moment, texts in moments.items() if len(set(texts.values())) > 1}
+
+
+def variant_line_id(line_id: str, voice: str) -> str:
+    """A line in one more voice than its file was made in."""
+    return f"{line_id}{VOICE_SEPARATOR}{voice}"
+
+
+def variant_file_name(file_name: str, voice: str) -> str:
+    """Its file: the line's own name, player-gender prefix and all, then the voice."""
+    return f"{file_name}-{voice}"
+
+
+def split_voice(line_id: str) -> tuple:
+    """(the line id it is a voice of, the voice), or (line_id, None) for a plain one."""
+    base, separator, voice = line_id.partition(VOICE_SEPARATOR)
+    return (base, voice) if separator else (line_id, None)
+
+
 def filename_from_line_id(line_id: str) -> str:
     """Inverse of line_id_for_row, as far as the filename is concerned."""
+    line_id, voice = split_voice(line_id)
+    if voice:
+        return variant_file_name(filename_from_line_id(line_id), voice)
     kind, *rest = line_id.split(":")
     if kind == "q":
-        quest, source, *gender = rest
-        base = f"{quest}-{source}"
+        _moment, base, player_gender = _quest_parts(line_id)
+        gender = [player_gender] if player_gender else []
     elif kind == "g":
         hash_, *gender = rest
         base = hash_
+    elif kind == "f":
+        broadcast, voice, *gender = rest
+        base = followup_stem(broadcast, voice)
     else:
         raise ValueError(f"unknown lineId kind {kind!r} in {line_id!r}")
     if gender:
@@ -58,10 +226,25 @@ def gossip_hash_from_line_id(line_id: str) -> str:
     bare name, so storing a prefixed hash would make the line unreachable for the other
     gender.
     """
+    line_id, voice = split_voice(line_id)
     kind, *rest = line_id.split(":")
     if kind != "g":
         raise ValueError(f"{line_id!r} is not a gossip line")
-    return rest[0]
+    return variant_file_name(rest[0], voice) if voice else rest[0]
+
+
+def followup_stem_from_line_id(line_id: str) -> str:
+    """A follow-up line's filename without any m-/f- prefix, for FollowupLookup.
+
+    Unprefixed for gossip_hash_from_line_id's reason: the addon adds the player's gender
+    prefix when it resolves the file, and falls back to the bare name.
+    """
+    line_id, voice = split_voice(line_id)
+    kind, *rest = line_id.split(":")
+    if kind != "f":
+        raise ValueError(f"{line_id!r} is not a follow-up line")
+    stem = followup_stem(rest[0], rest[1])
+    return variant_file_name(stem, voice) if voice else stem
 
 
 def subfolder_from_line_id(line_id: str) -> str:
@@ -71,4 +254,6 @@ def subfolder_from_line_id(line_id: str) -> str:
         return "quests"
     if kind == "g":
         return "gossip"
+    if kind == "f":
+        return FOLLOWUP
     raise ValueError(f"unknown lineId kind {kind!r} in {line_id!r}")

@@ -6,6 +6,761 @@ The player and the sound pack are versioned independently — the pack moves whe
 rebuilt, the player when its Lua changes — so a section belongs to whichever of the two
 carries that version. The heading says which.
 
+## 2.5.0 — Spoken Quests Audio — 2026-10-31
+
+- **The sound packs are renamed** in the AddOns list: Spoken Audio: Quests - Horde, Quests -
+  Alliance, Quests - Shared and Gossip, and Spoken German Audio: Quests - Horde and so on for a
+  language. Their folders keep their names, so nothing needs reinstalling.
+- Packs carry a file per race and sex for NPCs drawn as more than one, alongside the per-sex
+  files older versions of Spoken read.
+- **Speakers are named without their title**, such as "<Skinner>", in the quest log and the
+  Compendium, and never as "null". Quests the Compendium does not list, and offers with no
+  words, no longer ship audio.
+  *([Nucabe](https://github.com/Nucabe))*
+
+## 1.0.1 — quests-audio-alliance-deDE — 2026-10-20
+
+- **The pack is called Spoken German Audio: Quests - Alliance** in the AddOns list.
+  Its folder keeps its name, so nothing needs reinstalling.
+- 20 more lines voiced and 18 re-recorded. Install over the previous version.
+
+## 1.0.1 — quests-audio-horde-deDE — 2026-10-20
+
+- **The pack is called Spoken German Audio: Quests - Horde** in the AddOns list.
+  Its folder keeps its name, so nothing needs reinstalling.
+- 54 more lines voiced and 1205 re-recorded. Install over the previous version.
+
+## 1.0.1 — quests-audio-shared-deDE — 2026-10-20
+
+- **The pack is called Spoken German Audio: Quests - Shared** in the AddOns list.
+  Its folder keeps its name, so nothing needs reinstalling.
+- 66 more lines voiced and 238 re-recorded. Install over the previous version.
+
+## 1.0.1 — quests-audio-gossip-deDE — 2026-10-20
+
+- **The pack is called Spoken German Audio: Gossip** in the AddOns list.
+  Its folder keeps its name, so nothing needs reinstalling.
+- 355 more lines voiced and 1051 re-recorded. Install over the previous version.
+
+## 1.0.1 — quests-audio-deDE — 2026-10-20
+
+- 712 more lines voiced and 2538 re-recorded: 13820 files in all. Install over the previous version.
+
+## 0.0.6 — quests-audio-alliance-esES — 2026-10-20
+
+- **The pack is called Spoken Spanish (EU) Audio: Quests - Alliance** in the AddOns list.
+  Its folder keeps its name, so nothing needs reinstalling.
+- 70 more lines voiced. Install over the previous version.
+
+## 0.0.6 — quests-audio-horde-esES — 2026-10-20
+
+- **The pack is called Spoken Spanish (EU) Audio: Quests - Horde** in the AddOns list.
+  Its folder keeps its name, so nothing needs reinstalling.
+- 49 more lines voiced. Install over the previous version.
+
+## 0.0.6 — quests-audio-shared-esES — 2026-10-20
+
+- **The pack is called Spoken Spanish (EU) Audio: Quests - Shared** in the AddOns list.
+  Its folder keeps its name, so nothing needs reinstalling.
+- 31 more lines voiced and 9 re-recorded. Install over the previous version.
+
+## 0.0.6 — quests-audio-gossip-esES — 2026-10-20
+
+- **The pack is called Spoken Spanish (EU) Audio: Gossip** in the AddOns list.
+  Its folder keeps its name, so nothing needs reinstalling.
+- 852 more lines voiced. Install over the previous version.
+
+## 0.0.6 — quests-audio-esES — 2026-10-20
+
+- 1146 more lines voiced and 9 re-recorded: 12727 files in all. Install over the previous version.
+
+## 0.0.6 — quests-audio-alliance-esMX — 2026-10-20
+
+- **The pack is called Spoken Spanish (AL) Audio: Quests - Alliance** in the AddOns list.
+  Its folder keeps its name, so nothing needs reinstalling.
+- 15 more lines voiced. Install over the previous version.
+
+## 0.0.6 — quests-audio-horde-esMX — 2026-10-20
+
+- **The pack is called Spoken Spanish (AL) Audio: Quests - Horde** in the AddOns list.
+  Its folder keeps its name, so nothing needs reinstalling.
+- 22 more lines voiced and 1 re-recorded. Install over the previous version.
+
+## 0.0.6 — quests-audio-shared-esMX — 2026-10-20
+
+- **The pack is called Spoken Spanish (AL) Audio: Quests - Shared** in the AddOns list.
+  Its folder keeps its name, so nothing needs reinstalling.
+- 14 more lines voiced and 5 re-recorded. Install over the previous version.
+
+## 0.0.6 — quests-audio-gossip-esMX — 2026-10-20
+
+- **The pack is called Spoken Spanish (AL) Audio: Gossip** in the AddOns list.
+  Its folder keeps its name, so nothing needs reinstalling.
+- 352 more lines voiced. Install over the previous version.
+
+## 0.0.6 — quests-audio-esMX — 2026-10-20
+
+- 535 more lines voiced and 8 re-recorded: 12327 files in all. Install over the previous version.
+
+## 2.4.0 — Spoken Quests Audio — 2026-10-17
+
+- **The sound packs are renamed** in the AddOns list: Spoken Audio: Quests - Horde, Quests -
+  Alliance, Quests - Shared and Gossip. Their folders keep their names, so nothing needs
+  reinstalling.
+- Packs carry a file per race and sex for NPCs drawn as more than one, alongside the per-sex
+  files older versions of Spoken read.
+
+## 2.3.0 — Spoken Quests Audio
+
+- New lines voiced for the Forever client.
+
+## 1.0.0 — quests-audio-alliance-deDE — 2026-10-14
+
+- **First release on CurseForge.** The German quests audio, until now one pack on GitHub,
+  comes here in four: Alliance, Horde, Shared and Gossip. Install your side's pack with
+  Shared; Gossip is optional. They hold the same lines as the single `SpokenQuestsAudio_deDE`
+  pack on GitHub, so install one or the other.
+- **1.0.0: German is no longer experimental.** Every line is voiced with ElevenLabs.
+- One line re-recorded since 0.0.5.
+
+## 1.0.0 — quests-audio-horde-deDE — 2026-10-14
+
+- **First release on CurseForge.** The German quests audio, until now one pack on GitHub,
+  comes here in four: Alliance, Horde, Shared and Gossip. Install your side's pack with
+  Shared; Gossip is optional. They hold the same lines as the single `SpokenQuestsAudio_deDE`
+  pack on GitHub, so install one or the other.
+- **1.0.0: German is no longer experimental.** Every line is voiced with ElevenLabs.
+- One line re-recorded since 0.0.5.
+
+## 1.0.0 — quests-audio-shared-deDE — 2026-10-14
+
+- **First release on CurseForge.** The German quests audio, until now one pack on GitHub,
+  comes here in four: Alliance, Horde, Shared and Gossip. Install your side's pack with
+  Shared; Gossip is optional. They hold the same lines as the single `SpokenQuestsAudio_deDE`
+  pack on GitHub, so install one or the other.
+- **1.0.0: German is no longer experimental.** Every line is voiced with ElevenLabs.
+- One line re-recorded since 0.0.5.
+
+## 1.0.0 — quests-audio-gossip-deDE — 2026-10-14
+
+- **First release on CurseForge.** The German quests audio, until now one pack on GitHub,
+  comes here in four: Alliance, Horde, Shared and Gossip. Install your side's pack with
+  Shared; Gossip is optional. They hold the same lines as the single `SpokenQuestsAudio_deDE`
+  pack on GitHub, so install one or the other.
+- **1.0.0: German is no longer experimental.** Every line is voiced with ElevenLabs.
+- One line re-recorded since 0.0.5.
+
+## 1.0.0 — quests-audio-deDE — 2026-10-14
+
+- **1.0.0: German is no longer experimental.** Every line is voiced with ElevenLabs.
+- One line re-recorded since 0.0.5: 13071 files in all. Install over the previous version.
+- The same audio is now on CurseForge too, split into Alliance, Horde, Shared and Gossip
+  packs. Install those or this one, not both.
+
+## 0.0.5 — quests-audio-alliance-esES — 2026-10-14
+
+- **First release on CurseForge.** The European Spanish quests audio, until now one pack on
+  GitHub, comes here in four: Alliance, Horde, Shared and Gossip. Install your side's pack
+  with Shared; Gossip is optional. They hold the same lines as the single
+  `SpokenQuestsAudio_esES` pack on GitHub, so install one or the other.
+- **Experimental**, numbered 0.0.x so it does not read as finished: expect lines to be
+  re-recorded, and report the ones that sound wrong.
+- 121 more lines voiced since 0.0.4.
+
+## 0.0.5 — quests-audio-horde-esES — 2026-10-14
+
+- **First release on CurseForge.** The European Spanish quests audio, until now one pack on
+  GitHub, comes here in four: Alliance, Horde, Shared and Gossip. Install your side's pack
+  with Shared; Gossip is optional. They hold the same lines as the single
+  `SpokenQuestsAudio_esES` pack on GitHub, so install one or the other.
+- **Experimental**, numbered 0.0.x so it does not read as finished: expect lines to be
+  re-recorded, and report the ones that sound wrong.
+- 121 more lines voiced since 0.0.4.
+
+## 0.0.5 — quests-audio-shared-esES — 2026-10-14
+
+- **First release on CurseForge.** The European Spanish quests audio, until now one pack on
+  GitHub, comes here in four: Alliance, Horde, Shared and Gossip. Install your side's pack
+  with Shared; Gossip is optional. They hold the same lines as the single
+  `SpokenQuestsAudio_esES` pack on GitHub, so install one or the other.
+- **Experimental**, numbered 0.0.x so it does not read as finished: expect lines to be
+  re-recorded, and report the ones that sound wrong.
+- 121 more lines voiced since 0.0.4.
+
+## 0.0.5 — quests-audio-gossip-esES — 2026-10-14
+
+- **First release on CurseForge.** The European Spanish quests audio, until now one pack on
+  GitHub, comes here in four: Alliance, Horde, Shared and Gossip. Install your side's pack
+  with Shared; Gossip is optional. They hold the same lines as the single
+  `SpokenQuestsAudio_esES` pack on GitHub, so install one or the other.
+- **Experimental**, numbered 0.0.x so it does not read as finished: expect lines to be
+  re-recorded, and report the ones that sound wrong.
+- 121 more lines voiced since 0.0.4.
+
+## 0.0.5 — quests-audio-esES — 2026-10-14
+
+- 121 more lines voiced since 0.0.4: 11582 files in all. Install over the previous version.
+- The same audio is now on CurseForge too, split into Alliance, Horde, Shared and Gossip
+  packs. Install those or this one, not both.
+
+## 0.0.5 — quests-audio-alliance-esMX — 2026-10-14
+
+- **First release on CurseForge.** The Latin American Spanish quests audio, until now one pack
+  on GitHub, comes here in four: Alliance, Horde, Shared and Gossip. Install your side's pack
+  with Shared; Gossip is optional. They hold the same lines as the single
+  `SpokenQuestsAudio_esMX` pack on GitHub, so install one or the other.
+- **Experimental**, numbered 0.0.x so it does not read as finished: expect lines to be
+  re-recorded, and report the ones that sound wrong.
+- 803 more lines voiced since 0.0.4.
+
+## 0.0.5 — quests-audio-horde-esMX — 2026-10-14
+
+- **First release on CurseForge.** The Latin American Spanish quests audio, until now one pack
+  on GitHub, comes here in four: Alliance, Horde, Shared and Gossip. Install your side's pack
+  with Shared; Gossip is optional. They hold the same lines as the single
+  `SpokenQuestsAudio_esMX` pack on GitHub, so install one or the other.
+- **Experimental**, numbered 0.0.x so it does not read as finished: expect lines to be
+  re-recorded, and report the ones that sound wrong.
+- 803 more lines voiced since 0.0.4.
+
+## 0.0.5 — quests-audio-shared-esMX — 2026-10-14
+
+- **First release on CurseForge.** The Latin American Spanish quests audio, until now one pack
+  on GitHub, comes here in four: Alliance, Horde, Shared and Gossip. Install your side's pack
+  with Shared; Gossip is optional. They hold the same lines as the single
+  `SpokenQuestsAudio_esMX` pack on GitHub, so install one or the other.
+- **Experimental**, numbered 0.0.x so it does not read as finished: expect lines to be
+  re-recorded, and report the ones that sound wrong.
+- 803 more lines voiced since 0.0.4.
+
+## 0.0.5 — quests-audio-gossip-esMX — 2026-10-14
+
+- **First release on CurseForge.** The Latin American Spanish quests audio, until now one pack
+  on GitHub, comes here in four: Alliance, Horde, Shared and Gossip. Install your side's pack
+  with Shared; Gossip is optional. They hold the same lines as the single
+  `SpokenQuestsAudio_esMX` pack on GitHub, so install one or the other.
+- **Experimental**, numbered 0.0.x so it does not read as finished: expect lines to be
+  re-recorded, and report the ones that sound wrong.
+- 803 more lines voiced since 0.0.4.
+
+## 0.0.5 — quests-audio-esMX — 2026-10-14
+
+- 803 more lines voiced since 0.0.4: 11754 files in all. Install over the previous version.
+- The same audio is now on CurseForge too, split into Alliance, Horde, Shared and Gossip
+  packs. Install those or this one, not both.
+
+## 0.0.4 — quests-audio-alliance-frFR — 2026-10-14
+
+- **First release on CurseForge.** The French quests audio, until now one pack on GitHub,
+  comes here in four: Alliance, Horde, Shared and Gossip. Install your side's pack with
+  Shared; Gossip is optional. They hold the same lines as the single `SpokenQuestsAudio_frFR`
+  pack on GitHub, so install one or the other.
+- **Experimental**, numbered 0.0.x so it does not read as finished: expect lines to be
+  re-recorded, and report the ones that sound wrong.
+- 4 more lines voiced and 1711 re-recorded with ElevenLabs since 0.0.3.
+
+## 0.0.4 — quests-audio-horde-frFR — 2026-10-14
+
+- **First release on CurseForge.** The French quests audio, until now one pack on GitHub,
+  comes here in four: Alliance, Horde, Shared and Gossip. Install your side's pack with
+  Shared; Gossip is optional. They hold the same lines as the single `SpokenQuestsAudio_frFR`
+  pack on GitHub, so install one or the other.
+- **Experimental**, numbered 0.0.x so it does not read as finished: expect lines to be
+  re-recorded, and report the ones that sound wrong.
+- 4 more lines voiced and 1711 re-recorded with ElevenLabs since 0.0.3.
+
+## 0.0.4 — quests-audio-shared-frFR — 2026-10-14
+
+- **First release on CurseForge.** The French quests audio, until now one pack on GitHub,
+  comes here in four: Alliance, Horde, Shared and Gossip. Install your side's pack with
+  Shared; Gossip is optional. They hold the same lines as the single `SpokenQuestsAudio_frFR`
+  pack on GitHub, so install one or the other.
+- **Experimental**, numbered 0.0.x so it does not read as finished: expect lines to be
+  re-recorded, and report the ones that sound wrong.
+- 4 more lines voiced and 1711 re-recorded with ElevenLabs since 0.0.3.
+
+## 0.0.4 — quests-audio-gossip-frFR — 2026-10-14
+
+- **First release on CurseForge.** The French quests audio, until now one pack on GitHub,
+  comes here in four: Alliance, Horde, Shared and Gossip. Install your side's pack with
+  Shared; Gossip is optional. They hold the same lines as the single `SpokenQuestsAudio_frFR`
+  pack on GitHub, so install one or the other.
+- **Experimental**, numbered 0.0.x so it does not read as finished: expect lines to be
+  re-recorded, and report the ones that sound wrong.
+- 4 more lines voiced and 1711 re-recorded with ElevenLabs since 0.0.3.
+
+## 0.0.4 — quests-audio-frFR — 2026-10-14
+
+- 4 more lines voiced and 1711 re-recorded with ElevenLabs since 0.0.3: 11075 files in all.
+  Install over the previous version.
+- The same audio is now on CurseForge too, split into Alliance, Horde, Shared and Gossip
+  packs. Install those or this one, not both.
+
+## 0.0.2 — quests-audio-shared-itIT — 2026-10-14
+
+- **First release on CurseForge.** The Italian quests audio, until now one pack on GitHub,
+  comes here in two: Quests, with every quest for both factions, and Gossip, which is
+  optional. They hold the same lines as the single `SpokenQuestsAudio_itIT` pack on GitHub, so
+  install one or the other.
+- **Experimental**, numbered 0.0.x so it does not read as finished: expect lines to be
+  re-recorded, and report the ones that sound wrong.
+- **Partial**: it voices the quests QuestIT has translated so far. Set **Fallback Language**
+  to English to hear the rest.
+- 9564 more lines voiced, as QuestIT has translated more quests, and 2169 re-recorded since
+  0.0.1.
+
+## 0.0.2 — quests-audio-gossip-itIT — 2026-10-14
+
+- **First release on CurseForge.** The Italian quests audio, until now one pack on GitHub,
+  comes here in two: Quests, with every quest for both factions, and Gossip, which is
+  optional. They hold the same lines as the single `SpokenQuestsAudio_itIT` pack on GitHub, so
+  install one or the other.
+- **Experimental**, numbered 0.0.x so it does not read as finished: expect lines to be
+  re-recorded, and report the ones that sound wrong.
+- **Partial**: it voices the quests QuestIT has translated so far. Set **Fallback Language**
+  to English to hear the rest.
+- 9564 more lines voiced, as QuestIT has translated more quests, and 2169 re-recorded since
+  0.0.1.
+
+## 0.0.2 — quests-audio-itIT — 2026-10-14
+
+- 9564 more lines voiced, as QuestIT has translated more quests, and 2169 re-recorded since
+  0.0.1: 12734 files in all. Install over the previous version.
+- The same audio is now on CurseForge too, as a Quests pack and a Gossip pack. Install those
+  or this one, not both.
+
+## 0.0.2 — quests-audio-shared-koKR — 2026-10-14
+
+- **First release on CurseForge.** The Korean quests audio, until now one pack on GitHub,
+  comes here in two: Quests, with every quest for both factions, and Gossip, which is
+  optional. They hold the same lines as the single `SpokenQuestsAudio_koKR` pack on GitHub, so
+  install one or the other.
+- **Experimental**, numbered 0.0.x so it does not read as finished: expect lines to be
+  re-recorded, and report the ones that sound wrong.
+- **Partial**: it voices about four quests in five. Set **Fallback Language** to English to
+  hear the rest.
+
+## 0.0.2 — quests-audio-gossip-koKR — 2026-10-14
+
+- **First release on CurseForge.** The Korean quests audio, until now one pack on GitHub,
+  comes here in two: Quests, with every quest for both factions, and Gossip, which is
+  optional. They hold the same lines as the single `SpokenQuestsAudio_koKR` pack on GitHub, so
+  install one or the other.
+- **Experimental**, numbered 0.0.x so it does not read as finished: expect lines to be
+  re-recorded, and report the ones that sound wrong.
+- **Partial**: it voices about four quests in five. Set **Fallback Language** to English to
+  hear the rest.
+
+## 0.0.3 — quests-audio-shared-ptBR — 2026-10-14
+
+- **First release on CurseForge.** The Brazilian Portuguese quests audio, until now one pack
+  on GitHub, comes here in two: Quests, with every quest for both factions, and Gossip, which
+  is optional. They hold the same lines as the single `SpokenQuestsAudio_ptBR` pack on GitHub,
+  so install one or the other.
+- **Experimental**, numbered 0.0.x so it does not read as finished: expect lines to be
+  re-recorded, and report the ones that sound wrong.
+- **Partial**: few quest completions are voiced yet. Set **Fallback Language** to English to
+  hear the rest.
+
+## 0.0.3 — quests-audio-gossip-ptBR — 2026-10-14
+
+- **First release on CurseForge.** The Brazilian Portuguese quests audio, until now one pack
+  on GitHub, comes here in two: Quests, with every quest for both factions, and Gossip, which
+  is optional. They hold the same lines as the single `SpokenQuestsAudio_ptBR` pack on GitHub,
+  so install one or the other.
+- **Experimental**, numbered 0.0.x so it does not read as finished: expect lines to be
+  re-recorded, and report the ones that sound wrong.
+- **Partial**: few quest completions are voiced yet. Set **Fallback Language** to English to
+  hear the rest.
+
+## 0.0.3 — quests-audio-shared-ruRU — 2026-10-14
+
+- **First release on CurseForge.** The Russian quests audio, until now one pack on GitHub,
+  comes here in two: Quests, with every quest for both factions, and Gossip, which is
+  optional. They hold the same lines as the single `SpokenQuestsAudio_ruRU` pack on GitHub, so
+  install one or the other.
+- **Experimental**, numbered 0.0.x so it does not read as finished: expect lines to be
+  re-recorded, and report the ones that sound wrong.
+
+## 0.0.3 — quests-audio-gossip-ruRU — 2026-10-14
+
+- **First release on CurseForge.** The Russian quests audio, until now one pack on GitHub,
+  comes here in two: Quests, with every quest for both factions, and Gossip, which is
+  optional. They hold the same lines as the single `SpokenQuestsAudio_ruRU` pack on GitHub, so
+  install one or the other.
+- **Experimental**, numbered 0.0.x so it does not read as finished: expect lines to be
+  re-recorded, and report the ones that sound wrong.
+
+## 0.0.1 — quests-audio-shared-zhCN — 2026-10-14
+
+- **First release on CurseForge.** The Simplified Chinese quests audio, until now one pack on
+  GitHub, comes here in two: Quests, with every quest for both factions, and Gossip, which is
+  optional. They hold the same lines as the single `SpokenQuestsAudio_zhCN` pack on GitHub, so
+  install one or the other.
+- **Experimental**, numbered 0.0.x so it does not read as finished: expect lines to be
+  re-recorded, and report the ones that sound wrong.
+- **Partial**: it voices about six quests in seven. Set **Fallback Language** to English to
+  hear the rest.
+
+## 0.0.1 — quests-audio-gossip-zhCN — 2026-10-14
+
+- **First release on CurseForge.** The Simplified Chinese quests audio, until now one pack on
+  GitHub, comes here in two: Quests, with every quest for both factions, and Gossip, which is
+  optional. They hold the same lines as the single `SpokenQuestsAudio_zhCN` pack on GitHub, so
+  install one or the other.
+- **Experimental**, numbered 0.0.x so it does not read as finished: expect lines to be
+  re-recorded, and report the ones that sound wrong.
+- **Partial**: it voices about six quests in seven. Set **Fallback Language** to English to
+  hear the rest.
+
+## 0.0.1 — quests-audio-shared-zhTW — 2026-10-14
+
+- **First release on CurseForge.** The Traditional Chinese quests audio, until now one pack on
+  GitHub, comes here in two: Quests, with every quest for both factions, and Gossip, which is
+  optional. They hold the same lines as the single `SpokenQuestsAudio_zhTW` pack on GitHub, so
+  install one or the other.
+- **Experimental**, numbered 0.0.x so it does not read as finished: expect lines to be
+  re-recorded, and report the ones that sound wrong.
+- **Partial**: it voices about four quests in five. Set **Fallback Language** to English to
+  hear the rest.
+
+## 0.0.1 — quests-audio-gossip-zhTW — 2026-10-14
+
+- **First release on CurseForge.** The Traditional Chinese quests audio, until now one pack on
+  GitHub, comes here in two: Quests, with every quest for both factions, and Gossip, which is
+  optional. They hold the same lines as the single `SpokenQuestsAudio_zhTW` pack on GitHub, so
+  install one or the other.
+- **Experimental**, numbered 0.0.x so it does not read as finished: expect lines to be
+  re-recorded, and report the ones that sound wrong.
+- **Partial**: it voices about four quests in five. Set **Fallback Language** to English to
+  hear the rest.
+
+## 3.0.0 — player — 2026-10-05
+
+- **Spoken Quests is now part of Spoken**, and this download no longer carries the addon. It
+  leaves a `SpokenQuests` folder that never loads, listed greyed out as "Spoken Quests (now in
+  Spoken)".
+- **Install [Spoken Player](https://www.curseforge.com/wow/addons/spoken-player)** instead: it
+  has Quests inside, in the `Spoken_Quests` folder, along with everything new in Spoken 3.0.0. Then
+  uninstall this download and delete the `SpokenQuests` folder from `Interface\AddOns`. This
+  download gets no further updates.
+
+## 3.0.0-beta.4 — player — 2026-10-05
+
+- **Spoken Quests is now part of Spoken**, and this download no longer carries the addon. It
+  leaves a `SpokenQuests` folder that never loads, listed greyed out as "Spoken Quests (now in
+  Spoken)".
+- **Install [Spoken Player](https://www.curseforge.com/wow/addons/spoken-player)** instead: it
+  has Quests inside, in the `Spoken_Quests` folder. Then uninstall this download and delete the
+  `SpokenQuests` folder from `Interface\AddOns`.
+
+## 3.0.0-beta.3 — player — 2026-10-04
+
+- Ships inside Spoken 3.0.0-beta.3, in a folder renamed to `Spoken_Quests`. Settings start fresh
+  again: the game names the settings file after the folder. See Spoken's changelog.
+
+## 3.0.0-beta.2 — player — 2026-10-04
+
+- Ships inside Spoken 3.0.0-beta.2. No changes of its own.
+
+## 3.0.0-beta.1 — player — 2026-10-04
+
+- Ships inside Spoken 3.0.0-beta.1 as one of its modules, no longer as a download of its own.
+  See Spoken's changelog. Settings start fresh: nothing is carried over from 2.2.2.
+
+## 2.2.2 — player
+
+- **Italian** joins **Voice Language**, for the new Italian sound pack. No game client runs
+  in Italian, so Auto never picks it: choose it yourself. While you listen in Italian,
+  Spoken Quests offers no contributions.
+- The newer settings - quest follow-ups, Report a problem, the gossip buttons - are
+  translated into every client language.
+
+## 2.2.1 — player
+
+- Gossip quest lines play on Forever build 70170 again. That build reports a different
+  client type, and Spoken Quests stopped setting up the gossip functions Forever needs.
+  It now checks whether the client has them instead.
+
+## 2.2.1 — Spoken Quests Audio
+
+- The packs load on the Forever client again. Its update on 2 October marked them
+  **Incompatible**, and Spoken Quests said no usable sound packs were loaded. The audio is
+  unchanged from 2.2.0; install over it.
+
+## 2.2.0 — player
+
+- **Experimental:** NPC lines said in chat after you accept or turn in a quest are voiced. Toggle in settings.
+- The NPC's greeting is muted as the dialog opens, instead of cut off mid-word. Needs Spoken Player 2.3.0.
+- Quests played from the quest log name the giver in your client's language.
+
+## 2.2.0 — Spoken Quests Audio
+
+- Hundreds of quest follow-up lines voiced. Needs Spoken Quests 2.2.0.
+- About 60 new contributed lines, mostly NPC greetings.
+
+## 2.1.0 — sound packs
+
+**The Forever quests are voiced.** About 1,550 lines are new since 2.0.0, all of them sent in
+by players with Contribute, and 1,275 of them have a voice in these packs: 464 quest offers,
+491 turn-ins and 320 NPC greetings.
+
+- **Most of the quests new to the Forever client** speak now: 946 lines across 505 of them.
+  The Skybourne elves speak with voices of their own, one for each of the game's two voice
+  sets per gender.
+- **Addressed reported lines.**
+- **On GitHub, one download holds all four packs**, `SpokenQuestsAudioAll-2.1.0.zip`: the same
+  four folders CurseForge installs, so it goes over whichever you have, from either store.
+- Still one format, Ogg Vorbis at 44.1 kHz. Install over 2.0.0.
+
+## 2.1.3 — player
+
+- Queued quest and NPC dialogue now supplies captions to Spoken Player 2.2.3.
+  Replaying an accepted quest uses its quest log description when available.
+- **A Language section in the settings panel**, as Spoken Books has: voice language and
+  fallback, with **Auto (<language>)** following the game client. Until now it was only in the
+  `/spq` window.
+- Play, Stop, the greeting setting and the AddOns-list description follow the game client's
+  language.
+- No longer tells you to update a sound pack that is newer than it knows about. Installing the
+  2.1.0 packs under an older Spoken Quests offered an "update" back to 2.0.0.
+
+## 0.0.1 — quests-audio-zhCN — 2026-10-02
+
+- **Experimental.** A first cut, numbered 0.0.1 so it does not read as finished: expect
+  lines to be re-recorded, and report the ones that sound wrong.
+- **The first Simplified Chinese sound pack**, `SpokenQuestsAudio_zhCN`: every quest and gossip line
+  Spoken Quests has a Simplified Chinese take for, in one pack for both factions. It carries the
+  Simplified Chinese gossip text too, so gossip is recognised on a zhCN client. It installs beside the
+  English packs rather than over them; pick the language under **Voice Language**.
+  Needs Spoken Quests 2.1.1 or later.
+  **Partial**: the game's Simplified Chinese text is missing for some quests, so it voices about six in seven
+  quest offers and turn-ins, and most gossip. Set **Fallback Language** to English to hear
+  the rest.
+
+## 0.0.1 — quests-audio-zhTW — 2026-10-02
+
+- **Experimental.** A first cut, numbered 0.0.1 so it does not read as finished: expect
+  lines to be re-recorded, and report the ones that sound wrong.
+- **The first Traditional Chinese sound pack**, `SpokenQuestsAudio_zhTW`: every quest and gossip line
+  Spoken Quests has a Traditional Chinese take for, in one pack for both factions. It carries the
+  Traditional Chinese gossip text too, so gossip is recognised on a zhTW client. It installs beside the
+  English packs rather than over them; pick the language under **Voice Language**.
+  Needs Spoken Quests 2.1.1 or later.
+  **Partial**: the game's Traditional Chinese text is missing for some quests, so it voices about four in five
+  quest offers and turn-ins, and most gossip. Set **Fallback Language** to English to hear
+  the rest.
+
+## 0.0.1 — quests-audio-itIT — 2026-10-04
+
+- **Experimental.** A first cut, numbered 0.0.1 so it does not read as finished: expect
+  lines to be re-recorded, and report the ones that sound wrong.
+- **The first Italian sound pack**, `SpokenQuestsAudio_itIT`: every quest and gossip line
+  Spoken Quests has an Italian take for, in one pack for both factions. The text is the
+  **QuestIT** community translation. It installs beside the English packs rather than over
+  them. No game client runs in Italian, so pick it yourself under **Voice Language**.
+  Needs Spoken Quests 2.2.2 or later.
+  **Partial**: it voices the quests QuestIT has translated so far. Set **Fallback Language**
+  to English to hear the rest.
+
+## 0.0.5 — quests-audio-deDE — 2026-10-13
+
+- 931 more lines voiced, most of them NPC greetings, and 23 re-recorded: 13071 files in all.
+  Install over the previous version.
+
+## 0.0.4 — quests-audio-deDE — 2026-10-08
+
+- **Every line re-recorded** with ElevenLabs' newer voice model: 12140 files, all of them
+  replaced. Install over the previous version.
+
+## 0.0.4 — quests-audio-esES — 2026-10-08
+
+- 379 more lines voiced, and 64 re-recorded: 11461 files in all. Install over the previous
+  version.
+
+## 0.0.4 — quests-audio-esMX — 2026-10-08
+
+- 409 more lines voiced, and 64 re-recorded: 10952 files in all. Install over the previous
+  version.
+
+## 0.0.3 — quests-audio-deDE — 2026-10-02
+
+- The pack loads on the Forever client again. Its update on 2 October marked it
+  **Incompatible**, and Spoken Quests said no usable sound packs were loaded. The audio is
+  unchanged; install over the previous version.
+
+## 0.0.3 — quests-audio-esES — 2026-10-02
+
+- The pack loads on the Forever client again. Its update on 2 October marked it
+  **Incompatible**, and Spoken Quests said no usable sound packs were loaded. The audio is
+  unchanged; install over the previous version.
+
+## 0.0.3 — quests-audio-esMX — 2026-10-02
+
+- The pack loads on the Forever client again. Its update on 2 October marked it
+  **Incompatible**, and Spoken Quests said no usable sound packs were loaded. The audio is
+  unchanged; install over the previous version.
+
+## 0.0.3 — quests-audio-frFR — 2026-10-02
+
+- The pack loads on the Forever client again. Its update on 2 October marked it
+  **Incompatible**, and Spoken Quests said no usable sound packs were loaded. The audio is
+  unchanged; install over the previous version.
+
+## 0.0.3 — quests-audio-ptBR — 2026-10-02
+
+- The pack loads on the Forever client again. Its update on 2 October marked it
+  **Incompatible**, and Spoken Quests said no usable sound packs were loaded. The audio is
+  unchanged; install over the previous version.
+
+## 0.0.3 — quests-audio-ruRU — 2026-10-02
+
+- The pack loads on the Forever client again. Its update on 2 October marked it
+  **Incompatible**, and Spoken Quests said no usable sound packs were loaded. The audio is
+  unchanged; install over the previous version.
+
+## 0.0.2 — quests-audio-koKR — 2026-10-02
+
+- The pack loads on the Forever client again. Its update on 2 October marked it
+  **Incompatible**, and Spoken Quests said no usable sound packs were loaded. The audio is
+  unchanged; install over the previous version.
+
+## 0.0.1 — quests-audio-koKR — 2026-10-01
+
+- **Experimental.** A first cut, numbered 0.0.1 so it does not read as finished: expect
+  lines to be re-recorded, and report the ones that sound wrong.
+- **The first Korean sound pack**, `SpokenQuestsAudio_koKR`: every quest and gossip line
+  Spoken Quests has a Korean take for, in one pack for both factions. It carries the
+  Korean gossip text too, so gossip is recognised on a koKR client. It installs beside the
+  English packs rather than over them; pick the language under **Voice Language**.
+  Needs Spoken Quests 2.1.1 or later.
+  **Partial**: the game's Korean text is missing for some quests, so it voices about four
+  in five quest offers and turn-ins, and most gossip. Set **Fallback Language** to English
+  to hear the rest.
+
+## 0.0.2 — quests-audio-deDE — 2026-09-28
+
+- **Experimental**, still: expect lines to be re-recorded, and report the ones that sound wrong.
+- **Re-recorded.** Most lines have a new take.
+- **No more stray sounds between paragraphs.** A line with more than one paragraph could fill
+  the break with a laugh, a moan or a mumble nobody wrote. Each paragraph is now spoken on its
+  own and the two are joined by a short pause, which is also longer than the pause at a full stop.
+
+## 0.0.2 — quests-audio-esMX — 2026-09-28
+
+- **Experimental**, still: expect lines to be re-recorded, and report the ones that sound wrong.
+- **Re-recorded.** Most lines have a new take.
+- **No more stray sounds between paragraphs.** A line with more than one paragraph could fill
+  the break with a laugh, a moan or a mumble nobody wrote. Each paragraph is now spoken on its
+  own and the two are joined by a short pause, which is also longer than the pause at a full stop.
+
+## 0.0.2 — quests-audio-ptBR — 2026-09-28
+
+- **Experimental**, still: expect lines to be re-recorded, and report the ones that sound wrong.
+- **Re-recorded.** Most lines have a new take.
+- **No more stray sounds between paragraphs.** A line with more than one paragraph could fill
+  the break with a laugh, a moan or a mumble nobody wrote. Each paragraph is now spoken on its
+  own and the two are joined by a short pause, which is also longer than the pause at a full stop.
+- **Still partial**: the game's Portuguese text is missing for most quest completions, so it
+  voices most quest offers and gossip but only 120 turn-ins. Set **Fallback Language** to
+  English to hear the rest.
+
+## 0.0.2 — quests-audio-ruRU — 2026-09-28
+
+- **Experimental**, still: expect lines to be re-recorded, and report the ones that sound wrong.
+- **Re-recorded.** Most lines have a new take.
+- **No more stray sounds between paragraphs.** A line with more than one paragraph could fill
+  the break with a laugh, a moan or a mumble nobody wrote. Each paragraph is now spoken on its
+  own and the two are joined by a short pause, which is also longer than the pause at a full stop.
+
+## 0.0.2 — quests-audio-esES — 2026-09-28
+
+- **Experimental**, still: expect lines to be re-recorded, and report the ones that sound wrong.
+- **Re-recorded.** Most lines have a new take.
+- **No more stray sounds between paragraphs.** A line with more than one paragraph could fill
+  the break with a laugh, a moan or a mumble nobody wrote. Each paragraph is now spoken on its
+  own and the two are joined by a short pause, which is also longer than the pause at a full stop.
+
+## 0.0.2 — quests-audio-frFR — 2026-09-28
+
+- **Experimental**, still: expect lines to be re-recorded, and report the ones that sound wrong.
+- **Re-recorded.** Most lines have a new take.
+- **No more stray sounds between paragraphs.** A line with more than one paragraph could fill
+  the break with a laugh, a moan or a mumble nobody wrote. Each paragraph is now spoken on its
+  own and the two are joined by a short pause, which is also longer than the pause at a full stop.
+
+## 0.0.1 — quests-audio-deDE — 2026-09-27
+
+- **Experimental.** A first cut, numbered 0.0.1 so it does not read as finished: expect
+  lines to be re-recorded, and report the ones that sound wrong.
+- **The first German sound pack**, `SpokenQuestsAudio_deDE`: every quest and gossip line
+  Spoken Quests has a German take for, in one pack for both factions. It carries the
+  German gossip text too, so gossip is recognised on a deDE client. It installs beside the
+  English packs rather than over them; pick the language under **Voice Language**.
+  Needs Spoken Quests 2.1.1 or later.
+
+## 0.0.1 — quests-audio-esMX — 2026-09-27
+
+- **Experimental.** A first cut, numbered 0.0.1 so it does not read as finished: expect
+  lines to be re-recorded, and report the ones that sound wrong.
+- **The first Spanish (AL) sound pack**, `SpokenQuestsAudio_esMX`: every quest and gossip line
+  Spoken Quests has a Latin American Spanish take for, in one pack for both factions. It carries the
+  Latin American Spanish gossip text too, so gossip is recognised on a esMX client. It installs beside the
+  English packs rather than over them; pick the language under **Voice Language**.
+  Needs Spoken Quests 2.1.1 or later.
+
+## 0.0.1 — quests-audio-ptBR — 2026-09-27
+
+- **Experimental.** A first cut, numbered 0.0.1 so it does not read as finished: expect
+  lines to be re-recorded, and report the ones that sound wrong.
+- **The first Portuguese sound pack**, `SpokenQuestsAudio_ptBR`: every quest and gossip line
+  Spoken Quests has a Brazilian Portuguese take for, in one pack for both factions. It carries the
+  Brazilian Portuguese gossip text too, so gossip is recognised on a ptBR client. It installs beside the
+  English packs rather than over them; pick the language under **Voice Language**.
+  Needs Spoken Quests 2.1.1 or later.
+  **Partial**: the game's Portuguese text is missing for most quest completions, so it
+  voices most quest offers and gossip but only 120 turn-ins. Set **Fallback Language** to
+  English to hear the rest.
+
+## 0.0.1 — quests-audio-ruRU — 2026-09-27
+
+- **Experimental.** A first cut, numbered 0.0.1 so it does not read as finished: expect
+  lines to be re-recorded, and report the ones that sound wrong.
+- **The first Russian sound pack**, `SpokenQuestsAudio_ruRU`: every quest and gossip line
+  Spoken Quests has a Russian take for, in one pack for both factions. It carries the
+  Russian gossip text too, so gossip is recognised on a ruRU client. It installs beside the
+  English packs rather than over them; pick the language under **Voice Language**.
+  Needs Spoken Quests 2.1.1 or later.
+
+## 0.0.1 — quests-audio-esES — 2026-09-27
+
+- **Experimental.** A first cut, numbered 0.0.1 so it does not read as finished: expect
+  lines to be re-recorded, and report the ones that sound wrong.
+- **The first Spanish (EU) sound pack**, `SpokenQuestsAudio_esES`: every quest and gossip line
+  Spoken Quests has a European Spanish take for, in one pack for both factions. It carries the
+  European Spanish gossip text too, so gossip is recognised on an esES client. It installs beside the
+  English packs rather than over them; pick the language under **Voice Language**.
+  Needs Spoken Quests 2.1.1 or later.
+
+## 0.0.1 — quests-audio-frFR — 2026-09-27
+
+- **Experimental.** A first cut, numbered 0.0.1 so it does not read as finished: expect
+  lines to be re-recorded, and report the ones that sound wrong.
+- **The first French sound pack**, `SpokenQuestsAudio_frFR`: every quest and gossip line
+  Spoken Quests has a French take for, in one pack for both factions. It carries the
+  French gossip text too, so gossip is recognised on a frFR client. It installs beside the
+  English packs rather than over them; pick the language under **Voice Language**.
+  Needs Spoken Quests 2.1.1 or later.
+
+## 2.1.2 — player
+
+- **Contributions name the NPC's voice more often.** The Contribute button now also sends the
+  appearances the NPC can be drawn with, which tell the site the exact voice the game gives
+  it, including for NPCs added after vanilla.
+- **Closing the map with a gamepad no longer hangs the Forever client.** The quest log's Play,
+  Contribute and details buttons were created in a way that tainted the client's gamepad
+  navigation, so closing the map was blocked, and so was every button of the dialog saying so.
+
 ## 2.1.1 — player
 
 - **Autoplay can be turned off.** Untick **Read dialogue when it opens** in the Spoken Quests
@@ -149,7 +904,7 @@ No sound pack change: install the same ones.
 
 ## 1.2.0 — player
 
-**The 1.12, 2.4.3 and 3.3.5 private-server clients are supported again.** Each has a zip of its
+**The 1.12, 2.4.3 and 3.3.5 legacy clients are supported again.** Each has a zip of its
 own on the [GitHub releases page](https://github.com/rusty-key/wow-voiceover/releases), carrying
 the one `.toc` that client reads and the Ace3 build it needs. Blizzard's clients keep the single
 zip they already had.
@@ -230,5 +985,5 @@ pack; the player finds it the same way.
 Nests the pack under the player in the AddOns list, and targets Blizzard's clients only: one
 zip carrying a `.toc` per flavor, which the client picks between.
 
-The 1.12, 2.4.3 and 3.3.5 private-server clients are no longer supported. They predate flavor
+The 1.12, 2.4.3 and 3.3.5 legacy clients are no longer supported. They predate flavor
 suffixes and each needed its own zip and its own vendored Ace3.

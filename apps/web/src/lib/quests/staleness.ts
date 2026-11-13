@@ -15,11 +15,15 @@
  */
 import { BASE_LANG, type Lang } from "../lang";
 import { fileIndex } from "../audio";
-import { db } from "../db";
+import type { CorpusLine } from "../corpus";
+import { readAs } from "../teams/store";
 import { sentText } from "../generation/files";
 import { spokenHash } from "../generation/spoken-hash";
+import { directionFor } from "../generation/narration";
 import { SHAPE } from "../generation/speakers/shape";
 import { currentConfig } from "../generation/settings";
+import { overrideOf } from "./override";
+import type { LineOverride } from "./override";
 import { readOverrides } from "./overrides";
 import type { Provider } from "../generation/providers";
 
@@ -37,25 +41,30 @@ type Row = { file: string; spokenHash: string | null; provider: Provider };
 export async function staleFiles(
   files?: string[],
   lang: Lang = BASE_LANG,
+  // A caller that read them this request saves the stamp checks.
+  known?: Map<string, LineOverride>,
+  index?: Map<string, CorpusLine>,
 ): Promise<Set<string>> {
   if (files?.length === 0) return new Set();
 
-  const { rows } = files
-    ? await db().query<Row>(
+  const rows = files
+    ? await readAs<Row>(
+        lang,
         `select "file", "spokenHash", "provider" from "take"
           where "source" = 'quests' and "lang" = $2 and "isCurrent" and "file" = any($1::text[])`,
         [files, lang],
       )
-    : await db().query<Row>(
+    : await readAs<Row>(
+        lang,
         `select "file", "spokenHash", "provider" from "take"
           where "source" = 'quests' and "lang" = $1 and "isCurrent"`,
         [lang],
       );
 
-  // What regenerate.ts would send now, in the same language: English's overrides and file
-  // rules, or neither for another language, which speaks its own text with its own lexicon.
-  const overrides = await readOverrides(lang);
-  const lines = await fileIndex(lang);
+  // What would be sent now: the language's overrides, and English's file rules, which another
+  // language goes without, speaking with its own lexicon.
+  const overrides = known ?? (await readOverrides(lang));
+  const lines = index ?? (await fileIndex(lang));
   // Once for the whole sweep, unlike regenerate.ts which reads it per line: this answers a
   // question about the takes as they stand, and a settings change landing mid-sweep would
   // only make half the answer describe a configuration that was never used to generate.
@@ -66,14 +75,14 @@ export async function staleFiles(
     if (!row.spokenHash) continue;
     const line = lines.get(row.file);
     if (!line) continue;
-    const text = overrides.get(row.file)?.text ?? line.text;
+    const text = overrideOf(overrides, row.file)?.text ?? line.text;
     // Same three transforms regenerate.ts applies, in the same order: the hash is of the
     // string that was sent, so a take of "[hic]" must be compared against "[hic]" and not
     // "<hic>", and a dwarf take made with its accent direction against that same direction -
     // otherwise every dwarf line reads as stale forever rather than once.
     const pronounced = sentText(text, lang, line.playerGender);
     // By the provider that made the take: what it would be sent now is its question.
-    const spoken = SHAPE[row.provider](pronounced, raceTags[line.race]);
+    const spoken = SHAPE[row.provider](pronounced, directionFor(line.voice, raceTags), raceTags);
     if (spokenHash(spoken) !== row.spokenHash) {
       stale.add(row.file);
     }

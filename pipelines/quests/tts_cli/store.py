@@ -1,18 +1,30 @@
-"""The folder a sound pack is built from: audio/{quests,gossip}/*.mp3, gitignored.
+"""The folder a sound pack is built from: audio/{quests,gossip,followup}/*.mp3, gitignored.
 
 Not a record of anything. Every take lives in the site's archive, and this folder is
 assembled from the live ones right before a build (scripts/audio/sounds.mjs), under the
 same filenames the addon resolves, so a file here is copied into a data module unchanged.
 """
+import json
 import os
 
 
 DEFAULT_STORE_DIR = "audio"
-SUBFOLDERS = ("quests", "gossip")
+#: One per lineId kind, as tts_cli/naming.py:subfolder_from_line_id names them. A kind missing
+#: here is audio every walk below skips: the pack would ship its lookup entries and none of
+#: its files.
+SUBFOLDERS = ("quests", "gossip", "followup")
 #: What counts as audio when walking a directory. The folder itself is always mp3 - the
-#: masters, as ElevenLabs made them - but scripts/package-audio.sh stages a transcoded copy
+#: masters, as ElevenLabs made them - but scripts/quests/package-audio.sh stages a transcoded copy
 #: and hands it to `build --store`, and that copy is ogg for the packs this project ships.
 AUDIO_EXTENSIONS = (".mp3", ".ogg")
+#: Each live take's word times, by store-relative stem, packed by sounds.mjs as the addon reads
+#: them: the one thing a build needs that the corpus and the audio cannot give it.
+WORD_TIMES_FILE = "word-times.json"
+#: Each live take's words as its pack shows them, by stem, from sounds.mjs: a take's own words
+#: are in no corpus.
+TAKE_TEXT_FILE = "take-text.json"
+#: Each clip's length by stem, written by sounds.mjs when the store holds pointers, not audio.
+DURATIONS_FILE = "durations.json"
 
 
 def _walk(directory: str, extensions=(".mp3",)) -> list:
@@ -44,3 +56,30 @@ def audio_extension(store_dir: str) -> str:
             f"{store_dir} holds more than one audio format ({', '.join(sorted(found))}); "
             "a module can ship only one")
     return found.pop() if found else ".mp3"
+
+
+def _stem_table(store_dir: str, name: str) -> dict:
+    path = os.path.join(store_dir, name)
+    if not os.path.isfile(path):
+        return {}
+    with open(path, encoding="utf-8") as f:
+        return json.load(f)
+
+
+def word_times(store_dir: str) -> dict:
+    """{stem: "0 .42 1.5"} for the takes that have times, empty for a store without the file."""
+    return _stem_table(store_dir, WORD_TIMES_FILE)
+
+
+def take_text(store_dir: str) -> dict:
+    """{stem: words} for the takes that have words, empty for a store without the file."""
+    return _stem_table(store_dir, TAKE_TEXT_FILE)
+
+
+def durations(store_dir: str) -> dict:
+    """{stem: seconds} for a store of pointers, None for a store of real clips."""
+    path = os.path.join(store_dir, DURATIONS_FILE)
+    if not os.path.isfile(path):
+        return None
+    with open(path, encoding="utf-8") as f:
+        return json.load(f)

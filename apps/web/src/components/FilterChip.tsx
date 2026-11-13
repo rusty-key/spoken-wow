@@ -91,16 +91,21 @@ export default function FilterChip({
         </SelectContent>
       </Select>
 
-      {active && (
-        <button
-          type="button"
-          aria-label={`Clear ${label} filter`}
-          onClick={() => onChange(undefined)}
-          className="border-primary bg-primary text-primary-foreground/70 hover:text-primary-foreground focus-visible:ring-ring/50 flex h-8 items-center rounded-r-lg border border-l-0 pr-2 pl-1 transition-colors outline-none hover:bg-primary/90 focus-visible:ring-3"
-        >
-          <XIcon className="size-3.5" />
-        </button>
-      )}
+      {active && <ChipClear label={label} onClear={() => onChange(undefined)} />}
     </div>
+  );
+}
+
+/** The X joined to an active chip's right edge; MultiFilterChip wears it too. */
+export function ChipClear({ label, onClear }: { label: string; onClear: () => void }) {
+  return (
+    <button
+      type="button"
+      aria-label={`Clear ${label} filter`}
+      onClick={onClear}
+      className="border-primary bg-primary text-primary-foreground/70 hover:text-primary-foreground focus-visible:ring-ring/50 flex h-8 items-center rounded-r-lg border border-l-0 pr-2 pl-1 transition-colors outline-none hover:bg-primary/90 focus-visible:ring-3"
+    >
+      <XIcon className="size-3.5" />
+    </button>
   );
 }

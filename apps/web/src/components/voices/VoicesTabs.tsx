@@ -41,6 +41,8 @@ type Props = {
   fishModels: FishModelOption[];
   slots: VoiceSlot[];
   initialSamples: Record<string, Sample[]>;
+  /** Slots with seed clips to import in this language. */
+  seedSlots: string[];
   initialReferences: Record<string, ReferenceView>;
   raceTags: Record<string, string>;
   /** Voice names in the viewer's ElevenLabs account, or null when it could not be read. */
@@ -48,6 +50,8 @@ type Props = {
   /** Why the account could not be read, when there is a key to read it with. */
   accountError: string | null;
   manager: boolean;
+  /** May change this language's directions. */
+  directs: boolean;
 };
 
 /**
@@ -267,10 +271,11 @@ export default function VoicesTabs(props: Props) {
           setPresent={setPresent}
           samples={samples}
           setSamples={setSamples}
+          seedSlots={props.seedSlots}
           references={references}
           setReferences={setReferences}
           raceTags={props.raceTags}
-          manager={props.manager}
+          directs={props.directs}
           editing={editing}
           canClone={props.keys.elevenlabs}
         />
