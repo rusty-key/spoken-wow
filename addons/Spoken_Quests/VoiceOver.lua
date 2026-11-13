@@ -255,6 +255,13 @@ local function GetVisibleQuestEvent()
     return lastQuestEvent
 end
 
+local function IsQuestWindowVisible()
+    return IsFrameVisible(QuestFrameRewardPanel)
+        or IsFrameVisible(QuestFrameProgressPanel)
+        or IsFrameVisible(QuestFrameDetailPanel)
+        or IsFrameVisible(QuestFrameGreetingPanel)
+end
+
 -- The Forever client's gamepad UI takes over every popup as it opens, inside the code that
 -- opened it. Opened by an addon, that taints the gamepad's bindings: the next close is blocked,
 -- and the "blocked from an action" dialog it raises hangs the client (#165). What this addon
@@ -1728,6 +1735,9 @@ function Addon:QUEST_FINISHED()
         offer.stopOnClose = Addon.db.profile.Audio.StopAudioOnDisengage
         offer.closeTimer = self:ScheduleTimer(function()
             offer.closeTimer = nil
+            if IsQuestWindowVisible() then
+                return
+            end
             if not offer.accepted and offer.stopOnClose and offer.soundData then
                 Player:Remove(offer.soundData)
             end
@@ -1755,6 +1765,9 @@ function Addon:QUEST_FINISHED()
         turnIn.stopOnClose = Addon.db.profile.Audio.StopAudioOnDisengage
         turnIn.closeTimer = self:ScheduleTimer(function()
             turnIn.closeTimer = nil
+            if IsQuestWindowVisible() then
+                return
+            end
             if not turnIn.turnedIn and turnIn.stopOnClose then
                 for _, soundData in ipairs(turnIn.soundData) do
                     Player:Remove(soundData)

@@ -322,6 +322,22 @@ ExpectCurrent("a turn-in line without a snapshot keeps playing during close grac
 stub.Advance(0.6)
 ExpectCurrent("a turn-in line without a snapshot stops after close grace", "")
 
+-- QUEST_FINISHED can also be reported while the NPC window is changing from its greeting to the
+-- turn-in panel. That is not a close: the line must keep playing until the panel really goes away.
+StartScenario()
+world.questID = full
+stub.ShowPanel("QuestFrameProgressPanel")
+stub.FireEvent("QUEST_PROGRESS")
+stub.Advance(0.6)
+stub.FireEvent("QUEST_FINISHED")
+stub.Advance(0.6)
+ExpectCurrent("a turn-in panel remains audible through a transition close event", "104-progress")
+world.questID = 0
+stub.ShowPanel(nil)
+stub.FireEvent("QUEST_FINISHED")
+stub.Advance(0.6)
+ExpectCurrent("the turn-in panel stops only after it really closes", "")
+
 -- With Stop When Window Closes off, declining an offer leaves its audio playing.
 VO.Addon.db.profile.Audio.StopAudioOnDisengage = false
 StartScenario()
