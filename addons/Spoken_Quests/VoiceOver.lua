@@ -294,12 +294,9 @@ function Addon:InvokeQuestHandler(event, source, manual, snapshot)
         return false
     end
     -- Only a read waits on autoplay: a window closing must still stop a line the Play button started.
-    if not manual and event ~= "QUEST_FINISHED" and event ~= "GOSSIP_CLOSED" and not self:IsAutoplayOn() then
-        Debug:Record("autoplay-off", format("Not reading %s: autoplay is off", event))
-        return false
-    end
-    if not manual and not self:ReadsItself(event) then
-        Debug:Record("progress-off", format("Not reading %s: Read Progress Text is off", event))
+    if not manual and event ~= "QUEST_FINISHED" and event ~= "GOSSIP_CLOSED" and not self:ReadsItself(event) then
+        Debug:Record("autoplay-off", format("Not reading %s: %s", event,
+            self:IsAutoplayOn() and "Read Quest Progress Text is off" or "autoplay is off"))
         return false
     end
     -- Read while DialogueUI's window is still appearing, the voice would run ahead of the words
@@ -356,10 +353,10 @@ function Addon:IsAutoplayOn()
     return self.db.profile.Audio.Autoplay ~= false
 end
 
---- Whether autoplay reads this dialog: every one but the progress page, which Read Progress
---- Text can leave to its Play button.
+--- Whether this dialog reads itself: autoplay is on, and for the progress page, Read Quest
+--- Progress Text too. Off, the page is left to its Play button.
 function Addon:ReadsItself(event)
-    return event ~= "QUEST_PROGRESS" or self.db.profile.Audio.ProgressText ~= false
+    return self:IsAutoplayOn() and (event ~= "QUEST_PROGRESS" or self.db.profile.Audio.ProgressText ~= false)
 end
 
 --- Read Greetings is at Never: no NPC window reads itself, whatever Read Automatically says.
@@ -473,7 +470,7 @@ local defaults = {
             -- (Followup.lua). Autoplay off silences these too: they read themselves.
             FollowupLines = true,
             -- Off, the progress page (QUEST_PROGRESS) does not read itself; its Play button
-            -- and /spq read still play it.
+            -- and /spq read still play it (ReadsItself).
             ProgressText = true,
             -- Follow the client, and fall back on English. Every pack that exists today
             -- is English and declares no language, so an English-speaking player with the
@@ -764,6 +761,12 @@ function Addon:OnInitialize()
         end
     end
 
+    local function FinishPage(state, key, event, questID)
+        state.completedKey = key
+        MarkHandled(state, key)
+        MarkQuestSnapshotRead(event, questID)
+    end
+
     local function PollAutomaticQuest()
         local state = self.autoQuestState
         if self.dataModulesPending then
@@ -812,11 +815,11 @@ function Addon:OnInitialize()
             return
         end
 
-        -- A page autoplay leaves alone is done with, or the watcher would ask again every poll.
+        -- A page that does not read itself is done with, once, or the watcher would ask again every poll.
         if not self:ReadsItself(event) then
-            state.completedKey = key
-            MarkHandled(state, key)
-            MarkQuestSnapshotRead(event, questID)
+            if key ~= state.completedKey then
+                FinishPage(state, key, event, questID)
+            end
             return
         end
 
@@ -834,9 +837,7 @@ function Addon:OnInitialize()
         local expectedSoundEvent = QUEST_EVENTS[event] and QUEST_EVENTS[event].sound
         for _, queuedSound in ipairs(Player:Queued()) do
             if queuedSound.questID == questID and queuedSound.event == expectedSoundEvent then
-                state.completedKey = key
-                MarkHandled(state, key)
-                MarkQuestSnapshotRead(event, questID)
+                FinishPage(state, key, event, questID)
                 return
             end
         end
@@ -856,9 +857,7 @@ function Addon:OnInitialize()
             if stage == "queued" or stage == "queue-paused" or stage == "playing" or
                stage == "sound-disabled" or stage == "file-playback-failed" or stage == "playback-failed" or
                stage == "data-lookup-failed" then
-                state.completedKey = key
-                MarkHandled(state, key)
-                MarkQuestSnapshotRead(visibleEvent, questID)
+                FinishPage(state, key, visibleEvent, questID)
             end
         end
     end
@@ -1430,8 +1429,8 @@ end
 ---@return boolean? muted
 local function TakeGreetingMute(self, event)
     EndGreetingTextWait()
-    if not Spoken.MuteGameDialogueAhead or not self:IsPageOn(event) or not self:IsAutoplayOn()
-        or not self:ReadsItself(event) or self.dataModulesPending or not Player.source then
+    if not Spoken.MuteGameDialogueAhead or not self:IsPageOn(event) or not self:ReadsItself(event)
+        or self.dataModulesPending or not Player.source then
         return
     end
     local quest = QUEST_EVENTS[event]
@@ -1524,7 +1523,7 @@ end
 ---@param textIsCurrent boolean?
 ---@return string?
 function Addon:ExpectedLine(event, textIsCurrent)
-    if not self:IsPageOn(event) or not self:IsAutoplayOn() or self.dataModulesPending or not Player.source
+    if not self:IsPageOn(event) or not self:ReadsItself(event) or self.dataModulesPending or not Player.source
         or (Spoken.ReadsHere and not Spoken:ReadsHere()) then
         return nil
     end

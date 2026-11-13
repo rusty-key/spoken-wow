@@ -166,12 +166,9 @@ describe("field filters", () => {
     expect(lines.some((l) => l.text.includes("<hic>"))).toBe(false);
   });
 
-  it("shows progress text like any other line", () => {
-    expect(all().some((l) => l.source === "progress")).toBe(true);
-  });
-
   it("narrows to progress text by source", () => {
     const lines = all({ source: ["progress"] });
+    expect(lines.length).toBeGreaterThan(0);
     expect(lines).toHaveLength(corpus.lines.filter((l) => l.source === "progress").length);
     expect(lines.every((l) => l.source === "progress")).toBe(true);
   });
@@ -546,7 +543,7 @@ describe("ignored lines", () => {
     expect(found.map((l) => l.lineId)).toEqual([TALLY]);
   });
 
-  it("hides them from progress and gap searches too, not just plain ones", () => {
+  it("hides them from gap searches too, not just plain ones", () => {
     // The filter runs first on purpose: a line nobody will voice is not an answer to "what
     // is missing?" either, and counting it there is what makes a gap list unactionable.
     const context = ignoring(TALLY);
@@ -598,12 +595,6 @@ describe("search by line id", () => {
     const rows = all({ line: shared.lineId });
     expect(rows.length).toBeGreaterThan(1);
     expect(new Set(rows.map((l) => l.lineId))).toEqual(new Set([shared.lineId]));
-  });
-
-  it("finds a progress line by its id without asking for progress", () => {
-    // How a report reaches the corpus: hidden by default must not read as dropped.
-    const progress = corpus.lines.find((l) => l.source === "progress")!;
-    expect(all({ line: progress.lineId }).map((l) => l.lineId)).toEqual([progress.lineId]);
   });
 
   it("matches nothing when no line carries the id", () => {

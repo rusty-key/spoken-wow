@@ -58,7 +58,6 @@ function SettingsPanel:Setup()
     local followup = layout:Checkbox(L.OPT_PANEL_FOLLOWUP, nil,
         function() return audio().FollowupLines ~= false end,
         function(value) audio().FollowupLines = value end)
-    -- Only what reads itself: the progress page's Play button still plays it.
     local progress = layout:Checkbox(L.OPT_PANEL_PROGRESS, nil,
         function() return audio().ProgressText ~= false end,
         function(value) audio().ProgressText = value end)

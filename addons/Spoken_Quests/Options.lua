@@ -90,7 +90,6 @@ local GeneralTab =
                     order = 6.6,
                     width = 2,
                     name = L.OPT_PANEL_PROGRESS,
-                    -- The progress page's Play button still plays it; this is only what reads itself.
                     disabled = function(info) return not Addon:IsAutoplayOn() end,
                     get = function(info) return Addon.db.profile.Audio.ProgressText ~= false end,
                     set = function(info, value)
