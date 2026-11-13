@@ -65,7 +65,7 @@ L.OPT_CONTENT_VERSION_UPDATE_FMT = "%2$s -> |cFF00CCFF%1$s|r"
 --------------------------------------------------------------------------------
 
 L.OPT_CMD_GROUP = "Commands"
-L.MUTE_AUDIO = "Mute Spoken audio until it is toggled back on"
+L.MUTE_AUDIO = "Mutes Spoken audio until it is toggled back on"
 L.AUDIO_MUTED = "Spoken audio muted"
 L.AUDIO_UNMUTED = "Spoken audio on"
 L.OPT_STOP = "Stop"
