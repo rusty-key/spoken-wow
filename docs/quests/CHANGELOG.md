@@ -6,6 +6,11 @@ The player and the sound pack are versioned independently — the pack moves whe
 rebuilt, the player when its Lua changes — so a section belongs to whichever of the two
 carries that version. The heading says which.
 
+## Unreleased
+
+- Item-started quests in Azeroth's Compendium now use the real starter item's icon, even after
+  the item has left the player's bags.
+
 ## 2.5.0 — Spoken Quests Audio — 2026-10-31
 
 - **The sound packs are renamed** in the AddOns list: Spoken Audio: Quests - Horde, Quests -

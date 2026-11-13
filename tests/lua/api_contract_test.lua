@@ -60,7 +60,7 @@ local METHODS = {
     -- contributions
     "ShowContribution", "ShowReport", "SetContributeHost", "AreContributeButtonsHidden",
     -- a speaker's face on a feature addon's page
-    "CreateSpeakerFace",
+    "CreateSpeakerFace", "ItemIcon",
     -- Play, Skip and Report on DialogueUI's quest window and book view
     "CreateDialogueUIRow",
 }
