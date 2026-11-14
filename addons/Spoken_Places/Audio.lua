@@ -147,6 +147,10 @@ function SpokenPlaces:SetupAudio()
 		SpokenPlaces:NotifyAudioChanged()
 	end)
 
+	if Spoken.RegisterStoryTeller then
+		Spoken:RegisterStoryTeller("instance", SpokenPlaces.InstanceTeller)
+	end
+
 	-- Switched off or on in Spoken's settings: the map panel follows, and so does the Compendium's
 	-- Places tab.
 	if Spoken.RegisterCallback then
@@ -746,6 +750,39 @@ function SpokenPlaces:PlayLore(mapID, areaKey)
 	end
 	return playing and true or false
 end
+
+--------------------------------------------------------------------------------
+-- A dungeon's story for another addon (Spoken:PlayStory("instance", map))
+--------------------------------------------------------------------------------
+
+-- The area { uiMapID, key } that tells the story of the instance map `map`, from Spoken's dungeon table.
+local function InstanceStory(map)
+	local dungeons = _G.SpokenDungeons and SpokenDungeons.dungeons
+	local story = dungeons and dungeons[map] and dungeons[map].story
+	if story then return story[1], story[2] end
+end
+
+SpokenPlaces.InstanceTeller = {
+	Has = function(map)
+		local mapID, key = InstanceStory(map)
+		if not mapID or not SpokenPlaces:IsVoiceEnabled() then return false end
+		if _G.Spoken.IsPartOn and not _G.Spoken:IsPartOn("places") then return false end
+		if SpokenPlaces.IsLocked and SpokenPlaces:IsLocked(mapID, key) then return false end
+		return SpokenPlaces:HasAudio(mapID, key)
+	end,
+	Play = function(map)
+		return SpokenPlaces:PlayLore(InstanceStory(map))
+	end,
+	IsPlaying = function(map)
+		local mapID, key = InstanceStory(map)
+		return mapID ~= nil and SpokenPlaces:IsPlayingLore(mapID, key)
+	end,
+	Stop = function(map)
+		local mapID, key = InstanceStory(map)
+		local clip = mapID and SpokenPlaces:LoreClip(mapID, key)
+		return clip ~= nil and SpokenPlaces.source:Remove(clip) == true
+	end,
+}
 
 --------------------------------------------------------------------------------
 -- Why nothing here stops playback on its own

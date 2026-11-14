@@ -392,6 +392,50 @@ _G.InCinematic = nil
 _G.SpokenPlacesCharacter = nil
 
 ---------------------------------------------------------------- the pack this repo ships
+---------------------------------------------------------------- a dungeon's story for another addon
+-- Spoken:PlayStory("instance", map) reaches Places through the teller it registers: the instance map
+-- names the area that tells the dungeon's story, and only a voiced, unlocked one counts.
+do
+    local _, P = Boot()
+    local S = _G.Spoken
+    local savedDungeons = _G.SpokenDungeons
+    _G.SpokenDungeons = { dungeons = { [389] = { zone = 1411, story = { 1411, "valley of trials" } },
+        [34] = { zone = 1453 } } }
+    local locked = false
+    P.IsLocked = function() return locked end
+
+    Expect("an instance whose story is voiced has one", S:HasStory("instance", 389), true)
+    Expect("...one with no story has none", S:HasStory("instance", 34), false)
+    Expect("...nor an unknown map, nor no id", tostring(S:HasStory("instance", 1)) .. " " .. tostring(S:HasStory("instance", nil)),
+        "false false")
+    locked = true
+    Expect("...nor a locked one", S:HasStory("instance", 389), false)
+    Expect("...which PlayStory leaves unplayed", tostring(S:PlayStory("instance", 389)) .. " " .. S:GetQueueSize(), "false 0")
+    locked = false
+
+    Expect("PlayStory plays it", S:PlayStory("instance", 389), true)
+    Expect("...the area's story", S:GetNowPlaying().key, "s:1411:valley of trials")
+    Expect("...and IsPlayingStory says so", S:IsPlayingStory("instance", 389), true)
+    Expect("...for that instance only", S:IsPlayingStory("instance", 34), false)
+    Expect("StopStory stops it", tostring(S:StopStory("instance", 389)) .. " " .. S:GetQueueSize(), "true 0")
+    Expect("...and a second stop finds nothing", S:StopStory("instance", 389), false)
+
+    local other = H.Clip()
+    S:RegisterSource("other", { title = "Other", addon = "X", order = 9 }):Enqueue(other)
+    Expect("behind a line speaking it waits", tostring(S:PlayStory("instance", 389)) .. " " .. S:GetQueueSize(), "true 2")
+    Expect("...and is not playing", S:IsPlayingStory("instance", 389), false)
+    Expect("StopStory takes it out of the queue, leaving the other line", tostring(S:StopStory("instance", 389))
+        .. " " .. tostring(S:GetNowPlaying() == other) .. " " .. S:GetQueueSize(), "true true 1")
+    S:StopAll()
+
+    S:SetPartOn("places", false)
+    Expect("with Places switched off there is no story", S:HasStory("instance", 389), false)
+    S:SetPartOn("places", true)
+    P:Set("voiceEnabled", false)
+    Expect("...nor with Read Stories Aloud off", S:HasStory("instance", 389), false)
+    _G.SpokenDungeons = savedDungeons
+end
+
 -- The shipped Data/Sounds.lua, loaded for real. Everything above uses hand-built tables, so
 -- nothing until here notices if the generator writes a registry name the addon does not read
 -- -- which is exactly what a rename does, and the generator is the half that moves.

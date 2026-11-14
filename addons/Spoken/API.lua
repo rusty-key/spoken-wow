@@ -748,6 +748,64 @@ function Spoken:AddGate(fn)
     SoundQueue:AddGate(fn)
 end
 
+--------------------------------------------------------------------------------
+-- Stories: a dungeon's or a boss's, for another addon's Play button
+--------------------------------------------------------------------------------
+--
+-- Keyed by the game's own ids, so a caller needs none of the modules' keys:
+--   "instance"  an instance map id (GetInstanceInfo's 8th value): the dungeon's or raid's story,
+--               told by Spoken_Places
+--   "boss"      a dungeon encounter id (ENCOUNTER_START's first argument): the boss's story, told
+--               by Spoken_Bosses. An encounter of two bosses fought at once plays the first with one.
+-- Only voiced stories count. Without the module, with its part switched off, with no voice pack
+-- that has the story, or with the story locked for this character (not found yet, and the module's
+-- Unlock setting off), HasStory is false and PlayStory does nothing.
+-- Redraw a button on AUDIO_CHANGED. Additive, so API_VERSION does not move: guard on the field,
+-- `if Spoken.PlayStory then`.
+
+local storyTellers = {}
+
+--- For a module: who tells the stories of `kind`. `teller` has Has(id), Play(id), IsPlaying(id)
+--- and Stop(id), each answering as the method of the same name below.
+function Spoken:RegisterStoryTeller(kind, teller)
+    storyTellers[kind] = teller
+end
+
+local function Teller(kind, id)
+    if id == nil then return nil end
+    return storyTellers[kind]
+end
+
+--- Whether the story `id` of `kind` ("instance" or "boss") can be played now.
+---@return boolean
+function Spoken:HasStory(kind, id)
+    local teller = Teller(kind, id)
+    return teller ~= nil and teller.Has(id) == true
+end
+
+--- Plays the story as the Compendium's Play does: at once where nothing speaks, else behind the line
+--- speaking. Returns whether it plays or waits.
+---@return boolean
+function Spoken:PlayStory(kind, id)
+    local teller = Teller(kind, id)
+    return teller ~= nil and teller.Has(id) == true and teller.Play(id) == true
+end
+
+--- Whether the story is speaking: not waiting, held or paused.
+---@return boolean
+function Spoken:IsPlayingStory(kind, id)
+    local teller = Teller(kind, id)
+    return teller ~= nil and teller.IsPlaying(id) == true
+end
+
+--- Stops the story, speaking or waiting, and leaves every other line alone. Returns whether it was
+--- in the queue.
+---@return boolean
+function Spoken:StopStory(kind, id)
+    local teller = Teller(kind, id)
+    return teller ~= nil and teller.Stop(id) == true
+end
+
 --- False in a battleground or arena with Read in Battlegrounds off, where a source's Enqueue
 --- refuses every line the player did not ask for (`source:Enqueue(clip, true)` is one they did):
 --- a module can skip the work of finding one. Additive: guard on the field.
