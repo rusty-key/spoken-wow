@@ -16,6 +16,7 @@ export const SOURCES_BY_HAND = {
   2671: [{ how: "quest start", quest: 7636, zones: [1448] }], // Petrified Bark: Vartrus the Ancient, Felwood
   2859: [{ how: "quest reward", quest: 8996, zones: [1427] }], // Brazier of Invocation: Bodley, Blackrock Mountain
   2786: [{ how: "quest reward", quest: 8228, zones: [1455] }], // Fishing Tournament!: Barrus, Ironforge, whom the DB does not spawn
+  ["nfc676562-fb40-4845-8cbe-6ddd8269c620"]: [{ how: "quest reward", quest: 98323, zones: [1426] }], // Mountaineer Gretchen's Report
   ["nc0bf109d-e5d1-494d-ba1b-12a6b27352a8"]: [{ how: "quest reward", quest: 97277, zones: [1426] }], // Gozwin's Mechanic's Log
 };
 
@@ -39,6 +40,7 @@ export const TYPE_BY_HAND = {
   2838: "letter", // From the Desk of Lord Victor Nefarius: "To Whom It May Concern, ..."
   10322: "note", // Bloody Note: three pages, which would make it a book
   11007: "letter", // Advisor Nazgrel's Instructions: "Elf, As a guest of the Horde, ..."
+  ["nfc676562-fb40-4845-8cbe-6ddd8269c620"]: "journal", // Mountaineer Gretchen's Report
   ["nc0bf109d-e5d1-494d-ba1b-12a6b27352a8"]: "journal", // Gozwin's Mechanic's Log
   // The soldiers' letters from the Scourge invasion, and the reports the Keeper of the Rolls
   // mails back for them.
