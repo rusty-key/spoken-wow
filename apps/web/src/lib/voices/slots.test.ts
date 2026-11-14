@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
 
 import { db } from "@/lib/db";
+import { hasNarration, NARRATOR_VOICE } from "@/lib/generation/narration";
+import { corpus } from "@/lib/quests/catalogue";
 import { asSystem } from "@/lib/teams/testing";
 
 import { isVoiceSlot, slots } from "./slots";
@@ -47,10 +49,15 @@ describe("slots", () => {
   });
 
   it("counts only generatable lines", async () => {
-    // Progress text is never voiced, so a voice's line count must be below the raw total.
+    // At most one count per generatable line, plus the narrator's for each line it reads into.
+    const lines = (await corpus()).lines;
+    const ceiling =
+      lines.filter((l) => l.generatable).length +
+      lines.filter((l) => hasNarration(l.text) && l.voice !== NARRATOR_VOICE).length;
     const total = (await slots("enUS")).reduce((sum, s) => sum + s.lineCount, 0);
     expect(total).toBeGreaterThan(0);
-    expect(total).toBeLessThan(17792);
+    expect(total).toBeLessThanOrEqual(ceiling);
+    expect(lines.some((l) => !l.generatable)).toBe(true);
   });
 });
 

@@ -42,6 +42,17 @@ Expect("no position: every place is already known", envelope:match("\nx=") == ni
 Expect("there is no text block -- the description is written on the page", envelope:match("text<<") == nil, true)
 Expect("the addon field carries the real .toc version, not the \"dev\" fallback",
     envelope:match("\naddon=Spoken_Places/9%.9%.9\n") ~= nil, true)
+Expect("with no pack installed, the pack version says none", envelope:match("\npackVersion=none\n") ~= nil, true)
+
+do
+    local active = Z.GetActiveAudioPack
+    Z.GetActiveAudioPack = function()
+        return { addon = "SpokenPlacesAudio_deDE", language = "deDE", packVersion = "1.4.2" }
+    end
+    Expect("...and with one, the version it registered from its .toc",
+        Z:CaptureContribution(1537, nil):match("\npackVersion=1%.4%.2\n") ~= nil, true)
+    Z.GetActiveAudioPack = active
+end
 
 local zoneOnly = Z:CaptureContribution(1537, nil)
 H.WriteCapturedFixture(here, "places-zone", zoneOnly)

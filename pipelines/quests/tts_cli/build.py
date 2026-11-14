@@ -12,11 +12,11 @@ import os
 import re
 import shutil
 
-from slpp import slpp as lua
 from tqdm import tqdm
 
 from tts_cli.ignores import ignored_files, wordless
 from tts_cli.length_table import write_sound_length_table_lua
+from tts_cli.lua import lua_value
 from tts_cli.naming import (BROADCAST_SOURCES, followup_stem_from_line_id, gossip_hash_from_line_id,
                             moment_of, quest_moment_stem, quest_stem_from_line_id,
                             several_wordings, split_voice, subfolder_from_line_id,
@@ -209,7 +209,7 @@ def name_rank(line: dict) -> int:
 def build_tables(corpus: dict, ignored=()) -> dict:
     """Every lookup table, as {output filename: (lua table name, data)}.
 
-    Ignored lines are left out entirely, the way progress text is below: an entry pointing
+    Ignored lines are left out entirely: an entry pointing
     at a sound that will never be produced resolves to silence, and the addon has no way to
     tell that apart from a broken lookup.
     """
@@ -308,10 +308,6 @@ def build_tables(corpus: dict, ignored=()) -> dict:
                 escape_lua_string(speaker_name(line["npcName"])), {})[text] = own
             continue
 
-        # Progress text is never voiced, so an entry would resolve to silence.
-        if line["source"] == "progress":
-            continue
-
         stem = quest_stem_from_line_id(base_id)
         wordings.setdefault(quest_moment_stem(base_id), {})[
             escape_lua_string(line["originalText"])] = stem
@@ -402,13 +398,6 @@ def locale_tables(corpus: dict, rows: list, ignored=()) -> dict:
             for kind, (filename, table_name) in LOCALE_TABLES.items()}
 
 
-def lua_text(text: str) -> str:
-    """Prose ready for lua.encode, which escapes only quotes: a raw newline or a lone backslash
-    in a string is a syntax error that stops the whole pack from loading."""
-    return (text.replace("\\", "\\\\").replace("\n", "\\n")
-            .replace("\r", "\\r").replace("\t", "\\t"))
-
-
 def write_lua_table(path: str, module_name: str, table_name: str, data,
                     lang: str = None, only_on: str = None) -> None:
     """One generated table. With `lang`, a copy that exists only on a client in that locale.
@@ -432,7 +421,7 @@ def write_lua_table(path: str, module_name: str, table_name: str, data,
             f.write("if not VoiceOver.Language or "
                     f'VoiceOver.Language:GetClientLanguage() ~= "{only_on}" then return end\n')
         f.write(f"{target} = ")
-        f.write(lua.encode(data))
+        f.write(lua_value(data))
         f.write("\n")
 
 
@@ -540,7 +529,7 @@ def build_module(corpus: dict, store_dir: str, dist_dir: str = DEFAULT_DIST_DIR,
     # For this pack's audio alone, or four packs of a language each repeat every line's text. Only
     # on a client in the pack's language, the only one that shows it: megabytes of strings otherwise.
     words = take_text(store_dir)
-    texts = {os.path.basename(stem): lua_text(words[stem])
+    texts = {os.path.basename(stem): words[stem]
              for stem in (os.path.splitext(rel)[0] for rel in audio) if stem in words}
     write_lua_table(os.path.join(generated_dir, "text_table.lua"),
                     module_name, "TextByFileName", texts, only_on=language or "enUS")

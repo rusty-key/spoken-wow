@@ -7,6 +7,7 @@ import path from 'node:path'
 import { PlainError } from './errors'
 import { PACKS_BASE_URL, PACKS_PUBLIC_KEY } from './packs-key'
 import { log } from './state'
+import { t } from './i18n'
 
 export interface ChannelFile {
   /** Relative to the pack folder, `/`-separated. */
@@ -60,7 +61,7 @@ const ADDON_VERSION = /^\d+\.\d+\.\d+$/
 const BAD_CHARS = /[\0<>:"|?*\\\x01-\x1f]/
 
 function refuse(why: string): never {
-  throw new PlainError(`The voice pack list could not be trusted (${why}), so it was not used.`)
+  throw new PlainError(t('packs.notTrusted', { why }))
 }
 
 // Windows treats these as devices whatever the extension: CON, CON.txt and con.ogg are all the console.
@@ -158,7 +159,7 @@ async function getText(url: string, opts: ChannelOptions): Promise<string> {
     headers: opts.userAgent ? { 'User-Agent': opts.userAgent } : {},
     signal: opts.signal ? AbortSignal.any([opts.signal, timeout]) : timeout
   })
-  if (!res.ok) throw new PlainError(`The voice pack server answered ${res.status}. Try again later.`)
+  if (!res.ok) throw new PlainError(t('packs.serverStatus', { status: res.status }))
   return res.text()
 }
 

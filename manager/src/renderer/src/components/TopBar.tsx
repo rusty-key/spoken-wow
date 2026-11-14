@@ -12,17 +12,17 @@ import { GameIcon } from './Brand'
 import { RestartButton } from './RestartButton'
 import { IconGear, IconPlus, IconRefresh, IconWinClose, IconWinMaximize, IconWinMinimize, IconWinRestore } from './Icons'
 
-const TABS: { page: Page; label: string }[] = [
-  { page: 'home', label: S.tabs.home },
-  { page: 'spoken', label: S.tabs.spoken },
-  { page: 'voices', label: S.tabs.voices },
-  { page: 'community', label: S.tabs.community }
-]
-
+/** The tabs are built per draw: a list built at load would keep the first language. */
 export function TopBar(): ReactNode {
   const { state, actions } = useStore()
   const { catalog } = state
-  const tabs = releaseAvailable(state.contributor) ? [...TABS, { page: 'release' as Page, label: S.tabs.release }] : TABS
+  const tabs: { page: Page; label: string }[] = [
+    { page: 'home', label: S.tabs.home },
+    { page: 'spoken', label: S.tabs.spoken },
+    { page: 'voices', label: S.tabs.voices },
+    { page: 'community', label: S.tabs.community },
+    ...(releaseAvailable(state.contributor) ? [{ page: 'release' as Page, label: S.tabs.release }] : [])
+  ]
   const tip = state.refreshing
     ? S.common.loading
     : catalog.offline
@@ -35,7 +35,7 @@ export function TopBar(): ReactNode {
       <button type="button" className="brand" aria-label={`${S.appName}: ${S.tabs.home}`} onClick={() => actions.navigate('home')}>
         <img src={icon} alt="" width={40} height={40} />
       </button>
-      <nav className="tabs-main" aria-label="Main">
+      <nav className="tabs-main" aria-label={S.tabs.main}>
         {tabs.map((t) => (
           <button key={t.page} type="button" className="tab" aria-current={state.page === t.page ? 'page' : undefined} onClick={() => actions.navigate(t.page)}>
             {t.label}

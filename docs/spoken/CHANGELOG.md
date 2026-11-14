@@ -9,6 +9,22 @@ Spoken Player until 3.0.0, when it became Spoken and took its modules into one d
   audio is unaffected and continues after its window closes; with the option off, quest behavior
   remains as before.
   New profiles have the option enabled by default; existing saved choices are kept.
+## 3.9.0 — 2026-11-14
+
+- **A report names the line you heard.** When a quest is read in more than one voice, or an NPC has
+  several lines, the Report link now carries the recording that played, so the report lands on that
+  line rather than asking you to pick one. *([rusty-key](https://github.com/rusty-key))*
+- **Read Quest Progress Text.** A new Quests setting, on by default, under Read Automatically.
+  Turned off, the "not done yet" page an NPC shows before you hand in a quest no longer reads
+  itself; its Play button still plays it.
+  *([rusty-key](https://github.com/rusty-key))*
+- **Places no longer shows the combat hold message when Stop When Combat Starts is off.**
+  Autoplayed place audio continues normally during combat in that mode.
+  *([anon1231823](https://github.com/anon1231823))*
+- **A report says which pack you heard.** A Places report now carries the version of the Places
+  sound pack you were listening to, and a Quests report names the pack the line played from
+  (Alliance, Horde, Shared or Gossip) with its own version. The report page uses it to tell you
+  when that pack has a newer recording of the line, and where to get it.
   *([rusty-key](https://github.com/rusty-key))*
 - **Subtitles and Compendium text now follow your sound packs.** A pack carries the words of the
   lines it voices, so new audio no longer plays under old text. This applies when the pack is in
@@ -46,6 +62,10 @@ Spoken Player until 3.0.0, when it became Spoken and took its modules into one d
   elsewhere in a zone opens the zone's, and a zone clicked at the edge of the view slides into
   full view. With the panel folded away, OpenMap's map is left to OpenMap's own clicks.
   *([carcachi](https://github.com/carcachi))*
+- **Places can read a zone every time you arrive.** Turn on Read Every Visit under Places, When to
+  Read, and choose how long to wait before the same place is read again: a day, a week or a
+  month. Off by default, so places are still read once per character.
+  *([belarusrulez](https://github.com/belarusrulez))*
 
 ## 3.8.6 — 2026-11-10
 

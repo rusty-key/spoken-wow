@@ -81,11 +81,10 @@ const hiddenKey = Symbol.for("spoken.quests-hidden-by-default.by-lang");
 
 /**
  * Every line id in `lang` none of whose rows the explorer's filters show by default, under its
- * own id and the id of the line it is a voice of: progress text, which the addon reports as
- * silent like any other line, and other clients' lines (TBC Anniversary, the legacy clients,
- * retail: lib/quests/line-client.ts). Read off the search itself, so the ranking cannot drift
- * from the explorer's defaults. Ignored lines stay in: the search drops those only when handed
- * the ignore list, which moves without the catalogue. Rebuilt with the catalogue.
+ * own id and the id of the line it is a voice of: other clients' lines (TBC Anniversary, the
+ * legacy clients, retail: lib/quests/line-client.ts). Read off the search itself, so the ranking
+ * cannot drift from the explorer's defaults. Ignored lines stay in: the search drops those only
+ * when handed the ignore list, which moves without the catalogue. Rebuilt with the catalogue.
  */
 async function hiddenByDefaultLineIds(lang: Lang): Promise<ReadonlySet<string>> {
   const quests = await corpus(lang);
@@ -100,7 +99,7 @@ async function hiddenByDefaultLineIds(lang: Lang): Promise<ReadonlySet<string>> 
   });
 }
 
-/** The lines the ranking leaves out, since nothing will voice them. None for a language with no catalogue. */
+/** The lines the ranking leaves out, as the explorer hides them by default. None for a language with no catalogue. */
 async function hiddenLines(packLang: string): Promise<string[]> {
   if (!isLang(packLang)) return [];
   try {
@@ -111,7 +110,7 @@ async function hiddenLines(packLang: string): Promise<string[]> {
   }
 }
 
-/** The lines of one pack language, most players first, leaving out what nothing will voice. */
+/** The lines of one pack language, most players first, leaving out what the explorer hides by default. */
 export async function missingAudioRanking(packLang: string): Promise<MissingAudioRow[]> {
   const hidden = await hiddenLines(packLang);
   // As the language's team, for the takes "voiced" reads. The hits are shared, so a language

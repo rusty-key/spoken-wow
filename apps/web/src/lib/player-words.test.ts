@@ -169,13 +169,12 @@ describe("the text gate on a translation", () => {
   });
 
   it("stores a translated line as voiceable", () => {
-    expect(skipReasonFor("complete", "Merci, $N.", "frFR")).toBeNull();
-    expect(skipReasonFor("complete", "Merci, $Nama.", "frFR")).toBe("invalid-chars");
-    expect(skipReasonFor("progress", "Merci, $N.", "frFR")).toBe("progress");
+    expect(skipReasonFor("Merci, $N.", "frFR")).toBeNull();
+    expect(skipReasonFor("Merci, $Nama.", "frFR")).toBe("invalid-chars");
   });
 
   it("voices a frFR line with the class plural $cs", () => {
-    expect(skipReasonFor("accept", "Les $cs de Comté-du-Nord vous attendent, $n.", "frFR")).toBeNull();
-    expect(skipReasonFor("accept", "Les $cs de Comté-du-Nord vous attendent, $n.", "frFR", "f")).toBeNull();
+    expect(skipReasonFor("Les $cs de Comté-du-Nord vous attendent, $n.", "frFR")).toBeNull();
+    expect(skipReasonFor("Les $cs de Comté-du-Nord vous attendent, $n.", "frFR", "f")).toBeNull();
   });
 });

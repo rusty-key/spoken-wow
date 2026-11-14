@@ -425,6 +425,8 @@ do
         end
         return layout
     end
+    -- Before the page, as the .toc loads it: the page reads its wait choices and the current wait from it.
+    assert(loadfile(PLACES .. "Autoplay.lua"))("Spoken_Places", Z)
     assert(loadfile(PLACES .. "UI/Options.lua"))("Spoken_Places", Z)
     Z:SetupOptions()
     layoutEnv.SpokenLayout.New = realNew

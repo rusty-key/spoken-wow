@@ -2,7 +2,8 @@
  * The role model, shared by the server and the browser so the list of roles is defined once.
  *
  * Two global roles: a `member` is anyone who registered, and an `admin` may do anything,
- * including manage users and voices. Everything in between -- writing a language, cutting
+ * including manage users and voices and approve community voice packs, which any member may
+ * submit. Everything in between -- writing a language, cutting
  * takes in it, looking after it -- is a grant for that language (see "Per language" below),
  * English included. Registration assigns `member`; the first `admin` is promoted with SQL
  * (see deploy/README.md), and every grant and promotion after that goes through /admin.
@@ -42,8 +43,19 @@ export const ROLES = ["member", "admin"] as const;
 
 export type Role = (typeof ROLES)[number];
 
+export const ROLE_LABELS: Record<Role, string> = {
+  member: "Member",
+  admin: "Admin",
+};
+
 export function isRole(value: unknown): value is Role {
   return typeof value === "string" && (ROLES as readonly string[]).includes(value);
+}
+
+/** What the UI calls a role. A role this build does not know shows as stored, not as nothing. */
+export function roleLabel(role: string | null | undefined): string {
+  const value = role ?? "member";
+  return isRole(value) ? ROLE_LABELS[value] : value;
 }
 
 /** The one definition of who may reach /admin. */

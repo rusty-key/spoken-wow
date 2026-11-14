@@ -1,0 +1,213 @@
+# yaml-language-server: $schema=https://coderabbit.ai/integrations/schema.v2.json
+# CodeRabbit review settings. Repo rules live in AGENTS.md and the section guides; this file
+# points the reviewer at them and keeps it off generated exports.
+
+language: en-US
+tone_instructions: >-
+  Be brief and concrete. Report correctness bugs and broken repo rules first. Skip style nits
+  other than comment cleanup, and skip praise and restating the diff.
+
+reviews:
+  profile: assertive
+  high_level_summary: false
+  poem: false
+  sequence_diagrams: false
+  review_status: true
+  collapse_walkthrough: true
+
+  auto_review:
+    enabled: true
+    drafts: false
+    # Stacked PRs target each other's branches; review them too, not only PRs into master.
+    base_branches:
+      - ".*"
+
+  # Exports of the database or of a generator. Reviewing them costs quota and invites hand
+  # edits, which the next export overwrites (AGENTS.md).
+  path_filters:
+    - "!pnpm-lock.yaml"
+    - "!dist/**"
+    - "!build/**"
+    - "!pipelines/quests/corpus/corpus.json.gz"
+    - "!addons/Spoken_Places/Data/*/**"
+    - "!addons/Spoken_Places/Data/ForeverAreas.lua"
+    - "!addons/Spoken_Places/Data/Languages.lua"
+    - "!addons/Spoken_Places/Data/Pictures.lua"
+    - "!addons/Spoken_Quests/Data/**"
+    - "!addons/Spoken_Quests/Gossip/*.lua"
+    - "!addons/Spoken_Quests/Gossip/Gossip.xml"
+    - "!addons/Spoken_Readables/Data/**"
+    - "!addons/Spoken_Bosses/Data/**"
+    - "!addons/Spoken/Data/**"
+    - "!addons/*Audio/Data/**"
+    - "!addons/Spoken/README.md"
+    - "!addons/*Audio/README.md"
+
+  path_instructions:
+    # How to judge and write up findings, and which comments to cut; every reviewed file.
+    - path: "**"
+      instructions: |-
+        Post a finding only when it is worth acting on. For each candidate, decide:
+        - Fix: the payoff clearly justifies the code. Post it.
+        - Defer: real, but the fix costs more than the bug warrants (a convoluted corner case,
+          a rare path). Post it only as a nitpick, saying it can wait and why.
+        - Refute: not actually a problem. Do not post it.
+        Security consequences override this: always post them as fixes, however narrow.
+        A fix that needs a refactor outside this PR, or a workaround for a limitation, must say
+        exactly that, so the author can defer it deliberately. Never present it as a routine fix.
+
+        Every posted finding states:
+        - Severity (High, Medium or Low, from impact times reachability) with a one-clause reason.
+        - What is wrong, in plain words.
+        - A concrete failure: the inputs or state, and the wrong output or crash they produce.
+          A trace, not "might break".
+        - The fix and its rough size.
+        When several findings share one root cause, post that cause once and name the places.
+
+        Only when the diff gives evidence (several findings with one root cause, the codebase
+        already solving this another way, a documented contract re-implemented by hand, a cost
+        you can count), say whether a different approach would serve better: the evidence, the
+        alternative and what switching costs. Otherwise say nothing about the approach.
+
+        Flag a contributor-rule violation with the file the rule lives in (AGENTS.md or a
+        section guide).
+
+        In code files, check the comments this diff adds or changes; leave untouched comments
+        alone. A comment stays only when it tells the reader something the code cannot, in one
+        or two lines. Suggest deleting a comment that:
+        - restates the name of what it sits on;
+        - narrates the next line or states what any reader sees at a glance;
+        - repeats a rule already documented on the interface, type or function it implements;
+        - points at sibling code to justify itself ("same bound as X", "see Y's doc"): sibling
+          code can be deleted any day, so a comment states its own facts;
+        - carries history or planning: ticket ids, "for now", "until PR3", "used to",
+          "ported from".
+        Suggest shortening a comment whose real reason is buried in preamble, examples or
+        restated context; multi-paragraph module docs become the one or two facts a maintainer
+        needs. Keep comments that give why a limit, order, retry or timeout exists, why the
+        obvious approach breaks, a non-obvious invariant or security boundary, or a pointer the
+        reader must follow (a frozen id format, cross-language test vectors, a hash pin).
+        Kept comments read as plain, current-state prose: active voice, no filler, no em dashes.
+        Never suggest changing model-facing strings (prompts, tool or schema descriptions),
+        lint or type directives, license headers, or banners organising a long file.
+        Group these into one nitpick per file, with the replacement text.
+    - path: "apps/web/migrations/**"
+      instructions: >-
+        Migrations are forward-only and additive: deploy migrates before the symlink swap and a
+        rollback restores code without reverting the schema. Flag any DROP, RENAME, narrowing type
+        change or new NOT NULL without a default, and any edit to a migration already on master.
+    - path: "pipelines/quests/tts_cli/naming.py"
+      instructions: &naming >-
+        These derive the frozen line ids and file names (q:, g:, f:, z:, s:, b: and their paths).
+        Any change to an existing id's output re-ships packs players have and orphans take
+        history; flag it. naming.py and naming.ts mirror each other and must change together.
+    - path: "apps/web/src/lib/contributions/naming.ts"
+      instructions: *naming
+    - path: "pipelines/places/tools/voice/naming.mjs"
+      instructions: *naming
+    - path: "pipelines/readables/tools/lib/naming.mjs"
+      instructions: *naming
+    - path: "addons/**/*.lua"
+      instructions: >-
+        World of Warcraft addon Lua (Retail, Classic Era, TBC Anniversary). Undeclared globals are
+        normally WoW API, not bugs. Flag renamed saved variables, settings keys or the VoiceOver
+        global (players' saved data and installed packs depend on them), taint-prone writes to
+        Blizzard frames, and work done every frame or on every event that could be cached.
+    - path: "pipelines/**"
+      instructions: &tooling >-
+        Nothing in the repo may spend TTS credits (ElevenLabs or fish.audio): flag any new
+        generation call or CLI flag. The droplet's host, user or key must never be written into
+        the tree. `-sync` targets are destructive and must not run without a confirmation.
+        Long-running scripts must print per-item progress and a summary.
+    - path: "scripts/**"
+      instructions: *tooling
+    - path: "make/**"
+      instructions: *tooling
+
+  tools:
+    # No .luacheckrc: luacheck would flag every WoW API global.
+    luacheck:
+      enabled: false
+    # No eslint or biome config in the repo; their defaults clash with the code's style.
+    eslint:
+      enabled: false
+    biome:
+      enabled: false
+    markdownlint:
+      enabled: false
+    shellcheck:
+      enabled: true
+    actionlint:
+      enabled: true
+    gitleaks:
+      enabled: true
+    ruff:
+      enabled: true
+
+  pre_merge_checks:
+    title:
+      mode: "off"
+    description:
+      mode: "off"
+    docstrings:
+      mode: "off"
+    issue_assessment:
+      mode: "off"
+    custom_checks:
+      - name: "Generated files"
+        mode: warning
+        instructions: >-
+          Fail if the PR hand-edits a file headed AUTO-GENERATED or "do not edit", or
+          corpus.json.gz, Books.lua, or the Places Zones.lua/Subzones.lua/Aliases.lua, without the
+          generator or export that produces it also being part of the PR. Pass otherwise.
+      - name: "Changelog and versions"
+        mode: warning
+        instructions: >-
+          Fail if the PR changes something players see in addons/ but adds no note under
+          "## Unreleased" in the section's changelog (docs/spoken/CHANGELOG.md for Spoken and its
+          modules). Fail if a PR that is not a release PR bumps a version in a .toc or
+          Environment.lua. Changes to the site, tooling, CI or docs need no note. Pass otherwise.
+      # PR-level questions from the maintainer's /review-pr routine.
+      - name: "Premise"
+        mode: warning
+        instructions: |-
+          Treat the PR description as a claim to check against the base branch, its history,
+          linked issues and the section's docs. Answer two questions, each with evidence as
+          file:line, a link or a quoted report.
+          1. Is the problem real? Real: a base-branch path reaches the failure, or a report shows
+             it; for a feature, a named need base cannot meet; for a refactor, a concrete cost in
+             today's code. Not a problem: base already handles it, the behaviour is deliberate,
+             the state cannot be reached, or the harm is only theoretical. Unproven: neither is
+             shown; say what would settle it (a repro step, a log line, a quest id).
+          2. Is this the right fix? Root-cause fix: the diff changes where the fault originates
+             and no simpler change does the same job. Symptom patch: the origin stays broken and
+             the diff compensates downstream (a special case for one id, locale or value; a guard
+             hiding bad data; catch-and-continue; a retry or delay; an override on a mechanism
+             that should be corrected; a hand-kept list). Better fix exists: name the smaller or
+             more general change and the file it belongs in.
+          Also list anything the diff does that the description does not mention, and anything
+          the description claims that the diff does not do.
+          Pass only when the problem is Real, the fix is a Root-cause fix and nothing is
+          mismatched. Fail otherwise, giving the answers above.
+      - name: "Untrusted surface"
+        mode: warning
+        instructions: |-
+          Fail if the PR changes any of: .github/workflows, build or release scripts (scripts/,
+          make/, Makefile, package.sh), lockfiles, install hooks, or adds or bumps a dependency
+          (package.json, pyproject.toml, requirements files, .toc dependencies). Name each such
+          change and what it can run or fetch, however small. Pass otherwise.
+
+knowledge_base:
+  code_guidelines:
+    enabled: true
+    # Guides apply by default only to files under their own folder; these sit in docs/, so map
+    # each to the code it governs. The root AGENTS.md already covers the whole repo.
+    filePatterns:
+      - files: "docs/quests/CLAUDE.md"
+        applyTo: "pipelines/quests/**,addons/Spoken_Quests/**,apps/web/**"
+      - files: "docs/gossip/AGENTS.md"
+        applyTo: "addons/Spoken_Quests/**"
+      - files: "docs/places/AGENTS.md"
+        applyTo: "pipelines/places/**,addons/Spoken_Places/**,addons/SpokenPlacesAudio/**,addons/Spoken_Bosses/**,addons/SpokenBossesAudio/**,apps/web/**"
+      - files: "docs/readables/AGENTS.md"
+        applyTo: "pipelines/readables/**,addons/Spoken_Readables/**,addons/SpokenReadablesAudio/**,apps/web/**"
