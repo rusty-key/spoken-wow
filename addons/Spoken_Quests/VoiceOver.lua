@@ -143,11 +143,11 @@ local function CaptureQuestSnapshot(event)
     if not quest then
         return
     end
-    PruneQuestSnapshots()
     local questID = CurrentQuestID()
     local questTitle = QuestTitle()
     questInteractionID = questInteractionID or 1
     if event == "QUEST_DETAIL" then
+        PruneQuestSnapshots()
         -- A new offer starts a new interaction even when an addon moves straight from an old
         -- progress page to it without QUEST_FINISHED. Clear held audio before resolving the new
         -- offer, because an anonymous offer cannot be recorded but still closes the old window.
@@ -164,6 +164,11 @@ local function CaptureQuestSnapshot(event)
             pendingRead = nil
         end
     end
+    if event ~= "QUEST_DETAIL" then
+        -- Progress and reward pages keep the current interaction alive while the client is
+        -- populating their globals, including a long ID gap on an otherwise identified page.
+        PruneQuestSnapshots(questInteractionID)
+    end
     -- A snapshot without a client ID is useful only when the pack's indexed data can identify it
     -- now. There is no safe way to associate an otherwise anonymous page with a later quest.
     local text, targetName = quest.text(), Utils:GetNPCName()
@@ -175,9 +180,29 @@ local function CaptureQuestSnapshot(event)
     end
     if event ~= "QUEST_DETAIL" then
         -- A fast hand-off can expose the next quest's progress or reward without a detail page.
-        -- Keep its close replay separate from an unread page or held line of the old quest.
+        -- Keep its close replay separate from an unread progress page or held line of the old quest.
         local startsNewInteraction = pendingRead and pendingRead.questID ~= questID or
             pendingProgressRead and pendingProgressRead.questID ~= questID
+        if not startsNewInteraction then
+            for _, old in ipairs(questSnapshots) do
+                if old.event == "QUEST_PROGRESS" and not old.dispatched and not old.passed and
+                    old.interactionID == questInteractionID and old.questID ~= questID then
+                    local hasCompletion = false
+                    for _, related in ipairs(questSnapshots) do
+                        if related.event == "QUEST_COMPLETE" and not related.dispatched and
+                            not related.passed and related.interactionID == questInteractionID and
+                            related.questID == old.questID then
+                            hasCompletion = true
+                            break
+                        end
+                    end
+                    if not hasCompletion then
+                        startsNewInteraction = true
+                        break
+                    end
+                end
+            end
+        end
         if startsNewInteraction then
             questInteractionID = questInteractionID + 1
             pendingProgressRead = nil

@@ -64,8 +64,17 @@ world.questText = "Go and do the thing."
 world.progressText = "Have you done the thing?"
 world.rewardText = "You have done the thing."
 
--- Wait out the deferred data module load that OnInitialize schedules.
+-- Close during the deferred load that OnInitialize schedules. The real load callback must replay
+-- the held snapshot after the pack finishes loading.
+world.questID = quests[1]
+stub.ShowPanel("QuestFrameDetailPanel")
+stub.FireEvent("QUEST_DETAIL")
+world.questID = 0
+stub.ShowPanel(nil)
+stub.FireEvent("QUEST_FINISHED")
 stub.Advance(2)
+Expect("the production load callback replays a close-during-load snapshot",
+    string.format("%d-accept", quests[1]))
 
 -- A quest hand-off as the default UI presents it: the reward panel is what is on screen.
 local quest = quests[1]
@@ -379,6 +388,24 @@ VO.Addon.db.profile.Audio.ReadAfterClose = false
 Expect("a different quest completion does not retain prior progress",
     string.format("%d-complete", quests[2]))
 
+-- A quest switch can happen before the old progress page stabilizes. Its unread progress must not
+-- be replayed together with the new quest's completion.
+StartScenario()
+VO.Addon.db.profile.Audio.ReadAfterClose = true
+world.questID = full
+stub.ShowPanel("QuestFrameProgressPanel")
+stub.Advance(0.1)
+world.questID = quests[2]
+stub.ShowPanel("QuestFrameRewardPanel")
+stub.FireEvent("QUEST_COMPLETE")
+world.questID = 0
+stub.ShowPanel(nil)
+stub.FireEvent("QUEST_FINISHED")
+stub.Advance(5)
+VO.Addon.db.profile.Audio.ReadAfterClose = false
+Expect("a quest switch before progress stabilizes does not replay both pages",
+    string.format("%d-complete", quests[2]))
+
 -- An unresolved replacement offer must clear pending audio before capture returns without an ID.
 StartScenario()
 VO.Addon.db.profile.Audio.ReadAfterClose = true
@@ -466,6 +493,29 @@ stub.Advance(5)
 VO.Addon.db.profile.Audio.ReadAfterClose = false
 testPack.QuestIDLookup = nil
 Expect("an indexed reward ID gap keeps progress past snapshot expiry",
+    string.format("%d-progress, %d-complete", full, full))
+
+-- An identified progress page can remain visible while the client reports ID 0 and the indexed
+-- lookup cannot resolve it. Keep that record until the identified completion closes the dialog.
+StartScenario()
+VO.Addon.db.profile.Audio.ReadAfterClose = true
+testPack.QuestIDLookup = { accept = {}, progress = {}, complete = {} }
+world.questID = full
+stub.ShowPanel("QuestFrameProgressPanel")
+stub.FireEvent("QUEST_PROGRESS")
+world.questID = 0
+stub.Advance(11)
+world.questID = full
+stub.ShowPanel("QuestFrameRewardPanel")
+stub.FireEvent("QUEST_COMPLETE")
+world.questID = 0
+stub.ShowPanel(nil)
+stub.FireEvent("QUEST_FINISHED")
+stub.FireEvent("QUEST_TURNED_IN", full, 0, 0)
+stub.Advance(5)
+VO.Addon.db.profile.Audio.ReadAfterClose = false
+testPack.QuestIDLookup = nil
+Expect("identified progress survives an unresolved progress ID gap",
     string.format("%d-progress, %d-complete", full, full))
 
 -- Replacement quest UIs hide Blizzard panels. A poll during an anonymous progress page must not
