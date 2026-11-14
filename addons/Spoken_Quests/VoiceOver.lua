@@ -751,6 +751,27 @@ function Addon:OnInitialize()
     -- Index of the newest unread page of each event, refilled on every close-time replay.
     local newest = {}
 
+    -- A Classic client can report 0 for one page while the next page has the quest ID. Tie only
+    -- that unresolved page to a later, same-interaction page with the requested ID. A nonzero
+    -- snapshot remains authoritative: it may be the previous quest's globals, and matching it by
+    -- title would make a turn-in read the wrong quest when titles repeat.
+    local function SnapshotBelongsToQuest(snapshot, questID, events)
+        if snapshot.questID == questID then
+            return true
+        end
+        if snapshot.questID ~= 0 then
+            return false
+        end
+        for _, related in ipairs(questSnapshots) do
+            if related ~= snapshot and related.at >= snapshot.at and related.questID == questID and
+                events[related.event] and related.title == snapshot.title and
+                related.targetName == snapshot.targetName then
+                return true
+            end
+        end
+        return false
+    end
+
     local function ReplayQuestSnapshots(source, questID, events)
         PruneQuestSnapshots()
         -- The watcher calls this ten times a second whenever no quest is open.
@@ -759,7 +780,13 @@ function Addon:OnInitialize()
         end
         if questID then
             for _, snapshot in ipairs(questSnapshots) do
-                if not snapshot.dispatched and events[snapshot.event] and snapshot.questID == questID then
+                if not snapshot.dispatched and events[snapshot.event] and
+                    SnapshotBelongsToQuest(snapshot, questID, events) then
+                    -- The page was captured during the client's ID gap. Once a later page proves
+                    -- which quest this interaction belongs to, use that ID for its sound lookup.
+                    if snapshot.questID == 0 then
+                        snapshot.questID = questID
+                    end
                     ReplaySnapshot(snapshot, source)
                 end
             end

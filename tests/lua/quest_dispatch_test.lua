@@ -239,6 +239,20 @@ stub.Advance(5)
 Expect("auto turn-in reads progress then complete",
     string.format("%d-progress, %d-complete", full, full))
 
+-- The progress event can arrive during the client's brief quest-ID gap. If the client keeps
+-- reporting the quest ID after the window closes, QUEST_TURNED_IN still needs to replay it with
+-- the completion page rather than dropping the unresolved progress snapshot.
+StartScenario()
+world.questID = 0
+stub.FireEvent("QUEST_PROGRESS")
+world.questID = full
+stub.FireEvent("QUEST_COMPLETE")
+stub.FireEvent("QUEST_FINISHED")
+stub.FireEvent("QUEST_TURNED_IN", full, 0, 0)
+stub.Advance(5)
+Expect("auto turn-in keeps progress captured during the quest-ID gap",
+    string.format("%d-progress, %d-complete", full, full))
+
 -- A turn-in after a page that names no quest reads nothing either.
 StartScenario()
 world.questID = 0
