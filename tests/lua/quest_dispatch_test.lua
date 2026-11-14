@@ -361,6 +361,23 @@ stub.Advance(5)
 Expect("a completion captured after the ID gap keeps progress",
     string.format("%d-progress, %d-complete", full, full))
 
+-- The panel can advance without either page event. A visible reward page with a restored ID must
+-- still capture completion so the earlier ID-0 progress snapshot is associated before close.
+StartScenario()
+world.questID = 0
+stub.ShowPanel("QuestFrameProgressPanel")
+stub.FireEvent("QUEST_PROGRESS")
+stub.ShowPanel("QuestFrameRewardPanel")
+world.questID = full
+stub.Advance(0.5)
+world.questID = 0
+stub.ShowPanel(nil)
+stub.FireEvent("QUEST_FINISHED")
+stub.FireEvent("QUEST_TURNED_IN", full, 0, 0)
+stub.Advance(5)
+Expect("a reward-panel transition without events keeps ID-gap progress",
+    string.format("%d-progress, %d-complete", full, full))
+
 -- A fast switch must not let quest B's identifying page assign quest B's ID to quest A's
 -- unresolved progress just because both quests have the same title and giver.
 StartScenario()
