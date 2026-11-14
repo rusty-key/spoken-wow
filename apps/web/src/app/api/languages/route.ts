@@ -8,8 +8,9 @@
 import { headers } from "next/headers";
 
 import { auth } from "@/lib/auth";
-import { LANG_SHAPE, langName } from "@/lib/lang";
+import { langName } from "@/lib/lang";
 import { forgetLanguages } from "@/lib/languages/catalogue";
+import { describedName, isPageSection, LANG_CODE } from "@/lib/languages/validate";
 import { LanguageExistsError, addLanguage, languageStates, setEnabled } from "@/lib/languages/store";
 import { recordActivity } from "@/lib/activity/store";
 import { inTransaction } from "@/lib/db";
@@ -50,22 +51,8 @@ export async function PUT(request: Request) {
   return GET();
 }
 
-const CODE = new RegExp(`^${LANG_SHAPE}$`);
 const PROVIDER = /^[a-z]{2}$/;
 const BCP47 = /^[a-z]{2,3}-[A-Z]{2}$/;
-const MAX_NAME = 60;
-
-function described(value: unknown): string | null {
-  if (typeof value !== "string") return null;
-  const text = value.trim();
-  return text && text.length <= MAX_NAME ? text : null;
-}
-
-/** The page sections, baked in by next.config.ts: the standalone bundle cannot read src/app/[lang]. */
-function isPageSection(code: string): boolean {
-  const sections = (process.env.SPOKEN_PAGE_SECTIONS ?? "").split(",");
-  return sections.some((section) => section.toLowerCase() === code.toLowerCase());
-}
 
 /** A new language, switched off. */
 export async function POST(request: Request) {
@@ -75,11 +62,11 @@ export async function POST(request: Request) {
   }
 
   const body = (await request.json().catch(() => null)) as Record<string, unknown> | null;
-  const name = described(body?.name);
-  const native = described(body?.native);
+  const name = describedName(body?.name);
+  const native = describedName(body?.native);
   const { code, bcp47, provider } = body ?? {};
   if (
-    typeof code !== "string" || !CODE.test(code) ||
+    typeof code !== "string" || !LANG_CODE.test(code) ||
     typeof provider !== "string" || !PROVIDER.test(provider) ||
     typeof bcp47 !== "string" || !BCP47.test(bcp47) ||
     !name || !native

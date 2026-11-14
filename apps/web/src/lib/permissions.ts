@@ -193,11 +193,17 @@ export function canManageVoices(viewer: Viewer | null, lang: Lang): boolean {
   return can(viewer, "admin", lang);
 }
 
-/** Whether somebody may hand out or take away `capability` in `lang`. */
-export function canGrant(viewer: Viewer | null, capability: Capability, lang: Lang): boolean {
+/**
+ * Whether somebody may hand out or take away `capability` in `lang`.
+ *
+ * `textByTeam` is the language's flag that its privileged team's admins appoint text
+ * maintainers, as a site admin does elsewhere. Until plan 5 adds a second team, the privileged
+ * team's admins are everyone with `admin` in the language.
+ */
+export function canGrant(viewer: Viewer | null, capability: Capability, lang: Lang, textByTeam: boolean): boolean {
   if (!viewer) return false;
   if (viewer.role === "admin") return true;
-  return capability !== "text" && can(viewer, "admin", lang);
+  return (capability !== "text" || textByTeam) && can(viewer, "admin", lang);
 }
 
 /**

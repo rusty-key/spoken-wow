@@ -18,6 +18,7 @@ import type { ActivityDetail } from "@/lib/activity/kinds";
 import { recordActivity } from "@/lib/activity/store";
 import { ALL_TEAMS, query, withTeam } from "@/lib/db";
 import { sendEmail } from "@/lib/email";
+import { adminEmails, SITE } from "@/lib/site";
 import { canSubmitPacks, isAdmin } from "@/lib/permissions";
 
 import { compareVersions, validateFields, validateNewPack, type PackFields, type Section } from "./rules";
@@ -75,7 +76,6 @@ export type ManagerEntry = {
   addedAt: string;
 };
 
-const SITE = (process.env.BETTER_AUTH_URL ?? "https://spoken.quest").replace(/\/$/, "");
 const MAX_REASON = 500;
 
 type Client = Pick<PoolClient, "query">;
@@ -206,11 +206,6 @@ function record<K extends PackKind>(
 
 function submitted(client: Client, actorId: string, s: Submission): Promise<void> {
   return record(client, "pack.submitted", actorId, s.packId, { packId: s.packId, version: s.version, submissionId: s.id });
-}
-
-async function adminEmails(client: Client): Promise<string[]> {
-  const { rows } = await client.query<{ email: string }>(`select "email" from "user" where "role" = 'admin'`);
-  return rows.map((row) => row.email);
 }
 
 function emailAdmins(to: string[], s: Submission): void {

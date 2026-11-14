@@ -7,14 +7,16 @@
  */
 import "server-only";
 
+import type { ClientBase } from "pg";
 import { cache } from "react";
 
 import { recordActivities, recordActivity } from "@/lib/activity/store";
 import { query, withTeam } from "@/lib/db";
 import { deleteMember, insertMembers } from "@/lib/teams/members";
-import { ownerOrAll, teamOf } from "@/lib/teams/store";
+import { ownerOrAll, teamOf, type TeamId } from "@/lib/teams/store";
 import { isLang, type Lang } from "@/lib/lang";
-import { isCapability, type Capability, type Grant, type Viewer } from "@/lib/permissions";
+import { textByTeam } from "@/lib/languages/store";
+import { canGrant, isCapability, type Capability, type Grant, type Viewer } from "@/lib/permissions";
 
 export async function grantsOf(userId: string): Promise<Grant[]> {
   const rows = await query<{ lang: string; capability: string }>(
@@ -95,17 +97,7 @@ export async function addGrants(
   const members = capabilities.filter((capability) => capability !== "text");
   const team = members.length ? await teamOf(lang) : await ownerOrAll(lang);
   await withTeam(team, async (client) => {
-    const added: Capability[] = [];
-    if (members.length < capabilities.length) {
-      const { rowCount } = await client.query(
-        `insert into "language_grant" ("userId", "lang", "capability", "grantedBy")
-         values ($1, $2, 'edit', $3)
-         on conflict ("userId", "lang", "capability") do nothing`,
-        [userId, lang, grantedBy],
-      );
-      if (rowCount) added.push("text");
-    }
-    if (members.length) added.push(...(await insertMembers(client, team, userId, lang, members, grantedBy)));
+    const added = await grantOn(client, team, userId, lang, capabilities, grantedBy);
     await recordActivities(
       added.map((capability) => ({
         kind: "grant.added",
@@ -117,6 +109,45 @@ export async function addGrants(
       client,
     );
   });
+}
+
+/** The first of `capabilities` that `viewer` may not grant in `lang`, or null when they may grant them all. */
+export async function refusedGrant(
+  viewer: Viewer | null,
+  capabilities: readonly Capability[],
+  lang: Lang,
+): Promise<Capability | null> {
+  // canGrant reads whose text it is only for `text`.
+  const byTeam = capabilities.includes("text") && (await textByTeam(lang));
+  return capabilities.find((capability) => !canGrant(viewer, capability, lang, byTeam)) ?? null;
+}
+
+/**
+ * The capabilities among `capabilities` that `userId` did not hold yet, granted on the caller's
+ * client; members go to `team`. Checks nothing and logs nothing: a language created in the same
+ * transaction is not in the registry yet.
+ */
+export async function grantOn(
+  client: ClientBase,
+  team: TeamId,
+  userId: string,
+  lang: string,
+  capabilities: readonly Capability[],
+  grantedBy: string,
+): Promise<Capability[]> {
+  const members = capabilities.filter((capability) => capability !== "text");
+  const added: Capability[] = [];
+  if (members.length < capabilities.length) {
+    const { rowCount } = await client.query(
+      `insert into "language_grant" ("userId", "lang", "capability", "grantedBy")
+       values ($1, $2, 'edit', $3)
+       on conflict ("userId", "lang", "capability") do nothing`,
+      [userId, lang, grantedBy],
+    );
+    if (rowCount) added.push("text");
+  }
+  if (members.length) added.push(...(await insertMembers(client, team, userId, lang, members, grantedBy)));
+  return added;
 }
 
 /**
