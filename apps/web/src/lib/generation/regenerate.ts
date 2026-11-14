@@ -119,13 +119,11 @@ export async function regenerateLine(
 
   if (!isVoiceable(line, source)) {
     const why =
-      line.skipReason === "progress"
-        ? "progress text is deliberately skipped"
-        : line.skipReason === "untranslated"
-          ? `it has no ${lang} text yet`
-          : isModelVoice(line.voice)
-            ? `no voice has been chosen for ${line.voice} yet`
-            : `its text still holds one of ${INVALID_CHARS} - rewrite it to voice it`;
+      line.skipReason === "untranslated"
+        ? `it has no ${lang} text yet`
+        : isModelVoice(line.voice)
+          ? `no voice has been chosen for ${line.voice} yet`
+          : `its text still holds one of ${INVALID_CHARS} - rewrite it to voice it`;
     return {
       ok: false,
       failure: {

@@ -6,6 +6,7 @@ import fs from 'node:fs'
 import path from 'node:path'
 import { Readable } from 'node:stream'
 import { CancelledError, PlainError, formatBytes, isAbortError, sleep, throwIfAborted } from './errors'
+import { t } from './i18n'
 import { log } from './state'
 
 export interface DownloadOptions {
@@ -45,8 +46,7 @@ export function zipPathFor(dir: string, baseName: string): string {
   return path.join(dir, `${baseName}.zip`)
 }
 
-const mismatch = (source: string): string =>
-  `The downloaded file does not match what ${source} published, so it was deleted. Try again; if it keeps happening, check your connection.`
+const mismatch = (source: string): string => t('download.mismatch', { source })
 
 function wantedHash(digest: string | undefined): string | null {
   const m = digest ? /^sha256:([0-9a-f]{64})$/i.exec(digest) : null
@@ -174,7 +174,7 @@ export async function downloadAsset(opts: DownloadOptions): Promise<DownloadResu
     }
   }
   throw new PlainError(
-    `The download stopped before it finished (${lastError instanceof Error ? lastError.message : 'network error'}). The part that arrived is kept; press the button again to continue.`
+    t('download.stopped', { why: lastError instanceof Error ? lastError.message : 'network error' })
   )
 
   async function attemptOnce(): Promise<void> {
@@ -254,8 +254,8 @@ export async function downloadAsset(opts: DownloadOptions): Promise<DownloadResu
       await res.body?.cancel().catch(() => undefined)
       throw new PlainError(
         res.status === 404
-          ? `${opts.source ?? 'GitHub'} no longer has this file. Refresh the list and try again.`
-          : `${opts.source ?? 'GitHub'} refused the download (${res.status}).`
+          ? t('download.gone', { source: opts.source ?? 'GitHub' })
+          : t('download.refused', { source: opts.source ?? 'GitHub', status: res.status })
       )
     }
     if (!res.body) throw new Retryable('empty answer')

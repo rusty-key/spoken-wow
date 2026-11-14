@@ -71,8 +71,9 @@ export interface Product {
 }
 
 /**
- * One voice pack made by a player, as listed in `community/packs.json` of the repo. Added by
- * pull request, so a maintainer has looked at it. Installs as the folder `SpokenCommunity_<id>`.
+ * One voice pack made by a player, as spoken.quest lists it. Its author submits each version
+ * there and an admin approves it, so somebody has looked at it. Installs as the folder
+ * `SpokenCommunity_<id>`.
  */
 export interface CommunityPack {
   /** Lower-case letters, digits and hyphens: `elune-quests-deDE`. Unique in the registry. */
@@ -163,7 +164,26 @@ export interface ProductStatus {
   blockedReason?: string
 }
 
+/**
+ * The languages of the manager's own window, not of the voice packs. `Intl` does not know the
+ * game's codes (`zhCN`) and would silently use the system language, hence `bcp47`.
+ */
+export const UI_LANGUAGES = [
+  { code: 'enUS', bcp47: 'en-US' },
+  { code: 'zhCN', bcp47: 'zh-CN' }
+] as const
+
+export type UiLanguage = (typeof UI_LANGUAGES)[number]['code']
+
+export const UI_LANGUAGE_CODES: readonly UiLanguage[] = UI_LANGUAGES.map((l) => l.code)
+
+export function bcp47Of(lang: UiLanguage): string {
+  return UI_LANGUAGES.find((l) => l.code === lang)?.bcp47 ?? 'en-US'
+}
+
 export interface Settings {
+  /** The language of the window. */
+  uiLanguage: UiLanguage
   includePrereleases: boolean
   checkOnStart: boolean
   /** The manager's own updates. */
@@ -198,6 +218,7 @@ export interface SharingStatus {
 }
 
 export const DEFAULT_SETTINGS: Settings = {
+  uiLanguage: 'enUS',
   includePrereleases: false,
   checkOnStart: true,
   autoUpdateManager: true,
@@ -213,6 +234,7 @@ export const DEFAULT_SETTINGS: Settings = {
 
 /** The settings that take only some values of their type; anything else is dropped on load. */
 export const SETTING_CHOICES: Partial<Record<keyof Settings, readonly unknown[]>> = {
+  uiLanguage: UI_LANGUAGE_CODES,
   sharing: SHARING_CHOICES
 }
 

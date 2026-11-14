@@ -16,6 +16,7 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { BASE_LANG, type Lang } from "@/lib/lang";
 import { capabilityLabel } from "@/lib/permissions";
+import { send } from "@/lib/send";
 import type { TeamSummary } from "@/lib/teams/admin";
 
 type Props = {
@@ -39,18 +40,6 @@ function people(team: TeamSummary): Person[] {
 
 const liveTakes = (count: number) => `${count} live take${count === 1 ? "" : "s"}`;
 
-async function send(url: string, method: string, body: unknown): Promise<{ ok: boolean; error?: string }> {
-  const response = await fetch(url, {
-    method,
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(body),
-  }).catch(() => null);
-  if (!response) return { ok: false, error: "Could not reach the server." };
-  if (response.ok) return { ok: true };
-  const { error } = (await response.json().catch(() => ({}))) as { error?: string };
-  return { ok: false, error: error ?? "Something went wrong." };
-}
-
 export default function TeamsTable({ initial, takes, languages }: Props) {
   const router = useRouter();
   const [error, setError] = useState<string | null>(null);
@@ -59,13 +48,13 @@ export default function TeamsTable({ initial, takes, languages }: Props) {
   const [form, setForm] = useState({ slug: "", name: "", adminEmail: "", langs: [] as Lang[] });
   const [moving, setMoving] = useState<{ lang: Lang; target: TeamSummary } | null>(null);
 
-  async function run(action: () => Promise<{ ok: boolean; error?: string }>): Promise<boolean> {
+  async function run(action: () => ReturnType<typeof send>): Promise<boolean> {
     setBusy(true);
     setError(null);
     const result = await action();
     setBusy(false);
     // A partial create still changed things, so the page is refreshed either way.
-    if (!result.ok) setError(result.error ?? null);
+    if (!result.ok) setError(result.error);
     router.refresh();
     return result.ok;
   }

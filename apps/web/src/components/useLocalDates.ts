@@ -4,6 +4,9 @@ const subscribe = () => () => {};
 
 const CLOCK: Intl.DateTimeFormatOptions = { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" };
 
+export const DAY: Intl.DateTimeFormatOptions = { year: "numeric", month: "short", day: "numeric" };
+export const DAY_TIME: Intl.DateTimeFormatOptions = { ...DAY, hour: "2-digit", minute: "2-digit" };
+
 /**
  * Formats dates for the viewer. The server knows neither their locale nor their time zone, and the
  * first browser render has to match its HTML, so that render uses fixed ones and the viewer's take

@@ -273,18 +273,6 @@ const SearchBar = forwardRef<HTMLInputElement, Props>(function SearchBar(
             </Label>
           </div>
         )}
-        {/* Phrased as showing rather than hiding: the box is unticked by default, and an
-            unticked "hide progress text" would claim the opposite of what is happening. */}
-        <div className="flex items-center gap-2 whitespace-nowrap">
-          <Checkbox
-            id="include-progress"
-            checked={filters.includeProgress ?? false}
-            onCheckedChange={(value) => onFilters({ includeProgress: value === true })}
-          />
-          <Label htmlFor="include-progress" className="text-muted-foreground text-sm">
-            show progress text
-          </Label>
-        </div>
         {/* Era + Forever by default, the clients the site voices (lib/quests/line-client.ts); the
             same bins as the Contributions pages. */}
         {/* Wrapped, so its own ml-auto (right-aligned on the Contributions pages) does not split

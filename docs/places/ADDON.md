@@ -35,6 +35,8 @@ One page, Game Menu, Options, AddOns, Spoken, Places:
 | | Include Smaller Areas | `autoplaySubzones` | on |
 | | Include Places Found Before | `autoplayExplored` | on |
 | | Stop When Combat Starts | `autoplayStopInCombat` | off |
+| | Read Every Visit | `autoplayEveryVisit` | off |
+| | Read Again After (shown with Read Every Visit on) | `autoplayEveryVisitGap` | 1 day |
 | Stories | Show Story Beside Map | `showMapPanel` | on |
 | | Story Panel Width | `panelWidth` | 360 |
 | | Show Pictures | `showPictures` | on |
@@ -63,7 +65,7 @@ The first time, the old table is kept in Spoken's `global.ModulesLegacy`, and a 
 Choosing another profile in Spoken, copying one over or resetting it rebinds the table, and a
 profile made or reset then starts from the defaults. The `dump` key written by `/spp dump` is not
 copied, and sits in the profile's table, which is also what `SpokenPlacesSettings` is saved as. `SpokenPlacesCharacter` (per character) holds
-`greeted`, `heard` and `visited`.
+`greeted`, `heard`, `readAt` and `visited`.
 
 `## LoadSavedVariablesFirst: true` is needed. The data files under `Data/` ask `Language.lua`
 which language to build while they load, and it answers from the saved variable. Without the line
@@ -202,6 +204,15 @@ The game announces a discovery once per character, and Places reads that message
   two seconds after login a greeting reads it instead, up to eight tries, only for a level 1
   character standing in one of the six starting areas (`STARTING_AREAS`). `greeted` in
   `SpokenPlacesCharacter` makes it happen once, and `/spp forget` clears it.
+- Read Every Visit reads the zone, and the area with Include Smaller Areas on, on every zone change
+  and on entering a dungeon, unless that place started reading within the chosen wait: 1 day,
+  1 week or 1 month of 30 days (`EVERY_VISIT_GAPS` in `Autoplay.lua`). Without the wait,
+  riding along a zone border reads both zones over and over, and nothing shorter than a day
+  is offered for the same reason. `readAt` keeps when each place last
+  started reading, from any route, by the wall clock (`time()`): `GetTime()` starts from zero at
+  every restart, and a month outlasts one. A time ahead of the clock counts as long ago. With it on,
+  a discovery of a place read within the wait reads nothing, and Include Places Found Before makes
+  no difference, so the panel greys it out. Forget Places Heard clears `readAt` too.
 - Include Places Found Before also reads on zone change, once per place, for a character that
   explored before installing. `heard` records places when a clip starts, not when it is queued.
   It was off by default, and every profile stored that off; loading a profile turns it on once

@@ -57,6 +57,7 @@ L.OPT_DIALOG_STOP_TIP = "Arrêter la lecture"
 L.OPT_READ_TIP = "Lire ceci à voix haute"
 L.OPT_GREETING = "Salutation"
 L.OPT_AUTOPLAY_OFF_TIP = "« Lire automatiquement » est désactivé sur la page Quêtes des paramètres de Spoken."
+L.OPT_PROGRESS_OFF_TIP = "« Lire la progression des quêtes » est désactivé sur la page Quêtes des paramètres de Spoken."
 L.OPT_NEVER_TIP = "« Lire les salutations » est réglé sur « Jamais » sur la page Discussions des paramètres de Spoken."
 L.OPT_CONTRIBUTE = "Contribuer"
 L.OPT_REPORT = "Signaler"
@@ -82,6 +83,7 @@ L.REASON_AUTOPLAY_ON_QUESTS = "Activez l'option Lire automatiquement sur la page
 
 -- Quest follow-ups
 L.OPT_PANEL_FOLLOWUP = "Lire le chat des PNJ ensuite"
+L.OPT_PANEL_PROGRESS = "Lire la progression des quêtes"
 L.OPT_PANEL_GREETINGS = "Lire les salutations"
 L.OPT_GREETING_LABEL_ALWAYS = "À chaque fois"
 L.OPT_GREETING_LABEL_ONCE_QUEST = "Une fois pour les donneurs de quêtes"

@@ -77,7 +77,6 @@ function filterParams(filters: LineFilters): URLSearchParams {
   if (filters.voice) params.set("voice", filters.voice);
   if (filters.source?.length) params.set("source", filters.source.join(","));
   if (filters.npcType) params.set("type", filters.npcType);
-  if (filters.includeProgress) params.set("progress", "1");
   if (filters.client && filters.client !== DEFAULT_CLIENT_FILTER) params.set("client", filters.client);
   if (filters.narration) params.set("narration", "1");
   if (filters.line) params.set("line", filters.line);
@@ -168,7 +167,6 @@ export default function Explorer({ facets }: { facets: Facets }) {
       voice: params.get("voice") ?? undefined,
       source: sourcesFromParam(params.get("source")),
       npcType: (params.get("type") as LineFilters["npcType"]) ?? undefined,
-      includeProgress: params.get("progress") === "1",
       client: clientFilterOf(params.get("client")),
       narration: params.get("narration") === "1",
       line: params.get("line") ?? undefined,
@@ -333,9 +331,6 @@ export default function Explorer({ facets }: { facets: Facets }) {
         ...("source" in next ? { source: next.source?.join(",") } : {}),
         ...("npcType" in next ? { type: next.npcType } : {}),
         ...("narration" in next ? { narration: next.narration ? "1" : undefined } : {}),
-        ...("includeProgress" in next
-          ? { progress: next.includeProgress ? "1" : undefined }
-          : {}),
         ...("client" in next ? { client: next.client === DEFAULT_CLIENT_FILTER ? undefined : next.client } : {}),
         ...("line" in next ? { line: next.line } : {}),
         ...("overridden" in next ? { overridden: next.overridden ? "1" : undefined } : {}),
@@ -455,7 +450,7 @@ export default function Explorer({ facets }: { facets: Facets }) {
    * Fetch the rows `touches` picks again and swap them in where they sit. See lib/row-refresh.
    *
    * The id alone, not the page's filters, so a row the change moved out of the filter stays.
-   * `progress` and `ignored` because the search hides those rows unless asked.
+   * `ignored` because the search hides those rows unless asked.
    */
   const refreshRows = useCallback(
     async (touches: (row: ResultLine) => boolean) => {
@@ -464,7 +459,7 @@ export default function Explorer({ facets }: { facets: Facets }) {
       const ignored = new Set(rows.filter((row) => row.ignored).map((row) => row.lineId));
       const fresh = await fetchRows<ResultLine>(
         (id) => {
-          const search = new URLSearchParams({ line: id, progress: "1" });
+          const search = new URLSearchParams({ line: id });
           if (ignored.has(id)) search.set("ignored", "1");
           return withLang(lang, `/api/quests/search?${search}`);
         },

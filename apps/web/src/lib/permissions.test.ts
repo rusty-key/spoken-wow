@@ -11,6 +11,7 @@ import {
   canManageVoices,
   isAdmin,
   isRole,
+  roleLabel,
   ROLES,
   roles,
   type Grant,
@@ -55,7 +56,18 @@ describe("isRole", () => {
     expect(isRole("root")).toBe(false);
     // Retired by 0045, which turned it into English grants.
     expect(isRole("collaborator")).toBe(false);
+    // Retired by 0107, when any member could submit packs.
+    expect(isRole("pack_author")).toBe(false);
     expect(isRole(null)).toBe(false);
+  });
+});
+
+describe("roleLabel", () => {
+  it("names each role as the UI does, a missing one as member and an unknown one as stored", () => {
+    expect(roleLabel("member")).toBe("Member");
+    expect(roleLabel("admin")).toBe("Admin");
+    expect(roleLabel(null)).toBe("Member");
+    expect(roleLabel("root")).toBe("root");
   });
 });
 
@@ -187,3 +199,4 @@ describe("per-language permissions", () => {
     expect(worksIn(member([]), "ptBR")).toBe(false);
   });
 });
+

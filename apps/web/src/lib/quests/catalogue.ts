@@ -153,16 +153,6 @@ const SPEAKERS = speakersBy(`s."lineId"`);
  */
 const MOMENT_SPEAKERS = speakersBy(momentSql(`s."lineId"`));
 
-/**
- * Every NPC speaks a line in its own voice. Where NPCs of different voices share one, the file
- * already made keeps the voice it was made in -- the one its speakers were written with -- and
- * each other voice is a line of its own (naming.ts's variantLineId): the same words, in a file
- * named after the voice. An NPC whose voice changes moves to its new voice's line, which has no
- * audio until somebody generates it; one with no flavor yet moves to a line nobody can voice
- * until it gets one. Progress text is never voiced, so it is never split.
- */
-const OWN_VOICE_SOURCES: ReadonlySet<string> = new Set(["accept", "complete", "gossip", "followup", "chatter"]);
-
 type Speaking = {
   lineId: string;
   variant: number;
@@ -170,7 +160,6 @@ type Speaking = {
   npcId: number;
   npcSex: number | null;
   npcBody: string | null;
-  source: string;
   race: string;
   gender: string;
   flavor: string | null;
@@ -180,26 +169,32 @@ type Speaking = {
   skipReason: string | null;
 };
 
+/**
+ * Every NPC speaks a line in its own voice. Where NPCs of different voices share one, the file
+ * already made keeps the voice it was made in -- the one its speakers were written with -- and
+ * each other voice is a line of its own (naming.ts's variantLineId): the same words, in a file
+ * named after the voice. An NPC whose voice changes moves to its new voice's line, which has no
+ * audio until somebody generates it; one with no flavor yet moves to a line nobody can voice
+ * until it gets one.
+ */
 function voiced<T extends Speaking>(rows: T[], roster: Roster): (T & { voice: string })[] {
   const written = new Map<string, string>();
   const lineOf = (row: T) => `${row.lineId}|${row.variant}`;
   for (const row of rows) if (!written.has(lineOf(row))) written.set(lineOf(row), row.writtenVoice);
 
-  // Bodies of a split NPC answered with one voice speak one line, listed once, and a line
-  // nobody voices (progress text) is listed once whatever the bodies' voices.
+  // Bodies of a split NPC answered with one voice speak one line, listed once.
   const seen = new Set<string>();
   return rows.map((row) => {
     // An NPC with no type has no voice to move to: its file stays, and nothing can make it again
     // until somebody says who the NPC is.
     if (!row.race) {
-      const silenced = OWN_VOICE_SOURCES.has(row.source) && row.generatable;
-      return { ...row, voice: row.writtenVoice, ...(silenced ? { generatable: false, skipReason: "no-voice" } : {}) };
+      return { ...row, voice: row.writtenVoice, ...(row.generatable ? { generatable: false, skipReason: "no-voice" } : {}) };
     }
     // A combination no voice reads yet still gets its own line, named as its voice would be.
     const voice =
       roster.voiceFor(row.race, row.gender || null, row.flavor) ??
       newVoiceName(row.race, row.gender, row.flavor);
-    if (!OWN_VOICE_SOURCES.has(row.source) || voice === written.get(lineOf(row))) return { ...row, voice };
+    if (voice === written.get(lineOf(row))) return { ...row, voice };
     return {
       ...row,
       voice,
@@ -209,7 +204,7 @@ function voiced<T extends Speaking>(rows: T[], roster: Roster): (T & { voice: st
     };
   }).filter((row) => {
     if (row.npcSex === null) return true;
-    const key = `${lineOf(row)}|${row.npcType}:${row.npcId}|${OWN_VOICE_SOURCES.has(row.source) ? row.voice : ""}`;
+    const key = `${lineOf(row)}|${row.npcType}:${row.npcId}|${row.voice}`;
     if (seen.has(key)) return false;
     seen.add(key);
     return true;

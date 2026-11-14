@@ -52,10 +52,8 @@ export function hasInvalidChars(text: string): boolean {
 /**
  * Whether a line would be voiced, given the text that would be sent.
  *
- * `progress` is skipped by policy - quest-in-progress text is deliberately never voiced - so
- * it is read off the corpus's own skipReason and no override can reach it. `invalid-chars` is
- * a property of the text, so it is re-decided here rather than trusted from the corpus: that
- * is what lets an override rescue the 99 lines the extractor had to give up on.
+ * `invalid-chars` is a property of the text, so it is re-decided here rather than trusted from the
+ * corpus: that is what lets an override rescue the 99 lines the extractor had to give up on.
  *
  * `untranslated` is a language with no text for the line: what the row carries is the
  * English, shown so the explorer has something to show, and voicing it would file an English
@@ -72,11 +70,11 @@ type GatedLine = {
   playerGender?: "m" | "f" | null;
 };
 
-export type UnvoicedReason = "progress" | "untranslated" | "no-voice" | "invalid-chars";
+export type UnvoicedReason = "untranslated" | "no-voice" | "invalid-chars";
 
 /** Why isVoiceable says no, or null when it says yes. */
 export function unvoicedReason(line: GatedLine, effectiveText: string): UnvoicedReason | null {
-  if (line.skipReason === "progress" || line.skipReason === "untranslated") return line.skipReason;
+  if (line.skipReason === "untranslated") return "untranslated";
   // A model slot has no voice chosen yet (voices.ts isModelVoice). Asked of the voice rather
   // than of the corpus's "no-voice" skipReason, because a translation's row carries its own
   // skipReason, decided from its text alone, and would otherwise be voiced in English's stead.
@@ -94,11 +92,9 @@ export function unvoicedReason(line: GatedLine, effectiveText: string): Unvoiced
  * isVoiceable asks it.
  */
 export function skipReasonFor(
-  source: string,
   text: string,
   lang: Lang = BASE_LANG,
   playerGender: "m" | "f" | null = null,
-): "progress" | "invalid-chars" | null {
-  if (source === "progress") return "progress";
+): "invalid-chars" | null {
   return hasInvalidChars(speakPlayerTokens(text, lang, playerGender)) ? "invalid-chars" : null;
 }

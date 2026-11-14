@@ -127,6 +127,15 @@ do
     Z:Set("autoplay", true); Z:Set("autoplayExplored", false); layout:Refresh()
     Expect("...but not with Include Places Found Before off", forget and forget.layoutReason, nil)
     Z:Set("autoplayExplored", true)
+
+    -- Read Every Visit reads every place on a zone change, so Include Places Found Before would
+    -- look live and change nothing.
+    local before = Row(Z.L.OPT_AUTOPLAY_EXPLORED)
+    Z:Set("autoplayEveryVisit", true); layout:Refresh()
+    Expect("Include Places Found Before greys out with Read Every Visit on, saying why",
+        before and before.layoutReason, Z.L.REASON_EVERY_VISIT)
+    Z:Set("autoplayEveryVisit", false); layout:Refresh()
+    Expect("...and comes back with it off", before and before.layoutReason, nil)
 end
 
 if Failures() > 0 then print(string.format("\n%d failure(s)", Failures())); os.exit(1) end

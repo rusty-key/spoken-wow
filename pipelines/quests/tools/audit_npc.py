@@ -104,7 +104,6 @@ def main():
         p.error("give --npc, --voice, or --find")
 
     # Match what the generator would actually have produced.
-    rows = rows[rows["source"] != "progress"]
     rows = rows[~rows["cleanedText"].str.contains(r"[$<>]", regex=True, na=False)]
     rows = rows.drop_duplicates(subset=["source", "quest", "templateText_race_gender_hash",
                                         "player_gender"])

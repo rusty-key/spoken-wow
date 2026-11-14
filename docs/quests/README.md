@@ -480,15 +480,12 @@ holds the corpus, accounts and roles, every take and which one is live, the pron
 lexicon, hand-written line overrides and the regeneration queue; the only thing on disk is
 each take's audio, in `audio-history/`. A line with no live take shows as a gap.
 
-**Progress text is hidden by default.** Those 3,093 lines — 17.7% of the corpus — are never
-voiced by any code path, so leaving them in every result padded the list with rows nobody can
-act on. **Show progress text** brings them back, and `?progress=1` says the same thing in a
-URL; absence means hidden, so a bare link is the useful view. Ticking `progress` in the
-source filter also counts as asking for them, since otherwise that choice would return
-nothing. It is not counted as an active filter: it widens the results rather than narrowing
-them, and clearing filters returns it to hidden. The Missing audio ranking (`/missing-audio`
-and its dashboard tile) leaves progress text out too: the addon reports it as silent like any
-other line, but nothing will voice it, so it is not a gap to close.
+**Progress text is a line like any other.** It was once skipped everywhere: never generated,
+hidden from the explorer and left out of the Missing audio ranking. Migration 0108 made it
+voiceable, and the explorer, batches and the ranking treat it like the rest; `progress` in the
+source filter narrows to it. In the addon, **Read Quest Progress Text** (`Audio.ProgressText`,
+on by default, under Read Automatically) lets a player stop the progress page reading itself;
+its Play button and `/spq read` still play it.
 
 **The level filter is for spending a limited budget on low-level quests first.** `?minLevel=` and
 `?maxLevel=` bound the quest's level, both inclusive, and a batch started from the page uses them
@@ -522,8 +519,8 @@ A gossip row has no quest, and its Quest / broadcast cell shows the BroadcastTex
 instead. `/gossip` redirects here with `source=gossip`, and `/contributions/gossip` to the
 quests contributions with `stage=gossip`. `/reports/gossip` redirects to `/reports/quests`.
 
-Lines with no audio are marked. `no audio` is a real gap; `progress` and `invalid-chars`
-are lines the generator deliberately never voices.
+Lines with no audio are marked. `no audio` is a real gap; `invalid-chars` lines are ones the
+generator never voices until their text is rewritten.
 
 A translation keeps Blizzard's `$N`, `$C` and `$R` in its stored text, and they are not what
 makes it `invalid-chars`: `apps/web/src/lib/player-words.ts` speaks them as the language's
@@ -754,8 +751,7 @@ which a text maintainer answers, and the team's override stays above it, flagged
 "original changed since your override" until the team keeps or drops it. A correction accepted
 before this was an override, and stays one.
  It also reopens the `invalid-chars` gate — stripping a `$` or a `<>`
-makes an otherwise unvoiceable line voiceable — while `progress` lines stay skipped, because
-that is policy rather than a text defect. The one token a rewrite may hold is a
+makes an otherwise unvoiceable line voiceable. The one token a rewrite may hold is a
 `$gmale:female;` branch, which splits the line by player gender instead of overriding it.
 
 **Audio made before a fix says so.** Every take records a hash of the exact string sent to
@@ -995,15 +991,26 @@ holds every address the modules build to `tests/fixtures/report-urls.txt`, which
 `apps/web/src/lib/reports/report-urls.test.ts` opens through the site's routes. Installed copies
 that still build `voiceover.rusty.one/r/…` are redirected.
 
+An address can mean several lines: a quest given in more than one voice
+(`q:96774:accept` and `q:96774:accept~troll-male-shaman`), or every line of an NPC. So a
+Report on a clip that played adds the file it played, `?file={fileName}`, which is the
+corpus's `fileName` for that line. A Report with nothing played (a silent quest, the quest
+log) sends the bare address.
+
 The landing page resolves the address against the corpus, plays the take that is currently
-live, and hosts the form. An address that resolves to nothing still renders the form — an
-addon sending players to a page the corpus does not know about is itself a bug report.
+live, and hosts the form. Of several lines, it takes the one the player picked from its list
+(`?line=`), else the one whose file the addon played, and otherwise the report is filed with no
+line. The list stays beside a line the file picked, since the file can be a sibling's (an alias,
+a fallback language) and only the reporter knows which they meant. An address that resolves to nothing still renders the form — an addon sending players to
+a page the corpus does not know about is itself a bug report.
 
 `POST /api/reports` is the only unauthenticated write in the explorer. It is defended by a
 honeypot field answered with `200` rather than `400` (an error only teaches a script to stop
-sending the field), a limit of ten reports per hour per IP counted in Postgres so it survives a
-pm2 restart, and a category checked against a closed set. The IP is the rate limiter's key and
-nothing else: never displayed, never read back. Signing in replaces any typed name.
+sending the field), a limit of ten reports per ten minutes counted in Postgres so it survives a
+pm2 restart, and a category checked against a closed set. The limit counts a signed-in reporter
+by account and anyone else by IP, so a shared network cannot use up an account's allowance, and
+each refusal is logged with its key. The IP is the rate limiter's key and nothing else: never
+displayed, never read back. Signing in replaces any typed name.
 
 Collaborators and admins triage at `/reports`, marking each report fixed, not a problem or
 minor, or reopening it. Minor (migration 0079) sets a report aside: real, but not worth
@@ -1015,7 +1022,9 @@ file through the normal flow.
 `/reports/sort` is the same triage one line at a time, laid out for a phone. It offers quests
 (gossip included), readables and places with how many lines each has open, then walks one section's
 lines, most reported first, each with its line, its takes, its reports, the explorers' player
-and Play, Edit and Regenerate.
+and Play, Edit and Regenerate. A quests report filed with no line shows every line its address
+resolves to now, each with its own Play, Edit and Regenerate; the keys and the player act on the
+one last used.
 Fixed, Not a problem and Minor answer every open report on the line. Skip is per person and stored in
 `report_skip` (migration 0074), per report: a line comes back when a new report arrives on it,
 and Reset on the picker brings back everything that person skipped in that section.
@@ -1096,8 +1105,8 @@ alone when it replaces every extracted speaker, and it numbers from 1,000,000 so
 never meets it. The corpus
 wins where it already has the line: a quest moment is matched by quest id and moment alone
 (the tables carry some only as `:m`/`:f` variants), and a quest moment or gossip line it already
-has gains the contributing NPC as one more speaker instead of a copy. Progress lines are kept, marked
-`progress` and never voiced, as the extract marks its own. Once written, a contribution cannot
+has gains the contributing NPC as one more speaker instead of a copy. Progress lines are voiced like the
+rest. Once written, a contribution cannot
 be moved back to new. Rejecting it ignores every line it wrote, reason `Rejected contribution
 #N`: in its language, or in every language for an English row, so it needs the same right an
 ignore does (`ignore` in the language; for English, whoever configures generation). A line it
@@ -1241,7 +1250,7 @@ store (`tts_cli/voice_files.py`). A quest giver is found through `QuestFileLooku
 `QuestFileLookupByObjectID`, and the addon falls back to the moment's own file when no
 installed pack has it; a greeting's speaker and a follow-up's are looked up per NPC already, so
 their tables simply name the speaker's own file. The greeting tables keyed by NPC name, used when
-the addon has no id, name the line's own file, since same-named NPCs can differ in voice. Progress text is never voiced and never split.
+the addon has no id, name the line's own file, since same-named NPCs can differ in voice. Progress text is split like the rest.
 
 An admin can add a speaker the game data lacks, from the explorer: the person icon under a
 speaker's id adds another NPC who says that line, by kind and id. One nobody has answered is
@@ -1460,7 +1469,7 @@ each client locale's `Gossip/<locale>.lua` carries the same in its own text. Onl
 two or more wordings gets an entry. The addon matches the quest window's text against them as
 it matches gossip (similarity 0.7); below that it plays nothing and offers Contribute. A client
 whose language has fewer than two wordings of a moment plays the moment's file, as before.
-Progress text is kept but never voiced.
+Progress text is matched like the rest.
 
 ## Addon Install
 

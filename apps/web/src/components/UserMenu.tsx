@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "@/components/LocaleLink";
-import { useGrants } from "@/components/GrantsProvider";
+import { useGrants, usePendingPacks } from "@/components/GrantsProvider";
 import { useLang } from "@/components/LangProvider";
 import { useCan } from "@/components/useCan";
 import { Menu, ShieldCheck } from "lucide-react";
@@ -9,12 +9,13 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 
 import LanguageSwitcher from "@/components/LanguageSwitcher";
+import PendingCount, { packsWaiting } from "@/components/PendingCount";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { signOut, useSession } from "@/lib/auth-client";
-import { isAdmin, langsWhere } from "@/lib/permissions";
+import { isAdmin, langsWhere, roleLabel } from "@/lib/permissions";
 import { triages } from "@/lib/reports/reports";
 import { cn } from "@/lib/utils";
 
@@ -31,7 +32,12 @@ const SECTIONS = [
   { href: "/contribute", label: "Contribute" },
 ];
 
-type MenuLink = { href: string; label: string; admin?: boolean };
+type MenuLink = {
+  href: string;
+  label: string;
+  admin?: boolean;
+  count?: { value: number; title: string };
+};
 
 /** A column of links for the burger, or a row for the header. */
 function Links({ links, column, onPick }: { links: MenuLink[]; column?: boolean; onPick?: () => void }) {
@@ -47,6 +53,7 @@ function Links({ links, column, onPick }: { links: MenuLink[]; column?: boolean;
         {/* Gold and a shield, so the way into the admin pages does not read as one more section. */}
         {link.admin && <ShieldCheck aria-hidden />}
         {link.label}
+        {link.count && <PendingCount {...link.count} />}
       </Link>
     </Button>
   ));
@@ -71,6 +78,7 @@ export default function UserMenu() {
   // on an English page is a member there, and is offered what a member is.
   const may = useCan();
   const grants = useGrants();
+  const [pendingPacks] = usePendingPacks();
   const lang = useLang();
 
   // Rendering nothing until the session resolves avoids a "Sign in" flash for a user who
@@ -99,6 +107,8 @@ export default function UserMenu() {
         isAdmin(role) && { href: "/npcs", label: "NPCs" },
         // Who did what in this language: for whoever answers for the grants in it.
         may("admin") && { href: "/activity", label: "Activity" },
+        // Not per language: a pack names its own.
+        { href: "/packs", label: "My packs" },
         // Everyone signed in has one, and for somebody who may regenerate it is where their key
         // lives - which is the thing standing between them and the Regenerate button.
         { href: "/profile", label: "Profile" },
@@ -121,6 +131,8 @@ export default function UserMenu() {
                 : "/admin/dashboard",
             label: "Admin",
             admin: true,
+            // Always 0 for a team's admin: only a site admin decides packs.
+            count: packsWaiting(pendingPacks),
           },
         ]
       : [];
@@ -135,7 +147,7 @@ export default function UserMenu() {
     <div className="flex items-center justify-between gap-2 px-2 py-1.5">
       <span className="text-muted-foreground truncate text-xs">{session.user.email}</span>
       <Badge variant="outline" className="uppercase">
-        {role ?? "member"}
+        {roleLabel(role)}
       </Badge>
     </div>
   ) : null;
