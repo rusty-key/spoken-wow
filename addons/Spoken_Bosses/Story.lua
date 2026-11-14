@@ -37,6 +37,7 @@ function Bosses:SetupStories()
 		order = 5,
 		packs = function() return Bosses:PackNames() end,
 	})
+	if Spoken.RegisterStoryTeller then Spoken:RegisterStoryTeller("boss", Bosses.EncounterTeller) end
 end
 
 --- Whether this character has been shown the story of the boss `key` of `map`.
@@ -77,6 +78,49 @@ function Bosses:PlayStory(map, key)
 	if not clip or clip.textOnly then return false end
 	return source:PlayNow(clip) and true or false
 end
+
+-- A boss's story for another addon (Spoken:PlayStory("boss", encounterID)).
+
+-- Whether the voiced story of the boss `key` of `map` can be played: the part on, a pack that has
+-- it, and the boss met or Unlock Unfound Bosses on.
+local function CanPlay(map, key)
+	if Spoken.IsPartOn and not Spoken:IsPartOn("bosses") then return false end
+	local unlocked = SpokenBossesSettings ~= nil and SpokenBossesSettings.unlockUnfound == true
+	if not (unlocked or Bosses:IsBossFound(map, key)) then return false end
+	local clip = Bosses:StoryClip(map, key)
+	return clip ~= nil and not clip.textOnly
+end
+
+-- The first boss of the encounter whose story can be played, as map, key.
+local function Playable(encounterID)
+	for _, boss in ipairs(Bosses:BossesOfEncounter(encounterID)) do
+		if CanPlay(boss.map, boss.key) then return boss.map, boss.key end
+	end
+end
+
+Bosses.EncounterTeller = {
+	Has = function(encounterID) return Playable(encounterID) ~= nil end,
+	Play = function(encounterID)
+		local map, key = Playable(encounterID)
+		return map ~= nil and Bosses:PlayStory(map, key)
+	end,
+	IsPlaying = function(encounterID)
+		local head = Spoken:GetNowPlaying()
+		if not (head and source and head.source == source) or Spoken:IsPaused() then return false end
+		for _, boss in ipairs(Bosses:BossesOfEncounter(encounterID)) do
+			if head.mapID == boss.map and head.bossKey == boss.key then return true end
+		end
+		return false
+	end,
+	Stop = function(encounterID)
+		local stopped = false
+		for _, boss in ipairs(Bosses:BossesOfEncounter(encounterID)) do
+			local clip = Bosses:QueuedStory(boss.map, boss.key)
+			if clip and source:Remove(clip) then stopped = true end
+		end
+		return stopped
+	end,
+}
 
 -- The world bosses the player met alive: [guid] = { boss, since,
 -- zone }. The client clears the target as the boss dies, so the target is no help then; the boss is

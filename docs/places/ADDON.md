@@ -21,6 +21,10 @@ What Places adds to Spoken:
   `entry` may provide its own `target`, `play` and `reportAction` actions.
   `PlayLore` and `ShowLoreFor` check neither the lock nor the part, so an addon checks
   `Spoken:IsPartOn("places")` and `IsLocked` before calling them.
+  These methods are not frozen. An addon that only wants a dungeon's story read calls Spoken's
+  `HasStory`, `PlayStory`, `IsPlayingStory` and `StopStory` with `"instance"` and the instance
+  map (`addons/Spoken/API.lua`); Places answers them (`InstanceTeller` in `Audio.lua`), checking
+  the part, the lock and the voice pack itself.
 
 The Enable switch on the Places page is Spoken's switch for the part (`Spoken:IsPartOn("places")`).
 With it off the map panel, its side tab and the Compendium tab go away.

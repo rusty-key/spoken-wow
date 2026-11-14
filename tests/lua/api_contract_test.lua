@@ -63,6 +63,8 @@ local METHODS = {
     "CreateSpeakerFace",
     -- Play, Skip and Report on DialogueUI's quest window and book view
     "CreateDialogueUIRow",
+    -- a dungeon's or a boss's story, for another addon's Play button
+    "RegisterStoryTeller", "HasStory", "PlayStory", "IsPlayingStory", "StopStory",
 }
 for _, name in ipairs(METHODS) do
     Expect("Spoken:" .. name .. " exists", type(Spoken[name]), "function")
@@ -119,6 +121,26 @@ Spoken:AddGate(function() return "held by the player" end)
 local held = H.Clip()
 src:Enqueue(held)
 Expect("a player-wide gate holds every source", Spoken:GetHeldReason(held), "held by the player")
+
+---------------------------------------------------------------- stories
+-- No teller for a kind, or no id: every answer is false and nothing is called.
+Expect("a kind no module tells has no story", tostring(Spoken:HasStory("contract", 1)) .. " "
+    .. tostring(Spoken:PlayStory("contract", 1)) .. " " .. tostring(Spoken:IsPlayingStory("contract", 1)) .. " "
+    .. tostring(Spoken:StopStory("contract", 1)), "false false false false")
+local told = {}
+Spoken:RegisterStoryTeller("contract", {
+    Has = function(id) return id == 7 end,
+    Play = function(id) table.insert(told, "play " .. id); return true end,
+    IsPlaying = function(id) return id == 7 end,
+    Stop = function(id) table.insert(told, "stop " .. id); return true end,
+})
+Expect("HasStory asks the kind's teller", tostring(Spoken:HasStory("contract", 7)) .. " " .. tostring(Spoken:HasStory("contract", 8)),
+    "true false")
+Expect("PlayStory plays only a story the teller has", tostring(Spoken:PlayStory("contract", 8)) .. " "
+    .. tostring(Spoken:PlayStory("contract", 7)) .. " " .. table.concat(told, ","), "false true play 7")
+Expect("IsPlayingStory and StopStory ask it too", tostring(Spoken:IsPlayingStory("contract", 7)) .. " "
+    .. tostring(Spoken:StopStory("contract", 7)) .. " " .. told[2], "true true stop 7")
+Expect("no id is no story", Spoken:HasStory("contract", nil), false)
 
 ---------------------------------------------------------------- registries
 Spoken:RegisterBullet("contract-bullet", "Interface\\X", 12)
