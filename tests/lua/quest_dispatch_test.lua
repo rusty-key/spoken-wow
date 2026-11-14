@@ -406,6 +406,26 @@ VO.Addon.db.profile.Audio.ReadAfterClose = false
 Expect("a quest switch before progress stabilizes does not replay both pages",
     string.format("%d-complete", quests[2]))
 
+-- A reward from quest A can be followed immediately by quest B's progress without a close event.
+-- The unread pages must still split at B, rather than replaying A's completion with B's progress.
+StartScenario()
+VO.Addon.db.profile.Audio.ReadAfterClose = true
+world.questID = full
+stub.ShowPanel("QuestFrameProgressPanel")
+stub.FireEvent("QUEST_PROGRESS")
+stub.ShowPanel("QuestFrameRewardPanel")
+stub.FireEvent("QUEST_COMPLETE")
+world.questID = followUp
+stub.ShowPanel("QuestFrameProgressPanel")
+stub.FireEvent("QUEST_PROGRESS")
+world.questID = 0
+stub.ShowPanel(nil)
+stub.FireEvent("QUEST_FINISHED")
+stub.Advance(5)
+VO.Addon.db.profile.Audio.ReadAfterClose = false
+Expect("a reward-to-progress switch does not combine quest pages",
+    string.format("%d-progress", followUp))
+
 -- An unresolved replacement offer must clear pending audio before capture returns without an ID.
 StartScenario()
 VO.Addon.db.profile.Audio.ReadAfterClose = true

@@ -187,19 +187,8 @@ local function CaptureQuestSnapshot(event)
             for _, old in ipairs(questSnapshots) do
                 if old.event == "QUEST_PROGRESS" and not old.dispatched and not old.passed and
                     old.interactionID == questInteractionID and old.questID ~= questID then
-                    local hasCompletion = false
-                    for _, related in ipairs(questSnapshots) do
-                        if related.event == "QUEST_COMPLETE" and not related.dispatched and
-                            not related.passed and related.interactionID == questInteractionID and
-                            related.questID == old.questID then
-                            hasCompletion = true
-                            break
-                        end
-                    end
-                    if not hasCompletion then
-                        startsNewInteraction = true
-                        break
-                    end
+                    startsNewInteraction = true
+                    break
                 end
             end
         end
