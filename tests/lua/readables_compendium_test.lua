@@ -73,7 +73,10 @@ dofile(READABLES .. "Data/Places.lua")
 local L = B.L
 Expect("Fishing Tournament keeps its direct reward quest", SpokenReadablesPlaces.books[2786].quests[1], 8228)
 Expect("Brazier of Invocation keeps its direct reward quest", SpokenReadablesPlaces.books[2859].quests[1], 8996)
-Expect("the string-keyed journal remains in Places", SpokenReadablesPlaces.books["nc0bf109d-e5d1-494d-ba1b-12a6b27352a8"] ~= nil, true)
+local JOURNAL = SpokenReadablesPlaces.books["nc0bf109d-e5d1-494d-ba1b-12a6b27352a8"]
+Expect("the string-keyed journal remains in Places", JOURNAL ~= nil, true)
+Expect("the journal keeps its generated type", JOURNAL.type, "journal")
+Expect("the journal keeps its direct reward quest", JOURNAL.quests[1], 97277)
 -- One readable whose event the data does not name, as an older export left every one.
 SpokenReadablesPlaces.books[2878].event = true
 

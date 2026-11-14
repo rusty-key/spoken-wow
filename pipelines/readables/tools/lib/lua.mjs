@@ -154,7 +154,7 @@ export function ownersLua(entries) {
 
 /**
  * @param entries corpus rows: pageId, bookId, pageNumber, pageCount, title, text, and
- *   optionally ownerKind and ownerIds
+ *   optionally bookTitle, ownerKind and ownerIds
  */
 export function booksLua(entries) {
   // Sorted throughout, so re-exporting an unchanged corpus produces an identical file and a
@@ -163,7 +163,7 @@ export function booksLua(entries) {
 
   const books = new Map();
   for (const entry of sorted) {
-    if (!books.has(entry.bookId)) books.set(entry.bookId, { title: entry.title, pages: [] });
+    if (!books.has(entry.bookId)) books.set(entry.bookId, { title: entry.bookTitle ?? entry.title, pages: [] });
     books.get(entry.bookId).pages.push(entry.pageId);
   }
 
