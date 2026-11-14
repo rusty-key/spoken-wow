@@ -123,7 +123,7 @@ export default function SortQueue({
   const [versions, setVersions] = useState<Record<string, number>>({});
   const [busy, setBusy] = useState<Busy>(null);
   const [error, setError] = useState<string | null>(null);
-  /** For one line: a card holding several shows it on that line only. */
+  /** On one line's card, or on the whole card when `lineId` is null. */
   const [notice, setNotice] = useState<{ lineId: string | null; text: string } | null>(null);
   /** The line a regeneration was asked for, which another card may be picked away from. */
   const [regenerating, setRegenerating] = useState<string | null>(null);
@@ -402,7 +402,7 @@ export default function SortQueue({
           />
       ))}
 
-      {notice && !ids.includes(notice.lineId ?? "") ? <p className="text-xs text-emerald-500">{notice.text}</p> : null}
+      {notice && notice.lineId === null ? <p className="text-xs text-emerald-500">{notice.text}</p> : null}
 
       <section className="flex flex-col gap-2">
         <p className="text-sm font-medium">
@@ -415,11 +415,11 @@ export default function SortQueue({
             expanded={expanded}
             latestPacks={latestPacks}
             canContribute={canContribute}
-            onFixed={(fixed, wording) => {
-              const id = wording ?? fixed.lineId ?? lineId;
-              // The accept rewrote the line's text, not its take: it is voiced again only on Regenerate.
-              setNotice({ lineId: id, text: "Text updated from the report. Regenerate to voice it." });
-              if (id) void load(id);
+            onFixed={() => {
+              // The accept rewrote a line's text, not its take: it is voiced again only on Regenerate.
+              // Which line is the server's choice, so the notice and the reload are the card's.
+              setNotice({ lineId: null, text: "Text updated from the report. Regenerate to voice it." });
+              for (const id of ids) void load(id);
             }}
           />
         ))}
@@ -694,7 +694,7 @@ function ReportPreview({
   expanded: boolean;
   latestPacks: PackVersions;
   canContribute: boolean;
-  onFixed: (report: Report, lineId: string | null) => void;
+  onFixed: () => void;
 }) {
   const [opened, setOpened] = useState(false);
   return (

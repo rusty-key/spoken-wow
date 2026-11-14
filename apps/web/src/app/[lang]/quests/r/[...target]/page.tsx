@@ -125,12 +125,14 @@ export default async function ReportPage({
                 : "This character has more than one line. Which one sounded wrong?"}
             </p>
             <ul className="flex flex-col gap-2 text-sm">
-              {choices.map((candidate) => (
+              {choices.map((candidate) => {
+                const current = candidate === line;
+                return (
                 <li key={candidate.lineId}>
                   <Link
                     href={`/quests/r/${formatTarget(target)}?line=${encodeURIComponent(candidate.lineId)}`}
-                    className={cn("underline-offset-2 hover:underline", candidate === line && "font-medium")}
-                    aria-current={candidate === line ? "true" : undefined}
+                    className={cn("underline-offset-2 hover:underline", current && "font-medium")}
+                    aria-current={current ? "true" : undefined}
                   >
                     {candidate.text.slice(0, 120)}
                     {candidate.text.length > 120 ? "…" : ""}
@@ -141,7 +143,8 @@ export default async function ReportPage({
                     · {candidate.npcName} · {candidate.voice}
                   </span>
                 </li>
-              ))}
+                );
+              })}
             </ul>
           </section>
         ) : null}
