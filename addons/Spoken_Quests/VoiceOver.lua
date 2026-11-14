@@ -180,12 +180,13 @@ local function CaptureQuestSnapshot(event)
     end
     if event ~= "QUEST_DETAIL" then
         -- A fast hand-off can expose the next quest's progress or reward without a detail page.
-        -- Keep its close replay separate from an unread progress page or held line of the old quest.
+        -- Keep its close replay separate from an unread progress or reward page of the old quest.
         local startsNewInteraction = pendingRead and pendingRead.questID ~= questID or
             pendingProgressRead and pendingProgressRead.questID ~= questID
         if not startsNewInteraction then
             for _, old in ipairs(questSnapshots) do
-                if old.event == "QUEST_PROGRESS" and not old.dispatched and not old.passed and
+                if (old.event == "QUEST_PROGRESS" or old.event == "QUEST_COMPLETE") and
+                    not old.dispatched and not old.passed and
                     old.interactionID == questInteractionID and old.questID ~= questID then
                     startsNewInteraction = true
                     break
@@ -1878,18 +1879,23 @@ function Addon:QUEST_FINISHED()
     -- progress page captured during a fast transition stays ahead of the reward page.
     local pending = pendingRead
     local pendingProgress = pendingProgressRead
+    local hadPending = pending ~= nil
     pendingProgressRead = nil
-    if (pending or CurrentQuestID() == 0 or Addon.dataModulesPending) and
+    if pending and EVENT_OF_SOUND[pending.event] == "QUEST_PROGRESS" then
+        pendingProgress = pending
+        pending = nil
+    end
+    if pendingProgress then
+        -- A held progress line must precede unread snapshots replayed for the closed window.
+        pendingProgress.addedCallback = nil
+        Player:Enqueue(pendingProgress)
+    end
+    if (hadPending or CurrentQuestID() == 0 or Addon.dataModulesPending) and
         Addon.ReplayClosedQuestSnapshots then
         Addon:ReplayClosedQuestSnapshots("the dialog closed (QUEST_FINISHED)",
             lastClosedQuestInteractionID)
     end
     pendingRead = nil
-    if pendingProgress then
-        -- A progress line held for this same close was superseded by completion; release it first.
-        pendingProgress.addedCallback = nil
-        Player:Enqueue(pendingProgress)
-    end
     if pending then
         -- Its window has closed, so it is no window's line: the next close leaves it playing.
         pending.addedCallback = nil

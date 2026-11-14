@@ -371,6 +371,39 @@ VO.Addon.db.profile.Audio.ReadAfterClose = false
 Expect("Read When Window Closes releases stabilized progress first",
     string.format("%d-progress, %d-complete", full, full))
 
+-- If completion arrives before it stabilizes, the held progress line must still precede the
+-- completion snapshot replayed when the window closes.
+StartScenario()
+VO.Addon.db.profile.Audio.ReadAfterClose = true
+world.questID = full
+stub.ShowPanel("QuestFrameProgressPanel")
+stub.Advance(0.5)
+stub.ShowPanel("QuestFrameRewardPanel")
+stub.FireEvent("QUEST_COMPLETE")
+world.questID = 0
+stub.ShowPanel(nil)
+stub.FireEvent("QUEST_FINISHED")
+stub.Advance(5)
+VO.Addon.db.profile.Audio.ReadAfterClose = false
+Expect("a fast close releases held progress before completion replay",
+    string.format("%d-progress, %d-complete", full, full))
+
+-- A client may retain the quest ID after QUEST_FINISHED. The held progress must still trigger
+-- replay of the unread completion in that case.
+StartScenario()
+VO.Addon.db.profile.Audio.ReadAfterClose = true
+world.questID = full
+stub.ShowPanel("QuestFrameProgressPanel")
+stub.Advance(0.5)
+stub.ShowPanel("QuestFrameRewardPanel")
+stub.FireEvent("QUEST_COMPLETE")
+stub.ShowPanel(nil)
+stub.FireEvent("QUEST_FINISHED")
+stub.Advance(5)
+VO.Addon.db.profile.Audio.ReadAfterClose = false
+Expect("a retained quest ID still replays completion after held progress",
+    string.format("%d-progress, %d-complete", full, full))
+
 -- A completion from another quest must not be paired with the preceding quest's pending progress.
 StartScenario()
 VO.Addon.db.profile.Audio.ReadAfterClose = true
@@ -424,6 +457,24 @@ stub.FireEvent("QUEST_FINISHED")
 stub.Advance(5)
 VO.Addon.db.profile.Audio.ReadAfterClose = false
 Expect("a reward-to-progress switch does not combine quest pages",
+    string.format("%d-progress", followUp))
+
+-- A reward page can be replaced by another quest's progress without QUEST_FINISHED or QUEST_DETAIL.
+-- Closing the second quest must not replay the first quest's unread reward.
+StartScenario()
+VO.Addon.db.profile.Audio.ReadAfterClose = true
+world.questID = full
+stub.ShowPanel("QuestFrameRewardPanel")
+stub.FireEvent("QUEST_COMPLETE")
+world.questID = followUp
+stub.ShowPanel("QuestFrameProgressPanel")
+stub.FireEvent("QUEST_PROGRESS")
+world.questID = 0
+stub.ShowPanel(nil)
+stub.FireEvent("QUEST_FINISHED")
+stub.Advance(5)
+VO.Addon.db.profile.Audio.ReadAfterClose = false
+Expect("a reward-only quest switch does not replay the old reward",
     string.format("%d-progress", followUp))
 
 -- An unresolved replacement offer must clear pending audio before capture returns without an ID.
