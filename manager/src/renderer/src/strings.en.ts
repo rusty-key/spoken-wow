@@ -251,6 +251,7 @@ export const S_EN = {
     neverSent: 'Nothing sent yet.',
     sending: 'Sending',
     sendNow: 'Send Now',
+    sendDone: 'Sent successfully.',
     resetId: 'Reset Id',
     resetDone: 'This manager has a new id. Lines already sent are not sent again.',
     contributor: 'Contributor',
