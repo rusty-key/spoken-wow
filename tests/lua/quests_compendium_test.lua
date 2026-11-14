@@ -1391,6 +1391,22 @@ Expect("...another character's name where the player's was", (PageWords() or "")
 stub.world.playerName = "Tester"
 local kept = VO.Addon.db.global.CompendiumText
 Expect("...kept by language", kept.deDE[KOBOLDS] ~= nil and kept.enUS == nil, true)
+
+-- An item starter keeps its real icon after the item has left the player's bags. The data pack
+-- knows the item id; the client supplies its icon directly instead of requiring a bag slot.
+do
+    local ITEM, ITEM_ICON, oldCItem = 211315, "Interface\\Icons\\INV_Misc_Map_01", _G.C_Item
+    _G.C_Item = { GetItemInfoInstant = function(id)
+        return id, "Quest", "Note", "", id == ITEM and ITEM_ICON or nil
+    end }
+    testPack.ItemIDLookupByQuestID = { [CANDLES] = ITEM }
+    Tab:Open(CANDLES)
+    local offer = page.body.lastParts[1]
+    Expect("an item-started quest uses the item's real icon", offer.face.viewport.texture:GetTexture(), ITEM_ICON)
+    testPack.ItemIDLookupByQuestID, _G.C_Item = nil, oldCItem
+    Tab:Open(KOBOLDS)
+end
+
 -- A window whose id, title and words the game hands over as secrets keeps nothing.
 stub.world.questID = JENNEA
 stub.world.title = "Versiegelte Befehle"

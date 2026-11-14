@@ -1179,8 +1179,12 @@ local function FaceSpeaker(id, moment)
     if Enums.GUID:IsCreature(kind) then
         return { creatureID = speaker, displayID = VO.Player:QuestFace(speaker), bullet = bullet }
     end
-    local icon = kind == Enums.GUID.Item and Spoken.QuestItemIcon and Spoken:QuestItemIcon(id) or nil
-    return { objectOrItem = true, icon = icon, bullet = bullet }
+    local icon, crop
+    if kind == Enums.GUID.Item then
+        if Spoken.ItemIcon then icon, crop = Spoken:ItemIcon(speaker) end
+        if not icon and Spoken.QuestItemIcon then icon, crop = Spoken:QuestItemIcon(id) end
+    end
+    return { objectOrItem = true, icon = icon, iconCrop = crop, bullet = bullet }
 end
 
 -- A quest's words in parts, the offer and the hand-in, each headed by the face of who says it

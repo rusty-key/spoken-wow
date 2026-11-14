@@ -462,6 +462,20 @@ function Spoken:QuestItemIcon(questID)
     return BagIcon(function(bag, slot) return SlotQuest(bag, slot) == questID end)
 end
 
+--- The icon of item `itemID`, with its crop. The item may no longer be in the player's bags.
+function Spoken:ItemIcon(itemID)
+    if not itemID then return nil end
+    local getInfo = (C_Item and C_Item.GetItemInfoInstant) or GetItemInfoInstant
+    if getInfo then
+        local _, _, _, _, icon = getInfo(itemID)
+        if icon then return icon, ICON_CROP end
+    end
+    local getIcon = (C_Item and C_Item.GetItemIconByID) or GetItemIcon
+    local icon = getIcon and getIcon(itemID) or nil
+    if not icon then return nil end
+    return icon, ICON_CROP
+end
+
 --- The id and name of the bag item that starts `questID`, read from its link: an item's GUID
 --- carries no item id, so the bags are the only place a quest panel's item can be named.
 function Spoken:QuestItem(questID)
