@@ -253,6 +253,22 @@ stub.Advance(5)
 Expect("auto turn-in keeps progress captured during the quest-ID gap",
     string.format("%d-progress, %d-complete", full, full))
 
+-- Some automatic turn-in clients advance the visible panel without delivering QUEST_PROGRESS.
+-- The watcher must retain the progress page it saw before the reward page replaced it.
+StartScenario()
+world.questID = full
+stub.ShowPanel("QuestFrameProgressPanel")
+stub.Advance(0.1)
+stub.ShowPanel("QuestFrameRewardPanel")
+stub.Advance(0.1)
+stub.Advance(0.5)
+world.questID = 0
+stub.ShowPanel(nil)
+stub.FireEvent("QUEST_FINISHED")
+stub.Advance(5)
+Expect("auto turn-in keeps progress when the panel changes without its event",
+    string.format("%d-progress, %d-complete", full, full))
+
 -- A turn-in after a page that names no quest reads nothing either.
 StartScenario()
 world.questID = 0

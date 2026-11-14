@@ -720,10 +720,16 @@ function Addon:OnInitialize()
         candidateAge = 0,
         retryDelay = 0,
         lastHandledAt = 0,
+        candidateEvent = nil,
+        candidateQuestID = nil,
+        candidateTitle = nil,
     }
 
     local function ResetCandidate(state)
         state.candidateKey = nil
+        state.candidateEvent = nil
+        state.candidateQuestID = nil
+        state.candidateTitle = nil
         state.candidateAge = 0
         state.retryDelay = 0
         state.completedKey = nil
@@ -853,9 +859,23 @@ function Addon:OnInitialize()
             error(event)
         end
         event = event or "QUEST_DETAIL"
+        -- A fast automatic turn-in can change the visible panel without sending QUEST_PROGRESS.
+        -- Keep the text from the progress page while its globals still describe that page.
+        if event == "QUEST_PROGRESS" then
+            pcall(CaptureQuestSnapshot, event)
+        end
         local key = PageKey(event, questID, questTitle)
         if key ~= state.candidateKey then
+            if state.candidateEvent == "QUEST_PROGRESS" and event == "QUEST_COMPLETE" and
+                state.candidateQuestID == questID and state.candidateTitle == questTitle and
+                self:ReadsItself("QUEST_PROGRESS") then
+                ReplayQuestSnapshots("the progress page advanced to completion", questID,
+                    { QUEST_PROGRESS = true })
+            end
             state.candidateKey = key
+            state.candidateEvent = event
+            state.candidateQuestID = questID
+            state.candidateTitle = questTitle
             state.candidateAge = 0
             state.retryDelay = 0
             state.completedKey = nil
