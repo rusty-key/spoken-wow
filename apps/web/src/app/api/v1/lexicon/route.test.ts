@@ -36,7 +36,7 @@ let user: string;
 let removeUser: () => Promise<void>;
 
 async function token(access: "read" | "write" = "write") {
-  return (await createToken({ userId: user, lang: LANG, access, label: "agent", expiresAt: new Date(Date.now() + 86_400_000) }))
+  return (await createToken({ userId: user, lang: LANG, access, generate: false, label: "agent", expiresAt: new Date(Date.now() + 86_400_000) }))
     .token;
 }
 

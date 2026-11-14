@@ -28,11 +28,15 @@ export async function POST(request: Request) {
   const body = (await request.json().catch(() => ({}))) as {
     lang?: unknown;
     access?: unknown;
+    generate?: unknown;
     label?: unknown;
     expiresAt?: unknown;
   };
   if (!isLang(body.lang)) return invalid("lang must be a language");
-  if (!isTokenAccess(body.access)) return invalid("access must be read or write");
+  if (!isTokenAccess(body.access)) return invalid("access must be none, read or write");
+  if (body.generate !== undefined && typeof body.generate !== "boolean") return invalid("generate must be true or false");
+  const generate = body.generate === true;
+  if (body.access === "none" && !generate) return invalid("a token must read, write or generate");
 
   const label = typeof body.label === "string" ? body.label.trim() : "";
   if (!label || label.length > MAX_LABEL) return invalid(`label is required, at most ${MAX_LABEL} characters`);
@@ -40,9 +44,11 @@ export async function POST(request: Request) {
   const expiresAt = typeof body.expiresAt === "string" ? new Date(body.expiresAt) : null;
   if (!expiresAt || !(expiresAt.getTime() > Date.now())) return invalid("expiresAt must be a date in the future");
 
-  if (!can(await viewerOf(session), "text", body.lang)) return FORBIDDEN();
+  const viewer = await viewerOf(session);
+  if (body.access !== "none" && !can(viewer, "text", body.lang)) return FORBIDDEN();
+  if (generate && !can(viewer, "regenerate", body.lang)) return FORBIDDEN();
 
   return Response.json(
-    await createToken({ userId: session.user.id, lang: body.lang, access: body.access, label, expiresAt }),
+    await createToken({ userId: session.user.id, lang: body.lang, access: body.access, generate, label, expiresAt }),
   );
 }

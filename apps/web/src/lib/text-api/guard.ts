@@ -2,7 +2,8 @@
  * The access boundary for /api/v1, which has a token where the site's routes have a session.
  *
  * The grant is asked for on every request rather than when the token was made, so taking `text`
- * away from somebody kills their tokens at once instead of at their expiry.
+ * (or `regenerate`, for a generate token) away from somebody kills their tokens at once instead
+ * of at their expiry.
  */
 import "server-only";
 
@@ -18,15 +19,23 @@ export type TokenContext = {
   role: string | null;
   lang: Lang;
   access: TokenAccess;
+  generate: boolean;
 };
 
 const BEARER = /^Bearer\s+(\S+)$/;
 
-/** `also` is a grant a route needs on top of `text`: lexicon writes need `configure`, as on the site. */
+export type TokenNeed = "read" | "write" | "generate" | "any";
+
+/**
+ * `need` is the scope the route works under: `read` and `write` need text access, `generate`
+ * needs the generate flag, `any` takes either. Each is checked against the owner's grant now.
+ * `also` is a grant a route needs on top: lexicon writes need `configure`, as on the site.
+ */
 export async function requireToken(
   request: Request,
-  options: { write?: boolean; also?: Capability } = {},
+  options: { need?: TokenNeed; also?: Capability } = {},
 ): Promise<{ context: TokenContext; denied: null } | { context: null; denied: Response }> {
+  const need = options.need ?? "read";
   const denied = (status: number, error: string) => ({
     context: null,
     denied: Response.json({ error }, { status }),
@@ -37,10 +46,27 @@ export async function requireToken(
   if (!token) return denied(401, "a valid API token is required");
 
   const viewer = await viewerOf({ user: { id: token.userId, role: token.role } });
-  if (!can(viewer, "text", token.lang)) {
-    return denied(403, `this token's owner is not a text maintainer in ${token.lang}`);
+  const hasText = token.access !== "none";
+  const textOk = hasText && can(viewer, "text", token.lang);
+  const generateOk = token.generate && can(viewer, "regenerate", token.lang);
+
+  const noText = () =>
+    hasText
+      ? denied(403, `this token's owner is not a text maintainer in ${token.lang}`)
+      : denied(403, "this token has no text access");
+  const noGenerate = () =>
+    token.generate
+      ? denied(403, `this token's owner does not hold regenerate in ${token.lang}`)
+      : denied(403, "this token cannot generate");
+
+  if (need === "generate") {
+    if (!generateOk) return noGenerate();
+  } else if (need === "any") {
+    if (!textOk && !generateOk) return hasText ? noText() : noGenerate();
+  } else {
+    if (!textOk) return noText();
+    if (need === "write" && token.access !== "write") return denied(403, "this token is read-only");
   }
-  if (options.write && token.access !== "write") return denied(403, "this token is read-only");
   if (options.also && !can(viewer, options.also, token.lang)) {
     return denied(403, `this token's owner does not hold ${options.also} in ${token.lang}`);
   }
@@ -52,6 +78,7 @@ export async function requireToken(
       role: token.role,
       lang: token.lang,
       access: token.access,
+      generate: token.generate,
     },
     denied: null,
   };

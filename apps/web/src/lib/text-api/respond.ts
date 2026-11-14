@@ -3,7 +3,7 @@ import "server-only";
 import { isSource, type Source } from "@/lib/sections";
 
 import { sections } from "./index";
-import { BAD_VARIANT, isVariant, type SectionApi } from "./types";
+import { BAD_VARIANT, isVariant, type ReferenceItem, type SectionApi, type TextItem } from "./types";
 
 export const PAGE_SIZE = 500;
 
@@ -11,6 +11,11 @@ const VARIANT = /^\d+$/;
 
 export function invalid(error: string): Response {
   return Response.json({ error }, { status: 400 });
+}
+
+/** The 400 for a request with a query string, or null when it has none. */
+export function noQuery(request: Request, error = "this takes no query string"): Response | null {
+  return new URL(request.url).search ? invalid(error) : null;
 }
 
 export function sectionOf(name: string): { section: Source; api: SectionApi } | Response {
@@ -64,4 +69,12 @@ export function decodeId(id: string): string {
   } catch {
     return id;
   }
+}
+
+export function toReference(item: TextItem): ReferenceItem {
+  const out: ReferenceItem = { id: item.id, text: item.text, name: item.name, group: item.group };
+  if (item.variant !== undefined) out.variant = item.variant;
+  if (item.override !== undefined) out.override = item.override;
+  if (item.short !== undefined) out.short = item.short;
+  return out;
 }

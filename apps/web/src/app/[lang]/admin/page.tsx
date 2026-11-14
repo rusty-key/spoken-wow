@@ -84,7 +84,7 @@ export default async function Page({
   const q = params.q?.trim() ?? "";
   const sort = userSortOf(params.sort, params.dir);
   // Only a site admin gets here: anybody else has a team to show above.
-  const [{ users, total }, grants, keyed, languages] = await Promise.all([
+  const [{ users, total }, grants, keyed, languages, tokens] = await Promise.all([
     listUsers({ q, sort, limit: PAGE_SIZE, offset: (page - 1) * PAGE_SIZE }),
     listGrants(),
     // Which accounts hold a key, and nothing else about it. An admin hands out what
@@ -93,8 +93,8 @@ export default async function Page({
     // not even the redacted hint the owner sees on their own profile.
     userIdsWithApiKey(),
     languageStates(),
+    listAllTokens(),
   ]);
-  const tokens = await listAllTokens();
 
   return (
     <main className="pb-36">

@@ -31,10 +31,11 @@ beforeEach(async () => {
     userId: f.user,
     lang: LANG,
     access: "write",
+    generate: false,
     label: "agent",
     expiresAt: new Date(Date.now() + 86_400_000),
   });
-  context = { tokenId: row.id, userId: f.user, role: null, lang: LANG, access: "write" };
+  context = { tokenId: row.id, userId: f.user, role: null, lang: LANG, access: "write", generate: false };
   return () => f.remove();
 });
 

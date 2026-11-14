@@ -51,7 +51,7 @@ export type ActivityDetail = {
   /** `groupId` when the take was one of several cleared in one click; the page folds it there. */
   "take.acked": { groupId?: string };
   "marks.cleared": { groupId: string; count: number };
-  "batch.queued": { batchId: string; label?: string | null; count: number };
+  "batch.queued": { batchId: string; label?: string | null; count: number; apiTokenId?: string };
   /** `groupId` when one Stop stopped several batches; the page folds it under that press. */
   "batch.stopped": {
     batchId?: string;
