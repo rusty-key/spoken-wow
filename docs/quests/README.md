@@ -991,9 +991,18 @@ holds every address the modules build to `tests/fixtures/report-urls.txt`, which
 `apps/web/src/lib/reports/report-urls.test.ts` opens through the site's routes. Installed copies
 that still build `voiceover.rusty.one/r/…` are redirected.
 
+An address can mean several lines: a quest given in more than one voice
+(`q:96774:accept` and `q:96774:accept~troll-male-shaman`), or every line of an NPC. So a
+Report on a clip that played adds the file it played, `?file={fileName}`, which is the
+corpus's `fileName` for that line. A Report with nothing played (a silent quest, the quest
+log) sends the bare address.
+
 The landing page resolves the address against the corpus, plays the take that is currently
-live, and hosts the form. An address that resolves to nothing still renders the form — an
-addon sending players to a page the corpus does not know about is itself a bug report.
+live, and hosts the form. Of several lines, it takes the one the player picked from its list
+(`?line=`), else the one whose file the addon played, and otherwise the report is filed with no
+line. The list stays beside a line the file picked, since the file can be a sibling's (an alias,
+a fallback language) and only the reporter knows which they meant. An address that resolves to nothing still renders the form — an addon sending players to
+a page the corpus does not know about is itself a bug report.
 
 `POST /api/reports` is the only unauthenticated write in the explorer. It is defended by a
 honeypot field answered with `200` rather than `400` (an error only teaches a script to stop
@@ -1013,7 +1022,9 @@ file through the normal flow.
 `/reports/sort` is the same triage one line at a time, laid out for a phone. It offers quests
 (gossip included), readables and places with how many lines each has open, then walks one section's
 lines, most reported first, each with its line, its takes, its reports, the explorers' player
-and Play, Edit and Regenerate.
+and Play, Edit and Regenerate. A quests report filed with no line shows every line its address
+resolves to now, each with its own Play, Edit and Regenerate; the keys and the player act on the
+one last used.
 Fixed, Not a problem and Minor answer every open report on the line. Skip is per person and stored in
 `report_skip` (migration 0074), per report: a line comes back when a new report arrives on it,
 and Reset on the picker brings back everything that person skipped in that section.
