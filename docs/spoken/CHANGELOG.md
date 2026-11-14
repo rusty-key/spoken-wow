@@ -2,6 +2,10 @@
 
 Spoken Player until 3.0.0, when it became Spoken and took its modules into one download.
 
+## Unreleased
+
+- **`/spq mute [on | off]` silences Spoken audio without disabling its features.** Quest, lore and
+  readable text continues to work while audio is muted. *([Trusty565](https://github.com/Trusty565))*
 ## 3.9.0 — 2026-11-14
 
 - **A report names the line you heard.** When a quest is read in more than one voice, or an NPC has

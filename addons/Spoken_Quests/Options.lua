@@ -128,6 +128,17 @@ local DataModulesTab =
 }
 
 ---@type AceConfigOptionsTable
+local function SetMute(rest)
+    if rest == "on" then
+        Spoken:Mute()
+    elseif rest == "off" then
+        Spoken:Unmute()
+    else
+        Spoken:ToggleMute()
+    end
+    print("Spoken Quests: " .. (Spoken:IsMuted() and L.AUDIO_MUTED or L.AUDIO_UNMUTED))
+end
+
 local SlashCommands = {
     type = "group",
     name = L.OPT_CMD_GROUP,
@@ -136,6 +147,13 @@ local SlashCommands = {
     dialogHidden = true,
     -- Stop or Replay and Stop All are Spoken's (/sp replay, /sp stopall), not repeated here.
     args = {
+        Mute = {
+            type = "execute",
+            order = 2,
+            name = L.MUTE_AUDIO,
+            desc = L.MUTE_AUDIO,
+            func = function() SetMute("") end,
+        },
         Skip = {
             type = "execute",
             order = 4,
@@ -429,6 +447,23 @@ function Options:Initialize()
         -- name, and a command that still worked would keep the retired one alive in macros
         -- and in what players tell each other.
         LibStub("AceConfig-3.0"):RegisterOptionsTable("SpokenQuests", self.table, { "spokenquests", "spq" })
+    end)
+    RunOptionalStep("mute slash registration", function()
+        local function HandleMute(input, previous)
+            local command = strlower(strtrim(input or ""))
+            local _, _, verb, rest = string.find(command, "^(%S*)%s*(.-)$")
+            if verb == "mute" and (rest == "" or rest == "on" or rest == "off") then
+                SetMute(rest)
+                return
+            end
+            if previous then return previous(input) end
+        end
+        for _, slashCommand in ipairs({ "ACECONSOLE_SPOKENQUESTS", "ACECONSOLE_SPQ" }) do
+            local previous = SlashCmdList[slashCommand]
+            SlashCmdList[slashCommand] = function(input)
+                return HandleMute(input, previous)
+            end
+        end
     end)
     RunOptionalStep("settings panel", function()
         -- One canvas panel of sections rather than a Blizzard category per group. The

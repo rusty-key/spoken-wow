@@ -668,6 +668,10 @@ function Spoken:IsPaused()
     return SoundQueue:IsPaused()
 end
 
+function Spoken:IsMuted()
+    return SoundQueue:IsMuted()
+end
+
 function Spoken:GetHeldReason(clip)
     return SoundQueue:GetHeldReason(clip)
 end
@@ -683,6 +687,18 @@ end
 
 function Spoken:TogglePause()
     return SoundQueue:TogglePauseQueue()
+end
+
+function Spoken:Mute()
+    return SoundQueue:SetMuted(true)
+end
+
+function Spoken:Unmute()
+    return SoundQueue:SetMuted(false)
+end
+
+function Spoken:ToggleMute()
+    return SoundQueue:ToggleMuted()
 end
 
 --- The player's round button, the same one its subtitle shows, for a feature addon's own

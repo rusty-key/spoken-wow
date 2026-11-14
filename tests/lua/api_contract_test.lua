@@ -35,8 +35,8 @@ local METHODS = {
     "RegisterOptionalAction", "RegisterBullet", "RegisterPortraitRenderer",
     -- player-wide queue
     "GetCurrent", "GetNowPlaying", "GetQueue", "GetQueueSize", "GetWaitingCount",
-    "IsPlaying", "IsPaused", "GetHeldReason",
-    "Pause", "Resume", "TogglePause", "Skip", "StopAll", "AddGate", "MuteChannel", "MuteGameDialogueAhead",
+    "IsPlaying", "IsPaused", "IsMuted", "GetHeldReason",
+    "Pause", "Resume", "TogglePause", "Mute", "Unmute", "ToggleMute", "Skip", "StopAll", "AddGate", "MuteChannel", "MuteGameDialogueAhead",
     "EndMuteGameDialogueAhead",
     -- Read in Battlegrounds
     "ReadsHere",
@@ -111,9 +111,16 @@ Spoken:Resume()
 Expect("Resume", Spoken:IsPaused(), false)
 Spoken:TogglePause()
 Expect("TogglePause", Spoken:IsPaused(), true)
+Spoken:Mute()
+Expect("Mute", Spoken:IsMuted(), true)
+Spoken:Unmute()
+Expect("Unmute", Spoken:IsMuted(), false)
+Spoken:ToggleMute()
+Expect("ToggleMute", Spoken:IsMuted(), true)
 Spoken:StopAll()
 Expect("StopAll empties", Spoken:GetQueueSize(), 0)
 Expect("...and unpauses", Spoken:IsPaused(), false)
+Spoken:Unmute()
 
 Spoken:AddGate(function() return "held by the player" end)
 local held = H.Clip()
