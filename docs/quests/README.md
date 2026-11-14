@@ -1892,8 +1892,8 @@ complete words remain the source of truth. The player's name, class and race go 
 and `$R` where the English has them, so another character sees its own. A text kept by a character
 of the other sex is not shown where the English has a `$G`. Progress text without a shipped template
 is kept per character GUID (with the name-and-realm fallback used by clients that do not expose one),
-and is shown only to that character; the earlier name-and-sex record format is still read for
-compatibility. Accept and complete text remains shareable after its placeholders are generalized.
+and is shown only to that character. Accept and complete text remains shareable after its
+placeholders are generalized.
 
 ## Tests
 

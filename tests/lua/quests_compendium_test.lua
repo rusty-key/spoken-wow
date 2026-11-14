@@ -1387,7 +1387,7 @@ QuestMapFrame_ShowQuestDetails(HEIRLOOM)
 Expect("...nor for a quest not started", Tab.mapButton:IsShown(), false)
 
 ---------------------------------------------------------------- another language
--- A German client: the words and the title the quest's window shows are kept, for every
+-- A German client: the title and any words without a shipped English template are kept, for every
 -- character, and shown over the English.
 stub.SetLocale("deDE")
 stub.world.questID = KOBOLDS
@@ -1456,11 +1456,6 @@ Tab:Refresh()
 Click("Koboldkerzen")
 Expect("the first character's progress text is retained",
     (PageWords() or ""):find("Tester, habt Ihr die Kerzen schon gesammelt?", 1, true) ~= nil, true)
-kept.deDE[CANDLES].progress = { text = "Tester, alter Fortschritt.", name = "Tester", sex = 2 }
-Tab:Refresh()
-Click("Koboldkerzen")
-Expect("the previous character-specific record remains compatible",
-    (PageWords() or ""):find("Tester, alter Fortschritt.", 1, true) ~= nil, true)
 stub.world.progressText = "Tester, neuer Fortschritt."
 stub.world.questID = CANDLES
 stub.FireEvent("QUEST_PROGRESS")
@@ -1468,11 +1463,6 @@ stub.world.questID = 0
 Tab:Refresh()
 Click("Koboldkerzen")
 Expect("a new capture keeps the character-specific record", (PageWords() or ""):find("Tester, neuer Fortschritt.", 1, true) ~= nil, true)
-stub.world.playerGUID = nil
-Tab:Refresh()
-Click("Koboldkerzen")
-Expect("the migrated legacy record remains available to its matching character",
-    (PageWords() or ""):find("Tester, alter Fortschritt.", 1, true) ~= nil, true)
 stub.world.playerGUID = "Player-0-0-0-0-Tester-0"
 stub.world.progressText = ""
 -- A window whose id, title and words the game hands over as secrets keeps nothing.
