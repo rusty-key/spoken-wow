@@ -2,36 +2,92 @@
  * Which language a page, a query or a take is in.
  *
  * CLIENT-SAFE: the header's switcher and every URL builder need the list as a value, and
- * the URL rewrites validate a URL prefix against it without reaching the database. Whether a
- * language is switched ON is a different question with a different answer at runtime -- the
- * `language` table -- and is asked on the server.
+ * the layout hands it to the browser. The thirteen built-ins are code; any other language is a
+ * row of the `language` table, registered here at boot and on every change (languages/catalogue.ts).
+ * The URL rewrites do not use it: they match a build-time list of page sections, and the layout
+ * validates the prefix. Whether a language is switched ON is a different question with a different
+ * answer at runtime, and is asked on the server.
  *
  * THE SAME LIST AS pipelines/lib/locales.mjs, restated here as a literal so the type of a
- * code is the twelve codes rather than `string`. lang.test.ts fails if the two drift, the way
+ * built-in code is the thirteen codes rather than `string`. lang.test.ts fails if the two drift, the way
  * pipelines/places/tools/validate.mjs guards the addon's copy.
  *
  * It was here before as lib/places/lang.ts, and went when zones lost its language axis in
  * 4939d3f because nothing had been translated. It comes back for all three sections at once.
  */
-export const LOCALES = [
-  { code: "enUS", name: "English", bcp47: "en-US", elevenLabs: "en" },
-  { code: "deDE", name: "German", bcp47: "de-DE", elevenLabs: "de" },
-  { code: "esES", name: "Spanish (EU)", bcp47: "es-ES", elevenLabs: "es" },
-  { code: "esMX", name: "Spanish (AL)", bcp47: "es-MX", elevenLabs: "es" },
-  { code: "frFR", name: "French", bcp47: "fr-FR", elevenLabs: "fr" },
-  { code: "itIT", name: "Italian", bcp47: "it-IT", elevenLabs: "it", client: false },
-  { code: "plPL", name: "Polish", bcp47: "pl-PL", elevenLabs: "pl", client: false },
-  { code: "ptBR", name: "Portuguese", bcp47: "pt-BR", elevenLabs: "pt" },
-  { code: "ruRU", name: "Russian", bcp47: "ru-RU", elevenLabs: "ru" },
-  { code: "koKR", name: "Korean", bcp47: "ko-KR", elevenLabs: "ko" },
-  { code: "zhCN", name: "Chinese (S)", bcp47: "zh-CN", elevenLabs: "zh" },
-  { code: "zhTW", name: "Chinese (T)", bcp47: "zh-TW", elevenLabs: "zh" },
-  { code: "viVN", name: "Vietnamese", bcp47: "vi-VN", elevenLabs: "vi", client: false },
-] as const;
+export type LanguageInfo = {
+  code: string;
+  name: string;
+  native: string;
+  bcp47: string;
+  /** The code the speech provider takes as language_code. */
+  provider: string;
+  client: boolean;
+};
 
-export type Lang = (typeof LOCALES)[number]["code"];
+/** The thirteen languages the site ships with. Never overwritten or removed by registration. */
+export const BUILTIN = [
+  { code: "enUS", name: "English", native: "English", bcp47: "en-US", provider: "en", client: true },
+  { code: "deDE", name: "German", native: "Deutsch", bcp47: "de-DE", provider: "de", client: true },
+  { code: "esES", name: "Spanish (EU)", native: "Español (EU)", bcp47: "es-ES", provider: "es", client: true },
+  { code: "esMX", name: "Spanish (AL)", native: "Español (AL)", bcp47: "es-MX", provider: "es", client: true },
+  { code: "frFR", name: "French", native: "Français", bcp47: "fr-FR", provider: "fr", client: true },
+  { code: "itIT", name: "Italian", native: "Italiano", bcp47: "it-IT", provider: "it", client: false },
+  { code: "plPL", name: "Polish", native: "Polski", bcp47: "pl-PL", provider: "pl", client: false },
+  { code: "ptBR", name: "Portuguese", native: "Português", bcp47: "pt-BR", provider: "pt", client: true },
+  { code: "ruRU", name: "Russian", native: "Русский", bcp47: "ru-RU", provider: "ru", client: true },
+  { code: "koKR", name: "Korean", native: "한국어", bcp47: "ko-KR", provider: "ko", client: true },
+  { code: "zhCN", name: "Chinese (S)", native: "简体中文", bcp47: "zh-CN", provider: "zh", client: true },
+  { code: "zhTW", name: "Chinese (T)", native: "繁體中文", bcp47: "zh-TW", provider: "zh", client: true },
+  { code: "viVN", name: "Vietnamese", native: "Tiếng Việt", bcp47: "vi-VN", provider: "vi", client: false },
+] as const satisfies readonly LanguageInfo[];
 
-export const CODES: readonly Lang[] = LOCALES.map((locale) => locale.code);
+/** What a language code looks like: two lowercase letters, two uppercase (enUS). A regex source, for the redirects and the validators. */
+export const LANG_SHAPE = "[a-z]{2}[A-Z]{2}";
+
+/** The BCP 47 tag and provider code a language code implies: jaJP -> ja-JP, ja. */
+export function derivedTags(code: string): { bcp47: string; provider: string } {
+  return { bcp47: `${code.slice(0, 2)}-${code.slice(2)}`, provider: code.slice(0, 2) };
+}
+
+export type BuiltinLang = (typeof BUILTIN)[number]["code"];
+
+/** A built-in code gets completion; any other string is a language registered at runtime. */
+export type Lang = BuiltinLang | (string & {});
+
+const builtinByCode = new Map<string, LanguageInfo>(BUILTIN.map((locale) => [locale.code, locale]));
+
+/**
+ * On globalThis because Next loads this module once per bundle layer: the registry the server
+ * fills at boot (instrumentation.ts) must be the one a route handler or a page reads. In the
+ * browser it is the window's.
+ */
+const registryKey = Symbol.for("spoken.languages");
+/** `langs` and `extrasList` are the sorted lists, built once per registration. */
+type Registry = { extras: Map<string, LanguageInfo>; langs?: readonly Lang[]; extrasList?: readonly LanguageInfo[] };
+type RegistryHolder = { [registryKey]?: Registry };
+const registry: Registry = ((globalThis as RegistryHolder)[registryKey] ??= { extras: new Map() });
+
+/** Replaces the languages beyond the built-in ones. A built-in's code in the list is ignored. */
+export function registerLanguages(list: readonly LanguageInfo[]): void {
+  registry.extras = new Map(list.filter((info) => !builtinByCode.has(info.code)).map((info) => [info.code, info]));
+  registry.langs = undefined;
+  registry.extrasList = undefined;
+}
+
+/** The registered languages beyond the built-in ones: all a client needs, since it has the rest. */
+export function registeredExtras(): readonly LanguageInfo[] {
+  return (registry.extrasList ??= [...registry.extras.values()].sort((a, b) => a.code.localeCompare(b.code)));
+}
+
+/** Built-ins in their order, then the registered ones by code. */
+export function allLangs(): readonly Lang[] {
+  return (registry.langs ??= [...BUILTIN.map((locale) => locale.code), ...[...registry.extras.keys()].sort()]);
+}
+
+export function languageInfo(lang: string): LanguageInfo | null {
+  return builtinByCode.get(lang) ?? registry.extras.get(lang) ?? null;
+}
 
 /**
  * English: what every other language is translated from, what line ids and file names are
@@ -40,7 +96,7 @@ export const CODES: readonly Lang[] = LOCALES.map((locale) => locale.code);
 export const BASE_LANG: Lang = "enUS";
 
 export function isLang(value: unknown): value is Lang {
-  return typeof value === "string" && (CODES as readonly string[]).includes(value);
+  return typeof value === "string" && languageInfo(value) !== null;
 }
 
 /**
@@ -49,8 +105,7 @@ export function isLang(value: unknown): value is Lang {
  * client -- a contribution above all -- is in it. See `client` in pipelines/lib/locales.mjs.
  */
 export function isClientLang(lang: Lang): boolean {
-  const locale = LOCALES.find((entry) => entry.code === lang);
-  return !(locale && "client" in locale && locale.client === false);
+  return languageInfo(lang)?.client !== false;
 }
 
 /**
@@ -66,16 +121,16 @@ export function clientLang(locale: string): Lang | null {
 }
 
 export function langName(lang: Lang): string {
-  return LOCALES.find((locale) => locale.code === lang)?.name ?? lang;
+  return languageInfo(lang)?.name ?? lang;
 }
 
 /** The ISO 639-1 code a synthesis request in this language sends as language_code. */
 export function elevenLabsCode(lang: Lang): string {
-  return LOCALES.find((locale) => locale.code === lang)?.elevenLabs ?? "en";
+  return languageInfo(lang)?.provider ?? "en";
 }
 
 export function langTag(lang: Lang): string {
-  return LOCALES.find((locale) => locale.code === lang)?.bcp47 ?? "en-US";
+  return languageInfo(lang)?.bcp47 ?? "en-US";
 }
 
 /**

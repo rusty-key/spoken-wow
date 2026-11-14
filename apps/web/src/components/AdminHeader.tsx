@@ -9,7 +9,7 @@ import PendingCount, { packsWaiting } from "@/components/PendingCount";
 import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Contained } from "@/components/Width";
-import { CODES, langName, type Lang } from "@/lib/lang";
+import { allLangs, langName, type Lang } from "@/lib/lang";
 import { cn } from "@/lib/utils";
 
 export type AdminTab = "dashboard" | "team" | "release" | "teams" | "packs";
@@ -126,7 +126,7 @@ function LanguageSwitch({
 }) {
   const [open, setOpen] = useState(false);
   // A site admin administers every language, so there is nobody else's to list.
-  const others = global ? [] : CODES.filter((code) => !administered.includes(code));
+  const others = global ? [] : allLangs().filter((code) => !administered.includes(code));
   const path = PATHS[GLOBAL.includes(tab) ? "team" : tab];
   return (
     <Popover open={open} onOpenChange={setOpen}>

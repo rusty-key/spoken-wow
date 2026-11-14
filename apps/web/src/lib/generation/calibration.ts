@@ -6,7 +6,7 @@
  * error neither pnpm test nor pnpm typecheck reports.
  */
 import { ALL_TEAMS, queryIn } from "@/lib/db";
-import type { Lang } from "@/lib/lang";
+import type { BuiltinLang, Lang } from "@/lib/lang";
 import { readAs } from "@/lib/teams/store";
 import { fishPrice } from "@/lib/voices/fish";
 
@@ -58,7 +58,7 @@ export async function observedRate(modelId: string): Promise<Rate> {
  * punctuation; Hangul and Han three. Each figure is the script's letter width, so the
  * estimate is an upper bound until real takes calibrate it, which is the direction to err.
  */
-const BYTES_PER_CHARACTER: Partial<Record<Lang, number>> = {
+const BYTES_PER_CHARACTER: Partial<Record<BuiltinLang, number>> = {
   enUS: 1,
   ruRU: 2,
   koKR: 3,
@@ -107,6 +107,6 @@ export async function observedFishRate(modelId: string, lang: Lang): Promise<Rat
   if (perByte === null) {
     return { rate: 0, unit: "usd", unknown: true, samples: 0, modelId };
   }
-  const width = BYTES_PER_CHARACTER[lang] ?? ACCENTED_LATIN;
+  const width = (BYTES_PER_CHARACTER as Partial<Record<string, number>>)[lang] ?? ACCENTED_LATIN;
   return { rate: (perByte / 1_000_000) * width, unit: "usd", samples: 0, modelId };
 }

@@ -2,8 +2,9 @@
  * Which languages the site serves: the `language` table, and the only module that knows its
  * columns.
  *
- * What a language IS is code (lib/lang.ts), because the URL rewrites validate a URL prefix without
- * a database. Whether one is switched ON is here, because it is an admin's decision taken at
+ * The built-in languages are code (lib/lang.ts); the rest are rows here, registered at boot and on
+ * every change. The URL rewrites use a build-time list of page sections, and the layout validates
+ * the prefix. Whether one is switched ON is here, because it is an admin's decision taken at
  * runtime -- a language with nothing translated yet should not be one click away in the
  * header, and turning it on should not need a deploy.
  *
@@ -12,20 +13,24 @@
  */
 import "server-only";
 
+import type { ClientBase } from "pg";
+
 import { recordActivity } from "@/lib/activity/store";
 import { inTransaction, query } from "@/lib/db";
-import { BASE_LANG, CODES, isLang, type Lang } from "@/lib/lang";
-import { adoptEveryLang, forgetTeams } from "@/lib/teams/store";
+import { BASE_LANG, BUILTIN, allLangs, isLang, type Lang } from "@/lib/lang";
+import { loadLanguages } from "@/lib/languages/catalogue";
+import { adoptEveryLang, adoptLang, forgetTeams } from "@/lib/teams/store";
 
 export type LanguageState = { code: Lang; enabled: boolean };
 
 /** Every language the site knows of, in the list's order, with whether it is on. */
 export async function languageStates(): Promise<LanguageState[]> {
+  await loadLanguages();
   const rows = await query<{ code: string; enabled: boolean }>(
     `select "code", "enabled" from "language"`,
   );
   const enabled = new Set(rows.filter((row) => row.enabled).map((row) => row.code));
-  return CODES.map((code) => ({ code, enabled: code === BASE_LANG || enabled.has(code) }));
+  return allLangs().map((code) => ({ code, enabled: code === BASE_LANG || enabled.has(code) }));
 }
 
 export async function isEnabled(lang: Lang): Promise<boolean> {
@@ -46,22 +51,50 @@ export async function setEnabled(lang: string, enabled: boolean, userId: string)
   if (!isLang(lang)) throw new Error(`${lang} is not a language this site knows`);
   if (lang === BASE_LANG) throw new Error("English cannot be switched off");
   // The CTE reads the row as it was before this statement, so "was" is the previous state:
-  // null for a language never switched, which languageStates treats as off.
+  // null for a language never switched, which languageStates treats as off. A row is
+  // described when it is made (migration 0107), so this only ever updates one.
   // One transaction, so a language is never enabled without a team for its work to land on.
   const row = await inTransaction(async (client) => {
     const { rows } = await client.query<{ was: boolean | null }>(
       `with "before" as (select "enabled" from "language" where "code" = $1)
-       insert into "language" ("code", "enabled", "updatedAt", "updatedBy")
-       values ($1, $2, now(), $3)
-       on conflict ("code") do update
-          set "enabled" = excluded."enabled", "updatedAt" = now(), "updatedBy" = excluded."updatedBy"
+       update "language"
+          set "enabled" = $2, "updatedAt" = now(), "updatedBy" = $3
+        where "code" = $1
        returning (select "enabled" from "before") as "was"`,
       [lang, enabled, userId],
     );
+    if (!rows[0]) throw new Error(`${lang} has no row in the language table`);
     await adoptEveryLang(client);
     return rows[0];
   });
   forgetTeams();
   if ((row?.was ?? false) === enabled) return;
   await recordActivity({ kind: "language.toggled", lang, actorId: userId, detail: { enabled } });
+}
+
+export class LanguageExistsError extends Error {
+  constructor(code: string) {
+    super(`${code} is already a language`);
+    this.name = "LanguageExistsError";
+  }
+}
+
+export type NewLanguage = { code: string; name: string; native: string; bcp47: string; provider: string };
+
+/**
+ * A language made, switched off, with a team of its own to hold its work. On the caller's
+ * client so an approval can wrap it in one transaction; the caller calls forgetLanguages() and
+ * forgetTeams() once that commits.
+ */
+export async function addLanguage(client: ClientBase, input: NewLanguage, userId: string): Promise<void> {
+  if (BUILTIN.some((language) => language.code === input.code)) throw new LanguageExistsError(input.code);
+  // The conflict clause, not a read first: two admins adding the same code cannot both succeed.
+  const { rowCount } = await client.query(
+    `insert into "language" ("code", "name", "native", "bcp47", "provider", "client", "enabled", "updatedBy")
+     values ($1, $2, $3, $4, $5, false, false, $6)
+     on conflict ("code") do nothing`,
+    [input.code, input.name, input.native, input.bcp47, input.provider, userId],
+  );
+  if (!rowCount) throw new LanguageExistsError(input.code);
+  await adoptLang(client, input.code);
 }

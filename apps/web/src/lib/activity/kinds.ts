@@ -141,6 +141,7 @@ export type ActivityDetail = {
   "grant.added": { capability: Capability };
   "grant.removed": { capability: Capability };
   "language.toggled": { enabled: boolean };
+  "language.added": { name: string };
   "team.created": { slug: string };
   "team.renamed": { name: string };
   /** A language handed to another team, by team slug. */

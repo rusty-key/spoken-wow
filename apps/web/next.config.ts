@@ -4,6 +4,7 @@ import path from "node:path";
 
 import { discordRedirects } from "./src/lib/discord";
 import { localeRedirects, localeRewrites } from "./src/lib/locale-routes";
+import { pageSections } from "./src/lib/page-sections";
 import { sectionRedirects } from "./src/lib/section-routes";
 
 // The monorepo root, two levels up from apps/web/.
@@ -38,7 +39,9 @@ const spokenVersion = fs.existsSync(spokenToc)
   : "";
 
 const config: NextConfig = {
-  env: { NEXT_PUBLIC_SPOKEN_VERSION: spokenVersion },
+  // The page sections are baked in: the standalone bundle has no src/app/[lang] to read, and
+  // the languages route refuses a code that a case-insensitive rewrite would take for a section.
+  env: { NEXT_PUBLIC_SPOKEN_VERSION: spokenVersion, SPOKEN_PAGE_SECTIONS: pageSections().join(",") },
 
   // The corpus and the audio store are read at runtime through node:fs, never bundled,
   // so they need no asset config. See src/lib/paths.ts for how they are located.
@@ -92,7 +95,7 @@ const config: NextConfig = {
     return [...discordRedirects, ...sectionRedirects, ...localeRedirects];
   },
   async rewrites() {
-    return { beforeFiles: localeRewrites, afterFiles: [], fallback: [] };
+    return { beforeFiles: localeRewrites(pageSections()), afterFiles: [], fallback: [] };
   },
 
   outputFileTracingExcludes: {

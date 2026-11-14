@@ -14,6 +14,7 @@ import { notFound } from "next/navigation";
 import { cache } from "react";
 
 import { BASE_LANG, isLang, type Lang } from "@/lib/lang";
+import { loadLanguages } from "@/lib/languages/catalogue";
 import { isEnabled } from "@/lib/languages/store";
 import { currentSession } from "@/lib/session";
 import { viewerOf } from "@/lib/grants/store";
@@ -53,6 +54,7 @@ export async function langParam(
 ): Promise<{ lang: Lang; denied: null } | { lang: null; denied: Response }> {
   const raw = new URL(request.url).searchParams.get("lang");
   if (raw === null || raw === "") return { lang: BASE_LANG, denied: null };
+  if (raw !== BASE_LANG) await loadLanguages();
   if (!isLang(raw)) {
     return { lang: null, denied: Response.json({ error: `unknown language ${raw}` }, { status: 400 }) };
   }
@@ -62,9 +64,15 @@ export async function langParam(
   return { lang: raw, denied: null };
 }
 
-/** A page's language, from its `[lang]` segment. Anything not servable is a 404. */
+/**
+ * A page's language, from its `[lang]` segment. Anything not servable is a 404.
+ *
+ * Both this and langParam load the languages first, a memo hit almost always, so a language
+ * created on the other worker is known here before the TTL would have reached it.
+ */
 export async function pageLang(params: Promise<{ lang: string }>): Promise<Lang> {
   const { lang } = await params;
+  if (lang !== BASE_LANG) await loadLanguages();
   if (!isLang(lang) || !(await visible(lang))) notFound();
   return lang;
 }

@@ -1,17 +1,26 @@
 /**
  * pm2 runs two workers, so a language one moves would be written by the other under its old team
- * until the memo's TTL ran out. Each process forgets its memo on the move's notification and on
- * every (re)connect; the TTL backstops a lost notification.
+ * until the memo's TTL ran out, and a language one creates would be unknown to the other. Each
+ * process forgets its memos on a notification and on every (re)connect; the TTLs backstop a lost
+ * notification. One connection listens on every channel.
  */
 import "server-only";
 
 import { Client } from "pg";
 
 import { connectionOptions, onCloseDb } from "@/lib/db";
+import { reloadLanguages } from "@/lib/languages/catalogue";
 
 import { forgetTeams } from "./store";
 
-const CHANNEL = "spoken_team_language";
+/**
+ * What each channel's notification does; also run on every (re)connect, for what was missed.
+ * Wrapped, because both modules import this one and may not have finished loading when it does.
+ */
+const CHANNELS: Record<string, () => void> = {
+  spoken_team_language: () => forgetTeams(),
+  spoken_language: () => reloadLanguages(),
+};
 const RETRY_MS = 5_000;
 
 let client: Client | undefined;
@@ -38,14 +47,14 @@ async function connect(): Promise<void> {
   const own = new Client(connectionOptions());
   client = own;
   own.on("notification", (message) => {
-    if (message.channel === CHANNEL) forgetTeams();
+    CHANNELS[message.channel]?.();
   });
   own.on("error", (error) => fail(own, error));
   try {
     await own.connect();
-    await own.query(`LISTEN ${CHANNEL}`);
-    // A move made before this, while nothing listened, would otherwise wait out the TTL.
-    forgetTeams();
+    for (const channel of Object.keys(CHANNELS)) await own.query(`LISTEN ${channel}`);
+    // A change made before this, while nothing listened, would otherwise wait out the TTL.
+    for (const onChange of Object.values(CHANNELS)) onChange();
   } catch (error) {
     fail(own, error);
   }
@@ -53,7 +62,7 @@ async function connect(): Promise<void> {
 
 function fail(own: Client, error: unknown): void {
   if (client !== own) return;
-  console.error("team listener failed, retrying in 5 s:", error);
+  console.error("change listener failed, retrying in 5 s:", error);
   client = undefined;
   own.end().catch(() => {});
   if (stopped) return;

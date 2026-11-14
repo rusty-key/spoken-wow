@@ -254,6 +254,8 @@ export function describe(row: ActivityRow): { what: string; quote: string | null
       return { what: `took ${grantName(d.capability)} from ${row.subjectName ?? "someone"}`, quote: null };
     case "language.toggled":
       return { what: d.enabled ? "switched the language on" : "switched the language off", quote: null };
+    case "language.added":
+      return { what: `added the language ${str(d.name) ?? ""}`.trim(), quote: null };
     case "team.created":
       return { what: `created the team ${str(d.slug) ?? ""}`.trim(), quote: null };
     case "team.renamed":
