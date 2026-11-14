@@ -136,10 +136,9 @@ local AnyVoiced
 
 -- The words and titles kept in this client's language, by quest: { title, accept/complete = { text,
 -- sex }, progress = { text, sex } or { characters = { [characterID] = { text, sex, name? } } } ... }.
--- An English client keeps only progress, which has no shipped English text; its accept and complete
--- words are already in the addon.
-local function Kept(moment, create)
-    if Locale() == "enUS" and moment ~= "progress" then return nil end
+-- Only a moment with no shipped English text is kept, regardless of the client's language.
+local function Kept(id, moment, create)
+    if id and moment and English(id)[moment] ~= nil then return nil end
     local db = VO.Addon.db and VO.Addon.db.global
     if not db then return nil end
     if not db.CompendiumText then
@@ -983,19 +982,21 @@ local function Generalise(text, english)
 end
 
 -- Each moment's words as stored: those kept in this client's language, else the English, or nil.
--- Kept words filled for the other sex are not used where the English has a word for each.
+-- A missing-template record is account-wide, but is shown only to the character that captured it.
 local function Stored(id, moment)
     local english = English(id)
-    local kept = Kept(moment)
+    local kept = Kept(id, moment)
     kept = kept and kept[id]
     local own = kept and kept[moment]
     local text = english[moment]
-    local personalProgress = moment == "progress" and (type(text) ~= "string" or text == "")
-    if personalProgress and type(own) == "table" then
+    if text == nil and type(own) == "table" then
         local characters = own.characters
         if type(characters) == "table" then
             local character = CharacterID()
             own = character and characters[character]
+            if own and own.sex ~= Sex() then
+                own = nil
+            end
         elseif own.name == PlayerName() and own.sex == Sex() then
             -- Compatibility with the first character-specific format, which held one record.
         else
@@ -1030,29 +1031,34 @@ end
 --- Keep what the open quest window shows, in this client's language.
 function QuestsTab:Keep(moment, text, title)
     local id = GetQuestID and VO.NotSecret(GetQuestID())
-    if moment == "progress" and (type(text) ~= "string" or text == "") then return end
-    local kept = Kept(moment, true)
-    if not kept or not id or id == 0 or not Quests()[id] then return end
-    kept[id] = kept[id] or {}
+    if (type(text) ~= "string" or text == "") and (type(title) ~= "string" or title == "") then return end
+    local kept = Kept(id, moment, true)
+    if not id or id == 0 or not Quests()[id] then return end
+    local titleKept = kept
+    if not titleKept and Locale() ~= "enUS" then titleKept = Kept(nil, nil, true) end
     if type(title) == "string" and title ~= "" then
-        kept[id].title = title
+        if titleKept then
+            titleKept[id] = titleKept[id] or {}
+            titleKept[id].title = title
+        end
         titles[id] = title
     end
-    if type(text) == "string" and text ~= "" then
+    if kept and type(text) == "string" and text ~= "" then
+        kept[id] = kept[id] or {}
         local english = English(id)
         local record = { text = Generalise(text, english[moment]), sex = Sex() }
-        if moment == "progress" and (type(english.progress) ~= "string" or english.progress == "") then
+        if english[moment] == nil then
             record.name = PlayerName()
             local character = CharacterID()
             if not character then return end
-            local progress = kept[id].progress
-            if type(progress) ~= "table" or type(progress.text) == "string" then
-                progress = { characters = {} }
-                kept[id].progress = progress
-            elseif type(progress.characters) ~= "table" then
-                progress.characters = {}
+            local captured = kept[id][moment]
+            if type(captured) ~= "table" or type(captured.text) == "string" then
+                captured = { characters = {} }
+                kept[id][moment] = captured
+            elseif type(captured.characters) ~= "table" then
+                captured.characters = {}
             end
-            progress.characters[character] = record
+            captured.characters[character] = record
             return
         end
         kept[id][moment] = record
