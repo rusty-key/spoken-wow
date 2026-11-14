@@ -168,6 +168,22 @@ function SpokenReadables:MarkBookFound(book)
 	if self.readables and self.readables:IsVisible() and self.RefreshReadables then self:RefreshReadables() end
 end
 
+--- Whether `book` has words in at least one of its pages. Empty item records are kept in the
+-- corpus for client bookkeeping, but they are not readable entries for the Compendium.
+function SpokenReadables:HasBookText(bookID)
+	if not bookID then return false end
+	local data = self:Data()
+	local book = data and data.books and data.books[bookID]
+	if not book then return false end
+	for _, pageID in ipairs(book.pages or {}) do
+		local page = data.pages and data.pages[pageID]
+		if page and type(page.text) == "string" and page.text ~= "" then
+			return true
+		end
+	end
+	return false
+end
+
 --- Whether this character has found `book`: opened it in the world. Hearing it from the
 --- Compendium does not count.
 function SpokenReadables:IsBookFound(book)
@@ -300,15 +316,7 @@ function SpokenReadables:BookForItem(itemID)
 	local data = self:Data()
 	local owners = data and data.owners and data.owners.item
 	local bookID = owners and owners[itemID]
-	local book = bookID and data.books and data.books[bookID]
-	if not book then return nil end
-	for _, pageID in ipairs(book.pages or {}) do
-		local page = data.pages and data.pages[pageID]
-		if page and type(page.text) == "string" and page.text ~= "" then
-			return bookID
-		end
-	end
-	return nil
+	return self:HasBookText(bookID) and bookID or nil
 end
 
 --- The item that owns a readable, if it is a carried book, letter or note.

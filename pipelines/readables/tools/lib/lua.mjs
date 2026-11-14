@@ -41,6 +41,19 @@ export function compareIds(a, b) {
   return typeof a === "number" && typeof b === "number" ? a - b : String(a).localeCompare(String(b));
 }
 
+/** A Places.lua book record, with numeric and minted ids written in their Lua forms. */
+export function placeLua(id, { kind, type, quests = [], event, wide = false, zones = [], dungeons = [] }) {
+  const parts = [`kind = "${kind}"`, `type = "${type}"`];
+  if (quests.length) parts.push(`quests = { ${quests.join(", ")} }`);
+  if (event) parts.push(`event = "${event}"`);
+  if (wide) parts.push("wide = true");
+  else if (zones.length) {
+    parts.push(`zones = { ${zones.join(", ")} }`);
+    if (dungeons.length) parts.push(`dungeons = { ${dungeons.join(", ")} }`);
+  }
+  return `\t\t[${luaId(id)}] = { ${parts.join(", ")} },`;
+}
+
 /**
  * The two tables a page is found by, in the shape the addon's Reader reads.
  *

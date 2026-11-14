@@ -71,7 +71,7 @@ end
 
 -- Bump when the quest-to-readable lookup changes so characters that already ran an older
 -- backfill are rescanned automatically after an addon update.
-local QUEST_BACKFILL_VERSION = 4
+local QUEST_BACKFILL_VERSION = 5
 
 local function CompletedQuests()
 	local completed = {}
@@ -105,7 +105,7 @@ function SpokenReadables:BackfillQuestReadables()
 	if places then
 		for book, place in pairs(places) do
 			for _, questID in ipairs(place.quests or {}) do
-				if completed[questID] then
+				if completed[questID] and self:HasBookText(book) then
 					self:MarkBookFound(book)
 					break
 				end
@@ -128,7 +128,7 @@ function SpokenReadables:BackfillQuestReadables()
 			for questID in pairs(completed) do
 				local itemID = questQuery(questID, "sourceItemId")
 				local book = itemID and owners[itemID]
-				if book then self:MarkBookFound(book) end
+				if book and self:HasBookText(book) then self:MarkBookFound(book) end
 			end
 		end
 	end
@@ -299,6 +299,9 @@ frame:SetScript("OnEvent", function(_, name, payload, second)
 		SpokenReadables:BackfillQuestReadables()
 	elseif name == "BAG_UPDATE" then
 		SpokenReadables:OnBagUpdate()
+		-- Completed-quest history can be unavailable during login on some clients. A later bag
+		-- event is a reliable same-session opportunity to retry the still-pending backfill.
+		SpokenReadables:BackfillQuestReadables()
 	elseif name == "PLAYER_ENTERING_WORLD" then
 		SpokenReadables:SetupSource()
 		if SpokenReadables.SetupOpeners then
@@ -324,6 +327,7 @@ frame:SetScript("OnEvent", function(_, name, payload, second)
 		if SpokenReadables.SetupReadables then
 			SpokenReadables:SetupReadables()
 		end
+		SpokenReadables:BackfillQuestReadables()
 	end
 end)
 

@@ -235,14 +235,23 @@ do
     local places, questie, lib, quests = SpokenReadablesPlaces, QuestieDB, LibQuestieDB, C_QuestLog
     _G.QuestieDB, _G.LibQuestieDB = nil, nil
     _G.C_QuestLog = { GetAllCompletedQuestIDs = function() return nil end }
-    _G.SpokenReadablesPlaces = { books = { [209] = { quests = { 10, 20 } }, [261] = { quests = { 30 } } } }
+    _G.SpokenReadablesPlaces = { books = {
+        [209] = { quests = { 10, 20 } }, [261] = { quests = { 30 } },
+        [emptyBook] = { quests = { 20 } },
+    } }
     SpokenReadablesCharacter.found, SpokenReadablesCharacter.questReadableBackfill = {}, nil
     B:BackfillQuestReadables()
     Expect("missing quest history leaves backfill retryable", SpokenReadablesCharacter.questReadableBackfill, nil)
+    _G.C_QuestLog.GetAllCompletedQuestIDs = function() return { 20 } end
+    stub.FireEvent("BAG_UPDATE", 0)
+    Expect("a later bag event retries completed quest history", B:IsBookFound(209), true)
+    Expect("a retried backfill ignores an empty direct reward", B:IsBookFound(emptyBook), false)
     _G.C_QuestLog = nil
     _G.GetQuestsCompleted = function() return { [20] = true, [30] = false } end
+    SpokenReadablesCharacter.found, SpokenReadablesCharacter.questReadableBackfill = {}, nil
     B:BackfillQuestReadables()
     Expect("legacy completed quest history discovers a direct reward", B:IsBookFound(209), true)
+    Expect("legacy backfill ignores an empty direct reward", B:IsBookFound(emptyBook), false)
     Expect("an incomplete quest does not discover its reward", B:IsBookFound(261), false)
     Expect("backfill does not mark its reward heard", B:HasReadBook(209), false)
     SpokenReadablesCharacter.found = {}
@@ -252,7 +261,7 @@ do
     B:BackfillQuestReadables()
     Expect("an older backfill version is rescanned", B:IsBookFound(209), true)
     _G.GetQuestsCompleted = nil
-    _G.C_QuestLog = { GetAllCompletedQuestIDs = function() return { 40, 50 } end }
+    _G.C_QuestLog = { GetAllCompletedQuestIDs = function() return { 40, 50, 51 } end }
     _G.SpokenReadablesPlaces = nil
     _G.QuestieDB = {
         QueryItemSingle = function(id, field)
@@ -261,12 +270,13 @@ do
         end,
         QueryQuestSingle = function(id, field)
             assert(field == "sourceItemId")
-            return id == 50 and 745 or nil
+            return id == 50 and 745 or id == 51 and emptyBook or nil
         end,
     }
     SpokenReadablesCharacter.found, SpokenReadablesCharacter.questReadableBackfill = {}, nil
     B:BackfillQuestReadables()
     Expect("Questie reward metadata works without generated places", B:IsBookFound(209), true)
+    Expect("Questie backfill ignores an empty source item", B:IsBookFound(emptyBook), false)
     QuestieDB.QueryItemSingle = nil
     SpokenReadablesCharacter.found, SpokenReadablesCharacter.questReadableBackfill = {}, nil
     B:BackfillQuestReadables()
