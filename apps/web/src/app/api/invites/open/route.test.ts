@@ -39,7 +39,16 @@ test("keeps the token in a cookie and redirects without it", async () => {
   expect(cookie).toContain(`spoken_invite=${token}`);
   expect(cookie).toMatch(/HttpOnly/);
   expect(cookie).toMatch(/SameSite=Lax/);
-  expect(cookie).toMatch(/Max-Age=3600/);
+  // As long as the invite: 14 days, less the moments since it was sent.
+  const maxAge = Number(/Max-Age=(\d+)/.exec(cookie)![1]);
+  expect(maxAge).toBeLessThanOrEqual(14 * 24 * 3600);
+  expect(maxAge).toBeGreaterThan(14 * 24 * 3600 - 60);
+});
+
+test("keeps a token no pending invite has for an hour, so the page can say so", async () => {
+  const response = await GET(new Request("https://example.com/api/invites/open?token=nonsense"));
+  expect(response.headers.get("location")).toBe("/invite");
+  expect(response.headers.get("set-cookie")).toMatch(/Max-Age=3600/);
 });
 
 test("without a token it sets nothing", async () => {

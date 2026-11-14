@@ -99,3 +99,29 @@ test("dates are ISO, the same on server and client", () => {
   matrix(DE_ADMIN, [invite()]);
   expect(screen.getByText(/sent 2026-11-01, expires 2099-11-15/)).toBeTruthy();
 });
+
+test("an add that answers after a revoke does not bring the revoked invite back", async () => {
+  // A server that answers each call when told to, with the invites as they stood when it was called.
+  let revoked = false;
+  const answers: Array<() => void> = [];
+  fetchMock.mockImplementation(async (url: string, init: RequestInit) => {
+    const revoking = url.startsWith("/api/invites/") && init.method === "DELETE";
+    const invites = revoked || revoking ? [] : [invite()];
+    await new Promise<void>((resolve) => answers.push(resolve));
+    if (revoking) revoked = true;
+    return reply({ grants: [], invites, invited: !revoking });
+  });
+  const user = userEvent.setup();
+  matrix(DE_ADMIN, [invite()]);
+
+  await user.click(screen.getByRole("button", { name: /Revoke/ }));
+  await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
+  await user.type(screen.getByPlaceholderText("their email"), "bo@example.com");
+  await user.click(screen.getByRole("button", { name: "Add" }));
+
+  answers[0]();
+  await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(2));
+  answers[1]();
+  expect(await screen.findByText(/Invited bo@example.com to German/)).toBeTruthy();
+  expect(screen.queryByText("ana@example.com")).toBeNull();
+});

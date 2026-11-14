@@ -43,6 +43,8 @@ export type InviteLookup = {
   /** Who accepted it, once it is accepted. */
   acceptedBy: string | null;
   state: "pending" | "expired" | "accepted" | "revoked";
+  /** ISO. */
+  expiresAt: string;
 };
 
 export class InviteExistsError extends Error {
@@ -287,6 +289,7 @@ export async function lookupInvite(token: string): Promise<InviteLookup | null> 
     inviterName: row.invitedByName,
     acceptedBy: row.acceptedBy,
     state: stateOf(row),
+    expiresAt: row.expiresAt.toISOString(),
   };
 }
 

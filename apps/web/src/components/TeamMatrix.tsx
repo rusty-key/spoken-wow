@@ -77,9 +77,15 @@ function Matrix({ lang, grants: initial, invites: initialInvites, viewer, textBy
   const [chosen, setChosen] = useState<Capability[]>(["edit"]);
   const global = isAdmin(viewer.role);
 
-  // Saves one after another, an undo from a toast included: every save answers with the whole
-  // listing, and a slower reply landing after a newer one would put the older state on screen.
+  // Saves one after another, an undo from a toast, the add form and the invite buttons included:
+  // every save answers with the whole listing, and a slower reply landing after a newer one
+  // would put the older state on screen.
   const saving = useRef<Promise<unknown>>(Promise.resolve());
+  function queued(work: () => Promise<void>): Promise<void> {
+    const run = saving.current.then(work);
+    saving.current = run;
+    return run;
+  }
 
   const holds = (userId: string, capability: Capability) =>
     grants.some((grant) => grant.userId === userId && grant.capability === capability);
@@ -116,11 +122,8 @@ function Matrix({ lang, grants: initial, invites: initialInvites, viewer, textBy
 
   // Says which way rather than flipping, because the undo runs from a toast that outlives this
   // render and would flip whatever the grants were when it was raised.
-  function set(person: Person, capability: Capability, on: boolean, undoable: boolean): Promise<void> {
-    const run = saving.current.then(() => save(person, capability, on, undoable));
-    saving.current = run;
-    return run;
-  }
+  const set = (person: Person, capability: Capability, on: boolean, undoable: boolean) =>
+    queued(() => save(person, capability, on, undoable));
 
   async function save(person: Person, capability: Capability, on: boolean, undoable: boolean) {
     setBusy(`${person.id}:${capability}`);
@@ -140,13 +143,17 @@ function Matrix({ lang, grants: initial, invites: initialInvites, viewer, textBy
     });
   }
 
-  async function add(event: React.FormEvent) {
+  function add(event: React.FormEvent) {
     event.preventDefault();
     const address = email.trim();
     if (!address) return;
+    void queued(() => submit(address, chosen));
+  }
+
+  async function submit(address: string, capabilities: Capability[]) {
     setBusy("new");
     setError(null);
-    const answer = await giveGrants(address, lang, chosen);
+    const answer = await giveGrants(address, lang, capabilities);
     const failed = adopt(answer);
     setBusy(null);
     if (failed) {
@@ -157,11 +164,14 @@ function Matrix({ lang, grants: initial, invites: initialInvites, viewer, textBy
     toast({
       tone: "info",
       title: `${answer.invited ? "Invited" : "Added"} ${address} to ${langName(lang)}`,
-      detail: `With ${chosen.map(capabilityLabel).join(", ")}.`,
+      detail: `With ${capabilities.map(capabilityLabel).join(", ")}.`,
     });
   }
 
-  async function manage(invite: InviteRow, send: typeof resendInvite, done: string) {
+  const manage = (invite: InviteRow, send: typeof resendInvite, done: string) =>
+    queued(() => change(invite, send, done));
+
+  async function change(invite: InviteRow, send: typeof resendInvite, done: string) {
     setBusy(`invite:${invite.id}`);
     const failed = adopt(await send(invite.id));
     // Somebody else may have resent, revoked or accepted it: show what is there now.

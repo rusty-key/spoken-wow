@@ -9,7 +9,7 @@ import "server-only";
 
 import { cookies } from "next/headers";
 
-import { lookupInvite, type InviteLookup } from "./store";
+import { INVITE_DAYS, lookupInvite, type InviteLookup } from "./store";
 
 export const INVITE_COOKIE = "spoken_invite";
 
@@ -20,7 +20,15 @@ function serialize(value: string, maxAge: number): string {
   return `${INVITE_COOKIE}=${encodeURIComponent(value)}; Path=/; Max-Age=${maxAge}; HttpOnly; SameSite=Lax${secure}`;
 }
 
-export const setInviteCookie = (token: string) => serialize(token, HOUR_S);
+/**
+ * The cookie lasts as long as a pending invite, capped at INVITE_DAYS. Any other token gets an
+ * hour, so /invite can still say the link is not valid any more.
+ */
+export async function inviteCookieFor(token: string): Promise<string> {
+  const invite = await lookupInvite(token);
+  const left = invite?.state === "pending" ? Math.floor((Date.parse(invite.expiresAt) - Date.now()) / 1000) : 0;
+  return serialize(token, left > 0 ? Math.min(left, INVITE_DAYS * 24 * HOUR_S) : HOUR_S);
+}
 
 /** The invite this browser's cookie names, or null when it names none. */
 export async function currentInvite(): Promise<InviteLookup | null> {
