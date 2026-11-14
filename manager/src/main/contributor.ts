@@ -17,6 +17,7 @@ import type { ChannelIndex } from './packs-remote'
 import { loadPackState } from './packs-state'
 import { log } from './state'
 import { parseTocVersion } from './status'
+import { t } from './i18n'
 
 const SITE_URL = 'https://spoken.quest'
 const SITE_TIMEOUT_MS = 15_000
@@ -120,7 +121,7 @@ export class ContributorService {
     try {
       return await this.deps.fetchImpl(`${this.site}${route}`, { ...init, redirect: 'error', signal: AbortSignal.timeout(SITE_TIMEOUT_MS) })
     } catch {
-      throw new PlainError('Could not reach the site.')
+      throw new PlainError(t('contributor.reachSite'))
     }
   }
 
@@ -162,9 +163,9 @@ export class ContributorService {
   private async requireAdmin(lang: string): Promise<void> {
     const account = await this.account()
     if (!account) {
-      throw new PlainError(this.store.cookie() ? 'Could not reach the site to check your account. Try again.' : 'Sign in to the site first.')
+      throw new PlainError(this.store.cookie() ? t('contributor.reachSiteCheck') : t('contributor.signInFirst'))
     }
-    if (!account.adminLangs.includes(lang)) throw new PlainError(`Your account does not administer ${lang}.`)
+    if (!account.adminLangs.includes(lang)) throw new PlainError(t('contributor.noAdminFor', { lang }))
   }
 
   private localView(): ContributorView {
@@ -185,17 +186,17 @@ export class ContributorService {
       headers: { 'Content-Type': 'application/json', Origin: this.site },
       body: JSON.stringify({ email: email.trim(), password })
     })
-    if (res.status === 400 || res.status === 401) throw new PlainError('That email or password is not right.')
-    if (res.status === 429) throw new PlainError('The site asked to wait. Try again in a while.')
-    if (!res.ok) throw new PlainError(`The site answered HTTP ${res.status}.`)
+    if (res.status === 400 || res.status === 401) throw new PlainError(t('contributor.badCredentials'))
+    if (res.status === 429) throw new PlainError(t('contributor.waitASecond'))
+    if (!res.ok) throw new PlainError(t('contributor.siteHttp', { status: res.status }))
     const cookie = cookiePairs(res)
-    if (!cookie) throw new PlainError('The site did not keep you signed in.')
+    if (!cookie) throw new PlainError(t('contributor.noSession'))
     this.store.setCookie(cookie)
     // An earlier account must not pass for this session if the site cannot be asked.
     this.known = null
     if (!(await this.account())) {
       this.clearSession()
-      throw new PlainError('The site did not confirm the sign-in. Try again.')
+      throw new PlainError(t('contributor.notConfirmed'))
     }
     this.expired = false
     return this.localView()
@@ -342,13 +343,13 @@ export class ContributorService {
     const game = this.deps.game(gameId)
     const folders = languageFolders(lang)
     if (only !== undefined) {
-      if (!folders.includes(only)) throw new PlainError(`${only} is not one of the ${lang} packs.`)
+      if (!folders.includes(only)) throw new PlainError(t('contributor.notOneOf', { folder: only, lang }))
       const refused = this.refusal((await this.inspect(game, [only]))[0]!, store, this.store.config())
       if (refused) throw new PlainError(refused)
     }
     // After the awaits above, with none before enqueue, so two calls at once cannot both pass.
     if (this.publishing.has(store)) {
-      throw new PlainError(`A release to ${STORE_NAMES[store]} is already running. Wait for it to end or cancel it.`)
+      throw new PlainError(t('contributor.releaseRunning', { store: STORE_NAMES[store] }))
     }
     this.publishing.add(store)
     return this.deps.jobs.enqueue({
@@ -378,16 +379,16 @@ export class ContributorService {
   private async sendPacks(game: GameInstall, folders: string[], store: StoreId, again: boolean, result: PublishResult, ctx: JobContext): Promise<void> {
     const name = STORE_NAMES[store]
     const token = this.store.token(store)
-    if (!token) throw new PlainError(`Save your ${name} token under Stores first.`)
+    if (!token) throw new PlainError(t('contributor.saveToken', { name }))
     const config = this.store.config()
-    if (store === 'github' && !config.repo) throw new PlainError('Save your GitHub repository under Stores first.')
+    if (store === 'github' && !config.repo) throw new PlainError(t('contributor.saveRepo'))
 
     // Publishing on an old index would send an older folder to the store as the current release.
     try {
       await this.deps.refreshChannel({ signal: withTimeout(CHANNEL_TIMEOUT_MS, ctx.signal) })
     } catch {
       if (ctx.signal.aborted) throw new CancelledError()
-      throw new PlainError('Could not check the voice pack channel, so nothing was published. Try again.')
+      throw new PlainError(t('contributor.channelCheck'))
     }
 
     // Read here and not when the job was asked for: it may have waited for an install on this game.
@@ -419,9 +420,9 @@ export class ContributorService {
       // Unique per pack: runs on two games can be going at once.
       const zip = path.join(tmp, `${randomUUID()}.zip`)
       try {
-        say('zipping')
+        say(t('contributor.stepZip'))
         await zipFolder(game.addOnsPath, pack.folder, zip, ctx.signal)
-        say('uploading')
+        say(t('contributor.stepUpload'))
         const started = Date.now()
         let lastSaid = 0
         const onProgress = (sent: number, total: number): void => {
@@ -429,7 +430,7 @@ export class ContributorService {
           if (sent >= total) return say(`waiting for ${name}`)
           if (now - lastSaid < PROGRESS_INTERVAL_MS) return
           lastSaid = now
-          say('uploading', { received: sent, total, bytesPerSecond: now > started ? (sent * 1000) / (now - started) : 0 })
+          say(t('contributor.stepUpload'), { received: sent, total, bytesPerSecond: now > started ? (sent * 1000) / (now - started) : 0 })
         }
         await this.sendOne(pack, store, token, config, zip, gameVersionIds, result, ctx, onProgress)
       } catch (err) {

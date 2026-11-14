@@ -62,7 +62,7 @@ function SpokenFor({ game }: { game: GameInstall }): ReactNode {
 
   return (
     <div className="frame">
-      <aside className="rail scroll" aria-label="Spoken on this game">
+      <aside className="rail scroll" aria-label={S.spoken.ariaGame}>
         <RailTop game={game} />
         <div className="rail-bottom">
           <Select label={S.spoken.channel} value={selected} onChange={setPicked} disabled={releases.length === 0}>

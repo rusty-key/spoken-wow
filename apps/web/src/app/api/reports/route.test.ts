@@ -18,7 +18,11 @@ import { closeDb, db } from "@/lib/db";
 import { asSystem } from "@/lib/teams/testing";
 
 vi.mock("next/headers", () => ({ headers: async () => new Headers() }));
-vi.mock("@/lib/auth", () => ({ auth: { api: { getSession: async () => null } } }));
+/** Anonymous unless a test signs in. */
+const signedIn = vi.hoisted(() => ({ userId: null as string | null }));
+vi.mock("@/lib/auth", () => ({
+  auth: { api: { getSession: async () => (signedIn.userId ? { user: { id: signedIn.userId } } : null) } },
+}));
 
 /** Real unless a test fills it: a line whose file the override test controls without a corpus. */
 const corpusLines = vi.hoisted(() => [] as { lineId: string; fileName: string }[]);
@@ -90,12 +94,48 @@ describe("POST /api/reports", () => {
     expect((await POST(post(valid({ category: "lore" })))).status).toBe(400);
   });
 
-  it("refuses the eleventh report in an hour", async () => {
+  it("refuses the eleventh report in ten minutes", async () => {
     for (let attempt = 0; attempt < 10; attempt += 1) {
       expect((await POST(post(valid()))).status).toBe(200);
     }
 
     expect((await POST(post(valid()))).status).toBe(429);
+  });
+
+  it("forgets reports older than ten minutes", async () => {
+    for (let attempt = 0; attempt < 10; attempt += 1) {
+      expect((await POST(post(valid()))).status).toBe(200);
+    }
+    await asSystem.query(
+      `update "report" set "createdAt" = now() - interval '11 minutes' where "ip" = $1`,
+      [ip],
+    );
+
+    expect((await POST(post(valid()))).status).toBe(200);
+  });
+
+  it("counts a signed-in reporter by account, not by address", async () => {
+    const userId = `test-reporter-${randomUUID()}`;
+    await asSystem.query(
+      `insert into "user" ("id", "name", "email", "emailVerified") values ($1, 'Reporter', $2, false)`,
+      [userId, `${userId}@example.invalid`],
+    );
+    try {
+      for (let attempt = 0; attempt < 10; attempt += 1) {
+        expect((await POST(post(valid()))).status).toBe(200);
+      }
+
+      signedIn.userId = userId;
+      expect((await POST(post(valid()))).status).toBe(200);
+      for (let attempt = 0; attempt < 9; attempt += 1) {
+        expect((await POST(post(valid()))).status).toBe(200);
+      }
+      expect((await POST(post(valid()))).status).toBe(429);
+    } finally {
+      signedIn.userId = null;
+      await asSystem.query(`delete from "report" where "userId" = $1`, [userId]);
+      await asSystem.query(`delete from "user" where "id" = $1`, [userId]);
+    }
   });
 
   it("files a readables report against a minted page's key", async () => {

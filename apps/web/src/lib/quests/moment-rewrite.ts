@@ -172,7 +172,7 @@ async function insertVersions(
   const { userId, origin, correction, replaces } = write;
   for (const form of forms) {
     const { text } = form;
-    const skipReason = skipReasonFor(form.source, text, BASE_LANG, form.playerGender);
+    const skipReason = skipReasonFor(text, BASE_LANG, form.playerGender);
     const { rows } = await client.query<{ version: number }>(
       `insert into "quest_line"
          ("lineId", "variant", "lang", "version", "isCurrent", "origin", "source", "questId",

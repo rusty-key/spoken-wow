@@ -16,14 +16,9 @@ falls back to (npc_bodies.sex_bodies), which the per-sex tables are built from.
 """
 import os
 
-from tts_cli.naming import (BROADCAST_SOURCES, moment_of, subfolder_from_line_id, variant_file_name,
+from tts_cli.naming import (moment_of, subfolder_from_line_id, variant_file_name,
                             variant_line_id)
 from tts_cli.npc_bodies import body_name, sex_bodies
-
-#: The lines an NPC speaks in its own voice: all of them but progress text, which is never
-#: voiced. A quest moment's giver is found through QuestFileLookupBy*; a greeting's speaker and
-#: a follow-up's are looked up per NPC already, so their tables simply name its own file.
-OWN_VOICE_SOURCES = frozenset({"accept", "complete", "gossip"}) | BROADCAST_SOURCES
 
 
 def npc_voices(corpus: dict) -> dict:
@@ -57,7 +52,7 @@ def stored_stems(store_files) -> set:
 
 
 def with_voice_files(corpus: dict, stems: set) -> dict:
-    """The corpus with each row of OWN_VOICE_SOURCES moved to its NPC's own voice's file, where that
+    """The corpus with each row moved to its NPC's own voice's file, where that
     file has audio among `stems`. The rest are as they were."""
     voices = npc_voices(corpus)
     bodies = body_voices(corpus)
@@ -71,7 +66,7 @@ def with_voice_files(corpus: dict, stems: set) -> dict:
     def moved(line):
         voice = (body_voice.get((line["npcType"], line["npcId"], line.get("npcBody")))
                  or voices.get((line["npcType"], line["npcId"])))
-        if line["source"] not in OWN_VOICE_SOURCES or not voice or voice == written[line["lineId"]]:
+        if not voice or voice == written[line["lineId"]]:
             return None
         file_name = variant_file_name(line["fileName"], voice)
         return {**line, "lineId": variant_line_id(line["lineId"], voice), "fileName": file_name,
@@ -92,10 +87,8 @@ def with_voice_files(corpus: dict, stems: set) -> dict:
         return f"{folder}/{file_name}" in stems or all(
             f"{folder}/{g}-{file_name}" in stems for g in ("m", "f"))
 
-    # A split NPC's row is a row per body. Progress text is never voiced, so it stays one.
+    # A split NPC's row is a row per body.
     def split(line):
-        if line["source"] not in OWN_VOICE_SOURCES:
-            return [line]
         return [{**line, "npcBody": body, "npcSex": sex, "sexBody": fallback}
                 for body, sex, _, fallback in bodies.get((line["npcType"], line["npcId"]), ())] or [line]
 

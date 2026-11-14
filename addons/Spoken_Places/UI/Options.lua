@@ -97,10 +97,25 @@ function SpokenPlaces:SetupOptions()
 		Get("autoplayExplored"), Set("autoplayExplored"))
 	local combat = layout:Checkbox(L.OPT_AUTOPLAY_COMBAT, nil,
 		Get("autoplayStopInCombat"), Set("autoplayStopInCombat"))
-	for _, row in ipairs({ smaller, before, combat }) do
+	local again = layout:Checkbox(L.OPT_AUTOPLAY_EVERY_VISIT, nil,
+		Get("autoplayEveryVisit"), Set("autoplayEveryVisit"), refresh)
+	local gaps = SpokenPlaces.EVERY_VISIT_GAPS
+	local GAP_LABELS = { [gaps[1]] = L.OPT_GAP_1D, [gaps[2]] = L.OPT_GAP_1W, [gaps[3]] = L.OPT_GAP_1MO }
+	local gapMenu = layout:Dropdown(L.OPT_AUTOPLAY_GAP, nil,
+		SpokenPlaces.EVERY_VISIT_GAPS,
+		function() return SpokenPlaces:EveryVisitGap() end,
+		Set("autoplayEveryVisitGap"),
+		refresh,
+		function(gap) return GAP_LABELS[gap] or tostring(gap) end)
+	layout:ShowWhen(gapMenu, Get("autoplayEveryVisit"))
+	for _, row in ipairs({ smaller, before, combat, again, gapMenu }) do
 		layout:Requires(row, voiced, L.REASON_VOICE)
 		layout:Requires(row, discovering, L.REASON_DISCOVERY)
 	end
+	-- Read Every Visit reads on every zone change, explored before or not, so this row would look
+	-- live and change nothing.
+	layout:Requires(before, function() return not SpokenPlaces:Get("autoplayEveryVisit") end,
+		L.REASON_EVERY_VISIT)
 	layout:Outdent()
 
 	-- The stories themselves: beside the map, with their pictures, read aloud, and in which

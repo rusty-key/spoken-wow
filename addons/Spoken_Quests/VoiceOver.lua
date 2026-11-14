@@ -294,8 +294,9 @@ function Addon:InvokeQuestHandler(event, source, manual, snapshot)
         return false
     end
     -- Only a read waits on autoplay: a window closing must still stop a line the Play button started.
-    if not manual and event ~= "QUEST_FINISHED" and event ~= "GOSSIP_CLOSED" and not self:IsAutoplayOn() then
-        Debug:Record("autoplay-off", format("Not reading %s: autoplay is off", event))
+    if not manual and event ~= "QUEST_FINISHED" and event ~= "GOSSIP_CLOSED" and not self:ReadsItself(event) then
+        Debug:Record("autoplay-off", format("Not reading %s: %s", event,
+            self:IsAutoplayOn() and "Read Quest Progress Text is off" or "autoplay is off"))
         return false
     end
     -- Read while DialogueUI's window is still appearing, the voice would run ahead of the words
@@ -352,18 +353,47 @@ function Addon:IsAutoplayOn()
     return self.db.profile.Audio.Autoplay ~= false
 end
 
+function Addon:IsProgressTextOn()
+    return self.db.profile.Audio.ProgressText ~= false
+end
+
+--- Autoplay on, and for the progress page Read Quest Progress Text too.
+function Addon:ReadsItself(event)
+    return self:IsAutoplayOn() and (event ~= "QUEST_PROGRESS" or self:IsProgressTextOn())
+end
+
+--- Why this page waits for its Play button, as the button's tip says it, or nil when it reads
+--- itself.
+function Addon:WhyHeld(event)
+    if not self:IsAutoplayOn() then
+        return L.OPT_AUTOPLAY_OFF_TIP
+    elseif event == "QUEST_PROGRESS" and not self:IsProgressTextOn() then
+        return L.OPT_PROGRESS_OFF_TIP
+    elseif event and self:PartOfPage(event) == "gossip" and self:IsNever() then
+        return L.OPT_NEVER_TIP
+    end
+end
+
 --- Read Greetings is at Never: no NPC window reads itself, whatever Read Automatically says.
 function Addon:IsNever()
     return self.db.profile.Audio.GossipFrequency == Enums.GossipFrequency.Never
 end
 
-function Addon:SetAutoplay(on)
-    self.db.profile.Audio.Autoplay = on and true or false
-    -- The Play button stands in for autoplay, so it appears or goes with the setting even
-    -- while a dialog is already open.
+-- The Play button stands in for autoplay, so it appears or goes with these settings even while
+-- a dialog is already open.
+local function SetAudioFlag(key, on)
+    Addon.db.profile.Audio[key] = on and true or false
     if DialogPlayButton and DialogPlayButton.Refresh then
         DialogPlayButton:Refresh()
     end
+end
+
+function Addon:SetProgressText(on)
+    SetAudioFlag("ProgressText", on)
+end
+
+function Addon:SetAutoplay(on)
+    SetAudioFlag("Autoplay", on)
 end
 
 --- The quest panels and the gossip frame, in the priority GetVisibleQuestEvent gives them.
@@ -462,6 +492,8 @@ local defaults = {
             -- What NPCs say in chat after this player accepts or turns in a quest
             -- (Followup.lua). Autoplay off silences these too: they read themselves.
             FollowupLines = true,
+            -- Off, the progress page does not read itself; its Play button and /spq read still play it.
+            ProgressText = true,
             -- Follow the client, and fall back on English. Every pack that exists today
             -- is English and declares no language, so an English-speaking player with the
             -- packs they already have resolves enUS on the first pass and hears exactly
@@ -751,6 +783,12 @@ function Addon:OnInitialize()
         end
     end
 
+    local function FinishPage(state, key, event, questID)
+        state.completedKey = key
+        MarkHandled(state, key)
+        MarkQuestSnapshotRead(event, questID)
+    end
+
     local function PollAutomaticQuest()
         local state = self.autoQuestState
         if self.dataModulesPending then
@@ -799,6 +837,14 @@ function Addon:OnInitialize()
             return
         end
 
+        -- Finished once, or the watcher would ask again every poll.
+        if not self:ReadsItself(event) then
+            if key ~= state.completedKey then
+                FinishPage(state, key, event, questID)
+            end
+            return
+        end
+
         -- A synchronous Classic quest event can expose the previous quest's
         -- globals briefly while switching NPCs. Do not replay the most recent
         -- quest key during that transition; /spq read remains an explicit way
@@ -813,9 +859,7 @@ function Addon:OnInitialize()
         local expectedSoundEvent = QUEST_EVENTS[event] and QUEST_EVENTS[event].sound
         for _, queuedSound in ipairs(Player:Queued()) do
             if queuedSound.questID == questID and queuedSound.event == expectedSoundEvent then
-                state.completedKey = key
-                MarkHandled(state, key)
-                MarkQuestSnapshotRead(event, questID)
+                FinishPage(state, key, event, questID)
                 return
             end
         end
@@ -835,9 +879,7 @@ function Addon:OnInitialize()
             if stage == "queued" or stage == "queue-paused" or stage == "playing" or
                stage == "sound-disabled" or stage == "file-playback-failed" or stage == "playback-failed" or
                stage == "data-lookup-failed" then
-                state.completedKey = key
-                MarkHandled(state, key)
-                MarkQuestSnapshotRead(visibleEvent, questID)
+                FinishPage(state, key, visibleEvent, questID)
             end
         end
     end
@@ -1409,8 +1451,8 @@ end
 ---@return boolean? muted
 local function TakeGreetingMute(self, event)
     EndGreetingTextWait()
-    if not Spoken.MuteGameDialogueAhead or not self:IsPageOn(event) or not self:IsAutoplayOn() or self.dataModulesPending
-        or not Player.source then
+    if not Spoken.MuteGameDialogueAhead or not self:IsPageOn(event) or not self:ReadsItself(event)
+        or self.dataModulesPending or not Player.source then
         return
     end
     local quest = QUEST_EVENTS[event]
@@ -1503,7 +1545,7 @@ end
 ---@param textIsCurrent boolean?
 ---@return string?
 function Addon:ExpectedLine(event, textIsCurrent)
-    if not self:IsPageOn(event) or not self:IsAutoplayOn() or self.dataModulesPending or not Player.source
+    if not self:IsPageOn(event) or not self:ReadsItself(event) or self.dataModulesPending or not Player.source
         or (Spoken.ReadsHere and not Spoken:ReadsHere()) then
         return nil
     end
