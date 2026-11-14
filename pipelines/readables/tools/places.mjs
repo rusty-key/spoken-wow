@@ -36,7 +36,7 @@ import { loadEnv } from "../../lib/env.mjs";
 import { FOREVER_BUILD, wagoTable } from "../../lib/wago.mjs";
 import { areaReader } from "./lib/area.mjs";
 import { SOURCES_BY_HAND, handPlace } from "./lib/hand.mjs";
-import { compareIds, luaTableId, placeLua } from "./lib/lua.mjs";
+import { compareIds, luaTableId, placeLua, readableLua } from "./lib/lua.mjs";
 import { foreverQuests, generatedPlace, isTemplateCopy } from "./lib/places.mjs";
 
 await loadEnv("readables");
@@ -93,23 +93,12 @@ function table(name) {
 // ---------------------------------------------------------------- the readables
 
 const booksLua = await readFile(BOOKS, "utf8");
-const bookPart = booksLua.slice(booksLua.indexOf("\tbooks = {"));
-const books = new Map();
-const LUA_ID = String.raw`(?:\d+|"(?:[^"\\]|\\.)*")`;
-const parseLuaId = (id) => id.startsWith('"') ? id.slice(1, -1) : Number(id);
-const parseLuaIds = (source) => [...source.matchAll(new RegExp(LUA_ID, "g"))].map(([id]) => parseLuaId(id));
-for (const m of bookPart.matchAll(new RegExp(`\\[(${LUA_ID})\\] = \\{ title = "((?:[^"\\\\]|\\\\.)*)", pages = \\{ ([^}]*) \\}`, "g"))) {
-  books.set(parseLuaId(m[1]), { title: m[2], pages: parseLuaIds(m[3]) });
-}
-const pageBook = new Map();
-for (const [id, book] of books) for (const page of book.pages) pageBook.set(page, id);
+const parsedBooks = readableLua(booksLua);
+const books = parsedBooks.books;
+const pageBook = parsedBooks.pageBook;
 if (books.size === 0) throw new Error(`no books read from ${BOOKS}`);
 // Each page's words, as Lua source: what a gravestone says decides that it is one.
-const pageText = new Map();
-const pagePart = booksLua.slice(booksLua.indexOf("\tpages = {"), booksLua.indexOf("\tbooks = {"));
-for (const m of pagePart.matchAll(new RegExp(`\\[(${LUA_ID})\\] = \\{ book = ${LUA_ID}, number = \\d+, text = "((?:[^"\\\\]|\\\\.)*)"`, "g"))) {
-  pageText.set(parseLuaId(m[1]), m[2]);
-}
+const pageText = parsedBooks.pageText;
 
 // ---------------------------------------------------------------- where on the map
 
@@ -382,7 +371,7 @@ try {
       add(bookId, s.zones ?? handObjectZones.get(s.object) ?? []);
       if (s.how === "quest reward") addQuestReward(bookId, s.quest);
     }
-    if (!kind.has(bookId)) kind.set(bookId, "carried");
+    if (!kind.has(bookId)) kind.set(bookId, handPlace(bookId).kind);
   }
 } finally {
   await db.end();

@@ -50,6 +50,7 @@ export const TYPE_BY_HAND = {
 export function handPlace(bookId) {
   const sources = SOURCES_BY_HAND[bookId] ?? [];
   return {
+    kind: "carried",
     type: TYPE_BY_HAND[bookId],
     quests: sources.filter((source) => source.how === "quest reward").map((source) => source.quest),
     zones: sources.flatMap((source) => source.zones ?? []),

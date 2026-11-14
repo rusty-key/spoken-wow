@@ -1,7 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 
-import { booksLua, indexLua, luaTableId, pageIndex, placeLua, quote } from "./lua.mjs";
+import { booksLua, indexLua, luaTableId, pageIndex, placeLua, quote, readableLua } from "./lua.mjs";
 import { handPlace } from "./hand.mjs";
 import { generatedPlace } from "./places.mjs";
 import { pageChecksum } from "./naming.mjs";
@@ -127,13 +127,13 @@ test("database ids keep numeric keys numeric and minted keys quoted", () => {
 });
 
 test("the places generator writes a minted journal's quest metadata", () => {
+  const pageId = "n0b8f4e2a-1c1d-4f7e-9a51-2a0c9d6c7e11";
+  const parsed = readableLua(`\tpages = {\n\t\t["${pageId}"] = { book = "${GOZWIN}", number = 1, text = "Keep it running." },\n\t},\n\n\tbooks = {\n\t\t["${GOZWIN}"] = { title = "Gozwin's Mechanic's Log", pages = { "${pageId}" } },\n\t},`);
   const hand = handPlace(GOZWIN);
-  assert.deepEqual(hand, { type: "journal", quests: [97277], zones: [1426] });
-  const record = generatedPlace({ id: GOZWIN,
-    book: { title: "Gozwin's Mechanic's Log", pages: ["n0b8f4e2a-1c1d-4f7e-9a51-2a0c9d6c7e11"] },
-    kind: "carried", spots: new Set(hand.zones), hand,
+  assert.deepEqual(hand, { kind: "carried", type: "journal", quests: [97277], zones: [1426] });
+  const record = generatedPlace({ id: GOZWIN, book: parsed.books.get(GOZWIN), kind: hand.kind, spots: new Set(hand.zones), hand,
     questRewards: new Map([[GOZWIN, new Set(hand.quests)]]),
-    pageText: new Map([["n0b8f4e2a-1c1d-4f7e-9a51-2a0c9d6c7e11", "Keep it running."]]),
+    pageText: parsed.pageText,
   });
   assert.equal(placeLua(GOZWIN, record),
     `\t\t["${GOZWIN}"] = { kind = "carried", type = "journal", quests = { 97277 }, zones = { 1426 } },`);
