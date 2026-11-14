@@ -232,6 +232,21 @@ describe("foundTeam, hand-over", () => {
     expect(await textByTeamOf(lang)).toBe(false);
   });
 
+  it("takes a language row with no team without founding a team for its code", async () => {
+    const lang = code();
+    await asSystem.query(
+      `insert into "language" ("code", "enabled", "name", "native", "bcp47", "provider", "client")
+       values ($1, false, 'Xq Bare', 'Xq Bare', $2, 'xq', false)`,
+      [lang, `xq-${lang.slice(2)}`],
+    );
+    expect(await teamOfLang(lang)).toBeNull();
+
+    const founded = await found(input(lang));
+    expect(founded).toMatchObject({ branch: "hand-over", from: null, moved: 0 });
+    expect(await teamOfLang(lang)).toBe(founded.teamId);
+    expect(await systemRows(`select 1 from "team" where "slug" = $1`, [lang.toLowerCase()])).toHaveLength(0);
+  });
+
   it("ignores the names a request gave for a code that is known by now", async () => {
     const lang = code();
     await known(lang, "Xq Old");
