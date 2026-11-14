@@ -71,6 +71,8 @@ local ResolveQuestID, NoteGossipPage
 local questSnapshots = {}
 local questInteractionID
 local pendingRead
+local pendingProgressRead
+local replayClosedQuestSnapshotsAfterLoad
 
 -- Long enough for the server to answer an accept or a turn-in, short enough that a quest
 -- accepted later some other way (an escort a party member starts) does not read an old offer.
@@ -149,7 +151,7 @@ local function CaptureQuestSnapshot(event)
     end
     local text, targetName = quest.text(), Utils:GetNPCName()
     questInteractionID = questInteractionID or 1
-    if event == "QUEST_DETAIL" and questID ~= 0 then
+    if event == "QUEST_DETAIL" then
         -- A new offer starts a new interaction even when an addon moves straight from an old
         -- progress page to it without QUEST_FINISHED. Keep that offer from inheriting the old
         -- page's unresolved ID-0 record.
@@ -267,7 +269,9 @@ local function GetVisibleQuestEvent()
 
     local questID = NotSecret(GetQuestID())
     if not questID or questID == 0 then
-        return
+        -- Replacement quest UIs can leave every Blizzard panel hidden while the dialog is open.
+        -- QUEST_FINISHED clears lastQuestEvent, so this remains distinct from a closed dialog.
+        return lastQuestEvent
     end
 
     -- Quest-log detail views do not use the NPC QuestFrame panels, but GetQuestID is
@@ -722,6 +726,10 @@ function Addon:OnInitialize()
             return
         end
         self.dataModulesPending = nil
+        if replayClosedQuestSnapshotsAfterLoad and self.ReplayClosedQuestSnapshots then
+            replayClosedQuestSnapshotsAfterLoad = nil
+            self:ReplayClosedQuestSnapshots("the dialog closed while voice packs loaded")
+        end
         if not succeeded then
             self.dataModulesDeferredError = tostring(result)
             Debug:Record("data-load-error", self.dataModulesDeferredError)
@@ -841,8 +849,10 @@ function Addon:OnInitialize()
 
     self.ReplayClosedQuestSnapshots = function(_, source)
         if self.dataModulesPending then
+            replayClosedQuestSnapshotsAfterLoad = true
             return
         end
+        replayClosedQuestSnapshotsAfterLoad = nil
         ReplayQuestSnapshots(source or "the dialog closed before it could stabilize")
     end
 
@@ -1315,9 +1325,14 @@ end
 local function QueueRead(soundData, manual)
     -- A read from the snapshot of a window that has already closed has nothing left to wait for.
     if not manual and Addon.db.profile.Audio.ReadAfterClose and not questSnapshotInUse then
-        pendingRead = soundData
+        local previousPending = pendingRead
         -- Held counts as handled for the watcher, or it would read the quest again once the window closes.
         local event = EVENT_OF_SOUND[soundData.event]
+        if event == "QUEST_COMPLETE" and previousPending and
+            EVENT_OF_SOUND[previousPending.event] == "QUEST_PROGRESS" then
+            pendingProgressRead = previousPending
+        end
+        pendingRead = soundData
         MarkQuestSnapshotRead(event, soundData.questID,
             event == "QUEST_COMPLETE")
         local state = Addon.autoQuestState
@@ -1804,10 +1819,18 @@ function Addon:QUEST_FINISHED()
     -- Replay retained quest pages before a Read When Window Closes line is released, so a
     -- progress page captured during a fast transition stays ahead of the reward page.
     local pending = pendingRead
-    if (pending or CurrentQuestID() == 0) and Addon.ReplayClosedQuestSnapshots then
+    local pendingProgress = pendingProgressRead
+    pendingProgressRead = nil
+    if (pending or CurrentQuestID() == 0 or Addon.dataModulesPending) and
+        Addon.ReplayClosedQuestSnapshots then
         Addon:ReplayClosedQuestSnapshots("the dialog closed (QUEST_FINISHED)")
     end
     pendingRead = nil
+    if pendingProgress then
+        -- A progress line held for this same close was superseded by completion; release it first.
+        pendingProgress.addedCallback = nil
+        Player:Enqueue(pendingProgress)
+    end
     if pending then
         -- Its window has closed, so it is no window's line: the next close leaves it playing.
         pending.addedCallback = nil

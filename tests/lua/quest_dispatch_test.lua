@@ -343,6 +343,25 @@ VO.Addon.db.profile.Audio.ReadAfterClose = false
 Expect("Read When Window Closes releases expired pending progress",
     string.format("%d-progress, %d-complete", full, full))
 
+-- If progress stabilizes before the reward page arrives, its pending line must not be replaced by
+-- the pending completion line when the window closes.
+StartScenario()
+VO.Addon.db.profile.Audio.ReadAfterClose = true
+world.questID = full
+stub.ShowPanel("QuestFrameProgressPanel")
+stub.Advance(0.5)
+stub.ShowPanel("QuestFrameRewardPanel")
+stub.FireEvent("QUEST_COMPLETE")
+stub.Advance(0.5)
+Expect("Read When Window Closes holds stabilized progress and completion", "")
+world.questID = 0
+stub.ShowPanel(nil)
+stub.FireEvent("QUEST_FINISHED")
+stub.Advance(5)
+VO.Addon.db.profile.Audio.ReadAfterClose = false
+Expect("Read When Window Closes releases stabilized progress first",
+    string.format("%d-progress, %d-complete", full, full))
+
 -- Both page events can arrive while the client reports ID 0; once the reward page has a real ID,
 -- capture it before dispatch so the unresolved progress and completion records are associated.
 StartScenario()
@@ -378,6 +397,37 @@ stub.Advance(5)
 Expect("a reward-panel transition without events keeps ID-gap progress",
     string.format("%d-progress, %d-complete", full, full))
 
+-- Replacement quest UIs hide Blizzard panels. A poll during their ID gap must use the recorded
+-- event as the open-dialog signal instead of spending the unresolved snapshot as a close.
+StartScenario()
+testPack.QuestIDLookup = { accept = {}, progress = {}, complete = {} }
+world.questID = 0
+stub.FireEvent("QUEST_PROGRESS")
+stub.Advance(0.2)
+world.questID = full
+stub.FireEvent("QUEST_COMPLETE")
+world.questID = 0
+stub.FireEvent("QUEST_FINISHED")
+stub.FireEvent("QUEST_TURNED_IN", full, 0, 0)
+stub.Advance(5)
+testPack.QuestIDLookup = nil
+Expect("a replacement UI ID gap keeps progress", string.format("%d-progress, %d-complete", full, full))
+
+-- A retained quest ID must not prevent a close-time snapshot from being replayed after voice
+-- packs finish loading; QUEST_TURNED_IN itself may have arrived while loading was pending.
+StartScenario()
+world.questID = full
+stub.ShowPanel("QuestFrameProgressPanel")
+stub.FireEvent("QUEST_PROGRESS")
+VO.Addon.dataModulesPending = true
+stub.ShowPanel(nil)
+stub.FireEvent("QUEST_FINISHED")
+Expect("close during pack loading waits without playing", "")
+VO.Addon.dataModulesPending = nil
+VO.Addon:ReplayClosedQuestSnapshots("test voice packs loaded")
+stub.Advance(5)
+Expect("close during pack loading replays after loading", string.format("%d-progress", full))
+
 -- A fast switch must not let quest B's identifying page assign quest B's ID to quest A's
 -- unresolved progress just because both quests have the same title and giver.
 StartScenario()
@@ -401,6 +451,18 @@ stub.FireEvent("QUEST_COMPLETE")
 stub.FireEvent("QUEST_TURNED_IN", full, 0, 0)
 stub.Advance(5)
 Expect("a quest switch without QUEST_FINISHED does not attach old progress", "104-complete")
+
+-- The replacement offer can itself arrive while the client still reports ID 0. It must begin a
+-- new interaction before its later completion ID becomes available.
+StartScenario()
+world.questID = 0
+stub.FireEvent("QUEST_PROGRESS")
+stub.FireEvent("QUEST_DETAIL")
+world.questID = full
+stub.FireEvent("QUEST_COMPLETE")
+stub.FireEvent("QUEST_TURNED_IN", full, 0, 0)
+stub.Advance(5)
+Expect("an ID-zero quest switch starts a new interaction", "104-complete")
 
 -- A turn-in after a page that names no quest reads nothing either.
 StartScenario()
