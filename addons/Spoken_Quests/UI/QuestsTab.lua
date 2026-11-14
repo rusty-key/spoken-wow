@@ -135,7 +135,7 @@ end
 local AnyVoiced
 
 -- The words and titles kept in this client's language, by quest: { title, accept/complete = { text,
--- sex }, progress = { text, sex } or { characters = { [characterID] = { text, sex } } } ... }.
+-- sex }, progress = { text, sex } ... }.
 -- Only a moment with no shipped English text is kept, regardless of the client's language.
 local function Kept(id, moment, create)
     if id and moment and English(id)[moment] ~= nil then return nil end
@@ -934,20 +934,6 @@ end
 -- The words
 --------------------------------------------------------------------------------
 
-local function Sex()
-    return UnitSex and UnitSex("player") or 2
-end
-
--- A GUID remains the same when a character changes name.
-local function CharacterID()
-    local guid = UnitGUID and VO.NotSecret(UnitGUID("player"))
-    if type(guid) == "string" and guid ~= "" then return guid end
-end
-
-local function Plain(text)
-    return (text:gsub("[%^%$%(%)%%%.%[%]%*%+%-%?]", "%%%0"))
-end
-
 --- A quest's words for this character, as the client fills them: the name, class and race,
 --- the word for its sex out of "$G male:female;", and $B a line break.
 function QuestsTab:Fill(text)
@@ -965,42 +951,23 @@ local function Generalise(text, english)
     }
     for _, each in ipairs(words) do
         local letter, word = each[1], each[2]
-        if type(word) == "string" and word ~= "" and english:find("%$[" .. letter .. letter:lower() .. "]") then
-            text = text:gsub(Plain(word), "$" .. letter)
+        if type(word) == "string" and word ~= ""
+            and (english == "" or english:find("%$[" .. letter .. letter:lower() .. "]")) then
+            text = Spoken.Contribute:ReplaceWord(text, word, "$" .. letter)
         end
     end
     return text
 end
 
 -- Each moment's words as stored: those kept in this client's language, else the English, or nil.
--- A missing-template record is account-wide, but is shown only to the character that captured it.
+-- A missing-template record is account-wide, like accept and complete.
 local function Stored(id, moment)
     local english = English(id)
     local kept = Kept(id, moment)
     kept = kept and kept[id]
     local own = kept and kept[moment]
     local text = english[moment]
-    if text == nil and type(own) == "table" then
-        local characters = own.characters
-        if type(characters) == "table" then
-            local character = CharacterID()
-            local characterRecord = character and characters[character]
-            if characterRecord then
-                own = characterRecord
-                if own.sex ~= Sex() then
-                    own = nil
-                end
-            else
-                own = nil
-            end
-        else
-            own = nil
-        end
-    end
-    if type(own) == "table" and own.text
-        and not (own.sex ~= Sex() and (text or ""):find("%$[Gg]")) then
-        text = own.text
-    end
+    if type(own) == "table" and own.text then text = own.text end
     if text and text ~= "" then return text end
 end
 
@@ -1040,19 +1007,7 @@ function QuestsTab:Keep(moment, text, title)
     if kept and type(text) == "string" and text ~= "" then
         kept[id] = kept[id] or {}
         local english = English(id)
-        local record = { text = Generalise(text, english[moment]), sex = Sex() }
-        if english[moment] == nil then
-            local character = CharacterID()
-            if not character then return end
-            local captured = kept[id][moment]
-            if type(captured) ~= "table" or type(captured.characters) ~= "table" then
-                captured = { characters = {} }
-                kept[id][moment] = captured
-            end
-            captured.characters[character] = record
-            return
-        end
-        kept[id][moment] = record
+        kept[id][moment] = { text = Generalise(text, english[moment]) }
     end
 end
 

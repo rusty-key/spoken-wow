@@ -10,9 +10,8 @@ carries that version. The heading says which.
 
 - Quest pages in Azeroth's Compendium now show and play captured progress text alongside the
   description and completion. Progress-only voice packs count in Voiced Only and shift-click.
-- Captured progress text without a shipped template is kept per character, including more than one
-  character's wording for the same quest, while generalized accept and completion text remains
-  shareable.
+- Captured progress text without a shipped template is generalized and kept account-wide, like
+  accept and completion text, so each character sees its own filled player tokens.
 - **Paragraph breaks show as breaks again** in subtitles and the Compendium, not as `\n\n`
   in the middle of the text. Packs built since 2026-11-13 had them.
 

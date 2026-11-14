@@ -1411,51 +1411,47 @@ Expect("...keeps the localized title but only missing English moments as words",
     kept.deDE[KOBOLDS] ~= nil and kept.deDE[KOBOLDS].accept == nil and kept.enUS == nil, true)
 stub.world.questID = CANDLES
 stub.world.title = "Koboldkerzen"
-stub.world.progressText = "Tester, habt Ihr die Kerzen schon gesammelt?"
+stub.world.progressText = "Tester, Mage, Human, habt Ihr die Kerzen schon gesammelt?"
 stub.FireEvent("QUEST_PROGRESS")
 stub.world.questID = 0
 Tab:Refresh()
 Click("Koboldkerzen")
-Expect("progress text is shown for the character who captured it",
-    (PageWords() or ""):find("Tester, habt Ihr die Kerzen schon gesammelt?", 1, true) ~= nil, true)
-Expect("...and keeps that character's sex",
-    kept.deDE[CANDLES].progress.characters[stub.world.playerGUID].sex == 2, true)
-stub.world.playerGUID = nil
-Expect("the no-GUID fixture has no player GUID", UnitGUID("player"), nil)
-stub.world.progressText = "Tester, no stable identity."
+Expect("captured progress text is shown",
+    (PageWords() or ""):find("Tester, Mage, Human, habt Ihr die Kerzen schon gesammelt?", 1, true) ~= nil, true)
+Expect("...generalizes the missing-template player tokens",
+    kept.deDE[CANDLES].progress.text == "$N, $C, $R, habt Ihr die Kerzen schon gesammelt?", true)
+stub.world.playerName = "Red"
+stub.world.progressText = "Travel to Redridge, Red."
 stub.world.questID = CANDLES
 stub.FireEvent("QUEST_PROGRESS")
-Expect("progress without a GUID does not create a name-keyed record",
-    kept.deDE[CANDLES].progress.characters.Tester, nil)
+Expect("...does not generalize a player name inside another word",
+    kept.deDE[CANDLES].progress.text == "Travel to Redridge, $N.", true)
+stub.world.questID = 0
+stub.world.playerName = "Tester"
+stub.world.progressText = "Greetings, “Tester”!"
+stub.world.questID = CANDLES
+stub.FireEvent("QUEST_PROGRESS")
+Expect("...generalizes a name beside Unicode punctuation",
+    kept.deDE[CANDLES].progress.text == "Greetings, “$N”!", true)
 stub.world.questID = 0
 stub.world.playerName = "Zweite"
-stub.world.playerGUID = "Player-0-0-0-0-Zweite-0"
 Tab:Refresh()
-Expect("progress text is hidden for another character",
-    (PageWords() or ""):find("Tester, habt Ihr die Kerzen schon gesammelt?", 1, true) == nil, true)
-stub.world.progressText = "Zweite, habt Ihr die Kerzen schon gesammelt?"
+Expect("shared progress text is filled for another character",
+    (PageWords() or ""):find("Greetings, “Zweite”!", 1, true) ~= nil, true)
+stub.world.progressText = "Zweite, Mage, Human, neuer Fortschritt."
 stub.world.questID = CANDLES
 stub.FireEvent("QUEST_PROGRESS")
 stub.world.questID = 0
 Tab:Refresh()
 Click("Koboldkerzen")
-Expect("the other character keeps its own progress text",
-    (PageWords() or ""):find("Zweite, habt Ihr die Kerzen schon gesammelt?", 1, true) ~= nil, true)
+Expect("the other character updates the shared progress text",
+    (PageWords() or ""):find("Zweite, Mage, Human, neuer Fortschritt.", 1, true) ~= nil, true)
 stub.world.playerName = "Tester"
-stub.world.playerGUID = "Player-0-0-0-0-Tester-0"
 stub.world.progressText = ""
 Tab:Refresh()
 Click("Koboldkerzen")
-Expect("the first character's progress text is retained",
-    (PageWords() or ""):find("Tester, habt Ihr die Kerzen schon gesammelt?", 1, true) ~= nil, true)
-stub.world.progressText = "Tester, neuer Fortschritt."
-stub.world.questID = CANDLES
-stub.FireEvent("QUEST_PROGRESS")
-stub.world.questID = 0
-Tab:Refresh()
-Click("Koboldkerzen")
-Expect("a new capture keeps the character-specific record", (PageWords() or ""):find("Tester, neuer Fortschritt.", 1, true) ~= nil, true)
-stub.world.playerGUID = "Player-0-0-0-0-Tester-0"
+Expect("the shared progress text is filled for the current character",
+    (PageWords() or ""):find("Tester, Mage, Human, neuer Fortschritt.", 1, true) ~= nil, true)
 stub.world.progressText = ""
 -- A window whose id, title and words the game hands over as secrets keeps nothing.
 stub.world.questID = JENNEA

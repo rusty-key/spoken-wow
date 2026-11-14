@@ -2,6 +2,13 @@
 
 Spoken Player until 3.0.0, when it became Spoken and took its modules into one download.
 
+## Unreleased
+
+- **Compendium progress text is now a separate Progress section.** Captured progress text can be
+  played from quest pages, counts in Voiced Only and shift-click ordering, and is kept account-wide
+  without a shipped template with player names, classes and races generalized for the current
+  character. *([rusty-key](https://github.com/rusty-key))*
+
 ## 3.9.0 — 2026-11-14
 
 - **A report names the line you heard.** When a quest is read in more than one voice, or an NPC has

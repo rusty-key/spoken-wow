@@ -1889,11 +1889,9 @@ window's title and words without a shipped English template in
 `SpokenQuestsSettings.global.CompendiumText[locale][questID]`, shown over the English. An English
 client keeps progress text because the shipped corpus has no progress text; shipped accept and
 complete words remain the source of truth. The player's name, class and race go back to `$N`, `$C`
-and `$R` where the English has them, so another character sees its own. A text kept by a character
-of the other sex is not shown where the English has a `$G`. Progress text without a shipped template
-is kept per character GUID and is shown only to that character. Accept and complete text remains
-shareable after its
-placeholders are generalized.
+and `$R` where the English has them; missing-template progress generalizes those values whenever
+they occur in the captured text. Progress text without a shipped template is kept account-wide,
+like accept and complete text, and is filled for the current character when shown.
 
 ## Tests
 
