@@ -2,6 +2,12 @@
 
 Spoken Player until 3.0.0, when it became Spoken and took its modules into one download.
 
+## Unreleased
+
+- **Automatic quest turn-ins keep their progress line** when the client changes to the reward page
+  before sending `QUEST_PROGRESS`, including during a brief quest-ID gap.
+  *([anon1231823](https://github.com/anon1231823))*
+
 ## 3.9.0 — 2026-11-14
 
 - **A report names the line you heard.** When a quest is read in more than one voice, or an NPC has
