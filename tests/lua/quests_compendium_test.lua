@@ -50,6 +50,7 @@ end
 -- A human mage, Tester, who has completed Kobold Camp Cleanup.
 local KOBOLDS, CANDLES, SHARPTALON, JENNEA = 7, 60, 2, 1860
 stub.world.playerName = "Tester"
+stub.world.playerGUID = "Player-0-0-0-0-Tester-0"
 _G.UnitRace = function() return "Human", "Human", 1 end
 _G.UnitClass = function() return "Mage", "MAGE", 8 end
 local completed = { [KOBOLDS] = true }
@@ -542,9 +543,20 @@ RowOf(CANDLES).scripts.OnClick(RowOf(CANDLES))
 Expect("its page: its title", page.title.text, "Kobold Candles")
 Expect("...where it is, then the quest mark and In progress", page.sub.text.text,
     "In Elwynn Forest · |TInterface\\GossipFrame\\ActiveQuestIcon:0|t " .. L.QUEST_IN_PROGRESS)
-Expect("...and its offer alone: no part for its progress", #page.body.lastParts .. " "
-    .. page.body.lastParts[1].heading .. " "
-    .. tostring((PageWords() or ""):find("Did you gather those candles yet?", 1, true)), "1 " .. L.QUEST_PART_ACCEPT .. " nil")
+stub.world.questID = CANDLES
+stub.world.progressText = "Have you gathered those candles yet?"
+stub.FireEvent("QUEST_PROGRESS")
+stub.world.questID = 0
+Tab:Refresh()
+Expect("...its offer and the progress text, each under its heading", #page.body.lastParts .. " "
+    .. page.body.lastParts[1].heading .. " " .. page.body.lastParts[2].heading .. " "
+    .. tostring((PageWords() or ""):find("Have you gathered those candles yet?", 1, true) ~= nil),
+    "2 " .. L.QUEST_PART_ACCEPT .. " " .. L.QUEST_PART_PROGRESS .. " true")
+Expect("...and keeps that English progress text for the Compendium", VO.Addon.db.global.CompendiumText.enUS
+    and VO.Addon.db.global.CompendiumText.enUS[CANDLES]
+    and VO.Addon.db.global.CompendiumText.enUS[CANDLES].progress ~= nil, true)
+VO.Addon.db.global.CompendiumText.enUS = nil
+stub.world.progressText = ""
 Expect("...not the hand-in before it is completed: it tells how the quest ends",
     (PageWords() or ""):find("Thanks for the candles", 1, true) == nil
     and page.body.lastParts[#page.body.lastParts].heading ~= L.QUEST_PART_COMPLETE, true)
@@ -1107,25 +1119,30 @@ Expect("...on its page, the list keeping the filter and leaving its row out", pa
 _, choices = Menu()
 choices[2].func()
 Expect("...off, everything again", Has(Shown(), "Kobold Candles") and Has(Shown(), "Westfall") and Tab:Has(CANDLES), true)
--- The page has no progress part, so a quest a pack voices only in its progress counts as unvoiced.
+-- A quest a pack voices only in its progress is voiced in the Compendium too.
 do
     testPack.SoundLengthLookupByFileName["60-progress"] = 2
     testPack.NPCIDLookupByQuestID[CANDLES] = MCBRIDE
     Expect("(a pack voicing Kobold Candles' progress)",
         VO.DataModules:PrepareSound({ event = VO.Enums.SoundEvent.QuestProgress, questID = CANDLES }) and true, true)
+    local order = VO.Language.ResolutionOrder
+    VO.Language.ResolutionOrder = function() return { "enUS", "progress-test" } end
+    Tab:Refresh()
     _, choices = Menu()
     choices[2].func()
-    Expect("a quest a pack voices only in its progress is left out by Voiced Only", Has(Shown(), "Kobold Candles"), false)
+    Expect("a quest a pack voices only in its progress stays in Voiced Only", Has(Shown(), "Kobold Candles"), true)
     _, choices = Menu()
     choices[2].func()
     local shift = _G.IsShiftKeyDown
     _G.IsShiftKeyDown = function() return true end
     Spoken:StopAll()
     Click("Kobold Candles")
-    Expect("...and shift-click on its row plays nothing", Spoken:GetQueueSize(), 0)
+    Expect("...and shift-click on its row plays its progress", Spoken:GetQueueSize(), 1)
     _G.IsShiftKeyDown = shift
     testPack.SoundLengthLookupByFileName["60-progress"] = nil
     testPack.NPCIDLookupByQuestID[CANDLES] = nil
+    VO.Language.ResolutionOrder = order
+    Tab:Refresh()
 end
 -- A switch in the filter menu leaving out the chosen row tells the tab (onHidden), which says what
 -- the page shows in its place.
@@ -1382,15 +1399,82 @@ Tab:Refresh()
 Click("Säuberung des Koboldlagers")
 words = PageWords() or ""
 Expect("the title the window showed", page.title.text, "Säuberung des Koboldlagers")
-Expect("...and its words, over the English", words:find("Ihr müsst die Kobolde vertreiben.", 1, true) ~= nil, true)
+Expect("...and its shipped English words", words:find(SpokenQuestsText[KOBOLDS].accept:sub(1, 20), 1, true) ~= nil, true)
 Expect("...the moments the window has not shown yet still in English",
     words:find(SpokenQuestsText[KOBOLDS].complete:sub(1, 20), 1, true) ~= nil, true)
 stub.world.playerName = "Zweite"
 Tab:Refresh()
-Expect("...another character's name where the player's was", (PageWords() or ""):find("Zweite, Ihr müsst", 1, true) ~= nil, true)
+Expect("...not the first character's kept offer", (PageWords() or ""):find("Ihr müsst die Kobolde", 1, true) == nil, true)
 stub.world.playerName = "Tester"
 local kept = VO.Addon.db.global.CompendiumText
-Expect("...kept by language", kept.deDE[KOBOLDS] ~= nil and kept.enUS == nil, true)
+Expect("...keeps the localized title but only missing English moments as words",
+    kept.deDE[KOBOLDS] ~= nil and kept.deDE[KOBOLDS].accept == nil and kept.enUS == nil, true)
+stub.world.questID = CANDLES
+stub.world.title = "Koboldkerzen"
+stub.world.progressText = "Tester, habt Ihr die Kerzen schon gesammelt?"
+stub.FireEvent("QUEST_PROGRESS")
+stub.world.questID = 0
+Tab:Refresh()
+Click("Koboldkerzen")
+Expect("progress text is shown for the character who captured it",
+    (PageWords() or ""):find("Tester, habt Ihr die Kerzen schon gesammelt?", 1, true) ~= nil, true)
+Expect("...and keeps that character's name and sex",
+    kept.deDE[CANDLES].progress.characters[stub.world.playerGUID].name == "Tester"
+        and kept.deDE[CANDLES].progress.characters[stub.world.playerGUID].sex == 2, true)
+stub.world.playerGUID = nil
+Expect("the fallback fixture has no player GUID", UnitGUID("player"), nil)
+stub.world.progressText = "Tester, ein anderer Fortschritt."
+stub.world.questID = CANDLES
+stub.FireEvent("QUEST_PROGRESS")
+stub.world.questID = 0
+Tab:Refresh()
+Click("Koboldkerzen")
+Expect("progress captured with the name fallback is shown to that character",
+    (PageWords() or ""):find("Tester, ein anderer Fortschritt.", 1, true) ~= nil, true)
+stub.world.unitSex = 3
+Tab:Refresh()
+Expect("the same name with a different sex cannot read that progress",
+    (PageWords() or ""):find("Tester, ein anderer Fortschritt.", 1, true) == nil, true)
+stub.world.unitSex = 2
+stub.world.playerName = "Zweite"
+stub.world.playerGUID = "Player-0-0-0-0-Zweite-0"
+Tab:Refresh()
+Expect("progress text is hidden for another character",
+    (PageWords() or ""):find("Tester, habt Ihr die Kerzen schon gesammelt?", 1, true) == nil, true)
+stub.world.progressText = "Zweite, habt Ihr die Kerzen schon gesammelt?"
+stub.world.questID = CANDLES
+stub.FireEvent("QUEST_PROGRESS")
+stub.world.questID = 0
+Tab:Refresh()
+Click("Koboldkerzen")
+Expect("the other character keeps its own progress text",
+    (PageWords() or ""):find("Zweite, habt Ihr die Kerzen schon gesammelt?", 1, true) ~= nil, true)
+stub.world.playerName = "Tester"
+stub.world.playerGUID = "Player-0-0-0-0-Tester-0"
+stub.world.progressText = ""
+Tab:Refresh()
+Click("Koboldkerzen")
+Expect("the first character's progress text is retained",
+    (PageWords() or ""):find("Tester, habt Ihr die Kerzen schon gesammelt?", 1, true) ~= nil, true)
+kept.deDE[CANDLES].progress = { text = "Tester, alter Fortschritt.", name = "Tester", sex = 2 }
+Tab:Refresh()
+Click("Koboldkerzen")
+Expect("the previous character-specific record remains compatible",
+    (PageWords() or ""):find("Tester, alter Fortschritt.", 1, true) ~= nil, true)
+stub.world.progressText = "Tester, neuer Fortschritt."
+stub.world.questID = CANDLES
+stub.FireEvent("QUEST_PROGRESS")
+stub.world.questID = 0
+Tab:Refresh()
+Click("Koboldkerzen")
+Expect("a new capture keeps the character-specific record", (PageWords() or ""):find("Tester, neuer Fortschritt.", 1, true) ~= nil, true)
+stub.world.playerGUID = nil
+Tab:Refresh()
+Click("Koboldkerzen")
+Expect("the migrated legacy record remains available to its matching character",
+    (PageWords() or ""):find("Tester, alter Fortschritt.", 1, true) ~= nil, true)
+stub.world.playerGUID = "Player-0-0-0-0-Tester-0"
+stub.world.progressText = ""
 -- A window whose id, title and words the game hands over as secrets keeps nothing.
 stub.world.questID = JENNEA
 stub.world.title = "Versiegelte Befehle"
@@ -1408,10 +1492,10 @@ stub.FireEvent("QUEST_DETAIL")
 stub.world.questID = 0
 Tab:Refresh()
 Click("Koboldkerzen")
-Expect("words kept from a man's window, shown to a man", (PageWords() or ""):find("Hallo, werter Herr!", 1, true) ~= nil, true)
+Expect("shipped offer words remain, despite a localized window", (PageWords() or ""):find("Hello, good sir!", 1, true) ~= nil, true)
 stub.world.unitSex = 3
 Tab:Refresh()
-Expect("...and to a woman, the English, with her word", (PageWords() or ""):find("Hello, my lady!", 1, true) ~= nil, true)
+Expect("...and the shipped words still use her word", (PageWords() or ""):find("Hello, my lady!", 1, true) ~= nil, true)
 stub.world.unitSex = 2
 stub.SetLocale("enUS")
 stub.world.questID = CANDLES
