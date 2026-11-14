@@ -3,6 +3,8 @@ https://spoken.quest/deDE/quests/r/quest/9123/progress
 https://spoken.quest/zhTW/quests/r/quest/9123/complete
 https://spoken.quest/quests/r/npc/68
 https://spoken.quest/ruRU/quests/r/object/68
+https://spoken.quest/quests/r/quest/96774/accept?file=96774-accept-troll-male-shaman
+https://spoken.quest/deDE/quests/r/npc/68?file=f-1a2b3c
 https://spoken.quest/places/r/1411/zone
 https://spoken.quest/esMX/places/r/1411/valley-of-trials
 https://spoken.quest/koKR/places/r/1413/razorfen-downs
