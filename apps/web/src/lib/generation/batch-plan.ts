@@ -18,8 +18,9 @@ import { corpus } from "@/lib/quests/catalogue";
 import { searchContext } from "@/lib/quests/context";
 import { recordingsFor } from "@/lib/recordings/store";
 import { batchPlan, matchingLines, type LineFilters } from "@/lib/search";
-import { audioStateFromParams } from "@/lib/audio-state";
+import { AUDIO_STATES } from "@/lib/audio-state";
 import { CLIENT_FILTERS } from "@/lib/contributions/client";
+import { SOURCES as LINE_SOURCES } from "@/lib/line-fields";
 import { filtersFromParams, needsLevels, needsStale } from "@/lib/search-request";
 import type { Source } from "@/lib/sections";
 import { pinnedVoices } from "@/lib/voices/references";
@@ -121,10 +122,16 @@ export async function filterError(
       };
     }
   }
+  // Every element of the one list filter: parsing drops the unknown ones and keeps the rest.
+  const badSource = (params.get("source") ?? "")
+    .split(",")
+    .find((value) => value !== "" && !(LINE_SOURCES as readonly string[]).includes(value));
+  if (badSource !== undefined) return { error: `source=${badSource} is not a valid value` };
   const parsed = await filtersFromParams(params, lang);
   const parsedTo: Record<string, unknown> = {
     filter: parsed.filter === "any" && params.get("filter") !== "any" ? undefined : parsed.filter,
-    state: audioStateFromParams(params),
+    // `state` itself, which parsing would let the legacy missing and outdated flags stand in for.
+    state: (AUDIO_STATES as readonly string[]).includes(params.get("state") ?? "") ? true : undefined,
     race: parsed.race,
     gender: parsed.gender,
     flavor: parsed.flavor,
@@ -181,16 +188,18 @@ export async function planQuestsByItems(
   lang: Lang,
   provider: Provider,
 ): Promise<Plan> {
-  const [catalogue, defaults, pinned] = await Promise.all([
+  const [catalogue, defaults, pinned, { voiced, context }] = await Promise.all([
     corpus(lang),
     filtersFromParams(new URLSearchParams(), lang),
     pinnedFor(lang, provider),
+    // A bare query string sets neither a state nor a level, so the default view needs neither
+    // staleness nor levels, and the context need not wait for the defaults.
+    searchContext(false, false, lang, true, false),
   ]);
   const { lines: narrowed, unknown } = linesForItems(catalogue.lines, items);
   // The default view, but for every client and with progress lines in: an item is one the caller
   // named, so only a line nobody voices (an ignore) is hidden, and batchPlan says why the rest drops.
   const filters = { ...defaults, client: "all" as const, includeProgress: true };
-  const { voiced, context } = await searchContext(needsStale(filters), false, lang, true, needsLevels(filters));
   const lines = matchingLines({ lines: narrowed }, voiced, filters, context);
   const hidden = narrowed.length - lines.length;
   const plan = questPlan(lines, context.overrides, pinned);

@@ -53,6 +53,7 @@ export async function GET(request: Request) {
       "Places: sending text without short regenerates short.",
       "expectedVersion and expectedNameVersion guard an existing version only. A line with no text has nothing to compare, so they do not protect a first translation someone saved since you read it.",
       "A request over limits.requestBytes gets a 413 from the proxy, with no results: split it.",
+      "limits.itemsPerGeneration caps a generate's items only. A quests generate by filters is not capped, as in the Explorer: a dry run says how big it is.",
       "Lexicon writes replace an entry whole, so a note left out is dropped. They upload to ElevenLabs with the token owner's key; without one the save lands and sync reads pending, or never if the language was never uploaded. Each write uploads the whole dictionary, so send several fixes in one PATCH /api/v1/lexicon.",
     ],
     docs: "https://github.com/rusty-key/spoken-wow/blob/master/docs/contributors/TEXT-API.md",

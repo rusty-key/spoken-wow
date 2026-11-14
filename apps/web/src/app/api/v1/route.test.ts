@@ -72,6 +72,11 @@ describe("GET /api/v1", () => {
     });
   });
 
+  it("says itemsPerGeneration caps items, not filters", async () => {
+    const { notes } = (await (await get(token)).json()) as { notes: string[] };
+    expect(notes.some((note) => note.includes("itemsPerGeneration") && /filters .*not capped/.test(note))).toBe(true);
+  });
+
   it("points at documents a client can open", async () => {
     const { docs } = (await (await get(token)).json()) as { docs: string };
     expect(docs).toMatch(/^https:\/\//);

@@ -92,7 +92,7 @@ limits, one job per audio file. It stops working when you lose the right to rege
 
 `POST /api/v1/{section}/generate` takes either `items`, up to 1000 of `{id, variant?}` as the text
 update takes them, or, for quests only, `filters`: the query string of an Explorer URL in the
-language (only the keys the Explorer's filters use; `page` is ignored, and an unknown key, a bad value or a `lang` is refused, so a typo cannot widen the batch), since "every stale line" is a filter and not seventeen thousand ids. Neither generate nor the generations routes take a URL query string, and an item takes only `id` and `variant`. A quest item covers
+language (only the keys the Explorer's filters use; `page` is ignored, and an unknown key, a bad value or a `lang` is refused, so a typo cannot widen the batch), since "every stale line" is a filter and not seventeen thousand ids. The 1000 caps `items` only (`limits.itemsPerGeneration`); a `filters` batch is not capped, as in the Explorer, so dry-run a wide one first. Neither generate nor the generations routes take a URL query string, and an item takes only `id` and `variant`. A quest item covers
 every speaker's line of that id and variant; give the base id (`q:5:accept`), not a voiced
 `~voice` id. Add `label` (up to 100 characters) to name the batch
 and `"dryRun": true` to price it without queueing anything.

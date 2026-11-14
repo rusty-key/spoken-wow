@@ -20,22 +20,29 @@ const catalogues = vi.hoisted(() => ({
   books: [] as unknown[],
   bosses: [] as unknown[],
   realFilters: false,
+  /** Holds filtersFromParams back until it settles, when set. */
+  filtersGate: null as Promise<void> | null,
 }));
 
-vi.mock("@/lib/quests/catalogue", () => ({ corpus: async () => ({ lines: catalogues.corpusLines }) }));
-vi.mock("@/lib/quests/context", () => ({
-  searchContext: async () => ({
+const searchContext = vi.hoisted(() =>
+  vi.fn(async (..._args: unknown[]) => ({
     voiced: new Set<string>(),
     context: { overrides: new Map(), ignores: catalogues.ignores },
-  }),
-}));
-vi.mock("@/lib/search-request", async (importOriginal) => ({
-  ...(await importOriginal<typeof import("@/lib/search-request")>()),
-  filtersFromParams: async (params: URLSearchParams, lang: "enUS") =>
-    catalogues.realFilters
-      ? (await importOriginal<typeof import("@/lib/search-request")>()).filtersFromParams(params, lang)
-      : { client: "focus" },
-}));
+  })),
+);
+
+vi.mock("@/lib/quests/catalogue", () => ({ corpus: async () => ({ lines: catalogues.corpusLines }) }));
+vi.mock("@/lib/quests/context", () => ({ searchContext }));
+vi.mock("@/lib/search-request", async (importOriginal) => {
+  const original = await importOriginal<typeof import("@/lib/search-request")>();
+  return {
+    ...original,
+    filtersFromParams: async (params: URLSearchParams, lang: "enUS") => {
+      await catalogues.filtersGate;
+      return catalogues.realFilters ? original.filtersFromParams(params, lang) : { client: "focus" };
+    },
+  };
+});
 vi.mock("@/lib/places/catalogue", () => ({ catalogue: async () => catalogues.places }));
 vi.mock("@/lib/readables/catalogue", () => ({ catalogue: async () => catalogues.books }));
 vi.mock("@/lib/bosses/catalogue", () => ({ catalogue: async () => catalogues.bosses }));
@@ -49,6 +56,8 @@ vi.mock("./calibration", () => ({ observedRate: mocks.observedRate, observedFish
 import type { CorpusLine } from "@/lib/corpus";
 
 import { estimatePlan, filterError, linesForItems, planCatalogue, planQuestsByItems, queuePlan, type Plan } from "./batch-plan";
+import { filtersFromParams, needsLevels, needsStale } from "@/lib/search-request";
+
 import type { Preference } from "./preference";
 
 const line = (lineId: string, variant?: number) => ({ lineId, variant }) as unknown as CorpusLine;
@@ -66,6 +75,7 @@ beforeEach(() => {
   vi.clearAllMocks();
   catalogues.ignores = new Map();
   catalogues.realFilters = false;
+  catalogues.filtersGate = null;
   mocks.requireApiKey.mockResolvedValue({ key: "k", denied: null });
 });
 
@@ -189,6 +199,20 @@ describe("planQuestsByItems", () => {
     expect(result.dropped).toEqual({});
   });
 
+  it("reads the context beside the default filters, which need neither staleness nor levels", async () => {
+    catalogues.corpusLines = [quest("q:5:accept")];
+    catalogues.realFilters = true;
+    const defaults = await filtersFromParams(new URLSearchParams(), "enUS");
+    expect([needsStale(defaults), needsLevels(defaults)]).toEqual([false, false]);
+
+    let release = () => {};
+    catalogues.filtersGate = new Promise<void>((resolve) => (release = resolve));
+    const planned = planQuestsByItems([{ id: "q:5:accept", variant: 0 }], "enUS", "elevenlabs");
+    await vi.waitFor(() => expect(searchContext).toHaveBeenCalledWith(false, false, "enUS", true, false));
+    release();
+    expect((await planned).jobs).toHaveLength(1);
+  });
+
   it("reports a progress line as progress, not hidden", async () => {
     catalogues.corpusLines = [quest("q:5:accept", { source: "progress", skipReason: "progress" })];
     const result = await planQuestsByItems([{ id: "q:5:accept", variant: 0 }], "enUS", "elevenlabs");
@@ -223,7 +247,7 @@ describe("filterError", () => {
     catalogues.realFilters = true;
   });
 
-  it.each(["", "state=stale&source=accept&page=3", "?q=hello&client=all&progress=1", "minLevel=10&before=2026-01-01"])(
+  it.each(["", "state=stale&source=accept,gossip&page=3", "missing=1", "?q=hello&client=all&progress=1", "minLevel=10&before=2026-01-01"])(
     "accepts %s",
     async (query) => {
       expect((await filterError(query, "enUS")).error).toBeNull();
@@ -236,6 +260,8 @@ describe("filterError", () => {
     ["lang=frFR", "lang"],
     ["https://spoken.quest/quests?q=x", "https"],
     ["source=nothing", "source"],
+    ["source=accept,bgous", "source=bgous"],
+    ["state=bogus&missing=1", "state=bogus"],
     ["minLevel=abc", "minLevel"],
     ["before=yesterday", "before"],
     ["ignored=yes", "ignored"],
