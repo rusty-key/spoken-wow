@@ -79,9 +79,40 @@ local filter = ""
 -- What there is
 --------------------------------------------------------------------------------
 
+local booksData, booksPacks, booksView
 local function Books()
 	local data = SpokenReadables:Data()
-	return data and data.books or {}
+	local packs = SpokenReadables.GetAudioPacks and SpokenReadables:GetAudioPacks() or {}
+	if booksData == data and booksPacks == packs then return booksView or {} end
+	local books = {}
+	for id, book in pairs(data and data.books or {}) do books[id] = book end
+	local client = SpokenReadables.GetClientLanguage and SpokenReadables:GetClientLanguage()
+	for _, pack in ipairs(packs) do
+		if not client or not SpokenReadables.PackLanguage or SpokenReadables:PackLanguage(pack) == client then
+			for id in pairs(pack.books or {}) do books[id] = SpokenReadables:BookById(id) end
+		end
+	end
+	booksData, booksPacks, booksView = data, packs, books
+	return books
+end
+
+local placesData, placesPacks, placesView
+local function Places()
+	local data = SpokenReadables:Data()
+	local packs = SpokenReadables.GetAudioPacks and SpokenReadables:GetAudioPacks() or {}
+	if placesData == data and placesPacks == packs then return placesView or {} end
+	local places = {}
+	for id, place in pairs(_G.SpokenReadablesPlaces and SpokenReadablesPlaces.books or {}) do places[id] = place end
+	local client = SpokenReadables.GetClientLanguage and SpokenReadables:GetClientLanguage()
+	for _, pack in ipairs(packs) do
+		if not client or not SpokenReadables.PackLanguage or SpokenReadables:PackLanguage(pack) == client then
+			for id, place in pairs(pack.bookPlaces or {}) do
+				if not places[id] then places[id] = place end
+			end
+		end
+	end
+	placesData, placesPacks, placesView = data, packs, places
+	return places
 end
 
 -- Each readable's title for the rows being built: they are asked for it while sorting and for
@@ -115,7 +146,9 @@ local function Index()
 	if index then return index end
 	index = { zones = {}, dungeons = {}, events = {}, wide = {}, unknown = {}, types = {}, all = {}, typeOf = {},
 		at = {}, eventOf = {} }
-	local places = _G.SpokenReadablesPlaces and SpokenReadablesPlaces.books or {}
+	local places = Places()
+	local data = SpokenReadables:Data()
+	local baseBooks = data and data.books or {}
 	local function Add(mapID, type, id, map)
 		local zone = index.zones[mapID] or {}
 		index.zones[mapID] = zone
@@ -130,6 +163,9 @@ local function Index()
 	end
 	for id in pairs(Books()) do
 		local place = places[id]
+		-- Locale packs can carry a voiced book the English corpus does not yet have. Keep it
+		-- discoverable until the pack or corpus export supplies a place.
+		if not place and not baseBooks[id] then place = { type = "other" } end
 		if place or not _G.SpokenReadablesPlaces then
 			index.all[id] = true
 			local type = place and TYPE_NAMES[place.type] and place.type or "other"
@@ -862,7 +898,7 @@ local function ShowEntry()
 	end
 	if selection.book then
 		local id = selection.book
-		local place = _G.SpokenReadablesPlaces and SpokenReadablesPlaces.books[id] or {}
+		local place = Places()[id] or {}
 		local where
 		if place.event then
 			where = L.GROUP_EVENTS

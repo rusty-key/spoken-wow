@@ -12,12 +12,22 @@ local Expect, Failures = H.Expecter(print)
 _G.SpokenReadablesAudioPacks = {
     SpokenReadablesAudio = {
         version = 1, addon = "SpokenReadablesAudio", quality = "high", bitrate = 128,
+        language = "enUS",
         pages = {
             [15] = { file = "15", len = 2 },
             [261] = { file = "261", len = 2 },
             [262] = { file = "262", len = 2 },
             [265] = { file = "265", len = 2 },
+            ["n1c5a37a2-0a38-46b8-b5fa-e848b2d9fd20"] = { file = "gretchen-1", len = 2,
+                text = "Gretchen report." },
         },
+        books = {
+            ["nfc676562-fb40-4845-8cbe-6ddd8269c620"] = {
+                pages = { "n1c5a37a2-0a38-46b8-b5fa-e848b2d9fd20" },
+                title = "Mountaineer Gretchen's Report",
+            },
+        },
+        items = { [280430] = "nfc676562-fb40-4845-8cbe-6ddd8269c620" },
     },
 }
 
@@ -67,6 +77,9 @@ SpokenReadablesCharacter.questReadableBackfill = nil
 stub.FireEvent("PLAYER_LOGIN")
 Expect("a completed source-item quest backfills its readable", B:IsBookFound(209), true)
 Expect("a completed Forever source-item quest backfills its readable", B:IsBookFound("nc0bf109d-e5d1-494d-ba1b-12a6b27352a8"), true)
+Expect("a locale-pack item resolves to its minted readable", B:BookForItem(280430),
+    "nfc676562-fb40-4845-8cbe-6ddd8269c620")
+Expect("a locale-pack readable resolves back to its item", B:ItemForBook("nfc676562-fb40-4845-8cbe-6ddd8269c620"), 280430)
 
 -- A bag event can precede login while Questie is still loading. It must not consume the
 -- one-shot backfill before PLAYER_LOGIN has a chance to see Questie's source-item index.

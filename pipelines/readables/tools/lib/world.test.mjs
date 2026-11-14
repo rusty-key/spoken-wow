@@ -1,7 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 
-import { readForever, readWorld, withForever } from "./world.mjs";
+import { FOREVER_ITEMS, readForever, readWorld, withForever } from "./world.mjs";
 
 // A connection that answers each query by the table it reads, and keeps what it was asked.
 function stub(tables) {
@@ -55,6 +55,10 @@ test("readForever keeps the named owners and only the pages they reach", async (
     ["item", 285357, 11007],
   ]);
   assert.deepEqual(forever.pages.map((page) => page.entry), [10322, 10323, 11007]);
+});
+
+test("Forever's client-only readable items include Mountaineer Gretchen's Report", () => {
+  assert.ok(FOREVER_ITEMS.includes(280430));
 });
 
 test("readForever refuses a named object the repack does not have", async () => {

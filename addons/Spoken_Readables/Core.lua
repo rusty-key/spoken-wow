@@ -174,11 +174,21 @@ function SpokenReadables:HasBookText(bookID)
 	if not bookID then return false end
 	local data = self:Data()
 	local book = data and data.books and data.books[bookID]
-	if not book then return false end
-	for _, pageID in ipairs(book.pages or {}) do
-		local page = data.pages and data.pages[pageID]
-		if page and type(page.text) == "string" and page.text ~= "" then
-			return true
+	if book then
+		for _, pageID in ipairs(book.pages or {}) do
+			local page = data.pages and data.pages[pageID]
+			if page and type(page.text) == "string" and page.text ~= "" then
+				return true
+			end
+		end
+	end
+	for _, pack in ipairs(self.GetAudioPacks and self:GetAudioPacks() or {}) do
+		local packed = pack.books and pack.books[bookID]
+		for _, pageID in ipairs(packed and packed.pages or {}) do
+			local page = pack.pages and pack.pages[pageID]
+			if page and type(page.text) == "string" and page.text ~= "" then
+				return true
+			end
 		end
 	end
 	return false
@@ -316,18 +326,30 @@ function SpokenReadables:BookForItem(itemID)
 	local data = self:Data()
 	local owners = data and data.owners and data.owners.item
 	local bookID = owners and owners[itemID]
-	return self:HasBookText(bookID) and bookID or nil
+	if bookID and self:HasBookText(bookID) then return bookID end
+	for _, pack in ipairs(self.GetAudioPacks and self:GetAudioPacks() or {}) do
+		bookID = pack.items and pack.items[itemID]
+		if bookID and self:HasBookText(bookID) then return bookID end
+	end
+	return nil
 end
 
 --- The item that owns a readable, if it is a carried book, letter or note.
 function SpokenReadables:ItemForBook(bookID)
 	local data = self:Data()
-	if self.itemForBookData ~= data then
+	local packs = self.GetAudioPacks and self:GetAudioPacks() or {}
+	if self.itemForBookData ~= data or self.itemForBookPacks ~= packs then
 		self.itemForBookData = data
+		self.itemForBookPacks = packs
 		self.itemForBook = {}
 		local owners = data and data.owners and data.owners.item or {}
 		for itemID, owner in pairs(owners) do
 			if self.itemForBook[owner] == nil then self.itemForBook[owner] = itemID end
+		end
+		for _, pack in ipairs(packs) do
+			for itemID, owner in pairs(pack.items or {}) do
+				if self.itemForBook[owner] == nil then self.itemForBook[owner] = itemID end
+			end
 		end
 	end
 	return self.itemForBook and self.itemForBook[bookID]
