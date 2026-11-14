@@ -269,6 +269,36 @@ stub.Advance(5)
 Expect("auto turn-in keeps progress when the panel changes without its event",
     string.format("%d-progress, %d-complete", full, full))
 
+-- Read When Window Closes keeps the transition's progress line in the window until close rather
+-- than replaying it while the reward page is still open.
+StartScenario()
+VO.Addon.db.profile.Audio.ReadAfterClose = true
+world.questID = full
+stub.ShowPanel("QuestFrameProgressPanel")
+stub.Advance(0.1)
+stub.ShowPanel("QuestFrameRewardPanel")
+stub.Advance(0.5)
+Expect("Read When Window Closes does not replay transition progress while open", "")
+world.questID = 0
+stub.ShowPanel(nil)
+stub.FireEvent("QUEST_FINISHED")
+stub.Advance(5)
+VO.Addon.db.profile.Audio.ReadAfterClose = false
+Expect("Read When Window Closes replays transition progress after close",
+    string.format("%d-progress, %d-complete", full, full))
+
+-- A fast switch must not let quest B's identifying page assign quest B's ID to quest A's
+-- unresolved progress just because both quests have the same title and giver.
+StartScenario()
+world.questID = 0
+stub.FireEvent("QUEST_PROGRESS")
+world.questID = full
+stub.FireEvent("QUEST_FINISHED")
+stub.FireEvent("QUEST_COMPLETE")
+stub.FireEvent("QUEST_TURNED_IN", full, 0, 0)
+stub.Advance(5)
+Expect("a fast quest switch does not attach old progress to the new quest", "104-complete")
+
 -- A turn-in after a page that names no quest reads nothing either.
 StartScenario()
 world.questID = 0

@@ -69,6 +69,7 @@ local ResolveQuestID, NoteGossipPage
 -- for it. A page whose event arrived with neither a quest ID nor a title names no quest, and
 -- no later event could tie it to one, so it is not recorded.
 local questSnapshots = {}
+local questInteractionID
 
 -- Long enough for the server to answer an accept or a turn-in, short enough that a quest
 -- accepted later some other way (an escort a party member starts) does not read an old offer.
@@ -145,6 +146,7 @@ local function CaptureQuestSnapshot(event)
         return
     end
     local text, targetName = quest.text(), Utils:GetNPCName()
+    questInteractionID = questInteractionID or 1
     -- Resolved now, the way the handler would: QUEST_ACCEPTED and QUEST_TURNED_IN find a page by
     -- its quest ID, and the brief 0 a Classic client reports would match neither.
     if questID == 0 then
@@ -153,6 +155,7 @@ local function CaptureQuestSnapshot(event)
     local snapshot = {
         event = event,
         at = GetTime(),
+        interactionID = questInteractionID,
         questID = questID,
         title = questTitle,
         text = text,
@@ -166,7 +169,8 @@ local function CaptureQuestSnapshot(event)
         -- passed or already dispatched pages have no work left to associate.
         for _, old in ipairs(questSnapshots) do
             if old.questID == 0 and not old.dispatched and not old.passed and
-                old.at <= snapshot.at and SameQuestSnapshotGroup(old.event, event) and
+                old.interactionID == snapshot.interactionID and old.at <= snapshot.at and
+                SameQuestSnapshotGroup(old.event, event) and
                 old.title == questTitle and old.targetName == targetName then
                 old.questID = questID
             end
@@ -176,7 +180,8 @@ local function CaptureQuestSnapshot(event)
     -- read in the open window is not read again after it closes.
     for i = #questSnapshots, 1, -1 do
         local old = questSnapshots[i]
-        if old.event == event and old.questID == questID and old.title == questTitle then
+        if old.event == event and old.interactionID == snapshot.interactionID and
+            old.questID == questID and old.title == questTitle then
             snapshot.dispatched = old.dispatched
             table.remove(questSnapshots, i)
         end
@@ -808,6 +813,10 @@ function Addon:OnInitialize()
         end
     end
 
+    self.ReplayClosedQuestSnapshots = function(source)
+        ReplayQuestSnapshots(source or "the dialog closed before it could stabilize")
+    end
+
     local function FinishPage(state, key, event, questID)
         state.completedKey = key
         MarkHandled(state, key)
@@ -837,7 +846,7 @@ function Addon:OnInitialize()
         if questID == 0 then
             -- The dialog is gone. Pages it closed on with nothing dispatched for them are the
             -- whole record of the interaction, so read them before the candidate state is cleared.
-            ReplayQuestSnapshots("the dialog closed before it could stabilize")
+            self.ReplayClosedQuestSnapshots()
             ResetCandidate(state)
             return
         end
@@ -861,8 +870,10 @@ function Addon:OnInitialize()
             if state.candidateEvent == "QUEST_PROGRESS" and event == "QUEST_COMPLETE" and
                 state.candidateQuestID == questID and state.candidateTitle == questTitle and
                 self:ReadsItself("QUEST_PROGRESS") then
-                ReplayQuestSnapshots("the progress page advanced to completion", questID,
-                    { QUEST_PROGRESS = true })
+                if not self.db.profile.Audio.ReadAfterClose then
+                    ReplayQuestSnapshots("the progress page advanced to completion", questID,
+                        { QUEST_PROGRESS = true })
+                end
             end
             state.candidateKey = key
             state.candidateEvent = event
@@ -976,6 +987,7 @@ function Addon:OnInitialize()
     end
     self.questEventRecorderFrame:SetScript("OnEvent", function(_, event, questIDArg, ...)
         if event == "QUEST_FINISHED" then
+            questInteractionID = (questInteractionID or 0) + 1
             lastQuestEvent = nil
         elseif REPLAYED_ON[event] then
             if self.dataModulesPending then
@@ -1748,6 +1760,11 @@ function Addon:QUEST_FINISHED()
     end
     currentQuestSoundData = nil
     EndGreetingTextWait()
+    -- Replay retained quest pages before a Read When Window Closes line is released, so a
+    -- progress page captured during a fast transition stays ahead of the reward page.
+    if CurrentQuestID() == 0 and Addon.ReplayClosedQuestSnapshots then
+        Addon:ReplayClosedQuestSnapshots("the dialog closed (QUEST_FINISHED)")
+    end
     local pending = pendingRead
     pendingRead = nil
     if pending then
