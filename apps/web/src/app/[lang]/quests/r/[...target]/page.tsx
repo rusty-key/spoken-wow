@@ -21,9 +21,10 @@ import ReportForm from "@/components/ReportForm";
 import { packReleases } from "@/lib/releases/store";
 import ListenFirst from "@/components/reports/ListenFirst";
 import { audioRelPath } from "@/lib/audio";
-import { formatTarget, parseTarget, resolveTarget } from "@/lib/reports/target";
+import { formatTarget, parseTarget, pickLine, resolveTarget } from "@/lib/reports/target";
 import { liveTake } from "@/lib/takes/store";
 import { Contained } from "@/components/Width";
+import { cn } from "@/lib/utils";
 
 export const metadata: Metadata = { title: "Report a voice line · VoiceOver" };
 
@@ -71,12 +72,7 @@ export default async function ReportPage({
   // one id and one file, and listing each would offer the same words twice (and give React
   // two children with one key).
   const choices = [...new Map(lines.map((candidate) => [candidate.lineId, candidate])).values()];
-  // One candidate needs no choosing. Of several, the one the reporter picked from the list
-  // below, else the one whose file the addon says it played.
-  const line =
-    choices.find((candidate) => candidate.lineId === chosen) ??
-    choices.find((candidate) => candidate.fileName === played) ??
-    (choices.length === 1 ? choices[0] : null);
+  const line = pickLine(choices, chosen, played);
   // Which take is live, to bust the audio cache: without it someone returning to hear a fix
   // hears the browser's copy of the very clip they complained about, and reports it again.
   const [take, releases] = await Promise.all([
@@ -118,22 +114,32 @@ export default async function ReportPage({
           </section>
         ) : null}
 
-        {choices.length > 1 && !line ? (
+        {/* Shown beside a line the played file picked too: the addon's file can be a sibling's
+            (an alias, a fallback language), and only the reporter knows which they meant. */}
+        {choices.length > 1 ? (
           <section className="mb-6 rounded border p-4">
             <h2 className="font-medium">{choices[0].npcName}</h2>
             <p className="text-muted-foreground mt-1 mb-2 text-sm">
-              This character has more than one line. Which one sounded wrong?
+              {line
+                ? "Not this one? Pick the line that sounded wrong."
+                : "This character has more than one line. Which one sounded wrong?"}
             </p>
             <ul className="flex flex-col gap-2 text-sm">
               {choices.map((candidate) => (
                 <li key={candidate.lineId}>
                   <Link
                     href={`/quests/r/${formatTarget(target)}?line=${encodeURIComponent(candidate.lineId)}`}
-                    className="underline-offset-2 hover:underline"
+                    className={cn("underline-offset-2 hover:underline", candidate === line && "font-medium")}
+                    aria-current={candidate === line ? "true" : undefined}
                   >
                     {candidate.text.slice(0, 120)}
                     {candidate.text.length > 120 ? "…" : ""}
                   </Link>
+                  {/* A quest given in two voices is the same words twice: the voice tells them apart. */}
+                  <span className="text-muted-foreground text-xs">
+                    {" "}
+                    · {candidate.npcName} · {candidate.voice}
+                  </span>
                 </li>
               ))}
             </ul>

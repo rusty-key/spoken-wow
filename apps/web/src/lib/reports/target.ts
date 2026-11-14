@@ -95,3 +95,19 @@ export async function lineIdsOfAddress(raw: string, corpus?: Corpus): Promise<st
   if (!target) return [];
   return [...new Set((await resolveTarget(target, corpus)).map((line) => line.lineId))];
 }
+
+/**
+ * Which of an address's lines a report is about: the one the reporter picked, else the one whose
+ * file the addon played, else the only one. Null when several remain and nothing says which.
+ */
+export function pickLine<T extends Pick<CorpusLine, "lineId" | "fileName">>(
+  choices: T[],
+  chosen: string | null,
+  played: string | null,
+): T | null {
+  return (
+    choices.find((candidate) => candidate.lineId === chosen) ??
+    choices.find((candidate) => candidate.fileName === played) ??
+    (choices.length === 1 ? choices[0] : null)
+  );
+}

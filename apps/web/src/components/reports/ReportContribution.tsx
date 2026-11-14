@@ -28,7 +28,8 @@ export default function ReportContribution({
   onFixed,
 }: {
   report: Report;
-  onFixed: (report: Report) => void;
+  /** With the wording's line when one was picked: the report alone may name no line. */
+  onFixed: (report: Report, lineId: string | null) => void;
 }) {
   const [answer, setAnswer] = useState<Answer | { error: string } | null>(null);
   /** The wording a correction is set against, where one other than the closest was picked. */
@@ -58,7 +59,7 @@ export default function ReportContribution({
     setRefusal(null);
     const { id, status } = outcome.contribution;
     setAnswer((current) => (current && !("error" in current) ? { ...current, stored: { id, status } } : current));
-    onFixed(outcome.report);
+    onFixed(outcome.report, ("pick" in how && how.pick?.lineId) || null);
   }
 
   const { state, stored } = answer;

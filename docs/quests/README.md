@@ -1000,7 +1000,8 @@ log) sends the bare address.
 The landing page resolves the address against the corpus, plays the take that is currently
 live, and hosts the form. Of several lines, it takes the one the player picked from its list
 (`?line=`), else the one whose file the addon played, and otherwise the report is filed with no
-line. An address that resolves to nothing still renders the form — an addon sending players to
+line. The list stays beside a line the file picked, since the file can be a sibling's (an alias,
+a fallback language) and only the reporter knows which they meant. An address that resolves to nothing still renders the form — an addon sending players to
 a page the corpus does not know about is itself a bug report.
 
 `POST /api/reports` is the only unauthenticated write in the explorer. It is defended by a

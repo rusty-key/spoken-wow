@@ -145,7 +145,9 @@ export default function SortQueue({
   const { line, version, detail, canEdit, canRegenerateLine } = viewOf(lineId);
   /** The picked line as of the latest render, for a regeneration finishing after a pick. */
   const pickedId = useRef(lineId);
-  pickedId.current = lineId;
+  useEffect(() => {
+    pickedId.current = lineId;
+  });
   const answer = answers[index];
 
   function viewOf(id: string | null): View {
@@ -400,6 +402,8 @@ export default function SortQueue({
           />
       ))}
 
+      {notice && !ids.includes(notice.lineId ?? "") ? <p className="text-xs text-emerald-500">{notice.text}</p> : null}
+
       <section className="flex flex-col gap-2">
         <p className="text-sm font-medium">
           {group.reports.length} {group.reports.length === 1 ? "report" : "reports"}
@@ -411,10 +415,11 @@ export default function SortQueue({
             expanded={expanded}
             latestPacks={latestPacks}
             canContribute={canContribute}
-            onFixed={() => {
+            onFixed={(fixed, wording) => {
+              const id = wording ?? fixed.lineId ?? lineId;
               // The accept rewrote the line's text, not its take: it is voiced again only on Regenerate.
-              setNotice({ lineId, text: "Text updated from the report. Regenerate to voice it." });
-              if (lineId) void load(lineId);
+              setNotice({ lineId: id, text: "Text updated from the report. Regenerate to voice it." });
+              if (id) void load(id);
             }}
           />
         ))}
@@ -689,7 +694,7 @@ function ReportPreview({
   expanded: boolean;
   latestPacks: PackVersions;
   canContribute: boolean;
-  onFixed: () => void;
+  onFixed: (report: Report, lineId: string | null) => void;
 }) {
   const [opened, setOpened] = useState(false);
   return (
