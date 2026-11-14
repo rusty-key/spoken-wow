@@ -70,9 +70,11 @@ local ResolveQuestID, NoteGossipPage
 -- no later event could tie it to one, so it is not recorded.
 local questSnapshots = {}
 local questInteractionID
+local lastClosedQuestInteractionID
 local pendingRead
 local pendingProgressRead
 local replayClosedQuestSnapshotsAfterLoad
+local replayClosedQuestInteractionID
 
 -- Long enough for the server to answer an accept or a turn-in, short enough that a quest
 -- accepted later some other way (an escort a party member starts) does not read an old offer.
@@ -123,8 +125,12 @@ end
 local function PruneQuestSnapshots()
     local now = GetTime()
     for i = #questSnapshots, 1, -1 do
+        local keepForPending = pendingRead and questSnapshots[i].keepUntilPending
+        local keepForClosedReplay = replayClosedQuestSnapshotsAfterLoad and
+            replayClosedQuestInteractionID and
+            questSnapshots[i].interactionID == replayClosedQuestInteractionID
         if now - questSnapshots[i].at > SNAPSHOT_LIFETIME and
-            not (pendingRead and questSnapshots[i].keepUntilPending) then
+            not keepForPending and not keepForClosedReplay then
             table.remove(questSnapshots, i)
         end
     end
@@ -155,11 +161,16 @@ local function CaptureQuestSnapshot(event)
         -- A new offer starts a new interaction even when an addon moves straight from an old
         -- progress page to it without QUEST_FINISHED. Keep that offer from inheriting the old
         -- page's unresolved ID-0 record.
+        local startsNewInteraction = pendingProgressRead ~= nil
         for _, old in ipairs(questSnapshots) do
             if old.event ~= "QUEST_DETAIL" and not old.dispatched and not old.passed then
-                questInteractionID = questInteractionID + 1
+                startsNewInteraction = true
                 break
             end
+        end
+        if startsNewInteraction then
+            questInteractionID = questInteractionID + 1
+            pendingProgressRead = nil
         end
     end
     -- Resolved now, the way the handler would: QUEST_ACCEPTED and QUEST_TURNED_IN find a page by
@@ -727,8 +738,8 @@ function Addon:OnInitialize()
         end
         self.dataModulesPending = nil
         if replayClosedQuestSnapshotsAfterLoad and self.ReplayClosedQuestSnapshots then
-            replayClosedQuestSnapshotsAfterLoad = nil
-            self:ReplayClosedQuestSnapshots("the dialog closed while voice packs loaded")
+            self:ReplayClosedQuestSnapshots("the dialog closed while voice packs loaded",
+                replayClosedQuestInteractionID)
         end
         if not succeeded then
             self.dataModulesDeferredError = tostring(result)
@@ -806,7 +817,7 @@ function Addon:OnInitialize()
     -- Index of the newest unread page of each event, refilled on every close-time replay.
     local newest = {}
 
-    local function ReplayQuestSnapshots(source, questID, events)
+    local function ReplayQuestSnapshots(source, questID, events, interactionID)
         PruneQuestSnapshots()
         -- The watcher calls this ten times a second whenever no quest is open.
         if #questSnapshots == 0 then
@@ -814,7 +825,8 @@ function Addon:OnInitialize()
         end
         if questID then
             for _, snapshot in ipairs(questSnapshots) do
-                if not snapshot.dispatched and events[snapshot.event] and snapshot.questID == questID then
+                if not snapshot.dispatched and events[snapshot.event] and snapshot.questID == questID and
+                    (not interactionID or snapshot.interactionID == interactionID) then
                     ReplaySnapshot(snapshot, source)
                 end
             end
@@ -822,12 +834,14 @@ function Addon:OnInitialize()
         end
         wipe(newest)
         for i, snapshot in ipairs(questSnapshots) do
-            if not snapshot.dispatched and not snapshot.passed then
+            if not snapshot.dispatched and not snapshot.passed and
+                (not interactionID or snapshot.interactionID == interactionID) then
                 newest[snapshot.event] = i
             end
         end
         for i, snapshot in ipairs(questSnapshots) do
-            if not snapshot.dispatched and not snapshot.passed then
+            if not snapshot.dispatched and not snapshot.passed and
+                (not interactionID or snapshot.interactionID == interactionID) then
                 -- Passed over, not spent: its own QUEST_ACCEPTED or QUEST_TURNED_IN still reads it.
                 if newest[snapshot.event] ~= i or IsStaleOffer(i) then
                     snapshot.passed = true
@@ -847,13 +861,22 @@ function Addon:OnInitialize()
         return false
     end
 
-    self.ReplayClosedQuestSnapshots = function(_, source)
+    self.ReplayClosedQuestSnapshots = function(_, source, interactionID)
         if self.dataModulesPending then
             replayClosedQuestSnapshotsAfterLoad = true
+            replayClosedQuestInteractionID = interactionID or lastClosedQuestInteractionID or questInteractionID
             return
         end
+        local deferredInteractionID = replayClosedQuestInteractionID
+        local wasDeferred = replayClosedQuestSnapshotsAfterLoad
+        local boundary = interactionID or deferredInteractionID
+        if not wasDeferred then
+            replayClosedQuestInteractionID = nil
+            replayClosedQuestSnapshotsAfterLoad = nil
+        end
+        ReplayQuestSnapshots(source or "the dialog closed before it could stabilize", nil, nil, boundary)
+        replayClosedQuestInteractionID = nil
         replayClosedQuestSnapshotsAfterLoad = nil
-        ReplayQuestSnapshots(source or "the dialog closed before it could stabilize")
     end
 
     local function FinishPage(state, key, event, questID)
@@ -1038,6 +1061,7 @@ function Addon:OnInitialize()
     end
     self.questEventRecorderFrame:SetScript("OnEvent", function(_, event, questIDArg, ...)
         if event == "QUEST_FINISHED" then
+            lastClosedQuestInteractionID = questInteractionID
             questInteractionID = (questInteractionID or 0) + 1
             lastQuestEvent = nil
         elseif REPLAYED_ON[event] then
@@ -1823,7 +1847,8 @@ function Addon:QUEST_FINISHED()
     pendingProgressRead = nil
     if (pending or CurrentQuestID() == 0 or Addon.dataModulesPending) and
         Addon.ReplayClosedQuestSnapshots then
-        Addon:ReplayClosedQuestSnapshots("the dialog closed (QUEST_FINISHED)")
+        Addon:ReplayClosedQuestSnapshots("the dialog closed (QUEST_FINISHED)",
+            lastClosedQuestInteractionID)
     end
     pendingRead = nil
     if pendingProgress then

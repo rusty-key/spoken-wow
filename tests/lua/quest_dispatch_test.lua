@@ -161,6 +161,7 @@ lookup[string.format("%d-accept", full)] = 1
 lookup[string.format("%d-progress", full)] = 1
 lookup[string.format("%d-complete", full)] = 1
 lookup[string.format("%d-accept", followUp)] = 1
+lookup[string.format("%d-progress", followUp)] = 1
 
 -- A page whose event arrives with neither a quest ID nor a title names no quest, and nothing that
 -- comes later can tie it to one: a quest accepted within seconds, one nobody was shown (an escort a
@@ -427,6 +428,43 @@ VO.Addon.dataModulesPending = nil
 VO.Addon:ReplayClosedQuestSnapshots("test voice packs loaded")
 stub.Advance(5)
 Expect("close during pack loading replays after loading", string.format("%d-progress", full))
+
+-- A later dialog can open before packs finish loading. Deferred close replay must retain A's
+-- interaction boundary instead of selecting B's newer progress snapshot.
+StartScenario()
+world.questID = full
+stub.ShowPanel("QuestFrameProgressPanel")
+stub.FireEvent("QUEST_PROGRESS")
+VO.Addon.dataModulesPending = true
+world.questID = 0
+stub.ShowPanel(nil)
+stub.FireEvent("QUEST_FINISHED")
+world.questID = followUp
+stub.ShowPanel("QuestFrameProgressPanel")
+stub.FireEvent("QUEST_PROGRESS")
+VO.Addon.dataModulesPending = nil
+VO.Addon:ReplayClosedQuestSnapshots("test voice packs loaded")
+Expect("deferred close replay excludes a later open interaction", string.format("%d-progress", full))
+
+-- A new quest's detail page before close must clear the prior quest's held progress line.
+StartScenario()
+VO.Addon.db.profile.Audio.ReadAfterClose = true
+world.questID = full
+stub.ShowPanel("QuestFrameProgressPanel")
+stub.Advance(0.5)
+stub.ShowPanel("QuestFrameRewardPanel")
+stub.FireEvent("QUEST_COMPLETE")
+stub.Advance(0.5)
+world.questID = followUp
+stub.ShowPanel("QuestFrameDetailPanel")
+stub.FireEvent("QUEST_DETAIL")
+stub.Advance(0.5)
+world.questID = 0
+stub.ShowPanel(nil)
+stub.FireEvent("QUEST_FINISHED")
+stub.Advance(5)
+VO.Addon.db.profile.Audio.ReadAfterClose = false
+Expect("a new detail page clears prior pending progress", string.format("%d-accept", followUp))
 
 -- A fast switch must not let quest B's identifying page assign quest B's ID to quest A's
 -- unresolved progress just because both quests have the same title and giver.
