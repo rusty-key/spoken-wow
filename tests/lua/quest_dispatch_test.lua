@@ -341,7 +341,6 @@ VO.Addon:QUEST_PROGRESS()
 world.questID = followUp
 VO.Addon:QUEST_COMPLETE()
 VO.Addon:QUEST_FINISHED()
-stub.Advance(0.6)
 local hasEarlierTurnIn = false
 for _, turnIn in ipairs(VO.Addon.openQuestTurnIns or {}) do
     if turnIn.questID == full and #turnIn.soundData == 1 then
@@ -354,6 +353,8 @@ else
     failures = failures + 1
     print("FAIL a newer turn-in preserves an earlier pending record")
 end
+stub.Advance(0.6)
+ExpectCurrent("the earlier retained turn-in line is removed after close", "")
 
 -- QUEST_FINISHED can also be reported while the NPC window is changing from its greeting to the
 -- turn-in panel. That is not a close: the line must keep playing until the panel really goes away.

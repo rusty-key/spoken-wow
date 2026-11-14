@@ -1804,28 +1804,33 @@ function Addon:QUEST_FINISHED()
         end
         turnIn = currentTurnIn
     end
-    if turnIn and not turnIn.turnedIn and not turnIn.closeTimer then
-        turnIn.stopOnClose = Addon.db.profile.Audio.StopAudioOnDisengage
-        turnIn.closeTimer = self:ScheduleTimer(function()
-            turnIn.closeTimer = nil
-            if IsQuestWindowVisible() then
-                return
-            end
-            if not turnIn.turnedIn and turnIn.stopOnClose then
-                for _, soundData in ipairs(turnIn.soundData) do
-                    Player:Remove(soundData)
+    -- Every retained record belongs to a page that can still be waiting for its own
+    -- QUEST_TURNED_IN. Schedule each one; only scheduling the current record leaves an earlier
+    -- queued line without cleanup when the dialog closes.
+    for _, retainedTurnIn in ipairs(QuestTurnInRecords()) do
+        if not retainedTurnIn.turnedIn and not retainedTurnIn.closeTimer then
+            retainedTurnIn.stopOnClose = Addon.db.profile.Audio.StopAudioOnDisengage
+            retainedTurnIn.closeTimer = self:ScheduleTimer(function()
+                retainedTurnIn.closeTimer = nil
+                if IsQuestWindowVisible() then
+                    return
                 end
-            end
-            if self.openQuestTurnIn == turnIn then
-                self.openQuestTurnIn = nil
-            end
-            for i = #QuestTurnInRecords(), 1, -1 do
-                if QuestTurnInRecords()[i] == turnIn then
-                    table.remove(QuestTurnInRecords(), i)
-                    break
+                if not retainedTurnIn.turnedIn and retainedTurnIn.stopOnClose then
+                    for _, soundData in ipairs(retainedTurnIn.soundData) do
+                        Player:Remove(soundData)
+                    end
                 end
-            end
-        end, QUEST_ACCEPT_GRACE)
+                if self.openQuestTurnIn == retainedTurnIn then
+                    self.openQuestTurnIn = nil
+                end
+                for i = #QuestTurnInRecords(), 1, -1 do
+                    if QuestTurnInRecords()[i] == retainedTurnIn then
+                        table.remove(QuestTurnInRecords(), i)
+                        break
+                    end
+                end
+            end, QUEST_ACCEPT_GRACE)
+        end
     end
     if Addon.db.profile.Audio.StopAudioOnDisengage then
         local deferOfferStop = offer
