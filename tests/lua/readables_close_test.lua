@@ -208,6 +208,17 @@ do
 end
 
 do
+    _G.C_Container = {
+        GetContainerNumSlots = function(bag) return bag == 0 and 1 or 0 end,
+        GetContainerItemID = function() return 745 end,
+        GetContainerItemInfo = function() return { stackCount = 3 } end,
+    }
+    local snapshot = B:ReadableItemSnapshot()
+    Expect("a readable stack counts every item received", snapshot[745], 3)
+    _G.C_Container = nil
+end
+
+do
     local places, questie, lib, quests = SpokenReadablesPlaces, QuestieDB, LibQuestieDB, C_QuestLog
     _G.QuestieDB, _G.LibQuestieDB, _G.C_QuestLog = nil, nil, nil
     _G.SpokenReadablesPlaces = { books = { [209] = { quests = { 10, 20 } }, [261] = { quests = { 30 } } } }
