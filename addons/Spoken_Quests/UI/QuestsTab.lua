@@ -993,8 +993,15 @@ local function Stored(id, moment)
         local characters = own.characters
         if type(characters) == "table" then
             local character = CharacterID()
-            own = character and characters[character]
-            if own and own.sex ~= Sex() then
+            local characterRecord = character and characters[character]
+            if characterRecord then
+                own = characterRecord
+                if own.sex ~= Sex() then
+                    own = nil
+                end
+            elseif own.name == PlayerName() and own.sex == Sex() then
+                -- A legacy record can remain beside the character records while it is migrated.
+            else
                 own = nil
             end
         elseif own.name == PlayerName() and own.sex == Sex() then
@@ -1052,10 +1059,11 @@ function QuestsTab:Keep(moment, text, title)
             local character = CharacterID()
             if not character then return end
             local captured = kept[id][moment]
-            if type(captured) ~= "table" or type(captured.text) == "string" then
+            if type(captured) ~= "table" then
                 captured = { characters = {} }
                 kept[id][moment] = captured
             elseif type(captured.characters) ~= "table" then
+                -- Keep text/name/sex from the legacy single-character record during migration.
                 captured.characters = {}
             end
             captured.characters[character] = record
