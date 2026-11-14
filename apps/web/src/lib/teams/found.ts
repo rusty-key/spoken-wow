@@ -24,7 +24,7 @@ import { addLanguage, describeNew, giveTextToTeam, LanguageExistsError, setEnabl
 import type { Capability } from "@/lib/permissions";
 
 import { moveLang, SLUG, TeamError } from "./admin";
-import { adoptLang, forgetTeams, type TeamId } from "./store";
+import { forgetTeams, type TeamId } from "./store";
 
 export type Branch = "new-language" | "hand-over" | "second-team";
 
@@ -159,9 +159,9 @@ async function takeOverLanguage(client: PoolClient, input: FoundInput, actorId: 
     (await client.query<{ slug: string }>(`select free_team_slug($1) as "slug"`, [slugFor(input.team.name, input.lang)]))
       .rows[0].slug;
   const [team] = await named(client, slug, `select new_team($1, $2) as "id", $1::text as "slug"`, [slug, input.team.name]);
-  // A language with a row but no team yet has nothing to move from.
-  await adoptLang(client, input.lang);
-  const { moved, from } = await moveLang(client, input.lang, team.id);
+  const { moved, from } = (await hasTeam(client, input.lang))
+    ? await moveLang(client, input.lang, team.id)
+    : await claimLang(client, input.lang, team.id);
   return {
     ...(await hand(client, input, actorId, team.id)),
     branch: "hand-over",
@@ -172,6 +172,21 @@ async function takeOverLanguage(client: PoolClient, input: FoundInput, actorId: 
     moved,
     languageName: null,
   };
+}
+
+async function hasTeam(client: PoolClient, lang: string): Promise<boolean> {
+  const { rows } = await client.query<{ team: TeamId | null }>(`select team_of_lang($1) as "team"`, [lang]);
+  return rows[0].team !== null;
+}
+
+/**
+ * A language with a row but no team yet: the new team takes it straight away, as adopt_lang
+ * would, with nothing to move and no team slugged by the code left empty behind.
+ */
+async function claimLang(client: PoolClient, lang: string, team: TeamId): Promise<{ moved: number; from: null }> {
+  await client.query(`insert into "team_language" ("teamId", "lang", "privileged") values ($1, $2, true)`, [team, lang]);
+  await client.query(`select pg_notify('spoken_team_language', $1)`, [lang]);
+  return { moved: 0, from: null };
 }
 
 /**

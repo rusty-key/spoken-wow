@@ -117,7 +117,8 @@ export async function refusedGrant(
   capabilities: readonly Capability[],
   lang: Lang,
 ): Promise<Capability | null> {
-  const byTeam = await textByTeam(lang);
+  // canGrant reads whose text it is only for `text`.
+  const byTeam = capabilities.includes("text") && (await textByTeam(lang));
   return capabilities.find((capability) => !canGrant(viewer, capability, lang, byTeam)) ?? null;
 }
 

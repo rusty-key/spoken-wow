@@ -112,6 +112,11 @@ describe("createRequest", () => {
     await withdrawRequest(first.id, requester.id);
     const mine = await listRequests({ userId: requester.id });
     expect(mine.map((r) => r.id)).toEqual([second.id, first.id]);
+    // ISO in UTC, which every browser parses; Postgres' own text form is not.
+    const iso = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/;
+    expect(mine[1].createdAt).toMatch(iso);
+    expect(mine[1].decidedAt).toMatch(iso);
+    expect(mine[0].decidedAt).toBeNull();
     expect((await listRequests({ userId: requester.id, state: "pending" })).map((r) => r.id)).toEqual([second.id]);
   });
 });

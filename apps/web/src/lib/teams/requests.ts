@@ -47,9 +47,11 @@ export type NewRequest = {
   note: string | null;
 };
 
+/** Timestamps as ISO in UTC: Postgres' own text form is not one every browser parses. */
+const iso = (column: string) => `to_char(${column} at time zone 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"')`;
 const COLUMNS = `r."id", r."userId", u."email", r."lang", r."langName", r."langNative", r."teamName", r."note",
-                 r."state", r."reason", r."approvedTeamId", r."createdAt"::text as "createdAt",
-                 r."decidedAt"::text as "decidedAt"`;
+                 r."state", r."reason", r."approvedTeamId", ${iso(`r."createdAt"`)} as "createdAt",
+                 ${iso(`r."decidedAt"`)} as "decidedAt"`;
 const FROM = `"team_request" r join "user" u on u."id" = r."userId"`;
 
 type Row = Omit<TeamRequest, "branch">;
