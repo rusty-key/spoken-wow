@@ -171,6 +171,7 @@ local function CaptureQuestSnapshot(event)
         if startsNewInteraction then
             questInteractionID = questInteractionID + 1
             pendingProgressRead = nil
+            pendingRead = nil
         end
     end
     -- Resolved now, the way the handler would: QUEST_ACCEPTED and QUEST_TURNED_IN find a page by

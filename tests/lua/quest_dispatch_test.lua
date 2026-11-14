@@ -483,6 +483,26 @@ stub.Advance(5)
 VO.Addon.db.profile.Audio.ReadAfterClose = false
 Expect("a new detail page clears prior pending progress", string.format("%d-accept", followUp))
 
+-- Closing a replacement offer before it stabilizes must not release the previous quest's held
+-- completion line.
+StartScenario()
+VO.Addon.db.profile.Audio.ReadAfterClose = true
+world.questID = full
+stub.ShowPanel("QuestFrameProgressPanel")
+stub.Advance(0.5)
+stub.ShowPanel("QuestFrameRewardPanel")
+stub.FireEvent("QUEST_COMPLETE")
+stub.Advance(0.5)
+world.questID = followUp
+stub.ShowPanel("QuestFrameDetailPanel")
+stub.FireEvent("QUEST_DETAIL")
+world.questID = 0
+stub.ShowPanel(nil)
+stub.FireEvent("QUEST_FINISHED")
+stub.Advance(5)
+VO.Addon.db.profile.Audio.ReadAfterClose = false
+Expect("a fast close does not release the previous completion", string.format("%d-accept", followUp))
+
 -- A fast switch must not let quest B's identifying page assign quest B's ID to quest A's
 -- unresolved progress just because both quests have the same title and giver.
 StartScenario()
