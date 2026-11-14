@@ -1,7 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 
-import { booksLua, indexLua, pageIndex, quote } from "./lua.mjs";
+import { booksLua, indexLua, luaTableId, pageIndex, quote } from "./lua.mjs";
 import { pageChecksum } from "./naming.mjs";
 
 const entries = [
@@ -104,6 +104,11 @@ test("a minted page is written as a quoted key", () => {
   const lines = indexLua(pageIndex([{ pageId: "n0b8f4e2a-1c1d-4f7e-9a51-2a0c9d6c7e11", bookId: "n1", pageNumber: 1, title: "X", text: "Y" }]), "extra");
   assert.ok(lines.some((line) => line.includes('= "n0b8f4e2a-1c1d-4f7e-9a51-2a0c9d6c7e11"')));
   assert.equal(lines[0], "\textraIndex = {");
+});
+
+test("database ids keep numeric keys numeric and minted keys quoted", () => {
+  assert.equal(luaTableId("2859"), 2859);
+  assert.equal(luaTableId("nc0bf109d-e5d1-494d-ba1b-12a6b27352a8"), "nc0bf109d-e5d1-494d-ba1b-12a6b27352a8");
 });
 
 test("an item or object names the book it opens", () => {

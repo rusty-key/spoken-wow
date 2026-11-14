@@ -31,6 +31,12 @@ export function luaId(id) {
   return typeof id === "number" ? String(id) : quote(id);
 }
 
+/** A database id matching a Lua key: numeric strings stay numbers, minted ids stay strings. */
+export function luaTableId(id) {
+  const value = String(id);
+  return /^\d+$/.test(value) ? Number(value) : value;
+}
+
 export function compareIds(a, b) {
   return typeof a === "number" && typeof b === "number" ? a - b : String(a).localeCompare(String(b));
 }

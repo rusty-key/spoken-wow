@@ -35,7 +35,7 @@ import { instanceZones, loadDungeons } from "../../lib/dungeons.mjs";
 import { loadEnv } from "../../lib/env.mjs";
 import { FOREVER_BUILD, wagoTable } from "../../lib/wago.mjs";
 import { areaReader } from "./lib/area.mjs";
-import { compareIds, luaId } from "./lib/lua.mjs";
+import { compareIds, luaId, luaTableId } from "./lib/lua.mjs";
 import { cannotBeHad, dungeonsOf, foreverQuests, isTemplateCopy, typeOf } from "./lib/places.mjs";
 
 await loadEnv("readables");
@@ -278,7 +278,7 @@ try {
   // Carried: the items whose first page is a readable's.
   const itemBook = new Map();
   for (const r of await table("ItemSparse")) {
-    const page = Number(r.PageID || 0);
+    const page = luaTableId(r.PageID ?? 0);
     if (pageBook.has(page)) {
       itemBook.set(Number(r.ID), pageBook.get(page));
       if (!bookItems.has(pageBook.get(page))) bookItems.set(pageBook.get(page), []);
