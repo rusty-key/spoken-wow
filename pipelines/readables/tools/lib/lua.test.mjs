@@ -1,8 +1,10 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 
-import { booksLua, indexLua, pageIndex, quote } from "./lua.mjs";
+import { booksLua, indexLua, luaTableId, pageIndex, placeLua, quote } from "./lua.mjs";
 import { pageChecksum } from "./naming.mjs";
+
+const GOZWIN = "nc0bf109d-e5d1-494d-ba1b-12a6b27352a8";
 
 const entries = [
   { pageId: 10, bookId: 10, pageNumber: 1, pageCount: 2, title: "A Dusty Tome", text: "One." },
@@ -104,6 +106,35 @@ test("a minted page is written as a quoted key", () => {
   const lines = indexLua(pageIndex([{ pageId: "n0b8f4e2a-1c1d-4f7e-9a51-2a0c9d6c7e11", bookId: "n1", pageNumber: 1, title: "X", text: "Y" }]), "extra");
   assert.ok(lines.some((line) => line.includes('= "n0b8f4e2a-1c1d-4f7e-9a51-2a0c9d6c7e11"')));
   assert.equal(lines[0], "\textraIndex = {");
+});
+
+test("a minted book and its pages are fully written by the export", () => {
+  const pageId = "n0b8f4e2a-1c1d-4f7e-9a51-2a0c9d6c7e11";
+  const bookId = "nc0bf109d-e5d1-494d-ba1b-12a6b27352a8";
+  const lua = booksLua([{ pageId, bookId, pageNumber: 1, pageCount: 1, title: "Mechanic's Log",
+    bookTitle: "Gozwin's Mechanic's Log", text: "Y" }]);
+  assert.match(lua, new RegExp(`\\[${pageChecksum("Y")}\\] = "${pageId}"`));
+  assert.match(lua, new RegExp(`\\["${pageId}"\\] = \\{ book = "${bookId}"`));
+  assert.match(lua, new RegExp(`\\["Mechanic's Log"\\]`));
+  assert.match(lua, new RegExp(`\\["${bookId}"\\] = \\{ title = "Gozwin's Mechanic's Log", pages = \\{ "${pageId}" \\} \\}`));
+});
+
+test("database ids keep numeric keys numeric and minted keys quoted", () => {
+  assert.equal(luaTableId("2859"), 2859);
+  assert.equal(luaTableId("nc0bf109d-e5d1-494d-ba1b-12a6b27352a8"), "nc0bf109d-e5d1-494d-ba1b-12a6b27352a8");
+});
+
+test("the places generator writes a minted journal's quest metadata", async () => {
+  const oldFixture = process.env.PLACES_FIXTURE;
+  process.env.PLACES_FIXTURE = "gozwin";
+  const moduleUrl = new URL("../places.mjs?fixture-gozwin", import.meta.url);
+  await import(moduleUrl);
+  const output = globalThis.__spokenPlacesFixture;
+  delete globalThis.__spokenPlacesFixture;
+  if (oldFixture === undefined) delete process.env.PLACES_FIXTURE;
+  else process.env.PLACES_FIXTURE = oldFixture;
+  assert.equal(output,
+    `\t\t["${GOZWIN}"] = { kind = "carried", type = "journal", quests = { 97277 }, zones = { 1426 } },`);
 });
 
 test("an item or object names the book it opens", () => {

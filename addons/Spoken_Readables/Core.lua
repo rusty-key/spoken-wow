@@ -168,6 +168,22 @@ function SpokenReadables:MarkBookFound(book)
 	if self.readables and self.readables:IsVisible() and self.RefreshReadables then self:RefreshReadables() end
 end
 
+--- Whether `book` has words in at least one of its pages. Empty item records are kept in the
+-- corpus for client bookkeeping, but they are not readable entries for the Compendium.
+function SpokenReadables:HasBookText(bookID)
+	if not bookID then return false end
+	local data = self:Data()
+	local book = data and data.books and data.books[bookID]
+	if not book then return false end
+	for _, pageID in ipairs(book.pages or {}) do
+		local page = data.pages and data.pages[pageID]
+		if page and type(page.text) == "string" and page.text ~= "" then
+			return true
+		end
+	end
+	return false
+end
+
 --- Whether this character has found `book`: opened it in the world. Hearing it from the
 --- Compendium does not count.
 function SpokenReadables:IsBookFound(book)
@@ -289,6 +305,45 @@ end
 --- worth answering for rather than indexing into nil from four call sites.
 function SpokenReadables:Data()
 	return _G.SpokenReadablesData
+end
+
+--- The readable owned by an item, if the item is a text-bearing note or book.
+---
+--- The item table is generated with the corpus. Checking the page text here keeps an item
+--- with no readable text from appearing in the Compendium merely because it has an owner entry.
+function SpokenReadables:BookForItem(itemID)
+	if not itemID then return nil end
+	local data = self:Data()
+	local owners = data and data.owners and data.owners.item
+	local bookID = owners and owners[itemID]
+	return self:HasBookText(bookID) and bookID or nil
+end
+
+--- The item that owns a readable, if it is a carried book, letter or note.
+function SpokenReadables:ItemForBook(bookID)
+	local data = self:Data()
+	if self.itemForBookData ~= data then
+		self.itemForBookData = data
+		self.itemForBook = {}
+		local owners = data and data.owners and data.owners.item or {}
+		for itemID, owner in pairs(owners) do
+			if self.itemForBook[owner] == nil then self.itemForBook[owner] = itemID end
+		end
+	end
+	return self.itemForBook and self.itemForBook[bookID]
+end
+
+--- The client's icon for a carried readable, or nil for a world object.
+function SpokenReadables:ItemIcon(bookID)
+	local itemID = self:ItemForBook(bookID)
+	if not itemID then return nil end
+	local getInfo = (C_Item and C_Item.GetItemInfoInstant) or GetItemInfoInstant
+	if getInfo then
+		local _, _, _, _, icon = getInfo(itemID)
+		if icon then return icon end
+	end
+	local getIcon = (C_Item and C_Item.GetItemIconByID) or GetItemIcon
+	return getIcon and getIcon(itemID) or nil
 end
 
 --- Spoken's site, or nil when Spoken is not loaded: no page is read aloud without it, so there

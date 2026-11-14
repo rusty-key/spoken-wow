@@ -71,6 +71,25 @@ B:SetupSource()
 dofile(READABLES .. "Data/Books.lua")
 dofile(READABLES .. "Data/Places.lua")
 local L = B.L
+Expect("Fishing Tournament keeps its direct reward quest", SpokenReadablesPlaces.books[2786].quests[1], 8228)
+Expect("Brazier of Invocation keeps its direct reward quest", SpokenReadablesPlaces.books[2859].quests[1], 8996)
+local JOURNAL = SpokenReadablesPlaces.books["nc0bf109d-e5d1-494d-ba1b-12a6b27352a8"]
+Expect("the string-keyed journal remains in Places", JOURNAL ~= nil, true)
+Expect("the journal keeps its generated type", JOURNAL.type, "journal")
+Expect("the journal keeps its direct reward quest", JOURNAL.quests[1], 97277)
+
+-- Compendium ordering must keep numeric and minted IDs comparable when titles collide.
+local MIXED_BOOK = "n00000000-0000-4000-8000-000000000001"
+SpokenReadablesData.pages[990010] = { book = 990010, number = 1, text = "Words of a mixed title." }
+SpokenReadablesData.pages["n00000000-0000-4000-8000-000000000002"] = {
+    book = MIXED_BOOK, number = 1, text = "Different words of a mixed title."
+}
+SpokenReadablesData.books[990010] = { title = "Mixed ID Title", pages = { 990010 } }
+SpokenReadablesData.books[MIXED_BOOK] = {
+    title = "Mixed ID Title", pages = { "n00000000-0000-4000-8000-000000000002" }
+}
+SpokenReadablesPlaces.books[990010] = { kind = "carried", type = "note" }
+SpokenReadablesPlaces.books[MIXED_BOOK] = { kind = "carried", type = "note" }
 -- One readable whose event the data does not name, as an older export left every one.
 SpokenReadablesPlaces.books[2878].event = true
 
@@ -539,6 +558,22 @@ Expect("...where it is", page.sub.text.text, L.READABLES_IN_FMT:format("Stormwin
 Expect("...on one line", page.sub.text.wordWrap, false)
 Expect("...no line before its words saying it is in the world", (page.body.text.text or ""):find("In the World", 1, true), nil)
 Expect("...and its words", page.body.text.text ~= nil and #page.body.text.text > 40, true)
+do
+    local itemIcon = B.ItemIcon
+    B.ItemIcon = function(_, id) return id == KURDRAN and 123456 or nil end
+    B:ShowReadables(KURDRAN)
+    Expect("a found readable's page uses its item icon", page.headFace.speaker.icon, 123456)
+    SpokenReadablesCharacter.found[KURDRAN] = nil
+    B:ShowReadables(KURDRAN)
+    Expect("a locked readable's page also uses its item icon", page.headFace.speaker.icon, 123456)
+    B.ItemIcon = function() return nil end
+    B:ShowReadables(KURDRAN)
+    Expect("an unavailable item icon falls back to the category icon", page.headFace.speaker.icon,
+        [[Interface\Icons\INV_Misc_Note_06]])
+    SpokenReadablesCharacter.found[KURDRAN] = true
+    B.ItemIcon = itemIcon
+    B:ShowReadables(KURDRAN)
+end
 -- A page that names its reader shows this character's name, class and gender word, as in the game.
 do
     local kurdranPage = SpokenReadablesData.books[KURDRAN].pages[1]

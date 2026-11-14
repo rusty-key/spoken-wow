@@ -31,8 +31,49 @@ export function luaId(id) {
   return typeof id === "number" ? String(id) : quote(id);
 }
 
+/** A database id matching a Lua key: numeric strings stay numbers, minted ids stay strings. */
+export function luaTableId(id) {
+  const value = String(id);
+  return /^\d+$/.test(value) ? Number(value) : value;
+}
+
+const LUA_ID = String.raw`(?:\d+|"(?:[^"\\]|\\.)*")`;
+const parseLuaId = (id) => id.startsWith('"') ? id.slice(1, -1) : Number(id);
+
+/** Parse the Books.lua sections consumed by the Places generator. */
+export function readableLua(source) {
+  const bookPart = source.slice(source.indexOf("\tbooks = {"));
+  const books = new Map();
+  const parseLuaIds = (text) => [...text.matchAll(new RegExp(LUA_ID, "g"))].map(([id]) => parseLuaId(id));
+  for (const m of bookPart.matchAll(new RegExp(`\\[(${LUA_ID})\\] = \\{ title = "((?:[^"\\\\]|\\\\.)*)", pages = \\{ ([^}]*) \\}`, "g"))) {
+    books.set(parseLuaId(m[1]), { title: m[2], pages: parseLuaIds(m[3]) });
+  }
+  const pageBook = new Map();
+  for (const [id, book] of books) for (const page of book.pages) pageBook.set(page, id);
+  if (books.size === 0) throw new Error("no books found");
+  const pageText = new Map();
+  const pagePart = source.slice(source.indexOf("\tpages = {"), source.indexOf("\tbooks = {"));
+  for (const m of pagePart.matchAll(new RegExp(`\\[(${LUA_ID})\\] = \\{ book = ${LUA_ID}, number = \\d+, text = "((?:[^"\\\\]|\\\\.)*)"`, "g"))) {
+    pageText.set(parseLuaId(m[1]), m[2]);
+  }
+  return { books, pageBook, pageText };
+}
+
 export function compareIds(a, b) {
   return typeof a === "number" && typeof b === "number" ? a - b : String(a).localeCompare(String(b));
+}
+
+/** A Places.lua book record, with numeric and minted ids written in their Lua forms. */
+export function placeLua(id, { kind, type, quests = [], event, wide = false, zones = [], dungeons = [] }) {
+  const parts = [`kind = "${kind}"`, `type = "${type}"`];
+  if (quests.length) parts.push(`quests = { ${quests.join(", ")} }`);
+  if (event) parts.push(`event = "${event}"`);
+  if (wide) parts.push("wide = true");
+  else if (zones.length) {
+    parts.push(`zones = { ${zones.join(", ")} }`);
+    if (dungeons.length) parts.push(`dungeons = { ${dungeons.join(", ")} }`);
+  }
+  return `\t\t[${luaId(id)}] = { ${parts.join(", ")} },`;
 }
 
 /**
@@ -148,30 +189,30 @@ export function ownersLua(entries) {
 
 /**
  * @param entries corpus rows: pageId, bookId, pageNumber, pageCount, title, text, and
- *   optionally ownerKind and ownerIds
+ *   optionally bookTitle, ownerKind and ownerIds
  */
 export function booksLua(entries) {
   // Sorted throughout, so re-exporting an unchanged corpus produces an identical file and a
   // diff shows only what actually moved.
-  const sorted = canBeHad(entries).sort((a, b) => a.bookId - b.bookId || a.pageNumber - b.pageNumber);
+  const sorted = canBeHad(entries).sort((a, b) => compareIds(a.bookId, b.bookId) || a.pageNumber - b.pageNumber);
 
   const books = new Map();
   for (const entry of sorted) {
-    if (!books.has(entry.bookId)) books.set(entry.bookId, { title: entry.title, pages: [] });
+    if (!books.has(entry.bookId)) books.set(entry.bookId, { title: entry.bookTitle ?? entry.title, pages: [] });
     books.get(entry.bookId).pages.push(entry.pageId);
   }
 
   const lines = [HEADER, "SpokenReadablesData = {", "\tversion = 1,", "", ...indexLua(pageIndex(sorted))];
 
   lines.push("", "\tpages = {");
-  for (const entry of [...sorted].sort((a, b) => a.pageId - b.pageId)) {
-    lines.push(`\t\t[${entry.pageId}] = { book = ${entry.bookId}, number = ${entry.pageNumber}, text = ${quote(spokenText(entry.text))} },`);
+  for (const entry of [...sorted].sort((a, b) => compareIds(a.pageId, b.pageId))) {
+    lines.push(`\t\t[${luaId(entry.pageId)}] = { book = ${luaId(entry.bookId)}, number = ${entry.pageNumber}, text = ${quote(spokenText(entry.text))} },`);
   }
 
   lines.push("\t},", "", "\tbooks = {");
-  for (const bookId of [...books.keys()].sort((a, b) => a - b)) {
+  for (const bookId of [...books.keys()].sort(compareIds)) {
     const book = books.get(bookId);
-    lines.push(`\t\t[${bookId}] = { title = ${quote(book.title)}, pages = { ${book.pages.join(", ")} } },`);
+    lines.push(`\t\t[${luaId(bookId)}] = { title = ${quote(book.title)}, pages = { ${book.pages.map(luaId).join(", ")} } },`);
   }
 
   lines.push("\t},", "", ...ownersLua(sorted), "}", "");
