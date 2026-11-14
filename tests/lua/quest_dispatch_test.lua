@@ -410,7 +410,7 @@ stub.ShowPanel(nil)
 stub.FireEvent("QUEST_FINISHED")
 stub.FireEvent("QUEST_TURNED_IN", full, 0, 0)
 stub.Advance(5)
-Expect("an indexed completion is replayed without anonymous progress",
+Expect("an identified completion is replayed without anonymous progress",
     string.format("%d-complete", full))
 
 -- The panel can advance without either page event. A visible reward page with an ID still captures
@@ -446,6 +446,27 @@ stub.Advance(5)
 testPack.QuestIDLookup = nil
 Expect("an event-free indexed reward captures completion",
     string.format("%d-complete", full))
+
+-- A completion lookup can identify a reward page while the client still reports ID 0. Keep the
+-- earlier identified progress alive while the reward page remains open past snapshot expiry.
+StartScenario()
+VO.Addon.db.profile.Audio.ReadAfterClose = true
+testPack.QuestIDLookup = { accept = {}, progress = {}, complete = { ["Test Quest"] = full } }
+world.questID = full
+stub.ShowPanel("QuestFrameProgressPanel")
+stub.FireEvent("QUEST_PROGRESS")
+stub.Advance(0.1)
+world.questID = 0
+stub.ShowPanel("QuestFrameRewardPanel")
+stub.Advance(0.2)
+stub.Advance(11)
+stub.ShowPanel(nil)
+stub.FireEvent("QUEST_FINISHED")
+stub.Advance(5)
+VO.Addon.db.profile.Audio.ReadAfterClose = false
+testPack.QuestIDLookup = nil
+Expect("an indexed reward ID gap keeps progress past snapshot expiry",
+    string.format("%d-progress, %d-complete", full, full))
 
 -- Replacement quest UIs hide Blizzard panels. A poll during an anonymous progress page must not
 -- spend a snapshot that cannot be tied to a quest.

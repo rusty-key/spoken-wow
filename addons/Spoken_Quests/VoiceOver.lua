@@ -123,14 +123,16 @@ for event, quest in pairs(QUEST_EVENTS) do
     EVENT_OF_SOUND[quest.sound] = event
 end
 
-local function PruneQuestSnapshots()
+local function PruneQuestSnapshots(keepInteractionID)
     local now = GetTime()
     for i = #questSnapshots, 1, -1 do
-        local keepForPending = pendingRead and questSnapshots[i].keepUntilPending
+        local keepForPending = questSnapshots[i].keepUntilPending and
+            (pendingRead or questSnapshots[i].interactionID == questInteractionID)
         local keepForClosedReplay = replayClosedQuestSnapshotsAfterLoad and
             replayClosedQuestInteractionIDSet[questSnapshots[i].interactionID]
+        local keepForReplay = keepInteractionID and questSnapshots[i].interactionID == keepInteractionID
         if now - questSnapshots[i].at > SNAPSHOT_LIFETIME and
-            not keepForPending and not keepForClosedReplay then
+            not keepForPending and not keepForClosedReplay and not keepForReplay then
             table.remove(questSnapshots, i)
         end
     end
@@ -193,6 +195,14 @@ local function CaptureQuestSnapshot(event)
         targetName = targetName,
         isObjectOrItem = Utils:IsNPCObjectOrItem(),
     }
+    if event == "QUEST_COMPLETE" then
+        for _, old in ipairs(questSnapshots) do
+            if old.event == "QUEST_PROGRESS" and not old.dispatched and not old.passed and
+                old.interactionID == snapshot.interactionID and old.questID == questID then
+                old.keepUntilPending = true
+            end
+        end
+    end
     -- The same page shown again replaces its record, and keeps what was done with it, so a page
     -- read in the open window is not read again after it closes.
     for i = #questSnapshots, 1, -1 do
@@ -808,7 +818,7 @@ function Addon:OnInitialize()
     local newest = {}
 
     local function ReplayQuestSnapshots(source, questID, events, interactionID)
-        PruneQuestSnapshots()
+        PruneQuestSnapshots(interactionID)
         -- The watcher calls this ten times a second whenever no quest is open.
         if #questSnapshots == 0 then
             return
@@ -869,9 +879,12 @@ function Addon:OnInitialize()
                 replayBoundarySet[boundary] = true
             end
         end
-        AddReplayBoundary(interactionID)
         for _, deferredInteractionID in ipairs(replayClosedQuestInteractionIDs) do
             AddReplayBoundary(deferredInteractionID)
+        end
+        AddReplayBoundary(interactionID)
+        if #replayBoundaries == 0 then
+            AddReplayBoundary(lastClosedQuestInteractionID)
         end
         local replaySource = source or "the dialog closed before it could stabilize"
         if #replayBoundaries > 0 then
