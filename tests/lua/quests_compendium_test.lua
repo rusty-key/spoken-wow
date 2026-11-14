@@ -1418,24 +1418,16 @@ Tab:Refresh()
 Click("Koboldkerzen")
 Expect("progress text is shown for the character who captured it",
     (PageWords() or ""):find("Tester, habt Ihr die Kerzen schon gesammelt?", 1, true) ~= nil, true)
-Expect("...and keeps that character's name and sex",
-    kept.deDE[CANDLES].progress.characters[stub.world.playerGUID].name == "Tester"
-        and kept.deDE[CANDLES].progress.characters[stub.world.playerGUID].sex == 2, true)
+Expect("...and keeps that character's sex",
+    kept.deDE[CANDLES].progress.characters[stub.world.playerGUID].sex == 2, true)
 stub.world.playerGUID = nil
-Expect("the fallback fixture has no player GUID", UnitGUID("player"), nil)
-stub.world.progressText = "Tester, ein anderer Fortschritt."
+Expect("the no-GUID fixture has no player GUID", UnitGUID("player"), nil)
+stub.world.progressText = "Tester, no stable identity."
 stub.world.questID = CANDLES
 stub.FireEvent("QUEST_PROGRESS")
+Expect("progress without a GUID does not create a name-keyed record",
+    kept.deDE[CANDLES].progress.characters.Tester, nil)
 stub.world.questID = 0
-Tab:Refresh()
-Click("Koboldkerzen")
-Expect("progress captured with the name fallback is shown to that character",
-    (PageWords() or ""):find("Tester, ein anderer Fortschritt.", 1, true) ~= nil, true)
-stub.world.unitSex = 3
-Tab:Refresh()
-Expect("the same name with a different sex cannot read that progress",
-    (PageWords() or ""):find("Tester, ein anderer Fortschritt.", 1, true) == nil, true)
-stub.world.unitSex = 2
 stub.world.playerName = "Zweite"
 stub.world.playerGUID = "Player-0-0-0-0-Zweite-0"
 Tab:Refresh()

@@ -135,7 +135,7 @@ end
 local AnyVoiced
 
 -- The words and titles kept in this client's language, by quest: { title, accept/complete = { text,
--- sex }, progress = { text, sex } or { characters = { [characterID] = { text, sex, name? } } } ... }.
+-- sex }, progress = { text, sex } or { characters = { [characterID] = { text, sex } } } ... }.
 -- Only a moment with no shipped English text is kept, regardless of the client's language.
 local function Kept(id, moment, create)
     if id and moment and English(id)[moment] ~= nil then return nil end
@@ -938,19 +938,10 @@ local function Sex()
     return UnitSex and UnitSex("player") or 2
 end
 
-local function PlayerName()
-    return UnitName and VO.NotSecret(UnitName("player")) or nil
-end
-
--- A GUID remains the same when a character changes name. The name and realm fallback is for
--- clients that do not expose the player's GUID, and is still distinct from another realm's name.
+-- A GUID remains the same when a character changes name.
 local function CharacterID()
     local guid = UnitGUID and VO.NotSecret(UnitGUID("player"))
     if type(guid) == "string" and guid ~= "" then return guid end
-    local name = PlayerName()
-    local realm = GetRealmName and VO.NotSecret(GetRealmName())
-    if type(name) ~= "string" or name == "" then return nil end
-    return type(realm) == "string" and realm ~= "" and name .. "-" .. realm or name
 end
 
 local function Plain(text)
@@ -1051,7 +1042,6 @@ function QuestsTab:Keep(moment, text, title)
         local english = English(id)
         local record = { text = Generalise(text, english[moment]), sex = Sex() }
         if english[moment] == nil then
-            record.name = PlayerName()
             local character = CharacterID()
             if not character then return end
             local captured = kept[id][moment]

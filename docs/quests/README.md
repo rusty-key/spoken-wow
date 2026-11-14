@@ -1891,8 +1891,8 @@ client keeps progress text because the shipped corpus has no progress text; ship
 complete words remain the source of truth. The player's name, class and race go back to `$N`, `$C`
 and `$R` where the English has them, so another character sees its own. A text kept by a character
 of the other sex is not shown where the English has a `$G`. Progress text without a shipped template
-is kept per character GUID (with the name-and-realm fallback used by clients that do not expose one),
-and is shown only to that character. Accept and complete text remains shareable after its
+is kept per character GUID and is shown only to that character. Accept and complete text remains
+shareable after its
 placeholders are generalized.
 
 ## Tests
