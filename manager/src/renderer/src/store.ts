@@ -300,7 +300,7 @@ function makeActions(dispatch: Dispatch<Action>, get: () => State): Actions {
       try {
         await api().shareNow()
       } catch (e) {
-        dispatch({ type: 'sharing', status: { ...get().sharing, sending: false, error: errorText(e) } })
+        dispatch({ type: 'sharing', status: { ...get().sharing, sending: false, success: false, error: errorText(e) } })
       }
     },
     applyContributor: (view) => dispatch({ type: 'contributor', view }),

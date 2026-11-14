@@ -274,19 +274,17 @@ function SharingSection(): ReactNode {
   const [reset, setReset] = useState(false)
   const [sent, setSent] = useState(false)
   const sendPending = useRef(false)
-  const lastSentBefore = useRef<string | undefined>(undefined)
   const last = sharing.lastSent
   useEffect(() => {
     if (!sendPending.current || sharing.sending) return
     sendPending.current = false
-    setSent(!sharing.error && sharing.lastSent?.at !== lastSentBefore.current)
-  }, [sharing.error, sharing.lastSent?.at, sharing.sending])
+    setSent(sharing.success === true)
+  }, [sharing.sending, sharing.success])
   const resetId = async (): Promise<void> => {
     await api().resetShareId()
     setReset(true)
   }
   const sendNow = (): void => {
-    lastSentBefore.current = last?.at
     sendPending.current = true
     setSent(false)
     void actions.shareNow()

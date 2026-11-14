@@ -637,7 +637,8 @@ export class ManagerService {
   }
 
   private async share(signal: AbortSignal, all: boolean): Promise<SendResult | null> {
-    this.setSharingStatus({ ...this.sharingStatus, sending: true })
+    const { success: _oldSuccess, ...starting } = this.sharingStatus
+    this.setSharingStatus({ ...starting, sending: true })
     let result: SendResult | null = null
     try {
       result = await sendPending({
@@ -653,8 +654,8 @@ export class ManagerService {
     } catch (err) {
       if (!signal.aborted) log('Sharing failed:', err)
     }
-    const { error: _old, ...status } = this.sharingStatus
-    const next: SharingStatus = { ...status, sending: false, ...(this.ledger.lastSent ? { lastSent: this.ledger.lastSent } : {}) }
+    const { error: _old, success: _oldCompletionSuccess, ...status } = this.sharingStatus
+    const next: SharingStatus = { ...status, sending: false, success: result?.outcome === 'sent' || result?.outcome === 'nothing', ...(this.ledger.lastSent ? { lastSent: this.ledger.lastSent } : {}) }
     if (result && (result.outcome === 'sent' || result.outcome === 'nothing')) {
       this.shareFailures = 0
       this.shareRetryAt = 0
