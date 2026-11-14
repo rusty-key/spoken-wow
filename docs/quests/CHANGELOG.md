@@ -6,6 +6,11 @@ The player and the sound pack are versioned independently — the pack moves whe
 rebuilt, the player when its Lua changes — so a section belongs to whichever of the two
 carries that version. The heading says which.
 
+## Unreleased
+
+- **Paragraph breaks show as breaks again** in subtitles and the Compendium, not as `\n\n`
+  in the middle of the text. Packs built since 2026-11-13 had them.
+
 ## 2.5.0 — Spoken Quests Audio — 2026-10-31
 
 - **The sound packs are renamed** in the AddOns list: Spoken Audio: Quests - Horde, Quests -
