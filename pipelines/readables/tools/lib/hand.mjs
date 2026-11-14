@@ -52,5 +52,6 @@ export function handPlace(bookId) {
   return {
     type: TYPE_BY_HAND[bookId],
     quests: sources.filter((source) => source.how === "quest reward").map((source) => source.quest),
+    zones: sources.flatMap((source) => source.zones ?? []),
   };
 }
