@@ -80,9 +80,12 @@ do
     bagItems[1] = 745
     SpokenReadables.readableItemCounts = nil
     stub.FireEvent("BAG_UPDATE", 0)
+    bagItems[2] = 745
+    stub.FireEvent("BAG_UPDATE", 0)
     Expect("a pre-login bag update does not consume quest backfill", SpokenReadablesCharacter.questReadableBackfill, nil)
     Expect("a pre-login bag update does not mark a Questie-only readable", B:IsBookFound(209), false)
     _G.LibQuestieDB = questie
+    bagItems[2] = nil
     stub.FireEvent("PLAYER_LOGIN")
     Expect("login backfill sees Questie after the early bag update", B:IsBookFound(209), true)
 end

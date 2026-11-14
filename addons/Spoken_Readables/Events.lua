@@ -152,6 +152,10 @@ end
 --- Remember text-bearing notes as soon as they enter the bags, without opening or reading them.
 function SpokenReadables:OnBagUpdate()
 	local current = self:ReadableItemSnapshot()
+	if not self.hasLoggedIn then
+		self.readableItemCounts = current
+		return
+	end
 	if not self.readableItemCounts then
 		self.readableItemCounts = current
 		return

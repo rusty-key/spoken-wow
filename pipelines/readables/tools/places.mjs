@@ -35,7 +35,7 @@ import { instanceZones, loadDungeons } from "../../lib/dungeons.mjs";
 import { loadEnv } from "../../lib/env.mjs";
 import { FOREVER_BUILD, wagoTable } from "../../lib/wago.mjs";
 import { areaReader } from "./lib/area.mjs";
-import { SOURCES_BY_HAND, TYPE_BY_HAND } from "./lib/hand.mjs";
+import { SOURCES_BY_HAND, handPlace } from "./lib/hand.mjs";
 import { compareIds, luaTableId, placeLua } from "./lib/lua.mjs";
 import { cannotBeHad, dungeonsOf, foreverQuests, isTemplateCopy, typeOf } from "./lib/places.mjs";
 
@@ -405,7 +405,8 @@ for (const [id, book] of [...books].sort(([a], [b]) => compareIds(a, b))) {
   const wide = zones.size > WIDE;
   counts[k]++;
   if (wide) counts.wide++;
-  const type = TYPE_BY_HAND[id] ?? typeOf({ title: book.title, world: k === "world", texts: book.pages.map((page) => pageText.get(page) ?? ""),
+  const hand = handPlace(id);
+  const type = hand.type ?? typeOf({ title: book.title, world: k === "world", texts: book.pages.map((page) => pageText.get(page) ?? ""),
     icons: (bookItems.get(id) ?? []).map((item) => itemIcon.get(item) ?? "") });
   counts.types[type] = (counts.types[type] ?? 0) + 1;
   const rewards = questRewards.get(id);
@@ -418,7 +419,7 @@ for (const [id, book] of [...books].sort(([a], [b]) => compareIds(a, b))) {
   lines.push(placeLua(id, {
     kind: k,
     type,
-    quests: rewards ? [...rewards].sort((a, b) => a - b) : [],
+    quests: rewards ? [...rewards].sort((a, b) => a - b) : hand.quests,
     event,
     wide,
     zones: [...zones].sort((a, b) => a - b),

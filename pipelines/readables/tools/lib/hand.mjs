@@ -45,3 +45,12 @@ export const TYPE_BY_HAND = {
   2882: "letter", 2883: "letter", 2884: "letter",
   2885: "letter", 2886: "letter", 2887: "letter", 2888: "letter", 2889: "letter", 2890: "letter",
 };
+
+/** The hand-authored fields the Places generator adds to one book record. */
+export function handPlace(bookId) {
+  const sources = SOURCES_BY_HAND[bookId] ?? [];
+  return {
+    type: TYPE_BY_HAND[bookId],
+    quests: sources.filter((source) => source.how === "quest reward").map((source) => source.quest),
+  };
+}
