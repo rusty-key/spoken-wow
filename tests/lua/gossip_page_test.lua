@@ -75,8 +75,8 @@ switch:GetScript("OnClick")(switch)
 Expect("turning it on again makes the part read", Spoken:IsPartOn("gossip"), true)
 
 ---------------------------------------------------------------- shared rows on the Quests page
--- Read Automatically and Stop When Window Closes cover the Gossip window too, so the Quests page
--- keeps them live while Gossip is on, whatever Quests is.
+-- Read Automatically covers the Gossip window too, so the Quests page keeps it live while Gossip
+-- is on. Stop When Window Closes is quest-only.
 local function QuestsRow(text)
     for _, child in ipairs(QuestsPanel.panel.content.children) do
         if type(child.text) == "table" and child.text.text == text then return child end
@@ -87,7 +87,7 @@ local autoplayRow, stopRow, followupRow = QuestsRow(L.OPT_PANEL_AUTOPLAY), Quest
 Spoken:SetPartOn("quests", false)
 QuestsPanel.panel.layout:Refresh()
 Expect("with Quests off and Gossip on, Read Automatically stays live", autoplayRow.layoutReason, nil)
-Expect("...and so does Stop When Window Closes", stopRow.layoutReason, nil)
+Expect("...but Stop When Window Closes is quest-only", stopRow.layoutReason, W.REASON_PART_OFF)
 Expect("...while quest-only rows grey", followupRow.layoutReason ~= nil, true)
 Spoken:SetPartOn("gossip", false)
 QuestsPanel.panel.layout:Refresh()

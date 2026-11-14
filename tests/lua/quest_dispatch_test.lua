@@ -34,6 +34,18 @@ local function Expect(scenario, expected)
     end
 end
 
+local function ExpectCurrent(scenario, expected)
+    local current = Spoken:GetCurrent()
+    local actual = current and current.fileName or ""
+    if actual == expected then
+        print(string.format("ok   %s\n     current: %s", scenario, actual ~= "" and actual or "(nothing)"))
+    else
+        failures = failures + 1
+        print(string.format("FAIL %s\n     expected: %s\n     actual:   %s", scenario,
+            expected ~= "" and expected or "(nothing)", actual ~= "" and actual or "(nothing)"))
+    end
+end
+
 local function StartScenario()
     Spoken:StopAll()
     world.questID = 0
@@ -211,6 +223,185 @@ stub.FireEvent("QUEST_FINISHED")
 stub.FireEvent("QUEST_ACCEPTED", full)
 stub.Advance(3)
 Expect("normal accept reads accept once", string.format("%d-accept", full))
+
+-- Closing an unaccepted offer stops it when Stop When Window Closes is on; accepting it in the
+-- close event's grace period leaves the line playing even with that setting enabled.
+VO.Addon.db.profile.Audio.StopAudioOnDisengage = true
+StartScenario()
+world.questID = full
+stub.ShowPanel("QuestFrameDetailPanel")
+stub.FireEvent("QUEST_DETAIL")
+stub.Advance(0.6)
+world.questID = 0
+stub.ShowPanel(nil)
+stub.FireEvent("QUEST_FINISHED")
+stub.Advance(0.2)
+ExpectCurrent("an unaccepted offer keeps playing during the acceptance grace period", "104-accept")
+stub.Advance(0.6)
+ExpectCurrent("closing an unaccepted offer stops its audio", "")
+
+StartScenario()
+world.questID = full
+stub.ShowPanel("QuestFrameDetailPanel")
+stub.FireEvent("QUEST_DETAIL")
+stub.Advance(0.6)
+world.questID = 0
+stub.ShowPanel(nil)
+stub.FireEvent("QUEST_FINISHED")
+stub.FireEvent("QUEST_ACCEPTED", full)
+stub.Advance(0.2)
+ExpectCurrent("accepting an offer leaves its audio playing when stopping is enabled", "104-accept")
+
+-- Some clients report QUEST_ACCEPTED before QUEST_FINISHED. The accepted offer must still survive
+-- the later close event when Stop When Window Closes is enabled.
+StartScenario()
+world.questID = full
+stub.ShowPanel("QuestFrameDetailPanel")
+stub.FireEvent("QUEST_DETAIL")
+stub.Advance(0.6)
+stub.FireEvent("QUEST_ACCEPTED", full)
+world.questID = 0
+stub.ShowPanel(nil)
+stub.FireEvent("QUEST_FINISHED")
+stub.Advance(0.6)
+ExpectCurrent("accepting before the window closes leaves its audio playing", "104-accept")
+
+-- The snapshot can capture the previous quest while the dispatched page resolves to the current
+-- one. The dispatched ID must own the offer's close tracking and stop its sound.
+StartScenario()
+VO.Addon.openQuestOffer = { questID = full, title = world.title }
+world.questID = followUp
+VO.Addon:QUEST_DETAIL()
+VO.Addon:QUEST_FINISHED()
+stub.Advance(0.6)
+ExpectCurrent("a dispatched offer ID replaces a stale snapshot ID", "")
+
+-- Closing a turn-in window without handing in the quest stops its pages, but the turn-in event
+-- cancels that stop just as QUEST_ACCEPTED does for an offer. Test both event orders.
+StartScenario()
+world.questID = full
+stub.ShowPanel("QuestFrameProgressPanel")
+stub.FireEvent("QUEST_PROGRESS")
+stub.Advance(0.1)
+stub.ShowPanel("QuestFrameRewardPanel")
+stub.FireEvent("QUEST_COMPLETE")
+stub.Advance(0.6)
+world.questID = 0
+stub.ShowPanel(nil)
+stub.FireEvent("QUEST_FINISHED")
+stub.Advance(0.2)
+ExpectCurrent("an unturned-in quest keeps completion audio during the turn-in grace period", "104-complete")
+stub.Advance(0.6)
+ExpectCurrent("closing an unturned-in quest stops its completion audio", "")
+
+StartScenario()
+world.questID = full
+stub.ShowPanel("QuestFrameRewardPanel")
+stub.FireEvent("QUEST_COMPLETE")
+stub.Advance(0.6)
+world.questID = 0
+stub.ShowPanel(nil)
+stub.FireEvent("QUEST_FINISHED")
+stub.FireEvent("QUEST_TURNED_IN", full, 0, 0)
+stub.Advance(0.6)
+ExpectCurrent("turning in after the window closes leaves completion audio playing", "104-complete")
+
+StartScenario()
+world.questID = full
+stub.ShowPanel("QuestFrameRewardPanel")
+stub.FireEvent("QUEST_COMPLETE")
+stub.Advance(0.6)
+stub.FireEvent("QUEST_TURNED_IN", full, 0, 0)
+world.questID = 0
+stub.ShowPanel(nil)
+stub.FireEvent("QUEST_FINISHED")
+stub.Advance(0.6)
+ExpectCurrent("turning in before the window closes leaves completion audio playing", "104-complete")
+
+-- A replacement dialog can dispatch the page before the recorder has a snapshot for it. The
+-- currently queued turn-in line must still get the same close grace period.
+StartScenario()
+world.questID = full
+VO.Addon:QUEST_COMPLETE()
+stub.Advance(0.6)
+world.questID = 0
+stub.ShowPanel(nil)
+VO.Addon:QUEST_FINISHED()
+stub.Advance(0.2)
+ExpectCurrent("a turn-in line without a snapshot keeps playing during close grace", "104-complete")
+stub.Advance(0.6)
+ExpectCurrent("a turn-in line without a snapshot stops after close grace", "")
+
+-- A newer turn-in must not replace an earlier pending record: its queued line remains available
+-- for the earlier quest's own QUEST_TURNED_IN event.
+lookup[string.format("%d-complete", followUp)] = 1
+StartScenario()
+world.questID = full
+VO.Addon:QUEST_PROGRESS()
+world.questID = followUp
+VO.Addon:QUEST_COMPLETE()
+VO.Addon:QUEST_FINISHED()
+local hasEarlierTurnIn = false
+for _, turnIn in ipairs(VO.Addon.openQuestTurnIns or {}) do
+    if turnIn.questID == full and #turnIn.soundData == 1 then
+        hasEarlierTurnIn = true
+    end
+end
+if hasEarlierTurnIn then
+    print("ok   a newer turn-in preserves an earlier pending record")
+else
+    failures = failures + 1
+    print("FAIL a newer turn-in preserves an earlier pending record")
+end
+stub.Advance(0.6)
+ExpectCurrent("the earlier retained turn-in line is removed after close", "")
+
+-- QUEST_FINISHED can also be reported while the NPC window is changing from its greeting to the
+-- turn-in panel. That is not a close: the line must keep playing until the panel really goes away.
+StartScenario()
+world.questID = full
+stub.ShowPanel("QuestFrameProgressPanel")
+stub.FireEvent("QUEST_PROGRESS")
+stub.Advance(0.6)
+stub.FireEvent("QUEST_FINISHED")
+stub.Advance(0.6)
+ExpectCurrent("a turn-in panel remains audible through a transition close event", "104-progress")
+world.questID = 0
+stub.ShowPanel(nil)
+stub.FireEvent("QUEST_FINISHED")
+stub.Advance(0.6)
+ExpectCurrent("the turn-in panel stops only after it really closes", "")
+
+-- With Stop When Window Closes off, declining an offer leaves its audio playing.
+VO.Addon.db.profile.Audio.StopAudioOnDisengage = false
+StartScenario()
+world.questID = full
+stub.ShowPanel("QuestFrameDetailPanel")
+stub.FireEvent("QUEST_DETAIL")
+stub.Advance(0.6)
+world.questID = 0
+stub.ShowPanel(nil)
+stub.FireEvent("QUEST_FINISHED")
+stub.Advance(0.6)
+ExpectCurrent("closing an unaccepted offer leaves its audio playing when stopping is disabled", "104-accept")
+
+-- Reopening the same quest after closing it starts a new interaction instead of being suppressed
+-- as a duplicate of the dialog that just ended.
+VO.Addon.db.profile.Audio.StopAudioOnDisengage = true
+StartScenario()
+world.questID = full
+stub.ShowPanel("QuestFrameDetailPanel")
+stub.FireEvent("QUEST_DETAIL")
+stub.Advance(0.6)
+world.questID = 0
+stub.ShowPanel(nil)
+stub.FireEvent("QUEST_FINISHED")
+stub.Advance(0.6)
+world.questID = full
+stub.ShowPanel("QuestFrameDetailPanel")
+stub.FireEvent("QUEST_DETAIL")
+stub.Advance(0.6)
+ExpectCurrent("reopening a closed quest starts its offer audio again", "104-accept")
 
 -- A player who declines: no accept event comes, and nothing is read beyond what the open window read.
 StartScenario()
