@@ -76,13 +76,16 @@ local QUEST_BACKFILL_VERSION = 4
 local function CompletedQuests()
 	local completed = {}
 	if C_QuestLog and C_QuestLog.GetAllCompletedQuestIDs then
-		for _, questID in ipairs(C_QuestLog.GetAllCompletedQuestIDs() or {}) do
+		local quests = C_QuestLog.GetAllCompletedQuestIDs()
+		if not quests then return nil end
+		for _, questID in ipairs(quests) do
 			completed[questID] = true
 		end
 		return completed
 	end
 	if GetQuestsCompleted then
 		local quests = GetQuestsCompleted({})
+		if not quests then return nil end
 		for questID, isCompleted in pairs(quests or {}) do
 			if isCompleted then completed[questID] = true end
 		end

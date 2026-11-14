@@ -42,6 +42,11 @@ Expect("...and knows which book it is in", book, 261)
 Expect("...and where", number, 1)
 Expect("...and what the book is called", B:BookOf(261).title, "Hillsbrad Town Registry")
 
+local JOURNAL_PAGE = "n8dc66862-0045-43fd-81f4-a662261123e1"
+local journal = SpokenReadablesData.pages[JOURNAL_PAGE]
+stub.ShowPage({ title = "Mechanic's Log", number = 1, text = journal.text })
+Expect("a minted journal is found without opener tracking", B:PageOnScreen(), JOURNAL_PAGE)
+
 ---------------------------------------------------------------- mail is not a book
 stub.ShowPage({ title = "A letter", number = 1, text = REGISTRY_1, creator = "Somebody" })
 Expect("a letter with a creator is not read", B:PageOnScreen(), nil)

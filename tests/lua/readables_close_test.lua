@@ -215,16 +215,31 @@ do
     }
     local snapshot = B:ReadableItemSnapshot()
     Expect("a readable stack counts every item received", snapshot[745], 3)
+    SpokenReadablesCharacter.found = {}
+    SpokenReadables.readableItemCounts = { [745] = 1 }
+    B:OnBagUpdate()
+    Expect("receipt into an existing stack is discovered", B:IsBookFound(209), true)
+
+    local stack = { [1] = 1, [2] = 1 }
+    _G.C_Container.GetContainerNumSlots = function(bag) return bag == 0 and 2 or 0 end
+    _G.C_Container.GetContainerItemID = function(_, slot) return stack[slot] and 745 end
+    _G.C_Container.GetContainerItemInfo = function(_, slot) return { stackCount = stack[slot] } end
+    SpokenReadablesCharacter.found = {}
+    SpokenReadables.readableItemCounts = { [745] = 2 }
+    B:OnBagUpdate()
+    Expect("splitting a stack without changing its quantity is not discovered", B:IsBookFound(209), false)
     _G.C_Container = nil
 end
 
 do
     local places, questie, lib, quests = SpokenReadablesPlaces, QuestieDB, LibQuestieDB, C_QuestLog
-    _G.QuestieDB, _G.LibQuestieDB, _G.C_QuestLog = nil, nil, nil
+    _G.QuestieDB, _G.LibQuestieDB = nil, nil
+    _G.C_QuestLog = { GetAllCompletedQuestIDs = function() return nil end }
     _G.SpokenReadablesPlaces = { books = { [209] = { quests = { 10, 20 } }, [261] = { quests = { 30 } } } }
     SpokenReadablesCharacter.found, SpokenReadablesCharacter.questReadableBackfill = {}, nil
     B:BackfillQuestReadables()
     Expect("missing quest history leaves backfill retryable", SpokenReadablesCharacter.questReadableBackfill, nil)
+    _G.C_QuestLog = nil
     _G.GetQuestsCompleted = function() return { [20] = true, [30] = false } end
     B:BackfillQuestReadables()
     Expect("legacy completed quest history discovers a direct reward", B:IsBookFound(209), true)

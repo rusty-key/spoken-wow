@@ -159,7 +159,7 @@ export function ownersLua(entries) {
 export function booksLua(entries) {
   // Sorted throughout, so re-exporting an unchanged corpus produces an identical file and a
   // diff shows only what actually moved.
-  const sorted = canBeHad(entries).sort((a, b) => a.bookId - b.bookId || a.pageNumber - b.pageNumber);
+  const sorted = canBeHad(entries).sort((a, b) => compareIds(a.bookId, b.bookId) || a.pageNumber - b.pageNumber);
 
   const books = new Map();
   for (const entry of sorted) {
@@ -170,14 +170,14 @@ export function booksLua(entries) {
   const lines = [HEADER, "SpokenReadablesData = {", "\tversion = 1,", "", ...indexLua(pageIndex(sorted))];
 
   lines.push("", "\tpages = {");
-  for (const entry of [...sorted].sort((a, b) => a.pageId - b.pageId)) {
-    lines.push(`\t\t[${entry.pageId}] = { book = ${entry.bookId}, number = ${entry.pageNumber}, text = ${quote(spokenText(entry.text))} },`);
+  for (const entry of [...sorted].sort((a, b) => compareIds(a.pageId, b.pageId))) {
+    lines.push(`\t\t[${luaId(entry.pageId)}] = { book = ${luaId(entry.bookId)}, number = ${entry.pageNumber}, text = ${quote(spokenText(entry.text))} },`);
   }
 
   lines.push("\t},", "", "\tbooks = {");
-  for (const bookId of [...books.keys()].sort((a, b) => a - b)) {
+  for (const bookId of [...books.keys()].sort(compareIds)) {
     const book = books.get(bookId);
-    lines.push(`\t\t[${bookId}] = { title = ${quote(book.title)}, pages = { ${book.pages.join(", ")} } },`);
+    lines.push(`\t\t[${luaId(bookId)}] = { title = ${quote(book.title)}, pages = { ${book.pages.map(luaId).join(", ")} } },`);
   }
 
   lines.push("\t},", "", ...ownersLua(sorted), "}", "");
