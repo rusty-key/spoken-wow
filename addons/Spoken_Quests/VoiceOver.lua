@@ -147,6 +147,17 @@ local function CaptureQuestSnapshot(event)
     end
     local text, targetName = quest.text(), Utils:GetNPCName()
     questInteractionID = questInteractionID or 1
+    if event == "QUEST_DETAIL" and questID ~= 0 then
+        -- A new offer starts a new interaction even when an addon moves straight from an old
+        -- progress page to it without QUEST_FINISHED. Keep that offer from inheriting the old
+        -- page's unresolved ID-0 record.
+        for _, old in ipairs(questSnapshots) do
+            if old.event ~= "QUEST_DETAIL" and not old.dispatched and not old.passed then
+                questInteractionID = questInteractionID + 1
+                break
+            end
+        end
+    end
     -- Resolved now, the way the handler would: QUEST_ACCEPTED and QUEST_TURNED_IN find a page by
     -- its quest ID, and the brief 0 a Classic client reports would match neither.
     if questID == 0 then
@@ -815,6 +826,9 @@ function Addon:OnInitialize()
     end
 
     self.ReplayClosedQuestSnapshots = function(_, source)
+        if self.dataModulesPending then
+            return
+        end
         ReplayQuestSnapshots(source or "the dialog closed before it could stabilize")
     end
 
@@ -846,6 +860,15 @@ function Addon:OnInitialize()
         end
         local questID = CurrentQuestID()
         if questID == 0 then
+            local visibleEvent = GetVisibleQuestEvent()
+            if visibleEvent then
+                -- A brief ID gap while a quest panel is still visible is not a closed dialog.
+                -- Keep the progress page available for the later nonzero completion ID.
+                if visibleEvent == "QUEST_PROGRESS" then
+                    pcall(CaptureQuestSnapshot, visibleEvent)
+                end
+                return
+            end
             -- The dialog is gone. Pages it closed on with nothing dispatched for them are the
             -- whole record of the interaction, so read them before the candidate state is cleared.
             self.ReplayClosedQuestSnapshots()

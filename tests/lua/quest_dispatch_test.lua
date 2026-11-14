@@ -253,6 +253,24 @@ stub.Advance(5)
 Expect("auto turn-in keeps progress captured during the quest-ID gap",
     string.format("%d-progress, %d-complete", full, full))
 
+-- A watcher poll during the client's brief ID gap must not treat the still-visible progress page
+-- as closed and spend its unresolved snapshot before the completion ID arrives.
+StartScenario()
+world.questID = 0
+stub.ShowPanel("QuestFrameProgressPanel")
+stub.FireEvent("QUEST_PROGRESS")
+stub.Advance(0.2)
+world.questID = full
+stub.ShowPanel("QuestFrameRewardPanel")
+stub.FireEvent("QUEST_COMPLETE")
+world.questID = 0
+stub.ShowPanel(nil)
+stub.FireEvent("QUEST_FINISHED")
+stub.FireEvent("QUEST_TURNED_IN", full, 0, 0)
+stub.Advance(5)
+Expect("a watcher poll during the quest-ID gap keeps progress",
+    string.format("%d-progress, %d-complete", full, full))
+
 -- Some automatic turn-in clients advance the visible panel without delivering QUEST_PROGRESS.
 -- The watcher must retain the progress page it saw before the reward page replaced it.
 StartScenario()
@@ -317,6 +335,18 @@ stub.FireEvent("QUEST_COMPLETE")
 stub.FireEvent("QUEST_TURNED_IN", full, 0, 0)
 stub.Advance(5)
 Expect("a fast quest switch does not attach old progress to the new quest", "104-complete")
+
+-- A new offer can replace the old dialog without QUEST_FINISHED. Its detail event must still
+-- start a new interaction so the new completion cannot claim the old progress page.
+StartScenario()
+world.questID = 0
+stub.FireEvent("QUEST_PROGRESS")
+world.questID = full
+stub.FireEvent("QUEST_DETAIL")
+stub.FireEvent("QUEST_COMPLETE")
+stub.FireEvent("QUEST_TURNED_IN", full, 0, 0)
+stub.Advance(5)
+Expect("a quest switch without QUEST_FINISHED does not attach old progress", "104-complete")
 
 -- A turn-in after a page that names no quest reads nothing either.
 StartScenario()
