@@ -68,6 +68,25 @@ stub.FireEvent("PLAYER_LOGIN")
 Expect("a completed source-item quest backfills its readable", B:IsBookFound(209), true)
 Expect("a completed Forever source-item quest backfills its readable", B:IsBookFound("nc0bf109d-e5d1-494d-ba1b-12a6b27352a8"), true)
 
+-- A bag event can precede login while Questie is still loading. It must not consume the
+-- one-shot backfill before PLAYER_LOGIN has a chance to see Questie's source-item index.
+do
+    local questie = _G.LibQuestieDB
+    _G.LibQuestieDB = nil
+    _G.SpokenReadablesPlaces = { books = {} }
+    _G.C_QuestLog.GetAllCompletedQuestIDs = function() return { 12345 } end
+    SpokenReadables.hasLoggedIn = false
+    SpokenReadablesCharacter.found, SpokenReadablesCharacter.questReadableBackfill = {}, nil
+    bagItems[1] = 745
+    SpokenReadables.readableItemCounts = nil
+    stub.FireEvent("BAG_UPDATE", 0)
+    Expect("a pre-login bag update does not consume quest backfill", SpokenReadablesCharacter.questReadableBackfill, nil)
+    Expect("a pre-login bag update does not mark a Questie-only readable", B:IsBookFound(209), false)
+    _G.LibQuestieDB = questie
+    stub.FireEvent("PLAYER_LOGIN")
+    Expect("login backfill sees Questie after the early bag update", B:IsBookFound(209), true)
+end
+
 _G.C_QuestLog.GetAllCompletedQuestIDs = function() return {} end
 SpokenReadablesCharacter.found = {}
 SpokenReadablesCharacter.questReadableBackfill = nil

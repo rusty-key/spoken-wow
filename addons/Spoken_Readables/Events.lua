@@ -293,6 +293,7 @@ frame:SetScript("OnEvent", function(_, name, payload, second)
 		-- and community packs load after it and have declared nothing yet. Every addon has loaded
 		-- by now, and no menu has been built.
 		SpokenReadables:GetAudioPacks()
+		SpokenReadables.hasLoggedIn = true
 		-- Establish the starting inventory so items already owned when the character logs in are
 		-- not treated as newly received. Later BAG_UPDATE events record newly acquired notes.
 		SpokenReadables.readableItemCounts = SpokenReadables:ReadableItemSnapshot()
@@ -301,7 +302,7 @@ frame:SetScript("OnEvent", function(_, name, payload, second)
 		SpokenReadables:OnBagUpdate()
 		-- Completed-quest history can be unavailable during login on some clients. A later bag
 		-- event is a reliable same-session opportunity to retry the still-pending backfill.
-		SpokenReadables:BackfillQuestReadables()
+		if SpokenReadables.hasLoggedIn then SpokenReadables:BackfillQuestReadables() end
 	elseif name == "PLAYER_ENTERING_WORLD" then
 		SpokenReadables:SetupSource()
 		if SpokenReadables.SetupOpeners then
@@ -327,7 +328,7 @@ frame:SetScript("OnEvent", function(_, name, payload, second)
 		if SpokenReadables.SetupReadables then
 			SpokenReadables:SetupReadables()
 		end
-		SpokenReadables:BackfillQuestReadables()
+		if SpokenReadables.hasLoggedIn then SpokenReadables:BackfillQuestReadables() end
 	end
 end)
 

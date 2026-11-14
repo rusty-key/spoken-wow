@@ -2,7 +2,10 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 
 import { booksLua, indexLua, luaTableId, pageIndex, placeLua, quote } from "./lua.mjs";
+import { SOURCES_BY_HAND, TYPE_BY_HAND } from "./hand.mjs";
 import { pageChecksum } from "./naming.mjs";
+
+const GOZWIN = "nc0bf109d-e5d1-494d-ba1b-12a6b27352a8";
 
 const entries = [
   { pageId: 10, bookId: 10, pageNumber: 1, pageCount: 2, title: "A Dusty Tome", text: "One." },
@@ -123,9 +126,10 @@ test("database ids keep numeric keys numeric and minted keys quoted", () => {
 });
 
 test("the places generator writes a minted journal's quest metadata", () => {
-  const bookId = "nc0bf109d-e5d1-494d-ba1b-12a6b27352a8";
-  assert.equal(placeLua(bookId, { kind: "carried", type: "journal", quests: [97277], zones: [1426] }),
-    `\t\t["${bookId}"] = { kind = "carried", type = "journal", quests = { 97277 }, zones = { 1426 } },`);
+  const source = SOURCES_BY_HAND[GOZWIN][0];
+  assert.equal(placeLua(GOZWIN, {
+    kind: "carried", type: TYPE_BY_HAND[GOZWIN], quests: [source.quest], zones: source.zones,
+  }), `\t\t["${GOZWIN}"] = { kind = "carried", type = "journal", quests = { 97277 }, zones = { 1426 } },`);
 });
 
 test("an item or object names the book it opens", () => {
