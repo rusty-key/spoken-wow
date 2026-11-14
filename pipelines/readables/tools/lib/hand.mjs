@@ -47,12 +47,11 @@ export const TYPE_BY_HAND = {
 };
 
 /** The hand-authored fields the Places generator adds to one book record. */
-export function handPlace(bookId) {
-  const sources = SOURCES_BY_HAND[bookId] ?? [];
+export function handPlace(bookId, sources = SOURCES_BY_HAND[bookId] ?? [], objectZones = []) {
   return {
     kind: "carried",
     type: TYPE_BY_HAND[bookId],
     quests: sources.filter((source) => source.how === "quest reward").map((source) => source.quest),
-    zones: sources.flatMap((source) => source.zones ?? []),
+    zones: sources.flatMap((source) => source.zones ?? (source.object ? objectZones : [])),
   };
 }

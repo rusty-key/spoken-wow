@@ -368,10 +368,12 @@ try {
     for (const s of list_) {
       const name = s.quest ? handQuests.get(s.quest) : handObjects.get(s.object);
       if (!name) throw new Error(`book ${book}: no ${s.quest ? `quest ${s.quest}` : `object ${s.object}`} in the world DB`);
-      add(bookId, s.zones ?? handObjectZones.get(s.object) ?? []);
-      if (s.how === "quest reward") addQuestReward(bookId, s.quest);
     }
-    if (!kind.has(bookId)) kind.set(bookId, handPlace(bookId).kind);
+    const objectZones = new Set(list_.flatMap((s) => s.object ? [...(handObjectZones.get(s.object) ?? [])] : []));
+    const handPlaceData = handPlace(bookId, list_, [...objectZones]);
+    add(bookId, handPlaceData.zones);
+    for (const quest of handPlaceData.quests) addQuestReward(bookId, quest);
+    if (!kind.has(bookId)) kind.set(bookId, handPlaceData.kind);
   }
 } finally {
   await db.end();
