@@ -145,6 +145,17 @@ local function Widget(kind, name)
     function w:UnregisterAllEvents() self.events = {} end
     function w:SetScript(script, fn) self.scripts[script] = fn end
     function w:GetScript(script) return self.scripts[script] end
+    function w:IsObjectType(objectType)
+        local frameType = self.frameType or self.kind
+        return frameType == objectType or (objectType == "Button" and frameType == "CheckButton")
+    end
+    function w:HasScript(script)
+        if script == "OnClick" then
+            local frameType = self.frameType or self.kind
+            return frameType == "Button" or frameType == "CheckButton"
+        end
+        return true
+    end
     function w:LockHighlight() self.highlightLocked = true end
     function w:UnlockHighlight() self.highlightLocked = false end
     -- A secure button's attributes (Spoken Developer's /reload macro), kept to be read back.

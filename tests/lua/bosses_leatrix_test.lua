@@ -69,6 +69,8 @@ local overlay = CreateFrame("Frame", nil, WorldMapFrame.ScrollContainer)
 overlay:Hide()
 overlay:SetScript("OnMouseUp", function() end)
 overlay:SetScript("OnMouseWheel", function() end)
+local invalidPin = CreateFrame("Frame", nil, WorldMapFrame.ScrollContainer)
+invalidPin.row = { "boss", 0.5, 0.5, 639, "Edwin VanCleef" }
 local dungeonMenuRow = CreateFrame("Button", nil, WorldMapFrame)
 dungeonMenuRow.Text = dungeonMenuRow:CreateFontString()
 dungeonMenuRow.Text:SetText("Gnomeregan")
@@ -94,6 +96,7 @@ load("Spoken_Bosses", Bosses)
 
 stub.FireEvent("PLAYER_ENTERING_WORLD")
 stub.Advance(0.01)
+Expect("an ordinary Leatrix frame is not hooked as a button", invalidPin.hooks.OnClick, nil)
 WorldMapFrame.mapID = 1426
 shown = nil
 dungeonMenuRow:Click()

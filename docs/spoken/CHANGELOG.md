@@ -2,6 +2,11 @@
 
 Spoken Player until 3.0.0, when it became Spoken and took its modules into one download.
 
+## Unreleased
+
+- **Leatrix Maps' dungeon scan no longer hooks `OnClick` on ordinary frames.** Spoken Bosses now
+  checks that a scanned object supports click scripts before adding its optional integration hook.
+  *([anon1231823](https://github.com/anon1231823))*
 ## 3.9.0 — 2026-11-14
 
 - **A report names the line you heard.** When a quest is read in more than one voice, or an NPC has

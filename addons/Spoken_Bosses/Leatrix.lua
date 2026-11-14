@@ -106,6 +106,13 @@ local ScanSoon
 local ShowLeatrixPreview
 local HookDungeonMenuButton
 
+local function SupportsScript(frame, script)
+	if not frame or type(frame.HookScript) ~= "function" then return false end
+	if type(frame.HasScript) ~= "function" then return true end
+	local ok, supported = pcall(frame.HasScript, frame, script)
+	return ok and supported == true
+end
+
 local function IsDungeonOverlay(frame)
 	local container = WorldMapFrame and WorldMapFrame.ScrollContainer
 	if not container or not frame or type(frame.GetParent) ~= "function" or frame:GetParent() ~= container then
@@ -149,8 +156,14 @@ HookDungeonMenuButton = function(button)
 	end)
 end
 
+local function IsButton(frame)
+	if not frame or type(frame.IsObjectType) ~= "function" then return false end
+	local ok, button = pcall(frame.IsObjectType, frame, "Button")
+	return ok and button == true
+end
+
 local function HookPin(pin)
-	if hooked[pin] or not pin.HookScript then return end
+	if hooked[pin] or not IsButton(pin) or not SupportsScript(pin, "OnClick") then return end
 	local row = RowOf(pin)
 	-- Leatrix reuses the same frame pool for map levels, bosses and entrances. Hooking only the
 	-- first row misses an entrance when that frame was born as a level pin.
