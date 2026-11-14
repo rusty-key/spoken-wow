@@ -398,6 +398,23 @@ stub.Advance(5)
 Expect("a reward-panel transition without events keeps ID-gap progress",
     string.format("%d-progress, %d-complete", full, full))
 
+-- When both page events are absent, a reward panel during the ID gap must still capture its
+-- resolvable completion snapshot before the dialog closes.
+StartScenario()
+testPack.QuestIDLookup = { accept = {}, progress = {}, complete = { ["Test Quest"] = full } }
+world.questID = 0
+stub.ShowPanel("QuestFrameProgressPanel")
+stub.FireEvent("QUEST_PROGRESS")
+stub.ShowPanel("QuestFrameRewardPanel")
+stub.Advance(0.2)
+stub.ShowPanel(nil)
+stub.FireEvent("QUEST_FINISHED")
+stub.FireEvent("QUEST_TURNED_IN", full, 0, 0)
+stub.Advance(5)
+testPack.QuestIDLookup = nil
+Expect("an event-free ID-gap reward captures resolvable completion",
+    string.format("%d-progress, %d-complete", full, full))
+
 -- Replacement quest UIs hide Blizzard panels. A poll during their ID gap must use the recorded
 -- event as the open-dialog signal instead of spending the unresolved snapshot as a close.
 StartScenario()

@@ -911,7 +911,7 @@ function Addon:OnInitialize()
             if visibleEvent then
                 -- A brief ID gap while a quest panel is still visible is not a closed dialog.
                 -- Keep the progress page available for the later nonzero completion ID.
-                if visibleEvent == "QUEST_PROGRESS" then
+                if visibleEvent == "QUEST_PROGRESS" or visibleEvent == "QUEST_COMPLETE" then
                     pcall(CaptureQuestSnapshot, visibleEvent)
                 end
                 return
