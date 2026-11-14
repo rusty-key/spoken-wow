@@ -444,7 +444,10 @@ function _G.UnitName(unit) return unit == "player" and (world.playerName or "Tes
 function _G.UnitClass() return world.playerClass, world.playerClassFile, world.playerClassID end
 function _G.UnitRace() return world.playerRace, world.playerRaceFile end
 function _G.GetRealmName() return "Realm" end
-function _G.UnitGUID(unit) return unit == "player" and world.playerGUID or world.npcGUID end
+function _G.UnitGUID(unit)
+    if unit == "player" then return world.playerGUID end
+    return world.npcGUID
+end
 function _G.UnitExists() return true end
 function _G.UnitIsPlayer() return false end
 function _G.UnitCanAttack() return not world.npcFriendly end

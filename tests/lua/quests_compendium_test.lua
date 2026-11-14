@@ -1422,6 +1422,7 @@ Expect("...and keeps that character's name and sex",
     kept.deDE[CANDLES].progress.characters[stub.world.playerGUID].name == "Tester"
         and kept.deDE[CANDLES].progress.characters[stub.world.playerGUID].sex == 2, true)
 stub.world.playerGUID = nil
+Expect("the fallback fixture has no player GUID", UnitGUID("player"), nil)
 stub.world.progressText = "Tester, ein anderer Fortschritt."
 stub.world.questID = CANDLES
 stub.FireEvent("QUEST_PROGRESS")

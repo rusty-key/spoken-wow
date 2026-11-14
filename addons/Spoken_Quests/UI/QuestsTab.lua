@@ -25,8 +25,8 @@
 -- A search lists what matches under what holds it. Where it matches the name of a banner, a line
 -- or a chain, everything inside that one is listed.
 --
--- On a client in another language, the words and title each quest's window showed are kept for
--- the whole account and shown over the English.
+-- On a client in another language, the title and words without a shipped English template are kept
+-- for the whole account and shown over the English. Shipped English offer and completion words win.
 --
 -- Not under setfenv(1, VoiceOver): the frames are built here, and the client's mixins are looked
 -- up in the calling function's environment.

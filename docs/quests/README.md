@@ -1885,15 +1885,15 @@ a quest page (`UI/DialogueUIBridge.lua`). DialogueUI hides the rest of the inter
 up, so that one closes DialogueUI's window before the Compendium opens.
 
 On a client in another language, `QUEST_DETAIL`, `QUEST_PROGRESS` and `QUEST_COMPLETE` keep the
-window's title and words in `SpokenQuestsSettings.global.CompendiumText[locale][questID]`, shown
-over the English. An English client keeps progress text because the shipped corpus has no progress
-text; its accept and complete words are already included. The player's name, class and race go back
-to `$N`, `$C` and `$R` where the English has them, so another character sees its own. A text kept by
-a character of the other sex is not shown where the English has a `$G`. Progress text without a
-shipped template is kept per character GUID (with the name-and-realm fallback used by clients that
-do not expose one), and is shown only to that character; the earlier name-and-sex record format is
-still read for compatibility. Accept and complete text remains shareable after its placeholders are
-generalized.
+window's title and words without a shipped English template in
+`SpokenQuestsSettings.global.CompendiumText[locale][questID]`, shown over the English. An English
+client keeps progress text because the shipped corpus has no progress text; shipped accept and
+complete words remain the source of truth. The player's name, class and race go back to `$N`, `$C`
+and `$R` where the English has them, so another character sees its own. A text kept by a character
+of the other sex is not shown where the English has a `$G`. Progress text without a shipped template
+is kept per character GUID (with the name-and-realm fallback used by clients that do not expose one),
+and is shown only to that character; the earlier name-and-sex record format is still read for
+compatibility. Accept and complete text remains shareable after its placeholders are generalized.
 
 ## Tests
 
