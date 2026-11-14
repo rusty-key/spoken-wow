@@ -141,6 +141,12 @@ export type ActivityDetail = {
   // Admin.
   "grant.added": { capability: Capability };
   "grant.removed": { capability: Capability };
+  /** An invite to an address with no account; the subject is the invite id. */
+  "invite.sent": { email: string; capabilities: Capability[] };
+  "invite.resent": { email: string };
+  "invite.revoked": { email: string };
+  /** Actor: the person who accepted. The grants it gave are `grant.added`, by the inviter. */
+  "invite.accepted": { email: string; capabilities: Capability[] };
   "language.toggled": { enabled: boolean };
   "language.added": { name: string };
   "team.created": { slug: string };
@@ -234,6 +240,7 @@ const CATEGORY_OF: Record<string, Category> = {
   sample: "voices",
   npc: "voices",
   grant: "admin",
+  invite: "admin",
   language: "admin",
   team: "admin",
   release: "admin",

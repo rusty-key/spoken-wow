@@ -64,6 +64,11 @@ function grantName(value: unknown): string | null {
   return isCapability(value) ? capabilityLabel(value) : str(value);
 }
 
+/** A logged list of capabilities, as the table names them. */
+function grantNames(value: unknown): string {
+  return (Array.isArray(value) ? value : []).map(grantName).join(", ");
+}
+
 function str(value: unknown): string | null {
   return typeof value === "string" && value !== "" ? value : null;
 }
@@ -252,6 +257,20 @@ export function describe(row: ActivityRow): { what: string; quote: string | null
       return { what: `gave ${row.subjectName ?? "someone"} ${grantName(d.capability)}`, quote: null };
     case "grant.removed":
       return { what: `took ${grantName(d.capability)} from ${row.subjectName ?? "someone"}`, quote: null };
+    case "invite.sent":
+      return {
+        what: `invited ${str(d.email) ?? "someone"} as ${grantNames(d.capabilities)}`,
+        quote: null,
+      };
+    case "invite.resent":
+      return { what: `sent the invite to ${str(d.email) ?? "someone"} again`, quote: null };
+    case "invite.accepted":
+      return {
+        what: `accepted the invite as ${grantNames(d.capabilities)}`,
+        quote: null,
+      };
+    case "invite.revoked":
+      return { what: `revoked the invite to ${str(d.email) ?? "someone"}`, quote: null };
     case "language.toggled":
       return { what: d.enabled ? "switched the language on" : "switched the language off", quote: null };
     case "language.added":
@@ -327,7 +346,7 @@ function target(row: ActivityRow): { href: string; label: string } | null {
   if (row.source && row.lineId) return { href: explorerHref(row.source, row.lineId), label: row.lineId };
   if (categoryOf(row.kind) === "voices") return row.subject ? { href: "/voices", label: row.subject } : null;
   if (row.kind.startsWith("lexicon.") && row.subject) return { href: lexiconHref(row.subject), label: "Pronunciation" };
-  if (row.kind.startsWith("grant.") || row.kind.startsWith("user.")) return { href: "/admin", label: "Users" };
+  if (row.kind.startsWith("grant.") || row.kind.startsWith("invite.") || row.kind.startsWith("user.")) return { href: "/admin", label: "Users" };
   if (row.kind.startsWith("report.")) return { href: "/reports?view=all", label: `report ${row.subject}` };
   if (row.kind.startsWith("pack.")) return { href: "/admin/packs", label: "Community packs" };
   if (row.kind.startsWith("request.")) return { href: "/admin/teams", label: "Team requests" };
