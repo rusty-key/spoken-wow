@@ -362,8 +362,41 @@ VO.Addon.db.profile.Audio.ReadAfterClose = false
 Expect("Read When Window Closes releases stabilized progress first",
     string.format("%d-progress, %d-complete", full, full))
 
--- An indexed completion can be captured while the preceding progress page has no client ID; the
--- anonymous progress record is not associated with it.
+-- A completion from another quest must not be paired with the preceding quest's pending progress.
+StartScenario()
+VO.Addon.db.profile.Audio.ReadAfterClose = true
+world.questID = full
+stub.ShowPanel("QuestFrameProgressPanel")
+stub.Advance(0.5)
+world.questID = quests[2]
+stub.ShowPanel("QuestFrameRewardPanel")
+stub.FireEvent("QUEST_COMPLETE")
+world.questID = 0
+stub.ShowPanel(nil)
+stub.FireEvent("QUEST_FINISHED")
+stub.Advance(5)
+VO.Addon.db.profile.Audio.ReadAfterClose = false
+Expect("a different quest completion does not retain prior progress",
+    string.format("%d-complete", quests[2]))
+
+-- An unresolved replacement offer must clear pending audio before capture returns without an ID.
+StartScenario()
+VO.Addon.db.profile.Audio.ReadAfterClose = true
+world.questID = full
+stub.ShowPanel("QuestFrameProgressPanel")
+stub.Advance(0.5)
+world.questID = 0
+stub.ShowPanel("QuestFrameDetailPanel")
+stub.FireEvent("QUEST_DETAIL")
+stub.Advance(0.5)
+stub.ShowPanel(nil)
+stub.FireEvent("QUEST_FINISHED")
+stub.Advance(5)
+VO.Addon.db.profile.Audio.ReadAfterClose = false
+Expect("an unresolved replacement offer does not release prior pending audio", "")
+
+-- An identified completion can be captured while the preceding progress page has no client ID;
+-- the anonymous progress record is not associated with it.
 StartScenario()
 world.questID = 0
 stub.ShowPanel("QuestFrameProgressPanel")
@@ -445,8 +478,8 @@ VO.Addon:ReplayClosedQuestSnapshots("test voice packs loaded")
 stub.Advance(5)
 Expect("close during pack loading replays after loading", string.format("%d-progress", full))
 
--- A later dialog can open before packs finish loading. Deferred close replay must retain A's
--- interaction boundary instead of selecting B's newer progress snapshot.
+-- Multiple dialogs can close before packs finish loading. Deferred close replay retains every
+-- interaction boundary instead of selecting only the newest progress snapshot.
 StartScenario()
 world.questID = full
 stub.ShowPanel("QuestFrameProgressPanel")
@@ -458,9 +491,15 @@ stub.FireEvent("QUEST_FINISHED")
 world.questID = followUp
 stub.ShowPanel("QuestFrameProgressPanel")
 stub.FireEvent("QUEST_PROGRESS")
+world.questID = 0
+stub.ShowPanel(nil)
+stub.FireEvent("QUEST_FINISHED")
+stub.Advance(11)
 VO.Addon.dataModulesPending = nil
 VO.Addon:ReplayClosedQuestSnapshots("test voice packs loaded")
-Expect("deferred close replay excludes a later open interaction", string.format("%d-progress", full))
+stub.Advance(5)
+Expect("deferred close replay keeps both closed interactions",
+    string.format("%d-progress, %d-progress", full, followUp))
 
 -- A new quest's detail page before close must clear the prior quest's held progress line.
 StartScenario()
