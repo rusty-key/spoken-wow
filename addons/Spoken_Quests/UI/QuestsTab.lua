@@ -951,9 +951,16 @@ local function Generalise(text, english)
     }
     for _, each in ipairs(words) do
         local letter, word = each[1], each[2]
-        if type(word) == "string" and word ~= ""
-            and (english == "" or english:find("%$[" .. letter .. letter:lower() .. "]")) then
-            text = Spoken.Contribute:ReplaceWord(text, word, "$" .. letter)
+        local token
+        if english == "" then
+            token = "$" .. letter
+        elseif english:find("%$" .. letter:lower()) then
+            token = "$" .. letter:lower()
+        elseif english:find("%$" .. letter) then
+            token = "$" .. letter
+        end
+        if type(word) == "string" and word ~= "" and token then
+            text = Spoken.Contribute:ReplaceWord(text, word, token)
         end
     end
     return text

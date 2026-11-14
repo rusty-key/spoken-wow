@@ -1409,6 +1409,9 @@ stub.world.playerName = "Tester"
 local kept = VO.Addon.db.global.CompendiumText
 Expect("...keeps the localized title but only missing English moments as words",
     kept.deDE[KOBOLDS] ~= nil and kept.deDE[KOBOLDS].accept == nil and kept.enUS == nil, true)
+local oldUnitClass, oldUnitRace = UnitClass, UnitRace
+_G.UnitClass = function() return "Mage", "MAGE", 8 end
+_G.UnitRace = function() return "Human", "Human" end
 stub.world.questID = CANDLES
 stub.world.title = "Koboldkerzen"
 stub.world.progressText = "Tester, Mage, Human, habt Ihr die Kerzen schon gesammelt?"
@@ -1420,32 +1423,40 @@ Expect("captured progress text is shown",
     (PageWords() or ""):find("Tester, Mage, Human, habt Ihr die Kerzen schon gesammelt?", 1, true) ~= nil, true)
 Expect("...generalizes the missing-template player tokens",
     kept.deDE[CANDLES].progress.text == "$N, $C, $R, habt Ihr die Kerzen schon gesammelt?", true)
-stub.world.playerName = "Red"
-stub.world.progressText = "Travel to Redridge, Red."
+_G.UnitClass = function() return "Warrior", "WARRIOR", 1 end
+_G.UnitRace = function() return "Orc", "Orc" end
+stub.world.playerName = "Zweite"
+Tab:Refresh()
+Click("Koboldkerzen")
+Expect("shared progress text is filled for a different class and race",
+    (PageWords() or ""):find("Zweite, Warrior, Orc, habt Ihr die Kerzen schon gesammelt?", 1, true) ~= nil, true)
+stub.world.playerName = "Tester"
+stub.world.progressText = "Travel to Redridge, Tester."
 stub.world.questID = CANDLES
 stub.FireEvent("QUEST_PROGRESS")
 Expect("...does not generalize a player name inside another word",
     kept.deDE[CANDLES].progress.text == "Travel to Redridge, $N.", true)
 stub.world.questID = 0
-stub.world.playerName = "Tester"
-stub.world.progressText = "Greetings, “Tester”!"
+stub.world.progressText = "Visit the Mage in Human lands, “Tester”!"
 stub.world.questID = CANDLES
 stub.FireEvent("QUEST_PROGRESS")
 Expect("...generalizes a name beside Unicode punctuation",
-    kept.deDE[CANDLES].progress.text == "Greetings, “$N”!", true)
+    kept.deDE[CANDLES].progress.text == "Visit the Mage in Human lands, “$N”!", true)
 stub.world.questID = 0
 stub.world.playerName = "Zweite"
 Tab:Refresh()
 Expect("shared progress text is filled for another character",
-    (PageWords() or ""):find("Greetings, “Zweite”!", 1, true) ~= nil, true)
-stub.world.progressText = "Zweite, Mage, Human, neuer Fortschritt."
+    (PageWords() or ""):find("Visit the Mage in Human lands, “Zweite”!", 1, true) ~= nil, true)
+stub.world.progressText = "Zweite, Warrior, Orc, neuer Fortschritt."
 stub.world.questID = CANDLES
 stub.FireEvent("QUEST_PROGRESS")
 stub.world.questID = 0
 Tab:Refresh()
 Click("Koboldkerzen")
 Expect("the other character updates the shared progress text",
-    (PageWords() or ""):find("Zweite, Mage, Human, neuer Fortschritt.", 1, true) ~= nil, true)
+    (PageWords() or ""):find("Zweite, Warrior, Orc, neuer Fortschritt.", 1, true) ~= nil, true)
+_G.UnitClass = function() return "Mage", "MAGE", 8 end
+_G.UnitRace = function() return "Human", "Human" end
 stub.world.playerName = "Tester"
 stub.world.progressText = ""
 Tab:Refresh()
@@ -1453,6 +1464,7 @@ Click("Koboldkerzen")
 Expect("the shared progress text is filled for the current character",
     (PageWords() or ""):find("Tester, Mage, Human, neuer Fortschritt.", 1, true) ~= nil, true)
 stub.world.progressText = ""
+_G.UnitClass, _G.UnitRace = oldUnitClass, oldUnitRace
 -- A window whose id, title and words the game hands over as secrets keeps nothing.
 stub.world.questID = JENNEA
 stub.world.title = "Versiegelte Befehle"
