@@ -10,6 +10,8 @@ carries that version. The heading says which.
 
 - Item-started quests in Azeroth's Compendium now use the real starter item's icon, even after
   the item has left the player's bags.
+- **Paragraph breaks show as breaks again** in subtitles and the Compendium, not as `\n\n`
+  in the middle of the text. Packs built since 2026-11-13 had them.
 
 ## 2.5.0 — Spoken Quests Audio — 2026-10-31
 

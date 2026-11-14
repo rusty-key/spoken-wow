@@ -285,11 +285,8 @@ def test_text_survives_lua_quoting(tmp_path):
     # A raw newline or an unescaped quote stops the whole pack from loading.
     lua, _ = _text_table(tmp_path, {"quests/5-accept": 'Say "hi"\nC:\\x \tПривет'})
 
-    assert '\\"hi\\"' in lua
-    assert "\\n" in lua
-    assert "\\\\x" in lua
-    assert "Привет" in lua
-    assert "hi\"\n" not in lua
+    # Escaped once: escaped twice, a newline reads back as a backslash and an n in game.
+    assert '["5-accept"] = "Say \\"hi\\"\\nC:\\\\x \\009Привет"' in lua
 
 
 def test_a_store_without_text_ships_an_empty_table(tmp_path):
