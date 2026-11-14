@@ -35,7 +35,7 @@ import { instanceZones, loadDungeons } from "../../lib/dungeons.mjs";
 import { loadEnv } from "../../lib/env.mjs";
 import { FOREVER_BUILD, wagoTable } from "../../lib/wago.mjs";
 import { areaReader } from "./lib/area.mjs";
-import { SOURCES_BY_HAND, handPlace } from "./lib/hand.mjs";
+import { SOURCES_BY_HAND, applyHandSources, handPlace } from "./lib/hand.mjs";
 import { compareIds, luaTableId, placeLua, readableLua } from "./lib/lua.mjs";
 import { foreverQuests, generatedPlace, isTemplateCopy } from "./lib/places.mjs";
 
@@ -46,9 +46,16 @@ const CORPUS = fileURLToPath(new URL("../../quests/corpus/corpus.json.gz", impor
 export async function fixtureGozwin() {
   const { books, pageText } = readableLua(await readFile(BOOKS, "utf8"));
   const id = "nc0bf109d-e5d1-494d-ba1b-12a6b27352a8";
-  const hand = handPlace(id, SOURCES_BY_HAND[id]);
-  const record = generatedPlace({ id, book: books.get(id), kind: hand.kind, spots: new Set(hand.zones), hand,
-    questRewards: new Map([[id, new Set(hand.quests)]]), pageText });
+  const sources = new Map();
+  const questRewards = new Map();
+  const kind = new Map();
+  const add = (book, zones) => sources.set(book, new Set(zones));
+  const addQuestReward = (book, quest) => questRewards.set(book, new Set([...(questRewards.get(book) ?? []), quest]));
+  applyHandSources({ sourcesByHand: { [id]: SOURCES_BY_HAND[id] }, resolveName: () => true,
+    objectZones: new Map(), add, addQuestReward, kind });
+  const hand = handPlace(id);
+  const record = generatedPlace({ id, book: books.get(id), kind: kind.get(id), spots: sources.get(id), hand,
+    questRewards, pageText });
   return placeLua(id, record);
 }
 
@@ -375,18 +382,9 @@ try {
   const handQuests = await names(QUEST, "ID", "LogTitle", hand.filter((s) => s.quest).map((s) => s.quest));
   const handObjects = await names(OBJECT, "entry", "name", hand.filter((s) => s.object).map((s) => s.object));
   const handObjectZones = await spawnZones("gameobject", hand.filter((s) => s.object).map((s) => s.object));
-  for (const [book, list_] of Object.entries(SOURCES_BY_HAND)) {
-    const bookId = luaTableId(book);
-    for (const s of list_) {
-      const name = s.quest ? handQuests.get(s.quest) : handObjects.get(s.object);
-      if (!name) throw new Error(`book ${book}: no ${s.quest ? `quest ${s.quest}` : `object ${s.object}`} in the world DB`);
-    }
-    const objectZones = new Set(list_.flatMap((s) => s.object ? [...(handObjectZones.get(s.object) ?? [])] : []));
-    const handPlaceData = handPlace(bookId, list_, [...objectZones]);
-    add(bookId, handPlaceData.zones);
-    for (const quest of handPlaceData.quests) addQuestReward(bookId, quest);
-    if (!kind.has(bookId)) kind.set(bookId, handPlaceData.kind);
-  }
+  applyHandSources({ sourcesByHand: SOURCES_BY_HAND,
+    resolveName: (source) => source.quest ? handQuests.get(source.quest) : handObjects.get(source.object),
+    objectZones: handObjectZones, add, addQuestReward, kind });
 } finally {
   await db.end();
 }

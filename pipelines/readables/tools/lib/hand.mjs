@@ -55,3 +55,21 @@ export function handPlace(bookId, sources = SOURCES_BY_HAND[bookId] ?? [], objec
     zones: sources.flatMap((source) => source.zones ?? (source.object ? objectZones : [])),
   };
 }
+
+/** Apply the hand-source wiring used by places.mjs, with database lookups supplied by the caller. */
+export function applyHandSources({ sourcesByHand, resolveName, objectZones, add, addQuestReward, kind }) {
+  const tableId = (id) => /^\d+$/.test(String(id)) ? Number(id) : id;
+  for (const [book, sources] of Object.entries(sourcesByHand)) {
+    const bookId = tableId(book);
+    for (const source of sources) {
+      if (!resolveName(source)) {
+        throw new Error(`book ${book}: no ${source.quest ? `quest ${source.quest}` : `object ${source.object}`} in the world DB`);
+      }
+    }
+    const objectZoneList = [...new Set(sources.flatMap((source) => source.object ? [...(objectZones.get(source.object) ?? [])] : []))];
+    const hand = handPlace(bookId, sources, objectZoneList);
+    add(bookId, hand.zones);
+    for (const quest of hand.quests) addQuestReward(bookId, quest);
+    if (!kind.has(bookId)) kind.set(bookId, hand.kind);
+  }
+}
