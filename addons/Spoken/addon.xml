@@ -38,4 +38,6 @@
     <Include file="API.lua"/>
 
     <Include file="Compat.lua"/>
+
+    <Include file="PreInteractionMute.lua"/>
 </Ui>
