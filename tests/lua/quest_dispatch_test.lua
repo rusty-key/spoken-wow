@@ -240,9 +240,8 @@ stub.Advance(5)
 Expect("auto turn-in reads progress then complete",
     string.format("%d-progress, %d-complete", full, full))
 
--- The progress event can arrive during the client's brief quest-ID gap. If the client keeps
--- reporting the quest ID after the window closes, QUEST_TURNED_IN still needs to replay it with
--- the completion page rather than dropping the unresolved progress snapshot.
+-- A progress event without a client ID is not associated with a later turn-in. The completion page
+-- still has its own ID and is replayed by QUEST_TURNED_IN.
 StartScenario()
 world.questID = 0
 stub.FireEvent("QUEST_PROGRESS")
@@ -251,11 +250,11 @@ stub.FireEvent("QUEST_COMPLETE")
 stub.FireEvent("QUEST_FINISHED")
 stub.FireEvent("QUEST_TURNED_IN", full, 0, 0)
 stub.Advance(5)
-Expect("auto turn-in keeps progress captured during the quest-ID gap",
-    string.format("%d-progress, %d-complete", full, full))
+Expect("auto turn-in drops progress without an ID and keeps completion",
+    string.format("%d-complete", full))
 
--- A watcher poll during the client's brief ID gap must not treat the still-visible progress page
--- as closed and spend its unresolved snapshot before the completion ID arrives.
+-- A watcher poll while the progress page has no client ID must not spend an anonymous snapshot;
+-- the later completion page remains readable.
 StartScenario()
 world.questID = 0
 stub.ShowPanel("QuestFrameProgressPanel")
@@ -269,8 +268,8 @@ stub.ShowPanel(nil)
 stub.FireEvent("QUEST_FINISHED")
 stub.FireEvent("QUEST_TURNED_IN", full, 0, 0)
 stub.Advance(5)
-Expect("a watcher poll during the quest-ID gap keeps progress",
-    string.format("%d-progress, %d-complete", full, full))
+Expect("a watcher poll drops anonymous progress and keeps completion",
+    string.format("%d-complete", full))
 
 -- Some automatic turn-in clients advance the visible panel without delivering QUEST_PROGRESS.
 -- The watcher must retain the progress page it saw before the reward page replaced it.
@@ -363,8 +362,8 @@ VO.Addon.db.profile.Audio.ReadAfterClose = false
 Expect("Read When Window Closes releases stabilized progress first",
     string.format("%d-progress, %d-complete", full, full))
 
--- Both page events can arrive while the client reports ID 0; once the reward page has a real ID,
--- capture it before dispatch so the unresolved progress and completion records are associated.
+-- An indexed completion can be captured while the preceding progress page has no client ID; the
+-- anonymous progress record is not associated with it.
 StartScenario()
 world.questID = 0
 stub.ShowPanel("QuestFrameProgressPanel")
@@ -378,11 +377,11 @@ stub.ShowPanel(nil)
 stub.FireEvent("QUEST_FINISHED")
 stub.FireEvent("QUEST_TURNED_IN", full, 0, 0)
 stub.Advance(5)
-Expect("a completion captured after the ID gap keeps progress",
-    string.format("%d-progress, %d-complete", full, full))
+Expect("an indexed completion is replayed without anonymous progress",
+    string.format("%d-complete", full))
 
--- The panel can advance without either page event. A visible reward page with a restored ID must
--- still capture completion so the earlier ID-0 progress snapshot is associated before close.
+-- The panel can advance without either page event. A visible reward page with an ID still captures
+-- completion even when the preceding progress page had none.
 StartScenario()
 world.questID = 0
 stub.ShowPanel("QuestFrameProgressPanel")
@@ -395,11 +394,11 @@ stub.ShowPanel(nil)
 stub.FireEvent("QUEST_FINISHED")
 stub.FireEvent("QUEST_TURNED_IN", full, 0, 0)
 stub.Advance(5)
-Expect("a reward-panel transition without events keeps ID-gap progress",
-    string.format("%d-progress, %d-complete", full, full))
+Expect("a reward-panel transition without events keeps identified completion",
+    string.format("%d-complete", full))
 
--- When both page events are absent, a reward panel during the ID gap must still capture its
--- resolvable completion snapshot before the dialog closes.
+-- When the progress page has no ID, an indexed reward page still captures its own completion before
+-- the dialog closes.
 StartScenario()
 testPack.QuestIDLookup = { accept = {}, progress = {}, complete = { ["Test Quest"] = full } }
 world.questID = 0
@@ -412,11 +411,11 @@ stub.FireEvent("QUEST_FINISHED")
 stub.FireEvent("QUEST_TURNED_IN", full, 0, 0)
 stub.Advance(5)
 testPack.QuestIDLookup = nil
-Expect("an event-free ID-gap reward captures resolvable completion",
-    string.format("%d-progress, %d-complete", full, full))
+Expect("an event-free indexed reward captures completion",
+    string.format("%d-complete", full))
 
--- Replacement quest UIs hide Blizzard panels. A poll during their ID gap must use the recorded
--- event as the open-dialog signal instead of spending the unresolved snapshot as a close.
+-- Replacement quest UIs hide Blizzard panels. A poll during an anonymous progress page must not
+-- spend a snapshot that cannot be tied to a quest.
 StartScenario()
 testPack.QuestIDLookup = { accept = {}, progress = {}, complete = {} }
 world.questID = 0
@@ -429,7 +428,7 @@ stub.FireEvent("QUEST_FINISHED")
 stub.FireEvent("QUEST_TURNED_IN", full, 0, 0)
 stub.Advance(5)
 testPack.QuestIDLookup = nil
-Expect("a replacement UI ID gap keeps progress", string.format("%d-progress, %d-complete", full, full))
+Expect("a replacement UI drops anonymous progress and keeps completion", string.format("%d-complete", full))
 
 -- A retained quest ID must not prevent a close-time snapshot from being replayed after voice
 -- packs finish loading; QUEST_TURNED_IN itself may have arrived while loading was pending.
@@ -503,8 +502,8 @@ stub.Advance(5)
 VO.Addon.db.profile.Audio.ReadAfterClose = false
 Expect("a fast close does not release the previous completion", string.format("%d-accept", followUp))
 
--- A fast switch must not let quest B's identifying page assign quest B's ID to quest A's
--- unresolved progress just because both quests have the same title and giver.
+-- A fast switch must not let quest B's identifying page assign quest B's ID to anonymous progress
+-- from quest A.
 StartScenario()
 world.questID = 0
 stub.FireEvent("QUEST_PROGRESS")
@@ -515,8 +514,8 @@ stub.FireEvent("QUEST_TURNED_IN", full, 0, 0)
 stub.Advance(5)
 Expect("a fast quest switch does not attach old progress to the new quest", "104-complete")
 
--- A new offer can replace the old dialog without QUEST_FINISHED. Its detail event must still
--- start a new interaction so the new completion cannot claim the old progress page.
+-- A new offer can replace the old dialog without QUEST_FINISHED. Its completion must not claim
+-- anonymous progress from the old page.
 StartScenario()
 world.questID = 0
 stub.FireEvent("QUEST_PROGRESS")
@@ -527,8 +526,8 @@ stub.FireEvent("QUEST_TURNED_IN", full, 0, 0)
 stub.Advance(5)
 Expect("a quest switch without QUEST_FINISHED does not attach old progress", "104-complete")
 
--- The replacement offer can itself arrive while the client still reports ID 0. It must begin a
--- new interaction before its later completion ID becomes available.
+-- The replacement offer can itself arrive while the client still reports ID 0. Its later
+-- completion must not claim the anonymous pages that preceded it.
 StartScenario()
 world.questID = 0
 stub.FireEvent("QUEST_PROGRESS")
@@ -778,8 +777,8 @@ local stillPlaying = Spoken:GetCurrent() ~= nil
 Expect("a replayed offer is not stopped by another window closing",
     stillPlaying and string.format("%d-accept", full) or "")
 
--- Classic's brief quest ID 0 as the offer arrives, on a client that then keeps reporting the ID
--- after the window closes: the record is found by its title, so the accept event still reads it.
+-- A missing client ID can still be resolved at capture when the pack's indexed title lookup names
+-- the quest; the accept event then replays that identified record.
 lookup["107-accept"] = 1
 testPack.QuestIDLookup = { accept = { ["Unnumbered Quest"] = 107 }, progress = {}, complete = {} }
 StartScenario()

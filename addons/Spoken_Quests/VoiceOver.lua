@@ -66,8 +66,8 @@ local ResolveQuestID, NoteGossipPage
 -- read at all. An auto turn-in shows two pages before the watcher can read either, so each
 -- page keeps its own record. The watcher still owns dispatch: a page is replayed from here
 -- only once the dialog has closed, or the quest was accepted or turned in, with nothing read
--- for it. A page whose event arrived with neither a quest ID nor a title names no quest, and
--- no later event could tie it to one, so it is not recorded.
+-- for it. A page whose event arrived without a quest ID is recorded only when the loaded pack can
+-- identify it immediately; no later event is used to associate an anonymous page.
 local questSnapshots = {}
 local questInteractionID
 local lastClosedQuestInteractionID
@@ -136,13 +136,6 @@ local function PruneQuestSnapshots()
     end
 end
 
-local function SameQuestSnapshotGroup(firstEvent, secondEvent)
-    if firstEvent == "QUEST_DETAIL" or secondEvent == "QUEST_DETAIL" then
-        return firstEvent == secondEvent
-    end
-    return true
-end
-
 local function CaptureQuestSnapshot(event)
     local quest = QUEST_EVENTS[event]
     if not quest then
@@ -151,16 +144,20 @@ local function CaptureQuestSnapshot(event)
     PruneQuestSnapshots()
     local questID = CurrentQuestID()
     local questTitle = QuestTitle()
-    -- Nothing to replay, and nothing to identify a quest by either.
-    if questID == 0 and questTitle == "" then
-        return
-    end
+    -- A snapshot without a client ID is useful only when the pack's indexed data can identify it
+    -- now. There is no safe way to associate an otherwise anonymous page with a later quest.
     local text, targetName = quest.text(), Utils:GetNPCName()
+    if questID == 0 then
+        questID = ResolveQuestID(quest.source, questID, questTitle, targetName, text, true)
+        if not questID then
+            return
+        end
+    end
     questInteractionID = questInteractionID or 1
     if event == "QUEST_DETAIL" then
         -- A new offer starts a new interaction even when an addon moves straight from an old
         -- progress page to it without QUEST_FINISHED. Keep that offer from inheriting the old
-        -- page's unresolved ID-0 record.
+        -- page's interaction record.
         local startsNewInteraction = pendingProgressRead ~= nil
         for _, old in ipairs(questSnapshots) do
             if old.event ~= "QUEST_DETAIL" and not old.dispatched and not old.passed then
@@ -174,11 +171,6 @@ local function CaptureQuestSnapshot(event)
             pendingRead = nil
         end
     end
-    -- Resolved now, the way the handler would: QUEST_ACCEPTED and QUEST_TURNED_IN find a page by
-    -- its quest ID, and the brief 0 a Classic client reports would match neither.
-    if questID == 0 then
-        questID = ResolveQuestID(quest.source, questID, questTitle, targetName, text, true) or 0
-    end
     local snapshot = {
         event = event,
         at = GetTime(),
@@ -190,19 +182,6 @@ local function CaptureQuestSnapshot(event)
         targetName = targetName,
         isObjectOrItem = Utils:IsNPCObjectOrItem(),
     }
-    if questID ~= 0 then
-        -- Resolve an earlier page captured during the client's brief ID gap at the source. The
-        -- event group, title, giver and ten-second lifetime keep this to the same interaction;
-        -- passed or already dispatched pages have no work left to associate.
-        for _, old in ipairs(questSnapshots) do
-            if old.questID == 0 and not old.dispatched and not old.passed and
-                old.interactionID == snapshot.interactionID and old.at <= snapshot.at and
-                SameQuestSnapshotGroup(old.event, event) and
-                old.title == questTitle and old.targetName == targetName then
-                old.questID = questID
-            end
-        end
-    end
     -- The same page shown again replaces its record, and keeps what was done with it, so a page
     -- read in the open window is not read again after it closes.
     for i = #questSnapshots, 1, -1 do
@@ -910,8 +889,8 @@ function Addon:OnInitialize()
         if questID == 0 then
             local visibleEvent = GetVisibleQuestEvent()
             if visibleEvent then
-                -- A brief ID gap while a quest panel is still visible is not a closed dialog.
-                -- Keep the progress page available for the later nonzero completion ID.
+                -- An ID gap while a quest panel is still visible is not a closed dialog. Capture
+                -- only if the pack index can identify the page; anonymous pages are discarded.
                 if visibleEvent == "QUEST_PROGRESS" or visibleEvent == "QUEST_COMPLETE" then
                     pcall(CaptureQuestSnapshot, visibleEvent)
                 end
@@ -1325,10 +1304,9 @@ function ResolveQuestID(source, questID, questTitle, targetName, questText, quie
         return questID
     end
 
-    -- On current Classic clients GetQuestID can briefly return 0 while the
-    -- QUEST_DETAIL frame is already populated. Resolve it through the loaded
-    -- data module's title/NPC/text index instead of silently abandoning the
-    -- event. This also handles ambiguous repeated quest titles.
+    -- The loaded data module's title/NPC/text index is the only fallback that can identify a
+    -- missing client ID at the source. It handles ambiguous repeated titles; if it has no match,
+    -- callers abandon the page rather than associating it with a later interaction.
     local fallbackID = DataModules:GetQuestID(source, questTitle or "", targetName or "", questText or "")
     if fallbackID then
         if quiet then
