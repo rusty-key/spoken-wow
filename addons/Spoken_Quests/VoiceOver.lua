@@ -119,8 +119,22 @@ end
 local function PruneQuestSnapshots()
     local now = GetTime()
     for i = #questSnapshots, 1, -1 do
-        if now - questSnapshots[i].at > SNAPSHOT_LIFETIME then
+        local snapshot = questSnapshots[i]
+        local expiresAt = snapshot.dismissedAt
+        if not expiresAt and (snapshot.event ~= "QUEST_DETAIL" or snapshot.dispatched) then
+            expiresAt = snapshot.at
+        end
+        if expiresAt and now - expiresAt > SNAPSHOT_LIFETIME then
             table.remove(questSnapshots, i)
+        end
+    end
+end
+
+local function DismissQuestSnapshots()
+    local dismissedAt = GetTime()
+    for _, snapshot in ipairs(questSnapshots) do
+        if snapshot.event == "QUEST_DETAIL" and not snapshot.dispatched then
+            snapshot.dismissedAt = snapshot.dismissedAt or dismissedAt
         end
     end
 end
@@ -723,6 +737,11 @@ function Addon:OnInitialize()
 
     local function ReplayQuestSnapshots(source, questID, events)
         PruneQuestSnapshots()
+        if not questID then
+            -- A close dismisses an unread offer. Keep it briefly in case the client reports
+            -- QUEST_ACCEPTED after QUEST_FINISHED, but do not let it live forever after close.
+            DismissQuestSnapshots()
+        end
         -- The watcher calls this ten times a second whenever no quest is open.
         if #questSnapshots == 0 then
             return
@@ -828,6 +847,10 @@ function Addon:OnInitialize()
             if self.db.profile.Audio.ReadAfterAccept and event == "QUEST_DETAIL" then
                 -- Keep the offer snapshot for QUEST_ACCEPTED, but do not read an offer that the
                 -- player closes or declines. Manual Play and /spq read still bypass this wait.
+                local captured, captureError = pcall(CaptureQuestSnapshot, event)
+                if not captured then
+                    Debug:Record("auto-watcher-error", tostring(captureError))
+                end
                 state.completedKey = key
                 return
             end
@@ -906,6 +929,7 @@ function Addon:OnInitialize()
     self.questEventRecorderFrame:SetScript("OnEvent", function(_, event, questIDArg, ...)
         if event == "QUEST_FINISHED" then
             lastQuestEvent = nil
+            DismissQuestSnapshots()
         elseif REPLAYED_ON[event] then
             if self.dataModulesPending then
                 return

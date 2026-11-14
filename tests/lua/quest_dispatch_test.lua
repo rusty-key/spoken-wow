@@ -189,6 +189,55 @@ stub.FireEvent("QUEST_FINISHED")
 stub.FireEvent("QUEST_ACCEPTED", afterAccept)
 stub.Advance(3)
 Expect("read-after-accept plays after accepting", string.format("%d-accept", afterAccept))
+
+-- An offer can stay open longer than the normal snapshot lifetime. It remains available until
+-- the player accepts it, even though no sound has played yet.
+StartScenario()
+world.questID = afterAccept
+stub.ShowPanel("QuestFrameDetailPanel")
+stub.FireEvent("QUEST_DETAIL")
+stub.Advance(11)
+world.questID = 0
+stub.ShowPanel(nil)
+stub.FireEvent("QUEST_FINISHED")
+stub.FireEvent("QUEST_ACCEPTED", afterAccept)
+stub.Advance(3)
+Expect("read-after-accept keeps an offer open past snapshot expiry", string.format("%d-accept", afterAccept))
+
+-- Manual readers bypass the deferred automatic offer path.
+StartScenario()
+world.questID = afterAccept
+stub.ShowPanel("QuestFrameDetailPanel")
+stub.FireEvent("QUEST_DETAIL")
+stub.Advance(3)
+VO.Addon:InvokeQuestHandler("QUEST_DETAIL", "Play button", true)
+Expect("manual Play remains immediate with read-after-accept", string.format("%d-accept", afterAccept))
+
+StartScenario()
+world.questID = afterAccept
+stub.ShowPanel("QuestFrameDetailPanel")
+stub.FireEvent("QUEST_DETAIL")
+stub.Advance(3)
+VO.Addon:ReadVisibleQuest("/spq read")
+Expect("/spq read remains immediate with read-after-accept", string.format("%d-accept", afterAccept))
+
+-- The QUEST_DETAIL event can expose the previous quest's globals. The deferred branch must
+-- capture the stabilized offer so its later QUEST_ACCEPTED event can replay it.
+local staleOffer = 108
+lookup[string.format("%d-accept", staleOffer)] = 1
+StartScenario()
+world.questID = full
+stub.ShowPanel("QuestFrameDetailPanel")
+stub.FireEvent("QUEST_DETAIL")
+world.questID = staleOffer
+stub.Advance(3)
+Expect("read-after-accept keeps a stabilized offer after stale detail globals", "")
+world.questID = 0
+stub.ShowPanel(nil)
+stub.FireEvent("QUEST_FINISHED")
+stub.FireEvent("QUEST_ACCEPTED", staleOffer)
+stub.Advance(3)
+Expect("read-after-accept replays the stabilized offer", string.format("%d-accept", staleOffer))
 VO.Addon.db.profile.Audio.ReadAfterAccept = false
 
 -- A page whose event arrives with neither a quest ID nor a title names no quest, and nothing that
