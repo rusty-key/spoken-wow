@@ -2,14 +2,11 @@
 
 Spoken Player until 3.0.0, when it became Spoken and took its modules into one download.
 
-## Unreleased
+## 3.9.0 — 2026-11-14
 
 - **A report names the line you heard.** When a quest is read in more than one voice, or an NPC has
   several lines, the Report link now carries the recording that played, so the report lands on that
   line rather than asking you to pick one. *([rusty-key](https://github.com/rusty-key))*
-
-## 3.9.0 — 2026-11-13
-
 - **Read Quest Progress Text.** A new Quests setting, on by default, under Read Automatically.
   Turned off, the "not done yet" page an NPC shows before you hand in a quest no longer reads
   itself; its Play button still plays it.
