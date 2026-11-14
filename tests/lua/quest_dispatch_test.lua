@@ -277,6 +277,7 @@ world.questID = full
 stub.ShowPanel("QuestFrameProgressPanel")
 stub.Advance(0.1)
 stub.ShowPanel("QuestFrameRewardPanel")
+stub.FireEvent("QUEST_COMPLETE")
 stub.Advance(0.5)
 Expect("Read When Window Closes does not replay transition progress while open", "")
 world.questID = 0
@@ -285,6 +286,24 @@ stub.FireEvent("QUEST_FINISHED")
 stub.Advance(5)
 VO.Addon.db.profile.Audio.ReadAfterClose = false
 Expect("Read When Window Closes replays transition progress after close",
+    string.format("%d-progress, %d-complete", full, full))
+
+-- Read When Window Closes also replays retained progress before releasing completion when the
+-- client keeps reporting the quest ID after QUEST_FINISHED.
+StartScenario()
+VO.Addon.db.profile.Audio.ReadAfterClose = true
+world.questID = full
+stub.ShowPanel("QuestFrameProgressPanel")
+stub.Advance(0.1)
+stub.ShowPanel("QuestFrameRewardPanel")
+stub.FireEvent("QUEST_COMPLETE")
+stub.Advance(0.5)
+Expect("Read When Window Closes keeps pending completion silent while open", "")
+stub.ShowPanel(nil)
+stub.FireEvent("QUEST_FINISHED")
+stub.Advance(5)
+VO.Addon.db.profile.Audio.ReadAfterClose = false
+Expect("Read When Window Closes replays progress before retained-ID completion",
     string.format("%d-progress, %d-complete", full, full))
 
 -- A fast switch must not let quest B's identifying page assign quest B's ID to quest A's

@@ -194,12 +194,13 @@ end
 --- `questID` were passed over by the player, as they always were, so they are not replayed after it
 --- either. The record's own quest ID is not used for that: it may be the previous quest's, and
 --- that quest's pages may still be waiting for their own accept or turn-in.
-local function MarkQuestSnapshotRead(event, questID)
+local function MarkQuestSnapshotRead(event, questID, keepProgress)
     for i = #questSnapshots, 1, -1 do
         if questSnapshots[i].event == event then
             questSnapshots[i].dispatched = true
             for j = 1, i - 1 do
-                if questSnapshots[j].questID == questID then
+                if questSnapshots[j].questID == questID and
+                    not (keepProgress and questSnapshots[j].event == "QUEST_PROGRESS") then
                     questSnapshots[j].dispatched = true
                 end
             end
@@ -813,14 +814,15 @@ function Addon:OnInitialize()
         end
     end
 
-    self.ReplayClosedQuestSnapshots = function(source)
+    self.ReplayClosedQuestSnapshots = function(_, source)
         ReplayQuestSnapshots(source or "the dialog closed before it could stabilize")
     end
 
     local function FinishPage(state, key, event, questID)
         state.completedKey = key
         MarkHandled(state, key)
-        MarkQuestSnapshotRead(event, questID)
+        MarkQuestSnapshotRead(event, questID,
+            self.db.profile.Audio.ReadAfterClose and event == "QUEST_COMPLETE")
     end
 
     local function PollAutomaticQuest()
@@ -1278,7 +1280,9 @@ local function QueueRead(soundData, manual)
     if not manual and Addon.db.profile.Audio.ReadAfterClose and not questSnapshotInUse then
         pendingRead = soundData
         -- Held counts as handled for the watcher, or it would read the quest again once the window closes.
-        MarkQuestSnapshotRead(EVENT_OF_SOUND[soundData.event], soundData.questID)
+        local event = EVENT_OF_SOUND[soundData.event]
+        MarkQuestSnapshotRead(event, soundData.questID,
+            event == "QUEST_COMPLETE")
         local state = Addon.autoQuestState
         if state then
             state.completedKey = state.candidateKey
@@ -1762,10 +1766,10 @@ function Addon:QUEST_FINISHED()
     EndGreetingTextWait()
     -- Replay retained quest pages before a Read When Window Closes line is released, so a
     -- progress page captured during a fast transition stays ahead of the reward page.
-    if CurrentQuestID() == 0 and Addon.ReplayClosedQuestSnapshots then
+    local pending = pendingRead
+    if (pending or CurrentQuestID() == 0) and Addon.ReplayClosedQuestSnapshots then
         Addon:ReplayClosedQuestSnapshots("the dialog closed (QUEST_FINISHED)")
     end
-    local pending = pendingRead
     pendingRead = nil
     if pending then
         -- Its window has closed, so it is no window's line: the next close leaves it playing.
