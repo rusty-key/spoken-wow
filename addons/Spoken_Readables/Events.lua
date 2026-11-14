@@ -99,29 +99,16 @@ function SpokenReadables:BackfillQuestReadables()
 	end
 
 	-- Questie is optional, but when installed it can fill this in before Places.lua has been
-	-- regenerated with quest metadata. Its item reverse index includes quest rewards, and its
-	-- quest index identifies source items. The latter is exact; the former may include a choice
-	-- reward because the client does not preserve which choice was selected.
+	-- regenerated with quest metadata. Its quest index identifies source items exactly; do not
+	-- use the item reverse index because it may include a choice reward the player did not take.
 	local questie = _G.QuestieDB
 	local data = self:Data()
 	local owners = data and data.owners and data.owners.item
-	local itemQuery = questie and questie.QueryItemSingle
 	local questQuery = questie and questie.QueryQuestSingle
-	if not itemQuery and _G.LibQuestieDB and _G.LibQuestieDB.Item then
-		itemQuery = _G.LibQuestieDB.Item.Get
-	end
 	if not questQuery and _G.LibQuestieDB and _G.LibQuestieDB.Quest then
 		questQuery = _G.LibQuestieDB.Quest.Get
 	end
 	if owners then
-		if itemQuery then
-			for itemID, book in pairs(owners) do
-				local quests = itemQuery(itemID, "questRewards")
-				for _, questID in ipairs(quests or {}) do
-					if completed[questID] then self:MarkBookFound(book); break end
-				end
-			end
-		end
 		if questQuery then
 			for questID in pairs(completed) do
 				local itemID = questQuery(questID, "sourceItemId")
@@ -150,6 +137,10 @@ end
 --- Remember text-bearing notes as soon as they enter the bags, without opening or reading them.
 function SpokenReadables:OnBagUpdate()
 	local current = self:ReadableItemSnapshot()
+	if not self.readableItemCounts then
+		self.readableItemCounts = current
+		return
+	end
 	local previous = self.readableItemCounts or {}
 	for itemID, count in pairs(current) do
 		if count > (previous[itemID] or 0) then

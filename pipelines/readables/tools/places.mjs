@@ -82,6 +82,7 @@ const SOURCES_BY_HAND = {
   2671: [{ how: "quest start", quest: 7636, zones: [1448] }], // Petrified Bark: Vartrus the Ancient, Felwood
   2859: [{ how: "quest reward", quest: 8996, zones: [1427] }], // Brazier of Invocation: Bodley, Blackrock Mountain
   2786: [{ how: "quest reward", quest: 8228, zones: [1455] }], // Fishing Tournament!: Barrus, Ironforge, whom the DB does not spawn
+  ["nc0bf109d-e5d1-494d-ba1b-12a6b27352a8"]: [{ how: "quest reward", quest: 97277, zones: [1426] }], // Gozwin's Mechanic's Log
 };
 // The seasonal events' readables, had only while the event runs, by event: the Compendium lists
 // them under Holidays and Events, a line for each event. Their NPCs are spawned by the event, and
@@ -408,7 +409,6 @@ try {
     const containerSources = viaContainer.get(Number(r.Entry)) ?? [];
     const zones = new Set(containerSources.flatMap((s) => s.zones));
     add(book, zones);
-    for (const s of containerSources) if (s.quest) addQuestReward(book, s.quest);
   }
 
   // And what the DB cannot see. A hand source that matches one the DB found gives it its zones.
@@ -417,13 +417,14 @@ try {
   const handObjects = await names(OBJECT, "entry", "name", hand.filter((s) => s.object).map((s) => s.object));
   const handObjectZones = await spawnZones("gameobject", hand.filter((s) => s.object).map((s) => s.object));
   for (const [book, list_] of Object.entries(SOURCES_BY_HAND)) {
+    const bookId = luaTableId(book);
     for (const s of list_) {
       const name = s.quest ? handQuests.get(s.quest) : handObjects.get(s.object);
       if (!name) throw new Error(`book ${book}: no ${s.quest ? `quest ${s.quest}` : `object ${s.object}`} in the world DB`);
-      add(Number(book), s.zones ?? handObjectZones.get(s.object) ?? []);
-      if (s.how === "quest reward") addQuestReward(Number(book), s.quest);
+      add(bookId, s.zones ?? handObjectZones.get(s.object) ?? []);
+      if (s.how === "quest reward") addQuestReward(bookId, s.quest);
     }
-    if (!kind.has(Number(book))) kind.set(Number(book), "carried");
+    if (!kind.has(bookId)) kind.set(bookId, "carried");
   }
 } finally {
   await db.end();

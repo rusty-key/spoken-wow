@@ -72,6 +72,9 @@ _G.C_QuestLog.GetAllCompletedQuestIDs = function() return {} end
 SpokenReadablesCharacter.found = {}
 SpokenReadablesCharacter.questReadableBackfill = nil
 bagItems[1] = 745
+SpokenReadables.readableItemCounts = nil
+stub.FireEvent("BAG_UPDATE", 0)
+Expect("an early bag update establishes a baseline", B:IsBookFound(209), false)
 stub.FireEvent("PLAYER_LOGIN")
 Expect("an item already in the bags is not mistaken for newly received notes",
     B:IsBookFound(209), false)
@@ -116,6 +119,24 @@ do
     bagItems[1] = 745
     stub.FireEvent("BAG_UPDATE", 0)
     Expect("a note received again after removal is discovered", B:IsBookFound(209), true)
+end
+
+-- Questie's item reverse index can include a choice reward, which completed quest history cannot
+-- prove the player selected. The exact source-item index remains safe to use.
+do
+    local oldQuestGet = _G.LibQuestieDB.Quest.Get
+    local oldItemGet = _G.LibQuestieDB.Item.Get
+    _G.LibQuestieDB.Item.Get = function(itemID, field)
+        if itemID == 745 and field == "questRewards" then return { 12345 } end
+    end
+    _G.LibQuestieDB.Quest.Get = function() return nil end
+    SpokenReadablesCharacter.found = {}
+    SpokenReadablesCharacter.questReadableBackfill = nil
+    _G.C_QuestLog.GetAllCompletedQuestIDs = function() return { 12345 } end
+    SpokenReadables:BackfillQuestReadables()
+    Expect("a choice reward is not backfilled as a received readable", B:IsBookFound(209), false)
+    _G.LibQuestieDB.Quest.Get = oldQuestGet
+    _G.LibQuestieDB.Item.Get = oldItemGet
 end
 
 -- Synthetic corpus rows let malformed and partially populated books be checked independently.
