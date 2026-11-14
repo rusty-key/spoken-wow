@@ -70,6 +70,7 @@ local ResolveQuestID, NoteGossipPage
 -- no later event could tie it to one, so it is not recorded.
 local questSnapshots = {}
 local questInteractionID
+local pendingRead
 
 -- Long enough for the server to answer an accept or a turn-in, short enough that a quest
 -- accepted later some other way (an escort a party member starts) does not read an old offer.
@@ -120,7 +121,8 @@ end
 local function PruneQuestSnapshots()
     local now = GetTime()
     for i = #questSnapshots, 1, -1 do
-        if now - questSnapshots[i].at > SNAPSHOT_LIFETIME then
+        if now - questSnapshots[i].at > SNAPSHOT_LIFETIME and
+            not (pendingRead and questSnapshots[i].keepUntilPending) then
             table.remove(questSnapshots, i)
         end
     end
@@ -210,9 +212,12 @@ local function MarkQuestSnapshotRead(event, questID, keepProgress)
         if questSnapshots[i].event == event then
             questSnapshots[i].dispatched = true
             for j = 1, i - 1 do
-                if questSnapshots[j].questID == questID and
-                    not (keepProgress and questSnapshots[j].event == "QUEST_PROGRESS") then
-                    questSnapshots[j].dispatched = true
+                if questSnapshots[j].questID == questID then
+                    if keepProgress and questSnapshots[j].event == "QUEST_PROGRESS" then
+                        questSnapshots[j].keepUntilPending = true
+                    else
+                        questSnapshots[j].dispatched = true
+                    end
                 end
             end
             return
@@ -825,6 +830,15 @@ function Addon:OnInitialize()
         end
     end
 
+    local function HasUnreadQuestSnapshot(event, questID)
+        for _, snapshot in ipairs(questSnapshots) do
+            if not snapshot.dispatched and snapshot.event == event and snapshot.questID == questID then
+                return true
+            end
+        end
+        return false
+    end
+
     self.ReplayClosedQuestSnapshots = function(_, source)
         if self.dataModulesPending then
             return
@@ -887,13 +901,15 @@ function Addon:OnInitialize()
         event = event or "QUEST_DETAIL"
         -- A fast automatic turn-in can change the visible panel without sending QUEST_PROGRESS.
         -- Keep the text from the progress page while its globals still describe that page.
-        if event == "QUEST_PROGRESS" then
+        if event == "QUEST_PROGRESS" or event == "QUEST_COMPLETE" then
             pcall(CaptureQuestSnapshot, event)
         end
         local key = PageKey(event, questID, questTitle)
         if key ~= state.candidateKey then
-            if state.candidateEvent == "QUEST_PROGRESS" and event == "QUEST_COMPLETE" and
-                state.candidateQuestID == questID and state.candidateTitle == questTitle and
+            local progressWasVisible = state.candidateEvent == "QUEST_PROGRESS" and
+                state.candidateQuestID == questID and state.candidateTitle == questTitle
+            local progressSnapshotExists = HasUnreadQuestSnapshot("QUEST_PROGRESS", questID)
+            if event == "QUEST_COMPLETE" and (progressWasVisible or progressSnapshotExists) and
                 self:ReadsItself("QUEST_PROGRESS") then
                 if not self.db.profile.Audio.ReadAfterClose then
                     ReplayQuestSnapshots("the progress page advanced to completion", questID,
@@ -1296,8 +1312,6 @@ end
 
 -- With Read When Window Closes on, an automatic read waits for the window to close
 -- (QUEST_FINISHED). The window shows one quest page at a time, so the last one read is the one kept.
-local pendingRead
-
 local function QueueRead(soundData, manual)
     -- A read from the snapshot of a window that has already closed has nothing left to wait for.
     if not manual and Addon.db.profile.Audio.ReadAfterClose and not questSnapshotInUse then

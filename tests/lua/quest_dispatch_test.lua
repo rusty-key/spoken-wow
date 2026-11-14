@@ -324,6 +324,43 @@ VO.Addon.db.profile.Audio.ReadAfterClose = false
 Expect("Read When Window Closes replays progress before retained-ID completion",
     string.format("%d-progress, %d-complete", full, full))
 
+-- A deferred completion keeps its associated progress snapshot alive even while the reward page
+-- remains open beyond the normal snapshot lifetime.
+StartScenario()
+VO.Addon.db.profile.Audio.ReadAfterClose = true
+world.questID = full
+stub.ShowPanel("QuestFrameProgressPanel")
+stub.Advance(0.1)
+stub.ShowPanel("QuestFrameRewardPanel")
+stub.FireEvent("QUEST_COMPLETE")
+stub.Advance(10.5)
+Expect("Read When Window Closes keeps progress past snapshot expiry", "")
+world.questID = 0
+stub.ShowPanel(nil)
+stub.FireEvent("QUEST_FINISHED")
+stub.Advance(5)
+VO.Addon.db.profile.Audio.ReadAfterClose = false
+Expect("Read When Window Closes releases expired pending progress",
+    string.format("%d-progress, %d-complete", full, full))
+
+-- Both page events can arrive while the client reports ID 0; once the reward page has a real ID,
+-- capture it before dispatch so the unresolved progress and completion records are associated.
+StartScenario()
+world.questID = 0
+stub.ShowPanel("QuestFrameProgressPanel")
+stub.FireEvent("QUEST_PROGRESS")
+stub.ShowPanel("QuestFrameRewardPanel")
+stub.FireEvent("QUEST_COMPLETE")
+world.questID = full
+stub.Advance(0.5)
+world.questID = 0
+stub.ShowPanel(nil)
+stub.FireEvent("QUEST_FINISHED")
+stub.FireEvent("QUEST_TURNED_IN", full, 0, 0)
+stub.Advance(5)
+Expect("a completion captured after the ID gap keeps progress",
+    string.format("%d-progress, %d-complete", full, full))
+
 -- A fast switch must not let quest B's identifying page assign quest B's ID to quest A's
 -- unresolved progress just because both quests have the same title and giver.
 StartScenario()
