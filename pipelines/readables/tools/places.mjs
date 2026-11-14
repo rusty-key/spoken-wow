@@ -39,11 +39,23 @@ import { SOURCES_BY_HAND, handPlace } from "./lib/hand.mjs";
 import { compareIds, luaTableId, placeLua, readableLua } from "./lib/lua.mjs";
 import { foreverQuests, generatedPlace, isTemplateCopy } from "./lib/places.mjs";
 
-await loadEnv("readables");
-
 const BOOKS = fileURLToPath(new URL("../../../addons/Spoken_Readables/Data/Books.lua", import.meta.url));
 const OUT = fileURLToPath(new URL("../../../addons/Spoken_Readables/Data/Places.lua", import.meta.url));
 const CORPUS = fileURLToPath(new URL("../../quests/corpus/corpus.json.gz", import.meta.url));
+
+export async function fixtureGozwin() {
+  const { books, pageText } = readableLua(await readFile(BOOKS, "utf8"));
+  const id = "nc0bf109d-e5d1-494d-ba1b-12a6b27352a8";
+  const hand = handPlace(id, SOURCES_BY_HAND[id]);
+  const record = generatedPlace({ id, book: books.get(id), kind: hand.kind, spots: new Set(hand.zones), hand,
+    questRewards: new Map([[id, new Set(hand.quests)]]), pageText });
+  return placeLua(id, record);
+}
+
+if (process.env.PLACES_FIXTURE === "gozwin") {
+  globalThis.__spokenPlacesFixture = await fixtureGozwin();
+} else {
+  await loadEnv("readables");
 // Forever's client, not Era's: Era's 1.15.9 also carries Season of Discovery and anniversary
 // items, and one that shares a vanilla page id lent that book its sources and zones.
 const BUILD = process.env.PLACES_BUILD ?? FOREVER_BUILD;
@@ -438,3 +450,4 @@ console.log(`${counts.inDungeon} in dungeons: ` + [...counts.dungeons].sort((a, 
 console.log(Object.entries(counts.types).map(([t, n]) => `${n} ${t}`).join(", "));
 console.log(`${notForever.size} quests left out as not Forever's: ${[...notForever].sort((a, b) => a - b).join(", ")}`);
 console.log(`wrote ${OUT}`);
+}
