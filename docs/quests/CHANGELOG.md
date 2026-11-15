@@ -8,6 +8,9 @@ carries that version. The heading says which.
 
 ## Unreleased
 
+- **The quest packs load faster after login.** Alliance, Horde and Shared no longer carry the
+  gossip tables, about 4 MB of Lua each that only the Gossip pack's lines use.
+  *([Merryfett](https://github.com/Merryfett))*
 - **Paragraph breaks show as breaks again** in subtitles and the Compendium, not as `\n\n`
   in the middle of the text. Packs built since 2026-11-13 had them.
 
