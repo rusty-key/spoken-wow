@@ -10,7 +10,7 @@ import shutil
 
 import pytest
 
-from tts_cli.build import build_module, icon_source
+from tts_cli.build import GOSSIP_TEXT_TABLES, build_module, icon_source
 
 FIXTURES = os.path.join(os.path.dirname(__file__), "fixtures")
 
@@ -416,34 +416,26 @@ def test_locale_text_without_a_language_is_refused(tmp_path):
         build_module(CORPUS, store, str(tmp_path / "dist"), "Mod", locale_text=MX_TEXT)
 
 
-GOSSIP_TEXT_FILES = ("npc_gossip_file_lookups.lua", "object_gossip_file_lookups.lua",
-                     "npc_name_gossip_file_lookups.lua", "object_name_gossip_file_lookups.lua")
+GOSSIP_TEXT_FILES = tuple(name + ".lua" for name in GOSSIP_TEXT_TABLES)
 
 
-@pytest.mark.parametrize("pack", ["alliance", "horde", "shared"])
-def test_a_quest_pack_leaves_the_gossip_text_tables_to_the_gossip_pack(tmp_path, pack):
-    # They name gossip audio, which a quest pack never carries, and are about half the Lua the
-    # client parses for a pack at login.
-    report = build_module(CORPUS, _store(tmp_path, "quests/5-accept.ogg"), str(tmp_path / "dist"),
-                          "Mod", include={"quests/5-accept"}, pack=pack)
+@pytest.mark.parametrize("stored, include, carried", [
+    ("quests/5-accept.ogg", {"quests/5-accept"}, False),  # Alliance, Horde, Shared
+    ("quests/5-accept.ogg", set(), False),
+    ("gossip/abc123.ogg", None, True),  # All
+    ("gossip/abc123.ogg", {"gossip/abc123"}, True),  # Gossip
+    ("gossip/abc123.ogg", {"quests/5-accept", "gossip/abc123"}, True),
+])
+def test_only_a_pack_with_gossip_audio_carries_the_gossip_text_tables(tmp_path, stored, include,
+                                                                     carried):
+    # A pack without gossip audio would only pay to parse them.
+    build_module(CORPUS, _store(tmp_path, stored), str(tmp_path / "dist"), "Mod", include=include)
 
-    generated = tmp_path / "dist" / "Mod" / "generated"
+    toc = _toc(tmp_path)
     for name in GOSSIP_TEXT_FILES:
-        assert not (generated / name).exists()
-        assert f"generated\\{name}" not in _toc(tmp_path)
-    assert "npc_gossip_file_lookups" not in report["tableRows"]
-    assert "generated\\quest_id_lookups.lua" in _toc(tmp_path)
-    assert "generated\\npc_body_gossip_file_lookups.lua" in _toc(tmp_path)
-
-
-@pytest.mark.parametrize("pack", [None, "all", "gossip"])
-def test_the_gossip_pack_keeps_the_gossip_text_tables(tmp_path, pack):
-    build_module(CORPUS, _store(tmp_path, "gossip/abc123.ogg"), str(tmp_path / "dist"), "Mod",
-                 pack=pack)
-
-    for name in GOSSIP_TEXT_FILES:
-        assert f"generated\\{name}" in _toc(tmp_path)
-    assert '"Move along."' in _generated(tmp_path, "npc_gossip_file_lookups.lua")
+        assert (f"generated\\{name}" in toc) is carried
+    assert "generated\\quest_id_lookups.lua" in toc
+    assert "generated\\npc_body_gossip_file_lookups.lua" in toc
 
 
 def test_a_language_pack_without_locale_text_has_no_locale_tables(tmp_path):

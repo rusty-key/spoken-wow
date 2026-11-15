@@ -49,8 +49,8 @@ claiming is global.
 - `pipelines/quests/tts_cli/factions.py` owns the four-way split, using the race masks of the
   committed `Data/Compendium.lua`, then `corpus/factions.json` for quests the Compendium does not
   list. Every pack carries the full lookup tables except the four keyed by gossip text
-  (`GOSSIP_TEXT_TABLES` in `tts_cli/build.py`), which ship only in Gossip and All, beside the
-  audio they name.
+  (`GOSSIP_TEXT_TABLES` in `tts_cli/build.py`), which ship only in a pack holding gossip audio
+  (`carries_gossip`: Gossip and All), beside the audio they name.
 - A pack ships one audio format, `ogg-q0-44k`; `store.py:audio_extension` refuses a store
   holding two.
 - The meta addon must never carry a `DataModule-Version` key. If it does, the player counts it

@@ -359,15 +359,14 @@ def build_tables(corpus: dict, ignored=()) -> dict:
     }
 
 
-#: The gossip tables keyed by what is said. Each names a file under sounds/gossip/, which only
-#: the Gossip and All packs carry, so in a quest pack they resolve to nothing and cost the
-#: client about 4 MB of Lua to parse at every login. The body and sex tables stay in every
-#: pack: whether to read a speaker's model is decided from them for quest lines too.
+#: Every entry names gossip audio, directly or through GossipAliases, so only a pack holding
+#: gossip carries these. The body and sex tables stay in every pack: quest lines read them too.
 GOSSIP_TEXT_TABLES = ("npc_gossip_file_lookups", "object_gossip_file_lookups",
                       "npc_name_gossip_file_lookups", "object_name_gossip_file_lookups")
 
-#: The packs that carry GOSSIP_TEXT_TABLES; None is a build that is not one of the split packs.
-GOSSIP_TEXT_PACKS = (None, "all", "gossip")
+
+def carries_gossip(include) -> bool:
+    return include is None or any(stem.startswith("gossip/") for stem in include)
 
 
 #: The tables a language's Gossip pack gets a client-locale copy of: the ones keyed by the
@@ -457,7 +456,7 @@ def build_module(corpus: dict, store_dir: str, dist_dir: str = DEFAULT_DIST_DIR,
                  module_name: str = DEFAULT_MODULE_NAME, version: str = "1.0.1",
                  progress: bool = False, ignored=(), include=None,
                  title: str = DEFAULT_TITLE, language: str = None,
-                 locale_text: list = None, pack: str = None) -> dict:
+                 locale_text: list = None) -> dict:
     """Assemble the data module. Returns a report.
 
     An ignored line's audio is left behind as well as its lookup entry, so a take made
@@ -466,14 +465,10 @@ def build_module(corpus: dict, store_dir: str, dist_dir: str = DEFAULT_DIST_DIR,
 
     `include` is a set of store-relative stems ('quests/5-accept', no extension) and makes
     this one pack of several: the store is staged once and built into a pack per side of the
-    war. None means everything in the store. The lookup tables are not narrowed with it -
-    they map text to ids and hashes rather than to files, and an entry whose audio is in a
-    pack the player did not install simply finds no length and stays quiet. See
-    tts_cli/factions.py.
-
-    `pack` is which of tts_cli/factions.py's PACKS this is. Only GOSSIP_TEXT_PACKS carry
-    GOSSIP_TEXT_TABLES: every gossip line's audio is in those packs, so the tables are whole
-    wherever a gossip line can play.
+    war. None means everything in the store. The lookup tables are not narrowed with it, except
+    GOSSIP_TEXT_TABLES - they map text to ids and hashes rather than to files, and
+    an entry whose audio is in a pack the player did not install simply finds no length and
+    stays quiet. See tts_cli/factions.py.
 
     `locale_text` is `language`'s rows from tts_cli.locale_text, and adds that language's
     gossip tables under generated/<language>/, loaded only on a client in it. Only the
@@ -511,8 +506,10 @@ def build_module(corpus: dict, store_dir: str, dist_dir: str = DEFAULT_DIST_DIR,
     for rel in iterator:
         shutil.copy2(os.path.join(store_dir, rel), os.path.join(sounds_dir, rel))
 
-    tables = {name: table for name, table in build_tables(corpus, ignored).items()
-              if pack in GOSSIP_TEXT_PACKS or name not in GOSSIP_TEXT_TABLES}
+    tables = build_tables(corpus, ignored)
+    if not carries_gossip(include):
+        for name in GOSSIP_TEXT_TABLES:
+            del tables[name]
     written = []
     for filename, (table_name, data) in sorted(tables.items()):
         write_lua_table(os.path.join(generated_dir, filename + ".lua"),
