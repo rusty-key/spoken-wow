@@ -155,7 +155,9 @@ local function PruneQuestSnapshots()
     end
 end
 
-local function CaptureQuestSnapshot(event)
+--- `fromWatcher`: the watcher saw the page on screen without its event. It is kept only if it names
+--- its quest, by client ID or the pack's index.
+local function CaptureQuestSnapshot(event, fromWatcher)
     local quest = QUEST_EVENTS[event]
     if not quest then
         return
@@ -172,6 +174,9 @@ local function CaptureQuestSnapshot(event)
     -- its quest ID, and the brief 0 a Classic client reports would match neither.
     if questID == 0 then
         questID = ResolveQuestID(quest.source, questID, questTitle, targetName, text, true) or 0
+        if questID == 0 and fromWatcher then
+            return
+        end
     end
     local snapshot = {
         event = event,
@@ -182,6 +187,7 @@ local function CaptureQuestSnapshot(event)
         guid = Utils:GetNPCGUID(),
         targetName = targetName,
         isObjectOrItem = Utils:IsNPCObjectOrItem(),
+        fromWatcher = fromWatcher,
     }
     if event == "QUEST_DETAIL" then
         local offer = Addon.openQuestOffer
@@ -195,6 +201,13 @@ local function CaptureQuestSnapshot(event)
         else
             Addon.openQuestTurnIn = turnIn
         end
+    end
+    -- A progress page the watcher saw just before another quest's reward page was that reward
+    -- page's own, shown while the globals still named the previous quest.
+    local previous = questSnapshots[#questSnapshots]
+    if event == "QUEST_COMPLETE" and previous and previous.fromWatcher and
+        previous.event == "QUEST_PROGRESS" and previous.questID ~= questID and not previous.dispatched then
+        table.remove(questSnapshots)
     end
     -- The same page shown again replaces its record, and keeps what was done with it, so a page
     -- read in the open window is not read again after it closes.
@@ -787,6 +800,35 @@ function Addon:OnInitialize()
         state.completedKey = nil
     end
 
+    --- The progress or reward page the Blizzard quest frame shows, if any.
+    local function VisiblePageEvent()
+        if IsFrameVisible(QuestFrameRewardPanel) then
+            return "QUEST_COMPLETE"
+        elseif IsFrameVisible(QuestFrameProgressPanel) then
+            return "QUEST_PROGRESS"
+        end
+    end
+
+    --- Some automatic turn-ins change the visible page without its event, so the event-time
+    --- record never exists. Record each progress or reward page the watcher sees, once per page.
+    local function CaptureVisiblePage(state, questID)
+        local event = VisiblePageEvent()
+        if not event then
+            state.capturedKey = nil
+            return
+        end
+        local succeeded, title = pcall(QuestTitle)
+        if not succeeded then
+            return
+        end
+        local key = PageKey(event, questID, title)
+        if key == state.capturedKey then
+            return
+        end
+        state.capturedKey = key
+        pcall(CaptureQuestSnapshot, event, true)
+    end
+
     --- Reads the recorded pages nothing has read yet, oldest first. With `questID` (from
     --- QUEST_ACCEPTED or QUEST_TURNED_IN) only that quest's pages of `events`; without it, the
     --- newest unread page of each event whose dialog has closed: of offers opened and closed
@@ -867,6 +909,7 @@ function Addon:OnInitialize()
             return
         end
         local questID = CurrentQuestID()
+        CaptureVisiblePage(state, questID)
         if questID == 0 then
             -- The dialog is gone. Pages it closed on with nothing dispatched for them are the
             -- whole record of the interaction, so read them before the candidate state is cleared.
@@ -886,6 +929,14 @@ function Addon:OnInitialize()
         event = event or "QUEST_DETAIL"
         local key = PageKey(event, questID, questTitle)
         if key ~= state.candidateKey then
+            -- The progress page gave way to its own reward page before it could be read. Read
+            -- it now, before the reward page is read and marks it as passed over. Read When
+            -- Window Closes keeps only the window's last page, as it does for pages read in it.
+            if event == "QUEST_COMPLETE" and not self.db.profile.Audio.ReadAfterClose and
+                state.candidateKey == PageKey("QUEST_PROGRESS", questID, questTitle) then
+                ReplayQuestSnapshots("the progress page advanced to completion", questID,
+                    { QUEST_PROGRESS = true })
+            end
             state.candidateKey = key
             state.candidateAge = 0
             state.retryDelay = 0
