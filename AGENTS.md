@@ -95,6 +95,11 @@ place: `pipelines/quests/tts_cli/naming.py` (mirrored by
 **Migrations are forward-only and additive.** Deploy migrates before the symlink swap and
 rollback restores code without reverting the schema.
 
+**Changing a setting's default changes it for existing players.** AceDB does not save a value
+equal to the default, so everyone who never touched the setting gets the new default. To keep
+their old behaviour, add a one-time migration that saves the old value explicitly. Renaming the
+setting instead drops every player's choice.
+
 **The `make/*.mk` files stay separate.** They share many target names, and the root `Makefile`
 dispatches `quests-*`, `places-*`, `readables-*` and `web-*` to them. Each target is commented with
 the failure it prevents; read that comment before changing one.
@@ -128,6 +133,21 @@ its date.
 - The checks above are the verification. Do not stack extra self-review passes or use
   subagents to re-check finished work.
 
+## Bug fixes
+
+- Make it fail first. Show the failure on master: the code path with `file:line`, a log, or
+  steps in game. If nothing shows it, say what would, and don't build a fix.
+- Write the test that fails without the fix, and check that it does. A test stub more lenient
+  than the client proves nothing.
+- Fix where the fault starts, not where it shows. Keep asking why until you reach the first
+  wrong assumption.
+- Bugs cluster. Search for every other place that makes the same assumption and fix them all,
+  or fix the shared helper they call.
+- Before removing or loosening a guard, a key reset or a default, find out why it is there
+  (`git log -S`). It usually protects a case your test doesn't cover.
+- No special case, flag, extra slot, timer or retry that only makes the reported case work. If
+  the real fix is too large for the PR, say so in the description and name it.
+
 ## PR descriptions
 
 A PR description is prose for the reviewer and for whoever finds the branch in a year. Aim for
@@ -138,6 +158,7 @@ Include:
 - Why the change exists and what limits it, followable with no prior context.
 - How it works, only where the diff doesn't show it. Say where the risk sits so the reviewer
   looks there.
+- For a bug fix, where the fault starts and why the change is made there.
 - Deliberate omissions, and why.
 - Verification as facts only: what ran, what passed, what was not checked (for example, "not
   looked at in-game").
