@@ -1179,7 +1179,7 @@ local function FaceSpeaker(id, moment)
     if Enums.GUID:IsCreature(kind) then
         return { creatureID = speaker, displayID = VO.Player:QuestFace(speaker), bullet = bullet }
     end
-    local icon = kind == Enums.GUID.Item and Spoken.QuestItemIcon and Spoken:QuestItemIcon(id) or nil
+    local icon = kind == Enums.GUID.Item and VO.Player:QuestItemIcon(id, speaker) or nil
     return { objectOrItem = true, icon = icon, bullet = bullet }
 end
 
