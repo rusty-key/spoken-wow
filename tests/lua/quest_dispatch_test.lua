@@ -487,6 +487,60 @@ stub.Advance(5)
 Expect("auto turn-in keeps progress when the panel changes without its event",
     string.format("%d-progress, %d-complete", full, full))
 
+-- A reward page that arrives during a Classic ID gap names no quest, so it cannot show that the
+-- progress page the watcher saw belonged to another quest.
+StartScenario()
+world.questID = full
+stub.ShowPanel("QuestFrameProgressPanel")
+stub.Advance(0.1)
+world.questID = 0
+stub.ShowPanel("QuestFrameRewardPanel")
+stub.FireEvent("QUEST_COMPLETE")
+world.questID = full
+stub.Advance(0.6)
+world.questID = 0
+stub.ShowPanel(nil)
+stub.FireEvent("QUEST_FINISHED")
+stub.Advance(5)
+Expect("an unidentified reward page keeps the watcher's progress page",
+    string.format("%d-progress, %d-complete", full, full))
+
+-- A progress page whose event arrived is the player's to skip: clicking Continue before it is read
+-- reads only the reward page, as it always did.
+StartScenario()
+world.questID = full
+stub.ShowPanel("QuestFrameProgressPanel")
+stub.FireEvent("QUEST_PROGRESS")
+stub.Advance(0.2)
+stub.ShowPanel("QuestFrameRewardPanel")
+stub.FireEvent("QUEST_COMPLETE")
+stub.Advance(0.6)
+world.questID = 0
+stub.ShowPanel(nil)
+stub.FireEvent("QUEST_FINISHED")
+stub.FireEvent("QUEST_TURNED_IN", full, 0, 0)
+stub.Advance(5)
+Expect("a progress page skipped with its event is not read on the reward page",
+    string.format("%d-complete", full))
+
+-- The watcher seeing a page its event recorded leaves that record alone, so another quest's reward
+-- page that follows does not drop it.
+StartScenario()
+world.questID = full
+stub.ShowPanel("QuestFrameProgressPanel")
+stub.FireEvent("QUEST_PROGRESS")
+stub.Advance(0.2)
+world.questID = quests[2]
+stub.ShowPanel("QuestFrameRewardPanel")
+stub.FireEvent("QUEST_COMPLETE")
+stub.Advance(0.6)
+world.questID = 0
+stub.ShowPanel(nil)
+stub.FireEvent("QUEST_FINISHED")
+stub.Advance(5)
+Expect("an event-recorded progress page survives another quest's reward page",
+    string.format("%d-complete, %d-progress", quests[2], full))
+
 -- Read When Window Closes reads nothing while the window is open, and keeps the window's last
 -- page, as it does for pages read in it.
 StartScenario()

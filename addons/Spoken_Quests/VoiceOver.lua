@@ -202,10 +202,20 @@ local function CaptureQuestSnapshot(event, fromWatcher)
             Addon.openQuestTurnIn = turnIn
         end
     end
+    -- The page's own event recorded it already, and that record is the one to keep.
+    if fromWatcher then
+        for _, old in ipairs(questSnapshots) do
+            if not old.fromWatcher and old.event == event and old.questID == questID and
+                old.title == questTitle then
+                return
+            end
+        end
+    end
     -- A progress page the watcher saw just before another quest's reward page was that reward
-    -- page's own, shown while the globals still named the previous quest.
+    -- page's own, shown while the globals still named the previous quest. A reward page that
+    -- names no quest says nothing about which quest the progress page was.
     local previous = questSnapshots[#questSnapshots]
-    if event == "QUEST_COMPLETE" and previous and previous.fromWatcher and
+    if event == "QUEST_COMPLETE" and questID ~= 0 and previous and previous.fromWatcher and
         previous.event == "QUEST_PROGRESS" and previous.questID ~= questID and not previous.dispatched then
         table.remove(questSnapshots)
     end
@@ -219,6 +229,18 @@ local function CaptureQuestSnapshot(event, fromWatcher)
         end
     end
     table.insert(questSnapshots, snapshot)
+end
+
+--- An unread progress page of `questID` that only the watcher recorded: its panel was on screen,
+--- but `QUEST_PROGRESS` never arrived.
+local function HasUnreadWatcherProgress(questID)
+    for _, snapshot in ipairs(questSnapshots) do
+        if snapshot.fromWatcher and not snapshot.dispatched and snapshot.event == "QUEST_PROGRESS" and
+            snapshot.questID == questID then
+            return true
+        end
+    end
+    return false
 end
 
 --- A page of `event` of quest `questID` was read while its dialog was open: the newest record of
@@ -929,11 +951,13 @@ function Addon:OnInitialize()
         event = event or "QUEST_DETAIL"
         local key = PageKey(event, questID, questTitle)
         if key ~= state.candidateKey then
-            -- The progress page gave way to its own reward page before it could be read. Read
-            -- it now, before the reward page is read and marks it as passed over. Read When
-            -- Window Closes keeps only the window's last page, as it does for pages read in it.
+            -- The progress page gave way to its own reward page before it could be read, and
+            -- without its event. Read it now, before the reward page is read and marks it as
+            -- passed over. A progress page whose event arrived was the player's to skip, as it
+            -- always was. Read When Window Closes keeps the last page read in the window.
             if event == "QUEST_COMPLETE" and not self.db.profile.Audio.ReadAfterClose and
-                state.candidateKey == PageKey("QUEST_PROGRESS", questID, questTitle) then
+                state.candidateKey == PageKey("QUEST_PROGRESS", questID, questTitle) and
+                HasUnreadWatcherProgress(questID) then
                 ReplayQuestSnapshots("the progress page advanced to completion", questID,
                     { QUEST_PROGRESS = true })
             end
