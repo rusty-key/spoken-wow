@@ -1486,7 +1486,8 @@ python cli-main.py install --force --addons "<WoW folder>/_forever_/Interface/Ad
 install aside to `<module>.replaced` rather than deleting it. The addons are `addons/Spoken` and
 the modules beside it, and Quests needs Spoken. To run a checkout's code, the repo's
 `/link-addon` skill links every addon folder into a client (`forever` is the default)
-and `/reload` loads it. It skips the audio packs, whose mp3s are not in git, so install a pack
+and `/reload` loads it. For a client on another machine than the worktree, it gives the
+`scripts/developer/sync-addons.sh` command instead. It skips the audio packs, whose mp3s are not in git, so install a pack
 with the command above.
 
 Use `Spoken_Quests` and not upstream's `AI_VoiceOver/`, which calls
