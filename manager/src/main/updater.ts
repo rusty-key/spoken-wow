@@ -34,6 +34,12 @@ export interface UpdaterOptions {
   loadUpdater?: () => Promise<UpdaterLike | null>
   /** Reads a text file from the web; throws when it cannot (tests). Default: `fetch` with a time limit. */
   fetchText?: (url: string) => Promise<string>
+  /**
+   * Resolves once the session proxy is in place. electron-updater sends through its own session, which
+   * `chromiumFetch` does not cover, so a check started while the proxy is still being set would go by the old
+   * route and then have its connections closed under it.
+   */
+  proxyReady?: () => Promise<void>
 }
 
 /** The part of electron-updater's `autoUpdater` this file uses. */
@@ -65,8 +71,13 @@ export function parseFeedVersion(text: string): string | null {
   return m ? m[1]! : null
 }
 
-async function fetchWithLimit(url: string): Promise<string> {
-  const res = await fetch(url, { signal: AbortSignal.timeout(15000), headers: { 'User-Agent': 'Spoken-Manager' } })
+/**
+ * The feed read, with the fetch injected: `index.ts` hands it Chromium's, so this route follows the session's
+ * proxy. It is a small GET of a yml, which is what that stack is good at, and Node's fetch would ignore the
+ * system proxy on the Linux builds that read the feed themselves.
+ */
+export async function fetchWithLimit(url: string, fetchImpl: typeof fetch = fetch): Promise<string> {
+  const res = await fetchImpl(url, { signal: AbortSignal.timeout(15000), headers: { 'User-Agent': 'Spoken-Manager' } })
   if (!res.ok) throw new Error(`${url}: HTTP ${res.status}`)
   const text = await res.text()
   if (text.length > 256 * 1024) throw new Error(`${url}: too large`)
@@ -84,6 +95,8 @@ export class ManagerUpdater {
   private last: UpdaterState = { state: 'idle' }
   /** The check in progress was started by the player, not by the manager on its own. */
   private userTriggered = false
+  /** A check is running, including while it waits for the proxy. */
+  private inCheck = false
   private readonly platform: NodeJS.Platform
   private readonly mode: 'auto' | 'manual'
 
@@ -137,7 +150,6 @@ export class ManagerUpdater {
 
   /** Linux outside an AppImage: read the feed, compare, point to the download page. */
   private async checkManually(): Promise<void> {
-    this.publish({ state: 'checking' })
     const url = `${this.opts.feedUrl ?? FEED_URL}/${feedFileFor(this.platform)}`
     const text = await (this.opts.fetchText ?? fetchWithLimit)(url)
     const version = parseFeedVersion(text)
@@ -155,15 +167,26 @@ export class ManagerUpdater {
   }
 
   private async check(byPlayer: boolean): Promise<void> {
-    if (this.checkWouldInterfere()) return
+    if (this.inCheck || this.checkWouldInterfere()) return
     this.userTriggered = byPlayer
+    // Claimed before the wait, so a second check started while the proxy is being set is turned away. Two
+    // overlapping ones would race for the feed, and the loser's failure would replace a link the winner had
+    // just published.
+    this.inCheck = true
     try {
-      if (this.mode === 'manual') return await this.checkManually()
+      await this.opts.proxyReady?.()
+      if (this.mode === 'manual') {
+        this.publish({ state: 'checking' })
+        return await this.checkManually()
+      }
       const u = await this.load()
       if (!u) return this.failed('electron-updater has no autoUpdater')
       await u.checkForUpdates()
     } catch (err) {
       this.failed(err)
+    } finally {
+      // Released even on a failure. Once a download starts, `checkWouldInterfere` takes over.
+      this.inCheck = false
     }
   }
 

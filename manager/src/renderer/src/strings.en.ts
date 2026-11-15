@@ -250,6 +250,12 @@ export const S_EN = {
     useDefault: 'Use the App Folder',
     keepZips: 'Keep Downloaded Zip Files After Installing',
     keepZipsText: 'Saves a copy of each pack, so a reinstall does not download it again. Packs are large.',
+    proxy: 'Proxy',
+    network: 'Network',
+    proxyText:
+      'Sends the manager through a proxy, one line such as socks5://127.0.0.1:10808. Left empty, downloads, updates and the catalog follow the system proxy, while publishing and the site connect directly. A proxy elsewhere also sees which servers the manager talks to, and if it can decrypt them, your publishing tokens and your site sign-in.',
+    proxyPlaceholder: 'socks5://127.0.0.1:10808',
+    useSystemProxy: 'Follow the System',
     sharing: 'Sharing',
     sharingSwitch: 'Send What Spoken Collects',
     sharingText: 'Sent to spoken.quest after each logout, with your pack versions and a random id. Nothing about your account.',

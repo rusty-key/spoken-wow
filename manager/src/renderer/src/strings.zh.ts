@@ -243,6 +243,12 @@ export const S_ZH: Dict = {
     useDefault: '使用应用目录',
     keepZips: '安装后保留已下载的 zip 文件',
     keepZipsText: '为每个语音包保存一份副本，重新安装时无需再次下载。语音包体积较大。',
+    proxy: '代理',
+    network: '网络',
+    proxyText:
+      '管理器的请求都通过这个代理，一行即可，例如 socks5://127.0.0.1:10808。留空时下载、更新和列表跟随系统代理，发布和网站则直连。填别处的代理，它还能看到管理器连了哪些服务器，若能解开 TLS，也会经手发布用的令牌和网站登录。',
+    proxyPlaceholder: 'socks5://127.0.0.1:10808',
+    useSystemProxy: '跟随系统',
     sharing: '共享',
     sharingSwitch: '发送 Spoken 收集的内容',
     sharingText: '每次退出游戏后发送到 spoken.quest，包含语音包版本和一个随机 id。不含任何账号信息。',

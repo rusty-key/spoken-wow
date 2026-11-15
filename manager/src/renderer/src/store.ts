@@ -189,7 +189,8 @@ export interface Actions {
   addGame(path: string): Promise<AddGameResult>
   removeGame(gameId: string): Promise<void>
   scan(): Promise<void>
-  setSettings(patch: Partial<Settings>): Promise<void>
+  /** The saved settings, which the main process may have normalized: a field shows what came back. */
+  setSettings(patch: Partial<Settings>): Promise<Settings>
   /** Sends the collected lines now; the result comes through `state.sharing`. */
   shareNow(): Promise<void>
   applyContributor(view: ContributorView): void
@@ -304,6 +305,7 @@ function makeActions(dispatch: Dispatch<Action>, get: () => State): Actions {
       const settings = await api().setSettings(patch)
       dispatch({ type: 'settings', settings })
       if ('includePrereleases' in patch) refetchAll(get().games)
+      return settings
     },
     async shareNow() {
       try {

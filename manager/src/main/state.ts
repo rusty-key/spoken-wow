@@ -4,6 +4,7 @@ import fs from 'node:fs'
 import path from 'node:path'
 import { currentProductId } from '../shared/products'
 import { cleanVoiceAuthors, DEFAULT_SETTINGS, SETTING_CHOICES, type Settings } from '../shared/types'
+import { normalizeProxy } from './proxy'
 
 // ---------------------------------------------------------------- files
 
@@ -60,8 +61,23 @@ export function sanitizeSettings(raw: unknown, base: Settings = DEFAULT_SETTINGS
   return out
 }
 
+/** The loaded settings, with the proxy written down in the form both network stacks read: a hand-edited
+ * `socks5h://` would otherwise sit in the window while the traffic used another address. */
 export function loadSettings(dataPath: string): Settings {
-  return sanitizeSettings(readJsonFile<unknown>(settingsFile(dataPath), {}))
+  const settings = sanitizeSettings(readJsonFile<unknown>(settingsFile(dataPath), {}))
+  settings.proxy = readProxySetting(settings.proxy)
+  return settings
+}
+
+/** The stored address, or '' when it cannot be used: a bad one must not keep the manager from opening. */
+function readProxySetting(setting: string): string {
+  try {
+    return normalizeProxy(setting)
+  } catch {
+    // Without the address: it can carry credentials in other tools' habits.
+    log('Dropping the saved proxy: it is not an address the manager can use.')
+    return ''
+  }
 }
 
 export function saveSettings(dataPath: string, settings: Settings): void {
