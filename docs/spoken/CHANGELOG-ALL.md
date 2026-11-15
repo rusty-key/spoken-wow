@@ -15,6 +15,11 @@ from the player whose changelog is CHANGELOG.md beside this one.
   Updating this addon makes sure everyone who installed it earlier gets them.
 - Called Spoken: English in the AddOns list and on CurseForge.
 
+## 1.1.0 — spoken-all-frFR — 2026-11-15
+
+- Installs Spoken French Audio: Bosses too, now that it has a CurseForge project, so the French
+  boss stories come with one install. 7 sound packs in all.
+
 ## 1.1.0 — spoken-all-deDE — 2026-11-04
 
 - Installs Spoken German Audio: Bosses too, now that it has a CurseForge project, so the German
