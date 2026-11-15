@@ -5,9 +5,10 @@
 #   scripts/developer/sync-addons.sh --watch <worktree> [forever|era|tbc]  # keep copying
 #   scripts/developer/sync-addons.sh --stop                                # end --watch
 #
-# Run it on the machine with the client. <worktree> is a worktree's folder name (found under
-# ~/.paseo/worktrees/*/ or ~/ on the server) or its absolute path there. The client is
-# forever unless named. With no checkout on that machine, stream the script from the server:
+# Run it on the machine with the client; /sync-addon gives the command filled in. <worktree>
+# is a worktree's folder name (found under ~/.paseo/worktrees/*/ or ~/ on the server) or its
+# absolute path there. The client is forever unless named. With no checkout on that machine,
+# stream the script from the server:
 #
 #   ssh dev cat <worktree path>/scripts/developer/sync-addons.sh | bash -s -- --watch <worktree>
 #

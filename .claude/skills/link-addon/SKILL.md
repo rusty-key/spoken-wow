@@ -1,6 +1,6 @@
 ---
 name: link-addon
-description: Use when asked to link, install, sync or point the addons at a WoW client, or when invoked as /link-addon [client]. Symlinks every addon folder of the current worktree into the client's Interface/AddOns, so the client runs this checkout's code; when the client is on another machine, gives the command that copies them there and keeps them in step. Client is forever (default), era or tbc.
+description: Use when asked to link, install or point the addons at a WoW client, or when invoked as /link-addon [client]. Symlinks every addon folder of the current worktree into the client's Interface/AddOns, so the client runs this checkout's code. Client is forever (default), era or tbc.
 argument-hint: "[forever|era|tbc]"
 ---
 
@@ -20,31 +20,10 @@ The argument names the client. Without one, use `forever`.
 | `era`    | Classic Era                  | `_classic_era_`                                |
 | `tbc`    | TBC Anniversary (2.5.x)      | `_anniversary_`                                |
 
-Any other argument: stop and list these three. If `/Applications/World of Warcraft` is not on
-this machine, go to step 2. If it is but the client's `Interface/AddOns` folder is not, stop and
-say that client is not installed.
+Any other argument: stop and list these three. If the client's `Interface/AddOns` folder does not
+exist, stop and say that client is not installed.
 
-## 2. Client on another machine
-
-If the client's folder is not on this machine, the worktree is on a server and the client is on
-the player's own computer. Nothing here can reach that computer, so don't link. Give the user
-the command to run there, filled in with this worktree's folder name and path and the client:
-
-```sh
-ssh dev cat <worktree path>/scripts/developer/sync-addons.sh | bash -s -- --watch <worktree name> <client>
-```
-
-Or, from a checkout on that computer, `scripts/developer/sync-addons.sh --watch <worktree name>
-<client>`. It copies the same folders this skill links, with the same backups, and `--watch`
-keeps them in step through Mutagen until `--stop` or the next `--watch`, so after it the user
-only needs `/reload`. Without Mutagen, leave out `--watch` and run it again before each
-`/reload`. The server's ssh host is `dev` unless `SPOKEN_DEV_HOST` names another. The script's
-header has the rest.
-
-An agent on the client's computer, asked to run a worktree that lives on the server, runs that
-command itself instead of giving it.
-
-## 3. Link
+## 2. Link
 
 The source is `addons/` at the root of the current worktree (`git rev-parse --show-toplevel`),
 never the main checkout.
@@ -65,7 +44,7 @@ For each folder, the destination is `<client>/Interface/AddOns/<folder name>`:
 
 SavedVariables live under `WTF/`, so relinking never touches settings.
 
-## 4. Report
+## 3. Report
 
 Show the client and, for each addon, where it now points. Then list:
 
