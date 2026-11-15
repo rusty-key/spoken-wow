@@ -6,6 +6,7 @@ lang: ruRU
 pack: alliance
 version: 0.0.3
 github: false
+inMeta: false
 slug: spoken-russian-audio-quests-alliance
 name: Spoken Russian Audio: Quests - Alliance
 summary: Alliance-only quest dialogue, voiced in Russian. Pair it with the Shared pack. Needs Spoken.

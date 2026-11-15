@@ -6,6 +6,7 @@ lang: ruRU
 pack: horde
 version: 0.0.3
 github: false
+inMeta: false
 slug: spoken-russian-audio-quests-horde
 name: Spoken Russian Audio: Quests - Horde
 summary: Horde-only quest dialogue, voiced in Russian. Pair it with the Shared pack. Needs Spoken.

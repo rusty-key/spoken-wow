@@ -20,6 +20,26 @@ from the player whose changelog is CHANGELOG.md beside this one.
 - Installs Spoken French Audio: Bosses too, now that it has a CurseForge project, so the French
   boss stories come with one install. 7 sound packs in all.
 
+## 1.1.0 — spoken-all-koKR — 2026-11-15
+
+- Installs Spoken Korean Audio: Bosses too, now that it has a CurseForge project, so the
+  Korean boss stories come with one install. 5 sound packs in all.
+
+## 1.1.0 — spoken-all-ruRU — 2026-11-15
+
+- Installs Spoken Russian Audio: Bosses too, now that it has a CurseForge project, so the
+  Russian boss stories come with one install. 5 sound packs in all.
+
+## 1.1.0 — spoken-all-zhCN — 2026-11-15
+
+- Installs Spoken Chinese (Simplified) Audio: Bosses too, now that it has a CurseForge project,
+  so the Chinese (Simplified) boss stories come with one install. 5 sound packs in all.
+
+## 1.1.0 — spoken-all-zhTW — 2026-11-15
+
+- Installs Spoken Chinese (Traditional) Audio: Bosses too, now that it has a CurseForge project,
+  so the Chinese (Traditional) boss stories come with one install. 5 sound packs in all.
+
 ## 1.1.0 — spoken-all-deDE — 2026-11-04
 
 - Installs Spoken German Audio: Bosses too, now that it has a CurseForge project, so the German

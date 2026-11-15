@@ -1,10 +1,10 @@
 ---
 curseforge: 1746509
 lang: koKR
-version: 1.0.0
+version: 1.1.0
 slug: spoken-korean
 name: Spoken: Korean
-summary: Meta package: installs Spoken with every Korean voice pack, quests, gossip, zones and books. Install through the CurseForge app.
+summary: Meta package: installs Spoken with every Korean voice pack, quests, gossip, zones, books and boss stories. Install through the CurseForge app.
 categories:
   - Audio & Video
   - Roleplay
@@ -18,7 +18,7 @@ license: MIT
 
 ## What it installs
 
-[Spoken](https://www.curseforge.com/wow/addons/spoken), which carries Spoken Quests, Spoken Places and Spoken Readables inside it, and the Korean voice packs:
+[Spoken](https://www.curseforge.com/wow/addons/spoken), which carries Spoken Quests, Spoken Places, Spoken Readables and Spoken Bosses inside it, and the Korean voice packs:
 
 | Module | Voices | Its audio |
 | --- | --- | --- |
@@ -26,6 +26,7 @@ license: MIT
 | Spoken Quests | NPC gossip | [Spoken Korean Audio: Gossip](https://www.curseforge.com/wow/addons/spoken-korean-audio-gossip) |
 | Spoken Places | zone and subzone lore | [Spoken Korean Audio: Places](https://www.curseforge.com/wow/addons/spoken-korean-audio-places) |
 | Spoken Readables | books, letters, notes and plaques | [Spoken Korean Audio: Readables](https://www.curseforge.com/wow/addons/spoken-korean-audio-readables) |
+| Spoken Bosses | the story of each dungeon and raid boss | [Spoken Korean Audio: Bosses](https://www.curseforge.com/wow/addons/spoken-korean-audio-bosses) |
 
 ## Language
 

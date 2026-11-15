@@ -6,6 +6,7 @@ lang: koKR
 pack: alliance
 version: 0.0.2
 github: false
+inMeta: false
 slug: spoken-korean-audio-quests-alliance
 name: Spoken Korean Audio: Quests - Alliance
 summary: Alliance-only quest dialogue, voiced in Korean. Pair it with the Shared pack. Needs Spoken.

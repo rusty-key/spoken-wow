@@ -1,10 +1,10 @@
 ---
 curseforge: 1746512
 lang: zhTW
-version: 1.0.0
+version: 1.1.0
 slug: spoken-chinese-traditional
 name: Spoken: Chinese (Traditional)
-summary: Meta package: installs Spoken with every Traditional Chinese voice pack, quests, gossip, zones and books. Install through the CurseForge app.
+summary: Meta package: installs Spoken with every Traditional Chinese voice pack, quests, gossip, zones, books and boss stories. Install through the CurseForge app.
 categories:
   - Audio & Video
   - Roleplay
@@ -18,7 +18,7 @@ license: MIT
 
 ## What it installs
 
-[Spoken](https://www.curseforge.com/wow/addons/spoken), which carries Spoken Quests, Spoken Places and Spoken Readables inside it, and the Traditional Chinese voice packs:
+[Spoken](https://www.curseforge.com/wow/addons/spoken), which carries Spoken Quests, Spoken Places, Spoken Readables and Spoken Bosses inside it, and the Traditional Chinese voice packs:
 
 | Module | Voices | Its audio |
 | --- | --- | --- |
@@ -26,6 +26,7 @@ license: MIT
 | Spoken Quests | NPC gossip | [Spoken Chinese (Traditional) Audio: Gossip](https://www.curseforge.com/wow/addons/spoken-chinese-traditional-audio-gossip) |
 | Spoken Places | zone and subzone lore | [Spoken Chinese (Traditional) Audio: Places](https://www.curseforge.com/wow/addons/spoken-chinese-traditional-audio-places) |
 | Spoken Readables | books, letters, notes and plaques | [Spoken Chinese (Traditional) Audio: Readables](https://www.curseforge.com/wow/addons/spoken-chinese-traditional-audio-readables) |
+| Spoken Bosses | the story of each dungeon and raid boss | [Spoken Chinese (Traditional) Audio: Bosses](https://www.curseforge.com/wow/addons/spoken-chinese-traditional-audio-bosses) |
 
 ## Language
 

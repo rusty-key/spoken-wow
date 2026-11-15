@@ -6,6 +6,7 @@ lang: zhCN
 pack: alliance
 version: 0.0.1
 github: false
+inMeta: false
 slug: spoken-chinese-simplified-audio-quests-alliance
 name: Spoken Chinese (Simplified) Audio: Quests - Alliance
 summary: Alliance-only quest dialogue, voiced in Chinese (Simplified). Pair it with the Shared pack. Needs Spoken.
