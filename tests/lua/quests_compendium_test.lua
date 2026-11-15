@@ -1392,17 +1392,25 @@ stub.world.playerName = "Tester"
 local kept = VO.Addon.db.global.CompendiumText
 Expect("...kept by language", kept.deDE[KOBOLDS] ~= nil and kept.enUS == nil, true)
 
--- An item starter keeps its real icon after the item has left the player's bags. The data pack
--- knows the item id; the client supplies its icon directly instead of requiring a bag slot.
+-- An item starter keeps its real icon after the item has left the player's bags.
 do
     local ITEM, ITEM_ICON, oldCItem = 211315, "Interface\\Icons\\INV_Misc_Map_01", _G.C_Item
-    _G.C_Item = { GetItemInfoInstant = function(id)
-        return id, "Quest", "Note", "", id == ITEM and ITEM_ICON or nil
-    end }
+    _G.C_Item = { GetItemInfoInstant = function() return nil, nil, nil, nil, ITEM_ICON end }
     testPack.ItemIDLookupByQuestID = { [CANDLES] = ITEM }
     Tab:Open(CANDLES)
     local offer = page.body.lastParts[1]
     Expect("an item-started quest uses the item's real icon", offer.face.viewport.texture:GetTexture(), ITEM_ICON)
+    -- The item in the bags is the one that starts the quest; the packs' id only stands in for it.
+    local BAG_ICON, oldContainer = 134939, _G.C_Container
+    _G.C_Container = {
+        GetContainerNumSlots = function(bag) return bag == 1 and 1 or 0 end,
+        GetContainerItemInfo = function() return { iconFileID = BAG_ICON } end,
+        GetContainerItemQuestInfo = function() return { isQuestItem = true, questID = CANDLES } end,
+    }
+    Tab:Open(KOBOLDS)
+    Tab:Open(CANDLES)
+    Expect("...the item in the bags before the packs' id", page.body.lastParts[1].face.viewport.texture:GetTexture(), BAG_ICON)
+    _G.C_Container = oldContainer
     testPack.ItemIDLookupByQuestID, _G.C_Item = nil, oldCItem
     Tab:Open(KOBOLDS)
 end

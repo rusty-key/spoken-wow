@@ -120,12 +120,23 @@ local function CreatureFor(soundData)
     return nil
 end
 
+--- The icon of the item that starts `questID`, with its crop: the one in the bags, else `itemID` or
+--- the one the packs name, which the client knows after the item has left the bags.
+function Player:QuestItemIcon(questID, itemID)
+    local icon, crop = Spoken:QuestItemIcon(questID)
+    if icon then return icon, crop end
+    if not itemID then
+        local kind, id = DataModules:GetQuestLogQuestGiverTypeAndID(questID)
+        itemID = kind == Enums.GUID.Item and id or nil
+    end
+    return Spoken:ItemIcon(itemID)
+end
+
 -- A line from something faceless shows the item that starts the quest, else a posted notice.
 local NOTICE = [[Interface\Icons\INV_Misc_Note_01]]
 local ICON_CROP = { 0.08, 0.92, 0.08, 0.92 }
 local function Faceless(soundData)
-    local icon, crop
-    if Spoken and Spoken.QuestItemIcon then icon, crop = Spoken:QuestItemIcon(soundData.questID) end
+    local icon, crop = Player:QuestItemIcon(soundData.questID)
     return { kind = "texture", texture = icon or NOTICE, texCoord = crop or ICON_CROP }
 end
 

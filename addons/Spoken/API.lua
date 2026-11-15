@@ -466,14 +466,8 @@ end
 function Spoken:ItemIcon(itemID)
     if not itemID then return nil end
     local getInfo = (C_Item and C_Item.GetItemInfoInstant) or GetItemInfoInstant
-    if getInfo then
-        local _, _, _, _, icon = getInfo(itemID)
-        if icon then return icon, ICON_CROP end
-    end
-    local getIcon = (C_Item and C_Item.GetItemIconByID) or GetItemIcon
-    local icon = getIcon and getIcon(itemID) or nil
-    if not icon then return nil end
-    return icon, ICON_CROP
+    local icon = getInfo and select(5, getInfo(itemID))
+    if icon then return icon, ICON_CROP end
 end
 
 --- The id and name of the bag item that starts `questID`, read from its link: an item's GUID
