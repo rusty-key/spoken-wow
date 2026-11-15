@@ -225,7 +225,7 @@ elif args.mode == "build":
                           ignored=load_pack_ignored(corpus, args.ignored, args.overrides),
                           include=include,
                           title=args.module_title or pack_title(args.pack),
-                          language=args.language, locale_text=locale_text)
+                          language=args.language, locale_text=locale_text, pack=args.pack)
     print(f"\nbuilt {report['moduleDir']}")
     print(f"  audio files {report['audioFiles']} ({report['audioFormat']}, pack: {args.pack})")
     for name, rows in sorted(report["tableRows"].items()):

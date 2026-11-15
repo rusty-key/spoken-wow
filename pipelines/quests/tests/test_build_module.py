@@ -416,6 +416,36 @@ def test_locale_text_without_a_language_is_refused(tmp_path):
         build_module(CORPUS, store, str(tmp_path / "dist"), "Mod", locale_text=MX_TEXT)
 
 
+GOSSIP_TEXT_FILES = ("npc_gossip_file_lookups.lua", "object_gossip_file_lookups.lua",
+                     "npc_name_gossip_file_lookups.lua", "object_name_gossip_file_lookups.lua")
+
+
+@pytest.mark.parametrize("pack", ["alliance", "horde", "shared"])
+def test_a_quest_pack_leaves_the_gossip_text_tables_to_the_gossip_pack(tmp_path, pack):
+    # They name gossip audio, which a quest pack never carries, and are about half the Lua the
+    # client parses for a pack at login.
+    report = build_module(CORPUS, _store(tmp_path, "quests/5-accept.ogg"), str(tmp_path / "dist"),
+                          "Mod", include={"quests/5-accept"}, pack=pack)
+
+    generated = tmp_path / "dist" / "Mod" / "generated"
+    for name in GOSSIP_TEXT_FILES:
+        assert not (generated / name).exists()
+        assert f"generated\\{name}" not in _toc(tmp_path)
+    assert "npc_gossip_file_lookups" not in report["tableRows"]
+    assert "generated\\quest_id_lookups.lua" in _toc(tmp_path)
+    assert "generated\\npc_body_gossip_file_lookups.lua" in _toc(tmp_path)
+
+
+@pytest.mark.parametrize("pack", [None, "all", "gossip"])
+def test_the_gossip_pack_keeps_the_gossip_text_tables(tmp_path, pack):
+    build_module(CORPUS, _store(tmp_path, "gossip/abc123.ogg"), str(tmp_path / "dist"), "Mod",
+                 pack=pack)
+
+    for name in GOSSIP_TEXT_FILES:
+        assert f"generated\\{name}" in _toc(tmp_path)
+    assert '"Move along."' in _generated(tmp_path, "npc_gossip_file_lookups.lua")
+
+
 def test_a_language_pack_without_locale_text_has_no_locale_tables(tmp_path):
     # The faction packs of a language, and every English pack.
     store = _store(tmp_path, "gossip/abc123.ogg")
