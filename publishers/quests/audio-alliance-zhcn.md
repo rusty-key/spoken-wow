@@ -4,7 +4,7 @@ release: quests-audio-alliance-zhCN
 section: quests
 lang: zhCN
 pack: alliance
-version: 0.0.1
+version: 0.0.2
 github: false
 inMeta: false
 slug: spoken-chinese-simplified-audio-quests-alliance

@@ -4,7 +4,7 @@ release: quests-audio-horde-koKR
 section: quests
 lang: koKR
 pack: horde
-version: 0.0.2
+version: 0.0.3
 github: false
 inMeta: false
 slug: spoken-korean-audio-quests-horde

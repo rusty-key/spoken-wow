@@ -4,7 +4,7 @@ release: quests-audio-horde-ruRU
 section: quests
 lang: ruRU
 pack: horde
-version: 0.0.3
+version: 0.0.4
 github: false
 inMeta: false
 slug: spoken-russian-audio-quests-horde

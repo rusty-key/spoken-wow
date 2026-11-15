@@ -4,7 +4,7 @@ release: quests-audio-horde-zhCN
 section: quests
 lang: zhCN
 pack: horde
-version: 0.0.1
+version: 0.0.2
 github: false
 inMeta: false
 slug: spoken-chinese-simplified-audio-quests-horde

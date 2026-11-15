@@ -4,7 +4,7 @@ release: quests-audio-gossip-zhCN
 section: quests
 lang: zhCN
 pack: gossip
-version: 0.0.1
+version: 0.0.2
 github: false
 slug: spoken-chinese-simplified-audio-gossip
 name: Spoken Chinese (Simplified) Audio: Gossip
