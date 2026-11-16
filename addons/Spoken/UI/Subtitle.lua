@@ -70,12 +70,6 @@ local function Measure(subtitle)
     return path, size
 end
 
-local function Words(text)
-    local count = 0
-    for _ in text:gmatch("%S+") do count = count + 1 end
-    return count
-end
-
 local Prefix = Transcript.Prefix
 
 local HIGHLIGHT = Transcript.HIGHLIGHT
@@ -641,18 +635,17 @@ end
 function Subtitle:CharsSpan(n)
     local total = 0
     for _, row in ipairs(self.rows or {}) do
-        local words = Words(row.text)
-        if n <= words then
-            local seen = 0
-            for start, finish in row.text:gmatch("()%S+()") do
-                seen = seen + 1
-                if seen == n then
-                    return total + Characters(row.text:sub(1, start - 1)),
-                        total + Characters(row.text:sub(1, finish - 1))
-                end
-            end
+        local words = row.tokens
+        if not words then
+            words = Transcript:Split(row.text)
+            row.tokens = words
         end
-        n = n - words
+        if n <= #words then
+            local word = words[n]
+            return total + Characters(row.text:sub(1, word.first - 1)),
+                total + Characters(row.text:sub(1, word.last))
+        end
+        n = n - #words
         total = total + row.count
     end
     return total, total
@@ -682,6 +675,17 @@ end
 --- nil before the voice reaches the page and once it has read it.
 function Subtitle:LitWord(page, elapsed)
     if self.sample or not Config().HighlightWord then return nil end
+    -- Use the same word clock as the narrator. Character position runs ahead of speech
+    -- around short words and pauses, especially when an optional faster file plays.
+    if page.firstWord and Transcript.clip == self.clip then
+        local progress = Transcript:GetProgress()
+        if not Transcript:IsSpeaking(progress) then return nil end
+        local word = Transcript:WordAt(progress)
+        if word and word >= page.firstWord and word <= page.lastWord then
+            return word - page.firstWord + 1
+        end
+        return nil
+    end
     local at = (elapsed - page.start) / math.max(.5, page.length) * page.count
     if at < 0 or at >= page.count then return nil end
     for n, finish in ipairs(self.wordEnds or {}) do
@@ -700,6 +704,7 @@ end
 function Subtitle:Prepare(clip, text)
     Measure(self)
     self.layoutKey, self.resumeTyping = self:LayoutKey(), nil
+    self.clipDuration = tonumber(clip.length)
     self.clip, self.page = clip, nil
     self.pageFade, self.shadowSize = nil, nil
     for _, line in ipairs(self.lines or {}) do line:SetAlpha(1) end
@@ -732,8 +737,39 @@ function Subtitle:Prepare(clip, text)
         self.pages[index] = { text = page, count = count, start = start, length = length }
         start = start + length
     end
-    if Transcript.timed and Transcript.clip == clip and Transcript.text == text then
-        self:TimePages(Transcript.words, duration)
+    -- Page text can be broken inside a word. Match the actual transcript tokens so
+    -- languages without spaces keep their timing when page boundaries preserve them.
+    local nextWord, matched = 1, true
+    for _, page in ipairs(self.pages) do
+        local words = Transcript:Split(page.text)
+        local count = #words
+        for index, word in ipairs(words) do
+            if not Transcript.words or not Transcript.words[nextWord + index - 1]
+                or Transcript.words[nextWord + index - 1].text ~= word.text then matched = false end
+        end
+        page.firstWord, page.lastWord = nextWord, nextWord + count - 1
+        nextWord = nextWord + count
+    end
+    matched = matched and Transcript.clip == clip and Transcript.text == text
+        and nextWord - 1 == #(Transcript.words or {})
+    if not matched then
+        for _, page in ipairs(self.pages) do page.firstWord, page.lastWord = nil, nil end
+    end
+    if matched and Transcript.totalWeight and Transcript.totalWeight > 0 then
+        if Transcript.timed then
+            self:TimePages(Transcript.words, duration)
+        else
+            -- Turn a page when the narrator's estimated voice reaches its first word.
+            -- The old character share could leave an accelerated voice reading ahead
+            -- while the subtitle still displayed the preceding page.
+            for index = 2, #self.pages do
+                local page = self.pages[index]
+                page.start = duration * Transcript.words[page.firstWord].start / Transcript.totalWeight
+            end
+            for index, page in ipairs(self.pages) do
+                page.length = (self.pages[index + 1] and self.pages[index + 1].start or duration) - page.start
+            end
+        end
     end
 end
 
@@ -860,7 +896,8 @@ function Subtitle:Update()
         self:Place()
     end
     local clip = speaking and Transcript.clip or self.sample
-    if self.clip and self.pages and self.layoutKey ~= self:LayoutKey() then
+    if self.clip and self.pages and (self.layoutKey ~= self:LayoutKey()
+        or (clip == self.clip and self.clipDuration ~= tonumber(clip.length))) then
         self:Prepare(self.clip, self.sample and L.SUBTITLE_SAMPLE_TEXT or Transcript.text)
         -- Typed on from where the voice is, not from the page's start again.
         self.resumeTyping, self.revealed = true, nil
@@ -904,7 +941,7 @@ function Subtitle:Corner(clip)
         self.report = nil
     end
     -- As wide as the buttons it shows, so the row stays centred under the subtitle.
-    local count = action and 3 or 2
+    local count = action and 4 or 3
     self.controls:SetWidth(CONTROL_SIZE * count + CONTROL_GAP * (count - 1))
 end
 
@@ -927,10 +964,14 @@ function Subtitle:BuildControls()
     skip:SetPoint("LEFT", pause, "RIGHT", CONTROL_GAP, 0)
     self.skip = skip
 
+    local speed = Actions.SpeedButton(controls)
+    speed:SetPoint("LEFT", skip, "RIGHT", CONTROL_GAP, 0)
+    self.speed = speed
+
     -- Report, in the same ring, with the action's own bug icon: what the windows show in their
     -- corner, and what it does is the action's, as there.
     local report = Actions.RoundButton(controls)
-    report:SetPoint("LEFT", skip, "RIGHT", CONTROL_GAP, 0)
+    report:SetPoint("LEFT", speed, "RIGHT", CONTROL_GAP, 0)
     report:SetScript("OnClick", function()
         if report.action and report.action.onClick then report.action.onClick(report.clip) end
     end)

@@ -693,6 +693,30 @@ function Spoken:TogglePause()
     return SoundQueue:TogglePauseQueue()
 end
 
+function Spoken:GetPlaybackSpeed()
+    local speed = Addon:Profile("Audio").PlaybackSpeed
+    for _, option in ipairs(self.PlaybackSpeeds) do
+        if option.rate == speed then return speed end
+    end
+    return 1
+end
+
+--- A sound already speaking cannot change rate in place. Replay it from the start at the new rate.
+function Spoken:SetPlaybackSpeed(speed)
+    local supported = false
+    for _, option in ipairs(self.PlaybackSpeeds) do
+        if option.rate == speed then supported = true; break end
+    end
+    if not supported then return false end
+    if self:GetPlaybackSpeed() == speed then return true end
+    local speaking = SoundQueue:IsPlaying()
+    if speaking then SoundQueue:PauseQueue(true) end
+    Addon:Profile("Audio").PlaybackSpeed = speed
+    if speaking then SoundQueue:ResumeQueue() end
+    Callbacks:Fire("PLAYBACK_SPEED_CHANGED", speed)
+    return true
+end
+
 --- The player's round button, the same one its subtitle shows, for a feature addon's own
 --- window: `kind` "play" (Play's glyph; `button:SetPlaying(on)` shows Stop while a line
 --- speaks), "skip" (Skip's glyph; a click skips the line speaking, so it needs no OnClick),

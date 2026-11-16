@@ -179,6 +179,11 @@ function PlayerFrame:InitHeader()
         function() self:UpdateControls() end)
     self.skip = Actions.SkipButton(self.controls)
     self.buttons = { self.play, self.skip }
+    -- The narrow right margin belongs to the Talking Head's controls, not its words. Keep the
+    -- rate below Stop and Skip so a longer speaker or title loses no room to it.
+    self.speed = Actions.SpeedButton(self.frame)
+    self.speed:SetPoint("TOPRIGHT", self.frame, "TOPRIGHT", -10, -65)
+    self.speed:SetFrameLevel(self.controls:GetFrameLevel() + 1)
 
     self.progress = Actions.ProgressBar(container)
     self.progress.track:SetPoint("BOTTOMLEFT", container, "BOTTOMLEFT", 0, 0)

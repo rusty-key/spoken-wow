@@ -8,6 +8,13 @@ Addon = LibStub("AceTimer-3.0"):Embed({})
 Bullets = {}
 Renderers = {}
 
+Spoken.PlaybackSpeeds = {
+    { rate = 1 },
+    { rate = 1.25, prefix = "SpokenSpeed125_" },
+    { rate = 1.5, prefix = "SpokenSpeed15_" },
+    { rate = 2, prefix = "SpokenSpeed20_" },
+}
+
 -- Window Size, Subtitle Size and Text Size: lowest, highest and step, for their sliders and for
 -- Ctrl and the mouse wheel over the windows and the subtitles.
 SIZES = {
@@ -50,6 +57,8 @@ Defaults = {
         Audio = {
             -- A string, because that is what PlaySoundFile takes.
             SoundChannel = "Master",
+            -- 1 is the recording as shipped. Faster copies live in separate, optional packs.
+            PlaybackSpeed = 1,
             -- Seconds of quiet between one line and the next, on top of each module's own short
             -- gap: back to back, a new line started before the last had settled.
             LineGap = 1,

@@ -124,6 +124,7 @@ function MinimalPlayer:Initialize(original)
         function() self:UpdateControls() end)
     self.skip = Actions.SkipButton(self.controls)
     self.buttons = { self.play, self.skip }
+    self.speed = Actions.SpeedButton(self.controls)
 
     self.name = Font(self.header, 16, 1, .82, 0)
     self.name:SetHeight(NAME_HEIGHT)
@@ -254,7 +255,7 @@ function MinimalPlayer:ActionRow(index)
 end
 
 function MinimalPlayer:ConfigureActions()
-    self.row = Actions:HeaderControls(self.frame, self.controls, self.buttons, self.clip)
+    self.row = Actions:HeaderControls(self.frame, self.controls, { self.play, self.skip, self.speed }, self.clip)
     Actions.LayOutRow(self.controls, self.row, ROUND_GAP)
     local rows = 0
     for _, button in ipairs(self.frame.actions.buttons) do

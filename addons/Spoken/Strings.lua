@@ -205,6 +205,7 @@ L = {
     OPT_DIAGNOSTICS = "Show Diagnostics",
     OPT_AUDIO_TITLE = "Sound",
     OPT_PLAYBACK_TITLE = "Playback",
+    OPT_PLAYBACK_SPEED = "Voice Speed",
     OPT_WHILE_READING_TITLE = "While Spoken Reads",
     OPT_LANGUAGE_TITLE = "Language",
     OPT_VOICE_LANGUAGE = "Voice Language",

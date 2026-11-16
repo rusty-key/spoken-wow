@@ -124,6 +124,22 @@ function SoundUtils:TestSound(clip, channel)
     return willPlay
 end
 
+--- The optional pack mirrors the original pack's audio paths under its own addon folder.
+--- A missing speed pack leaves the original recording usable without changing the settings.
+function SoundUtils:SpeedPath(path, speed)
+    local prefix
+    for _, option in ipairs(Spoken.PlaybackSpeeds) do
+        if option.rate == speed then prefix = option.prefix; break end
+    end
+    if not prefix then return nil end
+    local root, pack, rest, extension = string.match(path or "", "^(Interface[\\/]AddOns[\\/])([^\\/]+)([\\/].+%.(%w+))$")
+    if not root or (string.lower(extension) ~= "ogg" and string.lower(extension) ~= "mp3") then return nil end
+    local addon = prefix .. pack
+    local getInfo = C_AddOns and C_AddOns.GetAddOnInfo or GetAddOnInfo
+    if not getInfo or not getInfo(addon) then return nil end
+    return root .. addon .. rest
+end
+
 --- Starts the clip on the channel and records the handle on it, which is the only way to
 --- stop it again. Returns whether the client accepted the file.
 ---@param clip { path: string, handle: number? }
@@ -131,8 +147,24 @@ end
 ---@return boolean willPlay
 ---@return number|nil handle
 function SoundUtils:PlaySound(clip, channel)
+    clip.originalLength = clip.originalLength or clip.length
+    clip.length = clip.originalLength
+    clip.playbackSpeed = 1
+    local speed = Spoken:GetPlaybackSpeed()
+    local alternate = self:SpeedPath(clip.path, speed)
+    if alternate then
+        local willPlay, handle = PlaySoundFile(alternate, channel)
+        if willPlay then
+            clip.handle = handle
+            clip.length = clip.originalLength / speed
+            clip.playbackSpeed = speed
+            clip.playedPath = alternate
+            return willPlay, handle
+        end
+    end
     local willPlay, handle = PlaySoundFile(clip.path, channel)
     clip.handle = handle
+    clip.playedPath = clip.path
     return willPlay, handle
 end
 

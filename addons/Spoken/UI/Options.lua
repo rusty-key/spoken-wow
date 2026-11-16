@@ -18,6 +18,8 @@ local scroller
 local Layout = SpokenLayout
 
 local CHANNELS = { "Master", "SFX", "Music", "Ambience", "Dialog" }
+local SPEEDS = {}
+for _, option in ipairs(Spoken.PlaybackSpeeds) do SPEEDS[#SPEEDS + 1] = option.rate end
 -- Stored names stay English: playback passes them to the sound API.
 local CHANNEL_LABELS = {
     Master = L.OPT_CHANNEL_MASTER,
@@ -802,6 +804,10 @@ local function Build()
 
     -- How lines follow one another.
     layout:Section(L.OPT_PLAYBACK_TITLE)
+    layout:Dropdown(L.OPT_PLAYBACK_SPEED, nil, SPEEDS,
+        function() return Spoken:GetPlaybackSpeed() end,
+        function(v) Spoken:SetPlaybackSpeed(v) end, nil,
+        function(v) return format("%g×", v) end)
     layout:Slider(L.OPT_LINE_GAP, 0, 5, 0.25,
         function() return audio().LineGap or 0 end, function(v) audio().LineGap = v end,
         nil, Layout.Seconds)
