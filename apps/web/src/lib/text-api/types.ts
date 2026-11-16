@@ -10,6 +10,8 @@ export type TextItem = {
   /** Quests only: 103 line ids name two different lines. */
   variant?: number;
   text: string | null;
+  /** Quests only: what the line is spoken as in place of `text`. */
+  override?: string | null;
   /** Places only. */
   short?: string | null;
   version: number | null;

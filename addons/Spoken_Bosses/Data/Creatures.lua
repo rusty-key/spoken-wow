@@ -186,7 +186,7 @@ SpokenBossCreatures = {
 	},
 	[329] = {
 		["archivist galford"] = { creature = 10811, display = 10544 },
-		["balnazzar"] = { creature = 10812, display = 10545 },
+		["balnazzar"] = { creature = 10812, display = 10691 },
 		["baron rivendare"] = { creature = 10440, display = 10729 },
 		["baroness anastari"] = { creature = 10436, display = 10698 },
 		["black guard swordsmith"] = { creature = 11121, display = 775 },
@@ -298,7 +298,7 @@ SpokenBossCreatures = {
 		["patchwerk"] = { creature = 16028, display = 16174 },
 		["sapphiron"] = { creature = 15989, display = 16033 },
 		["thaddius"] = { creature = 15928, display = 16137 },
-		["the four horsemen"] = { creature = 16062, display = 16139 },
+		["the four horsemen"] = { creature = 16062, display = 10729 },
 	},
 	[2789] = {
 		["lord kazzak"] = { creature = 12397, display = 12449 },
@@ -314,6 +314,9 @@ SpokenBossCreatures = {
 		["lethon"] = { creature = 14888, display = 15365 },
 		["taerar"] = { creature = 14890, display = 15363 },
 		["ysondre"] = { creature = 14887, display = 15364 },
+	},
+	[2856] = {
+		["balnazzar"] = { creature = nil, display = 10545 },
 	},
 	[2875] = {
 		["kaigy maryla"] = { creature = 256275, display = 139545 },

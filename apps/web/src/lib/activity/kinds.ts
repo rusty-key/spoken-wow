@@ -32,6 +32,8 @@ export function auditDetail(audit: ApiAudit | undefined, previous: number | null
   };
 }
 
+type PackSubmissionDetail = { packId: string; version: string; submissionId: string };
+
 export type ActivityDetail = {
   // Audio.
   "take.generated": {
@@ -43,6 +45,8 @@ export type ActivityDetail = {
     batchId?: string;
   };
   "take.restored": { version: number; from?: number | null };
+  /** The site could not make the Ogg a quests pack ships for this take; `error` says why. */
+  "take.encode_failed": { version: number; error: string };
   /** `groupId` when the take was one of several cleared in one click; the page folds it there. */
   "take.acked": { groupId?: string };
   "marks.cleared": { groupId: string; count: number };
@@ -151,6 +155,16 @@ export type ActivityDetail = {
   "release.started": { section: string };
   "release.finished": { section: string; state: "done" | "unchanged" | "failed"; version?: string };
 
+  // Community packs: every language's, the subject is the pack id.
+  "pack.submitted": PackSubmissionDetail;
+  "pack.approved": PackSubmissionDetail;
+  "pack.rejected": PackSubmissionDetail & { reason: string };
+  "pack.withdrawn": PackSubmissionDetail;
+  "pack.listed": { packId: string };
+  "pack.unlisted": { packId: string };
+  /** `ownerId` null when the admin left the pack with nobody. */
+  "pack.owner": { packId: string; ownerId: string | null };
+
   // Accounts, through better-auth's admin plugin rather than this app's routes. Every
   // language's, so a global admin's alone to read: see `global` in store.ts.
   /** `role` as set-role received it: one role, or several joined with ", ". */
@@ -216,6 +230,7 @@ const CATEGORY_OF: Record<string, Category> = {
   language: "admin",
   team: "admin",
   release: "admin",
+  pack: "admin",
   contribution: "admin",
   report: "admin",
   user: "admin",

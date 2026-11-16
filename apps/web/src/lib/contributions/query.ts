@@ -147,6 +147,8 @@ export type ContributionFilters = {
   status: ContributionStatus;
   bucket: Bucket;
   client: ClientFilter;
+  /** A client build number; absent is every build. */
+  build?: string;
   /** The section, which is the page's path rather than a filter. */
   source: Section;
   stage: StageFilter;
@@ -161,6 +163,7 @@ export type FilterChange = {
   status?: ContributionStatus;
   bucket?: Bucket;
   client?: ClientFilter;
+  build?: string;
   stage?: StageFilter;
   sort?: ContributionSort;
   q?: string;
@@ -184,6 +187,7 @@ export function nextContributionFilters(
     status: "status" in next ? (next.status ?? "new") : current.status,
     bucket: "bucket" in next ? (next.bucket ?? "ready") : current.bucket,
     client: "client" in next ? (next.client ?? "all") : current.client,
+    build: "build" in next ? next.build : current.build,
     source: current.source,
     stage: "stage" in next ? (next.stage ?? []) : current.stage,
     sort: "sort" in next ? (next.sort ?? DEFAULT_SORT) : current.sort,
@@ -214,6 +218,7 @@ export function contributionsHref(current: ContributionFilters, next: FilterChan
     status: filters.status,
     client: filters.client,
   });
+  if (filters.build) params.set("build", filters.build);
   if (filters.stage.length) params.set("stage", filters.stage.join(","));
   if (filters.bucket !== "ready") params.set("bucket", filters.bucket);
   if (filters.q?.trim()) params.set("q", filters.q.trim());

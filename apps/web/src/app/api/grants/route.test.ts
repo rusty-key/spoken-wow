@@ -57,8 +57,8 @@ function put(capabilities: string[]): Promise<Response> {
   );
 }
 
-function remove(capability: string): Promise<Response> {
-  const params = new URLSearchParams({ userId: target.id, lang: "deDE", capability });
+function remove(capability: string, userId = target.id): Promise<Response> {
+  const params = new URLSearchParams({ userId, lang: "deDE", capability });
   return DELETE(new Request(`https://example.com/api/grants?${params}`, { method: "DELETE" }));
 }
 
@@ -80,5 +80,11 @@ describe("/api/grants", () => {
     who.viewer = { role: null, grants: [{ lang: "deDE", capability: "admin" }] };
     expect((await remove("text")).status).toBe(403);
     expect(await grantsOf(target.id)).toContainEqual({ lang: "deDE", capability: "text" });
+  });
+
+  it("refuses a language admin their own admin, and lets a site owner take it", async () => {
+    expect((await remove("admin", granter.id)).status).toBe(403);
+    who.viewer = { role: "admin", grants: [] };
+    expect((await remove("admin", granter.id)).status).toBe(200);
   });
 });

@@ -18,7 +18,7 @@ import type { PoolClient } from "pg";
 
 import { db } from "@/lib/db";
 import { BASE_LANG } from "@/lib/lang";
-import { branch, norm } from "@/lib/contributions/gossip";
+import { FEMALE_FORM, MALE_FORM } from "@/lib/contributions/gossip";
 import { gossipStemRank } from "@/lib/contributions/naming";
 
 /** The text a client in the row's language shows: English's own, another language's localeText. */
@@ -66,15 +66,12 @@ async function linkByText(client: PoolClient, lineIds: string[] | null, lang: st
   // Each id's text in both forms and on both sides of a `$g` branch, so the join is on plain
   // values: an expression over both sides would compare every line with every row. Unbranched
   // too, since the client leaves a `$u` branch as it stands.
-  const forms = (gender: string, column: string) =>
-    [column, branch(column, 1), branch(column, 2)].map(
-      (shown) =>
-        `select b."lang", b."broadcastTextId", '${gender}' as "gender", ${norm(shown)} as "shown"
-           from "broadcast_text" b where b."lang" in (select "lang" from line)`,
-    );
+  const forms = (gender: string, form: string) =>
+    `select b."lang", b."broadcastTextId", '${gender}' as "gender", unnest(gossip_readings(${form})) as "shown"
+       from "broadcast_text" b where b."lang" in (select "lang" from line)`;
   const { rows } = await client.query<{ lineId: string }>(
     `with line as materialized (
-       select l."lineId", l."lang", ${norm(SHOWN)} as "shown",
+       select l."lineId", l."lang", gossip_norm(${SHOWN}) as "shown",
               (select s."gender" from "quest_line_speaker" s where s."lineId" = l."lineId" limit 1) as "gender"
          from "quest_line" l
         where l."isCurrent" and l."source" = 'gossip' and coalesce(${SHOWN}, '') <> ''
@@ -83,10 +80,9 @@ async function linkByText(client: PoolClient, lineIds: string[] | null, lang: st
           and not exists (select 1 from "gossip_broadcast" g where g."lineId" = l."lineId")
      ),
      shown as materialized (
-       ${[
-         ...forms("male", `coalesce(nullif(b."text", ''), b."text1")`),
-         ...forms("female", `coalesce(nullif(b."text1", ''), b."text")`),
-       ].join("\n       union all\n       ")}
+       ${forms("male", MALE_FORM)}
+       union all
+       ${forms("female", FEMALE_FORM)}
      )
      insert into "gossip_broadcast" ("lineId", "broadcastTextId", "matchedBy")
      select distinct on (line."lineId") line."lineId", f."broadcastTextId", 'text'
@@ -107,7 +103,7 @@ type Pair = { a: string; b: string; aCreated: Date; bCreated: Date };
 async function mergeDuplicates(client: PoolClient, lineIds: string[] | null): Promise<[string, string][]> {
   const { rows } = await client.query<Pair>(
     `with cur as materialized (
-       select l."lineId", l."lang", ${norm(`coalesce(${SHOWN}, '')`)} as "shown"
+       select l."lineId", l."lang", gossip_norm(coalesce(${SHOWN}, '')) as "shown"
          from "quest_line" l
         where l."isCurrent" and l."source" = 'gossip' and l."variant" = 0
      ),

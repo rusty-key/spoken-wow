@@ -4,7 +4,7 @@ import { describe, expect, it } from 'vitest'
 import { CHANNELS } from '../src/shared/api'
 import type { GameInstall, SharingStatus } from '../src/shared/types'
 import { ManagerService, SHARE_BACKOFF_MS } from '../src/main/service'
-import { chunksOf, findContributionFiles, hashEnvelope, LEDGER_CAP, loadLedger, saveLedger, sendPending } from '../src/main/share'
+import { findContributionFiles, hashEnvelope, LEDGER_CAP, loadLedger, saveLedger, sendPending } from '../src/main/share'
 import { loadSettings, sanitizeSettings } from '../src/main/state'
 import { makeGame, tmpDir, write } from './helpers'
 
@@ -68,14 +68,6 @@ describe('findContributionFiles', () => {
   it('is empty for a game with no WTF folder', async () => {
     const { game } = await setup()
     expect(await findContributionFiles(game)).toEqual([])
-  })
-})
-
-describe('chunksOf', () => {
-  it('splits by count and by size', () => {
-    expect(chunksOf(['a', 'b', 'c'], 2).map((c) => c.length)).toEqual([2, 1])
-    expect(chunksOf(['aaaa', 'bbbb', 'cccc'], 10, 10).map((c) => c.length)).toEqual([1, 1, 1])
-    expect(chunksOf([])).toEqual([])
   })
 })
 

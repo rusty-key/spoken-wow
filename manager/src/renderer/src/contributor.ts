@@ -64,4 +64,5 @@ export function resultLines(r: PublishResult): ResultLine[] {
   ]
 }
 
+/** CurseForge and GitHub are brand names, the same in every language. */
 export const storeName = (store: StoreId): string => (store === 'curseforge' ? S.contributor.curseforge : S.contributor.github)

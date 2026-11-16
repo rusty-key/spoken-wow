@@ -2,7 +2,8 @@
  * The role model, shared by the server and the browser so the list of roles is defined once.
  *
  * Two global roles: a `member` is anyone who registered, and an `admin` may do anything,
- * including manage users and voices. Everything in between -- writing a language, cutting
+ * including manage users and voices and approve community voice packs, which any member may
+ * submit. Everything in between -- writing a language, cutting
  * takes in it, looking after it -- is a grant for that language (see "Per language" below),
  * English included. Registration assigns `member`; the first `admin` is promoted with SQL
  * (see deploy/README.md), and every grant and promotion after that goes through /admin.
@@ -42,17 +43,23 @@ export const ROLES = ["member", "admin"] as const;
 
 export type Role = (typeof ROLES)[number];
 
+export const ROLE_LABELS: Record<Role, string> = {
+  member: "Member",
+  admin: "Admin",
+};
+
 export function isRole(value: unknown): value is Role {
   return typeof value === "string" && (ROLES as readonly string[]).includes(value);
 }
 
-/** The one definition of who may reach /admin. */
-export function isAdmin(role: string | null | undefined): boolean {
-  return role === "admin";
+/** What the UI calls a role. A role this build does not know shows as stored, not as nothing. */
+export function roleLabel(role: string | null | undefined): string {
+  const value = role ?? "member";
+  return isRole(value) ? ROLE_LABELS[value] : value;
 }
 
-/** The one definition of who may change what the voices are made from. */
-export function canManageVoices(role: string | null | undefined): boolean {
+/** The one definition of who may reach /admin. */
+export function isAdmin(role: string | null | undefined): boolean {
   return role === "admin";
 }
 
@@ -97,6 +104,24 @@ const CAPABILITY_LABELS: Record<Capability, string> = {
 
 export function capabilityLabel(capability: Capability): string {
   return CAPABILITY_LABELS[capability];
+}
+
+/**
+ * What /admin says each capability lets its holder do, so an admin handing one out does not
+ * have to know the code. Total, so a capability added without its words is a type error.
+ */
+const CAPABILITY_HINTS: Record<Capability, string> = {
+  text: "Looks after the language's original text and the contributions to it, whichever team voices it.",
+  edit: "Works through the team's audio reports and missing audio.",
+  regenerate: "Cuts new takes, paid from their own ElevenLabs or fish.audio key.",
+  configure: "Changes the language's generation settings and lexicon.",
+  ignore: "Marks a line as never voiced in this language.",
+  admin: "Everything the team may do here, and hands out access in this language.",
+  record: "Records takes in their own voice.",
+};
+
+export function capabilityHint(capability: Capability): string {
+  return CAPABILITY_HINTS[capability];
 }
 
 export function isCapability(value: unknown): value is Capability {
@@ -145,10 +170,19 @@ export function spendsCredits(viewer: Viewer | null): boolean {
 /**
  * Whether somebody may open a language's /voices: anybody who spends in it, since that is
  * where they choose their generator for it and put its voices into their own account. What
- * the voices are made from -- the clips, the fish.audio references -- stays canManageVoices.
+ * the voices are made from -- the clips, the fish.audio references -- is canManageVoices.
  */
 export function canViewVoices(viewer: Viewer | null, lang: Lang): boolean {
   return can(viewer, "regenerate", lang) || can(viewer, "configure", lang);
+}
+
+/**
+ * The one definition of who may change what a language's voices are made from: their clips
+ * and their fish.audio references. Both are the language's own (clone-name.ts, migration
+ * 0042), so its admin looks after them, as a global admin does everywhere.
+ */
+export function canManageVoices(viewer: Viewer | null, lang: Lang): boolean {
+  return can(viewer, "admin", lang);
 }
 
 /** Whether somebody may hand out or take away `capability` in `lang`. */
@@ -156,6 +190,15 @@ export function canGrant(viewer: Viewer | null, capability: Capability, lang: La
   if (!viewer) return false;
   if (viewer.role === "admin") return true;
   return capability !== "text" && can(viewer, "admin", lang);
+}
+
+/**
+ * Whether this removal is a language admin taking away their own admin: it is what lets them
+ * reach /admin at all, so doing it would lock them out of the page that gives it back. Another
+ * admin, or a site admin, can.
+ */
+export function removesOwnAdmin(viewer: Viewer, viewerId: string, userId: string, capability: Capability): boolean {
+  return userId === viewerId && capability === "admin" && !isAdmin(viewer.role);
 }
 
 /** Whether somebody holds anything at all in a language, which lets them see it switched off. */

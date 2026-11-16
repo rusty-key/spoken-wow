@@ -65,7 +65,7 @@ if not _G.SetDesaturation then
 end
 
 -- Each tracker adapter registers its sweep here. Hooks call the guarded copy, so a failing adapter
--- logs instead of raising inside Blizzard's or Questie's update.
+-- logs instead of raising inside Blizzard's update.
 local trackerUpdaters = {}
 local function RegisterTrackerUpdater(updater)
     local function guarded()
@@ -159,90 +159,6 @@ do
         end
         hooksecurefunc("QuestWatch_Update", RegisterTrackerUpdater(Sweep))
     end
-end
-
--- Questie draws its own tracker, and its built-in `line.playButton` only answers the retired
--- AI_VoiceOver addon, which also decides when Questie hides it. Each title line gets a separate
--- Spoken button instead, leaving Questie's button and layout alone.
-do
-    local installed
-    local function Import(name)
-        local ok, module = pcall(_G.QuestieLoader.ImportModule, _G.QuestieLoader, name)
-        return ok and type(module) == "table" and module or nil
-    end
-    local function Install()
-        if installed or not _G.QuestieLoader or not _G.QuestieLoader.ImportModule then return end
-        local pool = Import("TrackerLinePool")
-        if not pool or type(pool.UpdateQuestTitleLines) ~= "function" then return end
-        local updateQuestTitleLines = pool.UpdateQuestTitleLines
-        local tracker, trackerUtils = Import("QuestieTracker"), Import("TrackerUtils")
-        -- Lines that carry a Spoken button. Questie reuses line frames, so each sweep hides them all
-        -- and shows only those still on a quest title.
-        local dressedLines = {}
-
-        local function QuestTitle(questID)
-            if C_QuestLog and C_QuestLog.GetTitleForQuestID then
-                local okTitle, title = pcall(C_QuestLog.GetTitleForQuestID, questID)
-                if okTitle and title then return title end
-            end
-            if GetQuestLogTitle and GetQuestLogIndexByID then
-                local index = GetQuestLogIndexByID(questID)
-                if index then return (GetQuestLogTitle(index)) end
-            end
-            return ""
-        end
-        local function Dress(line)
-            local quest = line and line.Quest
-            local questID = quest and (quest.Id or quest.questID)
-            if type(questID) ~= "number" then return end
-            local button = line.spokenPlayButton
-            if not button then
-                button = QuestOverlayUI:MakePlayButton(line)
-                local minimize = line.expandQuest
-                if minimize then button:SetSize(18, 18) end
-                button:SetPoint("RIGHT", minimize or line.label or line, "LEFT", minimize and -1 or -4, 0)
-                if minimize and button.SetFrameLevel and minimize.GetFrameLevel then
-                    button:SetFrameLevel(minimize:GetFrameLevel() + 1)
-                end
-                button.setPlayState = QuestOverlayUI.FollowQueue
-                line.spokenPlayButton = button
-                dressedLines[line] = true
-            end
-            if not QuestOverlayUI:ShowsTrackerButton(questID) then return end
-            if button.questID ~= questID then
-                -- A clip bound to the line's previous quest must not answer a click.
-                button.soundData = nil
-                QuestOverlayUI:BindPlayButton(button, questID, QuestTitle(questID), "Questie's tracker Play button")
-            end
-            button:Show()
-            QuestOverlayUI:SetPlayButtonState(button)
-        end
-        local function Sweep()
-            for line in pairs(dressedLines) do line.spokenPlayButton:Hide() end
-            updateQuestTitleLines(Dress)
-        end
-
-        installed = true
-        local sweep = RegisterTrackerUpdater(Sweep)
-        -- One Questie Update calls UpdateQuestTitleLines, then UpdateVoiceOverPlayButtons last, once
-        -- the lines are laid out. Hook only the latest of them this Questie has.
-        if trackerUtils and type(trackerUtils.UpdateVoiceOverPlayButtons) == "function" then
-            hooksecurefunc(trackerUtils, "UpdateVoiceOverPlayButtons", sweep)
-        elseif tracker and type(tracker.Update) == "function" then
-            hooksecurefunc(tracker, "Update", sweep)
-        else
-            hooksecurefunc(pool, "UpdateQuestTitleLines", sweep)
-        end
-        sweep()
-    end
-    local waiter = CreateFrame("Frame")
-    waiter:RegisterEvent("PLAYER_LOGIN")
-    waiter:RegisterEvent("ADDON_LOADED")
-    waiter:SetScript("OnEvent", function(_, event, addonName)
-        if event == "ADDON_LOADED" and addonName ~= "Questie" then return end
-        Install()
-    end)
-    Install()
 end
 
 -- The Forever client (1.60.1, interface 16001) reports itself as mainline and draws the
@@ -603,15 +519,26 @@ if QuestLogQuests_Update and QuestScrollFrame and QuestScrollFrame.titleFramePoo
 
 end
 
--- Play on the objective tracker's quests, at the right end of each quest's title as the quest log has
--- it: the same square button. The tracker pools its blocks, so a block keeps one button and rebinds it
--- to the quest it shows. Where the client has no such tracker nothing is hooked. A setting on the
--- Quests page takes them all away.
+-- Play on the objective tracker's quests. The tracker pools its blocks, so a block keeps one button
+-- and rebinds it to the quest it shows.
 do
     local MODULES = { "QuestObjectiveTracker", "CampaignQuestObjectiveTracker" }
     -- The quest log's tracking checkbox, as it draws on this client (what its Play button matches).
     local BOX, SIZE = "QuestLog-icon-ticksquare", 14
     local buttons, hooked = {}, {}
+
+    -- Writing the block's right edge offset from addon code taints what the client reads to set up
+    -- the item button, which can block a click on the item. So Play reserves no room: it can reach
+    -- past a short block, or cover a long title on a quest with no button.
+    local function Place(block, button)
+        local edge = block.rightEdgeFrame
+        button:ClearAllPoints()
+        if edge and edge:IsShown() then
+            button:SetPoint("TOPRIGHT", edge, "BOTTOMRIGHT", 0, -2)
+        else
+            button:SetPoint("TOPRIGHT", block, "TOPRIGHT", 0, 0)
+        end
+    end
 
     local function Dress(block)
         local questID = block.id
@@ -639,9 +566,9 @@ do
             back:SetPoint("BOTTOMRIGHT", -1, 1)
             back:SetColorTexture(0, 0, 0, 0.6)
             button:SetFrameLevel(block:GetFrameLevel() + 3)
-            button:SetPoint("TOPRIGHT", block, "TOPRIGHT", 0, 0)
             buttons[block] = button
         end
+        Place(block, button)
         if button.questID ~= questID then button.soundData = nil end
         QuestOverlayUI:BindPlayButton(button, questID, C_QuestLog.GetTitleForQuestID(questID) or "",
             "the objective tracker's Play button")

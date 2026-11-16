@@ -5,7 +5,7 @@ release: quests-audio
 section: quests
 lang: enUS
 pack: all
-slug: spoken-quests-audio-all
+slug: spoken-audio-quests-all
 name: Spoken Quests Audio: All
 summary: Every quest and gossip line, voiced. The whole pack in one install. Needs Spoken.
 categories:

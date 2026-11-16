@@ -77,6 +77,24 @@
   "source": "Efficient Games: creature_details 256273 Sairuh Maryla, display 139544, the id beside Kaigy Maryla's 256275. Not in the database; no encounter record."
  },
  {
+  "map": 329,
+  "key": "balnazzar",
+  "display": 10691,
+  "source": "Leatrix Maps' Stratholme floor pin uses display 10691 for Balnazzar's dreadlord form; use that form instead of DBM's 10545 Grand Crusader Dathrohan disguise."
+ },
+ {
+  "map": 2856,
+  "key": "balnazzar",
+  "display": 10545,
+  "source": "DBM-Dungeons' DBM-Party-Vanilla/Shared/Stratholme/Balnazzar.lua sets Balnazzar's model to display 10545; use the same model for the Scarlet Enclave encounter."
+ },
+ {
+  "map": 533,
+  "key": "the four horsemen",
+  "display": 10729,
+  "source": "DBM-Raids-Vanilla/VanillaNaxx/MilitaryQuarter/Horsemen.lua sets the Four Horsemen's model to display 10729."
+ },
+ {
   "map": 36,
   "key": "sneed",
   "display": 7125,

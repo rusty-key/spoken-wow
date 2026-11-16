@@ -4,7 +4,7 @@ import fs from 'node:fs'
 import path from 'node:path'
 import { log, readJsonFile, writeJsonAtomic } from './state'
 
-const REPO = 'rusty-key/spoken-wow'
+export const REPO = 'rusty-key/spoken-wow'
 const PER_PAGE = 100
 const MAX_PAGES = 5
 

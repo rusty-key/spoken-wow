@@ -85,6 +85,15 @@ local GeneralTab =
                         Addon.db.profile.Audio.FollowupLines = value
                     end,
                 },
+                ToggleProgressText = {
+                    type = "toggle",
+                    order = 6.6,
+                    width = 2,
+                    name = L.OPT_PANEL_PROGRESS,
+                    disabled = function(info) return not Addon:IsAutoplayOn() end,
+                    get = function(info) return Addon:IsProgressTextOn() end,
+                    set = function(info, value) Addon:SetProgressText(value) end,
+                },
                 OGThrall = {
                     type = "toggle",
                     order = 8,

@@ -93,24 +93,17 @@ function M.LoadPlaces(addonDirectory, seed)
     return SpokenPlaces
 end
 
---- The language codes SpokenPlaces.LOCALES lists, in order, read off its source. The other
---- addons each keep a copy of the list and are tested against this one.
-function M.PlacesLocaleCodes(here)
-    local codes = {}
-    local file = assert(io.open(here .. "/../../addons/Spoken_Places/Language.lua"))
-    for code in file:read("*a"):gmatch('{ code = "(%a+)"') do table.insert(codes, code) end
-    file:close()
-    return table.concat(codes, " ")
-end
-
 --- The parts of the Places addon's Core.lua that its playback files read, as a fake.
 function M.NewZoneLore()
     local cfg = { voiceEnabled = true, autoplay = true, autoplaySubzones = true,
-        autoplayExplored = false, debug = false,
+        autoplayExplored = false, autoplayStopInCombat = false,
+        autoplayEveryVisit = false, autoplayEveryVisitGap = 24 * 3600, debug = false,
         -- What the options panel reads, as well as what the playback files do.
         showMapPanel = true, panelSide = "RIGHT",
         panelWidth = 320, fontSize = 12, highlightOpacity = 0.35 }
     local Z = { printed = {}, heard = {}, zoneChanged = {}, clientLocale = "enUS" }
+    -- Audio.lua's, which is not loaded here: no pack carries words.
+    Z.PackLoreText = function() return nil end
     -- The addon's real English strings, so a label a file reads (a minimap entry, a button,
     -- a settings row) is the one the client would show rather than nil. Language.lua is what
     -- normally takes the table, and it is not loaded here.
@@ -160,6 +153,8 @@ function M.NewZoneLore()
     -- What UI/Options.lua asks the rest of the addon. The panel is the one part that
     -- reports what is installed, so the answers live here rather than in each test.
     function Z:SiteURL() return "https://spoken.test" end
+    Z.EVERY_VISIT_GAPS = { 24 * 3600, 7 * 24 * 3600, 30 * 24 * 3600 }
+    function Z:EveryVisitGap() return cfg.autoplayEveryVisitGap end
     function Z:GetAudioPacks() return {} end
     function Z:GetActiveAudioPack() return nil end
     -- The voice is Spoken's Voice Language and its fallback, as Audio.lua reads them.

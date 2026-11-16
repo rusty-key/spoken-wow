@@ -27,6 +27,7 @@ import { commitTake } from "@/lib/takes/commit";
 import { INVALID_CHARS, isVoiceable } from "@/lib/text-gate";
 import { isModelVoice } from "@/lib/voices/voices";
 
+import { speakPlayerTokens } from "@/lib/player-words";
 import { sentText } from "./files";
 import { canonicalNpcId, seedFor } from "./seed";
 import { spokenHash } from "./spoken-hash";
@@ -118,13 +119,11 @@ export async function regenerateLine(
 
   if (!isVoiceable(line, source)) {
     const why =
-      line.skipReason === "progress"
-        ? "progress text is deliberately skipped"
-        : line.skipReason === "untranslated"
-          ? `it has no ${lang} text yet`
-          : isModelVoice(line.voice)
-            ? `no voice has been chosen for ${line.voice} yet`
-            : `its text still holds one of ${INVALID_CHARS} - rewrite it to voice it`;
+      line.skipReason === "untranslated"
+        ? `it has no ${lang} text yet`
+        : isModelVoice(line.voice)
+          ? `no voice has been chosen for ${line.voice} yet`
+          : `its text still holds one of ${INVALID_CHARS} - rewrite it to voice it`;
     return {
       ok: false,
       failure: {
@@ -236,6 +235,10 @@ export async function regenerateLine(
         createdBy,
         // `source`, not spokenText: the addon shows the line before its rules and directions.
         wordTimes: timesFor(source, speech.words),
+        // `line.text`, not `source`: code cannot tell a rewrite's respellings from a real change of
+        // wording, and a respelling must never reach the screen. Tokens as the voice said them, or
+        // a subtitle names the player over a voice saying "adventurer".
+        shownText: speakPlayerTokens(line.text, lang, line.playerGender),
       },
       // A clip ffprobe cannot read still commits, with no length: the pack build measures
       // what is missing.

@@ -18,7 +18,7 @@ Four modules, each can be switched off in the settings. **The voices are not inc
 
 | Module | Voices | Voice pack |
 | --- | --- | --- |
-| **Spoken Quests** | quest dialogue, and what NPCs say when you talk to them | [All](https://www.curseforge.com/wow/addons/spoken-quests-audio-all), or [Alliance](https://www.curseforge.com/wow/addons/spoken-audio-quests-alliance) · [Horde](https://www.curseforge.com/wow/addons/spoken-audio-quests-horde) · [Shared](https://www.curseforge.com/wow/addons/spoken-audio-quests-shared) |
+| **Spoken Quests** | quest dialogue, and what NPCs say when you talk to them | [All](https://www.curseforge.com/wow/addons/spoken-audio-quests-all), or [Alliance](https://www.curseforge.com/wow/addons/spoken-audio-quests-alliance) · [Horde](https://www.curseforge.com/wow/addons/spoken-audio-quests-horde) · [Shared](https://www.curseforge.com/wow/addons/spoken-audio-quests-shared) |
 | **Spoken Places** | zone and area lore, on the world map | [Spoken Audio: Places and Bosses](https://www.curseforge.com/wow/addons/spoken-audio-places) |
 | **Spoken Readables** | books, letters, notes and the plaques out in the world | [Spoken Audio: Readables](https://www.curseforge.com/wow/addons/spoken-audio-readables) |
 | **Spoken Bosses** | the story of each dungeon and raid boss, when it falls | [Spoken Audio: Places and Bosses](https://www.curseforge.com/wow/addons/spoken-audio-places) |
@@ -68,8 +68,8 @@ Game Menu → Options → AddOns → **Spoken**, or `/sp settings`.
 
 **Code.** The addon is open source on [GitHub](https://github.com/rusty-key/spoken-wow): issues and pull requests are welcome.
 
-**Voices and translations.** Want to help a voice sound right, or the addon read well in your language? Come to the [Discord](https://discord.gg/KgeQhjv9Rd).
+**Voices and translations.** Want to help a voice sound right, or the addon read well in your language? Come to the [Discord](https://spoken.quest/discord).
 
 ---
 
-[Join the Discord](https://discord.gg/KgeQhjv9Rd) · [Buy Me a Coffee](https://buymeacoffee.com/rustykey)
+[Join the Discord](https://spoken.quest/discord) · [Buy Me a Coffee](https://buymeacoffee.com/rustykey)

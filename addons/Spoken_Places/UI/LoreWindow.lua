@@ -336,9 +336,10 @@ function SpokenPlaces:IsLocked(mapID, key)
 	return not self:IsFound(mapID, key)
 end
 
--- Discovered Only, in the filter menu: the places not found are left out of the list.
+-- Discovered Only, in the filter menu: the places not found are left out of the list unless
+-- Unlock Undiscovered Places is on, since that setting means the player wants the complete list.
 local function OnlyFound()
-	return SpokenPlaces:Get("loreDiscoveredOnly") == true
+	return not SpokenPlaces:ShowsUndiscovered() and SpokenPlaces:Get("loreDiscoveredOnly") == true
 end
 
 -- Voiced Only, under it: the places no installed voice pack reads are left out. A zone stays while
@@ -695,7 +696,7 @@ local function ShowEntry()
 			-- Rows are keyed by the canonical form already, so this needs no normalising --
 			-- unlike the map panel, which starts from the name the client reports.
 			page:Show({ title = name, subtitle = line, icon = AreaIcon(mapID, key),
-				text = entry.full or entry.short or "", audio = { mapID, key }, report = { mapID, key } })
+				text = SpokenPlaces:LoreText(mapID, key, entry), audio = { mapID, key }, report = { mapID, key } })
 			return
 		end
 	end
@@ -708,7 +709,7 @@ local function ShowEntry()
 			contribute = { mapID, nil }, icon = SpokenCompendium.PlaceIcon(mapID) })
 		return
 	end
-	page:Show({ title = name, subtitle = subtitle, text = entry.full or entry.short or "",
+	page:Show({ title = name, subtitle = subtitle, text = SpokenPlaces:LoreText(mapID, nil, entry),
 		audio = { mapID, nil }, report = { mapID, nil }, icon = SpokenCompendium.PlaceIcon(mapID) })
 end
 

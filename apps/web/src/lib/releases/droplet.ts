@@ -16,6 +16,8 @@ const LOG_TAIL_BYTES = 8_000;
 
 export type DropletRun = {
   log: string;
+  /** The log was longer than the tail kept, so its start is missing. */
+  logCut: boolean;
   /** Null until the job has finished. */
   exitCode: number | null;
   heartbeatAt: number;
@@ -67,7 +69,7 @@ export async function startDropletRun(
   }
 }
 
-async function tail(path: string): Promise<string> {
+async function tail(path: string): Promise<{ text: string; cut: boolean }> {
   const file = await open(path, "r");
   try {
     const { size } = await file.stat();
@@ -75,7 +77,7 @@ async function tail(path: string): Promise<string> {
     const { buffer } = await file.read(Buffer.alloc(length), 0, length, size - length);
     const text = buffer.toString("utf8");
     // A cut line reads as a garbled one.
-    return size > length ? text.slice(text.indexOf("\n") + 1) : text;
+    return size > length ? { text: text.slice(text.indexOf("\n") + 1), cut: true } : { text, cut: false };
   } finally {
     await file.close();
   }
@@ -88,7 +90,7 @@ export async function readDropletRun(id: string): Promise<DropletRun | null> {
   try {
     const [log, beat] = await Promise.all([tail(join(dir, "log")), stat(join(dir, "heartbeat"))]);
     const exit = await readFile(join(dir, "exit"), "utf8").catch(() => null);
-    return { log, exitCode: exit === null ? null : Number(exit), heartbeatAt: beat.mtimeMs };
+    return { log: log.text, logCut: log.cut, exitCode: exit === null ? null : Number(exit), heartbeatAt: beat.mtimeMs };
   } catch (error) {
     if ((error as { code?: string }).code === "ENOENT") return null;
     throw error;

@@ -35,8 +35,7 @@ const SOLO = "q:5:accept";
 const SHARED = "q:109:accept";
 /** A dwarf line: "Hiccup! Ho Ho!", spoken by Grimand Elmore. The race with an accent tag. */
 const DWARF = "q:48:complete";
-/** Progress text, which the generator never voices. */
-const NEVER_VOICED = "q:6:progress";
+const PROGRESS = "q:6:progress";
 /** A whole line of stage direction: "<Sirra begins translating…>". The narrator reads it. */
 const STAGE_DIRECTION = "q:251:complete";
 /**
@@ -54,6 +53,7 @@ const MP3 = Buffer.from("ID3generated-audio");
 type StubOptions = {
   voices?: Record<string, string>;
   speech?: () => Response;
+  dictionary?: () => Response;
 };
 
 /** Stands in for the three ElevenLabs endpoints this path touches. */
@@ -79,7 +79,7 @@ function timed(text: string, extra: Record<string, unknown> = {}): Response {
   return Response.json({ audio_base64: MP3.toString("base64"), alignment, ...extra });
 }
 
-function stub({ voices = DEFAULT_VOICES, speech }: StubOptions = {}) {
+function stub({ voices = DEFAULT_VOICES, speech, dictionary }: StubOptions = {}) {
   const calls: { url: string; body?: unknown }[] = [];
 
   const fetchImpl = vi.fn(async (url: string, init?: RequestInit) => {
@@ -97,6 +97,9 @@ function stub({ voices = DEFAULT_VOICES, speech }: StubOptions = {}) {
       return Response.json([
         { model_id: "eleven_multilingual_v2", name: "Multilingual v2", can_do_text_to_speech: true },
       ]);
+    }
+    if (url.includes("/v1/pronunciation-dictionaries/")) {
+      return dictionary ? dictionary() : Response.json({ latest_version_id: "ver-1", rules: [] });
     }
     // Each character of what was sent 0.1s after the one before, as the with-timestamps
     // endpoints time it; the dialogue endpoint joins its turns with nothing between them.
@@ -140,7 +143,7 @@ async function fileFor(lineId: string): Promise<string> {
  * to assert on, and it must not be the thing that clears it permanently. So the fixtures'
  * rows are lifted out before each test and put back after.
  */
-const FIXTURE_LINES = [SOLO, SHARED, NEVER_VOICED, STAGE_DIRECTION, TEMPLATE_TOKEN, DWARF];
+const FIXTURE_LINES = [SOLO, SHARED, PROGRESS, STAGE_DIRECTION, TEMPLATE_TOKEN, DWARF];
 let displaced: Record<string, unknown>[] = [];
 
 async function fixtureFiles(): Promise<string[]> {
@@ -230,24 +233,29 @@ describe("a line with no audio yet", () => {
 });
 
 describe("a lexicon uploaded to ElevenLabs", () => {
-  let previous: { dictionaryId: string | null; versionId: string | null } | undefined;
+  let previous:
+    | { dictionaryId: string | null; versionId: string | null; syncedDigest: string | null }
+    | undefined;
 
   beforeEach(async () => {
     const { rows } = await asSystem.query(
-      `select "dictionaryId", "versionId" from "pronunciation_lexicon" where "teamId" = (select "id" from "team" where "slug" = 'english')`,
+      `select "dictionaryId", "versionId", "syncedDigest" from "pronunciation_lexicon" where "teamId" = (select "id" from "team" where "slug" = 'english')`,
     );
     previous = rows[0];
+    await asSystem.query(`delete from "lexicon_account_dictionary" where "lang" = 'enUS'`);
     await asSystem.query(
-      `update "pronunciation_lexicon" set "dictionaryId" = 'dict-abc', "versionId" = 'ver-1'
+      `update "pronunciation_lexicon" set "dictionaryId" = 'dict-abc', "versionId" = 'ver-1',
+              "syncedDigest" = md5("entries"::text)
        where "teamId" = (select "id" from "team" where "slug" = 'english')`,
     );
   });
 
   afterEach(async () => {
     await asSystem.query(
-      `update "pronunciation_lexicon" set "dictionaryId" = $1, "versionId" = $2 where "teamId" = (select "id" from "team" where "slug" = 'english')`,
-      [previous?.dictionaryId ?? null, previous?.versionId ?? null],
+      `update "pronunciation_lexicon" set "dictionaryId" = $1, "versionId" = $2, "syncedDigest" = $3 where "teamId" = (select "id" from "team" where "slug" = 'english')`,
+      [previous?.dictionaryId ?? null, previous?.versionId ?? null, previous?.syncedDigest ?? null],
     );
+    await asSystem.query(`delete from "lexicon_account_dictionary" where "lang" = 'enUS'`);
   });
 
   // The version alone cannot be looked up: ElevenLabs addresses a version through its
@@ -270,6 +278,19 @@ describe("a lexicon uploaded to ElevenLabs", () => {
       [result.file],
     );
     expect(rows).toEqual([{ dictionaryId: "dict-abc", dictionaryVersion: "ver-1" }]);
+  });
+
+  // A line without the language's rules would say its names wrong, and nothing would mark it.
+  it("fails the line, spending nothing, when the account cannot get the dictionary", async () => {
+    const { options, calls } = stub({
+      dictionary: () => new Response('{"detail":"busy"}', { status: 500 }),
+    });
+    const result = await regenerate(SOLO, options);
+
+    expect(result.ok).toBe(false);
+    if (result.ok) return;
+    expect(result.failure.message).toMatch(/preparing the enUS dictionary/);
+    expect(calls.some((c) => c.url.includes("text-to-speech"))).toBe(false);
   });
 });
 
@@ -389,13 +410,12 @@ describe("refusals that cost nothing", () => {
 
   it("refuses a line the generator never voices, without calling out", async () => {
     const { options, calls } = stub();
-    const result = await regenerateLine(NEVER_VOICED, "user", options);
+    const result = await regenerateLine(TEMPLATE_TOKEN, "user", options);
 
     expect(result.ok).toBe(false);
     if (result.ok) return;
     expect(result.failure.status).toBe(409);
     expect(result.failure.message).toContain("never voiced");
-    expect(result.failure.message).toContain("progress");
     // One bad line must not abandon the batch around it.
     expect(result.failure.fatal).toBe(false);
     expect(calls).toHaveLength(0);
@@ -461,7 +481,7 @@ describe("a line whose spoken text has been rewritten", () => {
   afterEach(async () => {
     await clearOverride("enUS", await fileFor(SOLO), null);
     await clearOverride("enUS", await fileFor(STAGE_DIRECTION), null);
-    await clearOverride("enUS", await fileFor(NEVER_VOICED), null);
+    await clearOverride("enUS", await fileFor(PROGRESS), null);
     await clearOverride("enUS", await fileFor(TEMPLATE_TOKEN), null);
   });
 
@@ -478,6 +498,23 @@ describe("a line whose spoken text has been rewritten", () => {
     expect(result.spokenText).toBe("Say this instead.");
     // Billed for what was sent, so the version row is not describing a different take.
     expect(result.characters).toBe("Say this instead.".length);
+  });
+
+  it("saves the line's normal text on the take, because a rewrite can hold respellings", async () => {
+    const { options } = stub();
+    await writeOverride("enUS", await fileFor(SOLO), SOLO, "Say this instead.", null);
+
+    const result = await regenerate(SOLO, options);
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    const { rows } = await asSystem.query(
+      `select "shownText" from "take" where "file" = $1 order by "version" desc limit 1`,
+      [result.file],
+    );
+    const [line] = (await lineIndex()).get(SOLO)!;
+    expect(rows[0].shownText).toBe(line.text);
+    expect(rows[0].shownText).not.toBe("Say this instead.");
   });
 
   it("voices a line the corpus had given up on, once the template token is gone", async () => {
@@ -592,16 +629,14 @@ describe("a line whose spoken text has been rewritten", () => {
     expect(calls.some((call) => call.url.endsWith("/v1/text-to-dialogue/with-timestamps"))).toBe(false);
   });
 
-  it("still refuses progress text, which no rewrite can make voiceable", async () => {
+  it("voices progress text like any other line", async () => {
     const { options, calls } = stub();
-    await writeOverride("enUS", await fileFor(NEVER_VOICED), NEVER_VOICED, "perfectly ordinary text", null);
+    await writeOverride("enUS", await fileFor(PROGRESS), PROGRESS, "perfectly ordinary text", null);
 
-    const result = await regenerateLine(NEVER_VOICED, "user", options);
+    const result = await regenerate(PROGRESS, options);
 
-    expect(result.ok).toBe(false);
-    if (result.ok) return;
-    expect(result.failure.message).toContain("progress");
-    expect(calls).toHaveLength(0);
+    expect(result.ok).toBe(true);
+    expect(calls.some((call) => call.url.includes("/v1/text-to-speech/"))).toBe(true);
   });
 
   it("refuses a rewrite that puts the offending characters back", async () => {

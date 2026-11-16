@@ -19,7 +19,7 @@ local _, SpokenPlaces = ...
 -- Points across and down an overlay's rectangle asked which area they are in.
 local SAMPLES = 6
 
-local state = { tiles = {} }
+local state = { tiles = {}, known = {} }
 SpokenPlaces.mapHighlight = state
 
 -- The smallest power of two at least `n`, from 16: the size of a tile's file where the tile is
@@ -32,15 +32,17 @@ local function FileSize(n)
 	return size
 end
 
--- The explored overlays of the map shown, asked for once per map and again whenever it opens.
-local function Overlays(mapID)
-	if state.overlaysFor ~= mapID then
-		state.overlaysFor = mapID
+-- A zone map's explored overlays and the area each is of, asked for once per map and again
+-- whenever the map opens. Kept for every zone the cursor crosses: on OpenMap's map it moves
+-- between neighbours, and matching overlays to areas is the costly part.
+local function Known(mapID)
+	local known = state.known[mapID]
+	if not known then
 		local ok, list = pcall(C_MapExplorationInfo.GetExploredMapTextures, mapID)
-		state.overlays = ok and list or {}
-		state.areaOf = {}
+		known = { overlays = ok and list or {}, areaOf = {} }
+		state.known[mapID] = known
 	end
-	return state.overlays
+	return known
 end
 
 local function ArtLayer(mapID)
@@ -69,10 +71,9 @@ end
 
 -- The area an overlay is of: the one most points of a grid over its rectangle resolve to. False
 -- where none resolves. Asked once per overlay while the map stays the same.
-local function AreaOf(info, mapID, layer)
-	local known = state.areaOf[info]
-	if known ~= nil then
-		return known
+local function AreaOf(info, mapID, layer, areaOf)
+	if areaOf[info] ~= nil then
+		return areaOf[info]
 	end
 	local r = info.hitRect
 	local scaleX, scaleY = 1, 1
@@ -93,14 +94,14 @@ local function AreaOf(info, mapID, layer)
 			end
 		end
 	end
-	state.areaOf[info] = best
+	areaOf[info] = best
 	return best
 end
 
---- The overlay to light at the map's normalised position x, y, with its art layer: only over an
+--- The overlay to light under the cursor, with its zone's art layer and the zone: only over an
 --- area whose story a click would open.
 local function Target()
-	if not SpokenPlaces:IsPartOn() then
+	if not SpokenPlaces:IsPartOn() or SpokenPlaces:MapLeftToOpenMap() then
 		return nil
 	end
 	local container = WorldMapFrame.ScrollContainer
@@ -114,12 +115,11 @@ local function Target()
 	else
 		overCanvas = container:IsMouseOver()
 	end
-	local mapID = WorldMapFrame.mapID
-	if not overCanvas or not mapID or not SpokenPlaces:IsZoneMap(mapID) then
+	if not overCanvas then
 		return nil
 	end
-	local x, y = container:GetNormalizedCursorPosition()
-	if not x or not y then
+	local mapID, x, y = SpokenPlaces:CursorArea()
+	if not mapID then
 		return nil
 	end
 	-- As the click finds it (SpokenPlaces:AreaAt), so what lights up is what a click opens.
@@ -133,13 +133,14 @@ local function Target()
 	end
 	local px, py = x * layer.layerWidth, y * layer.layerHeight
 	local best
-	for _, info in ipairs(Overlays(mapID)) do
-		if Holds(info, layer, px, py) and AreaOf(info, mapID, layer) == name
+	local known = Known(mapID)
+	for _, info in ipairs(known.overlays) do
+		if Holds(info, layer, px, py) and AreaOf(info, mapID, layer, known.areaOf) == name
 			and (not best or Area(info) < Area(best)) then
 			best = info
 		end
 	end
-	return best, layer
+	return best, layer, mapID
 end
 
 -- Lays the overlay out in tiles over the map, as MapExplorationPin does.
@@ -180,18 +181,27 @@ end
 -- Every frame, as the continent map's highlight follows the cursor; nothing done while the cursor
 -- rests, since finding the area under it and its overlay is the costly part.
 local function OnUpdate()
-	local container = WorldMapFrame.ScrollContainer
-	local x, y
-	if container then x, y = container:GetNormalizedCursorPosition() end
+	local x, y, zoom = SpokenPlaces:MapCursor()
 	local focus = WorldMapFrame.IsCanvasMouseFocus and WorldMapFrame:IsCanvasMouseFocus()
 	local mapID = WorldMapFrame.mapID
-	if state.x ~= nil and x == state.x and y == state.y and mapID == state.mapID and focus == state.focus then
+	if state.x ~= nil and x == state.x and y == state.y and zoom == state.zoom and mapID == state.mapID
+		and focus == state.focus then
 		return
 	end
-	state.x, state.y, state.mapID, state.focus = x, y, mapID, focus
-	local info, layer = Target()
-	if info and info ~= state.lit then
-		Light(info, layer)
+	state.x, state.y, state.zoom, state.mapID, state.focus = x, y, zoom, mapID, focus
+	local info, layer, zone = Target()
+	if info and not SpokenPlaces:PlaceOverZone(state.frame, state.canvas, zone, layer) then
+		info = nil
+	end
+	if info then
+		-- OpenMap's art, which this has to show over, is only built once its map first shows.
+		local level = SpokenPlaces:OverArtLevel(state.level)
+		if level ~= state.levelSet and pcall(state.frame.SetFrameLevel, state.frame, level) then
+			state.levelSet = level
+		end
+		if info ~= state.lit then
+			Light(info, layer)
+		end
 	end
 	state.lit = info
 	state.frame:SetShown(info ~= nil)
@@ -203,8 +213,8 @@ local function Opacity()
 end
 
 local function Reset()
-	state.overlaysFor, state.lit = nil, nil
-	state.x, state.y, state.mapID, state.focus = nil, nil, nil, nil
+	state.known, state.lit = {}, nil
+	state.x, state.y, state.zoom, state.mapID, state.focus = nil, nil, nil, nil, nil
 	if state.frame then state.frame:Hide() end
 end
 
@@ -221,10 +231,12 @@ function SpokenPlaces:SetupMapHighlight()
 	frame:SetAllPoints(canvas)
 	local levels = WorldMapFrame.GetPinFrameLevelsManager and WorldMapFrame:GetPinFrameLevelsManager()
 	local explored = levels and levels.GetValidFrameLevel and levels:GetValidFrameLevel("PIN_FRAME_LEVEL_MAP_EXPLORATION")
-	frame:SetFrameLevel((explored or canvas:GetFrameLevel()) + 1)
+	state.level = (explored or canvas:GetFrameLevel()) + 1
+	state.levelSet = state.level
+	frame:SetFrameLevel(state.level)
 	frame:Hide()
 	frame:EnableMouse(false)
-	state.frame = frame
+	state.frame, state.canvas = frame, canvas
 
 	-- Parented to WorldMapFrame so OnUpdate only runs while the map is open.
 	state.driver = CreateFrame("Frame", nil, WorldMapFrame)

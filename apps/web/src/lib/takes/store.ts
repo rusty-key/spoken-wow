@@ -134,19 +134,19 @@ export async function liveTakes(source: Source, lang: Lang = BASE_LANG): Promise
   return live.map((row) => ({ ...row, takes: takes.get(row.file) ?? 1 }));
 }
 
-/** The version of the live take of one file, or null when it has never been generated. */
-export async function liveVersion(
+/** The live take of one file, its version and when it was generated, or null when there is none. */
+export async function liveTake(
   source: Source,
   file: string,
   lang: Lang = BASE_LANG,
-): Promise<number | null> {
-  const rows = await readAs<{ version: number }>(
+): Promise<{ version: number; createdAt: string } | null> {
+  const rows = await readAs<{ version: number; createdAt: Date }>(
     lang,
-    `select "version" from "take"
+    `select "version", "createdAt" from "take"
       where "source" = $1 and "file" = $2 and "lang" = $3 and "isCurrent"`,
     [source, file, lang],
   );
-  return rows[0]?.version ?? null;
+  return rows[0] ? { version: rows[0].version, createdAt: rows[0].createdAt.toISOString() } : null;
 }
 
 /**
@@ -237,6 +237,16 @@ export async function takePath(
     [source, file, lang, version],
   );
   return located(source, file, lang, rows[0]);
+}
+
+/** The hash naming a take's master in the bucket; null where it was never put there. */
+export async function takeSha256(source: Source, file: string, version: number, lang: Lang): Promise<string | null> {
+  const rows = await readAs<{ sha256: string | null }>(
+    lang,
+    `select "sha256" from "take" where "source" = $1 and "file" = $2 and "lang" = $3 and "version" = $4`,
+    [source, file, lang, version],
+  );
+  return rows[0]?.sha256 ?? null;
 }
 
 /** The live take's bytes, the way takePath finds any take's. What the live audio routes play. */

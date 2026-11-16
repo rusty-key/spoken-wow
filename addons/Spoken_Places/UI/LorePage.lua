@@ -217,15 +217,17 @@ end
 
 --- What the page shows: entry = { title, subtitle, onSubtitle = fn?, text,
 --- audio = { mapID, key }?, report = { mapID, key }?, contribute = { mapID, subzone }?,
---- lore = { mapID, key }? }: Play for `audio`, Report for `report`, its picture above the words, a
+--- lore = { mapID, key }?, model = { displayID, creatureID, scale, zoom, rotation, facing, sequence,
+--- x, y, z }? }: Play for `audio`, Report for `report`, its model or picture above the words, a
 --- missing story's Contribute, and beside the map Open for `lore`.
 function Page:Show(entry)
 	local story = entry.audio or entry.report
 	local picture, mask
 	if story then picture, mask = SpokenPlaces:Picture(story[1], story[2]) end
 	local contribute = entry.contribute
+	self.page:SetActions(entry.play, entry.reportAction)
 	self.page:Show({ title = entry.title, subtitle = entry.subtitle, onSubtitle = entry.onSubtitle, text = entry.text,
-		target = story, picture = picture and { file = picture, mask = mask } or nil, icon = entry.icon,
+		target = entry.target or story, model = entry.model, picture = picture and { file = picture, mask = mask } or nil, icon = entry.icon,
 		unwritten = contribute and function()
 			if SpokenPlaces:CanContribute() then SpokenPlaces:ShowContribution(contribute[1], contribute[2]) end
 		end or nil })
@@ -234,4 +236,8 @@ function Page:Show(entry)
 		self.open.mapID, self.open.areaKey = lore and lore[1], lore and lore[2]
 		self.open:SetShown(lore ~= nil and lore[1] ~= nil)
 	end
+end
+
+function SpokenPlaces:LoreText(mapID, areaKey, entry)
+	return self:PackLoreText(mapID, areaKey, self:GetLanguage()) or entry.full or entry.short or ""
 end

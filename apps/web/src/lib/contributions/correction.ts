@@ -33,6 +33,8 @@
  */
 import "server-only";
 
+import { normaliseText } from "@readables-tools/lib/text.mjs";
+
 import { recordActivity } from "@/lib/activity/store";
 import { BookConflict, BookMissing, saveBookText } from "@/lib/readables/text";
 import { db, withTeam } from "@/lib/db";
@@ -44,9 +46,10 @@ import { OverrideError } from "@/lib/quests/override";
 import { QuestTextConflict, QuestTextMissing, saveQuestText } from "@/lib/quests/text";
 
 import { writeWording } from "./accept";
+import { MAX_BYTES } from "./envelope";
 import { lineStates, type CorpusText, type LineState } from "./known";
 import { momentOf } from "./naming";
-import { CONTRIBUTION_COLUMNS, type Contribution } from "./store";
+import { CONTRIBUTION_COLUMNS, rewriteWaitingTexts, type Contribution } from "./store";
 import { correctionNote } from "./notes";
 import { spokenFromTemplate } from "./tokens";
 
@@ -174,6 +177,37 @@ export async function acceptAsWording(id: number, userId: string): Promise<Corre
   const written = await writeWording(contribution, userId);
   if (!written.ok) return written;
   return markAccepted(contribution, lang, userId, { wording: written.lineId });
+}
+
+/**
+ * A moderator's fix to the player's text before it is accepted: what the client sent is mostly
+ * right and one word is not, and the explorer is a page away. Only a row still waiting is
+ * edited (rewriteWaitingTexts), and under the cap a paste has. Answers the text it replaced, for
+ * the caller to put back if the accept after it is refused; null where nothing changed.
+ */
+export async function editCorrectionText(
+  id: number,
+  text: string,
+  userId: string,
+): Promise<{ ok: true; previous: string | null } | { ok: false; reason: "malformed"; message: string }> {
+  const normalised = normaliseText(text);
+  if (!normalised) return { ok: false, reason: "malformed", message: "The text is empty." };
+  if (new TextEncoder().encode(normalised).length > MAX_BYTES) {
+    return { ok: false, reason: "malformed", message: "The text is longer than any line the addon sends." };
+  }
+  const [changed] = await rewriteWaitingTexts([{ id, text: normalised }]);
+  if (!changed) return { ok: true, previous: null };
+  if (isLang(changed.locale)) {
+    await recordActivity({
+      kind: "contribution.edited",
+      lang: changed.locale,
+      source: changed.source,
+      subject: String(id),
+      actorId: userId,
+      detail: { field: "text" },
+    });
+  }
+  return { ok: true, previous: changed.previous };
 }
 
 /**

@@ -11,6 +11,7 @@
 import { compareVersions } from '../shared/version'
 import type { UpdaterState } from '../shared/api'
 import { log } from './state'
+import { t } from './i18n'
 
 export const FEED_URL = 'https://github.com/rusty-key/spoken-wow/releases/download/manager-latest'
 
@@ -105,9 +106,9 @@ export class ManagerUpdater {
     log('Manager update failed:', reason)
     // check() never runs once an update is ready, so this is the install failing; the download is still good.
     if (this.last.state === 'ready') {
-      this.publish({ state: 'ready', version: this.last.version, message: 'Could not install the update. Try again, or close the manager and open it again.' })
+      this.publish({ state: 'ready', version: this.last.version, message: t('updater.installFailed') })
     } else if (this.userTriggered || this.last.state === 'downloading') {
-      this.publish({ state: 'error', message: 'Could not check for a newer manager. Check your connection and try again.' })
+      this.publish({ state: 'error', message: t('updater.checkFailed') })
     } else this.publish({ state: 'idle' })
   }
 
@@ -180,7 +181,7 @@ export class ManagerUpdater {
   /** A check the player asked for: failures are reported as `error`. */
   async checkNow(): Promise<void> {
     if (!this.opts.isPackaged) {
-      this.publish({ state: 'error', message: 'The manager can only update itself when it is installed.' })
+      this.publish({ state: 'error', message: t('updater.notInstalled') })
       return
     }
     await this.check(true)

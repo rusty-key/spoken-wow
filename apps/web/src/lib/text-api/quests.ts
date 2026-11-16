@@ -4,12 +4,16 @@
  * id. What is listed matches the corpus's rule otherwise: a language's own rows, then English's
  * for the moments it has none of, so an English split shows as :m and :f until translated.
  */
+import { LEVEL_PARAM } from "@/lib/line-fields";
 import "server-only";
 
+import { audioRelPath } from "@/lib/audio";
 import { momentOf, momentSql, answersQuestMomentSql } from "@/lib/contributions/naming";
 import { query } from "@/lib/db";
 import { BASE_LANG, type Lang } from "@/lib/lang";
 import { branchesOnPlayerGender } from "@/lib/player-words";
+import { overrideOf, type LineOverride } from "@/lib/quests/override";
+import { readOverrides } from "@/lib/quests/overrides";
 import { restoreQuestText, retireQuestText, saveQuestText } from "@/lib/quests/text";
 
 import { Refused } from "./errors";
@@ -23,6 +27,7 @@ type Row = {
   playerGender: string | null;
   text: string | null;
   version: number | null;
+  fileName: string;
   name: string | null;
   nameVersion: number | null;
   englishText: string | null;
@@ -61,7 +66,7 @@ function linesSql(where: string, limit: string, scope: (alias: string) => string
        ${limit}
     )
     select ln."lineId", ln."variant", ln."source", ln."questId", ln."playerGender", t."text", t."version",
-           n."name", n."version" as "nameVersion", e."text" as "englishText",
+           coalesce(t."fileName", e."fileName") as "fileName", n."name", n."version" as "nameVersion", e."text" as "englishText",
            coalesce(en."name", e."questTitle") as "englishName"
       from "page" ln
       left join "quest_line" t
@@ -80,11 +85,12 @@ function linesSql(where: string, limit: string, scope: (alias: string) => string
      order by ln."lineId" collate "C", ln."variant"`;
 }
 
-function toItem(row: Row): TextItem {
+function toItem(row: Row, overrides: Map<string, LineOverride>): TextItem {
   return {
     id: row.lineId,
     variant: row.variant,
     text: row.text,
+    override: overrideOf(overrides, audioRelPath(row))?.text ?? null,
     version: row.version,
     name: row.name,
     nameVersion: row.nameVersion,
@@ -111,10 +117,19 @@ export function listSql(
   const add = (value: unknown) => `$${params.push(value)}`;
   const quest = filter.quest === undefined ? null : add(Number(filter.quest));
   const source = filter.source === undefined ? null : add(filter.source);
+  const minLevel = filter.minLevel === undefined ? null : add(Number(filter.minLevel));
+  const maxLevel = filter.maxLevel === undefined ? null : add(Number(filter.maxLevel));
+  const levelBounds = [
+    ...(minLevel ? [`"level" >= ${minLevel}::int`] : []),
+    ...(maxLevel ? [`"level" <= ${maxLevel}::int`] : []),
+  ].join(" and ");
   const scope = (alias: string) =>
     [
       ...(quest ? [`${alias}."questId" = ${quest}::int`] : []),
       ...(source ? [`${alias}."source" = ${source}`] : []),
+      ...(levelBounds
+        ? [`${alias}."questId" in (select "questId" from "quest_level" where ${levelBounds})`]
+        : []),
     ].join(" and ") || "true";
   const after = cursor === null ? null : decodeCursor(cursor, isCursor);
   const where = after
@@ -124,25 +139,33 @@ export function listSql(
 }
 
 export const quests: SectionApi = {
-  filters: { quest: /^\d{1,9}$/, source: /^(accept|progress|complete|gossip)$/ },
+  filters: {
+    quest: /^\d{1,9}$/,
+    source: /^(accept|progress|complete|gossip)$/,
+    minLevel: LEVEL_PARAM,
+    maxLevel: LEVEL_PARAM,
+  },
 
   async list(lang, filter, cursor, limit) {
     const { text, params } = listSql(filter, cursor, limit, lang);
-    const rows = await query<Row>(text, params);
-    const items = rows.slice(0, limit).map(toItem);
+    const [rows, overrides] = await Promise.all([query<Row>(text, params), readOverrides(lang)]);
+    const items = rows.slice(0, limit).map((row) => toItem(row, overrides));
     const last = items[items.length - 1];
     return { items, nextCursor: rows.length > limit ? encodeCursor([last.id, last.variant]) : null };
   },
 
   async one(lang, id, variant) {
     if (hasNul(id)) return null;
-    const rows = await query<Row>(
-      linesSql(`where ln."lineId" = $3 and ln."variant" = $4`, "", (alias) =>
-        answersQuestMomentSql(`${alias}."lineId"`, "$5"),
+    const [rows, overrides] = await Promise.all([
+      query<Row>(
+        linesSql(`where ln."lineId" = $3 and ln."variant" = $4`, "", (alias) =>
+          answersQuestMomentSql(`${alias}."lineId"`, "$5"),
+        ),
+        [lang, BASE_LANG, id, variant, momentOf(id)],
       ),
-      [lang, BASE_LANG, id, variant, momentOf(id)],
-    );
-    return rows[0] ? toItem(rows[0]) : null;
+      readOverrides(lang),
+    ]);
+    return rows[0] ? toItem(rows[0], overrides) : null;
   },
 
   async known(lang, asked) {

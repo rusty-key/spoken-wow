@@ -8,7 +8,7 @@ import { apiKeyStatus } from "@/lib/api-key";
 import { viewerOf } from "@/lib/grants/store";
 import { localeHref } from "@/lib/lang";
 import { pageLang } from "@/lib/lang-server";
-import { langsWhere, spendsCredits } from "@/lib/permissions";
+import { langsWhere, roleLabel, spendsCredits } from "@/lib/permissions";
 import { currentSession } from "@/lib/session";
 import { listTokens } from "@/lib/tokens/store";
 import { Contained } from "@/components/Width";
@@ -51,7 +51,7 @@ export default async function Page({ params }: { params: Promise<{ lang: string 
           <dd>{session.user.email}</dd>
           <dt className="text-muted-foreground">Role</dt>
           <dd>
-            <span className="rounded border px-1.5 text-xs uppercase">{role ?? "member"}</span>
+            <span className="rounded border px-1.5 text-xs uppercase">{roleLabel(role)}</span>
           </dd>
         </dl>
 

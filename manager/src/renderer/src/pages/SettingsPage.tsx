@@ -2,28 +2,32 @@ import { useState, type ReactNode } from 'react'
 import { formatBytes, formatDate, formatTime } from '../format'
 import { api, errorText } from '../api'
 import { GameIcon } from '../components/Brand'
-import { Switch } from '../components/Controls'
+import { Select, Switch } from '../components/Controls'
 import { useAddGame } from '../components/EmptyGames'
 import { RestartButton } from '../components/RestartButton'
-import { IconChevron, IconChevronRight, IconDownload, IconGames, IconHeart, IconInfo, IconRefresh, IconUser } from '../components/Icons'
+import { IconChevron, IconChevronRight, IconDownload, IconGames, IconGear, IconHeart, IconInfo, IconRefresh, IconUser } from '../components/Icons'
+import type { Settings, UiLanguage } from '@shared/types'
+import { UI_LANGUAGES } from '@shared/types'
+import { languageName } from '@shared/products'
 import { useStore } from '../store'
 import { ContributorSection } from './ContributorSection'
 import { REPO_URL, S, SITE_URL } from '../strings'
 
-type Section = 'games' | 'updates' | 'downloads' | 'sharing' | 'contributor' | 'about'
-
-const NAV: { id: Section; label: string; icon: ReactNode }[] = [
-  { id: 'games', label: S.settings.folders, icon: <IconGames size={18} /> },
-  { id: 'updates', label: S.settings.updates, icon: <IconRefresh size={18} /> },
-  { id: 'downloads', label: S.settings.downloads, icon: <IconDownload size={18} /> },
-  { id: 'sharing', label: S.settings.sharing, icon: <IconHeart size={18} /> },
-  { id: 'contributor', label: S.settings.contributor, icon: <IconUser size={18} /> },
-  { id: 'about', label: S.settings.about, icon: <IconInfo size={18} /> }
-]
+type Section = 'games' | 'updates' | 'general' | 'downloads' | 'sharing' | 'contributor' | 'about'
 
 export function SettingsPage(): ReactNode {
   const { state } = useStore()
   const [section, setSection] = useState<Section>('games')
+  /** Built per draw: a list built at load would keep the first language. */
+  const nav: { id: Section; label: string; icon: ReactNode }[] = [
+    { id: 'games', label: S.settings.folders, icon: <IconGames size={18} /> },
+    { id: 'updates', label: S.settings.updates, icon: <IconRefresh size={18} /> },
+    { id: 'general', label: S.settings.general, icon: <IconGear size={18} /> },
+    { id: 'downloads', label: S.settings.downloads, icon: <IconDownload size={18} /> },
+    { id: 'sharing', label: S.settings.sharing, icon: <IconHeart size={18} /> },
+    { id: 'contributor', label: S.settings.contributor, icon: <IconUser size={18} /> },
+    { id: 'about', label: S.settings.about, icon: <IconInfo size={18} /> }
+  ]
   return (
     <div className="settings">
       <header className="settings-head">
@@ -31,7 +35,7 @@ export function SettingsPage(): ReactNode {
       </header>
       <div className="settings-body">
         <nav className="settings-nav" aria-label={S.settings.title}>
-          {NAV.map((n) => (
+          {nav.map((n) => (
             <button key={n.id} type="button" className="nav-item" aria-current={section === n.id ? 'page' : undefined} onClick={() => setSection(n.id)}>
               {n.icon}
               {n.label}
@@ -42,6 +46,7 @@ export function SettingsPage(): ReactNode {
           <div className="settings-inner">
             {section === 'games' && <GamesSection />}
             {section === 'updates' && <UpdatesSection />}
+            {section === 'general' && <GeneralSection />}
             {section === 'downloads' && <DownloadsSection />}
             {section === 'sharing' && <SharingSection />}
             {section === 'contributor' && <ContributorSection />}
@@ -134,10 +139,15 @@ function GamesSection(): ReactNode {
   )
 }
 
+function useSetSettings(): (patch: Partial<Settings>) => void {
+  const { actions } = useStore()
+  return (patch) => void actions.setSettings(patch).catch(() => undefined)
+}
+
 function UpdatesSection(): ReactNode {
-  const { state, actions } = useStore()
+  const { state } = useStore()
   const { settings } = state
-  const set = (patch: Parameters<typeof actions.setSettings>[0]): void => void actions.setSettings(patch).catch(() => undefined)
+  const set = useSetSettings()
   return (
     <section aria-labelledby="set-updates">
       <h2 id="set-updates" className="settings-h">
@@ -146,7 +156,34 @@ function UpdatesSection(): ReactNode {
       <div className="switches">
         <Switch checked={settings.includePrereleases} onChange={(v) => set({ includePrereleases: v })} label={S.settings.prereleases} text={S.settings.prereleasesText} />
         <Switch checked={settings.checkOnStart} onChange={(v) => set({ checkOnStart: v })} label={S.settings.checkOnStart} text={S.settings.checkOnStartText} />
+        <Switch checked={settings.autoUpdateContent} onChange={(v) => set({ autoUpdateContent: v })} label={S.settings.autoUpdateContent} text={S.settings.autoUpdateContentText} />
         <Switch checked={settings.autoUpdateManager} onChange={(v) => set({ autoUpdateManager: v })} label={S.settings.autoUpdate} text={S.settings.autoUpdateText} />
+      </div>
+    </section>
+  )
+}
+
+function GeneralSection(): ReactNode {
+  const { state } = useStore()
+  const { settings } = state
+  const set = useSetSettings()
+  return (
+    <section aria-labelledby="set-general">
+      <h2 id="set-general" className="settings-h">
+        {S.settings.general}
+      </h2>
+      <Select label={S.settings.languageName} value={settings.uiLanguage} onChange={(v) => set({ uiLanguage: v as UiLanguage })}>
+        {UI_LANGUAGES.map((l) => (
+          <option key={l.code} value={l.code}>
+            {languageName(l.code)}
+          </option>
+        ))}
+      </Select>
+      <p className="settings-text">{S.settings.languageText}</p>
+      <h3 className="settings-h settings-h-sub">{S.settings.startup}</h3>
+      <div className="switches">
+        <Switch checked={settings.startAtLogin} onChange={(v) => set({ startAtLogin: v })} label={S.settings.startAtLogin} text={S.settings.startAtLoginText} />
+        <Switch checked={settings.minimizeToTray} onChange={(v) => set({ minimizeToTray: v })} label={S.settings.minimizeToTray} text={S.settings.minimizeToTrayText} />
       </div>
     </section>
   )
@@ -162,7 +199,7 @@ function DownloadsSection(): ReactNode {
     setDownloadError('')
     void actions.setSettings({ downloadsPath: '' }).catch((e) => setDownloadError(errorText(e)))
   }
-  const set = (patch: Parameters<typeof actions.setSettings>[0]): void => void actions.setSettings(patch).catch(() => undefined)
+  const set = useSetSettings()
   const clear = async (): Promise<void> => {
     setCleared('')
     setDownloadError('')

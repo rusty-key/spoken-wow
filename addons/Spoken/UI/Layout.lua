@@ -1154,12 +1154,45 @@ end
 
 local dropdowns = 0
 
+-- One font object per file, size and flags: the classic menu takes an object and not a path, and
+-- the game's menu forbids SetFont on its entries' text while it allows SetFontObject.
+local faces, faceCount = {}, 0
+local function FaceObject(path, size, flags)
+    size, flags = size or 12, flags or ""
+    local key = path .. "\0" .. size .. "\0" .. flags
+    if not faces[key] then
+        faceCount = faceCount + 1
+        faces[key] = CreateFont("SpokenLayoutFace" .. faceCount)
+        faces[key]:SetFont(path, size, flags)
+    end
+    return faces[key]
+end
+
+-- Draw a text in `path`, or back in the font it had where `path` is nil. Through font objects
+-- only, never SetFont, which the game's menu refuses on the text of its entries.
+local function Refont(fontString, path)
+    if not (fontString and fontString.GetFont and fontString.SetFontObject) then return end
+    if not fontString.layoutOwnFont then
+        fontString.layoutOwnFont = { fontString:GetFont() }
+        fontString.layoutOwnObject = fontString.GetFontObject and fontString:GetFontObject() or false
+    end
+    local file, size, flags = unpack(fontString.layoutOwnFont)
+    if path then
+        fontString:SetFontObject(FaceObject(path, size, flags))
+    elseif fontString.layoutOwnObject then
+        fontString:SetFontObject(fontString.layoutOwnObject)
+    elseif file then
+        fontString:SetFontObject(FaceObject(file, size, flags))
+    end
+end
+
 --- A dropdown: the game's settings dropdown, with steppers either side (SettingsDropdownWithButtons
 --- Template, the dropdown 220 wide, 48 left of the row's middle), its list the game's own menu.
 --- The plain dropdown where the steppers are missing, the classic one where the menu is, and a
 --- cycle button where there is no dropdown at all. The list may be a function, for a choice
---- whose options depend on what is installed.
-function Layout:Dropdown(label, tooltip, values, read, write, apply, describe)
+--- whose options depend on what is installed. `fontOf(value)` may give the font file an entry's
+--- text is drawn in, for a name the game's font has no glyphs for; nil keeps the game's font.
+function Layout:Dropdown(label, tooltip, values, read, write, apply, describe, fontOf)
     describe = describe or tostring
     local modern = CreateFrame and MenuUtil ~= nil
     if not modern and not (UIDropDownMenu_Initialize and UIDropDownMenu_AddButton and CreateFrame) then
@@ -1195,11 +1228,24 @@ function Layout:Dropdown(label, tooltip, values, read, write, apply, describe)
         dropdown:SetWidth(DROPDOWN_WIDTH)
         dropdown:SetupMenu(function(_, root)
             for _, value in ipairs(Resolve(values)) do
-                root:CreateRadio(describe(value), function() return Chosen(value, read()) end,
+                local element = root:CreateRadio(describe(value), function() return Chosen(value, read()) end,
                     function() Choose(value) end, value)
+                -- Menu buttons are pooled, also with other addons' and the game's menus, so an
+                -- entry with no face puts back the font a previous entry's face replaced, and each
+                -- entry puts it back when its button goes back to the pool.
+                if fontOf and element and element.AddInitializer then
+                    local face = fontOf(value)
+                    element:AddInitializer(function(button) Refont(button.fontString, face) end)
+                    if element.AddResetter then
+                        element:AddResetter(function(button) Refont(button.fontString, nil) end)
+                    end
+                end
             end
         end)
-        Sync = function() if dropdown.GenerateMenu then dropdown:GenerateMenu() end end
+        Sync = function()
+            if dropdown.GenerateMenu then dropdown:GenerateMenu() end
+            if fontOf then Refont(dropdown.Text, fontOf(read())) end
+        end
         setEnabled = function(on)
             if control.SetEnabled then control:SetEnabled(on) else dropdown:SetEnabled(on) end
         end
@@ -1207,13 +1253,21 @@ function Layout:Dropdown(label, tooltip, values, read, write, apply, describe)
         dropdowns = dropdowns + 1
         control = CreateFrame("Frame", "SpokenLayoutDropdown" .. dropdowns, parent, "UIDropDownMenuTemplate")
         offset = CONTROL_X - 16
-        Sync = function() UIDropDownMenu_SetText(control, describe(read())) end
+        Sync = function()
+            UIDropDownMenu_SetText(control, describe(read()))
+            if fontOf then
+                local name = control.GetName and control:GetName()
+                Refont(name and _G[name .. "Text"], fontOf(read()))
+            end
+        end
         UIDropDownMenu_Initialize(control, function(_, level)
             local current = read()
             for _, value in ipairs(Resolve(values)) do
                 local info = UIDropDownMenu_CreateInfo()
                 info.text = describe(value)
                 info.checked = Chosen(value, current)
+                local face = fontOf and fontOf(value)
+                if face then info.fontObject = FaceObject(face) end
                 info.func = function()
                     Choose(value)
                     if CloseDropDownMenus then CloseDropDownMenus() end

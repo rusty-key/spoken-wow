@@ -36,6 +36,7 @@ local function BaseFields(self)
         -- The language narration plays in, said outright so triage can see what the player
         -- was hearing beside what their client shows.
         { "pack", self:GetPackLanguage() },
+        { "packVersion", self:GetPackVersion() },
     }
 end
 

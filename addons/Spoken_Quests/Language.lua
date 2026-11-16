@@ -14,7 +14,8 @@ setfenv(1, VoiceOver)
 --   pack language     X-SpokenQuests-Language on the pack's TOC. What was recorded.
 --                     Absent means English: every pack published before this key
 --                     existed is an English pack, and there is no other reading of
---                     silence that keeps those packs working.
+--                     silence that keeps those packs working. Any well-formed code is
+--                     a language: Spoken's registry learns it from the pack's TOC.
 --
 --   voice language    What the player chose to hear. "auto" means follow the client.
 --
@@ -31,32 +32,12 @@ setfenv(1, VoiceOver)
 
 Language = {}
 
--- Every locale a supported client can run in, and therefore every language a pack may
--- declare. A code absent here is not a language: a pack declaring one is treated as
--- undeclared (English), because the alternative is a pack that silently answers nothing.
---
--- Kept deliberately in step with SpokenPlaces.LOCALES in addons/Spoken_Places/Language.lua:
--- the two addons are installed side by side and a player who sets Portuguese in one and
--- finds no such option in the other has found a bug.
---
--- `client = false` is a language no game client runs in -- Italian and Vietnamese, which a
--- community translates. A pack may declare it and a player may choose it; "auto" never lands
--- on it, and nothing that reads the client's own text (gossip tables, contributions) is ever
--- in it.
-Language.LOCALES = {
-    { code = "enUS", name = "English", native = "English" },
-    { code = "deDE", name = "German", native = "Deutsch" },
-    { code = "esES", name = "Spanish (EU)", native = "Español (España)" },
-    { code = "esMX", name = "Spanish (AL)", native = "Español (América Latina)" },
-    { code = "frFR", name = "French", native = "Français" },
-    { code = "itIT", name = "Italian", native = "Italiano", client = false },
-    { code = "ptBR", name = "Portuguese", native = "Português" },
-    { code = "ruRU", name = "Russian", native = "Русский" },
-    { code = "koKR", name = "Korean", native = "한국어" },
-    { code = "zhCN", name = "Chinese (S)", native = "简体中文" },
-    { code = "zhTW", name = "Chinese (T)", native = "繁體中文" },
-    { code = "viVN", name = "Vietnamese", native = "Tiếng Việt", client = false },
-}
+-- The languages a game client runs in, which Spoken's registry keeps for every module. They
+-- are the only ones this addon lists by itself: any other language is one an installed pack
+-- declares, found by asking Spoken, and a pack for it needs no change here. Without Spoken (a
+-- hand install) the list is just English.
+Language.LOCALES = Spoken and Spoken.BuiltinLanguages and Spoken:BuiltinLanguages()
+    or { { code = "enUS", name = "English", native = "English" } }
 
 -- What an undeclared pack is, what a client in an unknown locale gets, and what the
 -- fallback defaults to. Every pack that exists today is this.
@@ -68,15 +49,16 @@ Language.BASE = "enUS"
 -- English when a Portuguese pack appears beside it.
 Language.AUTO = "auto"
 
-local byCode = {}
-for _, locale in ipairs(Language.LOCALES) do
-    byCode[locale.code] = locale
+--- The registry's entry for a language, or nil where it is neither built in nor declared by an
+--- installed pack. Without Spoken nothing is known, and the entry is nil.
+local function Entry(code)
+    return code and Spoken and Spoken.Language and Spoken:Language(code) or nil
 end
 
 ---@param code string|nil
 ---@return string name The English name of the language, or the code itself if unknown
 function Language:GetName(code)
-    local locale = code and byCode[code]
+    local locale = Entry(code)
     return locale and locale.name or tostring(code)
 end
 
@@ -85,8 +67,15 @@ end
 ---@param code string|nil
 ---@return string name
 function Language:GetNativeName(code)
-    local locale = code and byCode[code]
+    if Spoken and Spoken.LanguageName and code then return Spoken:LanguageName(code) end
+    local locale = Entry(code)
     return locale and (locale.native or locale.name) or tostring(code)
+end
+
+--- Whether a value is shaped like a language code, with or without Spoken's registry.
+local function IsCode(value)
+    if Spoken and Spoken.IsLanguageCode then return Spoken:IsLanguageCode(value) end
+    return type(value) == "string" and string.find(value, "^%l%l%u%u$") ~= nil
 end
 
 --------------------------------------------------------------------------------
@@ -95,14 +84,16 @@ end
 
 --- The language a pack was recorded in.
 ---
---- Absent, empty, or a code this addon does not know all read as English: every pack
---- published before this key existed carries no language at all, and those packs must
---- keep answering lines exactly as they did.
+--- Absent, empty, or no code at all reads as English: every pack published before this key
+--- existed carries no language at all, and those packs must keep answering lines exactly as
+--- they did. A code is taken as it stands, since Spoken's scan of the same TOC has already
+--- registered it.
 ---@param declared string|nil The raw TOC value
 ---@return string code
 function Language:Normalize(declared)
-    if declared and byCode[declared] then
-        return declared
+    if IsCode(declared) then
+        -- A game client in British English runs the English pack, as the registry reads it.
+        return declared == "enGB" and self.BASE or declared
     end
     return self.BASE
 end
@@ -112,7 +103,7 @@ end
 --------------------------------------------------------------------------------
 
 --- The client's own locale as a language code, or English if the client runs in a
---- locale no pack could ever declare.
+--- locale that is no built-in language.
 ---@return string code
 function Language:GetClientLanguage()
     local locale = GetLocale and GetLocale()
@@ -122,12 +113,12 @@ function Language:GetClientLanguage()
     return self.BASE
 end
 
---- Whether a game client runs in this language. See `client` on LOCALES.
+--- Whether a game client runs in this language: a built-in one, which the registry marks `client`.
 ---@param code string|nil
 ---@return boolean
 function Language:IsClientLanguage(code)
-    local locale = code and byCode[code]
-    return locale ~= nil and locale.client ~= false
+    local locale = Entry(code)
+    return locale ~= nil and locale.client == true
 end
 
 --- The language the player wants to hear, resolved. `auto` becomes the client's locale.
@@ -136,7 +127,9 @@ function Language:GetVoiceLanguage()
     -- The one choice on Spoken's page for every module, once made; this addon's own until then.
     local shared = Spoken and Spoken.GetLanguageChoice and Spoken:GetLanguageChoice()
     local stored = shared or (Addon and Addon.db and Addon.db.profile.Audio.VoiceLanguage)
-    if stored == nil or stored == self.AUTO or not byCode[stored] then
+    -- A code is kept even where no pack of it is installed: the choice outlives the pack, and the
+    -- fallback answers meanwhile.
+    if stored == nil or stored == self.AUTO or not IsCode(stored) then
         return self:GetClientLanguage()
     end
     return stored
@@ -156,7 +149,7 @@ function Language:GetFallbackLanguage()
     if stored == nil then
         return self.BASE
     end
-    if stored == "none" or not byCode[stored] then
+    if stored == "none" or not IsCode(stored) then
         return nil
     end
     return stored

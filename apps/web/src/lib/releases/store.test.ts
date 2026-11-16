@@ -4,7 +4,17 @@ import { closeDb, db } from "@/lib/db";
 import { forgetTeams } from "@/lib/teams/store";
 import { asSystem, ownTeam, unowned, systemRows, testUser } from "@/lib/teams/testing";
 
-import { ReleaseBusyError, activeRun, recentRuns, startRun, updateRun } from "./store";
+import {
+  ReleaseBusyError,
+  activeRun,
+  lastDoneRuns,
+  lastReleasedAt,
+  latestPackVersions,
+  packReleases,
+  recentRuns,
+  startRun,
+  updateRun,
+} from "./store";
 
 // Only this file touches release_run, and vitest.config runs files one at a time, so the
 // one-active index cannot be tripped by another suite.
@@ -46,6 +56,46 @@ describe("release runs", () => {
     expect(await activeRun()).toBeNull();
     const second = await startRun("places", "deDE", user.id);
     expect(second.id).not.toBe(first.id);
+  });
+
+  it("finds a section's last release however many runs came after it", async () => {
+    const done = await startRun("bosses", "deDE", user.id);
+    await updateRun(done.id, { state: "done", version: "1.0.0" });
+    for (let i = 0; i < 3; i++) {
+      const later = await startRun("bosses", "deDE", user.id);
+      await updateRun(later.id, { state: "failed", error: "no" });
+    }
+    const runs = await lastDoneRuns("deDE");
+    expect(runs.map((run) => [run.section, run.version])).toEqual([["bosses", "1.0.0"]]);
+  });
+
+  it("lists a language's released pack versions newest first, and each language's newest, across teams", async () => {
+    const run = async (section: string, lang: "frFR" | "deDE", patch: Parameters<typeof updateRun>[1]) =>
+      updateRun((await startRun(section, lang, user.id)).id, patch);
+    await run("quests", "frFR", { state: "done", version: "1.2.0" });
+    await run("quests", "frFR", { state: "done", version: "1.3.0" });
+    await run("quests", "frFR", { state: "unchanged" });
+    await run("quests", "frFR", { state: "failed", error: "no" });
+    await run("quests", "deDE", { state: "done", version: "2.0.1" });
+    await run("places", "deDE", { state: "done", version: "9.0.0" });
+    const releases = await packReleases("quests", "frFR");
+    expect(releases.map((r) => r.version)).toEqual(["1.3.0", "1.2.0"]);
+    expect(Date.parse(releases[0].at)).toBeGreaterThan(Date.parse(releases[1].at));
+    expect(await packReleases("quests", "deDE")).toMatchObject([{ version: "2.0.1" }]);
+    expect(await packReleases("readables", "frFR")).toEqual([]);
+    expect(await latestPackVersions("quests")).toEqual({ frFR: "1.3.0", deDE: "2.0.1" });
+  });
+
+  it("counts a section as released from a run that released or found nothing, not one that failed", async () => {
+    const done = await startRun("quests", "deDE", user.id);
+    await updateRun(done.id, { state: "done", version: "1.0.0" });
+    const unchanged = await startRun("places", "deDE", user.id);
+    await updateRun(unchanged.id, { state: "unchanged" });
+    const failed = await startRun("bosses", "deDE", user.id);
+    await updateRun(failed.id, { state: "failed", error: "no" });
+    const released = await lastReleasedAt("deDE");
+    expect([...released.keys()].sort()).toEqual(["places", "quests"]);
+    expect(released.get("quests")?.getTime()).toBe(done.createdAt.getTime());
   });
 
   it("keeps a run to its own language's team", async () => {

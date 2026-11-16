@@ -5,6 +5,7 @@ import Link from "@/components/LocaleLink";
 import { notFound } from "next/navigation";
 
 import ReportForm from "@/components/ReportForm";
+import { packReleases } from "@/lib/releases/store";
 import ListenFirst from "@/components/reports/ListenFirst";
 import { audioRelPath } from "@/lib/places/audio";
 import { isCorpusEmpty, lineByPath, loadContext } from "@/lib/places/catalogue";
@@ -67,7 +68,8 @@ export default async function Page({ params }: { params: Promise<Params> }) {
   // The current take is the only thing here that is not derivable from committed files,
   // and it answers one question: is there narration to listen to before complaining about
   // it.
-  const take = (await loadContext(lang)).takes.get(entry.id);
+  const [context, releases] = await Promise.all([loadContext(lang), packReleases("places", lang)]);
+  const take = context.takes.get(entry.id);
 
   return (
     <main className="pt-8 pb-24">
@@ -78,7 +80,7 @@ export default async function Page({ params }: { params: Promise<Params> }) {
             {entry.kind === "subzone" ? `In ${entry.zoneName}` : "Zone lore"}
           </p>
 
-          {take ? <ListenFirst className="mt-4" /> : null}
+          {take ? <ListenFirst className="mt-4" source="places" recordedAt={take.generatedAt} releases={releases} /> : null}
 
           {take ? (
             // The native control rather than the explorer's Player: that one carries a rate

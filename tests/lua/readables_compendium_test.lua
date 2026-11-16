@@ -251,7 +251,7 @@ Expect("...a city inside the zone around it, not beside it", Has(list, "Stormwin
 Expect("...the readables after the continents, a banner each: those found across Azeroth and those of no known origin",
     RowFor(L.GROUP_WIDE).row.style == "banner" and RowFor(L.GROUP_UNKNOWN).row.style, "banner")
 Expect("...each zone's card counting what is found out of all, its city's included",
-    RowFor("Elwynn Forest").count.text:match("^1/%d+ • %d+%%$") ~= nil, true)
+    RowFor("Elwynn Forest").count.text:match("^1/%d+ · %d+%%$") ~= nil, true)
 Expect("...and the seasonal events' readables, in a group of their own before them",
     Has(list, L.GROUP_EVENTS) and list:find(L.GROUP_EVENTS, 1, true) < list:find(L.GROUP_WIDE, 1, true), true)
 Click(L.GROUP_EVENTS)
@@ -552,6 +552,27 @@ do
     stub.world.playerName, stub.world.playerClass, stub.world.unitSex = nil, nil, 2
     B:ShowReadables(KURDRAN)
 end
+do
+    local first = SpokenReadablesData.books[KURDRAN].pages[1]
+    local packs, locale = _G.SpokenReadablesAudioPacks, _G.GetLocale
+    local corpus = SpokenReadablesData.pages[first].text
+    _G.SpokenReadablesAudioPacks = { SpokenReadablesAudio = { version = 1, language = "enUS",
+        pages = { [first] = { file = tostring(first), len = 2, text = "Newer pack words." } } } }
+    B:ShowReadables(KURDRAN)
+    Expect("an English pack's words show on an English client", page.body.text.text:sub(1, 17), "Newer pack words.")
+    Expect("...leaving the corpus's words, which matching reads", SpokenReadablesData.pages[first].text, corpus)
+    Expect("...and caption the recording", (B:CaptionText(first, "enUS", "Newer pack words.")), "Newer pack words.")
+    _G.GetLocale = function() return "esES" end
+    B:ShowReadables(KURDRAN)
+    Expect("...but not on a Spanish client", page.body.text.text:sub(1, 17) == "Newer pack words.", false)
+    _G.SpokenReadablesAudioPacks = { SpokenReadablesAudio_itIT = { version = 1, language = "itIT",
+        pages = { [first] = { file = tostring(first), len = 2, text = "Parole italiane." } } } }
+    _G.GetLocale = function() return "enUS" end
+    Expect("an Italian voice on an English client still captions Italian", (B:CaptionText(first, "itIT", "Parole italiane.")),
+        "Parole italiane.")
+    _G.SpokenReadablesAudioPacks, _G.GetLocale = packs, locale
+    B:ShowReadables(KURDRAN)
+end
 -- On a client in another language, a page is in that language where Spoken has its words: a pack in
 -- the client's language, or the page as the client showed it.
 do
@@ -771,6 +792,20 @@ do
     local fresh = _G.SpokenCompendium.NewPage(CreateFrame("Frame"), B)
     SpokenTextView.Unsnap = unsnap
     Expect("a page's parchment drawn off the pixel grid, as the fade cut from it is", unsnapped ~= nil and unsnapped == fresh.bg, true)
+
+    fresh:Show({ title = "Edwin VanCleef", model = { displayID = 2029 }, text = "A boss's story." })
+    Expect("a page can show a 3D model above its words",
+        fresh.body.model:IsShown() and fresh.body.model.frameType == "PlayerModel", true)
+    Expect("...at the compact model size", fresh.body.model.width .. "x" .. fresh.body.model.height, "150x150")
+    Expect("...with the same top spacing as a zone image", fresh.body.model.anchor.y, -8)
+    Expect("...using the model display ID", fresh.body.model.displayID, 2029)
+    Expect("...with DBM-like model settings", fresh.body.model.portraitZoom .. "|" .. fresh.body.model.sequence,
+        "0.4|4")
+    fresh.body.model.sequence = "still playing"
+    fresh:Show({ title = "Edwin VanCleef", model = { displayID = 2029 }, text = "A boss's story." })
+    Expect("...left playing when the page is shown again", fresh.body.model.sequence, "still playing")
+    fresh:Show({ title = "A place", text = "Place lore." })
+    Expect("a page without a model hides the old one", fresh.body.model:IsShown(), false)
 
     -- The line under the title: plain words, or where the tab gives one, a way up a level.
     local sub, clicked, red = fresh.sub, 0, nil

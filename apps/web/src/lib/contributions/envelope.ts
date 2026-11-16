@@ -67,6 +67,10 @@ export function parseEnvelope(raw: string): Result {
   if (new TextEncoder().encode(raw).length > MAX_BYTES) {
     return { ok: false, error: "oversize" };
   }
+  // Postgres text cannot hold NUL, and one in a file would fail every line stored beside it.
+  if (raw.includes("\u0000")) {
+    return { ok: false, error: "malformed" };
+  }
 
   // A paste picks up blank lines and \r\n at both ends and neither is the player's fault.
   const normalised = raw.replace(/\r\n/g, "\n").replace(/\r/g, "\n").trim() + "\n";

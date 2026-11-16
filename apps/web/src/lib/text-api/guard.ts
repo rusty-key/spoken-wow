@@ -8,7 +8,7 @@ import "server-only";
 
 import { viewerOf } from "@/lib/grants/store";
 import type { Lang } from "@/lib/lang";
-import { can } from "@/lib/permissions";
+import { can, type Capability } from "@/lib/permissions";
 import { findLiveToken } from "@/lib/tokens/store";
 import type { TokenAccess } from "@/lib/tokens/types";
 
@@ -22,9 +22,10 @@ export type TokenContext = {
 
 const BEARER = /^Bearer\s+(\S+)$/;
 
+/** `also` is a grant a route needs on top of `text`: lexicon writes need `configure`, as on the site. */
 export async function requireToken(
   request: Request,
-  options: { write?: boolean } = {},
+  options: { write?: boolean; also?: Capability } = {},
 ): Promise<{ context: TokenContext; denied: null } | { context: null; denied: Response }> {
   const denied = (status: number, error: string) => ({
     context: null,
@@ -40,6 +41,9 @@ export async function requireToken(
     return denied(403, `this token's owner is not a text maintainer in ${token.lang}`);
   }
   if (options.write && token.access !== "write") return denied(403, "this token is read-only");
+  if (options.also && !can(viewer, options.also, token.lang)) {
+    return denied(403, `this token's owner does not hold ${options.also} in ${token.lang}`);
+  }
 
   return {
     context: {

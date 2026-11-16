@@ -116,7 +116,7 @@ export type BatchJob = {
 };
 
 /** Mirrors BatchSkip in lib/search.ts. */
-export type BatchSkip = "progress" | "untranslated" | "no-voice" | "invalid-chars" | "shared-file";
+export type BatchSkip = "untranslated" | "no-voice" | "invalid-chars" | "shared-file";
 
 export type BatchJobs = {
   jobs: BatchJob[];

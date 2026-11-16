@@ -12,17 +12,17 @@ import os
 import re
 import shutil
 
-from slpp import slpp as lua
 from tqdm import tqdm
 
 from tts_cli.ignores import ignored_files, wordless
 from tts_cli.length_table import write_sound_length_table_lua
+from tts_cli.lua import lua_value
 from tts_cli.naming import (BROADCAST_SOURCES, followup_stem_from_line_id, gossip_hash_from_line_id,
                             moment_of, quest_moment_stem, quest_stem_from_line_id,
                             several_wordings, split_voice, subfolder_from_line_id,
                             variant_file_name)
 from tts_cli.npc_bodies import GENDER_SEX, body_name
-from tts_cli.store import SUBFOLDERS, audio_extension, durations, stored_files, word_times
+from tts_cli.store import SUBFOLDERS, audio_extension, durations, stored_files, take_text, word_times
 from tts_cli.utils import (get_first_n_words, get_last_n_words,
                            replace_dollar_bs_with_space)
 
@@ -209,7 +209,7 @@ def name_rank(line: dict) -> int:
 def build_tables(corpus: dict, ignored=()) -> dict:
     """Every lookup table, as {output filename: (lua table name, data)}.
 
-    Ignored lines are left out entirely, the way progress text is below: an entry pointing
+    Ignored lines are left out entirely: an entry pointing
     at a sound that will never be produced resolves to silence, and the addon has no way to
     tell that apart from a broken lookup.
     """
@@ -308,10 +308,6 @@ def build_tables(corpus: dict, ignored=()) -> dict:
                 escape_lua_string(speaker_name(line["npcName"])), {})[text] = own
             continue
 
-        # Progress text is never voiced, so an entry would resolve to silence.
-        if line["source"] == "progress":
-            continue
-
         stem = quest_stem_from_line_id(base_id)
         wordings.setdefault(quest_moment_stem(base_id), {})[
             escape_lua_string(line["originalText"])] = stem
@@ -363,6 +359,16 @@ def build_tables(corpus: dict, ignored=()) -> dict:
     }
 
 
+#: Every entry names gossip audio, directly or through GossipAliases, so only a pack holding
+#: gossip carries these. The body and sex tables stay in every pack: quest lines read them too.
+GOSSIP_TEXT_TABLES = ("npc_gossip_file_lookups", "object_gossip_file_lookups",
+                      "npc_name_gossip_file_lookups", "object_name_gossip_file_lookups")
+
+
+def carries_gossip(include) -> bool:
+    return include is None or any(stem.startswith("gossip/") for stem in include)
+
+
 #: The tables a language's Gossip pack gets a client-locale copy of: the ones keyed by the
 #: NPC's words and its id. Quest ids come from the client itself on every supported release,
 #: names are only shown, and the name-keyed gossip tables are the fallback for a speaker with
@@ -403,12 +409,13 @@ def locale_tables(corpus: dict, rows: list, ignored=()) -> dict:
 
 
 def write_lua_table(path: str, module_name: str, table_name: str, data,
-                    lang: str = None) -> None:
+                    lang: str = None, only_on: str = None) -> None:
     """One generated table. With `lang`, a copy that exists only on a client in that locale.
 
     That copy is in a language's pack, but a player on an English client may install the
     pack to hear the language, and their client shows English: the English tables are the
-    ones that match there, so the copy returns before it is built.
+    ones that match there, so the copy returns before it is built. With `only_on`, the table
+    itself is built only on a client in that locale.
     """
     os.makedirs(os.path.dirname(path), exist_ok=True)
     with open(path, "w", encoding="utf-8") as f:
@@ -420,8 +427,11 @@ def write_lua_table(path: str, module_name: str, table_name: str, data,
             f.write(f"{module_name}.ClientLocaleLookups = "
                     f"{module_name}.ClientLocaleLookups or {{}}\n")
             target = f"{module_name}.ClientLocaleLookups.{table_name}"
+        if only_on:
+            f.write("if not VoiceOver.Language or "
+                    f'VoiceOver.Language:GetClientLanguage() ~= "{only_on}" then return end\n')
         f.write(f"{target} = ")
-        f.write(lua.encode(data))
+        f.write(lua_value(data))
         f.write("\n")
 
 
@@ -455,10 +465,10 @@ def build_module(corpus: dict, store_dir: str, dist_dir: str = DEFAULT_DIST_DIR,
 
     `include` is a set of store-relative stems ('quests/5-accept', no extension) and makes
     this one pack of several: the store is staged once and built into a pack per side of the
-    war. None means everything in the store. The lookup tables are not narrowed with it -
-    they map text to ids and hashes rather than to files, they are the same in every pack,
-    and an entry whose audio is in a pack the player did not install simply finds no length
-    and stays quiet. See tts_cli/factions.py.
+    war. None means everything in the store. The lookup tables are not narrowed with it, except
+    GOSSIP_TEXT_TABLES - they map text to ids and hashes rather than to files, and
+    an entry whose audio is in a pack the player did not install simply finds no length and
+    stays quiet. See tts_cli/factions.py.
 
     `locale_text` is `language`'s rows from tts_cli.locale_text, and adds that language's
     gossip tables under generated/<language>/, loaded only on a client in it. Only the
@@ -497,6 +507,9 @@ def build_module(corpus: dict, store_dir: str, dist_dir: str = DEFAULT_DIST_DIR,
         shutil.copy2(os.path.join(store_dir, rel), os.path.join(sounds_dir, rel))
 
     tables = build_tables(corpus, ignored)
+    if not carries_gossip(include):
+        for name in GOSSIP_TEXT_TABLES:
+            del tables[name]
     written = []
     for filename, (table_name, data) in sorted(tables.items()):
         write_lua_table(os.path.join(generated_dir, filename + ".lua"),
@@ -526,6 +539,15 @@ def build_module(corpus: dict, store_dir: str, dist_dir: str = DEFAULT_DIST_DIR,
                     module_name, "WordTimesByFileName", times)
     written.append("word_times_table.lua")
 
+    # For this pack's audio alone, or four packs of a language each repeat every line's text. Only
+    # on a client in the pack's language, the only one that shows it: megabytes of strings otherwise.
+    words = take_text(store_dir)
+    texts = {os.path.basename(stem): words[stem]
+             for stem in (os.path.splitext(rel)[0] for rel in audio) if stem in words}
+    write_lua_table(os.path.join(generated_dir, "text_table.lua"),
+                    module_name, "TextByFileName", texts, only_on=language or "enUS")
+    written.append("text_table.lua")
+
     shutil.copy2(icon_source(language), os.path.join(module_dir, ICON_NAME))
 
     with open(os.path.join(module_dir, "Module.lua"), "w", encoding="utf-8") as f:
@@ -542,7 +564,8 @@ def build_module(corpus: dict, store_dir: str, dist_dir: str = DEFAULT_DIST_DIR,
         "audioFormat": extension,
         "tables": sorted(written),
         "tableRows": {**{name: len(data) for name, (_, data) in tables.items()}, **locale_rows,
-                      "word_times_table": len(times)},
+                      "word_times_table": len(times),
+                      "text_table": len(texts)},
         "language": language,
     }
 

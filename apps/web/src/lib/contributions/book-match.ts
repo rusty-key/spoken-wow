@@ -15,6 +15,7 @@ import { normaliseText } from "@readables-tools/lib/text.mjs";
 import type { PoolClient } from "pg";
 
 import { db } from "@/lib/db";
+import { BASE_LANG } from "@/lib/lang";
 import { memoByLang } from "@/lib/memo";
 import { bookPageStamp, versionStamp } from "@/lib/stamp";
 
@@ -166,6 +167,51 @@ function onPage(page: BookCorpusPage, said: string, row: BookMatchInput, corpus:
 function inBook(corpus: BookCorpus, bookId: string, pageNumber: number, said: string, row: BookMatchInput, via: MatchVia): BookMatchResult {
   const page = corpus.byPlace.get(`${bookId}\u0000${pageNumber}`);
   return page ? onPage(page, said, row, corpus, via) : { kind: "new-page", bookId, pageNumber, via };
+}
+
+export function titleIn(page: BookCorpusPage | undefined, lang: string): string {
+  return page?.titles.get(lang)?.[0] ?? page?.titles.get(BASE_LANG)?.[0] ?? [...(page?.titles.values() ?? [])][0]?.[0] ?? "untitled";
+}
+
+/** One page or book an ambiguous row may be, with enough to tell it from same-named others. */
+export type BookCandidate = {
+  key: string;
+  answer: { lineId: string } | { bookId: string; pageNumber: number };
+  label: string;
+  bookId: string;
+  /** The page shown for it: the row's own, or the book's first when the book has no such page. */
+  lineId: string;
+  excerpt: string | null;
+  owner: { kind: "object" | "item"; id: number } | null;
+};
+
+const EXCERPT_LENGTH = 120;
+
+/** An ambiguous match's candidates: page ids when the words matched, book ids when only the title did. */
+export function bookCandidates(
+  match: BookMatchResult,
+  corpus: BookCorpus,
+  row: Pick<BookMatchInput, "locale" | "meta">,
+): BookCandidate[] {
+  if (match.kind !== "ambiguous") return [];
+  const pageNumber = pageNumberOf(row.meta);
+  return match.candidates.flatMap((candidate) => {
+    const isPage = candidate.startsWith("b:");
+    const bookId = isPage ? null : candidate;
+    const own = isPage ? corpus.pages.find((p) => p.lineId === candidate) : corpus.byPlace.get(`${bookId}\u0000${pageNumber}`);
+    const page = own ?? corpus.pages.filter((p) => p.bookId === bookId).sort((a, b) => a.pageNumber - b.pageNumber)[0];
+    if (!page) return [];
+    const text = page.texts.get(row.locale) ?? page.texts.get(BASE_LANG) ?? [...page.texts.values()][0];
+    return [{
+      key: candidate,
+      answer: isPage ? { lineId: candidate } : { bookId: page.bookId, pageNumber },
+      label: `${titleIn(page, row.locale)} p.${isPage ? page.pageNumber : pageNumber}${own ? "" : " (new page)"}`,
+      bookId: page.bookId,
+      lineId: page.lineId,
+      excerpt: text ? text.replace(/\s+/g, " ").trim().slice(0, EXCERPT_LENGTH) : null,
+      owner: page.ownerKind && page.ownerIds.length > 0 ? { kind: page.ownerKind, id: page.ownerIds[0] } : null,
+    }];
+  });
 }
 
 export function matchBook(row: BookMatchInput, corpus: BookCorpus): BookMatchResult {

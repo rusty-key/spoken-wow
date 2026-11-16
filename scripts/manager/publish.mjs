@@ -72,7 +72,7 @@ export async function latestSpokenRelease(fetchImpl = fetch, token = process.env
   return versions.sort(compareVersions).at(-1);
 }
 
-async function readSigned(store, key, publicKey) {
+export async function readSigned(store, key, publicKey) {
   const o = await store.get(key);
   if (!o) return null;
   return { ...openJson(o.body.toString("utf8"), publicKey), etag: o.etag };
@@ -232,7 +232,8 @@ export async function publish({ store, packs: allPacks, distDir, signingKey, min
     await store.put(`packs/${c.folder}/${rev}.json`, sealed.text, { contentType: "application/json", cacheControl: IMMUTABLE, ifNoneMatch: "*" });
     nextPacks[c.folder] = { rev, manifestSha256: sha256Text(sealed.signed), fileCount: manifest.fileCount, totalSize: manifest.totalSize, requires: c.requires };
   }
-  const sealedIndex = sealJson({ generatedAt: now.toISOString(), packs: nextPacks }, signingKey);
+  // The spread keeps Spoken's own zips, which this publish knows nothing about, listed.
+  const sealedIndex = sealJson({ ...current?.value, generatedAt: now.toISOString(), packs: nextPacks }, signingKey);
   await store.put("index.json", sealedIndex.text, {
     contentType: "application/json", cacheControl: INDEX_CACHE,
     ...(current ? { ifMatch: current.etag } : { ifNoneMatch: "*" }),

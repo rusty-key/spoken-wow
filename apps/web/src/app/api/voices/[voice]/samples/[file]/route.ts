@@ -1,7 +1,6 @@
 /** One uploaded clip: play it, or delete it. */
 import { recordActivity } from "@/lib/activity/store";
 import { cloneName } from "@/lib/voices/clone-name";
-import { langParam } from "@/lib/lang-server";
 
 import { servePrivate } from "@/lib/blobs/serve";
 import { requireVoiceManager, requireVoiceViewer } from "@/lib/voices/authz";
@@ -30,11 +29,9 @@ export async function GET(request: Request, context: Context) {
 
 export async function DELETE(request: Request, context: Context) {
   const { voice, file } = await context.params;
-  const { session, denied } = await requireVoiceManager(voice);
-  if (denied) return denied;
   // A slot is shared; its clips and its clone are the language\'s own (clone-name.ts).
-  const { lang, denied: noLang } = await langParam(request);
-  if (noLang) return noLang;
+  const { session, lang, denied } = await requireVoiceManager(request, voice);
+  if (denied) return denied;
   const clone = cloneName(voice, lang);
   if (!isStoredSampleName(file)) return Response.json({ error: "bad clip name" }, { status: 400 });
 

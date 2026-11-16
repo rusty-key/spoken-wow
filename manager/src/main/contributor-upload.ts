@@ -7,6 +7,7 @@ import { Readable } from 'node:stream'
 import { pipeline } from 'node:stream/promises'
 import yazl from 'yazl'
 import { CancelledError, errorCode, isAbortError, PlainError, withTimeout } from './errors'
+import { t } from './i18n'
 
 const CF_API = 'https://wow.curseforge.com/api'
 export const GH_API = 'https://api.github.com'
@@ -44,13 +45,13 @@ async function send(
     return await fetchImpl(url, { ...init, redirect: 'error', signal: timeoutMs ? withTimeout(timeoutMs, signal) : signal })
   } catch (err) {
     if (isAbortError(err) || signal?.aborted) throw new CancelledError()
-    throw new PlainError(`Could not reach ${store}.`)
+    throw new PlainError(t('upload.reachStore', { store }))
   }
 }
 
 async function rejected(store: string, res: Response, token: string): Promise<PlainError> {
   const text = await bodyText(res, token)
-  return new PlainError(`${store} answered HTTP ${res.status}${text ? `: ${text}` : ''}`)
+  return new PlainError(t('upload.storeHttp', { store, status: res.status, text: text ? `: ${text}` : '' }))
 }
 
 // ---------------------------------------------------------------- zip
@@ -64,7 +65,7 @@ async function filesUnder(root: string, dir: string, prefix: string, out: Array<
     else if (entry.isFile()) out.push([full, inZip])
     else if (entry.isSymbolicLink()) {
       // Leaving a link out would drop clips from a published zip without a word.
-      throw new PlainError(`${path.relative(root, full).split(path.sep).join('/')} is a link, which a pack cannot hold.`)
+      throw new PlainError(t('upload.linkInPack', { path: path.relative(root, full).split(path.sep).join('/') }))
     }
   }
 }
@@ -78,8 +79,8 @@ export async function zipFolder(addOns: string, folder: string, dest: string, si
     await filesUnder(root, root, folder, files)
   } catch (err) {
     if (err instanceof PlainError) throw err
-    if (errorCode(err) === 'ENOENT') throw new PlainError(`${folder} is not installed.`)
-    throw new PlainError(`Could not read ${folder}.`)
+    if (errorCode(err) === 'ENOENT') throw new PlainError(t('upload.notInstalled', { folder }))
+    throw new PlainError(t('upload.cannotRead', { folder }))
   }
   const zip = new yazl.ZipFile()
   // yazl reports a file it cannot read on the ZipFile, not on its output; without this the run hangs.
@@ -91,7 +92,7 @@ export async function zipFolder(addOns: string, folder: string, dest: string, si
   } catch (err) {
     await fs.promises.rm(dest, { force: true }).catch(() => undefined)
     if (isAbortError(err) || signal.aborted) throw new CancelledError()
-    throw new PlainError(`Could not zip ${folder}.`)
+    throw new PlainError(t('upload.cannotZip', { folder }))
   }
 }
 
@@ -99,7 +100,7 @@ async function zipSize(zip: string): Promise<number> {
   try {
     return (await fs.promises.stat(zip)).size
   } catch {
-    throw new PlainError('The zip to send could not be read.')
+    throw new PlainError(t('upload.zipUnreadable'))
   }
 }
 
@@ -135,14 +136,14 @@ export function cfProjectLink(project: string): string {
 async function listGameVersions(token: string, fetchImpl: typeof fetch, signal?: AbortSignal): Promise<unknown> {
   const res = await send('CurseForge', fetchImpl, `${CF_API}/game/versions`, { headers: cfHeaders(token) }, signal, CHECK_TIMEOUT_MS)
   if (!res.ok) {
-    if (res.status === 401 || res.status === 403) throw new PlainError('CurseForge did not accept that token.')
+    if (res.status === 401 || res.status === 403) throw new PlainError(t('upload.cfToken'))
     throw await rejected('CurseForge', res, token)
   }
   try {
     return await res.json()
   } catch {
     if (signal?.aborted) throw new CancelledError()
-    throw new PlainError("CurseForge's list of game versions could not be read.")
+    throw new PlainError(t('upload.cfVersions'))
   }
 }
 
@@ -153,12 +154,12 @@ export async function checkCfToken(token: string, fetchImpl: typeof fetch): Prom
 /** A name that matches no entry, or two, would file the pack under the wrong client, so it stops the run. */
 export async function resolveGameVersions(token: string, names: string, fetchImpl: typeof fetch, signal?: AbortSignal): Promise<number[]> {
   const list = await listGameVersions(token, fetchImpl, signal)
-  if (!Array.isArray(list)) throw new PlainError("CurseForge's list of game versions could not be read.")
+  if (!Array.isArray(list)) throw new PlainError(t('upload.cfVersions'))
   const ids: number[] = []
   for (const name of names.split(/\s+/).filter(Boolean)) {
     const hits = list.filter((v: { name?: unknown }) => v && v.name === name) as Array<{ id?: unknown }>
     if (hits.length !== 1 || typeof hits[0]?.id !== 'number') {
-      throw new PlainError(`CurseForge has ${hits.length} game versions named ${name}. Change the game versions under Stores.`)
+      throw new PlainError(t('upload.cfDuplicate', { count: hits.length, name }))
     }
     ids.push(hits[0]!.id)
   }
@@ -212,7 +213,7 @@ export async function uploadCurseForge(a: {
     } as RequestInit,
     a.signal
   )
-  if (res.status === 413) throw new PlainError(`${a.folder} is over CurseForge's upload limit (HTTP 413).`)
+  if (res.status === 413) throw new PlainError(t('upload.cfTooBig', { folder: a.folder }))
   if (!res.ok) throw await rejected('CurseForge', res, a.token)
   let fileId: string | null = null
   try {
@@ -239,15 +240,15 @@ export const ghHeaders = (token: string): Record<string, string> => ({
 })
 
 function checkRepoName(repo: string): void {
-  if (!/^[^/\s]+\/[^/\s]+$/.test(repo)) throw new PlainError('The GitHub repository must look like owner/repo.')
+  if (!/^[^/\s]+\/[^/\s]+$/.test(repo)) throw new PlainError(t('upload.repoShape'))
 }
 
 /** Refuses a repository the token cannot push to, before a run sends anything. */
 export async function checkGhRepo(token: string, repo: string, fetchImpl: typeof fetch): Promise<void> {
   checkRepoName(repo)
   const res = await send('GitHub', fetchImpl, `${GH_API}/repos/${repo}`, { headers: ghHeaders(token) }, undefined, CHECK_TIMEOUT_MS)
-  if (res.status === 401) throw new PlainError('GitHub did not accept that token.')
-  if (res.status === 404) throw new PlainError(`GitHub shows no repository ${repo} to that token.`)
+  if (res.status === 401) throw new PlainError(t('upload.ghToken'))
+  if (res.status === 404) throw new PlainError(t('upload.ghNoRepo', { repo }))
   if (!res.ok) throw await rejected('GitHub', res, token)
   let push: unknown
   try {
@@ -255,7 +256,7 @@ export async function checkGhRepo(token: string, repo: string, fetchImpl: typeof
   } catch {
     push = undefined
   }
-  if (push !== true) throw new PlainError(`That token cannot push to ${repo}: it needs write access.`)
+  if (push !== true) throw new PlainError(t('upload.ghNoWrite', { repo }))
 }
 
 interface GhRelease {
@@ -265,11 +266,11 @@ interface GhRelease {
 }
 
 async function deleteGhAsset(a: { token: string; repo: string; signal: AbortSignal; fetchImpl: typeof fetch }, id: unknown, name: string): Promise<void> {
-  if (typeof id !== 'number') throw new PlainError(`GitHub holds an unfinished ${name}, with no id to remove it by.`)
+  if (typeof id !== 'number') throw new PlainError(t('upload.ghUnfinishedNoId', { name }))
   const res = await send('GitHub', a.fetchImpl, `${GH_API}/repos/${a.repo}/releases/assets/${id}`, { method: 'DELETE', headers: ghHeaders(a.token) }, a.signal, CHECK_TIMEOUT_MS)
   if (!res.ok) {
     const answer = await rejected('GitHub', res, a.token)
-    throw new PlainError(`Could not remove the unfinished ${name}. ${answer.message}`)
+    throw new PlainError(t('upload.ghRemoveFailed', { name, answer: answer.message }))
   }
 }
 
@@ -315,7 +316,7 @@ export async function uploadGitHub(a: {
     parsed = null
   }
   if (typeof parsed !== 'object' || parsed === null || Array.isArray(parsed)) {
-    throw new PlainError("GitHub's answer could not be read.")
+    throw new PlainError(t('upload.badAnswer'))
   }
   const release = parsed as GhRelease
   const assets: unknown[] = Array.isArray(release.assets) ? release.assets : []
@@ -325,7 +326,7 @@ export async function uploadGitHub(a: {
 
   const fromUrl = typeof release.upload_url === 'string' ? /\/releases\/(\d+)\/assets/.exec(release.upload_url)?.[1] : undefined
   const id = fromUrl ?? (typeof release.id === 'number' ? String(release.id) : undefined)
-  if (!id) throw new PlainError("GitHub's answer names no release id.")
+  if (!id) throw new PlainError(t('upload.noReleaseId'))
 
   const size = await zipSize(a.zip)
   const stream = createReadStream(a.zip)

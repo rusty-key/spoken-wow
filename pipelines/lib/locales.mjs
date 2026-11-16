@@ -3,9 +3,9 @@
 // one section does with it -- the folder a places pack ships in, say -- lives with that
 // section.
 //
-// Must stay in step with the addons' own lists (SpokenPlaces.LOCALES in
-// addons/Spoken_Places/Language.lua); pipelines/places/tools/validate.mjs fails the build if
-// they drift, and apps/web/src/lib/lang.test.ts does the same for the site.
+// The languages here that a client runs in must stay in step with the addons' built-in list
+// (Languages.BUILTIN in addons/Spoken/Languages.lua); pipelines/places/tools/validate.mjs fails
+// the build if they drift, and apps/web/src/lib/lang.test.ts does the same for the site.
 //
 // The clients the Classic-family addons run on, plus the languages a community translates
 // into that no client ships. Italian and Vietnamese are those: no Classic client has ever run
@@ -44,6 +44,7 @@ export const LOCALES = [
   { code: "esMX", name: "Spanish (AL)", script: "latin", elevenLabs: "es", bcp47: "es-MX", vmangos: 7 },
   { code: "frFR", name: "French", script: "latin", elevenLabs: "fr", bcp47: "fr-FR", vmangos: 2 },
   { code: "itIT", name: "Italian", script: "latin", elevenLabs: "it", bcp47: "it-IT", vmangos: null, client: false },
+  { code: "plPL", name: "Polish", script: "latin", elevenLabs: "pl", bcp47: "pl-PL", vmangos: null, client: false },
   { code: "ptBR", name: "Portuguese", script: "latin", elevenLabs: "pt", bcp47: "pt-BR", vmangos: 9 },
   { code: "ruRU", name: "Russian", script: "cyrillic", elevenLabs: "ru", bcp47: "ru-RU", vmangos: 8 },
   { code: "koKR", name: "Korean", script: "korean", elevenLabs: "ko", bcp47: "ko-KR", vmangos: 1 },

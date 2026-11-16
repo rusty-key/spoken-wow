@@ -2,13 +2,12 @@
  * One voice slot's fish.audio reference, in one language: cut it, correct its transcript,
  * pin the slot to fish.audio, or remove it.
  *
- * Cutting transcribes the clip with fish.audio, and that is spent from the admin's own
+ * Cutting transcribes the clip with fish.audio, and that is spent from the cutter's own
  * fish.audio key -- the rule every other paid action here follows. It costs a fraction of a
  * cent, but a server-wide key would still leave "who paid" with no answer.
  */
 import { requireApiKey } from "@/lib/generation/authz";
 import { elevenLabsCode } from "@/lib/lang";
-import { langParam } from "@/lib/lang-server";
 import { requireVoiceManager, requireVoiceViewer } from "@/lib/voices/authz";
 import { cloneName } from "@/lib/voices/clone-name";
 import { transcribe } from "@/lib/voices/fish";
@@ -26,14 +25,6 @@ export const dynamic = "force-dynamic";
 
 type Context = { params: Promise<{ voice: string }> };
 
-async function guard(request: Request, voice: string) {
-  const { session, denied } = await requireVoiceManager(voice);
-  if (denied) return { denied } as const;
-  const { lang, denied: noLang } = await langParam(request);
-  if (noLang) return { denied: noLang } as const;
-  return { denied: null, lang, session } as const;
-}
-
 export async function GET(request: Request, context: Context) {
   const { voice } = await context.params;
   const { lang, denied } = await requireVoiceViewer(request, voice);
@@ -44,7 +35,7 @@ export async function GET(request: Request, context: Context) {
 
 export async function POST(request: Request, context: Context) {
   const { voice } = await context.params;
-  const checked = await guard(request, voice);
+  const checked = await requireVoiceManager(request, voice);
   if (checked.denied) return checked.denied;
   const { lang, session } = checked;
 
@@ -89,7 +80,7 @@ export async function POST(request: Request, context: Context) {
 /** A corrected transcript, or the pin. The audio stays as cut. */
 export async function PATCH(request: Request, context: Context) {
   const { voice } = await context.params;
-  const checked = await guard(request, voice);
+  const checked = await requireVoiceManager(request, voice);
   if (checked.denied) return checked.denied;
 
   const body = (await request.json().catch(() => ({}))) as { transcript?: unknown; pinned?: unknown };
@@ -112,7 +103,7 @@ export async function PATCH(request: Request, context: Context) {
 
 export async function DELETE(request: Request, context: Context) {
   const { voice } = await context.params;
-  const checked = await guard(request, voice);
+  const checked = await requireVoiceManager(request, voice);
   if (checked.denied) return checked.denied;
 
   await deleteReference(voice, checked.lang, checked.session.user.id);

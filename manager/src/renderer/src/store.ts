@@ -6,6 +6,7 @@ import type { Catalog, CommunityCatalog, ContributorView, GameInstall, JobProgre
 import { DEFAULT_SETTINGS, isSupportedFlavor } from '@shared/types'
 import { api, errorText } from './api'
 import type { Platform } from './strings'
+import { setUiLanguage } from './strings'
 
 export type Page = 'home' | 'spoken' | 'voices' | 'community' | 'release' | 'settings'
 export type SpokenTab = 'modules' | 'changelog'
@@ -58,7 +59,7 @@ export const jobKey = (gameId: string, productId: string): string => `${gameId}|
 const EMPTY_CATALOG: Catalog = { fetchedAt: null, offline: false, releases: {} }
 const EMPTY_COMMUNITY: CommunityCatalog = { fetchedAt: null, offline: false, packs: [] }
 
-const initial: State = {
+export const initial: State = {
   ready: false,
   games: [],
   settings: DEFAULT_SETTINGS,
@@ -80,9 +81,10 @@ const initial: State = {
   contributorError: ''
 }
 
-function reducer(s: State, a: Action): State {
+export function reducer(s: State, a: Action): State {
   switch (a.type) {
     case 'init':
+      setUiLanguage(a.snap.settings.uiLanguage)
       return {
         ...s,
         ready: true,
@@ -114,6 +116,7 @@ function reducer(s: State, a: Action): State {
     case 'community':
       return { ...s, community: a.community }
     case 'settings':
+      setUiLanguage(a.settings.uiLanguage)
       return { ...s, settings: a.settings }
     case 'statuses':
       return { ...s, statuses: { ...s.statuses, [a.gameId]: a.list } }

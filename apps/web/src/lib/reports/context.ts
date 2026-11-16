@@ -39,10 +39,114 @@ export function addonLabel(context: ReportContext): string | undefined {
   return context.fields.addon?.replace("/", " ");
 }
 
+const VERSION = /^\d+(\.\d+)*(-[\w.]+)?$/;
+
 /** "3.4.0" from "SpokenQuests/3.4.0", or null for a source checkout's "dev". */
 export function addonVersion(context: ReportContext | null): string | null {
   const version = context?.fields.addon?.split("/")[1];
-  return version && /^\d+(\.\d+)*(-[\w.]+)?$/.test(version) ? version : null;
+  return version && VERSION.test(version) ? version : null;
+}
+
+/**
+ * The newest version among the player's packs in the language they were hearing, or null:
+ * "none" when no pack speaks it, and nothing at all from an addon older than the field.
+ */
+export function packVersion(context: ReportContext | null): string | null {
+  const version = context?.fields.packVersion;
+  return version && VERSION.test(version) ? version : null;
+}
+
+/**
+ * The version of the one folder the line played from, where the addon names it. A release bumps
+ * only the folders it changed, so this, not packVersion, says whether the player has the line's
+ * newest recording.
+ */
+export function folderVersion(context: ReportContext | null): string | null {
+  const version = context?.fields.packFolderVersion;
+  return version && VERSION.test(version) ? version : null;
+}
+
+/** A release that gave a pack a version, and when it started building from the live takes. */
+export type PackRelease = { version: string; at: string };
+
+/** Per pack language, the version one section's newest release gave its pack. */
+export type PackVersions = Record<string, string>;
+
+/**
+ * The player's pack version and the newer one released in its language, or null when the pack
+ * is current, unknown, or its language was never released from the site.
+ *
+ * Compared with the newest version among the player's folders of that language, while a release
+ * bumps only the folders it changed. A player without the folder a release touched is told of an
+ * update that brings them nothing; the triage flag says "might" for that reason.
+ */
+export function outdatedPack(
+  context: ReportContext | null,
+  latest: PackVersions,
+): { version: string; latest: string } | null {
+  const version = packVersion(context);
+  const newest = context?.fields.pack && latest[context.fields.pack];
+  return version && newest && isOlder(version, newest) ? { version, latest: newest } : null;
+}
+
+/**
+ * What the report page can tell a player about the line before they report it: their pack
+ * against the newest, and where the live take stands against both.
+ *
+ * `shipsIn` is the first release that started after the take was recorded, null when none has
+ * yet. `inYours` is whether that release is no newer than the player's pack, null when that
+ * cannot be told: no pack version, or a take older than every release on record, which an
+ * earlier release outside the site may already have carried. The take's time is when it was
+ * generated; a take restored later counts from then.
+ */
+export type LineNews = {
+  version: string | null;
+  /**
+   * Whether `version` is the line's own folder's. A release bumps only the folders it changed, so
+   * then `latest` is the release that carries this line's newest recording, not the newest
+   * release, which may have left the folder alone.
+   */
+  exact: boolean;
+  latest: string | null;
+  recordedAt: string;
+  shipsIn: string | null;
+  inYours: boolean | null;
+};
+
+export function lineNews(
+  context: ReportContext | null,
+  releases: PackRelease[] | undefined,
+  recordedAt: string | null,
+): LineNews | null {
+  if (!context || !recordedAt) return null;
+  const exact = folderVersion(context);
+  const version = exact ?? packVersion(context);
+  const list = releases ?? [];
+  const recorded = Date.parse(recordedAt);
+  const after = list.filter((release) => Date.parse(release.at) > recorded);
+  const ships = after.at(-1) ?? null;
+  // Every release after the take means it may have shipped in one before the site's first.
+  const inYours =
+    !version || !list.length
+      ? null
+      : !ships
+        ? false
+        : !isOlder(version, ships.version)
+          ? true
+          : after.length < list.length
+            ? false
+            : null;
+  // A folder's version is weighed against the release carrying the take, which changed that
+  // folder; the newest release may have left it alone.
+  const newest = exact ? (inYours === false ? ships?.version : null) : list[0]?.version;
+  return {
+    version,
+    exact: exact !== null,
+    latest: version && newest && isOlder(version, newest) ? newest : null,
+    recordedAt,
+    shipsIn: ships?.version ?? null,
+    inYours,
+  };
 }
 
 /**
@@ -82,6 +186,12 @@ export function contextFacts(context: ReportContext): { label: string; value: st
   add("Addon", addonLabel(context));
   add("Client", f.build);
   add("Language", f.locale && f.pack && f.pack !== f.locale ? `${f.locale}, hearing ${f.pack}` : f.locale);
+  add(
+    "Pack",
+    f.packFolder
+      ? `${f.packFolder} ${f.packFolderVersion ?? ""}`.trim()
+      : f.packVersion && (f.packVersion === "none" ? "none installed" : f.packVersion),
+  );
   add("NPC", f.npc);
   add("Quest", f.quest && [f.quest, f.event, f.title].filter(Boolean).join(" "));
   add("Book", f.book && (f.number ? `${f.book}, page ${f.number}` : f.book));

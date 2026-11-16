@@ -1,7 +1,7 @@
 import path from 'node:path'
 import { describe, expect, it } from 'vitest'
 import { productById, PRODUCTS } from '../src/shared/products'
-import { DEFAULT_SETTINGS } from '../src/shared/types'
+import { DEFAULT_SETTINGS, type ReleaseInfo } from '../src/shared/types'
 import { emptyCatalog } from '../src/main/catalog'
 import { isChannelRelease } from '../src/shared/channel'
 import { channelRelease, revToIso, withChannel } from '../src/main/packs-catalog'
@@ -43,6 +43,42 @@ describe('channelRelease', () => {
   })
   it('revToIso reads the rev', () => {
     expect(revToIso('20261018T142233Z')).toBe('2026-10-18T14:22:33Z')
+  })
+})
+
+describe('withChannel: Spoken zips', () => {
+  const spoken = productById('spoken')!
+  const sha = 'b'.repeat(64)
+  const gh = (version: string, prerelease = false): ReleaseInfo => ({
+    productId: 'spoken',
+    tag: `spoken/v${version}`,
+    version,
+    prerelease,
+    publishedAt: '2026-11-05T00:00:00Z',
+    notes: 'notes',
+    assetName: `Spoken-${version}.zip`,
+    assetSize: 5,
+    assetUrl: `https://github.example/${version}.zip`,
+    htmlUrl: 'https://github.example/r'
+  })
+  const offered = (list: ReleaseInfo[], copies = [{ version: '3.8.3', sha256: sha, size: 72 }]): ReleaseInfo[] =>
+    withChannel({ ...emptyCatalog(), releases: { spoken: list } }, [spoken], { generatedAt: '', packs: {}, addons: { spoken: copies } }, BASE).releases.spoken!
+
+  it('serves a listed version from the channel, with GitHub as the second source', () => {
+    const [latest, older] = offered([gh('3.8.3'), gh('3.8.2')])
+    expect(latest).toMatchObject({ version: '3.8.3', assetUrl: `${BASE}blobs/${sha}`, assetSize: 72, digest: `sha256:${sha}`, fallbackUrl: 'https://github.example/3.8.3.zip', notes: 'notes' })
+    expect(older).toEqual(gh('3.8.2'))
+  })
+
+  it('adds a version GitHub did not list, in version order, with a GitHub address to fall back on', () => {
+    const list = offered([gh('3.8.2')])
+    expect(list.map((r) => r.version)).toEqual(['3.8.3', '3.8.2'])
+    expect(list[0]).toMatchObject({ tag: 'spoken/v3.8.3', assetName: 'Spoken-3.8.3.zip', fallbackUrl: 'https://github.com/rusty-key/spoken-wow/releases/download/spoken/v3.8.3/Spoken-3.8.3.zip' })
+    expect(isChannelRelease(list[0])).toBe(false)
+  })
+
+  it('leaves the list alone when the channel has no copies', () => {
+    expect(withChannel({ ...emptyCatalog(), releases: { spoken: [gh('3.8.2')] } }, [spoken], index, BASE).releases.spoken).toEqual([gh('3.8.2')])
   })
 })
 

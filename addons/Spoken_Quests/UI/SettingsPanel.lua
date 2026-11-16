@@ -58,8 +58,12 @@ function SettingsPanel:Setup()
     local followup = layout:Checkbox(L.OPT_PANEL_FOLLOWUP, nil,
         function() return audio().FollowupLines ~= false end,
         function(value) audio().FollowupLines = value end)
+    local progress = layout:Checkbox(L.OPT_PANEL_PROGRESS, nil,
+        function() return Addon:IsProgressTextOn() end,
+        function(value) Addon:SetProgressText(value) end)
     layout:Outdent()
     layout:Requires(followup, function() return Addon:IsAutoplayOn() end, L.REASON_AUTOPLAY)
+    layout:Requires(progress, function() return Addon:IsAutoplayOn() end, L.REASON_AUTOPLAY)
     local stopOnClose = layout:Checkbox(L.OPT_PANEL_STOP_ON_CLOSE, nil,
         function() return audio().StopAudioOnDisengage end,
         function(value) audio().StopAudioOnDisengage = value end)
@@ -82,7 +86,6 @@ function SettingsPanel:Setup()
     local function HasObjectiveTracker()
         return _G.QuestObjectiveTracker ~= nil or _G.CampaignQuestObjectiveTracker ~= nil
             or QuestWatch_Update ~= nil
-            or (_G.QuestieLoader and _G.QuestieLoader.ImportModule ~= nil)
     end
     layout:Section(L.OPT_SECTION_TRACKER)
     local questLogPlay = layout:Checkbox(L.OPT_TRACKER_QUEST_LOG, nil,
@@ -152,8 +155,16 @@ function SettingsPanel:Setup()
             if module.AddonName ~= ALL and Present(ALL) then return "off", L.OPT_PACK_INCLUDED end
         end, W.MODULE_DOWNLOAD, function() ReportButton:ShowAddress(module.URL) end)
     end
-    for _, locale in ipairs(Language.LOCALES) do
-        local code = locale.code
+    -- The built-in languages, then those an installed pack declares, then the voice and fallback
+    -- chosen: a choice outlives its pack, and Italian has official packs to get it back from.
+    local codes, seen = {}, {}
+    local function Add(code)
+        if code and not seen[code] then table.insert(codes, code); seen[code] = true end
+    end
+    for _, locale in ipairs(Spoken:KnownLanguages()) do Add(locale.code) end
+    Add(Language:GetVoiceLanguage())
+    Add(Language:GetFallbackLanguage())
+    for _, code in ipairs(codes) do
         for _, pack in ipairs(Spoken:QuestsVoicePacks(code) or {}) do
             local folder = pack.folder
             local side = pack.side == "gossip" and L.OPT_PACK_GOSSIP

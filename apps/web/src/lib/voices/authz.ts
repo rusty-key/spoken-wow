@@ -6,7 +6,8 @@
  * skipped just because the UI would not have offered the control.
  *
  * Two levels, as on the page. Changing what a voice is made from — its clips, its fish.audio
- * reference — is shared by everybody who generates with it, so it is canManageVoices. Hearing
+ * reference — is shared by everybody who generates with it in the language, so it is
+ * canManageVoices: the language's admin, or a global one. Hearing
  * those sources and cloning them into one's own ElevenLabs account touch nobody else, so they
  * are open to whoever spends in the language (canViewVoices).
  *
@@ -17,7 +18,7 @@ import { headers } from "next/headers";
 
 import { auth } from "@/lib/auth";
 import { viewerOf } from "@/lib/grants/store";
-import { BASE_LANG, type Lang } from "@/lib/lang";
+import type { Lang } from "@/lib/lang";
 import { langParam } from "@/lib/lang-server";
 import { canManageVoices, canViewVoices } from "@/lib/permissions";
 import { isVoiceSlot } from "./slots";
@@ -27,20 +28,22 @@ type Session = NonNullable<Awaited<ReturnType<typeof auth.api.getSession>>>;
 const FORBIDDEN = () => Response.json({ error: "not allowed" }, { status: 403 });
 
 /**
- * An admin of the voices, and the session saying which one: every change to a voice's
- * sources is written to the activity log under whoever made it.
+ * Somebody who may change the request's language's voice sources, and the session saying
+ * who: every change to a voice's sources is written to the activity log under whoever made it.
  */
 export async function requireVoiceManager(
+  request: Request,
   voice?: string,
-): Promise<{ session: Session; denied: null } | { session: null; denied: Response }> {
+): Promise<{ session: Session; lang: Lang; denied: null } | { session: null; lang: null; denied: Response }> {
+  const refuse = (denied: Response) => ({ session: null, lang: null, denied });
   const session = await auth.api.getSession({ headers: await headers() });
-  if (!session || !canManageVoices(session.user.role)) {
-    return { session: null, denied: FORBIDDEN() };
-  }
-  // A voice manager's routes name no language, and every team's roster has the same voices.
-  const unknown = await unknownVoice(voice, BASE_LANG);
-  if (unknown) return { session: null, denied: unknown };
-  return { session, denied: null };
+  if (!session) return refuse(FORBIDDEN());
+  const { lang, denied } = await langParam(request);
+  if (denied) return refuse(denied);
+  if (!canManageVoices(await viewerOf(session), lang)) return refuse(FORBIDDEN());
+  const unknown = await unknownVoice(voice, lang);
+  if (unknown) return refuse(unknown);
+  return { session, lang, denied: null };
 }
 
 /**
@@ -61,10 +64,11 @@ export async function requireVoiceViewer(
   if (!session) return refuse(FORBIDDEN());
   const { lang, denied } = await langParam(request);
   if (denied) return refuse(denied);
-  if (!canViewVoices(await viewerOf(session), lang)) return refuse(FORBIDDEN());
+  const viewer = await viewerOf(session);
+  if (!canViewVoices(viewer, lang)) return refuse(FORBIDDEN());
   const unknown = await unknownVoice(voice, lang);
   if (unknown) return refuse(unknown);
-  return { session, lang, manager: canManageVoices(session.user.role), denied: null };
+  return { session, lang, manager: canManageVoices(viewer, lang), denied: null };
 }
 
 // Checked after the session so an unauthorized caller cannot use the response to learn which

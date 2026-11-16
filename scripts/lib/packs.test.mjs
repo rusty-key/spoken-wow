@@ -6,7 +6,7 @@ import assert from "node:assert/strict";
 
 import {
   actedFolder, englishFolder,
-  changelogSection, findPack, isLanguageHeading, managerFolders, loadPacks, MIN_SPOKEN, packsFor,
+  changelogSection, findPack, isLanguageHeading, managerFolders, loadPacks, metaFor, MIN_SPOKEN, packsFor,
 } from "./packs.mjs";
 
 // A publishers/ tree in a temp directory, one page per entry: [group, file, frontmatter].
@@ -130,7 +130,7 @@ test("every language has the structure English has", () => {
 
 test("English's all is a bundle of the four split packs' folders, zipped clear of the meta addon's name", () => {
   const allEn = ["quests", "en.md", { section: "quests", lang: "enUS", pack: "all",
-    curseforge: "1660196", release: "quests-audio", slug: "spoken-quests-audio-all",
+    curseforge: "1660196", release: "quests-audio", slug: "spoken-audio-quests-all",
     name: "Spoken Quests Audio: All" }];
   const all = findPack("quests", "enUS", "all", loadPacks(tree([allEn])));
   assert.equal(all.folder, "SpokenQuestsAudioAll");
@@ -215,4 +215,17 @@ test("the bosses pack's CurseForge home is the English places pack", () => {
   const bosses = findPack("bosses", "enUS", null, packs);
   assert.equal(bosses.bundledIn, findPack("places", "enUS", null, packs).slug);
   assert.equal(bosses.curseforge, null);
+});
+
+test("inMeta: false keeps a pack on CurseForge out of its language's meta addon, and nothing else is accepted", () => {
+  const pack = (key, extra = {}) => ["quests", `${key}.md`, { section: "quests", lang: "koKR", pack: key,
+    version: "0.0.2", curseforge: "1", release: `quests-audio-${key}-koKR`,
+    slug: `spoken-korean-audio-quests-${key}`, name: key, ...extra }];
+  const meta = ["spoken", "all-kokr.md", { curseforge: "2", lang: "koKR", version: "1.1.0",
+    slug: "spoken-korean", name: "Spoken: Korean" }];
+  const dir = tree([pack("shared"), pack("horde", { inMeta: "false" }), meta]);
+  assert.deepEqual(metaFor("koKR", loadPacks(dir), dir).dependencies,
+    ["spoken", "spoken-korean-audio-quests-shared"]);
+  assert.equal(findPack("quests", "koKR", "horde", loadPacks(dir)).curseforge, "1");
+  assert.throws(() => loadPacks(tree([pack("horde", { inMeta: "true" })])), /inMeta may only be false/);
 });

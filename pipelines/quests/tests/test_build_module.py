@@ -10,7 +10,7 @@ import shutil
 
 import pytest
 
-from tts_cli.build import build_module, icon_source
+from tts_cli.build import GOSSIP_TEXT_TABLES, build_module, icon_source
 
 FIXTURES = os.path.join(os.path.dirname(__file__), "fixtures")
 
@@ -260,6 +260,41 @@ def test_word_times_ship_for_the_clips_a_pack_carries(tmp_path):
     assert report["tableRows"]["word_times_table"] == 1
 
 
+def _text_table(tmp_path, take_text):
+    store = _store(tmp_path, "quests/5-accept.ogg")
+    with open(os.path.join(store, "take-text.json"), "w", encoding="utf-8") as f:
+        json.dump(take_text, f)
+    report = build_module(CORPUS, store, str(tmp_path / "dist"), "Mod")
+    with open(tmp_path / "dist" / "Mod" / "generated" / "text_table.lua", encoding="utf-8") as f:
+        return f.read(), report
+
+
+def test_text_ships_for_the_clips_a_pack_carries(tmp_path):
+    # The gossip clip is not in this store, so its text would be dead weight.
+    lua, report = _text_table(tmp_path, {"quests/5-accept": "Pack words.", "gossip/abc123": "No."})
+
+    assert "Mod.TextByFileName = " in lua
+    assert '["5-accept"] = "Pack words."' in lua
+    assert 'GetClientLanguage() ~= "enUS" then return end' in lua
+    assert "abc123" not in lua
+    assert "generated\\text_table.lua" in _toc(tmp_path)
+    assert report["tableRows"]["text_table"] == 1
+
+
+def test_text_survives_lua_quoting(tmp_path):
+    # A raw newline or an unescaped quote stops the whole pack from loading.
+    lua, _ = _text_table(tmp_path, {"quests/5-accept": 'Say "hi"\nC:\\x \tПривет'})
+
+    # Escaped once: escaped twice, a newline reads back as a backslash and an n in game.
+    assert '["5-accept"] = "Say \\"hi\\"\\nC:\\\\x \\009Привет"' in lua
+
+
+def test_a_store_without_text_ships_an_empty_table(tmp_path):
+    store = _store(tmp_path, "quests/5-accept.ogg")
+    report = build_module(CORPUS, store, str(tmp_path / "dist"), "Mod")
+    assert report["tableRows"]["text_table"] == 0
+
+
 def test_a_store_without_word_times_ships_an_empty_table(tmp_path):
     store = _store(tmp_path, "quests/5-accept.ogg")
 
@@ -379,6 +414,28 @@ def test_locale_text_without_a_language_is_refused(tmp_path):
 
     with pytest.raises(ValueError):
         build_module(CORPUS, store, str(tmp_path / "dist"), "Mod", locale_text=MX_TEXT)
+
+
+GOSSIP_TEXT_FILES = tuple(name + ".lua" for name in GOSSIP_TEXT_TABLES)
+
+
+@pytest.mark.parametrize("stored, include, carried", [
+    ("quests/5-accept.ogg", {"quests/5-accept"}, False),  # Alliance, Horde, Shared
+    ("quests/5-accept.ogg", set(), False),
+    ("gossip/abc123.ogg", None, True),  # All
+    ("gossip/abc123.ogg", {"gossip/abc123"}, True),  # Gossip
+    ("gossip/abc123.ogg", {"quests/5-accept", "gossip/abc123"}, True),
+])
+def test_only_a_pack_with_gossip_audio_carries_the_gossip_text_tables(tmp_path, stored, include,
+                                                                     carried):
+    # A pack without gossip audio would only pay to parse them.
+    build_module(CORPUS, _store(tmp_path, stored), str(tmp_path / "dist"), "Mod", include=include)
+
+    toc = _toc(tmp_path)
+    for name in GOSSIP_TEXT_FILES:
+        assert (f"generated\\{name}" in toc) is carried
+    assert "generated\\quest_id_lookups.lua" in toc
+    assert "generated\\npc_body_gossip_file_lookups.lua" in toc
 
 
 def test_a_language_pack_without_locale_text_has_no_locale_tables(tmp_path):

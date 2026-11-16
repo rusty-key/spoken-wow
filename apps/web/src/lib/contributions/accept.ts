@@ -491,11 +491,7 @@ async function insertLine(
   lang: Lang,
 ): Promise<void> {
   const english = lang === BASE_LANG;
-  // A progress line is kept but never voiced, as the extract marks its own: the game plays no
-  // audio for that panel.
-  const skipReason = english
-    ? row.source === "progress" ? "progress" : null
-    : skipReasonFor(row.source as LineIdentity["source"], template, lang, row.playerGender);
+  const skipReason = english ? null : skipReasonFor(template, lang, row.playerGender);
   await client.query(
     `insert into "quest_line"
        ("lineId", "variant", "lang", "version", "isCurrent", "origin", "source", "questId",

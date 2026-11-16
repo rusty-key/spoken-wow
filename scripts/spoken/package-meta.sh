@@ -3,7 +3,7 @@
 # English sound pack in behind it.
 #
 #   make package-spoken-all                 # dist/SpokenAll-<version>.zip
-#   VERSION=3.0.0 make package-spoken-all   # the version written into the .toc
+#   VERSION=3.1.0 make package-spoken-all   # the version written into the .toc
 #   LANG_CODE=deDE make package-spoken-all  # "Spoken: German", dist/SpokenAll_deDE-<version>.zip
 #
 # A LANGUAGE'S META ADDON is the same stub under its own folder, title and version, all read off
@@ -33,7 +33,7 @@ DIST="${DIST:-$REPO/dist}"
 ZIP="${ZIP:-1}"
 if [ "$LANG_CODE" = enUS ]; then
   NAME="${NAME:-SpokenAll}"
-  VERSION="${VERSION:-3.0.0}"
+  VERSION="${VERSION:-3.1.0}"
   TITLE="${TITLE:-Spoken: English}"
   NOTES="Installs every Spoken addon with its English audio - quests, gossip, zone lore, books and boss stories."
 else

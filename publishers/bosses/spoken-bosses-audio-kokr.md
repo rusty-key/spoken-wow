@@ -1,4 +1,5 @@
 ---
+curseforge: 1798016
 release: bosses-audio-koKR
 section: bosses
 lang: koKR
@@ -16,7 +17,7 @@ manager: true
 
 Narrated boss stories for **[Spoken](https://www.curseforge.com/wow/addons/spoken)**'s Bosses module, in Korean. This addon is data only: it does nothing on its own.
 
-Spoken Bosses plays it when Spoken's **Voice Language** is Korean. It installs beside the English pack rather than replacing it, so a player who switches languages keeps the narration for both. It has no CurseForge project.
+Spoken Bosses plays it when Spoken's **Voice Language** is Korean. It installs beside the English pack rather than replacing it, so a player who switches languages keeps the narration for both.
 
 ## Installing
 

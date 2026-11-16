@@ -1,4 +1,4 @@
--- The optional tracker adapters: Classic Era's WatchFrame and Questie's pooled tracker lines.
+-- The Classic Era WatchFrame tracker adapter.
 local here = arg[0]:match("^(.*)/[^/]*$") or "."
 package.path = here .. "/?.lua;" .. package.path
 local stub = require("wow_client_stub")
@@ -23,26 +23,10 @@ _G.QuestWatch_Update = function()
     QuestWatchLine1:Show()
 end
 
--- Questie exposes its tracker modules only through QuestieLoader.
-local questieLines = {}
-local questiePool = {
-    UpdateQuestTitleLines = function(callback)
-        for _, line in ipairs(questieLines) do
-            if line.mode == "quest" then callback(line) end
-        end
-    end,
-}
-local questieTracker = { Update = function() end }
-_G.QuestieLoader = {
-    ImportModule = function(self, name)
-        return name == "TrackerLinePool" and questiePool or name == "QuestieTracker" and questieTracker
-    end,
-}
-
 local VO = stub.LoadQuestsOverlay(QUESTS, SPOKEN)
 VO.Addon:OnInitialize()
 VO.DataModules:Register("TestPack", {
-    SoundLengthLookupByFileName = { ["748-accept"] = 1, ["749-accept"] = 1 },
+    SoundLengthLookupByFileName = { ["748-accept"] = 1 },
     GetSoundPath = function(_, fileName) return fileName .. ".ogg" end,
 })
 stub.Advance(2)
@@ -53,35 +37,6 @@ Expect("the watch title was drawn", QuestWatchLine1:GetText(), "Poison Water")
 local classicButton = VO.QuestOverlayUI.legacyTrackerPlayButtons[748]
 Expect("the Era watch frame gets a Play button", classicButton and classicButton:IsShown(), true)
 Expect("the Era Play button is 18 pixels square", classicButton:GetWidth(), 18)
-
-_G.Questie_BaseFrame = CreateFrame("Frame", nil, UIParent)
-local line = CreateFrame("Button", nil, _G.Questie_BaseFrame)
-line.Quest = { Id = 748 }
-line.mode = "quest"
-line.label = line:CreateFontString()
-line.playButton = CreateFrame("Button", nil, line)
-line.expandQuest = CreateFrame("Button", nil, line)
-table.insert(questieLines, line)
-questieTracker:Update()
-Expect("Questie's title line gets a separate Spoken Play button", line.spokenPlayButton:IsShown(), true)
-Expect("Questie's button is bound to the quest", line.spokenPlayButton.questID, 748)
-local _, anchor, anchorPoint = line.spokenPlayButton:GetPoint()
-Expect("Questie's Play button is left of minimize", anchor, line.expandQuest)
-Expect("...anchored to minimize's left edge", anchorPoint, "LEFT")
-local _, _, _, xOffset = line.spokenPlayButton:GetPoint()
-Expect("...sits right next to minimize", xOffset, -1)
-Expect("...is slightly smaller", line.spokenPlayButton:GetWidth(), 18)
-
-line.spokenPlayButton.soundData = { questID = 748 }
-line.Quest = { Id = 749 }
-questieTracker:Update()
-Expect("a Questie line reused for another quest drops the old quest's clip", line.spokenPlayButton.soundData, nil)
-line.Quest = { Id = 748 }
-questieTracker:Update()
-
-line.mode = "objective"
-questieTracker:Update()
-Expect("a reused Questie objective line hides its old Play button", line.spokenPlayButton:IsShown(), false)
 
 QuestWatchLine1:Hide()
 VO.QuestOverlayUI.UpdateTrackerButtons()
@@ -98,7 +53,6 @@ Expect("an adapter failure is not raised inside the tracker's update", raised, f
 VO.Addon.db.profile.TrackerPlayButton = false
 VO.QuestOverlayUI.UpdateTrackerButtons()
 Expect("turning Tracker off hides the Era button", classicButton:IsShown(), false)
-Expect("...and hides Questie's button", line.spokenPlayButton:IsShown(), false)
 
 if Failures() > 0 then os.exit(1) end
 print("\nAll quest tracker adapter tests passed")

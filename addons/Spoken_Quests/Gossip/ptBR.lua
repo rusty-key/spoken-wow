@@ -849,6 +849,7 @@ GossipText = {
             ["Rupertino Boch é o nome dele. Ouvi dizer que ele fica em algum dos quartos no andar superior da Taberna Finda Forca, aquela no extremo sudeste da cidade."] = "de253e3169d9f7d6717bd3c610685772",
             ["Se estiver procurando por Carolai Anise, ela provavelmente deve estar tentando explodir a própria casa lá no canto noroeste da cidade. Por que você não vai lá dar uma ajudinha a ela?"] = "de06a1722b12d439c9afc5bbb2bda105",
             ["Tem um Tratador de Morcegos na Cidade Baixa. Vá para o sul pela estrada que sai de Montalvo, depois siga para oeste na bifurcação. As Ruínas de Lordaeron vão estar à sua esquerda. Entre nelas e pegue o elevador para descer até a nossa capital. Você pode se informar melhor com um dos Guardiões."] = "7cde77346a7f6eeabaf54f17380e5d92",
+            ["Tome. Parece que Zigano está ocupado demais para fazer a viagem agonizante até aqui e buscar o relatório pessoalmente."] = "ptBR-15b301093187c2f37dbc22d44de0e27a",
             ["Um açougueiro, é? Ah, tá, Instrutor de Primeiros Socorros! É tudo a mesma coisa. Você vai entender assim que vir a Enfermeira Nila lá na Taberna Finda Forca, que fica no canto sudeste da cidade."] = "d52cdea0c5a316cd91c993435b3f0346",
             ["Vance Merencório está em um aposento no andar de cima da Taberna Finda Forca, no canto sudeste de Montalvo."] = "93cc04c8b8e24496ad60223e82204b3c",
             ["Vejamos, se eu fosse a estalajadeira Geni, onde estaria? Humm? Ah, quem sabe na Taberna Finda Forca? Sim, é isso, tenho certeza! Procure lá na extremidade sudeste de Montalvo... não vai se perder, né?"] = "affc5a63c0a0c78d1f8e58687e0f6be0",
@@ -2549,7 +2550,7 @@ GossipText = {
             ["Não temos nenhum lugar assim na nossa aldeia, mas sei que existe um nas alturas do Penhasco do Trovão. Siga pela estrada ao norte da Aldeia Casco Sangrento até chegar no sopé dos penhascos. Lá, pegue o elevador até o topo e fale com algum Vigia do Penhasco. Que seus ancestrais $go:a; acompanhem."] = "c61c8d0a95bbdd9d8df4d9db44c53e73",
             ["Nós não temos um instrutor de alquimia aqui na Aldeia Casco Sangrento, mas você vai achar um no Penhasco do Trovão, ao norte. Siga por aquela estrada e, assim que chegar ao topo, pergunte a um dos Vigias do Penhasco como encontrá-lo."] = "83cd87a9bd04fe41340d47a6a3863fb1",
             ["O estalajadeiro Kauth pode atender suas necessidades. Você pode encontrá-lo no lado oeste da aldeia, em uma das casas compridas."] = "07ac0c881242c277b1b4be65bb1bb779",
-            ["O que você está procurando?"] = "b3d11178772212cc804676804bb92ca1",
+            ["O que você está procurando?"] = "b4857-tauren-male-warrior",
             ["O que você procura é o conselho de Gennia Runa Totem. Você pode encontrá-la na tenda grande no lado leste da aldeia."] = "dce81535973ad9064578c7dc07d654a1",
             ["Os caminhos dos druidas e dos xamãs são paralelos. Gennia Runa Totem é versada nesse conhecimento. Procure-a na tenda grande que fica no lado leste da Aldeia Casco Sangrento."] = "6c2a1f69d196c4657a53b7c110c61e4c",
             ["Ouvi dizer que tem um Instrutor de Mineração no Penhasco do Trovão, ao norte. Pegue a estrada que sai da cidade e, quando chegar lá, pegue o elevador até o topo. Qualquer Vigia do Penhasco vai poder lhe dar informações."] = "e6cb4ccc587cd2a258b3ded78ae7a3f0",
@@ -2805,6 +2806,8 @@ GossipText = {
             ["Com um retreinamento rigoroso eu tiro da cabeça dos meus alunos tudo que haviam aprendido antes, para poder lhes ensinar coisas novas. O serviço que presto torna-se mais difícil cada vez que é refeito. Portanto, cada novo retreino fica mais caro. Você deseja que eu tire da sua cabeça o que você aprendeu?"] = "28f6b8de934060edb89ab0339b080fcf",
             ["Os espíritos guiaram você até mim. Como posso lhe servir?"] = "93ff0e2abb20dcd5c4b04b86b60d8ab3",
             ["Que os espíritos estejam com você."] = "7be5b41b6547e9fda9b4b9cb85616226",
+            ["Se assim desejar, além de treiná-$Ulo:la;, tenho também o poder de apagar de sua mente os conhecimentos sobre seus talentos. Saiba que, cada vez que você passa por esse procedimento, ele fica mais difícil de ser realizado e, consequentemente, mais caro."] = "b8263-orc-female-shaman",
+            ["Se assim desejar, além de treiná-lo, tenho também o poder de apagar de sua mente os conhecimentos sobre seus talentos. Saiba que, cada vez que você passa por esse procedimento, ele fica mais difícil de ser realizado e, consequentemente, mais caro."] = "b8263-orc-female-shaman",
         },
         [3345] = {
             ["Alguns aventureiros acham que encantamentos não funcionam. Mas sempre que eu os chamo para a briga, eles mudam de ideia."] = "3c96e38d8275bcb879a7e7eb43dca519",
@@ -2889,6 +2892,7 @@ GossipText = {
         [3403] = {
             ["Cara, que os espíritos te protejam."] = "5bcfe44c67f5e0a247451c8d54a13c74",
             ["Com um retreinamento rigoroso eu tiro da cabeça dos meus alunos tudo que haviam aprendido antes, para poder lhes ensinar coisas novas. O serviço que presto torna-se mais difícil cada vez que é refeito. Portanto, cada novo retreino fica mais caro. Você deseja que eu tire da sua cabeça o que você aprendeu?"] = "857ea30c7f6e11d987a132b4e84da4dc",
+            ["Se assim desejar, além de treiná-$Ulo:la;, tenho também o poder de apagar de sua mente os conhecimentos sobre seus talentos. Saiba que, cada vez que você passa por esse procedimento, ele fica mais difícil de ser realizado e, consequentemente, mais caro."] = "b8263-troll-female-old",
             ["Tu tá de boa com os espírito, $Umano:mina;. Que que este troll pode fazer pra tu?"] = "6c82842b379af58a9a58e28cb35a4d49",
             ["Tu tá de boa com os espírito, $gmano:mina;. Que que este troll pode fazer pra tu?"] = "6c82842b379af58a9a58e28cb35a4d49",
         },
@@ -2918,6 +2922,10 @@ GossipText = {
         [3429] = {
             ["$GBem-vindo:Bem-vinda; à Encruzilhada, $c. Meu nome é Thork e eu lidero as defesas locais em nome do Chefe Guerreiro.$B$BPor favor, sinta-se em casa. Desde que você cuide dos próprios assuntos, ninguém se incomodará com sua presença.$B$BHá muitas ameaças à nossa segurança aqui. Se você já se familiarizou com a área, fale com outros por aí – talvez alguém tenha tarefas para você."] = "bc68f87f28d14f99d8f8ff4c267ffea2",
             ["$UBem-vindo:Bem-vinda; à Encruzilhada, $c. Meu nome é Thork e eu lidero as defesas locais em nome do Chefe Guerreiro.$B$BPor favor, sinta-se em casa. Desde que você cuide dos próprios assuntos, ninguém se incomodará com sua presença.$B$BHá muitas ameaças à nossa segurança aqui. Se você já se familiarizou com a área, fale com outros por aí – talvez alguém tenha tarefas para você."] = "bc68f87f28d14f99d8f8ff4c267ffea2",
+        },
+        [3430] = {
+            ["Meu ódio é enorme <bufa>, mas este é o momento é certo para te contar uma história, $r.  Há muito tempo ocorreu uma batalha entre os deuses. Agamaggan, nosso grande deus-javali, caiu na terra após ser derrotado na Guerra dos Antigos, com os ossos destroçados e se esvaindo em sangue. <bufa>  Grandes espinhos brotaram da terra onde o sangue dele tocou o solo e o crânio dele decora uma das cavernas ao sul."] = "ptBR-958b2ec02d0efffb60643b755173a685",
+            ["Você! $R! Venha aqui. <bufando>  O tempo é curto e meu fim... está próximo. Denterroto vai vencer, você verá. <dá mais uma bufada>  Minha captura ainda pode auxiliar <bufa> meu povo. A tribo Crinavalha é mais poderosa que a Costagulha!  A Horda está tentando descobrir quem lidera os raides contra o povo deles. Você <bufa> deve ajudar Denterroto em troca da informação que só eu conheço. Denterroto pode ajudar você! <bufa> Mas você deve ajudar Denterroto."] = "ptBR-a0deba039274bb871c9cb63a8d5e280d",
         },
         [3432] = {
             ["Obrigado, $n. Sua dedicação à minha contenda trouxe descanso para o espírito de minha falecida esposa. Nunca serei capaz de lhe retribuir à altura.$B$BNão posso dizer que meu ódio pelos javatuscos acabou, mas ele foi saciado por ora.$B$BAgora, preciso recomeçar a minha vida."] = "bad017b3adfc64250ce72451884a2780",
@@ -3125,6 +3133,9 @@ GossipText = {
         [3678] = {
             ["Naralex dorme uma vez mais!$B$BNão faz muito tempo, Naralex veio a esta caverna com o objetivo nobre de entrar no Sonho Esmeralda e restaurar a floresta luxuriante que os Sertões foram um dia. Mas a concentração dele vacilou e seus pensamentos foram maculados por visões serpeantes.$B$BAgora, feras reptilianas se infiltram dos sonhos dele para cá. Naralex deve ser despertado do pesadelo ou estará perdido para sempre, e um grande mal será libertado.$B$BMas só poderei realizar o ritual depois que os servos corrompidos de Naralex, os Lordes da Presa, forem mortos."] = "a81c0f51674289d2ce942b92e5a47dfd",
         },
+        [3682] = {
+            ["Precisa de uma arma, viajante? Garanto que não vai encontrar lâmina melhor em lugar nenhum."] = "ptBR-fe99f790fc6675efadf458f0559d1f63",
+        },
         [3685] = {
             ["Kodos, $Gmeu amigo:minha amiga;! Treinados desde a tenra idade e criados nas Planícies Douradas de Mulgore, esses excelentes animais são montarias ainda melhores! Por favor, dê uma olhada na minha seleção e veja por si $Gmesmo:mesma; por que nós, os taurens, confiamos nessas criaturas magníficas!"] = "6ad7b860a7e349ed33a00b378002bd6a",
             ["Meu povo não conhece você. Um kodo é uma montaria forte, produto do amor e cuidado do meu povo, coisas que não oferecermos a estranhos. Até que os anciãos do Penhasco do Trovão $Go:a; considerem $Gexaltado:exaltada;, não posso lhe vender um kodo."] = "e697b765d9a3d2d0863bbd1489325a14",
@@ -3237,6 +3248,7 @@ GossipText = {
             ["Localizada em Dun Morogh, Gnomeregan foi a capital dos gnomos por muitas gerações, mas recentemente ela foi infestada por troggs mutantes. Numa desesperada tentativa de retaliação, o Grão-faz-tudo Mekkatorque ordenou, como medida de emergência, a abertura dos depósitos de lixo radioativo da cidade. Mesmo sob efeito da radiação, o cerco dos troggs prosseguiu implacável e os gnomos foram forçados a se refugiar na cidade enânica de Altaforja, onde, atualmente, o Grão-faz-tudo convoca almas corajosas para ajudar na retomada da querida cidade gnômica."] = "5d58291140199149e578fcbfbeed18cf",
             ["Maraudon fica no centro da costa oeste de Desolação, no Vale das Lanças."] = "ee0633ddb8208d730c4a1f7e2f75724f",
             ["Maraudon é um dos locais mais sagrados de toda Desolação. O grande templo-caverna é o sepulcro de Zaetar, um dos dois filhos imortais do semideus Cenarius. Reza a lenda que Zaetar e a princesa elemental da terra Theradras deram origem à raça bastarda dos centauros. Diz-se que, no momento em que se ergueram, os bárbaros centauros se voltaram contra o próprio pai e o mataram. Há quem creia que Theradras, em seu sofrimento, aprisionou o espírito de Zaetar na sinuosa caverna, usando a energia dele para fins malignos."] = "b08c334deb14a22220d649a65f3c74fa",
+            ["Nossas terras ancestrais no nordeste dos Reinos do Leste. Batizadas em homenagem ao próprio Lordain, já foi um reino orgulhoso e poderoso. Sua história é rica e serve de lição para nobres e reis ambiciosos. Um de seus momentos decisivos foi ajudar na fundação da Aliança que conhecemos hoje.    Infelizmente, sua história também é sombria, e seus atuais habitantes profanam suas terras dia após dia. Ainda há muito de valor nas ruínas que agora repousam acima da Cidade Baixa, mas seria tolice embarcar nessa jornada esperando voltar ainda entre os vivos."] = "deDE-58429736adedcd5b0485c6eb33c103c8",
             ["Não, eu não, mas tem muita gente procurando amor por aí. Você devia comprar as minhas provas de amor, passar uma colônia ou um perfume e, depois, disseminar o amor!"] = "a70be99ff08d4df4c93b09b77588a051",
             ["O Cárcere de Ventobravo fica perto do Distrito dos Magos de Ventobravo."] = "5d241a73257b83bfb3f2a35e6c559cb8",
             ["O Cárcere é um complexo de prisões de segurança máxima escondido abaixo do Distrito do Canal de Ventobravo. Presidida pelo carcereiro-chefe Thelágua, os Cárceres são lar de golpistas, insurgentes políticos, assassinos e uma malta dos mais perigosos criminosos da região. Há pouco, uma revolta dos prisioneiros resultou num estado de pandemônio dentro dos Cárceres, no qual os guardas foram expulsos e os presos vagam livres."] = "97df9679462d394c9c8acea3163a1db4",
@@ -3244,6 +3256,7 @@ GossipText = {
             ["O Templo Submerso fica no centro de um lago enorme, que fica a leste do Pântano das Mágoas."] = "ec90c3b20200ec711da3c83a7d439020",
             ["O Urzal dos Mortos fica na extremidade sul dos Sertões, do lado leste da estrada."] = "8960494e8735de52e731bccc5622764d",
             ["O Urzal dos Tuscos fica na extremidade sul dos Sertões, do lado oeste da estrada."] = "b07c8c68897f70867bbb75e49138b18d",
+            ["O antigo reino de Lordaeron é perigoso. Recomendamos cautela a qualquer um que ouse se aventurar nas terras agora decadentes das Clareiras de Tirisfal. Se for mesmo necessário, procure pela Cidade Baixa e pelos pátios superiores."] = "deDE-eec8380fae6d8afd4b0b71a061bedd74",
             ["O monastério foi outrora um centro de aprendizado e conhecimento. Com o erguimento do Flagelo durante a Terceira Guerra, o pacífico monastério foi convertido num bastião da fanática Cruzada Escarlate. Os Cruzados são intolerantes com todas as raças não-humanas, independente de afiliação. Eles acreditam que todas elas são potenciais portadoras da peste da morte-viva e que, por isso, devem ser destruídas."] = "2669d18d8bca0062b048b5b892ff56be",
             ["Outrora capital dos anões Ferro Negro, o labirinto vulcânico serve, agora, de trono para Ragnaros, o Senhor do Fogo. Ragnaros descobriu como criar vida a partir da rocha e planeja construir um exército de golens invencíveis para ajudá-lo na conquista da Montanha Rocha Negra. Obcecado por derrotar Nefarian e seus lacaios dragônicos, Ragnaros recorrerá a qualquer meio para alcançar a vitória."] = "d1d167264b852e04dcc247504cad2f84",
             ["Outrora o tesouro a norte de Lordaeron, foi na cidade de Stratholme que o Príncipe Arthas se virou contra o seu mentor, Uther, o Arauto da Luz, e matou centenas de seguidores da coroa, os quais ele acreditava haver contraído a peste da morte-viva. Pouco depois, Arthas se entregou ao Lich Rei. A cidade arruinada é atualmente habitada pelos mortos-vivos do Flagelo, liderados por Kel'Thuzad, e por um contingente de Cruzados Escarlates, liderados pelo grão-cruzado Dathrohan. A luta entre os dois lados é constante e violenta."] = "a68c695060e8db92a6407dbd039e03c7",
@@ -3348,6 +3361,9 @@ GossipText = {
             ["Como $Gum mago:uma maga;, você pertence ao seleto grupo que consegue conjurar um portal que lhe transportará de volta a este mesmo local. Posso lhe ensinar como, se você estiver $Gpronto:pronta;."] = "c0b64230899c1f169032e2124bab7479",
             ["Creio que você não possua a acuidade mental para compreender os mistérios da magia dos portais."] = "6169b63082c1481ee1b292a6bd277450",
         },
+        [4184] = {
+            ["Ishnu-alah, viajante, e bem-vindo ao Refúgio Noturno.  Gostaria de ver minha seleção de vestidos finos?"] = "ptBR-d406dff0d642255604d62f77ff661d41",
+        },
         [4193] = {
             ["Adoraria fazer de você $Gmeu:minha; aprendiz. Vamos começar."] = "a5bb9bf7601a2bba6b4270f85bdd04f4",
             ["Bordar exige uma mão firme. E paciência... Acima de tudo, paciência."] = "afa3c58692e1f910f1511cf81176b4cf",
@@ -3415,6 +3431,8 @@ GossipText = {
             ["$uBem-vindo, meu irmão:Bem-vinda, minha irmã;. Se você veio para treinar, então terei muito prazer em ajudar!$B$BHá boatos de dissensões no Círculo Cenariano, mas você não deve dar ouvidos a esses disparates. Nosso Arquidruida, Fandral Guenelmo, nos lidera, e a toda Teldrassil, rumo à glória!"] = "765d7c8eab15fae760b184c664fb9e9a",
             ["Com um retreinamento rigoroso eu tiro da cabeça dos meus alunos tudo que haviam aprendido antes, para poder lhes ensinar coisas novas. O serviço que presto torna-se mais difícil cada vez que é refeito. Portanto, cada novo retreino fica mais caro. Você deseja que eu tire da sua cabeça o que você aprendeu?"] = "30ee103c545f987ab518c70f6d3e640e",
             ["Que as bênçãos de Cenarius sejam suas, $c. Nosso líder, o Arquidruida Guenelmo, nos guia, e a toda Teldrassil, para uma vida renovada!"] = "04deb31038105cfd74ab05f52c151823",
+            ["Se assim desejar, além de treiná-$Ulo:la;, tenho também o poder de apagar de sua mente os conhecimentos sobre seus talentos. Saiba que, cada vez que você passa por esse procedimento, ele fica mais difícil de ser realizado e, consequentemente, mais caro."] = "d8d678c1fa7a5d0ec00c8daf69cd26f9",
+            ["Se assim desejar, além de treiná-$glo:la;, tenho também o poder de apagar de sua mente os conhecimentos sobre seus talentos. Saiba que, cada vez que você passa por esse procedimento, ele fica mais difícil de ser realizado e, consequentemente, mais caro."] = "d8d678c1fa7a5d0ec00c8daf69cd26f9",
         },
         [4241] = {
             ["É uma honra abastecer os aventureiros, pois eles são futuros heróis."] = "1245860919a037af19c20e24c625c670",
@@ -3932,6 +3950,7 @@ GossipText = {
             ["Eu posso lhe ensinar as técnicas de Primeiros Socorros."] = "8af3c5ccd98580aeb1ba4bd7aa80e766",
             ["O estimado Doutor Gregório Casagrande pode prosseguir com o seu treinamento. Ele fica em Theramore, cuidando dos feridos no quartel."] = "199504472bb3974f17f406ea4b61db6d",
             ["Ouvi dizer que Deneb Walker tem um livro que com certeza vai te ajudar a aperfeiçoar sua técnica de Primeiros Socorros. Ele está escondido em Stromgarde."] = "dd4639950203b6deff95ea3d06de8b2e",
+            ["Você é um aprendiz das ciências médicas?"] = "ptBR-e425be6dd04bb2133ad80b347b1e9bab",
         },
         [5153] = {
             ["Ah, este tecido darnassiano é o melhor!"] = "5eab0d76d4ff9ea837e56c38ac2add13",
@@ -4023,6 +4042,7 @@ GossipText = {
         },
         [5482] = {
             ["Encontre Shandrina no Refúgio Brisaprata. Ela pode lhe vender o 'Livro de Receitas do Perito'."] = "6adb3f498e428354df52f9e4254cab21",
+            ["Funesto Marrão, de Geringontzan, é um mestre das artes culinárias. Se você quiser aperfeiçoar sua técnica, procure-o."] = "46bd22a73f998050e4834380890f65e5",
             ["Você acha que eu tenho tempo ou energia para ficar paparicando cada turista que passa pela minha porta? Diga o que você quer e seja breve."] = "ba9110b33785b226537ef9b18e3923a1",
         },
         [5483] = {
@@ -4124,6 +4144,7 @@ GossipText = {
         [5511] = {
             ["Quer dizer que você quer ser $Gferreiro:ferreira;, é? Pega um avental e um martelo, $gguri:guria;, vamos ver o que tu tem pra dar."] = "fb6579870c6584e03dfb38ef8bc3ee7e",
             ["Você tem cara de $Gferreiro:ferreira;. Fuligem debaixo das unhas, aço nos ossos. Isso, tem sangue de $Gferreiro:ferreira; nas veias. Ou seja, tu veio me procurar pra aprender uma coisa ou outra... Bem, $gguri:guria;, pega um martelo. Vejamos o que posso te ensinar."] = "6d836253374e7258f1d26abac7475d18",
+            ["É, até que tu leva jeito com o martelo e a bigorna, mas ainda não é o suficiente pra poder treinar comigo. Fala com o Bino Galizeu. Ele vai te deixar no ponto pra aprender o que eu tenho pra ensinar."] = "ptBR-2d080bcaf442952bca21be4129ecb642",
         },
         [5512] = {
             ["Não deixe que os humanos do Bazar te enganem, $gguri:guria;. Com o metrô que aqueles gnomos construíram, trazer produtos de Altaforja ficou mais fácil do que você imagina. Se eles tentarem incluir taxas de importação, é só falar pra eles que tu vai comprar teu equipamento de mim."] = "8ee2a69ee63c41a11aeca4da11d55e13",
@@ -4223,6 +4244,7 @@ GossipText = {
             ["Por que tu quer os serviços de um tipo daqueles? Aquele ladino, Hulfdan Barbanegra, já apronta o suficiente lá na Caverna Esquecida. Será que também vou ter que ficar de olho em você?"] = "36ac17a15ff106629b6c52dbefcd7203",
             ["Primeiros Socorros é uma profissão valiosa. Nossa instrutora residente, Nissa Pederneira, pode te mostrar como se faz. Procure-a na Clínica Altaforja, no lado sul da Grande Forja."] = "aa54bc8510198f4330f29e9a0b3eae00",
             ["Primeiros Socorros? Bem, você não me parece estar $gferido:ferida;. Se você quer mesmo aprender Primeiros Socorros, então Nissa Pederneira é a professora certa. Ela tá lá perto da Grande Forja, na loja dela, a Clínica de Altaforja."] = "acbd5104f14dbadffa1e4f40e28a6ffd",
+            ["Qual instrutor de profissão tu procura?"] = "ptBR-c52a5190495c6be6cc082c05ab90903a",
             ["Que informação tu precisa?"] = "411e9efc17c0fa67fa3a65ddbceb693f",
             ["Que lugar melhor para procurar um grupo de gente sombria e calada do que a parte escura de Altaforja, corretamente chamada de a Caverna Esquecida. Com certeza, Cardossangue está lá, provavelmente evocando algum tipo de criatura vil para cumprir as ordens dele."] = "205d885c660f13d010f41ecd69423cc6",
             ["Quem entende mais de Esfolamento é o Balthus Esfolapedra. Se o bicho puder ser esfolado, o Balthus ensina como se faz. É só ir até a Artigos em Couro da Fusofino, na parte norte da Grande Forja."] = "19d7a62aa644748c5d13eaad7341a221",
@@ -4257,7 +4279,9 @@ GossipText = {
             ["O arcano só corrompe os fracos. Continue treinando, ou poderá ter um destino semelhante."] = "073492d1b775dad17b73e4495accc8b7",
         },
         [5624] = {
+            ["Doutor Herberto Vianna fica no Boticarium onde nós nasceu. Ele costura você melhor que nós."] = "ptBR-8b7f0386dee53f64a91a4133c6de7453",
             ["O que você está procurando?"] = "b4857-model-156",
+            ["Que profissão?"] = "ptBR-fbc579c07f3cc6081bb8fb07add2ad94",
         },
         [5675] = {
             ["Pois não, $c?"] = "901d3b1160b38eacb61be277a1eab438",
@@ -4686,6 +4710,9 @@ GossipText = {
         },
         [6586] = {
             ["O que faz $Gum:uma; jovem $c como você visitando um velho fazendeiro como eu?"] = "9bf55e6c6132c78f689d4a846edbc4fd",
+        },
+        [6669] = {
+            ["A chave do Gelkak entra no sulco vazio."] = "ptBR-24365399c5decf4c26f46a2b09e5b308",
         },
         [6706] = {
             ["Para onde deseja voar?"] = "8ee9e2b8b1fbeba82851331d36cb251c",
@@ -6035,6 +6062,7 @@ GossipText = {
             ["O Cárcere de Ventobravo fica perto do Distrito dos Magos de Ventobravo."] = "8b063ee787233090be02c8d7fc8e58a7",
             ["O Cárcere é um complexo de prisões de segurança máxima escondido abaixo do Distrito do Canal de Ventobravo. Presidida pelo carcereiro-chefe Thelágua, os Cárceres são lar de golpistas, insurgentes políticos, assassinos e uma malta dos mais perigosos criminosos da região. Há pouco, uma revolta dos prisioneiros resultou num estado de pandemônio dentro dos Cárceres, no qual os guardas foram expulsos e os presos vagam livres."] = "9f8d7c84b3cbfc322f53a0a242de804e",
             ["O Monastério Escarlate fica nas montanhas a nordeste das Clareiras de Tirisfal."] = "fe604977d24d31743e5481d5dcda2e88",
+            ["O Salão dos Thanes está selado. Quem não é de confiança do Rei Magni Barbabronze precisa conquistar a aprovação dele para se aventurar nas profundezas da velha Altaforja."] = "b311236-human-female-official",
             ["O Templo Submerso fica no centro de um lago enorme, que fica a leste do Pântano das Mágoas."] = "75ed2903e0af8abe0c91025f4d1a631e",
             ["O Urzal dos Mortos fica na extremidade sul dos Sertões, do lado leste da estrada."] = "ae45cd449d9b601c1faa2ad7d470e04a",
             ["O Urzal dos Tuscos fica na extremidade sul dos Sertões, do lado oeste da estrada."] = "4855c8dab63ff7e92429d6df87b7b3cd",
@@ -6328,6 +6356,9 @@ GossipText = {
         [9584] = {
             ["Entre a luz e a escuridão, paira a sombra... e as sombras têm poderes que você ainda não viu."] = "b004638e71ea2dd674f8a6129b70bb5d",
         },
+        [9598] = {
+            ["Eu sofri, mas agora sinto que está desaparecendo lentamente. Me sinto... livre."] = "ptBR-c59c1e654b3da715e3f276a10003082e",
+        },
         [9616] = {
             ["Ela sem dúvida não fica em nenhum lugar dos Reinos do Leste, ah, não mesmo.$B$BDeve estar em algum lugar de Kalimdor, mas longe o bastante da Horda e de outras raças. Algum lugar que não tenha sido afetado pela Cisão, ou seja, não pode ser perto da civilização dos elfos noturnos.$B$BEu diria que seria alguma região protegida, como um vale ou uma cratera. Sei lá. Estou chutando. Sinto muito por não poder ajudar mais."] = "5064c5f5065d6cee4390d39aafdd640a",
             ["Fantásticos, não são? Tantos artefatos e destroços.$B$BNão sei o que mais me impressiona: o tamanho ou as histórias deles. Há muito o que estudar e aprender. E as conexões que podemos fazer...$B$BVocê sabia que a lenda diz que muitas raças têm a mesma genealogia dos elfos noturnos?"] = "42caaa998442825e5b9fbce4fbeebb15",
@@ -6506,6 +6537,10 @@ GossipText = {
             ["Se você me trouxesse o couro da fera de verdade? Bem... Vou te mostrar..."] = "dcf2194937d4f71a8dcd75edc4a3df89",
             ["É um processo simples para um artesão do meu calibre.$B$BA parte mais difícil na hora de criar usando pelegos e carapaças de feras é conseguir as matérias-primas. Se você me trouxer um pelego imaculado desse bicho, eu poderia criar vários itens poderosos a partir da carne."] = "5c51b2b4d2e369e2c9b1c95f23c50db1",
         },
+        [10666] = {
+            ["Ah, sim. Nós tá com isso aqui."] = "ptBR-4b882fcdb9318c5a782bad60838389e4",
+            ["Nós tá ocupado com coisa importante!"] = "ptBR-08753846cacebb015d1ef9ac602f6371",
+        },
         [10667] = {
             ["Olá mais uma vez, $n. Sinto que o fluxo do tempo permanece sob a ameaça de forças muito poderosas. Sua ajuda constante é sempre bem-vinda pela revoada bronze.$B$BEnquanto o passado se assenta do jeito dele, o futuro está em constante mutação. As decisões que você tomar aqui e agora ajudam a definir esta transformação."] = "a1aab080f67d3f1164b33c4dc1a8628b",
             ["Olá, $N. Sou conhecida como Chronormu, mas pode me chamar de Crona. Eu gosto dessa familiaridade.$B$BVocê deve estar se perguntando como eu sabia seu nome, não é? Faço parte da Revoada Dragônica Bronze, eternamente em sintonia com o fluxo e refluxo do tempo. Poderia se dizer que já nos encontramos antes. E, para tanto, nós nos encontraremos de novo.$B$BEspero que minha escolha de aparência e atitude não lhe seja perturbadora. Conquanto encarregada de vigiar lugares pesarosos, eu prefiro não me afogar nos pesares locais."] = "5fbeeb1ccae7f0a6c91aa94af815dd14",
@@ -6513,6 +6548,10 @@ GossipText = {
         [10668] = {
             ["O corpo é o de uma guerreira orquisa.$B$BNão há duvidas que ela morreu em combate, provavelmente contra um javatusco da área."] = "3b33513dae45313b3f3adfa0fe9a92e2",
             ["Você vira o corpo e vê marcas de lâminas e feitiços – a armadura dela está destruída e o cabelo emaranhado e grudado no rosto.$B$BPela descrição que Mankrik fez da esposa, não lhe restam dúvidas de que esta é ela.$B$BEle ficará desolado com a notícia, mas você acha que ele tem o direito de saber a verdade."] = "234801d843bf8cf2c310d7552c3d58d3",
+        },
+        [10721] = {
+            ["Tudo pronto para começar?"] = "ptBR-28956bd6985d0f81e0c456eb4adbaf42",
+            ["Você também veio provar o seu valor?"] = "ptBR-25c367eb1a046f60e7d558ac3eb266da",
         },
         [10739] = {
             ["'...'$B$BO corpo do druida tauren repousa imóvel. Parece que, enfim, ele fez a passagem deste mundo para o tão prometido e grandioso além."] = "08f10ccaf3a2c6de55534ebff038dd0f",
@@ -7251,6 +7290,13 @@ GossipText = {
         [11939] = {
             ["Se você busca informações arquivadas pelo Círculo Cenariano, eu sou a pessoa certa. De qualquer maneira, só posso ajudar se você souber exatamente que informação está procurando.$B$BViu só como funciona? Genial!"] = "310c9f80926c7ac56d95a59b469ade54",
         },
+        [11956] = {
+            ["Ainda resta ver se você está pronto, jovem. Até os mais sábios e os mais velhos druidas nunca estão verdadeiramente prontos quando chega a hora do teste supremo.  Você ouviu minhas palavras e agora está na hora de seguir em frente. Preste atenção no que lhe ensinei. Chegará uma hora em que sua força será testada. Você precisa enfrentar seu inimigo como o urso o faria, com a força do corpo e a força do coração. Aprenda com a luta, jovem. Vá... tenha minhas bênçãos."] = "ptBR-7bbe42bd0ad4cf6bdb3ba36f7589549f",
+            ["Eu represento a força que o ampara, $c. Você veio a mim para aprender sobre essa força, jovem, e eu vou lhe ensinar. Vou lhe mostrar tudo que o espírito do urso representa, contanto que você escute e compreenda.  Se quiser saber o que significa usufruir de meu espírito, você precisa entender a importância da força do corpo, assim como a da força do coração."] = "ptBR-5418026060929184bc40f4aa718f4a5a",
+            ["Força do coração é aquela que lhe dá a resolução para realizar uma ação... ação esta fundada em puras e sinceras intenções. Manter o equilíbrio é não ser complacente e banal.  Você precisa estar convicto daquilo que acredita e estar disposto a lutar por isso. A mãe urso demonstra eterna convicção em proteger os filhotes, assim como o velho urso protege o covil. É essa determinação, a força do coração, que você deve aprender se quer se aprimorar nos caminhos da Garra."] = "ptBR-7a8d2489d5a4b7fe5d18ebf1d83c2a44",
+            ["Força do corpo é o poder e a rapidez na ação. Você deve se manter em forma o tempo todo, tanto física quanto mentalmente. A cilha do urso destaca a sua força e sua ferocidade como adversário num combate. A cilha do urso, no entanto, disfarça sua agilidade e mente aguçada. São dessas vantagens que você tem de aproveitar.  Você precisa depender da força do corpo do urso para dominar o caminho da Garra."] = "ptBR-799bce0a77b22cd721b7fe9ff61841ef",
+            ["O espírito do urso contempla você com um olhar plácido. Você ouve uma voz como se ela viesse do urso, mas não há nenhum indício que a criatura esteja falando.  'Saudações, jovem amigo. Se você veio em busca de orientação, talvez eu possa lhe ajudar a encontrar o que procura.'"] = "ptBR-3bab8d9cf5ffe4f4738dc1c91e733ab2",
+        },
         [12031] = {
             ["Tenho que procurar ajuda. Não gosto de ficar sentada aqui o dia todo vendendo suprimentos de pescaria. Eu preferia ir pescar e depois vender os suprimentos."] = "6c9f3fe4497da2c378cdd9d41104d24e",
         },
@@ -7268,6 +7314,10 @@ GossipText = {
         },
         [12137] = {
             ["É só molhar a mão do chefe e ele te arruma um lance legal. Me amarro no meu trabalho. Porém, se eu arranjasse um jeito de transferir aquela espoletinha da Arrouk pra esse porto... aí siiimm. Mas aposto que ‘cê não veio aqui aprender a subornar. Você veio pegar o zepelim pra Cidade Baixa, tô certo ou tô errado? Maravilha, cara, porque ele aporta aqui bem atrás de mim. Ah! Se você vir a Arrouk, fale bem de mim, tá bem?"] = "c021420a6f84c190718c0e399aad7e67",
+        },
+        [12144] = {
+            ["O espírito do falecido Lunagarra olha fixamente para você, como se quisesse algo seu."] = "ptBR-251f30a1783cd9170b332c5dbe47d2de",
+            ["O espírito olha fixamente nos seus olhos e aperta sua mão. Você sente uma onda de calor tomando todo seu corpo, quase lhe derrubando no chão.  Assim que a onda de calor passa, você sente a presença de um espírito ursino em seu âmago... reforçando sua determinação."] = "ptBR-9379d9319625e67e7ce412f6b3088122",
         },
         [12196] = {
             ["A Bastilha da Presa Negra fica a sul de Pinhaprata, logo a norte do Vilarejo Lenhardente."] = "149d727e2252ad2d21626074d67ae0be",
@@ -8215,6 +8265,9 @@ GossipText = {
         [15306] = {
             ["Há mais de um inimigo em Silithus, $n.$B$BEnquanto todo mundo se preocupa com os silitídeos, meu irmãozão e eu estamos de olho nos insanos do Martelo do Crepúsculo."] = "811433ddcfe17faa04dd7e7c06eddfcb",
         },
+        [15309] = {
+            ["Estou triste! Fiquei doente em plena Noturnália. Vou perder a brincadeira de gostosuras ou travessuras porque não posso sair!"] = "ptBR-37d0c3ef5b357157c039d5f1736e297d",
+        },
         [15310] = {
             ["Estou triste! Fiquei doente em plena Noturnália. Vou perder a brincadeira de gostosuras ou travessuras porque não posso sair!"] = "ptBR-8f3b3033bafbb095522010eb5d41ecb9",
         },
@@ -8243,6 +8296,9 @@ GossipText = {
         [15380] = {
             ["O mundo está em dívida consigo e com seus aliados, $n."] = "fd10ddbf850f23ec3e5ca81dbb183556",
             ["Sou testemunha de um milagre e ele está diante de mim! Em mil anos de cativeiro, não vi um único espécime VIVO entrar aqui senão os infames qirajis e silitídeos."] = "fbec45aaafa3ad165557bf6abbdc4ac2",
+        },
+        [15395] = {
+            ["Apenas os que já provaram não serem hostis aos Presamatos podem andar pelo seu domínio sem medo de serem atacados. E você, forasteiro, já se empenhou para conquistar a nossa confiança?"] = "ptBR-fd4672f0d8f5ec54db0466063cd2d3c2",
         },
         [15443] = {
             ["Salve, $c. A Brigada de Altaforja está aqui para ficar de olho na Colme'Zora. Monitorando os movimentos dos silitídeos, os druidas do Círculo Cenariano anteciparam alguma operação de grande importância nesta área."] = "cea4e3e3ab05b82e1f49619ce41d48d8",
@@ -9070,6 +9126,9 @@ GossipText = {
             ["Ah, foi você que encontrou a carta. Obrigado pelas, hã... notícias da minha família. Fique à vontade para se servir de comida e bebida."] = "db0fd82a2e87168de7f37ba74147a476",
             ["Tenha cuidado quando estiver no deserto, $c."] = "ba66fca13d25f11aec60b7a40abc3055",
         },
+        [16587] = {
+            ["Para onde deseja voar?"] = "008491a7c8f31e3556f00e8c3fdc3190",
+        },
         [16817] = {
             ["Curtindo o festival, $c?$B$BOs Guardiões das Chamas preferem o calor do presente; já eu sou mais um historiador, resgatando os festivais passados. É claro que também estou documentando as festividades deste ano. Até agora, correu tudo muito bem, você não acha?$B$BSabe, $n, existe uma força inerente aos fogos festivos que serão queimados durante as celebrações. Nós estamos tomando conta dos nossos, mas tenho certeza de que há chamas sagradas ardendo intensamente nas cidades dos nossos inimigos..."] = "5c66a04a03f0c09ed64da9dc7d5312b6",
             ["Curtindo o festival, $c?$b$bO Guardachamas prefere o calor do presente, já eu sou mais um historiador, que resgata os festivais passados. É claro que também estou documentando as festividades deste ano. Até agora, correu tudo muito bem, você não acha?$b$bSabe, $n, existe uma força inerente aos fogos festivos que serão queimados durante as celebrações. Nós estamos tomando conta dos nossos, mas tenho certeza de que há chamas sagradas ardendo intensamente nas cidades dos nossos inimigos..."] = "5c66a04a03f0c09ed64da9dc7d5312b6",
@@ -9078,10 +9137,28 @@ GossipText = {
             ["Curtindo o festival, $c?$B$BOs Guardiões das Chamas preferem o calor do presente; já eu sou mais um historiador, resgatando os festivais passados. É claro que também estou documentando as festividades deste ano. Até agora, correu tudo muito bem, você não acha?$B$BSabe, $n, existe uma força inerente aos fogos festivos que serão queimados durante as celebrações. Nós estamos tomando conta dos nossos, mas tenho certeza de que há chamas sagradas ardendo intensamente nas cidades dos nossos inimigos..."] = "0b4060988eee47f0f6a9f5aadfb007a3",
             ["Curtindo o festival, $c?$b$bO Guardachamas prefere o calor do presente, já eu sou mais um historiador, que resgata os festivais passados. É claro que também estou documentando as festividades deste ano. Até agora, correu tudo muito bem, você não acha?$b$bSabe, $n, existe uma força inerente aos fogos festivos que serão queimados durante as celebrações. Nós estamos tomando conta dos nossos, mas tenho certeza de que há chamas sagradas ardendo intensamente nas cidades dos nossos inimigos..."] = "0b4060988eee47f0f6a9f5aadfb007a3",
         },
+        [16822] = {
+            ["Para onde deseja voar?"] = "43540ff7458382b18eb66468d4ff2856",
+        },
         [17209] = {
             ["Não se assuste... embora meus grifos possam não estar completamente inteiros, mesmo assim eles vão levar você até o seu destino em segurança. Diga-me... Qual torre você está procurando?"] = "8c3e5d1b67a507ae3bf5d583b20cea89",
         },
         [18938] = {
+            ["Para onde deseja voar?"] = "3e057055259d660918d6daacb764fb05",
+        },
+        [19583] = {
+            ["Para onde deseja voar?"] = "3e057055259d660918d6daacb764fb05",
+        },
+        [20515] = {
+            ["Para onde deseja voar?"] = "3e057055259d660918d6daacb764fb05",
+        },
+        [22931] = {
+            ["Para onde deseja voar?"] = "008491a7c8f31e3556f00e8c3fdc3190",
+        },
+        [23612] = {
+            ["Para onde deseja voar?"] = "3e057055259d660918d6daacb764fb05",
+        },
+        [24366] = {
             ["Para onde deseja voar?"] = "3e057055259d660918d6daacb764fb05",
         },
         [32413] = {
@@ -9114,6 +9191,9 @@ GossipText = {
         },
         [243815] = {
             ["Seu corpo parece gasto e seu espírito, cansado. Descanse sob o nosso teto e permita que Eluna guie seus sonhos."] = "88ed28bad52992326e81df54efce5146",
+        },
+        [244808] = {
+            ["Você pode não ser um paladino, mas ainda pode encontrar consolo na Luz, caso a busque."] = "ptBR-d5971027f707fdd1bc3718da675839cc",
         },
         [246152] = {
             ["Posso lhe ensinar como cavalgar bem um cavalo descarnado, contanto que você tenha ouro suficiente para pagar a lição!"] = "2e65eb1fa48fb06278bb020f60a84d34",
@@ -9149,7 +9229,7 @@ GossipText = {
             ["Nas noites mais escuras, confie na Luz para te proteger. Claro que ter uma boa maça bem resistente em mãos também não custa nada."] = "ptBR-ee5ffedce4ee96e3d6c184090bde408c",
         },
         [249363] = {
-            ["Os espíritos do vento nos deixaram.    Agora, restam apenas ecos sem consciência. Mas tenha cuidado... Estes ventos não são bondosos nem gentis."] = "esMX-8ea1947ddf1ff06f840b8522e9a6eb76",
+            ["Os espíritos do vento nos deixaram.    Agora, restam apenas ecos sem consciência. Mas tenha cuidado... Estes ventos não são bondosos nem gentis."] = "esES-aad6f5e6d33ffeb0509ae9a20c763e56",
             ["The Wind Spirits have left us.  Now, only mindless echoes remain. Be wary, however. These winds are neither kind, nor gentle."] = "ptBR-61ecfed28dd2fd09046d15bd3658b9ec",
         },
         [249713] = {
@@ -9159,7 +9239,9 @@ GossipText = {
             ["<À medida que você se aproxima do imenso constructo ciclônico, ouve um ligeiro zumbido que emana sob as enormes placas da sua armadura. Ao escutar atentamente, parece perceber que palavras se formam, mas o som é distorcido demais para que se possa compreendê-las.>"] = "ptBR-8a40eeca49c34e50f41f96d0a7642277",
         },
         [251001] = {
+            ["Assegure-se de que ele leia imediatamente. Receio que nosso problema com o Flagelo esteja apenas começando.  Volte a me procurar daqui a um tempo. Creio estar prestes a descobrir algo, e seria útil ter uma lâmina disponível para ajudar."] = "ptBR-423fdb7f84504254c075a650d4e057cd",
             ["O que você está procurando?"] = "2496e7dedec4748fa10b50cbb971b275",
+            ["Que profissão?"] = "68b0bdb01281865de220bb8ce19e964a",
         },
         [251361] = {
             ["De que necessita, $Ufilho:filha; de Zefras?"] = "1394be9de1e0b36dc8ca9962d38734d0",
@@ -9380,6 +9462,9 @@ GossipText = {
         [256388] = {
             ["Saudações, $N! Você chegou em boa hora, pois nós da Logística e Suprimentos de Durotar estamos sempre precisando de novos colaboradores.  Se você leva jeito para catar matéria-prima ou habilidade para produzir algo do nada, tem um lugar aqui para você.  Avise se tiver alguma dúvida."] = "ptBR-465038938f690983b0df41045c787592",
         },
+        [256390] = {
+            ["Tivemos alguns problemas com carregamentos perdidos em Azeroth. Se encontrar algum, eu agradeço se você puder devolver."] = "ptBR-740b359264803e7dc0fb0e4470c84c33",
+        },
         [256635] = {
             ["Aventureira! A ponte de vento que leva à outra torre está instável. Talvez você precise esperar aqui comigo até ela voltar."] = "ptBR-44400155676d8e09a078bf346fbbc48f",
         },
@@ -9388,6 +9473,12 @@ GossipText = {
         },
         [256658] = {
             ["Você aprende rápido e isso é bom. Só tome cuidado para fazer o trabalho direito, leve o tempo que levar. Infelizmente, tenho que encaminhá-$glo:la; para Rosnado pois ele poderá lhe ensinar mais. Aprenda o quanto puder com ele, mas não dê ouvidos aos resmungos dele. Ele fica todo zangado quando as filhas de Saru zombam dele."] = "24f51d17fe915ec4494f6d0e34a9f697",
+        },
+        [256729] = {
+            ["Sei o que está pensando, mas não se preocupe: sempre separamos os ingredientes culinários dos de alquimia!  Como posso ajudar?"] = "ptBR-28c193f2640c9bc1188143a3cfc8f9ff",
+        },
+        [256732] = {
+            ["Você tem cara de quem está precisando de encantamentos. Veio ao lugar certo!"] = "ptBR-ab45f56421de85142a86c3e35d569efe",
         },
         [257003] = {
             ["Não recebo muitos esfoladores procurando treinamento, mas acho que poderia lhe ensinar algo se estiver pronta."] = "ptBR-434150d0afdfe63c8ee3f356d0bf1883",
@@ -9428,6 +9519,15 @@ GossipText = {
         },
         [257595] = {
             ["$GBem-vindo:Bem-vinda; à minha estalagem, viajante $Gcansado:cansada;. O que posso fazer por você?"] = "e3e01e02de026cbe5e2560a468bbdebb",
+            ["As Profundezas Negras ficam no extremo norte da Praia de Zoram, ao longo da costa do Vale Gris."] = "9b605670acd65783140b807060cc5459",
+            ["Durante a Guerra dos Antigos, o semideus Agamaggan se ergueu contra a Legião Ardente. O gigantesco javali foi derrotado e, nos locais onde seu sangue foi derramado, brotaram, com o passar do tempo, imensas trepadeiras espinhosas. Os javatuscos ocuparam os espinhais e os consideram sagrados. O coração dessas colônias cobertas de espinhos é o Urzal. O Urzal dos Tuscos foi conquistado pela bruxa má Charlga Talhaflanco. Especula-se que ela esteja negociando com agentes do Flagelo... com propósitos insidiosos..."] = "0b5e7969b8b45594985feae2eb2ed564",
+            ["Gnomeregan fica na parte oeste de Dun Morogh."] = "ad9e028bbf4d1db826c98feaf297f9c3",
+            ["Localizada em Dun Morogh, Gnomeregan foi a capital dos gnomos por muitas gerações, mas recentemente ela foi infestada por troggs mutantes. Numa desesperada tentativa de retaliação, o Grão-faz-tudo Mekkatorque ordenou, como medida de emergência, a abertura dos depósitos de lixo radioativo da cidade. Mesmo sob efeito da radiação, o cerco dos troggs prosseguiu implacável e os gnomos foram forçados a se refugiar na cidade enânica de Altaforja, onde, atualmente, o Grão-faz-tudo convoca almas corajosas para ajudar na retomada da querida cidade gnômica."] = "b414305e416528da2000301e3515fa68",
+            ["O Cárcere de Ventobravo fica perto do Distrito dos Magos de Ventobravo."] = "9cd348728ba38505c5456af01f1ea6f5",
+            ["O Cárcere é um complexo de prisões de segurança máxima escondido abaixo do Distrito do Canal de Ventobravo. Presidida pelo carcereiro-chefe Thelágua, os Cárceres são lar de golpistas, insurgentes políticos, assassinos e uma malta dos mais perigosos criminosos da região. Há pouco, uma revolta dos prisioneiros resultou num estado de pandemônio dentro dos Cárceres, no qual os guardas foram expulsos e os presos vagam livres."] = "39cefc621bbcaa9de4f15bf64910a0dd",
+            ["O Urzal dos Tuscos fica na extremidade sul dos Sertões, do lado oeste da estrada."] = "e581a9ed3de8105b6729f7dc085e1c17",
+            ["Situado no Vale Gris, ao longo da Praia de Zoram, as Profundezas Negras foram outrora um glorioso templo dedicado à deusa da lua Eluna. Contudo, a grande Cisão destruiu o templo, afundando-o sob as ondas do Mar Velado. Ele permaneceu intocado, até que, atraídos pelo poder ancestral, as nagas e os sátiros emergiram para investigar os seus segredos. Dizem as lendas que a fera ancestral Aku'mai fez das ruínas do templo seu covil."] = "4770f436e4721b1e363a54416ff3594f",
+            ["Você tem interesse em explorar alguma dessas masmorras?"] = "338674bfb1edb2117c563bae8305e5f2",
         },
         [257597] = {
             ["Do fogo mais quente vem o aço mais forte."] = "ptBR-ca51a10c5f1506bb9c7fbcd648a5f7b1",
@@ -9451,6 +9551,9 @@ GossipText = {
             ["Os melhores preços de Ventobravo, $Uamigo:amiga;. Não vai achar nada mais barato. Em que posso ajudar?"] = "0a50227fd4a79a221c5e74147031f06e",
             ["Você está só dando uma olhada ou está procurando alguma coisa específica?"] = "a86de99ac7614f683ab7eab24b0a0b93",
         },
+        [258785] = {
+            ["Se assim desejar, além de treiná-$Ulo:la;, tenho também o poder de apagar de sua mente os conhecimentos sobre seus talentos. Saiba que, cada vez que você passa por esse procedimento, ele fica mais difícil de ser realizado e, consequentemente, mais caro."] = "b8263-gnome-female-standard",
+        },
         [259012] = {
             ["Todas as ilhas dos celonatos ficaram desestabilizadas e começaram a se separar há alguns anos. Se isso já não fosse ruim o suficiente, agora grandes pedaços de Zefras estão começando a se desprender. É difícil imaginar sua casa caindo no céu, mas essa é a minha realidade agora."] = "ptBR-82308f7c428db9a0bdc3ec9cb8dea4e8",
         },
@@ -9465,9 +9568,13 @@ GossipText = {
         },
         [260558] = {
             ["Eu posso te ensinar técnicas de pesca."] = "2d127f614bfaf60be0fcf5c914c9f116",
+            ["Você só será capaz de melhorar sua técnica se encontrar o Nat Pagle no Pântano Vadeoso."] = "0bf837bea513c0c82387777d0998bdfb",
         },
         [260568] = {
             ["Nada de luta hoje, $Gparceiro:parceira;. A Horda e a Aliança tão ocupadas demais se matando por aí... quando podiam estar faturando uma grana preta fazendo isso na minha arena! Vai entender.    Aparece aqui quando eu botar esse lugar pra funcionar."] = "c47745487b8785a2b025de0216199676",
+        },
+        [261366] = {
+            ["Posso te ajudar, $r?"] = "ptBR-e37c2aec20f0b0a45d40e8eb49ec7e7d",
         },
         [262492] = {
             ["Estava esper...$B$B<Rimblat tosse.>$B$BDesculpe-me. É um velho hábito. Eu sou Rimblat, da Harmonia Telúrica."] = "2c121d996480b972ca128fe4dd17568b",
@@ -9491,16 +9598,16 @@ GossipText = {
             ["Quando o céu está limpo, dá pra ver a Montanha Rocha Negra daqui. É ao mesmo tempo lindo e assustador que só."] = "ptBR-ebb23a96983f116b472be936a91ee4fb",
         },
         [265809] = {
-            ["Saudações, viajante."] = "5a5cfd9b66c08e54d7f912c93f16aec1",
+            ["Saudações, viajante."] = "b255545-orc-male-standard",
         },
         [265810] = {
-            ["Saudações, viajante."] = "db1e160d72699cbbfdba9c1198424caa",
+            ["Saudações, viajante."] = "b255545-tauren-female-standard",
         },
         [265811] = {
             ["Saudações, viajante."] = "b255545-nightelf-female-standard",
         },
         [265812] = {
-            ["Saudações, viajante."] = "c06f809139a8fb0583142df2083a555d",
+            ["Saudações, viajante."] = "b255545-scourge-female-standard",
         },
         [265813] = {
             ["Saudações, viajante."] = "b255545-dwarf-male-standard",
@@ -9573,6 +9680,9 @@ GossipText = {
         [267475] = {
             ["<Ele te encara por um longo momento, soltando um bufo desafiador.>"] = "ptBR-3607fb09a4f4acce3d9fda2417be1fbe",
         },
+        [268047] = {
+            ["Lamento, $c, mas você ainda não tem experiência suficiente para entrar nas Ilhas Lançanegra."] = "ptBR-e4514f7fcff8659ae3adaf15364fefe7",
+        },
         [268568] = {
             ["O saber deve ser celebrado e compartilhado."] = "ptBR-9d8e2938c655e70f96a3b3386a65bc74",
         },
@@ -9585,12 +9695,16 @@ GossipText = {
         [270513] = {
             ["Saudações, $c.    Posso lhe mostrar como tecer magia sobre você para alterar a aparência do seu equipamento, se assim desejar. Deseja utilizar meus serviços?"] = "b321055-nightelf-male-standard",
         },
+        [270570] = {
+            ["Eu só vendo o melhor equipamento, testado e aprovado. O preço é esse, então se você quiser pechinchar, vá procurar um goblin."] = "1d035ef80655c9d2cd4e435e275a7bba",
+        },
         [270581] = {
             ["Saudações, $c.    Posso lhe mostrar como tecer magia sobre você para alterar a aparência do seu equipamento, se assim desejar. Deseja utilizar meus serviços?"] = "7daa88a73732c05396945623649a82b5",
             ["Saudações, $c.  Posso lhe mostrar como tecer magia sobre você para alterar a aparência do seu equipamento, se assim desejar. Deseja utilizar meus serviços?"] = "7daa88a73732c05396945623649a82b5",
         },
         [270582] = {
             ["Saudações, $c.    Posso lhe mostrar como tecer magia sobre você para alterar a aparência do seu equipamento, se assim desejar. Deseja utilizar meus serviços?"] = "35da71c883eec22c22999a7c44dee8dc",
+            ["Saudações, $c.  Posso lhe mostrar como tecer magia sobre você para alterar a aparência do seu equipamento, se assim desejar. Deseja utilizar meus serviços?"] = "35da71c883eec22c22999a7c44dee8dc",
         },
         [271546] = {
             ["Tá procurando o mensageiro? Saiu voando daqui feito passarinho.    E nem posso culpar o pobre-diabo. Esses wendigos são uma baita encrenca."] = "682af36b98761a235fc70a1a7114c7e1",
@@ -9608,6 +9722,7 @@ GossipText = {
             ["Aqui em Darnassus temos instrutores hábeis, que se aperfeiçoaram nas artes de cada classe ao longo de anos de treinamento e dedicação. Vou levar você até um que possa ser seu mentor, mas você precisa dizer qual é o caminho que escolheu."] = "05f41dc20d172bc58dcbca463c852a7a",
             ["De todos os lugares maravilhosos em Darnassus, para qual você deseja ser $Gencaminhado:encaminhada;?"] = "5f49a0ce5b3654379f0db519a20b64a4",
             ["Há muitos que tentam seguir o caminho dos Ladinos, mas apenas os elfos noturnos são verdadeiramente acolhidos pela noite. Se você deseja andar por este caminho das sombras, então procure Syurna no Enclave Cenariano."] = "9955006745f984da2926e3193c72c1bf",
+            ["Recebi a maior parte do meu treinamento com armas de Ilyenia Flameluna no Terraço dos Guerreiros. Vá procurá-la se quiser aprender a usar uma nova arma."] = "3fdb5882d52420a10cedda5c6704aa3b",
         },
         [274781] = {
             ["Que informação tu precisa?"] = "b5077-dwarf-female-guard",

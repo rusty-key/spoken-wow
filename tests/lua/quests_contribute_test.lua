@@ -121,6 +121,29 @@ Expect("...its text with the reader put back as a token", remembered
 Expect("...and the addon version", remembered and remembered:match("\naddon=SpokenQuests/9%.9%.9\n") ~= nil, true)
 Expect("nothing on screen and no clip reports no context", VoiceOver.Contribute:ReportContext(nil), nil)
 
+-- The folder the clip played from, and that folder's own version: a language's quests are several
+-- folders, and a release bumps only those it changed.
+do
+    local horde = { METADATA = { AddonName = "SpokenQuestsAudioHorde_deDE", ContentVersion = "1.3.0" } }
+    local played = { questID = 9123, event = VoiceOver.Enums.SoundEvent.QuestAccept, unitGUID = world.npcGUID,
+        name = "Deathguard Linnea", text = "Kill six of them, Tester.", module = horde }
+    local closed = VoiceOver.Contribute:ReportContext(played)
+    Expect("a report names the folder its clip played from",
+        closed:match("\npackFolder=SpokenQuestsAudioHorde_deDE\npackFolderVersion=1%.3%.0\n") ~= nil, true)
+    stub.ShowPanel("QuestFrameDetailPanel")
+    Expect("...read from the window on screen too",
+        VoiceOver.Contribute:ReportContext(played):match("\npackFolder=SpokenQuestsAudioHorde_deDE\n") ~= nil, true)
+    Expect("...and a contribution names none", VoiceOver.Contribute:Capture():match("\npackFolder=") == nil, true)
+    local resolve = VoiceOver.Contribute.ModuleForCurrent
+    VoiceOver.Contribute.ModuleForCurrent = function() return horde end
+    Expect("a report with no clip names the folder the window's line resolves to",
+        VoiceOver.Contribute:ReportContext(nil):match("\npackFolder=SpokenQuestsAudioHorde_deDE\n") ~= nil, true)
+    VoiceOver.Contribute.ModuleForCurrent = resolve
+    Expect("...and with no pack holding it, the report names no folder",
+        VoiceOver.Contribute:ReportContext(nil):match("\npackFolder=") == nil, true)
+    stub.HidePanels()
+end
+
 ---------------------------------------------------------------- the reader put back as tokens
 -- The client expands $N, $C and $R to whoever is reading, so the text is sent with the
 -- tokens back in place of this character's name, class and race.

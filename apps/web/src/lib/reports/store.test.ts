@@ -67,7 +67,15 @@ describe("createReport and countRecent", () => {
     await createReport(submission());
     await createReport(submission({ ip: `${ip}-other` }));
 
-    expect(await countRecent(ip, 60 * 60 * 1000)).toBe(1);
+    expect(await countRecent({ ip }, 60 * 60 * 1000)).toBe(1);
+  });
+
+  it("counts a signed-in reporter's own reports from any address", async () => {
+    await createReport(submission({ userId: RESOLVER }));
+    await createReport(submission({ userId: RESOLVER, ip: `${ip}-other` }));
+    await createReport(submission());
+
+    expect(await countRecent({ userId: RESOLVER }, 60 * 60 * 1000)).toBe(2);
   });
 
   it("ignores rows older than the window", async () => {
@@ -77,7 +85,7 @@ describe("createReport and countRecent", () => {
       [ip],
     );
 
-    expect(await countRecent(ip, 60 * 60 * 1000)).toBe(0);
+    expect(await countRecent({ ip }, 60 * 60 * 1000)).toBe(0);
   });
 
   it("stores a report that resolved to no line", async () => {

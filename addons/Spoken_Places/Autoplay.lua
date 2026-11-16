@@ -126,6 +126,10 @@ local function CinematicUp()
 		or false
 end
 
+function SpokenPlaces:IsPlayerDead()
+	return UnitIsDeadOrGhost("player") and true or false
+end
+
 -- Why a queued clip may not start yet. Registered onto the queue at setup, and
 -- consulted every time it tries to advance.
 --
@@ -143,7 +147,7 @@ local function HoldReason(item)
 	if not SpokenPlaces:Get("autoplay") or not SpokenPlaces:IsVoiceEnabled() then
 		return SpokenPlaces.L.QUEUE_HELD_OFF
 	end
-	if UnitAffectingCombat("player") then
+	if SpokenPlaces:Get("autoplayStopInCombat") and UnitAffectingCombat("player") then
 		return SpokenPlaces.L.QUEUE_HELD_COMBAT
 	end
 	-- A starting-zone cinematic is the one moment a new character is guaranteed to
@@ -187,6 +191,11 @@ end
 -- Returns whether the entry was queued, which the login greeting needs: a greeting that
 -- resolved nothing must not count as having greeted.
 local function Enqueue(mapID, areaKey)
+	-- A ghost's run back to the corpse discovers nothing.
+	if SpokenPlaces:IsPlayerDead() then
+		return false
+	end
+
 	-- Skip flyover lore so it cannot queue up for landing.
 	if (UnitOnTaxi and UnitOnTaxi("player")) or (IsFlying and IsFlying()) then
 		return false
@@ -274,6 +283,54 @@ local function HeardSet()
 	return db.heard
 end
 
+-- The wall clock, not GetTime(): a wait can be a month, and GetTime() restarts from zero with the
+-- client. A day at the least: a shorter wait repeats the stories to a player riding back and forth.
+SpokenPlaces.EVERY_VISIT_GAPS = { 24 * 3600, 7 * 24 * 3600, 30 * 24 * 3600 }
+local DEFAULT_GAP = SpokenPlaces.EVERY_VISIT_GAPS[1]
+local OFFERED_GAP = {}
+for _, gap in ipairs(SpokenPlaces.EVERY_VISIT_GAPS) do
+	OFFERED_GAP[gap] = true
+end
+
+-- os.time under the luajit tests, which have no time().
+local function Now()
+	return (time or os.time)()
+end
+
+function SpokenPlaces:EveryVisitGap()
+	local chosen = self:Get("autoplayEveryVisitGap")
+	return OFFERED_GAP[chosen] and chosen or DEFAULT_GAP
+end
+
+local function ReadAtSet()
+	local db = CharDB()
+	if type(db.readAt) ~= "table" then
+		db.readAt = {}
+	end
+	return db.readAt
+end
+
+function SpokenPlaces:ReadRecently(mapID, areaKey)
+	local at = mapID and ReadAtSet()[HeardKey(mapID, areaKey)]
+	if type(at) ~= "number" then
+		return false
+	end
+	local now = Now()
+	-- A time ahead of now is the clock set back: counting it as recent would silence the place.
+	return now >= at and now - at < SpokenPlaces:EveryVisitGap()
+end
+
+local function ReadsKnownPlaces()
+	return SpokenPlaces:Get("autoplayExplored") or SpokenPlaces:Get("autoplayEveryVisit")
+end
+
+local function Due(mapID, areaKey)
+	if SpokenPlaces:Get("autoplayEveryVisit") then
+		return not SpokenPlaces:ReadRecently(mapID, areaKey)
+	end
+	return not SpokenPlaces:HasHeard(mapID, areaKey)
+end
+
 function SpokenPlaces:HasHeard(mapID, areaKey)
 	if not mapID then
 		return false
@@ -289,6 +346,7 @@ function SpokenPlaces:MarkHeard(mapID, areaKey)
 		return
 	end
 	HeardSet()[HeardKey(mapID, areaKey)] = true
+	ReadAtSet()[HeardKey(mapID, areaKey)] = Now()
 end
 
 function SpokenPlaces:HeardCount()
@@ -317,7 +375,7 @@ local function NarrateUnheard()
 	if not greetingSettled then
 		return
 	end
-	if not SpokenPlaces:Get("autoplayExplored") then
+	if not ReadsKnownPlaces() then
 		return
 	end
 	if not SpokenPlaces:Get("autoplay") or not SpokenPlaces:IsVoiceEnabled() then
@@ -331,7 +389,7 @@ local function NarrateUnheard()
 
 	-- The zone first: entering a new zone at one of its subzones leaves both
 	-- unheard, and the wider piece is the one that sets up the other.
-	if not SpokenPlaces:HasHeard(mapID, nil) and SpokenPlaces:GetLore(mapID) then
+	if Due(mapID, nil) and SpokenPlaces:GetLore(mapID) then
 		Enqueue(mapID, nil)
 	end
 
@@ -345,7 +403,7 @@ local function NarrateUnheard()
 	end
 
 	local entry, key, storyMapID = SpokenPlaces:GetSubzoneLore(mapID, subZone)
-	if entry and key and not SpokenPlaces:HasHeard(storyMapID, key) then
+	if entry and key and Due(storyMapID, key) then
 		Enqueue(storyMapID, key)
 	end
 end
@@ -358,7 +416,8 @@ end
 -- UiMapAssignment row) and announces no discovery, so neither route above ever reaches one. The
 -- instance's own map is asked instead, and Spoken's Data/Dungeons.lua names the area whose story
 -- is its card. Once per character, by the heard record: an instance can be entered any number of
--- times, and its story may already have been read at an outdoor area of the same name.
+-- times, and its story may already have been read at an outdoor area of the same name. With Read
+-- Every Visit, again on any entry once the chosen wait has passed.
 
 -- The story { mapID, key } of the dungeon or raid the player is in, or nil.
 local function InstanceStory()
@@ -389,7 +448,7 @@ local function ReadInstance()
 		return
 	end
 	local entry = SpokenPlaces.Subzones[mapID] and SpokenPlaces.Subzones[mapID][key]
-	if not entry or SpokenPlaces:IsPending(entry) or SpokenPlaces:HasHeard(mapID, key) then
+	if not entry or SpokenPlaces:IsPending(entry) or not Due(mapID, key) then
 		return
 	end
 	if SpokenPlaces:Get("debug") then
@@ -516,6 +575,7 @@ function SpokenPlaces:ForgetAutoplayHistory()
 	local db = CharDB()
 	db.greeted = nil
 	db.heard = nil
+	db.readAt = nil
 end
 
 --------------------------------------------------------------------------------
@@ -523,9 +583,11 @@ end
 --------------------------------------------------------------------------------
 
 -- Include Places Found Before may have read a discovered place already: at login it reads a
--- new character's zone, which the game announces only when the character walks out into it.
+-- new character's zone, which the game announces only when the character walks out into it. Read
+-- Every Visit reads on the zone change that comes with a discovery, so a place it read moments ago
+-- is not read twice.
 local function HeardAlready(mapID, key, areaName)
-	if not (SpokenPlaces:Get("autoplayExplored") and SpokenPlaces:HasHeard(mapID, key)) then
+	if not ReadsKnownPlaces() or Due(mapID, key) then
 		return false
 	end
 	if SpokenPlaces:Get("debug") then
@@ -611,28 +673,32 @@ local DISCOVERY_EVENTS = {
 	"UI_ERROR_MESSAGE",
 }
 
--- A cinematic can start after a clip has. The hold above is asked only before a clip
--- starts, and the login greeting fires two seconds after load -- before a new
--- character's intro, often enough -- so without these it narrates over the whole thing.
-local CINEMATIC_EVENTS = {
+-- A cinematic or a fight can start after a clip has. The hold above is asked only
+-- before a clip starts, and the login greeting fires two seconds after load -- before a
+-- new character's intro, often enough -- so without these it narrates over the whole
+-- thing. Combat is the same: a narration that began as the player rode into an area
+-- would talk through the pull, or through a PvP fight.
+local HOLD_EVENTS = {
 	CINEMATIC_START = true,
 	PLAY_MOVIE = true,
+	PLAYER_REGEN_DISABLED = true,
 }
 
 -- Stops our clip if the hold now applies to it, keeping it queued to replay once the
--- cinematic ends. Asked twice: now, and a frame later, because MovieFrame shows itself
--- from its own PLAY_MOVIE handler and the order frames receive an event in is not
--- defined. InCinematic covers CINEMATIC_START on the first ask.
-local function RecheckForCinematic()
+-- cinematic or the fight ends. Asked twice: now, and a frame later, because MovieFrame
+-- shows itself from its own PLAY_MOVIE handler and the order frames receive an event in
+-- is not defined. InCinematic covers CINEMATIC_START on the first ask, and
+-- UnitAffectingCombat PLAYER_REGEN_DISABLED.
+local function RecheckHolds()
 	local source = SpokenPlaces.source
 	if source and source.RecheckGates then
 		source:RecheckGates()
 	end
 end
 
-local function OnCinematicStart()
-	RecheckForCinematic()
-	C_Timer.After(0, RecheckForCinematic)
+local function OnHoldStart()
+	RecheckHolds()
+	C_Timer.After(0, RecheckHolds)
 end
 
 -- The payload is not in the same position across those events: CHAT_MSG_* put the
@@ -655,15 +721,19 @@ function SpokenPlaces:SetupAutoplay()
 	for _, event in ipairs(DISCOVERY_EVENTS) do
 		frame:RegisterEvent(event)
 	end
-	for event in pairs(CINEMATIC_EVENTS) do
+	for event in pairs(HOLD_EVENTS) do
 		frame:RegisterEvent(event)
 	end
 	-- Every loading screen, an instance's included. Core's own frame stops listening after login.
 	frame:RegisterEvent("PLAYER_ENTERING_WORLD")
 
 	frame:SetScript("OnEvent", function(_, event, ...)
-		if CINEMATIC_EVENTS[event] then
-			OnCinematicStart()
+		if HOLD_EVENTS[event] then
+			-- Off, a story already speaking plays through the fight. One not yet started still
+			-- waits for combat to end (HoldReason).
+			if event ~= "PLAYER_REGEN_DISABLED" or SpokenPlaces:Get("autoplayStopInCombat") then
+				OnHoldStart()
+			end
 			return
 		end
 		if event == "PLAYER_ENTERING_WORLD" then
@@ -747,5 +817,10 @@ function SpokenPlaces:DescribeAutoplay()
 	if self:Get("autoplayExplored") then
 		self:Print("already-explored areas included -- %d narrated on this character so far",
 			self:HeardCount())
+	end
+	if self:Get("autoplayEveryVisit") then
+		local days = self:EveryVisitGap() / (24 * 3600)
+		self:Print("every visit -- a place is read again %d %s after it was last read",
+			days, days == 1 and "day" or "days")
 	end
 end

@@ -2,12 +2,14 @@ import { describe, expect, it } from "vitest";
 
 import { loadPacks } from "../../../../scripts/lib/packs.mjs";
 
-import { PACKS } from "./packs";
+import { PACKS, packDownloads, packFor, partOf } from "./packs";
 
 type RegistryPack = {
   section: string;
   lang: string;
   pack: string | null;
+  name: string;
+  folder: string;
   curseforge: string | null;
   bundledIn: string | null;
   slug: string;
@@ -27,6 +29,7 @@ describe("the landing page's pack list", () => {
       .map((pack) => ({
         section: pack.section,
         lang: pack.lang,
+        name: pack.name,
         curseforge: pack.curseforge ? pack.slug : pack.bundledIn,
         release: pack.github ? pack.release : null,
       }));
@@ -45,5 +48,38 @@ describe("the landing page's pack list", () => {
       .sort();
     const english = PACKS.find((pack) => pack.section === "quests" && pack.lang === "enUS");
     expect(english?.split?.map((part) => part.slug).sort()).toEqual(split);
+  });
+
+  it("gives each split part the folder and name its page does", () => {
+    const registry = new Map((loadPacks() as RegistryPack[]).map((pack) => [pack.slug, pack]));
+    for (const part of PACKS.flatMap((pack) => pack.split ?? [])) {
+      expect({ folder: part.folder, name: part.name }).toEqual({
+        folder: registry.get(part.slug)?.folder,
+        name: registry.get(part.slug)?.name,
+      });
+    }
+  });
+});
+
+describe("packDownloads", () => {
+  const english = packFor("quests", "enUS")!;
+
+  it("links every CurseForge part of a split pack, or only the one named", () => {
+    expect(packDownloads(english).map((link) => link.label)).toEqual([
+      "CurseForge: Alliance",
+      "CurseForge: Horde",
+      "CurseForge: Shared",
+      "CurseForge: Gossip",
+      "GitHub: all",
+    ]);
+    expect(packDownloads(english, partOf(english, "SpokenQuestsAudioHorde"))).toEqual([
+      { label: "CurseForge", href: "https://www.curseforge.com/wow/addons/spoken-audio-quests-horde" },
+      { label: "GitHub: all", href: "https://github.com/rusty-key/spoken-wow/releases?q=quests-audio" },
+    ]);
+  });
+
+  it("finds a part by its folder, whatever the part is labelled", () => {
+    expect(partOf(packFor("quests", "itIT"), "SpokenQuestsAudioShared_itIT")?.label).toBe("Quests");
+    expect(partOf(packFor("quests", "itIT"), "SpokenQuestsAudio_itIT")).toBeUndefined();
   });
 });

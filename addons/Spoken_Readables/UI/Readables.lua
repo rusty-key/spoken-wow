@@ -402,11 +402,13 @@ local function AsLeft(named, build)
 end
 
 -- each(text) for every page of a readable that has words, in order, until it returns true. A page
--- is in this client's language where Spoken has its words, else in the corpus's English.
+-- is in this client's language where Spoken has its words, else in the corpus's English. A pack's
+-- words come first on an English client too, so the page reads what Play says.
 local function EachText(id, each)
 	local data = SpokenReadables:Data()
 	for _, pageId in ipairs(Books()[id].pages) do
-		local text = SpokenReadables:ClientPageText(pageId) or (data.pages[pageId] and data.pages[pageId].text)
+		local text = SpokenReadables:PackPageText(pageId, SpokenReadables:GetClientLanguage())
+			or SpokenReadables:ClientPageText(pageId) or (data.pages[pageId] and data.pages[pageId].text)
 		if text and text ~= "" and each(text) then return true end
 	end
 	return false

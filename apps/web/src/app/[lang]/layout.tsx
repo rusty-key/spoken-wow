@@ -86,14 +86,21 @@ export default async function RootLayout({
             {children}
           </GrantsProvider>
         </LangProvider>
-        {/* Cloudflare Web Analytics. Production only, so local page views don't
-            land in the same dashboard as real traffic. */}
+        {/* Cloudflare Web Analytics and Ahrefs Analytics. Production only, so local page
+            views don't land in the same dashboards as real traffic. */}
         {process.env.NODE_ENV === "production" && (
-          <Script
-            type="module"
-            src="https://static.cloudflareinsights.com/beacon.min.js"
-            data-cf-beacon='{"token": "e4a25ce72fd94bf8a0ed83e1d34c0b1c"}'
-          />
+          <>
+            <Script
+              type="module"
+              src="https://static.cloudflareinsights.com/beacon.min.js"
+              data-cf-beacon='{"token": "e4a25ce72fd94bf8a0ed83e1d34c0b1c"}'
+            />
+            <Script
+              src="https://analytics-staging.ahrefs.dev/analytics.js"
+              data-key="ptQ75WOQAU3T/ui1ab/faA"
+              strategy="afterInteractive"
+            />
+          </>
         )}
       </body>
     </html>

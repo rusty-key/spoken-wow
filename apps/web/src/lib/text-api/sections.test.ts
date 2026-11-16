@@ -10,7 +10,9 @@ import { saveStory } from "@/lib/bosses/story";
 import { closeDb, query } from "@/lib/db";
 import { saveName } from "@/lib/names/store";
 import { saveLore } from "@/lib/places/lore";
+import { audioRelPath } from "@/lib/audio";
 import { keepLanguage } from "@/lib/quests/keep-language";
+import { clearOverride, writeOverride } from "@/lib/quests/overrides";
 import { saveQuestText } from "@/lib/quests/text";
 import { saveBookText } from "@/lib/readables/text";
 import { forgetTeams } from "@/lib/teams/store";
@@ -18,6 +20,7 @@ import { asSystem } from "@/lib/teams/testing";
 
 import { sections } from "./index";
 import { listSql } from "./quests";
+import { parseList } from "./respond";
 import { createFixtures, LANG, type Fixtures } from "./testing";
 import type { Source } from "@/lib/sections";
 
@@ -191,6 +194,29 @@ describe("quests", () => {
     });
   });
 
+  it("carries what the line is spoken as, in the list and alone, until the rewrite is dropped", async () => {
+    const { lineId, variant, questId } = f.quest;
+    await saveQuestText({ lang: LANG, lineId, variant, text: "번역.", editedBy: f.user });
+    const [row] = await query<{ fileName: string }>(
+      `select "fileName" from "quest_line" where "lineId" = $1 and "variant" = $2 and "lang" = $3 and "isCurrent"`,
+      [lineId, variant, LANG],
+    );
+    const file = audioRelPath({ lineId, fileName: row.fileName });
+    const listed = async () => (await all("quests", { quest: String(questId) })).find((i) => i.id === lineId);
+
+    expect(await sections.quests.one(LANG, lineId, variant)).toMatchObject({ override: null });
+
+    await writeOverride(LANG, file, lineId, "다시 쓴 번역.", f.user);
+    try {
+      expect(await sections.quests.one(LANG, lineId, variant)).toMatchObject({ text: "번역.", override: "다시 쓴 번역." });
+      expect(await listed()).toMatchObject({ text: "번역.", override: "다시 쓴 번역." });
+    } finally {
+      await clearOverride(LANG, file, f.user);
+    }
+
+    expect(await sections.quests.one(LANG, lineId, variant)).toMatchObject({ text: "번역.", override: null });
+  });
+
   it("filters by quest and by source", async () => {
     const lines = await all("quests", { quest: String(f.quest.questId) });
     expect(lines.some((i) => i.id === f.quest.lineId)).toBe(true);
@@ -227,6 +253,28 @@ describe("quests", () => {
     const sql = listSql({ quest: String(f.quest.questId) }, null, 500, LANG);
     const own = sql.text.slice(sql.text.indexOf(`"own" as`), sql.text.indexOf(`"lines" as`));
     expect(own).toContain(`"questId" =`);
+  });
+
+  it("filters by a quest's level, leaving out lines with none", async () => {
+    const quest = f.quest.questId!;
+    await query(
+      `insert into "quest_level" ("questId", "level") values ($1, 12)
+       on conflict ("questId") do update set "level" = 12`,
+      [quest],
+    );
+    const ids = async (filter: Record<string, string>) =>
+      (await sections.quests.list(LANG, filter, null, 500)).items.map((item) => item.id);
+
+    expect(await ids({ quest: String(quest), minLevel: "12", maxLevel: "12" })).toContain(f.quest.lineId);
+    expect(await ids({ quest: String(quest), minLevel: "13" })).toEqual([]);
+    expect(await ids({ quest: String(quest), maxLevel: "11" })).toEqual([]);
+    expect(await ids({ source: "gossip", minLevel: "0" })).toEqual([]);
+    await query(`delete from "quest_level" where "questId" = $1`, [quest]);
+  });
+
+  it("refuses a level that is not a number", () => {
+    const parsed = parseList(sections.quests, new URLSearchParams("minLevel=low"));
+    expect(parsed).toBeInstanceOf(Response);
   });
 
   it("keeps two variants of one line id as two items", async () => {

@@ -7,6 +7,7 @@
  * client may be in another one. Accepting writes original text, so it takes `text` there even for
  * the team a report waits with.
  */
+import { keepClassWords } from "@/lib/contributions/class-words";
 import { requireCapability } from "@/lib/generation/authz";
 import { BASE_LANG, isLang, type Lang } from "@/lib/lang";
 import type { Submission } from "@/lib/contributions/contributions";
@@ -71,10 +72,11 @@ async function guarded(
     return { denied: Response.json({ error: "unknown report" }, { status: 404 }) };
   }
 
-  const submission = reportSubmission(report);
-  if (typeof submission === "string") {
-    return { denied: Response.json({ error: submission }, { status: 409 }) };
+  const sent = reportSubmission(report);
+  if (typeof sent === "string") {
+    return { denied: Response.json({ error: sent }, { status: 409 }) };
   }
+  const [submission] = await keepClassWords([sent]);
   if (writes || submission.locale !== lang) {
     const { denied } = await requireCapability("text", isLang(submission.locale) ? submission.locale : BASE_LANG);
     if (denied) return { denied };

@@ -325,7 +325,7 @@ Expect("...then a banner each for the quests no zone holds: Classes, Professions
     and RowFor("Classes").row.style == "banner", true)
 local elwynn = RowFor("Elwynn Forest")
 Expect("a zone's line: its quests completed out of all and the share, on one line beside its name",
-    elwynn.count.text:match("^1/%d+ • %d+%%$") ~= nil, true)
+    elwynn.count.text:match("^1/%d+ · %d+%%$") ~= nil, true)
 Expect("...with no picture or bar of its own: its picture is on its page",
     elwynn.icon == nil and elwynn.track == nil and elwynn.fill == nil and elwynn.face == nil, true)
 Expect("...a plus or minus before its name", elwynn.toggle:IsShown(), true)
@@ -333,12 +333,12 @@ Expect("...a step in from the continent's banner", elwynn.indent, 20.4)
 Expect("...chosen, the list's own light full with its gold edge", elwynn.selected and elwynn.wash:IsShown()
     and elwynn.wash.alpha == 1 and elwynn.edge:IsShown(), true)
 local elwynnTotal = tonumber(elwynn.count.text:match("/(%d+)"))
-Expect("...the share completed after them", elwynn.count.text, "1/" .. elwynnTotal .. " • " .. math.floor(100 / elwynnTotal) .. "%")
+Expect("...the share completed after them", elwynn.count.text, "1/" .. elwynnTotal .. " · " .. math.floor(100 / elwynnTotal) .. "%")
 _G.BreakUpLargeNumbers = function(n) return "<" .. n .. ">" end
 Tab:Refresh()
 Expect("numbers written as the game writes them in the player's language, on banners and lines",
     RowFor("Eastern Kingdoms").count.text:match("^<1>/<%d+>$") ~= nil
-    and RowFor("Elwynn Forest").count.text:match("^<1>/<%d+> • %d+%%$") ~= nil, true)
+    and RowFor("Elwynn Forest").count.text:match("^<1>/<%d+> · %d+%%$") ~= nil, true)
 _G.BreakUpLargeNumbers = nil
 Tab:Refresh()
 elwynn = RowFor("Elwynn Forest")
@@ -537,7 +537,7 @@ Expect("...a completed one the quest log's gold tick", RowFor("Kobold Camp Clean
 Expect("...14 by 14, as every Era tick in the list is", RowFor("Kobold Camp Cleanup").status.width .. "x"
     .. RowFor("Kobold Camp Cleanup").status.height, "14x14")
 Expect("...and its zone's line counts it in progress, apart from the completed",
-    RowFor("Elwynn Forest").count.text:match("ActiveQuestIcon.-|t1 +1/%d+ • ") ~= nil, true)
+    RowFor("Elwynn Forest").count.text:match("ActiveQuestIcon.-|t1 +1/%d+ · ") ~= nil, true)
 RowOf(CANDLES).scripts.OnClick(RowOf(CANDLES))
 Expect("its page: its title", page.title.text, "Kobold Candles")
 Expect("...where it is, then the quest mark and In progress", page.sub.text.text,
@@ -677,16 +677,16 @@ Expect("...its quests inside it, not beside it", RowOfQuest(NECKLACE) or Has(lis
 Expect("...a quest in no chain still a row of its own", Has(list, "Kobold Camp Cleanup"), true)
 Expect("...its plus or minus before its name, no picture", ChainRow("Lost Necklace").toggle:IsShown()
     and not (ChainRow("Lost Necklace").icon and ChainRow("Lost Necklace").icon:IsShown()), true)
-Expect("...its quests completed out of all and the share, beside its name", ChainRow("Lost Necklace").count.text, "0/4 • 0%")
+Expect("...its quests completed out of all and the share, beside its name", ChainRow("Lost Necklace").count.text, "0/4 · 0%")
 Expect("...none completed, none of the share", ChainRow("Lost Necklace").row.none
-    and ChainRow("Lost Necklace").count.text:match("• (%d+)%%$"), "0")
+    and ChainRow("Lost Necklace").count.text:match("· (%d+)%%$"), "0")
 local zoneRow = RowFor("Westfall")
 Expect("a zone with none completed: its line greyed", zoneRow ~= nil and zoneRow.row.none, true)
 completed[NECKLACE], completed[PIE] = true, true
 questLog = { BACK }
 Tab:Refresh()
 Expect("...how many are in progress before them, by the quest mark", ChainRow("Lost Necklace").count.text,
-    "|TInterface\\GossipFrame\\ActiveQuestIcon:12:12:0:0|t1   2/4 • 50%")
+    "|TInterface\\GossipFrame\\ActiveQuestIcon:12:12:0:0|t1   2/4 · 50%")
 Expect("...its plus counting what is under way as well as completed, so it opens as Started Only lists it",
     ChainRow("Lost Necklace").row.found == 3 and not ChainRow("Lost Necklace").toggle.desaturated, true)
 ClickChain("Lost Necklace")
@@ -1014,6 +1014,28 @@ do
     handInPlay.scripts.OnClick(handInPlay)
     Expect("...its Play playing it", Spoken:GetNowPlaying() and Spoken:GetNowPlaying().fileName, "7-complete")
     Spoken:StopAll()
+    testPack.TextByFileName = { ["7-complete"] = "Pack words." }
+    Click("Kobold Camp Cleanup")
+    Expect("a pack's words show on the part, in the client's language",
+        page.body.lastParts[#page.body.lastParts].text, "Pack words.")
+    Expect("...leaving the shipped words alone, which matching reads", SpokenQuestsText[KOBOLDS].complete, nil)
+    testPack.TextByFileName = nil
+    -- Two wordings of one moment: the page follows the one it shows, as Play does.
+    local acceptWords = SpokenQuestsText[KOBOLDS].accept
+    SpokenQuestsText[KOBOLDS].accept = "Back again."
+    testPack.SoundLengthLookupByFileName["7-accept-w1"] = 2
+    testPack.QuestWordingLookup = { ["7-accept"] = { [acceptWords] = "7-accept", ["Back again."] = "7-accept-w1" } }
+    testPack.TextByFileName = { ["7-accept"] = "First wording.", ["7-accept-w1"] = "Second wording." }
+    Click("Kobold Camp Cleanup")
+    Expect("a moment with two wordings shows the pack's words of the one it shows", PartOf(L.QUEST_PART_ACCEPT).text,
+        "Second wording.")
+    local acceptPlay = PartButton(L.QUEST_PART_ACCEPT, "play")
+    acceptPlay.scripts.OnClick(acceptPlay)
+    Expect("...and Play plays that wording", Spoken:GetNowPlaying() and Spoken:GetNowPlaying().fileName, "7-accept-w1")
+    Spoken:StopAll()
+    testPack.TextByFileName, testPack.QuestWordingLookup = nil, nil
+    testPack.SoundLengthLookupByFileName["7-accept-w1"] = nil
+    SpokenQuestsText[KOBOLDS].accept = acceptWords
     SpokenQuestsText[KOBOLDS].complete = words
     local handInWords = SpokenQuestsText[CANDLES].complete
     SpokenQuestsText[CANDLES].complete = nil
@@ -1058,7 +1080,7 @@ Expect("...and keeps those it has, in what holds them", Has(list, "Kobold Camp C
 Expect("...leaving out a zone, a continent and a section with none", Has(list, "Westfall") or Has(list, "Kalimdor")
     or Has(list, "Classes"), false)
 Expect("...each card counting only the quests it lists", RowFor("Elwynn Forest").count.text:match("^1/2 ") ~= nil
-    and ChainRow("Lost Necklace").count.text, "0/1 • 0%")
+    and ChainRow("Lost Necklace").count.text, "0/1 · 0%")
 Expect("...and each banner", RowFor("Eastern Kingdoms").count.text, "1/2")
 Expect("...and is remembered", VO.Addon.db.global.Compendium.VoicedOnly, true)
 do
@@ -1369,6 +1391,30 @@ Expect("...another character's name where the player's was", (PageWords() or "")
 stub.world.playerName = "Tester"
 local kept = VO.Addon.db.global.CompendiumText
 Expect("...kept by language", kept.deDE[KOBOLDS] ~= nil and kept.enUS == nil, true)
+
+-- An item starter keeps its real icon after the item has left the player's bags.
+do
+    local ITEM, ITEM_ICON, oldCItem = 211315, "Interface\\Icons\\INV_Misc_Map_01", _G.C_Item
+    _G.C_Item = { GetItemInfoInstant = function() return nil, nil, nil, nil, ITEM_ICON end }
+    testPack.ItemIDLookupByQuestID = { [CANDLES] = ITEM }
+    Tab:Open(CANDLES)
+    local offer = page.body.lastParts[1]
+    Expect("an item-started quest uses the item's real icon", offer.face.viewport.texture:GetTexture(), ITEM_ICON)
+    -- The item in the bags is the one that starts the quest; the packs' id only stands in for it.
+    local BAG_ICON, oldContainer = 134939, _G.C_Container
+    _G.C_Container = {
+        GetContainerNumSlots = function(bag) return bag == 1 and 1 or 0 end,
+        GetContainerItemInfo = function() return { iconFileID = BAG_ICON } end,
+        GetContainerItemQuestInfo = function() return { isQuestItem = true, questID = CANDLES } end,
+    }
+    Tab:Open(KOBOLDS)
+    Tab:Open(CANDLES)
+    Expect("...the item in the bags before the packs' id", page.body.lastParts[1].face.viewport.texture:GetTexture(), BAG_ICON)
+    _G.C_Container = oldContainer
+    testPack.ItemIDLookupByQuestID, _G.C_Item = nil, oldCItem
+    Tab:Open(KOBOLDS)
+end
+
 -- A window whose id, title and words the game hands over as secrets keeps nothing.
 stub.world.questID = JENNEA
 stub.world.title = "Versiegelte Befehle"

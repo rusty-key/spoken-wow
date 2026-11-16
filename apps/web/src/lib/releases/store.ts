@@ -9,12 +9,14 @@ import { recordActivity } from "@/lib/activity/store";
 import type { Lang } from "@/lib/lang";
 import { asTeamOf, readAs } from "@/lib/teams/store";
 
-import { isSettled, type ReleaseState } from "./sections";
+import type { PackRelease, PackVersions } from "@/lib/reports/context";
+
+import { isSettled, type ReleaseSection, type ReleaseState } from "./sections";
 
 export type ReleaseRun = {
   id: string;
   teamId: string;
-  section: string;
+  section: ReleaseSection;
   lang: Lang;
   state: ReleaseState;
   githubRunId: number | null;
@@ -22,6 +24,7 @@ export type ReleaseRun = {
   step: string | null;
   error: string | null;
   version: string | null;
+  requestedBy: string | null;
   createdAt: Date;
   finishedAt: Date | null;
 };
@@ -33,7 +36,7 @@ export class ReleaseBusyError extends Error {
 }
 
 const COLUMNS = `"id", "teamId", "section", "lang", "state", "githubRunId"::float8 as "githubRunId", "githubUrl",
-                 "step", "error", "version", "createdAt", "finishedAt"`;
+                 "step", "error", "version", "requestedBy", "createdAt", "finishedAt"`;
 const ACTIVE = `"state" in ('dispatching', 'running')`;
 const UNIQUE_VIOLATION = "23505";
 
@@ -105,6 +108,16 @@ export async function updateRun(
   });
 }
 
+/** Per section, its newest run that released something. */
+export async function lastDoneRuns(lang: Lang): Promise<ReleaseRun[]> {
+  return readAs<ReleaseRun>(
+    lang,
+    `select distinct on ("section") ${COLUMNS} from "release_run"
+      where "lang" = $1 and "state" = 'done' order by "section", "createdAt" desc`,
+    [lang],
+  );
+}
+
 export async function recentRuns(lang: Lang, limit: number): Promise<ReleaseRun[]> {
   // A team can hold several languages, and a language no team owns reads as empty.
   return readAs<ReleaseRun>(
@@ -112,4 +125,49 @@ export async function recentRuns(lang: Lang, limit: number): Promise<ReleaseRun[
     `select ${COLUMNS} from "release_run" where "lang" = $1 order by "createdAt" desc limit $2`,
     [lang, limit],
   );
+}
+
+/**
+ * Per section, when the newest run that brought players up to date started: one that released,
+ * or that found nothing to. Counted from the start because the build reads the takes then.
+ */
+export async function lastReleasedAt(lang: Lang): Promise<Map<string, Date>> {
+  const rows = await readAs<{ section: string; at: Date }>(
+    lang,
+    `select "section", max("createdAt") as "at" from "release_run"
+      where "lang" = $1 and "state" in ('done', 'unchanged') group by "section"`,
+    [lang],
+  );
+  return new Map(rows.map((row) => [row.section, row.at]));
+}
+
+/**
+ * The releases of `section` in `lang` that gave its pack a version, newest first, with when each
+ * started: a release builds from the takes live when it starts. What a report page weighs the
+ * player's pack and the line's live take against. Public, as every pack's .toc on the channel
+ * says the same, so read across teams. Releases made before the site ran them have no row.
+ */
+export async function packReleases(section: string, lang: Lang): Promise<PackRelease[]> {
+  return withTeam(ALL_TEAMS, async (client) => {
+    const { rows } = await client.query<{ version: string; createdAt: Date }>(
+      `select "version", "createdAt" from "release_run"
+        where "section" = $1 and "lang" = $2 and "state" = 'done' and "version" is not null
+        order by "createdAt" desc`,
+      [section, lang],
+    );
+    return rows.map((row) => ({ version: row.version, at: row.createdAt.toISOString() }));
+  });
+}
+
+/** Per language, the version the newest release of `section` gave its pack: what triage flags against. */
+export async function latestPackVersions(section: string): Promise<PackVersions> {
+  return withTeam(ALL_TEAMS, async (client) => {
+    const { rows } = await client.query<{ lang: string; version: string }>(
+      `select distinct on ("lang") "lang", "version" from "release_run"
+        where "section" = $1 and "state" = 'done' and "version" is not null
+        order by "lang", "createdAt" desc`,
+      [section],
+    );
+    return Object.fromEntries(rows.map((row) => [row.lang, row.version]));
+  });
 }

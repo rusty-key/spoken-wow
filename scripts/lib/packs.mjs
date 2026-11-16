@@ -123,10 +123,15 @@ function toPack(page, meta) {
   // time, so a language goes there only once its packs have been checked against it.
   if (meta.manager !== undefined && meta.manager !== "true") fail(`manager may only be true`);
 
+  // `inMeta: false` keeps a pack out of its language's meta addon (metaFor) while its CurseForge
+  // project awaits approval: a required dependency CurseForge cannot resolve fails the upload or
+  // leaves the one-click install short. Remove the line once the project is public.
+  if (meta.inMeta !== undefined && meta.inMeta !== "false") fail(`inMeta may only be false`);
+
   const code = english ? "" : `_${lang}`;
   const folder = englishFolder(section, pack) + code;
   return {
-    page, section, lang, pack, version, github, manager: meta.manager === "true",
+    page, section, lang, pack, version, github, manager: meta.manager === "true", inMeta: meta.inMeta !== "false",
     curseforge: meta.curseforge ?? null, bundledIn: meta.bundledIn ?? null, wago: meta.wago ?? null, release,
     bundles: section === "quests" && pack === "all" ? Object.values(QUESTS_PACKS).map((suffix) => `SpokenQuestsAudio${suffix}${code}`) : null,
     slug: meta.slug, name: meta.name, folder,
@@ -199,8 +204,8 @@ export function audioFamily(lang, dir = PUBLISHERS_DIR) {
 // counterpart of Spoken: English (scripts/spoken/package-meta.sh). Not a pack -- the page has
 // no `section` -- but its dependencies are the packs, so they are read off the registry here
 // rather than listed a second time: every pack of the language that is on CurseForge, quests,
-// places and readables alike. A language without a places or readables project simply has none to
-// name.
+// places, readables and bosses alike, less any marked `inMeta: false`. A language without a
+// project for one simply has none to name.
 export function metaFor(lang, packs = loadPacks(), dir = PUBLISHERS_DIR) {
   if (lang === BASE_LOCALE) throw new Error(`English's meta addon is spoken-all itself, not a language's`);
   const page = join("spoken", `all-${lang.toLowerCase()}.md`);
@@ -211,7 +216,7 @@ export function metaFor(lang, packs = loadPacks(), dir = PUBLISHERS_DIR) {
   if (meta.lang !== lang) fail(`lang should be ${lang}, not ${meta.lang}`);
   if (!/^\d+\.\d+\.\d+$/.test(meta.version ?? "")) fail(`needs version: x.y.z`);
   const order = (p) => SECTIONS.indexOf(p.section) * 10 + ["alliance", "horde", "shared", "gossip"].indexOf(p.pack);
-  const shipped = packsFor(null, lang, packs).filter((p) => p.curseforge !== null).sort((a, b) => order(a) - order(b));
+  const shipped = packsFor(null, lang, packs).filter((p) => p.curseforge !== null && p.inMeta).sort((a, b) => order(a) - order(b));
   if (!shipped.some((p) => p.section === "quests")) fail(`${lang} has no quests pack on CurseForge to depend on`);
   return {
     page, lang, version: meta.version, slug: meta.slug, name: meta.name,

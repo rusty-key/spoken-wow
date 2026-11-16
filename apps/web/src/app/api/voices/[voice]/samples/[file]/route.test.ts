@@ -8,7 +8,11 @@ const { deleteSample, recordActivity, sampleClip } = vi.hoisted(() => ({
 }));
 
 vi.mock("@/lib/voices/authz", () => ({
-  requireVoiceManager: async () => ({ session: { user: { id: "admin" } }, denied: null }),
+  requireVoiceManager: async (request: Request) => ({
+    session: { user: { id: "admin" } },
+    lang: new URL(request.url).searchParams.get("lang") ?? "enUS",
+    denied: null,
+  }),
   requireVoiceViewer: async () => ({ lang: "frFR", denied: null }),
 }));
 vi.mock("@/lib/voices/samples", () => ({

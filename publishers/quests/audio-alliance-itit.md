@@ -6,6 +6,7 @@ lang: itIT
 pack: alliance
 version: 0.0.2
 github: false
+inMeta: false
 slug: spoken-italian-audio-quests-alliance
 name: Spoken Italian Audio: Quests - Alliance
 summary: Alliance-only quest dialogue, voiced in Italian. Pair it with the Shared pack. Needs Spoken.
@@ -54,8 +55,8 @@ The whole thing is a large download, and a good part of it is dialogue your char
 
 **Code.** The addon is open source on [GitHub](https://github.com/rusty-key/spoken-wow): issues and pull requests are welcome.
 
-**Voices and translations.** Want to help a voice sound right, or the addon read well in your language? Come to the [Discord](https://discord.gg/KgeQhjv9Rd).
+**Voices and translations.** Want to help a voice sound right, or the addon read well in your language? Come to the [Discord](https://spoken.quest/discord).
 
 ---
 
-[Join the Discord](https://discord.gg/KgeQhjv9Rd) · [Buy Me a Coffee](https://buymeacoffee.com/rustykey)
+[Join the Discord](https://spoken.quest/discord) · [Buy Me a Coffee](https://buymeacoffee.com/rustykey)

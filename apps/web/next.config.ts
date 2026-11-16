@@ -2,6 +2,7 @@ import type { NextConfig } from "next";
 import fs from "node:fs";
 import path from "node:path";
 
+import { discordRedirects } from "./src/lib/discord";
 import { localeRedirects, localeRewrites } from "./src/lib/locale-routes";
 import { sectionRedirects } from "./src/lib/section-routes";
 
@@ -88,7 +89,7 @@ const config: NextConfig = {
   // The old section addresses first, so /enUS/zones/... lands on /places/... in two hops
   // rather than missing both. See src/lib/section-routes.ts.
   async redirects() {
-    return [...sectionRedirects, ...localeRedirects];
+    return [...discordRedirects, ...sectionRedirects, ...localeRedirects];
   },
   async rewrites() {
     return { beforeFiles: localeRewrites, afterFiles: [], fallback: [] };

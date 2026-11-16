@@ -9,8 +9,11 @@ const thread = { id: "222", name: "Quest text cut off", thread_metadata: { creat
 const starter = (content, extra = {}) => ({ content, author: { username: "pud2000", global_name: "Pud" }, attachments: [], ...extra });
 
 test("only the footer's link stands for the post, not a link the post itself quotes", () => {
+  assert.deepEqual(threadOf("Posted by **Pud** in [#bugs-forever-era](https://discord.com/channels/111/222) on Discord"),
+    { guild: "111", thread: "222" });
   assert.deepEqual(threadOf("Posted by **Pud** in [#bugs-and-ideas](https://discord.com/channels/111/222) on Discord"),
     { guild: "111", thread: "222" });
+  assert.equal(threadOf("Posted by **Pud** in [#bugs-1-12](https://discord.com/channels/111/222) on Discord"), null);
   assert.equal(threadOf("See https://discord.com/channels/111/222/333 for the message"), null);
   assert.equal(threadOf(null), null);
   const issue = issueFor({ guild: "111", thread, starter: starter("Same as https://discord.com/channels/111/999"), tagNames: [] });
@@ -38,7 +41,7 @@ test("the issue quotes the post line by line and links back to it", () => {
     "> Only Contribute shows.",
     "",
     "---",
-    "Posted by **Pud** in [#bugs-and-ideas](https://discord.com/channels/111/222) on Discord · 2026-10-20T12:00:00.000Z",
+    "Posted by **Pud** in [#bugs-forever-era](https://discord.com/channels/111/222) on Discord · 2026-10-20T12:00:00.000Z",
   ].join("\n"));
   assert.deepEqual(threadOf(issue.body), { guild: "111", thread: "222" });
 });

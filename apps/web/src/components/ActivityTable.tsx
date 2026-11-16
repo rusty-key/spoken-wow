@@ -98,7 +98,7 @@ function change(before: string | null, after: string | null): string | null {
  * What one row says happened, in words, plus the text it quotes. The quoted part is kept
  * apart so the row can clamp it without clamping the verb.
  */
-function describe(row: ActivityRow): { what: string; quote: string | null } {
+export function describe(row: ActivityRow): { what: string; quote: string | null } {
   const d = row.detail;
   const version = num(d.version);
   switch (row.kind) {
@@ -117,6 +117,8 @@ function describe(row: ActivityRow): { what: string; quote: string | null } {
         what: num(d.from) ? `restored take v${version} over v${num(d.from)}` : `restored take v${version}`,
         quote: null,
       };
+    case "take.encode_failed":
+      return { what: `could not encode take v${version} for its pack`, quote: str(d.error) };
     case "recording.uploaded":
       return { what: `recorded v${version}`, quote: null };
     case "recording.removed":
@@ -265,6 +267,23 @@ function describe(row: ActivityRow): { what: string; quote: string | null } {
         what: `release of ${str(d.section) ?? "a section"} ${d.state === "failed" ? "failed" : d.state === "unchanged" ? "found nothing to release" : "finished"}`,
         quote: str(d.version),
       };
+    case "pack.submitted":
+      return { what: `submitted the community pack ${row.subject} ${str(d.version) ?? ""}`.trim(), quote: null };
+    case "pack.approved":
+      return { what: `approved the community pack ${row.subject} ${str(d.version) ?? ""}`.trim(), quote: null };
+    case "pack.rejected":
+      return { what: `turned down the community pack ${row.subject} ${str(d.version) ?? ""}`.trim(), quote: str(d.reason) };
+    case "pack.withdrawn":
+      return { what: `withdrew the community pack ${row.subject} ${str(d.version) ?? ""}`.trim(), quote: null };
+    case "pack.listed":
+      return { what: `listed the community pack ${row.subject}`, quote: null };
+    case "pack.unlisted":
+      return { what: `unlisted the community pack ${row.subject}`, quote: null };
+    case "pack.owner":
+      return {
+        what: d.ownerId ? `handed the community pack ${row.subject} to another owner` : `left the community pack ${row.subject} with no owner`,
+        quote: null,
+      };
     case "contribution.resolved":
       return {
         what: `${str(d.status) ?? "resolved"} a ${d.correction ? "correction from the game" : "contribution"}`,
@@ -300,6 +319,7 @@ function target(row: ActivityRow): { href: string; label: string } | null {
   if (row.kind.startsWith("lexicon.") && row.subject) return { href: lexiconHref(row.subject), label: "Pronunciation" };
   if (row.kind.startsWith("grant.") || row.kind.startsWith("user.")) return { href: "/admin", label: "Users" };
   if (row.kind.startsWith("report.")) return { href: "/reports?view=all", label: `report ${row.subject}` };
+  if (row.kind.startsWith("pack.")) return { href: "/admin/packs", label: "Community packs" };
   if (row.kind.startsWith("contribution.")) return { href: "/contributions", label: `contribution ${row.subject}` };
   return null;
 }

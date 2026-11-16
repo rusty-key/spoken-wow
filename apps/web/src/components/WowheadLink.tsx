@@ -13,7 +13,7 @@ export default function WowheadLink({ href }: { href: string }) {
       target="_blank"
       rel="noreferrer"
       onClick={(event) => event.stopPropagation()}
-      title="Look this up on Wowhead Classic"
+      title="Look this up on Wowhead Forever"
       className="hover:text-foreground underline underline-offset-2"
     >
       wh

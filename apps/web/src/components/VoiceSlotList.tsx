@@ -27,7 +27,7 @@ import type { VoiceSlot } from "@/lib/voices/slots";
  * What a row shows depends on the tab. On ElevenLabs it is the clips a voice is cloned from
  * and whether the clone is in the viewer's own account; on fish.audio it is the reference
  * that is sent with every line. Either way the sources are only heard here: changing them is
- * an admin's, behind `editing`, because every collaborator's voices are made from them.
+ * the language admin's, behind `editing`, because every collaborator's voices are made from them.
  *
  * Ordered by name (see slots.ts): with a voice per race, gender and flavor the list is long
  * enough that finding one row matters more than knowing which to create first. Any number of

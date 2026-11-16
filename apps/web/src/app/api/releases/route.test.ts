@@ -25,6 +25,9 @@ vi.mock("@/lib/releases/droplet", async (original) => ({
   ...droplet,
 }));
 
+const encode = vi.hoisted(() => ({ encodeMissingForPack: vi.fn() }));
+vi.mock("@/lib/takes/encode", () => encode);
+
 import { GET, POST } from "./route";
 
 let user: Awaited<ReturnType<typeof testUser>>;
@@ -58,6 +61,7 @@ beforeEach(() => {
   github.dispatchRelease.mockReset().mockResolvedValue(undefined);
   github.findRun.mockReset().mockResolvedValue(null);
   droplet.startDropletRun.mockReset().mockResolvedValue(undefined);
+  encode.encodeMissingForPack.mockReset().mockResolvedValue(undefined);
 });
 
 afterEach(async () => {
@@ -94,6 +98,11 @@ describe("release route", () => {
     const { run } = await response.json();
     expect(run).toMatchObject({ section: "quests", lang: "frFR", state: "dispatching" });
     expect(github.dispatchRelease.mock.calls[0][0]).toMatchObject({ id: run.id, section: "quests", lang: "frFR" });
+    // A take whose encoding failed at commit would stop the release it is about to start.
+    expect(encode.encodeMissingForPack).toHaveBeenCalledWith("quests", "frFR");
+    expect(encode.encodeMissingForPack.mock.invocationCallOrder[0]).toBeLessThan(
+      github.dispatchRelease.mock.invocationCallOrder[0],
+    );
   });
 
   it("starts every section on the droplet once it can release there", async () => {
@@ -131,6 +140,17 @@ describe("release route", () => {
     } finally {
       vi.unstubAllEnvs();
     }
+  });
+
+  it("answers 502 without dispatching when encoding the missing takes throws, and frees the lock", async () => {
+    encode.encodeMissingForPack.mockRejectedValueOnce(new Error("connection terminated"));
+    const failed = await press("frFR", { section: "quests" });
+    expect(failed.status).toBe(502);
+    expect((await failed.json()).error).toBe("connection terminated");
+    expect(github.dispatchRelease).not.toHaveBeenCalled();
+    const { recent } = await (await read("frFR")).json();
+    expect(recent[0]).toMatchObject({ state: "failed", error: "connection terminated" });
+    expect((await press("frFR", { section: "quests" })).status).toBe(202);
   });
 
   it("answers 409 naming the active run, and does not dispatch again", async () => {
@@ -174,8 +194,15 @@ describe("release route", () => {
       expect(theirs.active).toEqual({ section: "bosses", lang: "deDE", state: "dispatching", own: false });
       expect(JSON.stringify(theirs)).not.toContain(user.id);
 
+      // A test user is named after its id, which would read as the id leaking.
+      await asSystem.query(`update "user" set "name" = 'Release Tester' where "id" = $1`, [user.id]);
       const own = await (await read("deDE")).json();
-      expect(own.active).toMatchObject({ own: true, githubUrl: "https://github.com/x/y/runs/1", step: "Package audio" });
+      expect(own.active).toMatchObject({
+        own: true,
+        githubUrl: "https://github.com/x/y/runs/1",
+        step: "Package audio",
+        by: "Release Tester",
+      });
       expect(JSON.stringify(own)).not.toContain(user.id);
     } finally {
       await dropAdmin("deDE");

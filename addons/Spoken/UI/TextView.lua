@@ -40,6 +40,8 @@ local PAD_TOP, PAD_BOTTOM = FADE * TOP_SCALE + SOLID, FADE + SOLID
 -- bigger, and drawn at PICTURE_ALPHA so the page's grain shows through. PICTURE_LIFT raises one
 -- into the text's top padding: its frayed edge is clear page, which left a wider gap above it.
 local PICTURE_MOST, PICTURE_GAP, PICTURE_ALPHA, PICTURE_LIFT = 400, 10, 0.95, 10
+-- A creature model fits the narrow map panel at this size, and stops here on the wider Compendium.
+local MODEL_MOST, MODEL_GAP = 150, 10
 -- A clean picture, with straight edges, loses this share of each side: past it no pixel of
 -- any shipped picture is thinned toward the parchment by more than 1%, measured from the shipped
 -- masks (the worst, Mask14, needs 0.172: 44 of 256 rows). The same share off every side keeps it 2:1.
@@ -463,6 +465,10 @@ function SpokenTextView.Create(parent, owner)
 	child:SetSize(1, 1)
 	scroll:SetScrollChild(child)
 
+	local model = CreateFrame("PlayerModel", nil, child)
+	model:Hide()
+	view.model = model
+
 	local text = child:CreateFontString(nil, "ARTWORK", "GameFontHighlight")
 	text:SetPoint("TOPLEFT", child, "TOPLEFT", 0, -PAD_TOP)
 	text:SetJustifyH("LEFT")
@@ -530,7 +536,18 @@ function TextView:SetText(str)
 	self.text:SetText(self.lastText)
 
 	local pictureRoom = 0
+	local modelRoom = 0
 	self.text:ClearAllPoints()
+	if self.modelDisplayID and width > 0 then
+		local size = math.min(width, MODEL_MOST)
+		self.model:SetSize(size, size)
+		self.model:ClearAllPoints()
+		self.model:SetPoint("TOP", self.child, "TOP", 0, -(PAD_TOP - PICTURE_LIFT))
+		self.model:Show()
+		modelRoom = size + MODEL_GAP - PICTURE_LIFT
+	else
+		self.model:Hide()
+	end
 	if self.pictureFile and width > 0 then
 		local w = math.min(width, PICTURE_MOST)
 		-- A clean picture shows only its middle: drawn smaller by as much, so each of its pixels
@@ -540,11 +557,12 @@ function TextView:SetText(str)
 		self.picture:SetSize(w, h)
 		self.picture:ClearAllPoints()
 		local room = self.cleanPictures and CLEAN_ROOM or 0
-		self.picture:SetPoint("TOP", self.child, "TOP", 0, -(PAD_TOP - PICTURE_LIFT + room))
+		self.picture:SetPoint("TOP", self.child, "TOP", 0, -(PAD_TOP + modelRoom - PICTURE_LIFT + room))
 		self.picture:Show()
-		pictureRoom = h + PICTURE_GAP - PICTURE_LIFT + 2 * room
+		pictureRoom = modelRoom + h + PICTURE_GAP - PICTURE_LIFT + 2 * room
 	else
 		self.picture:Hide()
+		pictureRoom = modelRoom
 	end
 	if self.pictureEdge then self.pictureEdge:SetShown(self.picture:IsShown()) end
 	self.text:SetPoint("TOPLEFT", self.child, "TOPLEFT", 0, -(PAD_TOP + pictureRoom))
@@ -640,6 +658,7 @@ function TextView:SetParts(parts)
 	self.text:Hide()
 	self.picture:Hide()
 	if self.pictureEdge then self.pictureEdge:Hide() end
+	self:SetModel(nil)
 	self.parts = self.parts or {}
 
 	local width = (self.frame:GetWidth() or 0) - self:BarRoom()
@@ -766,6 +785,37 @@ function TextView:SetParts(parts)
 	self.frame:SetVerticalScroll(0)
 	self:UpdateScrollBar()
 	self:UpdateFade()
+end
+
+--- A creature model above the text from the next SetText on, nil for none. `creatureID` is the
+--- fallback for clients that cannot draw `displayID` directly.
+function TextView:SetModel(model)
+	local displayID = model and model.displayID or nil
+	-- A page is shown again on every refresh, and reloading restarts the model's animation. A model
+	-- out of sight is reloaded, since the client can drop it while hidden.
+	if displayID and displayID == self.modelDisplayID and self.model.IsVisible and self.model:IsVisible() then
+		return
+	end
+	self.modelDisplayID = displayID
+	if not self.modelDisplayID and not (model and model.creatureID) then
+		if self.model then
+			self.model:Hide()
+			if self.model.ClearModel then self.model:ClearModel() end
+		end
+		return
+	end
+	if self.model.ClearModel then self.model:ClearModel() end
+	if self.modelDisplayID and self.model.SetDisplayInfo then
+		self.model:SetDisplayInfo(self.modelDisplayID)
+	elseif model.creatureID and self.model.SetCreature then
+		self.model:SetCreature(model.creatureID)
+	end
+	if self.model.SetModelScale then self.model:SetModelScale(model.scale or 1) end
+	if self.model.SetPortraitZoom then self.model:SetPortraitZoom(model.zoom or 0.4) end
+	if self.model.SetRotation then self.model:SetRotation(model.rotation or 0) end
+	if self.model.SetPosition then self.model:SetPosition(model.x or 0, model.y or 0, model.z or 0) end
+	if self.model.SetFacing then self.model:SetFacing(model.facing or 0) end
+	if self.model.SetSequence then self.model:SetSequence(model.sequence or 4) end
 end
 
 --- A picture above the text from the next SetText on: `file` a texture, `mask` the one fraying its

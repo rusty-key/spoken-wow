@@ -32,8 +32,10 @@ tables=("$@")
 # Keyed on `source` and synced per section, unlike the corpus tables, which are copied whole.
 # take_encoding is each take's clip as its pack ships it.
 shared=(take recording take_encoding)
-# The per-team shared tables, whose "teamId" is remapped to this database's teams after the copy.
-teamed=(take recording take_ack)
+# The staged tables with a per-team "teamId", remapped to this database's teams after the copy.
+# line_ignore's is nullable, so the foreign-key pass blanks it, and its check constraint refuses a
+# language's row with no team.
+teamed=(take recording take_ack line_ignore)
 # The shared tables with an id, which is one sequence across every section.
 serial=(take recording)
 

@@ -122,11 +122,11 @@ function DialogPlayButton:Refresh()
     self.line = nil
 
     local line, event = Addon:GetVisibleLine()
-    -- Nothing reads itself with Read Automatically off, and no NPC window does at Never.
-    local held = not Addon:IsAutoplayOn() or (event and Addon:PartOfPage(event) == "gossip" and Addon:IsNever())
+    -- Shown only where the page does not read itself, so the player can still play it.
+    self.why = Addon:WhyHeld(event)
     -- The panel itself, not merely the event: under DialogueUI the event arrives and the
     -- panel never shows. Switched off, the window's part puts no button on it.
-    if not held or not line or not IsFrameVisible(_G[PANELS[event]]) then
+    if not self.why or not line or not IsFrameVisible(_G[PANELS[event]]) then
         button:Hide()
         return
     end
@@ -186,7 +186,7 @@ function DialogPlayButton:Setup()
             GameTooltip:SetText(L.OPT_DIALOG_STOP_TIP)
         else
             GameTooltip:SetText(L.OPT_READ_TIP)
-            GameTooltip:AddLine(Addon:IsAutoplayOn() and L.OPT_NEVER_TIP or L.OPT_AUTOPLAY_OFF_TIP, 1, 0.8, 0.2, true)
+            GameTooltip:AddLine(DialogPlayButton.why, 1, 0.8, 0.2, true)
         end
         GameTooltip:Show()
     end)
@@ -201,12 +201,12 @@ function DialogPlayButton:Setup()
     for _, event in ipairs(REFRESH_EVENTS) do
         pcall(watcher.RegisterEvent, watcher, event)
     end
-    watcher:SetScript("OnEvent", function()
+    watcher:SetScript("OnEvent", function(_, event)
         DialogPlayButton:Refresh()
         -- Again a moment later: a Classic quest event can arrive before GetQuestID and the
         -- text globals change (VoiceOver.lua's directEvents comment), and the first look
-        -- would label the previous quest. Not with autoplay on, when there is no button.
-        if Addon.ScheduleTimer and not Addon:IsAutoplayOn() then
+        -- would label the previous quest. Only for a page that shows the button.
+        if Addon.ScheduleTimer and Addon:WhyHeld(event) then
             Addon:ScheduleTimer(Refresh, 0.2)
         end
     end)

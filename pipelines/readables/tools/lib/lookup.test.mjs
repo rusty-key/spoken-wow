@@ -11,13 +11,23 @@ test("English's lookup stays in the pack folder", () => {
 test("a voiced page carries caption text from its current language row", () => {
   const lua = packLua("esMX", [{ pageId: 15, file: "15", durationSec: 2.5,
     text: "<H1>Registro</H1>Hola.$BAdiós." }]);
-  assert.match(lua, /text = "Registro Hola\. Adiós\."/);
+  assert.match(lua, /text = "Registro\\010Hola\. Adiós\."/);
 });
 
-test("an English clip carries no text: Books.lua has the words", () => {
-  const lua = packLua("enUS", [{ pageId: 15, file: "15", durationSec: 2.5, text: "<H1>Ledger</H1>Three crates." }]);
-  assert.match(lua, /\[15\] = \{ file = "15", len = 2\.5 \},/);
-  assert.doesNotMatch(lua, /Three crates/);
+test("an English clip carries its words too: Books.lua can lag what the voice says", () => {
+  const lua = packLua("enUS", [{ pageId: 15, file: "15", durationSec: 2.5, text: "Three crates." }]);
+  assert.match(lua, /\[15\] = \{ file = "15", len = 2\.5, text = "Three crates\." \},/);
+});
+
+test("a take's own words win over the page's words today", () => {
+  const lua = packLua("enUS", [{ pageId: 15, file: "15", durationSec: 2.5, text: "Edited since.", shownText: "Voiced." }]);
+  assert.match(lua, /text = "Voiced\."/);
+  assert.doesNotMatch(lua, /Edited since/);
+});
+
+test("a page's words today keep their paragraphs and say their tokens", () => {
+  const lua = packLua("deDE", [{ pageId: 15, file: "15", durationSec: 2.5, text: "Hallo, $N.$B$BEnde." }]);
+  assert.ok(lua.includes('text = "Hallo, Abenteurer.\\010\\010Ende."'));
 });
 
 test("a take with word times carries them packed, and one without carries none", () => {
