@@ -70,12 +70,6 @@ local function Measure(subtitle)
     return path, size
 end
 
-local function Words(text)
-    local count = 0
-    for _ in text:gmatch("%S+") do count = count + 1 end
-    return count
-end
-
 local Prefix = Transcript.Prefix
 
 local HIGHLIGHT = Transcript.HIGHLIGHT
@@ -641,18 +635,13 @@ end
 function Subtitle:CharsSpan(n)
     local total = 0
     for _, row in ipairs(self.rows or {}) do
-        local words = Words(row.text)
-        if n <= words then
-            local seen = 0
-            for start, finish in row.text:gmatch("()%S+()") do
-                seen = seen + 1
-                if seen == n then
-                    return total + Characters(row.text:sub(1, start - 1)),
-                        total + Characters(row.text:sub(1, finish - 1))
-                end
-            end
+        local words = Transcript:Split(row.text)
+        if n <= #words then
+            local word = words[n]
+            return total + Characters(row.text:sub(1, word.first - 1)),
+                total + Characters(row.text:sub(1, word.last))
         end
-        n = n - words
+        n = n - #words
         total = total + row.count
     end
     return total, total
@@ -711,6 +700,7 @@ end
 function Subtitle:Prepare(clip, text)
     Measure(self)
     self.layoutKey, self.resumeTyping = self:LayoutKey(), nil
+    self.clipDuration = tonumber(clip.length)
     self.clip, self.page = clip, nil
     self.pageFade, self.shadowSize = nil, nil
     for _, line in ipairs(self.lines or {}) do line:SetAlpha(1) end
@@ -743,12 +733,16 @@ function Subtitle:Prepare(clip, text)
         self.pages[index] = { text = page, count = count, start = start, length = length }
         start = start + length
     end
-    -- Page text can be broken inside a long word. Only share the narrator's word
-    -- positions when every page preserves its word boundaries.
+    -- Page text can be broken inside a word. Match the actual transcript tokens so
+    -- languages without spaces keep their timing when page boundaries preserve them.
     local nextWord, matched = 1, true
     for _, page in ipairs(self.pages) do
-        local count = #Transcript:Split(page.text)
-        if count ~= Words(page.text) then matched = false end
+        local words = Transcript:Split(page.text)
+        local count = #words
+        for index, word in ipairs(words) do
+            if not Transcript.words or not Transcript.words[nextWord + index - 1]
+                or Transcript.words[nextWord + index - 1].text ~= word.text then matched = false end
+        end
         page.firstWord, page.lastWord = nextWord, nextWord + count - 1
         nextWord = nextWord + count
     end
@@ -898,7 +892,8 @@ function Subtitle:Update()
         self:Place()
     end
     local clip = speaking and Transcript.clip or self.sample
-    if self.clip and self.pages and self.layoutKey ~= self:LayoutKey() then
+    if self.clip and self.pages and (self.layoutKey ~= self:LayoutKey()
+        or (clip == self.clip and self.clipDuration ~= tonumber(clip.length))) then
         self:Prepare(self.clip, self.sample and L.SUBTITLE_SAMPLE_TEXT or Transcript.text)
         -- Typed on from where the voice is, not from the page's start again.
         self.resumeTyping, self.revealed = true, nil

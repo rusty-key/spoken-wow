@@ -124,12 +124,13 @@ function SoundUtils:TestSound(clip, channel)
     return willPlay
 end
 
-local SPEED_PACKS = { [1.25] = "SpokenSpeed125_", [1.5] = "SpokenSpeed15_", [2] = "SpokenSpeed20_" }
-
 --- The optional pack mirrors the original pack's audio paths under its own addon folder.
 --- A missing speed pack leaves the original recording usable without changing the settings.
 function SoundUtils:SpeedPath(path, speed)
-    local prefix = SPEED_PACKS[speed]
+    local prefix
+    for _, option in ipairs(Spoken.PlaybackSpeeds) do
+        if option.rate == speed then prefix = option.prefix; break end
+    end
     if not prefix then return nil end
     local root, pack, rest, extension = string.match(path or "", "^(Interface[\\/]AddOns[\\/])([^\\/]+)([\\/].+%.(%w+))$")
     if not root or (string.lower(extension) ~= "ogg" and string.lower(extension) ~= "mp3") then return nil end

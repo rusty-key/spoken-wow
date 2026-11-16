@@ -646,12 +646,19 @@ end
 
 function Spoken:GetPlaybackSpeed()
     local speed = Addon:Profile("Audio").PlaybackSpeed
-    return (speed == 1.25 or speed == 1.5 or speed == 2) and speed or 1
+    for _, option in ipairs(self.PlaybackSpeeds) do
+        if option.rate == speed then return speed end
+    end
+    return 1
 end
 
 --- A sound already speaking cannot change rate in place. Replay it from the start at the new rate.
 function Spoken:SetPlaybackSpeed(speed)
-    if speed ~= 1 and speed ~= 1.25 and speed ~= 1.5 and speed ~= 2 then return false end
+    local supported = false
+    for _, option in ipairs(self.PlaybackSpeeds) do
+        if option.rate == speed then supported = true; break end
+    end
+    if not supported then return false end
     if self:GetPlaybackSpeed() == speed then return true end
     local speaking = SoundQueue:IsPlaying()
     if speaking then SoundQueue:PauseQueue(true) end

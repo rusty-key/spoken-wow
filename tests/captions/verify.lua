@@ -882,9 +882,25 @@ do
     local timings={}
     -- The second sentence starts late, after a pause the estimate cannot know about.
     for i=1,words do timings[i]=(i-1)*.1+(i>12 and 5 or 0) end
-    source:Enqueue(Timed('t4',text,words*.1+6,timings)); Play(.7)
+    local timedPages=Timed('t4',text,words*.1+6,timings)
+    source:Enqueue(timedPages); Play(.7)
     Check(T.timed and #S.pages==4,'a timed line is paged a sentence at a time')
     Check(math.abs(S.pages[2].start-timings[13])<1e-9,"...and its second page turns at its first word's time")
+    timedPages.length=timedPages.length/2
+    timedPages.playbackSpeed=2
+    T:Started(timedPages)
+    Check(math.abs(S.pages[2].start-timings[13]/2)<1e-9,
+        'restarting the same clip faster rebuilds subtitle page times')
+    Play(timings[13]/2+.25)
+    Check(S.page==2,'the next page appears before the faster voice ends')
+    Q:RemoveAllSoundsFromQueue(); Play(.6)
+    local chinese=Timed('chinese','你好。再见。',4,{0,.3,2,2.3})
+    source:Enqueue(chinese); Play(.1)
+    Check(T.timed and #S.pages==2,'a timed Chinese line has two subtitle pages')
+    Check(S.pages[1].firstWord==1 and S.pages[2].firstWord==3 and math.abs(S.pages[2].start-2)<1e-9,
+        'pages without spaces keep the transcript word ranges and timing')
+    local from, through=S:CharsSpan(2)
+    Check(from==1 and through==3,'the second Chinese word and its punctuation can be highlighted')
     Q:RemoveAllSoundsFromQueue(); Play(.6)
     local fast=Timed('fast','aaaa bbbb cccc dddd',2,'0 .2 .4 .6')
     fast.playbackSpeed=2

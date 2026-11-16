@@ -10,7 +10,8 @@ Each optional addon mirrors the OGG and MP3 paths inside one original voice pack
 accepts an English release ZIP with several addon folders and makes a separate optional folder
 for each. It works for any language and any Spoken module whose audio is in a ZIP.
 
-Build a variant from an official audio ZIP with FFmpeg built with `libvorbis` and `libmp3lame`:
+Build a variant from an official audio ZIP with FFmpeg built with `libvorbis` and `libmp3lame`.
+The builder runs FFmpeg on the recordings in the ZIP, so use only audio archives you trust:
 
 ```sh
 python scripts/audio/optional-speed-pack.py ORIGINAL.zip --speed 1.25 --output OPTIONAL-1.25.zip
@@ -36,7 +37,7 @@ them in both the narrator and subtitles. Older packs without timestamps, includi
 quest pack 0.0.4, use an estimate based on word length and punctuation; they cannot highlight
 every spoken word exactly.
 
-Build both rates from every source pack a player might hear if every line must stay at one rate.
+Build the chosen rate from every source pack a player might hear if every line must stay at that rate.
 Otherwise the missing lines play at 1×. A speed pack's files are transcoded from shipped audio,
 not from masters, so listen to sample lines before publishing it. These optional audio
 downloads are much larger than the code change and need their own releases.

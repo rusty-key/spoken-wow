@@ -8,6 +8,13 @@ Addon = LibStub("AceTimer-3.0"):Embed({})
 Bullets = {}
 Renderers = {}
 
+Spoken.PlaybackSpeeds = {
+    { rate = 1 },
+    { rate = 1.25, prefix = "SpokenSpeed125_" },
+    { rate = 1.5, prefix = "SpokenSpeed15_" },
+    { rate = 2, prefix = "SpokenSpeed20_" },
+}
+
 -- Window Size, Subtitle Size and Text Size: lowest, highest and step, for their sliders and for
 -- Ctrl and the mouse wheel over the windows and the subtitles.
 SIZES = {

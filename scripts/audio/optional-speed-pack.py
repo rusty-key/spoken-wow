@@ -59,9 +59,10 @@ def main() -> None:
             raise ValueError(f"Missing source TOC for {sorted(packs - tocs.keys())}")
 
         args.output.parent.mkdir(parents=True, exist_ok=True)
-        with tempfile.TemporaryDirectory(prefix="spoken-speed-") as temporary:
+        with tempfile.TemporaryDirectory(prefix="spoken-speed-", dir=args.output.parent) as temporary:
             temporary = Path(temporary)
-            with ZipFile(args.output, "w", compression=ZIP_STORED, allowZip64=True) as output:
+            pending = temporary / "pack.zip"
+            with ZipFile(pending, "w", compression=ZIP_STORED, allowZip64=True) as output:
                 for pack in sorted(packs):
                     optional = f"SpokenSpeed{suffix}_{pack}"
                     toc = tocs[pack]
@@ -76,6 +77,7 @@ def main() -> None:
                     )
                     output.writestr(f"{optional}/{optional}.toc", header)
                 for count, (item, path) in enumerate(audio, 1):
+                    print(f"{count}/{len(audio)}: {path}", flush=True)
                     extension = path.suffix.lower()
                     original = temporary / f"original{extension}"
                     converted = temporary / f"converted{extension}"
@@ -89,10 +91,12 @@ def main() -> None:
                     subprocess.run(command, check=True)
                     optional = f"SpokenSpeed{suffix}_{path.parts[0]}"
                     output.write(converted, str(PurePosixPath(optional, *path.parts[1:])))
-                    if count % 100 == 0 or count == len(audio):
-                        print(f"{count}/{len(audio)} recordings", flush=True)
                     original.unlink()
                     converted.unlink()
+            if args.output.exists():
+                raise FileExistsError(f"Output already exists: {args.output}")
+            pending.rename(args.output)
+    print(f"Converted {len(audio)} recordings")
     print(args.output)
 
 
