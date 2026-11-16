@@ -635,7 +635,11 @@ end
 function Subtitle:CharsSpan(n)
     local total = 0
     for _, row in ipairs(self.rows or {}) do
-        local words = Transcript:Split(row.text)
+        local words = row.tokens
+        if not words then
+            words = Transcript:Split(row.text)
+            row.tokens = words
+        end
         if n <= #words then
             local word = words[n]
             return total + Characters(row.text:sub(1, word.first - 1)),

@@ -10,6 +10,7 @@ import argparse
 from pathlib import Path, PurePosixPath
 import re
 import shutil
+from stat import S_ISLNK
 import subprocess
 import tempfile
 from zipfile import ZipFile, ZIP_STORED
@@ -43,8 +44,11 @@ def main() -> None:
         audio = []
         tocs = {}
         for item in entries:
+            if S_ISLNK(item.external_attr >> 16):
+                raise ValueError(f"Symlink in source ZIP: {item.filename}")
             path = PurePosixPath(item.filename)
-            if len(path.parts) < 2 or any(part in (".", "..") for part in path.parts):
+            unsafe_parts = any(part in ("", ".", "..") for part in item.filename.split("/"))
+            if len(path.parts) < 2 or path.is_absolute() or unsafe_parts:
                 raise ValueError(f"Unsafe path in source ZIP: {item.filename}")
             if not re.fullmatch(r"[A-Za-z0-9_]+", path.parts[0]) or "\\" in item.filename:
                 raise ValueError(f"Unsafe addon folder in source ZIP: {item.filename}")
