@@ -6,7 +6,6 @@ lang: zhTW
 pack: horde
 version: 0.0.2
 github: false
-inMeta: false
 slug: spoken-chinese-traditional-audio-quests-horde
 name: Spoken Chinese (Traditional) Audio: Quests - Horde
 summary: Horde-only quest dialogue, voiced in Chinese (Traditional). Pair it with the Shared pack. Needs Spoken.

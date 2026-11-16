@@ -1,7 +1,7 @@
 ---
 curseforge: 1746510
 lang: ruRU
-version: 1.1.0
+version: 1.2.0
 slug: spoken-russian
 name: Spoken: Russian
 summary: Meta package: installs Spoken with every Russian voice pack, quests, gossip, zones, books and boss stories. Install through the CurseForge app.
@@ -22,11 +22,13 @@ license: MIT
 
 | Module | Voices | Its audio |
 | --- | --- | --- |
-| Spoken Quests | quest dialogue | [Spoken Russian Audio: Quests](https://www.curseforge.com/wow/addons/spoken-russian-audio-quests-shared) |
+| Spoken Quests | quest dialogue | [Spoken Russian Audio: Quests - Alliance](https://www.curseforge.com/wow/addons/spoken-russian-audio-quests-alliance)<br>[Spoken Russian Audio: Quests - Horde](https://www.curseforge.com/wow/addons/spoken-russian-audio-quests-horde)<br>[Spoken Russian Audio: Quests - Shared](https://www.curseforge.com/wow/addons/spoken-russian-audio-quests-shared) |
 | Spoken Quests | NPC gossip | [Spoken Russian Audio: Gossip](https://www.curseforge.com/wow/addons/spoken-russian-audio-gossip) |
 | Spoken Places | zone and subzone lore | [Spoken Russian Audio: Places](https://www.curseforge.com/wow/addons/spoken-russian-audio-places) |
 | Spoken Readables | books, letters, notes and plaques | [Spoken Russian Audio: Readables](https://www.curseforge.com/wow/addons/spoken-russian-audio-readables) |
 | Spoken Bosses | the story of each dungeon and raid boss | [Spoken Russian Audio: Bosses](https://www.curseforge.com/wow/addons/spoken-russian-audio-bosses) |
+
+The quest dialogue comes as three packs, one per faction plus the quests both sides share, and this installs all of them: it does not know which side you play. Remove the other faction's pack afterwards if you want the disk space back.
 
 ## Language
 

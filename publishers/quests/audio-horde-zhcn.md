@@ -6,7 +6,6 @@ lang: zhCN
 pack: horde
 version: 0.0.2
 github: false
-inMeta: false
 slug: spoken-chinese-simplified-audio-quests-horde
 name: Spoken Chinese (Simplified) Audio: Quests - Horde
 summary: Horde-only quest dialogue, voiced in Chinese (Simplified). Pair it with the Shared pack. Needs Spoken.

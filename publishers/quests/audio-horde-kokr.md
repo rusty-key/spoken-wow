@@ -6,7 +6,6 @@ lang: koKR
 pack: horde
 version: 0.0.3
 github: false
-inMeta: false
 slug: spoken-korean-audio-quests-horde
 name: Spoken Korean Audio: Quests - Horde
 summary: Horde-only quest dialogue, voiced in Korean. Pair it with the Shared pack. Needs Spoken.

@@ -9,6 +9,26 @@ from the player whose changelog is CHANGELOG.md beside this one.
   Spoken: English, in the AddOns list and on CurseForge.
   *([rusty-key](https://github.com/rusty-key))*
 
+## 1.2.0 — spoken-all-koKR — 2026-11-16
+
+- Installs the Korean quest dialogue as three packs, Alliance, Horde and the quests both
+  sides share, now that the faction packs have CurseForge projects. 7 sound packs in all.
+
+## 1.2.0 — spoken-all-ruRU — 2026-11-16
+
+- Installs the Russian quest dialogue as three packs, Alliance, Horde and the quests both
+  sides share, now that the faction packs have CurseForge projects. 7 sound packs in all.
+
+## 1.2.0 — spoken-all-zhCN — 2026-11-16
+
+- Installs the Chinese (Simplified) quest dialogue as three packs, Alliance, Horde and the quests both
+  sides share, now that the faction packs have CurseForge projects. 7 sound packs in all.
+
+## 1.2.0 — spoken-all-zhTW — 2026-11-16
+
+- Installs the Chinese (Traditional) quest dialogue as three packs, Alliance, Horde and the quests both
+  sides share, now that the faction packs have CurseForge projects. 7 sound packs in all.
+
 ## 3.1.0 — 2026-11-11
 
 - Installs the English boss stories too, which ship inside Spoken Audio: Places and Bosses.
