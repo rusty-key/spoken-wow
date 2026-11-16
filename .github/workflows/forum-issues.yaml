@@ -21,6 +21,7 @@ jobs:
   forum:
     if: ${{ github.event_name != 'issues' || contains(github.event.issue.labels.*.name, 'from-discord') }}
     runs-on: ubuntu-latest
+    environment: discord
     # Two filing runs side by side would each see a new post without an issue and file it twice.
     # A closed issue has a group of its own: GitHub keeps one pending run per group, and a
     # waiting report must not be dropped for a filing run.
