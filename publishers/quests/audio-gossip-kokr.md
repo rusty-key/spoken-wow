@@ -4,7 +4,7 @@ release: quests-audio-gossip-koKR
 section: quests
 lang: koKR
 pack: gossip
-version: 0.0.2
+version: 0.0.3
 github: false
 slug: spoken-korean-audio-gossip
 name: Spoken Korean Audio: Gossip

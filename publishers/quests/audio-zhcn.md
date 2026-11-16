@@ -3,7 +3,7 @@ release: quests-audio-zhCN
 section: quests
 lang: zhCN
 pack: all
-version: 0.0.1
+version: 0.0.2
 slug: spoken-quests-audio-zhcn
 name: Spoken Quests Audio: Chinese (Simplified)
 summary: Quest and gossip lines for Spoken Quests, voiced in Simplified Chinese. All four packs in one download. Partial: about six quests in seven. Needs Spoken Quests.

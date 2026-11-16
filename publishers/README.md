@@ -180,6 +180,12 @@ under `bundles`). The four split pages say `github: false`, which keeps them out
 `scripts/audio-github-release.sh`. The zip is not called `SpokenQuestsAudio-<version>.zip`
 because that is the meta addon's.
 
+**A language's meta addon, `spoken/all-<lang>.md`, depends on every pack of that language with a
+CurseForge project**, read off the pages by `metaFor` in `scripts/lib/packs.mjs`. A pack page
+saying `inMeta: false` is left out: its project exists but CurseForge has not approved it yet,
+and a required dependency it cannot resolve breaks the one-click install. Drop the line once the
+project is public, then bump and release the meta addon.
+
 **A maintainer publishes from their own machine and to their own stores.** The Release button
 puts a pack on the Manager channel and commits nothing. `scripts/maintainers/spoken-release.sh`
 then takes what the Manager installed in `AddOns`, zips each folder at the version in its `.toc`,
