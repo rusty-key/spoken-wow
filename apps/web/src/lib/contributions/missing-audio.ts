@@ -2,10 +2,10 @@
  * Lines the corpus has but a player's pack could not voice.
  *
  * The addon gathers a line exactly when the installed pack has no sound for it, so a gathered
- * envelope the corpus already knows is one a player heard in silence. The /contribute page
- * drops those (there is nothing to triage); the Spoken Manager, when its player turned Sharing
- * on, sends the same file with a random install id, and each such line is counted here once
- * per line, pack language and install. Ranked by installs, that is which lines to voice next,
+ * envelope the corpus already knows is one a player heard in silence. There is nothing to
+ * triage, so it is not stored as a contribution; it is counted here instead, once per line, pack
+ * language and install, whenever it arrives with an install id: the Spoken Manager's, when its
+ * player turned Sharing on, or the browser's own from a Contribute link (browser-install.ts). Ranked by installs, that is which lines to voice next,
  * and which players are only behind on their pack.
  *
  * Server-side only: it writes.
