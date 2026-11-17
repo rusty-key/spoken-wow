@@ -46,21 +46,27 @@ const COLUMNS = `"id", "source", "lineId", "target", "category", "body", "status
 /** The rows the acting team sees: the language's text queue, and its own audio reports. */
 const REPORT_SCOPE = (team: number) => `("queue" = 'text' or "teamId" = $${team})`;
 
+/** The acting team REPORT_SCOPE cuts by; null in a language nobody owns, which has no reports. */
+async function scopeTeam(lang: Lang): Promise<TeamId | null> {
+  const team = await ownerOrAll(lang);
+  // Never in practice: adoptEveryLang gives every language a team.
+  return team === ALL_TEAMS ? null : team;
+}
+
 /**
  * A read across every team, cut by REPORT_SCOPE. `where` holds the conditions and `params` their
- * values; the acting team is added last. A language nobody owns has no reports to read.
+ * values; the acting team is added last.
  */
 async function readScoped<T extends QueryResultRow>(
   lang: Lang,
   sql: (where: string) => string,
-  where: string[],
-  params: unknown[],
+  where: readonly string[],
+  params: readonly unknown[],
 ): Promise<T[]> {
-  const team = await ownerOrAll(lang);
-  // Never in practice: adoptEveryLang gives every language a team.
-  if (team === ALL_TEAMS) return [];
-  where.push(REPORT_SCOPE(params.push(team)));
-  return queryIn<T>(ALL_TEAMS, sql(where.join(" and ")), params);
+  const team = await scopeTeam(lang);
+  if (team === null) return [];
+  const scoped = [...where, REPORT_SCOPE(params.length + 1)].join(" and ");
+  return queryIn<T>(ALL_TEAMS, sql(scoped), [...params, team]);
 }
 
 /**
@@ -329,8 +335,8 @@ export async function skipReports(
   queues: readonly Queue[],
 ): Promise<number> {
   if (!ids.length) return 0;
-  const team = await ownerOrAll(lang);
-  if (team === ALL_TEAMS) return 0;
+  const team = await scopeTeam(lang);
+  if (team === null) return 0;
   const { rowCount } = await withTeam(ALL_TEAMS, (client) => client.query(
     `insert into "report_skip" ("userId", "reportId")
      select $1, "id" from "report"
@@ -344,8 +350,8 @@ export async function skipReports(
 
 /** Puts every report this person skipped in one section and language back in their queue. */
 export async function resetSkips(userId: string, source: Source, lang: Lang): Promise<number> {
-  const team = await ownerOrAll(lang);
-  if (team === ALL_TEAMS) return 0;
+  const team = await scopeTeam(lang);
+  if (team === null) return 0;
   const { rowCount } = await withTeam(ALL_TEAMS, (client) => client.query(
     `delete from "report_skip" s
       using "report" r

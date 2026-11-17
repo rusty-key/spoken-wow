@@ -14,7 +14,7 @@ import { headers } from "next/headers";
 import type { ClientBase } from "pg";
 import { cache } from "react";
 
-import { query, type TeamId } from "@/lib/db";
+import { db, type TeamId } from "@/lib/db";
 
 type Teams = ReadonlyMap<string, TeamId>;
 
@@ -24,10 +24,10 @@ const scope = new AsyncLocalStorage<Teams>();
 
 /** Each language `userId` works on, and the team they work on it in. */
 export async function memberTeams(userId: string, client?: Pick<ClientBase, "query">): Promise<Map<string, TeamId>> {
-  const text = `select distinct "lang", "teamId" from "team_member" where "userId" = $1`;
-  const rows = client
-    ? (await client.query<{ lang: string; teamId: TeamId }>(text, [userId])).rows
-    : await query<{ lang: string; teamId: TeamId }>(text, [userId]);
+  const { rows } = await (client ?? db()).query<{ lang: string; teamId: TeamId }>(
+    `select distinct "lang", "teamId" from "team_member" where "userId" = $1`,
+    [userId],
+  );
   return new Map(rows.map((row) => [row.lang, row.teamId]));
 }
 

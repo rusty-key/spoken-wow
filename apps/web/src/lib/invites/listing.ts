@@ -49,7 +49,6 @@ export async function visibleInvites(viewer: Viewer, teams: Teams, langs: readon
     if (team) byTeam.set(team, [...(byTeam.get(team) ?? []), lang]);
   }
   const lists = await Promise.all([...byTeam].map(([team, inTeam]) => listInvites(inTeam, team)));
-  if (lists.length === 1) return lists[0];
   return lists.flat().sort((a, b) => b.createdAt.localeCompare(a.createdAt));
 }
 
