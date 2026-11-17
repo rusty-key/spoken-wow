@@ -50,7 +50,8 @@ picker, and reports that carry the pack's team. See *Phase 2* below.
   covers some clients" should mean is postponed.
 - **Teams' own infrastructure.** All takes and packs stay on our R2 buckets and our one channel,
   signed with our key. Self-hosted channels, team signing keys, a publish CLI, GitHub Action
-  templates and a Manager publish button are later work.
+  templates and a Manager publish button are later work. A team's own archive bucket is designed
+  in [`STORAGE.md`](STORAGE.md).
 - **CurseForge and GitHub releases for teams.** `release-packs.yaml` keeps shipping today's packs
   there. Team releases reach players through the Manager only.
 - **Provider accounts per team.** Payment stays as it is: every member brings their own ElevenLabs

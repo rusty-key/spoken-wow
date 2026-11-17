@@ -4,7 +4,7 @@ import path from "node:path";
 
 import { afterAll, afterEach, describe, expect, it, vi } from "vitest";
 
-import { keep, memoryBlobs, r2Blobs, sha256Of, useArchiveForTests } from "./store";
+import { keep, memoryBlobs, r2Blobs, s3Blobs, sha256Of, useArchiveForTests } from "./store";
 
 vi.mock("node:timers/promises", () => ({ setTimeout: async () => {} }));
 
@@ -133,5 +133,54 @@ describe("reading a range", () => {
     expect(asked).toEqual(["bytes=0-1"]);
     expect(part).toMatchObject({ size: 4096, contentType: "audio/mpeg", range: { start: 0, end: 1 } });
     expect(await text(part!.body)).toBe("01");
+  });
+});
+
+describe("any S3-compatible bucket", () => {
+  const S3 = {
+    endpoint: "https://s3.eu-west-1.amazonaws.com",
+    region: "eu-west-1",
+    bucket: "team-audio",
+    accessKeyId: "k",
+    secretAccessKey: "s",
+    publicUrl: null,
+    pathStyle: false,
+    conditionalPut: true,
+  };
+
+  it("addresses the bucket as a host when not path-style", async () => {
+    const urls: string[] = [];
+    vi.stubGlobal("fetch", async (url: string) => {
+      urls.push(url);
+      return new Response(null, { status: 404 });
+    });
+    expect(await s3Blobs(S3).head("takes/x")).toBeNull();
+    expect(await s3Blobs({ ...S3, pathStyle: true }).get("takes/x")).toBeNull();
+    expect(urls).toEqual([
+      "https://team-audio.s3.eu-west-1.amazonaws.com/takes/x",
+      "https://s3.eu-west-1.amazonaws.com/team-audio/takes/x",
+    ]);
+  });
+
+  it("has no public address when private, and signs one that expires", async () => {
+    const bucket = s3Blobs(S3);
+    expect(bucket.url("takes/x")).toBeNull();
+    const signed = new URL(await bucket.presign("takes/x", { method: "GET", expiresSec: 600 }));
+    expect(signed.host).toBe("team-audio.s3.eu-west-1.amazonaws.com");
+    expect(signed.searchParams.get("X-Amz-Expires")).toBe("600");
+    expect(signed.searchParams.get("X-Amz-Signature")).toMatch(/^[0-9a-f]{64}$/);
+    expect(signed.searchParams.get("X-Amz-Credential")).toContain("/eu-west-1/s3/");
+  });
+
+  it("looks before it writes where the provider ignores If-None-Match", async () => {
+    const methods: string[] = [];
+    vi.stubGlobal("fetch", async (_url: string, init: RequestInit) => {
+      methods.push(init.method ?? "GET");
+      return init.method === "HEAD"
+        ? new Response(null, { status: 200, headers: { "content-length": "4" } })
+        : new Response(null, { status: 200 });
+    });
+    await s3Blobs({ ...S3, conditionalPut: false }).put("takes/x", Buffer.from("same"), "audio/mpeg");
+    expect(methods).toEqual(["HEAD"]);
   });
 });

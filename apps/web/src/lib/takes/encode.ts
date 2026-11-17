@@ -14,7 +14,8 @@ import path from "node:path";
 import { pipeline } from "node:stream/promises";
 
 import { recordActivity } from "@/lib/activity/store";
-import { archive, blobBytes, blobKey, sha256Of } from "@/lib/blobs/store";
+import { archive, blobKey, sha256Of } from "@/lib/blobs/store";
+import { blobBytes } from "@/lib/blobs/where";
 import { ALL_TEAMS, query, queryIn } from "@/lib/db";
 import type { Lang } from "@/lib/lang";
 import type { Source } from "@/lib/sections";

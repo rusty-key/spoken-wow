@@ -17,7 +17,8 @@ import crypto from "node:crypto";
 import fs from "node:fs/promises";
 import path from "node:path";
 
-import { blobBytes, blobKey, blobOrFile, keep, readsBlobs, writesBlobs, type Stored } from "@/lib/blobs/store";
+import { blobKey, blobOrFile, keep, readsBlobs, writesBlobs, type Stored } from "@/lib/blobs/store";
+import { blobBytes } from "@/lib/blobs/where";
 import { queryAs, readAs } from "@/lib/teams/store";
 import { VOICE_SAMPLES_DIR } from "@/lib/paths";
 import { withLocalCopy } from "@/lib/takes/bytes";

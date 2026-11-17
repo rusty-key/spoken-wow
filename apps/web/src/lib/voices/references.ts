@@ -21,7 +21,8 @@ import path from "node:path";
 import { promisify } from "node:util";
 
 import { recordActivity } from "@/lib/activity/store";
-import { blobBytes, blobKey, blobOrFile, keep, readsBlobs, type Stored } from "@/lib/blobs/store";
+import { blobKey, blobOrFile, keep, readsBlobs, type Stored } from "@/lib/blobs/store";
+import { blobBytes } from "@/lib/blobs/where";
 import { withTeam } from "@/lib/db";
 import type { Lang } from "@/lib/lang";
 import { VOICE_REFERENCES_DIR } from "@/lib/paths";

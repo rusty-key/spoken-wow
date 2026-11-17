@@ -7,7 +7,8 @@ import "server-only";
 import { requestedRange, type Range } from "@/lib/range";
 import { notModified, serveFile, serveRanged } from "@/lib/stream";
 
-import { archive, type Stored } from "./store";
+import type { Stored } from "./store";
+import { locate, markMissing } from "./where";
 
 type PrivateOptions = {
   /** Without its scope, which is always `private`: max-age, immutable or no-cache. */
@@ -32,8 +33,14 @@ export async function serveBlob(
 
   // Only the range asked for is fetched: Safari's bytes=0-1 probe and every seek would
   // otherwise download the whole object.
-  const object = await archive().get(key, requestedRange(request.headers.get("range")) ?? undefined);
-  if (!object) return new Response("not in the archive", { status: 404 });
+  const where = await locate(key);
+  const object = await where.store.get(where.key, requestedRange(request.headers.get("range")) ?? undefined);
+  if (!object) {
+    // A team emptied its bucket: the next look tries any other copy.
+    await markMissing(where, key);
+    if (where.backendId) return serveBlob(request, key, { cacheControl, contentType, headers });
+    return new Response("not in the archive", { status: 404 });
+  }
 
   const response = await serveRanged(
     request,
@@ -42,7 +49,7 @@ export async function serveBlob(
       if (object.body && same(range, object.range)) return object.body;
       // The bucket read the header differently from parseRange; fetch exactly what is answered.
       await object.body?.cancel();
-      const exact = await archive().get(key, range ? { start: range.start, end: range.end } : undefined);
+      const exact = await where.store.get(where.key, range ? { start: range.start, end: range.end } : undefined);
       if (!exact?.body) throw new Error(`${key} vanished from the archive mid-request`);
       return exact.body;
     },

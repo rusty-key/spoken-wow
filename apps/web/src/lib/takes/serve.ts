@@ -15,7 +15,8 @@ import "server-only";
 import path from "node:path";
 
 import { servePrivate } from "@/lib/blobs/serve";
-import { archive, isShared } from "@/lib/blobs/store";
+import { isShared } from "@/lib/blobs/store";
+import { addressOf, locate, SIGNED_FOR_SEC } from "@/lib/blobs/where";
 import { serveFile } from "@/lib/stream";
 
 import { BASE_LANG, langTag, type Lang } from "@/lib/lang";
@@ -47,11 +48,14 @@ export async function serveTake(
 
   // The bucket answers ranges itself, Safari's bytes=0-1 probe included. The redirect is
   // cached as the bytes were: a version's for good, a live line's for five minutes, after
-  // which it may point at a newer take.
+  // which it may point at a newer take. A team's private bucket gets a signed address, so its
+  // redirect is cached for less than the signature lasts.
   if (bytes.kind === "blob") {
+    const { url, signed } = await addressOf(await locate(bytes.key));
+    const cached = signed ? `max-age=${Math.min(300, SIGNED_FOR_SEC / 2)}` : cacheControl;
     return new Response(null, {
       status: 302,
-      headers: { Location: archive().url(bytes.key), "Cache-Control": `public, ${cacheControl}` },
+      headers: { Location: url, "Cache-Control": `${signed ? "private" : "public"}, ${cached}` },
     });
   }
   const served = await serveFile(request, bytes.path, { cacheControl: `public, ${cacheControl}`, headers, ...file });
