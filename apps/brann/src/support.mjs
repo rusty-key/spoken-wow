@@ -218,6 +218,15 @@ export function perPlayer(limit, window) {
   };
 }
 
+/**
+ * The keys among `names` that are not one plain word of printable ASCII: one copied with a "…"
+ * in it, a space or a stray line ending. A request cannot carry such a key in its header, so it fails on
+ * every call; better to say so once, at startup.
+ */
+export function badSecrets(env, names) {
+  return names.filter((name) => env[name] && !/^[\x21-\x7e]+$/.test(env[name]));
+}
+
 /** Spend guard: at most `limit` model calls a UTC day. */
 export function dailyBudget(limit, now = () => new Date()) {
   let day = "";

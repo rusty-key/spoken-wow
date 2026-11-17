@@ -15,6 +15,8 @@
 //   BRANN_MODEL               default claude-sonnet-5-5
 //   BRANN_SUPPORT             on (default), dry (log the answers, post nothing) or off
 //   BRANN_DAILY_CALLS         model calls a UTC day before he stops answering, default 1000
+//   BRANN_TEST_CHANNEL        a channel where he treats moderators as players and logs every
+//                             decision, skips included, so his answering can be tried there
 
 import Anthropic from "@anthropic-ai/sdk";
 import {
@@ -28,7 +30,7 @@ import {
   PermissionFlagsBits,
 } from "discord.js";
 
-import { discord } from "../../../scripts/lib/language-post.mjs";
+import { discord, isNamed } from "../../../scripts/lib/language-post.mjs";
 import { BUG, github } from "../../../scripts/lib/forum-issues.mjs";
 import {
   DM_BUTTON,
@@ -44,6 +46,7 @@ import {
   DEFAULT_MODEL,
   HISTORY,
   ask,
+  badSecrets,
   contextFor,
   dailyBudget,
   decide,
@@ -60,12 +63,19 @@ if (!token) {
   console.error("brann: BRANN_DISCORD_TOKEN is not set");
   process.exit(1);
 }
+const broken = badSecrets(env, ["BRANN_DISCORD_TOKEN", "BRANN_ANTHROPIC_API_KEY", "BRANN_GITHUB_TOKEN"]);
+for (const name of broken) {
+  console.error(`brann: ${name} is not a whole key: it holds a space or a character like "…". Copy it again.`);
+}
+if (broken.includes("BRANN_DISCORD_TOKEN")) process.exit(1);
+const usable = (name) => !!env[name] && !broken.includes(name);
+const TEST_CHANNEL = env.BRANN_TEST_CHANNEL;
 const MODE = env.BRANN_SUPPORT ?? "on";
 const MODEL = env.BRANN_MODEL || DEFAULT_MODEL;
 const REPO = env.BRANN_GITHUB_REPOSITORY || "rusty-key/spoken-wow";
 
 const faq = loadFaq();
-const anthropic = env.BRANN_ANTHROPIC_API_KEY ? new Anthropic({ apiKey: env.BRANN_ANTHROPIC_API_KEY }) : null;
+const anthropic = usable("BRANN_ANTHROPIC_API_KEY") ? new Anthropic({ apiKey: env.BRANN_ANTHROPIC_API_KEY }) : null;
 const supportOn = MODE !== "off" && anthropic !== null;
 const spend = dailyBudget(Number(env.BRANN_DAILY_CALLS) || 1000);
 const playerAllowed = perPlayer(20, 60 * 60 * 1000);
@@ -93,7 +103,7 @@ const client = new Client({
   partials: [Partials.Channel, Partials.Message, Partials.Reaction],
 });
 
-const filer = env.BRANN_GITHUB_TOKEN
+const filer = usable("BRANN_GITHUB_TOKEN")
   ? issueFiler({ api: discord(token), gh: github(env.BRANN_GITHUB_TOKEN, REPO) })
   : null;
 
@@ -119,6 +129,9 @@ const contextOf = (message) => ({
 });
 
 const where = (channel) => (channel.isDMBased() ? "DM" : `#${channel.name}`);
+
+/** Whether a channel, or the channel a thread is in, is the test channel. */
+const isTest = (channel) => !!TEST_CHANNEL && [channel, channel.parent].some((c) => c?.name && isNamed(c, TEST_CHANNEL));
 
 async function answer(mode, turns, channel, playerId, context = []) {
   if (!playerAllowed(playerId, Date.now())) {
@@ -156,9 +169,12 @@ async function converse(message, { starter = null, history } = {}) {
 }
 
 /** A message in a public channel: answered in a thread under it, or in place in a thread already. */
-async function triage(message, mode, context) {
+async function triage(message, mode, context, note) {
   const reply = await answer(mode, [turnOf(message)], message.channel, message.author.id, context);
-  if (!reply) return;
+  if (!reply) {
+    note("no answer: the FAQ does not cover it (or a limit above was reached)");
+    return;
+  }
   answered(message.author.id, Date.now());
   const content = `<@${message.author.id}> ${reply}`;
   const components = answerComponents();
@@ -216,19 +232,28 @@ client.on(Events.MessageCreate, async (message) => {
       await converse(message, conversation);
       return;
     }
+    // In the test channel a moderator is a player, and each decision is logged.
+    const testing = isTest(message.channel);
+    const note = (what) => {
+      if (testing) console.log(`brann: ${where(message.channel)} ${message.author.username}: ${what}`);
+    };
     const facts = {
       mentioned: message.mentions.users.has(client.user.id),
-      isModerator: isModerator(message.member),
+      isModerator: !testing && isModerator(message.member),
       text: plain(message),
       authorId: message.author.id,
       at: message.createdTimestamp,
       answeredAt: asking.has(message.author.id) ? message.createdTimestamp : lastAnswered.get(message.author.id),
     };
     // The free rules first: a message they skip costs no fetch.
-    if (decide(facts).skip) return;
+    const first = decide(facts);
+    if (first.skip) {
+      note(`skip: ${first.skip}`);
+      return;
+    }
     if (!facts.mentioned) asking.add(message.author.id);
     try {
-      await consider(message, facts);
+      await consider(message, facts, note);
     } finally {
       asking.delete(message.author.id);
     }
@@ -238,7 +263,7 @@ client.on(Events.MessageCreate, async (message) => {
 });
 
 /** The rules that need a fetch, then the answer: a channel message the free rules let through. */
-async function consider(message, facts) {
+async function consider(message, facts, note) {
   const ref = message.reference?.messageId ? await message.fetchReference().catch(() => null) : null;
   const { before, chain } = await surroundings(message, ref);
   const verdict = decide({
@@ -252,16 +277,20 @@ async function consider(message, facts) {
       mentions: [...m.mentions.users.keys()],
     })),
   });
-  if (verdict.skip) return;
+  if (verdict.skip) {
+    note(`skip: ${verdict.skip}`);
+    return;
+  }
+  note(`asking the model (${verdict.mode})`);
   const lookup = (id) => (chain.has(id) ? contextOf(chain.get(id)) : null);
-  await triage(message, verdict.mode, contextFor(contextOf(message), before.map(contextOf), lookup));
+  await triage(message, verdict.mode, contextFor(contextOf(message), before.map(contextOf), lookup), note);
 }
 
-// 👍 or 👎 from the asker: the buttons become the verdict, which the weekly FAQ sweep reads.
 /** The channel a button was pressed in. An old thread is no longer in discord.js's cache after a restart. */
 const channelOf = async (interaction) =>
   interaction.channel ?? await client.channels.fetch(interaction.channelId).catch(() => null);
 
+// 👍 or 👎 from the asker: the buttons become the verdict, which the weekly FAQ sweep reads.
 async function rate(interaction, helped) {
   const thread = await channelOf(interaction);
   const starter = thread?.isThread() && thread.ownerId === client.user.id
@@ -322,6 +351,7 @@ client.on(Events.MessageReactionAdd, async (reaction, user) => {
 client.once(Events.ClientReady, (ready) => {
   console.log(`brann: logged in as ${ready.user.tag}`);
   console.log(`brann: support ${supportOn ? `${MODE}, ${MODEL}, ${faqEntries(faq).length} FAQ entries` : "off"}`);
+  if (TEST_CHANNEL) console.log(`brann: test channel #${TEST_CHANNEL}: moderators count as players, every decision is logged`);
   console.log(`brann: issue filing ${filer ? `on, ${REPO}` : "off (BRANN_GITHUB_TOKEN is not set)"}`);
   filer?.start();
 });

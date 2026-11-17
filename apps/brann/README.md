@@ -61,6 +61,17 @@ cached, so after the first call a message costs a tenth of its FAQ tokens plus i
 `BRANN_DAILY_CALLS` caps the calls per UTC day. When he reaches it he logs a warning and stops
 answering until midnight.
 
+## Trying him in Discord
+
+He never answers a moderator unasked, so a moderator testing him in an ordinary channel gets
+silence. Set `BRANN_TEST_CHANNEL=test` and restart him: in `#test` (and its threads) a moderator is
+a player, and `pm2 logs brann` shows each decision, such as `#test rusty: skip: too short`,
+`asking the model (channel)`, or `no answer: the FAQ does not cover it`.
+
+At startup he names any key that is not one plain word, such as a key copied with its "…" from a
+console's short form. A broken Discord token stops him; a broken Anthropic or GitHub key turns off
+support answers or issue filing.
+
 ## Trying him on a channel's history
 
 `src/replay.mjs` runs a channel's recent messages through the same rules and the same model call,
@@ -92,6 +103,7 @@ His environment comes from `/srv/spoken/shared/app.env`:
 | `BRANN_MODEL` | default `claude-sonnet-5-5` |
 | `BRANN_SUPPORT` | `on` (default), `dry` (log what he would answer, post nothing) or `off` |
 | `BRANN_DAILY_CALLS` | model calls a UTC day, default 1000 |
+| `BRANN_TEST_CHANNEL` | a channel name, such as `test`. There he treats moderators as players and logs every decision, skips included |
 
 In the [Discord developer portal](https://discord.com/developers/applications), the bot needs the
 **Message Content** intent switched on. In the server it needs View Channels, Send Messages, Send
