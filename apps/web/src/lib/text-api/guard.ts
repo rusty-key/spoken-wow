@@ -10,7 +10,7 @@ import "server-only";
 import { viewerOf } from "@/lib/grants/store";
 import type { Lang } from "@/lib/lang";
 import { can, type Capability, type Viewer } from "@/lib/permissions";
-import { teamIn } from "@/lib/teams/acting";
+import { asActor, teamIn } from "@/lib/teams/acting";
 import { privilegedOf, secondTeamLangs } from "@/lib/teams/store";
 import { findLiveToken } from "@/lib/tokens/store";
 import type { TokenAccess } from "@/lib/tokens/types";
@@ -49,12 +49,37 @@ export function backedScopes(
  * needs the generate flag, `any` takes either. Each is checked against the owner's grant now.
  * `also` is a grant a route needs on top: lexicon writes need `configure`, as on the site.
  * `noQuery` refuses a query string with a 400, worded as given or a default.
- * A token has no session, so work done for its owner has to run in `asActor`; a route that does
- * sets `teams`, and one that does not is refused for an owner in a language's second team.
+ * It refuses an owner who works in a language's second team: such a route goes through withToken.
  */
 export async function requireToken(
   request: Request,
-  options: { need?: TokenNeed; also?: Capability; noQuery?: true | string; teams?: true } = {},
+  options: TokenOptions = {},
+): Promise<{ context: TokenContext; denied: null } | { context: null; denied: Response }> {
+  return checkToken(request, options, false);
+}
+
+/**
+ * requireToken for a route that works for a second team too. A token has no session, so `work`
+ * runs as the token's owner, in asActor where the language has a second team; a language with
+ * one team reads no membership.
+ */
+export async function withToken(
+  request: Request,
+  options: TokenOptions,
+  work: (context: TokenContext) => Promise<Response>,
+): Promise<Response> {
+  const { context, denied } = await checkToken(request, options, true);
+  if (denied) return denied;
+  if (!(await secondTeamLangs()).has(context.lang)) return work(context);
+  return asActor(context.userId, () => work(context));
+}
+
+type TokenOptions = { need?: TokenNeed; also?: Capability; noQuery?: true | string };
+
+async function checkToken(
+  request: Request,
+  options: TokenOptions,
+  teams: boolean,
 ): Promise<{ context: TokenContext; denied: null } | { context: null; denied: Response }> {
   const need = options.need ?? "read";
   const denied = (status: number, error: string) => ({
@@ -91,7 +116,7 @@ export async function requireToken(
     return denied(403, `this token's owner does not hold ${options.also} in ${token.lang}`);
   }
   // A language with one team reads no membership.
-  if (!options.teams && (await secondTeamLangs()).has(token.lang)) {
+  if (!teams && (await secondTeamLangs()).has(token.lang)) {
     const team = await teamIn(token.userId, token.lang);
     if (team && team !== (await privilegedOf(token.lang))) {
       return denied(403, "this route does not work for a second team yet");

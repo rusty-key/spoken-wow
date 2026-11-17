@@ -1,17 +1,13 @@
 /** The English text of a section, for a token to translate from or to know what it is generating. */
 import { BASE_LANG } from "@/lib/lang";
-import { asActor } from "@/lib/teams/acting";
-import { requireToken } from "@/lib/text-api/guard";
+import { withToken } from "@/lib/text-api/guard";
 import { invalid, parseList, sectionOf } from "@/lib/text-api/respond";
 import { BadCursor, type ReferenceItem } from "@/lib/text-api/types";
 
 export const dynamic = "force-dynamic";
 
 export async function GET(request: Request, { params }: { params: Promise<{ section: string }> }) {
-  const { context, denied } = await requireToken(request, { need: "any", teams: true });
-  if (denied) return denied;
-
-  return asActor(context.userId, async () => {
+  return withToken(request, { need: "any" }, async () => {
     const found = sectionOf((await params).section);
     if (found instanceof Response) return found;
 

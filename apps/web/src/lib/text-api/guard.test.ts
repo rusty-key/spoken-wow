@@ -43,7 +43,7 @@ vi.mock("@/lib/teams/store", async (importOriginal) => ({
 import { createToken, revokeToken } from "@/lib/tokens/store";
 import type { TokenAccess } from "@/lib/tokens/types";
 
-import { requireToken } from "./guard";
+import { requireToken, withToken } from "./guard";
 
 const USER = `test-guard-${Math.random().toString(36).slice(2, 10)}`;
 
@@ -212,15 +212,15 @@ describe("a second team's owner", () => {
     acting.second = new Set(["deDE"]);
   });
 
-  it("is refused on a route that has not opted in, and passes on one that has", async () => {
+  it("is refused by requireToken, and passes withToken", async () => {
     acting.team = "team-b";
     const { token } = await make("read");
     const refused = await requireToken(request(`Bearer ${token}`), { need: "read" });
     expect(refused.denied?.status).toBe(403);
     expect(await refused.denied?.json()).toEqual({ error: "this route does not work for a second team yet" });
 
-    const passed = await requireToken(request(`Bearer ${token}`), { need: "read", teams: true });
-    expect(passed.denied).toBeNull();
+    const passed = await withToken(request(`Bearer ${token}`), { need: "read" }, async () => new Response("ran"));
+    expect(await passed.text()).toBe("ran");
   });
 
   it("is not refused in the privileged team", async () => {
