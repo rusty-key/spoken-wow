@@ -108,7 +108,9 @@ curl -X POST -H "Authorization: Bearer $SPOKEN_TOKEN" -H "Content-Type: applicat
 A dry run answers `provider`, `files`, `characters`, `matched`, `dropped`, `unknown`, an
 `estimate` per provider and `missingKeys`, the providers whose key you have not set. A real run
 answers `batchId`, `queued`, `alreadyQueued` (files already waiting in the queue), and the same
-`matched`, `dropped` and `unknown`. `dropped` counts matched lines that became no job, by reason:
+`matched`, `dropped` and `unknown`. A dry run's `files`, `characters` and estimate count every
+planned file, even one an earlier batch already queued, which the real run skips and counts in
+`alreadyQueued`. `dropped` counts matched lines that became no job, by reason:
 `progress`, `untranslated`, `no-voice`, `invalid-chars` and `shared-file` for quests, `no-text` and
 `not-generatable` for places, readables and bosses, and `hidden` for a quest item marked
 ignored. `unknown` lists ids found nowhere. A line already done and asked for

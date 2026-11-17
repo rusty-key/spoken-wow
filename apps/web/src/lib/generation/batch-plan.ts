@@ -90,7 +90,7 @@ function questPlan(lines: CorpusLine[], overrides: Parameters<typeof batchPlan>[
 }
 
 /** Every key `filtersFromParams` reads. */
-const FILTER_KEYS = new Set([
+export const FILTER_KEYS = new Set([
   "q", "filter", "state", "missing", "outdated", "race", "gender", "flavor", "voice", "source", "type",
   "narration", "progress", "client", "line", "overridden", "ignored", "dirty", "fb", "before", "after",
   "model", "author", "rec", "bt", "minLevel", "maxLevel", "playerGender",

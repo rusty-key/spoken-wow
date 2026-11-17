@@ -57,6 +57,7 @@ import type { CorpusLine } from "@/lib/corpus";
 
 import {
   estimatePlan,
+  FILTER_KEYS,
   filterError,
   linesForItems,
   planCatalogue,
@@ -298,5 +299,37 @@ describe("filterError", () => {
     ["race=orc&race=typo", "race is given twice"],
   ])("refuses %s, naming %s", async (query, named) => {
     expect((await filterError(query, "enUS")).error).toContain(named);
+  });
+
+  it("knows every key the parser reads, and no other", async () => {
+    const read = new Set<string>();
+    class Recording extends URLSearchParams {
+      override get(name: string) {
+        read.add(name);
+        return super.get(name);
+      }
+      override getAll(name: string) {
+        read.add(name);
+        return super.getAll(name);
+      }
+      override has(name: string) {
+        read.add(name);
+        return super.has(name);
+      }
+    }
+    await filtersFromParams(new Recording(), "enUS");
+    expect([...read].sort()).toEqual([...FILTER_KEYS].sort());
+  });
+
+  /** Taken as given, as in the Explorer: any value is a valid search. */
+  const FREE_TEXT = ["q", "line", "model", "author"];
+
+  it.each([...FILTER_KEYS].filter((key) => !FREE_TEXT.includes(key)))("refuses a junk value of %s", async (key) => {
+    expect((await filterError(`${key}=zzjunk`, "enUS")).error).toContain(key);
+  });
+
+  it.each(FREE_TEXT)("takes any %s", async (key) => {
+    expect(FILTER_KEYS.has(key)).toBe(true);
+    expect((await filterError(`${key}=zzjunk`, "enUS")).error).toBeNull();
   });
 });

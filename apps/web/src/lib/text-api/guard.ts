@@ -96,8 +96,9 @@ export async function requireToken(
       userId: token.userId,
       role: token.role,
       lang: token.lang,
-      access: token.access,
-      generate: token.generate,
+      // What the grants back, not what the token stores: `any` lets one scope through alone.
+      access: textOk ? token.access : "none",
+      generate: generateOk,
     },
     denied: null,
   };
