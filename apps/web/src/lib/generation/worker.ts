@@ -274,6 +274,9 @@ export function startWorker(isLeader: () => boolean, options: WorkerOptions = {}
     // underneath it. Failed as this job only, like every failure below: see the note there.
     //
     // For the provider the job was queued with, not whichever the owner has chosen since.
+    //
+    // The storage check starts alongside: it depends on nothing here, and is read below in its turn.
+    const storage = storageFor(job.lang).catch(() => null);
     let apiKey: string | null;
     try {
       apiKey = await apiKeyFor(job.createdBy ?? "", job.provider);
@@ -307,7 +310,7 @@ export function startWorker(isLeader: () => boolean, options: WorkerOptions = {}
     }
     // Before the provider is paid: a team that keeps its audio only in its own bucket and has none
     // switched on could keep nothing this job makes.
-    const refused = await storageFor(job.lang).catch(() => null);
+    const refused = await storage;
     if (refused) {
       await withTeam(job.teamId, (client) => failJob(job.id, { kind: "bad-request", message: refused }, client)).catch((error: unknown) =>
         console.error(`regeneration queue: job ${job.id} could not be failed`, error),

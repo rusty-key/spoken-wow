@@ -46,7 +46,7 @@ describe("a team that keeps its own storage", () => {
     const house = ours("r2");
     await expect(keep("takes", randomBytes(16), "audio/mpeg", file, "frFR")).rejects.toThrow("connect one on the Storage page");
     expect(house.objects.size).toBe(0);
-    expect(await storageRefusal("frFR")).toContain("connect one");
+    expect(await storageRefusal("frFR")).toMatchObject({ kind: "storage-required", message: expect.stringContaining("connect one") });
   });
 
   it("cannot keep anything while our archive is not a bucket, even with one switched on", async () => {

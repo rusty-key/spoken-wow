@@ -76,16 +76,34 @@ export class OwnStorageError extends Error {
   }
 }
 
+/** The bucket a team writes new objects to, with the team; null for ours. */
+type Target = (NonNullable<Awaited<ReturnType<typeof writingBackend>>> & { team: TeamId }) | null;
+
 /**
- * Why `lang`'s team may not keep audio now, or null. A team with `ownStorage` keeps nothing in our
- * archive or on our volume: it needs a bucket switched on, and that needs our archive in r2 mode.
+ * Where `lang`'s team keeps new objects, read once for a whole write: whether it may keep nothing
+ * of ours, the bucket it writes to in r2 mode, and why it may not keep anything now, or null. A
+ * team with `ownStorage` needs a bucket switched on, and that needs our archive in r2 mode.
  */
-export async function ownStorageRefusal(lang: Lang): Promise<string | null> {
+async function storageOf(lang: Lang): Promise<{ own: boolean; target: Target; refusal: string | null }> {
   const team = await teamOf(lang);
-  if (!(await keepsOwnStorage(team))) return null;
-  if (archiveMode() !== "r2") return "This site cannot use team buckets yet, and your team keeps its audio only in its own, so nothing can be made for it.";
-  if (await writingBackend(team)) return null;
-  return "Your team keeps its audio in its own bucket: connect one on the Storage page and switch it on before making takes, recordings or clone clips.";
+  const r2 = archiveMode() === "r2";
+  const [own, backend] = await Promise.all([keepsOwnStorage(team), r2 ? writingBackend(team) : null]);
+  const target = backend && { ...backend, team };
+  let refusal: string | null = null;
+  if (own && !r2) refusal = "This site cannot use team buckets yet, and your team keeps its audio only in its own, so nothing can be made for it.";
+  else if (own && !target) refusal = "Your team keeps its audio in its own bucket: connect one on the Storage page and switch it on before making takes, recordings or clone clips.";
+  return { own, target, refusal };
+}
+
+/** Why `lang`'s team may not keep audio now, or null. */
+export async function ownStorageRefusal(lang: Lang): Promise<string | null> {
+  return (await storageOf(lang)).refusal;
+}
+
+/** The 409 a route answers before it reads an upload or pays for anything, or null when the team may keep audio. */
+export async function storageRequiredResponse(lang: Lang): Promise<Response | null> {
+  const refusal = await ownStorageRefusal(lang);
+  return refusal ? Response.json({ error: refusal, kind: "storage-required" }, { status: 409 }) : null;
 }
 
 /** Whether the team may keep nothing in our archive (team."ownStorage"). */
@@ -94,9 +112,10 @@ export async function keepsOwnStorage(team: TeamId): Promise<boolean> {
   return row?.ownStorage ?? false;
 }
 
-async function assertMayKeep(lang: Lang): Promise<void> {
-  const refused = await ownStorageRefusal(lang);
-  if (refused) throw new OwnStorageError(refused);
+async function targetFor(lang: Lang): Promise<Target> {
+  const { target, refusal } = await storageOf(lang);
+  if (refusal) throw new OwnStorageError(refusal);
+  return target;
 }
 
 /**
@@ -104,14 +123,12 @@ async function assertMayKeep(lang: Lang): Promise<void> {
  * so the object is nowhere, and an OwnStorageError for a team that may not use ours.
  */
 export async function putArchived(prefix: BlobPrefix, sha256: string, data: Buffer, contentType: string, lang: Lang): Promise<void> {
-  await assertMayKeep(lang);
-  return placeArchived(prefix, sha256, data, contentType, lang);
+  return placeArchived(prefix, sha256, data, contentType, await targetFor(lang));
 }
 
-async function placeArchived(prefix: BlobPrefix, sha256: string, data: Buffer, contentType: string, lang: Lang): Promise<void> {
+/** Into `target`, the team's bucket in r2 mode, or ours with none. */
+async function placeArchived(prefix: BlobPrefix, sha256: string, data: Buffer, contentType: string, target: Target): Promise<void> {
   const key = blobKey(prefix, sha256);
-  const team = await teamOf(lang);
-  const target = archiveMode() === "r2" ? await writingBackend(team) : null;
   if (!target) return archive().put(key, data, contentType);
   let refusal: unknown = null;
   if (target.health !== "failing") {
@@ -123,7 +140,7 @@ async function placeArchived(prefix: BlobPrefix, sha256: string, data: Buffer, c
       console.error(`storage: the team bucket ${target.id} refused ${key}, quarantined:`, error);
     }
     if (!refusal) {
-      if ((await recordObject(prefix, sha256, target.id, team, false)).was) await dropQuarantined(target.id, key);
+      if ((await recordObject(prefix, sha256, target.id, target.team, false)).was) await dropQuarantined(target.id, key);
       return;
     }
   }
@@ -132,7 +149,7 @@ async function placeArchived(prefix: BlobPrefix, sha256: string, data: Buffer, c
     if (!(await holds(prefix, sha256, target.id))) {
       await archive().put(quarantineKey(target.id, key), data, contentType);
       // A direct write of these bytes may have landed meanwhile: then nothing would land this copy.
-      if (!(await recordObject(prefix, sha256, target.id, team, true)).now) await dropQuarantined(target.id, key);
+      if (!(await recordObject(prefix, sha256, target.id, target.team, true)).now) await dropQuarantined(target.id, key);
     }
   } finally {
     // After the bytes are safe, or once our own bucket refused them too: marking the bucket failing
@@ -157,13 +174,13 @@ export async function keep(
   lang: Lang,
 ): Promise<string | null> {
   // Before the volume too: a team with its own storage keeps nothing of ours, in any mode.
-  await assertMayKeep(lang);
+  const target = await targetFor(lang);
   const sha256 = sha256Of(data);
   const mode = archiveMode();
   const put = async () => {
     if (mode === "disk") return null;
     try {
-      await placeArchived(prefix, sha256, data, contentType, lang);
+      await placeArchived(prefix, sha256, data, contentType, target);
       return sha256;
     } catch (error) {
       if (mode === "r2") throw error;
@@ -259,13 +276,10 @@ export async function landQuarantined(perBucket = 20): Promise<number> {
  * Why `lang`'s team may not queue paid work now, or null: it must keep its own storage and has
  * none, or its bucket is failing. Jobs already queued carry on, into the quarantine.
  */
-export async function storageRefusal(lang: Lang): Promise<string | null> {
-  const required = await ownStorageRefusal(lang);
-  if (required) return required;
-  if (archiveMode() !== "r2") return null;
-  const team = await teamOf(lang);
-  const target = await writingBackend(team);
+export async function storageRefusal(lang: Lang): Promise<{ kind: "storage-required" | "storage-failing"; message: string } | null> {
+  const { own, target, refusal } = await storageOf(lang);
+  if (refusal) return { kind: "storage-required", message: refusal };
   if (target?.health !== "failing") return null;
-  const instead = (await keepsOwnStorage(team)) ? "" : ", or send new objects to Spoken's archive";
-  return `Your team's bucket is failing, so nothing new is queued: test it on the Storage page${instead}.`;
+  const instead = own ? "" : ", or send new objects to Spoken's archive";
+  return { kind: "storage-failing", message: `Your team's bucket is failing, so nothing new is queued: test it on the Storage page${instead}.` };
 }

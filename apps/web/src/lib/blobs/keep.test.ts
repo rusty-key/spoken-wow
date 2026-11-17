@@ -145,7 +145,7 @@ describe("keep with a team bucket", () => {
     expect((await locate(key)).key).toBe(quarantineKey(backend.id, key));
     const [failing] = await systemRows(`select "health", "lastError" from "storage_backend" where "id" = $1`, [backend.id]);
     expect(failing).toEqual({ health: "failing", lastError: "Writing an object: HTTP 403 AccessDenied" });
-    expect(await storageRefusal("enUS")).toContain("failing");
+    expect(await storageRefusal("enUS")).toMatchObject({ kind: "storage-failing", message: expect.stringContaining("failing") });
 
     // Still refusing: nothing lands, nothing is lost.
     expect(await landQuarantined()).toBe(0);

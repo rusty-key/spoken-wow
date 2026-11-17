@@ -10,7 +10,7 @@
  * clone reads whatever is in the folder - so the steady state has to be the one merged file
  * that cloning actually wants.
  */
-import { ownStorageRefusal } from "@/lib/blobs/keep";
+import { storageRequiredResponse } from "@/lib/blobs/keep";
 import { recordActivities } from "@/lib/activity/store";
 import { cloneName } from "@/lib/voices/clone-name";
 import fs from "node:fs/promises";
@@ -30,10 +30,10 @@ export async function POST(request: Request, context: Context) {
   // A slot is shared; its clips and its clone are the language\'s own (clone-name.ts).
   const { session, lang, denied } = await requireVoiceManager(request, voice);
   if (denied) return denied;
-  // Before the upload is read: a team that keeps its audio only in its own bucket and has none
-  // switched on could keep nothing of it.
-  const refused = await ownStorageRefusal(lang);
-  if (refused) return Response.json({ error: refused, kind: "storage-required" }, { status: 409 });
+  // Before any clip is copied: a team that keeps its audio only in its own bucket and has none
+  // switched on could keep nothing of them.
+  const refused = await storageRequiredResponse(lang);
+  if (refused) return refused;
   const clone = cloneName(voice, lang);
 
   let replace = false;
