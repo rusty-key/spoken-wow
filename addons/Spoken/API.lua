@@ -531,7 +531,8 @@ function Spoken:LanguageFace(code)
     return Options:LanguageFace(code)
 end
 
---- The language `code` as a table (`code`, `name`, `native`, `font`, `client`, `lore`, `folders`),
+--- The language `code` as a table (`code`, `name`, `native`, `font`, `client`, `lore`, `folders`,
+--- `texts`: the folders of its voice packs and of its text packs),
 --- or nil where it is neither one a client runs in nor one an installed pack declares.
 function Spoken:Language(code)
     return Languages:Get(code)
@@ -569,6 +570,55 @@ end
 --- the settings' font object, or the font file `path`.
 function Spoken:LanguageDraws(code, path)
     return Options:LanguageDraws(code, path)
+end
+
+--- The language the words are read in: the Text Language chosen on Spoken's page, else the
+--- client's. The second value is true where the player chose it; on Auto a module keeps the order it
+--- always read its languages in, and where it is chosen, puts it first.
+function Spoken:TextLanguage()
+    return Texts:Language()
+end
+
+--- The Text Language as stored: a code, or nil for Auto.
+function Spoken:TextLanguageChoice()
+    return Texts:Choice()
+end
+
+--- Store the Text Language: a code, or nil for Auto. It takes effect on the next load. False where
+--- `code` is not shaped like a language code.
+function Spoken:SetTextLanguage(code)
+    local ok = Texts:SetChoice(code)
+    if ok then Options:UpdateRows() end
+    return ok
+end
+
+--- For a text pack (docs/contributors/TEXT-PACKS.md): the words of `section` ("quests",
+--- "readables", "bosses" or "places") in the language `code`. Kept only where `code` is the Text
+--- Language; returns whether they were.
+function Spoken:RegisterText(code, section, data)
+    return Texts:Register(code, section, data)
+end
+
+--- A text pack's words in `code`, under `section`, `kind` and each key in turn, or nil:
+--- Spoken:TextIn("plPL", "readables", "pages", 1234).
+function Spoken:TextIn(code, section, kind, ...)
+    return Texts:Get(code, section, kind, ...)
+end
+
+--- A section's tables from the text packs in `code`, whole, or nil.
+function Spoken:TextSection(code, section)
+    return Texts:Section(code, section)
+end
+
+--- The font file to write `code` in where a page uses `fontObject`, or nil where none draws it.
+--- `cache` is a table of the caller's to keep the answers in.
+function Spoken:FontForLanguage(fontObject, code, cache)
+    return Texts:FontFor(fontObject, code, cache)
+end
+
+--- Whether this client's fonts can draw `code`. `cache` as for FontForLanguage.
+function Spoken:CanRenderLanguage(code, cache)
+    return Texts:CanRender(code, cache)
 end
 
 --- The voice language as it plays: the one chosen on Spoken's page, "auto" being the client's.

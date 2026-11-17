@@ -557,6 +557,23 @@ local function Build()
         function(code) language().Fallback = code end, function() Options:UpdateRows() end,
         function(code) return code == "none" and L.OPT_FALLBACK_NONE or Options:MenuLanguageName(code) end,
         function(code) return Options:LanguageFace(code) end)
+    -- The words' language, apart from the voice's: a Polish reader hears English where no Polish
+    -- voice exists. Read as the modules and their text packs load, so a change waits for a reload,
+    -- which is asked at once: a player who switches and sees no change concludes it is broken.
+    layout:Dropdown(L.OPT_TEXT_LANGUAGE, nil, function() return Texts:Choices() end,
+        function() return Texts:Choice() or "auto" end,
+        function(code)
+            if Texts:SetChoice(code ~= "auto" and code or nil) then
+                Layout.AskReload(format(L.OPT_TEXT_LANGUAGE_SET_FMT, Options:LanguageName(Texts:Language())),
+                    L.OPT_RELOAD_NOW, L.OPT_LATER)
+            end
+        end, function() Options:UpdateRows() end,
+        function(code)
+            if code == "auto" then return format(L.OPT_LANG_AUTO_FMT, Options:LanguageName(Options:ClientLanguage())) end
+            return Options:MenuLanguageName(code)
+        end, function(code) return Options:LanguageFace(code) end)
+    layout:ShowWhen(layout:Note(L.OPT_TEXT_LANGUAGE_RELOAD, nil, 16),
+        function() return Texts:Language() ~= Texts.loaded end)
 
     layout:Section(L.OPT_AUDIO_TITLE)
     layout:Dropdown(L.OPT_CHANNEL, nil, CHANNELS,

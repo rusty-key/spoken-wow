@@ -151,6 +151,15 @@ end
 local titles, asked = {}, {}
 local function Title(id, ask)
     if titles[id] then return titles[id] end
+    -- A text pack's, in the Text Language the player chose.
+    local language, chosen = VO.Language:GetTextLanguage()
+    if chosen and Spoken and Spoken.TextIn then
+        local packed = Spoken:TextIn(language, "quests", "titles", id)
+        if packed then
+            titles[id] = packed
+            return packed
+        end
+    end
     local kept = Kept()
     local title = kept and kept[id] and kept[id].title
     if not title and Locale() ~= "enUS" and C_QuestLog and C_QuestLog.GetTitleForQuestID then
@@ -986,11 +995,12 @@ local function SeenText(id, moment)
     return stored and QuestsTab:Fill(stored)
 end
 
+-- A text pack's words in the Text Language come after a pack's own, as on the captions.
 local function PartText(id, moment)
     local soundData = { event = EVENTS[moment], questID = id, text = SeenText(id, moment) }
     VO.DataModules:PrepareSound(soundData)
     if soundData.packText then return QuestsTab:Fill(soundData.packText) end
-    return soundData.text
+    return VO.DataModules:TextPackText(soundData) or soundData.text
 end
 
 --- Keep what the open quest window shows, in this client's language.

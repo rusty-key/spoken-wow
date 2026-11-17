@@ -1,0 +1,245 @@
+setfenv(1, SpokenEnv)
+
+-- Text packs: the words of quests, gossip, readables, bosses and places in a language, with no
+-- voice. A language no game client runs in (Polish) is read nowhere else, and its text is kept by
+-- its own translators, outside Spoken, so it comes as an addon of its own beside Spoken's:
+--
+--   ## X-Spoken-Text: plPL
+--   ## X-Spoken-TextFormat: 1
+--   ## LoadOnDemand: 1
+--   ## Dependencies: Spoken
+--
+-- and calls Spoken:RegisterText(code, section, data) as it loads. Spoken loads it only where the
+-- player's Text Language is its language, so a corpus nobody reads costs no memory. The sections,
+-- their tables and their keys are in docs/contributors/TEXT-PACKS.md; the keys are the frozen ids
+-- every pack uses, so the format holds as long as they do.
+Texts = {}
+
+-- What each section's table holds, by kind. A kind nobody reads is refused at registration, so a
+-- misspelt one is said in the debug log instead of reading as a translation that never shows.
+local KINDS = {
+    quests = { lines = true, titles = true },
+    readables = { pages = true, titles = true },
+    bosses = { stories = true, names = true },
+    places = { zones = true, subzones = true },
+}
+Texts.KINDS = KINDS
+
+-- [code][section][kind] = the tables registered, merged.
+local registered = {}
+
+--- The Text Language the player chose: a code, or nil for Auto.
+function Texts:Choice()
+    local language = Addon.db and Addon.db.profile.Language
+    local text = language and language.Text
+    if Languages:IsCode(text) then return text end
+    return nil
+end
+
+--- Store the player's Text Language: a code, or nil for Auto. Takes effect on the next load.
+function Texts:SetChoice(code)
+    local language = Addon.db and Addon.db.profile.Language
+    if not language then return false end
+    if code ~= nil and not Languages:IsCode(code) then return false end
+    language.Text = code
+    return true
+end
+
+--- The language the player reads: the chosen one, or the client's (Options:ClientLanguage) on Auto.
+--- The second value says whether it was chosen, which is where a module puts it before its own
+--- order: on Auto every module keeps the order it always had.
+function Texts:Language()
+    local chosen = self:Choice()
+    if chosen then return chosen, true end
+    return Options:ClientLanguage(), false
+end
+
+--- `into` with `from` laid over it, table by table, so two packs (or two files of one) can each
+--- bring part of a section, as Places' subzones are split by zone.
+local function Merge(into, from)
+    for key, value in pairs(from) do
+        if type(value) == "table" and type(into[key]) == "table" then
+            Merge(into[key], value)
+        else
+            into[key] = value
+        end
+    end
+end
+
+--- Take a text pack's words. Kept only for the language the player reads: a pack loaded by the
+--- client before Spoken could ask (one without LoadOnDemand) costs nothing more than its parsing.
+--- Returns whether they were kept.
+function Texts:Register(code, section, data)
+    if not (Languages:IsCode(code) and KINDS[section] and type(data) == "table") then
+        Developer:Log("texts", "refused text for %s/%s: not a language and a section", tostring(code), tostring(section))
+        return false
+    end
+    if code ~= self:Language() then return false end
+    for kind, value in pairs(data) do
+        if not KINDS[section][kind] or type(value) ~= "table" then
+            Developer:Log("texts", "refused %s %s.%s: no such kind", code, section, tostring(kind))
+        else
+            registered[code] = registered[code] or {}
+            registered[code][section] = registered[code][section] or {}
+            registered[code][section][kind] = registered[code][section][kind] or {}
+            Merge(registered[code][section][kind], value)
+        end
+    end
+    return true
+end
+
+--- A leaf's words: a string, or a table whose [1] is (`{ "…", src = "…" }`, the hash of the English
+--- it was translated from, which the pack's own checks read). Nil for anything else and for "".
+local function Words(value)
+    if type(value) == "table" then value = value[1] end
+    if type(value) == "string" and value ~= "" then return value end
+    return nil
+end
+
+--- The words a text pack gives, under `section`, `kind` and then each key in turn:
+--- Texts:Get("plPL", "bosses", "stories", 33, "archmage arugal"). Nil where none does.
+function Texts:Get(code, section, kind, ...)
+    local node = registered[code] and registered[code][section] and registered[code][section][kind]
+    for i = 1, select("#", ...) do
+        if type(node) ~= "table" then return nil end
+        node = node[(select(i, ...))]
+    end
+    return Words(node)
+end
+
+--- A section's tables in `code`, as registered and merged, or nil: for a module that takes them
+--- whole (Places' zones and subzones).
+function Texts:Section(code, section)
+    return registered[code] and registered[code][section]
+end
+
+--- Load the text packs of the language the player reads. At Spoken's own load, after its
+--- settings and before its modules, so a module finds the words there as its own files run.
+function Texts:Load()
+    local code = self:Language()
+    -- What this session reads, which a choice made since differs from until the reload.
+    self.loaded = code
+    local entry = Languages:Get(code)
+    if not entry then return end
+    local api = C_AddOns
+    local load = api and api.LoadAddOn or LoadAddOn
+    for _, folder in ipairs(entry.texts) do
+        local ok, loaded, reason = pcall(load, folder)
+        if not ok or not loaded then
+            Developer:Log("texts", "text pack %s did not load: %s", folder, tostring(ok and reason or loaded))
+        end
+    end
+end
+
+--- For tests: forget every pack's words.
+function Texts:Reset()
+    registered = {}
+end
+
+--------------------------------------------------------------------------------
+-- Drawing a language
+--------------------------------------------------------------------------------
+
+-- The fonts clients ship for the other scripts, which the game's font objects fall back to and a
+-- page that sets a file has to name itself, the first that draws the language taken.
+local SCRIPT_FONTS = {
+    cyrillic = { "Fonts\\FRIZQT___CYR.TTF" },
+    korean = { "Fonts\\2002.TTF" },
+    simplifiedchinese = { "Fonts\\ARKai_T.ttf" },
+    -- An English Forever client has no blei00d.TTF, which its font objects still name.
+    traditionalchinese = { "Fonts\\blei00d.TTF", "Fonts\\bKAI00M.TTF" },
+    -- A pack's language, which has no script: the stock font most likely to draw accents a Latin
+    -- font lacks, such as Vietnamese's ệ and ữ. A script it cannot draw fails the test like any.
+    [false] = { "Fonts\\ARIALN.TTF" },
+}
+
+--- The font file to write `code` in where a page uses `fontObject`: the object's own file where it
+--- draws that language, else the font its pack names, else the client's font for its script. Nil
+--- where none draws it. `cache` keeps the answers (`cache.fonts`), a module's own so a test can
+--- clear it.
+function Texts:FontFor(fontObject, code, cache)
+    local path = fontObject and fontObject.GetFont and fontObject:GetFont()
+    local locale = Languages:Get(code)
+    if not path or not locale or locale.script == "latin" then
+        return path
+    end
+    -- A pack's language has no script to share with the client's, so it is always drawn to see.
+    local client = Languages:Get(GetLocale and GetLocale())
+    if locale.script and client ~= nil and client.script == locale.script then
+        return path
+    end
+    cache = cache or self
+    cache.fonts = cache.fonts or {}
+    local key = path .. "|" .. locale.code
+    if cache.fonts[key] == nil then
+        cache.fonts[key] = false
+        local candidates = { path }
+        if locale.font then table.insert(candidates, locale.font) end
+        for _, font in ipairs(SCRIPT_FONTS[locale.script or false] or {}) do table.insert(candidates, font) end
+        for _, font in ipairs(candidates) do
+            if Options:LanguageDraws(locale.code, font) then
+                cache.fonts[key] = font
+                break
+            end
+        end
+    end
+    return cache.fonts[key] or nil
+end
+
+--- Whether this client's fonts can draw `code`: in the pages' own font files where they have its
+--- script, else in its pack's font or the client's font for it (FontFor). English is always
+--- allowed. Another script, and a pack's language, is tested once by drawing its own name.
+--- `cache` keeps the answers (`cache.drawable`) as FontFor's.
+function Texts:CanRender(code, cache)
+    if code == "enUS" then
+        return true
+    end
+    local locale = Languages:Get(code)
+    if not locale then
+        return false
+    end
+    if locale.script == "latin" then
+        return true
+    end
+    local client = Languages:Get(GetLocale and GetLocale())
+    if locale.script and client ~= nil and client.script == locale.script then
+        return true
+    end
+    cache = cache or self
+    cache.drawable = cache.drawable or {}
+    if cache.drawable[code] == nil then
+        local tried, drawn = false, true
+        for _, fontObject in ipairs({ _G.GameFontHighlight, _G.QuestFont }) do
+            if fontObject and fontObject.GetFont and fontObject:GetFont() then
+                tried = true
+                drawn = drawn and self:FontFor(fontObject, code, cache) ~= nil
+            end
+        end
+        cache.drawable[code] = tried and drawn
+    end
+    return cache.drawable[code]
+end
+
+--- The Text Language row's choices: "auto", then every language there are words in that this
+--- client can draw: the built-in ones, then those a text pack or a Places lore pack brings.
+function Texts:Choices()
+    local list, seen = { "auto" }, {}
+    local function Add(code)
+        if not seen[code] and self:CanRender(code) then
+            seen[code] = true
+            table.insert(list, code)
+        end
+    end
+    for _, builtin in ipairs(Languages.BUILTIN) do Add(builtin.code) end
+    local rest = {}
+    for _, entry in ipairs(Languages:WithText()) do table.insert(rest, entry) end
+    for _, entry in ipairs(Languages:Installed()) do
+        if entry.lore then table.insert(rest, entry) end
+    end
+    table.sort(rest, function(a, b) return a.code < b.code end)
+    for _, entry in ipairs(rest) do Add(entry.code) end
+    -- A chosen language whose pack has since gone is kept on the list, so the row shows it.
+    local chosen = self:Choice()
+    if chosen and not seen[chosen] then table.insert(list, chosen) end
+    return list
+end

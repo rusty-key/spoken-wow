@@ -41,15 +41,18 @@ One page, Game Menu, Options, AddOns, Spoken, Places:
 | | Story Panel Width | `panelWidth` | 360 |
 | | Show Pictures | `showPictures` | on |
 | | Read Stories Aloud | `voiceEnabled` | on |
-| | Text Language | `language` | Auto |
 | Voice Packs | one row per language, Play a Test Line | | |
 | Reading History | Forget Places Heard | | |
 
 Defaults resets the settings in the table, the tab's two filters, the folded panel and the two
-Developer settings. It leaves Text Language, the chosen voice pack, Unlock Undiscovered Places and
+Developer settings. It leaves the chosen voice pack, Unlock Undiscovered Places and
 Text Size. Two Compendium settings are on Spoken's own page, in its Compendium section: Text Size (`Spoken:CompendiumFontSize()`, one size
 for every tab and the map panel) and Unlock Undiscovered Places (`showUndiscovered`, off by
-default). Spoken's Language section holds Voice Language and If a Voice Is Missing, and its While
+default). Spoken's Language section holds Voice Language, If a Voice Is Missing and Text Language,
+which every module reads (`Spoken:TextLanguage()`, Spoken's `Texts.lua`). This page had its own
+Text Language (`language`) until then: the first time a profile is bound, its choice moves to
+Spoken's, unless that profile has one there already, and is dropped here
+(`SpokenPlaces:MoveLanguageToSpoken`). Its While
 Spoken Reads section holds Read in Battlegrounds. Under Spoken's Developer page are Places Debug
 Messages (`debug`) and Offer Unfinished Translations (`languagePreview`).
 
@@ -76,7 +79,7 @@ every player reads English and nothing errors.
 | Kind | Setting | What it decides |
 | --- | --- | --- |
 | Client locale | the game's own | The area names the game reports (so which `Data/<locale>/Aliases.lua` is used) and the interface strings (`Locale/<locale>.lua`, English where a key is missing). |
-| Text language | Text Language, `/spp lang` | The words of the stories on the map panel, the Compendium and the lookup tables, and of the captions and subtitles of the line playing, whatever the voice. The voice's words only where the Text Language has none for the place. |
+| Text language | Spoken's Text Language, `/spp lang` | The words of the stories on the map panel, the Compendium and the lookup tables, and of the captions and subtitles of the line playing, whatever the voice. The voice's words only where the Text Language has none for the place. |
 | Voice language | Spoken's Voice Language | The voice pack that reads. |
 
 Places follows Spoken's Voice Language and If a Voice Is Missing (`Audio.lua`, `GetVoiceLanguage`,
@@ -87,8 +90,11 @@ a language pins it on every client.
 
 - A language is offered only when `Data/Languages.lua` marks it ready (every story translated, and
   an alias table where a client runs in it) and the client's fonts can draw it
-  (`CanRenderLanguage`). The lore menu lists the finished built-in languages, plus any pack
-  language whose `.toc` says `X-SpokenPlaces-Lore: 1`, each only where the fonts can draw it.
+  (`CanRenderLanguage`, Spoken's `Texts:CanRender`). Spoken's Text Language lists every built-in
+  language the fonts can draw, plus any pack language whose `.toc` says `X-SpokenPlaces-Lore: 1` or
+  that a text pack brings (`docs/contributors/TEXT-PACKS.md`). Places reads one only where it is
+  ready here, and Auto otherwise. A text pack's `places` tables are taken as a lore pack's are,
+  through `RegisterLoreData`, so a text pack with no places leaves the stories on Auto.
   Interface strings are not required, because each key falls back to English.
   The fonts are asked by drawing the language's own name, and for the two Chinese the characters
   only that one has (a language's `sample` in Spoken's list, none of them in a Korean font's

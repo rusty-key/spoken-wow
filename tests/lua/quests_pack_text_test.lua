@@ -84,5 +84,61 @@ Spoken:StopAll()
 stub.ShowPanel(nil)
 world.questID = 0
 
+---------------------------------------------------------------- a text pack's words
+-- Polish has no client: a text pack (Spoken's Texts.lua) brings its words by line id, read where
+-- Polish is the Text Language, over whatever voice plays.
+local function Ids(fileName) return table.concat(VO.DataModules:LineIds(fileName), " ") end
+VO, env, Spoken = Boot()
+world.unitSex = 2
+Expect("a quest's file is its line id, the player's sex's first", Ids("101-accept"), "q:101:accept:m q:101:accept")
+Expect("...a wording's too", Ids("101-complete-w2"), "q:101:complete:w2:m q:101:complete:w2")
+Expect("...a file made for one sex names that sex", Ids("f-101-progress"), "q:101:progress:f q:101:progress")
+Expect("an English gossip hash is g:", Ids(GREETING_HASH), "g:" .. GREETING_HASH .. ":m g:" .. GREETING_HASH)
+Expect("...a broadcast stem too", Ids("b6029-orc-female-standard"), "g:b6029-orc-female-standard:m g:b6029-orc-female-standard")
+Expect("...and a language's own", Ids("deDE-" .. GREETING_HASH), "g:deDE-" .. GREETING_HASH .. ":m g:deDE-" .. GREETING_HASH)
+Expect("a follow-up's is f:", Ids("4377-dwarf-male-standard"), "f:4377:dwarf-male-standard:m f:4377:dwarf-male-standard")
+Expect("a name none fits stands for nothing", Ids("readme"), "")
+
+local function Polish()
+    _G.SpokenEnv.Addon.db.profile.Language.Text = "plPL"
+    Spoken:RegisterText("plPL", "quests", {
+        lines = { ["q:101:accept"] = "Idź, $N.", ["q:102:accept:m"] = "Dla niego.", ["q:102:accept:f"] = "Dla niej.",
+            ["g:" .. GREETING_HASH] = "Witaj, wędrowcze." },
+        titles = { [101] = "Zadanie testowe" } })
+end
+VO, env, Spoken = Boot()
+Polish()
+world.questID = 101
+stub.ShowPanel("QuestFrameDetailPanel")
+VO.Addon:QUEST_DETAIL()
+Expect("Polish chosen, an English voice is captioned in the text pack's words, the player named",
+    Spoken:GetCurrent().present.transcript, "Idź, " .. UnitName("player") .. ".")
+Expect("...timed by estimate, as they are not the recording's", Spoken:GetCurrent().present.timings, nil)
+Expect("...and the clip's text stays the window's, which matching reads", Spoken:GetCurrent().text, "Go.")
+Spoken:StopAll()
+stub.ShowPanel(nil)
+world.questID = 0
+VO, env, Spoken = Boot()
+Polish()
+world.gossipText = "Greetings, traveller."
+VO.Addon:GOSSIP_SHOW()
+Expect("...a gossip line too, matched by its English", Spoken:GetCurrent().present.transcript, "Witaj, wędrowcze.")
+Spoken:StopAll()
+world.gossipText = nil
+VO, env, Spoken = Boot()
+Polish()
+world.questID = 102
+stub.ShowPanel("QuestFrameDetailPanel")
+VO.Addon:QUEST_DETAIL()
+Expect("a line the pack splits by sex reads the player's", Spoken:GetCurrent().present.transcript, "Dla niego.")
+Spoken:StopAll()
+world.questID = 103
+VO.Addon:QUEST_DETAIL()
+Expect("a line the pack lacks keeps the window's words", Spoken:GetCurrent().present.transcript, nil)
+Spoken:StopAll()
+stub.ShowPanel(nil)
+world.questID = 0
+_G.SpokenEnv.Addon.db.profile.Language.Text = nil
+
 if Failures() > 0 then print(string.format("\n%d failure(s)", Failures())); os.exit(1) end
 print("\nAll quests pack text tests passed")

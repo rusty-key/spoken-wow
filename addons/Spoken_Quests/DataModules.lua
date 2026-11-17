@@ -1086,6 +1086,9 @@ function DataModules:PrepareSound(soundData)
     -- then the line's, in each language before the next, so a voice no pack in the player's
     -- language has yet plays the line in that language rather than the voice in another.
     local line = soundData.fileName
+    -- The line's own file, before a giver's voice or the player's sex names another: what its id is
+    -- read from (LineIds).
+    soundData.lineFile = line
     local own = self:GetFileForBody(soundData, line) or self:GetQuestFileForGiver(soundData)
     soundData.fileName = own or line
     if self:ResolveSoundFile(soundData, own and line or GreetingOfVoice(line)) then
@@ -1153,13 +1156,13 @@ function DataModules:ResolveSoundFile(soundData, instead)
                             module.GetSoundPath and module:GetSoundPath(fileName, soundData.event) or
                             fileName)
                         soundData.length = length
-                        -- Timed to the recording's words, which the window shows only in the
-                        -- client's own language.
-                        local inClientLanguage = language == Language:GetClientLanguage()
-                        soundData.timings = inClientLanguage
+                        -- Timed to the recording's words, which the captions show only where they
+                        -- are in the Text Language (the client's, on Auto).
+                        local inTextLanguage = language == Language:GetTextLanguage()
+                        soundData.timings = inTextLanguage
                             and module.WordTimesByFileName and module.WordTimesByFileName[fileName] or nil
                         -- soundData.text stays the window's: matching reads it.
-                        soundData.packText = inClientLanguage
+                        soundData.packText = inTextLanguage
                             and module.TextByFileName and module.TextByFileName[fileName] or nil
                         soundData.module = module
                         soundData.language = language
@@ -1171,6 +1174,51 @@ function DataModules:ResolveSoundFile(soundData, instead)
         end
     end
     return false
+end
+
+local MOMENTS = { accept = true, progress = true, complete = true }
+
+--- The ids a line's file name stands for, the player's sex's first (pipelines/quests/tts_cli/naming.py
+--- names both): `{questID}-{moment}[-w{n}]` is q:{questID}:{moment}[:w{n}], an English hash, a
+--- `b{id}-{voice}` and a `{lang}-{hash}` stem are g:{stem}, and `{id}-{voice}` is f:{id}:{voice}. An
+--- m- or f- prefix is the sex the file was made for. Empty for a name none of them fits.
+---@param fileName string|nil
+---@return string[] ids
+function DataModules:LineIds(fileName)
+    if type(fileName) ~= "string" then return {} end
+    local sex, stem = string.match(fileName, "^([mf])%-(.+)$")
+    stem = stem or fileName
+    local id
+    local quest, moment, wording = string.match(stem, "^(%d+)%-(%a+)%-w(%d+)$")
+    if not quest then quest, moment = string.match(stem, "^(%d+)%-(%a+)$") end
+    if quest and MOMENTS[moment] then
+        id = "q:" .. quest .. ":" .. moment .. (wording and (":w" .. wording) or "")
+    elseif string.find(stem, "^" .. string.rep("%x", 32) .. "$") or string.find(stem, "^b%d+%-")
+        or string.find(stem, "^%a%a%u%u%-%x+$") then
+        id = "g:" .. stem
+    else
+        local broadcast, voice = string.match(stem, "^(%d+)%-(.+)$")
+        if not broadcast then return {} end
+        id = "f:" .. broadcast .. ":" .. voice
+    end
+    sex = sex or (UnitSex and ({ [2] = "m", [3] = "f" })[UnitSex("player")])
+    if sex then return { id .. ":" .. sex, id } end
+    return { id }
+end
+
+--- A line's words from a text pack (Spoken's Texts.lua) in the Text Language the player chose, its
+--- tokens filled in for the player, and the language. Nil on Auto, and where no pack has the line.
+---@param soundData SoundData
+---@return string|nil text
+---@return string|nil language
+function DataModules:TextPackText(soundData)
+    local language, chosen = Language:GetTextLanguage()
+    if not (chosen and Spoken and Spoken.TextIn) then return nil end
+    for _, id in ipairs(self:LineIds(soundData.lineFile or soundData.fileName)) do
+        local text = Spoken:TextIn(language, "quests", "lines", id)
+        if text then return Utils:FillPlayerTokens(text), language end
+    end
+    return nil
 end
 
 function DataModules:AddPlayerGenderToFilename(fileName)

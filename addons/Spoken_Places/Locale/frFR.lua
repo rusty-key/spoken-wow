@@ -28,10 +28,6 @@ L.OPT_AUTOPLAY_GAP = "Relire après"
 L.OPT_GAP_1D = "1 jour"
 L.OPT_GAP_1W = "1 semaine"
 L.OPT_GAP_1MO = "1 mois"
-L.OPT_LANG_RELOAD = "Tapez /reload pour passer à cette langue."
-L.OPT_LANGUAGE = "Langue du texte"
-L.OPT_LANG_AUTO_FMT = "Auto (%1$s)"
-L.OPT_LANG_SET_FMT = "Les récits seront en %1$s après le rechargement de l'interface."
 L.OPT_LANG_PROFILE_FMT = "Ce profil lit les récits en %1$s. Tapez /reload pour changer."
 L.OPT_REPORT_PROBLEM = "Signaler un problème"
 L.MENU_LORE_WINDOW = "Ouvrir le Compendium d'Azeroth"
@@ -87,8 +83,6 @@ L.OPT_FORGET_PLACES_DONE = "La liste des lieux entendus par ce personnage est ef
 
 -- Starting over
 L.OPT_RESET_PAGE_CONFIRM = "Remettre chaque paramètre du module Lieux à sa valeur par défaut ?"
-L.OPT_RELOAD_NOW = "Recharger maintenant"
-L.OPT_LATER = "Plus tard"
 
 -- Lore of Azeroth and Zone Lore
 L.COMPENDIUM_PLACES = "Lieux"

@@ -15,17 +15,21 @@ stub.LoadSpoken(SPOKEN)
 
 -- What a player had saved before the settings moved into Spoken's profile. Each load below is a
 -- first run, so the move is forgotten and the profile starts without Places' table.
+-- A `language` in `settings` is the one picked on the Places page before it was Spoken's Text
+-- Language, which it moves to as Places loads.
 local function Legacy(settings)
     local db = _G.SpokenEnv.Addon.db
     db.profile.Modules, db.global.ModulesLegacy = nil, nil
+    db.profile.Language.Text = nil
     _G.SpokenPlacesSettings = settings
 end
+local function TextLanguage() return _G.SpokenEnv.Addon.db.profile.Language.Text end
 stub.SetAddOns({ { folder = "Spoken_Places", meta = { Version = "9.9.9" } } })
 
 local MAP, BOTH, ONLY_ENGLISH = 1411, "valley of trials", "sen'jin village"
 
 -- The voice is Spoken's Voice Language and If a Voice Is Missing, as for every module; the text's
--- language is the Places page's own.
+-- language is Spoken's Text Language.
 local function Voice(code, fallback)
     local language = _G.SpokenEnv.Addon.db.profile.Language
     language.Voice, language.Fallback = code, fallback
@@ -412,28 +416,10 @@ Expect("H. ...which is also the label of its audio pack",
     Z:GetAudioPackLabel({ language = "heIL", addon = "SpokenPlacesAudio_heIL" }), "Hebrew")
 Expect("H. Spoken gives the face the menu draws it in", Spoken:LanguageFace("heIL"), HEBREW_FONT)
 Expect("H. ...but Auto still reads the client's", Z:GetLanguage(), "enUS")
--- The lore menu names a pack's language in the pack's font: Layout:Dropdown's last argument.
+-- Spoken's Text Language row lists it, named in the pack's font (Spoken:LanguageFace, above).
 do
-    local layoutEnv = _G.SpokenEnv
-    local realNew, fontOf = layoutEnv.SpokenLayout.New, nil
-    layoutEnv.SpokenLayout.New = function(...)
-        local layout = realNew(...)
-        local realDropdown = layout.Dropdown
-        layout.Dropdown = function(self, label, tip, values, read, write, apply, describe, face)
-            if label == Z.L.OPT_LANGUAGE then fontOf = face end
-            return realDropdown(self, label, tip, values, read, write, apply, describe, face)
-        end
-        return layout
-    end
-    -- Before the page, as the .toc loads it: the page reads its wait choices and the current wait from it.
-    assert(loadfile(PLACES .. "Autoplay.lua"))("Spoken_Places", Z)
-    assert(loadfile(PLACES .. "UI/Options.lua"))("Spoken_Places", Z)
-    Z:SetupOptions()
-    layoutEnv.SpokenLayout.New = realNew
-    Expect("H. the lore menu asks for a face per entry", type(fontOf), "function")
-    Expect("H. ...a pack's language is drawn in its pack's font", fontOf and fontOf({ code = "heIL" }), HEBREW_FONT)
-    Expect("H. ...a built-in one in the game's", fontOf and fontOf({ code = "deDE" }), nil)
-    Expect("H. ...and Auto, which is a sentinel and no language, in the game's", fontOf and fontOf({}), nil)
+    local listed = " " .. table.concat(_G.SpokenEnv.Texts:Choices(), " ") .. " "
+    Expect("H. Spoken's Text Language offers the pack's lore language", listed:find(" heIL ", 1, true) ~= nil, true)
 end
 Z = OnEnglish({ language = "heIL" })
 Expect("H. picked, its lore is what loads", Z.language, "heIL")
@@ -442,9 +428,9 @@ local hebrewZones = { [MAP] = { name = "דורוטאר", full = "סיפור." } 
 Z:RegisterLoreData("heIL", "zones", hebrewZones)
 Expect("H. the pack's tables, handed over after Places loaded, are the lore read",
     tostring(Z.Zones == hebrewZones), "true")
-SpokenPlacesSettings.language = nil
+_G.SpokenEnv.Addon.db.profile.Language.Text = nil
 SlashCmdList["SPOKENPLACES"]("lang heil")
-Expect("H. /spp lang finds it in whatever case it is typed", SpokenPlacesSettings.language, "heIL")
+Expect("H. /spp lang finds it in whatever case it is typed", TextLanguage(), "heIL")
 stub.SetLocale("heIL")
 Expect("H. a client claiming the language still reads English on Auto", Z:GetAutoLanguage(), "enUS")
 stub.SetLocale("enUS")
@@ -455,7 +441,7 @@ Expect("H. a quests pack brings no lore, so its language is not offered",
     tostring(Z:IsLanguageSelectable("heIL")) .. " " .. Codes(Z:GetSelectableLanguages()),
     "false enUS deDE esES esMX frFR ptBR ruRU zhCN zhTW")
 Expect("H. ...and a stored pick of it reads the client's", Z.language, "enUS")
-Expect("H. ...without rewriting it", SpokenPlacesSettings.language, "heIL")
+Expect("H. ...without rewriting it", TextLanguage(), "heIL")
 Z:SetLanguagePreview(true)
 Expect("H. ...not even in preview, which would show empty pages", Z:IsLanguageSelectable("heIL"), false)
 Z:SetLanguagePreview(false)
@@ -470,6 +456,32 @@ Packs({ Hebrew(HEBREW_FOLDER, "X-SpokenPlaces-Language",
 Z = OnEnglish({ language = "heIL" })
 Expect("H. a lore pack whose font cannot load is not offered", Z:IsLanguageSelectable("heIL"), false)
 Expect("H. ...and its lore does not load", Z.language, "enUS")
+-- A text pack (Spoken's Texts.lua) brings Polish places: read where Polish is the Text Language.
+local latin = {}
+for byte = 32, 126 do latin[byte] = true end
+local arial = fontHas["Fonts\\ARIALN.TTF"]
+fontHas["Fonts\\ARIALN.TTF"] = latin
+Packs({ { folder = "WoWPoPolsku_Spoken", meta = { ["X-Spoken-Text"] = "plPL", ["X-Spoken-TextFormat"] = "1",
+    ["X-Spoken-LanguageName"] = "Polish", ["X-Spoken-LanguageNative"] = "Polski" } } })
+Legacy({})
+_G.SpokenEnv.Addon.db.profile.Language.Text = "plPL"
+Spoken:RegisterText("plPL", "places", { zones = { [MAP] = { name = "Durotar", full = "Opowieść o Durotarze." } } })
+_G.SpokenPlacesAudioPacks = {}
+Z = H.LoadPlaces(PLACES, { Languages = shipped.Languages })
+Expect("H. a text pack's places are offered", Z:IsLanguageSelectable("plPL"), true)
+Expect("H. ...and read where Polish is the Text Language", tostring(Z.language) .. " "
+    .. tostring(Z.Zones and Z.Zones[MAP] and Z.Zones[MAP].full), "plPL Opowieść o Durotarze.")
+_G.SpokenEnv.Texts:Reset()
+Packs({ { folder = "WoWPoPolsku_Spoken", meta = { ["X-Spoken-Text"] = "plPL", ["X-Spoken-TextFormat"] = "1",
+    ["X-Spoken-LanguageName"] = "Polish", ["X-Spoken-LanguageNative"] = "Polski" } } })
+Legacy({})
+_G.SpokenEnv.Addon.db.profile.Language.Text = "plPL"
+Spoken:RegisterText("plPL", "readables", { pages = { [1] = "Strona." } })
+Z = H.LoadPlaces(PLACES, { Languages = shipped.Languages })
+Expect("H. a text pack without places leaves the client's lore, rather than empty pages", Z.language, "enUS")
+_G.SpokenEnv.Texts:Reset()
+fontHas["Fonts\\ARIALN.TTF"] = arial
+
 Packs({ { folder = "Spoken_Places", meta = { Version = "9.9.9" } } })
 _G.UIParent.CreateFontString = realParent
 _G.GameFontHighlight, _G.QuestFont = realHighlight, realQuest

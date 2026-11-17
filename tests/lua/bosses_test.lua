@@ -554,6 +554,32 @@ Spoken.ShowReport = showReport
 Expect("...shown for six seconds at least", clip.length, 6)
 Expect("a boss with no story has no line", Bosses:StoryClip(36, "no such boss"), nil)
 
+-- Polish chosen as the Text Language: a text pack's (Spoken's Texts.lua) story and name, on the
+-- narrator and the page; the name the game shows is still the one matched.
+SpokenEnv.Addon.db.profile.Language.Text = "plPL"
+Spoken:RegisterText("plPL", "bosses", { stories = { [36] = { ["edwin vancleef"] = "Przewodził Bractwu." } },
+    names = { [36] = { ["edwin vancleef"] = "Edwin VanCleef (PL)" } } })
+local polish = Bosses:StoryClip(36, "edwin vancleef")
+Expect("Polish chosen, the story is the text pack's", polish.present.transcript, "Przewodził Bractwu.")
+Expect("...named as the pack names the boss", polish.present.label, "Edwin VanCleef (PL)")
+Expect("...a line in Polish where no voice reads it", tostring(polish.language) .. "|" .. tostring(polish.textOnly), "plPL|true")
+Bosses.GetAudioClip = function() return { path = "x.mp3", len = 41.2, language = "enUS", times = "0 1" } end
+local heard = Bosses:StoryClip(36, "edwin vancleef")
+Expect("...over an English voice, the Polish words, timed by estimate", heard.present.transcript .. "|"
+    .. tostring(heard.present.timings), "Przewodził Bractwu.|nil")
+Bosses.GetAudioClip = getAudioClip
+local vancleef
+for _, boss in ipairs(SpokenBosses.maps[36]) do if boss.key == "edwin vancleef" then vancleef = boss end end
+Expect("...and matching still reads the client's name", Bosses.Name(vancleef), "Edwin VanCleef")
+Expect("a boss the pack has no story for keeps the English", Bosses:StoryClip(36, "edwin vancleef") ~= nil
+    and (function()
+        _G.SpokenBossStories[36]["rhahkzor"] = "An ogre."
+        local clip = Bosses:StoryClip(36, "rhahkzor")
+        return clip and clip.present.transcript
+    end)(), "An ogre.")
+SpokenEnv.Addon.db.profile.Language.Text = nil
+SpokenEnv.Texts:Reset()
+
 local world = stub.world
 local Q = SpokenEnv.SoundQueue
 local function Showing() local head = Q:GetCurrentSound(); return head and head.key or "nothing" end

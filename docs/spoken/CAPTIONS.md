@@ -76,14 +76,16 @@ pointing at "+N" lists them (see [`PLAYER-STYLES.md`](PLAYER-STYLES.md)).
 Caption settings and tooltips follow the game client language. Translations cover
 German, Spanish (EU and Latin America), French, Brazilian Portuguese, Russian,
 Korean, Simplified Chinese and Traditional Chinese. English is the fallback.
-The words of a place's or a readable's caption are in the Text Language, whatever the voice and
-whichever language a fallback recording is in. Places has a setting for it, Text Language on the
-Places page. Readables has none and uses the client's language, as the game shows a page: on a
-German client the page's German words, on an English client its English ones. An Italian or
-Vietnamese voice, which no client runs in, is captioned in its own words where its pack has them:
-its players are on a client in another language. The two can differ on a client whose Places Text
-Language is not its own language: a German client with English text has English place captions and
-German readable captions. The recording's
+The words of a caption are in the Text Language, whatever the voice and whichever language a
+fallback recording is in. It is one setting for every module, Text Language in the Language section
+of Spoken's page, and takes effect after a reload. Auto is the client's language, as the game shows
+a page: on a German client a readable's German words, on an English client its English ones; on
+Auto an Italian or Vietnamese voice, which no client runs in, is captioned in its own words where
+its pack has them, as its players are on a client in another language. Places reads Auto as the
+client's language once its stories are finished in it, English until then. A language with no
+client, such as Polish, comes as a text pack (`docs/contributors/TEXT-PACKS.md`): its words, and no
+voice, read wherever it is the Text Language. A recording in the Text Language captions its own
+words, timed by the recording; any other words are timed by estimate. The recording's
 language gives the words only where the Text Language has none for that place or page. A readable
 is decided page by page, so a book can be partly in the client's language and partly in the
 recording's. A book's title follows its words: the one the client showed this session, else the one
@@ -91,7 +93,13 @@ in the index of the pack in that language, else the English title. The recording
 follow words other than the ones it says, so a caption is timed by the title's lead only where its
 words are the playing pack's own, or the corpus's under an English recording.
 
-Other caption text follows the recording language.
+Quest and gossip captions are the game window's words on Auto, or a voice pack's own where it is in
+the client's language. With a Text Language chosen they are a voice pack's words where it is in
+that language, else a text pack's (by line id, `$N`, `$C`, `$R` and `$G` filled in for the player),
+else the window's. Matching a line always reads the window's words. A quests pack built before the
+Text Language loads its words only on a client in its own language. A boss's story is in the Text
+Language where a voice pack, a text pack or Spoken Bosses' own stories have it, else the client's,
+else English.
 
 ## Timing and text
 

@@ -225,6 +225,11 @@ L.OPT_LANGUAGE_TITLE = "Sprache"
 L.OPT_VOICE_LANGUAGE = "Vertonungssprache"
 L.OPT_LANG_AUTO_FMT = "Automatisch (%1$s)"
 L.OPT_FALLBACK_LANGUAGE = "Wenn die Vertonung fehlt"
+L.OPT_TEXT_LANGUAGE = "Textsprache"
+L.OPT_TEXT_LANGUAGE_SET_FMT = "Nach dem Neuladen des Interfaces ist der Text auf %1$s."
+L.OPT_TEXT_LANGUAGE_RELOAD = "Tippe /reload, um zu ihr zu wechseln."
+L.OPT_RELOAD_NOW = "Jetzt neu laden"
+L.OPT_LATER = "Später"
 L.OPT_FALLBACK_NONE = "Stumm bleiben"
 
 -- Azeroth's Compendium, on Spoken's page.

@@ -183,6 +183,11 @@ L.OPT_LANGUAGE_TITLE = "Idioma"
 L.OPT_VOICE_LANGUAGE = "Idioma de las voces"
 L.OPT_LANG_AUTO_FMT = "Automático (%1$s)"
 L.OPT_FALLBACK_LANGUAGE = "Si falta la voz"
+L.OPT_TEXT_LANGUAGE = "Idioma del texto"
+L.OPT_TEXT_LANGUAGE_SET_FMT = "El texto estará en %1$s cuando se recargue la interfaz."
+L.OPT_TEXT_LANGUAGE_RELOAD = "Escribe /reload para cambiar a él."
+L.OPT_RELOAD_NOW = "Recargar ahora"
+L.OPT_LATER = "Más tarde"
 L.OPT_FALLBACK_NONE = "Silencio"
 
 -- Keys

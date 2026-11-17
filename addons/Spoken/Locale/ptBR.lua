@@ -225,6 +225,11 @@ L.OPT_LANGUAGE_TITLE = "Idioma"
 L.OPT_VOICE_LANGUAGE = "Idioma da voz"
 L.OPT_LANG_AUTO_FMT = "Automático (%1$s)"
 L.OPT_FALLBACK_LANGUAGE = "Se faltar a voz"
+L.OPT_TEXT_LANGUAGE = "Idioma do texto"
+L.OPT_TEXT_LANGUAGE_SET_FMT = "O texto estará em %1$s depois que a interface recarregar."
+L.OPT_TEXT_LANGUAGE_RELOAD = "Digite /reload para trocar para ele."
+L.OPT_RELOAD_NOW = "Recarregar agora"
+L.OPT_LATER = "Depois"
 L.OPT_FALLBACK_NONE = "Ficar em silêncio"
 
 -- Azeroth's Compendium, on Spoken's page.

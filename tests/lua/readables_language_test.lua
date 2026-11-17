@@ -391,6 +391,41 @@ SpokenReadablesData.pages[PAGE].text = "Greetings, $gbrother:sister;. $N, you ar
 Expect("an English caption's tokens are subtitled as the clip says them",
     B:ClipFor(PAGE).present.transcript, "Greetings, brother. Adventurer, you are ready.")
 
+---------------------------------------------------------------- T. a text pack's words
+-- Polish has no voice and no client: a text pack (Spoken's Texts.lua) brings its words, read where
+-- Polish is the Text Language whatever the voice.
+local function Polish(B)
+    _G.SpokenEnv.Addon.db.profile.Language.Text = "plPL"
+    Spoken:RegisterText("plPL", "readables", { pages = { [PAGE] = "Pierwsza strona po polsku." },
+        titles = { [1] = "Rejestr" } })
+end
+B = Install({ ENGLISH })
+Expect("T. on Auto an English voice is captioned in English", B:ClipFor(PAGE).present.transcript, "English first page.")
+Polish(B)
+clip = B:ClipFor(PAGE)
+Expect("T. Polish chosen, the English voice is captioned in the text pack's words", clip.present.transcript,
+    "Pierwsza strona po polsku.")
+Expect("...timed by estimate, as they are not the recording's", clip.present.timings, nil)
+Expect("...titled in Polish", clip.present.label, "Rejestr")
+Expect("...and still reported as the English recording it is", clip.language, "enUS")
+Expect("T. a page the pack has no words for is captioned in English", B:ClipFor(ONLY_ENGLISH).present.transcript,
+    "English second page.")
+Expect("T. the Compendium reads the Polish words", B:TextLanguagePageText(PAGE), "Pierwsza strona po polsku.")
+Expect("...and the title", B:TitleIn(1, PAGE, "plPL"), "Rejestr")
+Expect("T. words alone are no recording: nothing to play without a voice pack", (function()
+    local alone = Install({})
+    Polish(alone)
+    return tostring(alone:ClipFor(PAGE)) .. " " .. tostring(alone:HasAudio(PAGE))
+end)(), "nil false")
+local POLISH_VOICE = { addon = "SpokenReadablesAudio_plPL", language = "plPL", pages = {
+    [PAGE] = { file = "15", len = 2, text = "Słowa nagrania.", times = "0 .5" } } }
+B = Install({ ENGLISH, POLISH_VOICE })
+SpokenReadablesSettings.voiceLanguage = "plPL"
+Polish(B)
+clip = B:ClipFor(PAGE)
+Expect("T. a Polish voice's own words beat the text pack's", clip.present.transcript, "Słowa nagrania.")
+Expect("...timed by the recording", clip.present.timings, "0 .5")
+
 stub.SetLocale("enUS")
 if Failures() > 0 then print(string.format("\n%d failure(s)", Failures())); os.exit(1) end
 print("\nAll readables language tests passed")

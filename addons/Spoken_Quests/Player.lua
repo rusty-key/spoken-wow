@@ -263,6 +263,16 @@ function Player:Prepare(soundData)
         timings = soundData.timings,
         transcript = soundData.packText,
     }
+    -- No pack in the Text Language voices the line: a text pack's words, timed by estimate.
+    if not soundData.packText and DataModules and DataModules.TextPackText then
+        local text, language = DataModules:TextPackText(soundData)
+        if text then
+            soundData.present.transcript, soundData.present.timings = text, nil
+            local font = GameFontNormal and Spoken and Spoken.FontForLanguage
+                and Spoken:FontForLanguage(GameFontNormal, language)
+            if font and font ~= GameFontNormal:GetFont() then soundData.present.font = font end
+        end
+    end
     return soundData
 end
 
