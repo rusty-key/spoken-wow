@@ -10,7 +10,7 @@ import type { ClientBase, PoolClient, QueryResult, QueryResultRow } from "pg";
 import { ALL_TEAMS, query, queryIn, type TeamId, withTeam } from "@/lib/db";
 import { BASE_LANG, allLangs, type Lang } from "@/lib/lang";
 
-import { actingTeams } from "./acting";
+import { actingTeams, teamIn } from "./acting";
 import { listenInServer } from "./listen";
 
 export type { TeamId };
@@ -93,6 +93,15 @@ export async function privilegedOf(lang: Lang): Promise<TeamId | undefined> {
  */
 export async function orPrivileged(team: TeamId | null | undefined, lang: Lang): Promise<TeamId | undefined> {
   return team ?? (await privilegedOf(lang));
+}
+
+/** The team `userId` works on `lang` in, else `lang`'s privileged team, as orPrivileged. */
+export async function teamOrPrivileged(
+  userId: string,
+  lang: Lang,
+  client?: Pick<ClientBase, "query">,
+): Promise<TeamId | undefined> {
+  return orPrivileged(await teamIn(userId, lang, client), lang);
 }
 
 /** Whether the acting person works on `lang` in a team other than its privileged one. */

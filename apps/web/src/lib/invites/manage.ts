@@ -12,12 +12,11 @@ import { refusedGrant, viewerOf } from "@/lib/grants/store";
 import type { Lang } from "@/lib/lang";
 import { knownLang } from "@/lib/languages/catalogue";
 import { isAdmin, type Viewer } from "@/lib/permissions";
-import { teamIn } from "@/lib/teams/acting";
-import { orPrivileged } from "@/lib/teams/store";
+import { orPrivileged, teamOrPrivileged } from "@/lib/teams/store";
 import { isUuid } from "@/lib/uuid";
 
 import { notAllowed } from "./listing";
-import { inviteTeam, openInvite } from "./store";
+import { openInvite } from "./store";
 
 type Session = NonNullable<Awaited<ReturnType<typeof auth.api.getSession>>>;
 
@@ -35,8 +34,10 @@ export async function manageableInvite(id: string): Promise<Manageable | Respons
   // Another team's invite is not there for this viewer, so it answers as a missing one. Somebody
   // in no team of the language acts as its privileged team.
   if (!isAdmin(viewer.role)) {
-    const mine = await orPrivileged(await teamIn(session.user.id, invite.lang), invite.lang as Lang);
-    if (mine !== (await inviteTeam(invite))) return noSuchInvite();
+    const lang = invite.lang as Lang;
+    if ((await teamOrPrivileged(session.user.id, lang)) !== (await orPrivileged(invite.teamId, lang))) {
+      return noSuchInvite();
+    }
   }
   if (await refusedGrant(viewer, invite.capabilities, invite.lang)) return notAllowed();
   return { session, viewer };

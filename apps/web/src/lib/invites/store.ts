@@ -118,6 +118,8 @@ type Row = {
 const COLUMNS = `i."id", i."email", i."lang", i."capabilities", i."invitedBy", u."name" as "invitedByName",
                  i."joinTeamId", i."createdAt", i."sentAt", i."expiresAt"`;
 const OPEN = `i."acceptedAt" is null and i."revokedAt" is null`;
+/** The team invite `i` joins: its own, else its language's privileged team. */
+const JOIN_TEAM = `coalesce(i."joinTeamId", team_of_lang(i."lang"))`;
 
 function toInvite(row: Row): InviteRow {
   return {
@@ -133,11 +135,6 @@ function toInvite(row: Row): InviteRow {
     expiresAt: row.expiresAt.toISOString(),
     expired: row.expiresAt.getTime() <= Date.now(),
   };
-}
-
-/** The team `invite` joins, and so files its acts under; undefined for a language nobody owns. */
-export async function inviteTeam(invite: { lang: string; teamId: TeamId | null }): Promise<TeamId | undefined> {
-  return orPrivileged(invite.teamId, invite.lang as Lang);
 }
 
 async function openRow(client: Pick<PoolClient, "query">, id: string, lock = false): Promise<InviteRow | null> {
@@ -194,7 +191,7 @@ export async function createInvite(args: {
           subject: rows[0].id,
           actorId: args.invitedBy,
           detail: { email: args.email, capabilities: args.capabilities },
-          team: await inviteTeam({ lang: args.lang, teamId: args.team }),
+          team: await orPrivileged(args.team, args.lang),
         },
         client,
       );
@@ -213,8 +210,7 @@ export async function createInvite(args: {
 /** Whether the open invite of `email` in `lang` joins a team other than `team` (null: the privileged one). */
 async function invitedElsewhere(lang: Lang, email: string, team: TeamId | null): Promise<boolean> {
   const rows = await query<{ elsewhere: boolean }>(
-    `select coalesce(i."joinTeamId", team_of_lang(i."lang")) is distinct from coalesce($3::uuid, team_of_lang(i."lang"))
-              as "elsewhere"
+    `select ${JOIN_TEAM} is distinct from coalesce($3::uuid, team_of_lang(i."lang")) as "elsewhere"
        from "invite" i
       where i."lang" = $1 and i."email" = $2 and ${OPEN}`,
     [lang, email, team],
@@ -269,7 +265,7 @@ export async function resendInvite(
         subject: id,
         actorId,
         detail: { email },
-        team: await inviteTeam({ lang, teamId: joinTeamId }),
+        team: await orPrivileged(joinTeamId, lang as Lang),
       },
       client,
     );
@@ -292,7 +288,7 @@ export async function revokeInvite(id: string, revokedBy: string): Promise<Invit
         subject: id,
         actorId: revokedBy,
         detail: { email: invite.email },
-        team: await inviteTeam(invite),
+        team: await orPrivileged(invite.teamId, invite.lang as Lang),
       },
       client,
     );
@@ -315,11 +311,11 @@ export async function revokeOpenFor(
 ): Promise<void> {
   const held = (await grantsOf(userId, client)).filter((grant) => grant.lang === lang).map((grant) => grant.capability);
   const { rows } = await client.query<{ id: string; team: TeamId | null }>(
-    `update "invite" set "revokedAt" = now(), "revokedBy" = $3
-      where "lang" = $1 and "email" = $2 and "acceptedAt" is null and "revokedAt" is null
-        and "capabilities" <@ $4::text[]
-        and (spoken_team() is null or coalesce("joinTeamId", team_of_lang("lang")) = spoken_team())
-      returning "id", coalesce("joinTeamId", team_of_lang("lang")) as "team"`,
+    `update "invite" i set "revokedAt" = now(), "revokedBy" = $3
+      where i."lang" = $1 and i."email" = $2 and ${OPEN}
+        and i."capabilities" <@ $4::text[]
+        and (spoken_team() is null or ${JOIN_TEAM} = spoken_team())
+      returning i."id", ${JOIN_TEAM} as "team"`,
     [lang, email, actorId, [...new Set([...held, ...granted])]],
   );
   for (const { id, team } of rows) {
@@ -342,7 +338,7 @@ export async function listInvites(langs?: string[], team?: TeamId): Promise<Invi
   const rows = await query<Row>(
     `select ${COLUMNS} from "invite" i join "user" u on u."id" = i."invitedBy"
       where ${OPEN} and ($1::text[] is null or i."lang" = any($1::text[]))
-        and ($2::uuid is null or coalesce(i."joinTeamId", team_of_lang(i."lang")) = $2::uuid)
+        and ($2::uuid is null or ${JOIN_TEAM} = $2::uuid)
       order by i."createdAt" desc`,
     [langs ?? null, team ?? null],
   );
@@ -422,7 +418,7 @@ export async function acceptInvite(
   if (refused) return { ok: false, reason: "inviter-cannot-grant", inviterName, capability: refused };
 
   // `text` joins no team, so only the team capabilities can meet another team.
-  const team = await inviteTeam(invite);
+  const team = await orPrivileged(invite.teamId, lang as Lang);
   const joins = capabilities.some((capability) => capability !== "text");
   const theirs = joins ? await teamIn(user.id, lang) : null;
   if (theirs && team && theirs !== team) return { ok: false, reason: "other-team", lang };

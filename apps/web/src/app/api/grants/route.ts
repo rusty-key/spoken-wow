@@ -24,7 +24,7 @@ import {
 import { knownLang } from "@/lib/languages/catalogue";
 import { isAdmin, isCapability, removesOwnAdmin, type Viewer } from "@/lib/permissions";
 import { teamIn } from "@/lib/teams/acting";
-import { orPrivileged } from "@/lib/teams/store";
+import { teamOrPrivileged } from "@/lib/teams/store";
 
 export const dynamic = "force-dynamic";
 
@@ -69,7 +69,7 @@ export async function PUT(request: Request) {
   if (user) {
     // A site owner works in no team, even one who is a member of a team: the person's own team,
     // if any, is where the grant goes, else the privileged team.
-    const team = isAdmin(who.viewer.role) ? await orPrivileged(await teamIn(user.id, lang), lang) : undefined;
+    const team = isAdmin(who.viewer.role) ? await teamOrPrivileged(user.id, lang) : undefined;
     try {
       await addGrants(user.id, lang, capabilities, who.userId, {
         team,
