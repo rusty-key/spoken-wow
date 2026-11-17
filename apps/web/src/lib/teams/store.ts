@@ -10,6 +10,7 @@ import type { ClientBase, PoolClient, QueryResult, QueryResultRow } from "pg";
 import { ALL_TEAMS, query, queryIn, type TeamId, withTeam } from "@/lib/db";
 import { BASE_LANG, allLangs, type Lang } from "@/lib/lang";
 
+import { actingTeams } from "./acting";
 import { listenInServer } from "./listen";
 
 export type { TeamId };
@@ -26,39 +27,97 @@ const TTL_MS = 60_000;
 /** How old the memo must be for a miss to read the mapping again: at most once a second. */
 const MISS_REFRESH_MS = 1_000;
 
-let cached: { at: number; langs: Promise<Map<Lang, TeamId>> } | null = null;
+type Mapping = { owners: Map<Lang, TeamId>; second: Set<Lang> };
+
+let cached: { at: number; mapping: Promise<Mapping> } | null = null;
 
 /** Drops the memo. For a write that changes the mapping, and for tests. */
 export function forgetTeams(): void {
   cached = null;
 }
 
-export function teamLangs(): Promise<Map<Lang, TeamId>> {
+function mapping(): Promise<Mapping> {
   listenInServer("spoken_team_language", forgetTeams);
-  if (cached && Date.now() - cached.at < TTL_MS) return cached.langs;
-  const langs = query<{ lang: Lang; teamId: TeamId }>(
-    `select "lang", "teamId" from "team_language" where "privileged"`,
-  ).then((rows) => new Map(rows.map((row) => [row.lang, row.teamId])));
-  cached = { at: Date.now(), langs };
-  // A failed read must not be served for the next minute.
-  langs.catch(() => {
-    if (cached?.langs === langs) cached = null;
+  if (cached && Date.now() - cached.at < TTL_MS) return cached.mapping;
+  const read = query<{ lang: Lang; teamId: TeamId; privileged: boolean }>(
+    `select "lang", "teamId", "privileged" from "team_language"`,
+  ).then((rows) => {
+    const owners = new Map<Lang, TeamId>();
+    const second = new Set<Lang>();
+    for (const row of rows) {
+      if (row.privileged) owners.set(row.lang, row.teamId);
+      else second.add(row.lang);
+    }
+    return { owners, second };
   });
-  return langs;
+  cached = { at: Date.now(), mapping: read };
+  // A failed read must not be served for the next minute.
+  read.catch(() => {
+    if (cached?.mapping === read) cached = null;
+  });
+  return read;
 }
 
-/** The privileged team of `lang`, or undefined for a language nobody owns. A miss reads again once. */
+/** Each language's privileged team. */
+export async function teamLangs(): Promise<Map<Lang, TeamId>> {
+  return (await mapping()).owners;
+}
+
+/** The languages that have a second team besides the privileged one. */
+export async function secondTeamLangs(): Promise<Set<Lang>> {
+  return (await mapping()).second;
+}
+
+/**
+ * The team that owns `lang` for whoever is acting: in a language with a second team, the
+ * team the acting person works in, else the privileged team; undefined for a
+ * language nobody owns. A miss reads again once.
+ *
+ * Work done for a person outside their request must say whose it is, or it lands in the
+ * privileged team: an invite's acceptance and an approval act for the invitee, the worker for
+ * the job's requester, a token route for the key's owner. Those wrap their work in asActor or
+ * asTeams, or name the team outright.
+ */
 async function ownerOf(lang: Lang): Promise<TeamId | undefined> {
   return (await freshOwners([lang])).get(lang);
 }
 
+/** The privileged team of `lang`, the same whoever is acting. A miss reads again once. */
+export async function privilegedOf(lang: Lang): Promise<TeamId | undefined> {
+  return (await privilegedOwners([lang])).get(lang);
+}
+
+/** Whether the acting person works on `lang` in a team other than its privileged one. */
+export async function actsAsSecondTeam(lang: Lang): Promise<boolean> {
+  return (await ownerOf(lang)) !== (await privilegedOf(lang));
+}
+
 /** teamLangs, read again once (unless the memo is fresh) when any of `langs` has no team. */
-export async function freshOwners(langs: readonly (Lang | null)[]): Promise<Map<Lang, TeamId>> {
+async function privilegedOwners(langs: readonly (Lang | null)[]): Promise<Map<Lang, TeamId>> {
   const owners = await teamLangs();
   const missing = langs.some((lang) => lang && !owners.has(lang));
   if (!missing || !cached || Date.now() - cached.at < MISS_REFRESH_MS) return owners;
   forgetTeams();
   return teamLangs();
+}
+
+/**
+ * The owners of `langs` for whoever is acting, as ownerOf answers each. The acting teams are
+ * read only when one of `langs` has a second team, so a language with one team never reads the
+ * session.
+ */
+export async function freshOwners(langs: readonly (Lang | null)[]): Promise<Map<Lang, TeamId>> {
+  const owners = await privilegedOwners(langs);
+  const second = await secondTeamLangs();
+  const shared = langs.filter((lang): lang is Lang => lang !== null && second.has(lang));
+  if (!shared.length) return owners;
+  const acting = await actingTeams();
+  const overlaid = new Map(owners);
+  for (const lang of shared) {
+    const team = acting.get(lang);
+    if (team) overlaid.set(lang, team);
+  }
+  return overlaid;
 }
 
 export async function teamOf(lang: Lang): Promise<TeamId> {
