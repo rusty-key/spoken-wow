@@ -37,7 +37,7 @@ async function markFailing(backendId: string, error: unknown): Promise<void> {
  * it. A copy already in the bucket stays the one read. Returns whether the row was waiting before
  * and is now, so a quarantined copy nothing will land any more can be removed.
  */
-async function record(
+export async function recordObject(
   prefix: BlobPrefix,
   sha256: string,
   backendId: string,
@@ -87,7 +87,7 @@ export async function putArchived(prefix: BlobPrefix, sha256: string, data: Buff
       console.error(`storage: the team bucket ${target.id} refused ${key}, quarantined:`, error);
     }
     if (!refusal) {
-      if ((await record(prefix, sha256, target.id, team, false)).was) await dropQuarantined(target.id, key);
+      if ((await recordObject(prefix, sha256, target.id, team, false)).was) await dropQuarantined(target.id, key);
       return;
     }
   }
@@ -96,7 +96,7 @@ export async function putArchived(prefix: BlobPrefix, sha256: string, data: Buff
     if (!(await holds(prefix, sha256, target.id))) {
       await archive().put(quarantineKey(target.id, key), data, contentType);
       // A direct write of these bytes may have landed meanwhile: then nothing would land this copy.
-      if (!(await record(prefix, sha256, target.id, team, true)).now) await dropQuarantined(target.id, key);
+      if (!(await recordObject(prefix, sha256, target.id, team, true)).now) await dropQuarantined(target.id, key);
     }
   } finally {
     // After the bytes are safe, or once our own bucket refused them too: marking the bucket failing

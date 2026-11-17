@@ -1,12 +1,13 @@
 "use client";
 
-import { useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { DAY_TIME, useLocalDates } from "@/components/useLocalDates";
 import { langName, type Lang } from "@/lib/lang";
 import type { BackendView, Provider } from "@/lib/storage/backends";
+import type { MoveView } from "@/lib/storage/moves";
 import type { ProbeResult } from "@/lib/storage/probe";
 import type { StorageView } from "@/lib/storage/view";
 import { cn } from "@/lib/utils";
@@ -17,7 +18,17 @@ const HEALTH: Record<BackendView["health"], { text: string; tone: string }> = {
   failing: { text: "Failing", tone: "border-destructive/40 bg-destructive/10 text-destructive" },
 };
 
-type Answer = { backend?: BackendView; test?: ProbeResult | null; error?: string };
+type Answer = { backend?: BackendView; test?: ProbeResult | null; move?: MoveView; error?: string };
+
+const POLL_MS = 10_000;
+
+const MOVE_STATE: Record<MoveView["state"], string> = {
+  queued: "Waiting to start",
+  running: "Moving",
+  done: "Done",
+  failed: "Stopped on an error",
+  cancelled: "Stopped",
+};
 
 async function call(url: string, init: RequestInit): Promise<Answer> {
   const res = await fetch(url, { ...init, headers: { "content-type": "application/json" } }).catch(() => null);
@@ -36,6 +47,34 @@ export default function StoragePanel({ lang, initial }: { lang: Lang; initial: S
   const [busy, setBusy] = useState<{ id: string; action: string } | null>(null);
   // While our archive is still the volume, no team bucket takes anything, whatever it is set to.
   const writing = view.archiveIsBucket ? (view.backends.find((backend) => backend.writing) ?? null) : null;
+  const moving = view.moves.find((move) => move.state === "queued" || move.state === "running") ?? null;
+
+  const refresh = useCallback(async () => {
+    const res = await fetch(`/api/storage?lang=${lang}`).catch(() => null);
+    if (res?.ok) setView((await res.json()) as StorageView);
+  }, [lang]);
+
+  // A move advances on the server a chunk a minute; its count is worth watching.
+  useEffect(() => {
+    if (!moving) return;
+    const timer = setInterval(() => void refresh(), POLL_MS);
+    return () => clearInterval(timer);
+  }, [moving, refresh]);
+
+  const move = async (from: string | null, to: string | null) => {
+    setError(null);
+    const answer = await call(`/api/storage/moves?lang=${lang}`, { method: "POST", body: JSON.stringify({ from, to }) });
+    if (answer.error) return setError(answer.error);
+    await refresh();
+  };
+
+  const stopMove = async (id: string) => {
+    const answer = await call(`/api/storage/moves/${id}?lang=${lang}`, { method: "DELETE" });
+    if (answer.error) return setError(answer.error);
+    await refresh();
+  };
+
+  const nameOf = (id: string | null) => (id ? (view.backends.find((b) => b.id === id)?.label ?? "a removed bucket") : "Spoken's archive");
 
   const replace = (backend: BackendView) =>
     setView((current) => {
@@ -90,6 +129,15 @@ export default function StoragePanel({ lang, initial }: { lang: Lang; initial: S
 
       {error && <p className="text-destructive text-sm">{error}</p>}
 
+      {view.moves.length > 0 && (
+        <section className="bg-card flex flex-col gap-2 rounded-lg border p-4 text-sm">
+          <h2 className="font-medium">Moves</h2>
+          {view.moves.map((m) => (
+            <MoveLine key={m.id} move={m} from={nameOf(m.fromBackendId)} to={nameOf(m.toBackendId)} onStop={() => void stopMove(m.id)} />
+          ))}
+        </section>
+      )}
+
       {view.backends.map((backend) => (
         <BackendCard
           key={backend.id}
@@ -101,6 +149,9 @@ export default function StoragePanel({ lang, initial }: { lang: Lang; initial: S
           onAction={(action) => void post(backend.id, action)}
           onRemove={() => void act(backend.id, { method: "DELETE" }, "remove")}
           onRekey={(fields) => act(backend.id, { method: "PATCH", body: JSON.stringify(fields) }, "rekey")}
+          moving={moving !== null}
+          onMoveIn={() => void move(null, backend.id)}
+          onMoveOut={() => void move(backend.id, null)}
         />
       ))}
 
@@ -126,6 +177,9 @@ function BackendCard({
   onAction,
   onRemove,
   onRekey,
+  moving,
+  onMoveIn,
+  onMoveOut,
 }: {
   backend: BackendView;
   test: ProbeResult | undefined;
@@ -134,6 +188,10 @@ function BackendCard({
   onAction: (action: "test" | "write" | "stop" | "retire") => void;
   onRemove: () => void;
   onRekey: (fields: { accessKeyId: string; secretAccessKey: string }) => Promise<boolean>;
+  /** A move of this team's is queued or running, so no other may start. */
+  moving: boolean;
+  onMoveIn: () => void;
+  onMoveOut: () => void;
 }) {
   const date = useLocalDates();
   const [rekeying, setRekeying] = useState(false);
@@ -206,6 +264,16 @@ function BackendCard({
             Retire
           </Button>
         )}
+        {!retired && backend.health === "ok" && (
+          <Button size="sm" variant="outline" disabled={busy !== null || moving} onClick={onMoveIn} title="Copies what Spoken's archive holds for this team. Spoken keeps its copy.">
+            Copy Spoken&apos;s archive here
+          </Button>
+        )}
+        {backend.objects > 0 && (
+          <Button size="sm" variant="outline" disabled={busy !== null || moving} onClick={onMoveOut} title="Copies this bucket's objects into Spoken's archive and reads them from there. Nothing is deleted here.">
+            Bring objects back to Spoken&apos;s archive
+          </Button>
+        )}
         {backend.objects + backend.pending === 0 && (
           <Button size="sm" variant="ghost" disabled={busy !== null} onClick={onRemove}>
             Remove
@@ -232,6 +300,26 @@ function BackendCard({
         </form>
       )}
     </article>
+  );
+}
+
+function MoveLine({ move, from, to, onStop }: { move: MoveView; from: string; to: string; onStop: () => void }) {
+  const done = move.copied + move.already + move.missing;
+  const active = move.state === "queued" || move.state === "running";
+  return (
+    <div className="flex flex-wrap items-center gap-2">
+      <span>
+        {from} → {to}: {MOVE_STATE[move.state]}
+        {move.total !== null && ` · ${done.toLocaleString()} of ${move.total.toLocaleString()}`}
+        {move.missing > 0 && <span className="text-destructive"> · {move.missing.toLocaleString()} missing at the source</span>}
+      </span>
+      {move.lastError && <span className="text-destructive">{move.lastError}</span>}
+      {active && (
+        <Button size="sm" variant="ghost" onClick={onStop}>
+          Stop
+        </Button>
+      )}
+    </div>
   );
 }
 

@@ -7,10 +7,13 @@ import type { Lang } from "@/lib/lang";
 import { teamOf } from "@/lib/teams/store";
 
 import { listBackends, PROVIDERS, type BackendView, type Provider } from "./backends";
+import { listMoves, type MoveView } from "./moves";
 
 export type StorageView = {
   team: { id: string; name: string; langs: Lang[] };
   backends: BackendView[];
+  /** The newest first; at most one queued or running. */
+  moves: MoveView[];
   providers: { id: Provider; label: string; endpoint: string; region: string; pathStyle: boolean }[];
   /** False while our archive is still the volume: no team bucket can be switched on then. */
   archiveIsBucket: boolean;
@@ -20,14 +23,16 @@ export type StorageView = {
 
 export async function storageView(lang: Lang): Promise<StorageView> {
   const team = await teamOf(lang);
-  const [[about], langs, backends] = await Promise.all([
+  const [[about], langs, backends, moves] = await Promise.all([
     query<{ id: string; name: string }>(`select "id", "name" from "team" where "id" = $1`, [team]),
     query<{ lang: Lang }>(`select "lang" from "team_language" where "teamId" = $1 and "privileged" order by "lang"`, [team]),
     listBackends(team),
+    listMoves(team),
   ]);
   return {
     team: { ...about, langs: langs.map((row) => row.lang) },
     backends,
+    moves,
     providers: (Object.keys(PROVIDERS) as Provider[]).map((id) => ({ id, ...PROVIDERS[id] })),
     archiveIsBucket: readsBlobs(),
     canSeal: canSeal(),

@@ -1,16 +1,21 @@
 /**
  * The storage work nobody waits on, run by whichever process leads the queue, so two pm2 workers
- * never do it twice: quarantined objects moved into their team's bucket. A round never overlaps
- * the last.
+ * never do it twice: quarantined objects moved into their team's bucket, and a chunk of every
+ * move between buckets. A round never overlaps the last.
  */
 import "server-only";
 
 import { landQuarantined } from "@/lib/blobs/keep";
 import { archiveMode } from "@/lib/blobs/store";
 
+import { advanceMoves } from "./moves";
+
 type UpkeepTask = { name: string; run: () => Promise<unknown> };
 
-const TASKS: UpkeepTask[] = [{ name: "land quarantined objects", run: () => landQuarantined() }];
+const TASKS: UpkeepTask[] = [
+  { name: "land quarantined objects", run: () => landQuarantined() },
+  { name: "move objects between buckets", run: advanceMoves },
+];
 
 const EVERY_MS = 60_000;
 
