@@ -1,10 +1,7 @@
 /**
- * The team a person works as in each language: the one team_member puts them in, which in a
- * language with a second team need not be the privileged one.
- *
- * A request reads it from the session. Work done for a person outside their request (the
- * worker, a script, an approval acting for someone else) names them with asActor, or names the
- * team with asTeams. Anything else acts as no team in particular, and so as the privileged team.
+ * The team a person works as in each language, from team_member. With a second team it need
+ * not be the privileged one. Outside a request (worker, script, approval for someone else),
+ * name the person with asActor or the team with asTeams, or the privileged team is used.
  */
 import "server-only";
 
@@ -22,11 +19,7 @@ const NONE: Teams = new Map();
 
 const scope = new AsyncLocalStorage<Teams>();
 
-/**
- * Each language `userId` works on, and the team they work on it in. Rows of a team that holds
- * the language privileged sort last, so a person in two teams of one language (data from before
- * the one-team rule) acts as the privileged one.
- */
+// The privileged team's rows sort last, so a person in two teams of one language acts as it.
 export async function memberTeams(userId: string, client?: Pick<ClientBase, "query">): Promise<Map<string, TeamId>> {
   const { rows } = await (client ?? db()).query<{ lang: string; teamId: TeamId }>(
     `select m."lang", m."teamId" from "team_member" m
@@ -38,12 +31,10 @@ export async function memberTeams(userId: string, client?: Pick<ClientBase, "que
   return new Map(rows.map((row) => [row.lang, row.teamId]));
 }
 
-/** The team `userId` works on `lang` in, or null when they work on it in none. */
 export async function teamIn(userId: string, lang: string, client?: Pick<ClientBase, "query">): Promise<TeamId | null> {
   return (await memberTeams(userId, client)).get(lang) ?? null;
 }
 
-/** `work` acting as `teams`, whoever the request's session is. */
 export function asTeams<T>(teams: Teams, work: () => Promise<T>): Promise<T> {
   return scope.run(teams, work);
 }
@@ -53,7 +44,6 @@ export function asTeam<T>(lang: string | null, team: TeamId | null | undefined, 
   return asTeams(lang && team ? new Map([[lang, team]]) : NONE, work);
 }
 
-/** `work` acting as the teams `userId` works in. */
 export async function asActor<T>(userId: string, work: () => Promise<T>): Promise<T> {
   return asTeams(await memberTeams(userId), work);
 }

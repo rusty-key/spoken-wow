@@ -69,14 +69,10 @@ export async function secondTeamLangs(): Promise<Set<Lang>> {
 }
 
 /**
- * The team that owns `lang` for whoever is acting: in a language with a second team, the
- * team the acting person works in, else the privileged team; undefined for a
- * language nobody owns. A miss reads again once.
- *
- * Work done for a person outside their request must say whose it is, or it lands in the
- * privileged team: an invite's acceptance and an approval act for the invitee, the worker for
- * the job's requester, a token route for the key's owner. Those wrap their work in asActor or
- * asTeams, or name the team outright.
+ * The team that owns `lang` for the acting person: their team when `lang` has a second team,
+ * else the privileged team. Undefined when nobody owns `lang`. A miss reads again once.
+ * Work done for someone outside their request must run in asActor or asTeams, or it lands in
+ * the privileged team.
  */
 async function ownerOf(lang: Lang): Promise<TeamId | undefined> {
   return (await freshOwners([lang])).get(lang);
@@ -123,11 +119,7 @@ export async function privilegedOwners(langs: readonly (Lang | null)[]): Promise
   return teamLangs();
 }
 
-/**
- * The owners of `langs` for whoever is acting, as ownerOf answers each. The acting teams are
- * read only when one of `langs` has a second team, so a language with one team never reads the
- * session.
- */
+/** Owners of `langs` for the acting person. Reads the session only when a language in `langs` has a second team. */
 export async function freshOwners(langs: readonly (Lang | null)[]): Promise<Map<Lang, TeamId>> {
   const owners = await privilegedOwners(langs);
   const second = await secondTeamLangs();
@@ -165,10 +157,8 @@ export async function ownerOrAll(lang: Lang | null): Promise<TeamId | typeof ALL
 }
 
 /**
- * The team `lang`'s original text is written in: its privileged team, whoever is acting, since
- * every team voices the one text and the privileged team ships it. A text maintainer who works
- * in a second team still files their edits, resolutions and rejections there. ALL_TEAMS for a
- * language nobody owns, as ownerOrAll.
+ * The team `lang`'s original text is written in: the privileged team, whoever is acting, since
+ * the privileged team ships the one text. ALL_TEAMS when nobody owns `lang`.
  */
 export async function textTeam(lang: Lang | null): Promise<TeamId | typeof ALL_TEAMS> {
   return (lang && (await privilegedOf(lang))) || ALL_TEAMS;

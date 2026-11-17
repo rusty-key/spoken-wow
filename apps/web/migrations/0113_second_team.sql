@@ -1,19 +1,14 @@
--- A language can have a second team beside its privileged one. Additive; the previous release
+-- A language can have a second team beside its privileged one. Additive: the previous release
 -- never writes a second team's rows.
 --
--- One person works in one team per language. The trigger is deferred so move_team_lang, which
--- deletes a team's members and inserts them under the new team in one transaction, passes; and
--- it takes an advisory lock per (user, language) so two transactions that grant one person in
--- two teams cannot both pass: under READ COMMITTED the second sees the first's committed row
--- once the lock frees, and raises exclusion_violation (23P01).
+-- One person works in one team per language. The trigger is deferred so move_team_lang (delete
+-- and re-insert in one transaction) passes. The advisory lock per (user, language) serializes
+-- concurrent grants into two teams: the second sees the first's committed row and raises 23P01.
 --
--- "invite"."joinTeamId" is the team an accepted invite joins. Null means the language's
--- privileged team, which is what every invite before this migration, and every invite an older
--- release writes, meant.
+-- "invite"."joinTeamId" null means the language's privileged team.
 --
--- A person already in two teams of one language is listed in a notice below. The trigger only
--- checks new grants, so such a person can be granted nothing further until an operator removes
--- one side of each listed pair after the release.
+-- People already in two teams of one language are listed in a notice. The trigger checks new
+-- grants only, so an operator must remove one side of each pair.
 
 set local client_min_messages = notice;
 
