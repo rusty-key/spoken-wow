@@ -220,12 +220,22 @@ jobs:
           # build after the tracing root widened pulled in the Python virtualenv and
           # pipelines/quests/.env, which holds the ElevenLabs key and the database
           # password. A release is rsynced to a droplet, so that is a credential leak
-          # rather than merely weight. 150 MB is well clear of the ~75 MB a healthy bundle
+          # rather than merely weight. 150 MB is well clear of the ~90 MB a healthy bundle
           # measures and nowhere near the 200 MB a leak produced.
-          size=$(du -sm "$R" | cut -f1)
-          echo "release is ${size} MB"
+          #
+          # It measures the traced bundle alone. release-tools/ is assembled by hand, not
+          # traced, and grows for its own reasons (Brann's dependencies, the Python vendor
+          # tree), so it has a budget of its own: counted together, a new dependency there
+          # reads as a tracing leak, and a leak can hide behind the room tools leave.
+          size=$(du -sm --exclude=release-tools "$R" | cut -f1)
+          tools=$(du -sm "$R"/release-tools | cut -f1)
+          echo "the bundle is ${size} MB, release-tools ${tools} MB"
           if [ "$size" -gt 150 ]; then
-            echo "::error::the release is ${size} MB. Something is being traced that should not be - check outputFileTracingExcludes in apps/web/next.config.ts, and that no .env came along."
+            echo "::error::the bundle is ${size} MB. Something is being traced that should not be - check outputFileTracingExcludes in apps/web/next.config.ts, and that no .env came along."
+            exit 1
+          fi
+          if [ "$tools" -gt 100 ]; then
+            echo "::error::release-tools is ${tools} MB, past its 100 MB. Check what deploy/web/assemble-release-tools.sh copies and installs, and whether the budget should move."
             exit 1
           fi
           if find "$R" -name ".env*" -o -name "*.venv*" -o -name "pyvenv.cfg" | grep -q .; then
