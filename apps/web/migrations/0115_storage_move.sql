@@ -9,8 +9,9 @@
 create table "storage_move" (
   "id"            uuid        primary key default gen_random_uuid(),
   "teamId"        uuid        not null default spoken_team() references "team" ("id"),
-  "fromBackendId" uuid        references "storage_backend" ("id"),
-  "toBackendId"   uuid        references "storage_backend" ("id"),
+  -- A bucket removed later leaves its finished moves behind, naming no bucket.
+  "fromBackendId" uuid        references "storage_backend" ("id") on delete set null,
+  "toBackendId"   uuid        references "storage_backend" ("id") on delete set null,
   "state"         text        not null default 'queued'
                     check ("state" in ('queued', 'running', 'done', 'failed', 'cancelled')),
   "total"         integer,
@@ -23,7 +24,7 @@ create table "storage_move" (
   "createdAt"     timestamptz not null default now(),
   "startedAt"     timestamptz,
   "finishedAt"    timestamptz,
-  check ("fromBackendId" is distinct from "toBackendId")
+  check ("state" not in ('queued', 'running') or "fromBackendId" is distinct from "toBackendId")
 );
 
 -- One move at a time per team: two would race over the same objects.

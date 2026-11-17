@@ -88,7 +88,7 @@ describe("moving a team's objects", () => {
     // A take made after the switch is only in the team's bucket.
     const late = randomBytes(32);
     backend.store.objects.set(`takes/${sha256Of(late)}`, { data: late, contentType: "audio/mpeg" });
-    await asSystem.query(`insert into "archive_object" ("prefix", "sha256", "backendId") values ('takes', $1, $2)`, [sha256Of(late), backend.id]);
+    await asSystem.query(`insert into "archive_object" ("prefix", "sha256", "backendId", "teamId") values ('takes', $1, $2, $3)`, [sha256Of(late), backend.id, fr.team]);
 
     const home = await startMove(fr.team, backend.id, null, user.id);
     expect(await runMoveForTests(home.id)).toBe("done");
@@ -134,6 +134,34 @@ describe("moving a team's objects", () => {
     const again = await startMove(fr.team, null, backend.id, user.id);
     expect(await runMoveForTests(again.id)).toBe("done");
     expect(backend.store.objects.size).toBe(4);
+  });
+
+  it("copies an object another team's bucket also holds, and reads the team's own copy after", async () => {
+    const house = ours();
+    const mine = await bucket();
+    const theirs = await testBackend();
+    restores.push(theirs.restore);
+    const [sha] = await takes(house, 1);
+    await asSystem.query(
+      `insert into "archive_object" ("prefix", "sha256", "backendId", "teamId")
+       values ('takes', $1, $2, (select "teamId" from "storage_backend" where "id" = $2))`,
+      [sha, theirs.id],
+    );
+    expect(await runMoveForTests((await startMove(fr.team, null, mine.id, user.id)).id)).toBe("done");
+    expect(mine.store.objects.has(`takes/${sha}`)).toBe(true);
+    expect((await locate(`takes/${sha}`, "frFR")).backendId).toBe(mine.id);
+  });
+
+  it("lets a bucket a finished move used be removed, and keeps the move's history", async () => {
+    ours();
+    const { removeBackend } = await import("./backends");
+    const empty = await bucket();
+    const move = await startMove(fr.team, null, empty.id, user.id);
+    await expect(removeBackend(fr.team, empty.id)).rejects.toThrow("A move is using this bucket");
+    expect(await runMoveForTests(move.id)).toBe("done");
+    await removeBackend(fr.team, empty.id);
+    const [row] = await systemRows(`select "state", "toBackendId" from "storage_move" where "id" = $1`, [move.id]);
+    expect(row).toEqual({ state: "done", toBackendId: null });
   });
 
   it("allows one move at a time, only into a working bucket, and stops when asked", async () => {

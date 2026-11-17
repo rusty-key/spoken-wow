@@ -368,6 +368,13 @@ export async function removeBackend(team: TeamId, id: string): Promise<void> {
   await rowOf(team, id);
   const [{ n }] = await query<{ n: number }>(`select count(*)::int as "n" from "archive_object" where "backendId" = $1`, [id]);
   if (n > 0) throw new StorageError(`The bucket holds ${n} of the archive's objects. Retire it, or move them away first.`, 409);
+  const moving = await withTeam(team, async (client) =>
+    (await client.query(
+      `select 1 from "storage_move" where $1 in ("fromBackendId", "toBackendId") and "state" in ('queued', 'running') and ${TEAM_ROWS}`,
+      [id],
+    )).rows,
+  );
+  if (moving.length > 0) throw new StorageError("A move is using this bucket. Stop it first.", 409);
   try {
     await withTeam(team, (client) => client.query(`delete from "storage_backend" where "id" = $1 and ${TEAM_ROWS}`, [id]));
   } catch (error) {

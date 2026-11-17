@@ -54,7 +54,8 @@ const PARALLEL = 4;
 
 /**
  * The team's objects in `from`, after `cursor` in key order, as a query. Ours means every object a
- * row of the team names that no team bucket holds a landed copy of.
+ * row of the team names that none of the team's own buckets holds a landed copy of: another team
+ * holding the same bytes does not count.
  */
 function objectsQuery(team: TeamId, from: string | null, cursor: string | null): { sql: string; params: unknown[] } {
   // Keys sort by prefix, then hash: the cursor splits the same way.
@@ -83,7 +84,8 @@ function objectsQuery(team: TeamId, from: string | null, cursor: string | null):
            where (o."prefix", o."sha256") > ($2, $3)
              and not exists (
                select 1 from "archive_object" a
-                where a."prefix" = o."prefix" and a."sha256" = o."sha256" and not a."pending" and a."missingAt" is null)`,
+                where a."prefix" = o."prefix" and a."sha256" = o."sha256" and a."teamId" = $1
+                 and not a."pending" and a."missingAt" is null)`,
     params: [team, afterPrefix, afterSha],
   };
 }
@@ -162,7 +164,7 @@ async function moveOne(key: string, move: MoveRow, source: BlobStore, target: Bl
   if (sha256Of(data) !== sha256) throw new Error(`${key} does not match its hash in the source`);
   const there = await target.head(key);
   if (!there) await target.put(key, data, object.contentType);
-  if (move.toBackendId) await recordObject(prefix, sha256, move.toBackendId, false);
+  if (move.toBackendId) await recordObject(prefix, sha256, move.toBackendId, move.teamId, false);
   // Into ours: the source's row goes, so reads find our copy. The team's bytes stay where they are.
   else await query(`delete from "archive_object" where "prefix" = $1 and "sha256" = $2 and "backendId" = $3`, [prefix, sha256, move.fromBackendId]);
   return there ? "already" : "copied";
@@ -223,7 +225,8 @@ export async function advanceMoves(): Promise<void> {
     await advanceMove(id).catch(async (error) => {
       await queryIn(
         ALL_TEAMS,
-        `update "storage_move" set "state" = 'failed', "lastError" = $2, "finishedAt" = now() where "id" = $1`,
+        `update "storage_move" set "state" = 'failed', "lastError" = $2, "finishedAt" = now()
+          where "id" = $1 and "state" in ('queued', 'running')`,
         [id, (error instanceof Error ? error.message : String(error)).slice(0, 300)],
       );
     });
