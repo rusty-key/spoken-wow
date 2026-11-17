@@ -98,7 +98,12 @@ export async function createRequest(userId: string, input: NewRequest): Promise<
     "",
     `Review it here: ${SITE}/admin/teams`,
   ].join("\n");
-  for (const address of await adminEmails()) sendEmail(address, `Team request: ${request.teamName} (${language})`, text);
+  // The request is saved by now: a failed lookup costs the admins their email, not the requester the request.
+  const addresses = await adminEmails().catch((error: unknown) => {
+    console.error("team request: admin email lookup failed", error);
+    return [];
+  });
+  for (const address of addresses) sendEmail(address, `Team request: ${request.teamName} (${language})`, text);
   return request;
 }
 

@@ -1,10 +1,19 @@
-/** Needs DATABASE_URL and migrations through 0108 applied. Only the email is mocked. */
+/** Needs DATABASE_URL and migrations through 0108 applied. Only the email is mocked; the admin lookup can be made to fail. */
 import { afterAll, afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const sent = vi.hoisted(() => [] as { to: string; subject: string; text: string }[]);
 vi.mock("@/lib/email", () => ({
   sendEmail: (to: string, subject: string, text: string) => void sent.push({ to, subject, text }),
 }));
+const lookup = vi.hoisted(() => ({ fails: false }));
+vi.mock("@/lib/site", async (importOriginal) => {
+  const site = await importOriginal<typeof import("@/lib/site")>();
+  return {
+    ...site,
+    adminEmails: (...args: Parameters<typeof site.adminEmails>) =>
+      lookup.fails ? Promise.reject(new Error("lookup down")) : site.adminEmails(...args),
+  };
+});
 
 import { listActivity } from "@/lib/activity/store";
 import { closeDb } from "@/lib/db";
@@ -41,6 +50,7 @@ const mailTo = (user: { id: string }) => sent.filter((mail) => mail.to === `${us
 beforeEach(async () => {
   codes = [];
   sent.length = 0;
+  lookup.fails = false;
   requester = await testUser("test-req-user");
   admin = await testUser("test-req-admin");
   other = await testUser("test-req-other");
@@ -68,6 +78,21 @@ afterEach(async () => {
 afterAll(closeDb);
 
 describe("createRequest", () => {
+  it("returns the saved request when the admin lookup fails", async () => {
+    lookup.fails = true;
+    const logged = vi.spyOn(console, "error").mockImplementation(() => {});
+    try {
+      const lang = code();
+      const request = await ask(lang);
+      expect(request).toMatchObject({ state: "pending", lang });
+      expect(await systemRows(`select 1 from "team_request" where "id" = $1`, [request.id])).toHaveLength(1);
+      expect(sent).toEqual([]);
+      expect(logged).toHaveBeenCalled();
+    } finally {
+      logged.mockRestore();
+    }
+  });
+
   it("keeps a new code's request out of the world until it is approved", async () => {
     const lang = code();
     const request = await ask(lang, { note: "Hello" });

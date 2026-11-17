@@ -70,7 +70,7 @@ export default function TeamRequests({ initial }: { initial: TeamRequest[] }) {
               <Button
                 size="sm"
                 aria-label={`Approve ${request.teamName}`}
-                disabled={busy === request.id}
+                disabled={busy !== null}
                 onClick={() => decide(request, "approve")}
               >
                 Approve
@@ -86,7 +86,7 @@ export default function TeamRequests({ initial }: { initial: TeamRequest[] }) {
                 size="sm"
                 variant="outline"
                 aria-label={`Reject ${request.teamName}`}
-                disabled={busy === request.id}
+                disabled={busy !== null}
                 onClick={() => decide(request, "reject")}
               >
                 Reject

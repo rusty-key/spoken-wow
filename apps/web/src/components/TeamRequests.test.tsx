@@ -79,3 +79,22 @@ test("a request the refresh brings in shows, and a decided one stays gone", asyn
   expect(screen.getByText("Other crew")).toBeTruthy();
   expect(screen.queryByText("Crew")).toBeNull();
 });
+
+test("every decision stays disabled while one decision is in flight", async () => {
+  let answer!: (response: Response) => void;
+  fetchMock.mockReturnValue(new Promise<Response>((resolve) => (answer = resolve)));
+  const user = userEvent.setup();
+  render(<TeamRequests initial={[request(), request({ id: "r2", teamName: "Other crew" })]} />);
+
+  await user.click(screen.getByRole("button", { name: "Approve Crew" }));
+  const buttons = ["Approve Crew", "Reject Crew", "Approve Other crew", "Reject Other crew"].map(
+    (name) => screen.getByRole("button", { name }) as HTMLButtonElement,
+  );
+  expect(buttons.map((button) => button.disabled)).toEqual([true, true, true, true]);
+  await user.click(screen.getByRole("button", { name: "Reject Other crew" }));
+  answer(new Response("{}", { status: 200 }));
+
+  await waitFor(() => expect(screen.queryByText("Crew")).toBeNull());
+  expect((screen.getByRole("button", { name: "Approve Other crew" }) as HTMLButtonElement).disabled).toBe(false);
+  expect(fetchMock).toHaveBeenCalledTimes(1);
+});

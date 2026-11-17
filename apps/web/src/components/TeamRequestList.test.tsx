@@ -48,3 +48,21 @@ test("withdraw is sent once, however often it is clicked while in flight", async
   expect(fetchMock).toHaveBeenCalledTimes(1);
   expect(screen.queryByRole("alert")).toBeNull();
 });
+
+test("every Withdraw stays disabled while one withdrawal is in flight", async () => {
+  let answer!: (response: Response) => void;
+  fetchMock.mockReturnValue(new Promise<Response>((resolve) => (answer = resolve)));
+  const user = userEvent.setup();
+  render(<TeamRequestList initial={[request, { ...request, id: "r2", teamName: "Other crew" }]} />);
+
+  const [first, second] = screen.getAllByRole("button", { name: "Withdraw" }) as HTMLButtonElement[];
+  await user.click(first);
+  expect(first.disabled).toBe(true);
+  expect(second.disabled).toBe(true);
+  await user.click(second);
+  answer(new Response("{}", { status: 200 }));
+
+  await waitFor(() => expect(second.disabled).toBe(false));
+  expect(first.disabled).toBe(false);
+  expect(fetchMock).toHaveBeenCalledTimes(1);
+});

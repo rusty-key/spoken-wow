@@ -12,7 +12,8 @@ import type { TeamRequest } from "@/lib/teams/requests";
 export default function TeamRequestList({ initial }: { initial: TeamRequest[] }) {
   const router = useRouter();
   const [error, setError] = useState<string | null>(null);
-  // A second click would reach a request already withdrawn and show its refusal as an error.
+  // While one withdrawal is in flight every button waits: a second click would reach a request
+  // already withdrawn and show its refusal as an error.
   const [busy, setBusy] = useState<string | null>(null);
 
   async function withdraw(id: string) {
@@ -54,7 +55,7 @@ export default function TeamRequestList({ initial }: { initial: TeamRequest[] })
                 variant="outline"
                 size="sm"
                 className="self-start"
-                disabled={busy === request.id}
+                disabled={busy !== null}
                 onClick={() => withdraw(request.id)}
               >
                 Withdraw
