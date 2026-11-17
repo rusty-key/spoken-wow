@@ -8,7 +8,7 @@ import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } 
 import { closeDb } from "@/lib/db";
 import { forgetLanguages, loadLanguages } from "@/lib/languages/catalogue";
 import type { Viewer } from "@/lib/permissions";
-import { forgetTeams } from "@/lib/teams/store";
+import { forgetTeams, teamLangs } from "@/lib/teams/store";
 import { addMember, asSystem, dropLang, dropTeam, newTeamIn, systemRows, testUser, uniqueLang } from "@/lib/teams/testing";
 
 const who = vi.hoisted(() => ({ viewer: { role: null, grants: [] } as Viewer, id: "" }));
@@ -288,6 +288,20 @@ describe("/api/grants in a language with a second team", () => {
 
   it("refuses the second team's admin text, even where the team appoints it", async () => {
     expect((await putFor(`${fresh.id}@example.invalid`, ["text"])).status).toBe(403);
+  });
+
+  it("refuses text to a second team's admin while the cached mapping does not know the team yet", async () => {
+    await asSystem.query(`delete from "team_member" where "teamId" = $1`, [teamB]);
+    await asSystem.query(`delete from "team_language" where "teamId" = $1`, [teamB]);
+    forgetTeams();
+    await teamLangs();
+    await asSystem.query(`insert into "team_language" ("teamId", "lang", "privileged") values ($1, $2, false)`, [
+      teamB, lang,
+    ]);
+    await addMember(teamB, w.id, lang, "admin");
+    who.viewer = { role: null, grants: await grantsOf(w.id) };
+    expect((await putFor(`${fresh.id}@example.invalid`, ["text"])).status).toBe(403);
+    expect(await systemRows(`select 1 from "language_grant" where "userId" = $1`, [fresh.id])).toEqual([]);
   });
 
   it("puts a site owner's grant to a second team's member in their own team", async () => {

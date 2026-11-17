@@ -14,12 +14,15 @@ import { recordActivities, recordActivity } from "@/lib/activity/store";
 import { ALL_TEAMS, db, query, withTeam } from "@/lib/db";
 import { teamIn } from "@/lib/teams/acting";
 import { deleteMember, insertMembers } from "@/lib/teams/members";
-import { ownerOrAll, secondTeamCheck, secondTeamLangs, teamOf, type TeamId } from "@/lib/teams/store";
+import { ownerOrAll, privilegedOwners, secondTeamLangs, teamOf, type TeamId } from "@/lib/teams/store";
 import { isLang, langName, type Lang } from "@/lib/lang";
 import { textByTeam } from "@/lib/languages/store";
 import { canGrant, isCapability, type Capability, type Grant, type Viewer } from "@/lib/permissions";
 
-/** On the caller's client when given. */
+/**
+ * On the caller's client when given. A team's row is privileged only when the team is the
+ * language's cached privileged owner, so a second team the memo does not know yet fails closed.
+ */
 export async function grantsOf(userId: string, client?: Pick<ClientBase, "query">): Promise<Grant[]> {
   const { rows } = await (client ?? db()).query<{ lang: string; capability: string; teamId: TeamId | null }>(
     `select "lang", 'text' as "capability", null::uuid as "teamId" from "language_grant" where "userId" = $1
@@ -28,12 +31,12 @@ export async function grantsOf(userId: string, client?: Pick<ClientBase, "query"
      order by "lang", "capability"`,
     [userId],
   );
-  const isSecond = await secondTeamCheck();
+  const owners = await privilegedOwners(rows.filter((row) => row.teamId !== null).map((row) => row.lang as Lang));
   const grants: Grant[] = [];
   for (const { lang, capability, teamId } of rows) {
     if (!isCapability(capability)) continue;
-    const second = teamId !== null && isSecond(teamId, lang);
-    grants.push(second ? { lang, capability, privileged: false } : { lang, capability });
+    const privileged = teamId === null || owners.get(lang as Lang) === teamId;
+    grants.push(privileged ? { lang, capability } : { lang, capability, privileged: false });
   }
   return grants;
 }

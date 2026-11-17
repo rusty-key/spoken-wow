@@ -8,7 +8,8 @@ import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from
 
 import { closeDb, db } from "@/lib/db";
 import type { Lang } from "@/lib/lang";
-import { forgetTeams } from "@/lib/teams/store";
+import { canGrant } from "@/lib/permissions";
+import { forgetTeams, teamLangs } from "@/lib/teams/store";
 import { addMember, asSystem, dropLang, dropTeam, newTeamIn, systemRows, testUser, uniqueLang } from "@/lib/teams/testing";
 
 import { addGrants, grantsOf, listGrants, listTeamGrants, OtherTeamError, removeGrant } from "./store";
@@ -107,7 +108,7 @@ describe("removeGrant", () => {
       [rows[0].id, GRANTEE],
     );
     expect((await grantsOf(GRANTEE)).filter((g) => g.lang === "esMX")).toEqual([
-      { lang: "esMX", capability: "configure" },
+      { lang: "esMX", capability: "configure", privileged: false },
     ]);
 
     await removeGrant(GRANTEE, "esMX", "configure", GRANTER);
@@ -231,5 +232,32 @@ describe("a second team", () => {
       { lang, capability: "admin", privileged: false },
     ]);
     expect((await grantsOf(v.id)).filter((grant) => grant.lang === lang)).toEqual([{ lang, capability: "regenerate" }]);
+  });
+});
+
+describe("a second team the cached mapping does not know yet", () => {
+  it("counts its admin as not privileged, so they cannot appoint text", async () => {
+    const lang = await uniqueLang({ textByTeam: true });
+    const admin = await testUser("test-grants-stale");
+    const privileged = await newTeamIn(lang, true, "grants-stale-a");
+    await teamLangs();
+    const [{ id: second }] = await systemRows<{ id: string }>(`select new_team($1, $1) as "id"`, [
+      `grants-stale-b-${admin.id}`,
+    ]);
+    try {
+      await asSystem.query(`insert into "team_language" ("teamId", "lang", "privileged") values ($1, $2, false)`, [
+        second, lang,
+      ]);
+      await addMember(second, admin.id, lang, "admin");
+      const grants = await grantsOf(admin.id);
+      expect(grants).toEqual([{ lang, capability: "admin", privileged: false }]);
+      expect(canGrant({ role: null, grants }, "text", lang, true)).toBe(false);
+    } finally {
+      await dropTeam(second);
+      await dropTeam(privileged);
+      await dropLang(lang);
+      forgetTeams();
+      await admin.cleanup();
+    }
   });
 });

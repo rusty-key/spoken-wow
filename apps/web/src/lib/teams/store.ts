@@ -27,7 +27,7 @@ const TTL_MS = 60_000;
 /** How old the memo must be for a miss to read the mapping again: at most once a second. */
 const MISS_REFRESH_MS = 1_000;
 
-type Mapping = { owners: Map<Lang, TeamId>; second: Set<Lang>; secondTeams: Set<string> };
+type Mapping = { owners: Map<Lang, TeamId>; second: Set<Lang> };
 
 let cached: { at: number; mapping: Promise<Mapping> } | null = null;
 
@@ -44,15 +44,11 @@ function mapping(): Promise<Mapping> {
   ).then((rows) => {
     const owners = new Map<Lang, TeamId>();
     const second = new Set<Lang>();
-    const secondTeams = new Set<string>();
     for (const row of rows) {
       if (row.privileged) owners.set(row.lang, row.teamId);
-      else {
-        second.add(row.lang);
-        secondTeams.add(`${row.teamId}:${row.lang}`);
-      }
+      else second.add(row.lang);
     }
-    return { owners, second, secondTeams };
+    return { owners, second };
   });
   cached = { at: Date.now(), mapping: read };
   // A failed read must not be served for the next minute.
@@ -70,17 +66,6 @@ export async function teamLangs(): Promise<Map<Lang, TeamId>> {
 /** The languages that have a second team besides the privileged one. */
 export async function secondTeamLangs(): Promise<Set<Lang>> {
   return (await mapping()).second;
-}
-
-/** isSecondTeam over one read of the mapping, for a loop. */
-export async function secondTeamCheck(): Promise<(team: TeamId, lang: string) => boolean> {
-  const { secondTeams } = await mapping();
-  return (team, lang) => secondTeams.has(`${team}:${lang}`);
-}
-
-/** Whether `team` works on `lang` as a second team: it holds the language, but not as its privileged team. */
-export async function isSecondTeam(team: TeamId, lang: string): Promise<boolean> {
-  return (await mapping()).secondTeams.has(`${team}:${lang}`);
 }
 
 /**
