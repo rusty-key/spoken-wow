@@ -305,6 +305,9 @@ end
 -- Paused, the captions keep showing the word they were on, but the voice has stopped: a window
 -- following CAPTION_WORD must hear that it did.
 local function Voiced(self, progress)
+    -- A line resumed or replayed while the captions are held keeps its old start until Release:
+    -- timed from that, it would name a word the voice has not reached.
+    if self.heldStart and self.heldStart.clip == self.clip then return false end
     return self.startedAt and self.clip and SoundQueue:IsPlaying(self.clip) and self:IsSpeaking(progress)
 end
 
@@ -312,10 +315,13 @@ local function Wake()
     Transcript:WatchWords()
 end
 
---- Fires CAPTION_WORD (clip, word, speaking) for the word the voice has reached, and once with
---- speaking false when that voice ends, is stopped or paused. One timer, to the end of the word
---- being read, and none while nothing listens: a window following the words needs no poller.
-function Transcript:WatchWords()
+function Transcript:WatchWords(quiet)
+    -- A listener that pauses or skips inside its call brings this back before the listeners after
+    -- it have heard the word, and they would end on one no longer read: it runs once they have.
+    if self.firingWords then
+        self.wordsAgain = true
+        return
+    end
     if self.wordTimer then
         Addon:CancelTimer(self.wordTimer)
         self.wordTimer = nil
@@ -333,13 +339,18 @@ function Transcript:WatchWords()
         -- Rounding can wake this a hair before the word ends: never a timer of no time.
         self.wordTimer = Addon:ScheduleTimer(Wake, math.max(0.01, ends - self:GetElapsed()))
     end
+    if quiet then return end
+    self.firingWords = true
     if wasAt and (clip ~= was or not word) then
         Callbacks:Fire("CAPTION_WORD", was, nil, false)
-        -- A listener that paused or skipped the line has been told by the call that saw it.
-        if self.wordClip ~= clip or self.wordAt ~= word then return end
     end
     if word and (clip ~= was or word ~= wasAt) then
         Callbacks:Fire("CAPTION_WORD", clip, word, true)
+    end
+    self.firingWords = nil
+    if self.wordsAgain then
+        self.wordsAgain = nil
+        self:WatchWords()
     end
 end
 

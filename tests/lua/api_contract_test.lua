@@ -166,6 +166,7 @@ do
     local listener = Spoken:RegisterCallback("CAPTION_WORD", Listen)
     src:Enqueue(Line("a"))
     Expect("it fires as the voice starts, on the first word", Heard(), "a 1 true")
+    Expect("...timed by the captions, which the count above sees", captionTimers > 0, true)
     stub.Advance(1.5)
     Expect("...and as the voice reaches the next", Heard(), "a 2 true")
     Spoken:Pause()
@@ -212,9 +213,10 @@ do
     src:Enqueue(Line("f"))
     stub.Advance(1.5)
     listener = Spoken:RegisterCallback("CAPTION_WORD", Listen)
+    Expect("registered mid-line, it is not called as it registers; GetCaption has the word",
+        Heard() .. "/" .. tostring(Spoken:GetCaption().activeWord), "/2")
     stub.Advance(3)
-    Expect("registered mid-line, it follows the words from there to the end", Heard(),
-        "f 2 true, f 3 true, f 4 true, f nil false")
+    Expect("...and it follows the words from the next to the end", Heard(), "f 3 true, f 4 true, f nil false")
 
     -- A window that fades out a line before the next holds the captions on it until it lets go.
     src:Enqueue(Line("g"))
@@ -225,16 +227,32 @@ do
     Expect("captions held on a line skipped: the stop is told at once", Heard(), "g 1 true, g nil false")
     E.Transcript:Release()
     Expect("...and the next line's words once they are let go", Heard(), "h 1 true")
+    stub.Advance(2.5)
+    Heard()
+    E.Transcript:Hold()
+    Spoken:Pause()
+    Expect("held, a pause is told at once", Heard(), "h nil false")
+    Spoken:Resume()
+    stub.Advance(0.3)
+    Expect("...but the line read again is not timed from its old start while held", Heard(), "")
+    E.Transcript:Release()
+    Expect("...only from its first word once let go", Heard(), "h 1 true")
 
-    -- A listener may stop the voice from inside its own call: what it hears last is what is so.
+    -- A listener may stop the voice from inside its own call: every listener hears what follows in
+    -- order, the ones after it included, and ends on what is so.
     local pauser = Spoken:RegisterCallback("CAPTION_WORD", function(clip, _, speaking)
         if clip.key == "h" and not speaking then Spoken:Pause() end
     end)
+    local late = {}
+    local after = Spoken:RegisterCallback("CAPTION_WORD", function(clip, word, speaking)
+        late[#late + 1] = clip.key .. " " .. tostring(word) .. " " .. tostring(speaking)
+    end)
     src:Enqueue(Line("i"))
     Spoken:Skip()
-    Expect("a listener that pauses as one line stops is not told the next one speaks", Heard(),
-        "h nil false, i nil false")
+    Expect("a listener that pauses as one line stops: the next starts, then pauses, for all",
+        Heard() .. " / " .. table.concat(late, ", "), "h nil false, i 1 true, i nil false / h nil false, i 1 true, i nil false")
     Spoken:UnregisterCallback(pauser)
+    Spoken:UnregisterCallback(after)
     Spoken:Resume()
     Expect("...until it does", Heard(), "i 1 true")
     Spoken:UnregisterCallback(listener)

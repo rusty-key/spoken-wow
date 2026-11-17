@@ -172,11 +172,14 @@ without comparing text. It is nil for a line that tells none. A dungeon's story 
 is named when that area plays it too.
 
 An addon that would rather not poll `GetCaption` registers for `CAPTION_WORD`, `(clip, word,
-speaking)`. It fires as the voice reaches each word, `word` being the index in the caption's words,
-and once with `speaking` false when the voice ends, is stopped or paused. Spoken times it with one
-timer to the end of the word being read, and only while something listens. Paused, `GetCaption`
-still says `speaking` on the word the captions keep showing, while the callback says the voice
-stopped; Resume reads the line again from its first word. None of Spoken's own windows use it yet.
+speaking)`. It fires as the voice reaches a word, `word` being the index in the caption's words,
+and once with `speaking` false when the voice ends, is stopped or paused. `word` is the word being
+read, so after a slow frame it can skip ahead. Spoken times it with one timer to the end of that
+word, and only while something listens. A listener is not called as it registers; `GetCaption` has
+the word being read then. Paused, `GetCaption` still says `speaking` on the word the captions keep
+showing, while the callback says the voice stopped; Resume reads the line again from its first
+word. Spoken's own windows keep their own update while shown: typing out by letter and scrolling
+with the voice move between words, which one call a word cannot drive.
 
 ## Checks
 

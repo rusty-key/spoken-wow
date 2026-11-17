@@ -821,13 +821,14 @@ end
 -- Additive, so guard on the field: `if Spoken.GetCaption then`. The timing is the captions' own: the clip's present.timings when it
 -- brings them, an estimate otherwise, so another view marks the same word they would.
 --
--- CAPTION_WORD (clip, word, speaking) fires as the voice reaches each word of the line the captions
+-- CAPTION_WORD (clip, word, speaking) fires as the voice reaches a word of the line the captions
 -- follow, `word` its index in GetCaption's words, and once as (clip, nil, false) when that voice
--- ends, is stopped or paused, so another view can follow the words without polling. Paused,
--- GetCaption still says speaking, on the word the captions keep showing; Resume reads the line
--- again from its first word. Spoken times it only while something listens; GetCaption has the
--- word being read when a listener registers. An older Spoken never fires it, so a caller keeps its
--- own timing until the first one comes.
+-- ends, is stopped or paused, so another view can follow the words without polling. `word` is the
+-- word being read: after a slow frame it can skip ahead. Paused, GetCaption still says speaking, on
+-- the word the captions keep showing; Resume reads the line again from its first word. Spoken
+-- times it only while something listens. A listener is not called as it registers: GetCaption has
+-- the word being read then. An older Spoken never fires it, so a caller keeps its own timing until
+-- the first one comes.
 --
 -- `story` came later too: an older Spoken leaves it nil, as it is for a line that tells no story.
 
@@ -922,15 +923,16 @@ end
 --   CAPTION_WORD                (clip, word, speaking)  the voice reached a word, or stopped (Captions above)
 
 function Spoken:RegisterCallback(event, fn)
+    local first = event == "CAPTION_WORD" and not Callbacks:Has(event)
     local handle = Callbacks:Register(event, fn)
-    -- Registered while a line speaks, the words are followed from now, not from the next line.
-    if event == "CAPTION_WORD" then Transcript:WatchWords() end
+    -- The first listener starts the word timer quietly: called now, it would run before it has its
+    -- handle. A later one leaves the timer be, as a quiet start could swallow a word the others are owed.
+    if first then Transcript:WatchWords(true) end
     return handle
 end
 
 function Spoken:UnregisterCallback(handle)
     Callbacks:Unregister(handle)
-    -- The last listener gone, the word timer goes with it.
     if type(handle) == "table" and handle.event == "CAPTION_WORD" then Transcript:WatchWords() end
 end
 
