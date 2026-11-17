@@ -372,8 +372,9 @@ export async function deleteReference(voice: string, lang: Lang, by: string | nu
     `delete from "fish_reference" where "voice" = $1 and "lang" = $2`,
     [voice, lang],
   );
-  // The object stays: it is named by its bytes, and a re-cut of the same window reuses it.
-  if (!readsBlobs()) await fs.rm(referencePath(voice, lang), { force: true });
+  // The object stays: it is named by its bytes, and a re-cut of the same window reuses it. The
+  // file is only removed with a row: another team of the language may hold the same path.
+  if (rowCount && !readsBlobs()) await fs.rm(referencePath(voice, lang), { force: true });
   forgetReferences(lang);
   // Only when there was a row, so deleting nothing is not logged as a delete.
   if (rowCount) {
