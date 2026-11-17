@@ -6,9 +6,9 @@ import "server-only";
 
 import { listGrants, listTeamGrants, type GrantRow } from "@/lib/grants/store";
 import type { Lang } from "@/lib/lang";
-import { isAdmin, langsWhere, type Viewer } from "@/lib/permissions";
+import { adminsPrivileged, isAdmin, langsWhere, type Viewer } from "@/lib/permissions";
 import { memberTeams } from "@/lib/teams/acting";
-import { privilegedOf, type TeamId } from "@/lib/teams/store";
+import { orPrivileged, type TeamId } from "@/lib/teams/store";
 
 import { listInvites, type InviteRow } from "./store";
 
@@ -26,9 +26,7 @@ export async function visibleGrants(viewer: Viewer, userId: string, langs: reado
     const team = teams.get(lang);
     if (team) own.set(lang, team);
   }
-  const textLangs = langs.filter((lang) =>
-    viewer.grants.some((grant) => grant.lang === lang && grant.capability === "admin" && grant.privileged !== false),
-  );
+  const textLangs = langs.filter((lang) => adminsPrivileged(viewer, lang));
   return listTeamGrants(own, textLangs);
 }
 
@@ -42,7 +40,7 @@ export async function visibleInvites(viewer: Viewer, userId: string, langs: read
   const teams = await memberTeams(userId);
   const byTeam = new Map<TeamId, string[]>();
   for (const lang of langs) {
-    const team = teams.get(lang) ?? (await privilegedOf(lang as Lang));
+    const team = await orPrivileged(teams.get(lang), lang as Lang);
     if (team) byTeam.set(team, [...(byTeam.get(team) ?? []), lang]);
   }
   const lists = await Promise.all([...byTeam].map(([team, inTeam]) => listInvites(inTeam, team)));
@@ -57,10 +55,9 @@ export async function listingFor(
 ): Promise<Response> {
   const langs = langsWhere(viewer, "admin");
   if (langs.length === 0) return notAllowed();
-  const global = isAdmin(viewer.role);
   const [grants, invites] = await Promise.all([
-    global ? listGrants() : visibleGrants(viewer, userId, langs),
-    global ? listInvites() : visibleInvites(viewer, userId, langs),
+    visibleGrants(viewer, userId, langs),
+    visibleInvites(viewer, userId, langs),
   ]);
   return Response.json({ grants, invites, ...extra });
 }

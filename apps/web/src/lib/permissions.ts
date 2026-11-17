@@ -200,10 +200,12 @@ export function canGrant(viewer: Viewer | null, capability: Capability, lang: La
   if (!viewer) return false;
   if (viewer.role === "admin") return true;
   if (capability !== "text") return can(viewer, "admin", lang);
-  return (
-    textByTeam &&
-    viewer.grants.some((grant) => grant.lang === lang && grant.capability === "admin" && grant.privileged !== false)
-  );
+  return textByTeam && adminsPrivileged(viewer, lang);
+}
+
+/** Whether `viewer` is an admin of `lang`'s privileged team, as opposed to a second team's. */
+export function adminsPrivileged(viewer: Viewer, lang: string): boolean {
+  return viewer.grants.some((grant) => grant.lang === lang && grant.capability === "admin" && grant.privileged !== false);
 }
 
 /**

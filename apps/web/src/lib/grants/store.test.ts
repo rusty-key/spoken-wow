@@ -14,7 +14,7 @@ import { forgetLanguages, loadLanguages } from "@/lib/languages/catalogue";
 import { forgetTeams } from "@/lib/teams/store";
 import { asSystem, dropTeam, systemRows, testUser } from "@/lib/teams/testing";
 
-import { addGrants, grantsOf, listGrants, OtherTeamError, removeGrant } from "./store";
+import { addGrants, grantsOf, listGrants, listTeamGrants, OtherTeamError, removeGrant } from "./store";
 
 let grantee: Awaited<ReturnType<typeof testUser>>;
 let granter: Awaited<ReturnType<typeof testUser>>;
@@ -218,13 +218,13 @@ describe("a second team", () => {
     );
   });
 
-  it("lists only the team's own rows, and no text, when given the team", async () => {
+  it("lists only the team's own rows, and no text, for the team alone", async () => {
     await addGrants(fresh.id, lang, ["regenerate"], w.id);
     await asSystem.query(
       `insert into "language_grant" ("userId", "lang", "capability") values ($1, $2, 'edit')`,
       [v.id, lang],
     );
-    const rows = await listGrants([lang], teamB);
+    const rows = await listTeamGrants(new Map([[lang, teamB]]), []);
     expect(new Set(rows.map((row) => row.userId))).toEqual(new Set([w.id, fresh.id]));
     expect(rows.some((row) => row.capability === "text")).toBe(false);
     expect(rows.every((row) => row.teamSlug?.startsWith("grants-b-"))).toBe(true);

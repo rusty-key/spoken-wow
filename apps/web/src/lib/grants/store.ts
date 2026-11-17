@@ -101,15 +101,9 @@ export async function viewersIn(lang: Lang): Promise<Map<string, Viewer>> {
   return viewers;
 }
 
-/**
- * Every grant in the given languages, or in all of them, with who holds it. With `team`, only
- * that team's rows, and so no `text`.
- */
-export async function listGrants(langs?: string[], team?: TeamId): Promise<GrantRow[]> {
-  return selectGrants(
-    `($1::text[] is null or g."lang" = any($1::text[])) and ($2::uuid is null or g."teamId" = $2)`,
-    [langs ?? null, team ?? null],
-  );
+/** Every grant in the given languages, or in all of them, with who holds it. */
+export async function listGrants(langs?: string[]): Promise<GrantRow[]> {
+  return selectGrants(`($1::text[] is null or g."lang" = any($1::text[]))`, [langs ?? null]);
 }
 
 /** The team rows of each language in `teams` that are its team's, and the `text` rows of `textLangs`. */

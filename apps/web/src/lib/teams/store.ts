@@ -87,6 +87,14 @@ export async function privilegedOf(lang: Lang): Promise<TeamId | undefined> {
   return (await privilegedOwners([lang])).get(lang);
 }
 
+/**
+ * `team`, else `lang`'s privileged team: the team of somebody in no team of the language, or of
+ * an invite that names none.
+ */
+export async function orPrivileged(team: TeamId | null | undefined, lang: Lang): Promise<TeamId | undefined> {
+  return team ?? (await privilegedOf(lang));
+}
+
 /** Whether the acting person works on `lang` in a team other than its privileged one. */
 export async function actsAsSecondTeam(lang: Lang): Promise<boolean> {
   return (await ownerOf(lang)) !== (await privilegedOf(lang));

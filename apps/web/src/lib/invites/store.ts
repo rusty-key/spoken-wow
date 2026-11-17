@@ -18,7 +18,7 @@ import { capabilityLabel, isCapability, type Capability } from "@/lib/permission
 import { hashSecret as hashOf, mintSecret as newToken } from "@/lib/secret-token";
 import { SITE } from "@/lib/site";
 import { teamIn } from "@/lib/teams/acting";
-import { privilegedOf, type TeamId } from "@/lib/teams/store";
+import { orPrivileged, type TeamId } from "@/lib/teams/store";
 
 export const INVITE_DAYS = 14;
 export const INVITES_PER_DAY = 20;
@@ -137,7 +137,7 @@ function toInvite(row: Row): InviteRow {
 
 /** The team `invite` joins, and so files its acts under; undefined for a language nobody owns. */
 export async function inviteTeam(invite: { lang: string; teamId: TeamId | null }): Promise<TeamId | undefined> {
-  return invite.teamId ?? (await privilegedOf(invite.lang as Lang));
+  return orPrivileged(invite.teamId, invite.lang as Lang);
 }
 
 async function openRow(client: Pick<PoolClient, "query">, id: string, lock = false): Promise<InviteRow | null> {
