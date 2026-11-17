@@ -18,8 +18,12 @@ import { momentLines, rewriteMoment } from "@/lib/quests/moment-rewrite";
 import { OverrideError, validateRewrite } from "@/lib/quests/override";
 import { clearOverride, writeOverride } from "@/lib/quests/overrides";
 import { QuestTextConflict } from "@/lib/quests/text";
+import { actsAsSecondTeam } from "@/lib/teams/store";
 
 export const dynamic = "force-dynamic";
+
+const SECOND_TEAM_SPLIT =
+  "A second team cannot split a line by the reader's gender: that changes the original text every team voices. Ask the language's text maintainers.";
 
 export async function PUT(request: Request) {
   const { session, lang, denied } = await requireIn(request, "regenerate");
@@ -44,6 +48,8 @@ export async function PUT(request: Request) {
   }
 
   if (branchesOnPlayerGender(draft.text)) {
+    // A split rewrites the moment's original lines, which every team voices.
+    if (await actsAsSecondTeam(lang)) return Response.json({ error: SECOND_TEAM_SPLIT }, { status: 409 });
     const variant = line.variant ?? 0;
     try {
       const rows = await momentLines(lang, line.lineId, variant);

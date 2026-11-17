@@ -10,7 +10,9 @@ import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } 
 import { closeDb } from "@/lib/db";
 import type { CorpusLine } from "@/lib/corpus";
 import type { Grant } from "@/lib/permissions";
-import { asSystem } from "@/lib/teams/testing";
+import { asActor } from "@/lib/teams/acting";
+import { forgetTeams } from "@/lib/teams/store";
+import { asSystem, dropTeam, systemRows } from "@/lib/teams/testing";
 
 const viewer = vi.hoisted(() => ({ grants: [] as Grant[] }));
 const USER = vi.hoisted(() => `test-override-${Math.random().toString(36).slice(2, 10)}`);
@@ -108,5 +110,43 @@ describe("/api/quests/lines/override", () => {
     expect((await remove("deDE")).status).toBe(200);
     expect((await readOverrides("deDE")).has(FILE)).toBe(false);
     expect((await readOverrides("enUS")).get(FILE)?.text).toBe("In English.");
+  });
+
+  describe("for a second team's member", () => {
+    let team: string;
+
+    beforeEach(async () => {
+      const [row] = await systemRows<{ id: string }>(`select new_team('override-second', 'override-second') as "id"`);
+      team = row.id;
+      await asSystem.query(`insert into "team_language" ("teamId", "lang", "privileged") values ($1, 'deDE', false)`, [team]);
+      await asSystem.query(
+        `insert into "team_member" ("teamId", "userId", "lang", "capability") values ($1, $2, 'deDE', 'regenerate')`,
+        [team, USER],
+      );
+      forgetTeams();
+    });
+
+    afterEach(async () => {
+      await asSystem.query(`delete from "activity" where "teamId" = $1`, [team]);
+      await asSystem.query(`delete from "line_override" where "teamId" = $1`, [team]);
+      await dropTeam(team);
+      forgetTeams();
+    });
+
+    it("refuses a gender split and leaves the line alone", async () => {
+      const response = await asActor(USER, () => put("deDE", "Well met, $Glad:lass;."));
+      expect(response.status).toBe(409);
+      expect((await response.json()).error).toBe(
+        "A second team cannot split a line by the reader's gender: that changes the original text every team voices. Ask the language's text maintainers.",
+      );
+      const { rows } = await asSystem.query(`select 1 from "line_override" where "file" = $1`, [FILE]);
+      expect(rows).toEqual([]);
+    });
+
+    it("writes a plain override into its own team's layer", async () => {
+      expect((await asActor(USER, () => put("deDE", "Gut gemacht."))).status).toBe(200);
+      const { rows } = await asSystem.query(`select "teamId", "text" from "line_override" where "file" = $1`, [FILE]);
+      expect(rows).toEqual([{ teamId: team, text: "Gut gemacht." }]);
+    });
   });
 });

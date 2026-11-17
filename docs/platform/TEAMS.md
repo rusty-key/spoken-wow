@@ -86,6 +86,8 @@ exactly this, so it stays a site-level grant.
   place names (`entity_name`).
 - Triage contributions and corrections from players (`contribution*`, `lib/contributions/*`).
 - Receive text reports (see *Contributions and reports*).
+- Independent of team membership: a maintainer sees the text queue whatever team they work in, and
+  text reports and contributions follow the `text` grant.
 - Appointed by site owners only. A team admin cannot appoint one, and `admin` does not imply this
   role: migration 0092 appointed everyone who held `admin`, so nobody lost anything, and a new team
   admin edits original text only once a site owner appoints them.
@@ -95,8 +97,9 @@ exactly this, so it stays a site-level grant.
 ### Audio team members
 
 Roles inside a team, per language: `regenerate`, `configure`, `ignore`, `record`, `admin`, and a
-team-level `edit` that covers the team's text overrides, audio reports and missing audio
-(definitions today in `apps/web/src/lib/permissions.ts`).
+team-level `edit` that covers the team's audio reports and missing audio
+(definitions today in `apps/web/src/lib/permissions.ts`). Overrides are written under `regenerate`
+in every team, and the original text only under `text`.
 
 - A team admin adds members and grants any team role within the team's languages, `admin` included.
   Today only a global admin may grant `configure`, `ignore`, `record` and `admin` (`canGrant`); that
@@ -200,9 +203,8 @@ In phase 1 there is one team per language, so the explorer shows what it shows t
   with `set_config(..., true)` (transaction-local). Requests do not run in a transaction today, and
   a pooled connection must never carry one team's setting into another's request. `lib/db.ts`
   (`db()`, `query()`, `inTransaction`) is where this lives.
-- The team for a request: the team the user is working in. In phase 1 that is the team voicing the
-  page's language, so no switcher is needed; a header switcher appears only for someone in two teams
-  that share a language.
+- The team for a request: the person's team in the language, else the language's privileged team.
+  One person works in one team per language, so no switcher is needed.
 - The queue worker sets the team from the job it runs. Jobs, batches and pauses carry the team.
 - The public cross-team read of live takes and their text goes through a narrow path (a view or
   security-definer function returning only live rows), not by loosening the per-team policies.
@@ -222,7 +224,8 @@ In phase 1 there is one team per language, so the explorer shows what it shows t
 - Each team has its own roster and assignments.
 - Clone names stay as today: `slot` for English, `slot@deDE` otherwise (`lib/voices/clone-name.ts`).
   The generator finds a clone by that name in the caller's own provider account. A clash would need
-  one person in two teams voicing the same language, which cannot happen in phase 1.
+  one person in two teams voicing the same language, which cannot happen while one person works in
+  one team per language.
 
 ## Releases
 
@@ -296,8 +299,10 @@ run and cancels it for a newer one, so a press waiting behind a manual build can
   their names. Non-English edits made before the migration are already in the original text and
   stay there; `line_override` rows move into the English team's layer.
 - A handover gives the receiving team a copy of the old team's roster and settings if it has none.
-  Only a second team in the same language (phase 2) starts empty: original text, a roster with no
-  voices assigned, no settings or lexicon. *(My call.)*
+  A second team in the same language starts as any new team does: it inherits the original text and
+  never the other team's takes or text overrides, and starts from English's roster and settings as a
+  new language does, or from a copy of the privileged team's settings, as the site owner chooses at
+  approval. *(User.)*
 
 ## Phase 2: a second team in one language
 
@@ -313,7 +318,8 @@ Designed now so phase 1 does not paint it into a corner; built when the first su
   if one entry fails that check, so team-aware Managers read a versioned index (for example
   `index-v2.json`) that carries every team's packs, while `index.json` keeps only the ids older
   Managers accept. Every release writes both.
-- **Clone names** gain the team slug for teams other than the privileged one.
+- **Clone names** keep their shape while one person works in one team per language; they gain the
+  team slug only if that rule is ever lifted.
 - **Player side.**
   - Every installed pack registers with Spoken along with its team and language; Settings lists them.
   - Per language and per section (quests, places, readables, bosses), the player marks one pack

@@ -1,6 +1,6 @@
 # Self-serve teams
 
-Design, 2026-11-12. Requests and approval are built (plan 2) for new and unmaintained languages; the second team for a maintained one is plan 5. Builds on [`TEAMS.md`](TEAMS.md) phase 1.
+Design, 2026-11-12. Requests and approval are built (plan 2) for new and unmaintained languages; the second team for a maintained one is plan 5a, with the text layer for every source left to 5b and the Explorer's team picker to 5c. Builds on [`TEAMS.md`](TEAMS.md) phase 1.
 
 ## Why
 
@@ -139,7 +139,7 @@ the ten client locales.
   string type. *(My call.)*
 - **Tokens that generate.** A token gains a separate opt-in `generate` scope, beside `read` and
   `write`. Existing tokens never gain spending power. A `generate` token works while its owner
-  holds `regenerate` in its language; text reads and writes still need `text`. Each person creates
+  holds `regenerate` in its language; text reads and writes need `text`, and override writes need `regenerate`. Each person creates
   their own tokens; an admin does not issue tokens for members. *(My call.)*
 
 ## Second team in a language
@@ -152,8 +152,26 @@ site. The rest of phase 2 is distribution and stays out.
 - **Text layer.** The team cannot edit the original. Per-team overrides generalise `line_override`
   from quest lines to every source. The text a team voices and shows is its override where present,
   else the original, and a take's staleness is judged against that. The text API's writes from a
-  non-text-maintainer team go to its override layer. *(My call: without this the team cannot change
-  a word, and TEAMS.md already designs it.)*
+  non-text-maintainer team go to its override layer, under `regenerate`. *(My call: without this the
+  team cannot change a word, and TEAMS.md already designs it.)*
+- **One team per person per language.** A person works on a language in one team only. A deferred
+  trigger on `team_member` enforces it, and the request, approval, grant and invite paths refuse
+  it first with a message. *(User.)*
+- **The start.** A second team is made only by approval. It inherits the original text; it never
+  gets the other team's takes or text overrides. The site owner chooses at approval whether its
+  settings are a copy of the privileged team's or fresh, fresh being the default. A copy brings
+  settings only, never voice material. *(User.)*
+- **Text maintainers** are independent of team membership: text reports and contributions follow
+  the `text` grant, whatever team the maintainer works in. *(User.)*
+- **A second team's admin** sees only their own team's members, invites and grants. Its activity
+  is filed under the second team.
+- **Tokens.** Only `text` writes the original text, in any language. A second team's token reads
+  its language's original text and writes its team's overrides when its owner holds `regenerate`,
+  and never writes the original (plan 5b). A token route opts in to second teams, and one not yet
+  converted answers 403 to a second team's token. *(User.)*
+- **Releases and gender splits.** A second team cannot release yet, and cannot split a line by the
+  reader's gender, since that rewrites the original every team voices. A plain override is written
+  into its own team's layer.
 - **Explorer** gets a team picker per language, so either team's takes can be viewed.
 - Contributions and text reports keep going to the text maintainers.
 

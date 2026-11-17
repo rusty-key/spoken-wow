@@ -563,6 +563,20 @@ spare first. Before deploying again:
 psql "$PROD_DATABASE_URL" -c 'alter table line_override drop constraint line_override_team_file'
 ```
 
+### A second team in a language
+
+Migration 0113 enforces one team per person per language with a deferred trigger, and ships with
+the code that makes a second team.
+
+1. **After the deploy, read the migration's notice** in the deploy log. It lists every
+   `(userId, lang)` pair that already spans two teams. The trigger does not touch existing rows, so
+   remove one side of each pair (a `team_member` row of the team the person should leave).
+
+2. **Rolling back past 0113 while a second team exists** gives its members the privileged team's
+   rows: the older release has no overlay, so it resolves every person to the language's privileged
+   team. Nothing guards it; the second team's own rows stay in the database and come back when the
+   release goes forward again.
+
 ### Promoting the first admin
 
 There is deliberately no bootstrap path through the UI. Register normally, then, on the
