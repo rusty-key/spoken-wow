@@ -16,7 +16,8 @@
  */
 import { mayIgnoreIn, requireCapability } from "@/lib/generation/authz";
 import { readablesContributions, contributionLocales } from "@/lib/contributions/store";
-import { BASE_LANG, isLang, type Lang } from "@/lib/lang";
+import { BASE_LANG, type Lang } from "@/lib/lang";
+import { knownLang } from "@/lib/languages/catalogue";
 import { isStatus, RESOLVE_MANY_MAX, type ResolveManyResult } from "@/lib/contributions/contributions";
 import { bulkAcceptable, loadBookCorpus, matchBook, type BookMatchResult } from "@/lib/contributions/book-match";
 import { resolveContributions } from "@/lib/contributions/accept";
@@ -46,9 +47,11 @@ export async function POST(request: Request) {
   const locales = await contributionLocales(ids);
   const allowed = new Map<Lang, boolean>();
   const ignorable = new Set<Lang>();
+  const langOf = new Map<string, Lang>();
   let userId: string | null = null;
   for (const locale of new Set(locales.values())) {
-    const lang = isLang(locale) ? locale : BASE_LANG;
+    const lang = (await knownLang(locale)) ?? BASE_LANG;
+    langOf.set(locale, lang);
     if (allowed.has(lang)) continue;
     const { session, denied } = await requireCapability("text", lang);
     allowed.set(lang, !denied);
@@ -65,7 +68,7 @@ export async function POST(request: Request) {
 
   let permitted = ids.filter((id) => {
     const locale = locales.get(id);
-    return locale !== undefined && allowed.get(isLang(locale) ? locale : BASE_LANG);
+    return locale !== undefined && allowed.get(langOf.get(locale)!);
   });
   const skipped = new Map<number, string>();
   const bookMatches = new Map<number, BookMatchResult>();
@@ -87,7 +90,7 @@ export async function POST(request: Request) {
     userId,
     (id) => {
       const locale = locales.get(id);
-      return ignorable.has(locale !== undefined && isLang(locale) ? locale : BASE_LANG);
+      return locale !== undefined && ignorable.has(langOf.get(locale)!);
     },
     bookMatches,
   );

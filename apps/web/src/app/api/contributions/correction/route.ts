@@ -13,7 +13,8 @@
 import { acceptAsWording, acceptCorrection, editCorrectionText } from "@/lib/contributions/correction";
 import { contributionLocale, rewriteWaitingTexts } from "@/lib/contributions/store";
 import { requireCapability } from "@/lib/generation/authz";
-import { BASE_LANG, isLang } from "@/lib/lang";
+import { BASE_LANG } from "@/lib/lang";
+import { knownLang } from "@/lib/languages/catalogue";
 
 export const dynamic = "force-dynamic";
 
@@ -34,7 +35,7 @@ export async function POST(request: Request) {
   // The permission before the existence check, as resolve does, so a member learns nothing
   // about which ids exist.
   const locale = await contributionLocale(id);
-  const { session, denied } = await requireCapability("text", isLang(locale) ? locale : BASE_LANG);
+  const { session, denied } = await requireCapability("text", (await knownLang(locale)) ?? BASE_LANG);
   if (denied) return denied;
   if (locale === null) {
     return Response.json({ error: "unknown contribution" }, { status: 404 });
