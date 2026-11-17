@@ -12,7 +12,7 @@ import { systemRows } from "@/lib/teams/testing";
 
 import { keep, landQuarantined, storageRefusal } from "./keep";
 import { memoryBlobs, sha256Of, useArchiveForTests } from "./store";
-import { locate, QUARANTINE } from "./where";
+import { locate, QUARANTINE, useBackendForTests } from "./where";
 
 vi.mock("node:timers/promises", () => ({ setTimeout: async () => {} }));
 
@@ -87,7 +87,7 @@ describe("keep with a team bucket", () => {
     const backend = await team();
     const { SealError } = await import("./seal");
     const unopened = { ...backend.store, put: async () => { throw new SealError("SPOKEN_STORAGE_KEY is not set"); } };
-    restores.push((await import("./where")).useBackendForTests(backend.id, unopened));
+    restores.push(useBackendForTests(backend.id, unopened));
     const bytes = randomBytes(64);
     const sha256 = (await keep("takes", bytes, "audio/mpeg", path.join(dir, "seal.mp3"), "enUS"))!;
     expect(house.objects.has(`${QUARANTINE}takes/${sha256}`)).toBe(true);
@@ -132,7 +132,7 @@ describe("keep with a team bucket", () => {
     const house = ours("r2");
     const backend = await team();
     const refusing = { ...backend.store, put: async () => { throw new Error("HTTP 403 AccessDenied"); } };
-    restores.push((await import("./where")).useBackendForTests(backend.id, refusing));
+    restores.push(useBackendForTests(backend.id, refusing));
 
     const bytes = randomBytes(64);
     const sha256 = (await keep("takes", bytes, "audio/mpeg", path.join(dir, "q.mp3"), "enUS"))!;
@@ -148,7 +148,7 @@ describe("keep with a team bucket", () => {
     expect(await landQuarantined()).toBe(0);
     expect(house.objects.has(`${QUARANTINE}${key}`)).toBe(true);
 
-    restores.push((await import("./where")).useBackendForTests(backend.id, backend.store));
+    restores.push(useBackendForTests(backend.id, backend.store));
     expect(await landQuarantined()).toBeGreaterThanOrEqual(1);
     expect(backend.store.objects.get(key)?.data.equals(bytes)).toBe(true);
     expect(house.objects.has(`${QUARANTINE}${key}`)).toBe(false);

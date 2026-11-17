@@ -8,7 +8,7 @@ import "server-only";
 import { landQuarantined } from "@/lib/blobs/keep";
 import { archiveMode } from "@/lib/blobs/store";
 
-export type UpkeepTask = { name: string; run: () => Promise<unknown> };
+type UpkeepTask = { name: string; run: () => Promise<unknown> };
 
 const TASKS: UpkeepTask[] = [{ name: "land quarantined objects", run: () => landQuarantined() }];
 

@@ -21,7 +21,7 @@ import { backendStore, QUARANTINE } from "./where";
 const reason = (error: unknown) => (error instanceof Error ? error.message : String(error)).slice(0, 300);
 
 /** Health is the bucket's own to recover: a test, or a quarantined object that lands. */
-export async function markFailing(backendId: string, error: unknown): Promise<void> {
+async function markFailing(backendId: string, error: unknown): Promise<void> {
   // Our own key missing or wrong is this site's fault, not the bucket's: the team is told nothing
   // it can fix, and its work is not stopped. The object waits in the quarantine all the same.
   if (error instanceof SealError) return;
@@ -38,7 +38,7 @@ async function record(prefix: BlobPrefix, sha256: string, backendId: string, pen
   await query(
     `insert into "archive_object" ("prefix", "sha256", "backendId", "pending") values ($1, $2, $3, $4)
      on conflict ("prefix", "sha256", "backendId") do update
-        set "pending" = case when $4 then "archive_object"."pending" or "archive_object"."missingAt" is not null else false end,
+        set "pending" = $4 and ("archive_object"."pending" or "archive_object"."missingAt" is not null),
             "missingAt" = null,
             "keptAt" = now()`,
     [prefix, sha256, backendId, pending],
@@ -111,6 +111,7 @@ export async function landQuarantined(limit = 100): Promise<number> {
     [limit],
   );
   const refused = new Set<string>();
+  const healed = new Set<string>();
   let landed = 0;
   for (const row of rows) {
     if (refused.has(row.backendId)) continue;
@@ -136,14 +137,20 @@ export async function landQuarantined(limit = 100): Promise<number> {
       `update "archive_object" set "pending" = false, "missingAt" = null where "prefix" = $1 and "sha256" = $2 and "backendId" = $3`,
       [row.prefix, row.sha256, row.backendId],
     );
-    await queryIn(
-      ALL_TEAMS,
-      `update "storage_backend" set "health" = 'ok', "lastError" = null, "checkedAt" = now() where "id" = $1 and "health" = 'failing'`,
-      [row.backendId],
-    );
+    healed.add(row.backendId);
     // Only once nothing reads it from here: the row above sends every read to the team's bucket.
     await archive().delete(`${QUARANTINE}${key}`).catch((error) => console.error(`storage: could not delete the quarantined ${key}:`, error));
     landed++;
+  }
+  // A bucket that took an object works again, unless a later one of its own was refused.
+  const working = [...healed].filter((id) => !refused.has(id));
+  if (working.length > 0) {
+    await queryIn(
+      ALL_TEAMS,
+      `update "storage_backend" set "health" = 'ok', "lastError" = null, "checkedAt" = now()
+        where "id" = any($1::uuid[]) and "health" = 'failing'`,
+      [working],
+    );
   }
   return landed;
 }
