@@ -54,6 +54,10 @@ deployed=$(mktemp -d)
 pnpm --filter @spoken/brann deploy --legacy --prod "$deployed/out" > /dev/null
 mv "$deployed/out/node_modules" "$TARGET/apps/brann/node_modules"
 rm -rf "$deployed"
+# What never runs: types, source maps, TypeScript sources and docs. They are two thirds of his
+# dependencies (the Anthropic SDK ships its sources), and every release carries them to the droplet.
+find "$TARGET/apps/brann/node_modules" -type f \( -name "*.d.ts" -o -name "*.d.mts" -o -name "*.d.cts" \
+  -o -name "*.map" -o -name "*.md" -o \( -name "*.ts" -path "*/src/*" \) \) -delete
 
 # Pure Python, so this machine's version need not be the droplet's. The droplet's own package gives
 # psycopg2, which is compiled against its Python.
