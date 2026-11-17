@@ -353,5 +353,4 @@ export async function resetSkips(userId: string, source: Source, lang: Lang): Pr
     [userId, source, lang, team],
   ));
   return rowCount ?? 0;
-  return rowCount ?? 0;
 }

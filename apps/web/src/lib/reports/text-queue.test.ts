@@ -9,7 +9,12 @@ import { asActor } from "@/lib/teams/acting";
 import { forgetTeams } from "@/lib/teams/store";
 import { asSystem, dropTeam, systemRows, testUser } from "@/lib/teams/testing";
 
-import { listReports, openReportCounts, reportById, reportPlace, reportsForLine, setQueue, setStatus } from "./store";
+import { viewersIn } from "@/lib/grants/store";
+
+import {
+  listReports, openReportCounts, reportById, reportPlace, reportsForLine, resetSkips, setQueue, setStatus,
+  skippedIds, skipReports,
+} from "./store";
 
 const CAPITALS = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
 
@@ -19,6 +24,7 @@ let teamA: string;
 let teamB: string;
 let m: Awaited<ReturnType<typeof testUser>>;
 let t: Awaited<ReturnType<typeof testUser>>;
+let a: Awaited<ReturnType<typeof testUser>>;
 let textId: number;
 let audioId: number;
 
@@ -31,11 +37,11 @@ async function newTeam(name: string, privileged: boolean): Promise<string> {
   return row.id;
 }
 
-async function file(category: string, queue: string): Promise<number> {
+async function file(category: string, queue: string, team = teamA): Promise<number> {
   const [row] = await systemRows<{ id: string }>(
     `insert into "report" ("source", "lang", "lineId", "category", "body", "queue", "teamId")
      values ('quests', $1, 'q:1:accept', $2, 'x', $3, $4) returning "id"::text as "id"`,
-    [lang, category, queue, teamA],
+    [lang, category, queue, team],
   );
   return Number(row.id);
 }
@@ -45,11 +51,16 @@ beforeEach(async () => {
   lang = `xq${CAPITALS[randomInt(26)]}${CAPITALS[randomInt(26)]}` as Lang;
   m = await testUser("test-text-queue-m");
   t = await testUser("test-text-queue-t");
+  a = await testUser("test-text-queue-a");
   teamA = await newTeam("tq-a", true);
   teamB = await newTeam("tq-b", false);
   await asSystem.query(
     `insert into "team_member" ("teamId", "userId", "lang", "capability") values ($1, $2, $3, 'regenerate')`,
     [teamB, m.id, lang],
+  );
+  await asSystem.query(
+    `insert into "team_member" ("teamId", "userId", "lang", "capability") values ($1, $2, $3, 'regenerate')`,
+    [teamA, a.id, lang],
   );
   for (const user of [m, t]) {
     await asSystem.query(`insert into "language_grant" ("userId", "lang", "capability") values ($1, $2, 'edit')`, [
@@ -70,6 +81,7 @@ afterEach(async () => {
   await asSystem.query(`delete from "language_grant" where "lang" = $1`, [lang]);
   await m.cleanup();
   await t.cleanup();
+  await a.cleanup();
   forgetTeams();
 });
 
@@ -108,6 +120,37 @@ describe("a text maintainer in a second team", () => {
     const acts = await systemRows(`select "teamId" from "activity" where "kind" = 'report.passed' and "lang" = $1`, [lang]);
     expect(acts).toEqual([{ teamId: teamA }]);
     expect((await reportPlace(textId))?.teamId).toBe(teamA);
+  });
+});
+
+describe("skips by a text maintainer in a second team", () => {
+  it("puts aside, lists and resets the language's text reports only", async () => {
+    await asActor(m.id, async () => {
+      expect(await skipReports(m.id, [textId, audioId], lang, ["text", "audio"])).toBe(1);
+      expect([...(await skippedIds(m.id, lang))]).toEqual([textId]);
+      expect(await resetSkips(m.id, "quests", lang)).toBe(1);
+      expect((await skippedIds(m.id, lang)).size).toBe(0);
+    });
+  });
+});
+
+describe("a report passed between queues by the second team", () => {
+  it("moves its own audio report to text and logs it under its team", async () => {
+    const own = await file("pronunciation", "audio", teamB);
+    await asActor(m.id, async () => {
+      expect((await setQueue(own, "text", m.id, lang))?.queue).toBe("text");
+    });
+    const acts = await systemRows(`select "teamId" from "activity" where "kind" = 'report.passed' and "lang" = $1`, [lang]);
+    expect(acts).toEqual([{ teamId: teamB }]);
+  });
+});
+
+describe("who holds a grant, seen from the second team", () => {
+  it("lists its own members and the text holders, not the other team's", async () => {
+    const seen = await asActor(m.id, async () => [...(await viewersIn(lang)).keys()].sort());
+    expect(seen).toEqual([m.id, t.id].sort());
+    const privileged = [...(await viewersIn(lang)).keys()].sort();
+    expect(privileged).toEqual([a.id, m.id, t.id].sort());
   });
 });
 
