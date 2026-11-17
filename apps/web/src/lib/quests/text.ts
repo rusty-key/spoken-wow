@@ -15,8 +15,8 @@ import "server-only";
 
 import { auditDetail, type ApiAudit } from "@/lib/activity/kinds";
 import { recordActivity } from "@/lib/activity/store";
-import { query, withTeam } from "@/lib/db";
-import { textTeam } from "@/lib/teams/store";
+import { query } from "@/lib/db";
+import { withTextTeam } from "@/lib/teams/store";
 import { answersQuestMomentSql, baseLineId, momentOf, playerGenderForms } from "@/lib/contributions/naming";
 import { BASE_LANG, type Lang } from "@/lib/lang";
 import { branchesOnPlayerGender } from "@/lib/player-words";
@@ -108,8 +108,7 @@ export async function saveQuestText(args: {
   if (!text) throw new Error("the text cannot be empty");
   const moment = momentOf(args.lineId);
 
-  const team = await textTeam(args.lang);
-  return withTeam(team, async (client) => {
+  return withTextTeam(args.lang, async (client, team) => {
     // Every current row of the moment in this language, so a split can retire the others.
     const { rows: momentRows } = await client.query<Structure>(
       `select ${COLUMNS}, ${STRUCTURE} from "quest_line"
@@ -250,8 +249,7 @@ export async function restoreQuestText(
   by: string | null,
 ): Promise<QuestTextVersion> {
   refuseEnglish(lang);
-  const team = await textTeam(lang);
-  return withTeam(team, async (client) => {
+  return withTextTeam(lang, async (client, team) => {
     const { rows } = await client.query<Row>(
       `select ${COLUMNS} from "quest_line"
         where "lineId" = $1 and "variant" = $2 and "lang" = $3 and "version" = $4 for update`,
@@ -308,8 +306,7 @@ export async function retireQuestText(
   by: string | null,
 ): Promise<void> {
   refuseEnglish(lang);
-  const team = await textTeam(lang);
-  return withTeam(team, async (client) => {
+  return withTextTeam(lang, async (client, team) => {
     const { rowCount } = await client.query(
       `update "quest_line" set "isCurrent" = false
         where "lineId" = $1 and "variant" = $2 and "lang" = $3 and "version" = $4 and "isCurrent"`,

@@ -160,6 +160,15 @@ export async function textTeam(lang: Lang | null): Promise<TeamId | typeof ALL_T
   return (lang && (await privilegedOf(lang))) || ALL_TEAMS;
 }
 
+/** `work` in a transaction acting as textTeam(lang), handed the team for the activity it logs. */
+export async function withTextTeam<T>(
+  lang: Lang | null,
+  work: (client: PoolClient, team: TeamId | typeof ALL_TEAMS) => Promise<T>,
+): Promise<T> {
+  const team = await textTeam(lang);
+  return withTeam(team, (client) => work(client, team));
+}
+
 /**
  * For what every team keeps a copy of: a language not switched on yet reads English's, which
  * switching it on copies to its own team.

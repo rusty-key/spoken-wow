@@ -37,8 +37,8 @@ import { normaliseText } from "@readables-tools/lib/text.mjs";
 
 import { recordActivity } from "@/lib/activity/store";
 import { BookConflict, BookMissing, saveBookText } from "@/lib/readables/text";
-import { db, withTeam } from "@/lib/db";
-import { textTeam } from "@/lib/teams/store";
+import { db } from "@/lib/db";
+import { withTextTeam } from "@/lib/teams/store";
 import { BASE_LANG, isLang, type Lang } from "@/lib/lang";
 import { branchesOnPlayerGender } from "@/lib/player-words";
 import { momentLines, writeEnglishOriginal } from "@/lib/quests/moment-rewrite";
@@ -229,8 +229,7 @@ async function markAccepted(
   extra: Record<string, unknown> = {},
 ): Promise<CorrectionOutcome> {
   const { id } = contribution;
-  const team = await textTeam(lang);
-  return withTeam(team, async (client) => {
+  return withTextTeam(lang, async (client, team) => {
     const updated = await client.query<Contribution>(
       `update "contribution"
           set "status" = 'accepted', "resolvedBy" = $2, "updatedAt" = now()

@@ -10,8 +10,8 @@ import type { PoolClient } from "pg";
 
 import { auditDetail, type ApiAudit } from "@/lib/activity/kinds";
 import { recordActivity } from "@/lib/activity/store";
-import { query, withTeam } from "@/lib/db";
-import { textTeam } from "@/lib/teams/store";
+import { query } from "@/lib/db";
+import { withTextTeam } from "@/lib/teams/store";
 import { BASE_LANG, type Lang } from "@/lib/lang";
 
 /** A boss is named by its id as text; instances have no rename control, so no kind here. */
@@ -69,8 +69,7 @@ export async function saveName(args: {
   const name = args.name.trim();
   if (!name) throw new Error("the name cannot be empty");
 
-  const team = await textTeam(args.lang);
-  return withTeam(team, async (client) => {
+  return withTextTeam(args.lang, async (client, team) => {
     if (!args.anyLanguage) {
       const { rows: english } = await client.query(
         `select 1 from "entity_name"
@@ -161,8 +160,7 @@ export async function restoreName(
   by: string | null,
 ): Promise<void> {
   refuseEnglish(lang);
-  const team = await textTeam(lang);
-  return withTeam(team, async (client) => {
+  return withTextTeam(lang, async (client, team) => {
     // Two statements: the partial unique index is checked per row, so one statement flipping
     // both would briefly hold two current rows and be refused.
     await leaveCurrent(client, kind, entityId, lang, from);
@@ -188,8 +186,7 @@ export async function retireName(
   by: string | null,
 ): Promise<void> {
   refuseEnglish(lang);
-  const team = await textTeam(lang);
-  return withTeam(team, async (client) => {
+  return withTextTeam(lang, async (client, team) => {
     await leaveCurrent(client, kind, entityId, lang, version);
     await recordActivity(
       { team, kind: "name.retired", lang, actorId: by, subject: `${kind}:${entityId}`, detail: { version } },

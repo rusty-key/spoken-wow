@@ -13,8 +13,8 @@ import type { PoolClient } from "pg";
 
 import { auditDetail, type ApiAudit } from "@/lib/activity/kinds";
 import { recordActivity } from "@/lib/activity/store";
-import { query, withTeam } from "@/lib/db";
-import { textTeam } from "@/lib/teams/store";
+import { query } from "@/lib/db";
+import { withTextTeam } from "@/lib/teams/store";
 import type { Lang } from "@/lib/lang";
 
 /** The line id, which is also the addon's clip key. The key is frozen, so this never moves. */
@@ -106,8 +106,7 @@ export async function saveStory(args: {
   audit?: ApiAudit;
 }): Promise<StoryVersion & { wrote: boolean }> {
   const { lang, lineId } = args;
-  const team = await textTeam(lang);
-  return withTeam(team, async (client) => {
+  return withTextTeam(lang, async (client, team) => {
     const bossId = await lockBoss(client, lineId);
 
     const { rows: currentRows } = await client.query<Row>(
@@ -181,8 +180,7 @@ export async function restoreStory(
   lang: Lang,
   by: string | null,
 ): Promise<StoryVersion> {
-  const team = await textTeam(lang);
-  return withTeam(team, async (client) => {
+  return withTextTeam(lang, async (client, team) => {
     const bossId = await lockBoss(client, lineId);
 
     const { rows } = await client.query<Row>(
@@ -225,8 +223,7 @@ export async function restoreStory(
 
 /** Takes a first story back, so the boss reads as having none in the language. */
 export async function retireStory(lineId: string, version: number, lang: Lang, by: string | null): Promise<void> {
-  const team = await textTeam(lang);
-  return withTeam(team, async (client) => {
+  return withTextTeam(lang, async (client, team) => {
     const bossId = await lockBoss(client, lineId);
     const { rowCount } = await client.query(
       `update "boss_line" set "isCurrent" = false

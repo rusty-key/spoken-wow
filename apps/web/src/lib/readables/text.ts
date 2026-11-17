@@ -25,8 +25,8 @@ import "server-only";
 
 import { auditDetail, type ApiAudit } from "@/lib/activity/kinds";
 import { recordActivity } from "@/lib/activity/store";
-import { query, withTeam } from "@/lib/db";
-import { textTeam } from "@/lib/teams/store";
+import { query } from "@/lib/db";
+import { withTextTeam } from "@/lib/teams/store";
 
 import { BASE_LANG, type Lang } from "@/lib/lang";
 
@@ -91,8 +91,7 @@ export async function saveBookText(args: {
   audit?: ApiAudit;
 }): Promise<BookVersion & { wrote: boolean }> {
   const lang = args.lang ?? BASE_LANG;
-  const team = await textTeam(lang);
-  return withTeam(team, async (client) => {
+  return withTextTeam(lang, async (client, team) => {
     const { rows: currentRows } = await client.query<Row>(
       `select ${COLUMNS} from "book_line"
         where "lineId" = $1 and "lang" = $2 and "isCurrent" for update`,
@@ -203,8 +202,7 @@ export async function restoreBookText(
   lang: Lang,
   by: string | null,
 ): Promise<BookVersion> {
-  const team = await textTeam(lang);
-  return withTeam(team, async (client) => {
+  return withTextTeam(lang, async (client, team) => {
     const { rows } = await client.query<Row>(
       `select ${COLUMNS} from "book_line"
         where "lineId" = $1 and "lang" = $2 and "version" = $3 for update`,
@@ -243,8 +241,7 @@ export async function restoreBookText(
 
 /** Takes a first translation back, so the page reads as untranslated again. */
 export async function retireBookText(lineId: string, version: number, lang: Lang, by: string | null): Promise<void> {
-  const team = await textTeam(lang);
-  return withTeam(team, async (client) => {
+  return withTextTeam(lang, async (client, team) => {
     const { rowCount } = await client.query(
       `update "book_line" set "isCurrent" = false
         where "lineId" = $1 and "lang" = $2 and "version" = $3 and "isCurrent"`,
