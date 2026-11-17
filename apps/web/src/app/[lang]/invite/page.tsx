@@ -5,7 +5,8 @@ import InviteAccept, { InviteJoined } from "@/components/InviteAccept";
 import { Contained } from "@/components/Width";
 import { currentInvite } from "@/lib/invites/cookie";
 import { normalEmail } from "@/lib/invites/store";
-import { isLang, langName, localeHref } from "@/lib/lang";
+import { langName, localeHref } from "@/lib/lang";
+import { knownLang } from "@/lib/languages/catalogue";
 import { capabilityLabel } from "@/lib/permissions";
 import { currentSession } from "@/lib/session";
 
@@ -22,7 +23,7 @@ export default async function Page() {
   const session = invite?.state === "pending" || invite?.state === "accepted" ? await currentSession() : null;
 
   let body: React.ReactNode;
-  if (!invite || !isLang(invite.lang)) {
+  if (!invite || !(await knownLang(invite.lang))) {
     body = <p>This invite link is not valid any more. {ADVICE}</p>;
   } else if (invite.state === "expired") {
     body = <p>This invite has expired. {ADVICE}</p>;

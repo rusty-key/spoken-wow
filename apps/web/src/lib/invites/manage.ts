@@ -8,7 +8,7 @@ import { headers } from "next/headers";
 
 import { auth } from "@/lib/auth";
 import { refusedGrant, viewerOf } from "@/lib/grants/store";
-import { isLang } from "@/lib/lang";
+import { knownLang } from "@/lib/languages/catalogue";
 import type { Viewer } from "@/lib/permissions";
 import { isUuid } from "@/lib/uuid";
 
@@ -27,7 +27,7 @@ export async function manageableInvite(id: string): Promise<Manageable | Respons
   const viewer = await viewerOf(session);
   if (!session || !viewer) return notAllowed();
   const invite = isUuid(id) ? await openInvite(id) : null;
-  if (!invite || !isLang(invite.lang)) return noSuchInvite();
+  if (!invite || !(await knownLang(invite.lang))) return noSuchInvite();
   if (await refusedGrant(viewer, invite.capabilities, invite.lang)) return notAllowed();
   return { session, viewer };
 }

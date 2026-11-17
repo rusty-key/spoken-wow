@@ -12,7 +12,8 @@ import { recordActivity } from "@/lib/activity/store";
 import { actAs, ALL_TEAMS, db, inTransaction, query } from "@/lib/db";
 import { sendInviteEmail } from "@/lib/email";
 import { addGrants, grantsOf, refusedGrant, viewerById } from "@/lib/grants/store";
-import { isLang, langName, type Lang } from "@/lib/lang";
+import { langName, type Lang } from "@/lib/lang";
+import { knownLang } from "@/lib/languages/catalogue";
 import { capabilityLabel, isCapability, type Capability } from "@/lib/permissions";
 import { hashSecret as hashOf, mintSecret as newToken } from "@/lib/secret-token";
 import { SITE } from "@/lib/site";
@@ -344,7 +345,7 @@ export async function acceptInvite(
   const { lang, capabilities } = invite;
   const inviterName = invite.invitedByName;
   const viewer = await viewerById(invite.invitedById);
-  const refused = isLang(lang) ? await refusedGrant(viewer, capabilities, lang) : capabilities[0];
+  const refused = (await knownLang(lang)) ? await refusedGrant(viewer, capabilities, lang) : capabilities[0];
   if (refused) return { ok: false, reason: "inviter-cannot-grant", inviterName, capability: refused };
 
   const claim = async (client: ClientBase) => {
