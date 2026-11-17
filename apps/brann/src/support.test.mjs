@@ -3,6 +3,7 @@ import { test } from "node:test";
 
 import {
   MAX_REPLY,
+  badSecrets,
   beingHelped,
   contextFor,
   dailyBudget,
@@ -152,4 +153,9 @@ test("perPlayer allows each player the limit in the window, then frees it", () =
   assert.equal(allow("ana", 20), false);
   assert.equal(allow("bo", 20), true);
   assert.equal(allow("ana", 1001), true);
+});
+
+test("badSecrets names a key with an ellipsis or a space, and leaves whole and unset ones alone", () => {
+  const env = { A: "sk-ant-api03-abc_DEF-123", B: "sk-ant-…xyz", C: "tok en", D: "line\r", E: "" };
+  assert.deepEqual(badSecrets(env, ["A", "B", "C", "D", "E", "F"]), ["B", "C", "D"]);
 });
