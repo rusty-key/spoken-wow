@@ -53,6 +53,7 @@ vi.mock("@/lib/activity/store", () => ({ recordActivity: mocks.recordActivity })
 vi.mock("./authz", () => ({ requireApiKey: mocks.requireApiKey }));
 vi.mock("./boot", () => ({ queueWorker: () => null }));
 vi.mock("./calibration", () => ({ observedRate: mocks.observedRate, observedFishRate: mocks.observedFishRate }));
+import { audioRelPath } from "@/lib/audio";
 import type { CorpusLine } from "@/lib/corpus";
 
 import {
@@ -167,28 +168,28 @@ describe("estimatePlan", () => {
   });
 });
 
-describe("planQuestsByItems", () => {
-  const quest = (lineId: string, extra: Record<string, unknown> = {}) =>
-    ({
-      lineId,
-      source: "accept",
-      questId: 5,
-      npcName: "n",
-      npcType: "creature",
-      race: "orc",
-      gender: "m",
-      flavor: null,
-      voice: "orc-male",
-      playerGender: null,
-      text: "Hello there, traveller.",
-      originalText: "Hello there, traveller.",
-      fileName: lineId.replace(/\W/g, "-"),
-      generatable: true,
-      skipReason: null,
-      lang: "enUS",
-      ...extra,
-    }) as unknown as CorpusLine;
+const quest = (lineId: string, extra: Record<string, unknown> = {}) =>
+  ({
+    lineId,
+    source: "accept",
+    questId: 5,
+    npcName: "n",
+    npcType: "creature",
+    race: "orc",
+    gender: "m",
+    flavor: null,
+    voice: "orc-male",
+    playerGender: null,
+    text: "Hello there, traveller.",
+    originalText: "Hello there, traveller.",
+    fileName: lineId.replace(/\W/g, "-"),
+    generatable: true,
+    skipReason: null,
+    lang: "enUS",
+    ...extra,
+  }) as unknown as CorpusLine;
 
+describe("planQuestsByItems", () => {
   it("counts an ignored line as hidden, and nothing else", async () => {
     catalogues.corpusLines = [quest("q:5:accept"), quest("q:6:accept")];
     catalogues.ignores = new Map([["q:6:accept", {}]]);
@@ -236,6 +237,23 @@ describe("planQuestsByFilters", () => {
     catalogues.realFilters = true;
     await planQuestsByFilters("dirty=1", "enUS", "elevenlabs");
     expect(searchContext).toHaveBeenCalledWith(false, true, "enUS", true, false);
+  });
+
+  it("dirty=1 selects a dirty file's job and leaves out a clean one", async () => {
+    const dirty = quest("q:5:accept");
+    catalogues.corpusLines = [dirty, quest("q:6:accept")];
+    catalogues.realFilters = true;
+    // As searchContext does: the dirty set exists only when it is asked for.
+    searchContext.mockImplementationOnce(async (_outdated, asked) => ({
+      voiced: new Set<string>(),
+      context: {
+        overrides: new Map(),
+        ignores: catalogues.ignores,
+        ...(asked ? { dirty: new Set([audioRelPath(dirty)]) } : {}),
+      },
+    }));
+    const result = await planQuestsByFilters("dirty=1", "enUS", "elevenlabs");
+    expect(result.jobs.map((one) => one.file)).toEqual([audioRelPath(dirty)]);
   });
 
   it("does not read it otherwise", async () => {

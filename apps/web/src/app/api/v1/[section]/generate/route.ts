@@ -1,7 +1,4 @@
-/**
- * Queue regeneration through a token: the same derivation and limits as the site's Regenerate
- * button (lib/generation/batch-plan.ts), on the token owner's own key.
- */
+/** Queue regeneration through a token, on the token owner's own key. */
 import { bodyOf, objectOf } from "@/lib/api-body";
 import { readApiKey } from "@/lib/api-key";
 import { requireSpeaker } from "@/lib/generation/authz";
@@ -120,7 +117,8 @@ export async function POST(request: Request, { params }: { params: Promise<{ sec
     });
   }
 
-  // The provider is fixed here, as the button fixes it, and the owner's own key is required.
+  // Before planning: the plan depends on the provider (a pinned voice goes to fish.audio only
+  // when it is not already the provider), and a missing key refuses before any planning work.
   const { provider, denied: noKey } = await requireSpeaker(userId, lang);
   if (noKey) return noKey;
 
