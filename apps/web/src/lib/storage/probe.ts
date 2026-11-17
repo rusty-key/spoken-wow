@@ -10,7 +10,7 @@ import { randomBytes } from "node:crypto";
 
 import type { BlobStore } from "@/lib/blobs/store";
 
-export type ProbeStep = { name: string; ok: boolean; detail?: string };
+type ProbeStep = { name: string; ok: boolean; detail?: string };
 
 export type ProbeResult = {
   ok: boolean;

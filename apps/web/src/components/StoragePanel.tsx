@@ -31,7 +31,7 @@ export default function StoragePanel({ lang, initial }: { lang: Lang; initial: S
   const [view, setView] = useState(initial);
   const [tests, setTests] = useState<Record<string, ProbeResult>>({});
   const [error, setError] = useState<string | null>(null);
-  const [busy, setBusy] = useState<string | null>(null);
+  const [busy, setBusy] = useState<{ id: string; action: string } | null>(null);
   const writing = view.backends.find((backend) => backend.writing) ?? null;
 
   const replace = (backend: BackendView) =>
@@ -43,7 +43,7 @@ export default function StoragePanel({ lang, initial }: { lang: Lang; initial: S
     });
 
   const act = async (id: string, init: RequestInit, label: string) => {
-    setBusy(`${id}:${label}`);
+    setBusy({ id, action: label });
     setError(null);
     const answer = await call(`/api/storage/${id}?lang=${lang}`, init);
     setBusy(null);
@@ -83,7 +83,7 @@ export default function StoragePanel({ lang, initial }: { lang: Lang; initial: S
           key={backend.id}
           backend={backend}
           test={tests[backend.id]}
-          busy={busy?.startsWith(`${backend.id}:`) ? busy.slice(backend.id.length + 1) : null}
+          busy={busy?.id === backend.id ? busy.action : null}
           canWrite={view.archiveIsBucket}
           onAction={(action) => void post(backend.id, action)}
           onRemove={() => void act(backend.id, { method: "DELETE" }, "remove")}

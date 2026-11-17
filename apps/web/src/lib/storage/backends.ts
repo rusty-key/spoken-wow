@@ -146,10 +146,13 @@ const VIEW = `
   select b."id", b."label", b."provider", b."endpoint", b."region", b."bucket", b."pathStyle", b."publicUrl",
          b."accessKeyId", b."conditionalPut", b."writing", b."health", b."checkedAt", b."lastError",
          b."createdAt", b."retiredAt",
-         (select count(*)::int from "archive_object" o where o."backendId" = b."id" and not o."pending") as "objects",
-         (select count(*)::int from "archive_object" o where o."backendId" = b."id" and o."pending") as "pending",
-         (select count(*)::int from "archive_object" o where o."backendId" = b."id" and o."missingAt" is not null) as "missing"
+         c."objects", c."pending", c."missing"
     from "storage_backend" b
+   cross join lateral (
+     select count(*) filter (where not o."pending")::int as "objects",
+            count(*) filter (where o."pending")::int as "pending",
+            count(*) filter (where o."missingAt" is not null)::int as "missing"
+       from "archive_object" o where o."backendId" = b."id") c
    where ${TEAM_ROWS}`;
 
 type ViewRow = Omit<BackendView, "checkedAt" | "createdAt" | "retiredAt"> & {
@@ -178,10 +181,12 @@ export async function backendView(team: TeamId, id: string): Promise<BackendView
   return toView(view);
 }
 
-async function rowOf(team: TeamId, id: string): Promise<BackendRow & { retiredAt: Date | null }> {
+type Row = BackendRow & { retiredAt: Date | null; health: BackendView["health"] };
+
+async function rowOf(team: TeamId, id: string): Promise<Row> {
   const [row] = await withTeam(team, async (client) =>
-    (await client.query<BackendRow & { retiredAt: Date | null }>(
-      `select ${BACKEND_COLUMNS}, "retiredAt" from "storage_backend" where "id" = $1 and ${TEAM_ROWS}`,
+    (await client.query<Row>(
+      `select ${BACKEND_COLUMNS}, "retiredAt", "health" from "storage_backend" where "id" = $1 and ${TEAM_ROWS}`,
       [id],
     )).rows,
   );
@@ -281,10 +286,7 @@ export async function setWriting(team: TeamId, id: string | null): Promise<void>
     if (!readsBlobs()) throw new StorageError("The site's archive is not a bucket yet (SPOKEN_ARCHIVE_STORE=r2), so a team's bucket cannot be switched on.", 409);
     const row = await rowOf(team, id);
     if (row.retiredAt) throw new StorageError("A retired bucket takes no new objects.", 409);
-    const [{ health }] = await withTeam(team, async (client) =>
-      (await client.query<{ health: string }>(`select "health" from "storage_backend" where "id" = $1 and ${TEAM_ROWS}`, [id])).rows,
-    );
-    if (health !== "ok") throw new StorageError("Test the bucket first: only one that passed takes new objects.", 409);
+    if (row.health !== "ok") throw new StorageError("Test the bucket first: only one that passed takes new objects.", 409);
   }
   await withTeam(team, async (client) => {
     await client.query(`update "storage_backend" set "writing" = false where "writing" and "id" is distinct from $1 and ${TEAM_ROWS}`, [id]);

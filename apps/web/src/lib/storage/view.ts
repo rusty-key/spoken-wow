@@ -1,12 +1,12 @@
-/** What the storage page shows, and how its routes answer a refusal. */
+/** What the storage page shows. */
 import "server-only";
 
 import { readsBlobs } from "@/lib/blobs/store";
 import { query } from "@/lib/db";
 import type { Lang } from "@/lib/lang";
-import { NoTeamError, teamOf } from "@/lib/teams/store";
+import { teamOf } from "@/lib/teams/store";
 
-import { listBackends, PROVIDERS, StorageError, type BackendView, type Provider } from "./backends";
+import { listBackends, PROVIDERS, type BackendView, type Provider } from "./backends";
 
 export type StorageView = {
   team: { id: string; name: string; langs: Lang[] };
@@ -32,10 +32,4 @@ export async function storageView(lang: Lang): Promise<StorageView> {
     archiveIsBucket: readsBlobs(),
     canSeal: Boolean(process.env.SPOKEN_STORAGE_KEY),
   };
-}
-
-export function refusal(error: unknown): Response {
-  if (error instanceof StorageError) return Response.json({ error: error.message }, { status: error.status });
-  if (error instanceof NoTeamError) return Response.json({ error: `${error.lang} has no team.` }, { status: 400 });
-  throw error;
 }
