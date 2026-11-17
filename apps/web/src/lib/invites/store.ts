@@ -46,8 +46,13 @@ export type InviteLookup = InviteRow & {
 };
 
 export class InviteExistsError extends Error {
-  constructor() {
-    super("That address is already invited; resend or revoke the invite.");
+  /** `elsewhere`: the open invite joins another team, whose admin alone can resend or revoke it. */
+  constructor(elsewhere = false) {
+    super(
+      elsewhere
+        ? "That address is already invited to another team in this language."
+        : "That address is already invited; resend or revoke the invite.",
+    );
     this.name = "InviteExistsError";
   }
 }
@@ -198,9 +203,23 @@ export async function createInvite(args: {
       return { invite, token };
     });
   } catch (error) {
-    if ((error as { code?: string }).code === "23505") throw new InviteExistsError();
+    if ((error as { code?: string }).code === "23505") {
+      throw new InviteExistsError(await invitedElsewhere(args.lang, args.email, args.team));
+    }
     throw error;
   }
+}
+
+/** Whether the open invite of `email` in `lang` joins a team other than `team` (null: the privileged one). */
+async function invitedElsewhere(lang: Lang, email: string, team: TeamId | null): Promise<boolean> {
+  const rows = await query<{ elsewhere: boolean }>(
+    `select coalesce(i."joinTeamId", team_of_lang(i."lang")) is distinct from coalesce($3::uuid, team_of_lang(i."lang"))
+              as "elsewhere"
+       from "invite" i
+      where i."lang" = $1 and i."email" = $2 and ${OPEN}`,
+    [lang, email, team],
+  );
+  return rows.some((row) => row.elsewhere);
 }
 
 /**

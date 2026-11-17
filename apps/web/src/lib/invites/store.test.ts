@@ -232,6 +232,17 @@ describe("an invite in a second team", () => {
     ]);
   });
 
+  it("tells another team's admin the address is invited to another team, not to resend or revoke", async () => {
+    const to = `taken-${email()}`;
+    await createInvite(args({ email: to, lang, invitedBy: adminA!.id }));
+    await expect(createInvite(args({ email: to, lang, invitedBy: adminB!.id, team: teamB! }))).rejects.toThrow(
+      "That address is already invited to another team in this language.",
+    );
+    await expect(createInvite(args({ email: to, lang, invitedBy: adminA!.id }))).rejects.toThrow(
+      "That address is already invited; resend or revoke the invite.",
+    );
+  });
+
   it("is revoked by a grant in its own team only, and logged there", async () => {
     const to = `granted-${email()}`;
     const { invite: ofB } = await createInvite(args({ email: to, lang, invitedBy: adminB!.id, team: teamB! }));
