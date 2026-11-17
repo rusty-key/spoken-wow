@@ -22,10 +22,17 @@ const NONE: Teams = new Map();
 
 const scope = new AsyncLocalStorage<Teams>();
 
-/** Each language `userId` works on, and the team they work on it in. */
+/**
+ * Each language `userId` works on, and the team they work on it in. Rows of a team that holds
+ * the language privileged sort last, so a person in two teams of one language (data from before
+ * the one-team rule) acts as the privileged one.
+ */
 export async function memberTeams(userId: string, client?: Pick<ClientBase, "query">): Promise<Map<string, TeamId>> {
   const { rows } = await (client ?? db()).query<{ lang: string; teamId: TeamId }>(
-    `select distinct "lang", "teamId" from "team_member" where "userId" = $1`,
+    `select m."lang", m."teamId" from "team_member" m
+       left join "team_language" tl on tl."teamId" = m."teamId" and tl."lang" = m."lang"
+      where m."userId" = $1
+      order by tl."privileged" nulls first`,
     [userId],
   );
   return new Map(rows.map((row) => [row.lang, row.teamId]));

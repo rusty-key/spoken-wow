@@ -248,12 +248,20 @@ function writeAs<T>(
   return place.queue === "text" ? withTeam(place.teamId, work) : asTeamOf(lang, work);
 }
 
+/**
+ * Added to a write's where clause: a text report written as its own team must still be a text
+ * report when the write lands, or a concurrent pass to audio would let it change an audio one.
+ */
+function stillText(place: { queue: Queue }): string {
+  return place.queue === "text" ? ` and "queue" = 'text'` : "";
+}
+
 /** `lang` is the report's. A report already in `queue` is left unlogged. */
 export async function setQueue(id: number, queue: Queue, actorId: string, lang: Lang): Promise<Report | null> {
   const place = await reportPlace(id);
   if (!place) return null;
   const { rows } = await writeAs(place, lang, (client) => client.query<Report>(
-    `update "report" set "queue" = $2 where "id" = $1 and "queue" <> $2 returning ${COLUMNS}`,
+    `update "report" set "queue" = $2 where "id" = $1 and "queue" <> $2${stillText(place)} returning ${COLUMNS}`,
     [id, queue],
   ));
   const report = rows[0];
@@ -286,7 +294,7 @@ export async function setStatus(
         set "status" = $2,
             "resolvedAt" = case when $2 = 'open' then null else now() end,
             "resolvedBy" = case when $2 = 'open' then null else $3 end
-      where "id" = $1
+      where "id" = $1${stillText(place)}
       returning ${COLUMNS}, "lang"`,
     [id, status, userId],
   ));

@@ -125,7 +125,9 @@ export async function createTeamWithLangs(
     try {
       await addGrants(adminId, lang, ["admin"], actorId, { team: id });
     } catch (error) {
-      if (error instanceof OtherTeamError) throw new TeamError(error.message, 409);
+      if (error instanceof OtherTeamError) {
+        throw new TeamError(`moved ${moved.join(", ")}; ${error.message}`, 409);
+      }
       throw error;
     }
   }

@@ -24,7 +24,7 @@ import {
 import { knownLang } from "@/lib/languages/catalogue";
 import { isAdmin, isCapability, removesOwnAdmin, type Viewer } from "@/lib/permissions";
 import { teamIn } from "@/lib/teams/acting";
-import { teamOrPrivileged } from "@/lib/teams/store";
+import { privilegedOf, teamOrPrivileged } from "@/lib/teams/store";
 
 export const dynamic = "force-dynamic";
 
@@ -67,8 +67,8 @@ export async function PUT(request: Request) {
   // a translator gives somebody when asking to be let in.
   const user = await userByEmail(address);
   if (user) {
-    // A site owner works in no team, even one who is a member of a team: the person's own team,
-    // if any, is where the grant goes, else the privileged team.
+    // A site owner's grant lands in the target person's team, else the privileged team, whatever
+    // team the site owner is in.
     const team = isAdmin(who.viewer.role) ? await teamOrPrivileged(user.id, lang) : undefined;
     try {
       await addGrants(user.id, lang, capabilities, who.userId, {
@@ -83,14 +83,17 @@ export async function PUT(request: Request) {
   }
 
   // Nobody has registered as it: invite the address instead, into the inviter's team. A site
-  // owner's invite joins the privileged team, whatever team they are a member of.
+  // owner's invite joins the privileged team, whatever team they are in. Null also stands for
+  // the privileged team when a team admin of it invites, so the invite follows the language
+  // through a hand-over, which move_team_lang does not do for a stored team id.
+  const inviterTeam = isAdmin(who.viewer.role) ? null : await teamIn(who.userId, lang);
   try {
     await createInvite({
       email: address,
       lang,
       capabilities,
       invitedBy: who.userId,
-      team: isAdmin(who.viewer.role) ? null : await teamIn(who.userId, lang),
+      team: inviterTeam && inviterTeam !== (await privilegedOf(lang)) ? inviterTeam : null,
       limited: !isAdmin(who.viewer.role),
       deliver: emailInvite,
     });

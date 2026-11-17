@@ -79,7 +79,6 @@ export async function readIgnores(lang: Lang = BASE_LANG): Promise<Map<string, L
   // every-language ignores still hide its lines.
   const reader = await ownerOrAll(lang);
   const current = await stamp(reader);
-  // scopeKey's slot, from the owner already in hand.
   const slot = `${reader}:${lang}`;
   const hit = memo.get(slot);
   if (hit?.stamp === current) return hit.map;

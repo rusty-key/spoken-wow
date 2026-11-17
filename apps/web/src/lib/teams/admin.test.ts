@@ -5,9 +5,9 @@ import { afterAll, afterEach, beforeEach, describe, expect, it } from "vitest";
 
 import { closeDb, inTransaction, withTeam } from "@/lib/db";
 
-import { createTeam, handOver, listTeams, liveTakeCounts, renameTeam, TeamError } from "./admin";
+import { createTeam, createTeamWithLangs, handOver, listTeams, liveTakeCounts, renameTeam, TeamError } from "./admin";
 import { adoptLang, forgetTeams, teamOf } from "./store";
-import { asSystem, dropTeam, newTeamIn, runningJob, systemRows, testUser, unowned } from "./testing";
+import { asSystem, dropLang, dropTeam, newTeamIn, runningJob, systemRows, testUser, uniqueLang, unowned } from "./testing";
 
 let tag: string;
 let user: Awaited<ReturnType<typeof testUser>>;
@@ -185,5 +185,36 @@ describe("adoptLang", () => {
     });
     made.push((await systemRows<{ id: string }>(`select team_of_lang('zzZZ') as "id"`))[0].id);
     expect(team).toBe(was);
+  });
+});
+
+describe("createTeamWithLangs", () => {
+  it("says what already moved when granting the admin is refused in a later language", async () => {
+    const first = await uniqueLang();
+    const second = await uniqueLang();
+    const holder = await newTeamIn(first, true, "cwl-first");
+    const other = await newTeamIn(second, true, "cwl-second");
+    const secondary = await newTeamIn(second, false, "cwl-secondary");
+    // The admin already works on `second` in another team, so the grant there is refused.
+    await asSystem.query(`insert into "team_member" ("teamId", "userId", "lang", "capability") values ($1, $2, $3, 'edit')`, [
+      secondary, actor, second,
+    ]);
+    try {
+      await expect(
+        createTeamWithLangs(
+          { slug: `t-${tag}`, name: `Team ${tag}`, adminEmail: `${actor}@example.invalid`, langs: [first, second] },
+          actor,
+        ),
+      ).rejects.toSatisfy(
+        (error: unknown) => error instanceof TeamError && error.status === 409 && error.message.startsWith(`moved ${first}, ${second}; `),
+      );
+    } finally {
+      const [made_] = await systemRows<{ id: string }>(`select "id" from "team" where "slug" = $1`, [`t-${tag}`]);
+      await asSystem.query(`delete from "activity" where "lang" = any($1)`, [[first, second]]);
+      for (const team of [made_?.id, holder, other, secondary]) if (team) await dropTeam(team);
+      await dropLang(first);
+      await dropLang(second);
+      forgetTeams();
+    }
   });
 });

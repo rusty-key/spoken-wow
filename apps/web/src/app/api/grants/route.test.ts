@@ -324,6 +324,21 @@ describe("/api/grants in a language with a second team", () => {
     ]);
   });
 
+  it("stores no team for the privileged team's invite, which follows the language, and the second team's own for theirs", async () => {
+    const invited = async (inviter: { id: string }, to: string) => {
+      who.id = inviter.id;
+      who.viewer = { role: null, grants: [{ lang, capability: "admin" }] };
+      expect((await putFor(to, ["edit"])).status).toBe(200);
+      return systemRows<{ joinTeamId: string | null }>(`select "joinTeamId" from "invite" where "email" = $1`, [to]);
+    };
+    await asSystem.query(`delete from "team_member" where "userId" = $1`, [v.id]);
+    await addMember(teamA, v.id, lang, "admin");
+    const toA = `a-${fresh.id}@example.invalid`;
+    const toB = `b-${fresh.id}@example.invalid`;
+    expect(await invited(v, toA)).toEqual([{ joinTeamId: null }]);
+    expect(await invited(w, toB)).toEqual([{ joinTeamId: teamB }]);
+  });
+
   it("puts a grant to somebody new in the privileged team when the site owner is a member of the second", async () => {
     who.viewer = { role: "admin", grants: [] };
     expect((await putFor(`${fresh.id}@example.invalid`, ["edit"])).status).toBe(200);

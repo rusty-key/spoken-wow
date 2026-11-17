@@ -72,6 +72,12 @@ export async function secondTeamLangs(): Promise<Set<Lang>> {
   return (await mapping()).second;
 }
 
+/** isSecondTeam over one read of the mapping, for a loop. */
+export async function secondTeamCheck(): Promise<(team: TeamId, lang: string) => boolean> {
+  const { secondTeams } = await mapping();
+  return (team, lang) => secondTeams.has(`${team}:${lang}`);
+}
+
 /** Whether `team` works on `lang` as a second team: it holds the language, but not as its privileged team. */
 export async function isSecondTeam(team: TeamId, lang: string): Promise<boolean> {
   return (await mapping()).secondTeams.has(`${team}:${lang}`);
@@ -115,8 +121,8 @@ export async function teamOrPrivileged(
 
 /** Whether the acting person works on `lang` in a team other than its privileged one. */
 export async function actsAsSecondTeam(lang: Lang): Promise<boolean> {
-  // ownerOf's own steps, the privileged team read once: a miss reads again, and only a language
-  // with a second team reads the acting teams.
+  // The privileged team is read once (a miss reads again), and only a language with a second
+  // team reads the acting teams.
   const privileged = await privilegedOf(lang);
   if (!(await secondTeamLangs()).has(lang)) return false;
   const acting = (await actingTeams()).get(lang);

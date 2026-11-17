@@ -14,7 +14,7 @@ import { recordActivities, recordActivity } from "@/lib/activity/store";
 import { ALL_TEAMS, db, query, withTeam } from "@/lib/db";
 import { teamIn } from "@/lib/teams/acting";
 import { deleteMember, insertMembers } from "@/lib/teams/members";
-import { isSecondTeam, ownerOrAll, secondTeamLangs, teamOf, type TeamId } from "@/lib/teams/store";
+import { ownerOrAll, secondTeamCheck, secondTeamLangs, teamOf, type TeamId } from "@/lib/teams/store";
 import { isLang, langName, type Lang } from "@/lib/lang";
 import { textByTeam } from "@/lib/languages/store";
 import { canGrant, isCapability, type Capability, type Grant, type Viewer } from "@/lib/permissions";
@@ -28,10 +28,11 @@ export async function grantsOf(userId: string, client?: Pick<ClientBase, "query"
      order by "lang", "capability"`,
     [userId],
   );
+  const isSecond = await secondTeamCheck();
   const grants: Grant[] = [];
   for (const { lang, capability, teamId } of rows) {
     if (!isCapability(capability)) continue;
-    const second = teamId !== null && (await isSecondTeam(teamId, lang));
+    const second = teamId !== null && isSecond(teamId, lang);
     grants.push(second ? { lang, capability, privileged: false } : { lang, capability });
   }
   return grants;
