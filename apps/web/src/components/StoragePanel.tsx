@@ -117,8 +117,17 @@ export default function StoragePanel({ lang, initial }: { lang: Lang; initial: S
       <section className="bg-card rounded-lg border p-4 text-sm">
         <p>
           New takes, recordings and clone clips of {view.team.name} ({view.team.langs.map(langName).join(", ")}) go to{" "}
-          <span className="font-medium">{writing ? `${writing.label} (${writing.bucket})` : "Spoken's archive"}</span>.
+          <span className="font-medium">
+            {writing ? `${writing.label} (${writing.bucket})` : view.ownStorage ? "nowhere yet" : "Spoken's archive"}
+          </span>
+          .
         </p>
+        {view.ownStorage && !writing && (
+          <p className="text-destructive mt-2">
+            Your team keeps its audio only in its own bucket. Until one is connected, tested and switched on, nothing
+            can be generated, recorded or uploaded.
+          </p>
+        )}
         <p className="text-muted-foreground mt-2">
           Your bucket is yours: Spoken never deletes your audio from it (only its own test object under probe/), and
           what you delete there is gone, so that line reads as unvoiced. We recommend versioning or an object lock, and a key that can read and write but not delete. What
@@ -153,6 +162,7 @@ export default function StoragePanel({ lang, initial }: { lang: Lang; initial: S
           onRemove={() => void act(backend.id, { method: "DELETE" }, "remove")}
           onRekey={(fields) => act(backend.id, { method: "PATCH", body: JSON.stringify(fields) }, "rekey")}
           moving={moving !== null}
+          ownStorage={view.ownStorage}
           onMoveIn={() => void move(null, backend.id)}
           onMoveOut={() => void move(backend.id, null)}
           onMoveTo={(to) => void move(backend.id, to)}
@@ -183,6 +193,7 @@ function BackendCard({
   onRemove,
   onRekey,
   moving,
+  ownStorage,
   onMoveIn,
   onMoveOut,
   onMoveTo,
@@ -197,6 +208,8 @@ function BackendCard({
   onRekey: (fields: { accessKeyId: string; secretAccessKey: string }) => Promise<boolean>;
   /** A move of this team's is queued or running, so no other may start. */
   moving: boolean;
+  /** The team keeps nothing in Spoken's archive: no switching back to it, no moving into it. */
+  ownStorage: boolean;
   onMoveIn: () => void;
   onMoveOut: () => void;
   onMoveTo: (to: string) => void;
@@ -259,7 +272,7 @@ function BackendCard({
             Send new objects here
           </Button>
         )}
-        {backend.writing && (
+        {backend.writing && !ownStorage && (
           <Button size="sm" variant="outline" disabled={busy !== null} onClick={() => onAction("stop")}>
             Send new objects to Spoken&apos;s archive
           </Button>
@@ -293,7 +306,7 @@ function BackendCard({
             ))}
           </select>
         )}
-        {backend.objects > 0 && (
+        {backend.objects > 0 && !ownStorage && (
           <Button size="sm" variant="outline" disabled={busy !== null || moving || !canWrite} onClick={onMoveOut} title="Copies this bucket's objects into Spoken's archive and reads them from there. Nothing is deleted here.">
             Bring objects back to Spoken&apos;s archive
           </Button>

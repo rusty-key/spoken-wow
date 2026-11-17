@@ -266,8 +266,11 @@ export async function queueBatch(
     if (!response.ok) {
       const noKey = noApiKeyMessage(response.status, body as { error?: string; code?: string });
       if (noKey) return { error: noKey, noKey: true };
-      // The team's bucket is failing: what to do about it is the team admin's, and says so.
-      if (body.kind === "storage-failing" && typeof body.error === "string") return { error: body.error, noKey: false };
+      // The team's bucket is failing, or it must keep its own and has none: what to do about it is
+      // the team admin's, and the message says so.
+      if ((body.kind === "storage-failing" || body.kind === "storage-required") && typeof body.error === "string") {
+        return { error: body.error, noKey: false };
+      }
       return null;
     }
     return body as unknown as QueuedBatch;

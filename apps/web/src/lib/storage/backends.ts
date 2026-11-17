@@ -8,6 +8,7 @@ import "server-only";
 import { randomUUID } from "node:crypto";
 
 import { query, TEAM_ROWS, withTeam, type TeamId } from "@/lib/db";
+import { keepsOwnStorage } from "@/lib/blobs/keep";
 import { seal, unseal } from "@/lib/blobs/seal";
 import { readsBlobs } from "@/lib/blobs/store";
 import { BACKEND_COLUMNS, forgetBackends, storeOfRow, type BackendRow } from "@/lib/blobs/where";
@@ -321,6 +322,9 @@ export async function testBackend(team: TeamId, id: string): Promise<ProbeResult
  * record, and nothing could be read back from a team's bucket.
  */
 export async function setWriting(team: TeamId, id: string | null): Promise<void> {
+  if (id === null && (await keepsOwnStorage(team))) {
+    throw new StorageError("Your team keeps its audio only in its own bucket: switch on another bucket instead.", 409);
+  }
   if (id !== null) {
     if (!readsBlobs()) throw new StorageError("The site's archive is not a bucket yet (SPOKEN_ARCHIVE_STORE=r2), so a team's bucket cannot be switched on.", 409);
     const row = await rowOf(team, id);

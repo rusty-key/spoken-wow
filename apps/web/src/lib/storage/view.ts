@@ -1,5 +1,6 @@
 import "server-only";
 
+import { keepsOwnStorage } from "@/lib/blobs/keep";
 import { canSeal } from "@/lib/blobs/seal";
 import { readsBlobs } from "@/lib/blobs/store";
 import { query } from "@/lib/db";
@@ -19,16 +20,19 @@ export type StorageView = {
   archiveIsBucket: boolean;
   /** False without SPOKEN_STORAGE_KEY: no secret can be saved. */
   canSeal: boolean;
+  /** The team keeps nothing in our archive (team."ownStorage"). */
+  ownStorage: boolean;
 };
 
 export async function storageView(lang: Lang): Promise<StorageView> {
   const team = await teamOf(lang);
   // Moves before the buckets' counts, so a move shown as done never has counts from before it.
   const moves = await listMoves(team);
-  const [[about], langs, backends] = await Promise.all([
+  const [[about], langs, backends, ownStorage] = await Promise.all([
     query<{ id: string; name: string }>(`select "id", "name" from "team" where "id" = $1`, [team]),
     query<{ lang: Lang }>(`select "lang" from "team_language" where "teamId" = $1 and "privileged" order by "lang"`, [team]),
     listBackends(team),
+    keepsOwnStorage(team),
   ]);
   return {
     team: { ...about, langs: langs.map((row) => row.lang) },
@@ -37,5 +41,6 @@ export async function storageView(lang: Lang): Promise<StorageView> {
     providers: (Object.keys(PROVIDERS) as Provider[]).map((id) => ({ id, ...PROVIDERS[id] })),
     archiveIsBucket: readsBlobs(),
     canSeal: canSeal(),
+    ownStorage,
   };
 }

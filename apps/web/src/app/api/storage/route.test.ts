@@ -200,3 +200,23 @@ describe("storage routes", () => {
     }
   });
 });
+
+describe("a team that keeps its own storage", () => {
+  it("cannot switch back to Spoken's archive, or move anything into it", async () => {
+    await asSystem.query(`update "team" set "ownStorage" = true where "id" = $1`, [fr.team]);
+    try {
+      const { backend } = await (await make("frFR")).json();
+      await act("frFR", backend.id, "test");
+      expect((await act("frFR", backend.id, "write")).status).toBe(200);
+      const stop = await act("frFR", backend.id, "stop");
+      expect(stop.status).toBe(409);
+      expect((await stop.json()).error).toContain("only in its own bucket");
+
+      const { POST: MOVE } = await import("./moves/route");
+      const moved = await MOVE(new Request("http://x/api/storage/moves?lang=frFR", json({ from: backend.id, to: null })));
+      expect(moved.status).toBe(409);
+    } finally {
+      await asSystem.query(`update "team" set "ownStorage" = false where "id" = $1`, [fr.team]);
+    }
+  });
+});

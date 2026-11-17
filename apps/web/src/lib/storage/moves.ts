@@ -10,7 +10,7 @@
 import "server-only";
 
 import { ALL_TEAMS, query, queryIn, TEAM_ROWS, withTeam, type TeamId } from "@/lib/db";
-import { dropQuarantined, recordObject } from "@/lib/blobs/keep";
+import { dropQuarantined, keepsOwnStorage, recordObject } from "@/lib/blobs/keep";
 import { archive, readBounded, readsBlobs, sha256Of, type BlobStore } from "@/lib/blobs/store";
 import { backendStore, markMissing, OBJECT_ROW, objectParams, split } from "@/lib/blobs/where";
 
@@ -123,6 +123,9 @@ export async function startMove(team: TeamId, from: string | null, to: string | 
   // The upkeep that runs moves only works once our archive is a bucket: a move queued before would
   // hold the team's one slot for good.
   if (!readsBlobs()) throw new StorageError("The site's archive is not a bucket yet (SPOKEN_ARCHIVE_STORE=r2), so nothing can be moved.", 409);
+  if (to === null && (await keepsOwnStorage(team))) {
+    throw new StorageError("Your team keeps its audio only in its own buckets, so nothing moves into Spoken's archive.", 409);
+  }
   try {
     // One transaction, the buckets locked: a bucket cannot be removed between the check and the
     // insert, which would leave the move aimed at nothing (lib/storage/backends.ts removeBackend).

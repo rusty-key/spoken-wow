@@ -15,6 +15,8 @@ export type TeamSummary = {
   id: TeamId;
   slug: string;
   name: string;
+  /** Keeps its audio only in its own bucket, never our archive (docs/platform/STORAGE.md). */
+  ownStorage: boolean;
   /** The languages it is privileged in. */
   langs: Lang[];
   /** The languages it is a second team in, beside another team. */
@@ -47,8 +49,8 @@ export function checkSlug(slug: string): void {
 export async function listTeams(only?: TeamId): Promise<TeamSummary[]> {
   const id = [only ?? null];
   const [teams, langs, members] = await Promise.all([
-    query<{ id: TeamId; slug: string; name: string }>(
-      `select "id", "slug", "name" from "team" where $1::uuid is null or "id" = $1 order by "slug"`,
+    query<{ id: TeamId; slug: string; name: string; ownStorage: boolean }>(
+      `select "id", "slug", "name", "ownStorage" from "team" where $1::uuid is null or "id" = $1 order by "slug"`,
       id,
     ),
     query<{ teamId: TeamId; lang: Lang; privileged: boolean }>(
@@ -95,6 +97,8 @@ export async function createTeam(
   const id = await withTeam(ALL_TEAMS, async (client) => {
     try {
       const { rows } = await client.query<{ id: TeamId }>(`select new_team($1, $2) as "id"`, [input.slug, input.name]);
+      // Its audio goes to its own bucket, never our archive, unless a site admin lifts that.
+      await client.query(`update "team" set "ownStorage" = true where "id" = $1`, [rows[0].id]);
       return rows[0].id;
     } catch (error) {
       if ((error as { code?: string }).code === "23505") throw new TeamError(`A team is already called ${input.slug}.`);
@@ -133,6 +137,19 @@ export async function createTeamWithLangs(
   }
   const [team] = await listTeams(id);
   return { team, moved };
+}
+
+/** Whether the team may use our archive. Its buckets and what is already kept stay as they are. */
+export async function setOwnStorage(team: TeamId, ownStorage: boolean, actorId: string): Promise<void> {
+  const slug = await withTeam(ALL_TEAMS, async (client) => {
+    const { rows } = await client.query<{ slug: string }>(
+      `update "team" set "ownStorage" = $2 where "id" = $1 returning "slug"`,
+      [team, ownStorage],
+    );
+    if (rows.length === 0) throw new TeamError("No such team.", 404);
+    return rows[0].slug;
+  });
+  await recordActivity({ kind: "team.own_storage", lang: null, actorId, subject: slug, detail: { ownStorage } });
 }
 
 export async function renameTeam(team: TeamId, name: string, actorId: string): Promise<void> {

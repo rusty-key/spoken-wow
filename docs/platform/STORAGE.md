@@ -28,6 +28,10 @@ Made by the user on 2026-11-17.
    language's live takes keep publishing to our channel, signed with our key, and players download
    them from there; a release copies each live clip out of the team's bucket into it. The channel
    holds only live clips, so this is the smaller cost and we accept it.
+5. **A team a person creates keeps its audio only in its own bucket** (2026-11-17), so we never
+   charge for storage. Until it has one switched on it can generate, record and upload nothing.
+   Teams that existed before, and the ones the system makes for a language with none, keep our
+   archive. A site admin can change either on `/admin/teams`.
 
 ## For a team admin
 
@@ -135,6 +139,24 @@ Every copy is checked against its hash. Nothing is deleted from the source (deci
 bucket a move adds the `archive_object` row; into ours it drops the source's row, so reads come
 home. An object the source lost is counted and skipped; a target that refuses a write stops the
 move with the reason.
+
+### Teams that keep their own storage
+
+`team."ownStorage"` (migration 0116) is set by `createTeam` and `foundTeam`, so every team a person
+creates, from a request or the New team form, has it; existing teams and `adopt_lang`'s do not.
+Such a team keeps nothing on our volume or in our archive (`ownStorageRefusal`, `lib/blobs/keep.ts`):
+
+- `keep()` and the pack encodings refuse with an `OwnStorageError` while it has no bucket switched
+  on, or our archive is not in `r2` mode, before anything is written anywhere;
+- `queuePlan` refuses its batches with a 409 (`storage-required`), and the worker fails a job
+  already queued before the provider is paid;
+- the recordings, clone sample and reference uploads refuse before reading the upload, or paying
+  for the transcription;
+- the Storage page offers no way back to our archive: it cannot switch new objects to ours, and no
+  move goes into ours.
+
+The one exception is the quarantine: a take its bucket refused after the provider was paid waits in
+ours until it lands, and is deleted then.
 
 ### Missing files
 

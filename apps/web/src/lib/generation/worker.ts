@@ -9,6 +9,7 @@
  * test may need an ElevenLabs account, and none may ever spend credits. Everything else here
  * runs against the real queue, because the exclusions that keep it honest are in the schema.
  */
+import { ownStorageRefusal } from "@/lib/blobs/keep";
 import { readApiKey } from "@/lib/api-key";
 import { POOL_MAX, withTeam } from "@/lib/db";
 
@@ -147,6 +148,8 @@ export type WorkerOptions = {
   apiKeyFor?: (userId: string, provider: Provider) => Promise<string | null>;
   /** The owner's settings for each provider, read as each job runs. */
   preferenceFor?: (userId: string) => Promise<Pick<Preference, "elevenlabs" | "fish">>;
+  /** Why the job's team may keep nothing now (lib/blobs/keep.ts), read before each job is paid for. */
+  storageRefusal?: (lang: Lang) => Promise<string | null>;
   backoffMs?: (attempts: number) => number;
   leaseMs?: number;
   /** How long to wait before looking again when the queue was empty. */
@@ -178,6 +181,7 @@ export function startWorker(isLeader: () => boolean, options: WorkerOptions = {}
   const budget = options.budget ?? currentBudget;
   const apiKeyFor = options.apiKeyFor ?? readApiKey;
   const preferenceFor = options.preferenceFor ?? readGenerationSettings;
+  const storageFor = options.storageRefusal ?? ownStorageRefusal;
   const backoff = options.backoffMs ?? backoffFor;
   const idleMs = options.idleMs ?? 2_000;
   const maxActive = options.maxActive ?? maxActiveFrom(process.env.QUEUE_MAX_ACTIVE);
@@ -298,6 +302,15 @@ export function startWorker(isLeader: () => boolean, options: WorkerOptions = {}
       }`;
       await withTeam(job.teamId, (client) => failJob(job.id, { kind: "upstream", message }, client)).catch((failure: unknown) =>
         console.error(`regeneration queue: job ${job.id} could not be failed`, failure),
+      );
+      return;
+    }
+    // Before the provider is paid: a team that keeps its audio only in its own bucket and has none
+    // switched on could keep nothing this job makes.
+    const refused = await storageFor(job.lang).catch(() => null);
+    if (refused) {
+      await withTeam(job.teamId, (client) => failJob(job.id, { kind: "bad-request", message: refused }, client)).catch((error: unknown) =>
+        console.error(`regeneration queue: job ${job.id} could not be failed`, error),
       );
       return;
     }

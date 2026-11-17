@@ -8,6 +8,7 @@
  * Note nginx's client_max_body_size defaults to 1 MiB, which would reject every real clip
  * before it reached here — see deploy/nginx-voiceover.conf.
  */
+import { ownStorageRefusal } from "@/lib/blobs/keep";
 import { recordActivity } from "@/lib/activity/store";
 import { cloneName } from "@/lib/voices/clone-name";
 import { requireVoiceManager, requireVoiceViewer } from "@/lib/voices/authz";
@@ -32,6 +33,10 @@ export async function POST(request: Request, context: Context) {
   // A slot is shared; its clips and its clone are the language\'s own (clone-name.ts).
   const { session, lang, denied } = await requireVoiceManager(request, voice);
   if (denied) return denied;
+  // Before the upload is read: a team that keeps its audio only in its own bucket and has none
+  // switched on could keep nothing of it.
+  const refused = await ownStorageRefusal(lang);
+  if (refused) return Response.json({ error: refused, kind: "storage-required" }, { status: 409 });
   const clone = cloneName(voice, lang);
 
   let form: FormData;

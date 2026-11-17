@@ -111,7 +111,10 @@ export default function TeamsTable({ initial, takes, languages }: Props) {
             <th className="py-2 pr-3 font-normal">Slug</th>
             <th className="py-2 pr-3 font-normal">Name</th>
             <th className="py-2 pr-3 font-normal">Languages</th>
-            <th className="py-2 font-normal">Members</th>
+            <th className="py-2 pr-3 font-normal">Members</th>
+            <th className="py-2 font-normal" title="Keeps its audio only in its own bucket, never in Spoken's archive">
+              Own storage
+            </th>
           </tr>
         </thead>
         <tbody>
@@ -166,7 +169,7 @@ export default function TeamsTable({ initial, takes, languages }: Props) {
                   {team.langs.length === 0 && team.alsoIn.length === 0 && <li className="text-muted-foreground text-xs">none</li>}
                 </ul>
               </td>
-              <td className="py-2">
+              <td className="py-2 pr-3">
                 <ul className="flex flex-col gap-1">
                   {people(team).map((person) => (
                     <li key={person.email}>
@@ -178,6 +181,18 @@ export default function TeamsTable({ initial, takes, languages }: Props) {
                     </li>
                   ))}
                 </ul>
+              </td>
+              <td className="py-2">
+                <input
+                  type="checkbox"
+                  aria-label={`${team.slug} keeps its audio only in its own bucket`}
+                  checked={team.ownStorage}
+                  disabled={busy}
+                  onChange={(event) => {
+                    const ownStorage = event.target.checked;
+                    void run(() => send(`/api/teams/${team.id}`, "PATCH", { ownStorage }));
+                  }}
+                />
               </td>
             </tr>
           ))}

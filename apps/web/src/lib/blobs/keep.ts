@@ -68,11 +68,47 @@ async function holds(prefix: BlobPrefix, sha256: string, backendId: string): Pro
   return rows.length > 0;
 }
 
+/** A team that must keep its audio in its own bucket has none to keep this in. The message is fit to show. */
+export class OwnStorageError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "OwnStorageError";
+  }
+}
+
 /**
- * Puts the object where `lang`'s team keeps new objects. Throws only when our own bucket refuses
- * it too, so the object is nowhere.
+ * Why `lang`'s team may not keep audio now, or null. A team with `ownStorage` keeps nothing in our
+ * archive or on our volume: it needs a bucket switched on, and that needs our archive in r2 mode.
+ */
+export async function ownStorageRefusal(lang: Lang): Promise<string | null> {
+  const team = await teamOf(lang);
+  if (!(await keepsOwnStorage(team))) return null;
+  if (archiveMode() !== "r2") return "This site cannot use team buckets yet, and your team keeps its audio only in its own, so nothing can be made for it.";
+  if (await writingBackend(team)) return null;
+  return "Your team keeps its audio in its own bucket: connect one on the Storage page and switch it on before making takes, recordings or clone clips.";
+}
+
+/** Whether the team may keep nothing in our archive (team."ownStorage"). */
+export async function keepsOwnStorage(team: TeamId): Promise<boolean> {
+  const [row] = await query<{ ownStorage: boolean }>(`select "ownStorage" from "team" where "id" = $1`, [team]);
+  return row?.ownStorage ?? false;
+}
+
+async function assertMayKeep(lang: Lang): Promise<void> {
+  const refused = await ownStorageRefusal(lang);
+  if (refused) throw new OwnStorageError(refused);
+}
+
+/**
+ * Puts the object where `lang`'s team keeps new objects. Throws when our own bucket refuses it too,
+ * so the object is nowhere, and an OwnStorageError for a team that may not use ours.
  */
 export async function putArchived(prefix: BlobPrefix, sha256: string, data: Buffer, contentType: string, lang: Lang): Promise<void> {
+  await assertMayKeep(lang);
+  return placeArchived(prefix, sha256, data, contentType, lang);
+}
+
+async function placeArchived(prefix: BlobPrefix, sha256: string, data: Buffer, contentType: string, lang: Lang): Promise<void> {
   const key = blobKey(prefix, sha256);
   const team = await teamOf(lang);
   const target = archiveMode() === "r2" ? await writingBackend(team) : null;
@@ -120,12 +156,14 @@ export async function keep(
   diskPath: string,
   lang: Lang,
 ): Promise<string | null> {
+  // Before the volume too: a team with its own storage keeps nothing of ours, in any mode.
+  await assertMayKeep(lang);
   const sha256 = sha256Of(data);
   const mode = archiveMode();
   const put = async () => {
     if (mode === "disk") return null;
     try {
-      await putArchived(prefix, sha256, data, contentType, lang);
+      await placeArchived(prefix, sha256, data, contentType, lang);
       return sha256;
     } catch (error) {
       if (mode === "r2") throw error;
@@ -217,10 +255,17 @@ export async function landQuarantined(perBucket = 20): Promise<number> {
   return landed;
 }
 
-/** Why `lang`'s team may not queue paid work now, or null. Jobs already queued carry on, into the quarantine. */
+/**
+ * Why `lang`'s team may not queue paid work now, or null: it must keep its own storage and has
+ * none, or its bucket is failing. Jobs already queued carry on, into the quarantine.
+ */
 export async function storageRefusal(lang: Lang): Promise<string | null> {
+  const required = await ownStorageRefusal(lang);
+  if (required) return required;
   if (archiveMode() !== "r2") return null;
-  const target = await writingBackend(await teamOf(lang));
+  const team = await teamOf(lang);
+  const target = await writingBackend(team);
   if (target?.health !== "failing") return null;
-  return "Your team's bucket is failing, so nothing new is queued: test it on the Storage page, or send new objects to Spoken's archive.";
+  const instead = (await keepsOwnStorage(team)) ? "" : ", or send new objects to Spoken's archive";
+  return `Your team's bucket is failing, so nothing new is queued: test it on the Storage page${instead}.`;
 }
