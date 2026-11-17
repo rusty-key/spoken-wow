@@ -14,7 +14,7 @@ import "server-only";
 
 import { query } from "@/lib/db";
 import type { LiveRecording } from "@/lib/recordings/live";
-import { memoByTeamLang } from "@/lib/memo";
+import { memoByLang, memoByTeamLang } from "@/lib/memo";
 import { nameStamp, versionStamp } from "@/lib/stamp";
 import { loadDirtyContext, NO_DIRT, type DirtyContext } from "@/lib/generation/dirty";
 import { BASE_LANG, type Lang } from "@/lib/lang";
@@ -23,6 +23,8 @@ import { corpusRows, currentLore } from "./lore";
 import { madeByOf, type MadeBy } from "@/lib/takes/made-by";
 import { liveTakes } from "@/lib/takes/store";
 import { readAs } from "@/lib/teams/store";
+import { overrideStamp, readTextOverrides, viewOf } from "@/lib/text-overrides/store";
+import type { OverrideView } from "@/lib/text-overrides/types";
 import {
   assignFiles,
   loadPronunciation,
@@ -62,6 +64,8 @@ export type CorpusEntry = {
   english?: string;
   /** The English name of the place, likewise. */
   englishName?: string;
+  /** The acting team's rewrite of `full`, which `spoken` and `hash` then follow. */
+  override?: OverrideView;
 };
 
 /**
@@ -186,6 +190,7 @@ export function isCorpusEmpty(error: unknown): boolean {
  * and a deploy restarts the process.
  *
  */
+const baseKey = Symbol.for("spoken.places-base.by-lang");
 const catalogueKey = Symbol.for("spoken.places-catalogue.by-lang");
 const byPathKey = Symbol.for("spoken.places-by-path.by-lang");
 
@@ -253,7 +258,7 @@ async function buildCorpus(lang: Lang): Promise<CorpusEntry[]> {
  */
 async function buildTranslated(lang: Lang): Promise<CorpusEntry[]> {
   const [english, own, names] = await Promise.all([
-    catalogue(BASE_LANG),
+    baseCatalogue(BASE_LANG),
     currentLore(lang),
     query<{ entityId: string; name: string }>(
       `select "entityId", "name" from "entity_name"
@@ -287,8 +292,34 @@ async function buildTranslated(lang: Lang): Promise<CorpusEntry[]> {
   });
 }
 
+/**
+ * Every line as its original text says it, the same for every team of the language: built from
+ * shared tables alone, so it is memoised per language and teams share the build.
+ */
+export async function baseCatalogue(lang: Lang): Promise<CatalogueEntry[]> {
+  return memoByLang(baseKey, lang, await stampOf(lang), () => buildCorpus(lang));
+}
+
+/**
+ * The base with the acting team's overrides laid on: an overridden line speaks, and is judged
+ * stale against, its override. A team with none gets the base itself.
+ */
 export async function catalogue(lang: Lang = BASE_LANG): Promise<CatalogueEntry[]> {
-  return memoByTeamLang(catalogueKey, lang, await stampOf(lang), () => buildCorpus(lang));
+  const [stamp, overrides] = await Promise.all([stampOf(lang), overrideStamp("places", lang)]);
+  return memoByTeamLang(catalogueKey, lang, `${stamp}|${overrides}`, () => overlay(lang));
+}
+
+async function overlay(lang: Lang): Promise<CatalogueEntry[]> {
+  const [base, overrides] = await Promise.all([baseCatalogue(lang), readTextOverrides("places", lang)]);
+  if (overrides.size === 0) return base;
+  const rules = lang === BASE_LANG ? await loadPronunciation() : {};
+  return base.map((entry) => {
+    const override = overrides.get(entry.id);
+    // A line with no text of its own has nothing for an override to stand on.
+    if (!override || entry.missing?.text) return entry;
+    const spoken = toSpokenText(override.text, rules);
+    return { ...entry, spoken, hash: textHash(spoken), override: viewOf(override, entry.full) };
+  });
 }
 
 /**

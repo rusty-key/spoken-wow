@@ -13,11 +13,13 @@
 import "server-only";
 
 import { query } from "@/lib/db";
-import { memoByTeamLang } from "@/lib/memo";
+import { memoByLang, memoByTeamLang } from "@/lib/memo";
 import { versionStamp } from "@/lib/stamp";
 import { BASE_LANG, type Lang } from "@/lib/lang";
 import { EMPTY_CONTEXT, sectionContext, type SearchContext, type Take } from "@/lib/places/catalogue";
 import { assignFiles, lineIdFor, loadPronunciation, textHash, toSpokenText } from "@/lib/places/tools";
+import { overrideStamp, readTextOverrides, viewOf } from "@/lib/text-overrides/store";
+import type { OverrideView } from "@/lib/text-overrides/types";
 
 import { bossLineId } from "./story";
 
@@ -49,6 +51,8 @@ export type BossEntry = {
   nameMissing?: boolean;
   /** The English name, for a translator. Absent in English. */
   englishName?: string;
+  /** The acting team's rewrite of `text`, which `spoken` and `hash` then follow. */
+  override?: OverrideView;
 };
 
 type StructureRow = {
@@ -169,12 +173,38 @@ async function build(lang: Lang): Promise<BossEntry[]> {
     });
 }
 
+const baseKey = Symbol.for("spoken.bosses-base.by-lang");
 const catalogueKey = Symbol.for("spoken.bosses-catalogue.by-lang");
 const byPathKey = Symbol.for("spoken.bosses-by-path.by-lang");
 
-/** Every live boss, ordered by instance position, then boss position. */
+/**
+ * Every live boss as its original story says it, the same for every team of the language: built
+ * from shared tables alone, so it is memoised per language and teams share the build.
+ */
+export async function baseCatalogue(lang: Lang): Promise<BossEntry[]> {
+  return memoByLang(baseKey, lang, await stampOf(lang), () => build(lang));
+}
+
+/**
+ * Every live boss, ordered by instance position, then boss position, with the acting team's
+ * overrides laid on the base. A team with none gets the base itself.
+ */
 export async function catalogue(lang: Lang = BASE_LANG): Promise<BossEntry[]> {
-  return memoByTeamLang(catalogueKey, lang, await stampOf(lang), () => build(lang));
+  const [stamp, overrides] = await Promise.all([stampOf(lang), overrideStamp("bosses", lang)]);
+  return memoByTeamLang(catalogueKey, lang, `${stamp}|${overrides}`, () => overlay(lang));
+}
+
+async function overlay(lang: Lang): Promise<BossEntry[]> {
+  const [base, overrides] = await Promise.all([baseCatalogue(lang), readTextOverrides("bosses", lang)]);
+  if (overrides.size === 0) return base;
+  const rules = lang === BASE_LANG ? await loadPronunciation() : {};
+  return base.map((entry) => {
+    const override = overrides.get(entry.id);
+    // A boss with no story has nothing for an override to stand on.
+    if (!override || entry.text === null) return entry;
+    const spoken = toSpokenText(override.text, rules);
+    return { ...entry, spoken, hash: textHash(spoken), override: viewOf(override, entry.text) };
+  });
 }
 
 export { stampOf as catalogueStamp };
