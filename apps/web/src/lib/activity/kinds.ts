@@ -89,8 +89,8 @@ export type ActivityDetail = {
   "lexicon.added": { after?: string };
   "lexicon.edited": { before?: string; after?: string };
   "lexicon.removed": { before?: string };
-  "override.set": { text: string; before?: string | null; contribution?: number };
-  "override.cleared": { before?: string | null };
+  "override.set": { text: string; before?: string | null; contribution?: number } & ApiAuditDetail;
+  "override.cleared": { before?: string | null } & ApiAuditDetail;
   "ignore.set": { reason?: string | null };
   "ignore.cleared": Record<string, never>;
   "setting.changed": { setting: string };

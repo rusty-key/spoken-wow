@@ -1,0 +1,88 @@
+/** Needs DATABASE_URL and migrations through 0114 applied. */
+import { afterAll, afterEach, beforeEach, describe, expect, it } from "vitest";
+
+import { closeDb } from "@/lib/db";
+import { asActor } from "@/lib/teams/acting";
+import { forgetTeams } from "@/lib/teams/store";
+import { addMember, asSystem, dropLang, dropTeam, newTeamIn, testUser, uniqueLang } from "@/lib/teams/testing";
+
+import { clearTextOverride, readTextOverrides, viewOf, writeTextOverride } from "./store";
+
+let lang: Awaited<ReturnType<typeof uniqueLang>>;
+let a: string;
+let b: string;
+let u: { id: string; cleanup: () => Promise<void> };
+let v: { id: string; cleanup: () => Promise<void> };
+
+beforeEach(async () => {
+  lang = await uniqueLang();
+  a = await newTeamIn(lang, true);
+  b = await newTeamIn(lang, false);
+  u = await testUser();
+  v = await testUser();
+  await addMember(b, u.id, lang, "regenerate");
+  await addMember(a, v.id, lang, "regenerate");
+});
+
+afterEach(async () => {
+  await asSystem.query(`delete from "activity" where "lang" = $1`, [lang]);
+  for (const team of [a, b]) await dropTeam(team);
+  await u.cleanup();
+  await v.cleanup();
+  await dropLang(lang);
+  forgetTeams();
+});
+
+afterAll(closeDb);
+
+const write = (text: string, audit?: { tokenId: string; batchId?: string }) =>
+  asActor(u.id, () =>
+    writeTextOverride({ source: "places", lang, lineId: "z:1", text, original: "Old.", userId: u.id, audit }),
+  );
+
+const sets = async () =>
+  (await asSystem.query(`select * from "activity" where "lang" = $1 and "kind" = 'override.set'`, [lang])).rows;
+
+describe("text overrides", () => {
+  it("are the writing team's and invisible to the other", async () => {
+    expect((await write("New.")).wrote).toBe(true);
+    const mine = await asActor(u.id, () => readTextOverrides("places", lang));
+    expect(mine.get("z:1")?.text).toBe("New.");
+    expect((await asActor(v.id, () => readTextOverrides("places", lang))).size).toBe(0);
+    expect((await asActor(u.id, () => readTextOverrides("readables", lang))).size).toBe(0);
+  });
+
+  it("log once, and not for the same text again", async () => {
+    await write("New.");
+    expect((await write("New.")).wrote).toBe(false);
+    expect(await sets()).toHaveLength(1);
+  });
+
+  it("log the team, source, subject and api batch", async () => {
+    await write("New.", { tokenId: "t", batchId: "b" });
+    const [row] = await sets();
+    expect(row.teamId).toBe(b);
+    expect(row.source).toBe("places");
+    expect(row.subject).toBe("z:1");
+    expect(row.detail.apiBatchId).toBe("b");
+    expect(row.detail.before).toBeNull();
+  });
+
+  it("drift when the original changes, and never with no hash", async () => {
+    const { override } = await write("New.");
+    expect(viewOf(override, "Old.")?.drifted).toBe(false);
+    expect(viewOf(override, "Older.")?.drifted).toBe(true);
+    expect(viewOf({ ...override, originalHash: null }, "Older.")?.drifted).toBe(false);
+    expect(viewOf(undefined, "Old.")).toBeUndefined();
+  });
+
+  it("clear once", async () => {
+    await write("New.");
+    const clear = () => asActor(u.id, () => clearTextOverride({ source: "places", lang, lineId: "z:1", by: u.id }));
+    expect(await clear()).toBe(true);
+    expect((await asActor(u.id, () => readTextOverrides("places", lang))).size).toBe(0);
+    expect(await clear()).toBe(false);
+    const cleared = await asSystem.query(`select 1 from "activity" where "lang" = $1 and "kind" = 'override.cleared'`, [lang]);
+    expect(cleared.rows).toHaveLength(1);
+  });
+});
