@@ -9,6 +9,7 @@ import UserSearch from "@/components/UserSearch";
 import UserTable from "@/components/UserTable";
 import { userIdsWithApiKey } from "@/lib/api-key";
 import { listGrants, viewerOf } from "@/lib/grants/store";
+import { visibleGrants } from "@/lib/invites/listing";
 import { listInvites } from "@/lib/invites/store";
 import { isLang, langName } from "@/lib/lang";
 import { languageStates, textByTeam } from "@/lib/languages/store";
@@ -51,7 +52,11 @@ export default async function Page({
   const team = asked ?? (global ? null : administered[0]);
 
   if (team) {
-    const [grants, invites, byTeam] = await Promise.all([listGrants([team]), listInvites([team]), textByTeam(team)]);
+    const [grants, invites, byTeam] = await Promise.all([
+      visibleGrants(viewer, session.user.id, [team]),
+      listInvites([team]),
+      textByTeam(team),
+    ]);
     return (
       <main className="pb-36">
         <AdminHeader

@@ -11,23 +11,32 @@ import type { ClientBase } from "pg";
 import { cache } from "react";
 
 import { recordActivities, recordActivity } from "@/lib/activity/store";
-import { db, query, withTeam } from "@/lib/db";
+import { ALL_TEAMS, db, query, withTeam } from "@/lib/db";
+import { teamIn } from "@/lib/teams/acting";
 import { deleteMember, insertMembers } from "@/lib/teams/members";
 import { ownerOrAll, teamOf, type TeamId } from "@/lib/teams/store";
-import { isLang, type Lang } from "@/lib/lang";
+import { isLang, langName, type Lang } from "@/lib/lang";
 import { textByTeam } from "@/lib/languages/store";
 import { canGrant, isCapability, type Capability, type Grant, type Viewer } from "@/lib/permissions";
 
 /** On the caller's client when given. */
 export async function grantsOf(userId: string, client?: Pick<ClientBase, "query">): Promise<Grant[]> {
-  const { rows } = await (client ?? db()).query<{ lang: string; capability: string }>(
-    `select "lang", 'text' as "capability" from "language_grant" where "userId" = $1
+  const { rows } = await (client ?? db()).query<{ lang: string; capability: string; privileged: boolean | null }>(
+    `select "lang", 'text' as "capability", null::boolean as "privileged" from "language_grant" where "userId" = $1
      union all
-     select "lang", "capability" from "team_member" where "userId" = $1
+     select m."lang", m."capability", l."privileged"
+       from "team_member" m
+       left join "team_language" l on l."teamId" = m."teamId" and l."lang" = m."lang"
+      where m."userId" = $1
      order by "lang", "capability"`,
     [userId],
   );
-  return rows.filter((row) => isCapability(row.capability)) as Grant[];
+  return rows
+    .filter((row) => isCapability(row.capability))
+    .map(({ lang, capability, privileged }) => {
+      const grant: Grant = { lang, capability: capability as Capability };
+      return privileged === false ? { ...grant, privileged } : grant;
+    });
 }
 
 /** Keyed on the user id, a string, which is what lets React's cache find it again. */
@@ -61,12 +70,14 @@ export type GrantRow = {
   lang: string;
   capability: Capability;
   grantedAt: string;
+  /** The team the grant is in; null for `text`, which is the language's, not a team's. */
+  teamSlug: string | null;
 };
 
 const GRANTS = `(
-  select "userId", "lang", 'text' as "capability", "grantedAt" from "language_grant"
+  select "userId", "lang", 'text' as "capability", "grantedAt", null::uuid as "teamId" from "language_grant"
   union all
-  select "userId", "lang", "capability", "grantedAt" from "team_member"
+  select "userId", "lang", "capability", "grantedAt", "teamId" from "team_member"
 )`;
 
 export async function viewersIn(lang: Lang): Promise<Map<string, Viewer>> {
@@ -84,48 +95,104 @@ export async function viewersIn(lang: Lang): Promise<Map<string, Viewer>> {
   return viewers;
 }
 
-/** Every grant in the given languages, or in all of them, with who holds it. */
-export async function listGrants(langs?: string[]): Promise<GrantRow[]> {
+/**
+ * Every grant in the given languages, or in all of them, with who holds it. With `team`, only
+ * that team's rows, and so no `text`.
+ */
+export async function listGrants(langs?: string[], team?: TeamId): Promise<GrantRow[]> {
+  return selectGrants(
+    `($1::text[] is null or g."lang" = any($1::text[])) and ($2::uuid is null or g."teamId" = $2)`,
+    [langs ?? null, team ?? null],
+  );
+}
+
+/** The team rows of each language in `teams` that are its team's, and the `text` rows of `textLangs`. */
+export async function listTeamGrants(
+  teams: ReadonlyMap<string, TeamId>,
+  textLangs: readonly string[],
+): Promise<GrantRow[]> {
+  return selectGrants(
+    `(g."teamId" is null and g."lang" = any($1::text[]))
+     or (g."lang", g."teamId") in (select * from unnest($2::text[], $3::uuid[]))`,
+    [textLangs, [...teams.keys()], [...teams.values()]],
+  );
+}
+
+async function selectGrants(where: string, params: unknown[]): Promise<GrantRow[]> {
   const rows = await query<Omit<GrantRow, "grantedAt"> & { grantedAt: Date }>(
-    `select g."userId", u."email", u."name", g."lang", g."capability", g."grantedAt"
+    `select g."userId", u."email", u."name", g."lang", g."capability", g."grantedAt", t."slug" as "teamSlug"
        from ${GRANTS} g join "user" u on u."id" = g."userId"
-      where $1::text[] is null or g."lang" = any($1::text[])
+       left join "team" t on t."id" = g."teamId"
+      where ${where}
       order by g."lang", u."email", g."capability"`,
-    [langs ?? null],
+    params,
   );
   return rows.map((row) => ({ ...row, grantedAt: row.grantedAt.toISOString() }));
 }
+
+/** Granting somebody a team capability in a language they already work on in another team. */
+export class OtherTeamError extends Error {
+  constructor(readonly lang: Lang) {
+    super(`That person already works on ${langName(lang)} in another team; one person works in one team per language.`);
+    this.name = "OtherTeamError";
+  }
+}
+
+/** Postgres' exclusion_violation, which team_member raises at commit for a second team in one language. */
+function isOtherTeam(error: unknown): boolean {
+  return typeof error === "object" && error !== null && (error as { code?: unknown }).code === "23P01";
+}
+
+type GrantOptions = { team?: TeamId; within?: (client: ClientBase) => Promise<void> };
 
 /**
  * Several capabilities in one language at once, all or none. Recorded in the activity log
  * only for the rows that are new: granting what somebody already holds changes nothing, and
  * the log would otherwise say it was handed out twice.
+ *
+ * Team capabilities go to `options.team`, else the team the granter works on the language in,
+ * else the language's owner. Somebody who works on it in another team is refused with
+ * OtherTeamError. `options.within`, or `options` when it is a function, runs first on the same
+ * transaction.
  */
 export async function addGrants(
   userId: string,
   lang: string,
   capabilities: readonly Capability[],
   grantedBy: string,
-  within?: (client: ClientBase) => Promise<void>,
+  options: GrantOptions | GrantOptions["within"] = {},
 ): Promise<void> {
   if (!isLang(lang)) throw new Error(`${lang} is not a language this site knows`);
+  const { team: named, within } = typeof options === "function" ? { team: undefined, within: options } : options;
   const members = capabilities.filter((capability) => capability !== "text");
-  const team = members.length ? await teamOf(lang) : await ownerOrAll(lang);
-  await withTeam(team, async (client) => {
-    // First, so that a throw from it grants nothing.
-    await within?.(client);
-    const added = await grantOn(client, team, userId, lang, capabilities, grantedBy);
-    await recordActivities(
-      added.map((capability) => ({
-        kind: "grant.added",
-        lang,
-        subject: userId,
-        actorId: grantedBy,
-        detail: { capability },
-      })),
-      client,
-    );
-  });
+  const team = members.length
+    ? (named ?? (await teamIn(grantedBy, lang)) ?? (await teamOf(lang)))
+    : await ownerOrAll(lang);
+  try {
+    await withTeam(team, async (client) => {
+      // First, so that a throw from it grants nothing.
+      await within?.(client);
+      if (members.length) {
+        const theirs = await teamIn(userId, lang, client);
+        if (theirs && theirs !== team) throw new OtherTeamError(lang);
+      }
+      const added = await grantOn(client, team, userId, lang, capabilities, grantedBy);
+      await recordActivities(
+        added.map((capability) => ({
+          kind: "grant.added",
+          lang,
+          subject: userId,
+          actorId: grantedBy,
+          detail: { capability },
+          ...(team === ALL_TEAMS ? {} : { team }),
+        })),
+        client,
+      );
+    });
+  } catch (error) {
+    if (isOtherTeam(error)) throw new OtherTeamError(lang);
+    throw error;
+  }
 }
 
 /** The first of `capabilities` that `viewer` may not grant in `lang`, or null when they may grant them all. */
@@ -176,18 +243,21 @@ export async function removeGrant(
   lang: Lang,
   capability: Capability,
   removedBy: string,
+  team?: TeamId,
 ): Promise<void> {
-  if (!(await deleteGrant(userId, lang, capability))) return;
+  if (!(await deleteGrant(userId, lang, capability, team))) return;
   await recordActivity({
     kind: "grant.removed",
     lang,
     subject: userId,
     actorId: removedBy,
     detail: { capability },
+    ...(team && capability !== "text" ? { team } : {}),
   });
 }
 
-async function deleteGrant(userId: string, lang: Lang, capability: Capability): Promise<boolean> {
+/** With `team`, a team capability is removed only from that team. */
+async function deleteGrant(userId: string, lang: Lang, capability: Capability, team?: TeamId): Promise<boolean> {
   if (capability === "text") {
     const rows = await query(
       `delete from "language_grant" where "userId" = $1 and "lang" = $2 returning 1`,
@@ -195,7 +265,7 @@ async function deleteGrant(userId: string, lang: Lang, capability: Capability): 
     );
     return rows.length > 0;
   }
-  return deleteMember(userId, lang, capability);
+  return deleteMember(userId, lang, capability, team);
 }
 
 /** Somebody to grant to, found by email: a language admin cannot list the users. */

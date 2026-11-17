@@ -3,12 +3,15 @@
  *
  * Needs DATABASE_URL and migrations applied.
  */
-import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
+import { randomInt, randomUUID } from "node:crypto";
+
+import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { closeDb } from "@/lib/db";
 import { forgetLanguages, loadLanguages } from "@/lib/languages/catalogue";
 import type { Viewer } from "@/lib/permissions";
-import { asSystem, testUser } from "@/lib/teams/testing";
+import { forgetTeams } from "@/lib/teams/store";
+import { asSystem, dropTeam, systemRows, testUser } from "@/lib/teams/testing";
 
 const who = vi.hoisted(() => ({ viewer: { role: null, grants: [] } as Viewer, id: "" }));
 
@@ -34,7 +37,7 @@ vi.mock("@/lib/grants/store", async (importOriginal) => ({
 import { grantsOf } from "@/lib/grants/store";
 import { createInvite, lookupInvite, openInvite } from "@/lib/invites/store";
 
-import { DELETE, PUT } from "./route";
+import { DELETE, GET, PUT } from "./route";
 
 let target: Awaited<ReturnType<typeof testUser>>;
 let granter: Awaited<ReturnType<typeof testUser>>;
@@ -212,5 +215,107 @@ describe("/api/grants", () => {
     it("refuses what is not an address", async () => {
       expect((await putTo("not an address", ["edit"])).status).toBe(400);
     });
+  });
+});
+
+describe("/api/grants in a language with a second team", () => {
+  const CAPITALS = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+  const MEMBER = `insert into "team_member" ("teamId", "userId", "lang", "capability") values ($1, $2, $3, $4)`;
+  let lang: string;
+  let teamA: string;
+  let teamB: string;
+  let w: Awaited<ReturnType<typeof testUser>>;
+  let v: Awaited<ReturnType<typeof testUser>>;
+  let fresh: Awaited<ReturnType<typeof testUser>>;
+
+  async function newTeam(name: string, privileged: boolean): Promise<string> {
+    const [row] = await systemRows<{ id: string }>(`select new_team($1, $1) as "id"`, [`${name}-${randomUUID().slice(0, 8)}`]);
+    await asSystem.query(`insert into "team_language" ("teamId", "lang", "privileged") values ($1, $2, $3)`, [
+      row.id, lang, privileged,
+    ]);
+    forgetTeams();
+    return row.id;
+  }
+
+  const putFor = (to: string, capabilities: string[]) =>
+    PUT(
+      new Request("https://example.com/api/grants", {
+        method: "PUT",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ email: to, lang, capabilities }),
+      }),
+    );
+
+  beforeEach(async () => {
+    lang = `xq${CAPITALS[randomInt(26)]}${CAPITALS[randomInt(26)]}`;
+    await asSystem.query(
+      `insert into "language" ("code", "name", "native", "bcp47", "provider", "client", "enabled", "textByTeam")
+       values ($1, 'Xq', 'Xq', 'xq-XQ', 'xq', false, false, true)`,
+      [lang],
+    );
+    forgetLanguages();
+    await loadLanguages();
+    w = await testUser("test-grants-route-w");
+    v = await testUser("test-grants-route-v");
+    fresh = await testUser("test-grants-route-fresh");
+    teamA = await newTeam("grants-route-a", true);
+    teamB = await newTeam("grants-route-b", false);
+    await asSystem.query(MEMBER, [teamB, w.id, lang, "admin"]);
+    await asSystem.query(MEMBER, [teamA, v.id, lang, "regenerate"]);
+    who.id = w.id;
+    who.viewer = { role: null, grants: [{ lang, capability: "admin", privileged: false }] };
+  });
+
+  afterEach(async () => {
+    who.id = granter.id;
+    for (const team of [teamA, teamB]) {
+      await asSystem.query(`delete from "activity" where "teamId" = $1`, [team]);
+      await dropTeam(team);
+    }
+    await asSystem.query(`delete from "activity" where "lang" = $1`, [lang]);
+    await asSystem.query(`delete from "language" where "code" = $1`, [lang]);
+    forgetLanguages();
+    forgetTeams();
+    for (const user of [w, v, fresh]) await user.cleanup();
+  });
+
+  it("lists none of the privileged team's rows to the second team's admin", async () => {
+    const response = await GET();
+    expect(response.status).toBe(200);
+    const { grants } = (await response.json()) as { grants: { userId: string }[] };
+    expect(grants.map((grant) => grant.userId)).toEqual([w.id]);
+  });
+
+  it("refuses to grant somebody in the other team, with the reason", async () => {
+    const response = await putFor(`${v.id}@example.invalid`, ["record"]);
+    expect(response.status).toBe(409);
+    expect((await response.json()).error).toBe(
+      "That person already works on Xq in another team; one person works in one team per language.",
+    );
+    expect(await systemRows(`select "teamId" from "team_member" where "userId" = $1`, [v.id])).toEqual([
+      { teamId: teamA },
+    ]);
+  });
+
+  it("refuses to remove the other team's row, and leaves it", async () => {
+    const params = new URLSearchParams({ userId: v.id, lang, capability: "regenerate" });
+    const response = await DELETE(new Request(`https://example.com/api/grants?${params}`, { method: "DELETE" }));
+    expect(response.status).toBe(403);
+    expect(await systemRows(`select "teamId" from "team_member" where "userId" = $1`, [v.id])).toEqual([
+      { teamId: teamA },
+    ]);
+  });
+
+  it("refuses the second team's admin text, even where the team appoints it", async () => {
+    expect((await putFor(`${fresh.id}@example.invalid`, ["text"])).status).toBe(403);
+  });
+
+  it("puts a site owner's grant to somebody new in the privileged team", async () => {
+    who.id = granter.id;
+    who.viewer = { role: "admin", grants: [] };
+    expect((await putFor(`${fresh.id}@example.invalid`, ["edit"])).status).toBe(200);
+    expect(await systemRows(`select "teamId" from "team_member" where "userId" = $1`, [fresh.id])).toEqual([
+      { teamId: teamA },
+    ]);
   });
 });

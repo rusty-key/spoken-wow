@@ -359,7 +359,7 @@ export async function acceptInvite(
     );
   };
   try {
-    await addGrants(user.id, lang, capabilities, invite.invitedById, claim);
+    await addGrants(user.id, lang, capabilities, invite.invitedById, { within: claim });
   } catch (error) {
     if (!(error instanceof NotClaimed)) throw error;
     // Somebody else's press, a revoke or the clock got there first: say which.

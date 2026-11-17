@@ -5,7 +5,7 @@ import type { ClientBase } from "pg";
 
 import { ALL_TEAMS, query, queryIn, withTeam } from "@/lib/db";
 import { recordActivity } from "@/lib/activity/store";
-import { addGrants, userByEmail } from "@/lib/grants/store";
+import { addGrants, OtherTeamError, userByEmail } from "@/lib/grants/store";
 import type { Lang } from "@/lib/lang";
 import type { Capability } from "@/lib/permissions";
 
@@ -117,7 +117,13 @@ export async function createTeamWithLangs(
       throw new TeamError(`${done}${lang} refused: ${error.message}`, error.status);
     }
     moved.push(lang);
-    if (adminId) await addGrants(adminId, lang, ["admin"], actorId);
+    if (!adminId) continue;
+    try {
+      await addGrants(adminId, lang, ["admin"], actorId);
+    } catch (error) {
+      if (error instanceof OtherTeamError) throw new TeamError(error.message, 409);
+      throw error;
+    }
   }
   const [team] = await listTeams(id);
   return { team, moved };

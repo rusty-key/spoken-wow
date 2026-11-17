@@ -125,3 +125,26 @@ test("an add that answers after a revoke does not bring the revoked invite back"
   expect(await screen.findByText(/Invited bo@example.com to German/)).toBeTruthy();
   expect(screen.queryByText("ana@example.com")).toBeNull();
 });
+
+test("a site owner sees each person's team when the language has two, a language admin never", () => {
+  const row = (userId: string, teamSlug: string) => ({
+    userId,
+    email: `${userId}@example.com`,
+    name: userId,
+    lang: "deDE",
+    capability: "edit" as const,
+    grantedAt: "2026-11-01T10:00:00.000Z",
+    teamSlug,
+  });
+  const grants = [row("ana", "first-team"), row("bo", "second-team")];
+  const view = (viewer: Viewer, rows = grants) =>
+    render(<TeamMatrix lang="deDE" grants={rows} invites={[]} viewer={viewer} textByTeam={false} currentUserId="me" />);
+  view(SITE_ADMIN);
+  expect(screen.getByText(/second-team/)).toBeTruthy();
+  cleanup();
+  view(SITE_ADMIN, [grants[0]]);
+  expect(screen.queryByText(/first-team/)).toBeNull();
+  cleanup();
+  view(DE_ADMIN);
+  expect(screen.queryByText(/second-team/)).toBeNull();
+});
