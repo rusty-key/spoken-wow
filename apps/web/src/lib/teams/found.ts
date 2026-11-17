@@ -23,8 +23,8 @@ import { forgetLanguages, loadLanguages } from "@/lib/languages/catalogue";
 import { addLanguage, describeNew, giveTextToTeam, LanguageExistsError, setEnabledOn } from "@/lib/languages/store";
 import type { Capability } from "@/lib/permissions";
 
-import { moveLang, SLUG, TeamError } from "./admin";
-import { forgetTeams, type TeamId } from "./store";
+import { checkSlug, moveLang, TeamError } from "./admin";
+import { adoptLang, forgetTeams, type TeamId } from "./store";
 
 export type Branch = "new-language" | "hand-over" | "second-team";
 
@@ -106,9 +106,7 @@ export function slugFor(teamName: string, lang: string): string {
 export async function foundTeam(client: PoolClient, input: FoundInput, actorId: string): Promise<Founded> {
   await actAs(client, ALL_TEAMS);
   if (input.lang === BASE_LANG) throw new TeamError("English is one team; no other team can take it.");
-  if (input.team.slug !== null && !SLUG.test(input.team.slug)) {
-    throw new TeamError("A team's slug is lowercase letters, digits and dashes, starting with a letter.");
-  }
+  if (input.team.slug !== null) checkSlug(input.team.slug);
   await client.query(`select 1 from "language" where "code" = $1 for update`, [input.lang]);
   switch (await languageBranch(input.lang, client)) {
     case "new-language":
@@ -129,17 +127,7 @@ async function foundLanguage(client: PoolClient, input: FoundInput, actorId: str
     if (error instanceof LanguageExistsError) throw new TeamError(error.message, 409);
     throw error;
   }
-  // The team adopt_lang made is slugged by the code; a name that falls back to the code keeps it.
-  const base = slugFor(input.team.name, input.lang);
-  const [team] = await named(
-    client,
-    input.team.slug ?? base,
-    `update "team"
-        set "slug" = coalesce($1, case when "slug" = $2 then "slug" else free_team_slug($2) end), "name" = $3
-      where "id" = team_of_lang($4)
-      returning "id", "slug"`,
-    [input.team.slug, base, input.team.name, input.lang],
-  );
+  const team = await renameAdopted(client, input);
   return {
     ...(await hand(client, input, actorId, team.id)),
     branch: "new-language",
@@ -152,16 +140,26 @@ async function foundLanguage(client: PoolClient, input: FoundInput, actorId: str
   };
 }
 
-/** A known language nobody looks after: a new team, which the language moves to with its rows. */
+/**
+ * A known language nobody looks after: a new team, which the language moves to with its rows. A
+ * language with a row but no team yet gets adopt_lang's team, with english's roster, renamed.
+ */
 async function takeOverLanguage(client: PoolClient, input: FoundInput, actorId: string): Promise<Founded> {
-  const slug =
-    input.team.slug ??
-    (await client.query<{ slug: string }>(`select free_team_slug($1) as "slug"`, [slugFor(input.team.name, input.lang)]))
-      .rows[0].slug;
-  const [team] = await named(client, slug, `select new_team($1, $2) as "id", $1::text as "slug"`, [slug, input.team.name]);
-  const { moved, from } = (await hasTeam(client, input.lang))
-    ? await moveLang(client, input.lang, team.id)
-    : await claimLang(client, input.lang, team.id);
+  const { rows } = await client.query<{ team: TeamId | null }>(`select team_of_lang($1) as "team"`, [input.lang]);
+  let team: { id: TeamId; slug: string };
+  let moved = 0;
+  let from: string | null = null;
+  if (rows[0].team === null) {
+    await adoptLang(client, input.lang);
+    team = await renameAdopted(client, input);
+  } else {
+    const slug =
+      input.team.slug ??
+      (await client.query<{ slug: string }>(`select free_team_slug($1) as "slug"`, [slugFor(input.team.name, input.lang)]))
+        .rows[0].slug;
+    [team] = await named(client, slug, `select new_team($1, $2) as "id", $1::text as "slug"`, [slug, input.team.name]);
+    ({ moved, from } = await moveLang(client, input.lang, team.id));
+  }
   return {
     ...(await hand(client, input, actorId, team.id)),
     branch: "hand-over",
@@ -174,19 +172,19 @@ async function takeOverLanguage(client: PoolClient, input: FoundInput, actorId: 
   };
 }
 
-async function hasTeam(client: PoolClient, lang: string): Promise<boolean> {
-  const { rows } = await client.query<{ team: TeamId | null }>(`select team_of_lang($1) as "team"`, [lang]);
-  return rows[0].team !== null;
-}
-
-/**
- * A language with a row but no team yet: the new team takes it straight away, as adopt_lang
- * would, with nothing to move and no team slugged by the code left empty behind.
- */
-async function claimLang(client: PoolClient, lang: string, team: TeamId): Promise<{ moved: number; from: null }> {
-  await client.query(`insert into "team_language" ("teamId", "lang", "privileged") values ($1, $2, true)`, [team, lang]);
-  await client.query(`select pg_notify('spoken_team_language', $1)`, [lang]);
-  return { moved: 0, from: null };
+/** adopt_lang's team, slugged by the code, renamed as asked; a name that falls back to the code keeps its slug. */
+async function renameAdopted(client: PoolClient, input: FoundInput): Promise<{ id: TeamId; slug: string }> {
+  const base = slugFor(input.team.name, input.lang);
+  const [team] = await named(
+    client,
+    input.team.slug ?? base,
+    `update "team"
+        set "slug" = coalesce($1, case when "slug" = $2 then "slug" else free_team_slug($2) end), "name" = $3
+      where "id" = team_of_lang($4)
+      returning "id", "slug"`,
+    [input.team.slug, base, input.team.name, input.lang],
+  );
+  return team;
 }
 
 /**
@@ -227,7 +225,7 @@ async function hand(
   const was = await setEnabledOn(client, input.lang, true, actorId);
   await giveTextToTeam(client, input.lang);
   const granted = input.adminId ? await grantOn(client, team, input.adminId, input.lang, ["admin", "text"], actorId) : [];
-  return { switchedOn: was !== true, adminId: input.adminId, granted };
+  return { switchedOn: !was, adminId: input.adminId, granted };
 }
 
 /**

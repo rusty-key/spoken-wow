@@ -35,7 +35,11 @@ export class TeamError extends Error {
 }
 
 /** The same shape the "team"."slug" check enforces. */
-export const SLUG = /^[a-z][a-z0-9-]{1,40}$/;
+const SLUG = /^[a-z][a-z0-9-]{1,40}$/;
+
+export function checkSlug(slug: string): void {
+  if (!SLUG.test(slug)) throw new TeamError("A team's slug is lowercase letters, digits and dashes, starting with a letter.");
+}
 
 export async function listTeams(only?: TeamId): Promise<TeamSummary[]> {
   const id = [only ?? null];
@@ -66,10 +70,6 @@ export async function listTeams(only?: TeamId): Promise<TeamSummary[]> {
   }));
 }
 
-/**
- * Writes the team alone: membership is per language, so the admin is granted once a language
- * is handed over, and only their id is returned.
- */
 /** The id of the user `adminEmail` names, null for none; a TeamError when nobody has it. */
 export async function resolveAdmin(adminEmail: string | null): Promise<string | null> {
   if (adminEmail === null) return null;
@@ -78,13 +78,15 @@ export async function resolveAdmin(adminEmail: string | null): Promise<string | 
   return admin.id;
 }
 
+/**
+ * Writes the team alone: membership is per language, so the admin is granted once a language
+ * is handed over, and only their id is returned.
+ */
 export async function createTeam(
   input: { slug: string; name: string; adminEmail: string | null },
   actorId: string,
 ): Promise<{ id: TeamId; adminId: string | null }> {
-  if (!SLUG.test(input.slug)) {
-    throw new TeamError("A team's slug is lowercase letters, digits and dashes, starting with a letter.");
-  }
+  checkSlug(input.slug);
   const adminId = await resolveAdmin(input.adminEmail);
   const id = await withTeam(ALL_TEAMS, async (client) => {
     try {

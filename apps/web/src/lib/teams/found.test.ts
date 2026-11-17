@@ -245,6 +245,15 @@ describe("foundTeam, hand-over", () => {
     expect(founded).toMatchObject({ branch: "hand-over", from: null, moved: 0 });
     expect(await teamOfLang(lang)).toBe(founded.teamId);
     expect(await systemRows(`select 1 from "team" where "slug" = $1`, [lang.toLowerCase()])).toHaveLength(0);
+    // adopt_lang's roster: a team without one has no voices (migration 0091).
+    const voices = (team: string) =>
+      systemRows<{ name: string }>(
+        `select v."name" from "voice" v join "team" t on t."id" = v."teamId" where t."slug" = $1 order by 1`,
+        [team],
+      );
+    const english = await voices("english");
+    expect(english.length).toBeGreaterThan(0);
+    expect(await voices(founded.slug)).toEqual(english);
   });
 
   it("ignores the names a request gave for a code that is known by now", async () => {

@@ -1,6 +1,7 @@
 "use client";
 
 import { Input } from "@/components/ui/input";
+import { LANG_SHAPE } from "@/lib/lang";
 
 export type NewLanguage = { code: string; name: string; native: string };
 
@@ -13,7 +14,7 @@ export default function NewLanguageFields({ value, onChange }: Props) {
       <Input
         aria-label="Language code"
         placeholder="Code (xxXX: two lowercase letters, two capitals)"
-        pattern="[a-z]{2}[A-Z]{2}"
+        pattern={LANG_SHAPE}
         required
         value={value.code}
         onChange={(event) => onChange({ ...value, code: event.target.value })}

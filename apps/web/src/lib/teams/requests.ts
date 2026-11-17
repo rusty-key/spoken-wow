@@ -47,18 +47,20 @@ export type NewRequest = {
   note: string | null;
 };
 
-/** Timestamps as ISO in UTC: Postgres' own text form is not one every browser parses. */
-const iso = (column: string) => `to_char(${column} at time zone 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"')`;
 const COLUMNS = `r."id", r."userId", u."email", r."lang", r."langName", r."langNative", r."teamName", r."note",
-                 r."state", r."reason", r."approvedTeamId", ${iso(`r."createdAt"`)} as "createdAt",
-                 ${iso(`r."decidedAt"`)} as "decidedAt"`;
+                 r."state", r."reason", r."approvedTeamId", r."createdAt", r."decidedAt"`;
 const FROM = `"team_request" r join "user" u on u."id" = r."userId"`;
 
-type Row = Omit<TeamRequest, "branch">;
+type Row = Omit<TeamRequest, "branch" | "createdAt" | "decidedAt"> & { createdAt: Date; decidedAt: Date | null };
 type Reader = Pick<PoolClient, "query">;
 
+/** Timestamps as ISO in UTC: Postgres' own text form is not one every browser parses. */
+function toRequest(row: Row, branch: Branch | null): TeamRequest {
+  return { ...row, createdAt: row.createdAt.toISOString(), decidedAt: row.decidedAt?.toISOString() ?? null, branch };
+}
+
 async function withBranch(row: Row): Promise<TeamRequest> {
-  return { ...row, branch: row.state === "pending" ? await languageBranch(row.lang) : null };
+  return toRequest(row, row.state === "pending" ? await languageBranch(row.lang) : null);
 }
 
 async function read(id: string, client?: Reader): Promise<Row | null> {
@@ -116,7 +118,7 @@ export async function listRequests(filter: { userId?: string; state?: RequestSta
     return branch;
   };
   return Promise.all(
-    rows.map(async (row) => ({ ...row, branch: row.state === "pending" ? await branchOf(row.lang) : null })),
+    rows.map(async (row) => toRequest(row, row.state === "pending" ? await branchOf(row.lang) : null)),
   );
 }
 

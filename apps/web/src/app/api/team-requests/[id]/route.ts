@@ -2,7 +2,7 @@ import { bad, bodyOf, objectOf } from "@/lib/api-body";
 import { currentSession } from "@/lib/session";
 import { approveRequest, rejectRequest, withdrawRequest } from "@/lib/teams/requests";
 
-import { refusal, withAdmin } from "../../teams/guard";
+import { refusal, signedOut, withAdmin } from "../../teams/guard";
 
 export const dynamic = "force-dynamic";
 
@@ -11,7 +11,7 @@ const MAX_REASON = 500;
 /** The requester withdraws their own pending request. */
 export async function DELETE(_request: Request, context: { params: Promise<{ id: string }> }) {
   const session = await currentSession();
-  if (!session) return Response.json({ error: "Sign in first." }, { status: 401 });
+  if (!session) return signedOut();
   try {
     return Response.json({ request: await withdrawRequest((await context.params).id, session.user.id) });
   } catch (error) {

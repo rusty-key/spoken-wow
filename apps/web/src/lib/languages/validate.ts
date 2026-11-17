@@ -17,12 +17,12 @@ export function isPageSection(code: string): boolean {
   return sections.some((section) => section.toLowerCase() === code.toLowerCase());
 }
 
-/** A new language's code and trimmed names, or why it cannot have them. */
+/** A new language's trimmed names, or why it cannot have them or its code. */
 export function checkNewLanguage(
   code: string,
   name: unknown,
   native: unknown,
-): { error: string } | { language: { code: string; name: string; native: string } } {
+): { error: string } | { language: { name: string; native: string } } {
   if (!LANG_CODE.test(code)) return { error: "A language code is two lowercase letters and two capitals, like xxXX." };
   if (isPageSection(code)) return { error: `${code} would shadow a page` };
   const english = describedName(name);
@@ -30,5 +30,5 @@ export function checkNewLanguage(
   if (!english || !own) {
     return { error: "A new language needs an English name and a native name, each 1 to 60 characters." };
   }
-  return { language: { code, name: english, native: own } };
+  return { language: { name: english, native: own } };
 }

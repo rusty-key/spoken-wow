@@ -63,24 +63,23 @@ export async function setEnabled(lang: string, enabled: boolean, userId: string)
     return previous;
   });
   forgetTeams();
-  if ((was ?? false) === enabled) return;
+  if (was === enabled) return;
   await recordActivity({ kind: "language.toggled", lang, actorId: userId, detail: { enabled } });
 }
 
 /**
- * Switches a language on or off on the caller's client, and returns the previous state: null for
- * a language never switched, which languageStates treats as off. Checks nothing and logs nothing;
- * a language created in the same transaction is not in the registry yet.
+ * Switches a language on or off on the caller's client, and returns the previous state. Checks
+ * nothing and logs nothing; a language created in the same transaction is not in the registry yet.
  */
 export async function setEnabledOn(
   client: ClientBase,
   lang: string,
   enabled: boolean,
   userId: string,
-): Promise<boolean | null> {
+): Promise<boolean> {
   // The CTE reads the row as it was before this statement, so "was" is the previous state. A row
   // is described when it is made (migration 0109), so this only ever updates one.
-  const { rows } = await client.query<{ was: boolean | null }>(
+  const { rows } = await client.query<{ was: boolean }>(
     `with "before" as (select "enabled" from "language" where "code" = $1)
      update "language"
         set "enabled" = $2, "updatedAt" = now(), "updatedBy" = $3

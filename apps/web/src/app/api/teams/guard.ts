@@ -10,6 +10,8 @@ type Handler = (request: Request, actorId: string) => Promise<Response>;
 type TeamHandler = (request: Request, actorId: string, team: TeamId) => Promise<Response>;
 type TeamContext = { params: Promise<{ id: string }> };
 
+export const signedOut = () => Response.json({ error: "Sign in first." }, { status: 401 });
+
 /** Anything but a TeamError rethrows, so a real failure is not hidden as a refusal. */
 export function refusal(error: unknown): Response {
   if (error instanceof TeamError) return Response.json({ error: error.message }, { status: error.status });

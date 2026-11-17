@@ -6,12 +6,11 @@ import { isAdmin } from "@/lib/permissions";
 import { currentSession } from "@/lib/session";
 import { createRequest, listRequests, type RequestState } from "@/lib/teams/requests";
 
-import { refusal } from "../teams/guard";
+import { refusal, signedOut } from "../teams/guard";
 
 export const dynamic = "force-dynamic";
 
 const MAX_NOTE = 1000;
-const signedOut = () => Response.json({ error: "Sign in first." }, { status: 401 });
 
 /** The caller's own requests; a site admin asking `?state=pending` gets everybody's. */
 export async function GET(request: Request) {
@@ -47,7 +46,7 @@ export async function POST(request: Request) {
     const given = objectOf(language);
     const checked = checkNewLanguage(lang, given?.name, given?.native);
     if ("error" in checked) return bad(checked.error);
-    names = { name: checked.language.name, native: checked.language.native };
+    names = checked.language;
   }
 
   try {
