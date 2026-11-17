@@ -1,13 +1,11 @@
 /** Needs DATABASE_URL and migrations through 0113 applied. */
-import { randomInt, randomUUID } from "node:crypto";
-
 import { afterAll, afterEach, beforeEach, describe, expect, it } from "vitest";
 
 import { closeDb } from "@/lib/db";
 import type { Lang } from "@/lib/lang";
 import { asActor } from "@/lib/teams/acting";
 import { forgetTeams } from "@/lib/teams/store";
-import { asSystem, dropTeam, systemRows, testUser } from "@/lib/teams/testing";
+import { addMember, asSystem, dropTeam, newTeamIn, randomLang, systemRows, testUser } from "@/lib/teams/testing";
 
 import { viewersIn } from "@/lib/grants/store";
 
@@ -16,10 +14,7 @@ import {
   skippedIds, skipReports,
 } from "./store";
 
-const CAPITALS = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
-
 let lang: Lang;
-let tag: string;
 let teamA: string;
 let teamB: string;
 let m: Awaited<ReturnType<typeof testUser>>;
@@ -27,15 +22,6 @@ let t: Awaited<ReturnType<typeof testUser>>;
 let a: Awaited<ReturnType<typeof testUser>>;
 let textId: number;
 let audioId: number;
-
-async function newTeam(name: string, privileged: boolean): Promise<string> {
-  const [row] = await systemRows<{ id: string }>(`select new_team($1, $1) as "id"`, [`${name}-${tag}`]);
-  await asSystem.query(`insert into "team_language" ("teamId", "lang", "privileged") values ($1, $2, $3)`, [
-    row.id, lang, privileged,
-  ]);
-  forgetTeams();
-  return row.id;
-}
 
 async function file(category: string, queue: string, team = teamA): Promise<number> {
   const [row] = await systemRows<{ id: string }>(
@@ -47,21 +33,14 @@ async function file(category: string, queue: string, team = teamA): Promise<numb
 }
 
 beforeEach(async () => {
-  tag = randomUUID().slice(0, 8);
-  lang = `xq${CAPITALS[randomInt(26)]}${CAPITALS[randomInt(26)]}` as Lang;
+  lang = randomLang();
   m = await testUser("test-text-queue-m");
   t = await testUser("test-text-queue-t");
   a = await testUser("test-text-queue-a");
-  teamA = await newTeam("tq-a", true);
-  teamB = await newTeam("tq-b", false);
-  await asSystem.query(
-    `insert into "team_member" ("teamId", "userId", "lang", "capability") values ($1, $2, $3, 'regenerate')`,
-    [teamB, m.id, lang],
-  );
-  await asSystem.query(
-    `insert into "team_member" ("teamId", "userId", "lang", "capability") values ($1, $2, $3, 'regenerate')`,
-    [teamA, a.id, lang],
-  );
+  teamA = await newTeamIn(lang, true, "tq-a");
+  teamB = await newTeamIn(lang, false, "tq-b");
+  await addMember(teamB, m.id, lang, "regenerate");
+  await addMember(teamA, a.id, lang, "regenerate");
   for (const user of [m, t]) {
     await asSystem.query(`insert into "language_grant" ("userId", "lang", "capability") values ($1, $2, 'edit')`, [
       user.id, lang,

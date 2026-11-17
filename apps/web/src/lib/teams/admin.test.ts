@@ -7,7 +7,7 @@ import { closeDb, inTransaction, withTeam } from "@/lib/db";
 
 import { createTeam, handOver, listTeams, liveTakeCounts, renameTeam, TeamError } from "./admin";
 import { adoptLang, forgetTeams, teamOf } from "./store";
-import { asSystem, dropTeam, runningJob, systemRows, testUser, unowned } from "./testing";
+import { asSystem, dropTeam, newTeamIn, runningJob, systemRows, testUser, unowned } from "./testing";
 
 let tag: string;
 let user: Awaited<ReturnType<typeof testUser>>;
@@ -133,10 +133,8 @@ describe("liveTakeCounts", () => {
          values ('quests', $3, $1, 'g:count', $2, $4, 'generated', 1, coalesce($5::uuid, team_of_lang($3)))`,
         [file, version, lang, current, team ?? null],
       );
-    const second = await newTeam();
-    await asSystem.query(`insert into "team_language" ("teamId", "lang", "privileged") values ($1, 'deDE', false)`, [
-      second,
-    ]);
+    const second = await newTeamIn("deDE", false);
+    made.push(second);
     const before = await liveTakeCounts();
     try {
       await row(1, false, "deDE");

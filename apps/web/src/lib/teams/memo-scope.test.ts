@@ -1,5 +1,5 @@
 /** Needs DATABASE_URL and migrations through 0113 applied. */
-import { randomInt, randomUUID } from "node:crypto";
+import { randomUUID } from "node:crypto";
 
 import { afterAll, afterEach, beforeEach, describe, expect, it } from "vitest";
 
@@ -10,10 +10,7 @@ import { forgetReferences, pinnedVoices } from "@/lib/voices/references";
 
 import { asActor } from "./acting";
 import { forgetTeams } from "./store";
-import { asSystem, dropTeam, systemRows, testUser } from "./testing";
-
-const CAPITALS = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
-const GRANT = `insert into "team_member" ("teamId", "userId", "lang", "capability") values ($1, $2, $3, $4)`;
+import { addMember, asSystem, dropTeam, newTeamIn, randomLang, testUser } from "./testing";
 
 let lang: Lang;
 let tag: string;
@@ -22,24 +19,15 @@ let teamB: string;
 let u: Awaited<ReturnType<typeof testUser>>;
 let v: Awaited<ReturnType<typeof testUser>>;
 
-async function newTeam(name: string, privileged: boolean): Promise<string> {
-  const [row] = await systemRows<{ id: string }>(`select new_team($1, $1) as "id"`, [`${name}-${tag}`]);
-  await asSystem.query(`insert into "team_language" ("teamId", "lang", "privileged") values ($1, $2, $3)`, [
-    row.id, lang, privileged,
-  ]);
-  forgetTeams();
-  return row.id;
-}
-
 beforeEach(async () => {
   tag = randomUUID().slice(0, 8);
-  lang = `xq${CAPITALS[randomInt(26)]}${CAPITALS[randomInt(26)]}` as Lang;
+  lang = randomLang();
   u = await testUser("test-memo-u");
   v = await testUser("test-memo-v");
-  teamA = await newTeam("memo-a", true);
-  teamB = await newTeam("memo-b", false);
-  await asSystem.query(GRANT, [teamB, u.id, lang, "regenerate"]);
-  await asSystem.query(GRANT, [teamA, v.id, lang, "regenerate"]);
+  teamA = await newTeamIn(lang, true, "memo-a");
+  teamB = await newTeamIn(lang, false, "memo-b");
+  await addMember(teamB, u.id, lang, "regenerate");
+  await addMember(teamA, v.id, lang, "regenerate");
 });
 
 afterEach(async () => {

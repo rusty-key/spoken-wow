@@ -3,8 +3,6 @@
  *
  * Needs DATABASE_URL and migrations through 0113 applied.
  */
-import { randomInt, randomUUID } from "node:crypto";
-
 import { afterAll, afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const session = vi.hoisted(() => ({ current: null as { user: { id: string } } | null }));
@@ -18,35 +16,19 @@ import type { Lang } from "@/lib/lang";
 
 import { actingTeams, asTeams } from "./acting";
 import { forgetTeams } from "./store";
-import { asSystem, dropTeam, systemRows, testUser } from "./testing";
-
-const CAPITALS = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+import { addMember, dropTeam, newTeamIn, randomLang, testUser } from "./testing";
 
 let lang: Lang;
-let tag: string;
 let teamA: string;
 let teamB: string;
 let u: Awaited<ReturnType<typeof testUser>>;
 
-async function newTeam(name: string, privileged: boolean): Promise<string> {
-  const [row] = await systemRows<{ id: string }>(`select new_team($1, $1) as "id"`, [`${name}-${tag}`]);
-  await asSystem.query(`insert into "team_language" ("teamId", "lang", "privileged") values ($1, $2, $3)`, [
-    row.id, lang, privileged,
-  ]);
-  forgetTeams();
-  return row.id;
-}
-
 beforeEach(async () => {
-  tag = randomUUID().slice(0, 8);
-  lang = `xq${CAPITALS[randomInt(26)]}${CAPITALS[randomInt(26)]}` as Lang;
+  lang = randomLang();
   u = await testUser("test-acting-session");
-  teamA = await newTeam("session-a", true);
-  teamB = await newTeam("session-b", false);
-  await asSystem.query(
-    `insert into "team_member" ("teamId", "userId", "lang", "capability") values ($1, $2, $3, 'regenerate')`,
-    [teamB, u.id, lang],
-  );
+  teamA = await newTeamIn(lang, true, "session-a");
+  teamB = await newTeamIn(lang, false, "session-b");
+  await addMember(teamB, u.id, lang, "regenerate");
 });
 
 afterEach(async () => {

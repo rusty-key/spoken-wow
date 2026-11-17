@@ -1,5 +1,5 @@
 /** Needs DATABASE_URL and migrations through 0113 applied. */
-import { randomInt, randomUUID } from "node:crypto";
+import { randomUUID } from "node:crypto";
 
 import type { PoolClient } from "pg";
 import { afterAll, afterEach, beforeEach, describe, expect, it } from "vitest";
@@ -7,9 +7,7 @@ import { afterAll, afterEach, beforeEach, describe, expect, it } from "vitest";
 import { closeDb, db } from "@/lib/db";
 
 import { forgetTeams } from "./store";
-import { asSystem, dropTeam, systemRows, testUser } from "./testing";
-
-const CAPITALS = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+import { addMember, asSystem, dropTeam, newTeamIn, randomLang, systemRows, testUser } from "./testing";
 
 let lang: string;
 let tag: string;
@@ -18,24 +16,15 @@ let teamB: string;
 let extra: string[];
 let user: Awaited<ReturnType<typeof testUser>>;
 
-async function newTeam(name: string, privileged: boolean): Promise<string> {
-  const [row] = await systemRows<{ id: string }>(`select new_team($1, $1) as "id"`, [`${name}-${tag}`]);
-  await asSystem.query(`insert into "team_language" ("teamId", "lang", "privileged") values ($1, $2, $3)`, [
-    row.id, lang, privileged,
-  ]);
-  forgetTeams();
-  return row.id;
-}
-
 const GRANT = `insert into "team_member" ("teamId", "userId", "lang", "capability") values ($1, $2, $3, $4)`;
 
 beforeEach(async () => {
   tag = randomUUID().slice(0, 8);
-  lang = `xq${CAPITALS[randomInt(26)]}${CAPITALS[randomInt(26)]}`;
+  lang = randomLang();
   user = await testUser("test-second");
   extra = [];
-  teamA = await newTeam("second-a", true);
-  teamB = await newTeam("second-b", false);
+  teamA = await newTeamIn(lang, true, "second-a");
+  teamB = await newTeamIn(lang, false, "second-b");
 });
 
 afterEach(async () => {
@@ -101,7 +90,7 @@ describe("one team per person per language", () => {
   });
 
   it("lets move_team_lang move a member to a new team", async () => {
-    await asSystem.query(GRANT, [teamA, user.id, lang, "regenerate"]);
+    await addMember(teamA, user.id, lang, "regenerate");
     const [c] = await systemRows<{ id: string }>(`select new_team($1, $1) as "id"`, [`second-c-${tag}`]);
     extra.push(c.id);
     await asSystem.query(`select move_team_lang($1, $2)`, [lang, c.id]);

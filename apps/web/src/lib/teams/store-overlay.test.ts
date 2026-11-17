@@ -1,13 +1,11 @@
 /** Needs DATABASE_URL and migrations through 0113 applied. */
-import { randomInt, randomUUID } from "node:crypto";
-
 import { afterAll, afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { closeDb } from "@/lib/db";
 import type { Lang } from "@/lib/lang";
 
 import { forgetTeams, freshOwners, ownerOrAll } from "./store";
-import { asSystem, dropTeam, systemRows } from "./testing";
+import { dropTeam, newTeamIn, randomLang } from "./testing";
 
 const acting = vi.hoisted(() => ({ calls: 0, teams: new Map<string, string>() }));
 
@@ -18,26 +16,14 @@ vi.mock("./acting", () => ({
   },
 }));
 
-const CAPITALS = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
-
 let lang: Lang;
-let tag: string;
 let teamA: string;
 let teamB: string;
 
-async function newTeam(name: string, privileged: boolean): Promise<string> {
-  const [row] = await systemRows<{ id: string }>(`select new_team($1, $1) as "id"`, [`${name}-${tag}`]);
-  await asSystem.query(`insert into "team_language" ("teamId", "lang", "privileged") values ($1, $2, $3)`, [
-    row.id, lang, privileged,
-  ]);
-  return row.id;
-}
-
 beforeEach(async () => {
-  tag = randomUUID().slice(0, 8);
-  lang = `xq${CAPITALS[randomInt(26)]}${CAPITALS[randomInt(26)]}` as Lang;
-  teamA = await newTeam("overlay-a", true);
-  teamB = await newTeam("overlay-b", false);
+  lang = randomLang();
+  teamA = await newTeamIn(lang, true, "overlay-a");
+  teamB = await newTeamIn(lang, false, "overlay-b");
   forgetTeams();
   acting.teams = new Map([[lang, teamB]]);
   acting.calls = 0;

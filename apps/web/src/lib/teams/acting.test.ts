@@ -1,5 +1,5 @@
 /** Needs DATABASE_URL and migrations through 0113 applied. */
-import { randomInt, randomUUID } from "node:crypto";
+import { randomUUID } from "node:crypto";
 
 import { afterAll, afterEach, beforeEach, describe, expect, it } from "vitest";
 
@@ -9,9 +9,7 @@ import type { Lang } from "@/lib/lang";
 
 import { actingTeams, asActor, asTeams, memberTeams, teamIn } from "./acting";
 import { actsAsSecondTeam, byTeam, forgetTeams, ownerOrAll, privilegedOf, queryAs, readAs, teamOf } from "./store";
-import { asSystem, dropTeam, systemRows, testUser } from "./testing";
-
-const CAPITALS = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+import { addMember, asSystem, dropTeam, newTeamIn, randomLang, systemRows, testUser } from "./testing";
 
 let lang: Lang;
 let tag: string;
@@ -20,26 +18,15 @@ let teamB: string;
 let u: Awaited<ReturnType<typeof testUser>>;
 let v: Awaited<ReturnType<typeof testUser>>;
 
-async function newTeam(name: string, privileged: boolean): Promise<string> {
-  const [row] = await systemRows<{ id: string }>(`select new_team($1, $1) as "id"`, [`${name}-${tag}`]);
-  await asSystem.query(`insert into "team_language" ("teamId", "lang", "privileged") values ($1, $2, $3)`, [
-    row.id, lang, privileged,
-  ]);
-  forgetTeams();
-  return row.id;
-}
-
-const GRANT = `insert into "team_member" ("teamId", "userId", "lang", "capability") values ($1, $2, $3, $4)`;
-
 beforeEach(async () => {
   tag = randomUUID().slice(0, 8);
-  lang = `xq${CAPITALS[randomInt(26)]}${CAPITALS[randomInt(26)]}` as Lang;
+  lang = randomLang();
   u = await testUser("test-acting-u");
   v = await testUser("test-acting-v");
-  teamA = await newTeam("acting-a", true);
-  teamB = await newTeam("acting-b", false);
-  await asSystem.query(GRANT, [teamB, u.id, lang, "regenerate"]);
-  await asSystem.query(GRANT, [teamA, v.id, lang, "regenerate"]);
+  teamA = await newTeamIn(lang, true, "acting-a");
+  teamB = await newTeamIn(lang, false, "acting-b");
+  await addMember(teamB, u.id, lang, "regenerate");
+  await addMember(teamA, v.id, lang, "regenerate");
 });
 
 afterEach(async () => {

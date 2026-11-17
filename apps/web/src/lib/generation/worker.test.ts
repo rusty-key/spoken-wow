@@ -23,8 +23,7 @@ import { backoffFor, startWorker } from "./worker";
 import type { Source } from "@/lib/sections";
 import { commitTake } from "@/lib/takes/commit";
 import { asTeams } from "@/lib/teams/acting";
-import { forgetTeams } from "@/lib/teams/store";
-import { asSystem, dropTeam, ownTeam, systemRows } from "@/lib/teams/testing";
+import { asSystem, dropTeam, newTeamIn, ownTeam } from "@/lib/teams/testing";
 
 // The real boss generator would reach the catalogue and a provider; the dispatch to it is
 // what is under test here, and lib/bosses/regenerate.test.ts covers what it does.
@@ -979,20 +978,14 @@ describe("a job's team", () => {
 
   it("is the second team's when the job was queued by it", async () => {
     let german: Awaited<ReturnType<typeof ownTeam>> | undefined;
-    let second: { id: string } | undefined;
+    let second: string | undefined;
     const archive = fs.mkdtempSync(path.join(os.tmpdir(), "worker-team-b-"));
     const before = process.env.SPOKEN_BOSSES_AUDIO_HISTORY;
     process.env.SPOKEN_BOSSES_AUDIO_HISTORY = archive;
     try {
-    german = await ownTeam("deDE");
-    [second] = await systemRows<{ id: string }>(`select new_team($1, $1) as "id"`, [
-      `worker-b-${Math.random().toString(36).slice(2, 8)}`,
-    ]);
-    await asSystem.query(`insert into "team_language" ("teamId", "lang", "privileged") values ($1, 'deDE', false)`, [
-      second.id,
-    ]);
-    forgetTeams();
-      const secondId = second!.id;
+      german = await ownTeam("deDE");
+      second = await newTeamIn("deDE", false, "worker-b");
+      const secondId = second;
       const batch = await asTeams(new Map([["deDE", secondId]]), async () => {
         const id = await createBatch("test", null, "bosses", "deDE");
         batches.push(id);
@@ -1025,9 +1018,9 @@ describe("a job's team", () => {
       await asSystem.query(`delete from "regeneration_batch" where "id" = any($1::uuid[])`, [batches]);
       batches.length = 0;
       if (second) {
-        await asSystem.query(`delete from "take" where "teamId" = $1`, [second.id]);
-        await asSystem.query(`delete from "activity" where "teamId" = $1`, [second.id]);
-        await dropTeam(second.id);
+        await asSystem.query(`delete from "take" where "teamId" = $1`, [second]);
+        await asSystem.query(`delete from "activity" where "teamId" = $1`, [second]);
+        await dropTeam(second);
       }
       await german?.restore();
     }

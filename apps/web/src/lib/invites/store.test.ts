@@ -1,16 +1,15 @@
 /**
  * Needs DATABASE_URL and migrations applied.
  */
-import { createHash, randomInt, randomUUID } from "node:crypto";
+import { createHash } from "node:crypto";
 
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { closeDb, withTeam } from "@/lib/db";
 import type { Lang } from "@/lib/lang";
-import { forgetLanguages, loadLanguages } from "@/lib/languages/catalogue";
 import { teamIn } from "@/lib/teams/acting";
 import { forgetTeams } from "@/lib/teams/store";
-import { asSystem, dropTeam, systemRows, testUser } from "@/lib/teams/testing";
+import { addMember, asSystem, dropLang, dropTeam, newTeamIn, systemRows, testUser, uniqueLang } from "@/lib/teams/testing";
 
 import { manageableInvite } from "./manage";
 
@@ -145,45 +144,20 @@ describe("invites", () => {
 });
 
 describe("an invite in a second team", () => {
-  const CAPITALS = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
-  const MEMBER = `insert into "team_member" ("teamId", "userId", "lang", "capability") values ($1, $2, $3, 'admin')`;
   let lang: Lang;
   let teamA: string | undefined;
   let teamB: string | undefined;
   let adminA: Awaited<ReturnType<typeof testUser>> | undefined;
   let adminB: Awaited<ReturnType<typeof testUser>> | undefined;
 
-  async function newTeam(name: string, privileged: boolean): Promise<string> {
-    const [row] = await systemRows<{ id: string }>(`select new_team($1, $1) as "id"`, [`${name}-${randomUUID().slice(0, 8)}`]);
-    await asSystem.query(`insert into "team_language" ("teamId", "lang", "privileged") values ($1, $2, $3)`, [
-      row.id, lang, privileged,
-    ]);
-    forgetTeams();
-    return row.id;
-  }
-
   beforeEach(async () => {
-    // A code no language has yet, so afterEach never deletes a row it did not make.
-    for (;;) {
-      const code = `xq${CAPITALS[randomInt(26)]}${CAPITALS[randomInt(26)]}`;
-      const made = await asSystem.query(
-        `insert into "language" ("code", "name", "native", "bcp47", "provider", "client", "enabled", "textByTeam")
-         values ($1, 'Xq', 'Xq', 'xq-XQ', 'xq', false, false, false) on conflict do nothing`,
-        [code],
-      );
-      if (made.rowCount) {
-        lang = code as Lang;
-        break;
-      }
-    }
-    forgetLanguages();
-    await loadLanguages();
+    lang = await uniqueLang();
     adminA = await testUser("test-invites-a");
     adminB = await testUser("test-invites-b");
-    teamA = await newTeam("invites-a", true);
-    teamB = await newTeam("invites-b", false);
-    await asSystem.query(MEMBER, [teamA, adminA.id, lang]);
-    await asSystem.query(MEMBER, [teamB, adminB.id, lang]);
+    teamA = await newTeamIn(lang, true, "invites-a");
+    teamB = await newTeamIn(lang, false, "invites-b");
+    await addMember(teamA, adminA.id, lang, "admin");
+    await addMember(teamB, adminB.id, lang, "admin");
   });
 
   afterEach(async () => {
@@ -192,9 +166,7 @@ describe("an invite in a second team", () => {
       await asSystem.query(`delete from "activity" where "teamId" = $1`, [team]);
       await dropTeam(team);
     }
-    await asSystem.query(`delete from "activity" where "lang" = $1`, [lang]);
-    await asSystem.query(`delete from "language" where "code" = $1`, [lang]);
-    forgetLanguages();
+    await dropLang(lang);
     forgetTeams();
     // The users' cascade deletes their invites.
     for (const user of [adminA, adminB]) await user?.cleanup();

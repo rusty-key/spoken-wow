@@ -4,8 +4,6 @@
  *
  * Needs DATABASE_URL, migrations applied and the corpus imported.
  */
-import { randomInt } from "node:crypto";
-
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { closeDb } from "@/lib/db";
@@ -13,7 +11,7 @@ import type { Plan } from "@/lib/generation/batch-plan";
 import type { Grant } from "@/lib/permissions";
 import { cancelPending } from "@/lib/generation/queue";
 import { forgetTeams } from "@/lib/teams/store";
-import { asSystem, dropTeam, systemRows } from "@/lib/teams/testing";
+import { addMember, asSystem, dropTeam, newTeamIn, randomLang } from "@/lib/teams/testing";
 
 const mocks = vi.hoisted(() => ({
   grants: [] as Grant[],
@@ -231,37 +229,23 @@ describe("POST /api/v1/[section]/generate", () => {
 });
 
 describe("POST /api/v1/[section]/generate for a second team", () => {
-  const CAPITALS = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
   let lang: string;
   let teams: string[];
   let token: string;
   let batchId: string | undefined;
 
-  async function newTeam(privileged: boolean): Promise<string> {
-    const [team] = await systemRows<{ id: string }>(`select new_team($1, $1) as "id"`, [
-      `generate-${privileged ? "a" : "b"}-${Math.random().toString(36).slice(2, 8)}`,
-    ]);
-    await asSystem.query(`insert into "team_language" ("teamId", "lang", "privileged") values ($1, $2, $3)`, [
-      team.id, lang, privileged,
-    ]);
-    teams.push(team.id);
-    return team.id;
-  }
-
   beforeEach(async () => {
     const real = await vi.importActual<typeof import("@/lib/generation/queue")>("@/lib/generation/queue");
     mocks.createBatch.mockImplementation((...args) => (real.createBatch as (...a: unknown[]) => Promise<string>)(...args));
     mocks.enqueue.mockImplementation((...args) => (real.enqueue as (...a: unknown[]) => ReturnType<typeof real.enqueue>)(...args));
-    lang = `xq${CAPITALS[randomInt(26)]}${CAPITALS[randomInt(26)]}`;
+    lang = randomLang();
     mocks.grants = [{ lang, capability: "regenerate" }];
     teams = [];
     batchId = undefined;
-    await newTeam(true);
-    const second = await newTeam(false);
-    await asSystem.query(
-      `insert into "team_member" ("teamId", "userId", "lang", "capability") values ($1, $2, $3, 'regenerate')`,
-      [second, f.user, lang],
-    );
+    teams.push(await newTeamIn(lang, true, "generate-a"));
+    const second = await newTeamIn(lang, false, "generate-b");
+    teams.push(second);
+    await addMember(second, f.user, lang, "regenerate");
     await asSystem.query(
       `insert into "boss_line" ("bossId", "lang", "version", "isCurrent", "origin", "text", "source")
        values ($1, $2, 1, true, 'rewritten', 'Der Boss spricht ein wenig.', 'test')`,
