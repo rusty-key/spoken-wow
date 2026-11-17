@@ -414,6 +414,7 @@ describe("foundTeam, second team", () => {
       teamId: founded.teamId,
       subject: requester.id,
     });
+    expect(log.find((entry) => entry.kind === "team.created")).toMatchObject({ teamId: founded.teamId, lang });
     expect(
       await systemRows(
         `select 1 from "activity" where "teamId" = $1 and "kind" in ('team.second_in_language', 'grant.added')`,

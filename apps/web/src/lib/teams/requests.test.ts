@@ -220,8 +220,24 @@ describe("approveRequest", () => {
       [lang],
     );
     expect(approved.approvedTeamId).toBe(second.teamId);
-    const { rows } = await listActivity({ lang: "deDE", global: true, actorId: admin.id });
+    const { rows } = await listActivity({ lang, global: true, actorId: admin.id });
     expect(rows.find((row) => row.kind === "request.approved")?.detail).toMatchObject({ branch: "second-team" });
+  });
+
+  it("refuses a requester who joined the language's team after asking, and leaves the request pending", async () => {
+    const { lang, a } = await maintained();
+    const request = await createRequest(requester.id, { lang, language: null, teamName: "Second", note: null });
+    await asSystem.query(
+      `insert into "team_member" ("teamId", "userId", "lang", "capability") values ($1, $2, $3, 'regenerate')`,
+      [a, requester.id, lang],
+    );
+    await expect(approveRequest(request.id, admin.id)).rejects.toSatisfy(
+      refused(409, `You already work on Xq Old in ${lang.toLowerCase()}; one person works in one team per language.`),
+    );
+    expect(await systemRows(`select "state" from "team_request" where "id" = $1`, [request.id])).toEqual([
+      { state: "pending" },
+    ]);
+    expect(await systemRows(`select 1 from "team_language" where "lang" = $1 and not "privileged"`, [lang])).toEqual([]);
   });
 });
 

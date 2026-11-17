@@ -15,10 +15,9 @@ import { langName } from "@/lib/lang";
 import { adminEmails, SITE } from "@/lib/site";
 import { isUuid } from "@/lib/uuid";
 
-import { teamIn } from "./acting";
 import { TeamError } from "./admin";
 import { requestLangName as nameOf } from "./branch-text";
-import { afterFounded, foundTeam, languageBranch, type Branch, type Settings } from "./found";
+import { afterFounded, foundTeam, languageBranch, memberRefusal, type Branch, type Settings } from "./found";
 import type { TeamId } from "./store";
 
 export type RequestState = "pending" | "approved" | "rejected" | "withdrawn";
@@ -69,16 +68,9 @@ async function read(id: string, client?: Reader): Promise<Row | null> {
   return rows[0] ?? null;
 }
 
-/** A requester who works on the language in a team already, which approval could only refuse. */
-async function refuseMember(userId: string, lang: string): Promise<void> {
-  const team = await teamIn(userId, lang);
-  if (!team) return;
-  const [{ slug }] = await query<{ slug: string }>(`select "slug" from "team" where "id" = $1`, [team]);
-  throw new TeamError(`You already work on ${langName(lang)} in ${slug}; one person works in one team per language.`, 409);
-}
-
 export async function createRequest(userId: string, input: NewRequest): Promise<TeamRequest> {
-  await refuseMember(userId, input.lang);
+  const refusal = await memberRefusal(userId, input.lang);
+  if (refusal) throw refusal;
   let id: string;
   try {
     const rows = await query<{ id: string }>(
@@ -198,6 +190,12 @@ export async function approveRequest(
       [id, founded.teamId, actorId],
     );
     return { row, founded };
+  }).catch(async (error: unknown) => {
+    // 23P01: a grant elsewhere put the requester in a team of the language after foundTeam
+    // checked, and the commit refused the second membership.
+    if ((error as { code?: string }).code !== "23P01") throw error;
+    const request = await read(id);
+    throw (request && (await memberRefusal(request.userId, request.lang))) ?? error;
   });
   // The approval is committed; none of these throws, so none can fail the response.
   await afterFounded(founded, actorId);

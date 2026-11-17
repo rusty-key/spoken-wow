@@ -85,6 +85,24 @@ async function activeTeamOf(lang: string, client?: ClientBase): Promise<TeamId |
   return rows[0]?.teamId ?? null;
 }
 
+/**
+ * The refusal of a requester who already works on `lang` in a team, which founding them a team
+ * there could only break; null when they work on it in none.
+ */
+export async function memberRefusal(
+  userId: string,
+  lang: string,
+  client?: Pick<ClientBase, "query">,
+): Promise<TeamError | null> {
+  const team = await teamIn(userId, lang, client);
+  if (!team) return null;
+  const { rows } = await (client ?? db()).query<{ slug: string }>(`select "slug" from "team" where "id" = $1`, [team]);
+  return new TeamError(
+    `You already work on ${langName(lang)} in ${rows[0].slug}; one person works in one team per language.`,
+    409,
+  );
+}
+
 export async function languageBranch(lang: string, client?: ClientBase): Promise<Branch> {
   const { rows } = await (client ?? db()).query(`select 1 from "language" where "code" = $1`, [lang]);
   if (!rows.length) return "new-language";
@@ -210,14 +228,8 @@ export async function addSecondTeam(client: PoolClient, input: FoundInput, actor
   const { lang, adminId } = input;
   const settings = input.settings ?? "fresh";
   if (adminId) {
-    const theirs = await teamIn(adminId, lang, client);
-    if (theirs) {
-      const { rows } = await client.query<{ slug: string }>(`select "slug" from "team" where "id" = $1`, [theirs]);
-      throw new TeamError(
-        `You already work on ${langName(lang)} in ${rows[0].slug}; one person works in one team per language.`,
-        409,
-      );
-    }
+    const refusal = await memberRefusal(adminId, lang, client);
+    if (refusal) throw refusal;
   }
   const team = await newTeam(client, input);
   await client.query(`insert into "team_language" ("teamId", "lang", "privileged") values ($1, $2, false)`, [team.id, lang]);
@@ -296,7 +308,18 @@ export async function afterFounded(founded: Founded, actorId: string): Promise<v
   // Loaded now rather than on the next request, so this process's isLang knows the language at once.
   await loadLanguages().catch((error) => console.error("could not reload languages:", error));
   const { lang, slug } = founded;
-  const events: ActivityEvent[] = [{ kind: "team.created", lang: null, actorId, subject: slug, detail: { slug } }];
+  const events: ActivityEvent[] = [
+    {
+      kind: "team.created",
+      lang: null,
+      actorId,
+      subject: slug,
+      detail: { slug },
+      // A second team's founding is filed in its own log, so in its language, which a filed row
+      // must name; the language's other teams do not see it.
+      ...(founded.branch === "second-team" ? { lang, team: founded.teamId } : {}),
+    },
+  ];
   if (founded.branch === "new-language") {
     events.push({ kind: "language.added", lang, actorId, detail: { name: founded.languageName ?? lang } });
   }

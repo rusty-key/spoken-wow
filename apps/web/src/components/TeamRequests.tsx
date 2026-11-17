@@ -83,7 +83,10 @@ export default function TeamRequests({ initial, besides = {} }: Props) {
                   type="checkbox"
                   checked={copies[request.id] ?? false}
                   disabled={busy !== null}
-                  onChange={(event) => setCopies({ ...copies, [request.id]: event.target.checked })}
+                  onChange={(event) => {
+                    const checked = event.target.checked;
+                    setCopies((was) => ({ ...was, [request.id]: checked }));
+                  }}
                 />
                 Start from {besides[request.id] ?? "the existing team"}&apos;s voices and settings
               </label>
