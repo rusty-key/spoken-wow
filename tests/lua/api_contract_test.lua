@@ -238,12 +238,13 @@ Expect("a player-wide gate holds every source", Spoken:GetHeldReason(held), "hel
 Expect("a kind no module tells has no story", tostring(Spoken:HasStory("contract", 1)) .. " "
     .. tostring(Spoken:PlayStory("contract", 1)) .. " " .. tostring(Spoken:IsPlayingStory("contract", 1)) .. " "
     .. tostring(Spoken:StopStory("contract", 1)), "false false false false")
-local told = {}
+local told, asked = {}, 0
 Spoken:RegisterStoryTeller("contract", {
     Has = function(id) return id == 7 end,
     Play = function(id) table.insert(told, "play " .. id); return true end,
     IsPlaying = function(id) return id == 7 end,
     Stop = function(id) table.insert(told, "stop " .. id); return true end,
+    Of = function(clip) asked = asked + 1; return clip.tells end,
 })
 Expect("HasStory asks the kind's teller", tostring(Spoken:HasStory("contract", 7)) .. " " .. tostring(Spoken:HasStory("contract", 8)),
     "true false")
@@ -252,6 +253,21 @@ Expect("PlayStory plays only a story the teller has", tostring(Spoken:PlayStory(
 Expect("IsPlayingStory and StopStory ask it too", tostring(Spoken:IsPlayingStory("contract", 7)) .. " "
     .. tostring(Spoken:StopStory("contract", 7)) .. " " .. told[2], "true true stop 7")
 Expect("no id is no story", Spoken:HasStory("contract", nil), false)
+
+-- GetCaption names the story its line tells, asking the tellers once for each line; one without Of
+-- is passed over. The lines wait behind the player's gate, at the head, where the captions show them.
+Spoken:RegisterStoryTeller("older", { Has = function() return false end, Play = function() return false end,
+    IsPlaying = function() return false end, Stop = function() return false end })
+Spoken:StopAll()
+src:Enqueue(H.Clip({ tells = 7 }))
+local story = Spoken:GetCaption().story
+Expect("GetCaption names the story a line tells, as PlayStory takes it", story.kind .. " " .. story.id, "contract 7")
+Expect("...the same table read after read, the teller asked once", tostring(Spoken:GetCaption().story == story)
+    .. " " .. asked, "true 1")
+Spoken:StopAll()
+src:Enqueue(H.Clip())
+Expect("a line that tells no story has none", Spoken:GetCaption().story, nil)
+Spoken:StopAll()
 
 ---------------------------------------------------------------- registries
 Spoken:RegisterBullet("contract-bullet", "Interface\\X", 12)

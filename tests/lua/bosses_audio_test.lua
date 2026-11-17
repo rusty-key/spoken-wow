@@ -131,8 +131,13 @@ do
     Expect("a boss met, voiced, has one", S:HasStory("boss", EDWIN_FIGHT), true)
     Expect("...an unknown encounter has none", S:HasStory("boss", 1), false)
 
+    local function Named()
+        local story = S:GetCaption() and S:GetCaption().story
+        return story and (story.kind .. " " .. story.id) or "none"
+    end
     Expect("PlayStory plays it", S:PlayStory("boss", EDWIN_FIGHT), true)
     Expect("...the boss's story", S:GetNowPlaying().key, "boss:36:edwin vancleef")
+    Expect("...which GetCaption names as PlayStory took it", Named(), "boss " .. EDWIN_FIGHT)
     Expect("...and IsPlayingStory says so", S:IsPlayingStory("boss", EDWIN_FIGHT), true)
     Expect("...as it does not of another fight", S:IsPlayingStory("boss", 2748), false)
     S:Pause()
@@ -150,6 +155,25 @@ do
     S:SetPartOn("bosses", false)
     Expect("with Bosses switched off there is none", S:HasStory("boss", EDWIN_FIGHT), false)
     S:SetPartOn("bosses", true)
+
+    -- Dreamscythe has an encounter for each difficulty, one of them fought together with the Weaver.
+    _G.SpokenBossStories[109] = { weaver = "It weaves.", dreamscythe = "It reaps." }
+    Setup("enUS", "auto", "enUS", { SpokenBossesAudio = Pack("SpokenBossesAudio", "enUS", 128,
+        { [109] = { weaver = EDWIN, dreamscythe = EDWIN } }) })
+    SpokenBossesSettings.unlockUnfound = true
+    local function Told(id)
+        S:StopAll()
+        S:PlayStory("boss", id)
+        return Named()
+    end
+    Expect("a boss of several encounters is named by the one Data/Bosses.lua files it under",
+        Told(486) .. ", " .. Told(3588), "boss 3588, boss 3588")
+    Expect("...and of two fought together, the one that plays", Told(2955), "boss 3587")
+    S:StopAll()
+    Expect("...and no line, no caption", Named(), "none")
+    Expect("another module's line naming the boss is not its story",
+        tostring((Bosses.EncounterTeller.Of({ source = {}, mapID = 36, bossKey = "edwin vancleef" }))), "nil")
+    SpokenBossesSettings.unlockUnfound = false
 end
 
 stub.SetLocale("enUS")

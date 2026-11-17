@@ -782,6 +782,15 @@ SpokenPlaces.InstanceTeller = {
 		local clip = mapID and SpokenPlaces:LoreClip(mapID, key)
 		return clip ~= nil and SpokenPlaces.source:Remove(clip) == true
 	end,
+	-- An area's story played on its own, as its area autoplays it, is the same line, so it is named too.
+	Of = function(clip)
+		if not (SpokenPlaces.source and clip.source == SpokenPlaces.source and clip.areaKey) then return nil end
+		local dungeons = _G.SpokenDungeons and SpokenDungeons.dungeons
+		for map, dungeon in pairs(dungeons or {}) do
+			local story = dungeon.story
+			if story and story[1] == clip.mapID and story[2] == clip.areaKey then return map end
+		end
+	end,
 }
 
 --------------------------------------------------------------------------------

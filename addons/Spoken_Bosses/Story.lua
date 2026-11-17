@@ -120,6 +120,15 @@ Bosses.EncounterTeller = {
 		end
 		return stopped
 	end,
+	-- A story names one boss by one id, though a boss can have one for each difficulty: the one
+	-- Data/Bosses.lua files it under, which PlayStory takes like the others.
+	Of = function(clip)
+		if not (source and clip.source == source and clip.bossKey) then return nil end
+		local bosses = _G.SpokenBosses and SpokenBosses.maps and SpokenBosses.maps[clip.mapID]
+		for _, boss in ipairs(bosses or {}) do
+			if boss.key == clip.bossKey then return boss.id end
+		end
+	end,
 }
 
 -- The world bosses the player met alive: [guid] = { boss, since,

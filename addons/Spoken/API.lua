@@ -766,7 +766,8 @@ end
 local storyTellers = {}
 
 --- For a module: who tells the stories of `kind`. `teller` has Has(id), Play(id), IsPlaying(id)
---- and Stop(id), each answering as the method of the same name below.
+--- and Stop(id), each answering as the method of the same name below, and may have Of(clip): the
+--- id of the story `clip` tells, else nil, which GetCaption gives as `story`.
 function Spoken:RegisterStoryTeller(kind, teller)
     storyTellers[kind] = teller
 end
@@ -827,24 +828,41 @@ end
 -- again from its first word. Spoken times it only while something listens; GetCaption has the
 -- word being read when a listener registers. An older Spoken never fires it, so a caller keeps its
 -- own timing until the first one comes.
+--
+-- `story` came later too: an older Spoken leaves it nil, as it is for a line that tells no story.
 
 local caption = {}
 
+-- Asked of the tellers once a clip, not on every call: other views read the caption many times a second.
+local storyClip
+local function StoryOf(clip)
+    for kind, teller in pairs(storyTellers) do
+        local id = teller.Of and teller.Of(clip)
+        if id ~= nil then return { kind = kind, id = id } end
+    end
+end
+
 --- The speaking clip's caption, kept current even while the captions are hidden or off:
 ---   { clip, words, totalWeight, progress, speaking, activeWord, highlight, typewriter,
----     typewriterBy, timed }
+---     typewriterBy, timed, story }
 --- words[i] = { text, start, finish, first, last, joined }: start/finish are the word's share
 --- of the recording, in units of totalWeight; first/last its bytes in the clip's text. timed is
 --- true when they come from the clip's present.timings, and totalWeight is then its length.
 --- progress is nil for a clip with no length; activeWord is set only while speaking.
 --- highlight and typewriter are the player's Highlight Words and Type Words Out (false with
---- Show Words off); typewriterBy is "letter" or "word". Read-only, and the same table on
---- every call. nil without a clip.
+--- Show Words off); typewriterBy is "letter" or "word". story is { kind, id } for a line that
+--- tells a dungeon's or a boss's story, named as PlayStory takes it, else nil: a dungeon's story
+--- is its area's, so it is named wherever that plays, and a boss of several encounter ids is
+--- named by the one Spoken_Bosses files it under. Read-only, and the same table on every call.
+--- nil without a clip.
 function Spoken:GetCaption()
     if not Transcript.clip or not Transcript.words then return nil end
     -- Not read from what the captions last drew: they update only while shown, and
     -- DialogueUI hides them with UIParent.
     local progress = Transcript:GetProgress()
+    if storyClip ~= Transcript.clip then
+        storyClip, caption.story = Transcript.clip, StoryOf(Transcript.clip)
+    end
     caption.clip, caption.words, caption.totalWeight = Transcript.clip, Transcript.words, Transcript.totalWeight
     caption.progress = progress
     caption.speaking = Transcript:IsSpeaking(progress) and true or false

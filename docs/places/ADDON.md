@@ -24,7 +24,8 @@ What Places adds to Spoken:
   These methods are not frozen. An addon that only wants a dungeon's story read calls Spoken's
   `HasStory`, `PlayStory`, `IsPlayingStory` and `StopStory` with `"instance"` and the instance
   map (`addons/Spoken/API.lua`); Places answers them (`InstanceTeller` in `Audio.lua`), checking
-  the part, the lock and the voice pack itself.
+  the part, the lock and the voice pack itself. The teller's `Of` names the instance for
+  `Spoken:GetCaption().story` wherever the area's story plays, its autoplay included.
 
 The Enable switch on the Places page is Spoken's switch for the part (`Spoken:IsPartOn("places")`).
 With it off the map panel, its side tab and the Compendium tab go away.

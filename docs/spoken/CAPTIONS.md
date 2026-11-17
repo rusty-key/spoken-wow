@@ -166,6 +166,11 @@ DialogueUI's own text under every narrator style, Voice Only included, when Mark
 is on; with DialogueUI installed Spoken's page offers them under Voice Only
 (`DialogueUIOptions:WordRowsShown`). **Type Out By** applies there too.
 
+The caption's `story` is `{ kind, id }` for a line that tells a dungeon's or a boss's story, the
+kind and id `Spoken:PlayStory` takes, so an addon that played one knows the caption is its line
+without comparing text. It is nil for a line that tells none. A dungeon's story is an area's, so it
+is named when that area plays it too.
+
 An addon that would rather not poll `GetCaption` registers for `CAPTION_WORD`, `(clip, word,
 speaking)`. It fires as the voice reaches each word, `word` being the index in the caption's words,
 and once with `speaking` false when the voice ends, is stopped or paused. Spoken times it with one

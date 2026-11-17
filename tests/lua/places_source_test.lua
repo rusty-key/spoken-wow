@@ -413,12 +413,28 @@ do
     Expect("...which PlayStory leaves unplayed", tostring(S:PlayStory("instance", 389)) .. " " .. S:GetQueueSize(), "false 0")
     locked = false
 
+    local function Named()
+        local story = S:GetCaption() and S:GetCaption().story
+        return story and (story.kind .. " " .. story.id) or "none"
+    end
     Expect("PlayStory plays it", S:PlayStory("instance", 389), true)
     Expect("...the area's story", S:GetNowPlaying().key, "s:1411:valley of trials")
+    Expect("...which GetCaption names as PlayStory took it", Named(), "instance 389")
     Expect("...and IsPlayingStory says so", S:IsPlayingStory("instance", 389), true)
     Expect("...for that instance only", S:IsPlayingStory("instance", 34), false)
     Expect("StopStory stops it", tostring(S:StopStory("instance", 389)) .. " " .. S:GetQueueSize(), "true 0")
     Expect("...and a second stop finds nothing", S:StopStory("instance", 389), false)
+
+    P:PlayLore(1411, "valley of trials")
+    Expect("the area's story played as the place's is the same line, named the same", Named(), "instance 389")
+    S:StopAll()
+    P:PlayLore(1411)
+    Expect("...while the zone's own tells no dungeon's", Named(), "none")
+    S:StopAll()
+    local Of = P.InstanceTeller.Of
+    Expect("...nor another area of the zone, nor another module's line naming the area",
+        tostring((Of({ source = P.source, mapID = 1411, areaKey = "razor hill" }))) .. " "
+        .. tostring((Of({ source = {}, mapID = 1411, areaKey = "valley of trials" }))), "nil nil")
 
     local other = H.Clip()
     S:RegisterSource("other", { title = "Other", addon = "X", order = 9 }):Enqueue(other)
