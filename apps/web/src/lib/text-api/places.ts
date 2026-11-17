@@ -2,7 +2,7 @@ import "server-only";
 
 import { query } from "@/lib/db";
 import { BASE_LANG, type Lang } from "@/lib/lang";
-import { catalogue, type CatalogueEntry } from "@/lib/places/catalogue";
+import { baseCatalogue, type CatalogueEntry } from "@/lib/places/catalogue";
 import { restoreLore, retireLore, saveLore } from "@/lib/places/lore";
 
 import { catalogueReads, nameVersionOf, nameVersions } from "./catalogue-page";
@@ -48,7 +48,7 @@ async function itemsOf(lang: Lang, entries: CatalogueEntry[]): Promise<TextItem[
 export const places: SectionApi = {
   filters: { zone: /^-?\d+$/ },
 
-  ...catalogueReads(catalogue, itemsOf, (e, f) => f.zone === undefined || e.mapID === Number(f.zone)),
+  ...catalogueReads(baseCatalogue, itemsOf, (e, f) => f.zone === undefined || e.mapID === Number(f.zone)),
 
   async saveText({ lang, id, text, short, note, by, expectedVersion, audit }) {
     const current = (await textVersions(lang, [id])).get(id);

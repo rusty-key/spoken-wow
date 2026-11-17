@@ -26,8 +26,8 @@ import type { Source } from "@/lib/sections";
 import { recordedDirOf } from "@/lib/takes/adapters";
 import { archiveName } from "@/lib/takes/bytes";
 import type { TakeBytes } from "@/lib/takes/store";
-import { catalogue as placesCatalogue } from "@/lib/places/catalogue";
-import { catalogue as bossesCatalogue } from "@/lib/bosses/catalogue";
+import { baseCatalogue as placesCatalogue } from "@/lib/places/catalogue";
+import { baseCatalogue as bossesCatalogue } from "@/lib/bosses/catalogue";
 
 import { can } from "@/lib/permissions";
 import { currentSession } from "@/lib/session";

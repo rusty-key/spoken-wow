@@ -23,7 +23,7 @@ import { corpusRows, currentLore } from "./lore";
 import { madeByOf, type MadeBy } from "@/lib/takes/made-by";
 import { liveTakes } from "@/lib/takes/store";
 import { readAs } from "@/lib/teams/store";
-import { overrideStamp, readTextOverrides, viewOf } from "@/lib/text-overrides/store";
+import { readTextOverrides, stampsWithOverrides, viewOf } from "@/lib/text-overrides/store";
 import type { OverrideView } from "@/lib/text-overrides/types";
 import {
   assignFiles,
@@ -196,17 +196,21 @@ const byPathKey = Symbol.for("spoken.places-by-path.by-lang");
 
 /** What one language's lore rows are, as one comparable value. See the note above. */
 async function stampOf(lang: Lang = BASE_LANG): Promise<string> {
+  const { sql, params } = stampSql(lang);
+  const rows = await query<{ stamp: string }>(`select ${sql} as "stamp"`, params);
+  return rows[0]?.stamp ?? "";
+}
+
+function stampSql(lang: Lang): { sql: string; params: unknown[] } {
   const english = versionStamp("lore_line", `"lang" = '${BASE_LANG}'`);
   // Another language is read over the English lines and names its places in entity_name, so
   // its memo moves with either of those as well as with its own prose: one statement.
-  const rows = await query<{ stamp: string }>(
-    lang === BASE_LANG
-      ? `select ${english} as "stamp"`
-      : `select ${english} || '|' || ${versionStamp("lore_line", `"lang" = $1`)} || '|' ||
-                ${nameStamp(["zone", "subzone"])} as "stamp"`,
-    lang === BASE_LANG ? [] : [lang],
-  );
-  return rows[0]?.stamp ?? "";
+  if (lang === BASE_LANG) return { sql: english, params: [] };
+  return {
+    sql: `(${english} || '|' || ${versionStamp("lore_line", `"lang" = $1`)} || '|' ||
+           ${nameStamp(["zone", "subzone"])})`,
+    params: [lang],
+  };
 }
 
 /**
@@ -297,7 +301,11 @@ async function buildTranslated(lang: Lang): Promise<CorpusEntry[]> {
  * shared tables alone, so it is memoised per language and teams share the build.
  */
 export async function baseCatalogue(lang: Lang): Promise<CatalogueEntry[]> {
-  return memoByLang(baseKey, lang, await stampOf(lang), () => buildCorpus(lang));
+  return baseAt(lang, await stampOf(lang));
+}
+
+function baseAt(lang: Lang, stamp: string): Promise<CatalogueEntry[]> {
+  return memoByLang(baseKey, lang, stamp, () => buildCorpus(lang));
 }
 
 /**
@@ -305,12 +313,15 @@ export async function baseCatalogue(lang: Lang): Promise<CatalogueEntry[]> {
  * stale against, its override. A team with none gets the base itself.
  */
 export async function catalogue(lang: Lang = BASE_LANG): Promise<CatalogueEntry[]> {
-  const [stamp, overrides] = await Promise.all([stampOf(lang), overrideStamp("places", lang)]);
-  return memoByTeamLang(catalogueKey, lang, `${stamp}|${overrides}`, () => overlay(lang));
+  const stamps = await stampsWithOverrides("places", lang, stampSql(lang));
+  return memoByTeamLang(catalogueKey, lang, `${stamps.stamp}|${stamps.overrides}`, () => overlay(lang, stamps));
 }
 
-async function overlay(lang: Lang): Promise<CatalogueEntry[]> {
-  const [base, overrides] = await Promise.all([baseCatalogue(lang), readTextOverrides("places", lang)]);
+async function overlay(lang: Lang, stamps: { stamp: string; overrides: string }): Promise<CatalogueEntry[]> {
+  const [base, overrides] = await Promise.all([
+    baseAt(lang, stamps.stamp),
+    readTextOverrides("places", lang, stamps.overrides),
+  ]);
   if (overrides.size === 0) return base;
   const rules = lang === BASE_LANG ? await loadPronunciation() : {};
   return base.map((entry) => {
@@ -346,8 +357,8 @@ export { stampOf as catalogueStamp };
 async function linesByPath(lang: Lang): Promise<Map<string, CatalogueEntry>> {
   // Keyed on the catalogue it was built from, so it rebuilds exactly when that does and
   // asks the database nothing of its own.
-  const entries = await catalogue(lang);
-  return memoByTeamLang(byPathKey, lang, entries, () => new Map(entries.map((e) => [e.file, e])));
+  const entries = await baseCatalogue(lang);
+  return memoByLang(byPathKey, lang, entries, () => new Map(entries.map((e) => [e.file, e])));
 }
 
 export async function lineByPath(
@@ -423,7 +434,7 @@ export async function sectionContext(
  * from outside calls it.
  */
 export async function isKnownLine(lineId: string): Promise<boolean> {
-  const entries = await catalogue();
+  const entries = await baseCatalogue(BASE_LANG);
   return entries.some((entry) => entry.id === lineId);
 }
 
@@ -431,7 +442,7 @@ export async function isKnownLine(lineId: string): Promise<boolean> {
 export type ZoneFacet = { mapID: number; name: string; lines: number };
 
 export async function zoneFacets(lang: Lang = BASE_LANG): Promise<ZoneFacet[]> {
-  const entries = await catalogue(lang);
+  const entries = await baseCatalogue(lang);
   const counts = new Map<number, ZoneFacet>();
 
   for (const entry of entries) {

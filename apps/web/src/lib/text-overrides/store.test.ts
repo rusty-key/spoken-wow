@@ -6,7 +6,7 @@ import { asActor } from "@/lib/teams/acting";
 import { forgetTeams } from "@/lib/teams/store";
 import { addMember, asSystem, dropLang, dropTeam, newTeamIn, testUser, uniqueLang } from "@/lib/teams/testing";
 
-import { clearTextOverride, readTextOverrides, viewOf, writeTextOverride } from "./store";
+import { clearTextOverride, readTextOverrides, stampsWithOverrides, viewOf, writeTextOverride } from "./store";
 
 let lang: Awaited<ReturnType<typeof uniqueLang>>;
 let a: string;
@@ -130,6 +130,35 @@ describe("text overrides", () => {
       expect((await read()).size).toBe(2);
       await asSystem.query(`delete from "text_override" where "lang" = $1 and "lineId" = 'z:1'`, [lang]);
       expect([...(await read()).keys()]).toEqual(["z:2"]);
+    });
+  });
+
+  describe("stamped beside a shared stamp", () => {
+    const shared = { sql: `('shared:' || $1)`, params: ["x"] };
+
+    it("count the acting team's rows only, in the one statement", async () => {
+      await write("New.");
+      const second = await asActor(u.id, () => stampsWithOverrides("places", lang, shared));
+      expect(second.stamp).toBe("shared:x");
+      expect(second.overrides).toMatch(/^1:/);
+      expect(await asActor(v.id, () => stampsWithOverrides("places", lang, shared))).toEqual({
+        stamp: "shared:x",
+        overrides: "0:-",
+      });
+    });
+
+    it("read no override for a language nobody owns, whose ALL_TEAMS would see every team's", async () => {
+      const unowned = await uniqueLang();
+      try {
+        await asSystem.query(
+          `insert into "text_override" ("teamId", "lang", "source", "lineId", "text") values ($1, $2, 'places', 'z:1', 'Stray.')`,
+          [b, unowned],
+        );
+        expect(await stampsWithOverrides("places", unowned, shared)).toEqual({ stamp: "shared:x", overrides: "-" });
+      } finally {
+        await asSystem.query(`delete from "text_override" where "lang" = $1`, [unowned]);
+        await dropLang(unowned);
+      }
     });
   });
 });

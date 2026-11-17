@@ -10,7 +10,8 @@ import { spokenHash } from "../generation/spoken-hash";
 import type { Lang } from "../lang";
 import { memoByTeamLang } from "../memo";
 import { hasDrifted } from "../quests/override-drift";
-import { queryAs, readAs } from "../teams/store";
+import { ALL_TEAMS, query, queryIn } from "../db";
+import { ownerOrAll, queryAs, readAs } from "../teams/store";
 import type { NarratedSource, OverrideView, TextOverride } from "./types";
 
 type OverrideRow = {
@@ -31,16 +32,42 @@ function toOverride(row: OverrideRow): TextOverride {
   };
 }
 
+/** The override stamp as a SQL fragment, so it can share one statement with another stamp. */
+function stampSql(langParam: string, sourceParam: string): string {
+  // The count is load-bearing: a delete leaves max(updatedAt) where it was.
+  return `(select count(*)::text || ':' || coalesce(max("updatedAt")::text, '-')
+             from "text_override" where "lang" = ${langParam} and "source" = ${sourceParam})`;
+}
+
 /** `"-"` when the language has no team, so nothing is read for it. */
 export async function overrideStamp(source: NarratedSource, lang: Lang): Promise<string> {
-  const rows = await readAs<{ stamp: string | null }>(
-    lang,
-    `select count(*)::text || ':' || coalesce(max("updatedAt")::text, '-') as stamp
-       from "text_override" where "lang" = $1 and "source" = $2`,
-    [lang, source],
-  );
-  // The count is load-bearing: a delete leaves max(updatedAt) where it was.
+  const rows = await readAs<{ stamp: string }>(lang, `select ${stampSql("$1", "$2")} as "stamp"`, [lang, source]);
   return rows[0]?.stamp ?? "-";
+}
+
+/**
+ * A catalogue's shared-text stamp and the acting team's override stamp, in one statement on one
+ * connection. `shared` reads only shared tables, which answer the same under any team. An
+ * unowned language reads no override and stamps `"-"`, as overrideStamp does: acting as
+ * ALL_TEAMS, row-level security would count every team's rows.
+ */
+export async function stampsWithOverrides(
+  source: NarratedSource,
+  lang: Lang,
+  shared: { sql: string; params: unknown[] },
+): Promise<{ stamp: string; overrides: string }> {
+  const team = await ownerOrAll(lang);
+  if (team === ALL_TEAMS) {
+    const rows = await query<{ stamp: string }>(`select ${shared.sql} as "stamp"`, shared.params);
+    return { stamp: rows[0]?.stamp ?? "", overrides: "-" };
+  }
+  const n = shared.params.length;
+  const rows = await queryIn<{ stamp: string; overrides: string }>(
+    team,
+    `select ${shared.sql} as "stamp", ${stampSql(`$${n + 1}`, `$${n + 2}`)} as "overrides"`,
+    [...shared.params, lang, source],
+  );
+  return { stamp: rows[0]?.stamp ?? "", overrides: rows[0]?.overrides ?? "-" };
 }
 
 const SOURCES: readonly NarratedSource[] = ["places", "readables", "bosses"];
@@ -51,12 +78,16 @@ const cacheKeys = Object.fromEntries(
   SOURCES.map((s) => [s, Symbol.for(`wow-voiceover.text-overrides.${s}`)]),
 ) as Record<NarratedSource, symbol>;
 
-/** The acting team's overrides for a source in a language, by line id. */
+/**
+ * The acting team's overrides for a source in a language, by line id. `stamp` is an
+ * overrideStamp the caller has just read, so it is not read again.
+ */
 export async function readTextOverrides(
   source: NarratedSource,
   lang: Lang,
+  stamp?: string,
 ): Promise<Map<string, TextOverride>> {
-  const stamp = await overrideStamp(source, lang);
+  stamp ??= await overrideStamp(source, lang);
   return memoByTeamLang(cacheKeys[source], lang, stamp, async () => {
     const rows = await readAs<OverrideRow>(
       lang,

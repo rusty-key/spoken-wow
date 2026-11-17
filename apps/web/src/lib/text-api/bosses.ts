@@ -1,6 +1,6 @@
 import "server-only";
 
-import { catalogue, type BossEntry } from "@/lib/bosses/catalogue";
+import { baseCatalogue, type BossEntry } from "@/lib/bosses/catalogue";
 import { bossIdOf, parseBossLineId, restoreStory, retireStory, saveStory } from "@/lib/bosses/story";
 import { query } from "@/lib/db";
 import { BASE_LANG, type Lang } from "@/lib/lang";
@@ -19,7 +19,7 @@ async function itemsOf(lang: Lang, entries: BossEntry[]): Promise<TextItem[]> {
       [lang, entries.map((e) => e.bossId)],
     ),
     nameVersions(lang, entries.map(targetOf)),
-    catalogue(BASE_LANG),
+    baseCatalogue(BASE_LANG),
   ]);
   const version = new Map(versions.map((row) => [row.bossId, row.version]));
   const englishText = new Map(english.map((e) => [e.id, e.text]));
@@ -38,7 +38,7 @@ async function itemsOf(lang: Lang, entries: BossEntry[]): Promise<TextItem[]> {
 export const bosses: SectionApi = {
   filters: { instance: /^-?\d+$/ },
 
-  ...catalogueReads(catalogue, itemsOf, (e, f) => f.instance === undefined || e.map === Number(f.instance)),
+  ...catalogueReads(baseCatalogue, itemsOf, (e, f) => f.instance === undefined || e.map === Number(f.instance)),
 
   async saveText({ lang, id, text, note, by, expectedVersion, audit }) {
     const saved = await saveStory({ lang, lineId: id, text: text ?? "", note, editedBy: by, expectedVersion, audit });

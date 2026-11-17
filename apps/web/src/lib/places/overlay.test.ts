@@ -105,11 +105,15 @@ describe("the places catalogue overlay", () => {
   });
 
   it("does not carry English's overrides into a translation", async () => {
+    // In the english team: enUS is the base language every translation is built over.
     await override(english, BASE_LANG, fx.zone, "An English override.");
     expect(entryOf(await catalogue(BASE_LANG), fx.zone).override?.text).toBe("An English override.");
 
     const base = entryOf(await baseCatalogue(lang), fx.zone);
-    expect(entryOf(await asActor(v.id, () => catalogue(lang)), fx.zone)).toEqual(base);
+    expect(base.override).toBeUndefined();
+    const privileged = entryOf(await asActor(v.id, () => catalogue(lang)), fx.zone);
+    expect(privileged.override).toBeUndefined();
+    expect(privileged).toEqual(base);
     const second = entryOf(await asActor(u.id, () => catalogue(lang)), fx.zone);
     expect(second.spoken).toBe(OVERRIDE);
     expect(second.override?.text).toBe(OVERRIDE);
