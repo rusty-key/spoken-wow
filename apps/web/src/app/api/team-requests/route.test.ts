@@ -114,4 +114,11 @@ describe("team requests routes", () => {
     expect(((await approved.json()) as { request: { state: string } }).request.state).toBe("approved");
     expect((await PATCH(json("PATCH", { decision: "approve" }), ctx(id))).status).toBe(409);
   });
+
+  it("answers 404 to a PATCH of an id that is not a uuid", async () => {
+    as(admin, "admin");
+    const response = await PATCH(json("PATCH", { decision: "approve" }), ctx("not-a-uuid"));
+    expect(response.status).toBe(404);
+    expect(await response.json()).toEqual({ error: "No such request." });
+  });
 });
