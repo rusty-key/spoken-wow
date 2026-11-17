@@ -70,7 +70,9 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          branch="faq-sweep/$(date -u +%Y-%m-%d)"
+          # A run and its reruns each get their own branch, so one that pushed and then failed to
+          # open the PR does not block the next.
+          branch="faq-sweep/$(date -u +%Y-%m-%d)-$GITHUB_RUN_ID-$GITHUB_RUN_ATTEMPT"
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git switch -c "$branch"

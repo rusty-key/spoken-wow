@@ -47,7 +47,18 @@ const MAX_TRANSCRIPT_CHARS = 600_000;
  * Brann's, with its asker's verdict, are marked. Returns the text and each reference's link.
  * `channels` is [{guild, channel, title, messages (oldest first)}].
  */
-export function transcript(channels, { meId, moderators }) {
+export function transcript(channels, { meId, moderators, maxChars = Infinity }) {
+  // A busy week is cut by age, oldest messages first, whichever channel they are in.
+  const all = channels.flatMap((c) => c.messages.filter((m) => m.content.trim()));
+  let size = all.reduce((sum, m) => sum + Math.min(m.content.length, MAX_MESSAGE_CHARS) + 60, 0);
+  const left = new Set();
+  for (const m of [...all].sort((a, b) => Date.parse(a.timestamp) - Date.parse(b.timestamp))) {
+    if (size <= maxChars) break;
+    left.add(m.id);
+    size -= Math.min(m.content.length, MAX_MESSAGE_CHARS) + 60;
+  }
+  // A display name cannot pass for a role: the marks are the transcript's own.
+  const plainName = (author) => nameOf(author).replace(/[()[\]]/g, "");
   const links = new Map();
   const refOf = new Map();
   const blocks = [];
@@ -56,19 +67,20 @@ export function transcript(channels, { meId, moderators }) {
     const lines = [];
     for (const m of messages) {
       const text = m.content.trim();
-      if (!text) continue;
+      if (!text || left.has(m.id)) continue;
       const ref = `m${++n}`;
       refOf.set(m.id, ref);
       links.set(ref, `https://discord.com/channels/${guild}/${channel}/${m.id}`);
-      const who = m.author.id === meId ? "Brann (bot)" : m.author.bot ? `${nameOf(m.author)} (bot)`
-        : moderators.has(m.author.id) ? `${nameOf(m.author)} (mod)` : nameOf(m.author);
+      const who = m.author.id === meId ? "Brann (bot)" : m.author.bot ? `${plainName(m.author)} (bot)`
+        : moderators.has(m.author.id) ? `${plainName(m.author)} (mod)` : plainName(m.author);
       const reply = m.message_reference?.message_id && refOf.get(m.message_reference.message_id);
       const verdict = m.author.id === meId ? verdictOf(m.components) : null;
       lines.push(`[${ref}] ${m.timestamp.slice(0, 16).replace("T", " ")} ${who}${reply ? ` ↪${reply}` : ""}: ${oneLine(text, MAX_MESSAGE_CHARS)}${verdict ? ` [asker: ${verdict}]` : ""}`);
     }
     if (lines.length) blocks.push(`### ${title}\n${lines.join("\n")}`);
   }
-  return { text: blocks.join("\n\n"), links };
+  const cut = left.size ? `(the ${left.size} oldest messages are left out)\n\n` : "";
+  return { text: `${cut}${blocks.join("\n\n")}`, links };
 }
 
 async function readWeek(api, since) {
@@ -106,8 +118,7 @@ async function readWeek(api, since) {
       : `#${c.name}`;
     read.push({ guild: guild.id, channel: c.id, title, messages: messages.reverse() });
   }
-  // Oldest channel first, so a cut transcript loses the oldest.
-  read.sort((a, b) => (BigInt(a.channel) < BigInt(b.channel) ? -1 : 1));
+    read.sort((a, b) => (BigInt(a.channel) < BigInt(b.channel) ? -1 : 1));
 
   const moderator = moderatorLookup(api, guildInfo);
   const moderators = new Set();
@@ -210,8 +221,7 @@ async function main() {
   const since = Date.now() - days * 24 * 60 * 60 * 1000;
 
   const { me, read, moderators } = await readWeek(discord(token), since);
-  let { text: week, links } = transcript(read, { meId: me.id, moderators });
-  if (week.length > MAX_TRANSCRIPT_CHARS) week = `(oldest part cut)\n${week.slice(-MAX_TRANSCRIPT_CHARS)}`;
+  const { text: week, links } = transcript(read, { meId: me.id, moderators, maxChars: MAX_TRANSCRIPT_CHARS });
   const faq = loadFaq();
   const problems = check(faq);
   const code = codeChanges(since);

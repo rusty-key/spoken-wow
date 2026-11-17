@@ -11,6 +11,7 @@ import {
   parseAnswer,
   systemPrompt,
   decide,
+  perPlayer,
   oneLine,
   threadName,
   withoutMention,
@@ -60,7 +61,7 @@ test("messagesFor names the speakers, merges runs of one role and starts with th
     { bot: true, name: "Brann", text: "Trailing bot line" },
   ]);
   assert.deepEqual(messages, [
-    { role: "user", content: "mode: conversation\n\nAna: No sound\n\nAna: at all" },
+    { role: "user", content: "mode: conversation\n\nEarlier, you said:\nStray bot line\n\nAna: No sound\n\nAna: at all" },
     { role: "assistant", content: "Check the packs." },
     { role: "user", content: "Ana: Which ones?" },
   ]);
@@ -142,4 +143,13 @@ test("a channel message goes to the model with its context marked apart", () => 
   assert.equal(message.content,
     "mode: channel\n\n<context>\nJakill: It's 75 dollars per language\nBrann (bot): Hello\n</context>\n\n<message>\nMirades: german voices too?\n</message>");
   assert.deepEqual(messagesFor("channel", [{ bot: false, name: "A", text: "  " }]), []);
+});
+
+test("perPlayer allows each player the limit in the window, then frees it", () => {
+  const allow = perPlayer(2, 1000);
+  assert.equal(allow("ana", 0), true);
+  assert.equal(allow("ana", 10), true);
+  assert.equal(allow("ana", 20), false);
+  assert.equal(allow("bo", 20), true);
+  assert.equal(allow("ana", 1001), true);
 });

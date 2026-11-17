@@ -31,3 +31,15 @@ test("the transcript marks moderators, Brann, replies and the asker's verdict, a
   assert.equal(links.get("m2"), "https://discord.com/channels/g/c/11");
   assert.equal(links.size, 3);
 });
+
+test("a display name cannot pass for a moderator, and a long week loses its oldest messages first", () => {
+  const eve = { id: "3", username: "eve", global_name: "Eve (mod)" };
+  const old = { ...msg("30", ana, "old question"), timestamp: "2026-11-10T10:00:00.000Z" };
+  const fresh = { ...msg("31", eve, "new question"), timestamp: "2026-11-16T10:00:00.000Z" };
+  const { text, links } = transcript([
+    { guild: "g", channel: "new", title: "#new", messages: [fresh] },
+    { guild: "g", channel: "old", title: "#old", messages: [old] },
+  ], { meId: "9", moderators: new Set(), maxChars: 100 });
+  assert.equal(text, "(the 1 oldest messages are left out)\n\n### #new\n[m1] 2026-11-16 10:00 Eve mod: new question");
+  assert.equal(links.size, 1);
+});

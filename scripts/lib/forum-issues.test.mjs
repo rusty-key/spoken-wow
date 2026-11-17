@@ -138,7 +138,9 @@ test("reaction files a moderator's 🐛 message with the messages before it, old
   await reaction(server.api, server.gh, "general", "3");
   assert.equal(server.issues.length, 1);
   assert.equal(server.issues[0].title, "Gossip is silent");
-  assert.ok(server.issues[0].body.indexOf("first") < server.issues[0].body.indexOf("second"));
+  const body = server.issues[0].body;
+  assert.ok(body.includes("first") && body.includes("second"));
+  assert.ok(body.indexOf("first") < body.indexOf("second"));
   assert.ok(!server.issues[0].body.includes("later"));
   assert.equal(server.posted[0].body.message_reference.message_id, "3");
 });

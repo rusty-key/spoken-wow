@@ -28,9 +28,13 @@ test("a change that does not fit is skipped, not guessed", () => {
     { action: "edit", heading: "Missing?", body: "x" },
     { action: "add", heading: "One?", body: "dup" },
     { action: "add", heading: "Empty?", body: " " },
+    { action: "edit", heading: "One?", new_heading: "Two?", body: "x" },
+    { action: "remove", heading: "Two?" },
   ]);
-  assert.equal(text, FAQ);
-  assert.deepEqual(skipped.map((s) => s.why), ["no entry has that heading", "an entry with that heading exists", "no text"]);
+  assert.equal(text, "# FAQ\n\nIntro.\n\n## One?\n\nFirst.\n");
+  assert.deepEqual(skipped.map((s) => s.why), [
+    "no entry has that heading", "an entry with that heading exists", "no text", "another entry has the new heading",
+  ]);
 });
 
 test("evidence becomes links, and anything else is dropped", () => {

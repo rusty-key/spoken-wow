@@ -35,7 +35,7 @@ on:
       - "scripts/manager/**"
       - "scripts/lib/**"
       - "scripts/audio/**"
-      # Brann, the Discord bot, runs from the release, and answers from the FAQ in it.
+      # Brann, the Discord bot, runs from the release, FAQ included.
       - "apps/brann/**"
       - "docs/support/**"
       - "publishers/**"

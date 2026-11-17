@@ -49,6 +49,7 @@ import {
   decide,
   faqEntries,
   loadFaq,
+  perPlayer,
   threadName,
   withoutMention,
 } from "./support.mjs";
@@ -67,6 +68,10 @@ const faq = loadFaq();
 const anthropic = env.BRANN_ANTHROPIC_API_KEY ? new Anthropic({ apiKey: env.BRANN_ANTHROPIC_API_KEY }) : null;
 const supportOn = MODE !== "off" && anthropic !== null;
 const spend = dailyBudget(Number(env.BRANN_DAILY_CALLS) || 1000);
+const playerAllowed = perPlayer(20, 60 * 60 * 1000);
+// Players a channel answer is being worked out for: their next messages count as answered, so a
+// burst of them is one model call.
+const asking = new Set();
 // When he last answered each player in a channel. Only the last minute matters, so older entries
 // are dropped as new ones come in.
 const lastAnswered = new Map();
@@ -115,7 +120,11 @@ const contextOf = (message) => ({
 
 const where = (channel) => (channel.isDMBased() ? "DM" : `#${channel.name}`);
 
-async function answer(mode, turns, channel, context = []) {
+async function answer(mode, turns, channel, playerId, context = []) {
+  if (!playerAllowed(playerId, Date.now())) {
+    console.warn(`brann: player ${playerId} reached 20 answers this hour`);
+    return null;
+  }
   if (!spend()) {
     console.warn("brann: daily model call limit reached; not answering until 00:00 UTC");
     return null;
@@ -139,7 +148,7 @@ async function converse(message, { starter = null, history } = {}) {
   await channel.sendTyping().catch(() => {});
   const recent = history ?? await channel.messages.fetch({ limit: HISTORY });
   const turns = [...(starter ? [starter] : []), ...[...recent.values()].reverse().filter((m) => !m.system)].map(turnOf);
-  const reply = await answer("conversation", turns, channel);
+  const reply = await answer("conversation", turns, channel, message.author.id);
   if (!reply) return;
   // In a thread the asker can rate each answer; a DM is between the two of them, and the
   // weekly sweep cannot read it.
@@ -148,7 +157,7 @@ async function converse(message, { starter = null, history } = {}) {
 
 /** A message in a public channel: answered in a thread under it, or in place in a thread already. */
 async function triage(message, mode, context) {
-  const reply = await answer(mode, [turnOf(message)], message.channel, context);
+  const reply = await answer(mode, [turnOf(message)], message.channel, message.author.id, context);
   if (!reply) return;
   answered(message.author.id, Date.now());
   const content = `<@${message.author.id}> ${reply}`;
@@ -172,8 +181,11 @@ async function hisConversation(message) {
     thread.messages.fetch({ limit: HISTORY }),
   ]);
   if (!starter || starter.author.id !== message.author.id) return null;
-  // A moderator who joined has taken over; Brann steps back.
-  if (history.some((m) => !m.author.bot && m.author.id !== message.author.id && isModerator(m.member))) return null;
+  // A moderator who joined has taken over; Brann steps back. Fetched history carries no member,
+  // so each other person in it is looked up (once; discord.js keeps them).
+  const others = new Set(history.filter((m) => !m.author.bot && m.author.id !== message.author.id).map((m) => m.author.id));
+  const members = await Promise.all([...others].map((id) => message.guild.members.fetch(id).catch(() => null)));
+  if (members.some(isModerator)) return null;
   return { starter, history };
 }
 
@@ -210,34 +222,48 @@ client.on(Events.MessageCreate, async (message) => {
       text: plain(message),
       authorId: message.author.id,
       at: message.createdTimestamp,
-      answeredAt: lastAnswered.get(message.author.id),
+      answeredAt: asking.has(message.author.id) ? message.createdTimestamp : lastAnswered.get(message.author.id),
     };
     // The free rules first: a message they skip costs no fetch.
     if (decide(facts).skip) return;
-    const ref = message.reference?.messageId ? await message.fetchReference().catch(() => null) : null;
-    const { before, chain } = await surroundings(message, ref);
-    const verdict = decide({
-      ...facts,
-      repliesToOtherPerson: !!ref && !ref.author.bot && ref.author.id !== message.author.id,
-      recent: before.map((m) => ({
-        authorId: m.author.id,
-        bot: m.author.bot,
-        at: m.createdTimestamp,
-        repliesTo: m.mentions.repliedUser?.id,
-        mentions: [...m.mentions.users.keys()],
-      })),
-    });
-    if (verdict.skip) return;
-    const lookup = (id) => (chain.has(id) ? contextOf(chain.get(id)) : null);
-    await triage(message, verdict.mode, contextFor(contextOf(message), before.map(contextOf), lookup));
+    if (!facts.mentioned) asking.add(message.author.id);
+    try {
+      await consider(message, facts);
+    } finally {
+      asking.delete(message.author.id);
+    }
   } catch (error) {
     console.error(`brann: ${where(message.channel)} message ${message.id}: ${error.message}`);
   }
 });
 
+/** The rules that need a fetch, then the answer: a channel message the free rules let through. */
+async function consider(message, facts) {
+  const ref = message.reference?.messageId ? await message.fetchReference().catch(() => null) : null;
+  const { before, chain } = await surroundings(message, ref);
+  const verdict = decide({
+    ...facts,
+    repliesToOtherPerson: !!ref && !ref.author.bot && ref.author.id !== message.author.id,
+    recent: before.map((m) => ({
+      authorId: m.author.id,
+      bot: m.author.bot,
+      at: m.createdTimestamp,
+      repliesTo: m.mentions.repliedUser?.id,
+      mentions: [...m.mentions.users.keys()],
+    })),
+  });
+  if (verdict.skip) return;
+  const lookup = (id) => (chain.has(id) ? contextOf(chain.get(id)) : null);
+  await triage(message, verdict.mode, contextFor(contextOf(message), before.map(contextOf), lookup));
+}
+
 // 👍 or 👎 from the asker: the buttons become the verdict, which the weekly FAQ sweep reads.
+/** The channel a button was pressed in. An old thread is no longer in discord.js's cache after a restart. */
+const channelOf = async (interaction) =>
+  interaction.channel ?? await client.channels.fetch(interaction.channelId).catch(() => null);
+
 async function rate(interaction, helped) {
-  const thread = interaction.channel;
+  const thread = await channelOf(interaction);
   const starter = thread?.isThread() && thread.ownerId === client.user.id
     ? await thread.fetchStarterMessage().catch(() => null)
     : null;
@@ -261,7 +287,7 @@ async function moveToDm(interaction) {
   const ephemeral = (content) => interaction.reply({ content, flags: MessageFlags.Ephemeral });
   try {
     const answerText = interaction.message.content.replace(/^<@!?\d+>\s*/, "");
-    const thread = interaction.channel;
+    const thread = await channelOf(interaction);
     const starter = thread?.isThread() ? await thread.fetchStarterMessage().catch(() => null) : null;
     const question = starter?.author.id === interaction.user.id ? plain(starter) : null;
     const quoted = question ? `${question.split("\n").map((l) => `> ${l}`).join("\n")}\n\n` : "";

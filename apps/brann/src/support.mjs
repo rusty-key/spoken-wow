@@ -1,5 +1,5 @@
 // Brann's support answers: which Discord messages he looks at, what he asks Claude, and how he
-// reads the answer. Nothing here touches Discord, so all of it is tested (support.test.mjs).
+// reads the answer. Nothing here touches Discord.
 //
 // He answers only from docs/support/FAQ.md. A message in a channel gets an answer only when the
 // FAQ covers it, and otherwise nothing: a bot that guesses in front of players is worse than one
@@ -133,9 +133,15 @@ export function messagesFor(mode, turns, context = []) {
     if (last?.role === role) last.content += `\n\n${text}`;
     else messages.push({ role, content: text });
   }
-  while (messages[0]?.role === "assistant") messages.shift();
+  // What he said before the player's first word, such as the question and answer he brought into
+  // a DM, goes in as what he said earlier: the API wants the player to speak first.
+  const earlier = [];
+  while (messages[0]?.role === "assistant") earlier.push(messages.shift().content);
   while (messages.at(-1)?.role === "assistant") messages.pop();
-  if (messages.length) messages[0].content = `mode: ${mode}\n\n${messages[0].content}`;
+  if (messages.length) {
+    const lead = earlier.length ? `Earlier, you said:\n${earlier.join("\n\n")}\n\n` : "";
+    messages[0].content = `mode: ${mode}\n\n${lead}${messages[0].content}`;
+  }
   return messages;
 }
 
@@ -191,6 +197,25 @@ export function beingHelped({ authorId, at, recent }) {
 export function threadName(text) {
   const line = text.replace(/<@!?\d+>/g, "").trim().split("\n")[0].trim() || "Question";
   return line.length > 90 ? `${line.slice(0, 87)}...` : line;
+}
+
+/**
+ * At most `limit` model calls per player in `window` ms, so one player, in DMs or by mentioning
+ * him, cannot use up the day's budget for everyone.
+ */
+export function perPlayer(limit, window) {
+  const calls = new Map();
+  return (playerId, now) => {
+    for (const [id, times] of calls) {
+      const kept = times.filter((t) => now - t < window);
+      if (kept.length) calls.set(id, kept);
+      else calls.delete(id);
+    }
+    const times = calls.get(playerId) ?? [];
+    if (times.length >= limit) return false;
+    calls.set(playerId, [...times, now]);
+    return true;
+  };
 }
 
 /** Spend guard: at most `limit` model calls a UTC day. */

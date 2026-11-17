@@ -47,7 +47,12 @@ export function applyChanges(text, changes) {
         skipped.push({ change, why: "no text" });
         continue;
       }
-      faq.entries[i] = { heading: change.new_heading?.trim() || change.heading, body: change.body };
+      const heading = change.new_heading?.trim() || change.heading;
+      if (heading !== change.heading && at(heading) >= 0) {
+        skipped.push({ change, why: "another entry has the new heading" });
+        continue;
+      }
+      faq.entries[i] = { heading, body: change.body };
     } else {
       skipped.push({ change, why: `unknown action ${change.action}` });
       continue;
