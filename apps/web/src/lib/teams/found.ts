@@ -17,8 +17,8 @@ import type { ClientBase, PoolClient } from "pg";
 
 import { recordActivities, type ActivityEvent } from "@/lib/activity/store";
 import { ALL_TEAMS, actAs, db } from "@/lib/db";
-import { grantOn } from "@/lib/grants/store";
-import { BASE_LANG, langName } from "@/lib/lang";
+import { grantOn, oneTeamPerLanguage } from "@/lib/grants/store";
+import { BASE_LANG } from "@/lib/lang";
 import { forgetLanguages, loadLanguages } from "@/lib/languages/catalogue";
 import { addLanguage, describeNew, giveTextToTeam, LanguageExistsError, setEnabledOn } from "@/lib/languages/store";
 import type { Capability } from "@/lib/permissions";
@@ -97,10 +97,7 @@ export async function memberRefusal(
   const team = await teamIn(userId, lang, client);
   if (!team) return null;
   const { rows } = await (client ?? db()).query<{ slug: string }>(`select "slug" from "team" where "id" = $1`, [team]);
-  return new TeamError(
-    `You already work on ${langName(lang)} in ${rows[0].slug}; one person works in one team per language.`,
-    409,
-  );
+  return new TeamError(oneTeamPerLanguage("You already work", lang, rows[0].slug), 409);
 }
 
 export async function languageBranch(lang: string, client?: ClientBase): Promise<Branch> {

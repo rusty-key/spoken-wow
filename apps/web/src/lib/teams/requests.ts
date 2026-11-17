@@ -11,6 +11,7 @@ import type { PoolClient } from "pg";
 import { recordActivity } from "@/lib/activity/store";
 import { db, inTransaction, query } from "@/lib/db";
 import { sendEmail } from "@/lib/email";
+import { isOtherTeam } from "@/lib/grants/store";
 import { langName } from "@/lib/lang";
 import { adminEmails, SITE } from "@/lib/site";
 import { isUuid } from "@/lib/uuid";
@@ -193,7 +194,7 @@ export async function approveRequest(
   }).catch(async (error: unknown) => {
     // 23P01: a grant elsewhere put the requester in a team of the language after foundTeam
     // checked, and the commit refused the second membership.
-    if ((error as { code?: string }).code !== "23P01") throw error;
+    if (!isOtherTeam(error)) throw error;
     const request = await read(id);
     throw (request && (await memberRefusal(request.userId, request.lang))) ?? error;
   });

@@ -130,16 +130,21 @@ async function selectGrants(where: string, params: unknown[]): Promise<GrantRow[
   return rows.map((row) => ({ ...row, grantedAt: row.grantedAt.toISOString() }));
 }
 
+/** The refusal of a second team in `lang`: "`already` on <language> in `team`; one person ...". */
+export function oneTeamPerLanguage(already: string, lang: string, team: string): string {
+  return `${already} on ${langName(lang)} in ${team}; one person works in one team per language.`;
+}
+
 /** Granting somebody a team capability in a language they already work on in another team. */
 export class OtherTeamError extends Error {
   constructor(readonly lang: Lang) {
-    super(`That person already works on ${langName(lang)} in another team; one person works in one team per language.`);
+    super(oneTeamPerLanguage("That person already works", lang, "another team"));
     this.name = "OtherTeamError";
   }
 }
 
 /** Postgres' exclusion_violation, which team_member raises at commit for a second team in one language. */
-function isOtherTeam(error: unknown): boolean {
+export function isOtherTeam(error: unknown): boolean {
   return typeof error === "object" && error !== null && (error as { code?: unknown }).code === "23P01";
 }
 
