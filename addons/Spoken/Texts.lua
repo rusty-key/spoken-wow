@@ -83,6 +83,12 @@ function Texts:Register(code, section, data)
         Developer:Log("texts", "refused text for %s/%s: not a language and a section", tostring(code), tostring(section))
         return false
     end
+    -- English is Spoken's own corpus, which a module reads as its base and the site edits: a pack
+    -- of it would be a second English the modules do not ask for.
+    if code == "enUS" then
+        Developer:Log("texts", "refused text for enUS/%s: English is Spoken's own", section)
+        return false
+    end
     if code ~= self:Reading() then return false end
     for kind, value in pairs(data) do
         if not KINDS[section][kind] or type(value) ~= "table" then

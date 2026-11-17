@@ -567,6 +567,10 @@ Bosses.GetAudioClip = function() return { path = "x.mp3", len = 41.2, language =
 local heard = Bosses:StoryClip(36, "edwin vancleef")
 Expect("...over an English voice, the Polish words, timed by estimate", heard.present.transcript .. "|"
     .. tostring(heard.present.timings), "Przewodził Bractwu.|nil")
+Bosses.GetAudioClip = function() return { path = "x.mp3", len = 41.2, language = "plPL", times = "0 1" } end
+heard = Bosses:StoryClip(36, "edwin vancleef")
+Expect("...over a Polish voice with no words of its own, untimed: the text pack's words are not what it says",
+    tostring(heard.present.timings), "nil")
 Bosses.GetAudioClip = getAudioClip
 local vancleef
 for _, boss in ipairs(SpokenBosses.maps[36]) do if boss.key == "edwin vancleef" then vancleef = boss end end
@@ -577,6 +581,14 @@ Expect("a boss the pack has no story for keeps the English", Bosses:StoryClip(36
         local clip = Bosses:StoryClip(36, "rhahkzor")
         return clip and clip.present.transcript
     end)(), "An ogre.")
+-- English chosen on a German client: English, which Data/Stories.lua and Data/Bosses.lua keep first.
+_G.SpokenBossStories[36]["edwin vancleef"] = { "He led the Brotherhood.", deDE = "Er führte die Bruderschaft." }
+_G.GetLocale = function() return "deDE" end
+H.ReadText("enUS")
+local english = Bosses:StoryClip(36, "edwin vancleef")
+Expect("English chosen on a German client, the story and name are English",
+    english.present.transcript .. "|" .. english.present.label, "He led the Brotherhood.|Edwin VanCleef")
+_G.GetLocale = function() return "enUS" end
 H.ReadText(nil)
 
 local world = stub.world

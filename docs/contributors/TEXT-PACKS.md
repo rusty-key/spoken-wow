@@ -39,6 +39,8 @@ its modules, and only when the pack's language is the Text Language, so a corpus
 read costs no memory. A pack that loads on its own is accepted too, but its tables are parsed for
 nothing on every other setting.
 
+English is Spoken's own text, edited on spoken.quest, and a pack of it is refused.
+
 A text pack is not a voice pack: it adds no Voice Language and hides no download offer. Changing the
 Text Language takes effect after a reload.
 

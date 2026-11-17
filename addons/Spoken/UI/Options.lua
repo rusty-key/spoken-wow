@@ -573,7 +573,12 @@ local function Build()
         end, function() Options:UpdateRows() end,
         Label, Face)
     layout:ShowWhen(layout:Note(L.OPT_TEXT_LANGUAGE_RELOAD, nil, 16),
-        function() return Texts:Language() ~= Texts:Reading() end)
+        function()
+            -- Choosing the client's own language is a change too: chosen, it comes first everywhere.
+            local wanted, chosen = Texts:Language()
+            local reading, read = Texts:Reading()
+            return wanted ~= reading or chosen ~= read
+        end)
 
     layout:Section(L.OPT_AUDIO_TITLE)
     layout:Dropdown(L.OPT_CHANNEL, nil, CHANNELS,

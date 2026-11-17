@@ -466,6 +466,11 @@ Spoken:RegisterText("plPL", "places", { zones = { [MAP] = { name = "Durotar", fu
 _G.SpokenPlacesAudioPacks = {}
 Z = H.LoadPlaces(PLACES, { Languages = shipped.Languages })
 Expect("H. a text pack's places are offered", Z:IsLanguageSelectable("plPL"), true)
+Z:RegisterLoreData("plPL", "zones", { [MAP] = { name = "Durotar", full = "Bundled." }, [1412] = { name = "Mulgore", full = "Kept." } })
+Expect("H. ...and win over the language's own file that loads after them, place by place",
+    Z.Zones[MAP].full .. "|" .. Z.Zones[1412].full, "Opowieść o Durotarze.|Kept.")
+H.ReadText("plPL")
+Spoken:RegisterText("plPL", "places", { zones = { [MAP] = { name = "Durotar", full = "Opowieść o Durotarze." } } })
 Expect("H. ...and read where Polish is the Text Language", tostring(Z.language) .. " "
     .. tostring(Z.Zones and Z.Zones[MAP] and Z.Zones[MAP].full), "plPL Opowieść o Durotarze.")
 Packs({ { folder = "WoWPoPolsku_Spoken", meta = H.TextPackMeta("plPL") } })

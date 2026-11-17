@@ -86,6 +86,12 @@ Expect("nested tables merge, key by key", tostring(Spoken:TextIn("plPL", "bosses
     .. " " .. tostring(Spoken:TextIn("plPL", "bosses", "stories", 36, "rhahk'zor")), "Przewodził Bractwu. Ogr.")
 Spoken:RegisterText("plPL", "bosses", { storeis = { [1] = { a = "x" } } })
 Expect("a kind no module reads is refused", Spoken:TextIn("plPL", "bosses", "storeis", 1, "a"), nil)
+Expect("English is Spoken's own, and no pack of it is taken", (function()
+    env.Texts.loaded, env.Texts.chosen = "enUS", true
+    local kept = Spoken:RegisterText("enUS", "readables", WORDS)
+    env.Texts.loaded, env.Texts.chosen = "plPL", true
+    return kept
+end)(), false)
 Expect("a section no module reads is refused", Spoken:RegisterText("plPL", "mail", { pages = {} }), false)
 Expect("an empty string is no words", (function()
     Spoken:RegisterText("plPL", "readables", { pages = { [17] = "" } })

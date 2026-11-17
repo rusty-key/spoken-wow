@@ -407,6 +407,19 @@ function SpokenPlaces:RegisterLoreData(code, kind, data)
 	if not self:ShouldLoadLanguage(code) then
 		return
 	end
+	-- A text pack's places are registered before the data files run, so the language's own file
+	-- comes after them: their entries are laid over its, place by place, and win.
+	local packed = TextPackLore(code)
+	packed = packed and packed[kind]
+	if packed and packed ~= data then
+		for mapID, entry in pairs(packed) do
+			if kind == "subzones" and type(data[mapID]) == "table" then
+				for key, area in pairs(entry) do data[mapID][key] = area end
+			else
+				data[mapID] = entry
+			end
+		end
+	end
 	self.CaptionLore = self.CaptionLore or {}
 	self.CaptionLore[code] = self.CaptionLore[code] or {}
 	self.CaptionLore[code][kind] = data

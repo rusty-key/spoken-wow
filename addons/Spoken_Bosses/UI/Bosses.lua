@@ -44,14 +44,20 @@ local function ChosenLanguage()
 	return chosen and code or nil
 end
 
+-- What a data entry (Data/Bosses.lua's boss, Data/Stories.lua's story) has in `language`: English
+-- is its first, or the whole of a story that is only English; any other is under its code.
+local function In(entry, language)
+	if language == "enUS" then return type(entry) == "table" and entry[1] or entry end
+	return type(entry) == "table" and entry[language] or nil
+end
+
 -- The boss `boss` of `map` as a page and a list name it: in the Text Language, a text pack's name
 -- else the one Data/Bosses.lua has in it, and the client's otherwise.
 local function ShownName(map, boss)
 	local language = ChosenLanguage()
 	if language then
-		local packed = Spoken:TextIn(language, "bosses", "names", map, boss.key)
-		if packed then return packed end
-		if boss[language] then return boss[language] end
+		local known = Spoken:TextIn(language, "bosses", "names", map, boss.key) or In(boss, language)
+		if known then return known end
 	end
 	return Name(boss)
 end
@@ -190,24 +196,26 @@ local function CoreStory(map, key)
 end
 
 -- The story in the Text Language the player chose: a voice pack's words in it, which are what its
--- voice says, else a text pack's, else Data/Stories.lua's own. Nil where none has it.
+-- voice says, else a text pack's, else Data/Stories.lua's own. Nil where none has it. The second
+-- value is true for a text pack's, which no recording says.
 local function ChosenStory(map, key, language)
-	local packed = (Bosses.PackStoryText and Bosses:PackStoryText(map, key, language))
-		or Spoken:TextIn(language, "bosses", "stories", map, key)
-	if packed then return packed end
+	local voiced = Bosses.PackStoryText and Bosses:PackStoryText(map, key, language)
+	if voiced then return voiced end
+	local packed = Spoken:TextIn(language, "bosses", "stories", map, key)
+	if packed then return packed, true end
 	local stories = _G.SpokenBossStories
-	local entry = stories and stories[map] and stories[map][key]
-	local text = type(entry) == "table" and entry[language]
+	local text = In(stories and stories[map] and stories[map][key], language)
 	if type(text) == "string" and text ~= "" then return text end
 	return nil
 end
 
 -- A pack's words win only on a boss core already has, but for the Text Language the player chose,
--- whose words may be the only ones.
+-- whose words may be the only ones. The third value is true where they are a text pack's.
 local function Story(map, key)
 	local chosen = ChosenLanguage()
-	local words = chosen and ChosenStory(map, key, chosen)
-	if words then return words, chosen end
+	local words, unsaid
+	if chosen then words, unsaid = ChosenStory(map, key, chosen) end
+	if words then return words, chosen, unsaid end
 	local text, language = CoreStory(map, key)
 	if not text then return nil end
 	local locale = GetLocale and GetLocale()
@@ -440,7 +448,7 @@ local SECTION_ICON = { objectOrItem = true, icon = Bosses.ICON, bullet = "boss" 
 --- The story of the boss `key` of `map` as a line for Spoken's narrator: voiced where an installed
 --- pack has it (Audio.lua), else words alone; nil where it has none.
 function Bosses:StoryClip(map, key)
-	local story, language = Story(map, key)
+	local story, language, unsaid = Story(map, key)
 	if not story then return nil end
 	local boss = Boss(map, key)
 	if not boss then return nil end
@@ -467,8 +475,9 @@ function Bosses:StoryClip(map, key)
 	clip.language = recording and recording.language or language
 	if recording then
 		clip.path, clip.length = recording.path, recording.len or clip.length
-		-- Timed to the recording's own words, so not under a story in another language.
-		if language == recording.language then clip.present.timings = recording.times end
+		-- Timed to the recording's own words, so not under a story in another language, nor under a
+		-- text pack's words in its language.
+		if language == recording.language and not unsaid then clip.present.timings = recording.times end
 	else
 		clip.textOnly = true
 	end
