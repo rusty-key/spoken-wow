@@ -15,16 +15,12 @@ import {
 import { dismissQueue, pauseQueue, resumeQueue, type QueueSnapshot } from "@/lib/generation/client";
 import { usd } from "@/lib/generation/money";
 import { queueStatus } from "@/lib/generation/queue-line";
-import { languageInfo } from "@/lib/lang";
+import { langName } from "@/lib/lang";
 
 import { Contained } from "./Width";
 
 function n(value: number): string {
   return value.toLocaleString();
-}
-
-function languageName(code: string): string {
-  return languageInfo(code)?.name ?? code;
 }
 
 /**
@@ -190,7 +186,7 @@ export default function RegenerationPanel({
           <div className="text-muted-foreground mt-1.5 text-xs">
             Paused:{" "}
             {pauses
-              .map((pause) => `${languageName(pause.lang)}${pause.by ? ` by ${pause.by}` : ""}`)
+              .map((pause) => `${langName(pause.lang)}${pause.by ? ` by ${pause.by}` : ""}`)
               .join(" · ")}
           </div>
         )}

@@ -34,7 +34,7 @@ export function forgetTeams(): void {
 }
 
 export function teamLangs(): Promise<Map<Lang, TeamId>> {
-  listenInServer();
+  listenInServer("spoken_team_language", forgetTeams);
   if (cached && Date.now() - cached.at < TTL_MS) return cached.langs;
   const langs = query<{ lang: Lang; teamId: TeamId }>(
     `select "lang", "teamId" from "team_language" where "privileged"`,

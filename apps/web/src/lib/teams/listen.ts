@@ -9,21 +9,14 @@ import "server-only";
 import { Client } from "pg";
 
 import { connectionOptions, onCloseDb } from "@/lib/db";
-import { reloadLanguages } from "@/lib/languages/catalogue";
 
-import { forgetTeams } from "./store";
-
-/**
- * What each channel's notification does; also run on every (re)connect, for what was missed.
- * Wrapped, because both modules import this one and may not have finished loading when it does.
- */
-const CHANNELS: Record<string, () => void> = {
-  spoken_team_language: () => forgetTeams(),
-  spoken_language: () => reloadLanguages(),
-};
+/** What each channel's notification does; also run on every (re)connect, for what was missed. */
+const CHANNELS = new Map<string, () => void>();
 const RETRY_MS = 5_000;
 
 let client: Client | undefined;
+/** The client once it LISTENs on every channel then registered; a later one LISTENs on it directly. */
+let live: Client | undefined;
 let retry: NodeJS.Timeout | undefined;
 let stopped = true;
 
@@ -35,10 +28,15 @@ export function listenForTeamChanges(): void {
 }
 
 /**
- * Only the Next server listens: a script would never exit with the connection open, and a test
- * asks for the listener itself. `next build` runs as nodejs too but has no database.
+ * Runs `onChange` on each notification on `channel` and on every (re)connect. Registers in any
+ * process, but only the Next server starts listening: a script would never exit with the
+ * connection open, and a test asks for the listener itself. `next build` runs as nodejs too but
+ * has no database.
  */
-export function listenInServer(): void {
+export function listenInServer(channel: string, onChange: () => void): void {
+  const added = !CHANNELS.has(channel);
+  CHANNELS.set(channel, onChange);
+  if (added && live) listenOn(live, channel);
   if (process.env.NEXT_RUNTIME !== "nodejs" || process.env.NEXT_PHASE === "phase-production-build") return;
   listenForTeamChanges();
 }
@@ -47,23 +45,31 @@ async function connect(): Promise<void> {
   const own = new Client(connectionOptions());
   client = own;
   own.on("notification", (message) => {
-    CHANNELS[message.channel]?.();
+    CHANNELS.get(message.channel)?.();
   });
   own.on("error", (error) => fail(own, error));
   try {
     await own.connect();
-    for (const channel of Object.keys(CHANNELS)) await own.query(`LISTEN ${channel}`);
+    // Also visits a channel registered while this awaits.
+    for (const channel of CHANNELS.keys()) await own.query(`LISTEN ${channel}`);
+    if (client !== own) return;
+    live = own;
     // A change made before this, while nothing listened, would otherwise wait out the TTL.
-    for (const onChange of Object.values(CHANNELS)) onChange();
+    for (const onChange of CHANNELS.values()) onChange();
   } catch (error) {
     fail(own, error);
   }
+}
+
+function listenOn(own: Client, channel: string): void {
+  own.query(`LISTEN ${channel}`).catch((error) => fail(own, error));
 }
 
 function fail(own: Client, error: unknown): void {
   if (client !== own) return;
   console.error("change listener failed, retrying in 5 s:", error);
   client = undefined;
+  live = undefined;
   own.end().catch(() => {});
   if (stopped) return;
   retry = setTimeout(() => void connect(), RETRY_MS);
@@ -76,6 +82,7 @@ export async function stopListening(): Promise<void> {
   clearTimeout(retry);
   const own = client;
   client = undefined;
+  live = undefined;
   await own?.end().catch(() => {});
 }
 

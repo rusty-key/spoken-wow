@@ -55,7 +55,7 @@ export function forgetLanguages(): void {
 }
 
 export function loadLanguages(): Promise<LanguageInfo[]> {
-  listenInServer();
+  listenInServer("spoken_language", reloadLanguages);
   const cached = memo.cached;
   if (cached && Date.now() - cached.at < TTL_MS) return cached.langs;
   const seq = ++memo.started;
