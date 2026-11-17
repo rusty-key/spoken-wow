@@ -141,9 +141,9 @@ script that reads the archive by hash finds team buckets too: `fetch-blobs.mjs`,
 recording also needs `Authorization: Bearer <SPOKEN_ARCHIVE_TOKEN>`, which `fetch-blobs.mjs` sends
 to the site alone and never on to the bucket it is redirected to.
 
-The release job on the droplet takes `SPOKEN_ARCHIVE_READ_URL` from `app.env` as its build's
-`SPOKEN_ARCHIVE_URL` (`http://127.0.0.1:3010/api/archive/` keeps the requests off nginx), and
-`SPOKEN_ARCHIVE_TOKEN` with it. The `release-packs.yaml` workflow and a developer's
+The release job on the droplet gets `SPOKEN_ARCHIVE_URL=http://127.0.0.1:3010/api/archive/` from
+`shared/release.env`, which overrides `app.env` for it and keeps the requests off nginx, and
+`SPOKEN_ARCHIVE_TOKEN` from `app.env`. The `release-packs.yaml` workflow and a developer's
 `make <section>-pull-live` set `SPOKEN_ARCHIVE_URL` to `https://spoken.quest/api/archive/` instead.
 
 ## Not planned: distributing from a team's bucket

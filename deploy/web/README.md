@@ -129,12 +129,13 @@ channel's), `SPOKEN_ARCHIVE_BUCKET`, `SPOKEN_ARCHIVE_URL` (its public address) a
 backfill runs, and `r2` after: then takes redirect to the bucket, recordings, clone clips and
 references stream through the site, and the volume is no longer read or written.
 
-**Teams' own buckets** (`docs/platform/STORAGE.md`) need three more in `app.env` before a team
+**Teams' own buckets** (`docs/platform/STORAGE.md`) need two more in `app.env` before a team
 admin can connect one on `/admin/storage`. `SPOKEN_STORAGE_KEY` (`openssl rand -base64 32`) seals
 each team's bucket key; like `SPOKEN_SECRET_KEY` it cannot be rotated casually, since changing it
-makes every team enter its key again. `SPOKEN_ARCHIVE_READ_URL=http://127.0.0.1:3010/api/archive/`
-sends the release job's reads through the site, which knows which bucket holds each clip, and
-`SPOKEN_ARCHIVE_TOKEN` (any long random string) lets it fetch voice actors' recordings there. The
+makes every team enter its key again. `SPOKEN_ARCHIVE_TOKEN` (any long random string) lets a build
+fetch voice actors' recordings through the site. In `shared/release.env`,
+`SPOKEN_ARCHIVE_URL=http://127.0.0.1:3010/api/archive/` overrides app.env's for the release job, so
+its reads go through the site, which knows which bucket holds each clip. The
 `release-packs.yaml` workflow's `SPOKEN_ARCHIVE_URL` variable becomes
 `https://spoken.quest/api/archive/`, with `SPOKEN_ARCHIVE_TOKEN` as a secret. Quarantined objects,
 moves between buckets and the check for objects a team deleted run in whichever worker leads the
