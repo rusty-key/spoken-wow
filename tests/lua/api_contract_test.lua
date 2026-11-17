@@ -107,6 +107,20 @@ src:Enqueue(H.Clip())
 Spoken:Skip()
 Expect("an unregistered callback stays quiet", started, nil)
 
+local calls, once = {}, nil
+once = Spoken:RegisterCallback("CLIP_STARTED", function()
+    table.insert(calls, "once")
+    Spoken:UnregisterCallback(once)
+end)
+local always = Spoken:RegisterCallback("CLIP_STARTED", function() table.insert(calls, "always") end)
+src:Enqueue(H.Clip())
+src:Enqueue(H.Clip())
+Spoken:Skip()
+Spoken:Skip()
+Expect("a callback that unregisters itself as it runs leaves the next one called", table.concat(calls, ", "),
+    "once, always, always")
+Spoken:UnregisterCallback(always)
+
 Spoken:Pause()
 Expect("Pause", Spoken:IsPaused(), true)
 Spoken:Resume()

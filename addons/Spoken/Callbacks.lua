@@ -17,16 +17,22 @@ function Callbacks:Register(event, fn)
     return handle
 end
 
+-- A new list rather than a removal in place: a Fire walking the old one would skip the
+-- subscriber after one that unregistered itself. One unregistered before its turn is skipped.
 function Callbacks:Unregister(handle)
     local list = handle and self.handlers[handle.event]
     if not list then
         return
     end
-    for i = getn(list), 1, -1 do
-        if list[i].id == handle.id then
-            table.remove(list, i)
+    local kept = {}
+    for _, other in ipairs(list) do
+        if other.id == handle.id then
+            other.gone = true
+        else
+            table.insert(kept, other)
         end
     end
+    self.handlers[handle.event] = kept
 end
 
 --- Whether anything listens for `event`, so work done only to fire it can be skipped.
@@ -43,9 +49,11 @@ function Callbacks:Fire(event, a, b, c)
         return
     end
     for _, handle in ipairs(list) do
-        local ok, err = pcall(handle.fn, a, b, c)
-        if not ok then
-            table.insert(self.errors, event .. ": " .. tostring(err))
+        if not handle.gone then
+            local ok, err = pcall(handle.fn, a, b, c)
+            if not ok then
+                table.insert(self.errors, event .. ": " .. tostring(err))
+            end
         end
     end
 end
