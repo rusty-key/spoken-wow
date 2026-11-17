@@ -204,10 +204,19 @@ async function writeEncodingPointers(pointed) {
   // A team may delete from its own bucket, and its line then ships unvoiced rather than stopping
   // the release. Only those are looked for: an Ogg in ours is there.
   const gone = new Set();
+  const unreachable = [];
   await eachParallel(pointed.filter((take) => take.teamEncoding), async ({ file, encodedSha256 }) => {
     const res = await fetchRetrying(`${archiveBase(process.env.SPOKEN_ARCHIVE_URL)}encodings/${encodedSha256}`, (u) => fetch(u, { method: "HEAD" }));
-    if (!res.ok) gone.add(file);
+    // Only a 404 is a deletion. Anything else (a wrong archive address, the site down) stops the
+    // build, rather than shipping every team-kept line silent.
+    if (res.status === 404) gone.add(file);
+    else if (!res.ok) unreachable.push(`${file}: HTTP ${res.status}`);
   });
+  if (unreachable.length) {
+    console.error(`error: ${unreachable.length} team-kept Oggs could not be checked, e.g.:`);
+    for (const line of unreachable.slice(0, 5)) console.error(`  ${line}`);
+    process.exit(1);
+  }
   if (gone.size) console.warn(`  ${gone.size} live takes left out: their team deleted the Ogg from its bucket, e.g. ${[...gone][0]}`);
   let done = 0;
   await eachParallel(pointed.filter((take) => !gone.has(take.file)), async ({ stem, encodedSha256, bytes }) => {
@@ -242,8 +251,9 @@ if (process.env.SPOKEN_CLIP_POINTERS) {
   // A team may delete from its own bucket: that line ships unvoiced. One missing from ours is a
   // lost take, and stops the build.
   const teamTargets = new Set(pointed.filter((take) => take.teamTake).map(({ stem }) => join(paths.out, `${stem}.mp3`)));
-  const deleted = absent.filter(({ target }) => teamTargets.has(target));
-  const lost = absent.filter(({ target }) => !teamTargets.has(target));
+  // Only a 404 for a team-kept take is its team's deletion; any other failure stops the build.
+  const deleted = absent.filter(({ target, reason }) => teamTargets.has(target) && reason === "HTTP 404");
+  const lost = absent.filter((one) => !deleted.includes(one));
   if (deleted.length) console.warn(`  ${deleted.length} live takes left out: their team deleted them from its bucket, e.g. ${deleted[0].target}`);
   if (lost.length) {
     console.error(`  ${lost.length} live takes are not in the archive, e.g.:`);
