@@ -79,7 +79,8 @@ every player reads English and nothing errors.
 
 | Kind | Setting | What it decides |
 | --- | --- | --- |
-| Client locale | the game's own | The area names the game reports (so which `Data/<locale>/Aliases.lua` is used) and the interface strings (`Locale/<locale>.lua`, English where a key is missing). |
+| Client locale | the game's own | The area names the game reports (so which `Data/<locale>/Aliases.lua` is used). |
+| Interface language | Spoken's Interface Language | The interface strings: an interface pack's (`Locale/Interface.lua`), then the built-in language's `Locale/<locale>.lua` (the client's on Auto), then English. |
 | Text language | Spoken's Text Language, `/spp lang` | The words of the stories on the map panel, the Compendium and the lookup tables, and of the captions and subtitles of the line playing, whatever the voice. The voice's words only where the Text Language has none for the place. |
 | Voice language | Spoken's Voice Language | The voice pack that reads. |
 

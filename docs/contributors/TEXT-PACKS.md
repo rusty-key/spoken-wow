@@ -41,6 +41,9 @@ nothing on every other setting.
 
 English is Spoken's own text, edited on spoken.quest, and a pack of it is refused.
 
+Spoken's own windows and settings are an interface pack's
+([`INTERFACE-PACKS.md`](INTERFACE-PACKS.md)). One addon can be both.
+
 A text pack is not a voice pack: it adds no Voice Language and hides no download offer. Changing the
 Text Language takes effect after a reload.
 

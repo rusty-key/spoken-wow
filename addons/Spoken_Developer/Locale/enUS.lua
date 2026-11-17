@@ -1,5 +1,16 @@
 local _, Developer = ...
 
+--- Whether the built-in language whose locale files load is one of these codes: Spoken's Interface
+--- Language (Spoken:InterfaceIn), or the client's where Spoken is not loaded. Each locale file's guard.
+function Developer:InterfaceIn(...)
+	if Spoken and Spoken.InterfaceIn then return Spoken:InterfaceIn(...) end
+	local locale = GetLocale()
+	for n = 1, select("#", ...) do
+		if select(n, ...) == locale then return true end
+	end
+	return false
+end
+
 -- Interface strings for Spoken Developer, and the key set every other language is measured
 -- against. A locale file per language overlays this table, so anything missing falls back to
 -- English. Chat prints stay English everywhere, as in the other Spoken addons: they are read

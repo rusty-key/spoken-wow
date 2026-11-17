@@ -6,7 +6,7 @@
 
 setfenv(1, VoiceOver)
 
-if GetLocale() ~= "koKR" then
+if not InterfaceIn("koKR") then
 	return
 end
 

@@ -4,6 +4,7 @@
     <Include file="Core.lua"/>
     <Include file="Languages.lua"/>
     <Include file="Texts.lua"/>
+    <Include file="Interface.lua"/>
     <Include file="SoundUtils.lua"/>
     <Include file="Callbacks.lua"/>
     <Include file="SoundQueue.lua"/>

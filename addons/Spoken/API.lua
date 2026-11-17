@@ -581,6 +581,44 @@ function Spoken:LanguageDraws(code, path)
     return Options:LanguageDraws(code, path)
 end
 
+--- The language this session's interface is in: the Interface Language chosen on Spoken's page, a
+--- built-in one or an interface pack's, else the client's. Fixed for the session.
+function Spoken:InterfaceLanguage()
+    return Interface:Language()
+end
+
+--- The built-in language whose locale files load: the Interface Language where a client runs in
+--- it, else the client's, under a pack's strings.
+function Spoken:InterfaceBase()
+    return Interface:Base()
+end
+
+--- A module's locale file asks this as it loads: whether the built-in language whose files load is
+--- one of these codes. `if not Spoken:InterfaceIn("esES", "esMX") then return end`.
+function Spoken:InterfaceIn(...)
+    return Interface:In(...)
+end
+
+--- For an interface pack (docs/contributors/INTERFACE-PACKS.md): the strings of `module` ("Spoken",
+--- "Quests", "Places", "Readables", "Bosses" or "Developer") in the language `code`, keyed as the
+--- module's English. Kept only where `code` is the session's Interface Language; returns whether
+--- they were.
+function Spoken:RegisterInterfaceStrings(code, module, strings)
+    return Interface:Register(code, module, strings)
+end
+
+--- A module lays the strings packs registered for it over its own table, `strings`, as its locale
+--- files finish.
+function Spoken:ApplyInterfaceStrings(module, strings)
+    Interface:Apply(module, strings)
+end
+
+--- The strings packs registered for `module`, or nil: for a module that keeps one table per
+--- language (Places).
+function Spoken:InterfaceStrings(module)
+    return Interface:Strings(module)
+end
+
 --- The language the words are read in this session: the Text Language chosen on Spoken's page as it
 --- was at load, else the client's. The second value is true where the player chose it; on Auto a
 --- module keeps the order it always read its languages in, and where it is chosen, puts it first.

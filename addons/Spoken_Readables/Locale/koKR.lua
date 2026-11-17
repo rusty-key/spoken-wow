@@ -6,7 +6,7 @@ local _, SpokenReadables = ...
 
 local L = SpokenReadables.L
 
-if GetLocale() ~= "koKR" then
+if not SpokenReadables:InterfaceIn("koKR") then
 	return
 end
 L.OPT_AUTOPLAY = "자동으로 읽기"

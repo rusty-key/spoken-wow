@@ -1231,7 +1231,7 @@ end
 --- Loads exactly what its addon.xml and then Contribute.xml list, in order (a Blizzard-client
 --- .toc's order), then initialises the saved variables the way ADDON_LOADED would.
 function M.LoadSpoken(addonDirectory)
-    for _, file in ipairs({ "Environment", "Version", "Core", "Languages", "Texts", "SoundUtils", "Callbacks", "SoundQueue", "Sources", "Developer", "OtherSounds",
+    for _, file in ipairs({ "Environment", "Version", "Core", "Languages", "Texts", "Interface", "SoundUtils", "Callbacks", "SoundQueue", "Sources", "Developer", "OtherSounds",
         "BackgroundSound", "Strings", "Locale/deDE", "Locale/esES", "Locale/frFR", "Locale/ptBR", "Locale/ruRU", "Locale/koKR", "Locale/zhCN",
         "Locale/zhTW", "UI/Layout", "UI/DialogueUITheme", "UI/Transcript", "UI/Subtitle", "UI/WordMarks", "UI/Search", "UI/Portrait", "UI/StaticPortrait", "UI/Actions", "UI/Snap", "UI/Face", "UI/PlayerFrame",
         "UI/MinimalPlayer", "UI/Ellesmere", "UI/DialogueUIPlayer", "UI/DialogueUITransitions", "UI/MinimapButton",
@@ -1247,6 +1247,7 @@ function M.LoadSpoken(addonDirectory)
     local env = _G.SpokenEnv
     env.Addon:InitDB()
     env.Texts:Load()
+    env.Interface:Load()
     -- The suites time the queue by each module's own gap; the player's pause between lines has
     -- a test of its own (queue_test).
     env.Addon.db.profile.Audio.LineGap = 0

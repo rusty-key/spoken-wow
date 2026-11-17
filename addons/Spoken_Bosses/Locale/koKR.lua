@@ -6,7 +6,7 @@ local _, Bosses = ...
 
 local L = Bosses.L
 
-if GetLocale() ~= "koKR" then
+if not Bosses:InterfaceIn("koKR") then
 	return
 end
 L.COMPENDIUM_BOSSES = "우두머리"

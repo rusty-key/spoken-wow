@@ -6,7 +6,7 @@
 
 setfenv(1, SpokenEnv)
 
-if GetLocale() ~= "zhCN" then
+if not Interface:In("zhCN") then
 	return
 end
 
@@ -228,6 +228,8 @@ L.OPT_FALLBACK_LANGUAGE = "缺少语音时"
 L.OPT_TEXT_LANGUAGE = "文本语言"
 L.OPT_TEXT_LANGUAGE_SET_FMT = "界面重新载入后，文本将使用%1$s。"
 L.OPT_TEXT_LANGUAGE_RELOAD = "输入 /reload 即可切换。"
+L.OPT_INTERFACE_LANGUAGE = "界面语言"
+L.OPT_INTERFACE_LANGUAGE_SET_FMT = "界面重新载入后，Spoken 的窗口和设置将使用%1$s。"
 L.OPT_RELOAD_NOW = "立即重新载入"
 L.OPT_LATER = "稍后"
 L.OPT_FALLBACK_NONE = "保持静默"

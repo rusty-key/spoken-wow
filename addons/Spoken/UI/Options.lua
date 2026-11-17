@@ -17,49 +17,61 @@ local scroller
 -- is built with too, so the pages read alike.
 local Layout = SpokenLayout
 
+-- Spoken's files name their strings here, and the words are looked up as they are read: an
+-- interface pack's strings arrive after these files load (Interface.lua), and a word copied as a
+-- file loads would stay in the language before them. tests/lua/interface_load_test.lua holds them
+-- to it.
+local function Words(keys)
+    return setmetatable({}, { __index = function(_, name) return keys[name] and L[keys[name]] end })
+end
+
 local CHANNELS = { "Master", "SFX", "Music", "Ambience", "Dialog" }
 -- Stored names stay English: playback passes them to the sound API.
-local CHANNEL_LABELS = {
-    Master = L.OPT_CHANNEL_MASTER,
-    SFX = L.OPT_CHANNEL_SFX,
-    Music = L.OPT_CHANNEL_MUSIC,
-    Ambience = L.OPT_CHANNEL_AMBIENCE,
-    Dialog = L.OPT_CHANNEL_DIALOG,
-}
+local CHANNEL_LABELS = Words({
+    Master = "OPT_CHANNEL_MASTER",
+    SFX = "OPT_CHANNEL_SFX",
+    Music = "OPT_CHANNEL_MUSIC",
+    Ambience = "OPT_CHANNEL_AMBIENCE",
+    Dialog = "OPT_CHANNEL_DIALOG",
+})
 
 -- The ways of showing a line, by the name Addon:PlayerStyle gives each.
-local STYLE_LABELS = {
-    minimal = L.OPT_STYLE_MINIMAL,
-    classic = L.OPT_STYLE_CLASSIC,
-    dialogueui = L.OPT_STYLE_DIALOGUEUI,
-    subtitle = L.OPT_STYLE_SUBTITLE,
-    none = L.OPT_STYLE_NONE,
+local STYLE_LABELS = Words({
+    minimal = "OPT_STYLE_MINIMAL",
+    classic = "OPT_STYLE_CLASSIC",
+    dialogueui = "OPT_STYLE_DIALOGUEUI",
+    subtitle = "OPT_STYLE_SUBTITLE",
+    none = "OPT_STYLE_NONE",
+})
+
+-- The game's key bindings list these in a Spoken category (Bindings.xml): each by its binding and
+-- its string's key.
+local BINDINGS = {
+    { "SPOKEN_PLAYPAUSE", "BIND_PLAYPAUSE" },
+    { "SPOKEN_SKIP", "BIND_SKIP" },
+    { "SPOKEN_STOP", "BIND_STOP" },
+    { "SPOKEN_COMPENDIUM", "BIND_COMPENDIUM" },
 }
 
--- The game's key bindings list these in a Spoken category (Bindings.xml). The category is
--- the name of a string global the client shows as its title. Set here, after the locale
--- files, so the names are in the player's language.
-_G.BINDING_HEADER_SPOKEN = "Spoken"
-_G.BINDING_NAME_SPOKEN_PLAYPAUSE = L.BIND_PLAYPAUSE
-_G.BINDING_NAME_SPOKEN_SKIP = L.BIND_SKIP
-_G.BINDING_NAME_SPOKEN_STOP = L.BIND_STOP
-_G.BINDING_NAME_SPOKEN_COMPENDIUM = L.BIND_COMPENDIUM
-local BINDINGS = {
-    { "SPOKEN_PLAYPAUSE", L.BIND_PLAYPAUSE },
-    { "SPOKEN_SKIP", L.BIND_SKIP },
-    { "SPOKEN_STOP", L.BIND_STOP },
-    { "SPOKEN_COMPENDIUM", L.BIND_COMPENDIUM },
-}
--- The parts of Spoken by source key, named as their pages are, each with the game's own icon
--- for what it reads and the order its page is listed in under Spoken.
+--- Name the bindings in the player's language. The category is the name of a string global the
+--- client shows as its title. Called as this file loads, after the locale files, and again when an
+--- interface pack's strings are laid over them.
+function Options:NameBindings()
+    _G.BINDING_HEADER_SPOKEN = "Spoken"
+    for _, binding in ipairs(BINDINGS) do _G["BINDING_NAME_" .. binding[1]] = L[binding[2]] end
+end
+Options:NameBindings()
+
+-- The parts of Spoken by source key, named as their pages are (the keys of their strings), each
+-- with the game's own icon for what it reads and the order its page is listed in under Spoken.
 local PARTS = {
-    { key = "quests", label = L.OPT_PART_QUESTS, text = L.OPT_PART_QUESTS_TEXT,
+    { key = "quests", label = "OPT_PART_QUESTS", text = "OPT_PART_QUESTS_TEXT",
         icon = [[Interface\Icons\INV_Scroll_03]], order = 1 },
-    { key = "gossip", label = L.OPT_PART_GOSSIP, text = L.OPT_PART_GOSSIP_TEXT,
+    { key = "gossip", label = "OPT_PART_GOSSIP", text = "OPT_PART_GOSSIP_TEXT",
         icon = [[Interface\Icons\UI_Chat]], order = 2 },
-    { key = "places", label = L.OPT_PART_PLACES, text = L.OPT_PART_PLACES_TEXT,
+    { key = "places", label = "OPT_PART_PLACES", text = "OPT_PART_PLACES_TEXT",
         icon = [[Interface\Icons\INV_Misc_Map02]], order = 3 },
-    { key = "readables", label = L.OPT_PART_READABLES, text = L.OPT_PART_READABLES_TEXT,
+    { key = "readables", label = "OPT_PART_READABLES", text = "OPT_PART_READABLES_TEXT",
         icon = [[Interface\Icons\INV_Misc_Book_09]], order = 4 },
 }
 
@@ -68,7 +80,8 @@ local PARTS = {
 function Options:Parts()
     local parts, known = {}, {}
     for _, part in ipairs(PARTS) do
-        table.insert(parts, part)
+        table.insert(parts, { key = part.key, label = L[part.label], text = L[part.text], icon = part.icon,
+            order = part.order })
         known[part.key] = true
     end
     for key, source in Sources:Iterate() do
@@ -138,13 +151,13 @@ local SKETCHES = {
         end
     end,
 }
-local STYLE_TEXTS = {
-    minimal = L.OPT_STYLE_MINIMAL_TEXT,
-    classic = L.OPT_STYLE_CLASSIC_TEXT,
-    dialogueui = L.OPT_STYLE_DIALOGUEUI_TEXT,
-    subtitle = L.OPT_STYLE_SUBTITLE_TEXT,
-    none = L.OPT_STYLE_NONE_TEXT,
-}
+local STYLE_TEXTS = Words({
+    minimal = "OPT_STYLE_MINIMAL_TEXT",
+    classic = "OPT_STYLE_CLASSIC_TEXT",
+    dialogueui = "OPT_STYLE_DIALOGUEUI_TEXT",
+    subtitle = "OPT_STYLE_SUBTITLE_TEXT",
+    none = "OPT_STYLE_NONE_TEXT",
+})
 -- Whether a font draws `text`: the settings' font object, or the file `path`. A glyph the font
 -- lacks draws as nothing or as a box, so the text is measured against as many U+0378, a code point
 -- Unicode has never assigned and so no font has: the same width means none of it drew. Han and
@@ -286,7 +299,7 @@ local function CurseForgeURL()
 end
 
 local LINKS = {
-    { name = L.OPT_LINKS_WEBSITE, icon = [[Interface\AddOns\Spoken\icon]], url = WebsiteURL() },
+    { nameKey = "OPT_LINKS_WEBSITE", icon = [[Interface\AddOns\Spoken\icon]], url = WebsiteURL() },
     { name = "GitHub", icon = [[Interface\AddOns\Spoken\Textures\LinkGitHub]],
         url = "https://github.com/rusty-key/spoken-wow" },
     { name = "Discord", icon = [[Interface\AddOns\Spoken\Textures\LinkDiscord]],
@@ -304,7 +317,7 @@ function Options:AddLinks(layout)
     layout:Section(L.OPT_LINKS_TITLE)
     local frames = {}
     for _, link in ipairs(LINKS) do
-        table.insert(frames, layout:Link({ icon = link.icon, title = link.name, url = link.url,
+        table.insert(frames, layout:Link({ icon = link.icon, title = link.name or L[link.nameKey], url = link.url,
             tooltip = L.OPT_LINKS_TIP }))
     end
     return frames
@@ -579,6 +592,20 @@ local function Build()
             local reading, read = Texts:Reading()
             return wanted ~= reading or chosen ~= read
         end)
+    -- Spoken's own words, account-wide: the locale files read it before any profile is chosen
+    -- (Interface.lua). A built-in language or an interface pack's, only where the game's font draws it.
+    layout:Dropdown(L.OPT_INTERFACE_LANGUAGE, nil, function() return Interface:Choices() end,
+        function() return Interface:Choice() or "auto" end,
+        function(code)
+            if Interface:SetChoice(code ~= "auto" and code or nil) then
+                Layout.AskReload(format(L.OPT_INTERFACE_LANGUAGE_SET_FMT,
+                    Options:LanguageName(code ~= "auto" and code or Options:ClientLanguage())),
+                    L.OPT_RELOAD_NOW, L.OPT_LATER)
+            end
+        end, function() Options:UpdateRows() end,
+        Label, Face)
+    layout:ShowWhen(layout:Note(L.OPT_TEXT_LANGUAGE_RELOAD, nil, 16),
+        function() return (Interface:Choice() or Options:ClientLanguage()) ~= Interface:Language() end)
 
     layout:Section(L.OPT_AUDIO_TITLE)
     layout:Dropdown(L.OPT_CHANNEL, nil, CHANNELS,
@@ -639,7 +666,7 @@ local function Build()
         layout:Refresh()
     end
     for _, binding in ipairs(BINDINGS) do
-        local name, label = binding[1], binding[2]
+        local name, label = binding[1], L[binding[2]]
         layout:Key(label, function()
             local key = GetBindingKey and GetBindingKey(name)
             if not key then return "off", L.OPT_KEY_NONE end
@@ -941,6 +968,7 @@ local function Build()
             -- to its default.
             Addon.db.profile.CompendiumFontSize = 12
             Addon.db.global.Layout = nil
+            Addon.db.global.InterfaceLanguage = nil
             ReloadUI()
         end)
     end, L.OPT_RESET_ALL_TIP)

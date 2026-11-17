@@ -7,8 +7,7 @@ local _, Bosses = ...
 local L = Bosses.L
 
 -- esMX shares this file: nothing in these strings varies by region.
-local locale = GetLocale()
-if locale ~= "esES" and locale ~= "esMX" then
+if not Bosses:InterfaceIn("esES", "esMX") then
 	return
 end
 L.COMPENDIUM_BOSSES = "Jefes"

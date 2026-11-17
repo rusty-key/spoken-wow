@@ -73,9 +73,12 @@ pointing at "+N" lists them (see [`PLAYER-STYLES.md`](PLAYER-STYLES.md)).
 
 ## Settings language
 
-Caption settings and tooltips follow the game client language. Translations cover
-German, Spanish (EU and Latin America), French, Brazilian Portuguese, Russian,
-Korean, Simplified Chinese and Traditional Chinese. English is the fallback.
+Caption settings and tooltips follow the Interface Language, in the Language section of Spoken's
+page: the client's language on Auto, or another the player chose. Translations cover German, Spanish
+(EU and Latin America), French, Brazilian Portuguese, Russian, Korean, Simplified Chinese and
+Traditional Chinese, and an interface pack can bring another
+([`docs/contributors/INTERFACE-PACKS.md`](../contributors/INTERFACE-PACKS.md)). English is the
+fallback.
 The words of a caption are in the Text Language, whatever the voice and whichever language a
 fallback recording is in. It is one setting for every module, Text Language in the Language section
 of Spoken's page, and takes effect after a reload. Auto is the client's language, as the game shows

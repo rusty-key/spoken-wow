@@ -7,7 +7,7 @@
 
 setfenv(1, SpokenEnv)
 
-if GetLocale() ~= "esES" and GetLocale() ~= "esMX" then
+if not Interface:In("esES", "esMX") then
 	return
 end
 
@@ -186,6 +186,8 @@ L.OPT_FALLBACK_LANGUAGE = "Si falta la voz"
 L.OPT_TEXT_LANGUAGE = "Idioma del texto"
 L.OPT_TEXT_LANGUAGE_SET_FMT = "El texto estará en %1$s cuando se recargue la interfaz."
 L.OPT_TEXT_LANGUAGE_RELOAD = "Escribe /reload para cambiar a él."
+L.OPT_INTERFACE_LANGUAGE = "Idioma de la interfaz"
+L.OPT_INTERFACE_LANGUAGE_SET_FMT = "Las ventanas y los ajustes de Spoken estarán en %1$s cuando se recargue la interfaz."
 L.OPT_RELOAD_NOW = "Recargar ahora"
 L.OPT_LATER = "Más tarde"
 L.OPT_FALLBACK_NONE = "Silencio"

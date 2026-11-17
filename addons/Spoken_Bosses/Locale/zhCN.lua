@@ -6,7 +6,7 @@ local _, Bosses = ...
 
 local L = Bosses.L
 
-if GetLocale() ~= "zhCN" then
+if not Bosses:InterfaceIn("zhCN") then
 	return
 end
 L.COMPENDIUM_BOSSES = "首领"

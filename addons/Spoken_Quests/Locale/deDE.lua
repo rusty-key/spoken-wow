@@ -6,7 +6,7 @@
 
 setfenv(1, VoiceOver)
 
-if GetLocale() ~= "deDE" then
+if not InterfaceIn("deDE") then
 	return
 end
 

@@ -7,7 +7,7 @@
 
 local _, SpokenPlaces = ...
 
-if GetLocale() ~= "ruRU" then
+if not SpokenPlaces:InterfaceIn("ruRU") then
 	return
 end
 
