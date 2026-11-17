@@ -224,11 +224,11 @@ describe("planQuestsByItems", () => {
     expect((await planned).jobs).toHaveLength(1);
   });
 
-  it("reports a progress line as progress, not hidden", async () => {
-    catalogues.corpusLines = [quest("q:5:accept", { source: "progress", skipReason: "progress" })];
-    const result = await planQuestsByItems([{ id: "q:5:accept", variant: 0 }], "enUS", "elevenlabs");
-    expect(result.jobs).toHaveLength(0);
-    expect(result.dropped).toEqual({ progress: 1 });
+  it("plans a progress line as a job, like any other line", async () => {
+    catalogues.corpusLines = [quest("q:5:progress", { source: "progress" })];
+    const result = await planQuestsByItems([{ id: "q:5:progress", variant: 0 }], "enUS", "elevenlabs");
+    expect(result.jobs).toHaveLength(1);
+    expect(result.dropped).toEqual({});
   });
 });
 
@@ -289,7 +289,7 @@ describe("filterError", () => {
     catalogues.realFilters = true;
   });
 
-  it.each(["", "state=stale&source=accept,gossip&page=3", "missing=1", "?q=hello&client=all&progress=1", "minLevel=10&before=2026-01-01"])(
+  it.each(["", "state=stale&source=accept,gossip&page=3", "missing=1", "?q=hello&client=all", "minLevel=10&before=2026-01-01"])(
     "accepts %s",
     async (query) => {
       expect((await filterError(query, "enUS")).error).toBeNull();
@@ -298,6 +298,7 @@ describe("filterError", () => {
 
   it.each([
     ["stat=stale", "stat"],
+    ["progress=1", "progress"],
     ["state=bogus", "state"],
     ["lang=frFR", "lang"],
     ["https://spoken.quest/quests?q=x", "https"],

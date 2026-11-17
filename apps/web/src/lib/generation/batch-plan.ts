@@ -92,12 +92,12 @@ function questPlan(lines: CorpusLine[], overrides: Parameters<typeof batchPlan>[
 /** Every key `filtersFromParams` reads. */
 export const FILTER_KEYS = new Set([
   "q", "filter", "state", "missing", "outdated", "race", "gender", "flavor", "voice", "source", "type",
-  "narration", "progress", "client", "line", "overridden", "ignored", "dirty", "fb", "before", "after",
+  "narration", "client", "line", "overridden", "ignored", "dirty", "fb", "before", "after",
   "model", "author", "rec", "bt", "minLevel", "maxLevel", "playerGender",
 ]);
 /** Keys an Explorer URL carries that mean nothing to a batch. */
 const EXPLORER_ONLY = new Set(["page"]);
-const FLAGS = ["narration", "progress", "overridden", "ignored", "dirty", "missing", "outdated"];
+const FLAGS = ["narration", "overridden", "ignored", "dirty", "missing", "outdated"];
 
 /**
  * For the API only: the button's derivation drops what it does not understand, which for a typed
@@ -199,9 +199,9 @@ export async function planQuestsByItems(
     searchContext(false, false, lang, true, false),
   ]);
   const { lines: narrowed, unknown } = linesForItems(catalogue.lines, items);
-  // The default view, but for every client and with progress lines in: an item is one the caller
-  // named, so only a line nobody voices (an ignore) is hidden, and batchPlan says why the rest drops.
-  const filters = { ...defaults, client: "all" as const, includeProgress: true };
+  // The default view, but for every client: an item is one the caller named, so only a line
+  // nobody voices (an ignore) is hidden, and batchPlan says why the rest drops.
+  const filters = { ...defaults, client: "all" as const };
   const lines = matchingLines({ lines: narrowed }, voiced, filters, context);
   const hidden = narrowed.length - lines.length;
   const plan = questPlan(lines, context.overrides, pinned);
