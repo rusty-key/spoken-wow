@@ -77,12 +77,59 @@ describe("text overrides", () => {
   });
 
   it("clear once", async () => {
-    await write("New.");
-    const clear = () => asActor(u.id, () => clearTextOverride({ source: "places", lang, lineId: "z:1", by: u.id }));
+    await write("New.", { tokenId: "t" });
+    const clear = () => asActor(u.id, () => clearTextOverride({ source: "places", lang, lineId: "z:1", by: u.id, audit: { tokenId: "t" } }));
     expect(await clear()).toBe(true);
     expect((await asActor(u.id, () => readTextOverrides("places", lang))).size).toBe(0);
     expect(await clear()).toBe(false);
-    const cleared = await asSystem.query(`select 1 from "activity" where "lang" = $1 and "kind" = 'override.cleared'`, [lang]);
+    const cleared = await asSystem.query(`select * from "activity" where "lang" = $1 and "kind" = 'override.cleared'`, [lang]);
     expect(cleared.rows).toHaveLength(1);
+    const [row] = cleared.rows;
+    expect(row.teamId).toBe(b);
+    expect(row.source).toBe("places");
+    expect(row.subject).toBe("z:1");
+    expect(row.detail).toEqual({ before: "New.", apiTokenId: "t", previous: null });
+  });
+
+  it("are not cleared by the other team", async () => {
+    await write("New.");
+    expect(await asActor(v.id, () => clearTextOverride({ source: "places", lang, lineId: "z:1", by: v.id }))).toBe(false);
+    expect((await asActor(u.id, () => readTextOverrides("places", lang))).size).toBe(1);
+  });
+
+  it("keep bosses apart from places", async () => {
+    await asActor(u.id, () =>
+      writeTextOverride({ source: "bosses", lang, lineId: "b:1", text: "Roar.", original: "Grr.", userId: u.id }),
+    );
+    expect((await asActor(u.id, () => readTextOverrides("bosses", lang))).get("b:1")?.text).toBe("Roar.");
+    expect((await asActor(u.id, () => readTextOverrides("places", lang))).size).toBe(0);
+  });
+
+  describe("read after a change", () => {
+    const read = () => asActor(u.id, () => readTextOverrides("places", lang));
+
+    it("sees new text written after a read", async () => {
+      await write("First.");
+      await read();
+      await write("Second.");
+      expect((await read()).get("z:1")?.text).toBe("Second.");
+    });
+
+    it("sees a clear after a read", async () => {
+      await write("New.");
+      await read();
+      await asActor(u.id, () => clearTextOverride({ source: "places", lang, lineId: "z:1", by: u.id }));
+      expect((await read()).size).toBe(0);
+    });
+
+    it("sees a delete behind the newest row, which max(updatedAt) cannot", async () => {
+      await write("One.");
+      await asActor(u.id, () =>
+        writeTextOverride({ source: "places", lang, lineId: "z:2", text: "Two.", original: "Old.", userId: u.id }),
+      );
+      expect((await read()).size).toBe(2);
+      await asSystem.query(`delete from "text_override" where "lang" = $1 and "lineId" = 'z:1'`, [lang]);
+      expect([...(await read()).keys()]).toEqual(["z:2"]);
+    });
   });
 });

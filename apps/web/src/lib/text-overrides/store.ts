@@ -43,7 +43,13 @@ export async function overrideStamp(source: NarratedSource, lang: Lang): Promise
   return rows[0]?.stamp ?? "-";
 }
 
-const cacheKey = Symbol.for("wow-voiceover.text-overrides");
+const SOURCES: readonly NarratedSource[] = ["places", "readables", "bosses"];
+
+// One memo slot per source: a slot holds one version per team and language, so sources sharing
+// one would rebuild it on every alternating read.
+const cacheKeys = Object.fromEntries(
+  SOURCES.map((s) => [s, Symbol.for(`wow-voiceover.text-overrides.${s}`)]),
+) as Record<NarratedSource, symbol>;
 
 /** The acting team's overrides for a source in a language, by line id. */
 export async function readTextOverrides(
@@ -51,7 +57,7 @@ export async function readTextOverrides(
   lang: Lang,
 ): Promise<Map<string, TextOverride>> {
   const stamp = await overrideStamp(source, lang);
-  return memoByTeamLang(cacheKey, lang, `${source}:${stamp}`, async () => {
+  return memoByTeamLang(cacheKeys[source], lang, stamp, async () => {
     const rows = await readAs<OverrideRow>(
       lang,
       `select "lineId", "text", "updatedAt", "updatedBy", "originalHash"
@@ -90,7 +96,7 @@ export async function writeTextOverride(args: {
                (select "text" from "was") as "before"`,
     [lang, source, lineId, text, userId, spokenHash(original)],
   );
-  forgetTextOverrides();
+  forgetTextOverrides(source);
   const { before, ...row } = rows[0];
   const wrote = before !== text;
   // Saving the text the line already says is not a rewrite, and would only bury real ones.
@@ -122,7 +128,7 @@ export async function clearTextOverride(args: {
     `delete from "text_override" where "lang" = $1 and "source" = $2 and "lineId" = $3 returning "text"`,
     [lang, source, lineId],
   );
-  forgetTextOverrides();
+  forgetTextOverrides(source);
   if (rows[0]) {
     await recordActivity({
       kind: "override.cleared",
@@ -141,8 +147,8 @@ export async function clearTextOverride(args: {
  * Forget the memo after a write in this worker: `updatedAt` is `now()`, so a read in the same
  * transaction timestamp would see an unchanged stamp and serve the replaced text.
  */
-export function forgetTextOverrides(): void {
-  delete (globalThis as Record<symbol, unknown>)[cacheKey];
+export function forgetTextOverrides(source?: NarratedSource): void {
+  for (const s of source ? [source] : SOURCES) delete (globalThis as Record<symbol, unknown>)[cacheKeys[s]];
 }
 
 export function viewOf(override: TextOverride | undefined, original: string): OverrideView | undefined {
