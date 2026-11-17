@@ -36,11 +36,11 @@ export const isForum = (channel) => isNamed(channel, FORUM) || isNamed(channel, 
 export const LABEL = "from-discord";
 const FILED = "Logged on GitHub as";
 const STATE_TAGS = ["Fixed", "Not planned"];
-const GUILD_FORUM = 15;
+export const GUILD_FORUM = 15;
 export const BUG = "🐛";
 // The messages before a 🐛 one that go into its issue, so a conversation reads whole.
 const CONTEXT = 4;
-const TEXT_CHANNELS = [0, 5, 10, 11, 12]; // text, announcement, and the three thread types
+export const TEXT_CHANNELS = [0, 5, 10, 11, 12]; // text, announcement, and the three thread types
 const ADMINISTRATOR = 1n << 3n;
 const MANAGE_MESSAGES = 1n << 13n;
 
@@ -70,6 +70,21 @@ const MESSAGE_LINK = /Filed from \[[^\]]*\]\(https:\/\/discord\.com\/channels\/(
 export function messageOf(body) {
   const m = (body ?? "").match(MESSAGE_LINK);
   return m ? { guild: m[1], channel: m[2], message: m[3] } : null;
+}
+
+/**
+ * Whether a user is a moderator, by id, asking Discord once per user: a function to call as often
+ * as needed in one run.
+ */
+export function moderatorLookup(api, guild) {
+  const known = new Map();
+  return async (userId) => {
+    if (!known.has(userId)) {
+      const member = await api("GET", `/guilds/${guild.id}/members/${userId}`).catch(() => null);
+      known.set(userId, member !== null && isModerator(member, guild));
+    }
+    return known.get(userId);
+  };
 }
 
 /** Whether a member may file a message with 🐛: the owner, or a role that manages messages. */
@@ -111,7 +126,7 @@ export function issueFor({ guild, thread, starter, tagNames }) {
   };
 }
 
-const nameOf = (author) => author?.global_name ?? author?.username ?? "someone";
+export const nameOf = (author) => author?.global_name ?? author?.username ?? "someone";
 
 /**
  * The issue for a 🐛 message: its first line as the title, the message and the ones before it
@@ -222,15 +237,7 @@ async function reactionContext(api, gh) {
   if (!guildId) return null;
   const guild = await api("GET", `/guilds/${guildId}`);
   const done = (await filed(gh)).messages;
-  const members = new Map();
-  const moderator = async (user) => {
-    if (!members.has(user.id)) {
-      const member = await api("GET", `/guilds/${guildId}/members/${user.id}`).catch(() => null);
-      members.set(user.id, member !== null && isModerator(member, guild));
-    }
-    return members.get(user.id);
-  };
-  return { forum, guildId, done, moderator };
+  return { forum, guildId, done, moderator: moderatorLookup(api, guild) };
 }
 
 /**
@@ -246,7 +253,7 @@ async function fileMarked(api, gh, ctx, channel, target, recent) {
   const users = await api("GET", `/channels/${channel.id}/messages/${target.id}/reactions/${encodeURIComponent(BUG)}?limit=100`);
   let reactor = null;
   for (const user of users) {
-    if (await ctx.moderator(user)) {
+    if (await ctx.moderator(user.id)) {
       reactor = user;
       break;
     }
@@ -289,10 +296,13 @@ export async function reaction(api, gh, channelId, messageId) {
   if (!ctx) return;
   const channel = await api("GET", `/channels/${channelId}`);
   if (!TEXT_CHANNELS.includes(channel.type) || channel.parent_id === ctx.forum.id) return;
-  const target = await api("GET", `/channels/${channelId}/messages/${messageId}`);
+  if (ctx.done.has(messageId)) return;
   // Both lists come newest first, so this is the order `reactions` reads a channel in.
-  const after = await api("GET", `/channels/${channelId}/messages?after=${messageId}&limit=50`);
-  const before = await api("GET", `/channels/${channelId}/messages?before=${messageId}&limit=${CONTEXT}`);
+  const [target, after, before] = await Promise.all([
+    api("GET", `/channels/${channelId}/messages/${messageId}`),
+    api("GET", `/channels/${channelId}/messages?after=${messageId}&limit=50`),
+    api("GET", `/channels/${channelId}/messages?before=${messageId}&limit=${CONTEXT}`),
+  ]);
   const newestFirst = (a, b) => (BigInt(b.id) > BigInt(a.id) ? 1 : -1);
   await fileMarked(api, gh, ctx, channel, target, [...after.sort(newestFirst), target, ...before.sort(newestFirst)]);
 }

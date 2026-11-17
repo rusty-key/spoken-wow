@@ -10,8 +10,10 @@ import {
   messagesFor,
   parseAnswer,
   systemPrompt,
+  decide,
+  oneLine,
   threadName,
-  worthAsking,
+  withoutMention,
 } from "./support.mjs";
 
 const FAQ = "# Spoken FAQ\n\nIntro.\n\n## How do I install Spoken?\n\nUse the Manager.\n\n## Why is nothing playing?\n\nCheck the packs.\n";
@@ -29,11 +31,11 @@ test("the system prompt holds the FAQ and nothing that changes per call", () => 
 
 test("an answer is read when it is finished and well formed", () => {
   const got = parseAnswer(reply({ answer: true, entry: "Why is nothing playing?", reply: " Check the packs. " }), FAQ);
-  assert.deepEqual(got, { answer: true, entry: "Why is nothing playing?", reply: "Check the packs." });
+  assert.deepEqual(got, { entry: "Why is nothing playing?", reply: "Check the packs." });
 });
 
 test("anything but a finished, well-formed answer is silence", () => {
-  const silent = { answer: false, entry: "", reply: "" };
+  const silent = { entry: "", reply: "" };
   assert.deepEqual(parseAnswer(reply({ answer: true, entry: "", reply: "x" }, "refusal"), FAQ), silent);
   assert.deepEqual(parseAnswer(reply({ answer: true, entry: "", reply: "x" }, "max_tokens"), FAQ), silent);
   assert.deepEqual(parseAnswer({ stop_reason: "end_turn", content: [{ type: "text", text: "{oops" }] }, FAQ), silent);
@@ -68,13 +70,24 @@ test("messagesFor with nothing a player said is empty", () => {
   assert.deepEqual(messagesFor("channel", [{ bot: true, name: "Brann", text: "hi" }]), []);
 });
 
-test("worthAsking skips bots, moderators, replies to another player and chatter", () => {
-  const base = { authorIsBot: false, authorIsModerator: false, text: "Why don't my NPCs talk?", repliesToOtherPerson: false };
-  assert.equal(worthAsking(base), true);
-  assert.equal(worthAsking({ ...base, authorIsBot: true }), false);
-  assert.equal(worthAsking({ ...base, authorIsModerator: true }), false);
-  assert.equal(worthAsking({ ...base, repliesToOtherPerson: true }), false);
-  assert.equal(worthAsking({ ...base, text: "thx!" }), false);
+test("decide: a mention is a conversation; moderators, chatter and a player just answered are skipped", () => {
+  const at = Date.parse("2026-11-17T00:40:00Z");
+  const base = { mentioned: false, isModerator: false, text: "Why don't my NPCs talk?", authorId: "ana", at };
+  assert.deepEqual(decide(base), { mode: "channel" });
+  assert.deepEqual(decide({ ...base, mentioned: true, isModerator: true, text: "hi" }), { mode: "conversation" });
+  assert.deepEqual(decide({ ...base, isModerator: true }), { skip: "moderator" });
+  assert.deepEqual(decide({ ...base, text: "thx!" }), { skip: "too short" });
+  assert.deepEqual(decide({ ...base, answeredAt: at - 30_000 }), { skip: "answered this player under a minute ago" });
+  assert.deepEqual(decide({ ...base, answeredAt: at - 90_000 }), { mode: "channel" });
+  assert.deepEqual(decide({ ...base, repliesToOtherPerson: true }), { skip: "reply to another player" });
+  const helper = { authorId: "nucabe", bot: false, at: at - 60_000, repliesTo: "ana", mentions: [] };
+  assert.deepEqual(decide({ ...base, recent: [helper] }), { skip: "someone is helping this player" });
+});
+
+test("oneLine and withoutMention", () => {
+  assert.equal(oneLine("a  b\nc", 10), "a b c");
+  assert.equal(oneLine("abcdefghij", 5), "abcd…");
+  assert.equal(withoutMention("<@9> <@!9>how do I <@1>", "9"), "how do I <@1>");
 });
 
 test("threadName takes the first line, without mentions, within Discord's limit", () => {
@@ -117,7 +130,7 @@ test("contextFor puts the reply chain first, fills with the messages just before
   const old = m(0);
   assert.deepEqual(ids(contextFor({ id: "10", replyTo: "0" }, before.slice(0, 2), (id) => (id === "0" ? old : null))), ["0", "8", "9"]);
   // A loop in the chain ends.
-  assert.deepEqual(ids(contextFor(m(10, 2), [m(2, 1), m(1, 2)], () => null, 5)), ["1", "2"]);
+  assert.deepEqual(ids(contextFor(m(10, 2), [m(2, 1), m(1, 2)])), ["1", "2"]);
 });
 
 test("a channel message goes to the model with its context marked apart", () => {

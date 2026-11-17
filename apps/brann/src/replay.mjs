@@ -1,41 +1,27 @@
 #!/usr/bin/env node
-// Replays a channel's recent messages through Brann's support rules and model call, and prints
-// which he would answer and what he would say. Posts nothing, files nothing (README.md).
+// Replays a channel's recent messages through Brann's support rules (decide in support.mjs, the
+// same function the bot asks) and model call, and prints which he would answer and what he would
+// say. Posts nothing, files nothing (README.md).
 //
 //   node apps/brann/src/replay.mjs <channel> [--limit 100] [--all]
+//
+// Reads BRANN_DISCORD_TOKEN or DISCORD_BOT_TOKEN, and BRANN_ANTHROPIC_API_KEY or
+// ANTHROPIC_API_KEY, from the environment or the repo-root .env.
 
-import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 
 import Anthropic from "@anthropic-ai/sdk";
 
-import { ROOT_ENV_PATH, parseEnv } from "../../../pipelines/lib/env.mjs";
-import { isModerator } from "../../../scripts/lib/forum-issues.mjs";
+import { loadEnv } from "../../../pipelines/lib/env.mjs";
+import { moderatorLookup, nameOf as authorName } from "../../../scripts/lib/forum-issues.mjs";
 import { discord, findChannel } from "../../../scripts/lib/language-post.mjs";
-import { COOLDOWN, DEFAULT_MODEL, ask, beingHelped, contextFor, loadFaq, systemPrompt, worthAsking } from "./support.mjs";
+import { DEFAULT_MODEL, ask, contextFor, decide, loadFaq, oneLine, withoutMention } from "./support.mjs";
 
 // Default and Reply: what the bot looks at. Joins, pins and the like are not questions.
 const SPOKEN_TYPES = [0, 19];
 const CONCURRENCY = 5;
 
-function env() {
-  let file = new Map();
-  try {
-    file = parseEnv(readFileSync(ROOT_ENV_PATH, "utf8"));
-  } catch {}
-  const get = (...keys) => keys.map((k) => process.env[k] || file.get(k)).find(Boolean);
-  return {
-    token: get("BRANN_DISCORD_TOKEN", "DISCORD_BOT_TOKEN"),
-    key: get("BRANN_ANTHROPIC_API_KEY", "ANTHROPIC_API_KEY"),
-    model: get("BRANN_MODEL") || DEFAULT_MODEL,
-  };
-}
-
-const nameOf = (m) => m.member?.nick ?? m.author.global_name ?? m.author.username;
-const oneLine = (text, max = 160) => {
-  const line = text.replace(/\s+/g, " ").trim();
-  return line.length > max ? `${line.slice(0, max - 1)}…` : line;
-};
+const nameOf = (m) => m.member?.nick ?? authorName(m.author);
 
 async function main() {
   const args = process.argv.slice(2);
@@ -44,7 +30,10 @@ async function main() {
   const limit = Math.min(limitAt >= 0 ? Number(args[limitAt + 1]) : 100, 100);
   const all = args.includes("--all");
   if (!name) throw new Error("usage: replay.mjs <channel> [--limit 100] [--all]");
-  const { token, key, model } = env();
+  await loadEnv();
+  const token = process.env.BRANN_DISCORD_TOKEN || process.env.DISCORD_BOT_TOKEN;
+  const key = process.env.BRANN_ANTHROPIC_API_KEY || process.env.ANTHROPIC_API_KEY;
+  const model = process.env.BRANN_MODEL || DEFAULT_MODEL;
   if (!token) throw new Error("set BRANN_DISCORD_TOKEN or DISCORD_BOT_TOKEN");
   if (!key) throw new Error("set BRANN_ANTHROPIC_API_KEY or ANTHROPIC_API_KEY");
 
@@ -58,18 +47,10 @@ async function main() {
   if (messages.length && messages.every((m) => !m.content && !m.mentions?.some((u) => u.id === me.id))) {
     throw new Error("every message came back empty: switch on the Message Content intent in the Discord developer portal");
   }
+  const moderator = moderatorLookup(api, guild);
 
-  const moderators = new Map();
-  const moderator = async (user) => {
-    if (!moderators.has(user.id)) {
-      const member = await api("GET", `/guilds/${guild.id}/members/${user.id}`).catch(() => null);
-      moderators.set(user.id, member !== null && isModerator(member, guild));
-    }
-    return moderators.get(user.id);
-  };
-
-  // The rules first, in order; then the model for every message they let through.
-  const rows = [];
+  const plain = (m) => withoutMention(m.content, me.id);
+  const contextOf = (m) => ({ id: m.id, replyTo: m.message_reference?.message_id, bot: !!m.author.bot, name: nameOf(m), text: plain(m) });
   const meta = (m) => ({
     authorId: m.author.id,
     bot: !!m.author.bot,
@@ -77,43 +58,43 @@ async function main() {
     repliesTo: m.referenced_message?.author.id,
     mentions: (m.mentions ?? []).map((u) => u.id),
   });
-  const plain = (m) => m.content.replace(new RegExp(`<@!?${me.id}>`, "g"), "").trim();
-  const contextOf = (m) => ({ id: m.id, replyTo: m.message_reference?.message_id, bot: !!m.author.bot, name: nameOf(m), text: plain(m) });
   // A replied-to message older than the window comes embedded in its reply.
-  const byId = new Map(messages.flatMap((m) => (m.referenced_message ? [[m.referenced_message.id, m.referenced_message]] : [])));
-  const lookup = (id) => (byId.has(id) ? contextOf(byId.get(id)) : null);
+  const embedded = new Map(messages.flatMap((m) => (m.referenced_message ? [[m.referenced_message.id, m.referenced_message]] : [])));
+  const lookup = (id) => (embedded.has(id) ? contextOf(embedded.get(id)) : null);
+
+  // The rules, as the bot asks them; the cooldown waits until the answers are known, below.
+  const rows = [];
   for (const [i, m] of messages.entries()) {
     const row = { m, text: plain(m) };
-    row.context = contextFor(contextOf(m), messages.slice(0, i).reverse().map(contextOf), lookup);
     rows.push(row);
     if (m.author.bot) row.skip = "bot";
     else if (!SPOKEN_TYPES.includes(m.type)) row.skip = "not a chat message";
-    else if (m.mentions?.some((u) => u.id === me.id)) row.mode = "conversation";
     else {
       const ref = m.referenced_message;
-      const authorIsModerator = await moderator(m.author);
-      const ok = worthAsking({
-        authorIsBot: false,
-        authorIsModerator,
+      row.facts = {
+        mentioned: !!m.mentions?.some((u) => u.id === me.id),
+        isModerator: await moderator(m.author.id),
         text: row.text,
+        authorId: m.author.id,
+        at: Date.parse(m.timestamp),
         repliesToOtherPerson: !!ref && !ref.author.bot && ref.author.id !== m.author.id,
-      });
-      const recent = messages.slice(Math.max(0, i - 30), i).map(meta);
-      if (ok && beingHelped({ authorId: m.author.id, at: Date.parse(m.timestamp), recent })) row.skip = "someone is helping this player";
-      else if (ok) row.mode = "channel";
-      else row.skip = authorIsModerator ? "moderator" : ref && !ref.author.bot ? "reply to another player" : "too short";
+        recent: messages.slice(Math.max(0, i - 30), i).map(meta),
+      };
+      const verdict = decide(row.facts);
+      if (verdict.skip) row.skip = verdict.skip;
+      else row.mode = verdict.mode;
+      row.context = contextFor(contextOf(m), messages.slice(0, i).reverse().map(contextOf), lookup);
     }
   }
 
   const client = new Anthropic({ apiKey: key });
   const faq = loadFaq();
-  const system = systemPrompt(faq);
   const asked = rows.filter((r) => r.mode);
   for (let i = 0; i < asked.length; i += CONCURRENCY) {
     await Promise.all(asked.slice(i, i + CONCURRENCY).map(async (row) => {
       try {
         row.result = await ask(client, {
-          model, faq, system, mode: row.mode, context: row.context, turns: [{ bot: false, name: nameOf(row.m), text: row.text }],
+          model, faq, mode: row.mode, context: row.context, turns: [{ bot: false, name: nameOf(row.m), text: row.text }],
         });
       } catch (error) {
         row.skip = `model error: ${error.message}`;
@@ -121,15 +102,15 @@ async function main() {
     }));
   }
 
-  // The per-player cooldown, as the bot would apply it in time order.
+  // The cooldown, in time order: each player's last answer is known once the earlier ones are.
   const last = new Map();
-  for (const row of rows.filter((r) => r.result?.answer)) {
-    const at = Date.parse(row.m.timestamp);
-    if (row.mode === "channel" && at - (last.get(row.m.author.id) ?? -Infinity) < COOLDOWN) {
-      row.skip = "answered this player under a minute ago";
+  for (const row of rows.filter((r) => r.result?.reply)) {
+    const verdict = decide({ ...row.facts, answeredAt: last.get(row.m.author.id) });
+    if (verdict.skip) {
+      row.skip = verdict.skip;
       continue;
     }
-    last.set(row.m.author.id, at);
+    last.set(row.m.author.id, row.facts.at);
     row.answered = true;
   }
 
@@ -138,7 +119,7 @@ async function main() {
   for (const row of rows) {
     const when = row.m.timestamp.slice(0, 16).replace("T", " ");
     if (row.answered) {
-      console.log(`ANSWER  ${when} ${nameOf(row.m)}: ${oneLine(row.text)}`);
+      console.log(`ANSWER  ${when} ${nameOf(row.m)}: ${oneLine(row.text, 160)}`);
       console.log(`        entry: ${row.result.entry || "(none)"}`);
       console.log(`        ${row.result.reply.split("\n").join("\n        ")}\n`);
     } else if (all) {

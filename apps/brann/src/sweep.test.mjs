@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 
-import { answerComponents, ratedComponents } from "./feedback.mjs";
+import { ratedComponents } from "./feedback.mjs";
 import { transcript } from "./sweep.mjs";
 
 const msg = (id, author, content, extra = {}) => ({ id, author, content, timestamp: "2026-11-15T14:02:00.000Z", ...extra });
@@ -16,7 +16,7 @@ test("the transcript marks moderators, Brann, replies and the asker's verdict, a
       messages: [
         msg("10", ana, "Where do I get   the packs?"),
         msg("11", mod, "Use the Manager", { message_reference: { message_id: "10" } }),
-        msg("12", brann, "<@1> Install the packs", { components: ratedComponents(answerComponents({ dm: true }), false) }),
+        msg("12", brann, "<@1> Install the packs", { components: ratedComponents(false) }),
         msg("13", ana, ""),
       ],
     },

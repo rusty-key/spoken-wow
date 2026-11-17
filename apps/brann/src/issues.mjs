@@ -8,7 +8,7 @@
 // Everything goes through one queue. Two sweeps side by side would each see a post without an
 // issue and file it twice, the race the workflow's concurrency group used to prevent.
 
-import { BUG, file, isForum, reaction, reactions } from "../../../scripts/lib/forum-issues.mjs";
+import { file, isForum, reaction, reactions } from "../../../scripts/lib/forum-issues.mjs";
 
 const SWEEP_EVERY = 60 * 60 * 1000;
 // A forum post's thread arrives before its first message can be read.
@@ -18,7 +18,6 @@ export function issueFiler({ api, gh, log = console }) {
   let queue = Promise.resolve();
   const run = (what, job) => {
     queue = queue.then(job).catch((error) => log.error(`issues: ${what} failed: ${error.message}`));
-    return queue;
   };
   const sweep = () => {
     run("forum sweep", () => file(api, gh));
@@ -35,9 +34,8 @@ export function issueFiler({ api, gh, log = console }) {
       if (!newlyCreated || !thread.parent || !isForum(thread.parent)) return;
       setTimeout(() => run(`forum post ${thread.id}`, () => file(api, gh)), POST_SETTLE).unref();
     },
-    /** A reaction was added; a moderator's 🐛 files the message. */
-    onReactionAdd(channelId, messageId, emojiName) {
-      if (emojiName !== BUG) return;
+    /** A moderator added a 🐛: the message is filed. */
+    onReactionAdd(channelId, messageId) {
       run(`🐛 on ${messageId}`, () => reaction(api, gh, channelId, messageId));
     },
   };

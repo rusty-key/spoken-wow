@@ -8,8 +8,8 @@
 export const DM_BUTTON = "brann:dm";
 export const HELPED = "brann:fb:up";
 export const NOT_HELPED = "brann:fb:down";
-export const MARKED_HELPED = "Marked helpful";
-export const MARKED_NOT_HELPED = "Marked not helpful";
+const MARKED_HELPED = "Marked helpful";
+const MARKED_NOT_HELPED = "Marked not helpful";
 
 const BUTTON = 2;
 const ROW = 1;
@@ -19,28 +19,29 @@ const DANGER = 4;
 
 const button = (custom_id, label, style, extra = {}) => ({ type: BUTTON, custom_id, label, style, ...extra });
 
-/** The row under an answer: 👍, 👎 and, where the talk can move to DMs, Continue in DMs. */
-export function answerComponents({ dm }) {
+const dmButton = () => button(DM_BUTTON, "Continue in DMs", SECONDARY);
+
+/** The row under an answer: 👍, 👎 and Continue in DMs. */
+export function answerComponents() {
   return [{
     type: ROW,
     components: [
       button(HELPED, "Helped", SECONDARY, { emoji: { name: "👍" } }),
       button(NOT_HELPED, "Didn't help", SECONDARY, { emoji: { name: "👎" } }),
-      ...(dm ? [button(DM_BUTTON, "Continue in DMs", SECONDARY)] : []),
+      dmButton(),
     ],
   }];
 }
 
-/** The row after the asker's verdict: the verdict, disabled, and Continue in DMs if it was there. */
-export function ratedComponents(components, helped) {
-  const hadDm = buttonsOf(components).some((b) => b.custom_id === DM_BUTTON);
+/** The row after the asker's verdict: the verdict, disabled, and Continue in DMs. */
+export function ratedComponents(helped) {
   return [{
     type: ROW,
     components: [
       helped
         ? button(HELPED, MARKED_HELPED, SUCCESS, { disabled: true, emoji: { name: "👍" } })
         : button(NOT_HELPED, MARKED_NOT_HELPED, DANGER, { disabled: true, emoji: { name: "👎" } }),
-      ...(hadDm ? [button(DM_BUTTON, "Continue in DMs", SECONDARY)] : []),
+      dmButton(),
     ],
   }];
 }

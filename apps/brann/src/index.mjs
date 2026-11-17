@@ -29,7 +29,7 @@ import {
 } from "discord.js";
 
 import { discord } from "../../../scripts/lib/language-post.mjs";
-import { github } from "../../../scripts/lib/forum-issues.mjs";
+import { BUG, github } from "../../../scripts/lib/forum-issues.mjs";
 import {
   DM_BUTTON,
   HELPED,
@@ -44,14 +44,13 @@ import {
   DEFAULT_MODEL,
   HISTORY,
   ask,
-  beingHelped,
   contextFor,
   dailyBudget,
+  decide,
   faqEntries,
   loadFaq,
-  systemPrompt,
   threadName,
-  worthAsking,
+  withoutMention,
 } from "./support.mjs";
 
 const env = process.env;
@@ -65,11 +64,16 @@ const MODEL = env.BRANN_MODEL || DEFAULT_MODEL;
 const REPO = env.BRANN_GITHUB_REPOSITORY || "rusty-key/spoken-wow";
 
 const faq = loadFaq();
-const system = systemPrompt(faq);
 const anthropic = env.BRANN_ANTHROPIC_API_KEY ? new Anthropic({ apiKey: env.BRANN_ANTHROPIC_API_KEY }) : null;
 const supportOn = MODE !== "off" && anthropic !== null;
 const spend = dailyBudget(Number(env.BRANN_DAILY_CALLS) || 1000);
+// When he last answered each player in a channel. Only the last minute matters, so older entries
+// are dropped as new ones come in.
 const lastAnswered = new Map();
+function answered(playerId, at) {
+  for (const [id, when] of lastAnswered) if (at - when > COOLDOWN) lastAnswered.delete(id);
+  lastAnswered.set(playerId, at);
+}
 
 const client = new Client({
   intents: [
@@ -91,23 +95,23 @@ const filer = env.BRANN_GITHUB_TOKEN
 const isModerator = (member) =>
   !!member && (member.guild.ownerId === member.id || member.permissions.has(PermissionFlagsBits.ManageMessages));
 
-const plain = (message) => message.content.replace(new RegExp(`<@!?${client.user.id}>`, "g"), "").trim();
+const plain = (message) => withoutMention(message.content, client.user.id);
+const nameOf = (message) => message.member?.displayName ?? message.author.globalName ?? message.author.username;
 
+/** A message as a turn of a conversation: Brann's own, or a player's with their name. */
 const turnOf = (message) => ({
   bot: message.author.id === client.user.id,
-  name: message.member?.displayName ?? message.author.globalName ?? message.author.username,
+  name: nameOf(message),
   text: message.author.id === client.user.id ? message.content : plain(message),
 });
 
-/** A message as context for a channel question: who said what, and what it replies to. */
+/** A message as context for a channel question: also what it replies to, and whether any bot said it. */
 const contextOf = (message) => ({
+  ...turnOf(message),
   id: message.id,
   replyTo: message.reference?.messageId,
   bot: message.author.bot,
-  name: message.member?.displayName ?? message.author.globalName ?? message.author.username,
-  text: message.author.id === client.user.id ? message.content : plain(message),
 });
-
 
 const where = (channel) => (channel.isDMBased() ? "DM" : `#${channel.name}`);
 
@@ -116,70 +120,74 @@ async function answer(mode, turns, channel, context = []) {
     console.warn("brann: daily model call limit reached; not answering until 00:00 UTC");
     return null;
   }
-  const result = await ask(anthropic, { model: MODEL, faq, system, mode, turns, context });
-  if (!result.answer) return null;
-  console.log(`brann: ${where(channel)} ${mode} -> ${result.entry || "(no entry)"}`);
+  const { entry, reply } = await ask(anthropic, { model: MODEL, faq, mode, turns, context });
+  if (!reply) return null;
+  console.log(`brann: ${where(channel)} ${mode} -> ${entry || "(no entry)"}`);
   if (MODE === "dry") {
-    console.log(`brann: [dry] ${result.reply.replace(/\n/g, " ⏎ ")}`);
+    console.log(`brann: [dry] ${reply.replace(/\n/g, " ⏎ ")}`);
     return null;
   }
-  return result.reply;
+  return reply;
 }
 
-/** A message in his own thread from the person it was opened for, or a DM: a conversation. */
-async function converse(message) {
+/**
+ * A conversation: a DM, or the asker in his own thread, where `starter` and `history` (newest
+ * first) are already fetched.
+ */
+async function converse(message, { starter = null, history } = {}) {
   const channel = message.channel;
-  const history = [...(await channel.messages.fetch({ limit: HISTORY })).values()].reverse();
-  const turns = [];
-  if (channel.isThread()) {
-    const starter = await channel.fetchStarterMessage().catch(() => null);
-    if (starter) turns.push(turnOf(starter));
-  }
-  turns.push(...history.filter((m) => !m.system).map(turnOf));
   await channel.sendTyping().catch(() => {});
+  const recent = history ?? await channel.messages.fetch({ limit: HISTORY });
+  const turns = [...(starter ? [starter] : []), ...[...recent.values()].reverse().filter((m) => !m.system)].map(turnOf);
   const reply = await answer("conversation", turns, channel);
   if (!reply) return;
   // In a thread the asker can rate each answer; a DM is between the two of them, and the
   // weekly sweep cannot read it.
-  const components = channel.isDMBased() ? [] : answerComponents({ dm: true });
-  await channel.send({ content: reply, allowedMentions: { parse: [] }, components });
+  await channel.send({ content: reply, allowedMentions: { parse: [] }, components: channel.isDMBased() ? [] : answerComponents() });
 }
 
-/** A message in a public channel: answered in a thread under it if the FAQ covers it. */
-async function triage(message, mentioned, context) {
-  if (!mentioned) {
-    const last = lastAnswered.get(message.author.id) ?? 0;
-    if (Date.now() - last < COOLDOWN) return;
-  }
-  const reply = await answer(mentioned ? "conversation" : "channel", [turnOf(message)], message.channel, context);
+/** A message in a public channel: answered in a thread under it, or in place in a thread already. */
+async function triage(message, mode, context) {
+  const reply = await answer(mode, [turnOf(message)], message.channel, context);
   if (!reply) return;
-  lastAnswered.set(message.author.id, Date.now());
-  const payload = {
-    content: `<@${message.author.id}> ${reply}`,
-    allowedMentions: { users: [message.author.id] },
-    components: answerComponents({ dm: true }),
-  };
-  // Already in a thread (a forum post, someone's thread): answer in place.
-  if (message.channel.isThread()) {
-    await message.reply({ ...payload, allowedMentions: { users: [message.author.id], repliedUser: false } });
-    return;
-  }
-  const thread = await message
-    .startThread({ name: threadName(plain(message)), autoArchiveDuration: 1440 })
-    .catch(() => null);
-  if (thread) await thread.send(payload);
-  else await message.reply({ ...payload, allowedMentions: { users: [message.author.id], repliedUser: false } });
+  answered(message.author.id, Date.now());
+  const content = `<@${message.author.id}> ${reply}`;
+  const components = answerComponents();
+  const thread = message.channel.isThread()
+    ? null
+    : await message.startThread({ name: threadName(plain(message)), autoArchiveDuration: 1440 }).catch(() => null);
+  if (thread) await thread.send({ content, components, allowedMentions: { users: [message.author.id] } });
+  else await message.reply({ content, components, allowedMentions: { users: [message.author.id], repliedUser: false } });
 }
 
-/** Whether a message in one of his threads is the asker talking to him, with no moderator in it. */
-async function isHisConversation(message) {
+/**
+ * The thread and its history when a message is the asker talking to him in one of his threads
+ * with no moderator in it, else null.
+ */
+async function hisConversation(message) {
   const thread = message.channel;
-  if (!thread.isThread() || thread.ownerId !== client.user.id) return false;
-  const starter = await thread.fetchStarterMessage().catch(() => null);
-  if (!starter || starter.author.id !== message.author.id) return false;
+  if (!thread.isThread() || thread.ownerId !== client.user.id) return null;
+  const [starter, history] = await Promise.all([
+    thread.fetchStarterMessage().catch(() => null),
+    thread.messages.fetch({ limit: HISTORY }),
+  ]);
+  if (!starter || starter.author.id !== message.author.id) return null;
   // A moderator who joined has taken over; Brann steps back.
-  const recent = await thread.messages.fetch({ limit: HISTORY });
-  return !recent.some((m) => !m.author.bot && m.author.id !== message.author.id && isModerator(m.member));
+  if (history.some((m) => !m.author.bot && m.author.id !== message.author.id && isModerator(m.member))) return null;
+  return { starter, history };
+}
+
+/** The channel's last 30 messages before `message`, and the chain it replies to past them. */
+async function surroundings(message, ref) {
+  const before = [...(await message.channel.messages.fetch({ limit: 30, before: message.id })).values()];
+  const chain = new Map(ref ? [[ref.id, ref]] : []);
+  for (let id = ref?.reference?.messageId; id && chain.size < 5 && !before.some((m) => m.id === id); ) {
+    const m = await message.channel.messages.fetch(id).catch(() => null);
+    if (!m) break;
+    chain.set(m.id, m);
+    id = m.reference?.messageId;
+  }
+  return { before, chain };
 }
 
 client.on(Events.MessageCreate, async (message) => {
@@ -191,46 +199,37 @@ client.on(Events.MessageCreate, async (message) => {
       return;
     }
     if (message.channel.type === ChannelType.GuildAnnouncement) return;
-    if (await isHisConversation(message)) {
-      await converse(message);
+    const conversation = await hisConversation(message);
+    if (conversation) {
+      await converse(message, conversation);
       return;
     }
-    const mentioned = message.mentions.users.has(client.user.id);
+    const facts = {
+      mentioned: message.mentions.users.has(client.user.id),
+      isModerator: isModerator(message.member),
+      text: plain(message),
+      authorId: message.author.id,
+      at: message.createdTimestamp,
+      answeredAt: lastAnswered.get(message.author.id),
+    };
+    // The free rules first: a message they skip costs no fetch.
+    if (decide(facts).skip) return;
     const ref = message.reference?.messageId ? await message.fetchReference().catch(() => null) : null;
-    const repliesToOtherPerson = !!ref && !ref.author.bot && ref.author.id !== message.author.id;
-    const ok = mentioned
-      || worthAsking({
-        authorIsBot: message.author.bot,
-        authorIsModerator: isModerator(message.member),
-        text: plain(message),
-        repliesToOtherPerson,
-      });
-    if (!ok) return;
-    const before = [...(await message.channel.messages.fetch({ limit: 30, before: message.id })).values()];
-    if (!mentioned) {
-      const recent = before.map((m) => ({
+    const { before, chain } = await surroundings(message, ref);
+    const verdict = decide({
+      ...facts,
+      repliesToOtherPerson: !!ref && !ref.author.bot && ref.author.id !== message.author.id,
+      recent: before.map((m) => ({
         authorId: m.author.id,
         bot: m.author.bot,
         at: m.createdTimestamp,
         repliesTo: m.mentions.repliedUser?.id,
         mentions: [...m.mentions.users.keys()],
-      }));
-      if (beingHelped({ authorId: message.author.id, at: message.createdTimestamp, recent })) return;
-    }
-    const fetched = new Map(ref ? [[ref.id, ref]] : []);
-    const lookup = (id) => {
-      const m = fetched.get(id);
-      return m ? contextOf(m) : null;
-    };
-    // A chain reaching past the last 30 messages: fetch what it needs, before reading it.
-    for (let id = ref?.reference?.messageId; id && fetched.size < 5 && !before.some((m) => m.id === id); ) {
-      const m = await message.channel.messages.fetch(id).catch(() => null);
-      if (!m) break;
-      fetched.set(m.id, m);
-      id = m.reference?.messageId;
-    }
-    const context = contextFor(contextOf(message), before.map(contextOf), lookup);
-    await triage(message, mentioned, context);
+      })),
+    });
+    if (verdict.skip) return;
+    const lookup = (id) => (chain.has(id) ? contextOf(chain.get(id)) : null);
+    await triage(message, verdict.mode, contextFor(contextOf(message), before.map(contextOf), lookup));
   } catch (error) {
     console.error(`brann: ${where(message.channel)} message ${message.id}: ${error.message}`);
   }
@@ -247,8 +246,7 @@ async function rate(interaction, helped) {
     await interaction.reply({ content: "Only the person who asked can rate this answer.", flags: MessageFlags.Ephemeral });
     return;
   }
-  const components = ratedComponents(interaction.message.components.map((row) => row.toJSON()), helped);
-  await interaction.update({ components });
+  await interaction.update({ components: ratedComponents(helped) });
   console.log(`brann: answer ${interaction.message.id} ${helped ? "helped" : "did not help"}`);
   if (!helped) {
     await interaction.followUp({
@@ -287,9 +285,13 @@ client.on(Events.InteractionCreate, async (interaction) => {
 
 client.on(Events.ThreadCreate, (thread, newlyCreated) => filer?.onThreadCreate(thread, newlyCreated));
 
-client.on(Events.MessageReactionAdd, (reaction) =>
-  filer?.onReactionAdd(reaction.message.channelId, reaction.message.id, reaction.emoji.name),
-);
+// Only a moderator's 🐛 files a message; asking the gateway's member cache first spares the filer
+// its Discord and GitHub lookups for everyone else's.
+client.on(Events.MessageReactionAdd, async (reaction, user) => {
+  if (!filer || reaction.emoji.name !== BUG) return;
+  const member = await reaction.message.guild?.members.fetch(user.id).catch(() => null);
+  if (isModerator(member)) filer.onReactionAdd(reaction.message.channelId, reaction.message.id);
+});
 
 client.once(Events.ClientReady, (ready) => {
   console.log(`brann: logged in as ${ready.user.tag}`);

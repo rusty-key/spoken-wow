@@ -17,7 +17,7 @@ Restart the game afterwards.
 
 ## I installed Spoken but nothing is read aloud
 
-Spoken is only the player: **the voices are not included**. Install the voice pack for each part you want to hear (Quests, Places, Readables, Bosses), or the addon stays silent. The Manager and the meta addons such as **Spoken: English** install the packs for you; a download of Spoken on its own does not.
+Spoken is only the player: the voices are not included. Install the voice pack for each part you want to hear (Quests, Places, Readables, Bosses), or the addon stays silent. The Manager and the meta addons such as **Spoken: English** install the packs for you; a download of Spoken on its own does not.
 
 ## Which voice packs do I need?
 

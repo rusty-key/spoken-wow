@@ -12,7 +12,7 @@ import { fileURLToPath } from "node:url";
 export const FAQ_PATH = fileURLToPath(new URL("../../../docs/support/FAQ.md", import.meta.url));
 
 // Shorter than this, a message is chatter ("thx", "lol"), not a question worth a model call.
-export const MIN_CHARS = 15;
+const MIN_CHARS = 15;
 // Discord refuses a message over 2000 characters.
 export const MAX_REPLY = 1900;
 // Bounds the spend on one enormous paste. The start of a message is what asks the question.
@@ -23,15 +23,15 @@ export const HISTORY = 20;
 export const COOLDOWN = 60 * 1000;
 export const DEFAULT_MODEL = "claude-sonnet-5-5";
 // How long someone replying to a player counts as helping them, so Brann stays out of it.
-export const HELPING = 10 * 60 * 1000;
+const HELPING = 10 * 60 * 1000;
 
 /** The FAQ's entries by their `## ` heading, for logging and for checking the model's choice. */
 export function faqEntries(faq) {
   return [...faq.matchAll(/^## (.+)$/gm)].map((m) => m[1].trim());
 }
 
-export function loadFaq(path = FAQ_PATH) {
-  return readFileSync(path, "utf8");
+export function loadFaq() {
+  return readFileSync(FAQ_PATH, "utf8");
 }
 
 /**
@@ -58,7 +58,7 @@ ${faq.trim()}
 </faq>`;
 }
 
-export const ANSWER_SCHEMA = {
+const ANSWER_SCHEMA = {
   type: "object",
   properties: {
     answer: { type: "boolean" },
@@ -71,8 +71,19 @@ export const ANSWER_SCHEMA = {
 
 const clip = (text) => (text.length > MAX_MESSAGE_CHARS ? `${text.slice(0, MAX_MESSAGE_CHARS)}…` : text);
 
+/** A message on one line, cut at `max` characters: for logs and transcripts. */
+export function oneLine(text, max) {
+  const line = text.replace(/\s+/g, " ").trim();
+  return line.length > max ? `${line.slice(0, max - 1)}…` : line;
+}
+
+/** A message's text without mentions of the bot, which are how a player calls him, not what they ask. */
+export function withoutMention(text, botId) {
+  return text.replace(new RegExp(`<@!?${botId}>`, "g"), "").trim();
+}
+
 // How many earlier messages go with a channel message, so the model reads it in its conversation.
-export const CONTEXT = 5;
+const CONTEXT = 5;
 
 /**
  * The earlier messages that explain `message`, oldest first: the chain of messages it replies to
@@ -80,24 +91,24 @@ export const CONTEXT = 5;
  * {id, replyTo, ...}; `before` is the channel's messages before this one, newest first, and
  * `byId` finds a replied-to message that is further back than `before` reaches.
  */
-export function contextFor(message, before, byId = () => null, limit = CONTEXT) {
+export function contextFor(message, before, byId = () => null) {
   const known = new Map(before.map((m) => [m.id, m]));
   const find = (id) => known.get(id) ?? byId(id);
   const picked = new Map();
-  for (let id = message.replyTo; id && picked.size < limit && !picked.has(id); ) {
+  for (let id = message.replyTo; id && picked.size < CONTEXT && !picked.has(id); ) {
     const m = find(id);
     if (!m) break;
     picked.set(m.id, m);
     id = m.replyTo;
   }
   for (const m of before) {
-    if (picked.size >= limit) break;
+    if (picked.size >= CONTEXT) break;
     picked.set(m.id, m);
   }
   return [...picked.values()].sort((a, b) => (BigInt(a.id) < BigInt(b.id) ? -1 : 1));
 }
 
-const contextLine = (m) => `${m.bot ? `${m.name} (bot)` : m.name}: ${clip(m.text).replace(/\n/g, " ")}`;
+const contextLine = (m) => `${m.bot ? `${m.name} (bot)` : m.name}: ${oneLine(m.text, MAX_MESSAGE_CHARS)}`;
 
 /**
  * The conversation as the model sees it. `turns` is oldest first, each {bot, name, text}: the
@@ -128,9 +139,9 @@ export function messagesFor(mode, turns, context = []) {
   return messages;
 }
 
-/** Reads the model's answer. Anything but a finished, well-formed reply is silence. */
+/** Reads the model's answer as {entry, reply}. Anything but a finished, well-formed reply is silence: an empty reply. */
 export function parseAnswer(message, faq) {
-  const silent = { answer: false, entry: "", reply: "" };
+  const silent = { entry: "", reply: "" };
   if (message.stop_reason !== "end_turn") return silent;
   const text = message.content.find((block) => block.type === "text")?.text;
   let parsed;
@@ -143,18 +154,27 @@ export function parseAnswer(message, faq) {
   if (typeof answer !== "boolean" || typeof reply !== "string" || typeof entry !== "string") return silent;
   if (!answer || !reply.trim()) return silent;
   const known = faqEntries(faq).includes(entry) ? entry : "";
-  return { answer: true, entry: known, reply: reply.trim().slice(0, MAX_REPLY) };
+  return { entry: known, reply: reply.trim().slice(0, MAX_REPLY) };
 }
 
 /**
- * Whether a message in a public channel is worth asking the model about. Pure, so the rules read
- * in one place: the bot never answers bots or moderators (who are the ones answering), stays out
- * of a conversation two players are having, and skips chatter.
+ * Whether Brann answers a player's message in a public channel, and how: {mode: "conversation"}
+ * when it calls him by name, {mode: "channel"} when he may answer it, else {skip: reason}. The
+ * bot and replay.mjs both ask this, so a replay shows what the bot would do.
+ *
+ * He leaves moderators alone (they are the ones answering), chatter, a player he answered under a
+ * minute ago, a reply from one player to another, and a player someone else is already helping.
+ * Every rule but the mention can only skip, so a caller may ask first without `recent` and
+ * `repliesToOtherPerson`, which cost a fetch, and fetch them only for a message that passes.
  */
-export function worthAsking({ authorIsBot, authorIsModerator, text, repliesToOtherPerson }) {
-  if (authorIsBot || authorIsModerator) return false;
-  if (repliesToOtherPerson) return false;
-  return text.trim().length >= MIN_CHARS;
+export function decide({ mentioned, isModerator, text, authorId, at, answeredAt, repliesToOtherPerson = false, recent = [] }) {
+  if (mentioned) return { mode: "conversation" };
+  if (isModerator) return { skip: "moderator" };
+  if (text.trim().length < MIN_CHARS) return { skip: "too short" };
+  if (answeredAt !== undefined && at - answeredAt < COOLDOWN) return { skip: "answered this player under a minute ago" };
+  if (repliesToOtherPerson) return { skip: "reply to another player" };
+  if (beingHelped({ authorId, at, recent })) return { skip: "someone is helping this player" };
+  return { mode: "channel" };
 }
 
 /**
@@ -189,13 +209,18 @@ export function dailyBudget(limit, now = () => new Date()) {
   };
 }
 
+// The system prompt of the FAQ last asked with: one FAQ for the life of a process.
+let prompt = { faq: null, system: "" };
+
 /**
- * Asks Claude. `client` is an Anthropic client. Returns {answer, entry, reply}; an API error is
- * thrown, a refusal or a malformed answer is silence.
+ * Asks Claude. `client` is an Anthropic client. Returns {entry, reply}, the reply empty for
+ * silence; an API error is thrown, a refusal or a malformed answer is silence.
  */
-export async function ask(client, { model, faq, system, mode, turns, context = [] }) {
+export async function ask(client, { model, faq, mode, turns, context = [] }) {
   const messages = messagesFor(mode, turns, context);
-  if (!messages.length) return { answer: false, entry: "", reply: "" };
+  if (!messages.length) return { entry: "", reply: "" };
+  if (prompt.faq !== faq) prompt = { faq, system: systemPrompt(faq) };
+  const system = prompt.system;
   const message = await client.beta.messages.create({
     model,
     max_tokens: 4000,

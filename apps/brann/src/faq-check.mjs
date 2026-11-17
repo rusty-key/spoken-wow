@@ -13,21 +13,20 @@ import { readFileSync, readdirSync, statSync } from "node:fs";
 import { join, relative } from "node:path";
 import { fileURLToPath } from "node:url";
 
+import { REPO_ROOT as ROOT } from "../../../pipelines/lib/env.mjs";
 import { FAQ_PATH, loadFaq } from "./support.mjs";
 
-const ROOT = fileURLToPath(new URL("../../../", import.meta.url));
-
-// Bold words in the FAQ that are not UI text: packs, addons, apps and channels.
-export const KNOWN = new Set([
+// Bold words in the FAQ that are not UI text: packs, addons, apps and channels. Bold is for names
+// alone; emphasis is written without it.
+const KNOWN = new Set([
   "Quests", "Gossip", "Places", "Bosses", "Readables", "Alliance", "Horde", "Shared", "All",
   "Spoken: English", "Spoken Manager", "CurseForge app", "By hand", "DialogueUI", "Immersion",
-  "Windows", "macOS", "Linux", "Report", "#bugs-forever-era", "the voices are not included",
-  "The easiest: turn on Sharing",
+  "Windows", "macOS", "Linux", "#bugs-forever-era",
 ]);
 
 // Commands that are not one of Spoken's words: the game's own, and /sp help, which is what /sp
 // prints for any word it does not know.
-export const KNOWN_COMMANDS = new Set(["/reload", "/sp help"]);
+const KNOWN_COMMANDS = new Set(["/reload", "/sp help"]);
 
 const read = (path) => readFileSync(join(ROOT, path), "utf8");
 
@@ -43,7 +42,7 @@ function luaFiles(dir) {
 }
 
 /** The English text a player can see: every quoted string in the English strings files. */
-export function uiText() {
+function uiText() {
   const files = [
     ...readdirSync(join(ROOT, "addons")).flatMap((addon) => [
       `addons/${addon}/Strings.lua`, `addons/${addon}/Locale/enUS.lua`,
@@ -69,7 +68,7 @@ export function uiText() {
 }
 
 /** Each slash command root, as typed, and the addon folder whose code handles it. */
-export function slashRoots() {
+function slashRoots() {
   const roots = new Map();
   for (const addon of readdirSync(join(ROOT, "addons"))) {
     let files;

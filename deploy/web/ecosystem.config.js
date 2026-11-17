@@ -50,8 +50,9 @@ const allSecrets = readSecrets();
 
 // Brann's keys (BRANN_*) are his alone: the site never sees the bot token or his API keys, and
 // he never sees the database.
-const brann = Object.fromEntries(Object.entries(allSecrets).filter(([key]) => key.startsWith("BRANN_")));
-const secrets = Object.fromEntries(Object.entries(allSecrets).filter(([key]) => !key.startsWith("BRANN_")));
+const brann = {};
+const secrets = {};
+for (const [key, value] of Object.entries(allSecrets)) (key.startsWith("BRANN_") ? brann : secrets)[key] = value;
 
 module.exports = {
   apps: [
