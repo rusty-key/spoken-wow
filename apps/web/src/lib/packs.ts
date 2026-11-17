@@ -174,7 +174,7 @@ export const PACKS: readonly Pack[] = [
   {
     section: "places",
     lang: "enUS",
-    name: "Spoken Audio: Places and Bosses",
+    name: "Spoken Audio: Places",
     curseforge: "spoken-audio-places",
     release: "places-audio",
   },
@@ -327,12 +327,11 @@ export const PACKS: readonly Pack[] = [
     release: "readables-audio-itIT",
   },
 
-  // On CurseForge inside Spoken Audio: Places and Bosses, which carries its folder.
   {
     section: "bosses",
     lang: "enUS",
     name: "Spoken Audio: Bosses",
-    curseforge: "spoken-audio-places",
+    curseforge: "spoken-audio-bosses",
     release: "bosses-audio",
   },
   { section: "bosses", lang: "deDE", name: "Spoken German Audio: Bosses", curseforge: "spoken-german-audio-bosses", release: "bosses-audio-deDE" },

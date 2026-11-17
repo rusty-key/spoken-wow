@@ -25,7 +25,7 @@ LUA ?= $(shell command -v luajit || command -v lua5.1)
         descriptions descriptions-check descriptions-published \
         character-models dungeons bosses-extract bosses-export bosses-check bosses-sync bosses-check-synced \
         bosses-pull-live bosses-sounds bosses-lookup bosses-validate-audio bosses-package-audio \
-        bosses-full-release \
+        bosses-full-release bosses-upload-dry bosses-upload \
         audio-release audio-release-dry \
         manager-publish manager-publish-dry manager-release manager-gc manager-gc-dry
 
@@ -284,17 +284,24 @@ bosses-validate-audio: ## Check SpokenBossesAudio's lookup, mp3s and live takes 
 bosses-package-audio: bosses-check-synced bosses-sounds bosses-lookup bosses-validate-audio ## Build the bosses sound-pack zip into dist/ (LOCALE=xx)
 	@LOCALE="$(BOSSES_LOCALE)" ./scripts/bosses/package-audio.sh
 
-# GitHub only: CurseForge has no bosses project, and English's pack reaches it inside the Places
-# project's zip, Spoken Audio: Places and Bosses, with the next places-full-release. The version is
-# SpokenBossesAudio.toc's (a language's, its page's), and its `## <version> — bosses-audio` section
-# in docs/bosses/CHANGELOG.md is the notes.
-bosses-full-release: require-droplet ## Sync, pull live takes, build and GitHub-release the bosses sound pack (LOCALE=xx)
+# To the pack's CurseForge project and to GitHub, as the places pack goes (make/places.mk). The
+# version is SpokenBossesAudio.toc's (a language's, its page's), and its `## <version> —
+# bosses-audio` section in docs/bosses/CHANGELOG.md is the notes for both.
+bosses-full-release: require-droplet ## Sync, pull live takes, build and upload the bosses sound pack (LOCALE=xx)
 	@$(MAKE) --no-print-directory bosses-sync
 	@$(MAKE) --no-print-directory bosses-pull-live LOCALE=$(LOCALE)
 	@$(MAKE) --no-print-directory bosses-package-audio LOCALE=$(LOCALE)
-	@./scripts/audio-github-release.sh --dry-run bosses $(BOSSES_LOCALE)
-	@printf 'Release the bosses pack on GitHub? [y/N] '; \
+	@$(MAKE) --no-print-directory bosses-upload-dry LOCALE=$(LOCALE)
+	@printf 'Upload the bosses pack to CurseForge and GitHub? [y/N] '; \
 	  read -r answer; [ "$$answer" = y ] || { echo aborted; exit 1; }
+	@$(MAKE) --no-print-directory bosses-upload LOCALE=$(LOCALE)
+
+# For a dist/ already built: release-packs.yaml builds and uploads in separate steps.
+bosses-upload-dry: ## Show what bosses-full-release would upload from dist/ (LOCALE=xx)
+	@./scripts/places/release.sh --dry-run --section=bosses --lang=$(BOSSES_LOCALE) audio
+	@./scripts/audio-github-release.sh --dry-run bosses $(BOSSES_LOCALE)
+bosses-upload: ## Upload the bosses pack in dist/ as bosses-full-release does, building nothing (LOCALE=xx)
+	@./scripts/places/release.sh --section=bosses --lang=$(BOSSES_LOCALE) audio
 	@./scripts/audio-github-release.sh bosses $(BOSSES_LOCALE)
 
 character-models: ## Print how to regenerate apps/web/src/lib/npc/character-models.json

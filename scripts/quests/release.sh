@@ -175,7 +175,7 @@ target_dependencies() { case "$1" in
               echo "spoken spoken-audio-quests-all \
                     spoken-audio-quests-alliance spoken-audio-quests-horde \
                     spoken-audio-quests-shared spoken-audio-gossip \
-                    spoken-audio-places spoken-audio-readables";;
+                    spoken-audio-places spoken-audio-readables spoken-audio-bosses";;
   audio-*)   echo "spoken";;
 esac; }
 

@@ -8,6 +8,9 @@ from the player whose changelog is CHANGELOG.md beside this one.
 - **Each meta addon is now called Spoken: <Language>**, so Spoken: German, Spoken: French and
   Spoken: English, in the AddOns list and on CurseForge.
   *([rusty-key](https://github.com/rusty-key))*
+- **Spoken: English installs Spoken Audio: Bosses**, the boss stories' own CurseForge project,
+  now that Spoken Audio: Places no longer carries them.
+  *([rusty-key](https://github.com/rusty-key))*
 
 ## 1.2.0 — spoken-all-koKR — 2026-11-16
 

@@ -170,16 +170,6 @@ jobs:
       - name: The live clips, from the bucket
         if: ${{ env.SPOKEN_CLIP_POINTERS == '' }}
         run: make "$SECTION-pull-live" LOCALE="$LOCALE"
-      # English's places zip carries the bosses pack, and packaging refuses a missing or stale
-      # bosses build.
-      - name: The bosses pack that English's places zip carries
-        if: ${{ inputs.section == 'places' && inputs.locale == 'enUS' }}
-        env:
-          SYNC_CHECK: warn
-        run: |
-          make bosses-sync < <(yes y)
-          [ -n "$SPOKEN_CLIP_POINTERS" ] || make bosses-pull-live
-          make bosses-package-audio
       # This run has just synced, and the freshness stamp spans every language, so asking again
       # would fail the build over another team's new take.
       - name: Build
