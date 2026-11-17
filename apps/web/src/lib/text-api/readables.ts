@@ -6,7 +6,7 @@ import "server-only";
 
 import { query } from "@/lib/db";
 import { BASE_LANG, type Lang } from "@/lib/lang";
-import { catalogue, type BookPage } from "@/lib/readables/catalogue";
+import { baseCatalogue, type BookPage } from "@/lib/readables/catalogue";
 import { ownerEntityKind, type OwnerKind } from "@/lib/readables/filters";
 import { restoreBookText, retireBookText, saveBookText } from "@/lib/readables/text";
 
@@ -45,7 +45,7 @@ async function itemsOf(lang: Lang, pages: BookPage[]): Promise<TextItem[]> {
 export const readables: SectionApi = {
   filters: { book: /^.+$/ },
 
-  ...catalogueReads(catalogue, itemsOf, (p, f) => f.book === undefined || p.bookId === f.book),
+  ...catalogueReads(baseCatalogue, itemsOf, (p, f) => f.book === undefined || p.bookId === f.book),
 
   async saveText({ lang, id, text, note, by, expectedVersion, audit }) {
     const saved = await saveBookText({ lang, lineId: id, text: text ?? "", note, editedBy: by, expectedVersion, audit });

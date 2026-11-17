@@ -20,7 +20,7 @@ import { recordActivity } from "@/lib/activity/store";
 import { keep } from "@/lib/blobs/keep";
 import { blobOrFile } from "@/lib/blobs/store";
 import { fileIndex } from "@/lib/audio";
-import { catalogue as readablesCatalogue } from "@/lib/readables/catalogue";
+import { baseCatalogue as readablesCatalogue } from "@/lib/readables/catalogue";
 import type { Lang } from "@/lib/lang";
 import type { Source } from "@/lib/sections";
 import { recordedDirOf } from "@/lib/takes/adapters";

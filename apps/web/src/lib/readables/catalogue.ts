@@ -12,7 +12,7 @@ import "server-only";
 
 import { query } from "@/lib/db";
 import type { LiveRecording } from "@/lib/recordings/live";
-import { memoByTeamLang } from "@/lib/memo";
+import { memoByLang, memoByTeamLang } from "@/lib/memo";
 import { bookPageStamp, nameStamp, versionStamp } from "@/lib/stamp";
 import { loadDirtyContext, NO_DIRT, type DirtyContext } from "@/lib/generation/dirty";
 
@@ -31,6 +31,8 @@ import { speakPlayerTokens } from "@/lib/player-words";
 import { madeByOf, type MadeBy } from "@/lib/takes/made-by";
 import { liveTakes } from "@/lib/takes/store";
 import { readAs } from "@/lib/teams/store";
+import { readTextOverrides, stampsWithOverrides, viewOf } from "@/lib/text-overrides/store";
+import type { OverrideView } from "@/lib/text-overrides/types";
 
 import { BASE_LANG, type Lang } from "@/lib/lang";
 
@@ -69,6 +71,8 @@ export type BookPage = {
   english?: string;
   /** The owner's English name, likewise. */
   englishTitle?: string;
+  /** The acting team's rewrite of `text`, which `spoken`, `hash` and `generatable` then follow. */
+  override?: OverrideView;
 };
 
 /** The live take for a page, as the explorer needs it. Mirrors the places shape. */
@@ -148,7 +152,8 @@ export function isCorpusEmpty(error: unknown): boolean {
 }
 
 /** One memo per language (lib/memo.ts), so switching between two does not rebuild each time. */
-const cacheKey = Symbol.for("spoken.readables-catalogue.by-lang");
+const baseKey = Symbol.for("spoken.readables-base.by-lang");
+const catalogueKey = Symbol.for("spoken.readables-catalogue.by-lang");
 
 /**
  * What the corpus's rows are, as one comparable value (lib/stamp.ts).
@@ -158,14 +163,19 @@ const cacheKey = Symbol.for("spoken.readables-catalogue.by-lang");
  * the other keeps serving.
  */
 async function stampOf(lang: Lang): Promise<string> {
-  const rows = await query<{ stamp: string }>(
-    `select ${versionStamp("book_line", `"lang" = $1`)} || '|' ||
-            ${versionStamp("book_line", `"lang" = '${BASE_LANG}'`)} || '|' ||
-            ${bookPageStamp()} || '|' ||
-            ${nameStamp(["item", "gameobject"])} as "stamp"`,
-    [lang],
-  );
+  const { sql, params } = stampSql(lang);
+  const rows = await query<{ stamp: string }>(`select ${sql} as "stamp"`, params);
   return rows[0]?.stamp ?? "";
+}
+
+function stampSql(lang: Lang): { sql: string; params: unknown[] } {
+  return {
+    sql: `(${versionStamp("book_line", `"lang" = $1`)} || '|' ||
+           ${versionStamp("book_line", `"lang" = '${BASE_LANG}'`)} || '|' ||
+           ${bookPageStamp()} || '|' ||
+           ${nameStamp(["item", "gameobject"])})`,
+    params: [lang],
+  };
 }
 
 /**
@@ -302,8 +312,45 @@ async function build(lang: Lang): Promise<BookPage[]> {
   });
 }
 
+/**
+ * Every page as its original text says it, the same for every team of the language: built from
+ * shared tables alone, so it is memoised per language and teams share the build.
+ */
+export async function baseCatalogue(lang: Lang = BASE_LANG): Promise<BookPage[]> {
+  return baseAt(lang, await stampOf(lang));
+}
+
+function baseAt(lang: Lang, stamp: string): Promise<BookPage[]> {
+  return memoByLang(baseKey, lang, stamp, () => build(lang));
+}
+
+/**
+ * The base with the acting team's overrides laid on: an overridden page speaks, and is judged
+ * stale and voiceable against, its override. A team with none gets the base itself.
+ */
 export async function catalogue(lang: Lang = BASE_LANG): Promise<BookPage[]> {
-  return memoByTeamLang(cacheKey, lang, await stampOf(lang), () => build(lang));
+  const stamps = await stampsWithOverrides("readables", lang, stampSql(lang));
+  return memoByTeamLang(catalogueKey, lang, `${stamps.stamp}|${stamps.overrides}`, () => overlay(lang, stamps));
+}
+
+async function overlay(lang: Lang, stamps: { stamp: string; overrides: string }): Promise<BookPage[]> {
+  const [base, overrides] = await Promise.all([
+    baseAt(lang, stamps.stamp),
+    readTextOverrides("readables", lang, stamps.overrides),
+  ]);
+  if (overrides.size === 0) return base;
+  return base.map((page) => {
+    const override = overrides.get(page.id);
+    // A page with no text of its own has nothing for an override to stand on.
+    if (!override || page.missing?.text) return page;
+    // The title is said only where the language names the page, as build() decides.
+    const title = page.missing?.title ? undefined : page.title;
+    return {
+      ...page,
+      ...voiced(override.text, lang, spokenTitle(page.pageNumber, title)),
+      override: viewOf(override, page.text),
+    };
+  });
 }
 
 /** `seesMadeBy`: whether the viewer works in the language. See SearchContext.madeBy. */
@@ -360,7 +407,7 @@ export async function loadContext(
  * row nothing will ever show or clean up. Every route accepting a lineId from outside calls it.
  */
 export async function isKnownLine(lineId: string, lang: Lang = BASE_LANG): Promise<boolean> {
-  return (await catalogue(lang)).some((page) => page.id === lineId);
+  return (await baseCatalogue(lang)).some((page) => page.id === lineId);
 }
 
 /** One page, by the key the addon and the landing URL know it as: '1381' or 'n{uuid}'. */
@@ -374,14 +421,14 @@ export async function pageById(key: string, lang: Lang = BASE_LANG): Promise<Boo
     [keyed],
   );
   const lineId = rows[0]?.aliasOf ?? keyed;
-  return (await catalogue(lang)).find((page) => page.id === lineId);
+  return (await baseCatalogue(lang)).find((page) => page.id === lineId);
 }
 
 /** The book dropdown's options, derived from the corpus rather than hardcoded. */
 export type BookFacet = { bookId: string; title: string; pages: number; ownerKind: OwnerKind | null };
 
 export async function bookFacets(lang: Lang = BASE_LANG): Promise<BookFacet[]> {
-  const pages = await catalogue(lang);
+  const pages = await baseCatalogue(lang);
   const books = new Map<string, BookFacet>();
 
   for (const page of pages) {

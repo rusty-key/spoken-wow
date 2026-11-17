@@ -34,8 +34,10 @@ function toOverride(row: OverrideRow): TextOverride {
 
 /** The override stamp as a SQL fragment, so it can share one statement with another stamp. */
 function stampSql(langParam: string, sourceParam: string): string {
-  // The count is load-bearing: a delete leaves max(updatedAt) where it was.
-  return `(select count(*)::text || ':' || coalesce(max("updatedAt")::text, '-')
+  // The count is load-bearing: a delete leaves max(updatedAt) where it was. The id sum is too:
+  // absorbing a minted readable moves a row to another line's id and leaves both unchanged.
+  return `(select count(*)::text || ':' ||
+                  coalesce(max("updatedAt")::text || ':' || sum(hashtext("lineId"))::text, '-')
              from "text_override" where "lang" = ${langParam} and "source" = ${sourceParam})`;
 }
 
