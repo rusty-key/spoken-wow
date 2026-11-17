@@ -48,13 +48,24 @@ end
 --- installed pack brings it, else the client's. Fixed at the first answer, as the strings loaded
 --- then are the ones the session keeps.
 function Interface:Language()
-    if language then return language end
-    language, base = Languages:Client(), Languages:Client()
-    local chosen = self:Choice()
-    local entry = chosen and Languages:Get(chosen)
-    if entry and (entry.builtin or #entry.interfaces > 0) then language = chosen end
-    if entry and entry.builtin then base = chosen end
+    if not language then language, base = self:Resolve(self:Choice()) end
     return language
+end
+
+--- What a load would read for the choice `chosen` (a code, or nil for Auto): the language, and the
+--- built-in one under it. A choice no client runs in and no installed pack brings reads the client's.
+function Interface:Resolve(chosen)
+    local client = Languages:Client()
+    local entry = chosen and Languages:Get(chosen)
+    if entry and entry.builtin then return chosen, chosen end
+    if entry and #entry.interfaces > 0 then return chosen, client end
+    return client, client
+end
+
+--- Whether the stored choice would read another language at the next load than this session does:
+--- not for one whose pack has gone, which reads the same.
+function Interface:Pending()
+    return (self:Resolve(self:Choice())) ~= self:Language()
 end
 
 --- The built-in language whose locale files load: the session's where a client runs in it, else

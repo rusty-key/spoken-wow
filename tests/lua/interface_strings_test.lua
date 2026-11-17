@@ -34,11 +34,15 @@ Expect("...and passes the check", checked:match("exit=(%d+)"), "0")
 
 file = io.open(PACK .. "/Strings.lua", "a")
 file:write('Spoken:RegisterInterfaceStrings("plPL", "Spoken", { NO_SUCH_KEY = "x", OPT_LANG_AUTO_FMT = "Auto" })\n')
+file:write('Spoken:RegisterInterfaceStrings("plPL", "Spoken", { SEARCH_WHERE = "%1$s z %1$s", OPT_KEY_TAKEN_FMT = "%3$s? %2$s ma %1$s." })\n')
 file:close()
 checked = Run(LUA .. " " .. TOOL .. " check plPL " .. PACK)
 Expect("a key no module reads fails the check", checked:find("no such key: NO_SUCH_KEY", 1, true) ~= nil, true)
-Expect("...and so does a string that drops an argument",
-    checked:find("arguments differ from the English: OPT_LANG_AUTO_FMT", 1, true) ~= nil, true)
+local differ = " " .. (checked:match("arguments differ from the English: ([^\n]*)") or "") .. " "
+Expect("...and so does a string that drops an argument", differ:find(" OPT_LANG_AUTO_FMT ", 1, true) ~= nil, true)
+Expect("...and one that repeats an argument in place of another", differ:find(" SEARCH_WHERE ", 1, true) ~= nil, true)
+Expect("...while moving arguments, as another word order does, passes",
+    differ:find(" OPT_KEY_TAKEN_FMT ", 1, true), nil)
 Expect("...with an error", checked:match("exit=(%d+)"), "1")
 
 os.execute("rm -rf " .. PACK:gsub("/TestPL$", ""))

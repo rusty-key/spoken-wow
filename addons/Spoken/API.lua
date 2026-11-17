@@ -671,7 +671,7 @@ end
 --- The voice language as it plays: the one chosen on Spoken's page, "auto" being the client's.
 function Spoken:VoiceLanguage()
     local voice = self:GetLanguageChoice()
-    if voice == nil or voice == "auto" then return Options:ClientLanguage() end
+    if voice == nil or voice == "auto" then return Languages:Client() end
     return voice
 end
 

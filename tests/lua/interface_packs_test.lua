@@ -112,12 +112,16 @@ Expect("...and the keys it lacks keep the German, not English", Z.L.OPT_PICTURES
 env, Spoken = Boot({}, "enUS", "plPL")
 Expect("a chosen language whose pack has gone reads the client's", Spoken:InterfaceLanguage(), "enUS")
 Expect("...and stays on the row", Has(env.Interface:Choices(), "plPL"), true)
+Expect("...and asks for no reload, which would change nothing", env.Interface:Pending(), false)
 
 ---------------------------------------------------------------- the setting
 env, Spoken = Boot({ Pack() })
 Expect("Auto stores nothing", env.Addon.db.global.InterfaceLanguage, nil)
 Expect("a choice is stored account-wide", env.Interface:SetChoice("plPL") and env.Addon.db.global.InterfaceLanguage, "plPL")
 Expect("...and waits for the reload", Spoken:InterfaceLanguage(), "enUS")
+Expect("...which the row says", env.Interface:Pending(), true)
+env.Interface:SetChoice("enUS")
+Expect("English chosen on an English client reads as Auto did: no reload", env.Interface:Pending(), false)
 Expect("what is no language code is refused", env.Interface:SetChoice("polish"), false)
 env.Interface:SetChoice(nil)
 env.Options.LanguageDraws = function() return false end

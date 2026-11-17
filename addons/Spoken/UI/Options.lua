@@ -243,10 +243,7 @@ function Options:LanguageFace(code)
     return self:LanguageDraws(code, language.font) and language.font or nil
 end
 
---- The client's language, as "Auto" reads it: English where the client's is not a built-in one.
-function Options:ClientLanguage()
-    return Languages:Client()
-end
+
 
 --- "auto" and the codes of the installed languages, read when a menu opens so that a pack
 --- installed since is there.
@@ -271,7 +268,8 @@ end
 -- unable to open a web page.
 local WEBSITE = "https://spoken.quest"
 local function WebsiteURL()
-    local language = Options:ClientLanguage()
+    -- In the interface's language, where the site has it: a built-in one.
+    local language = Interface:Base()
     return language == "enUS" and WEBSITE or WEBSITE .. "/" .. language
 end
 
@@ -290,7 +288,7 @@ local CURSEFORGE_PAGES = {
     zhTW = "spoken-chinese-traditional",
 }
 local function CurseForgeURL()
-    return CURSEFORGE .. (CURSEFORGE_PAGES[Options:ClientLanguage()] or "spoken")
+    return CURSEFORGE .. (CURSEFORGE_PAGES[Interface:Base()] or "spoken")
 end
 
 local LINKS = {
@@ -555,7 +553,7 @@ local function Build()
     local language = function() return Addon.db.profile.Language end
     -- A language as the language rows name it: Auto with what it reads now, a pack's in its font.
     local function Label(code)
-        if code == "auto" then return format(L.OPT_LANG_AUTO_FMT, Options:LanguageName(Options:ClientLanguage())) end
+        if code == "auto" then return format(L.OPT_LANG_AUTO_FMT, Options:LanguageName(Languages:Client())) end
         return Options:MenuLanguageName(code)
     end
     local function Face(code) return Options:LanguageFace(code) end
@@ -575,9 +573,11 @@ local function Build()
         layout:Dropdown(title, nil, function() return owner:Choices() end,
             function() return owner:Choice() or "auto" end,
             function(code)
-                if owner:SetChoice(code ~= "auto" and code or nil) then
+                -- Asked only where the next load would read something else: Auto and the client's
+                -- own language read the same interface.
+                if owner:SetChoice(code ~= "auto" and code or nil) and pending() then
                     Layout.AskReload(format(setFmt,
-                        Options:LanguageName(code ~= "auto" and code or Options:ClientLanguage())),
+                        Options:LanguageName(code ~= "auto" and code or Languages:Client())),
                         L.OPT_RELOAD_NOW, L.OPT_LATER)
                 end
             end, function() Options:UpdateRows() end,
@@ -594,9 +594,8 @@ local function Build()
     end)
     -- Spoken's own words, account-wide: the locale files read it before any profile is chosen
     -- (Interface.lua). A built-in language or an interface pack's, only where the game's font draws it.
-    LanguageRow(L.OPT_INTERFACE_LANGUAGE, L.OPT_INTERFACE_LANGUAGE_SET_FMT, Interface, function()
-        return (Interface:Choice() or Options:ClientLanguage()) ~= Interface:Language()
-    end)
+    LanguageRow(L.OPT_INTERFACE_LANGUAGE, L.OPT_INTERFACE_LANGUAGE_SET_FMT, Interface,
+        function() return Interface:Pending() end)
 
     layout:Section(L.OPT_AUDIO_TITLE)
     layout:Dropdown(L.OPT_CHANNEL, nil, CHANNELS,

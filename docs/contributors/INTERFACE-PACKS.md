@@ -73,8 +73,9 @@ make interface-check LANG=plPL PACK=path/to/YourPack     # what is missing, unkn
 
 The template is a working pack in English: translate what you can and delete the rest. The check
 runs the pack's Lua files as its `.toc` lists them. It fails on a key no module reads, which a
-renamed string leaves behind, and on a string whose arguments differ from the English, which would
-show wrong. It lists the keys the pack lacks, which show in the language below. Run it after each
+renamed string leaves behind, and on a string whose arguments differ from the English: one missing,
+added or repeated in place of another (`%1$s z %1$s` for `%1$s of %2$s`), which would show wrong.
+Moving them, as another word order needs, is fine. It lists the keys the pack lacks, which show in the language below. Run it after each
 Spoken release: a new string shows in the language below until the pack has it.
 
 `/sp settings`, Language: Interface Language lists the pack's language once it is installed.

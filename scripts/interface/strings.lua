@@ -65,12 +65,16 @@ local function English(module)
     return namespace.L or captured, Order(path)
 end
 
---- The format arguments a string takes, in order of their letters: "%1$s of %2$d" is "ds".
+--- The format arguments a string takes, by position: "%1$s of %2$d" is "1s 2d", and an unnumbered
+--- one takes its place in order ("%s of %d" is the same). Sorted, so a translation may move them.
 local function Arguments(text)
-    local letters = {}
-    for letter in text:gsub("%%%%", ""):gmatch("%%%d*%$?[%d%.]*([%a])") do letters[#letters + 1] = letter end
-    table.sort(letters)
-    return table.concat(letters)
+    local found, n = {}, 0
+    for spec, letter in text:gsub("%%%%", ""):gmatch("%%([^%a%%]*)(%a)") do
+        n = n + 1
+        found[#found + 1] = (spec:match("^(%d+)%$") or tostring(n)) .. letter
+    end
+    table.sort(found)
+    return table.concat(found, " ")
 end
 
 local function Quote(text)

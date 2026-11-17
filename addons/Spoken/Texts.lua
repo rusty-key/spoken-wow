@@ -49,7 +49,7 @@ end
 function Texts:Language()
     local chosen = self:Choice()
     if chosen then return chosen, true end
-    return Options:ClientLanguage(), false
+    return Languages:Client(), false
 end
 
 --- The language this session reads, as Texts:Language answered at load: its packs are the ones
