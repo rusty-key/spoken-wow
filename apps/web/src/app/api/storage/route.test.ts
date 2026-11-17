@@ -137,7 +137,7 @@ describe("storage routes", () => {
 
   it("retires a bucket for good, and removes only one that holds nothing", async () => {
     const { backend } = await (await make("frFR")).json();
-    await asSystem.query(`insert into "archive_object" ("prefix", "sha256", "backendId") values ('takes', $1, $2)`, ["b".repeat(64), backend.id]);
+    await asSystem.query(`insert into "archive_object" ("prefix", "sha256", "backendId", "teamId") values ('takes', $1, $2, $3)`, ["b".repeat(64), backend.id, fr.team]);
     const del = () => DELETE(new Request(`http://x/api/storage/${backend.id}?lang=frFR`, { method: "DELETE" }), { params: Promise.resolve({ id: backend.id }) });
     expect((await del()).status).toBe(409);
 
