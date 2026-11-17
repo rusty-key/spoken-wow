@@ -188,6 +188,7 @@ describe("/api/grants", () => {
         capabilities: ["edit"],
         invitedBy: granter.id,
         limited: false,
+        team: null,
       });
       expect((await putTo(email(), ["edit"])).status).toBe(200);
       expect(await openInvite(invite.id)).toBeNull();
@@ -205,6 +206,7 @@ describe("/api/grants", () => {
         capabilities: ["edit", "regenerate"],
         invitedBy: granter.id,
         limited: false,
+        team: null,
       });
       expect((await putTo(email(), ["edit"])).status).toBe(200);
       expect(await openInvite(invite.id)).not.toBeNull();

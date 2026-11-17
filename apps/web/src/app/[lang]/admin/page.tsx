@@ -9,8 +9,7 @@ import UserSearch from "@/components/UserSearch";
 import UserTable from "@/components/UserTable";
 import { userIdsWithApiKey } from "@/lib/api-key";
 import { listGrants, viewerOf } from "@/lib/grants/store";
-import { visibleGrants } from "@/lib/invites/listing";
-import { listInvites } from "@/lib/invites/store";
+import { visibleGrants, visibleInvites } from "@/lib/invites/listing";
 import { isLang, langName } from "@/lib/lang";
 import { languageStates, textByTeam } from "@/lib/languages/store";
 import { isAdmin, langsWhere } from "@/lib/permissions";
@@ -54,7 +53,7 @@ export default async function Page({
   if (team) {
     const [grants, invites, byTeam] = await Promise.all([
       visibleGrants(viewer, session.user.id, [team]),
-      listInvites([team]),
+      visibleInvites(viewer, session.user.id, [team]),
       textByTeam(team),
     ]);
     return (

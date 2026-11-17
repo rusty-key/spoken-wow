@@ -1,13 +1,16 @@
 /**
  * Needs DATABASE_URL and migrations applied.
  */
-import { randomBytes } from "node:crypto";
+import { randomBytes, randomInt, randomUUID } from "node:crypto";
 
-import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
+import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { closeDb } from "@/lib/db";
 import { grantsOf, viewerById } from "@/lib/grants/store";
-import { asSystem, testUser } from "@/lib/teams/testing";
+import type { Lang } from "@/lib/lang";
+import { forgetLanguages, loadLanguages } from "@/lib/languages/catalogue";
+import { forgetTeams } from "@/lib/teams/store";
+import { asSystem, dropTeam, systemRows, testUser } from "@/lib/teams/testing";
 
 import { acceptInvite, createInvite, lookupInvite, revokeInvite } from "./store";
 
@@ -44,6 +47,7 @@ async function setup(accountCase: (s: string) => string = (s) => s) {
     capabilities: ["edit", "regenerate"],
     invitedBy: inviter.id,
     limited: false,
+    team: null,
   });
   return { invitee, invite, token, user: { id: invitee.id, email: accountCase(address) } };
 }
@@ -163,5 +167,118 @@ describe("acceptInvite", () => {
       ok: false,
       reason: "unknown",
     });
+  });
+});
+
+describe("acceptInvite in a language with a second team", () => {
+  const CAPITALS = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+  const MEMBER = `insert into "team_member" ("teamId", "userId", "lang", "capability") values ($1, $2, $3, $4)`;
+  let lang: Lang;
+  let teamA: string | undefined;
+  let teamB: string | undefined;
+  let made: User[] = [];
+
+  async function newTeam(name: string, privileged: boolean): Promise<string> {
+    const [row] = await systemRows<{ id: string }>(`select new_team($1, $1) as "id"`, [`${name}-${randomUUID().slice(0, 8)}`]);
+    await asSystem.query(`insert into "team_language" ("teamId", "lang", "privileged") values ($1, $2, $3)`, [
+      row.id, lang, privileged,
+    ]);
+    forgetTeams();
+    return row.id;
+  }
+
+  async function user(prefix: string): Promise<User> {
+    const one = await testUser(prefix);
+    made.push(one);
+    return one;
+  }
+
+  /** An invite from an admin of `team` (null: the privileged team's admin, naming no team). */
+  async function invite(team: string | null) {
+    const admin = await user("test-accept-admin");
+    await asSystem.query(MEMBER, [team ?? teamA, admin.id, lang, "admin"]);
+    const invitee = await user("test-accept-invitee");
+    const address = `${invitee.id}@example.invalid`;
+    const created = await createInvite({
+      email: address,
+      lang,
+      capabilities: ["edit", "regenerate"],
+      invitedBy: admin.id,
+      limited: false,
+      team,
+    });
+    return { ...created, admin, user: { id: invitee.id, email: address } };
+  }
+
+  const teamsOf = async (userId: string) =>
+    (await systemRows<{ teamId: string }>(`select distinct "teamId" from "team_member" where "userId" = $1`, [userId])).map(
+      (row) => row.teamId,
+    );
+
+  beforeEach(async () => {
+    // A code no language has yet, so afterEach never deletes a row it did not make.
+    for (;;) {
+      const code = `xq${CAPITALS[randomInt(26)]}${CAPITALS[randomInt(26)]}`;
+      const inserted = await asSystem.query(
+        `insert into "language" ("code", "name", "native", "bcp47", "provider", "client", "enabled", "textByTeam")
+         values ($1, 'Xq', 'Xq', 'xq-XQ', 'xq', false, false, false) on conflict do nothing`,
+        [code],
+      );
+      if (inserted.rowCount) {
+        lang = code as Lang;
+        break;
+      }
+    }
+    forgetLanguages();
+    await loadLanguages();
+    teamA = await newTeam("accept-a", true);
+    teamB = await newTeam("accept-b", false);
+  });
+
+  afterEach(async () => {
+    for (const team of [teamA, teamB]) {
+      if (!team) continue;
+      await asSystem.query(`delete from "activity" where "teamId" = $1`, [team]);
+      await dropTeam(team);
+    }
+    await asSystem.query(`delete from "activity" where "lang" = $1`, [lang]);
+    await asSystem.query(`delete from "language" where "code" = $1`, [lang]);
+    forgetLanguages();
+    forgetTeams();
+    for (const one of made) await one.cleanup();
+    made = [];
+    teamA = teamB = undefined;
+  });
+
+  it("puts the grants in the invite's team, and files the acts there", async () => {
+    const { invite: sent, token, user } = await invite(teamB!);
+    expect(await acceptInvite(token, user)).toEqual({ ok: true, lang, capabilities: ["edit", "regenerate"] });
+    expect(await teamsOf(user.id)).toEqual([teamB]);
+    expect(
+      await systemRows(`select "teamId" from "activity" where "kind" = 'invite.accepted' and "subject" = $1`, [sent.id]),
+    ).toEqual([{ teamId: teamB }]);
+    expect(
+      await systemRows(`select "teamId" from "activity" where "kind" = 'grant.added' and "subject" = $1`, [user.id]),
+    ).toEqual([{ teamId: teamB }, { teamId: teamB }]);
+  });
+
+  it("refuses somebody who already works on the language in the other team, and stays pending", async () => {
+    const { token, user } = await invite(teamB!);
+    await asSystem.query(MEMBER, [teamA, user.id, lang, "record"]);
+    expect(await acceptInvite(token, user)).toMatchObject({ ok: false, reason: "other-team", lang });
+    expect(await teamsOf(user.id)).toEqual([teamA]);
+    expect((await grantsOf(user.id)).filter((grant) => grant.lang === lang)).toEqual([
+      { lang, capability: "record" },
+    ]);
+    expect((await lookupInvite(token))?.state).toBe("pending");
+  });
+
+  it("puts an invite that names no team in the privileged team", async () => {
+    const { invite: sent, token, user } = await invite(null);
+    expect((await acceptInvite(token, user)).ok).toBe(true);
+    expect(await teamsOf(user.id)).toEqual([teamA]);
+    expect(
+      await systemRows(`select "teamId" from "activity" where "kind" = 'invite.accepted' and "subject" = $1`, [sent.id]),
+    ).toEqual([{ teamId: teamA }]);
   });
 });

@@ -26,6 +26,7 @@ const invite = (over: Partial<InviteRow> = {}): InviteRow => ({
   capabilities: ["edit", "record"],
   invitedById: "u1",
   invitedByName: "Zoe",
+  teamId: null,
   sentAt: "2026-11-01T10:00:00.000Z",
   expiresAt: "2099-11-15T10:00:00.000Z",
   expired: false,

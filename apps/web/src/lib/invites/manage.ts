@@ -1,6 +1,7 @@
 /**
  * The checks a route runs before it changes an open invite: a signed-in viewer, an invite that is
- * open, and the right to hand out everything it names.
+ * open and, but for a site owner, in the viewer's own team, and the right to hand out everything
+ * it names.
  */
 import "server-only";
 
@@ -8,12 +9,15 @@ import { headers } from "next/headers";
 
 import { auth } from "@/lib/auth";
 import { refusedGrant, viewerOf } from "@/lib/grants/store";
+import type { Lang } from "@/lib/lang";
 import { knownLang } from "@/lib/languages/catalogue";
-import type { Viewer } from "@/lib/permissions";
+import { isAdmin, type Viewer } from "@/lib/permissions";
+import { teamIn } from "@/lib/teams/acting";
+import { privilegedOf } from "@/lib/teams/store";
 import { isUuid } from "@/lib/uuid";
 
 import { notAllowed } from "./listing";
-import { openInvite } from "./store";
+import { inviteTeam, openInvite } from "./store";
 
 type Session = NonNullable<Awaited<ReturnType<typeof auth.api.getSession>>>;
 
@@ -28,6 +32,12 @@ export async function manageableInvite(id: string): Promise<Manageable | Respons
   if (!session || !viewer) return notAllowed();
   const invite = isUuid(id) ? await openInvite(id) : null;
   if (!invite || !(await knownLang(invite.lang))) return noSuchInvite();
+  // Another team's invite is not there for this viewer, so it answers as a missing one. Somebody
+  // in no team of the language acts as its privileged team.
+  if (!isAdmin(viewer.role)) {
+    const mine = (await teamIn(session.user.id, invite.lang)) ?? (await privilegedOf(invite.lang as Lang));
+    if (mine !== (await inviteTeam(invite))) return noSuchInvite();
+  }
   if (await refusedGrant(viewer, invite.capabilities, invite.lang)) return notAllowed();
   return { session, viewer };
 }
