@@ -151,6 +151,9 @@ do
     Setup("enUS", "auto", "enUS", nil)
     Expect("words alone are no story to play", tostring(S:HasStory("boss", EDWIN_FIGHT)) .. " "
         .. tostring(S:PlayStory("boss", EDWIN_FIGHT)), "false false")
+    S:GetSource("bosses"):Enqueue(Bosses:StoryClip(36, "edwin vancleef"))
+    Expect("...though shown as words alone, it is named all the same", Named(), "boss " .. EDWIN_FIGHT)
+    S:StopAll()
     Setup("enUS", "auto", "enUS", { SpokenBossesAudio = Pack("SpokenBossesAudio", "enUS", 128) })
     S:SetPartOn("bosses", false)
     Expect("with Bosses switched off there is none", S:HasStory("boss", EDWIN_FIGHT), false)

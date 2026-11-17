@@ -830,7 +830,7 @@ end
 -- the word being read then. An older Spoken never fires it, so a caller keeps its own timing until
 -- the first one comes.
 --
--- `story` came later too: an older Spoken leaves it nil, as it is for a line that tells no story.
+-- An older Spoken has no `story`, so nil also means an older Spoken.
 
 local caption = {}
 
@@ -852,10 +852,10 @@ end
 --- progress is nil for a clip with no length; activeWord is set only while speaking.
 --- highlight and typewriter are the player's Highlight Words and Type Words Out (false with
 --- Show Words off); typewriterBy is "letter" or "word". story is { kind, id } for a line that
---- tells a dungeon's or a boss's story, named as PlayStory takes it, else nil: a dungeon's story
---- is its area's, so it is named wherever that plays, and a boss of several encounter ids is
---- named by the one Spoken_Bosses files it under. Read-only, and the same table on every call.
---- nil without a clip.
+--- tells a dungeon's or a boss's story, voiced or shown as words alone, named as PlayStory takes
+--- it, else nil: a dungeon's story is its area's, so it is named wherever that plays, and a boss
+--- of several encounter ids is named by the one Spoken_Bosses files it under. Read-only, and the
+--- same table on every call. nil without a clip.
 function Spoken:GetCaption()
     if not Transcript.clip or not Transcript.words then return nil end
     -- Not read from what the captions last drew: they update only while shown, and
