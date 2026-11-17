@@ -6,10 +6,11 @@
 import "server-only";
 
 import { ALL_TEAMS, query, queryIn } from "@/lib/db";
+import type { RangeRequest } from "@/lib/range";
 import { listenInServer } from "@/lib/teams/listen";
 
 import { unseal } from "./seal";
-import { archive, s3Blobs, type BlobPrefix, type BlobStore } from "./store";
+import { archive, s3Blobs, type BlobPrefix, type BlobRead, type BlobStore } from "./store";
 
 export type Where = {
   store: BlobStore;
@@ -79,39 +80,58 @@ export function backendStore(id: string): Promise<BlobStore> {
   return store;
 }
 
-function split(key: string): { prefix: BlobPrefix; sha256: string } {
+export function split(key: string): { prefix: BlobPrefix; sha256: string } {
   const slash = key.indexOf("/");
   return { prefix: key.slice(0, slash) as BlobPrefix, sha256: key.slice(slash + 1) };
 }
 
 /**
- * Where to read `key` (`<prefix>/<sha256>`). A copy not known to be missing first, one that has
- * landed before one waiting in quarantine, the newest first. When every team copy is missing,
- * ours: a move never purged it, so an object older than the move is still there.
+ * Where to read `key` (`<prefix>/<sha256>`). A copy not known to be missing, one that has landed
+ * before one waiting in quarantine, the newest first. With none, ours: a move never purged it, so
+ * an object older than the move is still there.
  */
 export async function locate(key: string): Promise<Where> {
   const { prefix, sha256 } = split(key);
-  const rows = await query<{ backendId: string; pending: boolean; missing: boolean }>(
-    `select "backendId", "pending", "missingAt" is not null as "missing" from "archive_object"
-      where "prefix" = $1 and "sha256" = $2
-      order by "missingAt" is not null, "pending", "keptAt" desc`,
+  const [found] = await query<{ backendId: string; pending: boolean }>(
+    `select "backendId", "pending" from "archive_object"
+      where "prefix" = $1 and "sha256" = $2 and "missingAt" is null
+      order by "pending", "keptAt" desc limit 1`,
     [prefix, sha256],
   );
-  const found = rows.find((row) => !row.missing);
   if (!found) return { store: archive(), key, backendId: null };
   if (found.pending) return { store: archive(), key: `${QUARANTINE}${key}`, backendId: null };
   return { store: await backendStore(found.backendId), key, backendId: found.backendId };
 }
 
-/** Records that a team's bucket no longer holds the object, so the next read looks elsewhere. */
-export async function markMissing(where: Where, key: string): Promise<void> {
-  if (!where.backendId) return;
+/**
+ * Records whether a team's bucket still holds the object. A missing one is skipped by the next
+ * read; the first time it was found missing is kept.
+ */
+export async function markMissing(key: string, backendId: string | null, missing = true): Promise<void> {
+  if (!backendId) return;
   const { prefix, sha256 } = split(key);
   await query(
-    `update "archive_object" set "missingAt" = now()
-      where "prefix" = $1 and "sha256" = $2 and "backendId" = $3 and "missingAt" is null`,
-    [prefix, sha256, where.backendId],
+    missing
+      ? `update "archive_object" set "missingAt" = now()
+          where "prefix" = $1 and "sha256" = $2 and "backendId" = $3 and "missingAt" is null`
+      : `update "archive_object" set "missingAt" = null
+          where "prefix" = $1 and "sha256" = $2 and "backendId" = $3`,
+    [prefix, sha256, backendId],
   );
+}
+
+/**
+ * Reads `key` from the first copy that has it. A team's copy that turns out gone is marked missing
+ * and the next one tried; ours last. Null when no copy has it.
+ */
+export async function readLocated(key: string, range?: RangeRequest): Promise<{ where: Where; object: BlobRead } | null> {
+  for (;;) {
+    const where = await locate(key);
+    const object = await where.store.get(where.key, range);
+    if (object) return { where, object };
+    if (!where.backendId) return null;
+    await markMissing(key, where.backendId);
+  }
 }
 
 /** How long a signed address for a private bucket lasts. Anything cached that points at one must expire sooner. */
@@ -126,14 +146,8 @@ export async function addressOf(where: Where, method: "GET" | "HEAD" = "GET"): P
 
 /** The whole object, wherever it is, for a caller that needs its bytes rather than a response. */
 export async function blobBytes(key: string): Promise<Buffer | null> {
-  const where = await locate(key);
-  const object = await where.store.get(where.key);
-  if (!object) {
-    await markMissing(where, key);
-    if (where.backendId) return blobBytes(key);
-    return null;
-  }
-  return object.body ? Buffer.from(await new Response(object.body).arrayBuffer()) : null;
+  const body = (await readLocated(key))?.object.body;
+  return body ? Buffer.from(await new Response(body).arrayBuffer()) : null;
 }
 
 export function useBackendForTests(id: string, store: BlobStore): () => void {

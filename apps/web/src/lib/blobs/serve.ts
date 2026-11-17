@@ -8,7 +8,7 @@ import { requestedRange, type Range } from "@/lib/range";
 import { notModified, serveFile, serveRanged } from "@/lib/stream";
 
 import type { Stored } from "./store";
-import { locate, markMissing } from "./where";
+import { readLocated } from "./where";
 
 type PrivateOptions = {
   /** Without its scope, which is always `private`: max-age, immutable or no-cache. */
@@ -33,14 +33,9 @@ export async function serveBlob(
 
   // Only the range asked for is fetched: Safari's bytes=0-1 probe and every seek would
   // otherwise download the whole object.
-  const where = await locate(key);
-  const object = await where.store.get(where.key, requestedRange(request.headers.get("range")) ?? undefined);
-  if (!object) {
-    // A team emptied its bucket: the next look tries any other copy.
-    await markMissing(where, key);
-    if (where.backendId) return serveBlob(request, key, { cacheControl, contentType, headers });
-    return new Response("not in the archive", { status: 404 });
-  }
+  const found = await readLocated(key, requestedRange(request.headers.get("range")) ?? undefined);
+  if (!found) return new Response("not in the archive", { status: 404 });
+  const { where, object } = found;
 
   const response = await serveRanged(
     request,
