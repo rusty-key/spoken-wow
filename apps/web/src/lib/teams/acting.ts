@@ -41,6 +41,11 @@ export function asTeams<T>(teams: Teams, work: () => Promise<T>): Promise<T> {
   return scope.run(teams, work);
 }
 
+/** `work` acting as `team` in `lang` alone; as no team when either is missing. */
+export function asTeam<T>(lang: string | null, team: TeamId | null | undefined, work: () => Promise<T>): Promise<T> {
+  return asTeams(lang && team ? new Map([[lang, team]]) : NONE, work);
+}
+
 /** `work` acting as the teams `userId` works in. */
 export async function asActor<T>(userId: string, work: () => Promise<T>): Promise<T> {
   return asTeams(await memberTeams(userId), work);

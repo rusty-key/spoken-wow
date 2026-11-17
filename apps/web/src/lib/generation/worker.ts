@@ -32,7 +32,7 @@ import { generationStatus } from "./status";
 import type { Lang } from "@/lib/lang";
 import type { Source } from "@/lib/sections";
 import { fishConcurrency, getWallet } from "@/lib/voices/fish";
-import { asTeams } from "@/lib/teams/acting";
+import { asTeam } from "@/lib/teams/acting";
 import { readGenerationSettings, type Preference } from "./preference";
 import { speakerFrom } from "./speakers/for";
 import type { Provider, Speaker } from "./speakers/speaker";
@@ -261,7 +261,7 @@ export function startWorker(isLeader: () => boolean, options: WorkerOptions = {}
 
   /** A job's work is its team's: settings, roster, lexicon, overrides and takes all resolve it. */
   function run(job: QueueJob, lane: LaneState): Promise<void> {
-    return asTeams(new Map([[job.lang, job.teamId]]), () => runJob(job, lane));
+    return asTeam(job.lang, job.teamId, () => runJob(job, lane));
   }
 
   async function runJob(job: QueueJob, lane: LaneState): Promise<void> {

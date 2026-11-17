@@ -58,7 +58,7 @@ import {
 } from "@/lib/quests/speakers";
 import type { Roster } from "@/lib/voices/roster";
 import { loadRoster } from "@/lib/voices/roster-store";
-import { asTeams } from "@/lib/teams/acting";
+import { asTeam } from "@/lib/teams/acting";
 import { privilegedOwners, type TeamId } from "@/lib/teams/store";
 
 import { loadBookCorpus, matchBook, sameMatch, type BookCorpus, type BookMatchResult } from "./book-match";
@@ -753,7 +753,7 @@ async function ignoreWrittenLines(
     [contribution.id, noteFor(contribution.id)],
   );
   const lang = contribution.locale === BASE_LANG || !isLang(contribution.locale) ? null : contribution.locale;
-  await asTeams(lang && owner ? new Map([[lang, owner]]) : new Map(), async () => {
+  await asTeam(lang, owner, async () => {
     for (const { lineId } of rows) {
       await writeIgnore(lineId, `Rejected ${noteFor(contribution.id)}`, userId, lang, client);
     }
