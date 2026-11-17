@@ -8,7 +8,7 @@ import "server-only";
 
 import { query } from "@/lib/db";
 import { blobKey, type BlobPrefix } from "@/lib/blobs/store";
-import { backendStore } from "@/lib/blobs/where";
+import { backendStore, markMissing } from "@/lib/blobs/where";
 
 export async function checkObjects(sample = 50): Promise<{ checked: number; missing: number; back: number }> {
   const rows = await query<{ prefix: BlobPrefix; sha256: string; backendId: string; missing: boolean }>(
@@ -30,10 +30,7 @@ export async function checkObjects(sample = 50): Promise<{ checked: number; miss
     }
     checked++;
     if (there === !row.missing) continue;
-    await query(
-      `update "archive_object" set "missingAt" = ${there ? "null" : "now()"} where "prefix" = $1 and "sha256" = $2 and "backendId" = $3`,
-      [row.prefix, row.sha256, row.backendId],
-    );
+    await markMissing(blobKey(row.prefix, row.sha256), row.backendId, !there);
     if (there) back++;
     else missing++;
   }
