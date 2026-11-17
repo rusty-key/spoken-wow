@@ -11,8 +11,8 @@ import "server-only";
 
 import { ALL_TEAMS, query, queryIn, TEAM_ROWS, type TeamId } from "@/lib/db";
 import { recordObject } from "@/lib/blobs/keep";
-import { archive, blobKey, sha256Of, type BlobPrefix, type BlobStore } from "@/lib/blobs/store";
-import { backendStore } from "@/lib/blobs/where";
+import { archive, sha256Of, type BlobStore } from "@/lib/blobs/store";
+import { backendStore, markMissing, split } from "@/lib/blobs/where";
 
 import { StorageError } from "./backends";
 
@@ -53,44 +53,55 @@ const CHUNK = 200;
 const PARALLEL = 4;
 
 /**
- * The team's objects in `from`, after `cursor` in key order. Ours means every object a row of the
- * team names that no team bucket holds a landed copy of.
+ * The team's objects in `from`, after `cursor` in key order, as a query. Ours means every object a
+ * row of the team names that no team bucket holds a landed copy of.
  */
-async function objectsIn(team: TeamId, from: string | null, cursor: string | null, limit: number | null): Promise<string[]> {
+function objectsQuery(team: TeamId, from: string | null, cursor: string | null): { sql: string; params: unknown[] } {
   // Keys sort by prefix, then hash: the cursor splits the same way.
   const [afterPrefix, afterSha] = cursor ? cursor.split("/") : ["", ""];
-  const limited = limit === null ? "" : `limit ${Number(limit)}`;
-  const rows = from
-    ? await queryIn<{ prefix: string; sha256: string }>(
-        team,
-        `select "prefix", "sha256" from "archive_object"
-          where "backendId" = $1 and not "pending" and ("prefix", "sha256") > ($2, $3)
-          order by "prefix", "sha256" ${limited}`,
-        [from, afterPrefix, afterSha],
-      )
-    : await queryIn<{ prefix: string; sha256: string }>(
-        team,
-        `with "objects" ("prefix", "sha256") as (
-           select 'takes', "sha256" from "take" where "teamId" = $1 and "sha256" is not null
-           union
-           select 'encodings', e."encodedSha256" from "take_encoding" e
-             join "take" t on t."sha256" = e."sha256" and t."source" = e."source" where t."teamId" = $1
-           union
-           select 'recordings', "sha256" from "recording" where "teamId" = $1 and "sha256" is not null
-           union
-           select 'references', "sha256" from "fish_reference" where "teamId" = $1 and "sha256" is not null
-           union
-           select 'samples', "sha256" from "voice_sample" where "teamId" = $1
-         )
-         select o."prefix", o."sha256" from "objects" o
-          where (o."prefix", o."sha256") > ($2, $3)
-            and not exists (
-              select 1 from "archive_object" a
-               where a."prefix" = o."prefix" and a."sha256" = o."sha256" and not a."pending" and a."missingAt" is null)
-          order by o."prefix", o."sha256" ${limited}`,
-        [team, afterPrefix, afterSha],
-      );
+  if (from) {
+    return {
+      sql: `select "prefix", "sha256" from "archive_object"
+             where "backendId" = $1 and not "pending" and ("prefix", "sha256") > ($2, $3)`,
+      params: [from, afterPrefix, afterSha],
+    };
+  }
+  return {
+    sql: `with "objects" ("prefix", "sha256") as (
+            select 'takes', "sha256" from "take" where "teamId" = $1 and "sha256" is not null
+            union
+            select 'encodings', e."encodedSha256" from "take_encoding" e
+              join "take" t on t."sha256" = e."sha256" and t."source" = e."source" where t."teamId" = $1
+            union
+            select 'recordings', "sha256" from "recording" where "teamId" = $1 and "sha256" is not null
+            union
+            select 'references', "sha256" from "fish_reference" where "teamId" = $1 and "sha256" is not null
+            union
+            select 'samples', "sha256" from "voice_sample" where "teamId" = $1
+          )
+          select o."prefix", o."sha256" from "objects" o
+           where (o."prefix", o."sha256") > ($2, $3)
+             and not exists (
+               select 1 from "archive_object" a
+                where a."prefix" = o."prefix" and a."sha256" = o."sha256" and not a."pending" and a."missingAt" is null)`,
+    params: [team, afterPrefix, afterSha],
+  };
+}
+
+async function objectsIn(team: TeamId, from: string | null, cursor: string | null, limit: number): Promise<string[]> {
+  const { sql, params } = objectsQuery(team, from, cursor);
+  const rows = await queryIn<{ prefix: string; sha256: string }>(
+    team,
+    `select "prefix", "sha256" from (${sql}) q order by "prefix", "sha256" limit ${Number(limit)}`,
+    params,
+  );
   return rows.map((row) => `${row.prefix}/${row.sha256}`);
+}
+
+async function countObjects(team: TeamId, from: string | null): Promise<number> {
+  const { sql, params } = objectsQuery(team, from, null);
+  const [{ n }] = await queryIn<{ n: number }>(team, `select count(*)::int as "n" from (${sql}) q`, params);
+  return n;
 }
 
 const storeOf = (backendId: string | null): Promise<BlobStore> => (backendId ? backendStore(backendId) : Promise.resolve(archive()));
@@ -141,17 +152,10 @@ export async function cancelMove(team: TeamId, id: string): Promise<void> {
 type Outcome = "copied" | "already" | "missing";
 
 async function moveOne(key: string, move: MoveRow, source: BlobStore, target: BlobStore): Promise<Outcome> {
-  const slash = key.indexOf("/");
-  const prefix = key.slice(0, slash) as BlobPrefix;
-  const sha256 = key.slice(slash + 1);
-  const object = await source.get(blobKey(prefix, sha256));
+  const { prefix, sha256 } = split(key);
+  const object = await source.get(key);
   if (!object?.body) {
-    if (move.fromBackendId) {
-      await query(
-        `update "archive_object" set "missingAt" = now() where "prefix" = $1 and "sha256" = $2 and "backendId" = $3`,
-        [prefix, sha256, move.fromBackendId],
-      );
-    }
+    await markMissing(key, move.fromBackendId);
     return "missing";
   }
   const data = Buffer.from(await new Response(object.body).arrayBuffer());
@@ -177,8 +181,8 @@ export async function advanceMove(id: string, chunk = CHUNK): Promise<MoveState>
   );
   if (!move) return "cancelled";
   if (move.total === null) {
-    const all = await objectsIn(move.teamId, move.fromBackendId, null, null);
-    await queryIn(ALL_TEAMS, `update "storage_move" set "total" = $2 where "id" = $1`, [id, all.length]);
+    const total = await countObjects(move.teamId, move.fromBackendId);
+    await queryIn(ALL_TEAMS, `update "storage_move" set "total" = $2 where "id" = $1`, [id, total]);
   }
   const keys = await objectsIn(move.teamId, move.fromBackendId, move.cursor, chunk);
   if (keys.length === 0) {
