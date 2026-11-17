@@ -1,7 +1,8 @@
 # A team's own storage
 
-Design, 2026-11-17. Not yet planned or built. Builds on [`PLAN.md`](PLAN.md) (the archive is a
-bucket) and [`TEAMS.md`](TEAMS.md), and assumes production runs `SPOKEN_ARCHIVE_STORE=r2`.
+Design 2026-11-17, built on the same day. Builds on [`PLAN.md`](PLAN.md) (the archive is a bucket)
+and [`TEAMS.md`](TEAMS.md). A team bucket can only be switched on once production runs
+`SPOKEN_ARCHIVE_STORE=r2`.
 
 ## Why
 
@@ -17,26 +18,37 @@ Made by the user on 2026-11-17.
 
 1. **A team's bucket is its own.** The rule that nothing deletes from `takes/` or `recordings/`
    binds our buckets only. For a team's bucket it is a recommendation (versioning or object lock,
-   no deletes) that we do not enforce. The site itself never deletes from any bucket.
+   no deletes) that we do not enforce. The site never deletes an archive object from a team's
+   bucket; it removes only its own test object.
 2. **A team's bucket is the record of the takes stored in it.** We keep no copy. A file the team
    removes is gone, and the line reads as unvoiced.
 3. **Moving a team's takes copies them and never purges ours.** History already in our bucket stays
    there, at our cost; the saving comes from the takes the team rolls afterwards.
-4. **The archive first, the channel later.** A team's packs keep publishing to our channel, signed
-   with our key. Self-hosted channels stay later work, as in TEAMS.md.
+4. **A team's bucket replaces `spoken-archive`, never `spoken-packs`** (2026-11-17). Every
+   language's live takes keep publishing to our channel, signed with our key, and players download
+   them from there; a release copies each live clip out of the team's bucket into it. The channel
+   holds only live clips, so this is the smaller cost and we accept it.
+
+## For a team admin
+
+`/admin/storage?lang=xx` connects a bucket: provider (R2, S3, B2, Wasabi, GCS with HMAC keys, MinIO
+or any S3-compatible store), endpoint, region, bucket, an optional public address, and a key. The
+key needs to read, write and look up objects; it never needs to delete. Saving tests the bucket,
+and nothing goes to it until it passed and an admin switches it on. From then on the team's new
+takes, recordings, clone clips, references and pack encodings go there. The page also moves what
+is already in our archive into the bucket, or brings a bucket's objects back.
 
 ## Design
 
 ### One S3-compatible store
 
-`r2Blobs` (`apps/web/src/lib/blobs/store.ts`) becomes `s3Blobs({ endpoint, region, bucket,
-pathStyle, publicUrl? })`, signed with SigV4 through `aws4fetch` as today. Presets cover R2, AWS S3,
-Backblaze B2, Wasabi, MinIO and GCS through its HMAC keys. R2's 409 `ObjectLockedByBucketPolicy`
-answer stays a quirk of its preset.
+`s3Blobs` (`apps/web/src/lib/blobs/store.ts`) speaks S3's API with SigV4 through `aws4fetch`,
+path-style or virtual-hosted, with presigned addresses. Our own bucket is `r2Blobs`, the R2 preset of
+it. R2's 409 `ObjectLockedByBucketPolicy` answer to a PUT on a locked key counts as written.
 
 ### Data model
 
-Migration 0111:
+Migration 0114:
 
 - `storage_backend`: `teamId`, provider, endpoint, region, bucket, path style, `publicUrl`
   (nullable), the access key id, the secret sealed, whether the provider honours `If-None-Match`,
@@ -45,6 +57,8 @@ Migration 0111:
 - `archive_object`: `(prefix, sha256, backendId)`, with `pending` and `missingAt`. A row says a
   team's bucket holds the object. No row means our bucket, so every existing object keeps meaning
   what it means.
+
+Migration 0115 adds `storage_move`, below.
 
 Rows name the bucket that holds an object, rather than reads following the team's current bucket:
 a switch would otherwise orphan every older object at once, and a move could not be done one
@@ -56,75 +70,87 @@ object's name, so a take, an encoding, a sample and a reference are found the sa
 `locate(key)` (`lib/blobs/where.ts`) picks a copy not known to be missing, one that has landed
 before one waiting in quarantine, the newest first, and our bucket when there is no row or every
 team copy is missing. A team bucket's store is built once per process and dropped on a
-`spoken_storage_backend` notification. Every reader goes through it: `serveBlob`, `blobBytes` and
-the take redirect.
+`spoken_storage_backend` notification. Every reader goes through it: `serveBlob`, `blobBytes`, the
+take redirect and `/api/archive/`. A read that finds a team's copy gone marks it missing and tries
+the next.
 
 ### Secrets
 
-AES-256-GCM under `SPOKEN_STORAGE_KEY`, held in `app.env` and given to the release job. The secret
-is write-only in the UI and never appears in an API answer. The documented minimum is Get, Put and
-Head on the bucket; nothing asks for Delete.
+AES-256-GCM under `SPOKEN_STORAGE_KEY` (`lib/blobs/seal.ts`), bound to the backend's id. The secret
+is write-only in the UI and never appears in an API answer. Losing the key loses every team's
+secret, not their objects: each team enters its key again.
+
+An endpoint or public address that resolves to a private, loopback, link-local or CGNAT address is
+refused when saved and before every test (`lib/storage/host.ts`), so a team admin cannot point the
+site at the droplet's neighbours. `SPOKEN_STORAGE_ALLOW_PRIVATE=1` lifts that for a local MinIO.
 
 ### Testing a backend
 
-A backend cannot be switched on until a probe under `probe/<random>` passes:
+`lib/storage/probe.ts`, under `probe/<random>`:
 
-- a PUT with `If-None-Match: *`, and a second one that answers 412;
-- a ranged GET that answers 206 with a matching `Content-Range`;
-- a HEAD that carries `Content-Length`;
-- a 404 for a key that does not exist;
-- with a `publicUrl`, a fetch of the probe from it.
+- a write, and a second write that must not replace it; a bucket that lets it is not failed, the
+  store looks before it writes from then on (`conditionalPut`);
+- the size from a HEAD;
+- a ranged GET with the whole size;
+- a browser fetch by the public address, or by a signed one;
+- a 404 for a key never written.
 
-A provider without conditional PUT falls back to HEAD then PUT, which is safe because a key is its
-bytes' hash.
+The probe object is deleted afterwards when the key allows it.
 
 ### Serving
 
-Public takes redirect to the backend's `publicUrl`, or without one to a short-lived presigned GET,
-so a private bucket works. Recordings, clone clips and references keep streaming through the site;
-on AWS S3 that is the team's egress, and the setup page says so.
+Public takes redirect to the backend's `publicUrl`, or without one to a presigned GET that lasts an
+hour; that redirect is cached privately for five minutes. Recordings, clone clips and references
+keep streaming through the site; on AWS S3 that is the team's egress.
 
 ### Never paying for a take that cannot be kept
 
-A batch, from the site or the generate API, checks its team's backend is healthy before it calls
-ElevenLabs or fish.audio. A PUT that still fails after the provider was paid parks the bytes under
-`quarantine/` in our bucket, and a job retries them into the team's. `quarantine/` is not `takes/`
-or `recordings/`, so the job deletes each copy once it has landed.
+`keep()` and the pack encodings (`lib/blobs/keep.ts`) write to the bucket the owning language's team
+sends new objects to. A PUT that fails there marks the bucket failing and parks the bytes under
+`quarantine/` in ours, since the provider was already paid. Reads find them there. Once a minute the
+queue leader's upkeep (`lib/storage/upkeep.ts`) lands them in the team's bucket and deletes our
+copy; `quarantine/` is not `takes/` or `recordings/`. A landed object marks the bucket healthy.
 
-### Moving takes
+While a team's bucket is failing, `queuePlan` refuses new batches, from the site and the generate
+API, with a 409 that says what to do. Jobs already queued carry on, into the quarantine.
 
-A job copies a team's objects to the target bucket, checks each hash, and adds the
-`archive_object` row (or, into our bucket, drops the team's). It can stop and resume, and never deletes the source (decision 3). The
-same job moves a team back to our bucket.
+### Moving objects
+
+`lib/storage/moves.ts`. A team admin starts a move from our bucket into theirs, from theirs back into
+ours, or between two of theirs; one per team at a time, and only into a bucket that passed its test.
+The upkeep advances each move a chunk a minute in key order from a cursor, so a restart carries on.
+Every copy is checked against its hash. Nothing is deleted from the source (decision 3). Into a team
+bucket a move adds the `archive_object` row; into ours it drops the source's row, so reads come
+home. An object the source lost is counted and skipped; a target that refuses a write stops the
+move with the reason.
 
 ### Missing files
 
-Periodic HEADs over a sample of rows, and any 404 on a read, mark the row missing. The team's
-dashboard lists those lines, they read as unvoiced, and a release leaves them out rather than
-failing. Nothing blocks the team beyond that (decision 2).
+Every 15 minutes the upkeep looks at a sample of team-bucket objects (`lib/storage/checks.ts`),
+marks the deleted ones missing and unmarks any restored; a read that finds one gone marks it too.
+The storage page counts them. A pointer build (`scripts/audio/sounds.mjs`) leaves out a live take
+its team deleted, with a warning, rather than stopping the release; one missing from our bucket
+still stops it (decision 2).
 
-### Readers of the archive
+### Readers outside the site
 
-- `scripts/manager/release-job.mjs` reads each clip through its row's backend before copying it to
-  the channel.
-- `make <section>-pull-live` and pack builds cannot rely on one `SPOKEN_ARCHIVE_URL`; the site
-  hands them a URL per clip, presigned for a private bucket, through an API token.
+GET or HEAD `/api/archive/<prefix>/<sha256>` redirects to whichever bucket holds the object, signed
+for the method asked when the bucket is private. With `SPOKEN_ARCHIVE_URL` pointing at it, every
+script that reads the archive by hash finds team buckets too: `fetch-blobs.mjs`,
+`fetch-encodings.mjs`, the clip pointers and `publish.mjs`. Takes and encodings are anybody's; a
+recording also needs `Authorization: Bearer <SPOKEN_ARCHIVE_TOKEN>`, which `fetch-blobs.mjs` sends
+to the site alone and never on to the bucket it is redirected to.
 
-## Later: a team's own channel
+The release job on the droplet takes `SPOKEN_ARCHIVE_READ_URL` from `app.env` as its build's
+`SPOKEN_ARCHIVE_URL` (`http://127.0.0.1:3010/api/archive/` keeps the requests off nginx), and
+`SPOKEN_ARCHIVE_TOKEN` with it. The `release-packs.yaml` workflow and a developer's
+`make <section>-pull-live` set `SPOKEN_ARCHIVE_URL` to `https://spoken.quest/api/archive/` instead.
 
-Signed manifests would gain a base URL for their files (each still checked by its hash), the
-Manager in `manager/` would follow it behind a minimum-version gate, `publish.mjs` would write to the
-team's store, and the channel's garbage collector would run per store, never against a bucket that
-also holds an archive. Until then a fully independent team can list a community pack (migration
-0106): a zip hosted anywhere, named by URL and hash.
+## Not planned: distributing from a team's bucket
 
-## Plan
-
-1. `s3Blobs`, the two tables and `locate`, every object in our bucket. Nothing visible changes.
-2. `storage_backend`, the encryption, the probe and the team admin page.
-3. Writing to a team's backend, serving with presigned URLs, and the check before spending.
-4. The move job.
-5. The release job and pull-live through the resolver, and the missing-file checks.
-6. AGENTS.md: *Data only comes home from production* names our buckets and points here for a
-   team's; TEAMS.md moves the archive out of *Teams' own infrastructure*;
-   `deploy/web/README.md` gains `SPOKEN_STORAGE_KEY`.
+Players could download a team's packs from its bucket instead: manifests would carry a base address
+and each file's key, the Manager would follow them (it fetches `blobs/<sha>` from the channel today,
+`manager/src/main/packs-sync.ts`), older Managers would need those packs kept out of their sight,
+and the bucket would need a public address. Decision 4 leaves the channel as it is. A team that wants
+full independence can list a community pack (migration 0106): a zip hosted anywhere, named by URL
+and hash.
