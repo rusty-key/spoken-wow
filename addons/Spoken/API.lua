@@ -572,11 +572,11 @@ function Spoken:LanguageDraws(code, path)
     return Options:LanguageDraws(code, path)
 end
 
---- The language the words are read in: the Text Language chosen on Spoken's page, else the
---- client's. The second value is true where the player chose it; on Auto a module keeps the order it
---- always read its languages in, and where it is chosen, puts it first.
+--- The language the words are read in this session: the Text Language chosen on Spoken's page as it
+--- was at load, else the client's. The second value is true where the player chose it; on Auto a
+--- module keeps the order it always read its languages in, and where it is chosen, puts it first.
 function Spoken:TextLanguage()
-    return Texts:Language()
+    return Texts:Reading()
 end
 
 --- The Text Language as stored: a code, or nil for Auto.
@@ -614,6 +614,12 @@ end
 --- `cache` is a table of the caller's to keep the answers in.
 function Spoken:FontForLanguage(fontObject, code, cache)
     return Texts:FontFor(fontObject, code, cache)
+end
+
+--- The font a clip's words in `code` are drawn in (`present.font`), or nil where the player's own
+--- draws them. `cache` as for FontForLanguage.
+function Spoken:ClipFont(code, cache)
+    return Texts:ClipFont(code, cache)
 end
 
 --- Whether this client's fonts can draw `code`. `cache` as for FontForLanguage.

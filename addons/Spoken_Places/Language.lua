@@ -165,9 +165,7 @@ end
 
 -- The pages set font files, which lack the font object's fallbacks, so the language must draw in
 -- the file itself.
-function SpokenPlaces:LanguageDraws(code, path)
-	return Spoken:LanguageDraws(code, path)
-end
+
 
 --- The font file to write `code` (the lore's language by default) in where a page uses
 --- `fontObject`, or nil where none draws it: Spoken's answer, kept in this addon's own cache.
@@ -279,20 +277,15 @@ function SpokenPlaces:GetLocaleInfo(code)
 end
 
 -- Display name of a language: its own endonym where the game's font draws it, else its English
--- name or its code. Only the lore menu wears a pack's font for a name, and passes `menu` to have
--- the pack's font count too; text in the game's font, such as a label or a line of chat, must not
--- get a name that font cannot draw. The no-fonts warning uses the code, which is ASCII on every
--- client.
-function SpokenPlaces:GetLanguageName(code, menu)
+-- name or its code: text in the game's font, such as a label or a line of chat, must not get a
+-- name that font cannot draw. The no-fonts warning uses the code, which is ASCII on every client.
+function SpokenPlaces:GetLanguageName(code)
 	local locale = Entry(code or BASE)
 	if not locale then
 		return tostring(code)
 	end
 	if builtin[locale.code] or (locale.native and Spoken:LanguageDraws(locale.code)) then
 		return locale.native or locale.name or locale.code
-	end
-	if menu and locale.native and Spoken:LanguageFace(locale.code) then
-		return locale.native
 	end
 	return locale.name or locale.code
 end

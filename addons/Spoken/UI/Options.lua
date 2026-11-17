@@ -545,18 +545,21 @@ local function Build()
     -- player who picks Portuguese means it for quests and readables alike.
     layout:Section(L.OPT_LANGUAGE_TITLE)
     local language = function() return Addon.db.profile.Language end
+    -- A language as the language rows name it: Auto with what it reads now, a pack's in its font.
+    local function Label(code)
+        if code == "auto" then return format(L.OPT_LANG_AUTO_FMT, Options:LanguageName(Options:ClientLanguage())) end
+        return Options:MenuLanguageName(code)
+    end
+    local function Face(code) return Options:LanguageFace(code) end
     layout:Dropdown(L.OPT_VOICE_LANGUAGE, nil, function() return Options:VoiceChoices() end,
         function() return language().Voice or "auto" end,
         function(code) language().Voice = code end, function() Options:UpdateRows() end,
-        function(code)
-            if code == "auto" then return format(L.OPT_LANG_AUTO_FMT, Options:LanguageName(Options:ClientLanguage())) end
-            return Options:MenuLanguageName(code)
-        end, function(code) return Options:LanguageFace(code) end)
+        Label, Face)
     layout:Dropdown(L.OPT_FALLBACK_LANGUAGE, nil, function() return Options:FallbackChoices() end,
         function() return language().Fallback or "enUS" end,
         function(code) language().Fallback = code end, function() Options:UpdateRows() end,
         function(code) return code == "none" and L.OPT_FALLBACK_NONE or Options:MenuLanguageName(code) end,
-        function(code) return Options:LanguageFace(code) end)
+        Face)
     -- The words' language, apart from the voice's: a Polish reader hears English where no Polish
     -- voice exists. Read as the modules and their text packs load, so a change waits for a reload,
     -- which is asked at once: a player who switches and sees no change concludes it is broken.
@@ -568,12 +571,9 @@ local function Build()
                     L.OPT_RELOAD_NOW, L.OPT_LATER)
             end
         end, function() Options:UpdateRows() end,
-        function(code)
-            if code == "auto" then return format(L.OPT_LANG_AUTO_FMT, Options:LanguageName(Options:ClientLanguage())) end
-            return Options:MenuLanguageName(code)
-        end, function(code) return Options:LanguageFace(code) end)
+        Label, Face)
     layout:ShowWhen(layout:Note(L.OPT_TEXT_LANGUAGE_RELOAD, nil, 16),
-        function() return Texts:Language() ~= Texts.loaded end)
+        function() return Texts:Language() ~= Texts:Reading() end)
 
     layout:Section(L.OPT_AUDIO_TITLE)
     layout:Dropdown(L.OPT_CHANNEL, nil, CHANNELS,

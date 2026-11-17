@@ -23,7 +23,6 @@ local KINDS = {
     bosses = { stories = true, names = true },
     places = { zones = true, subzones = true },
 }
-Texts.KINDS = KINDS
 
 -- [code][section][kind] = the tables registered, merged.
 local registered = {}
@@ -45,17 +44,27 @@ function Texts:SetChoice(code)
     return true
 end
 
---- The language the player reads: the chosen one, or the client's (Options:ClientLanguage) on Auto.
---- The second value says whether it was chosen, which is where a module puts it before its own
---- order: on Auto every module keeps the order it always had.
+--- The language the stored setting reads: the chosen one, or the client's (Options:ClientLanguage)
+--- on Auto. The second value says whether it was chosen.
 function Texts:Language()
     local chosen = self:Choice()
     if chosen then return chosen, true end
     return Options:ClientLanguage(), false
 end
 
+--- The language this session reads, as Texts:Language answered at load: its packs are the ones
+--- loaded, and a choice made since waits for the reload. The second value says whether it was
+--- chosen, which is where a module puts it before its own order: on Auto every module keeps the
+--- order it always had.
+function Texts:Reading()
+    if self.loaded == nil then return self:Language() end
+    return self.loaded, self.chosen
+end
+
 --- `into` with `from` laid over it, table by table, so two packs (or two files of one) can each
---- bring part of a section, as Places' subzones are split by zone.
+--- bring part of a section, as Places' subzones are split by zone. Only for the second: the first
+--- pack's table is taken as it is, as copying a corpus of quest lines key by key at load is the
+--- loading screen's time.
 local function Merge(into, from)
     for key, value in pairs(from) do
         if type(value) == "table" and type(into[key]) == "table" then
@@ -74,15 +83,15 @@ function Texts:Register(code, section, data)
         Developer:Log("texts", "refused text for %s/%s: not a language and a section", tostring(code), tostring(section))
         return false
     end
-    if code ~= self:Language() then return false end
+    if code ~= self:Reading() then return false end
     for kind, value in pairs(data) do
         if not KINDS[section][kind] or type(value) ~= "table" then
             Developer:Log("texts", "refused %s %s.%s: no such kind", code, section, tostring(kind))
         else
             registered[code] = registered[code] or {}
-            registered[code][section] = registered[code][section] or {}
-            registered[code][section][kind] = registered[code][section][kind] or {}
-            Merge(registered[code][section][kind], value)
+            local tables = registered[code]
+            tables[section] = tables[section] or {}
+            if tables[section][kind] then Merge(tables[section][kind], value) else tables[section][kind] = value end
         end
     end
     return true
@@ -116,15 +125,12 @@ end
 --- Load the text packs of the language the player reads. At Spoken's own load, after its
 --- settings and before its modules, so a module finds the words there as its own files run.
 function Texts:Load()
-    local code = self:Language()
-    -- What this session reads, which a choice made since differs from until the reload.
-    self.loaded = code
+    local code, chosen = self:Language()
+    self.loaded, self.chosen = code, chosen
     local entry = Languages:Get(code)
     if not entry then return end
-    local api = C_AddOns
-    local load = api and api.LoadAddOn or LoadAddOn
     for _, folder in ipairs(entry.texts) do
-        local ok, loaded, reason = pcall(load, folder)
+        local ok, loaded, reason = pcall(LoadAddOn, folder)
         if not ok or not loaded then
             Developer:Log("texts", "text pack %s did not load: %s", folder, tostring(ok and reason or loaded))
         end
@@ -153,6 +159,14 @@ local SCRIPT_FONTS = {
     [false] = { "Fonts\\ARIALN.TTF" },
 }
 
+--- Whether the client's own fonts draw `locale` as they are: a Latin language, or one in the
+--- client's script.
+local function DrawnLikeClient(locale)
+    if locale.script == "latin" then return true end
+    local client = Languages:Get(GetLocale and GetLocale())
+    return locale.script ~= nil and client ~= nil and client.script == locale.script
+end
+
 --- The font file to write `code` in where a page uses `fontObject`: the object's own file where it
 --- draws that language, else the font its pack names, else the client's font for its script. Nil
 --- where none draws it. `cache` keeps the answers (`cache.fonts`), a module's own so a test can
@@ -160,12 +174,8 @@ local SCRIPT_FONTS = {
 function Texts:FontFor(fontObject, code, cache)
     local path = fontObject and fontObject.GetFont and fontObject:GetFont()
     local locale = Languages:Get(code)
-    if not path or not locale or locale.script == "latin" then
-        return path
-    end
     -- A pack's language has no script to share with the client's, so it is always drawn to see.
-    local client = Languages:Get(GetLocale and GetLocale())
-    if locale.script and client ~= nil and client.script == locale.script then
+    if not path or not locale or DrawnLikeClient(locale) then
         return path
     end
     cache = cache or self
@@ -186,6 +196,15 @@ function Texts:FontFor(fontObject, code, cache)
     return cache.fonts[key] or nil
 end
 
+--- The font a clip's words in `code` are drawn in (`present.font`): the file that draws them where
+--- the narrator's own font cannot, else nil, and the player keeps its own. `cache` as for FontFor.
+function Texts:ClipFont(code, cache)
+    if not (GameFontNormal and GameFontNormal.GetFont) then return nil end
+    local font = self:FontFor(GameFontNormal, code, cache)
+    if font == GameFontNormal:GetFont() then return nil end
+    return font
+end
+
 --- Whether this client's fonts can draw `code`: in the pages' own font files where they have its
 --- script, else in its pack's font or the client's font for it (FontFor). English is always
 --- allowed. Another script, and a pack's language, is tested once by drawing its own name.
@@ -198,11 +217,7 @@ function Texts:CanRender(code, cache)
     if not locale then
         return false
     end
-    if locale.script == "latin" then
-        return true
-    end
-    local client = Languages:Get(GetLocale and GetLocale())
-    if locale.script and client ~= nil and client.script == locale.script then
+    if DrawnLikeClient(locale) then
         return true
     end
     cache = cache or self

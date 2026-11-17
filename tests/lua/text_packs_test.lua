@@ -13,8 +13,7 @@ local FOLDER = "WoWPoPolsku_Spoken"
 local realHighlight = _G.GameFontHighlight
 local loads = 0
 local function Pack(meta, onLoad)
-    local base = { ["X-Spoken-Text"] = "plPL", ["X-Spoken-TextFormat"] = "1",
-        ["X-Spoken-LanguageName"] = "Polish", ["X-Spoken-LanguageNative"] = "Polski" }
+    local base = H.TextPackMeta("plPL")
     for key, value in pairs(meta or {}) do base[key] = value end
     return { folder = FOLDER, meta = base, loadOnDemand = true, onLoad = function()
         loads = loads + 1
@@ -98,7 +97,7 @@ env, Spoken = Boot({ Pack() })
 Expect("Auto stores nothing", env.Addon.db.profile.Language.Text, nil)
 Expect("a choice is stored", Spoken:SetTextLanguage("plPL") and env.Addon.db.profile.Language.Text, "plPL")
 Expect("...and read as chosen", Spoken:TextLanguageChoice(), "plPL")
-Expect("...but this session reads what it loaded", env.Texts.loaded, "enUS")
+Expect("...but this session reads what it loaded", select(1, Spoken:TextLanguage()), "enUS")
 Expect("what is no language code is refused", Spoken:SetTextLanguage("polish"), false)
 Spoken:SetTextLanguage(nil)
 Expect("back to Auto", Spoken:TextLanguageChoice(), nil)

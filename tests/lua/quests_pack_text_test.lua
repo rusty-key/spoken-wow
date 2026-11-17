@@ -100,7 +100,7 @@ Expect("a follow-up's is f:", Ids("4377-dwarf-male-standard"), "f:4377:dwarf-mal
 Expect("a name none fits stands for nothing", Ids("readme"), "")
 
 local function Polish()
-    _G.SpokenEnv.Addon.db.profile.Language.Text = "plPL"
+    H.ReadText("plPL")
     Spoken:RegisterText("plPL", "quests", {
         lines = { ["q:101:accept"] = "Idź, $N.", ["q:102:accept:m"] = "Dla niego.", ["q:102:accept:f"] = "Dla niej.",
             ["g:" .. GREETING_HASH] = "Witaj, wędrowcze." },
@@ -138,7 +138,7 @@ Expect("a line the pack lacks keeps the window's words", Spoken:GetCurrent().pre
 Spoken:StopAll()
 stub.ShowPanel(nil)
 world.questID = 0
-_G.SpokenEnv.Addon.db.profile.Language.Text = nil
+H.ReadText(nil)
 
 if Failures() > 0 then print(string.format("\n%d failure(s)", Failures())); os.exit(1) end
 print("\nAll quests pack text tests passed")

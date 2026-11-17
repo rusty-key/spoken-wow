@@ -254,9 +254,6 @@ function SpokenReadables:ClipFor(pageId)
 				local text, shown, recorded = self:CaptionText(pageId, language, entry.text)
 				local title = self:TitleIn(place.book, pageId, shown) or (book and book.title) or ""
 				local length = (entry.len and entry.len > 0) and entry.len or nil
-				-- A text pack's language may need a font the game's lacks.
-				local font = GameFontNormal and self:FontFor(GameFontNormal, shown)
-				if GameFontNormal and font == GameFontNormal:GetFont() then font = nil end
 				-- Only where the words are the ones the recording says: any others have another
 				-- length. A take with no times of its own estimates, the first page starting its
 				-- words after the title is read.
@@ -290,7 +287,8 @@ function SpokenReadables:ClipFor(pageId)
 							or ((book and #book.pages > 1)
 								and format(L.OPT_PAGE_COUNT_FMT, place.number, #book.pages) or nil),
 						bullet = "book",
-						font = font,
+						-- A text pack's language may need a font the game's lacks.
+						font = Spoken:ClipFont(shown, self),
 						material = self:PageMaterial(pageId),
 						portrait = self:PagePicture(pageId),
 						actions = ACTIONS,

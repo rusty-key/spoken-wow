@@ -556,7 +556,7 @@ Expect("a boss with no story has no line", Bosses:StoryClip(36, "no such boss"),
 
 -- Polish chosen as the Text Language: a text pack's (Spoken's Texts.lua) story and name, on the
 -- narrator and the page; the name the game shows is still the one matched.
-SpokenEnv.Addon.db.profile.Language.Text = "plPL"
+H.ReadText("plPL")
 Spoken:RegisterText("plPL", "bosses", { stories = { [36] = { ["edwin vancleef"] = "Przewodził Bractwu." } },
     names = { [36] = { ["edwin vancleef"] = "Edwin VanCleef (PL)" } } })
 local polish = Bosses:StoryClip(36, "edwin vancleef")
@@ -577,8 +577,7 @@ Expect("a boss the pack has no story for keeps the English", Bosses:StoryClip(36
         local clip = Bosses:StoryClip(36, "rhahkzor")
         return clip and clip.present.transcript
     end)(), "An ogre.")
-SpokenEnv.Addon.db.profile.Language.Text = nil
-SpokenEnv.Texts:Reset()
+H.ReadText(nil)
 
 local world = stub.world
 local Q = SpokenEnv.SoundQueue

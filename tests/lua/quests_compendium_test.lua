@@ -1022,13 +1022,12 @@ do
     testPack.TextByFileName = nil
     -- Polish chosen as the Text Language: a text pack's words (Spoken's Texts.lua), where no pack in
     -- Polish voices the part.
-    SpokenEnv.Addon.db.profile.Language.Text = "plPL"
+    H.ReadText("plPL")
     Spoken:RegisterText("plPL", "quests", { lines = { ["q:7:complete"] = "Polskie słowa, $N." } })
     Click("Kobold Camp Cleanup")
     Expect("Polish chosen, a text pack's words show on the part, the player named",
         page.body.lastParts[#page.body.lastParts].text, "Polskie słowa, " .. UnitName("player") .. ".")
-    SpokenEnv.Addon.db.profile.Language.Text = nil
-    SpokenEnv.Texts:Reset()
+    H.ReadText(nil)
     -- Two wordings of one moment: the page follows the one it shows, as Play does.
     local acceptWords = SpokenQuestsText[KOBOLDS].accept
     SpokenQuestsText[KOBOLDS].accept = "Back again."

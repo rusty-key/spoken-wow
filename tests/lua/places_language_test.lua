@@ -409,9 +409,7 @@ Packs({ Hebrew(HEBREW_FOLDER, "X-SpokenPlaces-Language", { ["X-SpokenPlaces-Lore
 Z = OnEnglish({})
 Expect("H. a pack's lore language is offered after the built-in ones",
     Codes(Z:GetSelectableLanguages()), "enUS deDE esES esMX frFR ptBR ruRU zhCN zhTW heIL")
-Expect("H. ...named in its own words only where the lore menu wears the pack's font",
-    Z:GetLanguageName("heIL", true), "עברית")
-Expect("H. ...but anywhere else, in the game's font, in English", Z:GetLanguageName("heIL"), "Hebrew")
+Expect("H. ...named, in the game's font, in English", Z:GetLanguageName("heIL"), "Hebrew")
 Expect("H. ...which is also the label of its audio pack",
     Z:GetAudioPackLabel({ language = "heIL", addon = "SpokenPlacesAudio_heIL" }), "Hebrew")
 Expect("H. Spoken gives the face the menu draws it in", Spoken:LanguageFace("heIL"), HEBREW_FONT)
@@ -461,25 +459,22 @@ local latin = {}
 for byte = 32, 126 do latin[byte] = true end
 local arial = fontHas["Fonts\\ARIALN.TTF"]
 fontHas["Fonts\\ARIALN.TTF"] = latin
-Packs({ { folder = "WoWPoPolsku_Spoken", meta = { ["X-Spoken-Text"] = "plPL", ["X-Spoken-TextFormat"] = "1",
-    ["X-Spoken-LanguageName"] = "Polish", ["X-Spoken-LanguageNative"] = "Polski" } } })
+Packs({ { folder = "WoWPoPolsku_Spoken", meta = H.TextPackMeta("plPL") } })
 Legacy({})
-_G.SpokenEnv.Addon.db.profile.Language.Text = "plPL"
+H.ReadText("plPL")
 Spoken:RegisterText("plPL", "places", { zones = { [MAP] = { name = "Durotar", full = "Opowieść o Durotarze." } } })
 _G.SpokenPlacesAudioPacks = {}
 Z = H.LoadPlaces(PLACES, { Languages = shipped.Languages })
 Expect("H. a text pack's places are offered", Z:IsLanguageSelectable("plPL"), true)
 Expect("H. ...and read where Polish is the Text Language", tostring(Z.language) .. " "
     .. tostring(Z.Zones and Z.Zones[MAP] and Z.Zones[MAP].full), "plPL Opowieść o Durotarze.")
-_G.SpokenEnv.Texts:Reset()
-Packs({ { folder = "WoWPoPolsku_Spoken", meta = { ["X-Spoken-Text"] = "plPL", ["X-Spoken-TextFormat"] = "1",
-    ["X-Spoken-LanguageName"] = "Polish", ["X-Spoken-LanguageNative"] = "Polski" } } })
+Packs({ { folder = "WoWPoPolsku_Spoken", meta = H.TextPackMeta("plPL") } })
 Legacy({})
-_G.SpokenEnv.Addon.db.profile.Language.Text = "plPL"
+H.ReadText("plPL")
 Spoken:RegisterText("plPL", "readables", { pages = { [1] = "Strona." } })
 Z = H.LoadPlaces(PLACES, { Languages = shipped.Languages })
 Expect("H. a text pack without places leaves the client's lore, rather than empty pages", Z.language, "enUS")
-_G.SpokenEnv.Texts:Reset()
+H.ReadText(nil)
 fontHas["Fonts\\ARIALN.TTF"] = arial
 
 Packs({ { folder = "Spoken_Places", meta = { Version = "9.9.9" } } })

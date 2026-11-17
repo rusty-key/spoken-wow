@@ -40,7 +40,6 @@ end
 
 -- The Text Language where the player chose one, else nil: on Auto every page reads as it always did.
 local function ChosenLanguage()
-	if not (Spoken and Spoken.TextLanguage) then return nil end
 	local code, chosen = Spoken:TextLanguage()
 	return chosen and code or nil
 end
@@ -277,8 +276,9 @@ local function DungeonRows(zone, map, nest, whole)
 	local at = world and nest or nest + 1
 	for _, boss in ipairs(open and Index().zones[zone][map] or {}) do
 		local met = Found(map, boss.key)
-		if (met or not OnlyFound()) and (whole or Matches(ShownName(map, boss))) then
-			table.insert(inside, { kind = "boss", leaf = true, map = map, key = boss.key, label = ShownName(map, boss), nest = at,
+		local name = ShownName(map, boss)
+		if (met or not OnlyFound()) and (whole or Matches(name)) then
+			table.insert(inside, { kind = "boss", leaf = true, map = map, key = boss.key, label = name, nest = at,
 				locked = not met and not Unlocked(), done = met,
 				missing = (met or Unlocked()) and not Complete(map, boss.key) })
 		end
@@ -462,8 +462,7 @@ function Bosses:StoryClip(map, key)
 		},
 	}
 	-- A text pack's language may need a font the game's lacks.
-	local font = GameFontNormal and self:FontFor(GameFontNormal, language)
-	if GameFontNormal and font ~= GameFontNormal:GetFont() then clip.present.font = font end
+	clip.present.font = Spoken:ClipFont(language, self)
 	local recording = self.GetAudioClip and self:GetAudioClip(map, key)
 	clip.language = recording and recording.language or language
 	if recording then

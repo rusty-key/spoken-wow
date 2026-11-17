@@ -45,7 +45,7 @@ local LANGUAGE_KEYS = {
 }
 -- A text pack: the words of a language with no voice (Texts.lua). Not a language key above, as
 -- those make a voice pack.
-TEXT_KEY, TEXT_FORMAT_KEY, TEXT_FORMAT = "X-Spoken-Text", "X-Spoken-TextFormat", "1"
+local TEXT_KEY, TEXT_FORMAT_KEY, TEXT_FORMAT = "X-Spoken-Text", "X-Spoken-TextFormat", "1"
 local PLACES_KEYS = { ["X-SpokenPlaces-Language"] = true, ["X-SpokenZones-Language"] = true }
 local QUESTS_KEYS = { "X-SpokenQuests-DataModule-Version", "X-VoiceOver-DataModule-Version" }
 
@@ -143,7 +143,9 @@ function Languages:Scan()
                 font = font and ("Interface\\AddOns\\" .. folder .. "\\" .. font:gsub("/", "\\")),
             }
             if text then
-                self:Declare(text, folder, { name = meta.name, native = meta.native, font = meta.font, text = true })
+                meta.text = true
+                self:Declare(text, folder, meta)
+                meta.text = nil
             end
             if isPack then
                 local carriesLore = Value(getMeta, i, "X-SpokenPlaces-Lore") == "1"

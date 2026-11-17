@@ -374,7 +374,8 @@ do
     Expect("...one on stone shows a stone tablet", Bk:ClipFor(PAGE).present.portrait.texture, Bk.MATERIALS.Stone)
     -- The bags are Spoken's to search (Spoken:BagItemIcon); this test loads Readables alone.
     local spoken = _G.Spoken
-    _G.Spoken = { BagItemIcon = function(_, name) return name == "Worn Tablet" and 133741 or nil, { 0, 1, 0, 1 } end }
+    _G.Spoken = { BagItemIcon = function(_, name) return name == "Worn Tablet" and 133741 or nil, { 0, 1, 0, 1 } end,
+        ClipFont = function() return nil end }
     Expect("...and a book from the bags its own icon", Bk:ClipFor(PAGE).present.portrait.texture, 133741)
     -- The next page of the open book is built while another is open (the one before it ends, or
     -- DialogueUI has left the game on the last): it keeps the book's picture.
@@ -395,7 +396,7 @@ Expect("an English caption's tokens are subtitled as the clip says them",
 -- Polish has no voice and no client: a text pack (Spoken's Texts.lua) brings its words, read where
 -- Polish is the Text Language whatever the voice.
 local function Polish(B)
-    _G.SpokenEnv.Addon.db.profile.Language.Text = "plPL"
+    H.ReadText("plPL")
     Spoken:RegisterText("plPL", "readables", { pages = { [PAGE] = "Pierwsza strona po polsku." },
         titles = { [1] = "Rejestr" } })
 end

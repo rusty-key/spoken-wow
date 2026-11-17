@@ -1177,6 +1177,8 @@ function DataModules:ResolveSoundFile(soundData, instead)
 end
 
 local MOMENTS = { accept = true, progress = true, complete = true }
+local HASH = "^" .. string.rep("%x", 32) .. "$"
+local SEXES = { [2] = "m", [3] = "f" }
 
 --- The ids a line's file name stands for, the player's sex's first (pipelines/quests/tts_cli/naming.py
 --- names both): `{questID}-{moment}[-w{n}]` is q:{questID}:{moment}[:w{n}], an English hash, a
@@ -1193,7 +1195,7 @@ function DataModules:LineIds(fileName)
     if not quest then quest, moment = string.match(stem, "^(%d+)%-(%a+)$") end
     if quest and MOMENTS[moment] then
         id = "q:" .. quest .. ":" .. moment .. (wording and (":w" .. wording) or "")
-    elseif string.find(stem, "^" .. string.rep("%x", 32) .. "$") or string.find(stem, "^b%d+%-")
+    elseif string.find(stem, HASH) or string.find(stem, "^b%d+%-")
         or string.find(stem, "^%a%a%u%u%-%x+$") then
         id = "g:" .. stem
     else
@@ -1201,7 +1203,7 @@ function DataModules:LineIds(fileName)
         if not broadcast then return {} end
         id = "f:" .. broadcast .. ":" .. voice
     end
-    sex = sex or (UnitSex and ({ [2] = "m", [3] = "f" })[UnitSex("player")])
+    sex = sex or (UnitSex and SEXES[UnitSex("player")])
     if sex then return { id .. ":" .. sex, id } end
     return { id }
 end

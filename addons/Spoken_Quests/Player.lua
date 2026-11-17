@@ -268,9 +268,7 @@ function Player:Prepare(soundData)
         local text, language = DataModules:TextPackText(soundData)
         if text then
             soundData.present.transcript, soundData.present.timings = text, nil
-            local font = GameFontNormal and Spoken and Spoken.FontForLanguage
-                and Spoken:FontForLanguage(GameFontNormal, language)
-            if font and font ~= GameFontNormal:GetFont() then soundData.present.font = font end
+            soundData.present.font = Spoken:ClipFont(language)
         end
     end
     return soundData
