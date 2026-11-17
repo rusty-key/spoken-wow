@@ -2,7 +2,7 @@
 
 Spoken Player until 3.0.0, when it became Spoken and took its modules into one download.
 
-## Unreleased
+## 3.10.0 — 2026-11-17
 
 - **Interface Language.** A new setting in the Language section of Spoken's page picks the language
   of Spoken's own windows, menus and settings, apart from the game's: any language Spoken is
