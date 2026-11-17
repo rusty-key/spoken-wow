@@ -22,7 +22,9 @@ import type { RegenerateResult } from "./regenerate";
 import { backoffFor, startWorker } from "./worker";
 import type { Source } from "@/lib/sections";
 import { commitTake } from "@/lib/takes/commit";
-import { asSystem, ownTeam } from "@/lib/teams/testing";
+import { asTeams } from "@/lib/teams/acting";
+import { forgetTeams } from "@/lib/teams/store";
+import { asSystem, dropTeam, ownTeam, systemRows } from "@/lib/teams/testing";
 
 // The real boss generator would reach the catalogue and a provider; the dispatch to it is
 // what is under test here, and lib/bosses/regenerate.test.ts covers what it does.
@@ -971,6 +973,57 @@ describe("a job's team", () => {
       fs.rmSync(archive, { recursive: true, force: true });
       await asSystem.query(`delete from "regeneration_batch" where "id" = any($1::uuid[])`, [batches]);
       batches.length = 0;
+      await german.restore();
+    }
+  });
+
+  it("is the second team's when the job was queued by it", async () => {
+    const german = await ownTeam("deDE");
+    const [second] = await systemRows<{ id: string }>(`select new_team($1, $1) as "id"`, [
+      `worker-b-${Math.random().toString(36).slice(2, 8)}`,
+    ]);
+    await asSystem.query(`insert into "team_language" ("teamId", "lang", "privileged") values ($1, 'deDE', false)`, [
+      second.id,
+    ]);
+    forgetTeams();
+    const archive = fs.mkdtempSync(path.join(os.tmpdir(), "worker-team-b-"));
+    const before = process.env.SPOKEN_BOSSES_AUDIO_HISTORY;
+    process.env.SPOKEN_BOSSES_AUDIO_HISTORY = archive;
+    try {
+      const batch = await asTeams(new Map([["deDE", second.id]]), async () => {
+        const id = await createBatch("test", null, "bosses", "deDE");
+        batches.push(id);
+        await enqueue(id, [line(1)], "bosses", "deDE");
+        return id;
+      });
+
+      const worker = startWorker(() => true, {
+        apiKeyFor: KEYED,
+        budget: async () => 1,
+        regenerate: {
+          bosses: async (lineId, _user, { lang, batchId }) => {
+            const committed = await commitTake("bosses", line(1).file, Buffer.from("take"), { lineId }, { lang, batchId });
+            return { ...OK, lineId, version: committed.version };
+          },
+        },
+      });
+      await until(async () => (await statesOf(batch)).done === 1);
+      await worker.stop();
+
+      const { rows } = await asSystem.query(
+        `select "teamId", "lang" from "take" where "source" = 'bosses' and "file" = $1`,
+        [line(1).file],
+      );
+      expect(rows).toEqual([{ teamId: second.id, lang: "deDE" }]);
+    } finally {
+      if (before === undefined) delete process.env.SPOKEN_BOSSES_AUDIO_HISTORY;
+      else process.env.SPOKEN_BOSSES_AUDIO_HISTORY = before;
+      fs.rmSync(archive, { recursive: true, force: true });
+      await asSystem.query(`delete from "regeneration_batch" where "id" = any($1::uuid[])`, [batches]);
+      batches.length = 0;
+      await asSystem.query(`delete from "take" where "teamId" = $1`, [second.id]);
+      await asSystem.query(`delete from "activity" where "teamId" = $1`, [second.id]);
+      await dropTeam(second.id);
       await german.restore();
     }
   });

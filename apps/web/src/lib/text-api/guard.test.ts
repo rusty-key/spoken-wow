@@ -20,6 +20,17 @@ vi.mock("@/lib/grants/store", async (importOriginal) => ({
   }),
 }));
 
+const acting = vi.hoisted(() => ({ team: null as string | null, privileged: "team-a" as string | null }));
+
+vi.mock("@/lib/teams/acting", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/lib/teams/acting")>()),
+  teamIn: async () => acting.team,
+}));
+vi.mock("@/lib/teams/store", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/lib/teams/store")>()),
+  privilegedOf: async () => acting.privileged,
+}));
+
 import { createToken, revokeToken } from "@/lib/tokens/store";
 import type { TokenAccess } from "@/lib/tokens/types";
 
@@ -53,6 +64,8 @@ beforeAll(async () => {
 });
 
 beforeEach(() => {
+  acting.team = null;
+  acting.privileged = "team-a";
   viewer.grants = [{ lang: "deDE", capability: "text" }];
 });
 
@@ -180,5 +193,24 @@ describe("requireToken", () => {
     viewer.grants = [{ lang: "deDE", capability: "regenerate" }];
     const { context } = await requireToken(request(`Bearer ${token}`), { need: "generate" });
     expect(context).toMatchObject({ access: "none", generate: true });
+  });
+});
+
+describe("a second team's owner", () => {
+  it("is refused on a route that has not opted in, and passes on one that has", async () => {
+    acting.team = "team-b";
+    const { token } = await make("read");
+    const refused = await requireToken(request(`Bearer ${token}`), { need: "read" });
+    expect(refused.denied?.status).toBe(403);
+    expect(await refused.denied?.json()).toEqual({ error: "this route does not work for a second team yet" });
+
+    const passed = await requireToken(request(`Bearer ${token}`), { need: "read", teams: true });
+    expect(passed.denied).toBeNull();
+  });
+
+  it("is not refused in the privileged team", async () => {
+    acting.team = "team-a";
+    const { token } = await make("read");
+    expect((await requireToken(request(`Bearer ${token}`), { need: "read" })).denied).toBeNull();
   });
 });

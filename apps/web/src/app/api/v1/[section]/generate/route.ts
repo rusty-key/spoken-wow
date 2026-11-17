@@ -15,8 +15,9 @@ import { ensureQueueRunning } from "@/lib/generation/boot";
 import { readPreference } from "@/lib/generation/preference";
 import type { Provider } from "@/lib/generation/speakers/speaker";
 import type { LineFilters } from "@/lib/search";
+import { asActor } from "@/lib/teams/acting";
 import { MAX_ITEMS } from "@/lib/text-api/apply";
-import { requireToken } from "@/lib/text-api/guard";
+import { requireToken, type TokenContext } from "@/lib/text-api/guard";
 import { invalid, sectionOf } from "@/lib/text-api/respond";
 import { BAD_VARIANT, isVariant } from "@/lib/text-api/types";
 
@@ -28,11 +29,18 @@ const KEYS = new Set(["items", "filters", "label", "dryRun"]);
 export async function POST(request: Request, { params }: { params: Promise<{ section: string }> }) {
   // The language comes from the token, and nothing else here is read from the URL.
   const { context, denied } = await requireToken(request, {
-    need: "generate",
+    need: "generate", teams: true,
     noQuery: "this takes a JSON body and no query string",
   });
   if (denied) return denied;
+  return asActor(context.userId, () => generate(request, params, context));
+}
 
+async function generate(
+  request: Request,
+  params: Promise<{ section: string }>,
+  context: TokenContext,
+): Promise<Response> {
   const found = sectionOf((await params).section);
   if (found instanceof Response) return found;
   const { section } = found;

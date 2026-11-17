@@ -9,7 +9,7 @@ import { PAGE_SIZE } from "@/lib/text-api/respond";
 export const dynamic = "force-dynamic";
 
 export async function GET(request: Request) {
-  const { context, denied } = await requireToken(request, { need: "any" });
+  const { context, denied } = await requireToken(request, { need: "any", teams: true });
   if (denied) return denied;
 
   return Response.json({

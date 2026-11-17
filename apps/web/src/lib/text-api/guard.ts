@@ -10,6 +10,8 @@ import "server-only";
 import { viewerOf } from "@/lib/grants/store";
 import type { Lang } from "@/lib/lang";
 import { can, type Capability, type Viewer } from "@/lib/permissions";
+import { teamIn } from "@/lib/teams/acting";
+import { privilegedOf } from "@/lib/teams/store";
 import { findLiveToken } from "@/lib/tokens/store";
 import type { TokenAccess } from "@/lib/tokens/types";
 
@@ -47,10 +49,12 @@ export function backedScopes(
  * needs the generate flag, `any` takes either. Each is checked against the owner's grant now.
  * `also` is a grant a route needs on top: lexicon writes need `configure`, as on the site.
  * `noQuery` refuses a query string with a 400, worded as given or a default.
+ * A token has no session, so work done for its owner has to run in `asActor`; a route that does
+ * sets `teams`, and one that does not is refused for an owner in a language's second team.
  */
 export async function requireToken(
   request: Request,
-  options: { need?: TokenNeed; also?: Capability; noQuery?: true | string } = {},
+  options: { need?: TokenNeed; also?: Capability; noQuery?: true | string; teams?: true } = {},
 ): Promise<{ context: TokenContext; denied: null } | { context: null; denied: Response }> {
   const need = options.need ?? "read";
   const denied = (status: number, error: string) => ({
@@ -85,6 +89,12 @@ export async function requireToken(
   }
   if (options.also && !can(viewer, options.also, token.lang)) {
     return denied(403, `this token's owner does not hold ${options.also} in ${token.lang}`);
+  }
+  if (!options.teams) {
+    const team = await teamIn(token.userId, token.lang);
+    if (team && team !== (await privilegedOf(token.lang))) {
+      return denied(403, "this route does not work for a second team yet");
+    }
   }
   if (options.noQuery && new URL(request.url).search) {
     return denied(400, options.noQuery === true ? "this takes no query string" : options.noQuery);

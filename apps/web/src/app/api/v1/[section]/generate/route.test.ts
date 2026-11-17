@@ -4,17 +4,19 @@
  *
  * Needs DATABASE_URL, migrations applied and the corpus imported.
  */
-import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
+import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { closeDb } from "@/lib/db";
 import type { Plan } from "@/lib/generation/batch-plan";
 import type { Grant } from "@/lib/permissions";
-import { asSystem } from "@/lib/teams/testing";
+import { cancelPending } from "@/lib/generation/queue";
+import { forgetTeams } from "@/lib/teams/store";
+import { asSystem, dropTeam, systemRows } from "@/lib/teams/testing";
 
 const mocks = vi.hoisted(() => ({
   grants: [] as Grant[],
-  createBatch: vi.fn(async () => "batch-1"),
-  enqueue: vi.fn(async (_b: string, jobs: unknown[]) => ({ queued: jobs.length, skipped: 0 })),
+  createBatch: vi.fn(async (..._args: unknown[]): Promise<string> => "batch-1"),
+  enqueue: vi.fn(async (_b: string, jobs: unknown[], ..._rest: unknown[]) => ({ queued: jobs.length, skipped: 0 })),
   requireSpeaker: vi.fn(),
   /** Stands in for the catalogue's plan when set. */
   plan: null as Plan | null,
@@ -53,7 +55,7 @@ vi.mock("@/lib/api-key", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@/lib/api-key")>()),
   readApiKey: async () => null,
 }));
-vi.mock("@/lib/activity/store", () => ({ recordActivity: async () => {} }));
+vi.mock("@/lib/activity/store", () => ({ recordActivity: async () => {}, recordActivities: async () => {} }));
 
 import { createFixtures, mintToken, type Fixtures } from "@/lib/text-api/testing";
 
@@ -76,6 +78,8 @@ beforeAll(async () => {
 
 beforeEach(() => {
   vi.clearAllMocks();
+  mocks.createBatch.mockImplementation(async () => "batch-1");
+  mocks.enqueue.mockImplementation(async (_b, jobs) => ({ queued: jobs.length, skipped: 0 }));
   mocks.plan = null;
   mocks.grants = [
     { lang: "enUS", capability: "regenerate" },
@@ -221,5 +225,44 @@ describe("POST /api/v1/[section]/generate", () => {
     });
     expect((await post(generateToken, { items: [{ id: f.boss.lineId }] })).status).toBe(428);
     expect(mocks.createBatch).not.toHaveBeenCalled();
+  });
+});
+
+describe("POST /api/v1/[section]/generate for a second team", () => {
+  let second: string;
+  let batchId: string | undefined;
+
+  beforeEach(async () => {
+    const real = await vi.importActual<typeof import("@/lib/generation/queue")>("@/lib/generation/queue");
+    mocks.createBatch.mockImplementation((...args) => (real.createBatch as (...a: unknown[]) => Promise<string>)(...args));
+    mocks.enqueue.mockImplementation((...args) => (real.enqueue as (...a: unknown[]) => ReturnType<typeof real.enqueue>)(...args));
+    const [team] = await systemRows<{ id: string }>(`select new_team($1, $1) as "id"`, [
+      `generate-b-${Math.random().toString(36).slice(2, 8)}`,
+    ]);
+    second = team.id;
+    await asSystem.query(`insert into "team_language" ("teamId", "lang", "privileged") values ($1, 'enUS', false)`, [second]);
+    await asSystem.query(
+      `insert into "team_member" ("teamId", "userId", "lang", "capability") values ($1, $2, 'enUS', 'regenerate')`,
+      [second, f.user],
+    );
+    forgetTeams();
+  });
+
+  afterEach(async () => {
+    await cancelPending("test", { langs: ["enUS"] });
+    if (batchId) await asSystem.query(`delete from "regeneration_batch" where "id" = $1`, [batchId]);
+    batchId = undefined;
+    await dropTeam(second);
+    forgetTeams();
+  });
+
+  it("queues the item as that team", async () => {
+    const response = await post(generateToken, { items: [{ id: f.boss.lineId }] });
+    expect(response.status).toBe(200);
+    const body = (await response.json()) as { batchId: string; queued: number };
+    batchId = body.batchId;
+    expect(body.queued).toBe(1);
+    const { rows } = await asSystem.query(`select "teamId" from "regeneration_job" where "batchId" = $1`, [batchId]);
+    expect(rows).toEqual([{ teamId: second }]);
   });
 });
