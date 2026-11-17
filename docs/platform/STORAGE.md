@@ -54,9 +54,9 @@ Migration 0114:
   (nullable), the access key id, the secret sealed, whether the provider honours `If-None-Match`,
   `writing` (at most one per team), `health`, `checkedAt`, `lastError`, `retiredAt`. Row-level
   security limits it to its team; site-wide reads act as every team.
-- `archive_object`: `(prefix, sha256, backendId)`, with `pending` and `missingAt`. A row says a
-  team's bucket holds the object. No row means our bucket, so every existing object keeps meaning
-  what it means.
+- `archive_object`: `(prefix, sha256, backendId)`, with the bucket's `teamId`, `pending` and
+  `missingAt`. A row says a team's bucket holds the object. No row means our bucket, so every
+  existing object keeps meaning what it means.
 
 Migration 0115 adds `storage_move`, below.
 
@@ -67,9 +67,12 @@ object's name, so a take, an encoding, a sample and a reference are found the sa
 
 ### Resolving a store
 
-`locate(key)` (`lib/blobs/where.ts`) picks a copy not known to be missing, one that has landed
-before one waiting in quarantine, the newest first, and our bucket when there is no row or every
-team copy is missing. A team bucket's store is built once per process and dropped on a
+`locate(key, lang)` (`lib/blobs/where.ts`) picks a copy not known to be missing: the reading
+language's team's own copy first, one that has landed before one waiting in quarantine, the newest
+first, and our bucket when there is no row or every team copy is missing. Another team's copy is
+still read, because a language handed over leaves its objects in the old team's bucket. So when two
+teams kept the same bytes, one in our archive and one in its own bucket, both read the second.
+Pack builds check every object's hash; the site does not. A team bucket's store is built once per process and dropped on a
 `spoken_storage_backend` notification. Every reader goes through it: `serveBlob`, `blobBytes`, the
 take redirect and `/api/archive/`. A read that finds a team's copy gone marks it missing and tries
 the next.
@@ -100,16 +103,20 @@ The probe object is deleted afterwards when the key allows it.
 ### Serving
 
 Public takes redirect to the backend's `publicUrl`, or without one to a presigned GET that lasts an
-hour; that redirect is cached privately for five minutes. Recordings, clone clips and references
+hour. A take version's redirect is cached for good only when it points at our own copy, which never
+moves; one into a team's bucket or the quarantine is cached for five minutes, since a team can move,
+re-address or delete its objects. Recordings, clone clips and references
 keep streaming through the site; on AWS S3 that is the team's egress.
 
 ### Never paying for a take that cannot be kept
 
 `keep()` and the pack encodings (`lib/blobs/keep.ts`) write to the bucket the owning language's team
 sends new objects to. A PUT that fails there marks the bucket failing and parks the bytes under
-`quarantine/` in ours, since the provider was already paid. Reads find them there. Once a minute the
-queue leader's upkeep (`lib/storage/upkeep.ts`) lands them in the team's bucket and deletes our
-copy; `quarantine/` is not `takes/` or `recordings/`. A landed object marks the bucket healthy.
+`quarantine/<bucket>/` in ours, since the provider was already paid. Reads find them there. Once a
+minute the queue leader's upkeep (`lib/storage/upkeep.ts`) lands up to 20 of each bucket's in it
+and deletes our copy, so one broken bucket's backlog holds up no other; `quarantine/` is not
+`takes/` or `recordings/`. A landed object marks the bucket healthy. A copy is deleted too when the
+same bytes then land directly, and none is made when the bucket already holds them.
 
 While a team's bucket is failing, `queuePlan` refuses new batches, from the site and the generate
 API, with a 409 that says what to do. Jobs already queued carry on, into the quarantine.
