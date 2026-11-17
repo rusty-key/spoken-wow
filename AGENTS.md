@@ -22,6 +22,9 @@ covers how they are made. Spoken has no guide; `docs/spoken/` holds its changelo
 - `apps/web`: the site, `spoken.quest`, a Next.js app backed by Postgres. It imports
   `pipelines/places` and `pipelines/readables` (`@tools/*` and `@readables-tools/*`), so a change there is
   a change to the site.
+- `apps/brann`: Brann Bronzebeard, the Discord bot. He answers support questions from
+  `docs/support/FAQ.md` and files Discord bug reports as issues. He runs on the droplet beside the
+  site and deploys with it.
 - `pipelines/`: `quests` is Python, `places` and `readables` are Node, and `lib` holds the `.mjs`
   modules they and the site share.
 - `publishers/<section>/*.md`: every store page. `make descriptions` regenerates the READMEs

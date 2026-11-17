@@ -113,6 +113,10 @@ pm2 environment. They are secrets, and that file is the only place they exist:
 | `RESEND_API_KEY` | a sending key from Resend | sends password reset emails. Unset, `/forgot-password` still says a link is on its way, sends nothing and logs an error |
 | `RESEND_FROM` | `Spoken <noreply@spoken.quest>` | the sender; its domain must be verified in Resend |
 
+Brann, the Discord bot, is the second pm2 app (`brann`). His keys are in `app.env` too, all
+prefixed `BRANN_`. `ecosystem.config.js` gives them to him alone and keeps them from the site.
+`apps/brann/README.md` lists them.
+
 **`SPOKEN_SECRET_KEY` cannot be rotated casually.** Every stored ElevenLabs credential is
 sealed under it, and AES-GCM offers no way to re-seal a credential nothing can open. Change
 it and every collaborator pastes their key again — recoverable, but they have to be told.
