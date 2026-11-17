@@ -9,7 +9,7 @@ import { headers } from "next/headers";
 
 import { auth } from "@/lib/auth";
 import { addGrants, listGrants, removeGrant, userByEmail, viewerOf } from "@/lib/grants/store";
-import { isLang } from "@/lib/lang";
+import { knownLang } from "@/lib/languages/catalogue";
 import { canGrant, isAdmin, isCapability, langsWhere, removesOwnAdmin, type Viewer } from "@/lib/permissions";
 
 export const dynamic = "force-dynamic";
@@ -43,10 +43,11 @@ export async function PUT(request: Request) {
     lang?: unknown;
     capabilities?: unknown;
   };
-  const { email, lang, capabilities } = body;
+  const { email, capabilities } = body;
+  const lang = await knownLang(body.lang);
   if (
     typeof email !== "string" ||
-    !isLang(lang) ||
+    !lang ||
     !Array.isArray(capabilities) ||
     capabilities.length === 0 ||
     !capabilities.every(isCapability)
@@ -70,9 +71,9 @@ export async function DELETE(request: Request) {
 
   const params = new URL(request.url).searchParams;
   const userId = params.get("userId");
-  const lang = params.get("lang");
+  const lang = await knownLang(params.get("lang"));
   const capability = params.get("capability");
-  if (!userId || !isLang(lang) || !isCapability(capability)) {
+  if (!userId || !lang || !isCapability(capability)) {
     return Response.json({ error: "userId, lang and capability are required" }, { status: 400 });
   }
   if (!canGrant(who.viewer, capability, lang)) return FORBIDDEN();

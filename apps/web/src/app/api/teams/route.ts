@@ -1,5 +1,6 @@
 /** Site owners only. */
 import { BASE_LANG, isLang, type Lang } from "@/lib/lang";
+import { loadLanguages } from "@/lib/languages/catalogue";
 import { createTeamWithLangs, listTeams } from "@/lib/teams/admin";
 
 import { bad, bodyOf, withAdmin } from "./guard";
@@ -10,6 +11,8 @@ export const GET = withAdmin(async () => Response.json({ teams: await listTeams(
 
 export const POST = withAdmin(async (request, actorId) => {
   const { slug, name, langs, adminEmail } = await bodyOf(request);
+  // So a language the other worker created is known here.
+  await loadLanguages();
   if (typeof slug !== "string" || typeof name !== "string" || !Array.isArray(langs) || !langs.every(isLang)) {
     return bad("expected { slug, name, langs: [...], adminEmail? }");
   }

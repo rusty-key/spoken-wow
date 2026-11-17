@@ -3,7 +3,7 @@
  * response that creates it, and nothing can read it back afterwards.
  */
 import { viewerOf } from "@/lib/grants/store";
-import { isLang } from "@/lib/lang";
+import { knownLang } from "@/lib/languages/catalogue";
 import { can } from "@/lib/permissions";
 import { currentSession } from "@/lib/session";
 import { createToken, isTokenAccess, listTokens } from "@/lib/tokens/store";
@@ -31,7 +31,8 @@ export async function POST(request: Request) {
     label?: unknown;
     expiresAt?: unknown;
   };
-  if (!isLang(body.lang)) return invalid("lang must be a language");
+  const lang = await knownLang(body.lang);
+  if (!lang) return invalid("lang must be a language");
   if (!isTokenAccess(body.access)) return invalid("access must be read or write");
 
   const label = typeof body.label === "string" ? body.label.trim() : "";
@@ -40,9 +41,9 @@ export async function POST(request: Request) {
   const expiresAt = typeof body.expiresAt === "string" ? new Date(body.expiresAt) : null;
   if (!expiresAt || !(expiresAt.getTime() > Date.now())) return invalid("expiresAt must be a date in the future");
 
-  if (!can(await viewerOf(session), "text", body.lang)) return FORBIDDEN();
+  if (!can(await viewerOf(session), "text", lang)) return FORBIDDEN();
 
   return Response.json(
-    await createToken({ userId: session.user.id, lang: body.lang, access: body.access, label, expiresAt }),
+    await createToken({ userId: session.user.id, lang, access: body.access, label, expiresAt }),
   );
 }

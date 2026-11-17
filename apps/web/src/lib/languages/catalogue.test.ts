@@ -7,7 +7,7 @@ import { pageLang } from "@/lib/lang-server";
 import { listenForTeamChanges, stopListening } from "@/lib/teams/listen";
 import { asSystem } from "@/lib/teams/testing";
 
-import { forgetLanguages, loadLanguages, reloadLanguages } from "./catalogue";
+import { forgetLanguages, knownLang, loadLanguages, reloadLanguages } from "./catalogue";
 
 const TEST_CODES = ["jaJP", "qaQA"];
 
@@ -55,6 +55,22 @@ describe("loadLanguages", () => {
     const qa = (await loadLanguages()).find((info) => info.code === "qaQA");
     expect(qa).toEqual({ code: "qaQA", name: "qaQA", native: "qaQA", bcp47: "qa-QA", provider: "qa", client: false });
     expect(langTag("qaQA")).toBe("qa-QA");
+  });
+});
+
+describe("knownLang", () => {
+  it("reads a language the registry does not know yet", async () => {
+    // As the other worker creates it: the row lands and the listener drops the memo, but
+    // nothing has registered it here.
+    await insertJapanese();
+    forgetLanguages();
+    expect(isLang("jaJP")).toBe(false);
+    expect(await knownLang("jaJP")).toBe("jaJP");
+  });
+
+  it("answers null for what is not a language", async () => {
+    expect(await knownLang("xxXX")).toBeNull();
+    expect(await knownLang(42)).toBeNull();
   });
 });
 

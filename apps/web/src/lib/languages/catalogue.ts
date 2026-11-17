@@ -9,7 +9,7 @@
 import "server-only";
 
 import { query } from "@/lib/db";
-import { derivedTags, type LanguageInfo, registerLanguages } from "@/lib/lang";
+import { derivedTags, isLang, type Lang, type LanguageInfo, registerLanguages } from "@/lib/lang";
 import { listenInServer } from "@/lib/teams/listen";
 
 const TTL_MS = 60_000;
@@ -77,6 +77,17 @@ export function loadLanguages(): Promise<LanguageInfo[]> {
     if (memo.cached?.langs === langs) memo.cached = null;
   });
   return langs;
+}
+
+/**
+ * `value` if it is a language, else null. For request input outside pageLang and langParam: a
+ * code this process does not know yet is read from the table first, as they do, so a language
+ * the other worker created is known here.
+ */
+export async function knownLang(value: unknown): Promise<Lang | null> {
+  if (typeof value !== "string") return null;
+  if (!isLang(value)) await loadLanguages();
+  return isLang(value) ? value : null;
 }
 
 /** Forgets and reads again in the background, so isLang is current before the next request asks. */
