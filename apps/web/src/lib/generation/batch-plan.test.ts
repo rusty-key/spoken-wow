@@ -55,7 +55,16 @@ vi.mock("./boot", () => ({ queueWorker: () => null }));
 vi.mock("./calibration", () => ({ observedRate: mocks.observedRate, observedFishRate: mocks.observedFishRate }));
 import type { CorpusLine } from "@/lib/corpus";
 
-import { estimatePlan, filterError, linesForItems, planCatalogue, planQuestsByItems, queuePlan, type Plan } from "./batch-plan";
+import {
+  estimatePlan,
+  filterError,
+  linesForItems,
+  planCatalogue,
+  planQuestsByFilters,
+  planQuestsByItems,
+  queuePlan,
+  type Plan,
+} from "./batch-plan";
 import { filtersFromParams, needsLevels, needsStale } from "@/lib/search-request";
 
 import type { Preference } from "./preference";
@@ -221,6 +230,20 @@ describe("planQuestsByItems", () => {
   });
 });
 
+describe("planQuestsByFilters", () => {
+  it("reads the pronunciation context for dirty=1, without which no line matches", async () => {
+    catalogues.realFilters = true;
+    await planQuestsByFilters("dirty=1", "enUS", "elevenlabs");
+    expect(searchContext).toHaveBeenCalledWith(false, true, "enUS", true, false);
+  });
+
+  it("does not read it otherwise", async () => {
+    catalogues.realFilters = true;
+    await planQuestsByFilters("q=hello", "enUS", "elevenlabs");
+    expect(searchContext).toHaveBeenCalledWith(false, false, "enUS", true, false);
+  });
+});
+
 describe("planCatalogue", () => {
   it("counts matched, drops by reason and lists each unknown id once", async () => {
     catalogues.places = [
@@ -267,6 +290,12 @@ describe("filterError", () => {
     ["before=2026-13-01", "before=2026-13-01"],
     ["after=2026-00-10", "after=2026-00-10"],
     ["ignored=yes", "ignored"],
+    ["race=typo", "race=typo"],
+    // A token has no site session, so the recordings are unknown and the filter would be dropped.
+    ["rec=recorded", "rec needs a site session"],
+    ["rec=typo", "rec needs a site session"],
+    // Parsing reads the first; the second would be dropped.
+    ["race=orc&race=typo", "race is given twice"],
   ])("refuses %s, naming %s", async (query, named) => {
     expect((await filterError(query, "enUS")).error).toContain(named);
   });

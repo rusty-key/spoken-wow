@@ -176,6 +176,15 @@ describe("POST /api/v1/[section]/generate", () => {
     expect(((await response.json()) as { error: string }).error).toContain("stat");
   });
 
+  it("400s rec, which a token cannot answer, and queues nothing", async () => {
+    const response = await post(generateToken, { filters: "rec=recorded" }, "quests");
+    expect(response.status).toBe(400);
+    expect(((await response.json()) as { error: string }).error).toBe(
+      "rec needs a site session; it is not available to tokens",
+    );
+    expect(mocks.enqueue).not.toHaveBeenCalled();
+  });
+
   it("400 on a query string", async () => {
     const response = await POST(
       new Request("https://example.com/api/v1/bosses/generate?lang=deDE", {

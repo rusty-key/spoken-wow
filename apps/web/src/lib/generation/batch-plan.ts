@@ -20,7 +20,7 @@ import { recordingsFor } from "@/lib/recordings/store";
 import { batchPlan, dayStart, matchingLines, type LineFilters } from "@/lib/search";
 import { AUDIO_STATES } from "@/lib/audio-state";
 import { CLIENT_FILTERS } from "@/lib/contributions/client";
-import { filtersFromParams, needsLevels, needsStale } from "@/lib/search-request";
+import { filtersFromParams, needsDirty, needsLevels, needsStale } from "@/lib/search-request";
 import type { Source } from "@/lib/sections";
 import { pinnedVoices } from "@/lib/voices/references";
 
@@ -119,6 +119,11 @@ export async function filterError(
         }`,
       };
     }
+    // Parsing reads the first value only.
+    if (params.getAll(key).length > 1) return { error: `${key} is given twice: a filter takes one value` };
+    // The recordings are read for the session's viewer, and a token has none, so the filter
+    // would be dropped and the batch would take the unrecorded lines too.
+    if (key === "rec" && params.get(key) !== "") return { error: "rec needs a site session; it is not available to tokens" };
   }
   const parsed = await filtersFromParams(params, lang);
   // Every element of the one list filter: parsing drops the unknown ones and keeps the rest.
@@ -168,7 +173,7 @@ export async function planQuestsByFilters(
     corpus(lang),
     // Behind `regenerate`, which is working in the language, so the model and author
     // filters narrow the batch exactly as they narrowed the page it was quoted from.
-    searchContext(needsStale(parsed), false, lang, true, needsLevels(parsed)),
+    searchContext(needsStale(parsed), needsDirty(parsed), lang, true, needsLevels(parsed)),
     // The recorded filter, as /api/quests/search/lines narrowed the quote.
     parsed.recorded ? recordingsFor("quests", lang) : undefined,
     parsed.broadcast ? broadcastStatuses() : undefined,
