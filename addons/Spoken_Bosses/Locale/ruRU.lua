@@ -6,7 +6,7 @@ local _, Bosses = ...
 
 local L = Bosses.L
 
-if not Bosses:InterfaceIn("ruRU") then
+if not Spoken:InterfaceIn("ruRU") then
 	return
 end
 L.COMPENDIUM_BOSSES = "Боссы"

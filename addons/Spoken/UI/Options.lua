@@ -19,7 +19,7 @@ local Layout = SpokenLayout
 
 -- Spoken's files name their strings here, and the words are looked up as they are read: an
 -- interface pack's strings arrive after these files load (Interface.lua), and a word copied as a
--- file loads would stay in the language before them. tests/lua/interface_load_test.lua holds them
+-- file loads would stay in the language before them. tests/lua/interface_packs_test.lua holds them
 -- to it.
 local function Words(keys)
     return setmetatable({}, { __index = function(_, name) return keys[name] and L[keys[name]] end })
@@ -245,12 +245,7 @@ end
 
 --- The client's language, as "Auto" reads it: English where the client's is not a built-in one.
 function Options:ClientLanguage()
-    local locale = GetLocale and GetLocale()
-    if locale == "enGB" then return "enUS" end
-    for _, builtin in ipairs(Languages.BUILTIN) do
-        if builtin.code == locale then return locale end
-    end
-    return "enUS"
+    return Languages:Client()
 end
 
 --- "auto" and the codes of the installed languages, read when a menu opens so that a pack
@@ -573,39 +568,35 @@ local function Build()
         function(code) language().Fallback = code end, function() Options:UpdateRows() end,
         function(code) return code == "none" and L.OPT_FALLBACK_NONE or Options:MenuLanguageName(code) end,
         Face)
+    -- A language read as Spoken and its modules load, `owner` keeping the choice (Texts, Interface):
+    -- a change waits for a reload, which is asked at once, as a player who switches and sees no change
+    -- concludes it is broken; until then the note says so, while `pending()`.
+    local function LanguageRow(title, setFmt, owner, pending)
+        layout:Dropdown(title, nil, function() return owner:Choices() end,
+            function() return owner:Choice() or "auto" end,
+            function(code)
+                if owner:SetChoice(code ~= "auto" and code or nil) then
+                    Layout.AskReload(format(setFmt,
+                        Options:LanguageName(code ~= "auto" and code or Options:ClientLanguage())),
+                        L.OPT_RELOAD_NOW, L.OPT_LATER)
+                end
+            end, function() Options:UpdateRows() end,
+            Label, Face)
+        layout:ShowWhen(layout:Note(L.OPT_TEXT_LANGUAGE_RELOAD, nil, 16), pending)
+    end
     -- The words' language, apart from the voice's: a Polish reader hears English where no Polish
-    -- voice exists. Read as the modules and their text packs load, so a change waits for a reload,
-    -- which is asked at once: a player who switches and sees no change concludes it is broken.
-    layout:Dropdown(L.OPT_TEXT_LANGUAGE, nil, function() return Texts:Choices() end,
-        function() return Texts:Choice() or "auto" end,
-        function(code)
-            if Texts:SetChoice(code ~= "auto" and code or nil) then
-                Layout.AskReload(format(L.OPT_TEXT_LANGUAGE_SET_FMT, Options:LanguageName(Texts:Language())),
-                    L.OPT_RELOAD_NOW, L.OPT_LATER)
-            end
-        end, function() Options:UpdateRows() end,
-        Label, Face)
-    layout:ShowWhen(layout:Note(L.OPT_TEXT_LANGUAGE_RELOAD, nil, 16),
-        function()
-            -- Choosing the client's own language is a change too: chosen, it comes first everywhere.
-            local wanted, chosen = Texts:Language()
-            local reading, read = Texts:Reading()
-            return wanted ~= reading or chosen ~= read
-        end)
+    -- voice exists. Choosing the client's own language is a change too: chosen, it comes first
+    -- everywhere.
+    LanguageRow(L.OPT_TEXT_LANGUAGE, L.OPT_TEXT_LANGUAGE_SET_FMT, Texts, function()
+        local wanted, chosen = Texts:Language()
+        local reading, read = Texts:Reading()
+        return wanted ~= reading or chosen ~= read
+    end)
     -- Spoken's own words, account-wide: the locale files read it before any profile is chosen
     -- (Interface.lua). A built-in language or an interface pack's, only where the game's font draws it.
-    layout:Dropdown(L.OPT_INTERFACE_LANGUAGE, nil, function() return Interface:Choices() end,
-        function() return Interface:Choice() or "auto" end,
-        function(code)
-            if Interface:SetChoice(code ~= "auto" and code or nil) then
-                Layout.AskReload(format(L.OPT_INTERFACE_LANGUAGE_SET_FMT,
-                    Options:LanguageName(code ~= "auto" and code or Options:ClientLanguage())),
-                    L.OPT_RELOAD_NOW, L.OPT_LATER)
-            end
-        end, function() Options:UpdateRows() end,
-        Label, Face)
-    layout:ShowWhen(layout:Note(L.OPT_TEXT_LANGUAGE_RELOAD, nil, 16),
-        function() return (Interface:Choice() or Options:ClientLanguage()) ~= Interface:Language() end)
+    LanguageRow(L.OPT_INTERFACE_LANGUAGE, L.OPT_INTERFACE_LANGUAGE_SET_FMT, Interface, function()
+        return (Interface:Choice() or Options:ClientLanguage()) ~= Interface:Language()
+    end)
 
     layout:Section(L.OPT_AUDIO_TITLE)
     layout:Dropdown(L.OPT_CHANNEL, nil, CHANNELS,

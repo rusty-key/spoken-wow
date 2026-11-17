@@ -38,12 +38,7 @@ local function Boot(addons, text)
     return env, _G.Spoken
 end
 
-local function Has(list, code)
-    for _, value in ipairs(list) do
-        if value == code or (type(value) == "table" and value.code == code) then return true end
-    end
-    return false
-end
+local Has = H.Has
 
 local WORDS = { pages = { [15] = "Rejestr miasta Hillsbrad." }, titles = { [1] = "Rejestr" } }
 

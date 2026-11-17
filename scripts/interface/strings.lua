@@ -49,7 +49,7 @@ end
 local function English(module)
     local path = ADDONS .. module.file
     local chunk = assert(loadfile(path))
-    local namespace = { RegisterStrings = function() end }
+    local namespace = {}
     if module.env then
         local env = setmetatable({}, { __index = _G })
         rawset(_G, module.env, env)
@@ -58,16 +58,11 @@ local function English(module)
         rawset(_G, module.env, nil)
         return env.L, Order(path)
     end
-    chunk(module.name, namespace)
     -- Places' table is local to its file and handed to RegisterStrings.
-    if not namespace.L then
-        namespace.RegisterStrings = nil
-        local captured
-        namespace.RegisterStrings = function(_, _, strings) captured = strings end
-        chunk(module.name, namespace)
-        return captured, Order(path)
-    end
-    return namespace.L, Order(path)
+    local captured
+    namespace.RegisterStrings = function(_, _, strings) captured = strings end
+    chunk(module.name, namespace)
+    return namespace.L or captured, Order(path)
 end
 
 --- The format arguments a string takes, in order of their letters: "%1$s of %2$d" is "ds".

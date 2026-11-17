@@ -13,10 +13,14 @@ local PLACES = here .. "/../../addons/Spoken_Places/"
 local Expect, Failures = H.Expecter(print)
 
 local FOLDER = "WoWPoPolsku_Interface"
+local loads = 0
 local function Pack(onLoad)
-    return { folder = FOLDER, loadOnDemand = true, onLoad = function() if onLoad then onLoad() end return true end,
-        meta = { ["X-Spoken-Interface"] = "plPL", ["X-Spoken-InterfaceFormat"] = "1",
-            ["X-Spoken-LanguageName"] = "Polish", ["X-Spoken-LanguageNative"] = "Polski" } }
+    return { folder = FOLDER, loadOnDemand = true, onLoad = function()
+            loads = loads + 1
+            if onLoad then onLoad() end
+            return true
+        end,
+        meta = H.InterfacePackMeta("plPL") }
 end
 local POLISH = function()
     _G.Spoken:RegisterInterfaceStrings("plPL", "Spoken", { PLAY = "Odtwórz", BIND_PLAYPAUSE = "Zatrzymaj lub powtórz" })
@@ -46,16 +50,14 @@ local function Readables()
     return B
 end
 
-local function Has(list, code)
-    for _, value in ipairs(list) do if value == code then return true end end
-    return false
-end
+local Has = H.Has
 
 ---------------------------------------------------------------- Auto
+loads = 0
 local env, Spoken = Boot({ Pack(POLISH) })
 Expect("on Auto the interface is the client's", Spoken:InterfaceLanguage(), "enUS")
 Expect("...its words English", env.L.PLAY, "Play")
-Expect("...and the pack is not loaded, nor its strings taken", env.Interface:Strings("Spoken"), nil)
+Expect("...and the pack is not loaded", loads, 0)
 Expect("an interface pack is no voice pack", #Spoken:Language("plPL").folders, 0)
 Expect("the Interface Language row offers it", Has(env.Interface:Choices(), "plPL"), true)
 Expect("...and the built-in languages", Has(env.Interface:Choices(), "deDE"), true)
@@ -91,6 +93,21 @@ env, Spoken = Boot({ Pack(POLISH) }, "deDE", "plPL")
 Expect("Polish chosen on a German client: the pack's strings", env.L.PLAY, "Odtwórz")
 Expect("...and German where the pack has none", env.L.TRANSCRIPT, "Text")
 Expect("...in a module too", Readables().L.OPT_WHOLE_BOOK ~= "Read Whole Book", true)
+
+-- A pack for a language a client runs in lies over that language's own strings.
+local GERMAN = { folder = "BetterGerman", loadOnDemand = true, meta = H.InterfacePackMeta("deDE"), onLoad = function()
+    _G.Spoken:RegisterInterfaceStrings("deDE", "Places", { OPT_SECTION_MAP = "Karte (besser)" })
+    return true
+end }
+env, Spoken = Boot({ GERMAN }, "deDE", "deDE")
+Z = H.LoadPlaces(PLACES, {})
+for _, file in ipairs({ "Locale/enUS", "Locale/deDE", "Locale/Interface" }) do
+    assert(loadfile(PLACES .. file .. ".lua"))("Spoken_Places", Z)
+end
+local german = {}
+assert(loadfile(PLACES .. "Locale/deDE.lua"))("Spoken_Places", { RegisterStrings = function(_, _, strings) german = strings end })
+Expect("a German pack's strings lie over Places' German", Z.L.OPT_SECTION_MAP, "Karte (besser)")
+Expect("...and the keys it lacks keep the German, not English", Z.L.OPT_PICTURES, german.OPT_PICTURES)
 
 env, Spoken = Boot({}, "enUS", "plPL")
 Expect("a chosen language whose pack has gone reads the client's", Spoken:InterfaceLanguage(), "enUS")

@@ -6,7 +6,7 @@
 
 setfenv(1, VoiceOver)
 
-if not InterfaceIn("zhTW") then
+if not Spoken:InterfaceIn("zhTW") then
 	return
 end
 

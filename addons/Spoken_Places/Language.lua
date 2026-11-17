@@ -324,11 +324,9 @@ end
 
 SpokenPlaces.Strings = { enUS = {} }
 
--- Interface strings follow Spoken's Interface Language, never the content language: an interface
--- pack's (Locale/Interface.lua), then the built-in language's whose locale file loaded, the
--- client's on Auto. Without Spoken, the client's.
-SpokenPlaces.interfaceLocale = Spoken and Spoken.InterfaceLanguage and Spoken:InterfaceLanguage()
-	or SpokenPlaces.clientLocale
+-- Interface strings follow Spoken's Interface Language, never the content language: the built-in
+-- language's whose locale file loaded, the client's on Auto, with an interface pack's laid over
+-- them (Locale/Interface.lua). Without Spoken, the client's.
 SpokenPlaces.interfaceBase = Spoken and Spoken.InterfaceBase and Spoken:InterfaceBase()
 	or SpokenPlaces.clientLocale
 
@@ -336,14 +334,13 @@ local warnedMissing = {}
 
 SpokenPlaces.L = setmetatable({}, {
 	__index = function(_, key)
-		local strings = SpokenPlaces.Strings
-		local pack, base = strings[SpokenPlaces.interfaceLocale], strings[SpokenPlaces.interfaceBase]
-		local value = (pack and pack[key]) or (base and base[key])
+		local active = SpokenPlaces.Strings[SpokenPlaces.interfaceBase]
+		local value = active and active[key]
 		if value ~= nil then
 			return value
 		end
 
-		value = strings.enUS[key]
+		value = SpokenPlaces.Strings.enUS[key]
 		if value ~= nil then
 			return value
 		end
@@ -360,7 +357,7 @@ SpokenPlaces.L = setmetatable({}, {
 })
 
 -- Called by Locale/<code>.lua, which guards itself on the Interface Language
--- (SpokenPlaces:InterfaceIn), and by Locale/Interface.lua for a pack's: interface
+-- (Spoken:InterfaceIn), with a pack's laid over by Locale/Interface.lua: interface
 -- strings are useful the moment one of them exists, unlike lore, which is only offered whole.
 --
 -- STRINGS DO FALL BACK TO ENGLISH, unlike the lore. A missing string is an unlabelled

@@ -4,7 +4,7 @@ local _, Developer = ...
 --
 -- Keyed exactly as in Locale/enUS.lua; anything missing falls back to English.
 
-if not Developer:InterfaceIn("koKR") then return end
+if not Spoken:InterfaceIn("koKR") then return end
 
 local L = Developer.L
 

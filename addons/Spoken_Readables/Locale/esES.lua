@@ -7,7 +7,7 @@ local _, SpokenReadables = ...
 
 local L = SpokenReadables.L
 
-if not SpokenReadables:InterfaceIn("esES", "esMX") then
+if not Spoken:InterfaceIn("esES", "esMX") then
 	return
 end
 L.OPT_AUTOPLAY = "Leer automáticamente"

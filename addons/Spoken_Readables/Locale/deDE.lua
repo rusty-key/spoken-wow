@@ -6,7 +6,7 @@ local _, SpokenReadables = ...
 
 local L = SpokenReadables.L
 
-if not SpokenReadables:InterfaceIn("deDE") then
+if not Spoken:InterfaceIn("deDE") then
 	return
 end
 L.OPT_AUTOPLAY = "Automatisch vorlesen"

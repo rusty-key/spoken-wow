@@ -10,7 +10,7 @@ local _, SpokenPlaces = ...
 -- esMX shares this file: nothing in these strings varies by region. Both codes
 -- register the same table, so check-strings.mjs (which reads one file per code)
 -- reports esMX as untranslated -- that report is about files, not runtime.
-if not SpokenPlaces:InterfaceIn("esES", "esMX") then
+if not Spoken:InterfaceIn("esES", "esMX") then
 	return
 end
 

@@ -613,12 +613,6 @@ function Spoken:ApplyInterfaceStrings(module, strings)
     Interface:Apply(module, strings)
 end
 
---- The strings packs registered for `module`, or nil: for a module that keeps one table per
---- language (Places).
-function Spoken:InterfaceStrings(module)
-    return Interface:Strings(module)
-end
-
 --- The language the words are read in this session: the Text Language chosen on Spoken's page as it
 --- was at load, else the client's. The second value is true where the player chose it; on Auto a
 --- module keeps the order it always read its languages in, and where it is chosen, puts it first.

@@ -7,7 +7,7 @@
 
 local _, SpokenPlaces = ...
 
-if not SpokenPlaces:InterfaceIn("koKR") then
+if not Spoken:InterfaceIn("koKR") then
 	return
 end
 

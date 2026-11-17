@@ -4,7 +4,7 @@ local _, Developer = ...
 --
 -- Keyed exactly as in Locale/enUS.lua; anything missing falls back to English.
 
-if not Developer:InterfaceIn("zhTW") then return end
+if not Spoken:InterfaceIn("zhTW") then return end
 
 local L = Developer.L
 
