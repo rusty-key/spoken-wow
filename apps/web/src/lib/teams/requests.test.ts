@@ -1,4 +1,4 @@
-/** Needs DATABASE_URL and migrations through 0108 applied. Only the email is mocked; the admin lookup can be made to fail. */
+/** Needs DATABASE_URL and migrations through 0110 applied. Only the email is mocked; the admin lookup can be made to fail. */
 import { afterAll, afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const sent = vi.hoisted(() => [] as { to: string; subject: string; text: string }[]);

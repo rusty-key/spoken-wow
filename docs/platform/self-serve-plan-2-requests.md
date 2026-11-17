@@ -32,7 +32,7 @@
 
 ## Global Constraints
 
-- Migrations are plain SQL, additive, one transaction each. This plan's single migration is `0108`.
+- Migrations are plain SQL, additive, one transaction each. This plan's single migration is `0110`.
 - Language code: `^[a-z]{2}[A-Z]{2}$`. Team slug: `^[a-z][a-z0-9-]{1,40}$`. English name and native name: trimmed, 1 to 60 characters (`described()` in `api/languages/route.ts`). Team name: trimmed, 1 to 60 characters.
 - A new code that a page section would shadow is refused (`isPageSection`, plan 1).
 - Every per-team write runs under `withTeam`. The approval transaction acts as `ALL_TEAMS` (`actAs`), because `move_team_lang` and `copy_team_roster` are security invoker.
@@ -52,10 +52,10 @@
 
 ---
 
-### Task 1: Migration 0108, requests and the `textByTeam` flag
+### Task 1: Migration 0110, requests and the `textByTeam` flag
 
 **Files:**
-- Create: `apps/web/migrations/0108_team_request.sql`
+- Create: `apps/web/migrations/0110_team_request.sql`
 - Test: `apps/web/src/lib/teams/request-schema.test.ts`
 
 **Interfaces:**

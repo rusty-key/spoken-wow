@@ -1,4 +1,4 @@
-/** Needs DATABASE_URL and migrations through 0108 applied; the session and the email are mocked. */
+/** Needs DATABASE_URL and migrations through 0110 applied; the session and the email are mocked. */
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { closeDb } from "@/lib/db";
