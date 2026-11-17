@@ -14,7 +14,7 @@
 
 - **Reference endpoint is `GET /api/v1/<section>/reference`** (user). It calls the section's `list(BASE_LANG, …)` through the same `parseList`, so filters, cursor and limit match the list. Items are projected to `ReferenceItem` (`id`, `variant?`, `text`, `override?`, `short?`, `name`, `group`): versions and `englishText` mean nothing for English. *(My call.)*
 - **Any valid token reads the reference** (user). "Valid" means live (not expired, revoked, or owned by a banned user) and backed by a grant for at least one of its scopes now: `text` for a read/write token, `regenerate` for a generate token. A token whose owner lost every grant is dead for everything. *(My call: otherwise a dead token would still answer.)*
-- **`generate` is a separate boolean, and `access` gains `'none'`** (spec). A generate-only token is `access = 'none', generate = true`; a check refuses a token that is `none` and not `generate`. Migration 0110 defaults `generate` to false, so no existing token gains spending power. *(My call on the representation.)* Rollback to a pre-0110 release reads `none` as read-only, so a generate-only token whose owner also holds `text` could read text there. Accepted: that owner can make a read token anyway.
+- **`generate` is a separate boolean, and `access` gains `'none'`** (spec). A generate-only token is `access = 'none', generate = true`; a check refuses a token that is `none` and not `generate`. Migration 0112 defaults `generate` to false, so no existing token gains spending power. *(My call on the representation.)* Rollback to a pre-0112 release reads `none` as read-only, so a generate-only token whose owner also holds `text` could read text there. Accepted: that owner can make a read token anyway.
 - **Who may create which token** (user): `access` `read`/`write` needs `text` in the language; `generate` needs `regenerate`. Someone with only `regenerate` sees the token section and can create generate-only tokens. Each person creates their own; no admin-issued tokens.
 - **Generation endpoint shape** (left to the builder by the spec; my call): `POST /api/v1/<section>/generate` with `{items: [{id, variant?}]}` for every section, the same item shape `PATCH /api/v1/<section>` takes, so an agent generates exactly what it just wrote. Quests also take `{filters: "<Explorer query string>"}`, the body the quests half of `/api/regenerate/queue` already takes, because "every stale line" is a filter and 17,000 ids are not. A quest item matches every speaker line of that id and variant (`baseLineId`), as one text edit is heard in every voice.
 - **Dry run** (my call): `{"dryRun": true}` returns the plan and an estimate priced like the Regenerate dialog (`billing.estimate` over the plan's files, rate from `observedRate` / `observedFishRate` for the owner's preferred models), split by provider when pinned fish voices are in it, plus which keys are missing. It queues nothing and needs no key. It does not read the provider balance: the dialog shows it but never blocks on it, and reading it is a call to the provider per request.
@@ -24,7 +24,7 @@
 
 ## Global Constraints
 
-- Migrations: plain SQL, number `0110` (plans 2 and 3 take 0108, 0109), applied by `deploy/web/bin/migrate.sh`, one transaction, additive. A release must run against the schema of the release after it.
+- Migrations: plain SQL, number `0112` (plans 2 and 3 take 0110, 0111), applied by `deploy/web/bin/migrate.sh`, one transaction, additive. A release must run against the schema of the release after it.
 - Nothing in the repo spends TTS credits: tests mock `enqueue`/`createBatch` or seed jobs and cancel them; no test reaches a provider.
 - Tests run as `spoken_app` on `spoken_ci_pin`, never `spoken_dev`. Commands in fish: `set -x DATABASE_URL postgres://localhost/spoken_ci_pin; pnpm --dir apps/web vitest run <file>`.
 - A seeded job is cancelled in `afterEach` (`cancelPending`), and its batch deleted, so no worker connected to the database could claim it.
@@ -36,7 +36,7 @@
 
 ## Review Focus
 
-1. **A token made before 0110 calls generate.** Expect 403 "this token cannot generate", nothing queued. Tested in Task 2 and Task 5.
+1. **A token made before 0112 calls generate.** Expect 403 "this token cannot generate", nothing queued. Tested in Task 2 and Task 5.
 2. **The owner loses `regenerate` (or the team is locked) after making a generate token.** The next generate, generations read or stop is 403; the reference read is 403 too if no `text` remains. Tested in Task 2.
 3. **An ElevenLabs batch that holds a line in a voice pinned to fish.audio, with no fish key.** Expect 428 naming fish.audio before any batch row exists, from the API and from the button. Tested in Task 4.
 4. **A quest item whose line is split by voice (`q:5:accept` and `q:5:accept~orc-male`).** Both files are queued, each once. Tested in Task 4.
@@ -47,7 +47,7 @@
 ### Task 1: Tokens can carry `generate`
 
 **Files:**
-- Create: `apps/web/migrations/0110_api_token_generate.sql`
+- Create: `apps/web/migrations/0112_api_token_generate.sql`
 - Modify: `apps/web/src/lib/tokens/types.ts`, `apps/web/src/lib/tokens/store.ts`
 - Test: `apps/web/src/lib/tokens/store.test.ts`
 
