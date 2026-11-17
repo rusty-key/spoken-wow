@@ -19,7 +19,7 @@
 
 LUA ?= $(shell command -v luajit || command -v lua5.1)
 
-.PHONY: help test test-player contribute-fixtures lint package-all \
+.PHONY: help test test-player contribute-fixtures lint interface-template interface-check package-all \
         package-spoken package-spoken-all release-spoken release-spoken-dry \
         release-spoken-all release-spoken-all-dry \
         descriptions descriptions-check descriptions-published \
@@ -55,6 +55,8 @@ test-player: ## Run the addons' Lua tests (needs luajit)
 	@[ -n "$(LUA)" ] || { echo "No luajit found: brew install luajit"; exit 1; }
 	@$(LUA) tests/lua/languages_test.lua
 	@$(LUA) tests/lua/text_packs_test.lua
+	@$(LUA) tests/lua/interface_packs_test.lua
+	@$(LUA) tests/lua/interface_strings_test.lua
 	@$(LUA) tests/lua/quest_dispatch_test.lua
 	@$(LUA) tests/lua/quest_autoplay_test.lua
 	@$(LUA) tests/lua/gossip_part_test.lua
@@ -207,6 +209,14 @@ lint: ## The checks CI gates on
 	@node pipelines/places/tools/locale/check-strings.mjs
 	@node apps/brann/src/faq-check.mjs
 	@node pipelines/places/tools/locale/build-languages.mjs --check
+
+# An interface pack's makers start from every English string and check what they made against them
+# (docs/contributors/INTERFACE-PACKS.md). LANG is the pack's code, PACK its folder.
+interface-template: ## Print an interface pack's Lua with every string in English (LANG=plPL)
+	@$(LUA) scripts/interface/strings.lua template $(LANG)
+
+interface-check: ## Check an interface pack's strings against the English (LANG=plPL PACK=<folder>)
+	@$(LUA) scripts/interface/strings.lua check $(LANG) $(PACK)
 
 # The store project pages, for every addon. One tool over publishers/*/ rather than one
 # per project: the pages are the same shape, and a second copy of this would be a second place

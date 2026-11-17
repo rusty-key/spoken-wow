@@ -6,7 +6,7 @@
 
 setfenv(1, SpokenEnv)
 
-if GetLocale() ~= "ruRU" then
+if not Interface:In("ruRU") then
 	return
 end
 
@@ -228,6 +228,8 @@ L.OPT_FALLBACK_LANGUAGE = "Если нет озвучки"
 L.OPT_TEXT_LANGUAGE = "Язык текста"
 L.OPT_TEXT_LANGUAGE_SET_FMT = "После перезагрузки интерфейса текст будет на языке: %1$s."
 L.OPT_TEXT_LANGUAGE_RELOAD = "Введите /reload, чтобы переключиться на него."
+L.OPT_INTERFACE_LANGUAGE = "Язык интерфейса"
+L.OPT_INTERFACE_LANGUAGE_SET_FMT = "После перезагрузки интерфейса окна и настройки Spoken будут на языке: %1$s."
 L.OPT_RELOAD_NOW = "Перезагрузить сейчас"
 L.OPT_LATER = "Позже"
 L.OPT_FALLBACK_NONE = "Молчать"

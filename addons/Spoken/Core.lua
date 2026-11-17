@@ -778,8 +778,9 @@ loader:RegisterEvent("PLAYER_ENTERING_WORLD")
 loader:SetScript("OnEvent", function(_, ev, name)
     if ev == "ADDON_LOADED" and name == AddonFolder then
         Addon:InitDB()
-        -- Before the modules load, which read the words as their own files run.
+        -- Before the modules load, which read the words and strings as their own files run.
         Texts:Load()
+        Interface:Load()
     elseif ev == "PLAYER_ENTERING_WORLD" then
         Addon:StopWhereNotRead()
     elseif ev == "PLAYER_LOGIN" then

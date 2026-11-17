@@ -93,7 +93,9 @@ one in a script the game's fonts lack, such as Hebrew, must also set `X-Spoken-L
 Right-to-left text is the pack's job: ship the text in visual order.
 
 Words with no voice, for every section at once, are a text pack instead:
-[`docs/contributors/TEXT-PACKS.md`](../docs/contributors/TEXT-PACKS.md).
+[`docs/contributors/TEXT-PACKS.md`](../docs/contributors/TEXT-PACKS.md). Spoken's own windows and
+settings in another language are an interface pack:
+[`docs/contributors/INTERFACE-PACKS.md`](../docs/contributors/INTERFACE-PACKS.md).
 
 The Manager's community list takes quests, places and readables packs only, so a
 bosses pack cannot be listed there yet.

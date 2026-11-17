@@ -4,7 +4,7 @@ local _, Developer = ...
 --
 -- Keyed exactly as in Locale/enUS.lua; anything missing falls back to English.
 
-if GetLocale() ~= "ptBR" then return end
+if not Spoken:InterfaceIn("ptBR") then return end
 
 local L = Developer.L
 

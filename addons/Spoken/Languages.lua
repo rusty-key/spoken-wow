@@ -45,7 +45,14 @@ local LANGUAGE_KEYS = {
 }
 -- A text pack: the words of a language with no voice (Texts.lua). Not a language key above, as
 -- those make a voice pack.
-local TEXT_KEY, TEXT_FORMAT_KEY, TEXT_FORMAT = "X-Spoken-Text", "X-Spoken-TextFormat", "1"
+-- The packs of words with no voice: a text pack (Texts.lua) and an interface pack (Interface.lua),
+-- each with the format it is written in, and the list of an entry's folders it goes in. A format
+-- this Spoken cannot read is no pack of it: its tables would be misread.
+local WORD_PACKS = {
+    { key = "X-Spoken-Text", format = "X-Spoken-TextFormat", list = "texts" },
+    { key = "X-Spoken-Interface", format = "X-Spoken-InterfaceFormat", list = "interfaces" },
+}
+local WORD_FORMAT = "1"
 local PLACES_KEYS = { ["X-SpokenPlaces-Language"] = true, ["X-SpokenZones-Language"] = true }
 local QUESTS_KEYS = { "X-SpokenQuests-DataModule-Version", "X-VoiceOver-DataModule-Version" }
 
@@ -58,7 +65,7 @@ local function Reset()
     for _, builtin in ipairs(Languages.BUILTIN) do
         byCode[builtin.code] = {
             code = builtin.code, name = builtin.name, native = builtin.native, script = builtin.script,
-            sample = builtin.sample, client = true, builtin = true, lore = false, folders = {}, texts = {},
+            sample = builtin.sample, client = true, builtin = true, lore = false, folders = {}, texts = {}, interfaces = {},
         }
     end
 end
@@ -80,22 +87,23 @@ end
 --- declare one is kept, so two packs of one language never fight over what it is called. A courtesy
 --- name (see COURTESY) is read only where no pack gave one.
 --- A code that is not shaped like one is English: a mistyped key must not mint a language.
-function Languages:Declare(code, folder, meta)
+--- `list` is "texts" or "interfaces" for a text or interface pack: no voice pack, it is kept apart,
+--- so it lists no voice to choose.
+function Languages:Declare(code, folder, meta, list)
     if not self:IsCode(code) then return end
     -- A game client in British English runs the English pack.
     if code == "enGB" then code = "enUS" end
     local entry = byCode[code]
     if not entry then
-        entry = setmetatable({ code = code, client = false, builtin = false, lore = false, folders = {}, texts = {} },
+        entry = setmetatable({ code = code, client = false, builtin = false, lore = false, folders = {}, texts = {}, interfaces = {} },
             { __index = COURTESY[code] })
         byCode[code] = entry
     end
-    -- A text pack is no voice pack: it is kept apart, so it lists no voice to choose.
-    local list = (meta and meta.text) and entry.texts or entry.folders
-    for _, known in ipairs(list) do
+    local folders = entry[list or "folders"]
+    for _, known in ipairs(folders) do
         if known == folder then return end
     end
-    table.insert(list, folder)
+    table.insert(folders, folder)
     if meta then
         entry.name = rawget(entry, "name") or meta.name
         entry.native = rawget(entry, "native") or meta.native
@@ -131,10 +139,14 @@ function Languages:Scan()
             if isPack then break end
             isPack = Value(getMeta, i, key) ~= nil
         end
-        local text = Value(getMeta, i, TEXT_KEY)
-        -- A format this Spoken cannot read is no pack of it: its tables would be misread.
-        if not (self:IsCode(text) and Value(getMeta, i, TEXT_FORMAT_KEY) == TEXT_FORMAT) then text = nil end
-        if (isPack or text) and not SwitchedOff(i, getInfo) then
+        local words = {}
+        for _, kind in ipairs(WORD_PACKS) do
+            local code = Value(getMeta, i, kind.key)
+            if self:IsCode(code) and Value(getMeta, i, kind.format) == WORD_FORMAT then
+                words[kind.list] = code
+            end
+        end
+        if (isPack or next(words)) and not SwitchedOff(i, getInfo) then
             local folder = getInfo(i)
             local font = Value(getMeta, i, "X-Spoken-LanguageFont")
             local meta = {
@@ -142,11 +154,7 @@ function Languages:Scan()
                 native = Value(getMeta, i, "X-Spoken-LanguageNative"),
                 font = font and ("Interface\\AddOns\\" .. folder .. "\\" .. font:gsub("/", "\\")),
             }
-            if text then
-                meta.text = true
-                self:Declare(text, folder, meta)
-                meta.text = nil
-            end
+            for list, code in pairs(words) do self:Declare(code, folder, meta, list) end
             if isPack then
                 local carriesLore = Value(getMeta, i, "X-SpokenPlaces-Lore") == "1"
                 -- A pack with no language, or only one that is no code, speaks English.
@@ -184,16 +192,69 @@ function Languages:Installed()
     return list
 end
 
---- The languages an installed text pack (Texts.lua) brings words in, by code.
-function Languages:WithText()
-    if not scanned then self:Scan() end
-    local list = {}
-    for _, entry in pairs(byCode) do
-        if #entry.texts > 0 then table.insert(list, entry) end
+--- The client's language as a built-in one: English where it is none (enGB). What Auto reads.
+function Languages:Client()
+    local locale = GetLocale and GetLocale()
+    for _, builtin in ipairs(self.BUILTIN) do
+        if builtin.code == locale then return locale end
     end
-    table.sort(list, function(a, b) return a.code < b.code end)
+    return "enUS"
+end
+
+--- Whether the client's own fonts draw `entry`'s language as they are: a Latin language, or one in
+--- the client's script.
+function Languages:DrawnLikeClient(entry)
+    if entry.script == "latin" then return true end
+    local client = byCode[self:Client()]
+    return entry.script ~= nil and client ~= nil and client.script == entry.script
+end
+
+--- Load the packs in `list` ("texts" or "interfaces") of the language `code`, each a LoadOnDemand
+--- addon, saying in the developer's log under `tag` which did not load.
+function Languages:LoadPacks(code, list, tag)
+    local entry = self:Get(code)
+    for _, folder in ipairs(entry and entry[list] or {}) do
+        local ok, loaded, reason = pcall(LoadAddOn, folder)
+        if not ok or not loaded then
+            Developer:Log(tag, "%s pack %s did not load: %s", tag, folder, tostring(ok and reason or loaded))
+        end
+    end
+end
+
+--- A language row's choices: "auto", the built-in languages, then `extra` entries by code, each
+--- where `draws(code)`; then `chosen` if it is none of them, so the row shows a choice whose pack
+--- has since gone.
+function Languages:ChoiceList(draws, extra, chosen)
+    local list, seen = { "auto" }, {}
+    local function Add(code)
+        if not seen[code] and draws(code) then
+            seen[code] = true
+            table.insert(list, code)
+        end
+    end
+    for _, builtin in ipairs(self.BUILTIN) do Add(builtin.code) end
+    table.sort(extra, function(a, b) return a.code < b.code end)
+    for _, entry in ipairs(extra) do Add(entry.code) end
+    if chosen and not seen[chosen] then table.insert(list, chosen) end
     return list
 end
+
+--- The languages whose `list` ("texts" or "interfaces") has a folder, by code.
+local function With(list)
+    if not scanned then Languages:Scan() end
+    local found = {}
+    for _, entry in pairs(byCode) do
+        if #entry[list] > 0 then table.insert(found, entry) end
+    end
+    table.sort(found, function(a, b) return a.code < b.code end)
+    return found
+end
+
+--- The languages an installed text pack (Texts.lua) brings words in, by code.
+function Languages:WithText() return With("texts") end
+
+--- The languages an installed interface pack (Interface.lua) brings strings in, by code.
+function Languages:WithInterface() return With("interfaces") end
 
 --- Every language a list of packs names: the built-in ones in their order, whether installed or
 --- not, then the installed rest by code.

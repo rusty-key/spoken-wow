@@ -49,7 +49,7 @@ end
 function Texts:Language()
     local chosen = self:Choice()
     if chosen then return chosen, true end
-    return Options:ClientLanguage(), false
+    return Languages:Client(), false
 end
 
 --- The language this session reads, as Texts:Language answered at load: its packs are the ones
@@ -151,14 +151,7 @@ function Texts:Load()
     self:TakePlacesChoice()
     local code, chosen = self:Language()
     self.loaded, self.chosen = code, chosen
-    local entry = Languages:Get(code)
-    if not entry then return end
-    for _, folder in ipairs(entry.texts) do
-        local ok, loaded, reason = pcall(LoadAddOn, folder)
-        if not ok or not loaded then
-            Developer:Log("texts", "text pack %s did not load: %s", folder, tostring(ok and reason or loaded))
-        end
-    end
+    Languages:LoadPacks(code, "texts", "texts")
 end
 
 --- For tests: forget every pack's words.
@@ -183,14 +176,6 @@ local SCRIPT_FONTS = {
     [false] = { "Fonts\\ARIALN.TTF" },
 }
 
---- Whether the client's own fonts draw `locale` as they are: a Latin language, or one in the
---- client's script.
-local function DrawnLikeClient(locale)
-    if locale.script == "latin" then return true end
-    local client = Languages:Get(GetLocale and GetLocale())
-    return locale.script ~= nil and client ~= nil and client.script == locale.script
-end
-
 --- The font file to write `code` in where a page uses `fontObject`: the object's own file where it
 --- draws that language, else the font its pack names, else the client's font for its script. Nil
 --- where none draws it. `cache` keeps the answers (`cache.fonts`), a module's own so a test can
@@ -199,7 +184,7 @@ function Texts:FontFor(fontObject, code, cache)
     local path = fontObject and fontObject.GetFont and fontObject:GetFont()
     local locale = Languages:Get(code)
     -- A pack's language has no script to share with the client's, so it is always drawn to see.
-    if not path or not locale or DrawnLikeClient(locale) then
+    if not path or not locale or Languages:DrawnLikeClient(locale) then
         return path
     end
     cache = cache or self
@@ -241,7 +226,7 @@ function Texts:CanRender(code, cache)
     if not locale then
         return false
     end
-    if DrawnLikeClient(locale) then
+    if Languages:DrawnLikeClient(locale) then
         return true
     end
     cache = cache or self
@@ -262,23 +247,9 @@ end
 --- The Text Language row's choices: "auto", then every language there are words in that this
 --- client can draw: the built-in ones, then those a text pack or a Places lore pack brings.
 function Texts:Choices()
-    local list, seen = { "auto" }, {}
-    local function Add(code)
-        if not seen[code] and self:CanRender(code) then
-            seen[code] = true
-            table.insert(list, code)
-        end
-    end
-    for _, builtin in ipairs(Languages.BUILTIN) do Add(builtin.code) end
-    local rest = {}
-    for _, entry in ipairs(Languages:WithText()) do table.insert(rest, entry) end
+    local rest = Languages:WithText()
     for _, entry in ipairs(Languages:Installed()) do
         if entry.lore then table.insert(rest, entry) end
     end
-    table.sort(rest, function(a, b) return a.code < b.code end)
-    for _, entry in ipairs(rest) do Add(entry.code) end
-    -- A chosen language whose pack has since gone is kept on the list, so the row shows it.
-    local chosen = self:Choice()
-    if chosen and not seen[chosen] then table.insert(list, chosen) end
-    return list
+    return Languages:ChoiceList(function(code) return self:CanRender(code) end, rest, self:Choice())
 end

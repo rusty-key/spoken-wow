@@ -4,6 +4,12 @@ Spoken Player until 3.0.0, when it became Spoken and took its modules into one d
 
 ## Unreleased
 
+- **Interface Language.** A new setting in the Language section of Spoken's page picks the language
+  of Spoken's own windows, menus and settings, apart from the game's: any language Spoken is
+  translated into, or one an interface pack brings, such as Polish, made by its translators
+  ([how to make one](https://github.com/rusty-key/spoken-wow/blob/master/docs/contributors/INTERFACE-PACKS.md)).
+  A string the pack has not translated yet shows in the game's language.
+  *([rusty-key](https://github.com/rusty-key))*
 - **Italian voices for places, readables and bosses are offered.** With Italian as the Voice
   Language, those pages now link to the Italian packs on GitHub.
   *([rusty-key](https://github.com/rusty-key))*

@@ -5,16 +5,13 @@
 --   client locale   GetLocale(). Decides what GetSubZoneText and
 --                   MapUtil.FindBestAreaNameAtMouse hand back, and therefore
 --                   which alias table turns those names into corpus keys. Also
---                   decides which glyphs the client's fonts can draw -- and,
---                   for that same reason, which interface strings load: a client
---                   only ever loads its own locale's file, so its UI is always
---                   renderable.
+--                   decides which glyphs the client's fonts can draw.
 --
 --   content language  What the player chose to read and hear. Decides which
 --                   lore table is primary and which sound pack plays. Deliberately
---                   NOT which UI strings are used: those follow the client, so a
---                   translation shows the moment it exists instead of waiting for
---                   the whole lore corpus to be finished.
+--                   NOT which UI strings are used: those follow Spoken's Interface
+--                   Language, the client's on Auto, so a translation shows the moment
+--                   it exists instead of waiting for the whole lore corpus to be finished.
 --
 -- A German client reading English lore still needs German aliases. Getting that
 -- backwards is the failure that presents as "the addon just does not work in
@@ -327,14 +324,17 @@ end
 
 SpokenPlaces.Strings = { enUS = {} }
 
+-- Interface strings follow Spoken's Interface Language, never the content language: the built-in
+-- language's whose locale file loaded, the client's on Auto, with an interface pack's laid over
+-- them (Locale/Interface.lua). Without Spoken, the client's.
+SpokenPlaces.interfaceBase = Spoken and Spoken.InterfaceBase and Spoken:InterfaceBase()
+	or SpokenPlaces.clientLocale
+
 local warnedMissing = {}
 
 SpokenPlaces.L = setmetatable({}, {
 	__index = function(_, key)
-		-- Interface strings follow the client, not the content language: the
-		-- locale file for any other code never loads on this client, so there
-		-- is nothing else it could fall back to before English.
-		local active = SpokenPlaces.Strings[SpokenPlaces.clientLocale]
+		local active = SpokenPlaces.Strings[SpokenPlaces.interfaceBase]
 		local value = active and active[key]
 		if value ~= nil then
 			return value
@@ -356,9 +356,9 @@ SpokenPlaces.L = setmetatable({}, {
 	end,
 })
 
--- Called by Locale/<code>.lua, which guards itself on the client locale in
--- the same way every WoW addon does: interface strings are useful the moment
--- one of them exists, unlike lore, which is only offered whole.
+-- Called by Locale/<code>.lua, which guards itself on the Interface Language
+-- (Spoken:InterfaceIn), with a pack's laid over by Locale/Interface.lua: interface
+-- strings are useful the moment one of them exists, unlike lore, which is only offered whole.
 --
 -- STRINGS DO FALL BACK TO ENGLISH, unlike the lore. A missing string is an unlabelled
 -- button, and an English label is a strictly better answer than an empty one; a
