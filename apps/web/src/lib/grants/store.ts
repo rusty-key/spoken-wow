@@ -14,7 +14,7 @@ import { recordActivities, recordActivity } from "@/lib/activity/store";
 import { ALL_TEAMS, db, query, withTeam } from "@/lib/db";
 import { teamIn } from "@/lib/teams/acting";
 import { deleteMember, insertMembers } from "@/lib/teams/members";
-import { ownerOrAll, teamOf, type TeamId } from "@/lib/teams/store";
+import { ownerOrAll, secondTeamLangs, teamOf, type TeamId } from "@/lib/teams/store";
 import { isLang, langName, type Lang } from "@/lib/lang";
 import { textByTeam } from "@/lib/languages/store";
 import { canGrant, isCapability, type Capability, type Grant, type Viewer } from "@/lib/permissions";
@@ -80,12 +80,18 @@ const GRANTS = `(
   select "userId", "lang", "capability", "grantedAt", "teamId" from "team_member"
 )`;
 
+/**
+ * Who holds a grant in `lang`. In a language with a second team, the acting team's members and
+ * the `text` holders, who belong to no team; else everyone.
+ */
 export async function viewersIn(lang: Lang): Promise<Map<string, Viewer>> {
+  const shared = (await secondTeamLangs()).has(lang);
+  const team = shared ? await ownerOrAll(lang) : ALL_TEAMS;
   const rows = await query<{ userId: string; role: string | null; capability: Capability }>(
     `select g."userId", u."role", g."capability"
        from ${GRANTS} g join "user" u on u."id" = g."userId"
-      where g."lang" = $1`,
-    [lang],
+      where g."lang" = $1 and ($2 = '*' or g."teamId" is null or g."teamId"::text = $2)`,
+    [lang, team],
   );
   const viewers = new Map<string, Viewer>();
   for (const { userId, role, capability } of rows) {
