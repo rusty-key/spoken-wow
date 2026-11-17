@@ -15,6 +15,7 @@ import { pipeline } from "node:stream/promises";
 
 import { recordActivity } from "@/lib/activity/store";
 import { archive, blobKey, sha256Of } from "@/lib/blobs/store";
+import { putArchived } from "@/lib/blobs/keep";
 import { blobBytes } from "@/lib/blobs/where";
 import { ALL_TEAMS, query, queryIn } from "@/lib/db";
 import type { Lang } from "@/lib/lang";
@@ -159,12 +160,20 @@ async function failed(source: Source, sha256: string, take: EncodedTake | undefi
  * Encodes and records, with no look first. Returns the encoding the table holds, which is another
  * caller's when one encoding the same bytes recorded first: oggenc's output differs every run.
  */
-async function encodeAndRecord(source: Source, sha256: string, profile: string, master: string): Promise<Encoding> {
+async function encodeAndRecord(
+  source: Source,
+  sha256: string,
+  profile: string,
+  master: string,
+  lang: Lang | undefined,
+): Promise<Encoding> {
   const encoded = await encodeOgg(master);
   const durationSec = oggDurationSec(encoded);
   if (!(durationSec > 0)) throw new Error("the Ogg has no length: the take may hold no audio");
   const encodedSha256 = sha256Of(encoded);
-  await archive().put(blobKey("encodings", encodedSha256), encoded, "audio/ogg");
+  // Beside its take, in the team's bucket when the team keeps one; ours without a language.
+  if (lang) await putArchived("encodings", encodedSha256, encoded, "audio/ogg", lang);
+  else await archive().put(blobKey("encodings", encodedSha256), encoded, "audio/ogg");
   // A row with no length never shipped from the Manager, whose release stops on it, so replacing
   // its Ogg makes no player download anything again.
   const [kept] = await query<Encoding>(
@@ -206,7 +215,7 @@ export async function encodeForPack(
   }
   for (let attempt = 1; ; attempt++) {
     try {
-      return await encodeAndRecord(source, sha256, profile, master);
+      return await encodeAndRecord(source, sha256, profile, master, take?.lang);
     } catch (error) {
       if (attempt >= 2) {
         await failed(source, sha256, take, error);

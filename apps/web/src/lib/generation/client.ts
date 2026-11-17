@@ -265,7 +265,10 @@ export async function queueBatch(
     const body = (await response.json().catch(() => ({}))) as Record<string, unknown>;
     if (!response.ok) {
       const noKey = noApiKeyMessage(response.status, body as { error?: string; code?: string });
-      return noKey ? { error: noKey } : null;
+      if (noKey) return { error: noKey };
+      // The team's bucket is failing: what to do about it is the team admin's, and says so.
+      if (body.kind === "storage-failing" && typeof body.error === "string") return { error: body.error };
+      return null;
     }
     return body as unknown as QueuedBatch;
   } catch {

@@ -17,7 +17,8 @@ import os from "node:os";
 import path from "node:path";
 
 import { recordActivity } from "@/lib/activity/store";
-import { blobOrFile, keep } from "@/lib/blobs/store";
+import { keep } from "@/lib/blobs/keep";
+import { blobOrFile } from "@/lib/blobs/store";
 import { fileIndex } from "@/lib/audio";
 import { catalogue as readablesCatalogue } from "@/lib/readables/catalogue";
 import type { Lang } from "@/lib/lang";
@@ -185,6 +186,7 @@ export async function commitRecording(
       upload.data,
       probed.format === "ogg" ? "audio/ogg" : "audio/mpeg",
       path.join(recordedDirOf(source, file, lang), name),
+      lang,
     );
     const {
       rows: [recording],

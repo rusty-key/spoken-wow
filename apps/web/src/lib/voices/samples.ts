@@ -17,7 +17,8 @@ import crypto from "node:crypto";
 import fs from "node:fs/promises";
 import path from "node:path";
 
-import { blobKey, blobOrFile, keep, readsBlobs, writesBlobs, type Stored } from "@/lib/blobs/store";
+import { keep } from "@/lib/blobs/keep";
+import { blobKey, blobOrFile, readsBlobs, writesBlobs, type Stored } from "@/lib/blobs/store";
 import { blobBytes } from "@/lib/blobs/where";
 import { queryAs, readAs } from "@/lib/teams/store";
 import { VOICE_SAMPLES_DIR } from "@/lib/paths";
@@ -176,7 +177,7 @@ export async function storeSample(
 export async function storeSampleAs(voice: string, file: string, data: Buffer): Promise<Sample> {
   if (!isStoredSampleName(file)) throw new Error(`unsafe sample name ${file}`);
   const dir = await voiceDir(voice);
-  const sha256 = await keep("samples", data, contentTypeOf(file), path.join(dir, file));
+  const sha256 = await keep("samples", data, contentTypeOf(file), path.join(dir, file), langOf(voice));
   if (sha256) {
     await queryAs(
       langOf(voice),

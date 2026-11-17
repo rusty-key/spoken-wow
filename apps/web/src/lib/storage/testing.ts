@@ -31,7 +31,13 @@ export async function testBackend({
   const id = rows[0].id;
   made.push(id);
   const store = memoryBlobs({ publicUrl });
-  const restore = useBackendForTests(id, store);
+  const unset = useBackendForTests(id, store);
+  /** Forgets the store and deletes the row, so the next test's team has no bucket switched on. */
+  const restore = async () => {
+    unset();
+    await asSystem.query(`delete from "archive_object" where "backendId" = $1`, [id]);
+    await asSystem.query(`delete from "storage_backend" where "id" = $1`, [id]);
+  };
   return { id, teamId, store, restore };
 }
 

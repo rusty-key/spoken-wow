@@ -14,8 +14,10 @@ import { blobBytes, locate, QUARANTINE } from "./where";
 
 afterAll(closeDb);
 
-const restores: (() => void)[] = [];
-afterEach(() => restores.splice(0).forEach((restore) => restore()));
+const restores: (() => unknown)[] = [];
+afterEach(async () => {
+  for (const restore of restores.splice(0).reverse()) await restore();
+});
 
 const fresh = (prefix = "takes") => `${prefix}/${randomBytes(32).toString("hex")}`;
 const bytes = Buffer.from("team bytes");

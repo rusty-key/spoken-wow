@@ -21,7 +21,8 @@ import path from "node:path";
 import { promisify } from "node:util";
 
 import { recordActivity } from "@/lib/activity/store";
-import { blobKey, blobOrFile, keep, readsBlobs, type Stored } from "@/lib/blobs/store";
+import { keep } from "@/lib/blobs/keep";
+import { blobKey, blobOrFile, readsBlobs, type Stored } from "@/lib/blobs/store";
 import { blobBytes } from "@/lib/blobs/where";
 import { withTeam } from "@/lib/db";
 import type { Lang } from "@/lib/lang";
@@ -262,7 +263,7 @@ export async function saveReference(input: SaveReference): Promise<Reference> {
   const transcript = (await input.transcribe(audio)).trim();
   if (!transcript) throw new Error("fish.audio heard nothing in that window");
 
-  const sha256 = await keep("references", audio, "audio/mpeg", referencePath(input.voice, input.lang));
+  const sha256 = await keep("references", audio, "audio/mpeg", referencePath(input.voice, input.lang), input.lang);
   await withTeam(team, (client) => client.query(
     `insert into "fish_reference"
        ("voice", "lang", "sample", "startSec", "endSec", "transcript", "clipHash", "updatedBy", "updatedAt", "sha256")

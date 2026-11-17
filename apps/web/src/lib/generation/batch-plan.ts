@@ -30,6 +30,7 @@ import { estimate, type Estimate } from "./billing";
 import { queueWorker } from "./boot";
 import type { Preference } from "./preference";
 import { createBatch, enqueue, type QueueEntry } from "./queue";
+import { storageRefusal } from "@/lib/blobs/keep";
 import type { Provider } from "./speakers/speaker";
 
 export type Plan = {
@@ -305,6 +306,10 @@ export async function queuePlan(args: {
       { status: 400 },
     );
   }
+
+  // Before any row, so a team whose bucket is failing spends nothing more until it is fixed.
+  const refused = await storageRefusal(lang);
+  if (refused) return NextResponse.json({ error: refused, kind: "storage-failing" }, { status: 409 });
 
   if (provider !== "fish" && plan.jobs.some((job) => job.provider === "fish")) {
     const { denied } = await requireApiKey(userId, "fish");

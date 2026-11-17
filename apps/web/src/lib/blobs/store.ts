@@ -16,7 +16,6 @@ import { setTimeout as sleep } from "node:timers/promises";
 
 import type { Lang } from "@/lib/lang";
 import { resolveRange, type Range, type RangeRequest } from "@/lib/range";
-import { writeAtomic } from "@/lib/takes/bytes";
 
 export type ArchiveMode = "disk" | "dual" | "r2";
 
@@ -363,37 +362,6 @@ export function archive(): BlobStore {
     publicUrl: process.env.SPOKEN_ARCHIVE_URL!,
   });
   return fromEnv;
-}
-
-/**
- * Both writes have finished when this returns, so the caller's row comes after them. The hash
- * comes back only once its object is in the bucket, and is what the row records: the backfill
- * copies exactly the rows without one.
- *
- * In `dual` the volume is still the record, so a failed PUT is logged and the row is left for
- * the backfill rather than failing a take the provider was already paid for.
- */
-export async function keep(
-  prefix: BlobPrefix,
-  data: Buffer,
-  contentType: string,
-  diskPath: string,
-): Promise<string | null> {
-  const sha256 = sha256Of(data);
-  const mode = archiveMode();
-  const put = async () => {
-    if (mode === "disk") return null;
-    try {
-      await archive().put(blobKey(prefix, sha256), data, contentType);
-      return sha256;
-    } catch (error) {
-      if (mode === "r2") throw error;
-      console.error(`archiving ${prefix}/${sha256.slice(0, 12)} failed, left for the backfill:`, error);
-      return null;
-    }
-  };
-  const [kept] = await Promise.all([put(), mode !== "r2" && writeAtomic(diskPath, data)]);
-  return kept;
 }
 
 export type Stored =
