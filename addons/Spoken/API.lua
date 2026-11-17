@@ -328,6 +328,13 @@ local PACK_PAGES = {
         frFR = "spoken-french-audio-bosses", koKR = "spoken-korean-audio-bosses", ptBR = "spoken-portuguese-audio-bosses",
         ruRU = "spoken-russian-audio-bosses", zhCN = "spoken-chinese-simplified-audio-bosses", zhTW = "spoken-chinese-traditional-audio-bosses" },
 }
+-- The packs with no CurseForge project yet, by their release tag: got from the repository's releases.
+local RELEASES = "https://github.com/rusty-key/spoken-wow/releases?q="
+local PACK_RELEASES = {
+    places = { itIT = "places-audio-itIT" },
+    readables = { itIT = "readables-audio-itIT" },
+    bosses = { itIT = "bosses-audio-itIT" },
+}
 
 --- The voice pack `module` ("quests", "places", "readables" or "bosses") has in `lang`, English's aside: the folder
 --- it installs as and the address to get it, or nil where that language has none.
@@ -338,8 +345,10 @@ function Spoken:VoicePack(module, lang)
         return packs[3].folder, packs[3].url
     end
     local page = PACK_PAGES[module] and PACK_PAGES[module][lang]
-    if not page then return nil end
-    return PACK_FOLDERS[module] .. "_" .. lang, CURSEFORGE .. page
+    if page then return PACK_FOLDERS[module] .. "_" .. lang, CURSEFORGE .. page end
+    local release = PACK_RELEASES[module] and PACK_RELEASES[module][lang]
+    if release then return PACK_FOLDERS[module] .. "_" .. lang, RELEASES .. release end
+    return nil
 end
 
 --- The four quests packs a language but English has, or nil where it has none: for each, `side`

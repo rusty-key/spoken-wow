@@ -4,6 +4,9 @@ Spoken Player until 3.0.0, when it became Spoken and took its modules into one d
 
 ## Unreleased
 
+- **Italian voices for places, readables and bosses are offered.** With Italian as the Voice
+  Language, those pages now link to the Italian packs on GitHub.
+  *([rusty-key](https://github.com/rusty-key))*
 - **Text Language, for everything Spoken shows.** A new setting in the Language section of Spoken's
   page picks the language of the words in captions, subtitles and Azeroth's Compendium, apart from
   the voice: quests, gossip, readables, bosses and places. It replaces Text Language on the Places
