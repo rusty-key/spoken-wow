@@ -570,7 +570,18 @@ the code that makes a second team.
 
 1. **After the deploy, read the migration's notice** in the deploy log. It lists every
    `(userId, lang)` pair that already spans two teams. The trigger does not touch existing rows, so
-   remove one side of each pair (a `team_member` row of the team the person should leave).
+   for each pair pick the team the person leaves and delete **every** `team_member` row they hold
+   in it: one row per capability, and any one left keeps the conflict.
+
+   ```bash
+   psql "$PROD_DATABASE_URL" -c "delete from team_member where \"userId\" = '<userId>' and lang = '<lang>' and \"teamId\" = '<teamId>'"
+   ```
+
+   Then run the conflict query again; it must return no rows:
+
+   ```bash
+   psql "$PROD_DATABASE_URL" -c 'select "userId", lang from team_member group by "userId", lang having count(distinct "teamId") > 1'
+   ```
 
 2. **Rolling back past 0113 while a second team exists** gives its members the privileged team's
    rows: the older release has no overlay, so it resolves every person to the language's privileged
