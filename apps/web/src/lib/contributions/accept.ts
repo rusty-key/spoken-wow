@@ -58,7 +58,8 @@ import {
 } from "@/lib/quests/speakers";
 import type { Roster } from "@/lib/voices/roster";
 import { loadRoster } from "@/lib/voices/roster-store";
-import { freshOwners } from "@/lib/teams/store";
+import { asTeams } from "@/lib/teams/acting";
+import { privilegedOwners, type TeamId } from "@/lib/teams/store";
 
 import { loadBookCorpus, matchBook, sameMatch, type BookCorpus, type BookMatchResult } from "./book-match";
 import { sameLine } from "./compare";
@@ -737,8 +738,14 @@ async function nameIfUnnamed(
 /**
  * Ignore every line a quests contribution wrote, in its language, or in every language for an
  * English row. A line it only added a speaker to is ignored whole, whoever else speaks it.
+ * The ignores are `owner`'s, the language's privileged team, whichever team the rejecter works in.
  */
-async function ignoreWrittenLines(client: PoolClient, contribution: Contribution, userId: string): Promise<void> {
+async function ignoreWrittenLines(
+  client: PoolClient,
+  contribution: Contribution,
+  userId: string,
+  owner: TeamId | undefined,
+): Promise<void> {
   const { rows } = await client.query<{ lineId: string }>(
     `select "lineId" from "quest_line_speaker" where "contributionId" = $1
      union
@@ -746,9 +753,11 @@ async function ignoreWrittenLines(client: PoolClient, contribution: Contribution
     [contribution.id, noteFor(contribution.id)],
   );
   const lang = contribution.locale === BASE_LANG || !isLang(contribution.locale) ? null : contribution.locale;
-  for (const { lineId } of rows) {
-    await writeIgnore(lineId, `Rejected ${noteFor(contribution.id)}`, userId, lang, client);
-  }
+  await asTeams(lang && owner ? new Map([[lang, owner]]) : new Map(), async () => {
+    for (const { lineId } of rows) {
+      await writeIgnore(lineId, `Rejected ${noteFor(contribution.id)}`, userId, lang, client);
+    }
+  });
 }
 
 /**
@@ -961,8 +970,10 @@ export async function resolveContribution(
 ): Promise<ResolveOutcome> {
   // Read before the client is held: a refresh of the memo needs a connection of its own. Every
   // language, since the contribution's is not known yet: one the other worker has just given a
-  // team would otherwise be logged under none.
-  const owners = await freshOwners(allLangs());
+  // team would otherwise be logged under none. The privileged teams, whoever is acting: a
+  // contribution is original text, so its resolution and the ignores a rejection leaves are
+  // that team's, even for a text maintainer who works in a second team.
+  const owners = await privilegedOwners(allLangs());
   const client = await db().connect();
   // Set only on the path below where rollback itself throws -- that is the one case that
   // releases the client itself (with the error, so node-postgres destroys rather than recycles
@@ -995,7 +1006,8 @@ export async function resolveContribution(
     // ignores a rejection leaves. An English row's are on every language: system work.
     const lang = isLang(contribution.locale) ? contribution.locale : null;
     const siteWide = status === "rejected" && mayIgnore && (lang === null || lang === BASE_LANG);
-    await actAs(client, (!siteWide && lang && owners.get(lang)) || ALL_TEAMS);
+    const team = (!siteWide && lang && owners.get(lang)) || ALL_TEAMS;
+    await actAs(client, team);
 
     const written =
       contribution.source === "readables"
@@ -1008,7 +1020,7 @@ export async function resolveContribution(
     let ignored = false;
     if (written && status !== "accepted") {
       if (status === "rejected" && contribution.source === "quests" && mayIgnore) {
-        await ignoreWrittenLines(client, contribution, userId);
+        await ignoreWrittenLines(client, contribution, userId, lang ? owners.get(lang) : undefined);
         ignored = true;
       } else {
         await client.query("rollback");
@@ -1051,6 +1063,7 @@ export async function resolveContribution(
     // than dropped: somebody still resolved it.
     await recordActivity(
       {
+        team: (lang && owners.get(lang)) || ALL_TEAMS,
         kind: "contribution.resolved",
         lang: isLang(contribution.locale) ? contribution.locale : null,
         source: contribution.source,

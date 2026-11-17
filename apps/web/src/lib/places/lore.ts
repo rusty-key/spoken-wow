@@ -10,7 +10,7 @@ import "server-only";
 import { auditDetail, type ApiAudit } from "@/lib/activity/kinds";
 import { recordActivity } from "@/lib/activity/store";
 import { query, withTeam } from "@/lib/db";
-import { ownerOrAll } from "@/lib/teams/store";
+import { textTeam } from "@/lib/teams/store";
 import { BASE_LANG, type Lang } from "@/lib/lang";
 import { makeShort } from "./tools";
 
@@ -131,7 +131,8 @@ export async function saveLore(args: {
   audit?: ApiAudit;
 }): Promise<LoreVersion & { wrote: boolean }> {
   const lang = args.lang ?? BASE_LANG;
-  return withTeam(await ownerOrAll(lang), async (client) => {
+  const team = await textTeam(lang);
+  return withTeam(team, async (client) => {
     const { rows: currentRows } = await client.query<Row & { mapID: number; kind: string; key: string | null }>(
       `select ${COLUMNS}, "mapID", "kind", "key" from "lore_line"
         where "lineId" = $1 and "lang" = $2 and "isCurrent" for update`,
@@ -224,6 +225,7 @@ export async function saveLore(args: {
     );
     await recordActivity(
       {
+        team,
         kind: "text.edited",
         lang,
         actorId: args.editedBy,
@@ -264,7 +266,8 @@ export async function restoreLore(
   lang: Lang,
   by: string | null,
 ): Promise<LoreVersion> {
-  return withTeam(await ownerOrAll(lang), async (client) => {
+  const team = await textTeam(lang);
+  return withTeam(team, async (client) => {
     const { rows } = await client.query<Row>(
       `select ${COLUMNS} from "lore_line"
         where "lineId" = $1 and "lang" = $3 and "version" = $2 for update`,
@@ -286,6 +289,7 @@ export async function restoreLore(
     );
     await recordActivity(
       {
+        team,
         kind: "text.restored",
         lang,
         actorId: by,
@@ -306,7 +310,8 @@ export async function restoreLore(
  * since there is no earlier version to move to, and the row stays as the record of what it said.
  */
 export async function retireLore(lineId: string, version: number, lang: Lang, by: string | null): Promise<void> {
-  return withTeam(await ownerOrAll(lang), async (client) => {
+  const team = await textTeam(lang);
+  return withTeam(team, async (client) => {
     const { rowCount } = await client.query(
       `update "lore_line" set "isCurrent" = false
         where "lineId" = $1 and "lang" = $2 and "version" = $3 and "isCurrent"`,
@@ -314,7 +319,7 @@ export async function retireLore(lineId: string, version: number, lang: Lang, by
     );
     if (!rowCount) throw new LoreConflict(`${lineId} v${version} is not the current text`);
     await recordActivity(
-      { kind: "text.retired", lang, actorId: by, source: "places", subject: lineId, lineId, detail: { version } },
+      { team, kind: "text.retired", lang, actorId: by, source: "places", subject: lineId, lineId, detail: { version } },
       client,
     );
   });

@@ -93,7 +93,7 @@ export async function actsAsSecondTeam(lang: Lang): Promise<boolean> {
 }
 
 /** teamLangs, read again once (unless the memo is fresh) when any of `langs` has no team. */
-async function privilegedOwners(langs: readonly (Lang | null)[]): Promise<Map<Lang, TeamId>> {
+export async function privilegedOwners(langs: readonly (Lang | null)[]): Promise<Map<Lang, TeamId>> {
   const owners = await teamLangs();
   const missing = langs.some((lang) => lang && !owners.has(lang));
   if (!missing || !cached || Date.now() - cached.at < MISS_REFRESH_MS) return owners;
@@ -140,6 +140,16 @@ export async function teamOf(lang: Lang): Promise<TeamId> {
  */
 export async function ownerOrAll(lang: Lang | null): Promise<TeamId | typeof ALL_TEAMS> {
   return (lang && (await ownerOf(lang))) || ALL_TEAMS;
+}
+
+/**
+ * The team `lang`'s original text is written in: its privileged team, whoever is acting, since
+ * every team voices the one text and the privileged team ships it. A text maintainer who works
+ * in a second team still files their edits, resolutions and rejections there. ALL_TEAMS for a
+ * language nobody owns, as ownerOrAll.
+ */
+export async function textTeam(lang: Lang | null): Promise<TeamId | typeof ALL_TEAMS> {
+  return (lang && (await privilegedOf(lang))) || ALL_TEAMS;
 }
 
 /**

@@ -14,7 +14,7 @@ import type { PoolClient } from "pg";
 import { auditDetail, type ApiAudit } from "@/lib/activity/kinds";
 import { recordActivity } from "@/lib/activity/store";
 import { query, withTeam } from "@/lib/db";
-import { ownerOrAll } from "@/lib/teams/store";
+import { textTeam } from "@/lib/teams/store";
 import type { Lang } from "@/lib/lang";
 
 /** The line id, which is also the addon's clip key. The key is frozen, so this never moves. */
@@ -106,7 +106,8 @@ export async function saveStory(args: {
   audit?: ApiAudit;
 }): Promise<StoryVersion & { wrote: boolean }> {
   const { lang, lineId } = args;
-  return withTeam(await ownerOrAll(lang), async (client) => {
+  const team = await textTeam(lang);
+  return withTeam(team, async (client) => {
     const bossId = await lockBoss(client, lineId);
 
     const { rows: currentRows } = await client.query<Row>(
@@ -152,6 +153,7 @@ export async function saveStory(args: {
     );
     await recordActivity(
       {
+        team,
         kind: "text.edited",
         lang,
         actorId: args.editedBy,
@@ -179,7 +181,8 @@ export async function restoreStory(
   lang: Lang,
   by: string | null,
 ): Promise<StoryVersion> {
-  return withTeam(await ownerOrAll(lang), async (client) => {
+  const team = await textTeam(lang);
+  return withTeam(team, async (client) => {
     const bossId = await lockBoss(client, lineId);
 
     const { rows } = await client.query<Row>(
@@ -204,6 +207,7 @@ export async function restoreStory(
     );
     await recordActivity(
       {
+        team,
         kind: "text.restored",
         lang,
         actorId: by,
@@ -221,7 +225,8 @@ export async function restoreStory(
 
 /** Takes a first story back, so the boss reads as having none in the language. */
 export async function retireStory(lineId: string, version: number, lang: Lang, by: string | null): Promise<void> {
-  return withTeam(await ownerOrAll(lang), async (client) => {
+  const team = await textTeam(lang);
+  return withTeam(team, async (client) => {
     const bossId = await lockBoss(client, lineId);
     const { rowCount } = await client.query(
       `update "boss_line" set "isCurrent" = false
@@ -230,7 +235,7 @@ export async function retireStory(lineId: string, version: number, lang: Lang, b
     );
     if (!rowCount) throw new StoryConflict(`${lineId} v${version} is not the current story`);
     await recordActivity(
-      { kind: "text.retired", lang, actorId: by, source: "bosses", subject: lineId, lineId, detail: { version } },
+      { team, kind: "text.retired", lang, actorId: by, source: "bosses", subject: lineId, lineId, detail: { version } },
       client,
     );
   });
