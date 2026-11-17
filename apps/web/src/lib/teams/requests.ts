@@ -15,9 +15,10 @@ import { langName } from "@/lib/lang";
 import { adminEmails, SITE } from "@/lib/site";
 import { isUuid } from "@/lib/uuid";
 
+import { teamIn } from "./acting";
 import { TeamError } from "./admin";
 import { requestLangName as nameOf } from "./branch-text";
-import { afterFounded, foundTeam, languageBranch, type Branch } from "./found";
+import { afterFounded, foundTeam, languageBranch, type Branch, type Settings } from "./found";
 import type { TeamId } from "./store";
 
 export type RequestState = "pending" | "approved" | "rejected" | "withdrawn";
@@ -68,7 +69,16 @@ async function read(id: string, client?: Reader): Promise<Row | null> {
   return rows[0] ?? null;
 }
 
+/** A requester who works on the language in a team already, which approval could only refuse. */
+async function refuseMember(userId: string, lang: string): Promise<void> {
+  const team = await teamIn(userId, lang);
+  if (!team) return;
+  const [{ slug }] = await query<{ slug: string }>(`select "slug" from "team" where "id" = $1`, [team]);
+  throw new TeamError(`You already work on ${langName(lang)} in ${slug}; one person works in one team per language.`, 409);
+}
+
 export async function createRequest(userId: string, input: NewRequest): Promise<TeamRequest> {
+  await refuseMember(userId, input.lang);
   let id: string;
   try {
     const rows = await query<{ id: string }>(
@@ -161,13 +171,24 @@ async function lockPending(client: PoolClient, id: string): Promise<Row> {
   return row;
 }
 
-export async function approveRequest(id: string, actorId: string): Promise<TeamRequest> {
+/** `options.settings` is what a second team starts from; the other branches ignore it. */
+export async function approveRequest(
+  id: string,
+  actorId: string,
+  options: { settings?: Settings } = {},
+): Promise<TeamRequest> {
   const { row, founded } = await inTransaction(async (client) => {
     const row = await lockPending(client, id);
     const language = row.langName !== null && row.langNative !== null ? { name: row.langName, native: row.langNative } : null;
     const founded = await foundTeam(
       client,
-      { lang: row.lang, language, team: { slug: null, name: row.teamName }, adminId: row.userId },
+      {
+        lang: row.lang,
+        language,
+        team: { slug: null, name: row.teamName },
+        adminId: row.userId,
+        settings: options.settings,
+      },
       actorId,
     );
     await client.query(

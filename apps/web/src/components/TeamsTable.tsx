@@ -158,7 +158,12 @@ export default function TeamsTable({ initial, takes, languages }: Props) {
                       )}
                     </li>
                   ))}
-                  {team.langs.length === 0 && <li className="text-muted-foreground text-xs">none</li>}
+                  {team.alsoIn.map((lang) => (
+                    <li key={`${lang}-second`} className="font-mono text-xs">
+                      {lang} (second team)
+                    </li>
+                  ))}
+                  {team.langs.length === 0 && team.alsoIn.length === 0 && <li className="text-muted-foreground text-xs">none</li>}
                 </ul>
               </td>
               <td className="py-2">

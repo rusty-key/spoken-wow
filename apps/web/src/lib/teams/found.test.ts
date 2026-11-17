@@ -1,5 +1,6 @@
-/** Needs DATABASE_URL and migrations through 0110 applied. */
-import { afterAll, afterEach, beforeEach, describe, expect, it } from "vitest";
+/** Needs DATABASE_URL and migrations through 0113 applied. */
+import { Client } from "pg";
+import { afterAll, afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { ALL_TEAMS, closeDb, inTransaction, withTeam } from "@/lib/db";
 import { grantsOf } from "@/lib/grants/store";
@@ -43,6 +44,9 @@ afterEach(async () => {
     [codes],
   );
   for (const { teamId } of held) teams.add(teamId);
+  for (const table of ["take", "recording", "line_override", "generation_setting_locale", "pronunciation_lexicon_locale"]) {
+    await asSystem.query(`delete from "${table}" where "teamId" = any($1::uuid[])`, [[...teams]]);
+  }
   await asSystem.query(
     `delete from "activity" where "actorId" = $1 or "lang" = any($2::text[]) or "teamId" = any($3::uuid[])`,
     [actor.id, codes, [...teams]],
@@ -266,23 +270,161 @@ describe("foundTeam, hand-over", () => {
 });
 
 describe("foundTeam, second team", () => {
-  it("refuses a language a non-owner member looks after", async () => {
+  /** A known language whose own team A has a member who is no site owner, so somebody looks after it. */
+  async function maintained(): Promise<{ lang: string; a: string }> {
     const lang = code();
-    const auto = await known(lang);
+    const a = await known(lang);
     const member = await testUser("test-found-member");
     users.push(member);
     await asSystem.query(
       `insert into "team_member" ("teamId", "userId", "lang", "capability") values ($1, $2, $3, 'regenerate')`,
-      [auto, member.id, lang],
+      [a, member.id, lang],
     );
     expect(await languageBranch(lang)).toBe("second-team");
-    await expect(found(input(lang))).rejects.toSatisfy(refused(409, "needs a second team (plan 5)"));
-    expect(await teamOfLang(lang)).toBe(auto);
+    return { lang, a };
+  }
+
+  const voices = (team: string) =>
+    systemRows<{ name: string; race: string; gender: string }>(
+      `select "name", "race", "gender" from "voice" where "teamId" = $1 order by 1, 2, 3`,
+      [team],
+    );
+
+  it("makes a fresh second team beside the privileged one, with audio roles only", async () => {
+    const { lang, a } = await maintained();
+    const founded = await found(input(lang));
+    expect(founded).toMatchObject({
+      branch: "second-team",
+      from: lang.toLowerCase(),
+      moved: 0,
+      switchedOn: false,
+      languageName: null,
+      settings: "fresh",
+      granted: ["admin"],
+    });
+    expect(founded.teamId).not.toBe(a);
+    expect(
+      await systemRows(`select "teamId", "privileged" from "team_language" where "lang" = $1 order by "privileged"`, [lang]),
+    ).toEqual([
+      { teamId: founded.teamId, privileged: false },
+      { teamId: a, privileged: true },
+    ]);
+    expect(await teamOfLang(lang)).toBe(a);
+    expect(await textByTeamOf(lang)).toBe(false);
+    expect(
+      await systemRows(`select "teamId", "capability" from "team_member" where "userId" = $1 and "lang" = $2`, [
+        requester.id,
+        lang,
+      ]),
+    ).toEqual([{ teamId: founded.teamId, capability: "admin" }]);
+    expect((await grantsOf(requester.id)).filter((grant) => grant.lang === lang).map((grant) => grant.capability)).toEqual([
+      "admin",
+    ]);
+    const [english] = await systemRows<{ id: string }>(`select "id" from "team" where "slug" = 'english'`);
+    const theirs = await voices(english.id);
+    expect(theirs.length).toBeGreaterThan(0);
+    expect(await voices(founded.teamId)).toEqual(theirs);
   });
 
-  it("refuses a language a non-owner text maintainer looks after", async () => {
+  it("tells every worker the language has a second team", async () => {
+    const { lang } = await maintained();
+    const listener = new Client({ connectionString: process.env.DATABASE_URL });
+    await listener.connect();
+    try {
+      const heard: string[] = [];
+      listener.on("notification", (message) => heard.push(message.payload ?? ""));
+      await listener.query(`listen spoken_team_language`);
+      await found(input(lang));
+      await vi.waitFor(() => expect(heard).toContain(lang));
+    } finally {
+      await listener.end();
+    }
+  });
+
+  it("starts from the privileged team's settings when asked to copy", async () => {
+    const { lang, a } = await maintained();
+    await asSystem.query(
+      `insert into "generation_setting_locale" ("teamId", "lang", "modelId", "voiceSettings", "seedStrategy")
+       values ($1, $2, 'eleven_v3', '{}', 'none')`,
+      [a, lang],
+    );
+    const founded = await found(input(lang, { settings: "copy" }));
+    expect(founded.settings).toBe("copy");
+    expect(
+      await systemRows(`select "modelId" from "generation_setting_locale" where "teamId" = $1 and "lang" = $2`, [
+        founded.teamId,
+        lang,
+      ]),
+    ).toEqual([{ modelId: "eleven_v3" }]);
+    expect(await voices(founded.teamId)).toEqual(await voices(a));
+  });
+
+  it.each(["fresh", "copy"] as const)("gives a %s second team none of the privileged team's audio", async (settings) => {
+    const { lang, a } = await maintained();
+    const file = `gossip/${lang}-second.mp3`;
+    await asSystem.query(
+      `insert into "take" ("source", "lang", "file", "lineId", "version", "isCurrent", "origin", "bytes", "teamId")
+       values ('quests', $1, $2, 'g:second', 1, true, 'generated', 1, $3)`,
+      [lang, file, a],
+    );
+    await asSystem.query(
+      `insert into "line_override" ("teamId", "lang", "file", "lineId", "text") values ($1, $2, $3, 'q:1:accept', 'x')`,
+      [a, lang, file],
+    );
+    const founded = await found(input(lang, { settings }));
+    for (const table of ["take", "recording", "line_override"]) {
+      expect(await systemRows(`select 1 from "${table}" where "teamId" = $1`, [founded.teamId])).toHaveLength(0);
+    }
+    expect(await systemRows(`select 1 from "take" where "teamId" = $1 and "lang" = $2`, [a, lang])).toHaveLength(1);
+  });
+
+  it("refuses a requester who already works on the language, and leaves no team behind", async () => {
+    const { lang, a } = await maintained();
+    await asSystem.query(
+      `insert into "team_member" ("teamId", "userId", "lang", "capability") values ($1, $2, $3, 'regenerate')`,
+      [a, requester.id, lang],
+    );
+    const name = `Second ${lang}`;
+    await expect(found(input(lang, { team: { slug: null, name } }))).rejects.toSatisfy(
+      refused(
+        409,
+        `You already work on ${langName(lang)} in ${lang.toLowerCase()}; one person works in one team per language.`,
+      ),
+    );
+    expect(await systemRows(`select 1 from "team" where "name" = $1`, [name])).toHaveLength(0);
+    expect(await systemRows(`select 1 from "team_language" where "lang" = $1`, [lang])).toHaveLength(1);
+  });
+
+  it("files the new team's log under it, not under the privileged team", async () => {
+    const { lang, a } = await maintained();
+    const founded = await found(input(lang, { settings: "copy" }));
+    const log = await systemRows<{ kind: string; teamId: string | null; lang: string | null; subject: string | null; detail: unknown }>(
+      `select "kind", "teamId", "lang", "subject", "detail" from "activity" where "actorId" = $1 order by "kind"`,
+      [actor.id],
+    );
+    expect(log.map((entry) => entry.kind)).toEqual(["grant.added", "team.created", "team.second_in_language"]);
+    expect(log.find((entry) => entry.kind === "team.second_in_language")).toEqual({
+      kind: "team.second_in_language",
+      teamId: founded.teamId,
+      lang,
+      subject: founded.slug,
+      detail: { slug: founded.slug, beside: lang.toLowerCase(), settings: "copy" },
+    });
+    expect(log.find((entry) => entry.kind === "grant.added")).toMatchObject({
+      teamId: founded.teamId,
+      subject: requester.id,
+    });
+    expect(
+      await systemRows(
+        `select 1 from "activity" where "teamId" = $1 and "kind" in ('team.second_in_language', 'grant.added')`,
+        [a],
+      ),
+    ).toHaveLength(0);
+  });
+
+  it("still makes a second team beside a language a non-owner text maintainer looks after", async () => {
     const lang = code();
-    const auto = await known(lang);
+    const a = await known(lang);
     const maintainer = await testUser("test-found-text");
     users.push(maintainer);
     await asSystem.query(
@@ -290,7 +432,8 @@ describe("foundTeam, second team", () => {
       [maintainer.id, lang],
     );
     expect(await languageBranch(lang)).toBe("second-team");
-    await expect(found(input(lang))).rejects.toSatisfy(refused(409, "needs a second team (plan 5)"));
-    expect(await teamOfLang(lang)).toBe(auto);
+    const founded = await found(input(lang));
+    expect(founded.branch).toBe("second-team");
+    expect(await teamOfLang(lang)).toBe(a);
   });
 });

@@ -115,6 +115,14 @@ describe("team requests routes", () => {
     expect((await PATCH(json("PATCH", { decision: "approve" }), ctx(id))).status).toBe(409);
   });
 
+  it("refuses an approval whose settings are neither copy nor fresh", async () => {
+    const id = await idOf(await ask({ lang: code(), language: names, teamName: "Xq Team" }));
+    as(admin, "admin");
+    expect((await PATCH(json("PATCH", { decision: "approve", settings: "all" }), ctx(id))).status).toBe(400);
+    const pending = (await (await GET(new Request("http://x/api/team-requests?state=pending"))).json()) as { requests: { id: string }[] };
+    expect(pending.requests.map((r) => r.id)).toContain(id);
+  });
+
   it("answers 404 to a PATCH of an id that is not a uuid", async () => {
     as(admin, "admin");
     const response = await PATCH(json("PATCH", { decision: "approve" }), ctx("not-a-uuid"));

@@ -281,6 +281,11 @@ export function describe(row: ActivityRow): { what: string; quote: string | null
       return { what: "renamed the team", quote: str(d.name) };
     case "team.language_moved":
       return { what: `handed the language from ${str(d.from) ?? "?"} to ${str(d.to) ?? "?"}`, quote: null };
+    case "team.second_in_language":
+      return {
+        what: `made the team ${str(d.slug) ?? "?"} a second team beside ${str(d.beside) ?? "?"}${d.settings === "copy" ? ", starting from its voices and settings" : ""}`,
+        quote: null,
+      };
     case "release.started":
       return { what: `pressed Release for ${str(d.section) ?? "a section"}`, quote: null };
     case "release.finished":

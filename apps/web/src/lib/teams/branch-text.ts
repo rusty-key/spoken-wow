@@ -16,6 +16,6 @@ export function branchText(branch: Branch, name: string): string {
     case "hand-over":
       return `Nobody looks after ${name} yet; your team takes it over`;
     case "second-team":
-      return `${name} has a team already; a second team is not possible yet`;
+      return `${name} has a team already; approving makes a second team beside it, with audio roles only`;
   }
 }
