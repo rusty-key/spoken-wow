@@ -13,7 +13,7 @@ import "server-only";
 import crypto from "node:crypto";
 
 import type { Lang } from "@/lib/lang";
-import { scopeKey } from "@/lib/teams/store";
+import { memoByTeamLang } from "@/lib/memo";
 import { fishCost, type FishOptions } from "@/lib/voices/fish";
 import { forgetReferences, listReferences, loadReferences } from "@/lib/voices/references";
 
@@ -26,8 +26,8 @@ import type { Speaker, SpeakRequest, Spoken, Voices } from "./speaker";
 /** What a fish.audio take is recorded as having been cut at: what fish-tts.ts asks for. */
 export const FISH_OUTPUT_FORMAT = "mp3_44100_128";
 
-type CompiledLexicon = { stamp: string | null; apply: (text: string) => string; version: string | null };
-const lexicons = new Map<string, CompiledLexicon>();
+type CompiledLexicon = { apply: (text: string) => string; version: string | null };
+const lexiconKey = Symbol.for("spoken.fish-lexicon.by-lang");
 
 /**
  * A language's lexicon as fish.audio applies it, rebuilt only when the lexicon changes.
@@ -38,14 +38,10 @@ const lexicons = new Map<string, CompiledLexicon>();
  * happens once per edit rather than once per line of a forty-thousand-line batch.
  */
 async function fishLexicon(lang: Lang): Promise<CompiledLexicon> {
-  const stamp = await lexiconStamp(lang);
-  const slot = await scopeKey(lang);
-  const cached = lexicons.get(slot);
-  if (cached && cached.stamp === stamp) return cached;
-  const rules = fishRules((await readLexicon(lang)).entries, lang);
-  const compiled = { stamp, apply: compileFishLexicon(rules), version: fishLexiconVersion(rules) };
-  lexicons.set(slot, compiled);
-  return compiled;
+  return memoByTeamLang(lexiconKey, lang, await lexiconStamp(lang), async () => {
+    const rules = fishRules((await readLexicon(lang)).entries, lang);
+    return { apply: compileFishLexicon(rules), version: fishLexiconVersion(rules) };
+  });
 }
 
 export function fishSpeaker(options: FishOptions & { settings: FishSettings }): Speaker {

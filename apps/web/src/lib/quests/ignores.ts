@@ -21,7 +21,7 @@ import { recordActivity } from "../activity/store";
 import { ALL_TEAMS, queryIn, withTeam } from "../db";
 import { baseLineId } from "../contributions/naming";
 import { BASE_LANG, type Lang } from "../lang";
-import { ownerOrAll, scopeKey, teamOf, type TeamId } from "../teams/store";
+import { ownerOrAll, teamOf, type TeamId } from "../teams/store";
 
 export type LineIgnore = {
   lineId: string;
@@ -79,7 +79,8 @@ export async function readIgnores(lang: Lang = BASE_LANG): Promise<Map<string, L
   // every-language ignores still hide its lines.
   const reader = await ownerOrAll(lang);
   const current = await stamp(reader);
-  const slot = await scopeKey(lang);
+  // scopeKey's slot, from the owner already in hand.
+  const slot = `${reader}:${lang}`;
   const hit = memo.get(slot);
   if (hit?.stamp === current) return hit.map;
 

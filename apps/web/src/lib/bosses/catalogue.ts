@@ -13,8 +13,7 @@
 import "server-only";
 
 import { query } from "@/lib/db";
-import { memoByLang } from "@/lib/memo";
-import { scopeKey } from "@/lib/teams/store";
+import { memoByTeamLang } from "@/lib/memo";
 import { versionStamp } from "@/lib/stamp";
 import { BASE_LANG, type Lang } from "@/lib/lang";
 import { EMPTY_CONTEXT, sectionContext, type SearchContext, type Take } from "@/lib/places/catalogue";
@@ -175,7 +174,7 @@ const byPathKey = Symbol.for("spoken.bosses-by-path.by-lang");
 
 /** Every live boss, ordered by instance position, then boss position. */
 export async function catalogue(lang: Lang = BASE_LANG): Promise<BossEntry[]> {
-  return memoByLang(catalogueKey, await scopeKey(lang), await stampOf(lang), () => build(lang));
+  return memoByTeamLang(catalogueKey, lang, await stampOf(lang), () => build(lang));
 }
 
 export { stampOf as catalogueStamp };
@@ -184,7 +183,7 @@ export { stampOf as catalogueStamp };
 export async function lineByPath(map: number, slug: string, lang: Lang = BASE_LANG): Promise<BossEntry | undefined> {
   if (!Number.isInteger(map)) return undefined;
   const entries = await catalogue(lang);
-  const byPath = memoByLang(byPathKey, await scopeKey(lang), entries, () => new Map(entries.map((e) => [e.file, e])));
+  const byPath = await memoByTeamLang(byPathKey, lang, entries, () => new Map(entries.map((e) => [e.file, e])));
   return byPath.get(`${map}/${slug}`);
 }
 

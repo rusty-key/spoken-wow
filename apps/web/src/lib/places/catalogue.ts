@@ -14,7 +14,7 @@ import "server-only";
 
 import { query } from "@/lib/db";
 import type { LiveRecording } from "@/lib/recordings/live";
-import { memoByLang } from "@/lib/memo";
+import { memoByTeamLang } from "@/lib/memo";
 import { nameStamp, versionStamp } from "@/lib/stamp";
 import { loadDirtyContext, NO_DIRT, type DirtyContext } from "@/lib/generation/dirty";
 import { BASE_LANG, type Lang } from "@/lib/lang";
@@ -22,7 +22,7 @@ import { BASE_LANG, type Lang } from "@/lib/lang";
 import { corpusRows, currentLore } from "./lore";
 import { madeByOf, type MadeBy } from "@/lib/takes/made-by";
 import { liveTakes } from "@/lib/takes/store";
-import { readAs, scopeKey } from "@/lib/teams/store";
+import { readAs } from "@/lib/teams/store";
 import {
   assignFiles,
   loadPronunciation,
@@ -288,7 +288,7 @@ async function buildTranslated(lang: Lang): Promise<CorpusEntry[]> {
 }
 
 export async function catalogue(lang: Lang = BASE_LANG): Promise<CatalogueEntry[]> {
-  return memoByLang(catalogueKey, await scopeKey(lang), await stampOf(lang), () => buildCorpus(lang));
+  return memoByTeamLang(catalogueKey, lang, await stampOf(lang), () => buildCorpus(lang));
 }
 
 /**
@@ -316,7 +316,7 @@ async function linesByPath(lang: Lang): Promise<Map<string, CatalogueEntry>> {
   // Keyed on the catalogue it was built from, so it rebuilds exactly when that does and
   // asks the database nothing of its own.
   const entries = await catalogue(lang);
-  return memoByLang(byPathKey, await scopeKey(lang), entries, () => new Map(entries.map((e) => [e.file, e])));
+  return memoByTeamLang(byPathKey, lang, entries, () => new Map(entries.map((e) => [e.file, e])));
 }
 
 export async function lineByPath(
