@@ -12,7 +12,7 @@ import { systemRows } from "@/lib/teams/testing";
 
 import { keep, landQuarantined, storageRefusal } from "./keep";
 import { memoryBlobs, sha256Of, useArchiveForTests } from "./store";
-import { locate, QUARANTINE, useBackendForTests } from "./where";
+import { locate, quarantineKey, useBackendForTests } from "./where";
 
 vi.mock("node:timers/promises", () => ({ setTimeout: async () => {} }));
 
@@ -90,7 +90,7 @@ describe("keep with a team bucket", () => {
     restores.push(useBackendForTests(backend.id, unopened));
     const bytes = randomBytes(64);
     const sha256 = (await keep("takes", bytes, "audio/mpeg", path.join(dir, "seal.mp3"), "enUS"))!;
-    expect(house.objects.has(`${QUARANTINE}takes/${sha256}`)).toBe(true);
+    expect(house.objects.has(quarantineKey(backend.id, `takes/${sha256}`))).toBe(true);
     const [row] = await systemRows(`select "health" from "storage_backend" where "id" = $1`, [backend.id]);
     expect(row.health).toBe("ok");
   });
@@ -137,24 +137,80 @@ describe("keep with a team bucket", () => {
     const bytes = randomBytes(64);
     const sha256 = (await keep("takes", bytes, "audio/mpeg", path.join(dir, "q.mp3"), "enUS"))!;
     const key = `takes/${sha256}`;
-    expect(house.objects.get(`${QUARANTINE}${key}`)?.data.equals(bytes)).toBe(true);
+    expect(house.objects.get(quarantineKey(backend.id, key))?.data.equals(bytes)).toBe(true);
     expect(await rowOf(sha256, backend.id)).toEqual({ pending: true });
-    expect((await locate(key)).key).toBe(`${QUARANTINE}${key}`);
+    expect((await locate(key)).key).toBe(quarantineKey(backend.id, key));
     const [failing] = await systemRows(`select "health", "lastError" from "storage_backend" where "id" = $1`, [backend.id]);
     expect(failing).toEqual({ health: "failing", lastError: "Writing an object: HTTP 403 AccessDenied" });
     expect(await storageRefusal("enUS")).toContain("failing");
 
     // Still refusing: nothing lands, nothing is lost.
     expect(await landQuarantined()).toBe(0);
-    expect(house.objects.has(`${QUARANTINE}${key}`)).toBe(true);
+    expect(house.objects.has(quarantineKey(backend.id, key))).toBe(true);
 
     restores.push(useBackendForTests(backend.id, backend.store));
     expect(await landQuarantined()).toBeGreaterThanOrEqual(1);
     expect(backend.store.objects.get(key)?.data.equals(bytes)).toBe(true);
-    expect(house.objects.has(`${QUARANTINE}${key}`)).toBe(false);
+    expect(house.objects.has(quarantineKey(backend.id, key))).toBe(false);
     expect(await rowOf(sha256, backend.id)).toEqual({ pending: false });
     const [healed] = await systemRows(`select "health" from "storage_backend" where "id" = $1`, [backend.id]);
     expect(healed.health).toBe("ok");
     expect(await storageRefusal("enUS")).toBeNull();
+  });
+});
+
+describe("the quarantine", () => {
+  const refusing = (store: ReturnType<typeof memoryBlobs>) => ({ ...store, put: async () => { throw new Error("HTTP 503"); } });
+
+  it("removes its copy when the same bytes later land directly, and keeps none for bytes already in the bucket", async () => {
+    vi.spyOn(console, "error").mockImplementation(() => {});
+    const house = ours("r2");
+    const backend = await team();
+    const bytes = randomBytes(64);
+    const key = `takes/${sha256Of(bytes)}`;
+
+    restores.push(useBackendForTests(backend.id, refusing(backend.store)));
+    await keep("takes", bytes, "audio/mpeg", path.join(dir, "q1.mp3"), "enUS");
+    expect(house.objects.has(quarantineKey(backend.id, key))).toBe(true);
+
+    // The bucket answers again, before the landing job ran: the direct write takes the copy's place.
+    restores.push(useBackendForTests(backend.id, backend.store));
+    await systemRows(`update "storage_backend" set "health" = 'ok' where "id" = $1`, [backend.id]);
+    await keep("takes", bytes, "audio/mpeg", path.join(dir, "q2.mp3"), "enUS");
+    expect(house.objects.has(quarantineKey(backend.id, key))).toBe(false);
+    expect(await rowOf(sha256Of(bytes), backend.id)).toEqual({ pending: false });
+
+    // It fails again, but the bucket holds these bytes already: nothing goes to ours.
+    restores.push(useBackendForTests(backend.id, refusing(backend.store)));
+    await keep("takes", bytes, "audio/mpeg", path.join(dir, "q3.mp3"), "enUS");
+    expect(house.objects.has(quarantineKey(backend.id, key))).toBe(false);
+  });
+
+  it("lands one bucket's objects while another's keeps refusing", async () => {
+    vi.spyOn(console, "error").mockImplementation(() => {});
+    const { ownTeam } = await import("@/lib/teams/testing");
+    const house = ours("r2");
+    const fr = await ownTeam("frFR");
+    try {
+      const down = await team();
+      const up = await testBackend({ team: fr.team, writing: true });
+      restores.push(useBackendForTests(down.id, refusing(down.store)));
+      // The broken bucket has more waiting, and older, than a round takes from it.
+      for (let i = 0; i < 3; i++) await keep("takes", randomBytes(32), "audio/mpeg", path.join(dir, `d${i}.mp3`), "enUS");
+      restores.push(useBackendForTests(up.id, refusing(up.store)));
+      const bytes = randomBytes(32);
+      await keep("takes", bytes, "audio/mpeg", path.join(dir, "u.mp3"), "frFR");
+      restores.push(useBackendForTests(up.id, up.store));
+
+      expect(await landQuarantined(2)).toBe(1);
+      expect(up.store.objects.has(`takes/${sha256Of(bytes)}`)).toBe(true);
+      expect(house.objects.has(quarantineKey(up.id, `takes/${sha256Of(bytes)}`))).toBe(false);
+      up.restore();
+    } finally {
+      const { asSystem } = await import("@/lib/teams/testing");
+      await asSystem.query(`delete from "archive_object" where "teamId" = $1`, [fr.team]);
+      await asSystem.query(`delete from "storage_backend" where "teamId" = $1`, [fr.team]);
+      await fr.restore();
+    }
   });
 });

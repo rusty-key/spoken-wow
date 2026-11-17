@@ -8,7 +8,7 @@
  */
 import "server-only";
 
-import { ALL_TEAMS, query, queryIn } from "@/lib/db";
+import { ALL_TEAMS, query, queryIn, type TeamId } from "@/lib/db";
 import type { Lang } from "@/lib/lang";
 import { writingBackend } from "@/lib/storage/backends";
 import { writeAtomic } from "@/lib/takes/bytes";
@@ -16,7 +16,7 @@ import { teamOf } from "@/lib/teams/store";
 
 import { archive, archiveMode, blobKey, sha256Of, type BlobPrefix } from "./store";
 import { SealError } from "./seal";
-import { backendStore, QUARANTINE } from "./where";
+import { backendStore, quarantineKey } from "./where";
 
 const reason = (error: unknown) => (error instanceof Error ? error.message : String(error)).slice(0, 300);
 
@@ -32,17 +32,35 @@ async function markFailing(backendId: string, error: unknown): Promise<void> {
   );
 }
 
-async function record(prefix: BlobPrefix, sha256: string, backendId: string, pending: boolean): Promise<void> {
-  // A copy already in the team's bucket stays the one read, even when these same bytes wait in
-  // the quarantine as well.
-  await query(
-    `insert into "archive_object" ("prefix", "sha256", "backendId", "pending") values ($1, $2, $3, $4)
+/**
+ * Records that `backendId`, `team`'s bucket, holds the object, or that it waits in quarantine for
+ * it. A copy already in the bucket stays the one read. Returns whether the row was waiting before,
+ * so a write that lands directly can remove the quarantined copy nothing would land any more.
+ */
+async function record(prefix: BlobPrefix, sha256: string, backendId: string, team: TeamId, pending: boolean): Promise<boolean> {
+  const [row] = await query<{ was: boolean | null }>(
+    `with "before" as (
+       select "pending" from "archive_object" where "prefix" = $1 and "sha256" = $2 and "backendId" = $3
+     )
+     insert into "archive_object" ("prefix", "sha256", "backendId", "teamId", "pending") values ($1, $2, $3, $4, $5)
      on conflict ("prefix", "sha256", "backendId") do update
-        set "pending" = $4 and ("archive_object"."pending" or "archive_object"."missingAt" is not null),
+        set "pending" = $5 and ("archive_object"."pending" or "archive_object"."missingAt" is not null),
             "missingAt" = null,
-            "keptAt" = now()`,
-    [prefix, sha256, backendId, pending],
+            "keptAt" = now()
+     returning (select "pending" from "before") as "was"`,
+    [prefix, sha256, backendId, team, pending],
   );
+  return row?.was ?? false;
+}
+
+/** Whether `backendId` is known to hold a landed, present copy of the object. */
+async function holds(prefix: BlobPrefix, sha256: string, backendId: string): Promise<boolean> {
+  const rows = await query(
+    `select 1 from "archive_object"
+      where "prefix" = $1 and "sha256" = $2 and "backendId" = $3 and not "pending" and "missingAt" is null`,
+    [prefix, sha256, backendId],
+  );
+  return rows.length > 0;
 }
 
 /**
@@ -51,20 +69,23 @@ async function record(prefix: BlobPrefix, sha256: string, backendId: string, pen
  */
 export async function putArchived(prefix: BlobPrefix, sha256: string, data: Buffer, contentType: string, lang: Lang): Promise<void> {
   const key = blobKey(prefix, sha256);
-  const target = archiveMode() === "r2" ? await writingBackend(await teamOf(lang)) : null;
+  const team = await teamOf(lang);
+  const target = archiveMode() === "r2" ? await writingBackend(team) : null;
   if (!target) return archive().put(key, data, contentType);
   if (target.health !== "failing") {
     try {
       await (await backendStore(target.id)).put(key, data, contentType);
-      await record(prefix, sha256, target.id, false);
+      if (await record(prefix, sha256, target.id, team, false)) await dropQuarantined(target.id, key);
       return;
     } catch (error) {
       console.error(`storage: the team bucket ${target.id} refused ${key}, quarantined:`, error);
       await markFailing(target.id, error);
     }
   }
-  await archive().put(`${QUARANTINE}${key}`, data, contentType);
-  await record(prefix, sha256, target.id, true);
+  // These same bytes already in the bucket need no copy of ours.
+  if (await holds(prefix, sha256, target.id)) return;
+  await archive().put(quarantineKey(target.id, key), data, contentType);
+  await record(prefix, sha256, target.id, team, true);
 }
 
 /**
@@ -99,16 +120,28 @@ export async function keep(
   return kept;
 }
 
+async function dropQuarantined(backendId: string, key: string): Promise<void> {
+  await archive().delete(quarantineKey(backendId, key)).catch((error) => console.error(`storage: could not delete the quarantined ${key}:`, error));
+}
+
+/** Sends a row that cannot be landed now to the back of its bucket's queue, so it holds up no other. */
+async function requeue(prefix: BlobPrefix, sha256: string, backendId: string): Promise<void> {
+  await query(`update "archive_object" set "keptAt" = now() where "prefix" = $1 and "sha256" = $2 and "backendId" = $3`, [prefix, sha256, backendId]);
+}
+
 /**
- * Moves up to `limit` quarantined objects into their team's bucket, oldest first, and deletes our
- * copy of each once it has landed. A bucket that refuses one is left for the next round; one that
- * takes one is healthy again. Returns how many landed.
+ * Moves up to `perBucket` quarantined objects of each bucket into it, oldest first, and deletes our
+ * copy of each once it has landed. A bucket that refuses one is left for the next round, without
+ * holding up another's; one that takes one is healthy again. Returns how many landed.
  */
-export async function landQuarantined(limit = 100): Promise<number> {
+export async function landQuarantined(perBucket = 20): Promise<number> {
   const rows = await query<{ prefix: BlobPrefix; sha256: string; backendId: string }>(
-    `select o."prefix", o."sha256", o."backendId" from "archive_object" o
-      where o."pending" order by o."keptAt" limit $1`,
-    [limit],
+    `select "prefix", "sha256", "backendId" from (
+       select o."prefix", o."sha256", o."backendId", o."keptAt",
+              row_number() over (partition by o."backendId" order by o."keptAt") as "n"
+         from "archive_object" o where o."pending") q
+      where "n" <= $1 order by "keptAt"`,
+    [perBucket],
   );
   const refused = new Set<string>();
   const healed = new Set<string>();
@@ -116,14 +149,16 @@ export async function landQuarantined(limit = 100): Promise<number> {
   for (const row of rows) {
     if (refused.has(row.backendId)) continue;
     const key = blobKey(row.prefix, row.sha256);
-    const held = await archive().get(`${QUARANTINE}${key}`);
+    const held = await archive().get(quarantineKey(row.backendId, key));
     if (!held?.body) {
       console.error(`storage: ${key} is pending but not in the quarantine`);
+      await requeue(row.prefix, row.sha256, row.backendId);
       continue;
     }
     const data = Buffer.from(await new Response(held.body).arrayBuffer());
     if (sha256Of(data) !== row.sha256) {
       console.error(`storage: the quarantined ${key} does not match its hash`);
+      await requeue(row.prefix, row.sha256, row.backendId);
       continue;
     }
     try {
@@ -139,7 +174,7 @@ export async function landQuarantined(limit = 100): Promise<number> {
     );
     healed.add(row.backendId);
     // Only once nothing reads it from here: the row above sends every read to the team's bucket.
-    await archive().delete(`${QUARANTINE}${key}`).catch((error) => console.error(`storage: could not delete the quarantined ${key}:`, error));
+    await dropQuarantined(row.backendId, key);
     landed++;
   }
   // A bucket that took an object works again, unless a later one of its own was refused.
