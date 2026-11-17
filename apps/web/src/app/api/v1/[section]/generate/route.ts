@@ -20,7 +20,7 @@ import type { Provider } from "@/lib/generation/speakers/speaker";
 import type { LineFilters } from "@/lib/search";
 import { MAX_ITEMS } from "@/lib/text-api/apply";
 import { requireToken } from "@/lib/text-api/guard";
-import { invalid, noQuery, sectionOf } from "@/lib/text-api/respond";
+import { invalid, sectionOf } from "@/lib/text-api/respond";
 import { BAD_VARIANT, isVariant } from "@/lib/text-api/types";
 
 export const dynamic = "force-dynamic";
@@ -29,12 +29,12 @@ const MAX_LABEL = 100;
 const KEYS = new Set(["items", "filters", "label", "dryRun"]);
 
 export async function POST(request: Request, { params }: { params: Promise<{ section: string }> }) {
-  const { context, denied } = await requireToken(request, { need: "generate" });
-  if (denied) return denied;
-
   // The language comes from the token, and nothing else here is read from the URL.
-  const refused = noQuery(request, "this takes a JSON body and no query string");
-  if (refused) return refused;
+  const { context, denied } = await requireToken(request, {
+    need: "generate",
+    noQuery: "this takes a JSON body and no query string",
+  });
+  if (denied) return denied;
 
   const found = sectionOf((await params).section);
   if (found instanceof Response) return found;
@@ -98,15 +98,20 @@ export async function POST(request: Request, { params }: { params: Promise<{ sec
     const preference = await readPreference(userId, lang);
     const provider = preference.provider;
     const plan = await derive(provider);
-    const estimate = await estimatePlan(plan, preference, lang, provider);
-    const providers = Object.keys(estimate) as Provider[];
-    const stored = await Promise.all(providers.map((key) => readApiKey(userId, key).catch(() => null)));
+    // The providers estimatePlan prices: each job's own, else the preference's.
+    const providers = [...new Set(plan.jobs.map((job) => job.provider ?? provider))];
+    const [estimate, stored] = await Promise.all([
+      estimatePlan(plan, preference, lang, provider),
+      Promise.all(providers.map((key) => readApiKey(userId, key).catch(() => null))),
+    ]);
     const missingKeys = providers.filter((_, i) => !stored[i]);
+    // Each estimate counts a file once, so the totals are their sums.
+    const priced = Object.values(estimate);
     return Response.json({
       dryRun: true,
       provider,
-      files: new Set(plan.jobs.map((job) => job.file)).size,
-      characters: plan.jobs.reduce((sum, job) => sum + job.characters, 0),
+      files: priced.reduce((sum, one) => sum + one.files, 0),
+      characters: priced.reduce((sum, one) => sum + one.characters, 0),
       matched: plan.matched,
       dropped: plan.dropped,
       unknown: plan.unknown,

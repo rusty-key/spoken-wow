@@ -17,10 +17,9 @@ import { catalogue as bookCatalogue } from "@/lib/readables/catalogue";
 import { corpus } from "@/lib/quests/catalogue";
 import { searchContext } from "@/lib/quests/context";
 import { recordingsFor } from "@/lib/recordings/store";
-import { batchPlan, matchingLines, type LineFilters } from "@/lib/search";
+import { batchPlan, dayStart, matchingLines, type LineFilters } from "@/lib/search";
 import { AUDIO_STATES } from "@/lib/audio-state";
 import { CLIENT_FILTERS } from "@/lib/contributions/client";
-import { SOURCES as LINE_SOURCES } from "@/lib/line-fields";
 import { filtersFromParams, needsLevels, needsStale } from "@/lib/search-request";
 import type { Source } from "@/lib/sections";
 import { pinnedVoices } from "@/lib/voices/references";
@@ -99,7 +98,6 @@ const FILTER_KEYS = new Set([
 /** Keys an Explorer URL carries that mean nothing to a batch. */
 const EXPLORER_ONLY = new Set(["page"]);
 const FLAGS = ["narration", "progress", "overridden", "ignored", "dirty", "missing", "outdated"];
-const DAY = /^\d{4}-\d{2}-\d{2}$/;
 
 /**
  * For the API only: the button's derivation drops what it does not understand, which for a typed
@@ -122,12 +120,11 @@ export async function filterError(
       };
     }
   }
-  // Every element of the one list filter: parsing drops the unknown ones and keeps the rest.
-  const badSource = (params.get("source") ?? "")
-    .split(",")
-    .find((value) => value !== "" && !(LINE_SOURCES as readonly string[]).includes(value));
-  if (badSource !== undefined) return { error: `source=${badSource} is not a valid value` };
   const parsed = await filtersFromParams(params, lang);
+  // Every element of the one list filter: parsing drops the unknown ones and keeps the rest.
+  const kept: readonly string[] = parsed.source ?? [];
+  const badSource = (params.get("source") ?? "").split(",").find((value) => value !== "" && !kept.includes(value));
+  if (badSource !== undefined) return { error: `source=${badSource} is not a valid value` };
   const parsedTo: Record<string, unknown> = {
     filter: parsed.filter === "any" && params.get("filter") !== "any" ? undefined : parsed.filter,
     // `state` itself, which parsing would let the legacy missing and outdated flags stand in for.
@@ -145,8 +142,8 @@ export async function filterError(
     minLevel: parsed.minLevel,
     maxLevel: parsed.maxLevel,
     playerGender: parsed.playerGender,
-    before: params.get("before") && DAY.test(params.get("before")!) ? true : undefined,
-    after: params.get("after") && DAY.test(params.get("after")!) ? true : undefined,
+    before: dayStart(params.get("before") ?? "") === null ? undefined : true,
+    after: dayStart(params.get("after") ?? "") === null ? undefined : true,
   };
   for (const [key, value] of Object.entries(parsedTo)) {
     const given = params.get(key);
@@ -339,15 +336,14 @@ export async function estimatePlan(
     if (group) group.push(job);
     else byProvider.set(key, [job]);
   }
-  if (byProvider.size === 0) return {};
-
-  const out: Partial<Record<Provider, Estimate>> = {};
-  for (const [key, jobs] of byProvider) {
-    const rate =
-      key === "fish"
-        ? await observedFishRate(preference.fish.model, lang)
-        : await observedRate(preference.elevenlabs.modelId);
-    out[key] = estimate(jobs, rate);
-  }
-  return out;
+  const priced = await Promise.all(
+    [...byProvider].map(async ([key, jobs]) => {
+      const rate =
+        key === "fish"
+          ? await observedFishRate(preference.fish.model, lang)
+          : await observedRate(preference.elevenlabs.modelId);
+      return [key, estimate(jobs, rate)] as const;
+    }),
+  );
+  return Object.fromEntries(priced);
 }

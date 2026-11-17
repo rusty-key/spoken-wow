@@ -1,20 +1,17 @@
 /** The API's counterpart of the panel's Stop: cancels the batch's pending jobs, nothing else. */
-import { ownGeneration } from "@/lib/generation/batch-status";
+import { notOwnGeneration } from "@/lib/generation/batch-status";
 import { cancelPending } from "@/lib/generation/queue";
 import { requireToken } from "@/lib/text-api/guard";
-import { noQuery } from "@/lib/text-api/respond";
 
 export const dynamic = "force-dynamic";
 
 export async function POST(request: Request, { params }: { params: Promise<{ batchId: string }> }) {
-  const { context, denied } = await requireToken(request, { need: "generate" });
+  const { context, denied } = await requireToken(request, { need: "generate", noQuery: true });
   if (denied) return denied;
-  const refused = noQuery(request);
-  if (refused) return refused;
 
   const { batchId } = await params;
-  const batch = await ownGeneration(context, batchId, { failures: false });
-  if (batch instanceof Response) return batch;
+  const missing = await notOwnGeneration(context, batchId);
+  if (missing) return missing;
 
   const cancelled = await cancelPending("Stopped through the API", {
     batchId,

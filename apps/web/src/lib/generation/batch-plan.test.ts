@@ -264,6 +264,8 @@ describe("filterError", () => {
     ["state=bogus&missing=1", "state=bogus"],
     ["minLevel=abc", "minLevel"],
     ["before=yesterday", "before"],
+    ["before=2026-13-01", "before=2026-13-01"],
+    ["after=2026-00-10", "after=2026-00-10"],
     ["ignored=yes", "ignored"],
   ])("refuses %s, naming %s", async (query, named) => {
     expect((await filterError(query, "enUS")).error).toContain(named);

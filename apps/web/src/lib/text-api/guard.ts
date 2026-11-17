@@ -9,7 +9,7 @@ import "server-only";
 
 import { viewerOf } from "@/lib/grants/store";
 import type { Lang } from "@/lib/lang";
-import { can, type Capability } from "@/lib/permissions";
+import { can, type Capability, type Viewer } from "@/lib/permissions";
 import { findLiveToken } from "@/lib/tokens/store";
 import type { TokenAccess } from "@/lib/tokens/types";
 
@@ -27,13 +27,30 @@ const BEARER = /^Bearer\s+(\S+)$/;
 export type TokenNeed = "read" | "write" | "generate" | "any";
 
 /**
+ * Which of a token's scopes its owner's grants back: text access needs `text`, generate needs
+ * `regenerate`. A scope the token does not carry is false.
+ */
+export function backedScopes(
+  viewer: Viewer | null,
+  lang: Lang,
+  access: TokenAccess,
+  generate: boolean,
+): { text: boolean; generate: boolean } {
+  return {
+    text: access !== "none" && can(viewer, "text", lang),
+    generate: generate && can(viewer, "regenerate", lang),
+  };
+}
+
+/**
  * `need` is the scope the route works under: `read` and `write` need text access, `generate`
  * needs the generate flag, `any` takes either. Each is checked against the owner's grant now.
  * `also` is a grant a route needs on top: lexicon writes need `configure`, as on the site.
+ * `noQuery` refuses a query string with a 400, worded as given or a default.
  */
 export async function requireToken(
   request: Request,
-  options: { need?: TokenNeed; also?: Capability } = {},
+  options: { need?: TokenNeed; also?: Capability; noQuery?: true | string } = {},
 ): Promise<{ context: TokenContext; denied: null } | { context: null; denied: Response }> {
   const need = options.need ?? "read";
   const denied = (status: number, error: string) => ({
@@ -47,8 +64,7 @@ export async function requireToken(
 
   const viewer = await viewerOf({ user: { id: token.userId, role: token.role } });
   const hasText = token.access !== "none";
-  const textOk = hasText && can(viewer, "text", token.lang);
-  const generateOk = token.generate && can(viewer, "regenerate", token.lang);
+  const { text: textOk, generate: generateOk } = backedScopes(viewer, token.lang, token.access, token.generate);
 
   const noText = () =>
     hasText
@@ -69,6 +85,9 @@ export async function requireToken(
   }
   if (options.also && !can(viewer, options.also, token.lang)) {
     return denied(403, `this token's owner does not hold ${options.also} in ${token.lang}`);
+  }
+  if (options.noQuery && new URL(request.url).search) {
+    return denied(400, options.noQuery === true ? "this takes no query string" : options.noQuery);
   }
 
   return {

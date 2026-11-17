@@ -5,7 +5,7 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { langName, type Lang } from "@/lib/lang";
-import type { ApiToken, TokenAccess } from "@/lib/tokens/types";
+import { accessLabel, type ApiToken, type TokenAccess } from "@/lib/tokens/types";
 
 import { useApiTokens } from "./useApiTokens";
 
@@ -152,7 +152,7 @@ export default function ApiTokenSection({ langs, initial }: { langs: TokenLang[]
               <span className="font-medium">{token.label}</span>
               <span className="text-muted-foreground font-mono">…{token.hint}</span>
               <span>{langName(token.lang)}</span>
-              <span>{token.access === "none" ? "no text" : token.access}</span>
+              <span>{accessLabel(token)}</span>
               {token.generate && <span>generate</span>}
               <span className="text-muted-foreground">expires {token.expiresAt.slice(0, 10)}</span>
               <span className="text-muted-foreground">

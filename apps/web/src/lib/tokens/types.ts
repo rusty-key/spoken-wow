@@ -16,3 +16,8 @@ export type ApiToken = {
   lastUsedAt: string | null;
   revokedAt: string | null;
 };
+
+/** The token's text access as the profile shows it. */
+export function accessLabel(token: Pick<ApiToken, "access">): string {
+  return token.access === "none" ? "no text" : token.access;
+}

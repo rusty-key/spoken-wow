@@ -4,8 +4,8 @@
  */
 import { viewerOf } from "@/lib/grants/store";
 import { knownLang } from "@/lib/languages/catalogue";
-import { can } from "@/lib/permissions";
 import { currentSession } from "@/lib/session";
+import { backedScopes } from "@/lib/text-api/guard";
 import { createToken, isTokenAccess, listTokens } from "@/lib/tokens/store";
 
 export const dynamic = "force-dynamic";
@@ -46,8 +46,8 @@ export async function POST(request: Request) {
   if (!expiresAt || !(expiresAt.getTime() > Date.now())) return invalid("expiresAt must be a date in the future");
 
   const viewer = await viewerOf(session);
-  if (body.access !== "none" && !can(viewer, "text", lang)) return FORBIDDEN();
-  if (generate && !can(viewer, "regenerate", lang)) return FORBIDDEN();
+  const backed = backedScopes(viewer, lang, body.access, generate);
+  if (backed.text !== (body.access !== "none") || backed.generate !== generate) return FORBIDDEN();
 
   return Response.json(
     await createToken({ userId: session.user.id, lang, access: body.access, generate, label, expiresAt }),

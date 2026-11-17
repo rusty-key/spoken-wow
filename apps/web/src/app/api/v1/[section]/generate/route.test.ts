@@ -7,6 +7,7 @@
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { closeDb } from "@/lib/db";
+import type { Plan } from "@/lib/generation/batch-plan";
 import type { Grant } from "@/lib/permissions";
 import { asSystem } from "@/lib/teams/testing";
 
@@ -15,6 +16,8 @@ const mocks = vi.hoisted(() => ({
   createBatch: vi.fn(async () => "batch-1"),
   enqueue: vi.fn(async (_b: string, jobs: unknown[]) => ({ queued: jobs.length, skipped: 0 })),
   requireSpeaker: vi.fn(),
+  /** Stands in for the catalogue's plan when set. */
+  plan: null as Plan | null,
 }));
 
 vi.mock("@/lib/grants/store", async (importOriginal) => ({
@@ -30,6 +33,13 @@ vi.mock("@/lib/generation/authz", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@/lib/generation/authz")>()),
   requireSpeaker: mocks.requireSpeaker,
 }));
+vi.mock("@/lib/generation/batch-plan", async (importOriginal) => {
+  const real = await importOriginal<typeof import("@/lib/generation/batch-plan")>();
+  return {
+    ...real,
+    planCatalogue: async (...args: Parameters<typeof real.planCatalogue>) => mocks.plan ?? real.planCatalogue(...args),
+  };
+});
 vi.mock("@/lib/generation/boot", () => ({ ensureQueueRunning: () => {}, queueWorker: () => null }));
 vi.mock("@/lib/generation/preference", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@/lib/generation/preference")>()),
@@ -66,6 +76,7 @@ beforeAll(async () => {
 
 beforeEach(() => {
   vi.clearAllMocks();
+  mocks.plan = null;
   mocks.grants = [
     { lang: "enUS", capability: "regenerate" },
     { lang: "enUS", capability: "text" },
@@ -104,6 +115,21 @@ describe("POST /api/v1/[section]/generate", () => {
     expect(body.estimate.elevenlabs.characters).toBeGreaterThan(0);
     expect(mocks.createBatch).not.toHaveBeenCalled();
     expect(mocks.requireSpeaker).not.toHaveBeenCalled();
+  });
+
+  it("counts a file two jobs share once in a dry run's totals, as its estimate does", async () => {
+    const job = (lineId: string, file: string, characters: number) => ({ lineId, file, npcName: "", preview: "", characters });
+    mocks.plan = {
+      jobs: [job("a1", "a.mp3", 10), job("a2", "a.mp3", 10), job("b", "b.mp3", 5)],
+      matched: 3,
+      dropped: {},
+      unknown: [],
+    };
+    const response = await post(generateToken, { items: [{ id: "a1" }, { id: "a2" }, { id: "b" }], dryRun: true });
+    expect(response.status).toBe(200);
+    const body = (await response.json()) as Record<string, any>;
+    expect(body).toMatchObject({ files: 2, characters: 15 });
+    expect(body.estimate.elevenlabs).toMatchObject({ files: 2, characters: 15 });
   });
 
   it("403s a read token, queuing nothing", async () => {
