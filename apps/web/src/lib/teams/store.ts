@@ -120,6 +120,14 @@ export async function freshOwners(langs: readonly (Lang | null)[]): Promise<Map<
   return overlaid;
 }
 
+/**
+ * The slot a memo of `lang`'s per-team data lives in: one copy per team, so a language with a
+ * second team never serves one team's rows to the other. The value built is still `lang`'s.
+ */
+export async function scopeKey(lang: Lang): Promise<string> {
+  return `${await ownerOrAll(lang)}:${lang}`;
+}
+
 export async function teamOf(lang: Lang): Promise<TeamId> {
   const team = await ownerOf(lang);
   if (!team) throw new NoTeamError(lang);

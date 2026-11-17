@@ -25,7 +25,7 @@ import { blobBytes, blobKey, blobOrFile, keep, readsBlobs, type Stored } from "@
 import { withTeam } from "@/lib/db";
 import type { Lang } from "@/lib/lang";
 import { VOICE_REFERENCES_DIR } from "@/lib/paths";
-import { queryAs, readAs, teamOf } from "@/lib/teams/store";
+import { queryAs, readAs, scopeKey, teamOf } from "@/lib/teams/store";
 
 import { FFMPEG, ffmpegError, OUTPUT_BITRATE, OUTPUT_RATE } from "./merge";
 import { rejectWindow } from "./reference-window";
@@ -104,26 +104,28 @@ export async function readReference(voice: string, lang: Lang): Promise<Referenc
  * write below clears it. The promise is cached, so lines starting together share one query.
  */
 const LIST_TTL_MS = 60_000;
-const lists = new Map<Lang, { at: number; value: Promise<Map<string, Reference>> }>();
+const lists = new Map<string, { at: number; value: Promise<Map<string, Reference>> }>();
 
 /**
- * Drop a language's memoised list, so the next line reads the references afresh. For a
- * speaker that met a hash the list no longer matches: the edit may have been made in the
- * other app process, whose own writes clear only its own memo.
+ * Drop a language's memoised list in every team's slot, so the next line reads the references
+ * afresh: another team's copy may be the stale one. For a speaker that met a hash the list no
+ * longer matches: the edit may have been made in the other app process, whose own writes clear
+ * only its own memo.
  */
 export function forgetReferences(lang: Lang): void {
-  lists.delete(lang);
+  for (const slot of lists.keys()) if (slot.endsWith(`:${lang}`)) lists.delete(slot);
 }
 
-export function listReferences(lang: Lang): Promise<Map<string, Reference>> {
-  const cached = lists.get(lang);
+export async function listReferences(lang: Lang): Promise<Map<string, Reference>> {
+  const slot = await scopeKey(lang);
+  const cached = lists.get(slot);
   if (cached && Date.now() - cached.at < LIST_TTL_MS) return cached.value;
   const value = readAs<Row>(lang, `select ${COLUMNS} from "fish_reference" where "lang" = $1`, [lang]).then(
     (rows) => new Map(rows.map((row) => [row.voice, fromRow(row)])),
   );
   // A failed read is not remembered: the next line asks again.
-  value.catch(() => lists.delete(lang));
-  lists.set(lang, { at: Date.now(), value });
+  value.catch(() => lists.delete(slot));
+  lists.set(slot, { at: Date.now(), value });
   return value;
 }
 
@@ -285,7 +287,7 @@ export async function saveReference(input: SaveReference): Promise<Reference> {
       sha256,
     ],
   ));
-  lists.delete(input.lang);
+  forgetReferences(input.lang);
   // Cutting one changes what every fish.audio line in the language is spoken from, so who
   // cut it and from which clip is worth a row; after the upsert, which has no transaction.
   await recordActivity({
@@ -319,7 +321,7 @@ export async function saveTranscript(
       where "voice" = $1 and "lang" = $2`,
     [voice, lang, text, clipHash(audio, text), userId],
   );
-  lists.delete(lang);
+  forgetReferences(lang);
   if (!rowCount) return null;
   await recordActivity({
     kind: "reference.edited",
@@ -344,7 +346,7 @@ export async function savePinned(
       where "voice" = $1 and "lang" = $2 and "pinned" <> $3`,
     [voice, lang, pinned, userId],
   );
-  lists.delete(lang);
+  forgetReferences(lang);
   // Only on a change, so pressing it twice is not logged twice. It moves every line of the
   // slot from one bill to another, which is why it is logged at all.
   if (rowCount) {
@@ -372,7 +374,7 @@ export async function deleteReference(voice: string, lang: Lang, by: string | nu
   );
   // The object stays: it is named by its bytes, and a re-cut of the same window reuses it.
   if (!readsBlobs()) await fs.rm(referencePath(voice, lang), { force: true });
-  lists.delete(lang);
+  forgetReferences(lang);
   // Only when there was a row, so deleting nothing is not logged as a delete.
   if (rowCount) {
     await recordActivity({ kind: "reference.deleted", lang, actorId: by, subject: voice, detail: {} });

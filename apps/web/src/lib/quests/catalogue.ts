@@ -33,7 +33,7 @@ import { npcKey, type Corpus, type CorpusLine } from "@/lib/corpus";
 import { BASE_LANG, type Lang } from "@/lib/lang";
 import { baseLineId, momentOf, momentSql, variantFileName, variantLineId } from "@/lib/contributions/naming";
 import { newVoiceName, type Roster } from "@/lib/voices/roster";
-import { teamOrEnglish } from "@/lib/teams/store";
+import { scopeKey, teamOrEnglish } from "@/lib/teams/store";
 import { loadRoster, ROSTER_STAMP } from "@/lib/voices/roster-store";
 import { markClients, type LineClientFacts } from "@/lib/quests/line-client";
 
@@ -401,7 +401,7 @@ const indexKey = Symbol.for("spoken.quests-line-index.by-lang");
  */
 export async function corpus(lang: Lang = BASE_LANG): Promise<Corpus> {
   const stamp = await stampOf(lang);
-  return memoByLang(cacheKey, lang, stamp, async () => {
+  return memoByLang(cacheKey, await scopeKey(lang), stamp, async () => {
     const [lines, facts] = await Promise.all([build(lang), lineClientFacts()]);
     return { lines: markClients(lines, facts) };
   });
@@ -438,7 +438,7 @@ async function lineClientFacts(): Promise<LineClientFacts> {
  */
 export async function lineIndex(lang: Lang = BASE_LANG): Promise<Map<string, CorpusLine[]>> {
   const lines = (await corpus(lang)).lines;
-  return memoByLang(indexKey, lang, lines, () => {
+  return memoByLang(indexKey, await scopeKey(lang), lines, () => {
     const index = new Map<string, CorpusLine[]>();
     for (const line of lines) {
       const group = index.get(line.lineId);

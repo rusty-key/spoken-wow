@@ -15,7 +15,7 @@ import { BASE_LANG, isLang, type Lang } from "@/lib/lang";
 import { memoByLang } from "@/lib/memo";
 import { corpus, isCorpusEmpty } from "@/lib/quests/catalogue";
 import { matchingLines } from "@/lib/search";
-import { ownerOrAll } from "@/lib/teams/store";
+import { ownerOrAll, scopeKey } from "@/lib/teams/store";
 
 import type { Submission } from "./contributions";
 import { baseLineId } from "./naming";
@@ -88,7 +88,7 @@ const hiddenKey = Symbol.for("spoken.quests-hidden-by-default.by-lang");
  */
 async function hiddenByDefaultLineIds(lang: Lang): Promise<ReadonlySet<string>> {
   const quests = await corpus(lang);
-  return memoByLang(hiddenKey, lang, quests.lines, () => {
+  return memoByLang(hiddenKey, await scopeKey(lang), quests.lines, () => {
     const shown = new Set(matchingLines(quests, new Set()).map((line) => line.lineId));
     const hidden = new Map<string, boolean>();
     for (const line of quests.lines) {
