@@ -27,7 +27,7 @@ const TTL_MS = 60_000;
 /** How old the memo must be for a miss to read the mapping again: at most once a second. */
 const MISS_REFRESH_MS = 1_000;
 
-type Mapping = { owners: Map<Lang, TeamId>; second: Set<Lang> };
+type Mapping = { owners: Map<Lang, TeamId>; second: Set<Lang>; secondTeams: Set<string> };
 
 let cached: { at: number; mapping: Promise<Mapping> } | null = null;
 
@@ -44,11 +44,15 @@ function mapping(): Promise<Mapping> {
   ).then((rows) => {
     const owners = new Map<Lang, TeamId>();
     const second = new Set<Lang>();
+    const secondTeams = new Set<string>();
     for (const row of rows) {
       if (row.privileged) owners.set(row.lang, row.teamId);
-      else second.add(row.lang);
+      else {
+        second.add(row.lang);
+        secondTeams.add(`${row.teamId}:${row.lang}`);
+      }
     }
-    return { owners, second };
+    return { owners, second, secondTeams };
   });
   cached = { at: Date.now(), mapping: read };
   // A failed read must not be served for the next minute.
@@ -66,6 +70,11 @@ export async function teamLangs(): Promise<Map<Lang, TeamId>> {
 /** The languages that have a second team besides the privileged one. */
 export async function secondTeamLangs(): Promise<Set<Lang>> {
   return (await mapping()).second;
+}
+
+/** Whether `team` works on `lang` as a second team: it holds the language, but not as its privileged team. */
+export async function isSecondTeam(team: TeamId, lang: string): Promise<boolean> {
+  return (await mapping()).secondTeams.has(`${team}:${lang}`);
 }
 
 /**
@@ -106,7 +115,12 @@ export async function teamOrPrivileged(
 
 /** Whether the acting person works on `lang` in a team other than its privileged one. */
 export async function actsAsSecondTeam(lang: Lang): Promise<boolean> {
-  return (await ownerOf(lang)) !== (await privilegedOf(lang));
+  // ownerOf's own steps, the privileged team read once: a miss reads again, and only a language
+  // with a second team reads the acting teams.
+  const privileged = await privilegedOf(lang);
+  if (!(await secondTeamLangs()).has(lang)) return false;
+  const acting = (await actingTeams()).get(lang);
+  return Boolean(acting) && acting !== privileged;
 }
 
 /** teamLangs, read again once (unless the memo is fresh) when any of `langs` has no team. */

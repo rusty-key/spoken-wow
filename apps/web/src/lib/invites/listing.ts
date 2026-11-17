@@ -14,13 +14,19 @@ import { listInvites, type InviteRow } from "./store";
 
 export const notAllowed = () => Response.json({ error: "not allowed" }, { status: 403 });
 
+type Teams = ReadonlyMap<string, TeamId>;
+
+/** The teams the viewer works in, by language, as memberTeams reads them; none read for a site owner. */
+export async function viewerTeams(viewer: Viewer, userId: string): Promise<Teams> {
+  return isAdmin(viewer.role) ? new Map() : memberTeams(userId);
+}
+
 /**
- * The grants in `langs` that `userId` sees: all of them for a site owner. Anyone else sees, in
+ * The grants in `langs` that the viewer sees: all of them for a site owner. Anyone else sees, in
  * each, their own team's rows, and the `text` rows where they are an admin of the privileged team.
  */
-export async function visibleGrants(viewer: Viewer, userId: string, langs: readonly string[]): Promise<GrantRow[]> {
+export async function visibleGrants(viewer: Viewer, teams: Teams, langs: readonly string[]): Promise<GrantRow[]> {
   if (isAdmin(viewer.role)) return listGrants([...langs]);
-  const teams = await memberTeams(userId);
   const own = new Map<string, TeamId>();
   for (const lang of langs) {
     const team = teams.get(lang);
@@ -31,13 +37,12 @@ export async function visibleGrants(viewer: Viewer, userId: string, langs: reado
 }
 
 /**
- * The open invites in `langs` that `userId` sees: all of them for a site owner, and for anyone
+ * The open invites in `langs` that the viewer sees: all of them for a site owner, and for anyone
  * else, in each, the ones that join their own team there (the privileged team when they are in
  * none).
  */
-export async function visibleInvites(viewer: Viewer, userId: string, langs: readonly string[]): Promise<InviteRow[]> {
+export async function visibleInvites(viewer: Viewer, teams: Teams, langs: readonly string[]): Promise<InviteRow[]> {
   if (isAdmin(viewer.role)) return listInvites([...langs]);
-  const teams = await memberTeams(userId);
   const byTeam = new Map<TeamId, string[]>();
   for (const lang of langs) {
     const team = await orPrivileged(teams.get(lang), lang as Lang);
@@ -55,9 +60,10 @@ export async function listingFor(
 ): Promise<Response> {
   const langs = langsWhere(viewer, "admin");
   if (langs.length === 0) return notAllowed();
+  const teams = await viewerTeams(viewer, userId);
   const [grants, invites] = await Promise.all([
-    visibleGrants(viewer, userId, langs),
-    visibleInvites(viewer, userId, langs),
+    visibleGrants(viewer, teams, langs),
+    visibleInvites(viewer, teams, langs),
   ]);
   return Response.json({ grants, invites, ...extra });
 }

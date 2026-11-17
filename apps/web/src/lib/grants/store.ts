@@ -14,29 +14,27 @@ import { recordActivities, recordActivity } from "@/lib/activity/store";
 import { ALL_TEAMS, db, query, withTeam } from "@/lib/db";
 import { teamIn } from "@/lib/teams/acting";
 import { deleteMember, insertMembers } from "@/lib/teams/members";
-import { ownerOrAll, secondTeamLangs, teamOf, type TeamId } from "@/lib/teams/store";
+import { isSecondTeam, ownerOrAll, secondTeamLangs, teamOf, type TeamId } from "@/lib/teams/store";
 import { isLang, langName, type Lang } from "@/lib/lang";
 import { textByTeam } from "@/lib/languages/store";
 import { canGrant, isCapability, type Capability, type Grant, type Viewer } from "@/lib/permissions";
 
 /** On the caller's client when given. */
 export async function grantsOf(userId: string, client?: Pick<ClientBase, "query">): Promise<Grant[]> {
-  const { rows } = await (client ?? db()).query<{ lang: string; capability: string; privileged: boolean | null }>(
-    `select "lang", 'text' as "capability", null::boolean as "privileged" from "language_grant" where "userId" = $1
+  const { rows } = await (client ?? db()).query<{ lang: string; capability: string; teamId: TeamId | null }>(
+    `select "lang", 'text' as "capability", null::uuid as "teamId" from "language_grant" where "userId" = $1
      union all
-     select m."lang", m."capability", l."privileged"
-       from "team_member" m
-       left join "team_language" l on l."teamId" = m."teamId" and l."lang" = m."lang"
-      where m."userId" = $1
+     select "lang", "capability", "teamId" from "team_member" where "userId" = $1
      order by "lang", "capability"`,
     [userId],
   );
-  return rows
-    .filter((row) => isCapability(row.capability))
-    .map(({ lang, capability, privileged }) => {
-      const grant: Grant = { lang, capability: capability as Capability };
-      return privileged === false ? { ...grant, privileged } : grant;
-    });
+  const grants: Grant[] = [];
+  for (const { lang, capability, teamId } of rows) {
+    if (!isCapability(capability)) continue;
+    const second = teamId !== null && (await isSecondTeam(teamId, lang));
+    grants.push(second ? { lang, capability, privileged: false } : { lang, capability });
+  }
+  return grants;
 }
 
 /** Keyed on the user id, a string, which is what lets React's cache find it again. */
@@ -166,14 +164,17 @@ export async function addGrants(
 ): Promise<void> {
   if (!isLang(lang)) throw new Error(`${lang} is not a language this site knows`);
   const members = capabilities.filter((capability) => capability !== "text");
+  // A language with one team has only teamOf's to grant into, and the commit's 23P01 still
+  // backstops a membership elsewhere.
+  const teams = members.length > 0 && (await secondTeamLangs()).has(lang);
   const team = members.length
-    ? (options.team ?? (await teamIn(grantedBy, lang)) ?? (await teamOf(lang)))
+    ? (options.team ?? (teams ? await teamIn(grantedBy, lang) : null) ?? (await teamOf(lang)))
     : await ownerOrAll(lang);
   try {
     await withTeam(team, async (client) => {
       // First, so that a throw from it grants nothing.
       await options.within?.(client);
-      if (members.length) {
+      if (teams) {
         const theirs = await teamIn(userId, lang, client);
         if (theirs && theirs !== team) throw new OtherTeamError(lang);
       }
