@@ -3,16 +3,19 @@
 // does any message a moderator reacts to with 🐛 in another channel, with the messages just before
 // it. When the issue is closed, the post or message is told.
 //
+// Brann (apps/brann) calls `file`, `reactions` and `reaction` on Discord's events, and sweeps with
+// the first two at startup and hourly. The closed issue is reported by
+// .github/workflows/forum-issues.yaml. Each mode also runs by hand:
+//
 //   node scripts/lib/forum-issues.mjs file              file an issue for every post that has none
 //   node scripts/lib/forum-issues.mjs reactions         file an issue for every 🐛 message that has none
 //   node scripts/lib/forum-issues.mjs closed <number>   reply in the post or to the message of a closed
 //                                                       issue, and tag a post
 //
-// Discord tells nobody when a post is made or a reaction added, so `file` and `reactions` run on a
-// schedule; `reactions` looks at the last 100 messages of each channel. Which posts and messages
-// have an issue is read off the issues themselves, whose footer links them, and off the bot's reply.
+// `reactions` looks at the last 100 messages of each channel. Which posts and messages have an
+// issue is read off the issues themselves, whose footer links them, and off the bot's reply.
 // Nothing is kept between runs, and a run that dies after filing but before replying files nothing
-// twice.
+// twice. Two runs side by side can, so Brann queues his, and a manual run waits until he is stopped.
 //
 // A moderator is the server's owner, or a member with a role that may manage messages.
 //
@@ -29,7 +32,7 @@ import { discord, findChannel, isNamed } from "./language-post.mjs";
 export const FORUM = "bugs-forever-era";
 // The forum's earlier name: its posts and their issue footers still use it.
 const OLD_FORUM = "bugs-and-ideas";
-const isForum = (channel) => isNamed(channel, FORUM) || isNamed(channel, OLD_FORUM);
+export const isForum = (channel) => isNamed(channel, FORUM) || isNamed(channel, OLD_FORUM);
 export const LABEL = "from-discord";
 const FILED = "Logged on GitHub as";
 const STATE_TAGS = ["Fixed", "Not planned"];
@@ -149,7 +152,7 @@ export function closedReply(issue) {
   return { tag: "Fixed", content: `Good news: this one is fixed! ${issue.html_url}\nIt comes with the next Spoken release.` };
 }
 
-function github(token, repo) {
+export function github(token, repo) {
   return async (method, path, body) => {
     const res = await fetch(`https://api.github.com/repos/${repo}${path}`, {
       method,
@@ -181,7 +184,7 @@ async function filed(gh) {
   }
 }
 
-async function file(api, gh) {
+export async function file(api, gh) {
   const forum = await findChannel(api, isForum);
   if (forum?.type !== GUILD_FORUM) {
     console.log(`skipped: no #${FORUM} forum`);
@@ -209,16 +212,15 @@ async function file(api, gh) {
   }
 }
 
-async function reactions(api, gh) {
+/**
+ * What filing a 🐛 message needs to know about the server, looked up once per sweep: the forum
+ * (whose posts `file` handles), the guild, who is a moderator, and which messages are filed.
+ */
+async function reactionContext(api, gh) {
   const forum = await findChannel(api, isForum);
   const guildId = forum?.guild_id;
-  if (!guildId) {
-    console.log(`skipped: no #${FORUM} forum, so no server`);
-    return;
-  }
+  if (!guildId) return null;
   const guild = await api("GET", `/guilds/${guildId}`);
-  const channels = await api("GET", `/guilds/${guildId}/channels`);
-  const { threads } = await api("GET", `/guilds/${guildId}/threads/active`);
   const done = (await filed(gh)).messages;
   const members = new Map();
   const moderator = async (user) => {
@@ -228,39 +230,71 @@ async function reactions(api, gh) {
     }
     return members.get(user.id);
   };
+  return { forum, guildId, done, moderator };
+}
+
+/**
+ * Files `target` if a moderator marked it with 🐛 and it has no issue yet. `recent` is the
+ * channel's messages newest first, `target` among them, with the bot's replies after it and the
+ * messages before it that go into the issue.
+ */
+async function fileMarked(api, gh, ctx, channel, target, recent) {
+  if (ctx.done.has(target.id) || !target.reactions?.some((r) => r.emoji.name === BUG)) return;
+  const replied = recent.some((m) => m.author.bot && m.message_reference?.message_id === target.id
+    && m.content.startsWith(FILED));
+  if (replied) return;
+  const users = await api("GET", `/channels/${channel.id}/messages/${target.id}/reactions/${encodeURIComponent(BUG)}?limit=100`);
+  let reactor = null;
+  for (const user of users) {
+    if (await ctx.moderator(user)) {
+      reactor = user;
+      break;
+    }
+  }
+  if (!reactor) return;
+  const at = recent.indexOf(target);
+  const context = recent.slice(at + 1, at + 1 + CONTEXT).filter((m) => !m.author.bot).reverse();
+  const issue = await gh("POST", "/issues", messageIssueFor({ guild: ctx.guildId, channel, target, context, reactor }));
+  ctx.done.add(target.id);
+  await api("POST", `/channels/${channel.id}/messages`, {
+    content: `${FILED} #${issue.number}: ${issue.html_url}`,
+    message_reference: { message_id: target.id, fail_if_not_exists: false },
+    allowed_mentions: { parse: [], replied_user: false },
+    flags: 4, // SUPPRESS_EMBEDS
+  });
+  console.log(`#${channel.name} message ${target.id} -> issue #${issue.number}`);
+}
+
+export async function reactions(api, gh) {
+  const ctx = await reactionContext(api, gh);
+  if (!ctx) {
+    console.log(`skipped: no #${FORUM} forum, so no server`);
+    return;
+  }
+  const channels = await api("GET", `/guilds/${ctx.guildId}/channels`);
+  const { threads } = await api("GET", `/guilds/${ctx.guildId}/threads/active`);
   // The forum's own posts are filed by `file`.
-  const readable = [...channels, ...threads].filter((c) => TEXT_CHANNELS.includes(c.type) && c.parent_id !== forum.id);
+  const readable = [...channels, ...threads].filter((c) => TEXT_CHANNELS.includes(c.type) && c.parent_id !== ctx.forum.id);
   for (const channel of readable) {
     // A channel the bot may not read is skipped.
     const recent = await api("GET", `/channels/${channel.id}/messages?limit=100`).catch(() => null);
     if (!recent) continue;
-    const marked = recent.filter((m) => !done.has(m.id) && m.reactions?.some((r) => r.emoji.name === BUG));
-    for (const target of marked) {
-      const replied = recent.some((m) => m.author.bot && m.message_reference?.message_id === target.id
-        && m.content.startsWith(FILED));
-      if (replied) continue;
-      const users = await api("GET", `/channels/${channel.id}/messages/${target.id}/reactions/${encodeURIComponent(BUG)}?limit=100`);
-      let reactor = null;
-      for (const user of users) {
-        if (await moderator(user)) {
-          reactor = user;
-          break;
-        }
-      }
-      if (!reactor) continue;
-      // `recent` is newest first: the messages just before the target follow it.
-      const at = recent.indexOf(target);
-      const context = recent.slice(at + 1, at + 1 + CONTEXT).filter((m) => !m.author.bot).reverse();
-      const issue = await gh("POST", "/issues", messageIssueFor({ guild: guildId, channel, target, context, reactor }));
-      await api("POST", `/channels/${channel.id}/messages`, {
-        content: `${FILED} #${issue.number}: ${issue.html_url}`,
-        message_reference: { message_id: target.id, fail_if_not_exists: false },
-        allowed_mentions: { parse: [], replied_user: false },
-        flags: 4, // SUPPRESS_EMBEDS
-      });
-      console.log(`#${channel.name} message ${target.id} -> issue #${issue.number}`);
-    }
+    for (const target of recent) await fileMarked(api, gh, ctx, channel, target, recent);
   }
+}
+
+/** Files one message a 🐛 was just added to: what the bot does on the reaction's event. */
+export async function reaction(api, gh, channelId, messageId) {
+  const ctx = await reactionContext(api, gh);
+  if (!ctx) return;
+  const channel = await api("GET", `/channels/${channelId}`);
+  if (!TEXT_CHANNELS.includes(channel.type) || channel.parent_id === ctx.forum.id) return;
+  const target = await api("GET", `/channels/${channelId}/messages/${messageId}`);
+  // Both lists come newest first, so this is the order `reactions` reads a channel in.
+  const after = await api("GET", `/channels/${channelId}/messages?after=${messageId}&limit=50`);
+  const before = await api("GET", `/channels/${channelId}/messages?before=${messageId}&limit=${CONTEXT}`);
+  const newestFirst = (a, b) => (BigInt(b.id) > BigInt(a.id) ? 1 : -1);
+  await fileMarked(api, gh, ctx, channel, target, [...after.sort(newestFirst), target, ...before.sort(newestFirst)]);
 }
 
 async function closed(api, gh, number) {
