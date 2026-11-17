@@ -11,7 +11,7 @@ import { viewerOf } from "@/lib/grants/store";
 import type { Lang } from "@/lib/lang";
 import { can, type Capability, type Viewer } from "@/lib/permissions";
 import { teamIn } from "@/lib/teams/acting";
-import { privilegedOf } from "@/lib/teams/store";
+import { privilegedOf, secondTeamLangs } from "@/lib/teams/store";
 import { findLiveToken } from "@/lib/tokens/store";
 import type { TokenAccess } from "@/lib/tokens/types";
 
@@ -90,7 +90,8 @@ export async function requireToken(
   if (options.also && !can(viewer, options.also, token.lang)) {
     return denied(403, `this token's owner does not hold ${options.also} in ${token.lang}`);
   }
-  if (!options.teams) {
+  // A language with one team reads no membership.
+  if (!options.teams && (await secondTeamLangs()).has(token.lang)) {
     const team = await teamIn(token.userId, token.lang);
     if (team && team !== (await privilegedOf(token.lang))) {
       return denied(403, "this route does not work for a second team yet");

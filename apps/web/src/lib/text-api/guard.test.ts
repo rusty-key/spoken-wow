@@ -20,15 +20,24 @@ vi.mock("@/lib/grants/store", async (importOriginal) => ({
   }),
 }));
 
-const acting = vi.hoisted(() => ({ team: null as string | null, privileged: "team-a" as string | null }));
+const acting = vi.hoisted(() => ({
+  team: null as string | null,
+  privileged: "team-a" as string | null,
+  second: new Set<string>(),
+  reads: 0,
+}));
 
 vi.mock("@/lib/teams/acting", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@/lib/teams/acting")>()),
-  teamIn: async () => acting.team,
+  teamIn: async () => {
+    acting.reads += 1;
+    return acting.team;
+  },
 }));
 vi.mock("@/lib/teams/store", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@/lib/teams/store")>()),
   privilegedOf: async () => acting.privileged,
+  secondTeamLangs: async () => acting.second,
 }));
 
 import { createToken, revokeToken } from "@/lib/tokens/store";
@@ -66,6 +75,8 @@ beforeAll(async () => {
 beforeEach(() => {
   acting.team = null;
   acting.privileged = "team-a";
+  acting.second = new Set();
+  acting.reads = 0;
   viewer.grants = [{ lang: "deDE", capability: "text" }];
 });
 
@@ -197,6 +208,10 @@ describe("requireToken", () => {
 });
 
 describe("a second team's owner", () => {
+  beforeEach(() => {
+    acting.second = new Set(["deDE"]);
+  });
+
   it("is refused on a route that has not opted in, and passes on one that has", async () => {
     acting.team = "team-b";
     const { token } = await make("read");
@@ -212,5 +227,14 @@ describe("a second team's owner", () => {
     acting.team = "team-a";
     const { token } = await make("read");
     expect((await requireToken(request(`Bearer ${token}`), { need: "read" })).denied).toBeNull();
+  });
+});
+
+describe("a language with one team", () => {
+  it("reads nobody's team", async () => {
+    acting.team = "team-b";
+    const { token } = await make("read");
+    expect((await requireToken(request(`Bearer ${token}`), { need: "read" })).denied).toBeNull();
+    expect(acting.reads).toBe(0);
   });
 });

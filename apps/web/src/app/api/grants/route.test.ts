@@ -352,4 +352,12 @@ describe("/api/grants in a language with a second team", () => {
       { teamId: teamA },
     ]);
   });
+
+  it("puts a grant to somebody new in the privileged team when the site owner is a member of the second", async () => {
+    who.viewer = { role: "admin", grants: [] };
+    expect((await putFor(`${fresh.id}@example.invalid`, ["edit"])).status).toBe(200);
+    expect(await systemRows(`select "teamId" from "team_member" where "userId" = $1`, [fresh.id])).toEqual([
+      { teamId: teamA },
+    ]);
+  });
 });

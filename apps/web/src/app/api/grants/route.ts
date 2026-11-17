@@ -24,6 +24,7 @@ import {
 import { knownLang } from "@/lib/languages/catalogue";
 import { isAdmin, isCapability, removesOwnAdmin, type Viewer } from "@/lib/permissions";
 import { teamIn } from "@/lib/teams/acting";
+import { privilegedOf } from "@/lib/teams/store";
 
 export const dynamic = "force-dynamic";
 
@@ -66,8 +67,11 @@ export async function PUT(request: Request) {
   // a translator gives somebody when asking to be let in.
   const user = await userByEmail(address);
   if (user) {
-    // A site owner works in no team: the person's own team, if any, is where the grant goes.
-    const team = isAdmin(who.viewer.role) ? ((await teamIn(user.id, lang)) ?? undefined) : undefined;
+    // A site owner works in no team, even one who is a member of a team: the person's own team,
+    // if any, is where the grant goes, else the privileged team.
+    const team = isAdmin(who.viewer.role)
+      ? ((await teamIn(user.id, lang)) ?? (await privilegedOf(lang)))
+      : undefined;
     try {
       await addGrants(user.id, lang, capabilities, who.userId, {
         team,

@@ -123,7 +123,7 @@ export async function createTeamWithLangs(
     moved.push(lang);
     if (!adminId) continue;
     try {
-      await addGrants(adminId, lang, ["admin"], actorId);
+      await addGrants(adminId, lang, ["admin"], actorId, { team: id });
     } catch (error) {
       if (error instanceof OtherTeamError) throw new TeamError(error.message, 409);
       throw error;
@@ -186,11 +186,13 @@ export async function moveLang(
   }
 }
 
-/** Live takes per language, which a hand-over moves too. */
+/** Live takes per language in its privileged team, which a hand-over moves too. */
 export async function liveTakeCounts(): Promise<Map<Lang, number>> {
   const rows = await queryIn<{ lang: Lang; count: number }>(
     ALL_TEAMS,
-    `select "lang", count(*)::int as "count" from "take" where "isCurrent" group by "lang"`,
+    `select "lang", count(*)::int as "count" from "take"
+      where "isCurrent" and "teamId" = team_of_lang("lang")
+      group by "lang"`,
   );
   return new Map(rows.map((row) => [row.lang, row.count]));
 }

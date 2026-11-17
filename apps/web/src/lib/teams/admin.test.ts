@@ -125,19 +125,24 @@ describe("listTeams", () => {
 });
 
 describe("liveTakeCounts", () => {
-  it("counts only the live takes of each language, whichever team holds them", async () => {
+  it("counts only the live takes of each language's privileged team", async () => {
     const file = `gossip/${tag}count.mp3`;
-    const row = (version: number, current: boolean, lang: string) =>
+    const row = (version: number, current: boolean, lang: string, team?: string) =>
       asSystem.query(
         `insert into "take" ("source", "lang", "file", "lineId", "version", "isCurrent", "origin", "bytes", "teamId")
-         values ('quests', $3, $1, 'g:count', $2, $4, 'generated', 1, $5)`,
-        [file, version, lang, current, was],
+         values ('quests', $3, $1, 'g:count', $2, $4, 'generated', 1, coalesce($5::uuid, team_of_lang($3)))`,
+        [file, version, lang, current, team ?? null],
       );
+    const second = await newTeam();
+    await asSystem.query(`insert into "team_language" ("teamId", "lang", "privileged") values ($1, 'deDE', false)`, [
+      second,
+    ]);
     const before = await liveTakeCounts();
     try {
       await row(1, false, "deDE");
       await row(2, true, "deDE");
       await row(1, true, "frFR");
+      await row(3, true, "deDE", second);
       const after = await liveTakeCounts();
       expect(after.get("deDE")).toBe((before.get("deDE") ?? 0) + 1);
       expect(after.get("frFR")).toBe((before.get("frFR") ?? 0) + 1);
