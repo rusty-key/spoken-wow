@@ -12,7 +12,7 @@ import { recordActivity } from "../activity/store";
 import { fileIndex } from "../audio";
 import { spokenHash } from "../generation/spoken-hash";
 import type { Lang } from "../lang";
-import { memoByLang } from "../memo";
+import { memoByTeamLang } from "../memo";
 import { queryAs, readAs } from "../teams/store";
 import { overrideOf, type LineOverride } from "./override";
 
@@ -59,7 +59,7 @@ const cacheKey = Symbol.for("wow-voiceover.line-overrides");
  * someone sat down and rewrote.
  */
 export async function readOverrides(lang: Lang): Promise<Map<string, LineOverride>> {
-  return memoByLang(cacheKey, lang, await stamp(lang), async () => {
+  return memoByTeamLang(cacheKey, lang, await stamp(lang), async () => {
     const rows = await readAs<OverrideRow>(
       lang,
       `select "file", "lineId", "text", "updatedAt", "updatedBy", "originalHash"

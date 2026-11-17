@@ -12,5 +12,5 @@ export async function DELETE(_request: Request, { params }: { params: Promise<{ 
 
   const revoked = await revokeInvite(id, found.session.user.id);
   if (!revoked) return noSuchInvite();
-  return listingFor(found.viewer);
+  return listingFor(found.viewer, found.session.user.id);
 }

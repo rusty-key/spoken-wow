@@ -60,6 +60,7 @@ beforeAll(async () => {
     capabilities: ["edit"],
     invitedBy: inviter.id,
     limited: false,
+    team: null,
   }));
   inviteId = invite.id;
 });

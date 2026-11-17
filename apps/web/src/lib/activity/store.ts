@@ -32,6 +32,11 @@ export type ActivityEvent<K extends ActivityKind = ActivityKind> = {
   subject?: string | null;
   lineId?: string | null;
   detail: ActivityDetail[K];
+  /**
+   * The team the act is filed under, when it is not the language's owner for whoever is acting.
+   * ALL_TEAMS files it under none.
+   */
+  team?: TeamId | typeof ALL_TEAMS;
 };
 
 /**
@@ -84,7 +89,7 @@ function rowsOf(events: ActivityEvent[], owners: Map<Lang, TeamId>): string {
       lineId: event.lineId ?? null,
       detail: event.detail,
       actorId: event.actorId,
-      teamId: (event.lang && owners.get(event.lang)) || null,
+      teamId: event.team === ALL_TEAMS ? null : event.team ?? ((event.lang && owners.get(event.lang)) || null),
     })),
   );
 }

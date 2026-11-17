@@ -9,6 +9,9 @@ export function isReleaseSection(value: unknown): value is ReleaseSection {
   return typeof value === "string" && (RELEASE_SECTIONS as readonly string[]).includes(value);
 }
 
+/** What a second team is told when it asks to release. */
+export const SECOND_TEAM_RELEASE = "Releases for a second team are not built yet; its takes stay on the site.";
+
 export const RELEASE_BUMPS = ["patch", "minor", "major"] as const;
 
 export type ReleaseBump = (typeof RELEASE_BUMPS)[number];

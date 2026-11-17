@@ -16,7 +16,13 @@ function age(createdAt: string): string {
   return hours < 48 ? `${hours} h` : `${Math.floor(hours / 24)} d`;
 }
 
-export default function TeamRequests({ initial }: { initial: TeamRequest[] }) {
+type Props = {
+  initial: TeamRequest[];
+  /** By request id: the name of the privileged team a second-team request would sit beside. */
+  besides?: Partial<Record<string, string>>;
+};
+
+export default function TeamRequests({ initial, besides = {} }: Props) {
   const router = useRouter();
   const [rows, setRows] = useState(initial);
   // router.refresh() brings a new `initial` but keeps this state, so a request sent meanwhile
@@ -29,6 +35,7 @@ export default function TeamRequests({ initial }: { initial: TeamRequest[] }) {
   const [reasons, setReasons] = useState<Record<string, string>>({});
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [busy, setBusy] = useState<string | null>(null);
+  const [copies, setCopies] = useState<Record<string, boolean>>({});
 
   async function decide(request: TeamRequest, decision: "approve" | "reject") {
     setBusy(request.id);
@@ -37,7 +44,11 @@ export default function TeamRequests({ initial }: { initial: TeamRequest[] }) {
     const result = await send(
       `/api/team-requests/${request.id}`,
       "PATCH",
-      decision === "reject" ? { decision, ...(reason ? { reason } : {}) } : { decision },
+      decision === "reject"
+        ? { decision, ...(reason ? { reason } : {}) }
+        : request.branch === "second-team"
+          ? { decision, settings: copies[request.id] ? "copy" : "fresh" }
+          : { decision },
     );
     setBusy(null);
     if (!result.ok) return setErrors((all) => ({ ...all, [request.id]: result.error }));
@@ -66,6 +77,20 @@ export default function TeamRequests({ initial }: { initial: TeamRequest[] }) {
             </div>
             {request.note && <p className="text-muted-foreground">{request.note}</p>}
             {request.branch && <p>{branchText(request.branch, nameOf(request))}</p>}
+            {request.branch === "second-team" && (
+              <label className="flex items-center gap-2">
+                <input
+                  type="checkbox"
+                  checked={copies[request.id] ?? false}
+                  disabled={busy !== null}
+                  onChange={(event) => {
+                    const checked = event.target.checked;
+                    setCopies((was) => ({ ...was, [request.id]: checked }));
+                  }}
+                />
+                Start from {besides[request.id] ?? "the existing team"}&apos;s voices and settings
+              </label>
+            )}
             <div className="flex flex-wrap items-center gap-2">
               <Button
                 size="sm"

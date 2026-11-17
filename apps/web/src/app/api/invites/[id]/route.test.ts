@@ -53,6 +53,7 @@ beforeAll(async () => {
     capabilities: ["edit"],
     invitedBy: inviter.id,
     limited: false,
+    team: null,
   });
   id = made.invite.id;
   firstToken = made.token;

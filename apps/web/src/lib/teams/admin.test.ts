@@ -5,9 +5,9 @@ import { afterAll, afterEach, beforeEach, describe, expect, it } from "vitest";
 
 import { closeDb, inTransaction, withTeam } from "@/lib/db";
 
-import { createTeam, handOver, listTeams, liveTakeCounts, renameTeam, TeamError } from "./admin";
+import { createTeam, createTeamWithLangs, handOver, listTeams, liveTakeCounts, renameTeam, TeamError } from "./admin";
 import { adoptLang, forgetTeams, teamOf } from "./store";
-import { asSystem, dropTeam, runningJob, systemRows, testUser, unowned } from "./testing";
+import { asSystem, dropLang, dropTeam, newTeamIn, runningJob, systemRows, testUser, uniqueLang, unowned } from "./testing";
 
 let tag: string;
 let user: Awaited<ReturnType<typeof testUser>>;
@@ -125,19 +125,22 @@ describe("listTeams", () => {
 });
 
 describe("liveTakeCounts", () => {
-  it("counts only the live takes of each language, whichever team holds them", async () => {
+  it("counts only the live takes of each language's privileged team", async () => {
     const file = `gossip/${tag}count.mp3`;
-    const row = (version: number, current: boolean, lang: string) =>
+    const row = (version: number, current: boolean, lang: string, team?: string) =>
       asSystem.query(
         `insert into "take" ("source", "lang", "file", "lineId", "version", "isCurrent", "origin", "bytes", "teamId")
-         values ('quests', $3, $1, 'g:count', $2, $4, 'generated', 1, $5)`,
-        [file, version, lang, current, was],
+         values ('quests', $3, $1, 'g:count', $2, $4, 'generated', 1, coalesce($5::uuid, team_of_lang($3)))`,
+        [file, version, lang, current, team ?? null],
       );
+    const second = await newTeamIn("deDE", false);
+    made.push(second);
     const before = await liveTakeCounts();
     try {
       await row(1, false, "deDE");
       await row(2, true, "deDE");
       await row(1, true, "frFR");
+      await row(3, true, "deDE", second);
       const after = await liveTakeCounts();
       expect(after.get("deDE")).toBe((before.get("deDE") ?? 0) + 1);
       expect(after.get("frFR")).toBe((before.get("frFR") ?? 0) + 1);
@@ -182,5 +185,36 @@ describe("adoptLang", () => {
     });
     made.push((await systemRows<{ id: string }>(`select team_of_lang('zzZZ') as "id"`))[0].id);
     expect(team).toBe(was);
+  });
+});
+
+describe("createTeamWithLangs", () => {
+  it("says what already moved when granting the admin is refused in a later language", async () => {
+    const first = await uniqueLang();
+    const second = await uniqueLang();
+    const holder = await newTeamIn(first, true, "cwl-first");
+    const other = await newTeamIn(second, true, "cwl-second");
+    const secondary = await newTeamIn(second, false, "cwl-secondary");
+    // The admin already works on `second` in another team, so the grant there is refused.
+    await asSystem.query(`insert into "team_member" ("teamId", "userId", "lang", "capability") values ($1, $2, $3, 'edit')`, [
+      secondary, actor, second,
+    ]);
+    try {
+      await expect(
+        createTeamWithLangs(
+          { slug: `t-${tag}`, name: `Team ${tag}`, adminEmail: `${actor}@example.invalid`, langs: [first, second] },
+          actor,
+        ),
+      ).rejects.toSatisfy(
+        (error: unknown) => error instanceof TeamError && error.status === 409 && error.message.startsWith(`moved ${first}, ${second}; `),
+      );
+    } finally {
+      const [made_] = await systemRows<{ id: string }>(`select "id" from "team" where "slug" = $1`, [`t-${tag}`]);
+      await asSystem.query(`delete from "activity" where "lang" = any($1)`, [[first, second]]);
+      for (const team of [made_?.id, holder, other, secondary]) if (team) await dropTeam(team);
+      await dropLang(first);
+      await dropLang(second);
+      forgetTeams();
+    }
   });
 });

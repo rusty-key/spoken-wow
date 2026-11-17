@@ -12,7 +12,7 @@ import "server-only";
 
 import { query } from "@/lib/db";
 import type { LiveRecording } from "@/lib/recordings/live";
-import { memoByLang } from "@/lib/memo";
+import { memoByTeamLang } from "@/lib/memo";
 import { bookPageStamp, nameStamp, versionStamp } from "@/lib/stamp";
 import { loadDirtyContext, NO_DIRT, type DirtyContext } from "@/lib/generation/dirty";
 
@@ -303,7 +303,7 @@ async function build(lang: Lang): Promise<BookPage[]> {
 }
 
 export async function catalogue(lang: Lang = BASE_LANG): Promise<BookPage[]> {
-  return memoByLang(cacheKey, lang, await stampOf(lang), () => build(lang));
+  return memoByTeamLang(cacheKey, lang, await stampOf(lang), () => build(lang));
 }
 
 /** `seesMadeBy`: whether the viewer works in the language. See SearchContext.madeBy. */

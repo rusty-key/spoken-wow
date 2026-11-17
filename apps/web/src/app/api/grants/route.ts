@@ -1,15 +1,16 @@
 /**
  * Who may do what in which language.
  *
- * A global admin sees and changes every grant. Somebody who is `admin` in a language sees
- * that language's and may hand out its team capabilities, and `text` when its team appoints it
- * (`textByTeam`).
+ * A global admin sees and changes every grant. Somebody who is `admin` in a language sees and
+ * changes their own team's grants there, and hands out its team capabilities into that team. An
+ * admin of the privileged team also sees its text maintainers, and appoints them when the team
+ * does (`textByTeam`).
  * lib/permissions.ts `canGrant` is the rule; this only applies it.
  */
 import { headers } from "next/headers";
 
 import { auth } from "@/lib/auth";
-import { addGrants, refusedGrant, removeGrant, userByEmail, viewerOf } from "@/lib/grants/store";
+import { addGrants, OtherTeamError, refusedGrant, removeGrant, userByEmail, viewerOf } from "@/lib/grants/store";
 import { listingFor, notAllowed } from "@/lib/invites/listing";
 import {
   createInvite,
@@ -22,6 +23,8 @@ import {
 } from "@/lib/invites/store";
 import { knownLang } from "@/lib/languages/catalogue";
 import { isAdmin, isCapability, removesOwnAdmin, type Viewer } from "@/lib/permissions";
+import { teamIn } from "@/lib/teams/acting";
+import { privilegedOf, teamOrPrivileged } from "@/lib/teams/store";
 
 export const dynamic = "force-dynamic";
 
@@ -33,7 +36,7 @@ async function viewer(): Promise<{ viewer: Viewer; userId: string } | null> {
 
 export async function GET() {
   const who = await viewer();
-  return who ? listingFor(who.viewer) : notAllowed();
+  return who ? listingFor(who.viewer, who.userId) : notAllowed();
 }
 
 export async function PUT(request: Request) {
@@ -64,19 +67,33 @@ export async function PUT(request: Request) {
   // a translator gives somebody when asking to be let in.
   const user = await userByEmail(address);
   if (user) {
-    await addGrants(user.id, lang, capabilities, who.userId, (client) =>
-      revokeOpenFor(client, lang, address, user.id, capabilities, who.userId),
-    );
-    return listingFor(who.viewer, { invited: false });
+    // A site owner's grant lands in the target person's team, else the privileged team, whatever
+    // team the site owner is in.
+    const team = isAdmin(who.viewer.role) ? await teamOrPrivileged(user.id, lang) : undefined;
+    try {
+      await addGrants(user.id, lang, capabilities, who.userId, {
+        team,
+        within: (client) => revokeOpenFor(client, lang, address, user.id, capabilities, who.userId),
+      });
+    } catch (error) {
+      if (error instanceof OtherTeamError) return Response.json({ error: error.message }, { status: 409 });
+      throw error;
+    }
+    return listingFor(who.viewer, who.userId, { invited: false });
   }
 
-  // Nobody has registered as it: invite the address instead.
+  // Nobody has registered as it: invite the address instead, into the inviter's team. A site
+  // owner's invite joins the privileged team, whatever team they are in. Null also stands for
+  // the privileged team when a team admin of it invites, so the invite follows the language
+  // through a hand-over, which move_team_lang does not do for a stored team id.
+  const inviterTeam = isAdmin(who.viewer.role) ? null : await teamIn(who.userId, lang);
   try {
     await createInvite({
       email: address,
       lang,
       capabilities,
       invitedBy: who.userId,
+      team: inviterTeam && inviterTeam !== (await privilegedOf(lang)) ? inviterTeam : null,
       limited: !isAdmin(who.viewer.role),
       deliver: emailInvite,
     });
@@ -88,7 +105,7 @@ export async function PUT(request: Request) {
     }
     throw error;
   }
-  return listingFor(who.viewer, { invited: true });
+  return listingFor(who.viewer, who.userId, { invited: true });
 }
 
 export async function DELETE(request: Request) {
@@ -107,6 +124,13 @@ export async function DELETE(request: Request) {
     return Response.json({ error: "you cannot remove your own admin" }, { status: 403 });
   }
 
-  await removeGrant(userId, lang, capability, who.userId);
-  return listingFor(who.viewer);
+  // A team admin takes away only what their own team gave.
+  const team =
+    isAdmin(who.viewer.role) || capability === "text" ? undefined : ((await teamIn(who.userId, lang)) ?? undefined);
+  if (team) {
+    const theirs = await teamIn(userId, lang);
+    if (theirs && theirs !== team) return notAllowed();
+  }
+  await removeGrant(userId, lang, capability, who.userId, team);
+  return listingFor(who.viewer, who.userId);
 }

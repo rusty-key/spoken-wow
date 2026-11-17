@@ -20,10 +20,30 @@ vi.mock("@/lib/grants/store", async (importOriginal) => ({
   }),
 }));
 
+const acting = vi.hoisted(() => ({
+  team: null as string | null,
+  privileged: "team-a" as string | null,
+  second: new Set<string>(),
+  reads: 0,
+}));
+
+vi.mock("@/lib/teams/acting", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/lib/teams/acting")>()),
+  teamIn: async () => {
+    acting.reads += 1;
+    return acting.team;
+  },
+}));
+vi.mock("@/lib/teams/store", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/lib/teams/store")>()),
+  privilegedOf: async () => acting.privileged,
+  secondTeamLangs: async () => acting.second,
+}));
+
 import { createToken, revokeToken } from "@/lib/tokens/store";
 import type { TokenAccess } from "@/lib/tokens/types";
 
-import { requireToken } from "./guard";
+import { requireToken, withToken } from "./guard";
 
 const USER = `test-guard-${Math.random().toString(36).slice(2, 10)}`;
 
@@ -53,6 +73,10 @@ beforeAll(async () => {
 });
 
 beforeEach(() => {
+  acting.team = null;
+  acting.privileged = "team-a";
+  acting.second = new Set();
+  acting.reads = 0;
   viewer.grants = [{ lang: "deDE", capability: "text" }];
 });
 
@@ -180,5 +204,37 @@ describe("requireToken", () => {
     viewer.grants = [{ lang: "deDE", capability: "regenerate" }];
     const { context } = await requireToken(request(`Bearer ${token}`), { need: "generate" });
     expect(context).toMatchObject({ access: "none", generate: true });
+  });
+});
+
+describe("a second team's owner", () => {
+  beforeEach(() => {
+    acting.second = new Set(["deDE"]);
+  });
+
+  it("is refused by requireToken, and passes withToken", async () => {
+    acting.team = "team-b";
+    const { token } = await make("read");
+    const refused = await requireToken(request(`Bearer ${token}`), { need: "read" });
+    expect(refused.denied?.status).toBe(403);
+    expect(await refused.denied?.json()).toEqual({ error: "this route does not work for a second team yet" });
+
+    const passed = await withToken(request(`Bearer ${token}`), { need: "read" }, async () => new Response("ran"));
+    expect(await passed.text()).toBe("ran");
+  });
+
+  it("is not refused in the privileged team", async () => {
+    acting.team = "team-a";
+    const { token } = await make("read");
+    expect((await requireToken(request(`Bearer ${token}`), { need: "read" })).denied).toBeNull();
+  });
+});
+
+describe("a language with one team", () => {
+  it("reads nobody's team", async () => {
+    acting.team = "team-b";
+    const { token } = await make("read");
+    expect((await requireToken(request(`Bearer ${token}`), { need: "read" })).denied).toBeNull();
+    expect(acting.reads).toBe(0);
   });
 });

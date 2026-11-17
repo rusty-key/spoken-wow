@@ -1,4 +1,4 @@
-/** Needs DATABASE_URL and migrations through 0110 applied. Only the email is mocked; the admin lookup can be made to fail. */
+/** Needs DATABASE_URL and migrations through 0113 applied. Only the email is mocked; the admin lookup can be made to fail. */
 import { afterAll, afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const sent = vi.hoisted(() => [] as { to: string; subject: string; text: string }[]);
@@ -16,10 +16,11 @@ vi.mock("@/lib/site", async (importOriginal) => {
 });
 
 import { listActivity } from "@/lib/activity/store";
-import { closeDb } from "@/lib/db";
+import { closeDb, inTransaction } from "@/lib/db";
 import { grantsOf } from "@/lib/grants/store";
 import { isLang } from "@/lib/lang";
 import { forgetLanguages, loadLanguages } from "@/lib/languages/catalogue";
+import { addLanguage, describeNew } from "@/lib/languages/store";
 
 import { TeamError } from "./admin";
 import { approveRequest, createRequest, listRequests, rejectRequest, withdrawRequest } from "./requests";
@@ -45,6 +46,19 @@ const ask = (lang: string, over: Partial<Parameters<typeof createRequest>[1]> = 
   createRequest(requester.id, { lang, language: names, teamName: "Xq Team", note: null, ...over });
 const refused = (status: number, message?: string) => (error: unknown) =>
   error instanceof TeamError && error.status === status && (!message || error.message.includes(message));
+/** A known language with a team of its own and a member there who is no site owner. */
+async function maintained(): Promise<{ lang: string; a: string }> {
+  const lang = code();
+  await inTransaction((client) => addLanguage(client, describeNew(lang, "Xq Old", "Xq Old"), admin.id));
+  forgetLanguages();
+  await loadLanguages();
+  const [{ a }] = await systemRows<{ a: string }>(`select team_of_lang($1) as "a"`, [lang]);
+  await asSystem.query(
+    `insert into "team_member" ("teamId", "userId", "lang", "capability") values ($1, $2, $3, 'regenerate')`,
+    [a, other.id, lang],
+  );
+  return { lang, a };
+}
 const mailTo = (user: { id: string }) => sent.filter((mail) => mail.to === `${user.id}@example.invalid`);
 
 beforeEach(async () => {
@@ -68,6 +82,9 @@ afterEach(async () => {
   await asSystem.query(`delete from "team_request" where "userId" = any($1::text[])`, [users]);
   await asSystem.query(`delete from "language_grant" where "lang" = any($1::text[])`, [codes]);
   await asSystem.query(`delete from "language" where "code" = any($1::text[])`, [codes]);
+  for (const table of ["generation_setting_locale", "pronunciation_lexicon_locale"]) {
+    await asSystem.query(`delete from "${table}" where "teamId" = any($1::uuid[])`, [held.map((row) => row.teamId)]);
+  }
   for (const { teamId } of held) await dropTeam(teamId);
   for (const user of [requester, admin, other]) await user.cleanup();
   forgetLanguages();
@@ -130,6 +147,20 @@ describe("createRequest", () => {
     await expect(ask(lang)).resolves.toMatchObject({ state: "pending" });
   });
 
+  it("refuses somebody who already works on the language", async () => {
+    const { lang, a } = await maintained();
+    await asSystem.query(
+      `insert into "team_member" ("teamId", "userId", "lang", "capability") values ($1, $2, $3, 'regenerate')`,
+      [a, requester.id, lang],
+    );
+    await expect(
+      createRequest(requester.id, { lang, language: null, teamName: "Second", note: null }),
+    ).rejects.toSatisfy(
+      refused(409, `You already work on Xq Old in ${lang.toLowerCase()}; one person works in one team per language.`),
+    );
+    expect(await systemRows(`select 1 from "team_request" where "userId" = $1`, [requester.id])).toHaveLength(0);
+  });
+
   it("lists newest first, filtered", async () => {
     const [a, b] = [code(), code()];
     const first = await ask(a);
@@ -178,22 +209,35 @@ describe("approveRequest", () => {
     await expect(approveRequest(request.id, admin.id)).rejects.toSatisfy(refused(409, "already withdrawn"));
   });
 
-  it("refuses a second team, and the request stays pending", async () => {
-    const [{ team }] = await systemRows<{ team: string }>(`select team_of_lang('deDE') as "team"`);
-    const holder = await testUser("test-req-holder");
-    try {
-      await asSystem.query(
-        `insert into "team_member" ("teamId", "userId", "lang", "capability") values ($1, $2, 'deDE', 'admin') on conflict do nothing`,
-        [team, holder.id],
-      );
-      const request = await createRequest(requester.id, { lang: "deDE", language: null, teamName: "Second", note: null });
-      expect(request.branch).toBe("second-team");
-      await expect(approveRequest(request.id, admin.id)).rejects.toSatisfy(refused(409, "plan 5"));
-      expect((await listRequests({ userId: requester.id }))[0].state).toBe("pending");
-    } finally {
-      await asSystem.query(`delete from "team_member" where "userId" = $1`, [holder.id]);
-      await holder.cleanup();
-    }
+  it("makes a second team beside a maintained language, starting from its settings", async () => {
+    const { lang } = await maintained();
+    const request = await createRequest(requester.id, { lang, language: null, teamName: "Second", note: null });
+    expect(request.branch).toBe("second-team");
+    const approved = await approveRequest(request.id, admin.id, { settings: "copy" });
+    expect(approved.state).toBe("approved");
+    const [second] = await systemRows<{ teamId: string }>(
+      `select "teamId" from "team_language" where "lang" = $1 and not "privileged"`,
+      [lang],
+    );
+    expect(approved.approvedTeamId).toBe(second.teamId);
+    const { rows } = await listActivity({ lang, global: true, actorId: admin.id });
+    expect(rows.find((row) => row.kind === "request.approved")?.detail).toMatchObject({ branch: "second-team" });
+  });
+
+  it("refuses a requester who joined the language's team after asking, and leaves the request pending", async () => {
+    const { lang, a } = await maintained();
+    const request = await createRequest(requester.id, { lang, language: null, teamName: "Second", note: null });
+    await asSystem.query(
+      `insert into "team_member" ("teamId", "userId", "lang", "capability") values ($1, $2, $3, 'regenerate')`,
+      [a, requester.id, lang],
+    );
+    await expect(approveRequest(request.id, admin.id)).rejects.toSatisfy(
+      refused(409, `You already work on Xq Old in ${lang.toLowerCase()}; one person works in one team per language.`),
+    );
+    expect(await systemRows(`select "state" from "team_request" where "id" = $1`, [request.id])).toEqual([
+      { state: "pending" },
+    ]);
+    expect(await systemRows(`select 1 from "team_language" where "lang" = $1 and not "privileged"`, [lang])).toEqual([]);
   });
 });
 

@@ -5,7 +5,7 @@ import type { ClientBase } from "pg";
 
 import { ALL_TEAMS, query, queryIn, withTeam } from "@/lib/db";
 import { recordActivity } from "@/lib/activity/store";
-import { addGrants, userByEmail } from "@/lib/grants/store";
+import { addGrants, OtherTeamError, userByEmail } from "@/lib/grants/store";
 import type { Lang } from "@/lib/lang";
 import type { Capability } from "@/lib/permissions";
 
@@ -15,7 +15,10 @@ export type TeamSummary = {
   id: TeamId;
   slug: string;
   name: string;
+  /** The languages it is privileged in. */
   langs: Lang[];
+  /** The languages it is a second team in, beside another team. */
+  alsoIn: Lang[];
   members: { userId: string; email: string; name: string | null; lang: Lang; capability: Capability }[];
 };
 
@@ -48,9 +51,9 @@ export async function listTeams(only?: TeamId): Promise<TeamSummary[]> {
       `select "id", "slug", "name" from "team" where $1::uuid is null or "id" = $1 order by "slug"`,
       id,
     ),
-    query<{ teamId: TeamId; lang: Lang }>(
-      `select "teamId", "lang" from "team_language"
-        where "privileged" and ($1::uuid is null or "teamId" = $1) order by "lang"`,
+    query<{ teamId: TeamId; lang: Lang; privileged: boolean }>(
+      `select "teamId", "lang", "privileged" from "team_language"
+        where $1::uuid is null or "teamId" = $1 order by "lang"`,
       id,
     ),
     query<TeamSummary["members"][number] & { teamId: TeamId }>(
@@ -63,7 +66,8 @@ export async function listTeams(only?: TeamId): Promise<TeamSummary[]> {
   ]);
   return teams.map((team) => ({
     ...team,
-    langs: langs.filter((row) => row.teamId === team.id).map((row) => row.lang),
+    langs: langs.filter((row) => row.teamId === team.id && row.privileged).map((row) => row.lang),
+    alsoIn: langs.filter((row) => row.teamId === team.id && !row.privileged).map((row) => row.lang),
     members: members
       .filter((row) => row.teamId === team.id)
       .map(({ teamId: _team, ...member }) => member),
@@ -117,7 +121,15 @@ export async function createTeamWithLangs(
       throw new TeamError(`${done}${lang} refused: ${error.message}`, error.status);
     }
     moved.push(lang);
-    if (adminId) await addGrants(adminId, lang, ["admin"], actorId);
+    if (!adminId) continue;
+    try {
+      await addGrants(adminId, lang, ["admin"], actorId, { team: id });
+    } catch (error) {
+      if (error instanceof OtherTeamError) {
+        throw new TeamError(`moved ${moved.join(", ")}; ${error.message}`, 409);
+      }
+      throw error;
+    }
   }
   const [team] = await listTeams(id);
   return { team, moved };
@@ -176,11 +188,13 @@ export async function moveLang(
   }
 }
 
-/** Live takes per language, which a hand-over moves too. */
+/** Live takes per language in its privileged team, which a hand-over moves too. */
 export async function liveTakeCounts(): Promise<Map<Lang, number>> {
   const rows = await queryIn<{ lang: Lang; count: number }>(
     ALL_TEAMS,
-    `select "lang", count(*)::int as "count" from "take" where "isCurrent" group by "lang"`,
+    `select "lang", count(*)::int as "count" from "take"
+      where "isCurrent" and "teamId" = team_of_lang("lang")
+      group by "lang"`,
   );
   return new Map(rows.map((row) => [row.lang, row.count]));
 }

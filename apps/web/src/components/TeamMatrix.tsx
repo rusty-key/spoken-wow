@@ -76,6 +76,11 @@ function Matrix({ lang, grants: initial, invites: initialInvites, viewer, textBy
   const offered = COLUMNS.filter((capability) => canGrant(viewer, capability, lang, textByTeam));
   const [chosen, setChosen] = useState<Capability[]>(["edit"]);
   const global = isAdmin(viewer.role);
+  // Which team each person works in here, shown to a site owner when the language has more than one.
+  const teamOfPerson = new Map(
+    grants.filter((grant) => grant.teamSlug).map((grant) => [grant.userId, grant.teamSlug]),
+  );
+  const showTeams = global && new Set(teamOfPerson.values()).size > 1;
 
   // Saves one after another, an undo from a toast, the add form and the invite buttons included:
   // every save answers with the whole listing, and a slower reply landing after a newer one
@@ -309,7 +314,10 @@ function Matrix({ lang, grants: initial, invites: initialInvites, viewer, textBy
                       you
                     </span>
                   )}
-                  <span className="text-muted-foreground block text-xs">{person.email}</span>
+                  <span className="text-muted-foreground block text-xs">
+                    {person.email}
+                    {showTeams && teamOfPerson.has(person.id) && <> · {teamOfPerson.get(person.id)}</>}
+                  </span>
                 </th>
                 {COLUMNS.map((capability) => (
                   <td key={capability} className={cn("text-center", capability === "admin" && "bg-rose-500/[0.03]")}>

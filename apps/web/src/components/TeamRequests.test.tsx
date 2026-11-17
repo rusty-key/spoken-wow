@@ -62,9 +62,44 @@ test("a refusal shows on the row and the row stays", async () => {
   expect(screen.getByText("Crew")).toBeTruthy();
 });
 
-test("a second-team row says why it cannot be approved yet", () => {
+test("a second-team row says what approving does", () => {
   render(<TeamRequests initial={[request({ branch: "second-team" })]} />);
-  expect(screen.getByText("German has a team already; a second team is not possible yet")).toBeTruthy();
+  expect(
+    screen.getByText("German has a team already; approving makes a second team beside it, with audio roles only"),
+  ).toBeTruthy();
+});
+
+const approveBody = async (initial: TeamRequest[], besides: Record<string, string>, tick: boolean) => {
+  fetchMock.mockResolvedValue(new Response("{}", { status: 200 }));
+  const user = userEvent.setup();
+  render(<TeamRequests initial={initial} besides={besides} />);
+  if (tick) await user.click(screen.getByLabelText("Start from Deutsch Team's voices and settings"));
+  await user.click(screen.getByRole("button", { name: "Approve Crew" }));
+  await waitFor(() => expect(fetchMock).toHaveBeenCalled());
+  return JSON.parse(fetchMock.mock.calls[0][1].body);
+};
+
+test("a second-team row copies the privileged team's settings only when ticked", async () => {
+  const second = [request({ branch: "second-team" })];
+  expect(await approveBody(second, { r1: "Deutsch Team" }, true)).toEqual({ decision: "approve", settings: "copy" });
+  cleanup();
+  fetchMock.mockReset();
+  expect(await approveBody(second, { r1: "Deutsch Team" }, false)).toEqual({ decision: "approve", settings: "fresh" });
+});
+
+test("a second-team row's box starts unticked", () => {
+  render(<TeamRequests initial={[request({ branch: "second-team" })]} besides={{ r1: "Deutsch Team" }} />);
+  expect((screen.getByLabelText("Start from Deutsch Team's voices and settings") as HTMLInputElement).checked).toBe(false);
+});
+
+test("other rows have no box", () => {
+  render(<TeamRequests initial={[request()]} besides={{ r1: "Deutsch Team" }} />);
+  expect(screen.getByRole("button", { name: "Approve Crew" })).toBeTruthy();
+  expect(screen.queryByLabelText(/Start from/)).toBeNull();
+});
+
+test("other rows send no settings", async () => {
+  expect(await approveBody([request()], {}, false)).toEqual({ decision: "approve" });
 });
 
 test("a request the refresh brings in shows, and a decided one stays gone", async () => {

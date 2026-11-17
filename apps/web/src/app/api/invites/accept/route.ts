@@ -8,6 +8,7 @@ import { cookies, headers } from "next/headers";
 import { bad, bodyOf, objectOf } from "@/lib/api-body";
 import { auth } from "@/lib/auth";
 import { INVITE_COOKIE } from "@/lib/invites/cookie";
+import { langName, type Lang } from "@/lib/lang";
 import { capabilityLabel } from "@/lib/permissions";
 import { acceptInvite } from "@/lib/invites/store";
 
@@ -21,6 +22,7 @@ const STATUS = {
   accepted: 409,
   "wrong-email": 403,
   "inviter-cannot-grant": 409,
+  "other-team": 409,
 } as const;
 
 export async function POST(request: Request) {
@@ -46,6 +48,7 @@ export async function POST(request: Request) {
     accepted: "This invite was accepted already.",
     "wrong-email": `This invite is for ${outcome.email}; you are signed in as ${session.user.email}.`,
     "inviter-cannot-grant": `${who} can no longer give ${outcome.capability ? capabilityLabel(outcome.capability) : "that"}; ask a team admin to send a new invite.`,
+    "other-team": `You already work on ${langName(outcome.lang as Lang)} in another team; one person works in one team per language.`,
   }[reason];
   return Response.json({ error, reason }, { status: STATUS[reason] });
 }

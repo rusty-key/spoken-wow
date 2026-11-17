@@ -13,7 +13,7 @@
  * every field a backfill could not supply is optional.
  */
 import type { Capability } from "@/lib/permissions";
-import type { Branch } from "@/lib/teams/found";
+import type { Branch, Settings } from "@/lib/teams/found";
 
 export type ApiAudit = { tokenId: string; batchId?: string };
 
@@ -153,6 +153,8 @@ export type ActivityDetail = {
   "team.renamed": { name: string };
   /** A language handed to another team, by team slug. */
   "team.language_moved": { from: string; to: string };
+  /** A second team made beside the language's privileged team `beside`, by slug; filed under the new team. */
+  "team.second_in_language": { slug: string; beside: string; settings: Settings };
   "contribution.resolved": { status: string; key?: string; correction?: boolean };
   "contribution.edited": { field: string; value?: unknown };
   "report.resolved": { status: string; category?: string };

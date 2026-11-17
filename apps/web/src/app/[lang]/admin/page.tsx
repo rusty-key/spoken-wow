@@ -9,7 +9,7 @@ import UserSearch from "@/components/UserSearch";
 import UserTable from "@/components/UserTable";
 import { userIdsWithApiKey } from "@/lib/api-key";
 import { listGrants, viewerOf } from "@/lib/grants/store";
-import { listInvites } from "@/lib/invites/store";
+import { viewerTeams, visibleGrants, visibleInvites } from "@/lib/invites/listing";
 import { isLang, langName } from "@/lib/lang";
 import { languageStates, textByTeam } from "@/lib/languages/store";
 import { isAdmin, langsWhere } from "@/lib/permissions";
@@ -51,7 +51,12 @@ export default async function Page({
   const team = asked ?? (global ? null : administered[0]);
 
   if (team) {
-    const [grants, invites, byTeam] = await Promise.all([listGrants([team]), listInvites([team]), textByTeam(team)]);
+    const teams = await viewerTeams(viewer, session.user.id);
+    const [grants, invites, byTeam] = await Promise.all([
+      visibleGrants(viewer, teams, [team]),
+      visibleInvites(viewer, teams, [team]),
+      textByTeam(team),
+    ]);
     return (
       <main className="pb-36">
         <AdminHeader

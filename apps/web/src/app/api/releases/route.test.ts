@@ -4,8 +4,9 @@ import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } 
 import { closeDb } from "@/lib/db";
 import { BASE_LANG } from "@/lib/lang";
 import { forgetReleaseCheck } from "@/lib/releases/sync";
+import { asActor } from "@/lib/teams/acting";
 import { forgetTeams } from "@/lib/teams/store";
-import { asSystem, ownTeam, testUser, unowned } from "@/lib/teams/testing";
+import { asSystem, dropTeam, newTeamIn, ownTeam, testUser, unowned } from "@/lib/teams/testing";
 
 const who = vi.hoisted(() => ({ id: "" }));
 
@@ -39,11 +40,12 @@ const press = (lang: string, body: unknown) =>
   POST(new Request(url(lang), { method: "POST", body: JSON.stringify(body) }));
 const read = (lang: string) => GET(new Request(url(lang)));
 
-const makeAdmin = (lang: string, team: string) =>
+const makeAdminFor = (userId: string, lang: string, team: string) =>
   asSystem.query(
     `insert into "team_member" ("teamId", "userId", "lang", "capability", "grantedBy") values ($1, $2, $3, 'admin', $2)`,
-    [team, user.id, lang],
+    [team, userId, lang],
   );
+const makeAdmin = (lang: string, team: string) => makeAdminFor(user.id, lang, team);
 const dropAdmin = (lang: string) =>
   asSystem.query(`delete from "team_member" where "userId" = $1 and "lang" = $2`, [user.id, lang]);
 
@@ -221,6 +223,35 @@ describe("release route", () => {
       await dropAdmin("esES");
       await asSystem.query(`delete from "team_language" where "teamId" = $1 and "lang" = 'esES'`, [fr.team]);
       await moved.restore();
+    }
+  });
+
+  it("answers 409 to a second team's admin and writes no run, while the privileged admin still dispatches", async () => {
+    const team = await newTeamIn("frFR", false, "release-second");
+    const second = await testUser("test-release-second");
+    const before = who.id;
+    try {
+      await makeAdminFor(second.id, "frFR", team);
+      who.id = second.id;
+      const refused = await asActor(second.id, () => press("frFR", { section: "quests" }));
+      expect(refused.status).toBe(409);
+      expect((await refused.json()).error).toBe(
+        "Releases for a second team are not built yet; its takes stay on the site.",
+      );
+      const { rows } = await asSystem.query(`select 1 from "release_run" where "lang" = 'frFR' and "requestedBy" = $1`, [
+        second.id,
+      ]);
+      expect(rows).toEqual([]);
+      expect(github.dispatchRelease).not.toHaveBeenCalled();
+
+      who.id = before;
+      expect((await press("frFR", { section: "quests" })).status).toBe(202);
+      expect(github.dispatchRelease).toHaveBeenCalledTimes(1);
+    } finally {
+      who.id = before;
+      await dropTeam(team);
+      await second.cleanup();
+      forgetTeams();
     }
   });
 });

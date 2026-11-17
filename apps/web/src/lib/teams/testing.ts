@@ -2,11 +2,14 @@
  * For tests: a language moved onto a team of its own, and back. On a test database every
  * language shares the english team, so only a moved language makes "the job's team" observable.
  */
+import { randomInt, randomUUID } from "node:crypto";
+
 import { Pool, type QueryResult, type QueryResultRow } from "pg";
 import { afterAll } from "vitest";
 
 import { db } from "@/lib/db";
 import type { Lang } from "@/lib/lang";
+import { forgetLanguages, loadLanguages } from "@/lib/languages/catalogue";
 
 import { forgetTeams, type TeamId } from "./store";
 
@@ -155,4 +158,58 @@ export async function dropTeam(team: TeamId): Promise<void> {
     await asSystem.query(`delete from "${table}" where "teamId" = $1`, [team]);
   }
   await asSystem.query(`delete from "team" where "id" = $1`, [team]);
+}
+
+const CAPITALS = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+
+/** `xq` and two random capitals: a code no real language has. */
+export function randomLang(): Lang {
+  return `xq${CAPITALS[randomInt(26)]}${CAPITALS[randomInt(26)]}` as Lang;
+}
+
+/**
+ * A language row of a code no language has yet, so dropLang never deletes a row the test did not
+ * make; the language catalogue is reloaded with it.
+ */
+export async function uniqueLang({ textByTeam = false } = {}): Promise<Lang> {
+  for (;;) {
+    const code = randomLang();
+    const made = await asSystem.query(
+      `insert into "language" ("code", "name", "native", "bcp47", "provider", "client", "enabled", "textByTeam")
+       values ($1, 'Xq', 'Xq', 'xq-XQ', 'xq', false, false, $2) on conflict do nothing`,
+      [code, textByTeam],
+    );
+    if (made.rowCount) {
+      forgetLanguages();
+      await loadLanguages();
+      return code;
+    }
+  }
+}
+
+/** uniqueLang's row, with the activity and grants left in it; its teams are dropped first. */
+export async function dropLang(lang: Lang): Promise<void> {
+  await asSystem.query(`delete from "activity" where "lang" = $1`, [lang]);
+  await asSystem.query(`delete from "language_grant" where "lang" = $1`, [lang]);
+  await asSystem.query(`delete from "language" where "code" = $1`, [lang]);
+  forgetLanguages();
+}
+
+/** A new team working on `lang`, privileged or a second team; dropTeam removes it. */
+export async function newTeamIn(lang: string, privileged: boolean, name = "test"): Promise<TeamId> {
+  const [row] = await systemRows<{ id: TeamId }>(`select new_team($1, $1) as "id"`, [
+    `${name}-${randomUUID().slice(0, 8)}`,
+  ]);
+  await asSystem.query(`insert into "team_language" ("teamId", "lang", "privileged") values ($1, $2, $3)`, [
+    row.id, lang, privileged,
+  ]);
+  forgetTeams();
+  return row.id;
+}
+
+/** A person's capability in a team's language. */
+export async function addMember(team: TeamId, userId: string, lang: string, capability: string): Promise<void> {
+  await asSystem.query(`insert into "team_member" ("teamId", "userId", "lang", "capability") values ($1, $2, $3, $4)`, [
+    team, userId, lang, capability,
+  ]);
 }

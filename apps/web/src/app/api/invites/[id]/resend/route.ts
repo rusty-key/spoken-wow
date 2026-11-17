@@ -23,5 +23,5 @@ export async function POST(_request: Request, { params }: { params: Promise<{ id
     }
     throw error;
   }
-  return listingFor(viewer);
+  return listingFor(viewer, session.user.id);
 }

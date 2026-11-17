@@ -11,13 +11,14 @@ import type { PoolClient } from "pg";
 import { recordActivity } from "@/lib/activity/store";
 import { db, inTransaction, query } from "@/lib/db";
 import { sendEmail } from "@/lib/email";
+import { isOtherTeam } from "@/lib/grants/store";
 import { langName } from "@/lib/lang";
 import { adminEmails, SITE } from "@/lib/site";
 import { isUuid } from "@/lib/uuid";
 
 import { TeamError } from "./admin";
 import { requestLangName as nameOf } from "./branch-text";
-import { afterFounded, foundTeam, languageBranch, type Branch } from "./found";
+import { afterFounded, foundTeam, languageBranch, memberRefusal, type Branch, type Settings } from "./found";
 import type { TeamId } from "./store";
 
 export type RequestState = "pending" | "approved" | "rejected" | "withdrawn";
@@ -69,6 +70,8 @@ async function read(id: string, client?: Reader): Promise<Row | null> {
 }
 
 export async function createRequest(userId: string, input: NewRequest): Promise<TeamRequest> {
+  const refusal = await memberRefusal(userId, input.lang);
+  if (refusal) throw refusal;
   let id: string;
   try {
     const rows = await query<{ id: string }>(
@@ -161,13 +164,24 @@ async function lockPending(client: PoolClient, id: string): Promise<Row> {
   return row;
 }
 
-export async function approveRequest(id: string, actorId: string): Promise<TeamRequest> {
+/** `options.settings` is what a second team starts from; the other branches ignore it. */
+export async function approveRequest(
+  id: string,
+  actorId: string,
+  options: { settings?: Settings } = {},
+): Promise<TeamRequest> {
   const { row, founded } = await inTransaction(async (client) => {
     const row = await lockPending(client, id);
     const language = row.langName !== null && row.langNative !== null ? { name: row.langName, native: row.langNative } : null;
     const founded = await foundTeam(
       client,
-      { lang: row.lang, language, team: { slug: null, name: row.teamName }, adminId: row.userId },
+      {
+        lang: row.lang,
+        language,
+        team: { slug: null, name: row.teamName },
+        adminId: row.userId,
+        settings: options.settings,
+      },
       actorId,
     );
     await client.query(
@@ -177,6 +191,12 @@ export async function approveRequest(id: string, actorId: string): Promise<TeamR
       [id, founded.teamId, actorId],
     );
     return { row, founded };
+  }).catch(async (error: unknown) => {
+    // 23P01: a grant elsewhere put the requester in a team of the language after foundTeam
+    // checked, and the commit refused the second membership.
+    if (!isOtherTeam(error)) throw error;
+    const request = await read(id);
+    throw (request && (await memberRefusal(request.userId, request.lang))) ?? error;
   });
   // The approval is committed; none of these throws, so none can fail the response.
   await afterFounded(founded, actorId);

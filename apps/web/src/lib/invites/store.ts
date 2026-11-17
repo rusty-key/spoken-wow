@@ -11,12 +11,14 @@ import type { ClientBase, PoolClient } from "pg";
 import { recordActivity } from "@/lib/activity/store";
 import { actAs, ALL_TEAMS, db, inTransaction, query } from "@/lib/db";
 import { sendInviteEmail } from "@/lib/email";
-import { addGrants, grantsOf, refusedGrant, viewerById } from "@/lib/grants/store";
+import { addGrants, grantsOf, OtherTeamError, refusedGrant, viewerById } from "@/lib/grants/store";
 import { langName, type Lang } from "@/lib/lang";
 import { knownLang } from "@/lib/languages/catalogue";
 import { capabilityLabel, isCapability, type Capability } from "@/lib/permissions";
 import { hashSecret as hashOf, mintSecret as newToken } from "@/lib/secret-token";
 import { SITE } from "@/lib/site";
+import { teamIn } from "@/lib/teams/acting";
+import { orPrivileged, type TeamId } from "@/lib/teams/store";
 
 export const INVITE_DAYS = 14;
 export const INVITES_PER_DAY = 20;
@@ -30,6 +32,9 @@ export type InviteRow = {
   capabilities: Capability[];
   invitedById: string;
   invitedByName: string | null;
+  /** The team accepting it joins; null for the language's privileged team. */
+  teamId: TeamId | null;
+  createdAt: string;
   sentAt: string;
   expiresAt: string;
   expired: boolean;
@@ -41,8 +46,13 @@ export type InviteLookup = InviteRow & {
 };
 
 export class InviteExistsError extends Error {
-  constructor() {
-    super("That address is already invited; resend or revoke the invite.");
+  /** `elsewhere`: the open invite joins another team, whose admin alone can resend or revoke it. */
+  constructor(elsewhere = false) {
+    super(
+      elsewhere
+        ? "That address is already invited to another team in this language."
+        : "That address is already invited; resend or revoke the invite.",
+    );
     this.name = "InviteExistsError";
   }
 }
@@ -99,13 +109,17 @@ type Row = {
   capabilities: string[];
   invitedBy: string;
   invitedByName: string | null;
+  joinTeamId: TeamId | null;
+  createdAt: Date;
   sentAt: Date;
   expiresAt: Date;
 };
 
 const COLUMNS = `i."id", i."email", i."lang", i."capabilities", i."invitedBy", u."name" as "invitedByName",
-                 i."sentAt", i."expiresAt"`;
+                 i."joinTeamId", i."createdAt", i."sentAt", i."expiresAt"`;
 const OPEN = `i."acceptedAt" is null and i."revokedAt" is null`;
+/** The team invite `i` joins: its own, else its language's privileged team. */
+const JOIN_TEAM = `coalesce(i."joinTeamId", team_of_lang(i."lang"))`;
 
 function toInvite(row: Row): InviteRow {
   return {
@@ -115,6 +129,8 @@ function toInvite(row: Row): InviteRow {
     capabilities: row.capabilities.filter(isCapability),
     invitedById: row.invitedBy,
     invitedByName: row.invitedByName,
+    teamId: row.joinTeamId,
+    createdAt: row.createdAt.toISOString(),
     sentAt: row.sentAt.toISOString(),
     expiresAt: row.expiresAt.toISOString(),
     expired: row.expiresAt.getTime() <= Date.now(),
@@ -135,6 +151,8 @@ export async function createInvite(args: {
   lang: Lang;
   capabilities: Capability[];
   invitedBy: string;
+  /** The team it joins; null for the language's privileged team. */
+  team: TeamId | null;
   limited: boolean;
   /** Before the commit, so an invite whose email could not be sent is not made. */
   deliver?: Deliver;
@@ -161,10 +179,10 @@ export async function createInvite(args: {
         [args.lang, args.email, args.invitedBy],
       );
       const { rows } = await client.query<{ id: string }>(
-        `insert into "invite" ("email", "lang", "capabilities", "tokenHash", "invitedBy", "expiresAt")
-         values ($1, $2, $3, $4, $5, now() + make_interval(days => $6))
+        `insert into "invite" ("email", "lang", "capabilities", "tokenHash", "invitedBy", "expiresAt", "joinTeamId")
+         values ($1, $2, $3, $4, $5, now() + make_interval(days => $6), $7)
          returning "id"`,
-        [args.email, args.lang, args.capabilities, hashOf(token), args.invitedBy, INVITE_DAYS],
+        [args.email, args.lang, args.capabilities, hashOf(token), args.invitedBy, INVITE_DAYS, args.team],
       );
       await recordActivity(
         {
@@ -173,6 +191,7 @@ export async function createInvite(args: {
           subject: rows[0].id,
           actorId: args.invitedBy,
           detail: { email: args.email, capabilities: args.capabilities },
+          team: await orPrivileged(args.team, args.lang),
         },
         client,
       );
@@ -181,9 +200,22 @@ export async function createInvite(args: {
       return { invite, token };
     });
   } catch (error) {
-    if ((error as { code?: string }).code === "23505") throw new InviteExistsError();
+    if ((error as { code?: string }).code === "23505") {
+      throw new InviteExistsError(await invitedElsewhere(args.lang, args.email, args.team));
+    }
     throw error;
   }
+}
+
+/** Whether the open invite of `email` in `lang` joins a team other than `team` (null: the privileged one). */
+async function invitedElsewhere(lang: Lang, email: string, team: TeamId | null): Promise<boolean> {
+  const rows = await query<{ elsewhere: boolean }>(
+    `select ${JOIN_TEAM} is distinct from coalesce($3::uuid, team_of_lang(i."lang")) as "elsewhere"
+       from "invite" i
+      where i."lang" = $1 and i."email" = $2 and ${OPEN}`,
+    [lang, email, team],
+  );
+  return rows.some((row) => row.elsewhere);
 }
 
 /**
@@ -199,8 +231,14 @@ export async function resendInvite(
   const token = newToken();
   return inTransaction(async (client) => {
     await actAs(client, ALL_TEAMS);
-    const { rows } = await client.query<{ lang: string; email: string; sentAt: Date; sendCount: number }>(
-      `select "lang", "email", "sentAt", "sendCount" from "invite"
+    const { rows } = await client.query<{
+      lang: string;
+      email: string;
+      sentAt: Date;
+      sendCount: number;
+      joinTeamId: TeamId | null;
+    }>(
+      `select "lang", "email", "sentAt", "sendCount", "joinTeamId" from "invite"
         where "id" = $1 and "acceptedAt" is null and "revokedAt" is null for update`,
       [id],
     );
@@ -219,8 +257,16 @@ export async function resendInvite(
         where "id" = $1`,
       [id, hashOf(token), INVITE_DAYS],
     );
+    const { lang, email, joinTeamId } = rows[0];
     await recordActivity(
-      { kind: "invite.resent", lang: rows[0].lang as Lang, subject: id, actorId, detail: { email: rows[0].email } },
+      {
+        kind: "invite.resent",
+        lang: lang as Lang,
+        subject: id,
+        actorId,
+        detail: { email },
+        team: await orPrivileged(joinTeamId, lang as Lang),
+      },
       client,
     );
     const invite = (await openRow(client, id))!;
@@ -236,7 +282,14 @@ export async function revokeInvite(id: string, revokedBy: string): Promise<Invit
     if (!invite) return null;
     await client.query(`update "invite" set "revokedAt" = now(), "revokedBy" = $2 where "id" = $1`, [id, revokedBy]);
     await recordActivity(
-      { kind: "invite.revoked", lang: invite.lang as Lang, subject: id, actorId: revokedBy, detail: { email: invite.email } },
+      {
+        kind: "invite.revoked",
+        lang: invite.lang as Lang,
+        subject: id,
+        actorId: revokedBy,
+        detail: { email: invite.email },
+        team: await orPrivileged(invite.teamId, invite.lang as Lang),
+      },
       client,
     );
     return invite;
@@ -245,7 +298,8 @@ export async function revokeInvite(id: string, revokedBy: string): Promise<Invit
 
 /**
  * Revoke the open invite for `email` in `lang` only when the grants held after this write cover
- * every capability it names; a partial grant leaves it open.
+ * every capability it names; a partial grant leaves it open. Acting as one team, only an invite
+ * into that team is revoked: another team's invite is that team's to withdraw.
  */
 export async function revokeOpenFor(
   client: ClientBase,
@@ -256,15 +310,19 @@ export async function revokeOpenFor(
   actorId: string,
 ): Promise<void> {
   const held = (await grantsOf(userId, client)).filter((grant) => grant.lang === lang).map((grant) => grant.capability);
-  const { rows } = await client.query<{ id: string }>(
-    `update "invite" set "revokedAt" = now(), "revokedBy" = $3
-      where "lang" = $1 and "email" = $2 and "acceptedAt" is null and "revokedAt" is null
-        and "capabilities" <@ $4::text[]
-      returning "id"`,
+  const { rows } = await client.query<{ id: string; team: TeamId | null }>(
+    `update "invite" i set "revokedAt" = now(), "revokedBy" = $3
+      where i."lang" = $1 and i."email" = $2 and ${OPEN}
+        and i."capabilities" <@ $4::text[]
+        and (spoken_team() is null or ${JOIN_TEAM} = spoken_team())
+      returning i."id", ${JOIN_TEAM} as "team"`,
     [lang, email, actorId, [...new Set([...held, ...granted])]],
   );
-  for (const { id } of rows) {
-    await recordActivity({ kind: "invite.revoked", lang, subject: id, actorId, detail: { email } }, client);
+  for (const { id, team } of rows) {
+    await recordActivity(
+      { kind: "invite.revoked", lang, subject: id, actorId, detail: { email }, team: team ?? undefined },
+      client,
+    );
   }
 }
 
@@ -272,13 +330,17 @@ export function openInvite(id: string): Promise<InviteRow | null> {
   return openRow(db(), id);
 }
 
-/** The open invites in `langs` (every language when omitted), newest first. */
-export async function listInvites(langs?: string[]): Promise<InviteRow[]> {
+/**
+ * The open invites in `langs` (every language when omitted), newest first; with `team`, only
+ * those that join it.
+ */
+export async function listInvites(langs?: string[], team?: TeamId): Promise<InviteRow[]> {
   const rows = await query<Row>(
     `select ${COLUMNS} from "invite" i join "user" u on u."id" = i."invitedBy"
       where ${OPEN} and ($1::text[] is null or i."lang" = any($1::text[]))
+        and ($2::uuid is null or ${JOIN_TEAM} = $2::uuid)
       order by i."createdAt" desc`,
-    [langs ?? null],
+    [langs ?? null, team ?? null],
   );
   return rows.map(toInvite);
 }
@@ -311,8 +373,17 @@ export type AcceptOutcome =
   | { ok: true; lang: string; capabilities: Capability[] }
   | {
       ok: false;
-      reason: "unknown" | "changed" | "expired" | "revoked" | "accepted" | "wrong-email" | "inviter-cannot-grant";
+      reason:
+        | "unknown"
+        | "changed"
+        | "expired"
+        | "revoked"
+        | "accepted"
+        | "wrong-email"
+        | "inviter-cannot-grant"
+        | "other-team";
       email?: string;
+      lang?: string;
       inviterName?: string | null;
       capability?: Capability;
     };
@@ -323,7 +394,8 @@ class NotClaimed extends Error {}
  * Give `user` what the invite names, as the inviter, once. The inviter is checked again here
  * with `canGrant`, all or none: if they may no longer give every capability, nothing is given
  * and the invite stays pending. The invite is claimed in the same transaction as the grants,
- * so two presses give them once. `shownId` is the invite the page showed: a link opened later
+ * so two presses give them once. The grants go into the invite's team; somebody who works on the
+ * language in another team is refused, and the invite stays pending. `shownId` is the invite the page showed: a link opened later
  * in another tab replaces the token, and pressing Accept here must not accept that one.
  */
 export async function acceptInvite(
@@ -345,6 +417,12 @@ export async function acceptInvite(
   const refused = (await knownLang(lang)) ? await refusedGrant(viewer, capabilities, lang) : capabilities[0];
   if (refused) return { ok: false, reason: "inviter-cannot-grant", inviterName, capability: refused };
 
+  // `text` joins no team, so only the team capabilities can meet another team.
+  const team = await orPrivileged(invite.teamId, lang as Lang);
+  const joins = capabilities.some((capability) => capability !== "text");
+  const theirs = joins ? await teamIn(user.id, lang) : null;
+  if (theirs && team && theirs !== team) return { ok: false, reason: "other-team", lang };
+
   const claim = async (client: ClientBase) => {
     // By token as well, so a resend between the lookup and here kills the old link.
     const { rowCount } = await client.query(
@@ -354,13 +432,23 @@ export async function acceptInvite(
     );
     if (!rowCount) throw new NotClaimed();
     await recordActivity(
-      { kind: "invite.accepted", lang: lang as Lang, subject: invite.id, actorId: user.id, detail: { email: invite.email, capabilities } },
+      {
+        kind: "invite.accepted",
+        lang: lang as Lang,
+        subject: invite.id,
+        actorId: user.id,
+        detail: { email: invite.email, capabilities },
+        // A text-only grant runs as whichever team the person acts as, and is logged there.
+        team: joins ? team : undefined,
+      },
       client,
     );
   };
   try {
-    await addGrants(user.id, lang, capabilities, invite.invitedById, claim);
+    await addGrants(user.id, lang, capabilities, invite.invitedById, { team, within: claim });
   } catch (error) {
+    // Granted in the other team between the check above and here.
+    if (error instanceof OtherTeamError) return { ok: false, reason: "other-team", lang };
     if (!(error instanceof NotClaimed)) throw error;
     // Somebody else's press, a revoke or the clock got there first: say which.
     const now = await byToken(token);

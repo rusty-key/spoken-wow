@@ -5,11 +5,11 @@
  *
  * - a code with no `language` row is created, switched on, with the new team owning it;
  * - a known language nobody looks after is handed over to a new team and switched on;
- * - a language somebody looks after needs a second team, which plan 5 builds.
+ * - a language somebody looks after gets a second team beside its privileged one.
  *
- * Both working branches give `text` to the team (`textByTeam`) and `admin` and `text` to its
- * admin. Everything is written on the caller's client, in its transaction; afterFounded logs it
- * once that commits.
+ * The first two give `text` to the team (`textByTeam`) and `admin` and `text` to its admin; a
+ * second team's admin gets `admin` alone. Everything is written on the caller's client, in its
+ * transaction; afterFounded logs it once that commits.
  */
 import "server-only";
 
@@ -17,16 +17,20 @@ import type { ClientBase, PoolClient } from "pg";
 
 import { recordActivities, type ActivityEvent } from "@/lib/activity/store";
 import { ALL_TEAMS, actAs, db } from "@/lib/db";
-import { grantOn } from "@/lib/grants/store";
-import { BASE_LANG, langName } from "@/lib/lang";
+import { grantOn, oneTeamPerLanguage } from "@/lib/grants/store";
+import { BASE_LANG } from "@/lib/lang";
 import { forgetLanguages, loadLanguages } from "@/lib/languages/catalogue";
 import { addLanguage, describeNew, giveTextToTeam, LanguageExistsError, setEnabledOn } from "@/lib/languages/store";
 import type { Capability } from "@/lib/permissions";
 
+import { teamIn } from "./acting";
 import { checkSlug, moveLang, TeamError } from "./admin";
 import { adoptLang, forgetTeams, type TeamId } from "./store";
 
 export type Branch = "new-language" | "hand-over" | "second-team";
+
+/** What a second team starts from: the privileged team's voices and settings, or English's voices alone. */
+export type Settings = "copy" | "fresh";
 
 export type FoundInput = {
   lang: string;
@@ -35,6 +39,8 @@ export type FoundInput = {
   /** A null slug is derived from the name. */
   team: { slug: string | null; name: string };
   adminId: string | null;
+  /** For a second team only; fresh when absent. */
+  settings?: Settings;
 };
 
 export type Founded = {
@@ -42,7 +48,7 @@ export type Founded = {
   teamId: TeamId;
   slug: string;
   lang: string;
-  /** The slug of the team the language was handed over from. */
+  /** The slug of the team the language was handed over from, or that a second team sits beside. */
   from: string | null;
   moved: number;
   switchedOn: boolean;
@@ -50,6 +56,8 @@ export type Founded = {
   granted: Capability[];
   /** The English name of a language this created. */
   languageName: string | null;
+  /** What a second team started from; null on the other branches. */
+  settings: Settings | null;
 };
 
 /**
@@ -75,6 +83,21 @@ async function activeTeamOf(lang: string, client?: ClientBase): Promise<TeamId |
     [lang],
   );
   return rows[0]?.teamId ?? null;
+}
+
+/**
+ * The refusal of a requester who already works on `lang` in a team, which founding them a team
+ * there could only break; null when they work on it in none.
+ */
+export async function memberRefusal(
+  userId: string,
+  lang: string,
+  client?: Pick<ClientBase, "query">,
+): Promise<TeamError | null> {
+  const team = await teamIn(userId, lang, client);
+  if (!team) return null;
+  const { rows } = await (client ?? db()).query<{ slug: string }>(`select "slug" from "team" where "id" = $1`, [team]);
+  return new TeamError(oneTeamPerLanguage("You already work", lang, rows[0].slug), 409);
 }
 
 export async function languageBranch(lang: string, client?: ClientBase): Promise<Branch> {
@@ -137,6 +160,7 @@ async function foundLanguage(client: PoolClient, input: FoundInput, actorId: str
     from: null,
     moved: 0,
     languageName: input.language.name,
+    settings: null,
   };
 }
 
@@ -153,11 +177,7 @@ async function takeOverLanguage(client: PoolClient, input: FoundInput, actorId: 
     await adoptLang(client, input.lang);
     team = await renameAdopted(client, input);
   } else {
-    const slug =
-      input.team.slug ??
-      (await client.query<{ slug: string }>(`select free_team_slug($1) as "slug"`, [slugFor(input.team.name, input.lang)]))
-        .rows[0].slug;
-    [team] = await named(client, slug, `select new_team($1, $2) as "id", $1::text as "slug"`, [slug, input.team.name]);
+    team = await newTeam(client, input);
     ({ moved, from } = await moveLang(client, input.lang, team.id));
   }
   return {
@@ -169,6 +189,7 @@ async function takeOverLanguage(client: PoolClient, input: FoundInput, actorId: 
     from,
     moved,
     languageName: null,
+    settings: null,
   };
 }
 
@@ -189,15 +210,61 @@ async function renameAdopted(client: PoolClient, input: FoundInput): Promise<{ i
 
 /**
  * A language somebody already looks after gets a second team beside its privileged one: the
- * third row of SELF-SERVE-TEAMS.md *What approval does* ("Known, with an active team"), whose
- * text stays with the maintainers the site owner appoints. Plan 5 fills this in; until then
- * approval refuses.
+ * third row of SELF-SERVE-TEAMS.md *What approval does* ("Known, with an active team"). The
+ * language stays the privileged team's, switched on or off as it was, and its text stays with
+ * the maintainers the site owner appoints, so the admin gets `admin` alone.
+ *
+ * `copy` starts the team from the privileged team's roster, model settings and lexicon entries in
+ * the language; `fresh` from English's roster. Neither copies a take, recording or line override:
+ * the new team voices the language from scratch.
+ *
+ * The notify reaches every worker's team memo at commit; without it the others would file a new
+ * member's work under the privileged team until the memo expires.
  */
-export async function addSecondTeam(_client: PoolClient, input: FoundInput, _actorId: string): Promise<Founded> {
-  throw new TeamError(
-    `${langName(input.lang)} already has an active team; approving this request needs a second team (plan 5).`,
-    409,
+export async function addSecondTeam(client: PoolClient, input: FoundInput, actorId: string): Promise<Founded> {
+  const { lang, adminId } = input;
+  const settings = input.settings ?? "fresh";
+  if (adminId) {
+    const refusal = await memberRefusal(adminId, lang, client);
+    if (refusal) throw refusal;
+  }
+  const team = await newTeam(client, input);
+  await client.query(`insert into "team_language" ("teamId", "lang", "privileged") values ($1, $2, false)`, [team.id, lang]);
+  await client.query(`select pg_notify('spoken_team_language', $1)`, [lang]);
+  const { rows } = await client.query<{ id: TeamId; slug: string }>(
+    `select "id", "slug" from "team" where "id" = team_of_lang($1)`,
+    [lang],
   );
+  const beside = rows[0];
+  if (settings === "copy") {
+    await client.query(`select copy_team_settings($1, $2, $3)`, [beside.id, team.id, lang]);
+  } else {
+    await client.query(`select copy_team_roster((select "id" from "team" where "slug" = 'english'), $1)`, [team.id]);
+  }
+  const granted = adminId ? await grantOn(client, team.id, adminId, lang, ["admin"], actorId) : [];
+  return {
+    branch: "second-team",
+    teamId: team.id,
+    slug: team.slug,
+    lang,
+    from: beside.slug,
+    moved: 0,
+    switchedOn: false,
+    adminId,
+    granted,
+    languageName: null,
+    settings,
+  };
+}
+
+/** A new team with no language yet, slugged as asked or from its name. */
+async function newTeam(client: PoolClient, input: FoundInput): Promise<{ id: TeamId; slug: string }> {
+  const slug =
+    input.team.slug ??
+    (await client.query<{ slug: string }>(`select free_team_slug($1) as "slug"`, [slugFor(input.team.name, input.lang)]))
+      .rows[0].slug;
+  const [team] = await named(client, slug, `select new_team($1, $2) as "id", $1::text as "slug"`, [slug, input.team.name]);
+  return team;
 }
 
 /** Writes the team, mapping a taken explicit slug to a refusal. */
@@ -215,7 +282,7 @@ async function named(
   }
 }
 
-/** What both working branches end with: the language switched on, `text` given to its team, the admin granted. */
+/** What a new language and a hand-over end with: the language switched on, `text` given to its team, the admin granted. */
 async function hand(
   client: PoolClient,
   input: FoundInput,
@@ -238,7 +305,18 @@ export async function afterFounded(founded: Founded, actorId: string): Promise<v
   // Loaded now rather than on the next request, so this process's isLang knows the language at once.
   await loadLanguages().catch((error) => console.error("could not reload languages:", error));
   const { lang, slug } = founded;
-  const events: ActivityEvent[] = [{ kind: "team.created", lang: null, actorId, subject: slug, detail: { slug } }];
+  const events: ActivityEvent[] = [
+    {
+      kind: "team.created",
+      lang: null,
+      actorId,
+      subject: slug,
+      detail: { slug },
+      // A second team's founding is filed in its own log, so in its language, which a filed row
+      // must name; the language's other teams do not see it.
+      ...(founded.branch === "second-team" ? { lang, team: founded.teamId } : {}),
+    },
+  ];
   if (founded.branch === "new-language") {
     events.push({ kind: "language.added", lang, actorId, detail: { name: founded.languageName ?? lang } });
   }
@@ -251,9 +329,26 @@ export async function afterFounded(founded: Founded, actorId: string): Promise<v
       detail: { from: founded.from ?? "", to: slug },
     });
   }
+  if (founded.branch === "second-team") {
+    events.push({
+      kind: "team.second_in_language",
+      lang,
+      actorId,
+      subject: slug,
+      detail: { slug, beside: founded.from ?? "", settings: founded.settings ?? "fresh" },
+      team: founded.teamId,
+    });
+  }
   if (founded.switchedOn) events.push({ kind: "language.toggled", lang, actorId, detail: { enabled: true } });
   for (const capability of founded.granted) {
-    events.push({ kind: "grant.added", lang, subject: founded.adminId, actorId, detail: { capability } });
+    events.push({
+      kind: "grant.added",
+      lang,
+      subject: founded.adminId,
+      actorId,
+      detail: { capability },
+      team: founded.teamId,
+    });
   }
   await recordActivities(events);
 }

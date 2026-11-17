@@ -25,6 +25,12 @@ export default async function Page() {
     liveTakeCounts(),
     listRequests({ state: "pending" }),
   ]);
+  const privileged = new Map(teams.flatMap((team) => team.langs.map((lang) => [lang as string, team.name] as const)));
+  const besides = Object.fromEntries(
+    requests.flatMap((request) =>
+      request.branch === "second-team" && privileged.has(request.lang) ? [[request.id, privileged.get(request.lang)!]] : [],
+    ),
+  );
   const counts = teams.flatMap((team) => team.langs).map((lang) => [lang, live.get(lang) ?? 0] as const);
 
   return (
@@ -37,7 +43,7 @@ export default async function Page() {
         description="A team owns its languages' takes, voices and settings, and the people who regenerate them. Handing a language over moves all of it, and is refused while one of its jobs is running."
       />
       <Wide>
-        <TeamRequests initial={requests} />
+        <TeamRequests initial={requests} besides={besides} />
         <TeamsTable
           initial={teams}
           takes={Object.fromEntries(counts)}
