@@ -301,6 +301,28 @@ src:Enqueue(H.Clip())
 Expect("a line that tells no story has none", Spoken:GetCaption().story, nil)
 Spoken:StopAll()
 
+-- A teller whose Of throws names nothing: GetCaption still answers, the others still name their
+-- stories, and it is asked once a line like the rest.
+local broke = 0
+Spoken:RegisterStoryTeller("broken", { Has = function() return false end, Play = function() return false end,
+    IsPlaying = function() return false end, Stop = function() return false end,
+    Of = function() broke = broke + 1; error("a teller's bug") end })
+src:Enqueue(H.Clip({ tells = 7 }))
+local readOk, read = pcall(Spoken.GetCaption, Spoken)
+Expect("a teller that throws leaves GetCaption working and the others naming the story",
+    tostring(readOk) .. " " .. (readOk and read.story and (read.story.kind .. " " .. read.story.id) or tostring(read)),
+    "true contract 7")
+Spoken:StopAll()
+src:Enqueue(H.Clip())
+local before = broke
+readOk, read = pcall(Spoken.GetCaption, Spoken)
+local againOk = pcall(Spoken.GetCaption, Spoken)
+Expect("...a line only it was asked about has no story, no error, and it is asked once",
+    tostring(readOk) .. " " .. tostring(readOk and read.story) .. " " .. tostring(againOk) .. " " .. (broke - before),
+    "true nil true 1")
+Spoken:StopAll()
+Spoken:RegisterStoryTeller("broken", nil)
+
 ---------------------------------------------------------------- registries
 Spoken:RegisterBullet("contract-bullet", "Interface\\X", 12)
 Expect("a registered bullet is retrievable", Spoken:GetBullet("contract-bullet").texture, "Interface\\X")

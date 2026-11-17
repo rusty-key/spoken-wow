@@ -838,8 +838,11 @@ local caption = {}
 local storyClip
 local function StoryOf(clip)
     for kind, teller in pairs(storyTellers) do
-        local id = teller.Of and teller.Of(clip)
-        if id ~= nil then return { kind = kind, id = id } end
+        -- A teller's bug names no story rather than breaking the caption for every view that reads it.
+        if teller.Of then
+            local ok, id = pcall(teller.Of, clip)
+            if ok and id ~= nil then return { kind = kind, id = id } end
+        end
     end
 end
 
