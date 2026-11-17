@@ -320,7 +320,7 @@ export async function revokeOpenFor(
   );
   for (const { id, team } of rows) {
     await recordActivity(
-      { kind: "invite.revoked", lang, subject: id, actorId, detail: { email }, ...(team ? { team } : {}) },
+      { kind: "invite.revoked", lang, subject: id, actorId, detail: { email }, team: team ?? undefined },
       client,
     );
   }
