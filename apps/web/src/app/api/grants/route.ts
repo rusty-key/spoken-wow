@@ -10,7 +10,7 @@ import { headers } from "next/headers";
 
 import { auth } from "@/lib/auth";
 import { addGrants, refusedGrant, removeGrant, userByEmail, viewerOf } from "@/lib/grants/store";
-import { listingFor } from "@/lib/invites/listing";
+import { listingFor, notAllowed } from "@/lib/invites/listing";
 import {
   createInvite,
   emailInvite,
@@ -24,8 +24,6 @@ import { isAdmin, isCapability, removesOwnAdmin, type Viewer } from "@/lib/permi
 
 export const dynamic = "force-dynamic";
 
-const FORBIDDEN = () => Response.json({ error: "not allowed" }, { status: 403 });
-
 async function viewer(): Promise<{ viewer: Viewer; userId: string } | null> {
   const session = await auth.api.getSession({ headers: await headers() });
   const seen = await viewerOf(session);
@@ -34,12 +32,12 @@ async function viewer(): Promise<{ viewer: Viewer; userId: string } | null> {
 
 export async function GET() {
   const who = await viewer();
-  return who ? listingFor(who.viewer) : FORBIDDEN();
+  return who ? listingFor(who.viewer) : notAllowed();
 }
 
 export async function PUT(request: Request) {
   const who = await viewer();
-  if (!who) return FORBIDDEN();
+  if (!who) return notAllowed();
 
   const body = (await request.json().catch(() => ({}))) as {
     email?: unknown;
@@ -59,7 +57,7 @@ export async function PUT(request: Request) {
   }
   const address = normalEmail(email);
   if (!address) return Response.json({ error: `${email} is not an email address` }, { status: 400 });
-  if (await refusedGrant(who.viewer, capabilities, lang)) return FORBIDDEN();
+  if (await refusedGrant(who.viewer, capabilities, lang)) return notAllowed();
 
   // By email, not by id: a language admin cannot list the users, and an address is what
   // a translator gives somebody when asking to be let in.
@@ -91,7 +89,7 @@ export async function PUT(request: Request) {
 
 export async function DELETE(request: Request) {
   const who = await viewer();
-  if (!who) return FORBIDDEN();
+  if (!who) return notAllowed();
 
   const params = new URL(request.url).searchParams;
   const userId = params.get("userId");
@@ -100,7 +98,7 @@ export async function DELETE(request: Request) {
   if (!userId || !lang || !isCapability(capability)) {
     return Response.json({ error: "userId, lang and capability are required" }, { status: 400 });
   }
-  if (await refusedGrant(who.viewer, [capability], lang)) return FORBIDDEN();
+  if (await refusedGrant(who.viewer, [capability], lang)) return notAllowed();
   if (removesOwnAdmin(who.viewer, who.userId, userId, capability)) {
     return Response.json({ error: "you cannot remove your own admin" }, { status: 403 });
   }

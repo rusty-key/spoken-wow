@@ -82,7 +82,7 @@ describe("invites", () => {
       id: invite.id,
       state: "pending",
       capabilities: ["edit", "regenerate"],
-      inviterName: inviter.id,
+      invitedByName: inviter.id,
     });
     expect(await lookupInvite("x")).toBeNull();
   });

@@ -4,6 +4,7 @@ import Link from "next/link";
 import InviteAccept, { InviteJoined } from "@/components/InviteAccept";
 import { Contained } from "@/components/Width";
 import { currentInvite } from "@/lib/invites/cookie";
+import { normalEmail } from "@/lib/invites/store";
 import { isLang, langName, localeHref } from "@/lib/lang";
 import { capabilityLabel } from "@/lib/permissions";
 import { currentSession } from "@/lib/session";
@@ -43,13 +44,14 @@ export default async function Page() {
     body = (
       <>
         <p>
-          {invite.inviterName ?? "Somebody"} invited you to work on {langName(invite.lang)} as{" "}
+          {invite.invitedByName ?? "Somebody"} invited you to work on {langName(invite.lang)} as{" "}
           {invite.capabilities.map(capabilityLabel).join(", ")}.
         </p>
         <InviteAccept
           email={invite.email}
           lang={invite.lang}
           signedInAs={session?.user.email ?? null}
+          isInvitee={!!session && normalEmail(session.user.email) === invite.email}
         />
       </>
     );

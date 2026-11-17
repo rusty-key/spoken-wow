@@ -14,6 +14,8 @@ type Props = {
   lang: Lang;
   /** The signed-in account's address, or null when signed out. */
   signedInAs: string | null;
+  /** Whether the signed-in account's address is the invited one. */
+  isInvitee: boolean;
 };
 
 /** What the person who accepted sees, on the page and after pressing Accept. */
@@ -32,7 +34,7 @@ export function InviteJoined({ lang, className }: { lang: Lang; className?: stri
  * What to do with a pending invite: register or sign in with its address, sign out of the wrong
  * account, or press Accept. Accepting is a button, so a link preview cannot use the invite up.
  */
-export default function InviteAccept({ email, lang, signedInAs }: Props) {
+export default function InviteAccept({ email, lang, signedInAs, isInvitee }: Props) {
   const router = useRouter();
   const [done, setDone] = useState(false);
   const [pending, setPending] = useState(false);
@@ -73,7 +75,7 @@ export default function InviteAccept({ email, lang, signedInAs }: Props) {
     );
   }
 
-  if (signedInAs.trim().toLowerCase() !== email) {
+  if (!isInvitee) {
     return (
       <div className="mt-6">
         <p>

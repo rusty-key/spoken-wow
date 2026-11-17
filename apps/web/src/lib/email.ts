@@ -42,9 +42,9 @@ export function sendPasswordResetEmail(to: string, url: string): void {
 /** The invitation to an address with no account yet. */
 export function sendInviteEmail(
   to: string,
-  args: { inviterName: string; langName: string; capabilities: string[]; url: string },
+  args: { inviterName: string; langName: string; capabilities: string[]; url: string; days: number },
 ): void {
-  const { inviterName, langName, capabilities, url } = args;
+  const { inviterName, langName, capabilities, url, days } = args;
   sendEmail(
     to,
     `You're invited to work on ${langName} on Spoken`,
@@ -53,7 +53,7 @@ export function sendInviteEmail(
       "",
       `Accept here: ${url}`,
       "",
-      `If you have no account yet, register from that link with this address. The link works once and expires in 14 days. If you don't know ${inviterName}, ignore this email.`,
+      `If you have no account yet, register from that link with this address. The link works once and expires in ${days} days. If you don't know ${inviterName}, ignore this email.`,
     ].join("\n"),
   );
 }

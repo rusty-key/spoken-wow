@@ -23,7 +23,7 @@ afterEach(cleanup);
 const props = { email: "ana@example.com", lang: "deDE" as const };
 
 test("signed out, it offers to register or sign in, with no token in either address", () => {
-  render(<InviteAccept {...props} signedInAs={null} />);
+  render(<InviteAccept {...props} signedInAs={null} isInvitee={false} />);
   expect(screen.getByRole("link", { name: /Register with ana@example.com/ }).getAttribute("href")).toBe("/register");
   expect(screen.getByRole("link", { name: /already have an account/ }).getAttribute("href")).toBe("/login");
 });
@@ -31,7 +31,7 @@ test("signed out, it offers to register or sign in, with no token in either addr
 test("signed in as another address, it names both and offers Sign out, not Accept", async () => {
   signOut.mockResolvedValue({});
   const user = userEvent.setup();
-  render(<InviteAccept {...props} signedInAs="bob@example.com" />);
+  render(<InviteAccept {...props} signedInAs="bob@example.com" isInvitee={false} />);
   expect(screen.getByText(/ana@example.com/)).toBeTruthy();
   expect(screen.getByText(/bob@example.com/)).toBeTruthy();
   expect(screen.queryByRole("button", { name: "Accept" })).toBeNull();
@@ -42,7 +42,7 @@ test("signed in as another address, it names both and offers Sign out, not Accep
 test("signed in as the address, Accept posts the token and shows success", async () => {
   fetchMock.mockResolvedValue(new Response(JSON.stringify({ lang: "deDE", capabilities: ["edit"] }), { status: 200 }));
   const user = userEvent.setup();
-  render(<InviteAccept {...props} signedInAs="Ana@Example.com" />);
+  render(<InviteAccept {...props} signedInAs="Ana@Example.com" isInvitee />);
   await user.click(screen.getByRole("button", { name: "Accept" }));
   expect(await screen.findByText(/You're in/)).toBeTruthy();
   expect(fetchMock.mock.calls[0][0]).toBe("/api/invites/accept");
@@ -53,7 +53,7 @@ test("signed in as the address, Accept posts the token and shows success", async
 test("an already accepted answer shows the same success", async () => {
   fetchMock.mockResolvedValue(new Response(JSON.stringify({ error: "used", reason: "accepted" }), { status: 409 }));
   const user = userEvent.setup();
-  render(<InviteAccept {...props} signedInAs="ana@example.com" />);
+  render(<InviteAccept {...props} signedInAs="ana@example.com" isInvitee />);
   await user.click(screen.getByRole("button", { name: "Accept" }));
   expect(await screen.findByText(/You're in/)).toBeTruthy();
 });
@@ -63,7 +63,7 @@ test("any other refusal shows the route's sentence", async () => {
     new Response(JSON.stringify({ error: "Zoe can no longer give edit.", reason: "inviter-cannot-grant" }), { status: 409 }),
   );
   const user = userEvent.setup();
-  render(<InviteAccept {...props} signedInAs="ana@example.com" />);
+  render(<InviteAccept {...props} signedInAs="ana@example.com" isInvitee />);
   await user.click(screen.getByRole("button", { name: "Accept" }));
   expect(await screen.findByText("Zoe can no longer give edit.")).toBeTruthy();
   expect(screen.queryByText(/You're in/)).toBeNull();

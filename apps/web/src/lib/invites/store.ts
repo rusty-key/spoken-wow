@@ -34,17 +34,10 @@ export type InviteRow = {
   expired: boolean;
 };
 
-export type InviteLookup = {
-  id: string;
-  email: string;
-  lang: string;
-  capabilities: Capability[];
-  inviterName: string | null;
+export type InviteLookup = InviteRow & {
   /** Who accepted it, once it is accepted. */
   acceptedBy: string | null;
   state: "pending" | "expired" | "accepted" | "revoked";
-  /** ISO. */
-  expiresAt: string;
 };
 
 export class InviteExistsError extends Error {
@@ -85,6 +78,7 @@ export function emailInvite(invite: InviteRow, token: string): void {
     langName: langName(invite.lang),
     capabilities: invite.capabilities.map(capabilityLabel),
     url: inviteUrl(token),
+    days: INVITE_DAYS,
   });
 }
 
@@ -281,16 +275,7 @@ async function byToken(token: string): Promise<TokenRow | null> {
 export async function lookupInvite(token: string): Promise<InviteLookup | null> {
   const row = await byToken(token);
   if (!row) return null;
-  return {
-    id: row.id,
-    email: row.email,
-    lang: row.lang,
-    capabilities: row.capabilities.filter(isCapability),
-    inviterName: row.invitedByName,
-    acceptedBy: row.acceptedBy,
-    state: stateOf(row),
-    expiresAt: row.expiresAt.toISOString(),
-  };
+  return { ...toInvite(row), acceptedBy: row.acceptedBy, state: stateOf(row) };
 }
 
 export type AcceptOutcome =

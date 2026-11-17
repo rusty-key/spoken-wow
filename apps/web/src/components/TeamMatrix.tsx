@@ -110,7 +110,7 @@ function Matrix({ lang, grants: initial, invites: initialInvites, viewer, textBy
     // The route answers with every language the viewer administers; this table is one of them.
     const next = answer.grants.filter((grant) => grant.lang === lang);
     setGrants(next);
-    setInvites((answer.invites ?? []).filter((invite) => invite.lang === lang));
+    setInvites(answer.invites.filter((invite) => invite.lang === lang));
     setPeople((current) => peopleOf(current, next));
     return null;
   }

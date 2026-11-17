@@ -8,17 +8,17 @@ import { headers } from "next/headers";
 
 import { auth } from "@/lib/auth";
 import { refusedGrant, viewerOf } from "@/lib/grants/store";
-import { isLang, type Lang } from "@/lib/lang";
+import { isLang } from "@/lib/lang";
 import type { Viewer } from "@/lib/permissions";
 import { isUuid } from "@/lib/uuid";
 
-import { openInvite, type InviteRow } from "./store";
+import { notAllowed } from "./listing";
+import { openInvite } from "./store";
 
 type Session = NonNullable<Awaited<ReturnType<typeof auth.api.getSession>>>;
 
-export type Manageable = { session: Session; viewer: Viewer; invite: InviteRow; lang: Lang };
+export type Manageable = { session: Session; viewer: Viewer };
 
-const notAllowed = () => Response.json({ error: "not allowed" }, { status: 403 });
 export const noSuchInvite = () => Response.json({ error: "no such invite" }, { status: 404 });
 
 /** The open invite `id` and who may change it, or the 403 or 404 to answer instead. */
@@ -28,7 +28,6 @@ export async function manageableInvite(id: string): Promise<Manageable | Respons
   if (!session || !viewer) return notAllowed();
   const invite = isUuid(id) ? await openInvite(id) : null;
   if (!invite || !isLang(invite.lang)) return noSuchInvite();
-  const lang = invite.lang;
-  if (await refusedGrant(viewer, invite.capabilities, lang)) return notAllowed();
-  return { session, viewer, invite, lang };
+  if (await refusedGrant(viewer, invite.capabilities, invite.lang)) return notAllowed();
+  return { session, viewer };
 }
