@@ -92,9 +92,14 @@ test("a second-team row's box starts unticked", () => {
   expect((screen.getByLabelText("Start from Deutsch Team's voices and settings") as HTMLInputElement).checked).toBe(false);
 });
 
-test("other rows have no box and send no settings", async () => {
-  expect(await approveBody([request()], {}, false)).toEqual({ decision: "approve" });
+test("other rows have no box", () => {
+  render(<TeamRequests initial={[request()]} besides={{ r1: "Deutsch Team" }} />);
+  expect(screen.getByRole("button", { name: "Approve Crew" })).toBeTruthy();
   expect(screen.queryByLabelText(/Start from/)).toBeNull();
+});
+
+test("other rows send no settings", async () => {
+  expect(await approveBody([request()], {}, false)).toEqual({ decision: "approve" });
 });
 
 test("a request the refresh brings in shows, and a decided one stays gone", async () => {
