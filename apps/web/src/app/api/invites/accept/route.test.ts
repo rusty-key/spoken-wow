@@ -81,6 +81,20 @@ describe("POST /api/invites/accept", () => {
     expect((await post()).status).toBe(401);
   });
 
+  it("answers 400 to a null body", async () => {
+    session.current = as(invitee);
+    jar.cookie = `spoken_invite=${token}`;
+    const response = await POST(
+      new Request("https://example.com/api/invites/accept", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: "null",
+      }),
+    );
+    expect(response.status).toBe(400);
+    expect(await response.json()).toEqual({ error: "expected { id }" });
+  });
+
   it("refuses when the link's invite is not the one the page showed, and grants nothing", async () => {
     session.current = as(invitee);
     const changed = await post(undefined, "00000000-0000-0000-0000-000000000000");

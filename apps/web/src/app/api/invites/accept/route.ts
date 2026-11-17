@@ -5,6 +5,7 @@
  */
 import { cookies, headers } from "next/headers";
 
+import { bad, bodyOf, objectOf } from "@/lib/api-body";
 import { auth } from "@/lib/auth";
 import { INVITE_COOKIE } from "@/lib/invites/cookie";
 import { capabilityLabel } from "@/lib/permissions";
@@ -25,8 +26,8 @@ const STATUS = {
 export async function POST(request: Request) {
   const session = await auth.api.getSession({ headers: await headers() });
   if (!session) return Response.json({ error: "sign in to accept the invite" }, { status: 401 });
-  const { id } = (await request.json().catch(() => ({}))) as { id?: unknown };
-  if (typeof id !== "string") return Response.json({ error: "expected { id }" }, { status: 400 });
+  const id = objectOf(await bodyOf(request))?.id;
+  if (typeof id !== "string") return bad("expected { id }");
 
   const token = (await cookies()).get(INVITE_COOKIE)?.value;
   if (!token) return Response.json({ error: "This invite link is not valid any more.", reason: "unknown" }, { status: 404 });

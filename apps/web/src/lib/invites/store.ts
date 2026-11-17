@@ -2,7 +2,7 @@
  * Invitations to work on a language, for an address that has no account (migration 0109).
  *
  * Only the token's SHA-256 is kept, so a token cannot be handed back after the call that made
- * it; a resend therefore mints a new one. Acts are logged by the routes, which know the actor.
+ * it; a resend therefore mints a new one. Each act is logged here, in the act's transaction.
  */
 import "server-only";
 
@@ -36,7 +36,6 @@ export type InviteRow = {
 };
 
 export type InviteLookup = InviteRow & {
-  /** Who accepted it, once it is accepted. */
   acceptedBy: string | null;
   state: "pending" | "expired" | "accepted" | "revoked";
 };
@@ -245,10 +244,8 @@ export async function revokeInvite(id: string, revokedBy: string): Promise<Invit
 }
 
 /**
- * Revoke the open invite for `email` in `lang`, if any, on the caller's transaction, once the
- * account's grants after this one cover every capability it names: it has nothing left to give.
- * Otherwise it stays open, so a partial grant does not withdraw what it does not give, and an
- * admin who may not grant the rest cannot cancel it this way.
+ * Revoke the open invite for `email` in `lang` only when the grants held after this write cover
+ * every capability it names; a partial grant leaves it open.
  */
 export async function revokeOpenFor(
   client: ClientBase,
@@ -258,7 +255,7 @@ export async function revokeOpenFor(
   granted: readonly Capability[],
   actorId: string,
 ): Promise<void> {
-  const held = (await grantsOf(userId)).filter((grant) => grant.lang === lang).map((grant) => grant.capability);
+  const held = (await grantsOf(userId, client)).filter((grant) => grant.lang === lang).map((grant) => grant.capability);
   const { rows } = await client.query<{ id: string }>(
     `update "invite" set "revokedAt" = now(), "revokedBy" = $3
       where "lang" = $1 and "email" = $2 and "acceptedAt" is null and "revokedAt" is null

@@ -11,15 +11,16 @@ import type { ClientBase } from "pg";
 import { cache } from "react";
 
 import { recordActivities, recordActivity } from "@/lib/activity/store";
-import { query, withTeam } from "@/lib/db";
+import { db, query, withTeam } from "@/lib/db";
 import { deleteMember, insertMembers } from "@/lib/teams/members";
 import { ownerOrAll, teamOf, type TeamId } from "@/lib/teams/store";
 import { isLang, type Lang } from "@/lib/lang";
 import { textByTeam } from "@/lib/languages/store";
 import { canGrant, isCapability, type Capability, type Grant, type Viewer } from "@/lib/permissions";
 
-export async function grantsOf(userId: string): Promise<Grant[]> {
-  const rows = await query<{ lang: string; capability: string }>(
+/** On the caller's client when given. */
+export async function grantsOf(userId: string, client?: Pick<ClientBase, "query">): Promise<Grant[]> {
+  const { rows } = await (client ?? db()).query<{ lang: string; capability: string }>(
     `select "lang", 'text' as "capability" from "language_grant" where "userId" = $1
      union all
      select "lang", "capability" from "team_member" where "userId" = $1
