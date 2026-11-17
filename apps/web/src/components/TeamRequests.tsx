@@ -19,6 +19,13 @@ function age(createdAt: string): string {
 export default function TeamRequests({ initial }: { initial: TeamRequest[] }) {
   const router = useRouter();
   const [rows, setRows] = useState(initial);
+  // router.refresh() brings a new `initial` but keeps this state, so a request sent meanwhile
+  // would stay hidden.
+  const [shown, setShown] = useState(initial);
+  if (initial !== shown) {
+    setShown(initial);
+    setRows(initial);
+  }
   const [reasons, setReasons] = useState<Record<string, string>>({});
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [busy, setBusy] = useState<string | null>(null);

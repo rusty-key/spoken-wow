@@ -66,3 +66,16 @@ test("a second-team row says why it cannot be approved yet", () => {
   render(<TeamRequests initial={[request({ branch: "second-team" })]} />);
   expect(screen.getByText("German has a team already; a second team is not possible yet")).toBeTruthy();
 });
+
+test("a request the refresh brings in shows, and a decided one stays gone", async () => {
+  fetchMock.mockResolvedValue(new Response("{}", { status: 200 }));
+  const user = userEvent.setup();
+  const { rerender } = render(<TeamRequests initial={[request()]} />);
+
+  await user.click(screen.getByRole("button", { name: "Reject Crew" }));
+  await waitFor(() => expect(screen.queryByText("Crew")).toBeNull());
+
+  rerender(<TeamRequests initial={[request({ id: "r2", teamName: "Other crew" })]} />);
+  expect(screen.getByText("Other crew")).toBeTruthy();
+  expect(screen.queryByText("Crew")).toBeNull();
+});

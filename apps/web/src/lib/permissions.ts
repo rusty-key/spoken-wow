@@ -189,8 +189,8 @@ export function canManageVoices(viewer: Viewer | null, lang: Lang): boolean {
  * Whether somebody may hand out or take away `capability` in `lang`.
  *
  * `textByTeam` is the language's flag that its privileged team's admins appoint text
- * maintainers, as a site admin does elsewhere. Until plan 5 adds a second team, the privileged
- * team's admins are everyone with `admin` in the language.
+ * maintainers, as a site admin does elsewhere. The privileged team's admins are everyone with
+ * `admin` in the language.
  */
 export function canGrant(viewer: Viewer | null, capability: Capability, lang: Lang, textByTeam: boolean): boolean {
   if (!viewer) return false;

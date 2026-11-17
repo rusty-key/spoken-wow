@@ -14,7 +14,7 @@ export const metadata: Metadata = { title: "Request a team · Spoken" };
 
 export const dynamic = "force-dynamic";
 
-/** Signed-out visitors are sent to sign in, as /profile does. */
+/** Signed-out visitors are sent to sign in. */
 export default async function Page({ params }: { params: Promise<{ lang: string }> }) {
   const lang = await pageLang(params);
   const session = await currentSession();
