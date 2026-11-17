@@ -166,6 +166,13 @@ DialogueUI's own text under every narrator style, Voice Only included, when Mark
 is on; with DialogueUI installed Spoken's page offers them under Voice Only
 (`DialogueUIOptions:WordRowsShown`). **Type Out By** applies there too.
 
+An addon that would rather not poll `GetCaption` registers for `CAPTION_WORD`, `(clip, word,
+speaking)`. It fires as the voice reaches each word, `word` being the index in the caption's words,
+and once with `speaking` false when the voice ends, is stopped or paused. Spoken times it with one
+timer to the end of the word being read, and only while something listens. Paused, `GetCaption`
+still says `speaking` on the word the captions keep showing, while the callback says the voice
+stopped; Resume reads the line again from its first word. None of Spoken's own windows use it yet.
+
 ## Checks
 
 Run from the repository root:

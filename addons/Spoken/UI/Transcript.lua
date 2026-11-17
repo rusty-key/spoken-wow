@@ -259,6 +259,7 @@ function Transcript:Release()
         self.startedAt = start.at
     end
     self:Sync()
+    self:WatchWords()
 end
 
 --- A window that turns to the next line by fading out first sets this: fn(clip) is true while it
@@ -299,6 +300,47 @@ function Transcript:Sync()
         self.startedAt = nil
     end
     self:Update()
+end
+
+-- Paused, the captions keep showing the word they were on, but the voice has stopped: a window
+-- following CAPTION_WORD must hear that it did.
+local function Voiced(self, progress)
+    return self.startedAt and self.clip and SoundQueue:IsPlaying(self.clip) and self:IsSpeaking(progress)
+end
+
+local function Wake()
+    Transcript:WatchWords()
+end
+
+--- Fires CAPTION_WORD (clip, word, speaking) for the word the voice has reached, and once with
+--- speaking false when that voice ends, is stopped or paused. One timer, to the end of the word
+--- being read, and none while nothing listens: a window following the words needs no poller.
+function Transcript:WatchWords()
+    if self.wordTimer then
+        Addon:CancelTimer(self.wordTimer)
+        self.wordTimer = nil
+    end
+    if not Callbacks:Has("CAPTION_WORD") then
+        self.wordClip, self.wordAt = nil, nil
+        return
+    end
+    local clip, progress = self.clip, self:GetProgress()
+    local word = Voiced(self, progress) and self:WordAt(progress) or nil
+    local was, wasAt = self.wordClip, self.wordAt
+    self.wordClip, self.wordAt = clip, word
+    if word then
+        local ends = self.words[word].finish / self.totalWeight * tonumber(clip.length)
+        -- Rounding can wake this a hair before the word ends: never a timer of no time.
+        self.wordTimer = Addon:ScheduleTimer(Wake, math.max(0.01, ends - self:GetElapsed()))
+    end
+    if wasAt and (clip ~= was or not word) then
+        Callbacks:Fire("CAPTION_WORD", was, nil, false)
+        -- A listener that paused or skipped the line has been told by the call that saw it.
+        if self.wordClip ~= clip or self.wordAt ~= word then return end
+    end
+    if word and (clip ~= was or word ~= wasAt) then
+        Callbacks:Fire("CAPTION_WORD", clip, word, true)
+    end
 end
 
 function Transcript:TextWidth(text)
@@ -782,7 +824,8 @@ function Transcript:Initialize()
         if accumulated >= 0.05 then accumulated = 0; self:Update() end
     end)
     Callbacks:Register("CLIP_STARTED", function(clip) self:Started(clip) end)
-    Callbacks:Register("AUDIO_CHANGED", function() self:Sync() end)
+    -- Not inside Sync, which returns early while held: a voice stopped meanwhile is told at once.
+    Callbacks:Register("AUDIO_CHANGED", function() self:Sync(); self:WatchWords() end)
     self:RefreshConfig()
     self:Sync()
 end

@@ -29,6 +29,12 @@ function Callbacks:Unregister(handle)
     end
 end
 
+--- Whether anything listens for `event`, so work done only to fire it can be skipped.
+function Callbacks:Has(event)
+    local list = self.handlers[event]
+    return list ~= nil and getn(list) > 0
+end
+
 -- A subscriber that throws must not take the queue down with it, nor silence the
 -- subscribers after it. The error is kept where `/spoken diagnostics` can show it.
 function Callbacks:Fire(event, a, b, c)
