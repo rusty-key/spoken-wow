@@ -46,7 +46,12 @@ function readSecrets() {
   );
 }
 
-const secrets = readSecrets();
+const allSecrets = readSecrets();
+
+// Brann's keys (BRANN_*) are his alone: the site never sees the bot token or his API keys, and
+// he never sees the database.
+const brann = Object.fromEntries(Object.entries(allSecrets).filter(([key]) => key.startsWith("BRANN_")));
+const secrets = Object.fromEntries(Object.entries(allSecrets).filter(([key]) => !key.startsWith("BRANN_")));
 
 module.exports = {
   apps: [
@@ -188,6 +193,25 @@ module.exports = {
         // The app logs in as spoken_app, which row-level security binds, not as the owner, which
         // reads every team. Without APP_DATABASE_URL the app keeps the owner's and filters nothing.
         ...(secrets.APP_DATABASE_URL ? { DATABASE_URL: secrets.APP_DATABASE_URL } : {}),
+      },
+    },
+    {
+      // Brann Bronzebeard, the Discord bot (apps/brann/README.md). He ships in release-tools/,
+      // whose node_modules hold his dependencies.
+      name: "brann",
+      script: "release-tools/apps/brann/src/index.mjs",
+      cwd: CURRENT,
+      // Exactly one: a second process is a second gateway session, and every question would be
+      // answered and every bug filed twice.
+      instances: 1,
+      exec_mode: "fork",
+      max_memory_restart: "300M",
+      // Without BRANN_DISCORD_TOKEN he exits at once; this stops pm2 retrying that forever.
+      max_restarts: 10,
+      min_uptime: 10_000,
+      env: {
+        NODE_ENV: "production",
+        ...brann,
       },
     },
   ],

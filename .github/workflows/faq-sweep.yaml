@@ -1,0 +1,82 @@
+name: FAQ sweep
+
+# Once a week, Claude Opus reads the last week of the Discord and of the code and proposes changes
+# to docs/support/FAQ.md, the only thing Brann answers from, as a pull request for a person to
+# review (apps/brann/src/sweep.mjs). A week with nothing to change opens nothing.
+#
+# The pull request is opened with GITHUB_TOKEN, so no workflow runs on it. The sweep runs the FAQ
+# check itself, and the description warns when it fails.
+#
+# Needs the DISCORD_BOT_TOKEN and ANTHROPIC_API_KEY repo secrets, and "Allow GitHub Actions to
+# create and approve pull requests" in the repository's Actions settings.
+on:
+  schedule:
+    - cron: "17 6 * * 1" # Mondays, 06:17 UTC
+  workflow_dispatch:
+    inputs:
+      days:
+        description: How many days back to read
+        default: "7"
+
+permissions: {}
+
+jobs:
+  sweep:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+    concurrency:
+      group: faq-sweep
+      cancel-in-progress: false
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          # The week's merges and changelog come from the history.
+          fetch-depth: 0
+
+      - uses: pnpm/action-setup@v6
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 24
+          cache: pnpm
+          cache-dependency-path: pnpm-lock.yaml
+
+      # Brann's dependencies alone, not the site's.
+      - run: pnpm install --frozen-lockfile --filter @spoken/brann
+
+      - name: Propose FAQ changes
+        id: sweep
+        env:
+          DISCORD_BOT_TOKEN: ${{ secrets.DISCORD_BOT_TOKEN }}
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+          DAYS: ${{ inputs.days || '7' }}
+        run: |
+          if [ -z "$DISCORD_BOT_TOKEN" ] || [ -z "$ANTHROPIC_API_KEY" ]; then
+            echo "::warning::DISCORD_BOT_TOKEN or ANTHROPIC_API_KEY is not set; no sweep"
+            exit 0
+          fi
+          node apps/brann/src/sweep.mjs --days "$DAYS" --body "$RUNNER_TEMP/pr-body.md"
+          if git diff --quiet -- docs/support/FAQ.md; then
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Open the pull request
+        if: steps.sweep.outputs.changed == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          branch="faq-sweep/$(date -u +%Y-%m-%d)"
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git switch -c "$branch"
+          git add docs/support/FAQ.md
+          git commit -m "FAQ sweep: what the last week of the Discord and the code taught Brann"
+          git push origin "$branch"
+          gh pr create --base master --head "$branch" \
+            --title "FAQ sweep $(date -u +%Y-%m-%d)" \
+            --body-file "$RUNNER_TEMP/pr-body.md"

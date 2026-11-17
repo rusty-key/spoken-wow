@@ -205,6 +205,7 @@ lint: ## The checks CI gates on
 	@node pipelines/places/tools/validate.mjs
 	@node scripts/descriptions.mjs --check
 	@node pipelines/places/tools/locale/check-strings.mjs
+	@node apps/brann/src/faq-check.mjs
 	@node pipelines/places/tools/locale/build-languages.mjs --check
 
 # The store project pages, for every addon. One tool over publishers/*/ rather than one

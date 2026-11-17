@@ -35,6 +35,9 @@ on:
       - "scripts/manager/**"
       - "scripts/lib/**"
       - "scripts/audio/**"
+      # Brann, the Discord bot, runs from the release, and answers from the FAQ in it.
+      - "apps/brann/**"
+      - "docs/support/**"
       - "publishers/**"
       - "addons/SpokenPlacesAudio/**"
       - "addons/SpokenReadablesAudio/**"
@@ -200,6 +203,8 @@ jobs:
           deploy/web/assemble-release-tools.sh "$R"/release-tools
 
           test -f "$R"/release-tools/scripts/manager/release-job.mjs
+          test -f "$R"/release-tools/apps/brann/src/index.mjs
+          test -f "$R"/release-tools/docs/support/FAQ.md
           test -f "$R"/apps/web/server.js
           test -f "$R"/apps/web/public/icons/places.png   # public/ survived the copy
           test -L "$R"/apps/web/node_modules/next   # symlink survived the copy
