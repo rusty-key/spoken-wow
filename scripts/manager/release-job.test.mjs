@@ -37,6 +37,15 @@ test("the job gets the signing keys and only what it needs of the site's", async
   });
 });
 
+test("the job reads the archive through the site once one is named, with the token for recordings", async () => {
+  const shared = temp();
+  writeFileSync(join(shared, "app.env"), "SPOKEN_ARCHIVE_URL=https://a\nSPOKEN_ARCHIVE_READ_URL=http://127.0.0.1:3010/api/archive/\nSPOKEN_ARCHIVE_TOKEN=t\n");
+  writeFileSync(join(shared, "release.env"), "");
+  const env = await jobEnv(join(shared, "release.env"), { PATH: "/bin", HOME: "/h" });
+  assert.equal(env.SPOKEN_ARCHIVE_URL, "http://127.0.0.1:3010/api/archive/");
+  assert.equal(env.SPOKEN_ARCHIVE_TOKEN, "t");
+});
+
 test("a run logs its output, records its code, and leaves no scratch copy", async () => {
   const tools = fakeTools(`console.log("==> step 1/1: " + process.argv.slice(2).join(" ")); console.error("to stderr");`);
   const runDir = runDirectory();

@@ -5,7 +5,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { test } from "node:test";
 
-import { fetchObjects, objectsIn } from "./fetch-blobs.mjs";
+import { archiveFetch, fetchObjects, objectsIn } from "./fetch-blobs.mjs";
 
 const sha = (text) => createHash("sha256").update(text).digest("hex");
 
@@ -44,4 +44,20 @@ test("fetches what is missing, skips what is here, and refuses bytes that do not
   assert.deepEqual(asked.sort(), [`https://archive.test/recordings/${bad}`, `https://archive.test/takes/${good}`]);
   assert.equal(readFileSync(join(root, `blobs/takes/${good}`), "utf8"), "good");
   assert.equal(existsSync(join(root, `blobs/recordings/${bad}`)), false);
+});
+
+test("sends the token to the site alone, never on to the bucket it redirects to", async () => {
+  const sent = [];
+  const fake = async (url, init = {}) => {
+    sent.push({ url, authorization: init.headers?.authorization ?? null, redirect: init.redirect ?? "follow" });
+    if (url.startsWith("https://site/")) return new Response(null, { status: 302, headers: { location: "https://bucket/recordings/x?sig=1" } });
+    return new Response("bytes");
+  };
+  const res = await archiveFetch("secret", fake)("https://site/api/archive/recordings/x");
+  assert.equal(await res.text(), "bytes");
+  assert.deepEqual(sent, [
+    { url: "https://site/api/archive/recordings/x", authorization: "Bearer secret", redirect: "manual" },
+    { url: "https://bucket/recordings/x?sig=1", authorization: null, redirect: "follow" },
+  ]);
+  assert.equal(archiveFetch(undefined, fake), fake);
 });

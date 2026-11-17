@@ -19,12 +19,15 @@ const KEEP_RUNS = 30;
 
 // All app.env gives the job. The site's own secrets have no business in a process that signs
 // packs, and SPOKEN_PLACES_MANIFEST there would have the build overwrite the site's manifest.
-const FROM_APP_ENV = ["DATABASE_URL", "R2_ACCOUNT_ID", "SPOKEN_ARCHIVE_URL"];
+const FROM_APP_ENV = ["DATABASE_URL", "R2_ACCOUNT_ID", "SPOKEN_ARCHIVE_URL", "SPOKEN_ARCHIVE_TOKEN"];
 
 export async function jobEnv(releaseEnvPath, base = process.env) {
   const app = parseEnv(await readFile(join(dirname(releaseEnvPath), "app.env"), "utf8"));
   const env = { PATH: base.PATH, HOME: base.HOME };
   for (const name of FROM_APP_ENV) if (app.has(name)) env[name] = app.get(name);
+  // Once a team keeps its own bucket, a build reads every object through the site
+  // (/api/archive/), which knows which bucket holds it (docs/platform/STORAGE.md).
+  if (app.get("SPOKEN_ARCHIVE_READ_URL")) env.SPOKEN_ARCHIVE_URL = app.get("SPOKEN_ARCHIVE_READ_URL");
   return { ...env, ...Object.fromEntries(parseEnv(await readFile(releaseEnvPath, "utf8"))) };
 }
 

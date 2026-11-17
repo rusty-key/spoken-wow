@@ -17,6 +17,21 @@ export function objectsIn(lines) {
   return lines.map((line) => OBJECT.exec(line.trim())).filter(Boolean).map(([path, prefix, sha]) => ({ path, prefix, sha }));
 }
 
+/**
+ * With SPOKEN_ARCHIVE_TOKEN, a fetch that sends it to the site's /api/archive/ alone and follows
+ * the redirect without it: the token must never reach a team's bucket.
+ */
+export function archiveFetch(token, fetchImpl = fetch) {
+  if (!token) return fetchImpl;
+  return async (url, init = {}) => {
+    const first = await fetchImpl(url, { ...init, redirect: "manual", headers: { ...init.headers, authorization: `Bearer ${token}` } });
+    const location = first.status >= 300 && first.status < 400 ? first.headers.get("location") : null;
+    if (!location) return first;
+    await first.body?.cancel();
+    return fetchImpl(new URL(location, url).toString(), init);
+  };
+}
+
 export async function fetchObjects(objects, root, base, fetchImpl = fetch) {
   const wanted = objects.filter((object) => !existsSync(join(root, object.path)));
   const failed = [];
@@ -40,7 +55,7 @@ if (process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1]) {
   let input = "";
   for await (const chunk of process.stdin) input += chunk;
   const objects = objectsIn(input.split("\n"));
-  const result = await fetchObjects(objects, root, archiveBase(base));
+  const result = await fetchObjects(objects, root, archiveBase(base), archiveFetch(process.env.SPOKEN_ARCHIVE_TOKEN));
   console.log(`==> ${result.fetched} fetched, ${result.present} already here`);
   if (result.failed.length) {
     for (const line of result.failed.slice(0, 10)) console.error(`  ${line}`);

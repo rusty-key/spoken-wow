@@ -41,7 +41,7 @@ import { assignFiles } from "../../pipelines/places/tools/voice/naming.mjs";
 import { packTimes } from "../../pipelines/lib/word-times.mjs";
 import { archiveOf, ENCODING_PROFILE, sourceOf } from "../lib/archives.mjs";
 import { pointerText, writePointers } from "../lib/clip-pointer.mjs";
-import { eachParallel } from "../lib/download.mjs";
+import { archiveBase, eachParallel, fetchRetrying } from "../lib/download.mjs";
 import { CURRENT_TEXT_SQL, NAMED_QUESTS_SQL, currentTextFor, namedBy } from "./relevant.mjs";
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "../..");
@@ -94,12 +94,19 @@ function psql(sql) {
     .filter(Boolean);
 }
 
+// Whether a team's own bucket holds the clip (docs/platform/STORAGE.md): a database from before
+// migration 0114 has no such table, and every clip is in ours.
+const teamBuckets = psql(`select to_regclass('archive_object') is not null`)[0] === "t";
+const inTeamBucket = (prefix, sha) =>
+  teamBuckets ? `exists (select 1 from "archive_object" a where a."prefix" = '${prefix}' and a."sha256" = ${sha})::text` : `'false'`;
+
 // A quests file carries its extension and the other two do not; the archive directory is the file
 // without it either way. Only quests takes have an Ogg.
 const listing = psql(`select t."file", coalesce(t."archiveFile", ''),
                              coalesce(array_to_json(t."wordTimes")::text, ''), coalesce(t."sha256", ''),
                              coalesce(e."encodedSha256", ''), coalesce(e."bytes"::text, ''), coalesce(e."durationSec"::text, ''),
-                             coalesce(to_json(t."shownText")::text, '')
+                             coalesce(to_json(t."shownText")::text, ''),
+                             ${inTeamBucket("takes", `t."sha256"`)}, ${inTeamBucket("encodings", `e."encodedSha256"`)}
                         from "take" t
                         left join "take_encoding" e
                           on e."source" = t."source" and e."sha256" = t."sha256" and e."profile" = :'profile'
@@ -110,11 +117,12 @@ const listing = psql(`select t."file", coalesce(t."archiveFile", ''),
 // A live take's archive path: its bucket object, or the take's own directory (its file without
 // the extension) holding the archive file. Blank when the take's clip was never kept.
 const takes = listing.map((row) => {
-  const [file, name, times, sha256, encodedSha256, bytes, durationSec, shownText] = row.split("\t");
+  const [file, name, times, sha256, encodedSha256, bytes, durationSec, shownText, teamTake, teamEncoding] = row.split("\t");
   const stem = file.replace(/\.mp3$/, "");
   return {
     file, stem, sha256, archived: sourceOf("takes", sha256, name ? join(prefix, stem, name) : ""), times,
     encodedSha256, bytes, durationSec, shownText: shownText ? JSON.parse(shownText) : null,
+    teamTake: teamTake === "true", teamEncoding: teamEncoding === "true",
   };
 });
 
@@ -193,12 +201,20 @@ async function writeEncodingPointers(pointed) {
     for (const { file, sha256 } of lacking.slice(0, 10)) console.error(`  ${file} (${sha256})`);
     process.exit(1);
   }
+  // A team may delete from its own bucket, and its line then ships unvoiced rather than stopping
+  // the release. Only those are looked for: an Ogg in ours is there.
+  const gone = new Set();
+  await eachParallel(pointed.filter((take) => take.teamEncoding), async ({ file, encodedSha256 }) => {
+    const res = await fetchRetrying(`${archiveBase(process.env.SPOKEN_ARCHIVE_URL)}encodings/${encodedSha256}`, (u) => fetch(u, { method: "HEAD" }));
+    if (!res.ok) gone.add(file);
+  });
+  if (gone.size) console.warn(`  ${gone.size} live takes left out: their team deleted the Ogg from its bucket, e.g. ${[...gone][0]}`);
   let done = 0;
-  await eachParallel(pointed, async ({ stem, encodedSha256, bytes }) => {
+  await eachParallel(pointed.filter((take) => !gone.has(take.file)), async ({ stem, encodedSha256, bytes }) => {
     await writeFile(join(paths.out, `${stem}.ogg`), pointerText(encodedSha256, bytes, "encodings"));
     if (++done % 5000 === 0) console.log(`  ${done}/${pointed.length} pointers`);
   });
-  const durations = Object.fromEntries(pointed.map(({ stem, durationSec }) => [stem, Number(durationSec)]));
+  const durations = Object.fromEntries(pointed.filter((take) => !gone.has(take.file)).map(({ stem, durationSec }) => [stem, Number(durationSec)]));
   await writeFile(join(paths.out, "durations.json"), `${JSON.stringify(durations)}\n`);
 }
 
@@ -223,9 +239,15 @@ if (process.env.SPOKEN_CLIP_POINTERS) {
   console.log(`${section}: ${pointed.length - absent.length} pointers in ${paths.out.slice(ROOT.length + 1)}`);
   if (unnamed) console.log(`  ${unnamed} live takes left out: no current line names their file, no lore their place, or their boss is retired`);
   if (live.length > pointed.length) console.log(`  ${live.length - pointed.length} live takes had their clip discarded before the archive kept every take; shipped silent`);
-  if (absent.length) {
-    console.error(`  ${absent.length} live takes are not in the archive, e.g.:`);
-    for (const { target, reason } of absent.slice(0, 5)) console.error(`    ${target}: ${reason}`);
+  // A team may delete from its own bucket: that line ships unvoiced. One missing from ours is a
+  // lost take, and stops the build.
+  const teamTargets = new Set(pointed.filter((take) => take.teamTake).map(({ stem }) => join(paths.out, `${stem}.mp3`)));
+  const deleted = absent.filter(({ target }) => teamTargets.has(target));
+  const lost = absent.filter(({ target }) => !teamTargets.has(target));
+  if (deleted.length) console.warn(`  ${deleted.length} live takes left out: their team deleted them from its bucket, e.g. ${deleted[0].target}`);
+  if (lost.length) {
+    console.error(`  ${lost.length} live takes are not in the archive, e.g.:`);
+    for (const { target, reason } of lost.slice(0, 5)) console.error(`    ${target}: ${reason}`);
     process.exit(1);
   }
   process.exit(0);

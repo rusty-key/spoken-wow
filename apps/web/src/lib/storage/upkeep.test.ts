@@ -30,3 +30,19 @@ describe("storage upkeep", () => {
     }
   });
 });
+
+describe("a task that need not run every round", () => {
+  it("waits its interval between runs", async () => {
+    vi.useFakeTimers();
+    const run = vi.fn(async () => {});
+    const restore = useArchiveForTests(memoryBlobs(), "r2");
+    const upkeep = startStorageUpkeep(() => true, [{ name: "slow", run, everyMs: 180_000 }]);
+    try {
+      for (let i = 0; i < 4; i++) await vi.advanceTimersByTimeAsync(60_000);
+      expect(run).toHaveBeenCalledTimes(2);
+    } finally {
+      upkeep.stop();
+      restore();
+    }
+  });
+});
