@@ -81,14 +81,14 @@ export async function PUT(request: Request) {
   }
 
   // Nobody has registered as it: invite the address instead, into the inviter's team. A site
-  // owner works in no team, so their invite joins the privileged team.
+  // owner's invite joins the privileged team, whatever team they are a member of.
   try {
     await createInvite({
       email: address,
       lang,
       capabilities,
       invitedBy: who.userId,
-      team: await teamIn(who.userId, lang),
+      team: isAdmin(who.viewer.role) ? null : await teamIn(who.userId, lang),
       limited: !isAdmin(who.viewer.role),
       deliver: emailInvite,
     });

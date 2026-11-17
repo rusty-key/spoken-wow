@@ -47,7 +47,7 @@ export async function visibleInvites(viewer: Viewer, userId: string, langs: read
   }
   const lists = await Promise.all([...byTeam].map(([team, inTeam]) => listInvites(inTeam, team)));
   if (lists.length === 1) return lists[0];
-  return lists.flat().sort((a, b) => b.sentAt.localeCompare(a.sentAt));
+  return lists.flat().sort((a, b) => b.createdAt.localeCompare(a.createdAt));
 }
 
 export async function listingFor(

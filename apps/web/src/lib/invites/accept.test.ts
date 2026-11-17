@@ -9,6 +9,8 @@ import { closeDb } from "@/lib/db";
 import { grantsOf, viewerById } from "@/lib/grants/store";
 import type { Lang } from "@/lib/lang";
 import { forgetLanguages, loadLanguages } from "@/lib/languages/catalogue";
+import type { Capability } from "@/lib/permissions";
+import { asActor } from "@/lib/teams/acting";
 import { forgetTeams } from "@/lib/teams/store";
 import { asSystem, dropTeam, systemRows, testUser } from "@/lib/teams/testing";
 
@@ -194,15 +196,17 @@ describe("acceptInvite in a language with a second team", () => {
   }
 
   /** An invite from an admin of `team` (null: the privileged team's admin, naming no team). */
-  async function invite(team: string | null) {
+  async function invite(team: string | null, capabilities: Capability[] = ["edit", "regenerate"]) {
     const admin = await user("test-accept-admin");
     await asSystem.query(MEMBER, [team ?? teamA, admin.id, lang, "admin"]);
+    // Only a site owner appoints text where the team does not.
+    if (capabilities.includes("text")) await asSystem.query(`update "user" set "role" = 'admin' where "id" = $1`, [admin.id]);
     const invitee = await user("test-accept-invitee");
     const address = `${invitee.id}@example.invalid`;
     const created = await createInvite({
       email: address,
       lang,
-      capabilities: ["edit", "regenerate"],
+      capabilities,
       invitedBy: admin.id,
       limited: false,
       team,
@@ -242,6 +246,7 @@ describe("acceptInvite in a language with a second team", () => {
       await dropTeam(team);
     }
     await asSystem.query(`delete from "activity" where "lang" = $1`, [lang]);
+    await asSystem.query(`delete from "language_grant" where "lang" = $1`, [lang]);
     await asSystem.query(`delete from "language" where "code" = $1`, [lang]);
     forgetLanguages();
     forgetTeams();
@@ -271,6 +276,16 @@ describe("acceptInvite in a language with a second team", () => {
       { lang, capability: "record" },
     ]);
     expect((await lookupInvite(token))?.state).toBe("pending");
+  });
+
+  it("accepts a text-only invite for somebody in the second team, logged under the team they act as", async () => {
+    const { invite: sent, token, user } = await invite(null, ["text"]);
+    await asSystem.query(MEMBER, [teamB, user.id, lang, "record"]);
+    expect(await asActor(user.id, () => acceptInvite(token, user))).toEqual({ ok: true, lang, capabilities: ["text"] });
+    expect((await grantsOf(user.id)).filter((grant) => grant.lang === lang)).toContainEqual({ lang, capability: "text" });
+    expect(
+      await systemRows(`select "teamId" from "activity" where "kind" = 'invite.accepted' and "subject" = $1`, [sent.id]),
+    ).toEqual([{ teamId: teamB }]);
   });
 
   it("puts an invite that names no team in the privileged team", async () => {

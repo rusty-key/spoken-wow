@@ -34,6 +34,7 @@ export type InviteRow = {
   invitedByName: string | null;
   /** The team accepting it joins; null for the language's privileged team. */
   teamId: TeamId | null;
+  createdAt: string;
   sentAt: string;
   expiresAt: string;
   expired: boolean;
@@ -104,12 +105,13 @@ type Row = {
   invitedBy: string;
   invitedByName: string | null;
   joinTeamId: TeamId | null;
+  createdAt: Date;
   sentAt: Date;
   expiresAt: Date;
 };
 
 const COLUMNS = `i."id", i."email", i."lang", i."capabilities", i."invitedBy", u."name" as "invitedByName",
-                 i."joinTeamId", i."sentAt", i."expiresAt"`;
+                 i."joinTeamId", i."createdAt", i."sentAt", i."expiresAt"`;
 const OPEN = `i."acceptedAt" is null and i."revokedAt" is null`;
 
 function toInvite(row: Row): InviteRow {
@@ -121,6 +123,7 @@ function toInvite(row: Row): InviteRow {
     invitedById: row.invitedBy,
     invitedByName: row.invitedByName,
     teamId: row.joinTeamId,
+    createdAt: row.createdAt.toISOString(),
     sentAt: row.sentAt.toISOString(),
     expiresAt: row.expiresAt.toISOString(),
     expired: row.expiresAt.getTime() <= Date.now(),
@@ -420,7 +423,8 @@ export async function acceptInvite(
         subject: invite.id,
         actorId: user.id,
         detail: { email: invite.email, capabilities },
-        team,
+        // A text-only grant runs as whichever team the person acts as, and is logged there.
+        team: joins ? team : undefined,
       },
       client,
     );
