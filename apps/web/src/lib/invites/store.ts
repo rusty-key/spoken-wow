@@ -1,5 +1,5 @@
 /**
- * Invitations to work on a language, for an address that has no account (migration 0109).
+ * Invitations to work on a language, for an address that has no account (migration 0111).
  *
  * Only the token's SHA-256 is kept, so a token cannot be handed back after the call that made
  * it; a resend therefore mints a new one. Each act is logged here, in the act's transaction.

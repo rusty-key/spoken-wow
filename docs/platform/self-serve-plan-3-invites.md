@@ -4,11 +4,11 @@
 
 **Goal:** Whoever may grant capabilities in a language can bring in somebody who has no account yet: the team page's add form sends them an invite by email, and its link lets them register or sign in and take up the capabilities it names.
 
-**Architecture:** A new `invite` table (migration `0109`) holds one row per invite: the address, the language, the capabilities, a SHA-256 of a single-use token, and its expiry, acceptance and revocation. `PUT /api/grants` keeps granting directly to an address that has an account; for an unknown address it creates an invite and emails the link instead of answering 404. The link opens `/invite?token=…`, which sends a visitor through register or sign-in and back, then accepts with one button: the session's email must match the invite's, and the grants are applied through `addGrants` with the inviter as `grantedBy`, after re-checking `canGrant` against the inviter's current grants, in the same transaction that marks the invite used.
+**Architecture:** A new `invite` table (migration `0111`) holds one row per invite: the address, the language, the capabilities, a SHA-256 of a single-use token, and its expiry, acceptance and revocation. `PUT /api/grants` keeps granting directly to an address that has an account; for an unknown address it creates an invite and emails the link instead of answering 404. The link opens `/invite?token=…`, which sends a visitor through register or sign-in and back, then accepts with one button: the session's email must match the invite's, and the grants are applied through `addGrants` with the inviter as `grantedBy`, after re-checking `canGrant` against the inviter's current grants, in the same transaction that marks the invite used.
 
 **Tech Stack:** Postgres 16 plain-SQL migrations (`apps/web/migrations`), node-postgres, Next.js App Router (`apps/web`), Better Auth email and password, Resend (`lib/email.ts`), Vitest.
 
-**Spec:** [`SELF-SERVE-TEAMS.md`](SELF-SERVE-TEAMS.md), *What the translator can do* 4: "Invite people by email, whether or not they have registered. An invite names the capabilities it grants and is accepted by signing in or registering from its link." *Left to the builder* leaves storage, lifetime and the email to this plan. Plan 1 ([`self-serve-plan-1-languages.md`](self-serve-plan-1-languages.md)) is built; plan 2 (requests and approval) is written in parallel and takes migration `0108`.
+**Spec:** [`SELF-SERVE-TEAMS.md`](SELF-SERVE-TEAMS.md), *What the translator can do* 4: "Invite people by email, whether or not they have registered. An invite names the capabilities it grants and is accepted by signing in or registering from its link." *Left to the builder* leaves storage, lifetime and the email to this plan. Plan 1 ([`self-serve-plan-1-languages.md`](self-serve-plan-1-languages.md)) is built; plan 2 (requests and approval) is written in parallel and takes migration `0110`.
 
 ## Decisions
 
@@ -27,7 +27,7 @@
 
 ## Global Constraints
 
-- Migration: plain SQL, `apps/web/migrations/0109_invite.sql`, additive, one transaction, applied by `deploy/web/bin/migrate.sh`. Plan 2's `0108` may land first; numbers must not collide.
+- Migration: plain SQL, `apps/web/migrations/0111_invite.sql`, additive, one transaction, applied by `deploy/web/bin/migrate.sh`. Plan 2's `0110` may land first; numbers must not collide.
 - Language code: `^[a-z]{2}[A-Z]{2}$`; capabilities: `CAPABILITIES` in `lib/permissions.ts`.
 - Who may invite, resend, revoke: `canGrant(viewer, capability, lang)` for every capability the invite names. No special case for `text` anywhere.
 - Tokens: `randomBytes(32).toString("base64url")`, stored as `sha256` hex only, never logged. Pages that carry one in the URL set `referrer: "no-referrer"` (as `reset-password/page.tsx`).
@@ -49,7 +49,7 @@
 ### Task 1: The `invite` table and its store
 
 **Files:**
-- Create: `apps/web/migrations/0109_invite.sql`
+- Create: `apps/web/migrations/0111_invite.sql`
 - Create: `apps/web/src/lib/invites/store.ts`
 - Test: `apps/web/src/lib/invites/store.test.ts`
 
