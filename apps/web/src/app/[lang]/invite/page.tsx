@@ -48,6 +48,7 @@ export default async function Page() {
           {invite.capabilities.map(capabilityLabel).join(", ")}.
         </p>
         <InviteAccept
+          id={invite.id}
           email={invite.email}
           lang={invite.lang}
           signedInAs={session?.user.email ?? null}

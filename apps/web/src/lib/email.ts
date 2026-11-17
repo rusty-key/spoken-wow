@@ -6,16 +6,20 @@ import "server-only";
 const SEND_TIMEOUT_MS = 10_000;
 
 /**
- * Hand one plain-text email to the mail provider.
+ * Hand one plain-text email to the mail provider; resolves whether it took it.
  *
- * Never awaited, and never throws: the email follows an act that has already happened, and a
- * mail provider that is down or slow must not turn that act into an error or a wait. A failure
- * is logged by subject only, since the body can carry a credential.
+ * Never rejects, so a caller whose email follows an act that has already happened can leave it
+ * unawaited: a mail provider that is down or slow must not turn that act into an error or a
+ * wait. A failure is logged by subject only, since the body can carry a credential.
  */
-export function sendEmail(to: string, subject: string, text: string): void {
-  send(to, subject, text).catch((error) => {
-    console.error(`email: could not send "${subject}"`, error);
-  });
+export function sendEmail(to: string, subject: string, text: string): Promise<boolean> {
+  return send(to, subject, text).then(
+    () => true,
+    (error) => {
+      console.error(`email: could not send "${subject}"`, error);
+      return false;
+    },
+  );
 }
 
 /**
@@ -26,7 +30,7 @@ export function sendEmail(to: string, subject: string, text: string): void {
  * which addresses have accounts.
  */
 export function sendPasswordResetEmail(to: string, url: string): void {
-  sendEmail(
+  void sendEmail(
     to,
     "Reset your Spoken password",
     [
@@ -39,13 +43,13 @@ export function sendPasswordResetEmail(to: string, url: string): void {
   );
 }
 
-/** The invitation to an address with no account yet. */
+/** The invitation to an address with no account yet; resolves whether the provider took it. */
 export function sendInviteEmail(
   to: string,
   args: { inviterName: string; langName: string; capabilities: string[]; url: string; days: number },
-): void {
+): Promise<boolean> {
   const { inviterName, langName, capabilities, url, days } = args;
-  sendEmail(
+  return sendEmail(
     to,
     `You're invited to work on ${langName} on Spoken`,
     [

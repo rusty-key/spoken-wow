@@ -20,7 +20,7 @@ beforeEach(() => {
 });
 afterEach(cleanup);
 
-const props = { email: "ana@example.com", lang: "deDE" as const };
+const props = { id: "invite-1", email: "ana@example.com", lang: "deDE" as const };
 
 test("signed out, it offers to register or sign in, with no token in either address", () => {
   render(<InviteAccept {...props} signedInAs={null} isInvitee={false} />);
@@ -39,14 +39,14 @@ test("signed in as another address, it names both and offers Sign out, not Accep
   await waitFor(() => expect(refresh).toHaveBeenCalled());
 });
 
-test("signed in as the address, Accept posts the token and shows success", async () => {
+test("signed in as the address, Accept posts the shown invite's id and shows success", async () => {
   fetchMock.mockResolvedValue(new Response(JSON.stringify({ lang: "deDE", capabilities: ["edit"] }), { status: 200 }));
   const user = userEvent.setup();
   render(<InviteAccept {...props} signedInAs="Ana@Example.com" isInvitee />);
   await user.click(screen.getByRole("button", { name: "Accept" }));
   expect(await screen.findByText(/You're in/)).toBeTruthy();
   expect(fetchMock.mock.calls[0][0]).toBe("/api/invites/accept");
-  expect(fetchMock.mock.calls[0][1].body).toBeUndefined();
+  expect(JSON.parse(fetchMock.mock.calls[0][1].body)).toEqual({ id: "invite-1" });
   expect(refresh).toHaveBeenCalled();
 });
 

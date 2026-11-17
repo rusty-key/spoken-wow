@@ -3,13 +3,19 @@
  */
 import { randomBytes } from "node:crypto";
 
-import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 
 import { closeDb } from "@/lib/db";
-import { grantsOf } from "@/lib/grants/store";
+import { grantsOf, viewerById } from "@/lib/grants/store";
 import { asSystem, testUser } from "@/lib/teams/testing";
 
 import { acceptInvite, createInvite, lookupInvite, revokeInvite } from "./store";
+
+// Wrapped, so a test can act between acceptInvite's lookup and its claim.
+vi.mock("@/lib/grants/store", async (importOriginal) => {
+  const original = await importOriginal<typeof import("@/lib/grants/store")>();
+  return { ...original, viewerById: vi.fn(original.viewerById) };
+});
 
 type User = Awaited<ReturnType<typeof testUser>>;
 let inviter: User;
@@ -125,9 +131,22 @@ describe("acceptInvite", () => {
 
   it("does not accept a link that a resend replaced after the lookup", async () => {
     const { invite, token, user } = await setup();
-    // Simulates the resend landing between the lookup and the claim: the hash no longer matches.
-    await asSystem.query(`update "invite" set "tokenHash" = 'replaced-' || "id" where "id" = $1`, [invite.id]);
+    // The inviter's check runs after the lookup and before the claim: the resend lands there.
+    const original = (await vi.importActual<typeof import("@/lib/grants/store")>("@/lib/grants/store")).viewerById;
+    vi.mocked(viewerById).mockImplementationOnce(async (id) => {
+      expect((await lookupInvite(token))?.state).toBe("pending");
+      await asSystem.query(`update "invite" set "tokenHash" = 'replaced-' || "id" where "id" = $1`, [invite.id]);
+      return original(id);
+    });
     expect(await acceptInvite(token, user)).toMatchObject({ ok: false, reason: "unknown" });
+    expect(vi.mocked(viewerById)).toHaveBeenCalled();
+    expect(await grantsOf(user.id)).toEqual([]);
+    expect(await kinds("invite.accepted", invite.id)).toEqual([]);
+  });
+
+  it("refuses an invite other than the one the page showed", async () => {
+    const { token, user } = await setup();
+    expect(await acceptInvite(token, user, "another-invite")).toMatchObject({ ok: false, reason: "changed" });
     expect(await grantsOf(user.id)).toEqual([]);
   });
 

@@ -10,6 +10,8 @@ import { signOut } from "@/lib/auth-client";
 import { langName, localeHref, type Lang } from "@/lib/lang";
 
 type Props = {
+  /** The invite this page shows; the accept route refuses when the link's invite is another. */
+  id: string;
   email: string;
   lang: Lang;
   /** The signed-in account's address, or null when signed out. */
@@ -34,7 +36,7 @@ export function InviteJoined({ lang, className }: { lang: Lang; className?: stri
  * What to do with a pending invite: register or sign in with its address, sign out of the wrong
  * account, or press Accept. Accepting is a button, so a link preview cannot use the invite up.
  */
-export default function InviteAccept({ email, lang, signedInAs, isInvitee }: Props) {
+export default function InviteAccept({ id, email, lang, signedInAs, isInvitee }: Props) {
   const router = useRouter();
   const [done, setDone] = useState(false);
   const [pending, setPending] = useState(false);
@@ -43,7 +45,11 @@ export default function InviteAccept({ email, lang, signedInAs, isInvitee }: Pro
   async function accept() {
     setPending(true);
     setError(null);
-    const response = await fetch("/api/invites/accept", { method: "POST" }).catch(() => null);
+    const response = await fetch("/api/invites/accept", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ id }),
+    }).catch(() => null);
     const data = (await response?.json().catch(() => ({}))) as { error?: string; reason?: string } | undefined;
     setPending(false);
     // Pressed twice, or in two tabs: the grants were given once, so this is success too.

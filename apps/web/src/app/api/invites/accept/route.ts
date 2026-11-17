@@ -14,6 +14,7 @@ export const dynamic = "force-dynamic";
 
 const STATUS = {
   unknown: 404,
+  changed: 409,
   expired: 410,
   revoked: 410,
   accepted: 409,
@@ -21,14 +22,16 @@ const STATUS = {
   "inviter-cannot-grant": 409,
 } as const;
 
-export async function POST() {
+export async function POST(request: Request) {
   const session = await auth.api.getSession({ headers: await headers() });
   if (!session) return Response.json({ error: "sign in to accept the invite" }, { status: 401 });
+  const { id } = (await request.json().catch(() => ({}))) as { id?: unknown };
+  if (typeof id !== "string") return Response.json({ error: "expected { id }" }, { status: 400 });
 
   const token = (await cookies()).get(INVITE_COOKIE)?.value;
   if (!token) return Response.json({ error: "This invite link is not valid any more.", reason: "unknown" }, { status: 404 });
 
-  const outcome = await acceptInvite(token, session.user);
+  const outcome = await acceptInvite(token, session.user, id);
   // The cookie stays: the token is spent now, and the refreshed /invite needs it to say "You're in".
   if (outcome.ok) return Response.json({ lang: outcome.lang, capabilities: outcome.capabilities });
 
@@ -36,6 +39,7 @@ export async function POST() {
   const who = outcome.inviterName ?? "The person who invited you";
   const error = {
     unknown: "This link is not valid any more.",
+    changed: "This tab shows an older invite than the link you opened last; reload the page.",
     expired: "This invite has expired; ask for a new one.",
     revoked: "This invite was withdrawn.",
     accepted: "This invite was accepted already.",

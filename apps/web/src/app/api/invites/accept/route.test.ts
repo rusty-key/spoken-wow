@@ -30,10 +30,17 @@ let inviter: Awaited<ReturnType<typeof testUser>>;
 let invitee: Awaited<ReturnType<typeof testUser>>;
 let other: Awaited<ReturnType<typeof testUser>>;
 let token = "";
+let inviteId = "";
 
-const post = (cookie: string | null = `spoken_invite=${token}`) => {
+const post = (cookie: string | null = `spoken_invite=${token}`, id: unknown = inviteId) => {
   jar.cookie = cookie;
-  return POST();
+  return POST(
+    new Request("https://example.com/api/invites/accept", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ id }),
+    }),
+  );
 };
 const as = (user: { id: string }) => ({ user: { id: user.id, email: `${user.id}@example.invalid`, role: null } });
 
@@ -46,13 +53,15 @@ beforeAll(async () => {
      select "teamId", $1, 'deDE', 'admin' from "team_language" where "lang" = 'deDE'`,
     [inviter.id],
   );
-  ({ token } = await createInvite({
+  let invite;
+  ({ token, invite } = await createInvite({
     email: `${invitee.id}@example.invalid`,
     lang: "deDE",
     capabilities: ["edit"],
     invitedBy: inviter.id,
     limited: false,
   }));
+  inviteId = invite.id;
 });
 
 afterAll(async () => {
@@ -70,6 +79,16 @@ describe("POST /api/invites/accept", () => {
   it("needs a session", async () => {
     session.current = null;
     expect((await post()).status).toBe(401);
+  });
+
+  it("refuses when the link's invite is not the one the page showed, and grants nothing", async () => {
+    session.current = as(invitee);
+    const changed = await post(undefined, "00000000-0000-0000-0000-000000000000");
+    expect(changed.status).toBe(409);
+    expect((await changed.json()).reason).toBe("changed");
+    const { rowCount } = await asSystem.query(`select 1 from "team_member" where "userId" = $1`, [invitee.id]);
+    expect(rowCount).toBe(0);
+    expect((await post(undefined, null)).status).toBe(400);
   });
 
   it("refuses another account, accepts the right one, and says so on a second press", async () => {

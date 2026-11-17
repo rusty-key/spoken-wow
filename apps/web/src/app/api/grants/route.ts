@@ -16,6 +16,7 @@ import {
   emailInvite,
   InviteExistsError,
   InviteRateError,
+  InviteSendError,
   revokeOpenFor,
   normalEmail,
 } from "@/lib/invites/store";
@@ -63,21 +64,24 @@ export async function PUT(request: Request) {
   // a translator gives somebody when asking to be let in.
   const user = await userByEmail(address);
   if (user) {
-    await addGrants(user.id, lang, capabilities, who.userId, (client) => revokeOpenFor(client, lang, address, who.userId));
+    await addGrants(user.id, lang, capabilities, who.userId, (client) =>
+      revokeOpenFor(client, lang, address, user.id, capabilities, who.userId),
+    );
     return listingFor(who.viewer, { invited: false });
   }
 
   // Nobody has registered as it: invite the address instead.
   try {
-    const { invite, token } = await createInvite({
+    await createInvite({
       email: address,
       lang,
       capabilities,
       invitedBy: who.userId,
       limited: !isAdmin(who.viewer.role),
+      deliver: emailInvite,
     });
-    emailInvite(invite, token);
   } catch (error) {
+    if (error instanceof InviteSendError) return Response.json({ error: error.message }, { status: 502 });
     if (error instanceof InviteExistsError || error instanceof InviteRateError) {
       if (error instanceof InviteRateError) console.warn(`invites: ${who.userId} refused: ${error.message}`);
       return Response.json({ error: error.message }, { status: error instanceof InviteExistsError ? 409 : 429 });

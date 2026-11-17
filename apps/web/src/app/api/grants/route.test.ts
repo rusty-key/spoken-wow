@@ -17,8 +17,12 @@ vi.mock("@/lib/auth", () => ({
   auth: { api: { getSession: async () => ({ user: { id: who.id, role: who.viewer.role } }) } },
 }));
 const sent = vi.hoisted(() => [] as { to: string; args: { url: string; capabilities: string[] } }[]);
+const mail = vi.hoisted(() => ({ delivers: true }));
 vi.mock("@/lib/email", () => ({
-  sendInviteEmail: (to: string, args: { url: string; capabilities: string[] }) => sent.push({ to, args }),
+  sendInviteEmail: async (to: string, args: { url: string; capabilities: string[] }) => {
+    sent.push({ to, args });
+    return mail.delivers;
+  },
   sendEmail: () => {},
   sendPasswordResetEmail: () => {},
 }));
@@ -146,6 +150,21 @@ describe("/api/grants", () => {
       expect((await putTo(stranger, ["edit"])).status).toBe(409);
     });
 
+    it("creates no invite when its email cannot be sent", async () => {
+      const to = `undelivered-${stranger}`;
+      mail.delivers = false;
+      try {
+        const response = await putTo(to, ["edit"]);
+        expect(response.status).toBe(502);
+        expect((await response.json()).error).toBe("The email could not be sent; try again later.");
+      } finally {
+        mail.delivers = true;
+      }
+      expect(sent).toHaveLength(1);
+      const rows = await asSystem.query(`select 1 from "invite" where "email" = $1`, [to]);
+      expect(rows.rowCount).toBe(0);
+    });
+
     it("refuses text to a language admin, and sends nothing", async () => {
       expect((await putTo(`other-${stranger}`, ["text"])).status).toBe(403);
       expect(sent).toHaveLength(0);
@@ -174,6 +193,20 @@ describe("/api/grants", () => {
         [invite.id],
       );
       expect(log.rows).toEqual([{ actorId: granter.id }]);
+    });
+
+    it("leaves an invite open while the grants do not cover all it names, and revokes it once they do", async () => {
+      const { invite } = await createInvite({
+        email: email(),
+        lang: "deDE",
+        capabilities: ["edit", "regenerate"],
+        invitedBy: granter.id,
+        limited: false,
+      });
+      expect((await putTo(email(), ["edit"])).status).toBe(200);
+      expect(await openInvite(invite.id)).not.toBeNull();
+      expect((await putTo(email(), ["regenerate"])).status).toBe(200);
+      expect(await openInvite(invite.id)).toBeNull();
     });
 
     it("refuses what is not an address", async () => {

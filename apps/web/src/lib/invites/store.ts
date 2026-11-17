@@ -11,7 +11,7 @@ import type { ClientBase, PoolClient } from "pg";
 import { recordActivity } from "@/lib/activity/store";
 import { actAs, ALL_TEAMS, db, inTransaction, query } from "@/lib/db";
 import { sendInviteEmail } from "@/lib/email";
-import { addGrants, refusedGrant, viewerById } from "@/lib/grants/store";
+import { addGrants, grantsOf, refusedGrant, viewerById } from "@/lib/grants/store";
 import { isLang, langName, type Lang } from "@/lib/lang";
 import { capabilityLabel, isCapability, type Capability } from "@/lib/permissions";
 import { hashSecret as hashOf, mintSecret as newToken } from "@/lib/secret-token";
@@ -54,6 +54,16 @@ export class InviteGoneError extends Error {
   }
 }
 
+export class InviteSendError extends Error {
+  constructor() {
+    super("The email could not be sent; try again later.");
+    this.name = "InviteSendError";
+  }
+}
+
+/** Sends the link; false when it could not, which rolls the write back with InviteSendError. */
+export type Deliver = (invite: InviteRow, token: string) => Promise<boolean>;
+
 export class InviteRateError extends Error {
   constructor(message: string) {
     super(message);
@@ -71,9 +81,9 @@ export function inviteUrl(token: string): string {
   return `${SITE}/api/invites/open?token=${token}`;
 }
 
-/** Emails `invite`'s address its link. Never throws, like sendEmail. */
-export function emailInvite(invite: InviteRow, token: string): void {
-  sendInviteEmail(invite.email, {
+/** Emails `invite`'s address its link; resolves whether the provider took it. Never rejects. */
+export function emailInvite(invite: InviteRow, token: string): Promise<boolean> {
+  return sendInviteEmail(invite.email, {
     inviterName: invite.invitedByName ?? "A Spoken team member",
     langName: langName(invite.lang),
     capabilities: invite.capabilities.map(capabilityLabel),
@@ -126,6 +136,8 @@ export async function createInvite(args: {
   capabilities: Capability[];
   invitedBy: string;
   limited: boolean;
+  /** Before the commit, so an invite whose email could not be sent is not made. */
+  deliver?: Deliver;
 }): Promise<{ invite: InviteRow; token: string }> {
   const token = newToken();
   try {
@@ -164,7 +176,9 @@ export async function createInvite(args: {
         },
         client,
       );
-      return { invite: (await openRow(client, rows[0].id))!, token };
+      const invite = (await openRow(client, rows[0].id))!;
+      if (args.deliver && !(await args.deliver(invite, token))) throw new InviteSendError();
+      return { invite, token };
     });
   } catch (error) {
     if ((error as { code?: string }).code === "23505") throw new InviteExistsError();
@@ -172,7 +186,16 @@ export async function createInvite(args: {
   }
 }
 
-export async function resendInvite(id: string, limited: boolean, actorId: string): Promise<{ invite: InviteRow; token: string }> {
+/**
+ * A new link, sent by `deliver` before the commit: when it cannot be sent, the old link stays
+ * valid and the send count and cooldown stay untouched.
+ */
+export async function resendInvite(
+  id: string,
+  limited: boolean,
+  actorId: string,
+  deliver: Deliver,
+): Promise<{ invite: InviteRow; token: string }> {
   const token = newToken();
   return inTransaction(async (client) => {
     await actAs(client, ALL_TEAMS);
@@ -200,7 +223,9 @@ export async function resendInvite(id: string, limited: boolean, actorId: string
       { kind: "invite.resent", lang: rows[0].lang as Lang, subject: id, actorId, detail: { email: rows[0].email } },
       client,
     );
-    return { invite: (await openRow(client, id))!, token };
+    const invite = (await openRow(client, id))!;
+    if (!(await deliver(invite, token))) throw new InviteSendError();
+    return { invite, token };
   });
 }
 
@@ -219,20 +244,26 @@ export async function revokeInvite(id: string, revokedBy: string): Promise<Invit
 }
 
 /**
- * Revoke the open invite for `email` in `lang`, if any, on the caller's transaction: the address
- * has an account and was just granted directly, so the invite has nothing left to give.
+ * Revoke the open invite for `email` in `lang`, if any, on the caller's transaction, once the
+ * account's grants after this one cover every capability it names: it has nothing left to give.
+ * Otherwise it stays open, so a partial grant does not withdraw what it does not give, and an
+ * admin who may not grant the rest cannot cancel it this way.
  */
 export async function revokeOpenFor(
   client: ClientBase,
   lang: Lang,
   email: string,
+  userId: string,
+  granted: readonly Capability[],
   actorId: string,
 ): Promise<void> {
+  const held = (await grantsOf(userId)).filter((grant) => grant.lang === lang).map((grant) => grant.capability);
   const { rows } = await client.query<{ id: string }>(
     `update "invite" set "revokedAt" = now(), "revokedBy" = $3
       where "lang" = $1 and "email" = $2 and "acceptedAt" is null and "revokedAt" is null
+        and "capabilities" <@ $4::text[]
       returning "id"`,
-    [lang, email, actorId],
+    [lang, email, actorId, [...new Set([...held, ...granted])]],
   );
   for (const { id } of rows) {
     await recordActivity({ kind: "invite.revoked", lang, subject: id, actorId, detail: { email } }, client);
@@ -282,7 +313,7 @@ export type AcceptOutcome =
   | { ok: true; lang: string; capabilities: Capability[] }
   | {
       ok: false;
-      reason: "unknown" | "expired" | "revoked" | "accepted" | "wrong-email" | "inviter-cannot-grant";
+      reason: "unknown" | "changed" | "expired" | "revoked" | "accepted" | "wrong-email" | "inviter-cannot-grant";
       email?: string;
       inviterName?: string | null;
       capability?: Capability;
@@ -294,11 +325,17 @@ class NotClaimed extends Error {}
  * Give `user` what the invite names, as the inviter, once. The inviter is checked again here
  * with `canGrant`, all or none: if they may no longer give every capability, nothing is given
  * and the invite stays pending. The invite is claimed in the same transaction as the grants,
- * so two presses give them once.
+ * so two presses give them once. `shownId` is the invite the page showed: a link opened later
+ * in another tab replaces the token, and pressing Accept here must not accept that one.
  */
-export async function acceptInvite(token: string, user: { id: string; email: string }): Promise<AcceptOutcome> {
+export async function acceptInvite(
+  token: string,
+  user: { id: string; email: string },
+  shownId?: string,
+): Promise<AcceptOutcome> {
   const row = await byToken(token);
   if (!row) return { ok: false, reason: "unknown" };
+  if (shownId !== undefined && row.id !== shownId) return { ok: false, reason: "changed" };
   const invite = toInvite(row);
   const state = stateOf(row);
   if (state !== "pending") return { ok: false, reason: state };

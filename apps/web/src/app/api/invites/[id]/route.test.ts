@@ -12,13 +12,17 @@ import { asSystem, testUser } from "@/lib/teams/testing";
 
 const who = vi.hoisted(() => ({ viewer: { role: null, grants: [] } as Viewer, id: "" }));
 const sent = vi.hoisted(() => [] as { to: string; args: { url: string } }[]);
+const mail = vi.hoisted(() => ({ delivers: true }));
 
 vi.mock("next/headers", () => ({ headers: async () => new Headers() }));
 vi.mock("@/lib/auth", () => ({
   auth: { api: { getSession: async () => ({ user: { id: who.id, role: who.viewer.role } }) } },
 }));
 vi.mock("@/lib/email", () => ({
-  sendInviteEmail: (to: string, args: { url: string }) => sent.push({ to, args }),
+  sendInviteEmail: async (to: string, args: { url: string }) => {
+    sent.push({ to, args });
+    return mail.delivers;
+  },
   sendEmail: () => {},
   sendPasswordResetEmail: () => {},
 }));
@@ -89,6 +93,27 @@ describe("/api/invites/[id]", () => {
     expect((await resend()).status).toBe(200);
     expect((await resend()).status).toBe(200);
     expect(sent).toHaveLength(2);
+  });
+
+  it("keeps the old link, the send count and the cooldown when the email cannot be sent", async () => {
+    who.viewer = { role: "admin", grants: [] };
+    const row = async () =>
+      (await asSystem.query(`select "tokenHash", "sendCount", "sentAt" from "invite" where "id" = $1`, [id])).rows[0];
+    const resent = async () =>
+      (await asSystem.query(`select count(*)::int as n from "activity" where "kind" = 'invite.resent' and "subject" = $1`, [id]))
+        .rows[0].n;
+    const before = await row();
+    const logged = await resent();
+    mail.delivers = false;
+    try {
+      const response = await resend();
+      expect(response.status).toBe(502);
+      expect((await response.json()).error).toBe("The email could not be sent; try again later.");
+    } finally {
+      mail.delivers = true;
+    }
+    expect(await row()).toEqual(before);
+    expect(await resent()).toBe(logged);
   });
 
   it("answers 404, not 500, to a malformed id", async () => {

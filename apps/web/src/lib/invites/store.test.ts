@@ -22,6 +22,7 @@ import {
 
 let inviter: Awaited<ReturnType<typeof testUser>>;
 const email = () => `invitee-${inviter.id}@example.com`;
+const sends = async () => true;
 const sha = (token: string) => createHash("sha256").update(token).digest("hex");
 
 beforeAll(async () => {
@@ -59,7 +60,7 @@ describe("invites", () => {
       (await asSystem.query(`select "kind" from "activity" where "subject" = $1 order by "id"`, [subject])).rows.map((r) => r.kind);
     const { invite } = await createInvite(args({ email: to }));
     await asSystem.query(`update "invite" set "sentAt" = now() - interval '1 hour' where "id" = $1`, [invite.id]);
-    await resendInvite(invite.id, true, inviter.id);
+    await resendInvite(invite.id, true, inviter.id, sends);
     await revokeInvite(invite.id, inviter.id);
     expect(await kinds(invite.id)).toEqual(["invite.sent", "invite.resent", "invite.revoked"]);
 
@@ -98,19 +99,19 @@ describe("invites", () => {
 
   it("resends with a new token, and rate limits a resend", async () => {
     const { invite, token } = await createInvite(args({ email: `resend-${email()}` }));
-    const again = await resendInvite(invite.id, false, inviter.id);
+    const again = await resendInvite(invite.id, false, inviter.id, sends);
     expect(await lookupInvite(token)).toBeNull();
     expect(await lookupInvite(again.token)).toMatchObject({ state: "pending" });
     const [row] = (await asSystem.query(`select "sendCount" from "invite" where "id" = $1`, [invite.id])).rows;
     expect(row.sendCount).toBe(2);
-    await expect(resendInvite(invite.id, true, inviter.id)).rejects.toBeInstanceOf(InviteRateError);
+    await expect(resendInvite(invite.id, true, inviter.id, sends)).rejects.toBeInstanceOf(InviteRateError);
   });
 
   it("revokes once, then cannot resend, and lists no more", async () => {
     const { invite } = await createInvite(args({ email: `revoke-${email()}` }));
     expect((await revokeInvite(invite.id, inviter.id))?.id).toBe(invite.id);
     expect(await revokeInvite(invite.id, inviter.id)).toBeNull();
-    await expect(resendInvite(invite.id, false, inviter.id)).rejects.toBeInstanceOf(InviteGoneError);
+    await expect(resendInvite(invite.id, false, inviter.id, sends)).rejects.toBeInstanceOf(InviteGoneError);
     expect((await listInvites(["deDE"])).map((row) => row.id)).not.toContain(invite.id);
   });
 
