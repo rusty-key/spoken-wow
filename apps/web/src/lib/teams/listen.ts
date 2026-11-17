@@ -61,8 +61,17 @@ async function connect(): Promise<void> {
   }
 }
 
+/**
+ * The caller's read can land between its SELECT and this LISTEN, and a change committed there
+ * is never notified, so the handler runs once the LISTEN holds.
+ */
 function listenOn(own: Client, channel: string): void {
-  own.query(`LISTEN ${channel}`).catch((error) => fail(own, error));
+  own
+    .query(`LISTEN ${channel}`)
+    .then(() => {
+      if (live === own) CHANNELS.get(channel)?.();
+    })
+    .catch((error) => fail(own, error));
 }
 
 function fail(own: Client, error: unknown): void {

@@ -4,8 +4,8 @@ Design, 2026-11-12. Not yet planned or built. Builds on [`TEAMS.md`](TEAMS.md) p
 
 ## Why
 
-Today a site owner creates every team by hand, and a language exists only if it is in the code
-(`apps/web/src/lib/lang.ts`, `pipelines/lib/locales.mjs`). Someone who wants to voice a language
+Today a site owner creates every team by hand. Languages already load from the database (see
+*The big change*), but only a site admin can add one. Someone who wants to voice a language
 Spoken does not have, say Japanese, has to ask. They should be able to register, ask for a team
 with a new language, and once a site owner approves it, run that language on their own: bring
 people in, translate through the site or a script, and voice it on their own provider key.
@@ -120,12 +120,13 @@ included (user).
 
 ## The big change: languages become data
 
-The list of languages is a literal in code today. The `Lang` type is that literal's union, the URL
-proxy validates prefixes against it without a database call, and `lang.test.ts` keeps it in
-step with `pipelines/lib/locales.mjs`. Approving a language without a deploy means the site reads
-its languages from the database (name, native name, BCP 47 tag, provider language code, script,
-whether a client runs in it), with a cache the proxy can use. The pipelines' list stays the
-authority for the ten client locales.
+Built. The site reads its languages from the database `language` table (name, native name, BCP 47
+tag, provider language code, whether a client runs in it) into a registry each process caches
+(`apps/web/src/lib/languages/catalogue.ts`). Every pm2 worker reloads it on a `NOTIFY`, so a
+language a site admin adds is served without a deploy. `Lang` (`apps/web/src/lib/lang.ts`) is a
+validated string, not a literal union, and the URL proxy matches a language prefix by its shape,
+without a database call. The pipelines' list (`pipelines/lib/locales.mjs`) stays the authority for
+the ten client locales.
 
 ## Calls made without the user (check these)
 

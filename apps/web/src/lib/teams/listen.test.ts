@@ -3,7 +3,7 @@ import { afterAll, describe, expect, it } from "vitest";
 
 import { asSystem } from "@/lib/teams/testing";
 
-import { listenForTeamChanges, stopListening } from "./listen";
+import { listenForTeamChanges, listenInServer, stopListening } from "./listen";
 import { teamLangs } from "./store";
 
 afterAll(stopListening);
@@ -35,5 +35,14 @@ describe("listenForTeamChanges", () => {
       await asSystem.query(`select pg_notify('spoken_team_language', 'deDE')`);
     });
     expect(after).not.toBe(before);
+  });
+
+  it("runs a channel registered on a live connection once its LISTEN holds, for a change made before it", async () => {
+    // Live since the tests above.
+    let runs = 0;
+    listenInServer("spoken_test_late_channel", () => runs++);
+    const deadline = Date.now() + 1_000;
+    while (runs === 0 && Date.now() < deadline) await new Promise((resolve) => setTimeout(resolve, 50));
+    expect(runs).toBe(1);
   });
 });
