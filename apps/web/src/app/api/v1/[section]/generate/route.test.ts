@@ -4,6 +4,8 @@
  *
  * Needs DATABASE_URL, migrations applied and the corpus imported.
  */
+import { randomInt } from "node:crypto";
+
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { closeDb } from "@/lib/db";
@@ -229,40 +231,68 @@ describe("POST /api/v1/[section]/generate", () => {
 });
 
 describe("POST /api/v1/[section]/generate for a second team", () => {
-  let second: string;
+  const CAPITALS = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+  let lang: string;
+  let teams: string[];
+  let token: string;
   let batchId: string | undefined;
+
+  async function newTeam(privileged: boolean): Promise<string> {
+    const [team] = await systemRows<{ id: string }>(`select new_team($1, $1) as "id"`, [
+      `generate-${privileged ? "a" : "b"}-${Math.random().toString(36).slice(2, 8)}`,
+    ]);
+    await asSystem.query(`insert into "team_language" ("teamId", "lang", "privileged") values ($1, $2, $3)`, [
+      team.id, lang, privileged,
+    ]);
+    teams.push(team.id);
+    return team.id;
+  }
 
   beforeEach(async () => {
     const real = await vi.importActual<typeof import("@/lib/generation/queue")>("@/lib/generation/queue");
     mocks.createBatch.mockImplementation((...args) => (real.createBatch as (...a: unknown[]) => Promise<string>)(...args));
     mocks.enqueue.mockImplementation((...args) => (real.enqueue as (...a: unknown[]) => ReturnType<typeof real.enqueue>)(...args));
-    const [team] = await systemRows<{ id: string }>(`select new_team($1, $1) as "id"`, [
-      `generate-b-${Math.random().toString(36).slice(2, 8)}`,
-    ]);
-    second = team.id;
-    await asSystem.query(`insert into "team_language" ("teamId", "lang", "privileged") values ($1, 'enUS', false)`, [second]);
+    lang = `xq${CAPITALS[randomInt(26)]}${CAPITALS[randomInt(26)]}`;
+    mocks.grants = [{ lang, capability: "regenerate" }];
+    teams = [];
+    batchId = undefined;
+    await newTeam(true);
+    const second = await newTeam(false);
     await asSystem.query(
-      `insert into "team_member" ("teamId", "userId", "lang", "capability") values ($1, $2, 'enUS', 'regenerate')`,
-      [second, f.user],
+      `insert into "team_member" ("teamId", "userId", "lang", "capability") values ($1, $2, $3, 'regenerate')`,
+      [second, f.user, lang],
+    );
+    await asSystem.query(
+      `insert into "boss_line" ("bossId", "lang", "version", "isCurrent", "origin", "text", "source")
+       values ($1, $2, 1, true, 'rewritten', 'Der Boss spricht ein wenig.', 'test')`,
+      [f.boss.id, lang],
     );
     forgetTeams();
+    token = await mintToken(f.user, lang, "none", true);
   });
 
   afterEach(async () => {
-    await cancelPending("test", { langs: ["enUS"] });
-    if (batchId) await asSystem.query(`delete from "regeneration_batch" where "id" = $1`, [batchId]);
-    batchId = undefined;
-    await dropTeam(second);
+    if (batchId) {
+      await cancelPending("test", { batchId, langs: [lang] });
+      await asSystem.query(`delete from "regeneration_job" where "batchId" = $1`, [batchId]);
+      await asSystem.query(`delete from "regeneration_batch" where "id" = $1`, [batchId]);
+    }
+    await asSystem.query(`delete from "boss_line" where "bossId" = $1 and "lang" = $2`, [f.boss.id, lang]);
+    await asSystem.query(`delete from "api_token" where "userId" = $1 and "lang" = $2`, [f.user, lang]);
+    for (const team of teams) {
+      await asSystem.query(`delete from "activity" where "teamId" = $1`, [team]);
+      await dropTeam(team);
+    }
     forgetTeams();
   });
 
   it("queues the item as that team", async () => {
-    const response = await post(generateToken, { items: [{ id: f.boss.lineId }] });
-    expect(response.status).toBe(200);
-    const body = (await response.json()) as { batchId: string; queued: number };
+    const response = await post(token, { items: [{ id: f.boss.lineId }] });
+    const body = (await response.json()) as { batchId?: string; queued?: number };
     batchId = body.batchId;
+    expect(response.status).toBe(200);
     expect(body.queued).toBe(1);
     const { rows } = await asSystem.query(`select "teamId" from "regeneration_job" where "batchId" = $1`, [batchId]);
-    expect(rows).toEqual([{ teamId: second }]);
+    expect(rows).toEqual([{ teamId: teams[1] }]);
   });
 });

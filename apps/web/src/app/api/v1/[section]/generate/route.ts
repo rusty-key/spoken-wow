@@ -29,7 +29,8 @@ const KEYS = new Set(["items", "filters", "label", "dryRun"]);
 export async function POST(request: Request, { params }: { params: Promise<{ section: string }> }) {
   // The language comes from the token, and nothing else here is read from the URL.
   const { context, denied } = await requireToken(request, {
-    need: "generate", teams: true,
+    need: "generate",
+    teams: true,
     noQuery: "this takes a JSON body and no query string",
   });
   if (denied) return denied;

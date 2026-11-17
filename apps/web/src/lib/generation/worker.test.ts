@@ -978,19 +978,22 @@ describe("a job's team", () => {
   });
 
   it("is the second team's when the job was queued by it", async () => {
-    const german = await ownTeam("deDE");
-    const [second] = await systemRows<{ id: string }>(`select new_team($1, $1) as "id"`, [
+    let german: Awaited<ReturnType<typeof ownTeam>> | undefined;
+    let second: { id: string } | undefined;
+    const archive = fs.mkdtempSync(path.join(os.tmpdir(), "worker-team-b-"));
+    const before = process.env.SPOKEN_BOSSES_AUDIO_HISTORY;
+    process.env.SPOKEN_BOSSES_AUDIO_HISTORY = archive;
+    try {
+    german = await ownTeam("deDE");
+    [second] = await systemRows<{ id: string }>(`select new_team($1, $1) as "id"`, [
       `worker-b-${Math.random().toString(36).slice(2, 8)}`,
     ]);
     await asSystem.query(`insert into "team_language" ("teamId", "lang", "privileged") values ($1, 'deDE', false)`, [
       second.id,
     ]);
     forgetTeams();
-    const archive = fs.mkdtempSync(path.join(os.tmpdir(), "worker-team-b-"));
-    const before = process.env.SPOKEN_BOSSES_AUDIO_HISTORY;
-    process.env.SPOKEN_BOSSES_AUDIO_HISTORY = archive;
-    try {
-      const batch = await asTeams(new Map([["deDE", second.id]]), async () => {
+      const secondId = second!.id;
+      const batch = await asTeams(new Map([["deDE", secondId]]), async () => {
         const id = await createBatch("test", null, "bosses", "deDE");
         batches.push(id);
         await enqueue(id, [line(1)], "bosses", "deDE");
@@ -1014,17 +1017,19 @@ describe("a job's team", () => {
         `select "teamId", "lang" from "take" where "source" = 'bosses' and "file" = $1`,
         [line(1).file],
       );
-      expect(rows).toEqual([{ teamId: second.id, lang: "deDE" }]);
+      expect(rows).toEqual([{ teamId: secondId, lang: "deDE" }]);
     } finally {
       if (before === undefined) delete process.env.SPOKEN_BOSSES_AUDIO_HISTORY;
       else process.env.SPOKEN_BOSSES_AUDIO_HISTORY = before;
       fs.rmSync(archive, { recursive: true, force: true });
       await asSystem.query(`delete from "regeneration_batch" where "id" = any($1::uuid[])`, [batches]);
       batches.length = 0;
-      await asSystem.query(`delete from "take" where "teamId" = $1`, [second.id]);
-      await asSystem.query(`delete from "activity" where "teamId" = $1`, [second.id]);
-      await dropTeam(second.id);
-      await german.restore();
+      if (second) {
+        await asSystem.query(`delete from "take" where "teamId" = $1`, [second.id]);
+        await asSystem.query(`delete from "activity" where "teamId" = $1`, [second.id]);
+        await dropTeam(second.id);
+      }
+      await german?.restore();
     }
   });
 });
