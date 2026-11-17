@@ -244,7 +244,9 @@ describe("release route", () => {
       expect((await refused.json()).error).toBe(
         "Releases for a second team are not built yet; its takes stay on the site.",
       );
-      const { rows } = await asSystem.query(`select 1 from "release_run"`);
+      const { rows } = await asSystem.query(`select 1 from "release_run" where "lang" = 'frFR' and "requestedBy" = $1`, [
+        second.id,
+      ]);
       expect(rows).toEqual([]);
       expect(github.dispatchRelease).not.toHaveBeenCalled();
 

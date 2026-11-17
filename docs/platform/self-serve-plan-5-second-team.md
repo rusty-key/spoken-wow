@@ -331,5 +331,7 @@ Each ships alone. Until 5b, a second team voices the original text in every sect
 - A security-definer function returning only live takes (`isCurrent`) of a named team and language, the "narrow path" TEAMS.md *Isolation* designs; no per-team policy is loosened.
 - A picker per language listing the teams that voice it, shown only where a second team exists. `?team=<slug>` selects whose live takes play; the default is the viewer's own team, else the privileged one.
 - A site owner acting inside a second team (TEAMS.md: "act inside any team with full rights without being a member") through the same picker.
+- The queue panel's finished list and pause list cross teams in one language: each team should see only its own.
+- A site owner's Stop reaches only the privileged team's queue, never a second team's.
 
 Distribution and the player side stay out of plan 5 (spec *Non-goals*): pack ids, clone names with slugs, the Manager's index, primary and fallback in the addon, and reports carrying the team.

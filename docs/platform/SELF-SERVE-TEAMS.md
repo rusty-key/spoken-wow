@@ -168,7 +168,8 @@ site. The rest of phase 2 is distribution and stays out.
 - **Tokens.** Only `text` writes the original text, in any language. A second team's token reads
   its language's original text and writes its team's overrides when its owner holds `regenerate`,
   and never writes the original (plan 5b). A token route opts in to second teams, and one not yet
-  converted answers 403 to a second team's token. *(User.)*
+  converted answers 403 to a second team's token. *(User.)* Until 5b, the text routes answer 403 to
+  the token of anyone whose team in the language is a second team, text maintainers included.
 - **Releases and gender splits.** A second team cannot release yet, and cannot split a line by the
   reader's gender, since that rewrites the original every team voices. A plain override is written
   into its own team's layer.

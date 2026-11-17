@@ -57,6 +57,7 @@ async function readScoped<T extends QueryResultRow>(
   params: unknown[],
 ): Promise<T[]> {
   const team = await ownerOrAll(lang);
+  // Never in practice: adoptEveryLang gives every language a team.
   if (team === ALL_TEAMS) return [];
   where.push(REPORT_SCOPE(params.push(team)));
   return queryIn<T>(ALL_TEAMS, sql(where.join(" and ")), params);
