@@ -74,7 +74,7 @@ test("English's version is its .toc's, and a rebuild leaves nothing of the last 
   const root = mkdtempSync(join(tmpdir(), "stage-"));
   tree(join(root, "addons/SpokenPlacesAudio"), source);
   tree(root, { "dist/SpokenPlacesAudio/Sounds/gone.mp3": "stale" });
-  const pack = { folder: "SpokenPlacesAudio", name: "Spoken Audio: Places and Bosses", version: null };
+  const pack = { folder: "SpokenPlacesAudio", name: "Spoken Audio: Places", version: null };
   const out = await stagePack("places", "enUS", { root, pack });
   assert.equal(out.version, "1.2.3");
   assert.equal(existsSync(join(root, "dist/SpokenPlacesAudio/Sounds/gone.mp3")), false);

@@ -194,27 +194,11 @@ test("the bosses pack is SpokenBossesAudio, and a language's is that plus its co
   assert.deepEqual(managerFolders(packs), [{ folder: "SpokenBossesAudio", section: "bosses", lang: "enUS" }]);
 });
 
-test("a pack bundledIn another names that pack's CurseForge project and has none of its own", () => {
-  const bosses = { section: "bosses", lang: "enUS", release: "bosses-audio",
-    slug: "spoken-audio-bosses", name: "Spoken Audio: Bosses" };
-  const packs = loadPacks(tree([placesEn, ["bosses", "a.md", { ...bosses, bundledIn: "spoken-audio-places" }]]));
-  const found = findPack("bosses", "enUS", null, packs);
-  assert.equal(found.bundledIn, "spoken-audio-places");
-  assert.equal(found.curseforge, null);
-  assert.equal(findPack("places", "enUS", null, packs).bundledIn, null);
-  assert.throws(() => loadPacks(tree([placesEn, ["bosses", "a.md", { ...bosses, bundledIn: "spoken-audio-places", curseforge: "1" }]])),
-    /either as its own project or bundledIn another's/);
-  assert.throws(() => loadPacks(tree([placesEn, ["bosses", "a.md", { ...bosses, bundledIn: "spoken-audio-nowhere" }]])),
-    /bundledIn spoken-audio-nowhere is not an enUS pack on CurseForge/);
-  assert.throws(() => loadPacks(tree([placesMx, ["bosses", "a.md", { ...bosses, bundledIn: "spoken-spanish-al-audio-places" }]])),
-    /is not an enUS pack on CurseForge/);
-});
-
-test("the bosses pack's CurseForge home is the English places pack", () => {
+test("the English bosses pack is its own CurseForge project, apart from the places pack", () => {
   const packs = loadPacks();
   const bosses = findPack("bosses", "enUS", null, packs);
-  assert.equal(bosses.bundledIn, findPack("places", "enUS", null, packs).slug);
-  assert.equal(bosses.curseforge, null);
+  assert.equal(bosses.curseforge, "1780747");
+  assert.notEqual(bosses.curseforge, findPack("places", "enUS", null, packs).curseforge);
 });
 
 test("inMeta: false keeps a pack on CurseForge out of its language's meta addon, and nothing else is accepted", () => {
