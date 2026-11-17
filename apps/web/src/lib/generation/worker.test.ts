@@ -19,7 +19,7 @@ import * as queue from "./queue";
 import { createBatch, enqueue, type QueueEntry } from "./queue";
 import { clampToPool } from "./concurrency";
 import type { RegenerateResult } from "./regenerate";
-import { backoffFor, startWorker } from "./worker";
+import { backoffFor, startWorker, type Worker } from "./worker";
 import type { Source } from "@/lib/sections";
 import { commitTake } from "@/lib/takes/commit";
 import { asTeams } from "@/lib/teams/acting";
@@ -943,12 +943,13 @@ describe("a job's team", () => {
     const archive = fs.mkdtempSync(path.join(os.tmpdir(), "worker-team-"));
     const before = process.env.SPOKEN_BOSSES_AUDIO_HISTORY;
     process.env.SPOKEN_BOSSES_AUDIO_HISTORY = archive;
+    let worker: Worker | undefined;
     try {
       const batch = await createBatch("test", null, "bosses", "deDE");
       batches.push(batch);
       await enqueue(batch, [line(1)], "bosses", "deDE");
 
-      const worker = startWorker(() => true, {
+      worker = startWorker(() => true, {
         apiKeyFor: KEYED,
         budget: async () => 1,
         regenerate: {
@@ -967,6 +968,7 @@ describe("a job's team", () => {
       );
       expect(rows).toEqual([{ teamId: german.team, lang: "deDE" }]);
     } finally {
+      await worker?.stop();
       if (before === undefined) delete process.env.SPOKEN_BOSSES_AUDIO_HISTORY;
       else process.env.SPOKEN_BOSSES_AUDIO_HISTORY = before;
       fs.rmSync(archive, { recursive: true, force: true });
@@ -982,6 +984,7 @@ describe("a job's team", () => {
     const archive = fs.mkdtempSync(path.join(os.tmpdir(), "worker-team-b-"));
     const before = process.env.SPOKEN_BOSSES_AUDIO_HISTORY;
     process.env.SPOKEN_BOSSES_AUDIO_HISTORY = archive;
+    let worker: Worker | undefined;
     try {
       german = await ownTeam("deDE");
       second = await newTeamIn("deDE", false, "worker-b");
@@ -993,7 +996,7 @@ describe("a job's team", () => {
         return id;
       });
 
-      const worker = startWorker(() => true, {
+      worker = startWorker(() => true, {
         apiKeyFor: KEYED,
         budget: async () => 1,
         regenerate: {
@@ -1012,6 +1015,7 @@ describe("a job's team", () => {
       );
       expect(rows).toEqual([{ teamId: secondId, lang: "deDE" }]);
     } finally {
+      await worker?.stop();
       if (before === undefined) delete process.env.SPOKEN_BOSSES_AUDIO_HISTORY;
       else process.env.SPOKEN_BOSSES_AUDIO_HISTORY = before;
       fs.rmSync(archive, { recursive: true, force: true });
