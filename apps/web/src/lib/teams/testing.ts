@@ -58,6 +58,7 @@ const STAMPED = [
   "storage_move", "archive_object", "storage_backend",
   "regeneration_pause", "regeneration_batch", "take_ack", "take", "recording", "activity", "report", "line_ignore",
   "voice_assignment", "voice", "generation_setting", "queue_dismissal",
+  "text_override",
 ];
 
 /**
@@ -156,7 +157,7 @@ export async function runningJob(lang: Lang, team: TeamId): Promise<{ cleanup: (
 
 /** The caller deletes any rows under the team beyond its members, roster and languages first. */
 export async function dropTeam(team: TeamId): Promise<void> {
-  for (const table of ["team_member", "voice_assignment", "voice", "generation_setting", "queue_dismissal", "team_language"]) {
+  for (const table of ["text_override", "team_member", "voice_assignment", "voice", "generation_setting", "queue_dismissal", "team_language"]) {
     await asSystem.query(`delete from "${table}" where "teamId" = $1`, [team]);
   }
   await asSystem.query(`delete from "team" where "id" = $1`, [team]);
