@@ -295,7 +295,7 @@ Each ships alone. Until 5b, a second team voices the original text in every sect
 - Consumes: Task 2's `actsAsSecondTeam`.
 - Produces:
   - `POST /api/releases`: after the capability check, `actsAsSecondTeam(lang)` answers 409 with the release message, before any `release_run` row. The release page shows that sentence in place of `ReleasePanel` for such a viewer.
-  - Override `PUT`: text that `branchesOnPlayerGender` from someone for whom `actsAsSecondTeam(lang)` is 409 with the gender-split message; a plain override is written as today, into their team's layer.
+  - Override `PUT`: text that `branchesOnPlayerGender` from someone for whom `actsAsSecondTeam(lang)` is 409 with the gender-split message, and from anyone else without `text` in `lang` is 403: a split rewrites the original text, which only `text` writes. A plain override is written as today, into their team's layer.
   - `SELF-SERVE-TEAMS.md`: the status line names plan 5a. *Second team in a language* gains:
     - one team per person per language *(user)*;
     - the start: original text inherited, takes and overrides never, settings copied or fresh at the site owner's choice *(user)*;

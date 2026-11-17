@@ -23,6 +23,14 @@ vi.mock("@/lib/grants/store", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@/lib/grants/store")>()),
   viewerOf: async () => ({ role: null, grants: viewer.grants }),
 }));
+const rewritten = vi.hoisted(() => [] as { lang: string; text: string }[]);
+vi.mock("@/lib/quests/moment-rewrite", () => ({
+  momentLines: async (_lang: string, lineId: string) => [{ lineId, playerGender: null }],
+  rewriteMoment: async (lang: string, _rows: unknown, _variant: number, rewrite: { text: string }) => {
+    rewritten.push({ lang, text: rewrite.text });
+    return ["quests/m-test-route-override.mp3", "quests/f-test-route-override.mp3"];
+  },
+}));
 vi.mock("@/lib/audio", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@/lib/audio")>()),
   fileIndex: async (lang: string) => (lines.get(lang) ?? new Map()) as unknown as Map<string, CorpusLine>,
@@ -67,6 +75,7 @@ beforeAll(async () => {
 
 beforeEach(() => {
   viewer.grants = [{ lang: "deDE", capability: "regenerate" }];
+  rewritten.length = 0;
 });
 
 afterEach(async () => {
@@ -112,6 +121,29 @@ describe("/api/quests/lines/override", () => {
     expect((await readOverrides("enUS")).get(FILE)?.text).toBe("In English.");
   });
 
+  it("refuses a gender split without text, and leaves the line alone", async () => {
+    const response = await put("deDE", "Gut gemacht, $GBursche:Mädel;.");
+    expect(response.status).toBe(403);
+    expect((await response.json()).error).toBe(
+      "Splitting a line by the reader's gender changes its original text, which takes the text grant.",
+    );
+    expect(rewritten).toEqual([]);
+    expect((await readOverrides("deDE")).has(FILE)).toBe(false);
+  });
+
+  it("splits a line by the reader's gender with text", async () => {
+    viewer.grants = [
+      { lang: "deDE", capability: "regenerate" },
+      { lang: "deDE", capability: "text" },
+    ];
+    const response = await put("deDE", "Gut gemacht, $GBursche:Mädel;.");
+    expect(response.status).toBe(200);
+    expect(await response.json()).toEqual({
+      files: ["quests/m-test-route-override.mp3", "quests/f-test-route-override.mp3"],
+    });
+    expect(rewritten).toEqual([{ lang: "deDE", text: "Gut gemacht, $GBursche:Mädel;." }]);
+  });
+
   describe("for a second team's member", () => {
     let team: string;
 
@@ -141,6 +173,7 @@ describe("/api/quests/lines/override", () => {
       );
       const { rows } = await asSystem.query(`select 1 from "line_override" where "file" = $1`, [FILE]);
       expect(rows).toEqual([]);
+      expect(rewritten).toEqual([]);
     });
 
     it("writes a plain override into its own team's layer", async () => {

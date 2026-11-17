@@ -127,8 +127,9 @@ in every team, and the original text only under `text`.
 
 The pencil writes an override. The one exception is text that branches on the reader's gender on a
 plain line, in any language: one file cannot say both, so saving splits the line into `:m` and `:f`,
-which changes the original every team shares. That is deliberate for now, and a second team's save
-is refused: only the language's text maintainers split a line.
+which changes the original every team shares. That is deliberate for now, so a split needs `text` in
+the language beside `regenerate`, and a second team's save is refused: only the language's text
+maintainers split a line.
 
 The original otherwise changes through imports and accepted corrections, in English too, so a text
 maintainer works in contributions. Editing the original directly, and a translator's way to fill in
