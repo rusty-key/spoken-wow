@@ -23,7 +23,7 @@ const AUDIT = { tokenId: "t" };
 
 beforeAll(async () => {
   f = await createFixtures();
-  context = { tokenId: "t", userId: f.user, role: null, lang: LANG, access: "write" };
+  context = { tokenId: "t", userId: f.user, role: null, lang: LANG, access: "write", generate: false };
 });
 
 keepLanguage(LANG);

@@ -7,7 +7,8 @@
  */
 import { mayIgnoreIn, requireCapability } from "@/lib/generation/authz";
 import { contributionLocale } from "@/lib/contributions/store";
-import { BASE_LANG, isLang } from "@/lib/lang";
+import { BASE_LANG } from "@/lib/lang";
+import { knownLang } from "@/lib/languages/catalogue";
 import { isStatus } from "@/lib/contributions/contributions";
 import { resolveContribution } from "@/lib/contributions/accept";
 import { bookMatchOf } from "@/lib/contributions/book-match";
@@ -30,7 +31,7 @@ export async function POST(request: Request) {
   // text, English like any other. The id is checked for existence only after the
   // permission, so a member learns nothing about which ids exist.
   const locale = await contributionLocale(id);
-  const lang = isLang(locale) ? locale : BASE_LANG;
+  const lang = (await knownLang(locale)) ?? BASE_LANG;
   const { session, denied } = await requireCapability("text", lang);
   if (denied) return denied;
   if (locale === null) {

@@ -11,7 +11,7 @@
 import { createAccessControl } from "better-auth/plugins/access";
 import { adminAc, defaultStatements } from "better-auth/plugins/admin/access";
 
-import { CODES, type Lang } from "@/lib/lang";
+import { allLangs, type Lang } from "@/lib/lang";
 
 const statement = {
   ...defaultStatements,
@@ -155,7 +155,7 @@ export function can(viewer: Viewer | null, capability: Capability, lang: Lang): 
  * for somebody signed out.
  */
 export function langsWhere(viewer: Viewer | null, capability: Capability): Lang[] {
-  return CODES.filter((lang) => can(viewer, capability, lang));
+  return allLangs().filter((lang) => can(viewer, capability, lang));
 }
 
 /**
@@ -164,7 +164,7 @@ export function langsWhere(viewer: Viewer | null, capability: Capability): Lang[
  * every such action is paid for with the caller's own.
  */
 export function spendsCredits(viewer: Viewer | null): boolean {
-  return CODES.some((lang) => can(viewer, "regenerate", lang) || can(viewer, "configure", lang));
+  return allLangs().some((lang) => can(viewer, "regenerate", lang) || can(viewer, "configure", lang));
 }
 
 /**
@@ -185,11 +185,17 @@ export function canManageVoices(viewer: Viewer | null, lang: Lang): boolean {
   return can(viewer, "admin", lang);
 }
 
-/** Whether somebody may hand out or take away `capability` in `lang`. */
-export function canGrant(viewer: Viewer | null, capability: Capability, lang: Lang): boolean {
+/**
+ * Whether somebody may hand out or take away `capability` in `lang`.
+ *
+ * `textByTeam` is the language's flag that its privileged team's admins appoint text
+ * maintainers, as a site admin does elsewhere. The privileged team's admins are everyone with
+ * `admin` in the language.
+ */
+export function canGrant(viewer: Viewer | null, capability: Capability, lang: Lang, textByTeam: boolean): boolean {
   if (!viewer) return false;
   if (viewer.role === "admin") return true;
-  return capability !== "text" && can(viewer, "admin", lang);
+  return (capability !== "text" || textByTeam) && can(viewer, "admin", lang);
 }
 
 /**

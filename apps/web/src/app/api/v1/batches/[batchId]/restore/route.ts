@@ -10,7 +10,7 @@ import { isUuid } from "@/lib/uuid";
 export const dynamic = "force-dynamic";
 
 export async function POST(request: Request, { params }: { params: Promise<{ batchId: string }> }) {
-  const { context, denied } = await requireToken(request, { write: true });
+  const { context, denied } = await requireToken(request, { need: "write" });
   if (denied) return denied;
 
   const { batchId } = await params;

@@ -4,7 +4,9 @@
  * from whichever English line `LANG` has not translated.
  */
 import { bossLineId } from "@/lib/bosses/story";
+import type { Lang } from "@/lib/lang";
 import { asSystem, testUser } from "@/lib/teams/testing";
+import { createToken } from "@/lib/tokens/store";
 
 /** Tests elsewhere already wipe this language, so nothing real is at stake in it. */
 export const LANG = "koKR";
@@ -21,6 +23,19 @@ export type Fixtures = {
   gossip: { lineId: string; variant: number };
   remove(): Promise<void>;
 };
+
+/** A day-long token for `userId` in `lang`, labelled "agent". */
+export async function mintToken(userId: string, lang: Lang, access: "none" | "read", generate: boolean): Promise<string> {
+  const { token } = await createToken({
+    userId,
+    lang,
+    access,
+    generate,
+    label: "agent",
+    expiresAt: new Date(Date.now() + 86_400_000),
+  });
+  return token;
+}
 
 const random = () => Math.random().toString(36).slice(2, 10);
 

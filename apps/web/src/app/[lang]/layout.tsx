@@ -7,11 +7,12 @@ import { Suspense } from "react";
 import LanguageSwitcher from "@/components/LanguageSwitcher";
 import { GrantsProvider } from "@/components/GrantsProvider";
 import { LangProvider } from "@/components/LangProvider";
+import { LanguagesProvider } from "@/components/LanguagesProvider";
 import Link from "@/components/LocaleLink";
 import NavigationProgress from "@/components/NavigationProgress";
 import SiteHeader from "@/components/SiteHeader";
 import UserMenu from "@/components/UserMenu";
-import { langTag } from "@/lib/lang";
+import { langTag, registeredExtras } from "@/lib/lang";
 import { pageLang } from "@/lib/lang-server";
 import { cn } from "@/lib/utils";
 import { Contained } from "@/components/Width";
@@ -28,7 +29,8 @@ export const metadata: Metadata = {
  * The root layout, under the language: every page is in exactly one, and says so in
  * <html lang>.
  *
- * pageLang answers an English page without a query or a session read; only another language
+ * pageLang answers an English page without a query or a session read, and the language list for
+ * the browser comes from the in-memory registry; only another language
  * asks whether it is switched on, and whether the visitor is an admin who may see it early.
  *
  * NOTHING HERE IS PRERENDERED, including the four English pages that were (the landing page,
@@ -46,6 +48,10 @@ export default async function RootLayout({
   params: Promise<{ lang: string }>;
 }) {
   const lang = await pageLang(params);
+  // From the registry, never the database: it is filled at boot and on every change, and pageLang
+  // has already awaited a load for a non-English page. An English page therefore renders with the
+  // database down. Only the languages beyond the built-in ones travel to the browser.
+  const extras = registeredExtras();
   return (
     // Dark-only for now: this is a tool for listening to game dialog, and the light
     // palette is untested. The shadcn tokens make flipping it a one-line change.
@@ -56,36 +62,38 @@ export default async function RootLayout({
         <Suspense>
           <NavigationProgress />
         </Suspense>
-        <LangProvider lang={lang}>
-          <GrantsProvider>
-            <SiteHeader>
-              <header className="border-b">
-                <Contained className="flex h-12 items-center justify-between gap-3">
-                  <Link href="/" aria-label="Spoken">
-                    {/* Intrinsic 1024x187; height is what the header constrains, so the
+        <LanguagesProvider languages={extras}>
+          <LangProvider lang={lang}>
+            <GrantsProvider>
+              <SiteHeader>
+                <header className="border-b">
+                  <Contained className="flex h-12 items-center justify-between gap-3">
+                    <Link href="/" aria-label="Spoken">
+                      {/* Intrinsic 1024x187; height is what the header constrains, so the
                         width below is that ratio and only exists to stop the reflow. */}
-                    <Image
-                      src="/logo.png"
-                      alt="Spoken"
-                      width={142}
-                      height={26}
-                      priority
-                      className="h-[26px] w-auto"
-                    />
-                  </Link>
-                  <div className="flex items-center gap-1">
-                    {/* On a phone the switch lives in UserMenu's burger, with the links. */}
-                    <div className="hidden md:block">
-                      <LanguageSwitcher />
+                      <Image
+                        src="/logo.png"
+                        alt="Spoken"
+                        width={142}
+                        height={26}
+                        priority
+                        className="h-[26px] w-auto"
+                      />
+                    </Link>
+                    <div className="flex items-center gap-1">
+                      {/* On a phone the switch lives in UserMenu's burger, with the links. */}
+                      <div className="hidden md:block">
+                        <LanguageSwitcher />
+                      </div>
+                      <UserMenu />
                     </div>
-                    <UserMenu />
-                  </div>
-                </Contained>
-              </header>
-            </SiteHeader>
-            {children}
-          </GrantsProvider>
-        </LangProvider>
+                  </Contained>
+                </header>
+              </SiteHeader>
+              {children}
+            </GrantsProvider>
+          </LangProvider>
+        </LanguagesProvider>
         {/* Cloudflare Web Analytics and Ahrefs Analytics. Production only, so local page
             views don't land in the same dashboards as real traffic. */}
         {process.env.NODE_ENV === "production" && (

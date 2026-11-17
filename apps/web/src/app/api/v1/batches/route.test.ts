@@ -28,7 +28,7 @@ let f: Fixtures;
 let other: Fixtures;
 
 const token = (userId: string, access: "read" | "write" = "write", lang: "koKR" | "zhTW" = LANG as "koKR") =>
-  createToken({ userId, lang, access, label: "agent", expiresAt: new Date(Date.now() + 86_400_000) });
+  createToken({ userId, lang, access, generate: false, label: "agent", expiresAt: new Date(Date.now() + 86_400_000) });
 
 beforeEach(async () => {
   f = await createFixtures();

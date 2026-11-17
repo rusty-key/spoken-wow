@@ -17,29 +17,12 @@
  */
 import { NextRequest, NextResponse } from "next/server";
 
-import { recordActivity } from "@/lib/activity/store";
-import { broadcastStatuses } from "@/lib/broadcast/store";
-import { corpus } from "@/lib/quests/catalogue";
-import { isSource, type Source } from "@/lib/sections";
-import {
-  requireAnyRegenerate,
-  requireApiKey,
-  requireSpeaker,
-  requireIn,
-} from "@/lib/generation/authz";
-import { createBatch, enqueue, snapshot } from "@/lib/generation/queue";
-import { searchContext } from "@/lib/quests/context";
-import { batchJobs, matchingLines } from "@/lib/search";
-import { filtersFromParams, needsLevels, needsStale } from "@/lib/search-request";
-import { recordingsFor } from "@/lib/recordings/store";
-import { ensureQueueRunning, queueWorker } from "@/lib/generation/boot";
-import { catalogue as bookCatalogue } from "@/lib/readables/catalogue";
-import type { Lang } from "@/lib/lang";
+import { isSource } from "@/lib/sections";
+import { requireAnyRegenerate, requireSpeaker, requireIn } from "@/lib/generation/authz";
+import { planCatalogue, planQuestsByFilters, queuePlan, type Plan } from "@/lib/generation/batch-plan";
+import { snapshot } from "@/lib/generation/queue";
+import { ensureQueueRunning } from "@/lib/generation/boot";
 import { isAdmin } from "@/lib/permissions";
-import type { Provider } from "@/lib/generation/speakers/speaker";
-import { pinnedVoices } from "@/lib/voices/references";
-import { catalogue as zoneCatalogue } from "@/lib/places/catalogue";
-import { catalogue as bossCatalogue } from "@/lib/bosses/catalogue";
 
 export const dynamic = "force-dynamic";
 
@@ -77,248 +60,30 @@ export async function POST(request: NextRequest) {
   }
 
   const label = typeof body.label === "string" && body.label ? body.label : "a search";
+  const userId = session.user.id;
 
-  if (source === "places") return queuePlaces(body.lineIds, label, session.user.id, lang, provider);
-  if (source === "readables") return queueReadables(body.lineIds, label, session.user.id, lang, provider);
-  if (source === "bosses") return queueBosses(body.lineIds, label, session.user.id, lang, provider);
-
-  if (typeof body.filters !== "string") {
-    return NextResponse.json(
-      { error: "filters is required, as a query string", kind: "bad-request" },
-      { status: 400 },
-    );
+  let plan: Plan;
+  if (source === "quests") {
+    if (typeof body.filters !== "string") {
+      return NextResponse.json(
+        { error: "filters is required, as a query string", kind: "bad-request" },
+        { status: 400 },
+      );
+    }
+    plan = await planQuestsByFilters(body.filters, lang, provider);
+  } else {
+    if (!Array.isArray(body.lineIds) || body.lineIds.some((id) => typeof id !== "string")) {
+      return NextResponse.json(
+        { error: "lineIds is required, as an array of strings", kind: "bad-request" },
+        { status: 400 },
+      );
+    }
+    plan = await planCatalogue(source, body.lineIds as string[], lang);
   }
 
-  let filters = await filtersFromParams(new URLSearchParams(body.filters), lang);
-  const [catalogue, { voiced, context }, recordings, broadcast] = await Promise.all([
-    corpus(lang),
-    // Behind `regenerate`, which is working in the language, so the model and author
-    // filters narrow the batch exactly as they narrowed the page it was quoted from.
-    searchContext(needsStale(filters), false, lang, true, needsLevels(filters)),
-    // And the recorded filter, as /api/quests/search/lines narrowed the quote: without the
-    // recordings "not recorded" would queue every line and "recorded" none.
-    filters.recorded ? recordingsFor("quests", lang) : undefined,
-    // And the broadcast-id filter: without the statuses it matches nothing.
-    filters.broadcast ? broadcastStatuses() : undefined,
-  ]);
-  if (!recordings) filters = { ...filters, recorded: undefined };
-  const lines = matchingLines(catalogue, voiced, filters, { ...context, recordings, broadcast });
-  // The same overrides the estimate was built from, so what is queued is what was quoted.
-  const jobs = batchJobs(lines, context.overrides);
-
-  if (jobs.length === 0) {
-    return NextResponse.json({ error: "nothing to regenerate", kind: "bad-request" }, { status: 400 });
-  }
-
-  // A pinned voice's lines are fish.audio jobs in whatever batch they fall in, so a batch that
-  // holds one needs the fish.audio key as well, for the reason the first key is checked above.
-  const pinned = provider === "fish" ? new Set<string>() : await pinnedVoices(lang);
-  if (jobs.some((job) => pinned.has(job.voice))) {
-    const { denied: noFishKey } = await requireApiKey(session.user.id, "fish");
-    if (noFishKey) return noFishKey;
-  }
-
-  const batchId = await createBatch(label, session.user.id, "quests", lang);
-  // BatchLine calls it audioPath and the queue calls it file, because a job is one mp3 on
-  // either side and only the quests corpus thinks of it as a line's audio.
-  const { queued, skipped } = await enqueue(
-    batchId,
-    jobs.map((job) => ({
-      lineId: job.lineId,
-      file: job.audioPath,
-      npcName: job.npcName,
-      preview: job.preview,
-      characters: job.characters,
-      provider: pinned.has(job.voice) ? "fish" : undefined,
-    })),
-    "quests",
-    lang,
-    provider,
-  );
-  await recordQueued(batchId, label, session.user.id, "quests", lang, queued);
-
-  // The loop is on a two-second idle tick, and waiting that out before the first take would
-  // be the most visible part of pressing the button.
-  queueWorker()?.nudge();
-
-  return NextResponse.json({ batchId, queued, skipped });
-}
-
-/**
- * A places batch, from the ids the explorer selected.
- *
- * The entries are looked up in the catalogue rather than trusted from the body, which is
- * the same protection the quests half gets by re-deriving from filters: what is queued is
- * what exists, and an id nobody recognises is dropped rather than becoming a job that can
- * only fail. A line with no text is dropped too -- an untranslated line has nothing to
- * narrate, and paying to find that out once per line is what the quote exists to prevent.
- */
-async function queuePlaces(
-  lineIds: unknown,
-  label: string,
-  userId: string,
-  lang: Lang,
-  provider: Provider,
-): Promise<NextResponse> {
-  if (!Array.isArray(lineIds) || lineIds.some((id) => typeof id !== "string")) {
-    return NextResponse.json(
-      { error: "lineIds is required, as an array of strings", kind: "bad-request" },
-      { status: 400 },
-    );
-  }
-
-  const wanted = new Set(lineIds as string[]);
-  const jobs = (await zoneCatalogue(lang))
-    .filter((entry) => wanted.has(entry.id) && entry.spoken.trim() !== "")
-    .map((entry) => ({
-      lineId: entry.id,
-      file: entry.file,
-      // There is no NPC here. The column is a label for the progress readout, and the
-      // zone is what names a line on screen.
-      npcName: entry.zoneName,
-      preview: entry.short || entry.full.slice(0, 120),
-      characters: entry.spoken.length,
-    }));
-
-  if (jobs.length === 0) {
-    return NextResponse.json(
-      { error: "nothing to regenerate", kind: "bad-request" },
-      { status: 400 },
-    );
-  }
-
-  const batchId = await createBatch(label, userId, "places", lang);
-  const { queued, skipped } = await enqueue(batchId, jobs, "places", lang, provider);
-  await recordQueued(batchId, label, userId, "places", lang, queued);
-
-  queueWorker()?.nudge();
-
-  return NextResponse.json({ batchId, queued, skipped });
-}
-
-/**
- * A readables batch, from the ids the explorer selected.
- *
- * The pages are looked up in the corpus rather than trusted from the body, exactly as the
- * places half does: what is queued is what exists, and an id nobody recognises is dropped
- * rather than becoming a job that can only fail. The 88 unvoiceable pages are dropped for
- * the same reason -- they are in the corpus because the game has them, not because anyone
- * can narrate them.
- */
-async function queueReadables(
-  lineIds: unknown,
-  label: string,
-  userId: string,
-  lang: Lang,
-  provider: Provider,
-): Promise<NextResponse> {
-  if (!Array.isArray(lineIds) || lineIds.some((id) => typeof id !== "string")) {
-    return NextResponse.json(
-      { error: "lineIds is required, as an array of strings", kind: "bad-request" },
-      { status: 400 },
-    );
-  }
-
-  const wanted = new Set(lineIds as string[]);
-  const jobs = (await bookCatalogue(lang))
-    .filter((page) => wanted.has(page.id) && page.generatable && page.spoken.trim() !== "")
-    .map((page) => ({
-      lineId: page.id,
-      file: page.file,
-      // There is no NPC here either. The column is a label for the progress readout, and
-      // a book's title plus its page number is what names a page on screen.
-      npcName: page.pageCount > 1 ? `${page.title} (${page.pageNumber}/${page.pageCount})` : page.title,
-      preview: page.spoken.slice(0, 120),
-      characters: page.spoken.length,
-    }));
-
-  if (jobs.length === 0) {
-    return NextResponse.json(
-      { error: "nothing to regenerate", kind: "bad-request" },
-      { status: 400 },
-    );
-  }
-
-  const batchId = await createBatch(label, userId, "readables", lang);
-  const { queued, skipped } = await enqueue(batchId, jobs, "readables", lang, provider);
-  await recordQueued(batchId, label, userId, "readables", lang, queued);
-
-  queueWorker()?.nudge();
-
-  return NextResponse.json({ batchId, queued, skipped });
-}
-
-/**
- * A bosses batch, from the ids the explorer selected, looked up in the language's boss
- * catalogue as the places half does. A boss with no story in the language is dropped: there
- * is nothing to narrate, and English never stands in for it.
- */
-async function queueBosses(
-  lineIds: unknown,
-  label: string,
-  userId: string,
-  lang: Lang,
-  provider: Provider,
-): Promise<NextResponse> {
-  if (!Array.isArray(lineIds) || lineIds.some((id) => typeof id !== "string")) {
-    return NextResponse.json(
-      { error: "lineIds is required, as an array of strings", kind: "bad-request" },
-      { status: 400 },
-    );
-  }
-
-  const wanted = new Set(lineIds as string[]);
-  const jobs = (await bossCatalogue(lang)).flatMap((entry) =>
-    wanted.has(entry.id) && entry.text !== null && entry.spoken !== null && entry.spoken.trim() !== ""
-      ? [
-          {
-            lineId: entry.id,
-            file: entry.file,
-            // The boss is what names the line on screen; the column is the progress readout's.
-            npcName: entry.name,
-            preview: entry.text.slice(0, 120),
-            characters: entry.spoken.length,
-          },
-        ]
-      : [],
-  );
-
-  if (jobs.length === 0) {
-    return NextResponse.json(
-      { error: "nothing to regenerate", kind: "bad-request" },
-      { status: 400 },
-    );
-  }
-
-  const batchId = await createBatch(label, userId, "bosses", lang);
-  const { queued, skipped } = await enqueue(batchId, jobs, "bosses", lang, provider);
-  await recordQueued(batchId, label, userId, "bosses", lang, queued);
-
-  queueWorker()?.nudge();
-
-  return NextResponse.json({ batchId, queued, skipped });
-}
-
-/**
- * One row for the whole batch, however many lines it holds. The takes it cuts are recorded
- * as they land and folded under this row on the activity page.
- */
-async function recordQueued(
-  batchId: string,
-  label: string,
-  actorId: string,
-  source: Source,
-  lang: Lang,
-  count: number,
-): Promise<void> {
-  await recordActivity({
-    kind: "batch.queued",
-    lang,
-    source,
-    subject: batchId,
-    actorId,
-    detail: { batchId, label, count },
-  });
+  const result = await queuePlan({ plan, section: source, lang, userId, provider, label });
+  if (result instanceof Response) return result;
+  return NextResponse.json({ batchId: result.batchId, queued: result.queued, skipped: result.alreadyQueued });
 }
 
 export async function GET(request: NextRequest) {

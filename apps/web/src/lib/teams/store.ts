@@ -8,7 +8,7 @@ import "server-only";
 import type { ClientBase, PoolClient, QueryResult, QueryResultRow } from "pg";
 
 import { ALL_TEAMS, query, queryIn, type TeamId, withTeam } from "@/lib/db";
-import { BASE_LANG, CODES, type Lang } from "@/lib/lang";
+import { BASE_LANG, allLangs, type Lang } from "@/lib/lang";
 
 import { listenInServer } from "./listen";
 
@@ -34,7 +34,7 @@ export function forgetTeams(): void {
 }
 
 export function teamLangs(): Promise<Map<Lang, TeamId>> {
-  listenInServer();
+  listenInServer("spoken_team_language", forgetTeams);
   if (cached && Date.now() - cached.at < TTL_MS) return cached.langs;
   const langs = query<{ lang: Lang; teamId: TeamId }>(
     `select "lang", "teamId" from "team_language" where "privileged"`,
@@ -138,5 +138,5 @@ export async function adoptLang(client: ClientBase, lang: string): Promise<void>
  * player's report in it, its activity, the queue's dismissal.
  */
 export async function adoptEveryLang(client: ClientBase): Promise<void> {
-  for (const lang of CODES) await adoptLang(client, lang);
+  for (const lang of allLangs()) await adoptLang(client, lang);
 }

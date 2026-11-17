@@ -6,9 +6,11 @@ import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { closeDb } from "@/lib/db";
 import { asSystem } from "@/lib/teams/testing";
 
+const owner = vi.hoisted(() => ({ grants: [{ lang: "koKR", capability: "text" }] }));
+
 vi.mock("@/lib/grants/store", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@/lib/grants/store")>()),
-  viewerOf: async () => ({ role: null, grants: [{ lang: "koKR", capability: "text" }] }),
+  viewerOf: async () => ({ role: null, grants: owner.grants }),
 }));
 
 import { createToken } from "@/lib/tokens/store";
@@ -27,6 +29,7 @@ beforeAll(async () => {
     userId: USER,
     lang: "koKR",
     access: "read",
+    generate: false,
     label: "agent",
     expiresAt: new Date(Date.now() + 86_400_000),
   }));
@@ -57,10 +60,40 @@ describe("GET /api/v1", () => {
     });
   });
 
+  it("lists the reference and generate endpoints and the token's generate flag", async () => {
+    const body = (await (await get(token)).json()) as { token: unknown; endpoints: Record<string, string> };
+    expect(body.token).toMatchObject({ generate: false });
+    expect(Object.keys(body.endpoints)).toEqual(
+      expect.arrayContaining(["GET /api/v1/{section}/reference", "POST /api/v1/{section}/generate"]),
+    );
+  });
+
   it("states the limits", async () => {
     expect(await (await get(token)).json()).toMatchObject({
-      limits: { pageSize: 500, itemsPerUpdate: 1000, textLength: 5000, nameLength: 200, requestBytes: 8_388_608 },
+      limits: { pageSize: 500, itemsPerUpdate: 1000, textLength: 5000, nameLength: 200, itemsPerGeneration: 1000, requestBytes: 8_388_608 },
     });
+  });
+
+  it("says itemsPerGeneration caps items, not filters", async () => {
+    const { notes } = (await (await get(token)).json()) as { notes: string[] };
+    expect(notes.some((note) => note.includes("itemsPerGeneration") && /filters .*not capped/.test(note))).toBe(true);
+  });
+
+  it("states only the scopes the owner's grants still back", async () => {
+    const { token: both } = await createToken({
+      userId: USER,
+      lang: "koKR",
+      access: "read",
+      generate: true,
+      label: "both",
+      expiresAt: new Date(Date.now() + 86_400_000),
+    });
+    owner.grants = [{ lang: "koKR", capability: "regenerate" }];
+    try {
+      expect(await (await get(both)).json()).toMatchObject({ token: { access: "none", generate: true } });
+    } finally {
+      owner.grants = [{ lang: "koKR", capability: "text" }];
+    }
   });
 
   it("points at documents a client can open", async () => {

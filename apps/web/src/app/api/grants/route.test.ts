@@ -6,6 +6,7 @@
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { closeDb } from "@/lib/db";
+import { forgetLanguages, loadLanguages } from "@/lib/languages/catalogue";
 import type { Viewer } from "@/lib/permissions";
 import { asSystem, testUser } from "@/lib/teams/testing";
 
@@ -15,12 +16,23 @@ vi.mock("next/headers", () => ({ headers: async () => new Headers() }));
 vi.mock("@/lib/auth", () => ({
   auth: { api: { getSession: async () => ({ user: { id: who.id, role: who.viewer.role } }) } },
 }));
+const sent = vi.hoisted(() => [] as { to: string; args: { url: string; capabilities: string[] } }[]);
+const mail = vi.hoisted(() => ({ delivers: true }));
+vi.mock("@/lib/email", () => ({
+  sendInviteEmail: async (to: string, args: { url: string; capabilities: string[] }) => {
+    sent.push({ to, args });
+    return mail.delivers;
+  },
+  sendEmail: () => {},
+  sendPasswordResetEmail: () => {},
+}));
 vi.mock("@/lib/grants/store", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@/lib/grants/store")>()),
   viewerOf: async () => who.viewer,
 }));
 
 import { grantsOf } from "@/lib/grants/store";
+import { createInvite, lookupInvite, openInvite } from "@/lib/invites/store";
 
 import { DELETE, PUT } from "./route";
 
@@ -32,33 +44,42 @@ beforeAll(async () => {
   target = await testUser("test-grants-route");
   granter = await testUser("test-grants-route-by");
   who.id = granter.id;
+  await asSystem.query(
+    `insert into "language" ("code", "name", "native", "bcp47", "provider", "client", "enabled", "textByTeam")
+     values ('xqGR', 'Xq', 'Xq', 'xq-GR', 'xq', false, false, true) on conflict do nothing`,
+  );
+  forgetLanguages();
+  await loadLanguages();
 });
 
 beforeEach(() => {
+  sent.length = 0;
   who.viewer = { role: null, grants: [{ lang: "deDE", capability: "admin" }] };
 });
 
 afterAll(async () => {
-  await asSystem.query(`delete from "activity" where "subject" = $1`, [target.id]);
+  await asSystem.query(`delete from "activity" where "subject" = $1 or "actorId" = $2`, [target.id, granter.id]);
   await asSystem.query(`delete from "language_grant" where "userId" = $1`, [target.id]);
   await asSystem.query(`delete from "team_member" where "userId" = $1`, [target.id]);
+  await asSystem.query(`delete from "language" where "code" = 'xqGR'`);
+  forgetLanguages();
   await target.cleanup();
   await granter.cleanup();
   await closeDb();
 });
 
-function put(capabilities: string[]): Promise<Response> {
+function put(capabilities: string[], lang = "deDE"): Promise<Response> {
   return PUT(
     new Request("https://example.com/api/grants", {
       method: "PUT",
       headers: { "content-type": "application/json" },
-      body: JSON.stringify({ email: email(), lang: "deDE", capabilities }),
+      body: JSON.stringify({ email: email(), lang, capabilities }),
     }),
   );
 }
 
-function remove(capability: string, userId = target.id): Promise<Response> {
-  const params = new URLSearchParams({ userId, lang: "deDE", capability });
+function remove(capability: string, userId = target.id, lang = "deDE"): Promise<Response> {
+  const params = new URLSearchParams({ userId, lang, capability });
   return DELETE(new Request(`https://example.com/api/grants?${params}`, { method: "DELETE" }));
 }
 
@@ -86,5 +107,110 @@ describe("/api/grants", () => {
     expect((await remove("admin", granter.id)).status).toBe(403);
     who.viewer = { role: "admin", grants: [] };
     expect((await remove("admin", granter.id)).status).toBe(200);
+  });
+
+  it("lets the admin of a textByTeam language appoint and dismiss text there, not elsewhere", async () => {
+    who.viewer = {
+      role: null,
+      grants: [{ lang: "xqGR", capability: "admin" }, { lang: "deDE", capability: "admin" }],
+    };
+    expect((await put(["text"], "xqGR")).status).toBe(200);
+    const rows = await asSystem.query(`select 1 from "language_grant" where "userId" = $1 and "lang" = 'xqGR'`, [target.id]);
+    expect(rows.rowCount).toBe(1);
+    expect((await remove("text", target.id, "xqGR")).status).toBe(200);
+    expect((await put(["text"], "deDE")).status).toBe(403);
+  });
+
+  describe("an address with no account", () => {
+    const stranger = `nobody-${Math.random().toString(36).slice(2, 10)}@example.invalid`;
+    const putTo = (to: string, capabilities: string[]) =>
+      PUT(
+        new Request("https://example.com/api/grants", {
+          method: "PUT",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ email: to, lang: "deDE", capabilities }),
+        }),
+      );
+
+    it("sends an invite, once", async () => {
+      const response = await putTo(stranger, ["edit", "record"]);
+      expect(response.status).toBe(200);
+      const body = await response.json();
+      expect(body.invited).toBe(true);
+      expect(body.invites).toContainEqual(
+        expect.objectContaining({ email: stranger, capabilities: ["edit", "record"] }),
+      );
+      expect(sent).toHaveLength(1);
+      expect(sent[0].to).toBe(stranger);
+      expect(sent[0].args.url).toContain("/api/invites/open?token=");
+      await expect(lookupInvite(sent[0].args.url.split("token=")[1])).resolves.toMatchObject({ state: "pending" });
+      const log = await asSystem.query(`select 1 from "activity" where "kind" = 'invite.sent' and "actorId" = $1`, [granter.id]);
+      expect(log.rowCount).toBe(1);
+
+      expect((await putTo(stranger, ["edit"])).status).toBe(409);
+    });
+
+    it("creates no invite when its email cannot be sent", async () => {
+      const to = `undelivered-${stranger}`;
+      mail.delivers = false;
+      try {
+        const response = await putTo(to, ["edit"]);
+        expect(response.status).toBe(502);
+        expect((await response.json()).error).toBe("The email could not be sent; try again later.");
+      } finally {
+        mail.delivers = true;
+      }
+      expect(sent).toHaveLength(1);
+      const rows = await asSystem.query(`select 1 from "invite" where "email" = $1`, [to]);
+      expect(rows.rowCount).toBe(0);
+    });
+
+    it("refuses text to a language admin, and sends nothing", async () => {
+      expect((await putTo(`other-${stranger}`, ["text"])).status).toBe(403);
+      expect(sent).toHaveLength(0);
+    });
+
+    it("grants directly to an existing account, whatever the case", async () => {
+      const response = await putTo(email().toUpperCase(), ["edit"]);
+      expect(response.status).toBe(200);
+      expect((await response.json()).invited).toBe(false);
+      expect(sent).toHaveLength(0);
+      expect(await grantsOf(target.id)).toContainEqual({ lang: "deDE", capability: "edit" });
+    });
+
+    it("revokes an open invite for an address that has an account, as it grants", async () => {
+      const { invite } = await createInvite({
+        email: email(),
+        lang: "deDE",
+        capabilities: ["edit"],
+        invitedBy: granter.id,
+        limited: false,
+      });
+      expect((await putTo(email(), ["edit"])).status).toBe(200);
+      expect(await openInvite(invite.id)).toBeNull();
+      const log = await asSystem.query(
+        `select "actorId" from "activity" where "kind" = 'invite.revoked' and "subject" = $1`,
+        [invite.id],
+      );
+      expect(log.rows).toEqual([{ actorId: granter.id }]);
+    });
+
+    it("leaves an invite open while the grants do not cover all it names, and revokes it once they do", async () => {
+      const { invite } = await createInvite({
+        email: email(),
+        lang: "deDE",
+        capabilities: ["edit", "regenerate"],
+        invitedBy: granter.id,
+        limited: false,
+      });
+      expect((await putTo(email(), ["edit"])).status).toBe(200);
+      expect(await openInvite(invite.id)).not.toBeNull();
+      expect((await putTo(email(), ["regenerate"])).status).toBe(200);
+      expect(await openInvite(invite.id)).toBeNull();
+    });
+
+    it("refuses what is not an address", async () => {
+      expect((await putTo("not an address", ["edit"])).status).toBe(400);
+    });
   });
 });
