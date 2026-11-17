@@ -66,8 +66,11 @@ export async function PUT(request: Request) {
   // a translator gives somebody when asking to be let in.
   const user = await userByEmail(address);
   if (user) {
+    // A site owner works in no team: the person's own team, if any, is where the grant goes.
+    const team = isAdmin(who.viewer.role) ? ((await teamIn(user.id, lang)) ?? undefined) : undefined;
     try {
       await addGrants(user.id, lang, capabilities, who.userId, {
+        team,
         within: (client) => revokeOpenFor(client, lang, address, user.id, capabilities, who.userId),
       });
     } catch (error) {

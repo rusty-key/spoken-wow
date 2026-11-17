@@ -247,12 +247,19 @@ describe("/api/grants in a language with a second team", () => {
     );
 
   beforeEach(async () => {
-    lang = `xq${CAPITALS[randomInt(26)]}${CAPITALS[randomInt(26)]}`;
-    await asSystem.query(
-      `insert into "language" ("code", "name", "native", "bcp47", "provider", "client", "enabled", "textByTeam")
-       values ($1, 'Xq', 'Xq', 'xq-XQ', 'xq', false, false, true)`,
-      [lang],
-    );
+    // A code no language has yet, so afterEach never deletes a row it did not make.
+    for (;;) {
+      const code = `xq${CAPITALS[randomInt(26)]}${CAPITALS[randomInt(26)]}`;
+      const made = await asSystem.query(
+        `insert into "language" ("code", "name", "native", "bcp47", "provider", "client", "enabled", "textByTeam")
+         values ($1, 'Xq', 'Xq', 'xq-XQ', 'xq', false, false, true) on conflict do nothing`,
+        [code],
+      );
+      if (made.rowCount) {
+        lang = code;
+        break;
+      }
+    }
     forgetLanguages();
     await loadLanguages();
     w = await testUser("test-grants-route-w");
@@ -308,6 +315,31 @@ describe("/api/grants in a language with a second team", () => {
 
   it("refuses the second team's admin text, even where the team appoints it", async () => {
     expect((await putFor(`${fresh.id}@example.invalid`, ["text"])).status).toBe(403);
+  });
+
+  it("puts a site owner's grant to a second team's member in their own team", async () => {
+    who.id = granter.id;
+    who.viewer = { role: "admin", grants: [] };
+    expect((await putFor(`${w.id}@example.invalid`, ["record"])).status).toBe(200);
+    expect(
+      await systemRows(`select "teamId", "capability" from "team_member" where "userId" = $1 order by "capability"`, [
+        w.id,
+      ]),
+    ).toEqual([
+      { teamId: teamB, capability: "admin" },
+      { teamId: teamB, capability: "record" },
+    ]);
+  });
+
+  it("files a site owner's removal of a second team's row under that team", async () => {
+    who.id = granter.id;
+    who.viewer = { role: "admin", grants: [] };
+    const params = new URLSearchParams({ userId: w.id, lang, capability: "admin" });
+    const response = await DELETE(new Request(`https://example.com/api/grants?${params}`, { method: "DELETE" }));
+    expect(response.status).toBe(200);
+    expect(
+      await systemRows(`select "teamId" from "activity" where "kind" = 'grant.removed' and "subject" = $1`, [w.id]),
+    ).toEqual([{ teamId: teamB }]);
   });
 
   it("puts a site owner's grant to somebody new in the privileged team", async () => {

@@ -143,8 +143,6 @@ function isOtherTeam(error: unknown): boolean {
   return typeof error === "object" && error !== null && (error as { code?: unknown }).code === "23P01";
 }
 
-type GrantOptions = { team?: TeamId; within?: (client: ClientBase) => Promise<void> };
-
 /**
  * Several capabilities in one language at once, all or none. Recorded in the activity log
  * only for the rows that are new: granting what somebody already holds changes nothing, and
@@ -152,26 +150,24 @@ type GrantOptions = { team?: TeamId; within?: (client: ClientBase) => Promise<vo
  *
  * Team capabilities go to `options.team`, else the team the granter works on the language in,
  * else the language's owner. Somebody who works on it in another team is refused with
- * OtherTeamError. `options.within`, or `options` when it is a function, runs first on the same
- * transaction.
+ * OtherTeamError. `options.within` runs first on the same transaction.
  */
 export async function addGrants(
   userId: string,
   lang: string,
   capabilities: readonly Capability[],
   grantedBy: string,
-  options: GrantOptions | GrantOptions["within"] = {},
+  options: { team?: TeamId; within?: (client: ClientBase) => Promise<void> } = {},
 ): Promise<void> {
   if (!isLang(lang)) throw new Error(`${lang} is not a language this site knows`);
-  const { team: named, within } = typeof options === "function" ? { team: undefined, within: options } : options;
   const members = capabilities.filter((capability) => capability !== "text");
   const team = members.length
-    ? (named ?? (await teamIn(grantedBy, lang)) ?? (await teamOf(lang)))
+    ? (options.team ?? (await teamIn(grantedBy, lang)) ?? (await teamOf(lang)))
     : await ownerOrAll(lang);
   try {
     await withTeam(team, async (client) => {
       // First, so that a throw from it grants nothing.
-      await within?.(client);
+      await options.within?.(client);
       if (members.length) {
         const theirs = await teamIn(userId, lang, client);
         if (theirs && theirs !== team) throw new OtherTeamError(lang);
@@ -245,27 +241,37 @@ export async function removeGrant(
   removedBy: string,
   team?: TeamId,
 ): Promise<void> {
-  if (!(await deleteGrant(userId, lang, capability, team))) return;
+  const removed = await deleteGrant(userId, lang, capability, team);
+  if (!removed) return;
   await recordActivity({
     kind: "grant.removed",
     lang,
     subject: userId,
     actorId: removedBy,
     detail: { capability },
-    ...(team && capability !== "text" ? { team } : {}),
+    ...(removed.team ? { team: removed.team } : {}),
   });
 }
 
-/** With `team`, a team capability is removed only from that team. */
-async function deleteGrant(userId: string, lang: Lang, capability: Capability, team?: TeamId): Promise<boolean> {
+/**
+ * With `team`, a team capability is removed only from that team. Null when there was nothing to
+ * remove; else the team the removed row was in, none for `text`.
+ */
+async function deleteGrant(
+  userId: string,
+  lang: Lang,
+  capability: Capability,
+  team?: TeamId,
+): Promise<{ team?: TeamId } | null> {
   if (capability === "text") {
     const rows = await query(
       `delete from "language_grant" where "userId" = $1 and "lang" = $2 returning 1`,
       [userId, lang],
     );
-    return rows.length > 0;
+    return rows.length > 0 ? {} : null;
   }
-  return deleteMember(userId, lang, capability, team);
+  const removedFrom = await deleteMember(userId, lang, capability, team);
+  return removedFrom ? { team: removedFrom } : null;
 }
 
 /** Somebody to grant to, found by email: a language admin cannot list the users. */

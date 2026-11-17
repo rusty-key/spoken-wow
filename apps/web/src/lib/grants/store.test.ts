@@ -131,8 +131,10 @@ describe("removeGrant", () => {
 
   it("grants nothing when the step that runs first throws", async () => {
     await expect(
-      addGrants(GRANTEE, "frFR", ["ignore"], GRANTER, async () => {
-        throw new Error("no");
+      addGrants(GRANTEE, "frFR", ["ignore"], GRANTER, {
+        within: async () => {
+          throw new Error("no");
+        },
       }),
     ).rejects.toThrow("no");
     expect((await grantsOf(GRANTEE)).filter((g) => g.capability === "ignore")).toEqual([]);
@@ -159,12 +161,19 @@ describe("a second team", () => {
   }
 
   beforeEach(async () => {
-    lang = `xq${CAPITALS[randomInt(26)]}${CAPITALS[randomInt(26)]}` as Lang;
-    await asSystem.query(
-      `insert into "language" ("code", "name", "native", "bcp47", "provider", "client", "enabled", "textByTeam")
-       values ($1, 'Xq', 'Xq', 'xq-XQ', 'xq', false, false, false)`,
-      [lang],
-    );
+    // A code no language has yet, so afterEach never deletes a row it did not make.
+    for (;;) {
+      const code = `xq${CAPITALS[randomInt(26)]}${CAPITALS[randomInt(26)]}`;
+      const made = await asSystem.query(
+        `insert into "language" ("code", "name", "native", "bcp47", "provider", "client", "enabled", "textByTeam")
+         values ($1, 'Xq', 'Xq', 'xq-XQ', 'xq', false, false, false) on conflict do nothing`,
+        [code],
+      );
+      if (made.rowCount) {
+        lang = code as Lang;
+        break;
+      }
+    }
     forgetLanguages();
     await loadLanguages();
     w = await testUser("test-grants-w");
@@ -221,6 +230,24 @@ describe("a second team", () => {
     expect(rows.every((row) => row.teamSlug?.startsWith("grants-b-"))).toBe(true);
     const all = await listGrants([lang]);
     expect(all.find((row) => row.capability === "text")).toMatchObject({ userId: v.id, teamSlug: null });
+  });
+
+  it("answers a conflict at commit as OtherTeamError", async () => {
+    await expect(
+      addGrants(fresh.id, lang, ["record"], w.id, {
+        within: async () => {
+          throw Object.assign(new Error("exclusion"), { code: "23P01" });
+        },
+      }),
+    ).rejects.toBeInstanceOf(OtherTeamError);
+  });
+
+  it("files a removal under the team the row was in", async () => {
+    await removeGrant(w.id, lang, "admin", fresh.id);
+    expect(await systemRows(`select 1 from "team_member" where "userId" = $1`, [w.id])).toEqual([]);
+    expect(
+      await systemRows(`select "teamId" from "activity" where "kind" = 'grant.removed' and "subject" = $1`, [w.id]),
+    ).toEqual([{ teamId: teamB }]);
   });
 
   it("removes only the named team's row", async () => {

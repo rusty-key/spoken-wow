@@ -25,19 +25,19 @@ export async function insertMembers(
 
 /**
  * Only `team`'s row when given; else whatever team the row is filed under, as grantsOf reads it:
- * a grant it shows must be removable.
+ * a grant it shows must be removable. The team of the row deleted, or null when there was none.
  */
 export async function deleteMember(
   userId: string,
   lang: string,
   capability: Capability,
   team?: string,
-): Promise<boolean> {
-  const rows = await query(
+): Promise<string | null> {
+  const rows = await query<{ teamId: string }>(
     `delete from "team_member"
       where "userId" = $1 and "lang" = $2 and "capability" = $3 and ($4::uuid is null or "teamId" = $4)
-      returning 1`,
+      returning "teamId"`,
     [userId, lang, capability, team ?? null],
   );
-  return rows.length > 0;
+  return rows[0]?.teamId ?? null;
 }
