@@ -107,8 +107,6 @@ describe("one team per person per language", () => {
     await asSystem.query(`select move_team_lang($1, $2)`, [lang, c.id]);
     const rows = await systemRows<{ teamId: string }>(`select "teamId" from "team_member" where "userId" = $1`, [user.id]);
     expect(rows).toEqual([{ teamId: c.id }]);
-    // the language's team row stays with the new team, so the fixture teams drop cleanly
-    await asSystem.query(`delete from "team_language" where "teamId" = $1`, [c.id]);
   });
 });
 

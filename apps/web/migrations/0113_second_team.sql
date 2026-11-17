@@ -10,6 +10,10 @@
 -- "invite"."joinTeamId" is the team an accepted invite joins. Null means the language's
 -- privileged team, which is what every invite before this migration, and every invite an older
 -- release writes, meant.
+--
+-- A person already in two teams of one language is listed in a notice below. The trigger only
+-- checks new grants, so such a person can be granted nothing further until an operator removes
+-- one side of each listed pair after the release.
 
 set local client_min_messages = notice;
 
@@ -57,10 +61,14 @@ $$;
 do $$
 declare
   v_pairs integer;
+  v_list  text;
 begin
-  select count(*) into v_pairs from (
-    select 1 from "team_member" group by "userId", "lang" having count(distinct "teamId") > 1
-  ) p;
-  raise notice '% (userId, lang) pairs already span two teams', v_pairs;
+  select count(*), string_agg(p."userId" || ' ' || p."lang" || ' in ' || p."teams", '; ')
+    into v_pairs, v_list
+    from (
+      select "userId", "lang", string_agg(distinct "teamId"::text, ', ') as "teams"
+        from "team_member" group by "userId", "lang" having count(distinct "teamId") > 1
+    ) p;
+  raise notice '% (userId, lang) pairs already span two teams%', v_pairs, coalesce(': ' || v_list, '');
 end
 $$;
