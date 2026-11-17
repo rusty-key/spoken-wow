@@ -130,7 +130,25 @@ end
 
 --- Load the text packs of the language the player reads. At Spoken's own load, after its
 --- settings and before its modules, so a module finds the words there as its own files run.
+--- The Text Language was the Places page's: a profile whose Places settings still hold a choice,
+--- and whose Spoken ones have none, takes it before the session's language is fixed, so the first
+--- login after the update reads it everywhere. Places drops its copy as it loads
+--- (SpokenPlaces:MoveLanguageToSpoken), and moves one this cannot see, from before its settings
+--- were kept in Spoken's profile.
+function Texts:TakePlacesChoice()
+    local db = Addon.db
+    local language = db and db.profile.Language
+    if not language or language.Text ~= nil then return end
+    local places = type(db.profile.Modules) == "table" and db.profile.Modules.Places
+    if type(places) ~= "table" then
+        places = type(db.global.ModulesLegacy) == "table" and db.global.ModulesLegacy.Places
+    end
+    local pref = type(places) == "table" and places.language
+    if Languages:IsCode(pref) then language.Text = pref end
+end
+
 function Texts:Load()
+    self:TakePlacesChoice()
     local code, chosen = self:Language()
     self.loaded, self.chosen = code, chosen
     local entry = Languages:Get(code)

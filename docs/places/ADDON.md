@@ -50,9 +50,10 @@ Text Size. Two Compendium settings are on Spoken's own page, in its Compendium s
 for every tab and the map panel) and Unlock Undiscovered Places (`showUndiscovered`, off by
 default). Spoken's Language section holds Voice Language, If a Voice Is Missing and Text Language,
 which every module reads (`Spoken:TextLanguage()`, Spoken's `Texts.lua`). This page had its own
-Text Language (`language`) until then: the first time a profile is bound, its choice moves to
-Spoken's, unless that profile has one there already, and is dropped here
-(`SpokenPlaces:MoveLanguageToSpoken`). Its While
+Text Language (`language`) until then. Spoken takes a profile's choice before it fixes the
+session's language (`Texts:TakePlacesChoice`), unless the profile has one of its own already, and
+this page drops its copy the first time the profile is bound (`SpokenPlaces:MoveLanguageToSpoken`),
+moving it there itself where Spoken could not see it. Its While
 Spoken Reads section holds Read in Battlegrounds. Under Spoken's Developer page are Places Debug
 Messages (`debug`) and Offer Unfinished Translations (`languagePreview`).
 

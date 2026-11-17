@@ -108,6 +108,19 @@ Expect("what is no language code is refused", Spoken:SetTextLanguage("polish"), 
 Spoken:SetTextLanguage(nil)
 Expect("back to Auto", Spoken:TextLanguageChoice(), nil)
 
+-- A profile from before: its Places page held the choice, Spoken's none.
+_G.Spoken, _G.SpokenEnv = nil, nil
+_G.SpokenSettings = { profileKeys = {}, profiles = { Default = { Modules = { Places = { language = "deDE" } } } } }
+stub.SetAddOns({})
+env = stub.LoadSpoken(SPOKEN)
+Spoken = _G.Spoken
+Expect("the Places page's choice is the session's from the first load", table.concat({
+    tostring(select(1, Spoken:TextLanguage())), tostring(select(2, Spoken:TextLanguage())) }, " "), "deDE true")
+_G.SpokenSettings = { profileKeys = {}, profiles = { Default = { Language = { Text = "frFR" },
+    Modules = { Places = { language = "deDE" } } } } }
+env = stub.LoadSpoken(SPOKEN)
+Expect("...but not over a Text Language of the profile's own", Spoken:TextLanguageChoice(), "frFR")
+
 env, Spoken = Boot({}, "plPL")
 Expect("a chosen language whose pack has gone stays on the row", Has(env.Texts:Choices(), "plPL"), true)
 env, Spoken = Boot({ Pack() })

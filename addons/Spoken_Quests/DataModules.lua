@@ -1208,14 +1208,36 @@ function DataModules:LineIds(fileName)
     return { id }
 end
 
---- A line's words from a text pack (Spoken's Texts.lua) in the Text Language the player chose, its
---- tokens filled in for the player, and the language. Nil on Auto, and where no pack has the line.
+--- A line's words from a voice pack in `language` that did not play it: a Polish pack's under an
+--- English voice. By the file that played and the line's own, each for the player's sex first.
+local function VoicedWords(self, soundData, language)
+    local names = {}
+    for _, name in pairs({ soundData.fileName, soundData.lineFile }) do
+        table.insert(names, self:AddPlayerGenderToFilename(name))
+        table.insert(names, name)
+    end
+    for _, module in self:GetModules() do
+        local texts = module.METADATA.Language == language and module.TextByFileName
+        if texts then
+            for _, name in ipairs(names) do
+                if texts[name] then return texts[name] end
+            end
+        end
+    end
+    return nil
+end
+
+--- A line's words in the Text Language the player chose where the recording playing is in another:
+--- a voice pack's in it, which are what its voice says, else a text pack's (Spoken's Texts.lua). Its
+--- tokens filled in for the player, and the language. Nil on Auto, and where neither has the line.
 ---@param soundData SoundData
 ---@return string|nil text
 ---@return string|nil language
 function DataModules:TextPackText(soundData)
     local language, chosen = Language:GetTextLanguage()
     if not (chosen and Spoken and Spoken.TextIn) then return nil end
+    local voiced = VoicedWords(self, soundData, language)
+    if voiced then return Utils:FillPlayerTokens(voiced), language end
     for _, id in ipairs(self:LineIds(soundData.lineFile or soundData.fileName)) do
         local text = Spoken:TextIn(language, "quests", "lines", id)
         if text then return Utils:FillPlayerTokens(text), language end

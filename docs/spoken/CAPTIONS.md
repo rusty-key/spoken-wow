@@ -94,8 +94,8 @@ follow words other than the ones it says, so a caption is timed by the title's l
 words are the playing pack's own, or the corpus's under an English recording.
 
 Quest and gossip captions are the game window's words on Auto, or a voice pack's own where it is in
-the client's language. With a Text Language chosen they are a voice pack's words where it is in
-that language, else a text pack's (by line id, `$N`, `$C`, `$R` and `$G` filled in for the player),
+the client's language. With a Text Language chosen they are the words of a voice pack in that
+language, the one playing or another installed, else a text pack's (by line id, `$N`, `$C`, `$R` and `$G` filled in for the player),
 else the window's. Matching a line always reads the window's words. A quests pack built before the
 Text Language loads its words only on a client in its own language. A boss's story is in the Text
 Language where a voice pack, a text pack or Spoken Bosses' own stories have it, else the client's,
