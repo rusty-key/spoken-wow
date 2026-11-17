@@ -263,6 +263,14 @@ function Player:Prepare(soundData)
         timings = soundData.timings,
         transcript = soundData.packText,
     }
+    -- No pack in the Text Language voices the line: a text pack's words, timed by estimate.
+    if not soundData.packText and DataModules and DataModules.TextPackText then
+        local text, language = DataModules:TextPackText(soundData)
+        if text then
+            soundData.present.transcript, soundData.present.timings = text, nil
+            soundData.present.font = Spoken:ClipFont(language)
+        end
+    end
     return soundData
 end
 

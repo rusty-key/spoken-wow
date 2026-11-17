@@ -192,4 +192,18 @@ function M.SplitReportLink(link)
     return address, M.DecodeFragment(fragment)
 end
 
+--- Spoken's Text Language set to `code` (nil for Auto) and read as a reload would: its text packs
+--- loaded, and every module reading it.
+function M.ReadText(code)
+    _G.Spoken:SetTextLanguage(code)
+    _G.SpokenEnv.Texts:Reset()
+    _G.SpokenEnv.Texts:Load()
+end
+
+--- The .toc keys of a text pack in `code` (docs/contributors/TEXT-PACKS.md), named Polish.
+function M.TextPackMeta(code)
+    return { ["X-Spoken-Text"] = code or "plPL", ["X-Spoken-TextFormat"] = "1",
+        ["X-Spoken-LanguageName"] = "Polish", ["X-Spoken-LanguageNative"] = "Polski" }
+end
+
 return M

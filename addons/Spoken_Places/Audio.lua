@@ -525,8 +525,7 @@ function SpokenPlaces:NewLoreSound(mapID, areaKey)
 	local words = spoken or (not voiced and self:PackLoreText(mapID, areaKey, language)) or (entry and entry.full)
 	-- Captions set a font file, which has none of the font object's fallbacks: lore in a script
 	-- the client's file cannot draw names the file that can. Otherwise the window's own is kept.
-	local font = self.FontFor and self:FontFor(GameFontNormal, language)
-	if font == GameFontNormal:GetFont() then font = nil end
+	local font = Spoken:ClipFont(language, self)
 	-- An area is headed by the zone Azeroth's Compendium lists it in: Razorfen Downs by The Barrens,
 	-- where its entrance is, and Strahnbrad by Alterac Mountains, their stories kept under Thousand
 	-- Needles and Hillsbrad Foothills.

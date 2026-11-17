@@ -43,6 +43,9 @@ local LANGUAGE_KEYS = {
     "X-SpokenBosses-Language",
     "X-SpokenReadables-Language",
 }
+-- A text pack: the words of a language with no voice (Texts.lua). Not a language key above, as
+-- those make a voice pack.
+local TEXT_KEY, TEXT_FORMAT_KEY, TEXT_FORMAT = "X-Spoken-Text", "X-Spoken-TextFormat", "1"
 local PLACES_KEYS = { ["X-SpokenPlaces-Language"] = true, ["X-SpokenZones-Language"] = true }
 local QUESTS_KEYS = { "X-SpokenQuests-DataModule-Version", "X-VoiceOver-DataModule-Version" }
 
@@ -55,7 +58,7 @@ local function Reset()
     for _, builtin in ipairs(Languages.BUILTIN) do
         byCode[builtin.code] = {
             code = builtin.code, name = builtin.name, native = builtin.native, script = builtin.script,
-            sample = builtin.sample, client = true, builtin = true, lore = false, folders = {},
+            sample = builtin.sample, client = true, builtin = true, lore = false, folders = {}, texts = {},
         }
     end
 end
@@ -83,14 +86,16 @@ function Languages:Declare(code, folder, meta)
     if code == "enGB" then code = "enUS" end
     local entry = byCode[code]
     if not entry then
-        entry = setmetatable({ code = code, client = false, builtin = false, lore = false, folders = {} },
+        entry = setmetatable({ code = code, client = false, builtin = false, lore = false, folders = {}, texts = {} },
             { __index = COURTESY[code] })
         byCode[code] = entry
     end
-    for _, known in ipairs(entry.folders) do
+    -- A text pack is no voice pack: it is kept apart, so it lists no voice to choose.
+    local list = (meta and meta.text) and entry.texts or entry.folders
+    for _, known in ipairs(list) do
         if known == folder then return end
     end
-    table.insert(entry.folders, folder)
+    table.insert(list, folder)
     if meta then
         entry.name = rawget(entry, "name") or meta.name
         entry.native = rawget(entry, "native") or meta.native
@@ -126,7 +131,10 @@ function Languages:Scan()
             if isPack then break end
             isPack = Value(getMeta, i, key) ~= nil
         end
-        if isPack and not SwitchedOff(i, getInfo) then
+        local text = Value(getMeta, i, TEXT_KEY)
+        -- A format this Spoken cannot read is no pack of it: its tables would be misread.
+        if not (self:IsCode(text) and Value(getMeta, i, TEXT_FORMAT_KEY) == TEXT_FORMAT) then text = nil end
+        if (isPack or text) and not SwitchedOff(i, getInfo) then
             local folder = getInfo(i)
             local font = Value(getMeta, i, "X-Spoken-LanguageFont")
             local meta = {
@@ -134,12 +142,19 @@ function Languages:Scan()
                 native = Value(getMeta, i, "X-Spoken-LanguageNative"),
                 font = font and ("Interface\\AddOns\\" .. folder .. "\\" .. font:gsub("/", "\\")),
             }
-            local carriesLore = Value(getMeta, i, "X-SpokenPlaces-Lore") == "1"
-            -- A pack with no language, or only one that is no code, speaks English.
-            if #declared == 0 then declared[1] = "enUS" end
-            for _, value in ipairs(declared) do
-                meta.lore = carriesLore and value == lore
-                self:Declare(value, folder, meta)
+            if text then
+                meta.text = true
+                self:Declare(text, folder, meta)
+                meta.text = nil
+            end
+            if isPack then
+                local carriesLore = Value(getMeta, i, "X-SpokenPlaces-Lore") == "1"
+                -- A pack with no language, or only one that is no code, speaks English.
+                if #declared == 0 then declared[1] = "enUS" end
+                for _, value in ipairs(declared) do
+                    meta.lore = carriesLore and value == lore
+                    self:Declare(value, folder, meta)
+                end
             end
         end
     end
@@ -166,6 +181,17 @@ function Languages:Installed()
     end
     table.sort(rest, function(a, b) return a.code < b.code end)
     for _, entry in ipairs(rest) do table.insert(list, entry) end
+    return list
+end
+
+--- The languages an installed text pack (Texts.lua) brings words in, by code.
+function Languages:WithText()
+    if not scanned then self:Scan() end
+    local list = {}
+    for _, entry in pairs(byCode) do
+        if #entry.texts > 0 then table.insert(list, entry) end
+    end
+    table.sort(list, function(a, b) return a.code < b.code end)
     return list
 end
 

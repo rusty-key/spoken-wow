@@ -415,7 +415,8 @@ def write_lua_table(path: str, module_name: str, table_name: str, data,
     That copy is in a language's pack, but a player on an English client may install the
     pack to hear the language, and their client shows English: the English tables are the
     ones that match there, so the copy returns before it is built. With `only_on`, the table
-    itself is built only on a client in that locale.
+    itself is built only where that language is the one the words are read in: Spoken's Text
+    Language, which on Auto is the client's. A Spoken without one asks the client's.
     """
     os.makedirs(os.path.dirname(path), exist_ok=True)
     with open(path, "w", encoding="utf-8") as f:
@@ -428,8 +429,9 @@ def write_lua_table(path: str, module_name: str, table_name: str, data,
                     f"{module_name}.ClientLocaleLookups or {{}}\n")
             target = f"{module_name}.ClientLocaleLookups.{table_name}"
         if only_on:
-            f.write("if not VoiceOver.Language or "
-                    f'VoiceOver.Language:GetClientLanguage() ~= "{only_on}" then return end\n')
+            f.write("if not VoiceOver.Language or (VoiceOver.Language.GetTextLanguage "
+                    "and VoiceOver.Language:GetTextLanguage() or VoiceOver.Language:GetClientLanguage()) "
+                    f'~= "{only_on}" then return end\n')
         f.write(f"{target} = ")
         f.write(lua_value(data))
         f.write("\n")
@@ -540,7 +542,8 @@ def build_module(corpus: dict, store_dir: str, dist_dir: str = DEFAULT_DIST_DIR,
     written.append("word_times_table.lua")
 
     # For this pack's audio alone, or four packs of a language each repeat every line's text. Only
-    # on a client in the pack's language, the only one that shows it: megabytes of strings otherwise.
+    # where the pack's language is the one read, the only place it shows: megabytes of strings
+    # otherwise.
     words = take_text(store_dir)
     texts = {os.path.basename(stem): words[stem]
              for stem in (os.path.splitext(rel)[0] for rel in audio) if stem in words}
