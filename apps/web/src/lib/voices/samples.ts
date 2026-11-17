@@ -226,7 +226,7 @@ export async function readSample(voice: string, file: string): Promise<Buffer | 
   if (!isStoredSampleName(file)) return null;
   if (readsBlobs()) {
     const sha256 = await sampleSha(voice, file);
-    return sha256 ? blobBytes(blobKey("samples", sha256)) : null;
+    return sha256 ? blobBytes(blobKey("samples", sha256), langOf(voice)) : null;
   }
   return fs.readFile(await samplePath(voice, file)).catch(() => null);
 }
@@ -234,7 +234,7 @@ export async function readSample(voice: string, file: string): Promise<Buffer | 
 /** In r2 mode a clip with no row is gone, whatever the volume still holds. */
 export async function sampleClip(voice: string, file: string): Promise<Stored> {
   if (!readsBlobs()) return blobOrFile("samples", null, await samplePath(voice, file));
-  return blobOrFile("samples", await sampleSha(voice, file), null);
+  return blobOrFile("samples", await sampleSha(voice, file), null, langOf(voice));
 }
 
 /** ffmpeg reads files, so clips in the bucket are handed over as temporary copies. */

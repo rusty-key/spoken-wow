@@ -5,9 +5,10 @@
 -- (lib/blobs/seal.ts) and never leaves the server. A backend is never deleted while an object
 -- names it: a retired one stops taking new objects and keeps serving the ones it holds.
 --
--- archive_object says which team bucket holds an object. No row means our bucket. `pending`
--- means the team's bucket refused the PUT and the bytes wait under `quarantine/` in ours until
--- the retry lands them (lib/blobs/where.ts). It holds no secret and every request for a public
+-- archive_object says which team bucket holds an object. No row means our bucket. `teamId` is the
+-- bucket's team, kept on the row so a read prefers its own team's copy without reading
+-- storage_backend. `pending` means the team's bucket refused the PUT and the bytes wait under
+-- `quarantine/<bucket>/` in ours until the retry lands them (lib/blobs/where.ts). It holds no secret and every request for a public
 -- take reads it whatever the team, so it has no row-level security.
 
 create table "storage_backend" (
@@ -61,6 +62,7 @@ create table "archive_object" (
   "prefix"    text        not null check ("prefix" in ('takes', 'recordings', 'encodings', 'samples', 'references')),
   "sha256"    text        not null check ("sha256" ~ '^[0-9a-f]{64}$'),
   "backendId" uuid        not null references "storage_backend" ("id"),
+  "teamId"    uuid        not null references "team" ("id"),
   "pending"   boolean     not null default false,
   -- When a read or a check last found the object gone from the team's bucket.
   "missingAt" timestamptz,

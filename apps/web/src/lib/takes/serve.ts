@@ -16,7 +16,7 @@ import path from "node:path";
 
 import { servePrivate } from "@/lib/blobs/serve";
 import { isShared } from "@/lib/blobs/store";
-import { addressOf, locate, SIGNED_FOR_SEC } from "@/lib/blobs/where";
+import { addressOf, locate, QUARANTINE, SIGNED_FOR_SEC } from "@/lib/blobs/where";
 import { serveFile } from "@/lib/stream";
 
 import { BASE_LANG, langTag, type Lang } from "@/lib/lang";
@@ -51,8 +51,12 @@ export async function serveTake(
   // which it may point at a newer take. A team's private bucket gets a signed address, so its
   // redirect is cached for less than the signature lasts.
   if (bytes.kind === "blob") {
-    const { url, signed } = await addressOf(await locate(bytes.key));
-    const cached = signed ? `max-age=${Math.min(300, SIGNED_FOR_SEC / 2)}` : cacheControl;
+    const where = await locate(bytes.key, bytes.lang ?? lang);
+    const { url, signed } = await addressOf(where);
+    // Only our own copy of a take stays where it is for good. One in a team's bucket can be moved,
+    // re-addressed or deleted, and one in quarantine is deleted once it lands.
+    const lasting = where.backendId === null && !where.key.startsWith(QUARANTINE);
+    const cached = lasting ? cacheControl : `max-age=${Math.min(300, SIGNED_FOR_SEC / 2)}`;
     return new Response(null, {
       status: 302,
       headers: { Location: url, "Cache-Control": `${signed ? "private" : "public"}, ${cached}` },

@@ -14,6 +14,7 @@ import "server-only";
 import { createHash } from "node:crypto";
 import { setTimeout as sleep } from "node:timers/promises";
 
+import type { Lang } from "@/lib/lang";
 import { resolveRange, type Range, type RangeRequest } from "@/lib/range";
 import { writeAtomic } from "@/lib/takes/bytes";
 
@@ -334,11 +335,12 @@ export async function keep(
 export type Stored =
   /** The file may be missing; the reader finds out. */
   | { kind: "file"; path: string; prefix: BlobPrefix }
-  | { kind: "blob"; key: string }
+  /** `lang` is the language whose row names the object: a read prefers its team's own copy. */
+  | { kind: "blob"; key: string; lang?: Lang }
   | { kind: "gone" };
 
-export function blobOrFile(prefix: BlobPrefix, sha256: string | null, file: string | null): Stored {
-  if (readsBlobs() && sha256) return { kind: "blob", key: blobKey(prefix, sha256) };
+export function blobOrFile(prefix: BlobPrefix, sha256: string | null, file: string | null, lang?: Lang): Stored {
+  if (readsBlobs() && sha256) return { kind: "blob", key: blobKey(prefix, sha256), lang };
   return file ? { kind: "file", path: file, prefix } : { kind: "gone" };
 }
 

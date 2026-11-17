@@ -220,7 +220,7 @@ export async function encodeForPack(
 /** The master from the archive, encoded. Never throws. */
 async function encodeFromArchive(source: Source, sha256: string, take?: EncodedTake): Promise<void> {
   try {
-    const master = await blobBytes(blobKey("takes", sha256));
+    const master = await blobBytes(blobKey("takes", sha256), take?.lang);
     if (!master) throw new Error("its audio is not in the archive's bucket: regenerate the line");
     await withLocalCopy(master, "mp3", (file) => encodeForPack(source, sha256, file, take));
   } catch (error) {

@@ -76,7 +76,7 @@ export async function readReferenceAudio(
   lang: Lang,
   sha256: string | null,
 ): Promise<Buffer | null> {
-  if (readsBlobs()) return sha256 ? blobBytes(blobKey("references", sha256)) : null;
+  if (readsBlobs()) return sha256 ? blobBytes(blobKey("references", sha256), lang) : null;
   return fs.readFile(referencePath(voice, lang)).catch((error: NodeJS.ErrnoException) => {
     if (error.code === "ENOENT") return null;
     throw error;
@@ -85,7 +85,7 @@ export async function readReferenceAudio(
 
 /** In r2 mode a row with no hash has no clip, whatever the volume still holds. */
 export function referenceClip(reference: Reference): Stored {
-  return blobOrFile("references", reference.sha256, readsBlobs() ? null : referencePath(reference.voice, reference.lang));
+  return blobOrFile("references", reference.sha256, readsBlobs() ? null : referencePath(reference.voice, reference.lang), reference.lang);
 }
 
 export async function readReference(voice: string, lang: Lang): Promise<Reference | null> {

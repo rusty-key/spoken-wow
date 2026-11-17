@@ -38,8 +38,8 @@ export async function testBackend({
 export async function placeObject(key: string, backendId: string, { pending = false, missing = false } = {}) {
   const [prefix, sha256] = key.split("/");
   await asSystem.query(
-    `insert into "archive_object" ("prefix", "sha256", "backendId", "pending", "missingAt")
-     values ($1, $2, $3, $4, case when $5 then now() end)`,
+    `insert into "archive_object" ("prefix", "sha256", "backendId", "teamId", "pending", "missingAt")
+     values ($1, $2, $3, (select "teamId" from "storage_backend" where "id" = $3), $4, case when $5 then now() end)`,
     [prefix, sha256, backendId, pending, missing],
   );
 }

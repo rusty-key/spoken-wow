@@ -132,7 +132,7 @@ export async function recordingPath(source: Source, lang: Lang, file: string, ve
     [source, lang, file, version],
   );
   if (!row) return { kind: "none" };
-  return blobOrFile("recordings", row.sha256, path.join(recordedDirOf(source, file, lang), row.archiveFile));
+  return blobOrFile("recordings", row.sha256, path.join(recordedDirOf(source, file, lang), row.archiveFile), lang);
 }
 
 export type Upload = {

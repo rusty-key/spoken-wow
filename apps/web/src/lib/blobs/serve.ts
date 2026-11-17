@@ -7,6 +7,8 @@ import "server-only";
 import { requestedRange, type Range } from "@/lib/range";
 import { notModified, serveFile, serveRanged } from "@/lib/stream";
 
+import type { Lang } from "@/lib/lang";
+
 import type { Stored } from "./store";
 import { readLocated } from "./where";
 
@@ -23,7 +25,7 @@ const same = (a: Range | null, b: Range | null) => a?.start === b?.start && a?.e
 export async function serveBlob(
   request: Request,
   key: string,
-  { cacheControl, contentType, headers }: PrivateOptions,
+  { cacheControl, contentType, headers, lang }: PrivateOptions & { lang?: Lang },
 ): Promise<Response> {
   // The key ends in the bytes' hash, so it is the tag.
   const etag = `"${key.slice(key.lastIndexOf("/") + 1)}"`;
@@ -33,7 +35,7 @@ export async function serveBlob(
 
   // Only the range asked for is fetched: Safari's bytes=0-1 probe and every seek would
   // otherwise download the whole object.
-  const found = await readLocated(key, requestedRange(request.headers.get("range")) ?? undefined);
+  const found = await readLocated(key, requestedRange(request.headers.get("range")) ?? undefined, lang);
   if (!found) return new Response("not in the archive", { status: 404 });
   const { where, object } = found;
 
@@ -69,7 +71,7 @@ export async function servePrivate(
   }: PrivateOptions & { etag?: string; missing: string; revalidate?: boolean },
 ): Promise<Response> {
   if (stored.kind === "gone") return new Response(missing, { status: 404 });
-  if (stored.kind === "blob") return serveBlob(request, stored.key, options);
+  if (stored.kind === "blob") return serveBlob(request, stored.key, { ...options, lang: stored.lang });
   const served = await serveFile(request, stored.path, {
     ...options,
     cacheControl: `private, ${options.cacheControl}`,
