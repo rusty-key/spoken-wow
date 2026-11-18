@@ -56,7 +56,6 @@ export function CatalogueSearch({
    * tick, each built from the same params, and the last would put the others back.
    */
   onShowAll: () => void;
-  /** The panel's groups, in reading order. */
   groups: ReactNode;
   active: ActiveFilter[];
   onClearAll: () => void;
@@ -330,7 +329,6 @@ export function FilterDates({
   );
 }
 
-/** A small select inside the search field saying where the query is matched. */
 export function ScopeSelect({
   value,
   options,
