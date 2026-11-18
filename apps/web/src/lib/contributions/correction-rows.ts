@@ -74,6 +74,7 @@ export async function correctionRowsFor({
         npc,
         after: row.text ?? "",
         body: row.body,
+        rejectReason: row.rejectReason,
       },
     ];
   });

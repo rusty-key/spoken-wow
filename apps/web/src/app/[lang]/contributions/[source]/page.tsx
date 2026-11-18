@@ -31,7 +31,6 @@ import { corpusLookup } from "@/lib/contributions/existing";
 import { tabOf } from "@/lib/contributions/known";
 import { isStatus, type ContributionStatus } from "@/lib/contributions/contributions";
 import { linesInExplorer, momentHasSpeaker } from "@/lib/contributions/accept";
-import { isQuestStage } from "@/lib/contributions/query";
 import {
   isSearchIn,
   bucketOf,
@@ -363,24 +362,29 @@ export default async function Page({
     return status !== "new" || own === bucket;
   });
 
-  // The English line each row translates, and what the review checks find against it, for every
-  // matching row: the groups and "Keep all" read the whole queue, not just this page.
+  // Every matching row's, not just this page's: "Keep all" leaves out the ones the matcher can't place.
   const { matches: bookMatches, describe, candidatesOf, englishOf: bookEnglish } = await bookMatchesFor(matching);
-  const [questEnglish, placeEnglish] = await Promise.all([
-    englishFor(matching),
-    source === "places" ? existingTextFor(matching, bookMatches) : Promise.resolve({} as Record<number, string>),
-  ]);
-  const englishOf = (row: Contribution): string | null =>
-    row.source === "quests"
-      ? (questEnglish.get(row.id) ?? null)
-      : row.source === "readables"
-        ? bookEnglish(bookMatches.get(row.id))
-        : (placeEnglish[row.id] ?? null);
-  const checks = new Map<number, LineCheck>(
-    matching.map((row) => [row.id, checkLine({ text: row.text, english: englishOf(row), locale: row.locale })]),
-  );
-  // To review lists what can be kept in one click first, so the first page is mostly that.
-  if (status === "new" && bucket === "ready") {
+
+  /** The English line each row translates, and what the review checks find against it. */
+  async function checksFor(rows: Contribution[], places?: Record<number, string>): Promise<Map<number, Checked>> {
+    const [questEnglish, placeEnglish] = await Promise.all([
+      englishFor(rows),
+      places ?? (source === "places" ? existingTextFor(rows, bookMatches) : Promise.resolve({} as Record<number, string>)),
+    ]);
+    const englishOf = (row: Contribution): string | null =>
+      row.source === "quests"
+        ? (questEnglish.get(row.id) ?? null)
+        : row.source === "readables"
+          ? bookEnglish(bookMatches.get(row.id))
+          : (placeEnglish[row.id] ?? null);
+    return new Map(rows.map((row) => [row.id, { ...checkLine({ text: row.text, english: englishOf(row), locale: row.locale }), english: englishOf(row) }]));
+  }
+
+  // To review groups and sorts the whole queue, so its first page is what keeps in one click and
+  // "Keep all" reaches every page. Every other tab checks only the rows it shows.
+  const reviewing = status === "new" && bucket === "ready";
+  let checks = reviewing ? await checksFor(matching) : new Map<number, Checked>();
+  if (reviewing) {
     matching.sort((a, b) => VERDICT_ORDER[checks.get(a.id)!.verdict] - VERDICT_ORDER[checks.get(b.id)!.verdict]);
   }
   // Why each waiting row waits, in words the editors who cannot fix it can read.
@@ -401,6 +405,7 @@ export default async function Page({
   const page = Math.min(pageOf(rawPage), pages);
   const shown = matching.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
   const [existing, linedIds] = await Promise.all([existingTextFor(shown, bookMatches), linesInExplorer(shown)]);
+  if (!reviewing) checks = await checksFor(shown, source === "places" ? existing : undefined);
   // Every language's books, for placing a row in one -- only when this page shows a readables row.
   const books = shown.some((row) => row.source === "readables")
     ? (await bookFacets(lang)).map(({ bookId, title, pages }) => ({ bookId, title, pages }))
@@ -438,8 +443,8 @@ export default async function Page({
     hasLine: linedIds.has(row.id),
     hasSpeaker: hasSpeaker.has(row.id),
     place: placeOf(row),
-    english: englishOf(row),
-    check: checks.get(row.id)!,
+    english: checks.get(row.id)!.english,
+    check: (({ english: _english, ...check }) => check)(checks.get(row.id)!),
     waiting: waiting.get(row.id) ?? null,
     rejectReason: row.rejectReason,
   }));
@@ -460,7 +465,7 @@ export default async function Page({
           // accept may take it, and its group: what "Keep all" and "Drop all" act on.
           matching={matching.map((row) => {
             const match = bookMatches.get(row.id);
-            return { id: row.id, status: row.status, bulk: !match || bulkAcceptable(match), verdict: checks.get(row.id)!.verdict };
+            return { id: row.id, status: row.status, bulk: !match || bulkAcceptable(match), verdict: checks.get(row.id)?.verdict ?? "look" };
           })}
           page={page}
           pages={pages}
@@ -494,18 +499,7 @@ export default async function Page({
                 description="A player's client showed different words than ours. Replace ours if theirs fixes a mistake; keep both if it is just another way to say it."
               >
                 <div>
-                  <CorrectionTable
-                    embedded
-                    source={source}
-                    initial={corrections}
-                    status={status}
-                    client={client}
-                    build={build}
-                    builds={[]}
-                    stage={stage.filter(isQuestStage)}
-                    q={q}
-                    searchIn={searchIn}
-                  />
+                  <CorrectionTable source={source} initial={corrections} />
                 </div>
               </Panel>
             ) : null
@@ -551,3 +545,6 @@ function summariseWaiting(
     return seen ? [{ kind, ...WAITING_KINDS[kind], ...seen }] : [];
   });
 }
+
+/** A row's checks, with the English line they were read against. */
+type Checked = LineCheck & { english: string | null };

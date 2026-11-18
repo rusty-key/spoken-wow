@@ -51,11 +51,10 @@ function slotsOf(text: string): Map<Slot, string[]> {
 
 const count = (slots: Map<Slot, string[]>, slot: Slot) => slots.get(slot)?.length ?? 0;
 
-// Words that are English and rarely anything else; a line mostly made of them was not translated.
+// Words that are English and nothing else in the site's languages; a line mostly made of them was not
+// translated. Not "was" or "will" (German), "has" (Spanish), "die" or "also" (German).
 const ENGLISH_WORDS = new Set(
-  "the and you your have has are is was were of to that this with for but not what will would there their they them been from".split(
-    " ",
-  ),
+  "the and you your have are were that this with for but not what would there their they them been from".split(" "),
 );
 
 /** Whether a line in another language reads as English: the same words, or mostly English ones. */

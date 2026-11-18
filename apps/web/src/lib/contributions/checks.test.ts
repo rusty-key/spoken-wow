@@ -43,6 +43,8 @@ describe("checkLine", () => {
     const same = "Orc pressure from Blackrock is still tense.  But have you at least rid us of Tharil'zun?";
     expect(de(same, same).verdict).toBe("drop");
     expect(de("Have you got the things that I need for the work?", "Something else entirely.").verdict).toBe("drop");
+    // German words that are spelled like English ones do not make a line English.
+    expect(de("Was will er denn hier?", "What does he want here?").verdict).toBe("clean");
     // English is the base language: no English line is "not translated".
     expect(checkLine({ text: same, english: same, locale: "enUS" }).verdict).toBe("clean");
   });

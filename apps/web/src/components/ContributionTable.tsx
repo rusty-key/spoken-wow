@@ -20,7 +20,7 @@
  * reason to make that crossing at all.
  */
 import { useLang } from "@/components/LangProvider";
-import { localeHref, type Lang } from "@/lib/lang";
+import { langName, localeHref, type Lang } from "@/lib/lang";
 import { CheckIcon, ChevronDownIcon, CircleAlertIcon, ClockIcon, SearchIcon, WrenchIcon, XIcon, EyeIcon } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { memo, useCallback, useMemo, useState, type ReactNode } from "react";
@@ -33,6 +33,7 @@ import SpeakerCell, { ProvenanceBadge, type SpeakerAnswer } from "@/components/S
 import { LiteButton } from "@/components/LiteControls";
 import { Refreshing } from "@/components/Loading";
 import SendersButton from "@/components/SendersButton";
+import DropReasons from "@/components/backstage/DropReasons";
 import Panel, { type PanelTone } from "@/components/backstage/Panel";
 import { Tabs } from "@/components/backstage/Tabs";
 import TokenText from "@/components/backstage/TokenText";
@@ -62,6 +63,7 @@ import {
 } from "@/lib/contributions/query";
 import type { Contribution } from "@/lib/contributions/store";
 import type { LineCheck, Verdict } from "@/lib/contributions/checks";
+import { lineDropReasons } from "@/lib/contributions/reasons";
 import type { BookSummary, NpcConflictOption, NpcSummary, QuestSummary } from "@/lib/contributions/triage";
 // From npc.ts, not npc/store.ts: store.ts imports @/lib/db, and pulling NPC_ROW_KINDS
 // (values, not just types) out of it would drag Postgres's own node built-ins into this bundle.
@@ -111,9 +113,6 @@ export type ContributionRow = Pick<
 /** The waiting tab's breakdown, one entry per reason (page.tsx summariseWaiting). */
 export type WaitingSummary = { kind: WaitingKind; title: string; fix: string; count: number; oldest: string; example: string | null }[];
 
-/** What a reject may say, as one click; "Something else" lets the reviewer write it. */
-const REJECT_REASONS = ["Not German", "Cut off", "Name, class or gender spelled out", "Placeholder I can't fix", "Same as what we have"];
-
 /** The To review groups, in the order the page lists them (page.tsx sorts the queue the same way). */
 const GROUPS: { verdict: Verdict; tone: PanelTone; title: string; description: string }[] = [
   { verdict: "clean", tone: "good", title: "Looks right", description: "In the page's language, complete, same placeholders as the English line. Skim and keep." },
@@ -128,6 +127,14 @@ const GROUP_ICONS: Record<Verdict, ReactNode> = {
   look: <EyeIcon />,
   drop: <XIcon />,
 };
+
+/** The orders the database can sort by (query.ts SORT_COLUMNS), as one choice each. */
+const SORT_OPTIONS = [
+  { value: "count:desc", label: "Most sent first" },
+  { value: "filed:desc", label: "Newest first" },
+  { value: "filed:asc", label: "Oldest first" },
+  { value: "count:asc", label: "Fewest sent first" },
+];
 
 /** What a resolve may carry beside the status: the reviewer's edit on an accept, a reason on a reject. */
 type ResolveExtra = { text?: string; reason?: string };
@@ -567,6 +574,24 @@ export default function ContributionTable({
         >
           More filters <ChevronDownIcon className={cn("size-3.5 transition-transform", showFilters && "rotate-180")} aria-hidden />
         </button>
+        <label className="bs-search h-[34px] w-auto pr-2">
+          <span className="text-sm">{status === "new" && bucket === "ready" ? "Within groups:" : "Order:"}</span>
+          <select
+            aria-label="Order"
+            value={`${sort.column}:${sort.direction}`}
+            onChange={(event) => {
+              const [column, direction] = event.target.value.split(":") as [ContributionSort["column"], ContributionSort["direction"]];
+              go({ sort: { column, direction } });
+            }}
+            className="bg-transparent text-sm text-foreground outline-none"
+          >
+            {SORT_OPTIONS.map((option) => (
+              <option key={option.value} value={option.value} className="bg-popover">
+                {option.label}
+              </option>
+            ))}
+          </select>
+        </label>
         {pending && <Refreshing />}
         {bulk ? (
           <span className="text-muted-foreground text-sm">
@@ -854,7 +879,6 @@ const ReviewRow = memo(function ReviewRow({
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState("");
   const [dropping, setDropping] = useState(false);
-  const [ownReason, setOwnReason] = useState("");
   const [showNote, setShowNote] = useState(false);
   const hold = busy || locked;
   const keepable = current !== "accepted" && bucket === "ready" && acceptHold === null;
@@ -1092,32 +1116,7 @@ const ReviewRow = memo(function ReviewRow({
       ) : null}
 
       {dropping ? (
-        <div className="bs-reasons">
-          <p>Why drop it? The reason shows on the Rejected tab and helps the next reviewer.</p>
-          {REJECT_REASONS.map((why) => (
-            <button key={why} type="button" className="bs-reason" disabled={hold} onClick={() => drop(why)}>
-              {why}
-            </button>
-          ))}
-          <form
-            className="flex flex-wrap items-center gap-2"
-            onSubmit={(event) => {
-              event.preventDefault();
-              if (ownReason.trim()) drop(ownReason.trim());
-            }}
-          >
-            <label className="bs-search h-[30px]">
-              <span className="sr-only">Another reason</span>
-              <input value={ownReason} maxLength={200} placeholder="Something else…" onChange={(event) => setOwnReason(event.target.value)} />
-            </label>
-            <button type="submit" className="bs-btn bs-btn-danger" disabled={hold || !ownReason.trim()}>
-              Drop
-            </button>
-          </form>
-          <button type="button" className="bs-btn bs-btn-text" onClick={() => setDropping(false)}>
-            Cancel
-          </button>
-        </div>
+        <DropReasons reasons={lineDropReasons(langName(lang))} disabled={hold} onPick={drop} onCancel={() => setDropping(false)} />
       ) : null}
     </div>
   );
