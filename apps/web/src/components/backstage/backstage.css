@@ -856,3 +856,138 @@ body:has(main.bs) {
   width: 100%;
   height: 32px;
 }
+
+/* ---------- Catalogue rows: the audio pages' tables ---------- */
+
+.cat-table thead tr {
+  box-shadow: inset 0 -1px 0 var(--bs-line);
+}
+.cat-table th {
+  padding-top: 4px;
+  padding-bottom: 8px;
+  color: var(--muted-foreground);
+  font-size: 12px;
+  font-weight: 500;
+}
+.cat-table tbody tr {
+  border-color: rgba(255, 255, 255, 0.05);
+}
+.cat-table tbody tr:hover {
+  background: rgba(255, 255, 255, 0.025);
+}
+.cat-table tbody tr.cat-current {
+  background: rgba(240, 194, 90, 0.06);
+}
+.cat-play {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  margin-top: -4px;
+  border: 0;
+  border-radius: 50%;
+  background: none;
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.16);
+  color: var(--bs-text-2);
+  cursor: pointer;
+}
+.cat-play svg {
+  width: 12px;
+  height: 12px;
+  margin-left: 2px;
+}
+.cat-play:hover:not(:disabled) {
+  color: var(--foreground);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.35);
+}
+.cat-play:disabled {
+  opacity: 0.3;
+  cursor: default;
+}
+.cat-play[aria-current="true"] {
+  background: var(--bs-gold);
+  box-shadow: none;
+  color: #16171d;
+}
+
+.cat-state {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12.5px;
+  white-space: nowrap;
+}
+.cat-state i {
+  flex: none;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: currentColor;
+}
+.cat-state-missing {
+  color: var(--bs-red-text);
+}
+.cat-state-stale {
+  color: var(--bs-gold);
+}
+.cat-state-current {
+  color: var(--bs-green-text);
+}
+.cat-state-skip {
+  color: var(--muted-foreground);
+}
+.cat-state-error {
+  color: var(--bs-red-text);
+  white-space: normal;
+}
+
+.cat-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 2px;
+  white-space: nowrap;
+}
+.cat-act {
+  min-height: 28px;
+  padding: 0 8px;
+  font-size: 12.5px;
+}
+.cat-more svg {
+  width: 16px;
+  height: 16px;
+}
+.cat-marked {
+  color: var(--bs-gold);
+}
+.cat-menu {
+  border: 0;
+  background: #222329;
+  box-shadow:
+    inset 0 0 0 1px rgba(255, 255, 255, 0.1),
+    0 12px 32px rgba(0, 0, 0, 0.5);
+  color: #f4f5f7;
+}
+.cat-menu-item {
+  display: flex;
+  width: 100%;
+  align-items: center;
+  min-height: 32px;
+  padding: 0 10px;
+  border: 0;
+  border-radius: 6px;
+  background: none;
+  color: inherit;
+  font: inherit;
+  font-size: 13px;
+  text-align: left;
+  cursor: pointer;
+}
+.cat-menu-item:hover,
+.cat-menu-item:focus-visible {
+  background: rgba(255, 255, 255, 0.06);
+}
+.cat-menu-item.cat-marked {
+  color: #f0c25a;
+}

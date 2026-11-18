@@ -10,6 +10,8 @@ type Props = {
   busy?: boolean;
   /** Why the control is unavailable. Present means disabled, and says so on hover. */
   blocked?: string | null;
+  /** Says "Regenerate" beside the icon, as the audio pages' rows do. */
+  withLabel?: boolean;
 };
 
 /**
@@ -22,7 +24,7 @@ type Props = {
  * Regenerating more than one line is not this control: that acts on the whole search, is
  * priced first, and lives in the results header.
  */
-export default function RegenerateButton({ onClick, busy = false, blocked }: Props) {
+export default function RegenerateButton({ onClick, busy = false, blocked, withLabel = false }: Props) {
   const label = blocked ?? "Regenerate this line";
 
   // The title sits on a wrapper, not the button: a disabled Button is pointer-events-none,
@@ -31,12 +33,13 @@ export default function RegenerateButton({ onClick, busy = false, blocked }: Pro
     <span title={label} className="inline-flex">
       <Button
         variant="ghost"
-        size="icon-xs"
+        size={withLabel ? "xs" : "icon-xs"}
         aria-label={label}
         disabled={busy || Boolean(blocked)}
         onClick={onClick}
       >
         {busy ? <Loader2 className={cn("animate-spin")} /> : <RefreshCw />}
+        {withLabel ? "Regenerate" : null}
       </Button>
     </span>
   );

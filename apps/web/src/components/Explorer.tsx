@@ -946,33 +946,29 @@ export default function Explorer({ facets, teams, viewed, home }: { facets: Face
         {result && result.lines.length > 0 && (
           <table
             aria-busy={loading}
-            className={`w-full table-fixed border-collapse text-sm transition-opacity ${loading ? "opacity-60" : ""}`}
+            className={`cat-table w-full table-fixed border-collapse text-sm transition-opacity ${loading ? "opacity-60" : ""}`}
           >
             <colgroup>
               <col className="w-52" />
               <col className="w-48" />
-              <col className="w-32" />
               {/* The line text takes whatever the named columns leave, which is what anyone
                   here to read came for. */}
               <col />
               {/* Audio: a state word, or the take selector. Both are short. */}
               <col className="w-28" />
               {/* Made by: "fish:2.1-pro-free" over a name. Only when the search sent it. */}
-              {showMadeBy && <col className="w-36" />}
+              {showMadeBy && <col className="w-32" />}
               {/* Voice actor: play, the version, upload; the credit under them. */}
-              {showRecordings && <col className="w-32" />}
-              {/* Wide enough for what the cell actually holds, which the old w-20 was not:
-                  icon buttons are 32px, and a collaborator can have four side by side --
-                  report, edit, ignore, regenerate -- plus the report count. Anything narrower
-                  pushes them left over the line text. w-16 for everyone else, who has the
-                  report button and the count; never w-0, since that button is not gated. */}
-              <col className={showRegenerate ? "w-40" : "w-16"} />
+              {showRecordings && <col className="w-28" />}
+              {/* Wide enough for Edit, Regenerate, More and the report count side by side;
+                  anything narrower pushes them over the line text. Everyone else has the
+                  "Report a problem" button and the count; never w-0, since that is not gated. */}
+              <col className={showRegenerate ? "w-56" : "w-40"} />
             </colgroup>
             <thead>
               <tr className="text-muted-foreground border-border border-b text-left text-xs">
-                <th className="px-2 pb-1 font-medium">NPC / object</th>
-                <th className="px-2 pb-1 font-medium">Quest / broadcast</th>
-                <th className="px-2 pb-1 font-medium">Race / gender / flavor</th>
+                <th className="px-2 pb-1 font-medium">NPC and voice</th>
+                <th className="px-2 pb-1 font-medium">Quest or broadcast</th>
                 <th className="px-2 pb-1 font-medium">Line</th>
                 <th className="px-2 pb-1 font-medium">Audio</th>
                 {showMadeBy && <th className="px-2 pb-1 font-medium">Made by</th>}

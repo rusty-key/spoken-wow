@@ -743,7 +743,7 @@ export function Explorer<L extends ExplorerLine, F extends ExplorerFilters>({
         <table
           aria-busy={loading}
           hidden={!result}
-          className={`w-full table-fixed border-collapse text-sm transition-opacity ${loading ? "opacity-60" : ""}`}
+          className={`cat-table w-full table-fixed border-collapse text-sm transition-opacity ${loading ? "opacity-60" : ""}`}
         >
           <colgroup>
             <col className="w-40" />
@@ -752,15 +752,12 @@ export function Explorer<L extends ExplorerLine, F extends ExplorerFilters>({
             {/* Audio: the state word, or the take selector, both of which are short. */}
             <col className="w-28" />
             {/* Made by: "fish:2.1-pro-free" over a name. Only when the search sent it. */}
-            {showMadeBy && <col className="w-36" />}
-            {showRecordings && <col className="w-32" />}
-            {/* Wide enough for what the cell actually holds: icon buttons are 32px and an
-                editor can have five side by side - report, edit, override, clear the
-                pronunciation mark, regenerate - plus the report count. Anything narrower and
-                the row overflows left over the prose.
-                w-16 for everyone else, who has the report button and the count; never w-0,
-                since that button is not gated. */}
-            <col className={canRegenerate ? "w-60" : "w-16"} />
+            {showMadeBy && <col className="w-32" />}
+            {showRecordings && <col className="w-28" />}
+            {/* Wide enough for Edit, Override, Regenerate, More and the report count side by side;
+                anything narrower pushes them over the prose. Everyone else has the "Report a
+                problem" button and the count; never w-0, since that is not gated. */}
+            <col className={canRegenerate ? "w-64" : "w-40"} />
           </colgroup>
           <thead>
             <tr className="text-muted-foreground border-border border-b text-left text-xs">

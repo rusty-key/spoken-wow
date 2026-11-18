@@ -5,21 +5,15 @@ import { MadeByCell } from "@/components/MadeBy";
 import { RenameButton } from "@/components/RenameButton";
 import { Untranslated, UntranslatedMark } from "@/components/Untranslated";
 import FilterLink from "@/components/FilterLink";
-import {
-  ChevronDownIcon,
-  Eraser,
-  FlagIcon,
-  PencilIcon,
-  PlayIcon,
-  SpeechIcon,
-} from "lucide-react";
+import { ChevronDownIcon, PlayIcon } from "lucide-react";
+
+import { RowActions, StateWord, type RowAction } from "@/components/catalogue/RowParts";
 import { useState } from "react";
 
 import RegenerateButton from "@/components/RegenerateButton";
 import ReportsBadge from "@/components/ReportsBadge";
 import TakeSelector from "@/components/TakeSelector";
 import TextOverrideDrift from "@/components/TextOverrideDrift";
-import { Button } from "@/components/ui/button";
 import { cn, endsSelection } from "@/lib/utils";
 import { canPlay, type ExplorerLine, type ExplorerSection } from "@/components/explorer/section";
 
@@ -68,10 +62,10 @@ type Props<L extends ExplorerLine> = {
 
 // The same colour discipline as the quests explorer: red is only ever a real problem, amber
 // is something that has drifted, grey is a fact about the row.
-const STATE_STYLE = {
-  missing: "text-destructive",
-  stale: "text-amber-300",
-  current: "text-muted-foreground",
+const STATE_TONE = {
+  missing: "missing",
+  stale: "stale",
+  current: "current",
 } as const;
 
 const STATE_LABEL = {
@@ -134,7 +128,7 @@ export function LineRow<L extends ExplorerLine>({
       className={cn(
         "border-border/60 border-b align-top transition-colors",
         "hover:bg-muted/60",
-        current && "bg-muted",
+        current && "cat-current",
       )}
     >
       {/* Narrowing is a sibling of the play button below, never nested inside it: a
@@ -178,16 +172,9 @@ export function LineRow<L extends ExplorerLine>({
               onClick={() => onPlay(line)}
               title={playable ? `${line.file}.mp3` : undefined}
               aria-label={`Play ${line.name}`}
-              className={cn(
-                "mt-px shrink-0 rounded-sm p-0.5",
-                "focus-visible:ring-ring/50 focus-visible:ring-[3px] focus-visible:outline-none",
-                playable
-                  ? "text-muted-foreground hover:text-foreground cursor-pointer"
-                  : "text-muted-foreground/30 cursor-default",
-                current && "text-foreground",
-              )}
+              className="cat-play"
             >
-              <PlayIcon className="size-3.5" />
+              <PlayIcon />
             </button>
           )}
 
@@ -253,11 +240,11 @@ export function LineRow<L extends ExplorerLine>({
         {/* The regeneration outcome replaces the state: once a line has just been made,
             "no audio" is stale and confusing rather than merely redundant. */}
         {state?.phase === "error" ? (
-          <span className="text-destructive">{state.message}</span>
+          <StateWord tone="error">{state.message}</StateWord>
         ) : state?.phase === "done" ? (
-          <span className="text-emerald-400">v{state.version}</span>
+          <StateWord tone="current">v{state.version}</StateWord>
         ) : STATE_LABEL[line.state] ? (
-          <span className={STATE_STYLE[line.state]}>{STATE_LABEL[line.state]}</span>
+          <StateWord tone={STATE_TONE[line.state]}>{STATE_LABEL[line.state]}</StateWord>
         ) : unwritten ? null : (
           // Which take is live, and the way to any other. The label IS the control, so
           // there is no second icon for a history nobody knew was there.
@@ -290,85 +277,51 @@ export function LineRow<L extends ExplorerLine>({
       )}
 
       <td className="py-1.5 pr-1 pl-2">
-        <span className="flex items-center justify-end gap-1 whitespace-nowrap">
-          {/* Beside the report button rather than in a column of its own: it is the same
-              subject. ReportsBadge says what it shows to whom. */}
-          <ReportsBadge
-            source={section.source}
-            lineId={line.id}
-            count={line.reportsOpen}
-            canTriage={canTriage}
-          />
-
-          {/* Outside the canRegenerate gate, deliberately: reporting is what a visitor who
-              cannot sign in has, and /api/reports is unauthenticated for the same reason. */}
-          {onReport && (
-            <Button
-              variant="ghost"
-              size="icon"
-              title="Report a problem with this line"
-              aria-label={`Report ${line.name}`}
-              onClick={() => onReport(line)}
-            >
-              <FlagIcon className="size-3.5" />
-            </Button>
-          )}
-
-          {/* Rewriting the prose is not an audio action and it is free, so it has its own
-              gate: a translator writes a language they may not regenerate. */}
-          {canEdit && (
-            <Button
-              variant="ghost"
-              size="icon"
-              title="Rewrite this line's text"
-              aria-label={`Edit the text of ${line.name}`}
-              onClick={() => onEditText(line)}
-            >
-              <PencilIcon className="size-3.5" />
-            </Button>
-          )}
-
-          {/* Not the pencil's gate: an override changes only what the team's take says, so
-              it needs what regenerating needs. */}
-          {canRegenerate && overridable && (
-            <Button
-              variant="ghost"
-              size="icon"
-              title="Change what your team says"
-              aria-label={`Override the text of ${line.name}`}
-              onClick={() => onOverride(line)}
-            >
-              <SpeechIcon className="size-3.5" />
-            </Button>
-          )}
-
-          {canRegenerate && (
-            <>
-
-              {/* Only on a dirty row. A clean one keeps the control it would do nothing to,
-                  and the mark is the whole reason this button exists. */}
-              {line.dirty && !unwritten && (
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  title="Audio predates a pronunciation change - clear the mark (does not regenerate)"
-                  aria-label={`Clear the pronunciation mark on ${line.name}`}
-                  onClick={() => onClearDirty(line)}
-                >
-                  <Eraser className="size-3.5" />
-                </Button>
-              )}
-
-              {!unwritten && (
-                <RegenerateButton
-                  busy={state?.phase === "busy"}
-                  blocked={null}
-                  onClick={() => onRegenerate(line)}
-                />
-              )}
-            </>
-          )}
-        </span>
+        <RowActions
+          badge={
+            // Beside the actions rather than in a column of its own: it is the same subject.
+            <ReportsBadge source={section.source} lineId={line.id} count={line.reportsOpen} canTriage={canTriage} />
+          }
+          primary={[
+            // Rewriting the prose is free and not an audio action, so it has its own gate: a
+            // translator writes a language they may not regenerate.
+            ...(canEdit
+              ? [{ label: "Edit", aria: `Edit the text of ${line.name}`, title: "Rewrite this line's text", onClick: () => onEditText(line) }]
+              : []),
+            // An override changes only what the team's take says, so it needs what regenerating needs.
+            ...(canRegenerate && overridable
+              ? [
+                  {
+                    label: "Override",
+                    aria: `Override the text of ${line.name}`,
+                    title: "Change what your team says",
+                    marked: Boolean(line.override),
+                    onClick: () => onOverride(line),
+                  },
+                ]
+              : []),
+          ]}
+          regenerate={
+            canRegenerate && !unwritten ? (
+              <RegenerateButton withLabel busy={state?.phase === "busy"} blocked={null} onClick={() => onRegenerate(line)} />
+            ) : undefined
+          }
+          more={[
+            // Outside the edit gates: reporting is what a visitor who cannot sign in has.
+            ...(onReport ? [{ label: "Report a problem", aria: `Report ${line.name}`, onClick: () => onReport(line) }] : []),
+            // Only on a dirty row: a clean one would be offering to clear nothing.
+            ...(canRegenerate && line.dirty && !unwritten
+              ? [
+                  {
+                    label: "Clear the pronunciation mark",
+                    aria: `Clear the pronunciation mark on ${line.name}`,
+                    title: "The take stays; only the mark goes",
+                    onClick: () => onClearDirty(line),
+                  },
+                ]
+              : []),
+          ] satisfies RowAction[]}
+        />
       </td>
     </tr>
   );

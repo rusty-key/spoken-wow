@@ -8,11 +8,9 @@ import { Untranslated, UntranslatedMark } from "@/components/Untranslated";
 import FilterLink from "@/components/FilterLink";
 import { useLang } from "@/components/LangProvider";
 import { localeHref } from "@/lib/lang";
+import { RowActions, StateWord, type RowAction } from "@/components/catalogue/RowParts";
 import {
   ChevronDownIcon,
-  Eraser,
-  EyeOffIcon,
-  FlagIcon,
   MessageSquareIcon,
   MessageSquareQuoteIcon,
   PencilIcon,
@@ -26,12 +24,10 @@ import { useState, type ReactNode } from "react";
 import ReportsBadge from "./ReportsBadge";
 import TakeSelector from "./TakeSelector";
 import RegenerateButton from "./RegenerateButton";
-import { Button } from "./ui/button";
 import { targetForLine } from "@/lib/reports/line-target";
 import { cn, endsSelection } from "@/lib/utils";
 import type { LineState } from "./Explorer";
 import type { ResultLine } from "@/lib/search";
-import OutdatedNote from "@/components/OutdatedNote";
 import WowheadLink from "@/components/WowheadLink";
 import { npcPageHref } from "@/lib/links";
 import { wowheadEntityUrl, wowheadQuestUrl } from "@/lib/wowhead";
@@ -255,7 +251,7 @@ export default function LineRow({
         "border-border/60 border-b align-top transition-colors",
         // Ungated by hasAudio: every row expands now, not only the ones that play.
         "hover:bg-muted/60",
-        current && "bg-muted",
+        current && "cat-current",
       )}
     >
       {spanned && (
@@ -304,6 +300,10 @@ export default function LineRow({
                 <XIcon className="size-3" />
               </SpeakerAction>
             )}
+          </span>
+          {/* The voice slot is spelled race-gender-flavor; under the name, it says whose voice this is. */}
+          <span className="text-muted-foreground block truncate text-xs">
+            {[line.race, line.gender, line.flavor].filter(Boolean).join(" · ")}
           </span>
           {line.added && (
             <span className="text-muted-foreground block text-xs" title="Added by hand, not from the game data">
@@ -380,18 +380,6 @@ export default function LineRow({
         </td>
       )}
 
-      {/* The voice slot is spelled race-gender-flavor, so this column is all three at once.
-          The flavor is what distinguishes the two or three voices a race-gender has, so it
-          belongs beside them rather than in a column of its own. */}
-      {spanned && (
-        <td rowSpan={groupSpan} className="text-muted-foreground px-2 py-2">
-          <span className="block truncate">{line.race}</span>
-          <span className="block truncate text-xs">
-            {line.flavor ? `${line.gender} · ${line.flavor}` : line.gender}
-          </span>
-        </td>
-      )}
-
       {/* The text is plain markup rather than the label of a button, which is what makes it
           selectable: text inside a <button> cannot reliably be dragged over and copied. That
           is why playing needs a control of its own. */}
@@ -403,16 +391,9 @@ export default function LineRow({
             onClick={() => onPlay(line)}
             title={line.hasAudio ? `Play ${line.audioPath}` : undefined}
             aria-label={`Play ${line.npcName}'s line`}
-            className={cn(
-              "mt-px shrink-0 rounded-sm p-0.5",
-              "focus-visible:ring-ring/50 focus-visible:ring-[3px] focus-visible:outline-none",
-              line.hasAudio
-                ? "text-muted-foreground hover:text-foreground cursor-pointer"
-                : "text-muted-foreground/30 cursor-default",
-              current && "text-foreground",
-            )}
+            className="cat-play"
           >
-            <PlayIcon className="size-3.5" />
+            <PlayIcon />
           </button>
           <SourceMark source={line.source} />
           {/* A $g line is split per player gender, and the two rows differ by a word. */}
@@ -508,22 +489,22 @@ export default function LineRow({
         {/* The regeneration outcome replaces the state: once a line has just been made,
             "no audio" is stale and confusing rather than merely redundant. */}
         {state?.phase === "error" ? (
-          <span className="text-destructive">{state.message}</span>
+          <StateWord tone="error">{state.message}</StateWord>
         ) : state?.phase === "done" ? (
-          <span className="text-emerald-400">
-            v{state.version}
-          </span>
+          <StateWord tone="current">v{state.version}</StateWord>
         ) : missing ? (
-          <span
-            className={missing.kind === "gap" ? "text-destructive" : "text-muted-foreground"}
+          <StateWord
+            tone={missing.kind === "gap" ? "missing" : "skip"}
             title={missing.kind === "skip" ? "This line is never voiced" : undefined}
           >
             {missing.label}
-          </span>
+          </StateWord>
         ) : stale ? (
           // Stale before the take number: "the audio is old" is the more actionable of the
           // two things this cell could say, and a rewrite is why somebody is here.
-          <OutdatedNote />
+          <StateWord tone="stale" title="Made from text that has since changed">
+            audio outdated
+          </StateWord>
         ) : (
           // Which take is live, and the way to any other. The label IS the control, so the
           // history is no longer hidden behind a second icon.
@@ -560,74 +541,59 @@ export default function LineRow({
       )}
 
       <td className="py-1.5 pr-1 pl-0">
-        <span className="flex items-center justify-end whitespace-nowrap">
-          {/* The same chip the places and readables rows carry; ReportsBadge says why. */}
-          <ReportsBadge
-            source="quests"
-            lineId={line.lineId}
-            count={line.reportsOpen}
-            canTriage={canTriage}
-          />
-
-          {/* Outside the canRegenerate gate, deliberately: reporting is what a player who
-              cannot sign in has, and /api/reports is unauthenticated for the same reason.
-              Hidden only when the line has no address the report page could resolve. */}
-          {onReport && targetForLine(line) && (
-            <Button
-              variant="ghost"
-              size="icon"
-              title="Report a problem with this line"
-              aria-label={`Report ${line.npcName}'s line`}
-              onClick={() => onReport(line)}
-            >
-              <FlagIcon className="size-3.5" />
-            </Button>
-          )}
-          {canRegenerate && !line.missing?.text && (
-            <Button
-              variant="ghost"
-              size="icon"
-              title="Edit what this line says out loud"
-              aria-label={`Edit the spoken text of ${line.npcName}'s line`}
-              onClick={() => onEditText(line)}
-            >
-              <PencilIcon className={cn("size-3.5", line.override && "text-amber-300")} />
-            </Button>
-          )}
-          {onIgnore && (
-            <Button
-              variant="ghost"
-              size="icon"
-              title={line.ignored ? `Ignored: ${line.ignored}` : "Never voice this line"}
-              aria-label={`Ignore ${line.npcName}'s line`}
-              onClick={() => onIgnore(line)}
-            >
-              <EyeOffIcon className={cn("size-3.5", line.ignored && "text-amber-300")} />
-            </Button>
-          )}
-          {canRegenerate && (
-            <>
-            {/* Only on a dirty row. The mark is the whole reason this control exists, and a
-                clean row would be offering to clear nothing. */}
-            {dirty && (
-              <Button
-                variant="ghost"
-                size="icon"
-                title="Audio predates a pronunciation change - clear the mark (does not regenerate)"
-                aria-label={`Clear the pronunciation mark on ${line.npcName}'s line`}
-                onClick={() => onClearDirty(line)}
-              >
-                <Eraser className="size-3.5 text-amber-300" />
-              </Button>
-            )}
-            <RegenerateButton
-              busy={state?.phase === "busy"}
-              blocked={blocked}
-              onClick={() => onRegenerate(line)}
-            />
-            </>
-          )}
-        </span>
+        <RowActions
+          badge={
+            // The same chip the places and readables rows carry; ReportsBadge says why.
+            <ReportsBadge source="quests" lineId={line.lineId} count={line.reportsOpen} canTriage={canTriage} />
+          }
+          primary={
+            canRegenerate && !line.missing?.text
+              ? [
+                  {
+                    label: "Edit",
+                    aria: `Edit the spoken text of ${line.npcName}'s line`,
+                    title: "Edit what this line says out loud",
+                    marked: line.override !== null,
+                    onClick: () => onEditText(line),
+                  },
+                ]
+              : []
+          }
+          regenerate={
+            canRegenerate ? (
+              <RegenerateButton withLabel busy={state?.phase === "busy"} blocked={blocked} onClick={() => onRegenerate(line)} />
+            ) : undefined
+          }
+          more={[
+            // Outside the canRegenerate gate: reporting is what a player who cannot sign in has.
+            // Hidden only when the line has no address the report page could resolve.
+            ...(onReport && targetForLine(line)
+              ? [{ label: "Report a problem", aria: `Report ${line.npcName}'s line`, onClick: () => onReport(line) }]
+              : []),
+            ...(onIgnore
+              ? [
+                  {
+                    label: line.ignored ? "Ignored…" : "Never voice this line",
+                    aria: `Ignore ${line.npcName}'s line`,
+                    title: line.ignored ? `Ignored: ${line.ignored}` : undefined,
+                    marked: Boolean(line.ignored),
+                    onClick: () => onIgnore(line),
+                  },
+                ]
+              : []),
+            // Only on a dirty row: a clean row would be offering to clear nothing.
+            ...(canRegenerate && dirty
+              ? [
+                  {
+                    label: "Clear the pronunciation mark",
+                    aria: `Clear the pronunciation mark on ${line.npcName}'s line`,
+                    title: "The take stays; only the mark goes",
+                    onClick: () => onClearDirty(line),
+                  },
+                ]
+              : []),
+          ] satisfies RowAction[]}
+        />
       </td>
     </tr>
   );

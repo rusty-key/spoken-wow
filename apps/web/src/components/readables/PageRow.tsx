@@ -5,14 +5,15 @@ import { MadeByCell } from "@/components/MadeBy";
 import { RenameButton } from "@/components/RenameButton";
 import { Untranslated, UntranslatedMark } from "@/components/Untranslated";
 import FilterLink from "@/components/FilterLink";
-import { ChevronDownIcon, Eraser, FlagIcon, PencilIcon, PlayIcon, SpeechIcon } from "lucide-react";
+import { ChevronDownIcon, PlayIcon } from "lucide-react";
+
+import { RowActions, StateWord, type RowAction } from "@/components/catalogue/RowParts";
 import { useState } from "react";
 
 import RegenerateButton from "@/components/RegenerateButton";
 import ReportsBadge from "@/components/ReportsBadge";
 import TakeSelector from "@/components/TakeSelector";
 import TextOverrideDrift from "@/components/TextOverrideDrift";
-import { Button } from "@/components/ui/button";
 import { materialName } from "@/lib/readables/filters";
 import { shownText } from "@/lib/readables/shown";
 import type { ResultLine } from "@/lib/readables/search";
@@ -69,10 +70,10 @@ type Props = {
 
 // The same colour discipline as the other two explorers: red is only ever a real problem,
 // amber is something that has drifted, grey is a fact about the row.
-const STATE_STYLE = {
-  missing: "text-destructive",
-  stale: "text-amber-300",
-  current: "text-muted-foreground",
+const STATE_TONE = {
+  missing: "missing",
+  stale: "stale",
+  current: "current",
 } as const;
 
 const STATE_LABEL = {
@@ -128,7 +129,7 @@ export function PageRow({
       className={cn(
         "border-border/60 border-b align-top transition-colors",
         "hover:bg-muted/60",
-        current && "bg-muted",
+        current && "cat-current",
         // The first row of a book carries the heavier rule, so the books stay legible as
         // blocks once their name is written only once.
         groupRows > 0 && "border-t-border border-t",
@@ -184,16 +185,9 @@ export function PageRow({
             onClick={() => onPlay(line)}
             title={playable ? `${line.file}.mp3` : undefined}
             aria-label={`Play page ${line.pageNumber} of ${line.title}`}
-            className={cn(
-              "mt-px shrink-0 rounded-sm p-0.5",
-              "focus-visible:ring-ring/50 focus-visible:ring-[3px] focus-visible:outline-none",
-              playable
-                ? "text-muted-foreground hover:text-foreground cursor-pointer"
-                : "text-muted-foreground/30 cursor-default",
-              current && "text-foreground",
-            )}
+            className="cat-play"
           >
-            <PlayIcon className="size-3.5" />
+            <PlayIcon />
           </button>
 
           <div className="min-w-0 flex-1">
@@ -249,15 +243,15 @@ export function PageRow({
           the question this screen is most often asked. */}
       <td className="px-2 py-2 text-xs whitespace-nowrap">
         {state?.phase === "error" ? (
-          <span className="text-destructive">{state.message}</span>
+          <StateWord tone="error">{state.message}</StateWord>
         ) : state?.phase === "done" ? (
-          <span className="text-emerald-400">v{state.version}</span>
+          <StateWord tone="current">v{state.version}</StateWord>
         ) : !line.generatable ? (
           // Why this page is silent, rather than leaving it looking merely un-narrated. It
           // is in the corpus because the game has it.
           <span className="text-muted-foreground italic">{line.skipReason}</span>
         ) : STATE_LABEL[line.state] ? (
-          <span className={STATE_STYLE[line.state]}>{STATE_LABEL[line.state]}</span>
+          <StateWord tone={STATE_TONE[line.state]}>{STATE_LABEL[line.state]}</StateWord>
         ) : (
           // Which take is live, and the way to any other. The label IS the control: the
           // number is the question, and "which other numbers are there" is what a click
@@ -297,77 +291,48 @@ export function PageRow({
       {/* One line, like the other two explorers': the controls read left to right and the
           column keeps its width whatever a row happens to offer. */}
       <td className="py-1.5 pr-1 pl-2">
-        <span className="flex items-center justify-end gap-1 whitespace-nowrap">
-        {/* The same chip the quests and places rows carry; ReportsBadge says why. Readables has
-            no separate triage flag: the editors who regenerate a page are the ones who
-            answer for it. */}
-        <ReportsBadge
-          source="readables"
-          lineId={line.id}
-          count={line.reportsOpen}
-          canTriage={canTriage}
+        <RowActions
+          badge={
+            // The same chip the quests and places rows carry; ReportsBadge says why.
+            <ReportsBadge source="readables" lineId={line.id} count={line.reportsOpen} canTriage={canTriage} />
+          }
+          primary={[
+            // Rewriting is free and not an audio action, gated as the other two sections gate theirs.
+            ...(canEdit
+              ? [{ label: "Edit", aria: `Edit the text of page ${line.pageNumber} of ${line.title}`, title: "Rewrite what this page says", onClick: () => onEditText(line) }]
+              : []),
+            // An override changes only what the team's take says, so it needs what regenerating
+            // needs. English standing in for the language is not this language's text to override.
+            ...(canRegenerate && !line.missing?.text
+              ? [{ label: "Override", aria: `Override the text of page ${line.pageNumber} of ${line.title}`, title: "Change what your team says", onClick: () => onOverride(line) }]
+              : []),
+          ]}
+          regenerate={
+            canRegenerate ? (
+              <RegenerateButton
+                withLabel
+                onClick={() => onRegenerate(line)}
+                busy={state?.phase === "busy"}
+                blocked={line.generatable ? null : `this page cannot be voiced: ${line.skipReason}`}
+              />
+            ) : undefined
+          }
+          more={[
+            // Outside the edit gates: reporting is what a reader who cannot sign in has.
+            ...(onReport ? [{ label: "Report a problem", aria: `Report page ${line.pageNumber} of ${line.title}`, onClick: () => onReport(line) }] : []),
+            // Only on a dirty row: a clean one would be offering to clear nothing.
+            ...(canRegenerate && line.dirty
+              ? [
+                  {
+                    label: "Clear the pronunciation mark",
+                    aria: `Clear the pronunciation mark on page ${line.pageNumber} of ${line.title}`,
+                    title: "The take stays; only the mark goes",
+                    onClick: () => onClearDirty(line),
+                  },
+                ]
+              : []),
+          ] satisfies RowAction[]}
         />
-        {/* Outside the canRegenerate gate, deliberately: reporting is what a reader who
-            cannot sign in has, and /api/reports is unauthenticated for the same reason. */}
-        {onReport && (
-          <Button
-            variant="ghost"
-            size="icon"
-            title="Report a problem with this page"
-            aria-label={`Report page ${line.pageNumber} of ${line.title}`}
-            onClick={() => onReport(line)}
-          >
-            <FlagIcon className="size-3.5" />
-          </Button>
-        )}
-        {/* Rewriting the text is not an audio action and it is free, but it is gated the
-            same way the other two sections gate theirs: the edit is what a later
-            regeneration would speak. */}
-        {canEdit && (
-          <Button
-            variant="ghost"
-            size="icon"
-            title="Rewrite what this page says"
-            aria-label={`Edit the text of page ${line.pageNumber} of ${line.title}`}
-            onClick={() => onEditText(line)}
-          >
-            <PencilIcon className="size-3.5" />
-          </Button>
-        )}
-        {/* Not the pencil's gate: an override changes only what the team's take says, so it
-            needs what regenerating needs. English standing in for the language is not this
-            language's text to override, and the route refuses it. */}
-        {canRegenerate && !line.missing?.text && (
-          <Button
-            variant="ghost"
-            size="icon"
-            title="Change what your team says"
-            aria-label={`Override the text of page ${line.pageNumber} of ${line.title}`}
-            onClick={() => onOverride(line)}
-          >
-            <SpeechIcon className="size-3.5" />
-          </Button>
-        )}
-        {/* Only on a dirty row: a clean one keeps the single control it already had. */}
-        {canRegenerate && line.dirty && (
-          <Button
-            variant="ghost"
-            size="icon"
-            title="Audio predates a pronunciation change - clear the mark (does not regenerate)"
-            aria-label={`Clear the pronunciation mark on page ${line.pageNumber} of ${line.title}`}
-            onClick={() => onClearDirty(line)}
-          >
-            <Eraser className="size-3.5" />
-          </Button>
-        )}
-        {canRegenerate && (
-          <RegenerateButton
-            onClick={() => onRegenerate(line)}
-            busy={state?.phase === "busy"}
-            blocked={line.generatable ? null : `this page cannot be voiced: ${line.skipReason}`}
-          />
-        )}
-        </span>
       </td>
     </tr>
   );
