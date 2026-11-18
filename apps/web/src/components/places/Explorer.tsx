@@ -5,7 +5,7 @@ import { useCan } from "@/components/useCan";
 import { useHistoryMode } from "@/components/useHistoryMode";
 import { useLang } from "@/components/LangProvider";
 import { BASE_LANG, withLang } from "@/lib/lang";
-import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { usePathname, useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import ApiKeyRequiredDialog from "@/components/ApiKeyRequiredDialog";
@@ -48,7 +48,7 @@ import { fetchRows, patchRows } from "@/lib/row-refresh";
 import { withTextOverride } from "@/lib/text-overrides/rows";
 import * as echo from "@/lib/url-echo";
 import { triages } from "@/lib/reports/reports";
-import { forTeam, isOwn, keepTeam, otherTeam, pickedHref, type TeamView } from "@/lib/teams/view";
+import { forTeam, isOwn, keepTeam, otherTeam, type TeamView } from "@/lib/teams/view";
 
 // Long enough to hold a whole typed word: the timer restarts on every keystroke, so this
 // is the pause after the last one, not a rate limit. Anyone who wants results before it
@@ -67,7 +67,6 @@ export function Explorer<L extends ExplorerLine, F extends ExplorerFilters>({
 } & TeamView) {
   const { source, api, nameOf } = section;
   const lang = useLang();
-  const router = useRouter();
   const pathname = usePathname();
   const params = useSearchParams();
 
@@ -647,11 +646,10 @@ export function Explorer<L extends ExplorerLine, F extends ExplorerFilters>({
   return (
     <div className="pb-24">
       <Contained>
-        {/* The router, not a history write: the page resolves the view from `team`. */}
         <TeamPicker
           teams={teams}
           viewed={viewed}
-          onPick={(slug) => router.push(pickedHref(pathname, params, slug, home), { scroll: false })}
+          home={home}
         />
 
         <SearchBar

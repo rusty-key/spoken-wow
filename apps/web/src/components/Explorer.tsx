@@ -53,7 +53,7 @@ import type { Filter, LineFilters, ResultLine, SearchResult } from "@/lib/search
 import { fetchRows, patchRows } from "@/lib/row-refresh";
 import { type Pending, receive, target, write } from "@/lib/url-echo";
 import { triages } from "@/lib/reports/reports";
-import { forTeam, isOwn, keepTeam, otherTeam, pickedHref, type TeamView } from "@/lib/teams/view";
+import { forTeam, isOwn, keepTeam, otherTeam, type TeamView } from "@/lib/teams/view";
 
 /** What a line's Regenerate button is doing, keyed by lineId. */
 export type LineState =
@@ -874,7 +874,7 @@ export default function Explorer({ facets, teams, viewed, home }: { facets: Face
         <TeamPicker
           teams={teams}
           viewed={viewed}
-          onPick={(slug) => router.push(pickedHref(pathname, params, slug, home), { scroll: false })}
+          home={home}
         />
 
         <SearchBar

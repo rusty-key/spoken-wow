@@ -5,7 +5,7 @@ import { useCan } from "@/components/useCan";
 import { useHistoryMode } from "@/components/useHistoryMode";
 import { useLang } from "@/components/LangProvider";
 import { BASE_LANG, withLang } from "@/lib/lang";
-import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { usePathname, useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import ApiKeyRequiredDialog from "@/components/ApiKeyRequiredDialog";
@@ -25,7 +25,7 @@ import { Contained, Wide } from "@/components/Width";
 import { Loading, Refreshing } from "@/components/Loading";
 import { Button } from "@/components/ui/button";
 import type { BookFacet } from "@/lib/readables/catalogue";
-import { forTeam, isOwn, keepTeam, otherTeam, pickedHref, type TeamView } from "@/lib/teams/view";
+import { forTeam, isOwn, keepTeam, otherTeam, type TeamView } from "@/lib/teams/view";
 import {
   filterParams,
   filtersFromParams,
@@ -58,7 +58,6 @@ type Batch = PendingBatch & { lineIds: string[] };
 
 export function Explorer({ books, teams, viewed, home }: { books: BookFacet[] } & TeamView) {
   const lang = useLang();
-  const router = useRouter();
   const pathname = usePathname();
   const params = useSearchParams();
 
@@ -518,11 +517,10 @@ export function Explorer({ books, teams, viewed, home }: { books: BookFacet[] } 
   return (
     <>
       <Contained>
-        {/* The router, not a history write: the page resolves the view from `team`. */}
         <TeamPicker
           teams={teams}
           viewed={viewed}
-          onPick={(slug) => router.push(pickedHref(pathname, params, slug, home), { scroll: false })}
+          home={home}
         />
 
         <SearchBar

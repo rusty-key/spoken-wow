@@ -6,6 +6,7 @@ import localFont from "next/font/local";
 import Image from "next/image";
 import Script from "next/script";
 import { Suspense } from "react";
+import ActingBanner from "@/components/ActingBanner";
 import { GrantsProvider } from "@/components/GrantsProvider";
 import { LangProvider } from "@/components/LangProvider";
 import { LanguagesProvider } from "@/components/LanguagesProvider";
@@ -33,6 +34,8 @@ export const metadata: Metadata = {
  * pageLang answers an English page without a query or a session read, and the language list for
  * the browser comes from the in-memory registry; only another language
  * asks whether it is switched on, and whether the visitor is an admin who may see it early.
+ * The acting banner reads the acting cookie and nothing more unless it names a team for this
+ * language.
  *
  * NOTHING HERE IS PRERENDERED, including the four English pages that were (the landing page,
  * /quests, /login and /register). A generateStaticParams for English would keep them static,
@@ -82,6 +85,10 @@ export default async function RootLayout({
                   </div>
                 </header>
               </SiteHeader>
+              {/* Suspense because the banner's picker reads the search params. */}
+              <Suspense>
+                <ActingBanner lang={lang} />
+              </Suspense>
               {children}
             </GrantsProvider>
           </LangProvider>

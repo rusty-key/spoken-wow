@@ -1,27 +1,66 @@
 "use client";
 
-import { useId } from "react";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { useId, useState } from "react";
 
+import { useLang } from "@/components/LangProvider";
+import { useSession } from "@/lib/auth-client";
+import { isAdmin } from "@/lib/permissions";
+import { pickedHref } from "@/lib/teams/view";
 import type { TeamChoice, ViewedTeam } from "@/lib/teams/viewing";
+import { cn } from "@/lib/utils";
 
 /**
  * Which team's takes the explorer plays, where the language has a second team, and a note
- * while it is another team's: that view is read-only.
+ * while it is another team's: that view is read-only. A site owner's pick is also the team they
+ * act inside: it is saved first, so the view that follows is their own. Through the router,
+ * not a history write, and refreshed, since the page and the layout resolve the view and the
+ * acting team on the server.
  */
 export default function TeamPicker({
   teams,
   viewed,
-  onPick,
+  home,
+  className = "mb-3",
 }: {
   teams: TeamChoice[];
   viewed: ViewedTeam | null;
-  onPick: (slug: string) => void;
+  /** The default team's slug, named by leaving `team` out of the address. */
+  home: string | null;
+  className?: string;
 }) {
   const id = useId();
+  const lang = useLang();
+  const router = useRouter();
+  const pathname = usePathname();
+  const params = useSearchParams();
+  const { data: session } = useSession();
+  const [error, setError] = useState<string | null>(null);
   if (teams.length < 2 || viewed === null) return null;
   const ordered = [...teams].sort((a, b) => Number(b.privileged) - Number(a.privileged));
+
+  async function pick(slug: string) {
+    setError(null);
+    if (!isAdmin(session?.user.role)) {
+      router.push(pickedHref(pathname, params, slug, home), { scroll: false });
+      return;
+    }
+    const response = await fetch("/api/teams/acting", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ lang, team: slug }),
+    });
+    const body = (await response.json().catch(() => ({}))) as { home?: string | null; error?: string };
+    if (!response.ok) {
+      setError(body.error ?? "Could not switch teams.");
+      return;
+    }
+    router.push(pickedHref(pathname, params, slug, body.home ?? null), { scroll: false });
+    router.refresh();
+  }
+
   return (
-    <div className="mb-3 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm">
+    <div className={cn("flex flex-wrap items-center gap-x-3 gap-y-1 text-sm", className)}>
       <span className="flex items-center gap-2">
         <label htmlFor={id} className="text-muted-foreground">
           Team
@@ -30,7 +69,7 @@ export default function TeamPicker({
           id={id}
           className="border-input bg-background h-8 rounded-md border px-2 text-sm"
           value={viewed.slug}
-          onChange={(event) => onPick(event.target.value)}
+          onChange={(event) => void pick(event.target.value)}
         >
           {ordered.map((team) => (
             <option key={team.id} value={team.slug}>
@@ -44,6 +83,7 @@ export default function TeamPicker({
           {`You are listening to ${viewed.name}. Their takes play; their work is theirs.`}
         </p>
       )}
+      {error && <p className="text-destructive">{error}</p>}
     </div>
   );
 }

@@ -96,9 +96,10 @@ export async function requireToken(
 }
 
 /**
- * requireToken for a route that works for a second team too. A token has no session, so `work`
- * runs as the token's owner, in the teams its grants were checked in where the language has a
- * second team; a language with one team reads no membership.
+ * requireToken for a route that works for a second team too. A token acts as its owner's
+ * membership, never as a session or a site owner's acting cookie the request may also carry:
+ * `work` runs in the teams its grants were checked in where the language has a second team, and
+ * as no team where it has one, which reads no membership.
  */
 export async function withToken(
   request: Request,
@@ -107,7 +108,7 @@ export async function withToken(
 ): Promise<Response> {
   const { context, denied, teams } = await checkToken(request, options, true);
   if (denied) return denied;
-  return teams ? asTeams(teams, () => work(context)) : work(context);
+  return asTeams(teams ?? new Map(), () => work(context));
 }
 
 type TokenOptions = { need?: TokenNeed; also?: Capability; noQuery?: true | string };
