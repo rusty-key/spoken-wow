@@ -106,7 +106,7 @@ export default function FishReference({
         headers: { "Content-Type": "application/json" },
         ...init,
       });
-      const body = (await response.json()) as { reference?: ReferenceView | null; error?: string };
+      const body = (await response.json().catch(() => ({}))) as { reference?: ReferenceView | null; error?: string };
       if (!response.ok) throw new Error(body.error ?? `failed (${response.status})`);
       const next = body.reference ?? null;
       setReference(next);
@@ -133,7 +133,7 @@ export default function FishReference({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ replace: false }),
       });
-      const body = (await response.json()) as { samples?: Sample[]; error?: string };
+      const body = (await response.json().catch(() => ({}))) as { samples?: Sample[]; error?: string };
       if (!response.ok) throw new Error(body.error ?? `import failed (${response.status})`);
       onSamples(body.samples ?? []);
     } catch (err) {
