@@ -10,7 +10,7 @@ import { asSystem, ownTeam, systemRows, testUser } from "@/lib/teams/testing";
 
 import { StorageError } from "./backends";
 import { advanceMoves, cancelMove, runMoveForTests, startMove } from "./moves";
-import { testBackend } from "./testing";
+import { placeObject, testBackend } from "./testing";
 
 let fr: Awaited<ReturnType<typeof ownTeam>>;
 let user: Awaited<ReturnType<typeof testUser>>;
@@ -88,7 +88,7 @@ describe("moving a team's objects", () => {
     // A take made after the switch is only in the team's bucket.
     const late = randomBytes(32);
     backend.store.objects.set(`takes/${sha256Of(late)}`, { data: late, contentType: "audio/mpeg" });
-    await asSystem.query(`insert into "archive_object" ("prefix", "sha256", "backendId", "teamId") values ('takes', $1, $2, $3)`, [sha256Of(late), backend.id, fr.team]);
+    await placeObject(`takes/${sha256Of(late)}`, backend.id);
 
     const home = await startMove(fr.team, backend.id, null, user.id);
     expect(await runMoveForTests(home.id)).toBe("done");
@@ -142,11 +142,7 @@ describe("moving a team's objects", () => {
     const theirs = await testBackend();
     restores.push(theirs.restore);
     const [sha] = await takes(house, 1);
-    await asSystem.query(
-      `insert into "archive_object" ("prefix", "sha256", "backendId", "teamId")
-       values ('takes', $1, $2, (select "teamId" from "storage_backend" where "id" = $2))`,
-      [sha, theirs.id],
-    );
+    await placeObject(`takes/${sha}`, theirs.id);
     expect(await runMoveForTests((await startMove(fr.team, null, mine.id, user.id)).id)).toBe("done");
     expect(mine.store.objects.has(`takes/${sha}`)).toBe(true);
     expect((await locate(`takes/${sha}`, "frFR")).backendId).toBe(mine.id);

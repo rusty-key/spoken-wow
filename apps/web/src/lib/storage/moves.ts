@@ -12,11 +12,12 @@ import "server-only";
 import { ALL_TEAMS, query, queryIn, TEAM_ROWS, type TeamId } from "@/lib/db";
 import { recordObject } from "@/lib/blobs/keep";
 import { archive, sha256Of, type BlobStore } from "@/lib/blobs/store";
-import { backendStore, markMissing, split } from "@/lib/blobs/where";
+import { backendStore, markMissing, OBJECT_ROW, objectParams, split } from "@/lib/blobs/where";
 
 import { StorageError } from "./backends";
+import { errorText } from "./error-text";
 
-export type MoveState = "queued" | "running" | "done" | "failed" | "cancelled";
+type MoveState = "queued" | "running" | "done" | "failed" | "cancelled";
 
 export type MoveView = {
   id: string;
@@ -166,7 +167,7 @@ async function moveOne(key: string, move: MoveRow, source: BlobStore, target: Bl
   if (!there) await target.put(key, data, object.contentType);
   if (move.toBackendId) await recordObject(prefix, sha256, move.toBackendId, move.teamId, false);
   // Into ours: the source's row goes, so reads find our copy. The team's bytes stay where they are.
-  else await query(`delete from "archive_object" where "prefix" = $1 and "sha256" = $2 and "backendId" = $3`, [prefix, sha256, move.fromBackendId]);
+  else await query(`delete from "archive_object" where ${OBJECT_ROW}`, objectParams(key, move.fromBackendId!));
   return there ? "already" : "copied";
 }
 
@@ -174,7 +175,7 @@ async function moveOne(key: string, move: MoveRow, source: BlobStore, target: Bl
  * One chunk of one move. A target that refuses a write fails the move, with the reason; the
  * objects already moved stay moved, and a new move carries on from there.
  */
-export async function advanceMove(id: string, chunk = CHUNK): Promise<MoveState> {
+async function advanceMove(id: string, chunk = CHUNK): Promise<MoveState> {
   const [move] = await queryIn<MoveRow>(
     ALL_TEAMS,
     `update "storage_move" set "state" = 'running', "startedAt" = coalesce("startedAt", now())
@@ -201,7 +202,7 @@ export async function advanceMove(id: string, chunk = CHUNK): Promise<MoveState>
     const results = await Promise.allSettled(keys.slice(done, done + PARALLEL).map((key) => moveOne(key, move, source, target)));
     for (const result of results) {
       if (result.status === "fulfilled") counts[result.value]++;
-      else failure ??= result.reason instanceof Error ? result.reason.message : String(result.reason);
+      else failure ??= errorText(result.reason);
     }
   }
   const cursor = failure ? move.cursor : keys[keys.length - 1];
@@ -213,7 +214,7 @@ export async function advanceMove(id: string, chunk = CHUNK): Promise<MoveState>
             "lastError" = coalesce($6, "lastError"),
             "finishedAt" = case when $6::text is null then "finishedAt" else now() end
       where "id" = $1 and "state" = 'running'`,
-    [id, counts.copied, counts.already, counts.missing, cursor, failure?.slice(0, 300) ?? null],
+    [id, counts.copied, counts.already, counts.missing, cursor, failure],
   );
   return failure ? "failed" : "running";
 }
@@ -227,7 +228,7 @@ export async function advanceMoves(): Promise<void> {
         ALL_TEAMS,
         `update "storage_move" set "state" = 'failed', "lastError" = $2, "finishedAt" = now()
           where "id" = $1 and "state" in ('queued', 'running')`,
-        [id, (error instanceof Error ? error.message : String(error)).slice(0, 300)],
+        [id, errorText(error)],
       );
     });
   }
