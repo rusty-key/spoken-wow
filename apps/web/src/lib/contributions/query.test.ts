@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import { Roster } from "../voices/roster";
-import { DEFAULT_SORT, bucketOf, contributionsHref, nextSort, sortOf, matchesSearch, matchesStage, nextContributionFilters, pageOf, stagesOf } from "./query";
+import { DEFAULT_SORT, bucketOf, waitingReason, contributionsHref, nextSort, sortOf, matchesSearch, matchesStage, nextContributionFilters, pageOf, stagesOf } from "./query";
 
 describe("nextContributionFilters", () => {
   const current = { status: "new", bucket: "ready", client: "all", source: "quests", stage: [], sort: DEFAULT_SORT } as const;
@@ -163,6 +163,37 @@ describe("bucketOf", () => {
   it("is ready for places and readables, which name no NPC", () => {
     expect(bucketOf({ ...moment, source: "places", quest: null }, null, roster)).toBe("ready");
     expect(bucketOf({ ...moment, source: "readables", quest: null, locale: "deDE" }, null, roster)).toBe("ready");
+  });
+
+  describe("waitingReason", () => {
+    const why = (row: typeof moment, speaker: typeof npc | null) => waitingReason(row, speaker, roster, "German");
+
+    it("gives none for a row bucketOf calls ready", () => {
+      expect(why({ ...moment, hasSpeaker: true }, null)).toBeNull();
+      expect(why(moment, npc)).toBeNull();
+      expect(why({ ...moment, source: "places", quest: null }, null)).toBeNull();
+    });
+
+    it("names each reason bucketOf blocks a row for, with what an admin does", () => {
+      expect(why(moment, null)).toMatchObject({ kind: "no-npc", fix: "An admin names the NPC." });
+      expect(why(moment, { ...npc, conflict: [{}] })?.kind).toBe("conflict");
+      expect(why(moment, { ...npc, race: null })?.kind).toBe("unresolved");
+      expect(why(moment, { ...npc, race: "murloc" })).toMatchObject({
+        kind: "no-voice",
+        why: "The German voices have none for murloc, male, warrior yet.",
+      });
+      expect(why(moment, { ...npc, flavor: null })?.why).toBe("The German voices have none for tauren, male yet.");
+    });
+
+    it("blocks exactly the rows bucketOf blocks", () => {
+      const speakers = [null, npc, { ...npc, race: null }, { ...npc, conflict: [{}] }, { ...npc, race: "murloc" }, { ...npc, flavor: null }];
+      const rows = [moment, { ...moment, hasSpeaker: true }, { ...moment, quest: "gossip" as const, hasSpeaker: true }];
+      for (const row of rows) {
+        for (const speaker of speakers) {
+          expect(why(row, speaker) !== null).toBe(bucketOf(row, speaker, roster) === "blocked");
+        }
+      }
+    });
   });
 });
 
