@@ -1,14 +1,6 @@
 /*
- * Backstage pages: tools first. They rhyme with the front page in colour (its dark tones and gold)
- * but keep the site's own type and plain controls; the front page's display face, uppercase labels
- * and deep shadows stay on the front page.
- *
- * A page opts in with `.bs` on its <main> (BackstagePage does this). Inside it the shadcn tokens
- * point at that palette, so the Buttons, Inputs, Selects and Badges already on a page follow
- * without being rewritten. Pages without `.bs` stay as they were.
- *
- * Kept apart from the header's `.bn-theme` (brand.css): there `--accent` is the gold, here it is
- * shadcn's hover grey, and the `--bs-*` tokens carry the front page's own colours.
+ * Backstage pages opt in with `main.bs` (BackstagePage). Inside it the shadcn tokens take the front
+ * page's palette; `--accent` is shadcn's control hover, so gold is `--bs-gold`.
  */
 
 .bs {
@@ -64,7 +56,6 @@ body:has(main.bs) {
   outline-offset: 2px;
 }
 
-/* A wide page's column: lists whose columns want more room than the 1200px wrap. */
 .bs-wide {
   width: 100%;
   max-width: 1480px;
@@ -128,6 +119,10 @@ body:has(main.bs) {
 .bs-tab:hover {
   color: var(--foreground);
 }
+/* Inset: the strip scrolls sideways and would clip an outline drawn outside the tab. */
+.bs-tab:focus-visible {
+  outline-offset: -3px;
+}
 .bs-tab[aria-current="page"] {
   color: var(--foreground);
   box-shadow: inset 0 -2px 0 var(--bs-gold);
@@ -140,7 +135,6 @@ body:has(main.bs) {
   color: var(--bs-gold);
 }
 
-/* Chips: a smaller choice inside a tab, such as the section a list shows. */
 .bs-chips {
   display: flex;
   flex-wrap: wrap;
@@ -266,7 +260,6 @@ body:has(main.bs) {
   border-radius: 4px;
   font-family: ui-monospace, "Cascadia Mono", Consolas, monospace;
   font-size: 0.88em;
-  white-space: nowrap;
 }
 .bs-token {
   background: rgba(240, 194, 90, 0.14);

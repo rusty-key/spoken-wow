@@ -66,7 +66,7 @@ import { BASE_LANG, isClientLang, isLang, langName, localeHref, type Lang } from
 import type { Roster } from "@/lib/voices/roster";
 import { loadRoster } from "@/lib/voices/roster-store";
 import { can, isAdmin } from "@/lib/permissions";
-import { lineByPath } from "@/lib/places/catalogue";
+import { linesByPath } from "@/lib/places/catalogue";
 
 export const metadata: Metadata = { title: "Contributions · Spoken" };
 
@@ -85,6 +85,8 @@ async function existingTextFor(
   bookMatches: Map<number, BookMatchResult>,
 ): Promise<Record<number, string>> {
   const found: Record<number, string> = {};
+  // One catalogue read for every places row, not one per row.
+  const places = contributions.some((row) => row.source === "places") ? await linesByPath() : null;
 
   await Promise.all(
     contributions.map(async (row) => {
@@ -98,8 +100,8 @@ async function existingTextFor(
         return;
       }
       const lookup = corpusLookup(row.source, row.key);
-      if (lookup?.source === "places") {
-        const line = await lineByPath(lookup.mapID, lookup.slug);
+      if (lookup?.source === "places" && places && Number.isInteger(lookup.mapID)) {
+        const line = places.get(`${lookup.mapID}/${lookup.slug}`);
         if (line) found[row.id] = line.full;
       }
     }),

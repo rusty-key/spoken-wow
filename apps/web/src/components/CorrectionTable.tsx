@@ -1,19 +1,8 @@
 "use client";
 
 /**
- * Corrections on the review page: a quest line or book page as the corpus has it, beside the text a
- * player's client showed for the same quest and moment, or page, with the words that differ marked on each side.
- *
- * Both texts are shown open, not behind a `<details>` as the triage table's are: the
- * difference is the whole reason the row is here, and it is usually a word or two in a
- * paragraph -- the marks are what make it a glance rather than a read.
- *
- * A quest moment the game shows in more than one wording lists each under "Corpus has", the
- * one closest to the player's text picked; picking another sets the player's text against it,
- * and Replace ours fixes the one picked.
- *
- * Takes `CorrectionRow`, not the stored row, for the reason ContributionTable's docstring gives:
- * a client component's props are readable in the page's payload.
+ * Keep both wordings visible so reviewers can compare them before replacing one. Pass only fields
+ * reviewers may see, because client props are visible in the page payload.
  */
 import Link from "next/link";
 import { useCallback, useRef, useState } from "react";
@@ -65,7 +54,6 @@ export type CorrectionRow = {
   /** What the player's client showed. */
   after: string;
   body: string | null;
-  /** Why a reviewer dropped it, where they said. */
   rejectReason: string | null;
 };
 
@@ -74,7 +62,6 @@ export type CorrectionRow = {
  * the moderator's edit of the player's text where there is one.
  */
 type Accept = ({ lineId: string; variant: number } | { as: "wording" }) & { text?: string };
-/** What a status change sends beside the status: how to accept, or why a reject was made. */
 type Extra = Accept | { reason: string };
 
 export type CorrectionSource = "quests" | "readables";

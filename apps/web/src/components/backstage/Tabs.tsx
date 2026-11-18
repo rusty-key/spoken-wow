@@ -1,7 +1,6 @@
 "use client";
 
 import Link from "next/link";
-import type { MouseEvent } from "react";
 
 export type TabLink = {
   value: string;
@@ -12,12 +11,13 @@ export type TabLink = {
 };
 
 /**
- * A plain click on a tab, handed to `onGo` (a pending push, so the page can dim while it loads).
- * A modified click opens a tab or a window, which is the link's own to do.
+ * A client-side navigation to `href`, handed to `onGo` (a pending push, so the page can dim while
+ * it loads). Next calls onNavigate only for a plain click: Ctrl-, Shift-, Cmd- and Alt-clicks stay
+ * the browser's.
  */
 function follow(onGo: ((href: string) => void) | undefined, href: string) {
-  return (event: MouseEvent<HTMLAnchorElement>) => {
-    if (!onGo || event.metaKey || event.ctrlKey || event.shiftKey || event.button !== 0) return;
+  if (!onGo) return undefined;
+  return (event: { preventDefault: () => void }) => {
     event.preventDefault();
     onGo(href);
   };
@@ -41,7 +41,7 @@ export function Tabs({
         <Link
           key={tab.value}
           href={tab.href}
-          onClick={follow(onGo, tab.href)}
+          onNavigate={follow(onGo, tab.href)}
           aria-current={tab.value === active ? "page" : undefined}
           className="bs-tab"
         >
@@ -71,7 +71,7 @@ export function Chips({
         <Link
           key={tab.value}
           href={tab.href}
-          onClick={follow(onGo, tab.href)}
+          onNavigate={follow(onGo, tab.href)}
           aria-current={tab.value === active ? "page" : undefined}
           className="bs-chip"
         >

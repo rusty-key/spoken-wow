@@ -69,7 +69,7 @@ export type MatchVia = "moderator" | "owner" | "text" | "title" | "none";
 /**
  * Whether accepting many rows at once may take a row with this match. A new book is minted only
  * by accepting its row on its own: a title no corpus book has may still be one under another
- * title. A correction replaces words the page has, so it is taken from the review page's changes to lines we already have.
+ * title. A correction replaces existing text, so it is reviewed on its own.
  */
 export const bulkAcceptable = (match: BookMatchResult) =>
   match.kind === "translation" || match.kind === "new-page";

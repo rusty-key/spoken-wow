@@ -5,11 +5,7 @@ import { cn } from "@/lib/utils";
 export type PanelTone = "good" | "fix" | "drop" | "info" | "neutral";
 
 /**
- * A shadowed panel with a head: an icon in the panel's tone, a title with a count, a line saying
- * what belongs here, and an action on the right. Its children are rows, divided by a hairline.
- *
- * `quiet` drops the shadow and the lighter head, for a panel that holds what is not the reader's
- * to act on (lines waiting on someone else).
+ * Use `quiet` for work the current reviewer cannot act on.
  */
 export default function Panel({
   tone = "neutral",

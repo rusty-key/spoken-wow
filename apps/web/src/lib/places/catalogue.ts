@@ -312,7 +312,7 @@ export { stampOf as catalogueStamp };
  *
  * Memoised like catalogue() and addressableFiles(), and for the same reason.
  */
-async function linesByPath(lang: Lang): Promise<Map<string, CatalogueEntry>> {
+export async function linesByPath(lang: Lang = BASE_LANG): Promise<Map<string, CatalogueEntry>> {
   // Keyed on the catalogue it was built from, so it rebuilds exactly when that does and
   // asks the database nothing of its own.
   const entries = await catalogue(lang);
