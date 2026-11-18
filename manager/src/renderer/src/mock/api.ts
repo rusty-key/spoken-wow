@@ -2,9 +2,9 @@
 // `npm run dev:web`). Address options: ?offline=1, ?empty=1 (no games), ?empty=packs (an empty community
 // list), ?readonly=1 (Anniversary is read-only), ?missing=anniversary (that game was not found; also forever, era), ?linked=1 (Spoken on Anniversary is a link to a development folder), ?update=1 (a manager update banner), ?update=url (an update to download in the browser), ?platform=darwin|linux|win32 (the window frame of that system), ?sharing=on|off (the first-start question already answered), ?contrib=out|fail|nonadmin|result|expire|unreachable (Contributor: start signed out, sign-in refused, an account without admin rights, a finished release to show, a session that ends after a few seconds, a site that answers Retry only after ten seconds), ?teams=1 (teams' voice packs: German has Stimmen's beside its own, Japanese one team's, Polish two teams').
 import type { AddGameResult, InstallOptions, ManagerApi, UpdaterState } from '@shared/api'
-import { LANGUAGES, productById, languageFolders, languagesFor, productsFor, SPOKEN_FOLDERS, type ChannelListing } from '@shared/products'
-import type { Catalog, ChannelTeam, CommunityCatalog, CommunityPack, QuestsSide, Section, ContributorView, GameInstall, JobProgress, Product, PublishResult, ProductStatus, ReleaseInfo, ReleaseRow, Settings, SharingStatus, Snapshot } from '@shared/types'
-import { DEFAULT_SETTINGS, FLAVOR_FOLDER_LIST, communityFolder } from '@shared/types'
+import { LANGUAGES, productById, languageFolders, languagesFor, packFolder, productsFor, SPOKEN_FOLDERS, type ChannelListing } from '@shared/products'
+import type { Catalog, ChannelTeam, CommunityCatalog, CommunityPack, Section, ContributorView, GameInstall, JobProgress, Product, PublishResult, ProductStatus, ReleaseInfo, ReleaseRow, Settings, SharingStatus, Snapshot } from '@shared/types'
+import { DEFAULT_SETTINGS, FLAVOR_FOLDER_LIST, QUESTS_SIDES, communityFolder } from '@shared/types'
 import { compareVersions } from '@shared/version'
 
 const MB = 1024 * 1024
@@ -103,14 +103,8 @@ const team = (slug: string, name: string): ChannelTeam => ({ slug, name, officia
 function teamListing(): ChannelListing {
   const packs: ChannelListing['packs'] = {}
   const add = (lang: string, section: Section, t: ChannelTeam, suffixed: boolean): void => {
-    const tail = `_${lang}${suffixed ? `_${t.slug}` : ''}`
-    if (section !== 'quests') {
-      packs[`Spoken${section[0]!.toUpperCase()}${section.slice(1)}Audio${tail}`] = { lang, section, pack: null, team: t }
-      return
-    }
-    for (const side of ['alliance', 'horde', 'shared', 'gossip'] as QuestsSide[]) {
-      packs[`SpokenQuestsAudio${side[0]!.toUpperCase()}${side.slice(1)}${tail}`] = { lang, section, pack: side, team: t }
-    }
+    const slug = suffixed ? t.slug : null
+    for (const side of section === 'quests' ? QUESTS_SIDES : [null]) packs[packFolder(section, lang, side, slug)] = { lang, section, pack: side, team: t }
   }
   const stimmen = team('stimmen', 'Stimmen')
   const kotoba = team('kotoba', 'Kotoba')

@@ -130,7 +130,10 @@ describe('Voice Packs: the Author filter', () => {
 })
 
 describe('authorsOf', () => {
-  const product = (id: string, team: ChannelTeam | null | undefined): Product => ({ id, kind: 'voices', title: '', description: '', section: 'places', lang: 'deDE', tagPrefix: id, folders: [id], assetPattern: '', team })
+  const product = (id: string, team: ChannelTeam): Product => ({
+    id, kind: 'voices', title: '', description: '', section: 'places', lang: 'deDE', tagPrefix: id, folders: [id], assetPattern: '', team,
+    author: { key: team.slug, name: team.name, official: team.official }
+  })
 
   it('orders official teams first, then by name', () => {
     const official = { slug: 'zeta', name: 'Zeta', official: true }
@@ -140,9 +143,24 @@ describe('authorsOf', () => {
 
   it("counts page packs as the language's one official team", () => {
     const official = { slug: 'deutsch', name: 'Deutsch', official: true }
-    const authors = authorsOf([product('a', null), product('b', official), product('c', STIMMEN)])
+    const listing: ChannelListing = {
+      packs: {
+        SpokenPlacesAudio_deDE: at('deDE', 'places', null, null),
+        SpokenReadablesAudio_deDE_deutsch: at('deDE', 'readables', null, official),
+        SpokenPlacesAudio_deDE_stimmen: at('deDE', 'places', null, STIMMEN)
+      },
+      languages: {}
+    }
+    const products = productsFor(listing).filter((p) => p.kind === 'voices' && p.folders!.every((f) => listing.packs[f]))
+    const authors = authorsOf(products)
     expect(authors.list.map((a) => a.key)).toEqual(['deutsch', 'stimmen'])
-    expect(groupByAuthor([product('a', null), product('b', official)], authors).map((g) => g.rows.map((p) => p.id))).toEqual([['a', 'b']])
+    const page = products.filter((p) => p.team !== STIMMEN)
+    expect(groupByAuthor(page, authors).map((g) => g.rows.map((p) => p.id))).toEqual([['places-audio-deDE', 'readables-audio-deDE-deutsch']])
+  })
+
+  it('gives page packs no name when the language has no official team, or two', () => {
+    const two = { ...LISTING, packs: { ...LISTING.packs, SpokenReadablesAudio_deDE_aa: at('deDE', 'readables', null, { slug: 'aa', name: 'A', official: true }), SpokenBossesAudio_deDE_bb: at('deDE', 'bosses', null, { slug: 'bb', name: 'B', official: true }) } }
+    for (const listing of [LISTING, two]) expect(productsFor(listing).find((p) => p.id === 'places-audio-deDE')?.author).toEqual({ key: '', name: null, official: true })
   })
 })
 

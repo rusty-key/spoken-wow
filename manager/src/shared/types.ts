@@ -43,6 +43,16 @@ export type Section = 'quests' | 'places' | 'readables' | 'bosses'
 export type QuestsPack = 'all' | 'alliance' | 'horde' | 'shared' | 'gossip'
 export type QuestsSide = Exclude<QuestsPack, 'all'>
 
+/** Every voice section, in the order the Voice Packs page lists them. */
+export const SECTIONS: readonly Section[] = ['quests', 'places', 'readables', 'bosses']
+/** The quests sides, in the order a quests bundle holds their folders. */
+export const QUESTS_SIDES: readonly QuestsSide[] = ['alliance', 'horde', 'shared', 'gossip']
+
+/** A language code as the game and a pack's .toc write it: `deDE`. */
+export const LANG_CODE = /^[a-z]{2}[A-Z]{2}$/
+/** A team's slug, as scripts/lib/packs.mjs takes it. */
+export const TEAM_SLUG = /^[a-z][a-z0-9-]{1,40}$/
+
 /** The team that released a pack, as index-v2.json names it. */
 export interface ChannelTeam {
   /** Frozen once the team has released: it is part of its packs' folders. */
@@ -80,6 +90,19 @@ export interface Product {
   legacy?: { id: string; tagPrefix: string; folders: string[]; assetPattern: string }
   /** Who released a voice pack, as the channel says; null for a page pack, absent when the channel does not carry it. */
   team?: ChannelTeam | null
+  /** Who made a voice pack, as the Voice Packs page groups and names it (shared/products.ts resolves it). */
+  author?: PackAuthor
+}
+
+/**
+ * A voice pack's author. A page pack's is its language's one official team when the channel names exactly one;
+ * otherwise PAGE_AUTHOR, with no name, which the window gives.
+ */
+export interface PackAuthor {
+  /** The team's slug, or PAGE_AUTHOR. */
+  key: string
+  name: string | null
+  official: boolean
 }
 
 /** A voice language the Voice Packs page can list, named in its own words. */
@@ -265,15 +288,15 @@ export const ALL_AUTHORS = 'all'
 /** The author of page packs, which the channel gives no team. Not a slug, so no team can take it. */
 export const PAGE_AUTHOR = ''
 
-const VOICE_LANG = /^[a-z]{2}[A-Z]{2}$/
-const AUTHOR = /^(all|[a-z][a-z0-9-]{1,40})?$/
+// ALL_AUTHORS, a team's slug, or PAGE_AUTHOR.
+const AUTHOR = new RegExp(`^(all|${TEAM_SLUG.source.slice(1, -1)})?$`)
 
 /** The Author choices that are a language's and an author's; null when `v` is not a record at all. */
 export function cleanVoiceAuthors(v: unknown): Record<string, string> | null {
   if (typeof v !== 'object' || v === null || Array.isArray(v)) return null
   const out: Record<string, string> = {}
   for (const [lang, author] of Object.entries(v)) {
-    if (VOICE_LANG.test(lang) && typeof author === 'string' && AUTHOR.test(author)) out[lang] = author
+    if (LANG_CODE.test(lang) && typeof author === 'string' && AUTHOR.test(author)) out[lang] = author
   }
   return out
 }

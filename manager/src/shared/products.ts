@@ -1,12 +1,12 @@
 // What the manager can install, as a table. The names follow scripts/lib/packs.mjs in the repo:
 // a release tag is `<product id>/v<version>`, English's folders are the plain names and a
 // language's are those plus `_<lang>`. Which of these have a release is the catalog's business.
-import type { ChannelTeam, Product, QuestsPack, QuestsSide, Section } from './types'
+import { PAGE_AUTHOR, QUESTS_SIDES, type ChannelTeam, type PackAuthor, type Product, type QuestsPack, type QuestsSide, type Section, type VoiceLanguage } from './types'
 
 export const BASE_LANGUAGE = 'enUS'
 
 /** Languages in the order the Voice Packs page lists them, named in their own language. */
-export const LANGUAGES: { code: string; name: string }[] = [
+export const LANGUAGES: VoiceLanguage[] = [
   { code: 'enUS', name: 'English' },
   { code: 'deDE', name: 'Deutsch' },
   { code: 'esES', name: 'Español (España)' },
@@ -40,7 +40,7 @@ export function languageFolders(lang: string): string[] {
   return RELEASE_PACKS.map((p) => (lang === 'enUS' ? p : `${p}_${lang}`))
 }
 
-const SIDES: Record<Exclude<QuestsPack, 'all'>, string> = {
+const SIDES: Record<QuestsSide, string> = {
   alliance: 'Alliance',
   horde: 'Horde',
   shared: 'Shared',
@@ -86,54 +86,70 @@ function zip(base: string): string {
   return `^${base}-\\d.*\\.zip$`
 }
 
-function voices(section: Section, lang: string, pack: QuestsPack): Product {
-  const english = lang === BASE_LANGUAGE
-  let id: string
-  let folder: string
-  let base: string
-  let legacy: Product['legacy']
-  if (section === 'quests') {
-    const code = english ? '' : `_${lang}`
-    const suffix = english ? '' : `-${lang}`
-    id = pack === 'all' ? `quests-audio${suffix}` : `quests-audio-${pack}${suffix}`
-    folder = pack === 'all' ? '' : `SpokenQuestsAudio${SIDES[pack as Exclude<QuestsPack, 'all'>]}${code}`
-    base = pack === 'all' ? `SpokenQuestsAudioAll${code}` : folder
-    // A language's quests were one folder before they were split as English's are.
-    if (!english && pack === 'all') {
-      const old = `SpokenQuestsAudio${code}`
-      legacy = { id, tagPrefix: id, folders: [old], assetPattern: zip(old) }
-    }
-  } else {
-    const name = FOLDER[section]
-    const suffix = english ? '' : `-${lang}`
-    id = `${section}-audio${suffix}`
-    folder = english ? name : `${name}_${lang}`
-    base = folder
-    const old = LEGACY[section]
-    if (old) {
-      const oldFolder = english ? old.folder : `${old.folder}_${lang}`
-      legacy = { id: `${old.section}-audio${suffix}`, tagPrefix: `${old.section}-audio${suffix}`, folders: [oldFolder], assetPattern: zip(oldFolder) }
-    }
-  }
-  // "all" is a bundle holding the four split packs' folders, as the store installs them.
-  const folders =
-    section === 'quests' && pack === 'all'
-      ? Object.values(SIDES).map((s) => `SpokenQuestsAudio${s}${english ? '' : `_${lang}`}`)
-      : [folder]
-  const title = `${SECTION_TITLE[section]} voices`
+/** What a pack's id and folders carry after the name: nothing for English's page packs, else the language and a team's slug. */
+function tail(lang: string, slug: string | null, sep: '-' | '_'): string {
+  return lang === BASE_LANGUAGE && !slug ? '' : `${sep}${lang}${slug ? `${sep}${slug}` : ''}`
+}
+
+/** A pack's product id, which is also its release tag prefix; a team's when `slug` is given. */
+export function productIdOf(section: Section, lang: string, pack: QuestsPack, slug: string | null = null): string {
+  const t = tail(lang, slug, '-')
+  if (section !== 'quests') return `${section}-audio${t}`
+  return pack === 'all' ? `quests-audio${t}` : `quests-audio-${pack}${t}`
+}
+
+/** A pack's folder: a quests side's, or another section's. */
+export function packFolder(section: Section, lang: string, side: QuestsSide | null, slug: string | null = null): string {
+  const name = section === 'quests' ? `SpokenQuestsAudio${SIDES[side!]}` : FOLDER[section]
+  return `${name}${tail(lang, slug, '_')}`
+}
+
+/** What a pack's zip is named before its version: the quests bundle's has a name of its own. */
+function assetBaseOf(section: Section, lang: string, pack: QuestsPack, slug: string | null): string {
+  return section === 'quests' && pack === 'all' ? `SpokenQuestsAudioAll${tail(lang, slug, '_')}` : packFolder(section, lang, pack === 'all' ? null : pack, slug)
+}
+
+function voiceProduct(section: Section, lang: string, pack: QuestsPack, folders: string[], slug: string | null): Product {
+  const id = productIdOf(section, lang, pack, slug)
   return {
     id,
     kind: 'voices',
-    title,
+    title: `${SECTION_TITLE[section]} voices`,
     description: section === 'quests' ? SIDE_BLURB[pack] : SECTION_BLURB[section],
     section,
     lang,
     pack: section === 'quests' ? pack : undefined,
     tagPrefix: id,
     folders,
-    assetPattern: zip(base),
-    ...(legacy ? { legacy } : {})
+    assetPattern: zip(assetBaseOf(section, lang, pack, slug))
   }
+}
+
+/** The page packs' author until the channel says whose they are. */
+export const PAGE_PACKS: PackAuthor = { key: PAGE_AUTHOR, name: null, official: true }
+
+/** A pack of the table: a page pack, with what it was released as before. */
+function voices(section: Section, lang: string, pack: QuestsPack): Product {
+  // "all" is a bundle holding the four split packs' folders, as the store installs them.
+  const folders = section === 'quests' && pack === 'all' ? QUESTS_SIDES.map((s) => packFolder('quests', lang, s)) : [packFolder(section, lang, section === 'quests' ? (pack as QuestsSide) : null)]
+  const product = voiceProduct(section, lang, pack, folders, null)
+  const english = lang === BASE_LANGUAGE
+  let legacy: Product['legacy']
+  if (section === 'quests') {
+    // A language's quests were one folder before they were split as English's are.
+    if (!english && pack === 'all') {
+      const old = `SpokenQuestsAudio_${lang}`
+      legacy = { id: product.id, tagPrefix: product.id, folders: [old], assetPattern: zip(old) }
+    }
+  } else {
+    const old = LEGACY[section]
+    if (old) {
+      const id = `${old.section}-audio${tail(lang, null, '-')}`
+      const oldFolder = `${old.folder}${tail(lang, null, '_')}`
+      legacy = { id, tagPrefix: id, folders: [oldFolder], assetPattern: zip(oldFolder) }
+    }
+  }
+  return { ...product, author: PAGE_PACKS, ...(legacy ? { legacy } : {}) }
 }
 
 const SPOKEN: Product = {
@@ -149,7 +165,7 @@ const SPOKEN: Product = {
 function build(): Product[] {
   const out: Product[] = [SPOKEN]
   for (const { code } of LANGUAGES) {
-    for (const pack of ['all', 'alliance', 'horde', 'shared', 'gossip'] as QuestsPack[]) out.push(voices('quests', code, pack))
+    for (const pack of ['all', ...QUESTS_SIDES] as QuestsPack[]) out.push(voices('quests', code, pack))
     // Italian has quests voices only, so far, and bosses English only. With no release in a
     // language, the voice packs page still shows that language's first product.
     out.push(voices('places', code, 'all'), voices('readables', code, 'all'), voices('bosses', code, 'all'))
@@ -175,26 +191,9 @@ export interface ChannelListing {
   languages: Record<string, { name: string; native: string }>
 }
 
-const QUESTS_SIDES: QuestsSide[] = ['alliance', 'horde', 'shared', 'gossip']
-
 /** A pack the table does not name, from its folders as the index lists them. */
-function channelProduct(section: Section, lang: string, slug: string | null, pack: QuestsPack | undefined, folders: string[], team: ChannelTeam | null): Product {
-  const tail = `-${lang}${slug ? `-${slug}` : ''}`
-  const id = section !== 'quests' ? `${section}-audio${tail}` : pack === 'all' ? `quests-audio${tail}` : `quests-audio-${pack}${tail}`
-  const base = pack === 'all' ? `SpokenQuestsAudioAll_${lang}${slug ? `_${slug}` : ''}` : folders[0]!
-  return {
-    id,
-    kind: 'voices',
-    title: `${SECTION_TITLE[section]} voices`,
-    description: section === 'quests' ? SIDE_BLURB[pack!] : SECTION_BLURB[section],
-    section,
-    lang,
-    pack,
-    tagPrefix: id,
-    folders,
-    assetPattern: zip(base),
-    team
-  }
+function channelProduct(section: Section, lang: string, slug: string | null, pack: QuestsPack, folders: string[], team: ChannelTeam | null): Product {
+  return { ...voiceProduct(section, lang, pack, folders, slug), team }
 }
 
 /** The team slug a folder carries after its language; null for a language's plain folder. */
@@ -232,21 +231,41 @@ export function productsFor(index: ChannelListing | null): Product[] {
   }
   for (const g of groups.values()) {
     if (g.section !== 'quests') {
-      add(channelProduct(g.section, g.lang, g.slug, undefined, [...g.folders.values()], g.team))
+      add(channelProduct(g.section, g.lang, g.slug, 'all', [...g.folders.values()], g.team))
       continue
     }
     const present = QUESTS_SIDES.filter((s) => g.folders.has(s))
     if (present.length === QUESTS_SIDES.length) add(channelProduct('quests', g.lang, g.slug, 'all', present.map((s) => g.folders.get(s)!), g.team))
     for (const side of present) add(channelProduct('quests', g.lang, g.slug, side, [g.folders.get(side)!], g.team))
   }
-  return out
+  return withAuthors(out)
+}
+
+const teamAuthor = (team: ChannelTeam): PackAuthor => ({ key: team.slug, name: team.name, official: team.official })
+
+/**
+ * Each voice product's author. A page pack has no team, but its language's privileged team made it: with one named
+ * official team in the language, page packs are that team's, so one team is not two authors.
+ */
+function withAuthors(products: Product[]): Product[] {
+  const official = new Map<string, Map<string, ChannelTeam>>()
+  for (const p of products) {
+    if (!p.team?.official) continue
+    const teams = official.get(p.lang!) ?? new Map<string, ChannelTeam>()
+    official.set(p.lang!, teams.set(p.team.slug, p.team))
+  }
+  const page = (lang: string): PackAuthor => {
+    const teams = [...(official.get(lang)?.values() ?? [])]
+    return teams.length === 1 ? teamAuthor(teams[0]!) : PAGE_PACKS
+  }
+  return products.map((p) => (p.kind === 'voices' ? { ...p, author: p.team ? teamAuthor(p.team) : page(p.lang!) } : p))
 }
 
 /**
  * Every language the Manager can list: today's in their order and words, then the index's others by English name,
  * each in its own words. Today's keep the table's names, which tell esES from esMX.
  */
-export function languagesFor(index: ChannelListing | null): { code: string; name: string }[] {
+export function languagesFor(index: ChannelListing | null): VoiceLanguage[] {
   const known = new Set(LANGUAGES.map((l) => l.code))
   const others = new Set([...Object.keys(index?.languages ?? {}), ...Object.values(index?.packs ?? {}).map((p) => p.lang)].filter((c) => !known.has(c)))
   const english = (code: string): string => index?.languages[code]?.name ?? code

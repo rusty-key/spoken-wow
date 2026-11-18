@@ -1,5 +1,5 @@
 import { useMemo, useState, type ReactNode } from 'react'
-import type { Product, ProductStatus, Section } from '@shared/types'
+import { SECTIONS, type Product, type ProductStatus } from '@shared/types'
 import { isChannelRelease } from '@shared/channel'
 import { BASE_LANGUAGE, LANGUAGES, languageName } from '@shared/products'
 import { jobBusy, latestOf, releasesFor, statusOf } from '../catalog'
@@ -10,8 +10,6 @@ import { formatBytes, formatDate } from '../format'
 import { jobKey, useGame, useStore } from '../store'
 import { S } from '../strings'
 import { ALL_AUTHORS, authorsOf, chosenAuthor, groupByAuthor, installAllHasWork, installAllPlan, type Author, type InstallAllPlan } from '../voices'
-
-const SECTIONS: Section[] = ['quests', 'places', 'readables', 'bosses']
 
 export function VoicePacksPage(): ReactNode {
   const { state, actions } = useStore()
@@ -26,8 +24,8 @@ export function VoicePacksPage(): ReactNode {
   const pre = state.settings.includePrereleases
 
   const voices = useMemo(() => state.products.filter((p) => p.kind === 'voices'), [state.products])
-  const released = (p: Product): boolean => releasesFor(state.catalog, p.id, pre).length > 0
-  const withRelease = new Set(voices.filter(released).map((p) => p.lang))
+  const releasedVoices = useMemo(() => voices.filter((p) => releasesFor(state.catalog, p.id, pre).length > 0), [voices, state.catalog, pre])
+  const withRelease = useMemo(() => new Set(releasedVoices.map((p) => p.lang)), [releasedVoices])
   const chosen = state.settings.voiceLanguage || BASE_LANGUAGE
   const languages = state.languages.length > 0 ? state.languages : LANGUAGES
   const chips = languages.filter((l) => withRelease.has(l.code) || l.code === chosen)
@@ -35,7 +33,8 @@ export function VoicePacksPage(): ReactNode {
   if (!game) return <NoGame />
 
   const inLang = voices.filter((p) => p.lang === chosen)
-  const authors = authorsOf(inLang.filter(released))
+  const releasedInLang = releasedVoices.filter((p) => p.lang === chosen)
+  const authors = authorsOf(releasedInLang)
   const author = chosenAuthor(state.settings.voiceAuthors[chosen], authors)
   const byAuthor = (p: Product): boolean => author === ALL_AUTHORS || authors.keyOf(p) === author
   const chooseAuthor = (key: string): void => {
@@ -49,7 +48,6 @@ export function VoicePacksPage(): ReactNode {
     if (s?.state === 'linked' || jobBusy(state.jobs[jobKey(game.id, p.id)])) return false
     return (s?.state ?? 'not-installed') === 'not-installed'
   }
-  const releasedInLang = inLang.filter(released)
   const plan = installAllPlan(releasedInLang, authors, picked ?? author, needed)
   const todo = plan.kind === 'install' ? plan.products : []
   const anything = installAllHasWork(plan, releasedInLang, authors, needed)
@@ -121,7 +119,7 @@ export function VoicePacksPage(): ReactNode {
             </div>
           )}
 
-          {voices.length === 0 || inLang.length === 0 || !inLang.some(released) ? (
+          {releasedInLang.length === 0 ? (
             <p className="card pad muted">
               {S.common.notReleased}. {S.voices.nothingReleased}
             </p>
@@ -129,7 +127,7 @@ export function VoicePacksPage(): ReactNode {
             <div className="sections">
               {SECTIONS.map((section) => {
                 const all = inLang.filter((p) => p.section === section)
-                const some = all.filter(released)
+                const some = releasedInLang.filter((p) => p.section === section)
                 // With nothing released, the section still shows its first product, as not released.
                 const groups = some.length > 0 ? groupByAuthor(some.filter(byAuthor), authors) : all.slice(0, 1).map((p) => ({ author: null, rows: [p] }))
                 if (groups.length === 0) return null
@@ -198,7 +196,7 @@ export function InstallAllConfirm({ plan, lang, size, onPick, onInstall, onCance
 }
 
 export function authorName(author: Author): string {
-  return author.name || S.voices.pageAuthor
+  return author.name ?? S.voices.pageAuthor
 }
 
 /** One author's rows of a section: the bundle, then the split packs. */
@@ -236,6 +234,7 @@ function VoiceRow({ product, gameId, writable }: { product: Product; gameId: str
   const present = s !== 'not-installed'
   const channel = isChannelRelease(latest)
   const size = latest ? formatBytes(status?.delta ? status.delta.bytes : latest.assetSize) : ''
+  const maker = product.author?.official === false ? product.author.name : null
   return (
     <PackRow
       gameId={gameId}
@@ -245,7 +244,7 @@ function VoiceRow({ product, gameId, writable }: { product: Product; gameId: str
       title={packName(product)}
       text={
         <>
-          {product.team && !product.team.official ? `${S.voices.by(product.team.name)} · ` : ''}
+          {maker ? `${S.voices.by(maker)} · ` : ''}
           {latest ? `${size} · ` : ''}
           {present && status?.installedVersion ? S.voices.installedVersion(status.installedVersion) : S.voices.notInstalled}
           {s === 'update-available' && latest ? ` → ${channel ? formatDate(latest.publishedAt) : latest.version}` : ''}

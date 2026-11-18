@@ -124,6 +124,19 @@ describe('the channel through the service', () => {
     expect(told.languages.at(-1)).toEqual({ code: 'jaJP', name: '日本語' })
   })
 
+  it("keeps its products when a refresh finds the channel unchanged", async () => {
+    const s = await serveChannel(channelFixture(keys, [spec]))
+    server = s
+    const svc = new ManagerService({
+      dataPath: tmpDir(), appVersion: '0.1.0', send: () => undefined,
+      fetchImpl: githubFetch(), autoPaths: [], isRunning: async () => false, packsBaseUrl: s.base, packsPublicKey: keys.publicKey
+    })
+    await svc.refreshChannel()
+    const products = svc.products()
+    await svc.refreshChannel()
+    expect(svc.products()).toBe(products)
+  })
+
   it('offers, installs and removes a channel pack', async () => {
     const { svc, game, sent } = await setup({ spoken: '3.0.0' })
     const before = (await svc.statuses(game.id)).find((s) => s.productId === 'places-audio-deDE')

@@ -217,7 +217,7 @@ export class ManagerService {
         ...(this.opts.fetchImpl ? { fetchImpl: this.opts.fetchImpl } : {}),
         ...(this.opts.apiBase ? { apiBase: this.opts.apiBase } : {})
       }),
-      fetchIndex(this.opts.dataPath, this.channelOptions())
+      fetchIndex(this.opts.dataPath, this.channelOptions(), this.channel)
     ])
     if (ch.index) this.channel = ch.index
     if (!ch.offline) this.channelFetchedAt = Date.now()
@@ -311,7 +311,7 @@ export class ManagerService {
   }
 
   private async fetchChannel(signal?: AbortSignal): Promise<void> {
-    const ch = await fetchIndex(this.opts.dataPath, this.channelOptions(signal))
+    const ch = await fetchIndex(this.opts.dataPath, this.channelOptions(signal), this.channel)
     if (ch.offline || !ch.index) throw new PlainError(t('service.channelUnreadable'))
     const changed = ch.index.generatedAt !== this.channel?.generatedAt
     this.channel = ch.index
@@ -354,6 +354,7 @@ export class ManagerService {
     return next
   }
 
+  // Keyed by the index object, which a fetch keeps when the channel has not changed.
   private productsMemo: { channel: ChannelIndexV2 | null; products: Product[] } | null = null
 
   /** The voice products and Spoken: the table, and every team's and new language's pack the channel lists. */

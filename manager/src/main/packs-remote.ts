@@ -5,7 +5,7 @@ import { createHash, createPublicKey, verify } from 'node:crypto'
 import fs from 'node:fs'
 import path from 'node:path'
 import { PRODUCTS } from '../shared/products'
-import type { ChannelTeam, QuestsSide, Section } from '../shared/types'
+import { LANG_CODE, QUESTS_SIDES, SECTIONS, TEAM_SLUG, type ChannelTeam, type QuestsSide, type Section } from '../shared/types'
 import { PlainError } from './errors'
 import { PACKS_BASE_URL, PACKS_PUBLIC_KEY } from './packs-key'
 import { log } from './state'
@@ -75,10 +75,6 @@ const SHA = /^[0-9a-f]{64}$/
 const REV = /^\d{8}T\d{6}Z$/
 // As scripts/lib/packs.mjs PACK_ID: a team other than the language's privileged one carries its slug.
 const PACK_ID = /^Spoken[A-Za-z]+(_[a-z]{2}[A-Z]{2}(_[a-z][a-z0-9-]{1,40})?)?$/
-const LANG = /^[a-z]{2}[A-Z]{2}$/
-const SLUG = /^[a-z][a-z0-9-]{1,40}$/
-const SECTIONS: readonly string[] = ['quests', 'places', 'readables', 'bosses'] satisfies Section[]
-const SIDES: readonly string[] = ['alliance', 'horde', 'shared', 'gossip'] satisfies QuestsSide[]
 const NAME_MAX = 200
 const REQUIRES = /^>=\d+\.\d+\.\d+$/
 const ADDON_VERSION = /^\d+\.\d+\.\d+$/
@@ -180,7 +176,7 @@ const isName = (v: unknown): v is string => typeof v === 'string' && v.trim() !=
 function parseTeam(v: unknown): ChannelTeam | null | undefined {
   if (v === null) return null
   const t = v as Partial<ChannelTeam> | undefined
-  if (!t || typeof t.slug !== 'string' || !SLUG.test(t.slug) || !isName(t.name) || typeof t.official !== 'boolean') return undefined
+  if (!t || typeof t.slug !== 'string' || !TEAM_SLUG.test(t.slug) || !isName(t.name) || typeof t.official !== 'boolean') return undefined
   return { slug: t.slug, name: t.name, official: t.official }
 }
 
@@ -195,10 +191,10 @@ export function parseIndexV2(signed: string, report: (line: string) => void = (l
     const base = packEntry(id, entry)
     const x = (entry ?? {}) as Partial<Record<keyof ChannelPackV2, unknown>>
     const team = parseTeam(x.team)
-    const section = typeof x.section === 'string' && SECTIONS.includes(x.section) ? (x.section as Section) : undefined
-    const side = x.pack === null ? null : typeof x.pack === 'string' && SIDES.includes(x.pack) ? (x.pack as QuestsSide) : undefined
+    const section = typeof x.section === 'string' && (SECTIONS as readonly string[]).includes(x.section) ? (x.section as Section) : undefined
+    const side = x.pack === null ? null : typeof x.pack === 'string' && (QUESTS_SIDES as readonly string[]).includes(x.pack) ? (x.pack as QuestsSide) : undefined
     // A quests pack is one side of the quests; no other section has sides.
-    if (!base || typeof x.lang !== 'string' || !LANG.test(x.lang) || section === undefined || side === undefined || (section === 'quests') !== (side !== null) || team === undefined) {
+    if (!base || typeof x.lang !== 'string' || !LANG_CODE.test(x.lang) || section === undefined || side === undefined || (section === 'quests') !== (side !== null) || team === undefined) {
       report(`Voice pack index: left out ${JSON.stringify(id).slice(0, 80)}, whose entry fails its checks.`)
       continue
     }
@@ -208,7 +204,7 @@ export function parseIndexV2(signed: string, report: (line: string) => void = (l
   if (typeof raw.languages === 'object' && raw.languages !== null) {
     for (const [code, l] of Object.entries(raw.languages as Record<string, unknown>)) {
       const named = (l ?? {}) as { name?: unknown; native?: unknown }
-      if (LANG.test(code) && isName(named.name) && isName(named.native)) languages[code] = { name: named.name, native: named.native }
+      if (LANG_CODE.test(code) && isName(named.name) && isName(named.native)) languages[code] = { name: named.name, native: named.native }
     }
   }
   return { generatedAt: raw.generatedAt, packs, addons: parseAddons(raw.addons), languages }
@@ -265,8 +261,7 @@ async function getText(url: string, opts: ChannelOptions, missing?: 'may-be-miss
   return res.text()
 }
 
-// Each index has its own cache, checked against its own generatedAt: with one file, an index.json read as the way
-// back would replace a newer index-v2.json.
+// Each index has its own file: with one, an index.json read as the way back would overwrite a newer index-v2.json.
 function indexFile(dataPath: string): string {
   return path.join(dataPath, 'channel-index.json')
 }
@@ -304,13 +299,19 @@ export function loadCachedIndex(dataPath: string, publicKey?: string): ChannelIn
 }
 
 /**
- * The fetched index, saved, unless the saved one of the same file is newer: a cache edge or a replay can serve an
- * older signed index, and taking it would offer a downgrade to blobs gc may have removed.
+ * The fetched index, saved, unless the one in use is newer: a cache edge or a replay can serve an older signed index,
+ * and taking it would offer a downgrade to blobs gc may have removed. The one in use when the fetched one says no more,
+ * so what is built from it is not built again: one as old that is the same, or, for index.json, one as old at all,
+ * since the one in use may be the v2 of that publish, which lists more.
  */
-function keepNewest<T extends { generatedAt: string }>(file: string, raw: string, index: T, cached: T | null): T {
-  if (cached && Date.parse(index.generatedAt) < Date.parse(cached.generatedAt)) {
-    log(`Voice pack index from ${index.generatedAt} is older than the saved one from ${cached.generatedAt}; kept the saved one.`)
-    return cached
+function settle(file: string, raw: string, index: ChannelIndexV2, current: ChannelIndexV2 | null, tie: 'same' | 'any'): ChannelIndexV2 {
+  if (current) {
+    const age = Date.parse(index.generatedAt) - Date.parse(current.generatedAt)
+    if (age < 0) {
+      log(`Voice pack index from ${index.generatedAt} is older than the one in use from ${current.generatedAt}; kept that one.`)
+      return current
+    }
+    if (age === 0 && (tie === 'any' || JSON.stringify(index) === JSON.stringify(current))) return current
   }
   fs.mkdirSync(path.dirname(file), { recursive: true })
   fs.writeFileSync(file, raw, 'utf8')
@@ -319,23 +320,25 @@ function keepNewest<T extends { generatedAt: string }>(file: string, raw: string
 
 /**
  * index-v2.json from the server, saved for offline use, or index.json read as v2 when the channel has no v2. A v2 that
- * fails its signature is refused, not read around: that is an attack or a broken channel, not an old one. The saved
- * index when the server cannot be reached or fails the checks.
+ * fails its signature is refused, not read around: that is an attack or a broken channel, not an old one. `current` is
+ * the index in use, which a fetch must not go back from and which stands when the server cannot be reached or fails
+ * the checks; without it, the saved one is read.
  */
-export async function fetchIndex(dataPath: string, opts: ChannelOptions = {}): Promise<{ index: ChannelIndexV2 | null; offline: boolean; error?: string }> {
+export async function fetchIndex(
+  dataPath: string,
+  opts: ChannelOptions = {},
+  current?: ChannelIndexV2 | null
+): Promise<{ index: ChannelIndexV2 | null; offline: boolean; error?: string }> {
   const base = opts.baseUrl ?? PACKS_BASE_URL
+  const known = current === undefined ? loadCachedIndex(dataPath, opts.publicKey) : current
   try {
     const rawV2 = await getText(`${base}index-v2.json`, opts, 'may-be-missing')
-    if (rawV2 !== null) {
-      const index = parseIndexV2(openEnvelope(rawV2, opts.publicKey))
-      return { index: keepNewest(indexV2File(dataPath), rawV2, index, cachedV2(dataPath, opts.publicKey)), offline: false }
-    }
+    if (rawV2 !== null) return { index: settle(indexV2File(dataPath), rawV2, parseIndexV2(openEnvelope(rawV2, opts.publicKey)), known, 'same'), offline: false }
     const raw = await getText(`${base}index.json`, opts)
-    const v1 = keepNewest(indexFile(dataPath), raw, parseIndex(openEnvelope(raw, opts.publicKey)), cachedV1(dataPath, opts.publicKey))
-    return { index: newer(cachedV2(dataPath, opts.publicKey), fromV1(v1)), offline: false }
+    return { index: settle(indexFile(dataPath), raw, fromV1(parseIndex(openEnvelope(raw, opts.publicKey))), known, 'any'), offline: false }
   } catch (err) {
     log('Voice pack index:', err)
-    return { index: loadCachedIndex(dataPath, opts.publicKey), offline: true, error: err instanceof Error ? err.message : String(err) }
+    return { index: known, offline: true, error: err instanceof Error ? err.message : String(err) }
   }
 }
 
