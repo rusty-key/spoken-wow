@@ -549,6 +549,21 @@ local voiced = Bosses:StoryClip(36, "edwin vancleef")
 voiced.present.actions[1].onClick(voiced)
 Expect("...filed under the language heard, not the one on screen", reported,
     "https://spoken.quest/deDE/bosses/r/36/edwin-vancleef")
+local built
+Spoken.ShowReport = function(_, url, build) reported, built = url, build and build() end
+Bosses.GetAudioClip = function()
+    return { path = "x.mp3", len = 41.2, language = "deDE", pack = "SpokenBossesAudio_deDE_stimmen", voice = "deDE_stimmen" }
+end
+voiced = Bosses:StoryClip(36, "edwin vancleef")
+Bosses.GetAudioClip = function() return { path = "y.mp3", len = 1, language = "enUS", pack = "SpokenBossesAudio", voice = "enUS" } end
+voiced.present.actions[1].onClick(voiced)
+Expect("...with an envelope of its own", built and built:match("^!SPOKEN1 bosses\n") ~= nil, true)
+Expect("...naming the boss", built and built:match("\nmap=36\nkey=edwin vancleef\n") ~= nil, true)
+Expect("...and the pack that played, not the one that would play now, with its team", built
+    and built:match("\npackFolder=SpokenBossesAudio_deDE_stimmen\npackTeam=stimmen\n") ~= nil, true)
+Bosses:ShowReport(36, "edwin vancleef", "enUS")
+Expect("...a report with no clip names the pack the story plays from", built
+    and built:match("\npackFolder=SpokenBossesAudio\n") ~= nil and built:match("\npackTeam=") == nil, true)
 Bosses.GetAudioClip = getAudioClip
 Spoken.ShowReport = showReport
 Expect("...shown for six seconds at least", clip.length, 6)

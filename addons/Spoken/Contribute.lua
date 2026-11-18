@@ -13,7 +13,8 @@ setfenv(1, SpokenEnv)
 -- corpus that simply has nothing.
 
 local VERSION = 1
-local SOURCES = { quests = true, places = true, readables = true }
+-- Bosses send a report's context only: the site takes no bosses contributions.
+local SOURCES = { quests = true, places = true, readables = true, bosses = true }
 
 local MODULUS = 2147483647
 local FACTOR = 31

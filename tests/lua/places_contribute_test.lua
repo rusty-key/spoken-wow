@@ -89,4 +89,23 @@ Expect("...with the old two-copy hint", box.hint:GetText(), "Press Ctrl+C, then 
 Expect("...and the address shown again", box.address:GetText(), "https://spoken.quest/contribute")
 env.Spoken.Contribute.Encode = realEncode
 
+---------------------------------------------------------------- a report names the pack that played
+do
+    local active = Z.GetActiveAudioPack
+    Z.GetActiveAudioPack = function()
+        return { addon = "SpokenPlacesAudio_deDE_stimmen", language = "deDE", voice = "deDE_stimmen", packVersion = "1.0.0" }
+    end
+    local english = { pack = { addon = "SpokenPlacesAudio", language = "enUS", voice = "enUS" } }
+    local report = Z:ReportContext(1537, "a nook", english)
+    Expect("a report names the pack its clip played from, not the active one",
+        report:match("\npackFolder=SpokenPlacesAudio\n") ~= nil, true)
+    Expect("...and a plain pack names no team", report:match("\npackTeam=") == nil, true)
+    local stimmen = { pack = { addon = "SpokenPlacesAudio_deDE_stimmen", language = "deDE", voice = "deDE_stimmen" } }
+    Expect("a team's pack names its team",
+        Z:ReportContext(1537, "a nook", stimmen):match("\npackFolder=SpokenPlacesAudio_deDE_stimmen\npackTeam=stimmen\n") ~= nil,
+        true)
+    Expect("a report with no clip names no pack", Z:ReportContext(1537, "a nook"):match("\npackFolder=") == nil, true)
+    Z.GetActiveAudioPack = active
+end
+
 os.exit(Failures() == 0 and 0 or 1)

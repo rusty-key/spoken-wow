@@ -422,7 +422,7 @@ local NARRATOR_REPORT = {
 	label = REPORT_LABEL,
 	anchor = "topright",
 	tooltip = function(tooltip) tooltip:SetText(REPORT_LABEL) end,
-	onClick = function(clip) Bosses:ShowReport(clip.mapID, clip.bossKey, clip.language) end,
+	onClick = function(clip) Bosses:ShowReport(clip.mapID, clip.bossKey, clip.language, clip) end,
 }
 
 local function Boss(map, key)
@@ -480,6 +480,8 @@ function Bosses:StoryClip(map, key)
 	clip.language = recording and recording.language or language
 	if recording then
 		clip.path, clip.length = recording.path, recording.len or clip.length
+		-- The pack it plays from and its voice, which a report names.
+		clip.packFolder, clip.voice = recording.pack, recording.voice
 		-- Timed to the recording's own words, so not under a story in another language, nor under a
 		-- text pack's words in its language.
 		if language == recording.language and not unsaid then clip.present.timings = recording.times end

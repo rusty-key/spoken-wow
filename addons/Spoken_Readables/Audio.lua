@@ -196,7 +196,7 @@ local ACTIONS = {
 			if not clip then
 				return
 			end
-			SpokenReadables:ShowReport(clip.pageId)
+			SpokenReadables:ShowReport(clip.pageId, clip)
 		end,
 	},
 }

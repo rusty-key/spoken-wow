@@ -291,6 +291,11 @@ local function FolderFields(fields, module)
     end
     fields[#fields + 1] = { "packFolder", metadata.AddonName }
     fields[#fields + 1] = { "packFolderVersion", metadata.ContentVersion or "none" }
+    -- The team whose pack played, so the site files the report with them; none for a plain pack,
+    -- which is the language's own team's.
+    if metadata.Team then
+        fields[#fields + 1] = { "packTeam", metadata.Team }
+    end
 end
 
 --- The envelope for what is on screen, or nil when there is nothing to send. `reworded` for a

@@ -54,8 +54,40 @@ function Bosses:ReportURL(map, key, language)
 	return Spoken:ReportURL("bosses", ("%d/%s"):format(map, slug), language)
 end
 
-function Bosses:ShowReport(map, key, language)
-	Spoken:ShowReport(self:ReportURL(map, key, language))
+--- What a report carries beside its address: this client, the boss, and the pack its story plays
+--- from with that pack's team, which the site files the report with. The pack is `clip`'s where
+--- a played clip is reported, else the one the story would play from now.
+function Bosses:ReportContext(map, key, clip)
+	if not (Spoken and Spoken.Contribute) then return nil end
+	local getMeta = C_AddOns and C_AddOns.GetAddOnMetadata or GetAddOnMetadata
+	local version = getMeta and getMeta("Spoken_Bosses", "Version")
+	local fields = {
+		{ "addon", format("Spoken_Bosses/%s", (version and version ~= "") and version or "dev") },
+		{ "build", format("%s/%s", (GetBuildInfo and select(1, GetBuildInfo())) or "?",
+			(GetBuildInfo and select(2, GetBuildInfo())) or "?") },
+		{ "locale", (GetLocale and GetLocale()) or "enUS" },
+		{ "map", map },
+		{ "key", key },
+	}
+	local folder, voice
+	if clip then
+		folder, voice = clip.packFolder, clip.voice
+	else
+		local recording = self.GetAudioClip and self:GetAudioClip(map, key)
+		folder, voice = recording and recording.pack, recording and recording.voice
+	end
+	if folder then
+		table.insert(fields, { "packFolder", folder })
+		local team = Spoken.SplitVoice and select(2, Spoken:SplitVoice(voice))
+		if team then table.insert(fields, { "packTeam", team }) end
+	end
+	return Spoken.Contribute:Envelope("bosses", fields, nil)
+end
+
+function Bosses:ShowReport(map, key, language, clip)
+	Spoken:ShowReport(self:ReportURL(map, key, language), function()
+		return self:ReportContext(map, key, clip)
+	end)
 end
 
 -- [encounter id] = { { map, key }, ... }, from Data/Bosses.lua, built on first use. A fight against

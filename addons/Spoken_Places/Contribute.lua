@@ -91,10 +91,12 @@ function SpokenPlaces:ShowContribution(mapID, subzone)
 end
 
 --- What a report carries beside its address: this client, and the place by name as it shows it.
+--- With the `clip` that played, the pack it played from, which may be a later voice's rather than
+--- the active one, and that pack's team: the site files the report with them.
 ---
 --- `key`, not `subzone`: a subzone field is what a contribution is keyed on, and a report is
 --- about lore that exists. The lore itself is ours, so it is not sent back.
-function SpokenPlaces:ReportContext(mapID, areaKey)
+function SpokenPlaces:ReportContext(mapID, areaKey, clip)
     if not (mapID and _G.Spoken and Spoken.Contribute) then
         return nil
     end
@@ -102,19 +104,27 @@ function SpokenPlaces:ReportContext(mapID, areaKey)
     if areaKey then
         fields[#fields + 1] = { "key", areaKey }
     end
+    local pack = clip and clip.pack
+    if pack and pack.addon then
+        fields[#fields + 1] = { "packFolder", pack.addon }
+        local team = Spoken.SplitVoice and select(2, Spoken:SplitVoice(pack.voice or pack.language))
+        if team then
+            fields[#fields + 1] = { "packTeam", team }
+        end
+    end
     return Spoken.Contribute:Envelope("places", fields, nil)
 end
 
 --- The report address for a place, with its context in the fragment. The bare address in the
---- popup under a Spoken too old to say more.
-function SpokenPlaces:ShowReport(mapID, areaKey, language)
+--- popup under a Spoken too old to say more. `clip` is the one reported, where there is one.
+function SpokenPlaces:ShowReport(mapID, areaKey, language, clip)
     local url = self:ReportURL(mapID, areaKey, language)
     if not url then
         return
     end
     if _G.Spoken and Spoken.ShowReport then
         Spoken:ShowReport(url, function()
-            return self:ReportContext(mapID, areaKey)
+            return self:ReportContext(mapID, areaKey, clip)
         end)
         return
     end

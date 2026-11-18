@@ -540,7 +540,7 @@ local ACTIONS = {
 			-- Filed under the voice language, not the pack the clip came from: an entry the
 			-- active pack lacks plays the English fallback, and "no German" belongs beside
 			-- the German entry.
-			SpokenPlaces:ShowReport(clip.mapID, clip.areaKey, SpokenPlaces:GetVoiceLanguage())
+			SpokenPlaces:ShowReport(clip.mapID, clip.areaKey, SpokenPlaces:GetVoiceLanguage(), clip)
 		end,
 	}
 }

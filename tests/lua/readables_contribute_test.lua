@@ -189,4 +189,20 @@ Expect("...with the old two-copy hint", box.hint:GetText(), "Press Ctrl+C, then 
 Expect("...and the address shown again", box.address:GetText(), "https://spoken.quest/contribute")
 env.Spoken.Contribute.Encode = realEncode
 
+---------------------------------------------------------------- a report names the pack that played
+do
+    local played = { pageId = 1231, packFolder = "SpokenReadablesAudio_deDE_stimmen", voice = "deDE_stimmen" }
+    local named = B:ReportContext(1231, played)
+    Expect("a report on a team's clip names its folder and team",
+        named:match("\npackFolder=SpokenReadablesAudio_deDE_stimmen\npackTeam=stimmen\n") ~= nil, true)
+    local plain = B:ReportContext(1231, { pageId = 1231, packFolder = "SpokenReadablesAudio_deDE", voice = "deDE" })
+    Expect("...a plain pack's clip names its folder", plain:match("\npackFolder=SpokenReadablesAudio_deDE\n") ~= nil, true)
+    Expect("...and no team", plain:match("\npackTeam=") == nil, true)
+    local clipFor = B.ClipFor
+    B.ClipFor = function() return played end
+    Expect("a report with no clip names the pack the page would play from",
+        B:ReportContext(1231):match("\npackTeam=stimmen\n") ~= nil, true)
+    B.ClipFor = clipFor
+end
+
 os.exit(Failures() == 0 and 0 or 1)
