@@ -108,11 +108,12 @@ export function BookList({
         <col className="w-16" />
         {/* Wide enough for what the cell actually holds, now that the controls sit on one
             line: icon buttons are 32px and an editor can have five side by side -- report,
-            edit, override, clear the pronunciation mark, regenerate. Anything narrower and
-            they overflow left across the character count. A translator has report and edit,
-            and everyone else the report button alone; never w-0, because the column still
-            has to exist for the rowspans above it to count against. */}
-        <col className={canRegenerate ? "w-48" : canEdit ? "w-20" : "w-10"} />
+            edit, override, clear the pronunciation mark, regenerate -- plus the report count.
+            Anything narrower and they overflow left across the character count. A translator
+            has the count, report and edit, and everyone else the report button alone; never
+            w-0, because the column still has to exist for the rowspans above it to count
+            against. */}
+        <col className={canRegenerate ? "w-60" : canEdit ? "w-36" : "w-10"} />
       </colgroup>
       <thead>
         <tr className="text-muted-foreground border-border border-b text-left text-xs">

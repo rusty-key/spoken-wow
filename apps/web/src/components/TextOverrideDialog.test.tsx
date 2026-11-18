@@ -76,3 +76,40 @@ test("Remove is offered only over an override, and DELETEs it", async () => {
   expect(init.method).toBe("DELETE");
   expect(new URL(url, "http://site").searchParams.get("lineId")).toBe("x:7");
 });
+
+test("Save waits for a change that is more than whitespace", async () => {
+  const user = userEvent.setup();
+  open(null);
+  const save = () => screen.getByRole("button", { name: "Save" });
+
+  expect(save()).toHaveProperty("disabled", true);
+  await user.type(screen.getByLabelText(/What your team says/), "  ");
+  expect(save()).toHaveProperty("disabled", true);
+  cleanup();
+
+  open("Der Lichkönig erwacht.");
+  await user.type(screen.getByLabelText(/What your team says/), " ");
+  expect(save()).toHaveProperty("disabled", true);
+});
+
+test("the draft is described by the original", () => {
+  open(null);
+  const described = screen.getByLabelText(/What your team says/).getAttribute("aria-describedby");
+  expect(document.getElementById(described ?? "")?.textContent).toBe("Der Lich erwacht.");
+});
+
+test("cancelling drops the draft, so the dialog opens fresh", async () => {
+  fetchMock.mockResolvedValue(Response.json({ error: "nope" }, { status: 400 }));
+  const user = userEvent.setup();
+  const { onCancel } = open(null);
+  const draft = () => screen.getByLabelText(/What your team says/);
+
+  await user.type(draft(), " Und spricht.");
+  await user.click(screen.getByRole("button", { name: "Save" }));
+  await screen.findByRole("alert");
+  await user.click(screen.getByRole("button", { name: "Cancel" }));
+
+  expect(onCancel).toHaveBeenCalled();
+  expect(draft()).toHaveProperty("value", "Der Lich erwacht.");
+  expect(screen.queryByRole("alert")).toBeNull();
+});

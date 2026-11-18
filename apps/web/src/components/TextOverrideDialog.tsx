@@ -48,7 +48,15 @@ export default function TextOverrideDialog({ source, line, onSaved, onCancel }: 
     return null;
   }
 
-  const dirty = draft.trim() !== "" && draft !== (line.override ?? line.original);
+  // Saving the original over no override would only store a copy of it.
+  const trimmed = draft.trim();
+  const dirty = trimmed !== "" && trimmed !== (line.override ?? line.original);
+
+  function cancel() {
+    setSeeded(null);
+    setError(null);
+    onCancel();
+  }
 
   async function send(method: "PUT" | "DELETE") {
     if (!line) return;
@@ -73,7 +81,7 @@ export default function TextOverrideDialog({ source, line, onSaved, onCancel }: 
   }
 
   return (
-    <Dialog open onOpenChange={(open) => !open && onCancel()}>
+    <Dialog open onOpenChange={(open) => !open && cancel()}>
       <DialogContent className="sm:max-w-2xl">
         <DialogHeader>
           <DialogTitle>What should your team say?</DialogTitle>
@@ -89,6 +97,7 @@ export default function TextOverrideDialog({ source, line, onSaved, onCancel }: 
           </label>
           <textarea
             id="text-override"
+            aria-describedby="text-override-original"
             autoFocus
             rows={6}
             value={draft}
@@ -99,7 +108,10 @@ export default function TextOverrideDialog({ source, line, onSaved, onCancel }: 
 
         <div className="grid gap-1">
           <span className="text-muted-foreground text-xs">The original says</span>
-          <p className="text-muted-foreground bg-muted/40 max-h-24 overflow-y-auto rounded-md px-3 py-2 text-xs whitespace-pre-wrap">
+          <p
+            id="text-override-original"
+            className="text-muted-foreground bg-muted/40 max-h-24 overflow-y-auto rounded-md px-3 py-2 text-xs whitespace-pre-wrap"
+          >
             {line.original}
           </p>
         </div>
@@ -124,7 +136,7 @@ export default function TextOverrideDialog({ source, line, onSaved, onCancel }: 
             <span />
           )}
           <span className="flex gap-2">
-            <Button variant="ghost" onClick={onCancel} disabled={busy}>
+            <Button variant="ghost" onClick={cancel} disabled={busy}>
               Cancel
             </Button>
             <Button disabled={busy || !dirty} onClick={() => void send("PUT")}>

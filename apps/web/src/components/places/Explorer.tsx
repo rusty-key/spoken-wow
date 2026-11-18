@@ -44,6 +44,7 @@ import {
 import { PAGE_SIZE } from "@/lib/places/filters";
 import { useClearDirty } from "@/lib/generation/use-clear-dirty";
 import { fetchRows, patchRows } from "@/lib/row-refresh";
+import { withTextOverride } from "@/lib/text-overrides/rows";
 import * as echo from "@/lib/url-echo";
 import { triages } from "@/lib/reports/reports";
 
@@ -333,28 +334,11 @@ export function Explorer<L extends ExplorerLine, F extends ExplorerFilters>({
     [api, lang],
   );
 
-  /**
-   * The row shows a saved or removed override at once, and reads stale where it had a take,
-   * since the take spoke something else. The row is then fetched again for what the server
-   * makes of it: a removal can bring an old take back to current.
-   */
+  // Laid over the row at once, then fetched again for the server's view of it.
   const overridden = useCallback(
     (lineId: string, text: string | null) => {
       setOverriding(null);
-      setResult((current) =>
-        current && {
-          ...current,
-          lines: current.lines.map((row) =>
-            row.id === lineId
-              ? {
-                  ...row,
-                  override: text === null ? null : { text, drifted: false, updatedAt: new Date().toISOString(), updatedBy: null },
-                  state: row.state === "missing" ? "missing" : "stale",
-                }
-              : row,
-          ),
-        },
-      );
+      setResult((current) => current && { ...current, lines: withTextOverride(current.lines, lineId, text) });
       void refreshRows([lineId]);
     },
     [refreshRows],
@@ -748,11 +732,12 @@ export function Explorer<L extends ExplorerLine, F extends ExplorerFilters>({
             {showMadeBy && <col className="w-36" />}
             {showRecordings && <col className="w-32" />}
             {/* Wide enough for what the cell actually holds: icon buttons are 32px and an
-                editor can have four side by side - report, edit, override, regenerate - plus the
-                report count. Anything narrower and the row overflows left over the prose.
+                editor can have five side by side - report, edit, override, clear the
+                pronunciation mark, regenerate - plus the report count. Anything narrower and
+                the row overflows left over the prose.
                 w-16 for everyone else, who has the report button and the count; never w-0,
                 since that button is not gated. */}
-            <col className={canRegenerate ? "w-48" : "w-16"} />
+            <col className={canRegenerate ? "w-60" : "w-16"} />
           </colgroup>
           <thead>
             <tr className="text-muted-foreground border-border border-b text-left text-xs">
