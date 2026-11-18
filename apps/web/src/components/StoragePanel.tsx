@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import { DAY_TIME, useLocalDates } from "@/components/useLocalDates";
 import { langName, type Lang } from "@/lib/lang";
 import type { BackendView, Provider } from "@/lib/storage/backends";
+import type { CloudflareAccount } from "@/lib/storage/cloudflare";
 import type { MoveView } from "@/lib/storage/moves";
 import type { ProbeResult } from "@/lib/storage/probe";
 import type { StorageView } from "@/lib/storage/view";
@@ -39,8 +40,19 @@ async function call(url: string, init: RequestInit): Promise<Answer> {
   return res.ok ? answer : { ...answer, error: answer.error ?? `HTTP ${res.status}` };
 }
 
+/** Where the Cloudflare grant stands when the page loads: just granted, or refused on the way back. */
+export type CloudflareReturn = { connected: boolean; error: string | null };
+
 /** A team's own buckets: connect one, test it, send new objects to it, retire it. */
-export default function StoragePanel({ lang, initial }: { lang: Lang; initial: StorageView }) {
+export default function StoragePanel({
+  lang,
+  initial,
+  cloudflare = { connected: false, error: null },
+}: {
+  lang: Lang;
+  initial: StorageView;
+  cloudflare?: CloudflareReturn;
+}) {
   const [view, setView] = useState(initial);
   const [tests, setTests] = useState<Record<string, ProbeResult>>({});
   const [error, setError] = useState<string | null>(null);
@@ -169,6 +181,17 @@ export default function StoragePanel({ lang, initial }: { lang: Lang; initial: S
           others={view.backends.filter((b) => b.id !== backend.id && b.health === "ok" && !b.retiredAt)}
         />
       ))}
+
+      {view.canSeal && view.cloudflare && (
+        <ConnectCloudflare
+          lang={lang}
+          returned={cloudflare}
+          onConnected={(backend, test) => {
+            replace(backend);
+            if (test) setTests((current) => ({ ...current, [backend.id]: test }));
+          }}
+        />
+      )}
 
       {view.canSeal && (
         <NewBackend
@@ -358,6 +381,112 @@ function MoveLine({ move, from, to, onStop }: { move: MoveView; from: string; to
         </Button>
       )}
     </div>
+  );
+}
+
+/**
+ * One click to Cloudflare and back: the site makes the bucket and a key for it alone, then forgets
+ * the grant. The grant itself waits in an httpOnly cookie; this only asks which account and name.
+ */
+function ConnectCloudflare({
+  lang,
+  returned,
+  onConnected,
+}: {
+  lang: Lang;
+  returned: CloudflareReturn;
+  onConnected: (backend: BackendView, test: ProbeResult | null) => void;
+}) {
+  const [accounts, setAccounts] = useState<CloudflareAccount[] | null>(null);
+  const [accountId, setAccountId] = useState("");
+  const [bucket, setBucket] = useState("");
+  const [error, setError] = useState<string | null>(returned.error);
+  const [working, setWorking] = useState(false);
+  const url = `/api/storage/cloudflare?lang=${lang}`;
+
+  // The query said where the grant stands once; a reload must not say it again.
+  useEffect(() => {
+    if (!returned.connected && !returned.error) return;
+    const here = new URL(window.location.href);
+    here.searchParams.delete("cloudflare");
+    here.searchParams.delete("cloudflare_error");
+    window.history.replaceState(null, "", here);
+  }, [returned]);
+
+  useEffect(() => {
+    if (!returned.connected) return;
+    void (async () => {
+      const res = await fetch(url).catch(() => null);
+      const answer = (await res?.json().catch(() => null)) as { accounts?: CloudflareAccount[]; bucket?: string; error?: string } | null;
+      if (!res?.ok || !answer?.accounts) return setError(answer?.error ?? "Cloudflare's accounts could not be read: connect again.");
+      if (answer.accounts.length === 0) return setError("The grant reaches no Cloudflare account: connect again and pick one.");
+      setAccounts(answer.accounts);
+      setAccountId(answer.accounts[0].id);
+      setBucket(answer.bucket ?? "");
+    })();
+  }, [returned.connected, url]);
+
+  const create = async (event: React.FormEvent) => {
+    event.preventDefault();
+    setWorking(true);
+    setError(null);
+    const answer = await call(url, { method: "POST", body: JSON.stringify({ accountId, bucket: bucket.trim() }) });
+    setWorking(false);
+    if (answer.error || !answer.backend) return setError(answer.error ?? "not connected");
+    setAccounts(null);
+    onConnected(answer.backend, answer.test ?? null);
+  };
+
+  const cancel = async () => {
+    await call(url, { method: "DELETE" });
+    setAccounts(null);
+  };
+
+  return (
+    <section className="bg-card flex flex-col gap-3 rounded-lg border p-4 text-sm">
+      <h2 className="font-medium">Connect Cloudflare R2</h2>
+      {accounts ? (
+        <form onSubmit={create} className="flex flex-col gap-3">
+          <fieldset disabled={working} className="contents">
+            <div className="grid gap-3 sm:grid-cols-2">
+              <label className="flex flex-col gap-1">
+                <span className="text-muted-foreground">Account</span>
+                <select className="bg-background h-9 rounded-md border px-2" value={accountId} onChange={(e) => setAccountId(e.target.value)}>
+                  {accounts.map((account) => (
+                    <option key={account.id} value={account.id}>{account.name}</option>
+                  ))}
+                </select>
+              </label>
+              <label className="flex flex-col gap-1">
+                <span className="text-muted-foreground">Bucket</span>
+                <Input aria-label="Bucket" value={bucket} onChange={(e) => setBucket(e.target.value)} />
+              </label>
+            </div>
+            <p className="text-muted-foreground">
+              Spoken creates the bucket unless the account already has one by that name, and a key that reads and
+              writes objects in it alone. Then it tests the bucket and lets go of the access you granted.
+            </p>
+            <div className="flex gap-2">
+              <Button type="submit" size="sm" disabled={!bucket.trim()}>{working ? "Setting up…" : "Create and test"}</Button>
+              <Button type="button" size="sm" variant="ghost" onClick={() => void cancel()}>Cancel</Button>
+            </div>
+          </fieldset>
+        </form>
+      ) : (
+        <>
+          <p className="text-muted-foreground">
+            Sign in to Cloudflare and grant access once: Spoken creates an R2 bucket and its key for you, so there is
+            nothing to copy over.
+          </p>
+          <div>
+            <Button asChild size="sm">
+              <a href={`/api/storage/cloudflare/start?lang=${lang}`}>Connect Cloudflare</a>
+            </Button>
+          </div>
+        </>
+      )}
+      {error && <p className="text-destructive">{error}</p>}
+    </section>
   );
 }
 

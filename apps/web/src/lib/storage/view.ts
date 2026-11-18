@@ -8,6 +8,7 @@ import type { Lang } from "@/lib/lang";
 import { teamOf } from "@/lib/teams/store";
 
 import { listBackends, PROVIDERS, type BackendView, type Provider } from "./backends";
+import { cloudflareReady } from "./cloudflare";
 import { listMoves, type MoveView } from "./moves";
 
 export type StorageView = {
@@ -22,6 +23,8 @@ export type StorageView = {
   canSeal: boolean;
   /** New objects may not go to our archive; what is already there stays (team."ownStorage"). */
   ownStorage: boolean;
+  /** Whether a bucket can be made through Cloudflare's OAuth rather than entered by hand. */
+  cloudflare: boolean;
 };
 
 export async function storageView(lang: Lang): Promise<StorageView> {
@@ -42,5 +45,6 @@ export async function storageView(lang: Lang): Promise<StorageView> {
     archiveIsBucket: readsBlobs(),
     canSeal: canSeal(),
     ownStorage,
+    cloudflare: cloudflareReady(),
   };
 }

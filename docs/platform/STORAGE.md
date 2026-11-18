@@ -44,6 +44,9 @@ takes, recordings, clone clips, references and pack encodings go there. The page
 is already in our archive into the bucket, or brings a bucket's objects back unless the team keeps
 its own storage.
 
+With Cloudflare set up on the site, the page also offers **Connect Cloudflare**: the admin grants
+access on Cloudflare, picks the account and the bucket's name, and the site does the rest (below).
+
 ## Design
 
 ### One S3-compatible store
@@ -96,6 +99,38 @@ checked too. No request to a bucket follows a redirect, and none waits more than
 answer. What is not caught is a name that resolves elsewhere after the check (DNS rebinding); the
 requests are signed S3 calls whose answers are shown only as a status line.
 `SPOKEN_STORAGE_ALLOW_PRIVATE=1` lifts the address check for a local MinIO.
+
+### Connecting Cloudflare
+
+Added 2026-11-18. A one-click alternative to the form for R2, through Cloudflare's OAuth (open to any
+developer since June 2026). `lib/storage/cloudflare.ts` and `/api/storage/cloudflare/`:
+
+1. `start` sends the admin to `dash.cloudflare.com/oauth2/auth` with a state and a PKCE (S256)
+   challenge, both kept in the `spoken_cloudflare` cookie: sealed under `SPOKEN_STORAGE_KEY`, bound
+   to the person, httpOnly, Lax, scoped to `/api/storage/cloudflare`, ten minutes.
+2. `callback` checks the state and that the person still administers the language, exchanges the
+   code (client secret and verifier), and keeps the access token in the same cookie for fifteen
+   minutes at most. Every outcome redirects to the Storage page, a refusal in `?cloudflare_error=`.
+3. The page lists the accounts the grant reaches and suggests `spoken-<lang>` as the bucket. POST
+   creates the bucket unless the account has one by that name, then an account-owned API token with
+   `Workers R2 Storage Bucket Item Write` on that bucket alone: its id is the access key id and the
+   SHA-256 of its value the secret. The bucket is saved like one entered by hand and tested, again up
+   to five times three seconds apart while the new key reaches R2. Then the grant is revoked and the
+   cookie cleared. A refusal keeps the grant, so the admin can try another name.
+
+The site keeps no Cloudflare grant, only the bucket's key, so nothing else of the account is
+reachable afterwards. R2 has no permission that writes without deleting, so the key can delete
+objects in its bucket; a bucket lock on `takes/` and `recordings/` is the team's way to stop that.
+The bucket has no public address; takes redirect to signed addresses until the team sets one. A
+setup that fails after the key was made leaves that key in the account, named `Spoken: <bucket>`.
+
+Off unless `CLOUDFLARE_OAUTH_CLIENT_ID`, `CLOUDFLARE_OAUTH_CLIENT_SECRET` and
+`CLOUDFLARE_OAUTH_SCOPES` are set. The client is registered in our Cloudflare account with the
+redirect URI `https://spoken.quest/api/storage/cloudflare/callback`; until its visibility is public
+(which needs `spoken.quest` verified by a TXT record, and cannot be undone) only members of our
+account can use it. Cloudflare publishes its scopes only at `GET /client/v4/oauth/scopes`, so the
+scopes are configured rather than written here: the grant must list accounts, read and create R2
+buckets, and list permission groups and create account API tokens.
 
 ### Testing a backend
 
