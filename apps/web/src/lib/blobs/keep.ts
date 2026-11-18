@@ -89,21 +89,36 @@ async function storageOf(lang: Lang): Promise<{ own: boolean; target: Target; re
   const r2 = archiveMode() === "r2";
   const [own, backend] = await Promise.all([keepsOwnStorage(team), r2 ? writingBackend(team) : null]);
   const target = backend && { ...backend, team };
-  let refusal: string | null = null;
-  if (own && !r2) refusal = "This site cannot use team buckets yet, and your team keeps its audio only in its own, so nothing can be made for it.";
-  else if (own && !target) refusal = "Your team keeps its audio in its own bucket: connect one on the Storage page and switch it on before making takes, recordings or clone clips.";
-  return { own, target, refusal };
+  return { own, target, refusal: own ? requiredRefusal(r2, Boolean(target)) : null };
 }
 
-/** Why `lang`'s team may not keep audio now, or null. */
-export async function ownStorageRefusal(lang: Lang): Promise<string | null> {
-  return (await storageOf(lang)).refusal;
+function requiredRefusal(r2: boolean, hasBucket: boolean): string | null {
+  if (!r2) return "This site cannot use team buckets yet, and your team keeps its audio only in its own, so nothing can be made for it.";
+  if (!hasBucket) return "Your team keeps its audio in its own bucket: connect one on the Storage page and switch it on before making takes, recordings or clone clips.";
+  return null;
 }
+
+/**
+ * Why `lang`'s team may not keep audio now, or null. A team that may use our archive, every team
+ * made before own storage, is answered with one query and no look at its buckets.
+ */
+export async function ownStorageRefusal(lang: Lang): Promise<string | null> {
+  const team = await teamOf(lang);
+  if (!(await keepsOwnStorage(team))) return null;
+  const r2 = archiveMode() === "r2";
+  return requiredRefusal(r2, r2 && Boolean(await writingBackend(team)));
+}
+
+type Refusal = { kind: "storage-required" | "storage-failing"; message: string };
+
+/** The 409 a refusal is answered with, which the Regenerate dialog shows (lib/generation/client.ts). */
+export const refusalResponse = ({ kind, message }: Refusal): Response =>
+  Response.json({ error: message, kind }, { status: 409 });
 
 /** The 409 a route answers before it reads an upload or pays for anything, or null when the team may keep audio. */
 export async function storageRequiredResponse(lang: Lang): Promise<Response | null> {
-  const refusal = await ownStorageRefusal(lang);
-  return refusal ? Response.json({ error: refusal, kind: "storage-required" }, { status: 409 }) : null;
+  const message = await ownStorageRefusal(lang);
+  return message ? refusalResponse({ kind: "storage-required", message }) : null;
 }
 
 /** Whether the team may keep nothing in our archive (team."ownStorage"). */
@@ -276,7 +291,7 @@ export async function landQuarantined(perBucket = 20): Promise<number> {
  * Why `lang`'s team may not queue paid work now, or null: it must keep its own storage and has
  * none, or its bucket is failing. Jobs already queued carry on, into the quarantine.
  */
-export async function storageRefusal(lang: Lang): Promise<{ kind: "storage-required" | "storage-failing"; message: string } | null> {
+export async function storageRefusal(lang: Lang): Promise<Refusal | null> {
   const { own, target, refusal } = await storageOf(lang);
   if (refusal) return { kind: "storage-required", message: refusal };
   if (target?.health !== "failing") return null;

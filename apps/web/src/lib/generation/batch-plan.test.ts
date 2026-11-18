@@ -53,7 +53,10 @@ vi.mock("./queue", () => ({ createBatch: mocks.createBatch, enqueue: mocks.enque
 vi.mock("@/lib/activity/store", () => ({ recordActivity: mocks.recordActivity }));
 vi.mock("./authz", () => ({ requireApiKey: mocks.requireApiKey }));
 vi.mock("./boot", () => ({ queueWorker: () => null }));
-vi.mock("@/lib/blobs/keep", () => ({ storageRefusal: mocks.storageRefusal }));
+vi.mock("@/lib/blobs/keep", () => ({
+  storageRefusal: mocks.storageRefusal,
+  refusalResponse: ({ kind, message }: { kind: string; message: string }) => Response.json({ error: message, kind }, { status: 409 }),
+}));
 vi.mock("./calibration", () => ({ observedRate: mocks.observedRate, observedFishRate: mocks.observedFishRate }));
 import { audioRelPath } from "@/lib/audio";
 import type { CorpusLine } from "@/lib/corpus";

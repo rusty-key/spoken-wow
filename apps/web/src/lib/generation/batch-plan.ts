@@ -30,7 +30,7 @@ import { estimate, type Estimate } from "./billing";
 import { queueWorker } from "./boot";
 import type { Preference } from "./preference";
 import { createBatch, enqueue, type QueueEntry } from "./queue";
-import { storageRefusal } from "@/lib/blobs/keep";
+import { refusalResponse, storageRefusal } from "@/lib/blobs/keep";
 import type { Provider } from "./speakers/speaker";
 
 export type Plan = {
@@ -310,7 +310,7 @@ export async function queuePlan(args: {
   // Before any row: a team that must keep its own storage and has none, or whose bucket is
   // failing, spends nothing more until that is fixed.
   const refused = await storageRefusal(lang);
-  if (refused) return NextResponse.json({ error: refused.message, kind: refused.kind }, { status: 409 });
+  if (refused) return refusalResponse(refused);
 
   if (provider !== "fish" && plan.jobs.some((job) => job.provider === "fish")) {
     const { denied } = await requireApiKey(userId, "fish");
