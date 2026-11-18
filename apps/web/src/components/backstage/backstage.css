@@ -761,7 +761,7 @@ body:has(main.bs) {
 .cat-seg button:hover {
   color: var(--foreground);
 }
-.cat-seg button[aria-checked="true"] {
+.cat-seg button[aria-pressed="true"] {
   background: var(--secondary);
   color: var(--foreground);
   font-weight: 500;

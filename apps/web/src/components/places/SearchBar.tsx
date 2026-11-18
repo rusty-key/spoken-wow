@@ -25,7 +25,6 @@ type Props = {
   fields: readonly string[];
   kinds: readonly string[];
   filters: ExplorerFilters;
-  active: number;
   canTriage: boolean;
   madeBy?: MadeByFacets;
   recordable?: boolean;
@@ -118,6 +117,7 @@ export function SearchBar({
         />
       }
       statuses={statuses}
+      onShowAll={() => onChange({ state: undefined, reports: undefined })}
       active={active}
       onClearAll={onClearAll}
       groups={

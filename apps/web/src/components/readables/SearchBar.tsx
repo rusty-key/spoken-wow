@@ -17,7 +17,7 @@ import { RECORDED_OPTIONS, type Recorded } from "@/lib/recordings/live";
 import { FIELDS, OWNER_KINDS, type PageFilters } from "@/lib/readables/filters";
 
 const FIELD_NAMES: Record<(typeof FIELDS)[number], string> = { any: "Anywhere", title: "Title", text: "Page text" };
-const FIELD_OPTIONS: Option[] = FIELDS.map((field) => ({ value: field, label: FIELD_NAMES[field] ?? field }));
+const FIELD_OPTIONS: Option[] = FIELDS.map((field) => ({ value: field, label: FIELD_NAMES[field] }));
 
 const KIND_OPTIONS: Option[] = OWNER_KINDS.map((kind) => ({
   value: kind,
@@ -114,6 +114,7 @@ export function SearchBar({
         />
       }
       statuses={statuses}
+      onShowAll={() => onChange({ state: undefined, reports: undefined })}
       active={active}
       onClearAll={onClearAll}
       groups={

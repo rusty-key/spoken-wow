@@ -186,6 +186,7 @@ const SearchBar = forwardRef<HTMLInputElement, Props>(function SearchBar(
         />
       }
       statuses={statuses}
+      onShowAll={() => onFilters({ state: undefined, reports: undefined })}
       active={active}
       onClearAll={onClearAll}
       groups={

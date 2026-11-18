@@ -37,6 +37,7 @@ export function CatalogueSearch({
   onQuerySubmit,
   scope,
   statuses,
+  onShowAll,
   groups,
   active,
   onClearAll,
@@ -50,6 +51,11 @@ export function CatalogueSearch({
   /** Where the query is matched, as a small select inside the field. */
   scope?: ReactNode;
   statuses: StatusOption[];
+  /**
+   * "All" as one write: pressing each status off in turn would fire several URL writes in one
+   * tick, each built from the same params, and the last would put the others back.
+   */
+  onShowAll: () => void;
   /** The panel's groups, in reading order. */
   groups: ReactNode;
   active: ActiveFilter[];
@@ -87,7 +93,7 @@ export function CatalogueSearch({
           type="button"
           className="bs-chip"
           aria-pressed={allPressed}
-          onClick={() => statuses.forEach((status) => status.pressed && status.onPress())}
+          onClick={onShowAll}
         >
           All
         </button>
@@ -131,7 +137,7 @@ export function CatalogueSearch({
       </div>
 
       {active.length > 0 ? (
-        <div className="cat-active" aria-label="Filters in force">
+        <div className="cat-active" role="group" aria-label="Filters in force">
           {active.map((filter) => (
             <span key={filter.key} className="cat-pill">
               <b>{filter.label}</b> {filter.value}
@@ -226,13 +232,12 @@ export function FilterSegments({
   const all: { value: string | undefined; label: string }[] = [{ value: undefined, label: any }, ...options];
   return (
     <FilterField label={label}>
-      <div className="cat-seg" role="radiogroup" aria-label={label}>
+      <div className="cat-seg" role="group" aria-label={label}>
         {all.map((option) => (
           <button
             key={option.value ?? ""}
             type="button"
-            role="radio"
-            aria-checked={value === option.value}
+            aria-pressed={value === option.value}
             onClick={() => onChange(option.value)}
           >
             {option.label}
