@@ -48,6 +48,8 @@ import {
   type ContributionSort,
   type Bucket,
   type StageFilter,
+  isShow,
+  type Show,
 } from "@/lib/contributions/query";
 import { listedWithPending } from "@/lib/contributions/pending";
 import { observationMeta, type Contribution } from "@/lib/contributions/store";
@@ -261,6 +263,7 @@ export default async function Page({
     page?: string;
     q?: string;
     filter?: string;
+    show?: string;
   }>;
 }) {
   const lang = await pageLang(params);
@@ -309,11 +312,15 @@ export default async function Page({
     page: rawPage,
     q: rawQ,
     filter: rawFilter,
+    show: rawShow,
   } = await searchParams;
   const status: ContributionStatus = isStatus(rawStatus) ? rawStatus : "new";
+  // New lines, corrections, or both: only quests and readables have corrections to tell apart.
+  const show: Show = (source === "quests" || source === "readables") && isShow(rawShow) ? rawShow : "all";
   // Only quests' New tab is split: readables and places name no speaker, an accepted row was ready
   // by definition, and a rejected one's speaker no longer matters.
-  const bucket: Bucket = namesSpeaker(source) && isBucket(rawBucket) ? rawBucket : "ready";
+  // Corrections never wait on an admin, so showing only them shows the ready half.
+  const bucket: Bucket = namesSpeaker(source) && show !== "corrections" && isBucket(rawBucket) ? rawBucket : "ready";
 
   // Which game the text came from, read off `build` (lib/contributions/client.ts). Defaults to
   // Era and Forever: every other client is the low-effort bin, shown only on request.
@@ -462,18 +469,24 @@ export default async function Page({
         <ContributionsTabs lang={lang} section={source} pending={pending} />
       </div>
         <ContributionTable
-          initial={rows}
+          // Showing only corrections leaves the lines out; their count stays on the switch.
+          initial={show === "corrections" ? [] : rows}
           // Every row the filters match, on any page, as just its id, status and whether a bulk
           // accept may take it, and its group: what "Keep all" and "Drop all" act on.
-          matching={matching.map((row) => {
+          matching={(show === "corrections" ? [] : matching).map((row) => {
             const match = bookMatches.get(row.id);
             return { id: row.id, status: row.status, bulk: !match || bulkAcceptable(match), verdict: checks.get(row.id)?.verdict ?? "look" };
           })}
           page={page}
-          pages={pages}
+          pages={show === "corrections" ? 1 : pages}
           status={status}
+          show={show}
+          shownCounts={
+            source === "quests" || source === "readables" ? { lines: matching.length, corrections: corrections.length } : null
+          }
           bucket={bucket}
-          bucketCounts={bucketCounts}
+          // To review counts what it shows.
+          bucketCounts={show === "corrections" ? { ready: corrections.length, blocked: 0 } : bucketCounts}
           waitingSummary={waitingSummary}
           client={client}
           build={build}
@@ -491,7 +504,7 @@ export default async function Page({
           // is the global admin's alone; everyone else sees where it stands.
           canAnswerNpc={isAdmin(session.user.role)}
           corrections={
-            (source === "quests" || source === "readables") && corrections.length > 0 ? (
+            show !== "lines" && (source === "quests" || source === "readables") && corrections.length > 0 ? (
               <Panel
                 id="changes"
                 tone="info"

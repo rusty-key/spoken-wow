@@ -183,6 +183,13 @@ export function sortOf(column: unknown, direction: unknown): ContributionSort {
   return { column, direction: isSortDirection(direction) ? direction : FIRST_DIRECTION[column] };
 }
 
+/** Which rows a section shows: new lines, corrections to lines we have, or both. */
+export type Show = "all" | "lines" | "corrections";
+
+export function isShow(value: unknown): value is Show {
+  return value === "all" || value === "lines" || value === "corrections";
+}
+
 export type ContributionFilters = {
   status: ContributionStatus;
   bucket: Bucket;
@@ -197,6 +204,8 @@ export type ContributionFilters = {
   q?: string;
   /** Which field `q` is matched in; absent is "any". */
   searchIn?: Filter;
+  /** Absent is "all". */
+  show?: Show;
 };
 
 export type FilterChange = {
@@ -208,6 +217,7 @@ export type FilterChange = {
   sort?: ContributionSort;
   q?: string;
   searchIn?: Filter;
+  show?: Show;
 };
 
 /**
@@ -233,6 +243,7 @@ export function nextContributionFilters(
     sort: "sort" in next ? (next.sort ?? DEFAULT_SORT) : current.sort,
     q: "q" in next ? next.q : current.q,
     searchIn: "searchIn" in next ? next.searchIn : current.searchIn,
+    show: "show" in next ? next.show : current.show,
   };
 }
 
@@ -263,6 +274,7 @@ export function contributionsHref(current: ContributionFilters, next: FilterChan
   if (filters.bucket !== "ready") params.set("bucket", filters.bucket);
   if (filters.q?.trim()) params.set("q", filters.q.trim());
   if (filters.searchIn && filters.searchIn !== "any") params.set("filter", filters.searchIn);
+  if (filters.show && filters.show !== "all") params.set("show", filters.show);
   if (filters.sort.column !== DEFAULT_SORT.column || filters.sort.direction !== DEFAULT_SORT.direction) {
     params.set("sort", filters.sort.column);
     params.set("dir", filters.sort.direction);
