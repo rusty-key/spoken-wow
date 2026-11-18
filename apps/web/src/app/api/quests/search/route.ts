@@ -11,12 +11,14 @@ import {
 } from "@/lib/broadcast/store";
 import { langParam, worksHere } from "@/lib/lang-server";
 import { corpus, isCorpusEmpty } from "@/lib/quests/catalogue";
-import { searchContext } from "@/lib/quests/context";
+import { publicSearchContext, searchContext } from "@/lib/quests/context";
 import { dirtyQuestFiles } from "@/lib/quests/dirtiness";
 import { staleFiles } from "@/lib/quests/staleness";
 import { recordingsFor } from "@/lib/recordings/store";
 import { filtersFromParams, needsDirty, needsLevels, needsStale, withoutMadeBy } from "@/lib/search-request";
 import { PAGE_SIZE, search } from "@/lib/search";
+import { asTeam } from "@/lib/teams/acting";
+import { unknownTeam, viewedTeam, viewOnly } from "@/lib/teams/viewing";
 
 export const dynamic = "force-dynamic";
 
@@ -36,15 +38,22 @@ export async function GET(request: NextRequest) {
   // The page number is what the URL carries, so a link stays meaningful if the page size
   // ever changes; the offset is arithmetic and belongs on this side of it.
   const page = Math.max(1, Math.floor(Number(params.get("page")) || 1));
+  // Whose takes play: the acting team's unless `team` names another of the language. Its
+  // corpus is built as it, since a line's file depends on its voice roster; read-only, so none
+  // of its private rows are read and the filters needing them are dropped.
+  const slug = params.get("team") || null;
+  const viewed = slug === null ? null : await viewedTeam(lang, slug);
+  if (slug !== null && !viewed) return unknownTeam(slug, lang);
+  const other = viewed && !viewed.own ? viewed.team : null;
 
   // Only the context depends on the filters, so the corpus is fetched alongside them.
   let filters, lines, seesMadeBy, recordings, broadcastStatus;
   try {
     [filters, lines, seesMadeBy, recordings, broadcastStatus] = await Promise.all([
       filtersFromParams(params, lang),
-      corpus(lang),
-      worksHere(lang),
-      recordingsFor("quests", lang),
+      other ? asTeam(lang, other, () => corpus(lang)) : corpus(lang),
+      other ? false : worksHere(lang),
+      other ? undefined : recordingsFor("quests", lang),
       // The value filtersFromParams keeps, not just any `bt`: an invalid one filters nothing.
       (BROADCAST_STATUSES as readonly string[]).includes(params.get("bt") ?? "")
         ? broadcastStatuses()
@@ -57,18 +66,14 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: (error as Error).message, code: "corpus_empty" }, { status: 503 });
   }
   if (!seesMadeBy) filters = withoutMadeBy(filters);
+  if (other) filters = viewOnly(filters);
   // A link to a gossip line merged into another (lib/broadcast/relink.ts) shows the line it went into.
   if (filters.line?.startsWith("g:")) filters = { ...filters, line: (await mergedInto(filters.line)) ?? filters.line };
   if (!recordings) filters = { ...filters, recorded: undefined };
   const index = fileIndexOf(lines, lang);
-  const { voiced, context: base } = await searchContext(
-    needsStale(filters),
-    needsDirty(filters),
-    lang,
-    seesMadeBy,
-    needsLevels(filters),
-    index,
-  );
+  const { voiced, context: base } = other
+    ? await publicSearchContext(lang, other, needsLevels(filters))
+    : await searchContext(needsStale(filters), needsDirty(filters), lang, seesMadeBy, needsLevels(filters), index);
   const context = { ...base, recordings, broadcast: broadcastStatus };
 
   // "Clear all" needs every dirty file the filter matches, not a page of rows. The same

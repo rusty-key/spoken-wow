@@ -20,12 +20,13 @@
  */
 import type { CorpusLine } from "../corpus";
 import { madeByOf } from "../takes/made-by";
-import { liveTakes } from "../takes/store";
+import { liveTakes, teamLiveTakes } from "../takes/store";
 import { dirtyQuestFiles } from "./dirtiness";
 import { staleFiles } from "./staleness";
 import type { SearchContext } from "../search";
 import { NO_CONTEXT } from "../search";
-import { readAs } from "../teams/store";
+import { readAs, type TeamId } from "../teams/store";
+import { teamLiveOverrides } from "../teams/viewing";
 import { readIgnores } from "./ignores";
 import { questLevels } from "./levels";
 import { readOverrides } from "./overrides";
@@ -114,4 +115,41 @@ export async function searchContext(
     console.warn("[quests] search context unavailable, serving unmarked results:", error);
     return { voiced, context: { ...NO_CONTEXT, takes, generatedAt, madeBy } };
   }
+}
+
+/**
+ * What a quests search may know of another team: its live takes and the overrides they speak,
+ * none of its ignores, reports or made-by. Nothing reads as stale or dirty, since that would need
+ * its private rows, so a voiced file reads as current.
+ *
+ * @param levels whether a level bound is in force; the levels are shared, not the team's.
+ */
+export async function publicSearchContext(
+  lang: Lang,
+  team: TeamId,
+  levels = false,
+): Promise<{ voiced: Set<string>; context: SearchContext }> {
+  const [live, overrides, questLevelsByQuest] = await Promise.all([
+    teamLiveTakes(team, "quests", lang),
+    teamLiveOverrides(team, "quests", lang),
+    levels ? questLevels() : null,
+  ]);
+  return {
+    voiced: new Set(live.map((row) => row.file)),
+    context: {
+      ...NO_CONTEXT,
+      // No original hash, so none reads as drifted, and no line id, which only a drifted one shows.
+      overrides: new Map(
+        [...overrides].map(([file, text]) => [
+          file,
+          { file, lineId: "", text, updatedAt: "", updatedBy: null, originalHash: null },
+        ]),
+      ),
+      takes: new Map(live.map((row) => [row.file, { version: row.version, takes: 1 }])),
+      generatedAt: new Map(live.map((row) => [row.file, row.createdAt.getTime()])),
+      stale: new Set(),
+      dirty: new Set(),
+      levels: questLevelsByQuest ?? undefined,
+    },
+  };
 }

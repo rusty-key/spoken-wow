@@ -29,8 +29,9 @@ import {
 } from "./tools";
 import { speakPlayerTokens } from "@/lib/player-words";
 import { madeByOf, type MadeBy } from "@/lib/takes/made-by";
-import { liveTakes } from "@/lib/takes/store";
-import { readAs } from "@/lib/teams/store";
+import { publicTake } from "@/lib/places/catalogue";
+import { liveTakes, teamLiveTakes } from "@/lib/takes/store";
+import { readAs, type TeamId } from "@/lib/teams/store";
 import { readTextOverrides, stampsWithOverrides, viewOf } from "@/lib/text-overrides/store";
 import type { OverrideView } from "@/lib/text-overrides/types";
 
@@ -405,6 +406,12 @@ export async function loadContext(
     dirt,
     ...(seesMadeBy && { madeBy: new Map(takeRows.map((row) => [row.lineId, madeByOf(row)])) }),
   };
+}
+
+/** `team`'s live takes, and none of its other rows: no reports, dirt, made-by or recordings. */
+export async function publicContext(source: "readables", lang: Lang, team: TeamId): Promise<SearchContext> {
+  const rows = await teamLiveTakes(team, source, lang);
+  return { ...EMPTY_CONTEXT, takes: new Map(rows.map((row) => [row.lineId, publicTake(row)])) };
 }
 
 /**

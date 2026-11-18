@@ -16,14 +16,14 @@ import { query } from "@/lib/db";
 import { memoByLang, memoByTeamLang } from "@/lib/memo";
 import { versionStamp } from "@/lib/stamp";
 import { BASE_LANG, type Lang } from "@/lib/lang";
-import { EMPTY_CONTEXT, sectionContext, type SearchContext, type Take } from "@/lib/places/catalogue";
+import { EMPTY_CONTEXT, publicContext, sectionContext, type SearchContext, type Take } from "@/lib/places/catalogue";
 import { assignFiles, lineIdFor, loadPronunciation, textHash, toSpokenText } from "@/lib/places/tools";
 import { readTextOverrides, stampsWithOverrides, viewOf } from "@/lib/text-overrides/store";
 import type { OverrideView } from "@/lib/text-overrides/types";
 
 import { bossLineId } from "./story";
 
-export { EMPTY_CONTEXT, type SearchContext, type Take };
+export { EMPTY_CONTEXT, publicContext, type SearchContext, type Take };
 
 export type BossEntry = {
   /** boss:{map}:{key}, the addon's clip key. */

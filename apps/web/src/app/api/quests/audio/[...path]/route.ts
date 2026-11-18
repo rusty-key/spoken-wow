@@ -3,14 +3,15 @@
  *
  * The path is the one the addon resolves, so a URL stays meaningful across regenerations;
  * which take it plays is the row's `isCurrent`, and the bytes are that take's archived
- * file. Checked against a whitelist shape rather than sanitised.
+ * file. Checked against a whitelist shape rather than sanitised. `?team=<slug>` plays another
+ * team's live take instead, and nothing of a file it has none of.
  */
 import { NextRequest } from "next/server";
 
 import { langParam } from "@/lib/lang-server";
 import { isSafeAudioPath } from "@/lib/range";
 import { serveTake } from "@/lib/takes/serve";
-import { livePath } from "@/lib/takes/store";
+import { viewedLivePath } from "@/lib/teams/viewing";
 
 export const dynamic = "force-dynamic";
 
@@ -19,5 +20,7 @@ export async function GET(request: NextRequest, context: { params: Promise<{ pat
   if (!isSafeAudioPath(file)) return new Response("bad audio path", { status: 400 });
   const { lang, denied } = await langParam(request);
   if (denied) return denied;
-  return serveTake(request, await livePath("quests", file, lang), { immutable: false, lang });
+  const bytes = await viewedLivePath(request, "quests", file, lang);
+  if (bytes instanceof Response) return bytes;
+  return serveTake(request, bytes, { immutable: false, lang });
 }

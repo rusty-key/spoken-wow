@@ -21,8 +21,8 @@ import { BASE_LANG, type Lang } from "@/lib/lang";
 
 import { corpusRows, currentLore } from "./lore";
 import { madeByOf, type MadeBy } from "@/lib/takes/made-by";
-import { liveTakes } from "@/lib/takes/store";
-import { readAs } from "@/lib/teams/store";
+import { liveTakes, teamLiveTakes, type PublicTake } from "@/lib/takes/store";
+import { readAs, type TeamId } from "@/lib/teams/store";
 import { readTextOverrides, stampsWithOverrides, viewOf } from "@/lib/text-overrides/store";
 import type { OverrideView } from "@/lib/text-overrides/types";
 import {
@@ -454,6 +454,29 @@ export async function sectionContext(
     dirt,
     ...(seesMadeBy && { madeBy: new Map(takeRows.map((row) => [row.lineId, madeByOf(row)])) }),
   };
+}
+
+/** Another team's live take as a row shows it: what plays and when, nothing of its making. */
+export function publicTake(row: PublicTake): Take {
+  return {
+    version: row.version,
+    file: row.file,
+    textHash: row.spokenHash ?? "",
+    chars: row.characters ?? 0,
+    credits: null,
+    durationSec: row.durationSec,
+    bytes: row.bytes,
+    modelId: null,
+    voiceId: null,
+    generatedAt: row.createdAt.toISOString(),
+    takes: 1,
+  };
+}
+
+/** `team`'s live takes, and none of its other rows: no reports, dirt, made-by or recordings. */
+export async function publicContext(source: "places" | "bosses", lang: Lang, team: TeamId): Promise<SearchContext> {
+  const rows = await teamLiveTakes(team, source, lang);
+  return { ...EMPTY_CONTEXT, takes: new Map(rows.map((row) => [row.lineId, publicTake(row)])) };
 }
 
 /**

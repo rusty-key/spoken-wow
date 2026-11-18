@@ -8,6 +8,8 @@ import "server-only";
 import { ALL_TEAMS, query } from "@/lib/db";
 import type { Lang } from "@/lib/lang";
 import type { Source } from "@/lib/sections";
+import { livePath, teamLivePath, type TakeBytes } from "@/lib/takes/store";
+import type { OverrideView } from "@/lib/text-overrides/types";
 
 import { ownerOrAll, secondTeamLangs, teamsOf, type TeamId } from "./store";
 
@@ -40,4 +42,58 @@ export async function teamLiveOverrides(team: TeamId, source: Source, lang: Lang
     team, lang, source,
   ]);
   return new Map(rows.map((row) => [row.key, row.text]));
+}
+
+/** The answer to a `team` parameter naming no team of the language. */
+export function unknownTeam(slug: string, lang: Lang): Response {
+  return Response.json({ error: `no team ${slug} voices ${lang}` }, { status: 404 });
+}
+
+/**
+ * Filters a view of another team cannot answer, dropped rather than left to match nothing: who
+ * made a take, recordings, dirt and staleness are that team's private rows.
+ */
+export function viewOnly<F extends { model?: string; author?: string; recorded?: unknown; dirty?: boolean; state?: string }>(
+  filters: F,
+): F {
+  return {
+    ...filters,
+    model: undefined,
+    author: undefined,
+    recorded: undefined,
+    dirty: undefined,
+    state: filters.state === "stale" ? undefined : filters.state,
+  };
+}
+
+/**
+ * Lines as another team is heard: a line it has a live take of shows the override that take
+ * speaks, and reads as current, since the view has none of the rows that would say otherwise.
+ * `spoken` and `hash` stay the original's; the take is given the line's hash to match.
+ */
+export function asHeard<
+  E extends { id: string; hash: string | null; override?: OverrideView },
+  T extends { textHash: string },
+  C extends { takes: Map<string, T> },
+>(entries: E[], context: C, overrides: Map<string, string>): { entries: E[]; context: C } {
+  const takes = new Map(context.takes);
+  const heard = entries.map((entry) => {
+    const take = takes.get(entry.id);
+    if (take && entry.hash !== null) takes.set(entry.id, { ...take, textHash: entry.hash });
+    const text = overrides.get(entry.id);
+    return text === undefined ? entry : { ...entry, override: { text, drifted: false, updatedAt: "", updatedBy: null } };
+  });
+  return { entries: heard, context: { ...context, takes } };
+}
+
+/**
+ * The live take of `file` the request's `team` parameter names: the acting team's without one,
+ * as always; another team's only where it has a live take, through team_live_takes.
+ */
+export async function viewedLivePath(request: Request, source: Source, file: string, lang: Lang): Promise<TakeBytes | Response> {
+  const slug = new URL(request.url).searchParams.get("team") || null;
+  if (slug === null) return livePath(source, file, lang);
+  const viewed = await viewedTeam(lang, slug);
+  if (!viewed) return unknownTeam(slug, lang);
+  return viewed.own ? livePath(source, file, lang) : teamLivePath(viewed.team, source, file, lang);
 }
