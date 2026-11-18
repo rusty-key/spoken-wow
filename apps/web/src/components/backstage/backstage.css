@@ -1,0 +1,289 @@
+/*
+ * Backstage pages in the front page's look, one page at a time.
+ *
+ * A page opts in with `.bs` on its <main> (BackstagePage does this). Inside it the shadcn tokens
+ * point at the front page's palette and fonts, so the Buttons, Inputs, Selects and Badges already
+ * on a page take the new look without being rewritten. Pages without `.bs` stay as they were.
+ *
+ * Kept apart from the header's `.bn-theme` (brand.css): there `--accent` is the gold, here it is
+ * shadcn's hover grey, and the `--bs-*` tokens carry the front page's own colours.
+ */
+
+.bs {
+  --background: #101216;
+  --foreground: #f4f5f7;
+  --card: #1b1c22;
+  --card-foreground: #f4f5f7;
+  --popover: #222329;
+  --popover-foreground: #f4f5f7;
+  --primary: oklch(0.83 0.12 85);
+  --primary-foreground: #16171d;
+  --primary-ink: #f0c25a;
+  --secondary: #31333a;
+  --secondary-foreground: #f4f5f7;
+  --muted: #222329;
+  --muted-foreground: #a3a5ab;
+  --accent: #31333a;
+  --accent-foreground: #f4f5f7;
+  --destructive: #f0605d;
+  --border: rgba(255, 255, 255, 0.08);
+  --input: rgba(255, 255, 255, 0.12);
+  --ring: #fff1c4;
+
+  --bs-panel: #1b1c22;
+  --bs-panel-head: #222329;
+  --bs-field: #121318;
+  --bs-text-2: #c9cacf;
+  --bs-gold: #f0c25a;
+  --bs-green: #5fcf4f;
+  --bs-green-text: #8fe381;
+  --bs-red: #f0605d;
+  --bs-red-text: #ff8f8c;
+  --bs-blue: #8cb8f5;
+  --bs-shadow: 0 24px 64px rgba(0, 0, 0, 0.45);
+
+  min-height: calc(100vh - 64px);
+  background: var(--background);
+  color: var(--foreground);
+  font-family: var(--bn-body), "Segoe UI", sans-serif;
+}
+
+body:has(main.bs) {
+  background: #101216;
+}
+
+.bs ::selection {
+  background: var(--bs-gold);
+  color: #16171d;
+}
+
+.bs :focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: 2px;
+}
+
+/* ---------- Page head ---------- */
+
+.bs-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 16px 24px;
+  padding-top: 40px;
+  padding-bottom: 24px;
+}
+.bs-title {
+  margin: 0;
+  font-family: var(--bn-display), "Palatino Linotype", Georgia, serif;
+  font-size: 28px;
+  font-weight: 700;
+  line-height: 36px;
+  letter-spacing: 0.02em;
+}
+.bs-lede {
+  max-width: 72ch;
+  margin: 8px 0 0;
+  color: var(--bs-text-2);
+  font-size: 15px;
+  line-height: 24px;
+}
+
+/* ---------- Tabs, as the front page's .bn-tabs ---------- */
+
+.bs-tabs {
+  display: flex;
+  gap: 4px;
+  overflow-x: auto;
+  box-shadow: inset 0 -2px 0 rgba(255, 255, 255, 0.1);
+  scrollbar-width: none;
+}
+.bs-tab {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  gap: 6px;
+  min-height: 44px;
+  padding: 0 16px;
+  color: var(--bs-text-2);
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 16px;
+  letter-spacing: 0.08em;
+  text-decoration: none;
+  text-transform: uppercase;
+  box-shadow: inset 0 -2px 0 transparent;
+}
+.bs-tab:hover {
+  color: var(--foreground);
+}
+.bs-tab[aria-current="page"] {
+  color: var(--foreground);
+  box-shadow: inset 0 -2px 0 var(--bs-gold);
+}
+.bs-tab .bs-count {
+  color: var(--muted-foreground);
+  font-variant-numeric: tabular-nums;
+}
+.bs-tab[aria-current="page"] .bs-count {
+  color: var(--bs-gold);
+}
+
+/* Chips: a smaller choice inside a tab, such as the section a list shows. */
+.bs-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.bs-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 32px;
+  padding: 0 14px;
+  border-radius: 999px;
+  background: transparent;
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.12);
+  color: var(--bs-text-2);
+  font-size: 13px;
+  text-decoration: none;
+}
+.bs-chip:hover {
+  background: rgba(255, 255, 255, 0.05);
+  color: var(--foreground);
+}
+.bs-chip[aria-current="page"] {
+  background: var(--foreground);
+  box-shadow: none;
+  color: #101216;
+  font-weight: 500;
+}
+.bs-chip .bs-count {
+  opacity: 0.7;
+  font-variant-numeric: tabular-nums;
+}
+
+/* ---------- Panels ---------- */
+
+.bs-panel {
+  overflow: hidden;
+  border-radius: 8px;
+  background: var(--bs-panel);
+  box-shadow: var(--bs-shadow);
+}
+.bs-panel-quiet {
+  background: #16171d;
+  box-shadow: none;
+}
+.bs-panel-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px 16px;
+  padding: 16px 20px;
+  background: var(--bs-panel-head);
+}
+.bs-panel-quiet .bs-panel-head {
+  background: transparent;
+}
+.bs-panel-title-row {
+  display: flex;
+  gap: 14px;
+  align-items: flex-start;
+  min-width: 0;
+}
+.bs-panel-icon {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+}
+.bs-panel-icon svg {
+  width: 18px;
+  height: 18px;
+}
+.bs-tone-good .bs-panel-icon {
+  background: rgba(95, 207, 79, 0.14);
+  color: var(--bs-green);
+}
+.bs-tone-fix .bs-panel-icon {
+  background: rgba(240, 194, 90, 0.14);
+  color: var(--bs-gold);
+}
+.bs-tone-drop .bs-panel-icon {
+  background: rgba(240, 96, 93, 0.14);
+  color: var(--bs-red);
+}
+.bs-tone-info .bs-panel-icon {
+  background: rgba(140, 184, 245, 0.14);
+  color: var(--bs-blue);
+}
+.bs-tone-neutral .bs-panel-icon {
+  background: rgba(255, 255, 255, 0.06);
+  color: var(--muted-foreground);
+}
+.bs-panel-title {
+  margin: 0;
+  font-family: var(--bn-display), "Palatino Linotype", Georgia, serif;
+  font-size: 17px;
+  font-weight: 700;
+  line-height: 24px;
+  letter-spacing: 0.03em;
+}
+.bs-panel-title .bs-count {
+  font-family: var(--bn-body), sans-serif;
+  font-weight: 500;
+  color: var(--muted-foreground);
+  letter-spacing: 0;
+}
+.bs-panel-desc {
+  max-width: 80ch;
+  margin: 4px 0 0;
+  color: var(--bs-text-2);
+  font-size: 14px;
+  line-height: 20px;
+}
+.bs-rows > * + * {
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05);
+}
+
+/* ---------- Text with placeholders ---------- */
+
+.bs-token,
+.bs-token-bad,
+.bs-token-good {
+  padding: 1px 5px;
+  border-radius: 4px;
+  font-family: ui-monospace, "Cascadia Mono", Consolas, monospace;
+  font-size: 0.88em;
+  white-space: nowrap;
+}
+.bs-token {
+  background: rgba(240, 194, 90, 0.14);
+  color: var(--bs-gold);
+}
+.bs-token-bad {
+  background: rgba(240, 96, 93, 0.18);
+  color: var(--bs-red-text);
+  text-decoration: line-through;
+  text-decoration-color: rgba(255, 143, 140, 0.55);
+}
+.bs-token-good {
+  background: rgba(95, 207, 79, 0.16);
+  color: var(--bs-green-text);
+}
+
+/* ---------- Labels ---------- */
+
+.bs-label {
+  margin: 0 0 6px;
+  color: var(--muted-foreground);
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 16px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
