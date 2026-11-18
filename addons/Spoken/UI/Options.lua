@@ -258,15 +258,32 @@ end
 
 
 
---- "auto" and the codes of the installed languages, read when a menu opens so that a pack
+--- The voices a player may add to their list: "auto", then every installed voice, each language's
+--- own followed by its teams' (Languages:Voices). Read when the menu opens, so that a pack
 --- installed since is there.
-local function Choices(first)
-    local list = { first }
-    for _, language in ipairs(Languages:Installed()) do table.insert(list, language.code) end
+function Options:VoiceChoices()
+    local list = { "auto" }
+    for _, voice in ipairs(Languages:Voices()) do table.insert(list, voice.code) end
     return list
 end
-function Options:VoiceChoices() return Choices("auto") end
-function Options:FallbackChoices() return Choices("none") end
+
+--- Whether a pack in the voice `code` is installed. "auto" always is: it reads whatever the
+--- client's language has.
+function Options:VoiceInstalled(code)
+    if code == "auto" then return true end
+    local lang = Languages:SplitVoice(code)
+    local entry = lang and Languages:Get(lang)
+    local voice = entry and entry.voices[code]
+    return voice ~= nil and #voice.folders > 0
+end
+
+--- The voices as the settings list them: the player's list, or while there is none what it would be
+--- built from the old voice language and fallback, which the first change stores.
+function Options:VoiceList()
+    local language = Addon.db.profile.Language
+    if type(language.Voices) == "table" and #language.Voices > 0 then return language.Voices end
+    return Addon:VoiceListFrom(language.Voice, language.Fallback)
+end
 
 --- Show `style` on screen with a sample line, or nil to stop.
 function Options:Preview(style)
@@ -560,25 +577,28 @@ local function Build()
     Only(wheel, function() return Small() or DUI() or Subtitles() end)
     layout:OnRefresh(function() wheel:SetText(Subtitles() and L.SUBTITLE_WHEEL_HINT or L.WINDOW_WHEEL_HINT) end)
 
-    -- The voice language, once for every module: they share the same list of languages, and a
-    -- player who picks Portuguese means it for quests and readables alike.
+    -- The voices, once for every module, in the order a line tries them: they share the same list
+    -- of languages, and a player who picks Portuguese means it for quests and readables alike.
     layout:Section(L.OPT_LANGUAGE_TITLE)
-    local language = function() return Addon.db.profile.Language end
     -- A language as the language rows name it: Auto with what it reads now, a pack's in its font.
     local function Label(code)
         if code == "auto" then return format(L.OPT_LANG_AUTO_FMT, Options:LanguageName(Languages:Client())) end
         return Options:MenuLanguageName(code)
     end
-    local function Face(code) return Options:LanguageFace(code) end
-    layout:Dropdown(L.OPT_VOICE_LANGUAGE, nil, function() return Options:VoiceChoices() end,
-        function() return language().Voice or "auto" end,
-        function(code) language().Voice = code end, function() Options:UpdateRows() end,
-        Label, Face)
-    layout:Dropdown(L.OPT_FALLBACK_LANGUAGE, nil, function() return Options:FallbackChoices() end,
-        function() return language().Fallback or "enUS" end,
-        function(code) language().Fallback = code end, function() Options:UpdateRows() end,
-        function(code) return code == "none" and L.OPT_FALLBACK_NONE or Options:MenuLanguageName(code) end,
-        Face)
+    local function Face(code)
+        if code == "auto" then return nil end
+        return Options:LanguageFace((Languages:SplitVoice(code)))
+    end
+    layout:OrderedList(L.OPT_VOICES, L.OPT_VOICES_TIP, function() return Options:VoiceList() end,
+        function(list) Spoken:SetVoiceOrder(list) end, function() return Options:VoiceChoices() end,
+        function(code)
+            if code == "auto" then return Label(code) end
+            local name = Options:VoiceName(code, true)
+            if Options:VoiceInstalled(code) then return name end
+            return format("%s %s", name, L.OPT_VOICE_MISSING)
+        end, Face,
+        { add = L.OPT_VOICE_ADD, earlier = L.OPT_VOICE_EARLIER, later = L.OPT_VOICE_LATER, remove = L.OPT_VOICE_REMOVE,
+            available = function(code) return Options:VoiceInstalled(code) end })
     -- A language read as Spoken and its modules load, `owner` keeping the choice (Texts, Interface):
     -- a change waits for a reload, which is asked at once, as a player who switches and sees no change
     -- concludes it is broken; until then the note says so, while `pending()`.

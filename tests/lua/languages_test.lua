@@ -185,9 +185,16 @@ end
 local function List(list) return table.concat(list, ",") end
 env = HebrewInstalled(HEBREW)
 Expect("voice choices", List(env.Options:VoiceChoices()), "auto,deDE,heIL")
-Expect("fallback choices", List(env.Options:FallbackChoices()), "none,deDE,heIL")
 env = Install({})
 Expect("no packs: only auto", List(env.Options:VoiceChoices()), "auto")
+env = Install({ Pack("SpokenPlacesAudio_deDE_stimmen", STIMMEN), Pack("SpokenPlacesAudio_deDE", { ["X-SpokenPlaces-Language"] = "deDE" }),
+    Pack("SpokenPlacesAudio", { ["X-SpokenPlaces-Language"] = "enUS" }) })
+Expect("voice choices: a team's voice after its language's", List(env.Options:VoiceChoices()), "auto,enUS,deDE,deDE_stimmen")
+Expect("a team's voice is named for its team", env.Options:VoiceName("deDE_stimmen"), "Deutsch · Stimmen")
+Expect("a plain voice is its language's name", env.Options:VoiceName("deDE"), "Deutsch")
+Expect("an installed voice is installed", env.Options:VoiceInstalled("deDE_stimmen"), true)
+Expect("...a team's voice whose pack is gone is not", env.Options:VoiceInstalled("deDE_other"), false)
+Expect("...and Auto always is", env.Options:VoiceInstalled("auto"), true)
 env = Install({ Pack("SpokenCommunity_swedish", { ["X-SpokenQuests-Language"] = "svSE" }) })
 Expect("a pack without names shows its code", env.Options:LanguageName("svSE"), "svSE")
 Expect("an unknown language shows its code", env.Options:LanguageName("itIT"), "itIT")

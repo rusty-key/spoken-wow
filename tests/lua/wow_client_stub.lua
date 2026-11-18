@@ -302,6 +302,11 @@ local function Widget(kind, name)
     function w:Enable() self.enabled = true end
     function w:Disable() self.enabled = false end
     function w:IsEnabled() return self.enabled ~= false end
+    function w:SetTextColor(r, g, b, a) self.textColor = { r, g, b, a } end
+    function w:GetTextColor()
+        local color = self.textColor or { 1, 1, 1, 1 }
+        return color[1], color[2], color[3], color[4] or 1
+    end
     function w:SetChecked(v) self.checked = v end
     function w:GetChecked() return self.checked end
     function w:GetFont() return "Fonts\\FRIZQT__.TTF", 12 end

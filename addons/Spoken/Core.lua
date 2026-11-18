@@ -778,13 +778,17 @@ end
 function Addon:BuildVoiceList()
     local language = self.db and self.db.profile.Language
     if not language or language.Voices ~= nil then return end
-    local voice, fallback = language.Voice, language.Fallback
-    if voice == nil and fallback == nil then return end
+    if language.Voice == nil and language.Fallback == nil then return end
+    language.Voices = self:VoiceListFrom(language.Voice, language.Fallback)
+end
+
+--- The list of voices the old voice language and fallback make, as BuildVoiceList stores it.
+function Addon:VoiceListFrom(voice, fallback)
     if voice ~= "auto" and not Languages:IsCode(voice) then voice = "auto" end
     if fallback == nil then fallback = "enUS" end
     local list = { voice }
     if Languages:IsCode(fallback) and fallback ~= voice then table.insert(list, fallback) end
-    language.Voices = list
+    return list
 end
 
 -- AceDB needs the saved variable to exist, which is only true once the client has loaded

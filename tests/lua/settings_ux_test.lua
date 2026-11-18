@@ -387,7 +387,7 @@ do
     local function Silent()
         for _, row in ipairs(Group(quests, L.PART_VOICE).rows) do
             local text = row.control.GetText and row.control:GetText()
-            if row.shown and type(text) == "string" and text:find("Stay Silent", 1, true) then return text end
+            if row.shown and type(text) == "string" and text:find("No voice pack speaks", 1, true) then return text end
         end
     end
     local language = env.Addon.db.profile.Language
@@ -401,7 +401,7 @@ do
     quests:Refresh()
     -- The stub draws a Han character as wide as the box a missing glyph draws, so no font of its own
     -- draws Chinese: it is named in English, as on a client whose font lacks it.
-    Expect("a voice language with no Quests pack and Stay Silent is said under the voice packs", Silent(),
+    Expect("a voice language with no Quests pack and nothing after it is said under the voice packs", Silent(),
         format(L.MODULE_NO_VOICE_FMT, "Chinese (Simplified)"))
     -- A font with the glyphs measures the text apart from the box a missing one draws.
     stub.TextWidth = function(fs)
