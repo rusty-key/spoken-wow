@@ -166,7 +166,8 @@ describe("bucketOf", () => {
   });
 
   describe("waitingReason", () => {
-    const why = (row: typeof moment, speaker: typeof npc | null) => waitingReason(row, speaker, roster, "German");
+    const why = (row: Parameters<typeof waitingReason>[0], speaker: Parameters<typeof waitingReason>[1]) =>
+      waitingReason(row, speaker, roster, "German");
 
     it("gives none for a row bucketOf calls ready", () => {
       expect(why({ ...moment, hasSpeaker: true }, null)).toBeNull();
@@ -186,8 +187,19 @@ describe("bucketOf", () => {
     });
 
     it("blocks exactly the rows bucketOf blocks", () => {
-      const speakers = [null, npc, { ...npc, race: null }, { ...npc, conflict: [{}] }, { ...npc, race: "murloc" }, { ...npc, flavor: null }];
-      const rows = [moment, { ...moment, hasSpeaker: true }, { ...moment, quest: "gossip" as const, hasSpeaker: true }];
+      const speakers: Parameters<typeof waitingReason>[1][] = [
+        null,
+        npc,
+        { ...npc, race: null },
+        { ...npc, conflict: [{}] },
+        { ...npc, race: "murloc" },
+        { ...npc, flavor: null },
+      ];
+      const rows: (typeof moment | (Omit<typeof moment, "quest"> & { quest: "gossip" }))[] = [
+        moment,
+        { ...moment, hasSpeaker: true },
+        { ...moment, quest: "gossip", hasSpeaker: true },
+      ];
       for (const row of rows) {
         for (const speaker of speakers) {
           expect(why(row, speaker) !== null).toBe(bucketOf(row, speaker, roster) === "blocked");

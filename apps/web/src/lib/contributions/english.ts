@@ -45,5 +45,7 @@ export async function englishFor(rows: readonly Contribution[]): Promise<Map<num
     );
     for (const row of matched) if (row.text) found.set(row.id, row.text);
   }
+  // English templates break lines with `$B`: shown, and checked, as the line breaks they are.
+  for (const [id, text] of found) found.set(id, text.replace(/\$[Bb](?![a-z])/g, "\n"));
   return found;
 }

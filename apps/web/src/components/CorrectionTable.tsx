@@ -80,6 +80,8 @@ export type CorrectionRow = {
  * the moderator's edit of the player's text where there is one.
  */
 type Accept = ({ lineId: string; variant: number } | { as: "wording" }) & { text?: string };
+/** What a status change sends beside the status: how to accept, or why a reject was made. */
+type Extra = Accept | { reason: string };
 
 /** Corrections are quest panels only, so gossip is not offered. */
 const QUEST_STAGE_OPTIONS = STAGE_CHIP_OPTIONS.filter((option) => option.value !== "gossip");
@@ -98,6 +100,9 @@ function correctionsHref(source: CorrectionSource, filters: Filters): string {
   return `/contributions/${source}/corrections?${params}`;
 }
 
+
+/** What a dropped correction may say, as one click. */
+const DROP_REASONS = ["Our text is right", "Name, class or gender spelled out", "Cut off", "Wrong language", "Placeholder lost"];
 
 export default function CorrectionTable({
   source,
@@ -136,6 +141,9 @@ export default function CorrectionTable({
   /** Statuses changed here since the page loaded, shown without waiting for a reload. */
   const [resolved, setResolved] = useState<Record<number, ContributionStatus>>({});
   const [busy, setBusy] = useState<number | null>(null);
+  /** The row whose drop reasons are open, and the reasons given this session. */
+  const [droppingId, setDroppingId] = useState<number | null>(null);
+  const [reasonsOf, setReasonsOf] = useState<Record<number, string>>({});
   const [refusals, setRefusals] = useState<Record<number, string>>({});
   /** The wording each row is set against, where a moderator picked one other than the closest. */
   const [picked, setPicked] = useState<Record<number, number>>({});
@@ -173,14 +181,14 @@ export default function CorrectionTable({
   // Accepting writes the player's text as the picked wording's, or beside them as another
   // (api/contributions/correction); rejecting and reopening are resolve's plain status flips.
   const send = useCallback(
-    async (id: number, next: ContributionStatus, as?: Accept): Promise<boolean> => {
+    async (id: number, next: ContributionStatus, as?: Extra): Promise<boolean> => {
       const url = next === "accepted" ? "/api/contributions/correction" : "/api/contributions/resolve";
       const body = await post(url, id, { status: next, ...as });
       if (!body) return false;
       setResolved((current) => ({ ...current, [id]: next }));
       // The text as the server saved it, normalised, rather than as typed.
       const saved = (body.contribution as { text?: unknown } | undefined)?.text;
-      if (as?.text !== undefined && typeof saved === "string") setTexts((current) => ({ ...current, [id]: saved }));
+      if (as && "text" in as && as.text !== undefined && typeof saved === "string") setTexts((current) => ({ ...current, [id]: saved }));
       setDrafts(({ [id]: _, ...rest }) => rest);
       return true;
     },
@@ -188,7 +196,7 @@ export default function CorrectionTable({
   );
 
   const resolve = useCallback(
-    async (id: number, next: ContributionStatus, as?: Accept) => {
+    async (id: number, next: ContributionStatus, as?: Extra) => {
       setBusy(id);
       await send(id, next, as);
       setBusy(null);
@@ -294,41 +302,228 @@ export default function CorrectionTable({
         <ClientSelect value={client} onChange={(next) => go({ client: next, build: undefined })} />
       </nav>
 
+      {embedded ? null : (
+        <>
       {status === "new" && initial.length > 0 ? (
-        <div className="mb-3 flex flex-wrap items-center gap-2 text-xs">
-          {bulk ? (
-            <span className="text-muted-foreground">
-              Accepted: {bulk.done} of {bulk.total}…
-            </span>
-          ) : confirmAll ? (
-            <>
-              <span>
-                Accept all {toAccept.length} shown? Each writes the player&apos;s text as{" "}
-                {source === "readables" ? "its page's words" : "what its line speaks"}.
-              </span>
-              <LiteButton
-                variant="accept"
-                onClick={() => {
-                  setConfirmAll(false);
-                  void acceptAll(toAccept);
-                }}
-              >
-                Accept {toAccept.length}
-              </LiteButton>
-              <LiteButton variant="ghost" onClick={() => setConfirmAll(false)}>
-                Cancel
-              </LiteButton>
-            </>
-          ) : (
-            <LiteButton variant="accept" disabled={toAccept.length === 0} onClick={() => setConfirmAll(true)}>
-              Accept all ({toAccept.length})
-            </LiteButton>
-          )}
-          {bulkOutcome && !bulk ? <span className="text-muted-foreground ml-2">{bulkOutcome}</span> : null}
-        </div>
-      ) : null}
+            <div className="mb-3 flex flex-wrap items-center gap-2 text-xs">
+              {bulk ? (
+                <span className="text-muted-foreground">
+                  Accepted: {bulk.done} of {bulk.total}…
+                </span>
+              ) : confirmAll ? (
+                <>
+                  <span>
+                    Accept all {toAccept.length} shown? Each writes the player&apos;s text as{" "}
+                    {source === "readables" ? "its page's words" : "what its line speaks"}.
+                  </span>
+                  <LiteButton
+                    variant="accept"
+                    onClick={() => {
+                      setConfirmAll(false);
+                      void acceptAll(toAccept);
+                    }}
+                  >
+                    Accept {toAccept.length}
+                  </LiteButton>
+                  <LiteButton variant="ghost" onClick={() => setConfirmAll(false)}>
+                    Cancel
+                  </LiteButton>
+                </>
+              ) : (
+                <LiteButton variant="accept" disabled={toAccept.length === 0} onClick={() => setConfirmAll(true)}>
+                  Accept all ({toAccept.length})
+                </LiteButton>
+              )}
+              {bulkOutcome && !bulk ? <span className="text-muted-foreground ml-2">{bulkOutcome}</span> : null}
+            </div>
+          ) : null}
+        </>
+      )}
 
-      {initial.length === 0 ? (
+      {embedded ? (
+        <div className="bs-rows">
+          {initial.map((row) => {
+            const current = resolved[row.id] ?? row.status;
+            const chosen = chosenOf(row);
+            const wording = row.wordings[chosen];
+            const after = afterOf(row);
+            const diff = wordDiff(wording.before, after);
+            const editing = drafts[row.id] !== undefined;
+            const classWord = classWordOf(row);
+            const hold = busy === row.id || bulk !== null;
+            const dropping = droppingId === row.id;
+            return (
+              <div key={row.id} id={`contribution-${row.id}`} className="bs-review-row" data-moved={current !== row.status ? "" : undefined}>
+                <div className="bs-who">
+                  {row.npc ? <div className="bs-who-name">{row.npc.npcName ?? "unnamed"}</div> : null}
+                  {row.quest ? (
+                    <span className="bs-who-sub">
+                      {row.quest.title}{" "}
+                      <a href={wowheadQuestUrl(row.quest.questId)} target="_blank" rel="noreferrer" className="hover:underline">
+                        #{row.quest.questId}
+                      </a>
+                      {row.quest.stage ? ` · ${STAGE_LABELS[row.quest.stage]}` : null}
+                    </span>
+                  ) : (
+                    <span className="bs-who-sub">{row.title ?? wording.lineId}</span>
+                  )}
+                </div>
+
+                <div className="min-w-0">
+                  <p className="bs-label">{row.wordings.length > 1 ? "Ours now · pick the wording it changes" : "Ours now"}</p>
+                  {row.wordings.length > 1 ? (
+                    <ul className="flex flex-col gap-2">
+                      {row.wordings.map((line, index) => (
+                        <li key={`${line.lineId}|${line.variant}`}>
+                          {index === chosen ? (
+                            <Marked parts={diff.before} tone="removed" />
+                          ) : (
+                            <button
+                              type="button"
+                              title="Set the player's text against this wording"
+                              className="text-muted-foreground hover:text-foreground text-left whitespace-pre-wrap"
+                              onClick={() => setPicked((all) => ({ ...all, [row.id]: index }))}
+                            >
+                              {line.before}
+                            </button>
+                          )}
+                        </li>
+                      ))}
+                    </ul>
+                  ) : (
+                    <div className="bs-text-en">
+                      <Marked parts={diff.before} tone="removed" />
+                    </div>
+                  )}
+                </div>
+
+                <div className="min-w-0">
+                  <p className="bs-label">Theirs</p>
+                  {editing ? (
+                    <textarea
+                      className="bs-textarea"
+                      value={after}
+                      aria-label="The player's text"
+                      rows={Math.max(3, after.split("\n").length + 1)}
+                      onChange={(event) => setDrafts((all) => ({ ...all, [row.id]: event.target.value }))}
+                    />
+                  ) : (
+                    <Marked parts={diff.after} tone="added" />
+                  )}
+                  {row.quest && current === "new" && (classWord || hasClassSlot(after)) ? (
+                    <button
+                      type="button"
+                      disabled={hold}
+                      title={
+                        classWord
+                          ? "Stop putting this quest's class word back in contributions"
+                          : "This quest names a class as a word of its own, not the reader's class: put the word back in this quest's waiting and future contributions"
+                      }
+                      className="text-muted-foreground hover:text-foreground mt-1 text-xs underline-offset-2 hover:underline"
+                      onClick={() => row.quest && void markClassWord(row.id, row.quest.questId, !classWord)}
+                    >
+                      {classWord ? "Class word kept for this quest · undo" : "$c is this quest's own word"}
+                    </button>
+                  ) : null}
+                  {current === "rejected" && reasonsOf[row.id] ? (
+                    <ul className="bs-findings">
+                      <li className="bs-finding bs-finding-drop">Rejected: {reasonsOf[row.id]}</li>
+                    </ul>
+                  ) : null}
+                </div>
+
+                <div className="bs-actions">
+                  {current === "new" ? (
+                    <>
+                      <button
+                        type="button"
+                        className="bs-btn"
+                        disabled={hold}
+                        title={source === "readables" ? "Take the player's text as this page's words" : "Take the player's text as what this line speaks"}
+                        onClick={() => void resolve(row.id, "accepted", fixOf(row))}
+                      >
+                        Replace ours
+                      </button>
+                      {source === "quests" ? (
+                        <button
+                          type="button"
+                          className="bs-btn"
+                          disabled={hold}
+                          title="Keep our text and add the player's as another wording of this moment"
+                          onClick={() => void resolve(row.id, "accepted", { as: "wording", ...editOf(row) })}
+                        >
+                          Keep both
+                        </button>
+                      ) : null}
+                      <button
+                        type="button"
+                        className="bs-btn bs-btn-text"
+                        disabled={hold}
+                        onClick={() =>
+                          setDrafts(({ [row.id]: open, ...rest }) => (open === undefined ? { ...rest, [row.id]: savedOf(row) } : rest))
+                        }
+                      >
+                        {editing ? "Cancel edit" : "Edit text"}
+                      </button>
+                      <button type="button" className="bs-btn bs-btn-text" disabled={hold} onClick={() => setDroppingId(dropping ? null : row.id)}>
+                        Drop…
+                      </button>
+                    </>
+                  ) : (
+                    <button type="button" className="bs-btn bs-btn-text" disabled={hold} onClick={() => void resolve(row.id, "new")}>
+                      Reopen
+                    </button>
+                  )}
+                  {refusals[row.id] ? <p className="bs-refusal">{refusals[row.id]}</p> : null}
+                </div>
+
+                <div className="bs-meta">
+                  <span>
+                    {row.client.label} · {row.locale}
+                    {row.client.buildNumber ? ` · ${row.client.buildNumber}` : null}
+                  </span>
+                  <span className="inline-flex items-center gap-1">
+                    Sent by <SendersButton id={row.id} count={row.count} />
+                  </span>
+                  <span>Filed {when(row.createdAt)}</span>
+                  <Link href={localeHref(lang, wording.editHref)} className="underline underline-offset-[3px]">
+                    {source === "readables" ? "Open the page" : "Open the line"}
+                  </Link>
+                </div>
+                {row.body ? (
+                  <div className="bs-aside">
+                    <p className="bs-label">What the player said was wrong</p>
+                    <p className="bs-text">{row.body}</p>
+                  </div>
+                ) : null}
+                {dropping ? (
+                  <div className="bs-reasons">
+                    <p>Why drop it? The reason shows on the Rejected tab.</p>
+                    {DROP_REASONS.map((why) => (
+                      <button
+                        key={why}
+                        type="button"
+                        className="bs-reason"
+                        disabled={hold}
+                        onClick={() => {
+                          setDroppingId(null);
+                          setReasonsOf((all) => ({ ...all, [row.id]: why }));
+                          void resolve(row.id, "rejected", { reason: why });
+                        }}
+                      >
+                        {why}
+                      </button>
+                    ))}
+                    <button type="button" className="bs-btn bs-btn-text" onClick={() => setDroppingId(null)}>
+                      Cancel
+                    </button>
+                  </div>
+                ) : null}
+              </div>
+            );
+          })}
+        </div>
+      ) : initial.length === 0 ? (
         <p className="text-muted-foreground text-sm">Nothing here.</p>
       ) : (
         <table
