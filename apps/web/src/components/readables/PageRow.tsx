@@ -51,7 +51,7 @@ type Props = {
   onSelectBook: (line: ResultLine) => void;
   /** The narrowed view as a link, for a click that opens it elsewhere. */
   bookHref: (line: ResultLine) => string;
-  /** Open the report dialog. Everyone gets this, signed in or not. Null in another team's view, whose reports would land in the visitor's own team. */
+  /** Reports go to the acting team, so this is null when viewing another team. */
   onReport: ((line: ResultLine) => void) | null;
   /** An earlier take is live again, so the row and the player can catch up. */
   onRestored: (line: ResultLine, version: number) => void;
@@ -308,9 +308,7 @@ export function PageRow({
           canTriage={canTriage}
         />
         {/* Outside the canRegenerate gate, deliberately: reporting is what a reader who
-            cannot sign in has, and /api/reports is unauthenticated for the same reason.
-            Every page has an address -- it is the page id the addon builds its link from --
-            so unlike a quests row it is hidden only in another team's view. */}
+            cannot sign in has, and /api/reports is unauthenticated for the same reason. */}
         {onReport && (
           <Button
             variant="ghost"

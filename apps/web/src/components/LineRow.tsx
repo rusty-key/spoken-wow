@@ -160,7 +160,7 @@ type Props = {
   onReplaceSpeaker: ((line: ResultLine) => void) | null;
   onRemoveSpeaker: ((line: ResultLine) => void) | null;
   onRegenerate: (line: ResultLine) => void;
-  /** Open the report dialog. Everyone gets this, signed in or not. Null in another team's view, whose reports would land in the visitor's own team. */
+  /** Null in another team's view because reports go to the acting team. Otherwise everyone, signed in or not. */
   onReport: ((line: ResultLine) => void) | null;
   onRestored: (file: string, version: number) => void;
   /**
