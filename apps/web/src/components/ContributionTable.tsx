@@ -528,9 +528,11 @@ export default function ContributionTable({
   const cleanToKeep = matching.filter((row) => row.bulk && row.verdict === "clean" && stillNew(row)).map((row) => row.id);
   const dropToReject = matching.filter((row) => row.verdict === "drop" && stillNew(row)).map((row) => row.id);
   const [confirmDrop, setConfirmDrop] = useState<number[] | null>(null);
-  // A row decided from its own buttons while a confirm is open leaves it: the confirm must not
-  // send a rejected row back as accepted, or the other way round.
-  const undecided = (ids: number[] | null) => ids?.filter((id) => resolved[id] === undefined) ?? null;
+  // A row decided from its own buttons while a confirm is open, or with its own request still in
+  // flight, leaves it: the confirm must not send a rejected row back as accepted, or the other way
+  // round. A row reopened since is waiting again and stays.
+  const undecided = (ids: number[] | null) =>
+    ids?.filter((id) => (resolved[id] ?? "new") === "new" && !busy.has(id)) ?? null;
   const keepConfirmed = undecided(confirmAll);
   const dropConfirmed = undecided(confirmDrop);
   const [showFilters, setShowFilters] = useState(Boolean(build || stage.length > 0 || searchIn !== "any"));

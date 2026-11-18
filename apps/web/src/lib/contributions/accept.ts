@@ -970,8 +970,9 @@ export async function resolveContribution(
   bookMatch?: BookMatchResult,
   // The reviewer's edit of the sent text on an accept, and the reason given on a reject. Both are
   // written under the row's lock and in this transaction, so a refused or failed resolve leaves
-  // neither behind and two reviewers can't interleave.
-  { text, reason }: { text?: string; reason?: string | null } = {},
+  // neither behind and two reviewers can't interleave. `onlyNew` refuses a row decided since the
+  // caller saw it waiting, so a batch can't undo another reviewer's (or the same one's) decision.
+  { text, reason, onlyNew = false }: { text?: string; reason?: string | null; onlyNew?: boolean } = {},
 ): Promise<ResolveOutcome> {
   let edited: string | null = null;
   if (status === "accepted" && text !== undefined) {
@@ -1022,6 +1023,11 @@ export async function resolveContribution(
     const siteWide = status === "rejected" && mayIgnore && (lang === null || lang === BASE_LANG);
     const team = (!siteWide && lang && owners.get(lang)) || ALL_TEAMS;
     await actAs(client, team);
+
+    if (onlyNew && contribution.status !== "new" && contribution.status !== status) {
+      await client.query("rollback");
+      return { ok: false, reason: "changed", message: "Someone decided this line meanwhile; reload to see it." };
+    }
 
     // An edit only lands on a row still waiting; a row decided meanwhile keeps its text, and a
     // keep that would claim the edit is refused rather than reported as done.
@@ -1247,6 +1253,7 @@ export async function resolveContributions(
   bookMatches?: ReadonlyMap<number, BookMatchResult>,
   // One reason for every row a bulk reject lands on.
   reason?: string | null,
+  // A keep or drop for many rows lands only on rows still waiting; reopening many takes any row.
 ): Promise<Map<number, ResolveOutcome | Error>> {
   const corpusLines = status === "accepted" ? (await corpus()).lines : undefined;
   const outcomes = new Map<number, ResolveOutcome | Error>();
@@ -1255,7 +1262,10 @@ export async function resolveContributions(
     while (next < ids.length) {
       const id = ids[next++];
       try {
-        outcomes.set(id, await resolveContribution(id, status, userId, corpusLines, mayIgnore(id), bookMatches?.get(id), { reason }));
+        outcomes.set(id, await resolveContribution(id, status, userId, corpusLines, mayIgnore(id), bookMatches?.get(id), {
+          reason,
+          onlyNew: status !== "new",
+        }));
       } catch (error) {
         outcomes.set(id, error instanceof Error ? error : new Error(String(error)));
       }

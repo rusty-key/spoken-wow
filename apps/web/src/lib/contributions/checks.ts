@@ -54,9 +54,9 @@ const count = (slots: Map<Slot, string[]>, slot: Slot) => slots.get(slot)?.lengt
 const SLOTS: readonly Slot[] = ["N", "C", "R"];
 
 // Words that are English and nothing else in the site's languages; a line mostly made of them was not
-// translated. Not "was" or "will" (German), "has" (Spanish), "die" or "also" (German).
+// translated. Not "was", "will", "not", "die" or "also" (German), "has" (Spanish).
 const ENGLISH_WORDS = new Set(
-  "the and you your have are were that this with for but not what would there their they them been from".split(" "),
+  "the and you your have are were that this with for but what would there their they them been from".split(" "),
 );
 
 /**

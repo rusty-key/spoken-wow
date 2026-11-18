@@ -98,6 +98,18 @@ describe("POST /api/contributions/resolve-many", () => {
     expect(await reasons()).toEqual([null, null]);
   });
 
+  it("leaves a row decided since the page was loaded as it was", async () => {
+    const { rows } = await asSystem.query<{ id: number }>(
+      `insert into "contribution" ("source", "key", "raw", "dedup", "text", "ip", "status")
+       values ('readables', '5', 'raw', $2, 'Words.', $1, 'rejected') returning "id"`,
+      [ip, `${dedup}-decided`],
+    );
+    const { results } = await (await POST(post({ ids: [rows[0].id], status: "accepted" }))).json();
+    expect(results[rows[0].id].ok).toBe(false);
+    const { rows: after } = await asSystem.query(`select "status" from "contribution" where "id" = $1`, [rows[0].id]);
+    expect(after[0].status).toBe("rejected");
+  });
+
   describe("accepting readables rows", () => {
     let base: number;
     let lineIds: string[] = [];
