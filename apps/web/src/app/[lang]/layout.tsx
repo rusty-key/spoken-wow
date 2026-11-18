@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import "../globals.css";
 import "@/components/landing/brand.css";
 import "@/components/site-nav.css";
+import "@/components/backstage/backstage.css";
 import localFont from "next/font/local";
 import Image from "next/image";
 import Script from "next/script";

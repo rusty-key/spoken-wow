@@ -80,7 +80,8 @@ import {
 import { gossipIdentity, recordBroadcast, resolveGossip, type GossipPlan } from "./gossip";
 import { noVoice } from "./speaker";
 import { noteFor, pageNotes } from "./notes";
-import { CONTRIBUTION_COLUMNS, observationMeta, type Contribution } from "./store";
+import { CONTRIBUTION_COLUMNS, observationMeta, REJECT_REASON_MAX, type Contribution } from "./store";
+import { MAX_BYTES } from "./envelope";
 import { spokenFromTemplate } from "./tokens";
 import { idOnlyResolution } from "./triage";
 
@@ -967,7 +968,21 @@ export async function resolveContribution(
   // every language), which rejecting a written quests row does.
   mayIgnore = false,
   bookMatch?: BookMatchResult,
+  // The reviewer's edit of the sent text on an accept, and the reason given on a reject. Both are
+  // written under the row's lock and in this transaction, so a refused or failed resolve leaves
+  // neither behind and two reviewers can't interleave. `onlyNew` refuses a row decided since the
+  // caller saw it waiting, so a batch can't undo another reviewer's (or the same one's) decision.
+  { text, reason, onlyNew = false }: { text?: string; reason?: string | null; onlyNew?: boolean } = {},
 ): Promise<ResolveOutcome> {
+  let edited: string | null = null;
+  if (status === "accepted" && text !== undefined) {
+    edited = normaliseText(text);
+    if (!edited) return { ok: false, reason: "malformed", message: "The text is empty." };
+    if (new TextEncoder().encode(edited).length > MAX_BYTES) {
+      return { ok: false, reason: "malformed", message: "The text is longer than any line the addon sends." };
+    }
+  }
+  const rejectReason = status === "rejected" ? reason?.trim().slice(0, REJECT_REASON_MAX) || null : null;
   // Read before the client is held: a refresh of the memo needs a connection of its own. Every
   // language, since the contribution's is not known yet: one the other worker has just given a
   // team would otherwise be logged under none. The privileged teams, whoever is acting: a
@@ -1008,6 +1023,36 @@ export async function resolveContribution(
     const siteWide = status === "rejected" && mayIgnore && (lang === null || lang === BASE_LANG);
     const team = (!siteWide && lang && owners.get(lang)) || ALL_TEAMS;
     await actAs(client, team);
+
+    if (onlyNew && contribution.status !== "new" && contribution.status !== status) {
+      await client.query("rollback");
+      return { ok: false, reason: "changed", message: "Someone decided this line meanwhile; reload to see it." };
+    }
+
+    // An edit only lands on a row still waiting; a row decided meanwhile keeps its text, and a
+    // keep that would claim the edit is refused rather than reported as done.
+    if (edited !== null && edited !== contribution.text) {
+      if (contribution.status !== "new") {
+        await client.query("rollback");
+        return { ok: false, reason: "changed", message: "Someone decided this line meanwhile; reload to see it." };
+      }
+      await client.query(`update "contribution" set "text" = $2, "updatedAt" = now() where "id" = $1`, [id, edited]);
+      contribution.text = edited;
+      if (isLang(contribution.locale)) {
+        await recordActivity(
+          {
+            team,
+            kind: "contribution.edited",
+            lang: contribution.locale,
+            source: contribution.source,
+            subject: String(id),
+            actorId: userId,
+            detail: { field: "text" },
+          },
+          client,
+        );
+      }
+    }
 
     const written =
       contribution.source === "readables"
@@ -1053,10 +1098,10 @@ export async function resolveContribution(
 
     const updated = await client.query<Contribution>(
       `update "contribution"
-          set "status" = $2, "resolvedBy" = $3, "updatedAt" = now()
+          set "status" = $2, "resolvedBy" = $3, "updatedAt" = now(), "rejectReason" = $4
         where "id" = $1
         returning ${COLUMNS}`,
-      [id, status, userId],
+      [id, status, userId, rejectReason],
     );
     // In the transaction, so a resolve that rolls back is never logged. A row sent from a
     // client in a language the site does not have is logged under every language rather
@@ -1206,6 +1251,9 @@ export async function resolveContributions(
   // resolveContribution's mayIgnore, per row.
   mayIgnore: (id: number) => boolean = () => false,
   bookMatches?: ReadonlyMap<number, BookMatchResult>,
+  // One reason for every row a bulk reject lands on.
+  reason?: string | null,
+  // A keep or drop for many rows lands only on rows still waiting; reopening many takes any row.
 ): Promise<Map<number, ResolveOutcome | Error>> {
   const corpusLines = status === "accepted" ? (await corpus()).lines : undefined;
   const outcomes = new Map<number, ResolveOutcome | Error>();
@@ -1214,7 +1262,10 @@ export async function resolveContributions(
     while (next < ids.length) {
       const id = ids[next++];
       try {
-        outcomes.set(id, await resolveContribution(id, status, userId, corpusLines, mayIgnore(id), bookMatches?.get(id)));
+        outcomes.set(id, await resolveContribution(id, status, userId, corpusLines, mayIgnore(id), bookMatches?.get(id), {
+          reason,
+          onlyNew: status !== "new",
+        }));
       } catch (error) {
         outcomes.set(id, error instanceof Error ? error : new Error(String(error)));
       }

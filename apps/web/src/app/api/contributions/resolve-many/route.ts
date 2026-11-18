@@ -13,6 +13,9 @@
  * will (bulkAcceptable): an ambiguous, known, correction or new-book row is left as it is and
  * answered with why, one corpus read for the lot. Each accept is held to the match checked here,
  * so a row another accept turned into a correction meanwhile is refused, not written.
+ *
+ * Rejecting may carry one `reason` for every row ("Drop all" on a group), recorded on each row the
+ * reject landed on; any other status clears the rows' reasons.
  */
 import { mayIgnoreIn, requireCapability } from "@/lib/generation/authz";
 import { readablesContributions, contributionLocales } from "@/lib/contributions/store";
@@ -29,12 +32,12 @@ const UNKNOWN = "unknown contribution";
 const SKIPPED: Record<string, string> = {
   ambiguous: "Several pages could be this one -- pick it first.",
   known: "The corpus already has these words for this page.",
-  correction: "This changes words the page already has -- accept it from the Corrections tab.",
+  correction: "This changes words the page already has -- accept it from the changes to lines we already have.",
   "new-book": "A new book is accepted one row at a time, so the title is checked first.",
 };
 
 export async function POST(request: Request) {
-  const body = (await request.json().catch(() => ({}))) as { ids?: unknown; status?: unknown };
+  const body = (await request.json().catch(() => ({}))) as { ids?: unknown; status?: unknown; reason?: unknown };
 
   if (!isStatus(body.status)) {
     return Response.json({ error: "unknown status" }, { status: 400 });
@@ -93,6 +96,7 @@ export async function POST(request: Request) {
       return locale !== undefined && ignorable.has(langOf.get(locale)!);
     },
     bookMatches,
+    typeof body.reason === "string" ? body.reason : null,
   );
 
   const results: Record<number, ResolveManyResult> = {};
