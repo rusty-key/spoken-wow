@@ -11,14 +11,14 @@ import "server-only";
 import { ALL_TEAMS, query, queryIn, type TeamId } from "@/lib/db";
 import type { Lang } from "@/lib/lang";
 import { writingBackend } from "@/lib/storage/backends";
+import { errorText } from "@/lib/storage/error-text";
 import { writeAtomic } from "@/lib/takes/bytes";
 import { teamOf } from "@/lib/teams/store";
 
 import { archive, archiveMode, blobKey, sha256Of, type BlobPrefix } from "./store";
 import { SealError } from "./seal";
-import { backendStore, quarantineKey } from "./where";
+import { backendStore, OBJECT_ROW, objectParams, quarantineKey } from "./where";
 
-const reason = (error: unknown) => (error instanceof Error ? error.message : String(error)).slice(0, 300);
 
 /** Health is the bucket's own to recover: a test, or a quarantined object that lands. */
 async function markFailing(backendId: string, error: unknown): Promise<void> {
@@ -28,7 +28,7 @@ async function markFailing(backendId: string, error: unknown): Promise<void> {
   await queryIn(
     ALL_TEAMS,
     `update "storage_backend" set "health" = 'failing', "lastError" = $2, "checkedAt" = now() where "id" = $1`,
-    [backendId, `Writing an object: ${reason(error)}`],
+    [backendId, `Writing an object: ${errorText(error)}`],
   );
 }
 
@@ -40,7 +40,7 @@ async function markFailing(backendId: string, error: unknown): Promise<void> {
 async function record(prefix: BlobPrefix, sha256: string, backendId: string, team: TeamId, pending: boolean): Promise<boolean> {
   const [row] = await query<{ was: boolean | null }>(
     `with "before" as (
-       select "pending" from "archive_object" where "prefix" = $1 and "sha256" = $2 and "backendId" = $3
+       select "pending" from "archive_object" where ${OBJECT_ROW}
      )
      insert into "archive_object" ("prefix", "sha256", "backendId", "teamId", "pending") values ($1, $2, $3, $4, $5)
      on conflict ("prefix", "sha256", "backendId") do update
@@ -56,9 +56,8 @@ async function record(prefix: BlobPrefix, sha256: string, backendId: string, tea
 /** Whether `backendId` is known to hold a landed, present copy of the object. */
 async function holds(prefix: BlobPrefix, sha256: string, backendId: string): Promise<boolean> {
   const rows = await query(
-    `select 1 from "archive_object"
-      where "prefix" = $1 and "sha256" = $2 and "backendId" = $3 and not "pending" and "missingAt" is null`,
-    [prefix, sha256, backendId],
+    `select 1 from "archive_object" where ${OBJECT_ROW} and not "pending" and "missingAt" is null`,
+    objectParams(blobKey(prefix, sha256), backendId),
   );
   return rows.length > 0;
 }
@@ -126,7 +125,7 @@ async function dropQuarantined(backendId: string, key: string): Promise<void> {
 
 /** Sends a row that cannot be landed now to the back of its bucket's queue, so it holds up no other. */
 async function requeue(prefix: BlobPrefix, sha256: string, backendId: string): Promise<void> {
-  await query(`update "archive_object" set "keptAt" = now() where "prefix" = $1 and "sha256" = $2 and "backendId" = $3`, [prefix, sha256, backendId]);
+  await query(`update "archive_object" set "keptAt" = now() where ${OBJECT_ROW}`, objectParams(blobKey(prefix, sha256), backendId));
 }
 
 /**
@@ -136,11 +135,13 @@ async function requeue(prefix: BlobPrefix, sha256: string, backendId: string): P
  */
 export async function landQuarantined(perBucket = 20): Promise<number> {
   const rows = await query<{ prefix: BlobPrefix; sha256: string; backendId: string }>(
-    `select "prefix", "sha256", "backendId" from (
-       select o."prefix", o."sha256", o."backendId", o."keptAt",
-              row_number() over (partition by o."backendId" order by o."keptAt") as "n"
-         from "archive_object" o where o."pending") q
-      where "n" <= $1 order by "keptAt"`,
+    // Each bucket's oldest few, read off archive_object_pending_idx rather than sorting them all.
+    `select o."prefix", o."sha256", o."backendId"
+       from (select distinct "backendId" from "archive_object" where "pending") b
+      cross join lateral (
+        select "prefix", "sha256", "backendId", "keptAt" from "archive_object"
+         where "backendId" = b."backendId" and "pending" order by "keptAt" limit $1) o
+      order by o."keptAt"`,
     [perBucket],
   );
   const refused = new Set<string>();
@@ -168,10 +169,7 @@ export async function landQuarantined(perBucket = 20): Promise<number> {
       await markFailing(row.backendId, error);
       continue;
     }
-    await query(
-      `update "archive_object" set "pending" = false, "missingAt" = null where "prefix" = $1 and "sha256" = $2 and "backendId" = $3`,
-      [row.prefix, row.sha256, row.backendId],
-    );
+    await query(`update "archive_object" set "pending" = false, "missingAt" = null where ${OBJECT_ROW}`, objectParams(key, row.backendId));
     healed.add(row.backendId);
     // Only once nothing reads it from here: the row above sends every read to the team's bucket.
     await dropQuarantined(row.backendId, key);

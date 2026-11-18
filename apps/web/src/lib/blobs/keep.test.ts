@@ -205,11 +205,7 @@ describe("the quarantine", () => {
       expect(await landQuarantined(2)).toBe(1);
       expect(up.store.objects.has(`takes/${sha256Of(bytes)}`)).toBe(true);
       expect(house.objects.has(quarantineKey(up.id, `takes/${sha256Of(bytes)}`))).toBe(false);
-      up.restore();
     } finally {
-      const { asSystem } = await import("@/lib/teams/testing");
-      await asSystem.query(`delete from "archive_object" where "teamId" = $1`, [fr.team]);
-      await asSystem.query(`delete from "storage_backend" where "teamId" = $1`, [fr.team]);
       await fr.restore();
     }
   });
