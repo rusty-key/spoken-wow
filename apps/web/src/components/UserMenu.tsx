@@ -36,6 +36,8 @@ type MenuLink = {
   label: string;
   admin?: boolean;
   count?: { value: number; title: string };
+  /** The path the link's section lives under, where that is not the link's own. */
+  section?: string;
 };
 
 /** Must match site-nav.css's breakpoint, where the row of links gives way to the burger. */
@@ -45,10 +47,11 @@ const NARROW = "(max-width: 1023px)";
  * How a link relates to the page the reader is on: "page" when it opens that page, "section" when
  * the page is under it (Admin on /admin/packs), so assistive tech hears "current page" only once.
  */
-function where(href: string, path: string): "page" | "section" | null {
-  const target = href.split("?")[0];
+function where(link: MenuLink, path: string): "page" | "section" | null {
+  const target = link.href.split("?")[0];
   if (path === target) return "page";
-  return path.startsWith(`${target}/`) ? "section" : null;
+  const section = link.section ?? target;
+  return path === section || path.startsWith(`${section}/`) ? "section" : null;
 }
 
 function Links({
@@ -63,7 +66,7 @@ function Links({
   onPick?: () => void;
 }) {
   return links.map((link) => {
-    const here = where(link.href, path);
+    const here = where(link, path);
     return (
       <Link
         key={link.href}
@@ -178,6 +181,8 @@ export default function UserMenu() {
                 : "/admin/dashboard",
             label: "Admin",
             admin: true,
+            // A team's admin lands on the dashboard, but every admin page is this link's section.
+            section: "/admin",
             // Always 0 for a team's admin: only a site admin decides packs.
             count: packsWaiting(pendingPacks),
           },
