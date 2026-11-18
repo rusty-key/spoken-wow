@@ -118,6 +118,12 @@
   background: rgba(16, 18, 22, 0.88);
   backdrop-filter: blur(12px);
 }
+.bn-nav .bn-wrap {
+  display: flex;
+  align-items: center;
+  gap: 32px;
+  height: 100%;
+}
 .bn-brand {
   display: flex;
   align-items: center;

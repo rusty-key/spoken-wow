@@ -15,19 +15,12 @@
   outline-offset: 2px;
 }
 
-.sn-row {
-  display: flex;
-  align-items: center;
-  gap: 24px;
-  height: 100%;
-}
-
 .sn .bn-brand {
   color: var(--text);
 }
 
-.sn-row .bn-brand + .sn-area {
-  margin-left: -12px;
+.sn .bn-brand + .sn-area {
+  margin-left: -20px;
 }
 .sn-area {
   flex: none;
@@ -171,10 +164,10 @@
 
 /* The narrowest phones (320px) fit the wordmark, the tag and the burger only with tighter gaps. */
 @media (width < 420px) {
-  .sn-row {
+  .sn.bn-nav .bn-wrap {
     gap: 12px;
   }
-  .sn-row .bn-brand + .sn-area {
+  .sn.bn-nav .bn-brand + .sn-area {
     margin-left: -4px;
   }
 }

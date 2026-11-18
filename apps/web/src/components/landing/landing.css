@@ -104,12 +104,6 @@ html:has(.bn) {
 
 /* ---------- Top bar ---------- */
 
-.bn-nav .bn-wrap {
-  display: flex;
-  align-items: center;
-  gap: 32px;
-  height: 100%;
-}
 .bn-menu {
   display: none;
   position: relative;

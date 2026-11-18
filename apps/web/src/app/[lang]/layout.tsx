@@ -68,7 +68,7 @@ export default async function RootLayout({
             <GrantsProvider>
               <SiteHeader>
                 <header className="bn-theme bn-nav sn">
-                  <div className="bn-wrap sn-row">
+                  <div className="bn-wrap">
                     <Link href="/" className="bn-brand" aria-label="Spoken">
                       <Image src="/landing/icons/spoken-192.png" alt="" width={96} height={96} priority unoptimized />
                       <span className="bn-brand-name bn-display">Spoken</span>
