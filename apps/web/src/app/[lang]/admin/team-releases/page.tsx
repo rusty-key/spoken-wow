@@ -20,8 +20,7 @@ export default async function Page() {
   const session = await currentSession();
   if (!session || !isAdmin(session.user.role)) notFound();
 
-  const waiting = await waitingReviews();
-  const live = await liveTeamPacks();
+  const [waiting, live] = await Promise.all([waitingReviews(), liveTeamPacks()]);
 
   return (
     <main className="pb-36">

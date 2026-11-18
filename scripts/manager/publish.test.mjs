@@ -512,7 +512,7 @@ test("a staged publish leaves both indexes as they were, with its manifest and b
   assert.deepEqual(indexBytes(store), before);
   const entry = out.staged.packs[stimmenFolder];
   assert.equal(entry.baseRev, null);
-  assert.equal(entry.version, "1.0.0");
+  assert.equal(out.staged.version, "1.0.0");
   assert.deepEqual(entry.team, stimmen);
   assert.equal(entry.lang, "deDE");
   assert.ok(store.objects.has(`packs/${stimmenFolder}/${entry.rev}.json`));
@@ -540,6 +540,7 @@ test("promoting lists what was staged in index-v2.json, and in index.json only a
     stage: true, bump: "patch", now: later,
   });
   const both = {
+    version: staged.staged.version,
     packs: { ...staged.staged.packs, ...ja.staged.packs },
     languages: { ...staged.staged.languages, ...ja.staged.languages },
   };

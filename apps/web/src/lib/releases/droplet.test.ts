@@ -11,7 +11,7 @@ import { needsTeamReleases, releasePlan } from "../../../../../scripts/manager/r
 import {
   currentStep,
   failureReason,
-  jobArgs,
+  jobOf,
   outcome,
   readDropletRun,
   releasesClosedFor,
@@ -99,19 +99,18 @@ describe("startDropletRun", () => {
     expect(command).toBe("setsid");
     expect(args[0]).toBe("--fork");
     expect(args).toContain(join(realpathSync(shared), "release-tools/scripts/manager/release-job.mjs"));
-    // The team last: the job takes it as a flag, and a job from before teams released had none.
-    expect(args.slice(-5)).toEqual([join(shared, "release-runs/run-1"), "bosses", "enUS", "minor", "--team=english"]);
+    expect(args.at(-1)).toBe(join(shared, "release-runs/run-1"));
+    expect(JSON.parse(readFileSync(join(shared, "release-runs/run-1/job.json"), "utf8"))).toEqual({
+      kind: "release", section: "bosses", lang: "enUS", bump: "minor", team: "english", stage: false, input: null,
+    });
     expect(Object.keys(options.env).sort()).toEqual(["HOME", "NODE_ENV", "PATH", "SPOKEN_RELEASE_ENV"]);
   });
 
   it("stages a release that asks to, and hands a promotion its entries", async () => {
-    expect(jobArgs({ ...run, stage: true })).toEqual(["bosses", "enUS", "minor", "--team=english", "--stage"]);
-    const staged = { packs: { SpokenBossesAudio_x: { rev: "r" } }, languages: {} };
-    const spawnFn = fakeSpawn(0);
-    await startDropletRun({ ...run, kind: "promote", staged }, spawnFn);
-    const [, args] = spawnFn.mock.calls[0] as unknown as [string, string[]];
-    expect(args.slice(-5)).toEqual(["bosses", "enUS", "minor", "--team=english", "--kind=promote"]);
-    expect(JSON.parse(readFileSync(join(shared, "release-runs/run-1/input.json"), "utf8"))).toEqual(staged);
+    expect(jobOf({ ...run, stage: true })).toMatchObject({ kind: "release", stage: true, input: null });
+    const staged = { version: "1.0.0", packs: { SpokenBossesAudio_x: { rev: "r" } }, languages: {} };
+    await startDropletRun({ ...run, kind: "promote", staged }, fakeSpawn(0));
+    expect(JSON.parse(readFileSync(join(shared, "release-runs/run-1/job.json"), "utf8"))).toMatchObject({ kind: "promote", input: staged });
   });
 
   it("refuses when the fork could not start", async () => {

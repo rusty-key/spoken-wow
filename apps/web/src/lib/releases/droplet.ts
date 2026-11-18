@@ -64,17 +64,21 @@ export type DropletJob = {
   teamSlug: string;
   bump: ReleaseBump | null;
   stage: boolean;
-  /** What a promote lists, or a delist's `{ folders }`, handed to the job as input.json. */
+  /** A promote's staged release, which it lists. */
   staged: unknown;
 };
 
-/** The job's arguments after its run directory. */
-export function jobArgs(run: DropletJob): string[] {
-  // The team as a flag, after the positionals: a job from before teams released had none.
-  return [
-    run.section, run.lang, run.bump ?? "patch", `--team=${run.teamSlug}`,
-    ...(run.kind === "release" ? (run.stage ? ["--stage"] : []) : [`--kind=${run.kind}`]),
-  ];
+/** job.json, all release-job.mjs is told of the run: it maps the kind to its command (jobCommand). */
+export function jobOf(run: DropletJob) {
+  return {
+    kind: run.kind,
+    section: run.section,
+    lang: run.lang,
+    bump: run.bump ?? "patch",
+    team: run.teamSlug,
+    stage: run.stage,
+    input: run.kind === "promote" ? run.staged : null,
+  };
 }
 
 export async function startDropletRun(run: DropletJob, spawnFn: Spawn = spawn): Promise<void> {
@@ -83,7 +87,7 @@ export async function startDropletRun(run: DropletJob, spawnFn: Spawn = spawn): 
   await mkdir(dir, { recursive: true });
   await writeFile(join(dir, "heartbeat"), "");
   await writeFile(join(dir, "log"), "");
-  if (run.kind !== "release") await writeFile(join(dir, "input.json"), JSON.stringify(run.staged));
+  await writeFile(join(dir, "job.json"), JSON.stringify(jobOf(run)));
 
   // Resolved now, so the job keeps the release it started from through a symlink swap.
   const tools = realpathSync(join(process.env.SPOKEN_PLACES_ROOT ?? process.cwd(), "release-tools"));
@@ -93,7 +97,7 @@ export async function startDropletRun(run: DropletJob, spawnFn: Spawn = spawn): 
       const child = spawnFn(
         "setsid",
         // The site keeps the machine's one CPU.
-        ["--fork", "nice", "-n", "10", process.execPath, join(tools, "scripts/manager/release-job.mjs"), dir, ...jobArgs(run)],
+        ["--fork", "nice", "-n", "10", process.execPath, join(tools, "scripts/manager/release-job.mjs"), dir],
         {
           cwd: tools,
           env: { NODE_ENV: process.env.NODE_ENV, PATH: process.env.PATH, HOME: process.env.HOME, SPOKEN_RELEASE_ENV: process.env.SPOKEN_RELEASE_ENV },
@@ -145,7 +149,7 @@ export function currentStep(log: string): string | null {
 
 /**
  * What the last line of a job that exited 0 says came of it. A staged release waits for review;
- * a promotion or delisting is done (release.mjs, promote.mjs, delist.mjs).
+ * a promotion or delisting is done (release.mjs, cli.mjs promote and delist).
  */
 export function outcome(
   log: string,
@@ -156,7 +160,7 @@ export function outcome(
   return { state: "done", version: /^==> (?:released|promoted) (\S+?):/m.exec(log)?.[1] ?? null };
 }
 
-/** What a staged release left in its run's directory for promote.mjs; null when it left nothing. */
+/** What a staged release left in its run's directory for its promotion; null when it left nothing. */
 export async function readStaged(id: string): Promise<unknown> {
   const dir = runDir(id);
   if (!dir) return null;

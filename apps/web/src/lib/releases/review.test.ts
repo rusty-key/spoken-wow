@@ -24,15 +24,13 @@ vi.mock("@/lib/email", () => ({
   },
 }));
 
-import { derivedFolders } from "../../../../../scripts/lib/packs.mjs";
-
-import { approve, delistPack, liveTeamPacks, reject, ReviewError, teamFolders, waitingCount, waitingReviews } from "./review";
-import { RELEASE_SECTIONS } from "./sections";
+import { approve, delistPack, liveTeamPacks, reject, ReviewError, waitingCount, waitingLines, waitingReviews } from "./review";
 import { lastReleasedAt, startRun } from "./store";
 import { forgetReleaseCheck, syncActive } from "./sync";
 
 const STAGED = {
-  packs: { SpokenPlacesAudio_frFR_second: { rev: "20261118T000000Z", baseRev: null, version: "1.0.0", manifestSha256: "m", lang: "frFR" } },
+  version: "1.0.0",
+  packs: { SpokenPlacesAudio_frFR_second: { rev: "20261118T000000Z", baseRev: null, manifestSha256: "m", lang: "frFR" } },
   languages: {},
 };
 
@@ -190,8 +188,24 @@ describe("the review page's lists", () => {
     expect(waits).toHaveLength(1);
     expect(await waitingCount()).toBe(1);
     expect(waits[0]).toMatchObject({ id, team: { id: second, slug }, lang: "frFR", section: "places", version: "1.0.0", approving: false });
-    expect(waits[0].pending.changes.map((c) => c.file).sort()).toEqual(["review-test-ours-1", "review-test-ours-2"]);
-    expect(waits[0].pending.count).toBe(2);
+    expect(waits[0].pending).toMatchObject({ count: 2, changes: [], people: [{ id: null, count: 2 }] });
+    // The lines come when the dialog opens.
+    expect((await waitingLines(id))?.changes.map((c) => c.file).sort()).toEqual(["review-test-ours-1", "review-test-ours-2"]);
+  });
+
+  it("counts a waiting version from its team's last release that brought players up to date", async () => {
+    await asSystem.query(
+      `insert into "release_run" ("teamId", "section", "lang", "state", "createdAt", "finishedAt")
+       values ($1, 'places', 'frFR', 'unchanged', now() - interval '2 hours', now() - interval '2 hours'),
+              ($2, 'places', 'frFR', 'done', now() - interval '30 minutes', now() - interval '30 minutes')`,
+      [second, fr.team],
+    );
+    const id = await waiting();
+    const [{ since }] = await systemRows<{ since: Date }>(
+      `select max("createdAt") as "since" from "release_run" where "teamId" = $1 and "state" = 'unchanged'`, [second],
+    );
+    expect((await waitingReviews())[0].pending.since).toBe(since.toISOString());
+    expect((await waitingLines(id))?.since).toBe(since.toISOString());
   });
 
   it("lists a team's pack once approved, and not once delisted", async () => {
@@ -209,23 +223,11 @@ describe("the review page's lists", () => {
   });
 });
 
-describe("teamFolders", () => {
-  it("names a team's folders as the release builds them", () => {
-    for (const section of RELEASE_SECTIONS) {
-      expect(teamFolders(section, "deDE", "stimmen")).toEqual(derivedFolders(section, "deDE", "stimmen").map((p: { folder: string }) => p.folder));
-      expect(teamFolders(section, "jaJP", null)).toEqual(derivedFolders(section, "jaJP", null).map((p: { folder: string }) => p.folder));
-    }
-  });
-});
-
 describe("delistPack", () => {
   it("queues a delisting of the team's pack in the section and language", async () => {
     const run = await delistPack(second, "frFR", "quests", owner.id);
     expect(run).toMatchObject({ kind: "delist", teamId: second, section: "quests", lang: "frFR" });
-    expect(run.staged).toEqual({
-      folders: ["Alliance", "Horde", "Shared", "Gossip"].map((side) => `SpokenQuestsAudio${side}_frFR_${slug}`),
-    });
-    expect(droplet.startDropletRun.mock.calls[0][0]).toMatchObject({ kind: "delist", staged: run.staged });
+    expect(droplet.startDropletRun.mock.calls[0][0]).toMatchObject({ kind: "delist", section: "quests", lang: "frFR", teamSlug: slug });
   });
 
   it("does not delist an official team's pack", async () => {

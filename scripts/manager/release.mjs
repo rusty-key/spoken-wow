@@ -10,7 +10,7 @@
 //
 // --stage publishes without listing: blobs and manifests go up, no index changes, and what a
 // site owner's approval would list goes to <file> (dist/staged.json without one) for
-// promote.mjs. The site stages every release of a team that is not official.
+// `cli.mjs promote`. The site stages every release of a team that is not official.
 //
 // DATABASE_URL names the database; a checkout's LOCAL_DB wins for the steps that read it. The
 // channel's keys come as for cli.mjs. Each step prints `==> step n/m`, then its own progress, and

@@ -186,7 +186,7 @@ function QueueItem({ version }: { version: WaitingVersion }) {
         version={version.version}
         bumpable={false}
         onRelease={() => {}}
-        reviewed={{ team, actions }}
+        reviewed={{ runId: version.id, team, actions }}
       />
     </li>
   );

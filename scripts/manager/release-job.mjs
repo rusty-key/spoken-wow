@@ -2,10 +2,11 @@
 // What the site starts for a Release press on the droplet: release.mjs in a scratch copy of this
 // tree, reporting through files in the run's directory, which every site worker can read.
 //
-//   node release-tools/scripts/manager/release-job.mjs <run dir> <section> <lang> <bump> [--team=<slug>] [--stage] [--kind=promote|delist]
+//   node release-tools/scripts/manager/release-job.mjs <run dir>
 //
+// The site writes job.json there first: { kind, section, lang, bump, team, stage, input } (jobCommand).
 // log holds the output, heartbeat's mtime says the job is alive, and exit holds the exit code.
-// A staged release leaves staged.json; a promote or delist reads input.json (jobCommand).
+// A staged release leaves staged.json; a promote reads its input from input.json.
 import { spawn } from "node:child_process";
 import { closeSync, openSync, realpathSync } from "node:fs";
 import { cp, readdir, readFile, rename, rm, stat, utimes, writeFile } from "node:fs/promises";
@@ -51,13 +52,14 @@ function runRelease(script, args, { cwd, env, log }) {
 }
 
 /**
- * The script a job runs and its arguments. A release builds and publishes, or with `stage` writes
- * what it staged to staged.json in the run directory, which the site reads once it exits. A promote
- * or delist reads input.json there, which the site wrote before starting it.
+ * The script in scripts/manager a job runs, and its arguments. A release builds and publishes, or
+ * with `stage` writes what it staged to staged.json in the run directory, which the site reads once
+ * it exits. A promote lists the staged release in input.json; a delist resolves the team's folders
+ * itself.
  */
-export function jobCommand({ runDir, kind = "release", section, lang, bump = "patch", team = null, stage = false }) {
-  if (kind === "promote") return ["promote.mjs", [join(runDir, "input.json")]];
-  if (kind === "delist") return ["delist.mjs", [join(runDir, "input.json")]];
+export function jobCommand(runDir, { kind = "release", section, lang, bump = "patch", team = null, stage = false }) {
+  if (kind === "promote") return ["cli.mjs", ["promote", join(runDir, "input.json")]];
+  if (kind === "delist") return ["cli.mjs", ["delist", section, lang, `--team=${team}`]];
   if (kind !== "release") throw new Error(`no job kind ${kind}`);
   return [
     "release.mjs",
@@ -65,7 +67,8 @@ export function jobCommand({ runDir, kind = "release", section, lang, bump = "pa
   ];
 }
 
-export async function runJob({ runDir, kind = "release", section, lang, bump = "patch", team = null, stage = false, env, tools = TOOLS, beatMs = BEAT_MS }) {
+/** `job` is job.json as the site wrote it. */
+export async function runJob({ runDir, job, env, tools = TOOLS, beatMs = BEAT_MS }) {
   const log = join(runDir, "log");
   const heartbeat = join(runDir, "heartbeat");
   const work = join(runDir, "work");
@@ -78,7 +81,8 @@ export async function runJob({ runDir, kind = "release", section, lang, bump = "
     // A copy, so a run starts from nothing the last one left, and a deploy pruning this release
     // cannot pull the files from under it.
     await cp(tools, work, { recursive: true, verbatimSymlinks: true });
-    const [script, args] = jobCommand({ runDir, kind, section, lang, bump, team, stage });
+    const [script, args] = jobCommand(runDir, job);
+    if (job.input != null) await writeFile(join(runDir, "input.json"), JSON.stringify(job.input));
     code = await runRelease(join(work, "scripts/manager", script), args, { cwd: work, env, log });
   } catch (error) {
     await writeFile(log, `error: ${error.message}\n`, { flag: "a" });
@@ -94,11 +98,9 @@ export async function runJob({ runDir, kind = "release", section, lang, bump = "
 
 // Real paths: through a symlink the two would differ, and the job would exit 0 having done nothing.
 if (realpathSync(process.argv[1]) === fileURLToPath(import.meta.url)) {
-  const [runDir, section, lang, bump, ...flags] = process.argv.slice(2);
-  const team = flags.find((flag) => flag.startsWith("--team="))?.slice("--team=".length) ?? null;
-  const kind = flags.find((flag) => flag.startsWith("--kind="))?.slice("--kind=".length) ?? "release";
-  const stage = flags.includes("--stage");
-  const code = await runJob({ runDir, kind, section, lang, bump, team, stage, env: await jobEnv(process.env.SPOKEN_RELEASE_ENV) });
+  const [runDir] = process.argv.slice(2);
+  const job = JSON.parse(await readFile(join(runDir, "job.json"), "utf8"));
+  const code = await runJob({ runDir, job, env: await jobEnv(process.env.SPOKEN_RELEASE_ENV) });
   await pruneRuns(dirname(runDir)).catch((error) => console.error(`pruning old runs: ${error.message}`));
   process.exit(code);
 }

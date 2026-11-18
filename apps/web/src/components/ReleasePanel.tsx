@@ -214,7 +214,7 @@ function Panel({ lang, initial }: { lang: Lang; initial: ReleaseView }) {
               </>
             )}{" "}
             <span className="text-muted-foreground">
-              {view.queues
+              {view.onDroplet
                 ? "Only one release runs at a time; a release you press now waits its turn."
                 : "Only one release runs at a time; yours can start once it ends."}
             </span>
@@ -234,10 +234,10 @@ function Panel({ lang, initial }: { lang: Lang; initial: ReleaseView }) {
             queued={queuedRun(view, lang, section)}
             onCancel={(run) => void cancel(run)}
             disabled={
-              pressing || (running && (!view.queues || ours?.section === section)) || queuedRun(view, lang, section) !== null
+              pressing || (running && (!view.onDroplet || ours?.section === section)) || queuedRun(view, lang, section) !== null
             }
             waitingFor={running && ours?.section !== section ? holdUp : null}
-            bumpable={view.bumpable}
+            bumpable={view.onDroplet}
             onRelease={(bump) => void release(section, bump)}
           />
         ))}
@@ -275,7 +275,7 @@ function SectionCard({
   disabled: boolean;
   /** The run this card's button waits on, when it is another section's or language's. */
   waitingFor: string | null;
-  /** Whether the review may offer patch, minor and major (ReleaseView.bumpable). */
+  /** Whether the review may offer patch, minor and major (ReleaseView.onDroplet). */
   bumpable: boolean;
   onRelease: (bump: ReleaseBump) => void;
 }) {

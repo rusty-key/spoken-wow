@@ -157,7 +157,8 @@ describe("syncActive", () => {
 
     describe("a staged release", () => {
       const STAGED = (rev: string) => ({
-        packs: { SpokenBossesAudio_frFR_x: { rev, baseRev: null, version: "1.0.0", manifestSha256: "m", lang: "frFR" } },
+        version: "1.0.0",
+        packs: { SpokenBossesAudio_frFR_x: { rev, baseRev: null, manifestSha256: "m", lang: "frFR" } },
         languages: {},
       });
       const stagedLog = "==> step 3/3: publish\n==> staged 1.0.0: SpokenBossesAudio_frFR_x\n";

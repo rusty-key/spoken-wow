@@ -46,10 +46,10 @@ export function bumped(from: string | null | undefined, bump: ReleaseBump): stri
 type Filter = { kind: "all" | "new" | "restored"; person?: string | null; q: string };
 
 /**
- * A team's version as a site owner reviews it: the lines come with it, each plays the team's live
+ * A team's waiting version (`runId`) as a site owner reviews it: each line plays the team's live
  * take, and `actions` (approve, reject) replace the release button.
  */
-type AsReviewed = { team: ReviewTeam; actions: React.ReactNode };
+type AsReviewed = { runId: string; team: ReviewTeam; actions: React.ReactNode };
 
 /** Where `team`'s live take of `file` plays, as the explorer plays another team's. */
 export function teamTakeUrl(section: ReleaseSection, lang: Lang, file: string, slug: string): string {
@@ -129,21 +129,21 @@ function Review({
   onRelease: (bump: ReleaseBump) => void;
 }) {
   const date = useLocalDates();
-  // The page's checks carry the counts alone; the lines themselves are asked for here, once. A
-  // reviewed version brings its lines with it.
-  const [loaded, setLoaded] = useState<PendingView | null>(reviewed ? counted : null);
+  // The page carries the counts alone; the lines themselves are asked for here, once.
+  const [loaded, setLoaded] = useState<PendingView | null>(null);
   const [failed, setFailed] = useState(false);
+  const runId = reviewed?.runId;
   useEffect(() => {
-    if (reviewed) return;
     let live = true;
-    fetch(`/api/releases?${new URLSearchParams({ lang, section })}`, { cache: "no-store" })
+    const url = runId ? `/api/releases/${runId}/review` : `/api/releases?${new URLSearchParams({ lang, section })}`;
+    fetch(url, { cache: "no-store" })
       .then((response) => (response.ok ? (response.json() as Promise<{ pending: PendingView }>) : null))
       .then((body) => live && (body ? setLoaded(body.pending) : setFailed(true)))
       .catch(() => live && setFailed(true));
     return () => {
       live = false;
     };
-  }, [lang, section, reviewed]);
+  }, [lang, section, runId]);
   const pending = loaded ?? counted;
   const [bump, setBump] = useState<ReleaseBump>("patch");
   const [filter, setFilter] = useState<Filter>({ kind: "all", q: "" });

@@ -21,7 +21,7 @@ vi.mock("@/lib/releases/droplet", async (original) => ({
 }));
 vi.mock("@/lib/email", () => ({ sendEmail: async () => true }));
 
-import { POST } from "./route";
+import { GET, POST } from "./route";
 
 let teamAdmin: Awaited<ReturnType<typeof testUser>>;
 let owner: Awaited<ReturnType<typeof testUser>>;
@@ -115,5 +115,22 @@ describe("reviewing a team's release", () => {
     as(owner, "admin");
     expect((await review(id, { action: "approve" })).status).toBe(409);
     expect((await review("00000000-0000-0000-0000-000000000000", { action: "approve" })).status).toBe(404);
+  });
+});
+
+describe("a waiting version's lines", () => {
+  const lines = (id: string) => GET(new Request(`http://x/api/releases/${id}/review`), { params: Promise.resolve({ id }) });
+
+  it("are a site owner's to read, and 404 once it waits no more", async () => {
+    const id = await waiting();
+    as(teamAdmin);
+    expect((await lines(id)).status).toBe(403);
+    as(owner, "admin");
+    const response = await lines(id);
+    expect(response.status).toBe(200);
+    expect((await response.json()).pending).toMatchObject({ count: 0, changes: [] });
+    await asSystem.query(`update "release_run" set "state" = 'rejected' where "id" = $1`, [id]);
+    expect((await lines(id)).status).toBe(404);
+    expect((await lines("not-a-uuid")).status).toBe(404);
   });
 });

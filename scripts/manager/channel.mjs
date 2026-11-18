@@ -1,6 +1,6 @@
 // Publishing to the channel with what the environment holds: the keys, and the latest Spoken.
 import { MIN_SPOKEN } from "../lib/packs.mjs";
-import { delist, latestSpokenRelease, promote, publish } from "./publish.mjs";
+import { latestSpokenRelease, publish } from "./publish.mjs";
 import { ConflictError, r2Store } from "./store.mjs";
 
 export function signingKeyFromEnv() {
@@ -20,12 +20,9 @@ export async function publishFromEnv(options) {
   });
 }
 
-export function promoteFromEnv(options) {
-  return promote({ store: r2Store(process.env), signingKey: signingKeyFromEnv(), ...options });
-}
-
-export function delistFromEnv(options) {
-  return delist({ store: r2Store(process.env), signingKey: signingKeyFromEnv(), ...options });
+/** `fn` (promote, delist, gc, publishAddon) on the channel the environment names, signing with its key. */
+export function fromEnv(fn, options) {
+  return fn({ store: r2Store(process.env), signingKey: signingKeyFromEnv(), ...options });
 }
 
 // fetch says only "fetch failed" and keeps what went wrong in `cause`.

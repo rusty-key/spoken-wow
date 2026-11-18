@@ -629,7 +629,8 @@ and follow it by step. One release runs at a time, site-wide. Every section runs
 A press forks `release-tools/scripts/manager/release-job.mjs` out of the worker's process tree, so a
 deploy's pm2 reload does not kill it. It works in a scratch copy of the release's `release-tools/`,
 copies only the clips the channel lacks from the archive to the packs bucket, and reports through
-`shared/release-runs/<run id>/` (`log`, `heartbeat`, `exit`). The last 30 runs are kept. The page
+`shared/release-runs/<run id>/` (`log`, `heartbeat`, `exit`), where the site first writes `job.json`
+(the run's kind, section, language, bump, team and what it lists). The last 30 runs are kept. The page
 shows the step and the end of the log; the whole log is in that directory.
 
 A press never commits, so a pack's version is the one in its `.toc` on the channel. The button is a

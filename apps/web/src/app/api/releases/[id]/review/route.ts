@@ -1,14 +1,24 @@
 /**
+ * GET /api/releases/<id>/review: a waiting version's lines, `{ pending }`, for its review dialog;
+ * the review page carries only their counts. 404 when no version waits by that id.
+ *
  * POST /api/releases/<id>/review { action: "approve" | "reject", note? }: a site owner's verdict
  * on a team's staged release. Approving answers 202 with the promotion that lists it; rejecting
  * needs a reason, which the team sees. A team admin cannot approve their own version.
  */
 import { requireAdminSession } from "@/lib/generation/authz";
-import { approve, reject, ReviewError } from "@/lib/releases/review";
+import { approve, reject, ReviewError, waitingLines } from "@/lib/releases/review";
 
 export const dynamic = "force-dynamic";
 
 const fail = (status: number, error: string) => Response.json({ error }, { status });
+
+export async function GET(_request: Request, context: { params: Promise<{ id: string }> }) {
+  const { denied } = await requireAdminSession();
+  if (denied) return denied;
+  const pending = await waitingLines((await context.params).id);
+  return pending ? Response.json({ pending }) : fail(404, "No version waits by that id.");
+}
 
 export async function POST(request: Request, context: { params: Promise<{ id: string }> }) {
   const { session, denied } = await requireAdminSession();

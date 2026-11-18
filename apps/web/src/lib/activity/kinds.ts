@@ -176,7 +176,7 @@ export type ActivityDetail = {
   "release.approved": { section: string; version?: string };
   "release.rejected": { section: string; reason: string; version?: string };
   /** A site owner took a team's pack off the channel; the subject is the delist run's id. */
-  "release.delisted": { section: string; folders: string[] };
+  "release.delisted": { section: string };
 
   // Community packs: every language's, the subject is the pack id.
   "pack.submitted": PackSubmissionDetail;

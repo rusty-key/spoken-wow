@@ -352,7 +352,7 @@ passes its slug to `release.mjs --team`, and every builder query that picked the
   emails the site owners. They review it on `/admin/team-releases`: team, language, section, version,
   who pressed it, and the lines it changes as the team's own release page counts them, each playing
   the team's live take, with a link to the explorer on `?team=<slug>`. **Approve** queues a `promote`
-  run (`scripts/manager/promote.mjs`), which writes the staged entries into both indexes; its
+  run (`scripts/manager/cli.mjs promote`), which writes the staged entries into both indexes; its
   success makes the staged run `done`, so `done` keeps meaning "players have it", and the team's
   pending counts drop only then. Promotion refuses a pack whose live rev moved since it was staged
   (each entry records the rev it was staged over), and one whose manifest is missing. A failed
@@ -364,8 +364,8 @@ passes its slug to `release.mjs --team`, and every builder query that picked the
   older waiting one `superseded` once it reaches `awaiting_review`, not before, so a failed build
   leaves the waiting one in place. Every version waits, the first and every update.
 - **Delisting.** A site owner can take a team's pack (one section, language and team) off the
-  channel from the same page: a `delist` run (`scripts/manager/delist.mjs`) removes every folder the
-  team's pack can have from both indexes, and its files stay. The team's release page says
+  channel from the same page: a `delist` run (`scripts/manager/cli.mjs delist`) resolves the team and every folder the
+  team's pack can have, and removes them from both indexes, and its files stay. The team's release page says
   "Delisted by a site owner."; its next approved release lists the pack again. An official team's
   packs are not delisted here.
 - **Opened per site.** A press by a team that is not official, or not privileged, gets 409 unless the

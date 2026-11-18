@@ -54,11 +54,6 @@ export function isSettled(state: ReleaseState): boolean {
   return !isActive(state) && state !== "queued";
 }
 
-/** Waiting on somebody else: another run to end, or a site owner. */
-export function isWaiting(state: ReleaseState): boolean {
-  return state === "queued" || state === "awaiting_review";
-}
-
 /** What the panel draws of a run; another team's active run carries only the first four. */
 export type RunView = {
   /** Absent for another team's active run. */
@@ -161,12 +156,11 @@ export type ReleaseView = {
    */
   released: Record<string, RunView>;
   /**
-   * Whether a press may choose patch, minor or major. A release on this machine bumps as asked;
-   * one dispatched to GitHub Actions takes no bump, so offering one would be a choice ignored.
+   * Whether releases run on this machine. Only then may a press choose patch, minor or major (one
+   * dispatched to GitHub Actions takes no bump, so offering one would be a choice ignored), and a
+   * press while another release runs waits its turn rather than being refused.
    */
-  bumpable: boolean;
-  /** Whether a press while another release runs waits its turn (on this machine), rather than being refused. */
-  queues: boolean;
+  onDroplet: boolean;
   /** Per section: what a release would send that players do not have yet. */
   pending: Record<string, PendingView>;
 };

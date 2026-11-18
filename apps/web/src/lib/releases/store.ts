@@ -17,10 +17,15 @@ import type { PackRelease, PackVersions } from "@/lib/reports/context";
 import { isSettled, type ReleaseBump, type ReleaseKind, type ReleaseSection, type ReleaseState } from "./sections";
 
 /**
- * What a staged release put on the channel without listing it, by folder, as publish.mjs returns
- * it (`publish({ stage: true })`): each folder's index entry and the live rev it was staged over.
+ * What a staged release put on the channel without listing it, as publish.mjs returns it
+ * (`publish({ stage: true })`): its version, and by folder each index entry and the live rev it
+ * was staged over.
  */
-export type StagedEntries = Record<string, Record<string, unknown> & { rev: string; baseRev: string | null }>;
+export type StagedRelease = {
+  version: string | null;
+  packs: Record<string, Record<string, unknown> & { rev: string; baseRev: string | null }>;
+  languages: Record<string, unknown>;
+};
 
 export type ReleaseRun = {
   id: string;
@@ -35,11 +40,8 @@ export type ReleaseRun = {
   bump: ReleaseBump | null;
   /** A release that uploads but lists nothing, for a site owner to review. */
   stage: boolean;
-  /**
-   * A staged release's entries once it reaches review, and a promote run's copy of them; a delist
-   * run's folders, as `{ folders }`.
-   */
-  staged: StagedEntries | { folders: string[] } | null;
+  /** A staged release's entries once it reaches review, and a promote run's copy of them. */
+  staged: StagedRelease | null;
   /** A promote run's staged run. */
   promotes: string | null;
   reviewedBy: string | null;
@@ -66,6 +68,10 @@ export const COLUMNS = `"id", "kind", "teamId", (select t."slug" from "team" t w
                  "githubRunId"::float8 as "githubRunId", "githubUrl",
                  "step", "error", "version", "requestedBy", "createdAt", "finishedAt"`;
 const ACTIVE = `"state" in ('dispatching', 'running')`;
+
+/** Whether the staged run whose id is the SQL `run` has a promotion that has not finished. */
+export const promoting = (run: string) =>
+  `exists (select 1 from "release_run" p where p."promotes" = ${run} and p."state" in ('queued', 'dispatching', 'running'))`;
 const UNIQUE_VIOLATION = "23505";
 
 const isUniqueViolation = (error: unknown) => (error as { code?: string }).code === UNIQUE_VIOLATION;
@@ -178,8 +184,7 @@ export async function cancelQueued(id: string): Promise<ReleaseRun | null> {
       [id],
     );
     const run = rows[0];
-    if (run?.kind === "release") await recordFinish(run, "failed", client);
-    if (run?.kind === "promote" && run.promotes) await settlePromoted(client, run, "failed");
+    if (run) await SETTLE[run.kind](client, run, "failed");
     return run ?? null;
   });
 }
@@ -221,6 +226,19 @@ async function settlePromoted(client: PoolClient, promote: ReleaseRun, state: Re
   );
 }
 
+/**
+ * What settling a run of each kind does besides its own row, in the same transaction. A promotion
+ * settles the staged run it lists; a promotion or delisting is recorded as the review that asked
+ * for it (review.ts).
+ */
+const SETTLE: Record<ReleaseKind, (client: PoolClient, run: ReleaseRun, state: ReleaseState) => Promise<void>> = {
+  release: (client, run, state) => recordFinish(run, state, client),
+  promote: async (client, run, state) => {
+    if (run.promotes) await settlePromoted(client, run, state);
+  },
+  delist: async () => {},
+};
+
 type RunPatch = Partial<Pick<ReleaseRun, "state" | "githubRunId" | "githubUrl" | "step" | "error" | "version" | "staged">>;
 
 export async function updateRun(id: string, patch: RunPatch): Promise<ReleaseRun> {
@@ -261,14 +279,11 @@ export async function applyUpdate(id: string, patch: RunPatch): Promise<{ run: R
       await client.query(
         `update "release_run" r set "state" = 'superseded'
           where r."state" = 'awaiting_review' and r."id" <> $1 and r."teamId" = $2 and r."section" = $3 and r."lang" = $4
-            and not exists (select 1 from "release_run" p
-                             where p."promotes" = r."id" and p."state" in ('queued', 'dispatching', 'running'))`,
+            and not ${promoting(`r."id"`)}`,
         [run.id, run.teamId, run.section, run.lang],
       );
     }
-    if (settles && run.kind === "promote" && run.promotes) await settlePromoted(client, run, settles);
-    // A promotion or delisting is recorded as the review that asked for it (review.ts).
-    if (settles && run.kind === "release") await recordFinish(run, settles, client);
+    if (settles) await SETTLE[run.kind](client, run, settles);
     return { run, changed: true };
   });
 }

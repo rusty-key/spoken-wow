@@ -2,8 +2,8 @@
  * A site owner's review of a team's staged release, and delisting a team's pack
  * (docs/platform/TEAMS.md, *Releases*). Approving queues a `promote` run, which lists what the
  * release staged; its success makes the staged run `done` (store.ts). Rejecting settles it
- * `rejected` with the reason. Delisting queues a `delist` run, which takes the team's folders
- * out of both indexes. Each records activity under the run's team, and emails after the commit.
+ * `rejected` with the reason. Delisting queues a `delist` run, which resolves the team's folders
+ * and takes them out of both indexes. Each records activity under the run's team, and emails after the commit.
  */
 import "server-only";
 
@@ -11,17 +11,17 @@ import type { PoolClient } from "pg";
 
 import { recordActivity } from "@/lib/activity/store";
 import { ALL_TEAMS, withTeam } from "@/lib/db";
-import { BASE_LANG, type Lang } from "@/lib/lang";
-
+import type { Lang } from "@/lib/lang";
 import { asTeam } from "@/lib/teams/acting";
 import { namesOf } from "@/lib/users/store";
+import { isUuid } from "@/lib/uuid";
 
 import { runsOnDroplet } from "./droplet";
 import { begin, failureOf } from "./launch";
 import { tellPresser } from "./notify";
 import { pendingChanges } from "./pending";
-import { isReleaseSection, type LiveTeamPack, type ReleaseSection, type WaitingVersion } from "./sections";
-import { COLUMNS, insertRun, lastReleasedAt, runById, type ReleaseRun } from "./store";
+import { isReleaseSection, type LiveTeamPack, type PendingView, type ReleaseSection, type WaitingVersion } from "./sections";
+import { COLUMNS, insertRun, promoting, runById, type ReleaseRun } from "./store";
 
 export class ReviewError extends Error {
   constructor(
@@ -33,29 +33,9 @@ export class ReviewError extends Error {
   }
 }
 
-const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-
-/**
- * English's Manager folders per section, which a team's pack carries with its language and slug.
- * scripts/lib/packs.mjs derivedFolders reads them from publishers/, which the server ships
- * without; review.test.ts checks the two agree.
- */
-export const ENGLISH_FOLDERS: Record<ReleaseSection, readonly string[]> = {
-  quests: ["SpokenQuestsAudioAlliance", "SpokenQuestsAudioHorde", "SpokenQuestsAudioShared", "SpokenQuestsAudioGossip"],
-  places: ["SpokenPlacesAudio"],
-  readables: ["SpokenReadablesAudio"],
-  bosses: ["SpokenBossesAudio"],
-};
-
-/** A team's folders for a section and language: plain for the language's privileged team, else with its slug. */
-export function teamFolders(section: ReleaseSection, lang: Lang, slug: string | null): string[] {
-  if (lang === BASE_LANG && slug === null) return [...ENGLISH_FOLDERS[section]];
-  return ENGLISH_FOLDERS[section].map((folder) => `${folder}_${lang}${slug === null ? "" : `_${slug}`}`);
-}
-
 async function waitingRun(client: PoolClient, runId: string): Promise<ReleaseRun> {
   const none = new ReviewError("No such release.", 404);
-  if (!UUID.test(runId)) throw none;
+  if (!isUuid(runId)) throw none;
   const { rows } = await client.query<ReleaseRun>(
     `select ${COLUMNS} from "release_run" where "id" = $1 and "kind" = 'release' for update`,
     [runId],
@@ -72,10 +52,7 @@ export async function approve(runId: string, actorId: string): Promise<ReleaseRu
   if (!runsOnDroplet()) throw new ReviewError("Only the site that signs the channel can list a release.", 409);
   const promote = await withTeam(ALL_TEAMS, async (client) => {
     const run = await waitingRun(client, runId);
-    const { rowCount: pending } = await client.query(
-      `select 1 from "release_run" where "promotes" = $1 and "state" in ('queued', 'dispatching', 'running')`,
-      [run.id],
-    );
+    const { rowCount: pending } = await client.query(`select 1 where ${promoting("$1::uuid")}`, [run.id]);
     if (pending) throw new ReviewError("It is approved already, and being listed.", 409);
     await client.query(
       `update "release_run" set "reviewedBy" = $2, "reviewedAt" = now(), "reviewNote" = null, "error" = null where "id" = $1`,
@@ -130,28 +107,23 @@ export async function reject(runId: string, actorId: string, note: string): Prom
 }
 
 /**
- * Takes a team's pack in one section and language off the channel. Every folder the team's pack
- * can have, not only those its last version changed: a quests release stages only the sides
- * that changed. An official team's pack is not delisted here; the release workflow is the way.
+ * Takes a team's pack in one section and language off the channel. The job resolves every folder
+ * the team's pack can have (`cli.mjs delist`), not only those its last version changed: a quests
+ * release stages only the sides that changed. An official team's pack is not delisted here; the
+ * release workflow is the way.
  */
 export async function delistPack(teamId: string, lang: Lang, section: string, actorId: string): Promise<ReleaseRun> {
   if (!isReleaseSection(section)) throw new ReviewError("No such section.", 400);
-  if (!UUID.test(teamId)) throw new ReviewError("No such team.", 404);
+  if (!isUuid(teamId)) throw new ReviewError("No such team.", 404);
   if (!runsOnDroplet()) throw new ReviewError("Only the site that signs the channel can delist a pack.", 409);
   const run = await withTeam(ALL_TEAMS, async (client) => {
-    const { rows } = await client.query<{ slug: string; official: boolean; privileged: boolean | null }>(
-      `select t."slug", t."official", tl."privileged"
-         from "team" t left join "team_language" tl on tl."teamId" = t."id" and tl."lang" = $2
-        where t."id" = $1`,
-      [teamId, lang],
-    );
+    const { rows } = await client.query<{ official: boolean }>(`select "official" from "team" where "id" = $1`, [teamId]);
     const team = rows[0];
     if (!team) throw new ReviewError("No such team.", 404);
     if (team.official) throw new ReviewError("An official team's packs are not delisted here.", 409);
-    const folders = teamFolders(section, lang, team.privileged ? null : team.slug);
-    const run = await insertRun(client, { kind: "delist", teamId, section, lang, requestedBy: actorId, staged: { folders } });
+    const run = await insertRun(client, { kind: "delist", teamId, section, lang, requestedBy: actorId });
     await recordActivity(
-      { kind: "release.delisted", lang, actorId, subject: run.id, detail: { section, folders }, team: teamId },
+      { kind: "release.delisted", lang, actorId, subject: run.id, detail: { section }, team: teamId },
       client,
     );
     return run;
@@ -171,19 +143,33 @@ export async function waitingCount(): Promise<number> {
 }
 
 /**
+ * When the team's last release that brought players up to date started, which a waiting version
+ * `r` counts from: as its team's release page counts it (store.ts lastReleasedAt).
+ */
+const SINCE = `(select max(s."createdAt") from "release_run" s
+                 where s."kind" = 'release' and s."state" in ('done', 'unchanged')
+                   and s."teamId" = r."teamId" and s."lang" = r."lang" and s."section" = r."section")`;
+
+type WaitingRow = {
+  id: string; teamId: string; slug: string; name: string; lang: Lang; section: ReleaseSection; version: string | null;
+  requestedBy: string | null; createdAt: Date; error: string | null; approving: boolean; since: Date | null;
+};
+
+/** What a waiting version changes for players, as its team counts it, read as that team. */
+function changesOf(row: Pick<WaitingRow, "teamId" | "lang" | "section" | "since">, list: boolean): Promise<PendingView> {
+  return asTeam(row.lang, row.teamId, () => pendingChanges(row.section, row.lang, row.since, { list, people: true }));
+}
+
+/**
  * Every version waiting for review, oldest first, each with what it changes for players as its
- * team's own release page counts it: the team's live takes since its last approved release.
+ * team's own release page counts it: the team's live takes since its last approved release. The
+ * counts and people only; the dialog asks for the lines (waitingLines).
  */
 export async function waitingReviews(): Promise<WaitingVersion[]> {
   const rows = await withTeam(ALL_TEAMS, async (client) => {
-    const { rows } = await client.query<{
-      id: string; teamId: string; slug: string; name: string; lang: Lang; section: ReleaseSection; version: string | null;
-      requestedBy: string | null; createdAt: Date; error: string | null; approving: boolean;
-    }>(
+    const { rows } = await client.query<WaitingRow>(
       `select r."id", r."teamId", t."slug", t."name", r."lang", r."section", r."version", r."requestedBy",
-              r."createdAt", r."error",
-              exists (select 1 from "release_run" p
-                       where p."promotes" = r."id" and p."state" in ('queued', 'dispatching', 'running')) as "approving"
+              r."createdAt", r."error", ${promoting(`r."id"`)} as "approving", ${SINCE} as "since"
          ${WAITING} order by r."createdAt"`,
     );
     return rows;
@@ -192,9 +178,6 @@ export async function waitingReviews(): Promise<WaitingVersion[]> {
   // One after another: each count holds a connection while it runs.
   const waiting: WaitingVersion[] = [];
   for (const row of rows) {
-    const pending = await asTeam(row.lang, row.teamId, async () =>
-      pendingChanges(row.section, row.lang, (await lastReleasedAt(row.lang)).get(row.section) ?? null),
-    );
     waiting.push({
       id: row.id,
       team: { id: row.teamId, slug: row.slug, name: row.name },
@@ -205,10 +188,23 @@ export async function waitingReviews(): Promise<WaitingVersion[]> {
       pressedAt: row.createdAt.toISOString(),
       error: row.error,
       approving: row.approving,
-      pending,
+      pending: await changesOf(row, false),
     });
   }
   return waiting;
+}
+
+/** A waiting version's lines, as its review dialog lists them; null when no version waits by that id. */
+export async function waitingLines(runId: string): Promise<PendingView | null> {
+  if (!isUuid(runId)) return null;
+  const row = await withTeam(ALL_TEAMS, async (client) => {
+    const { rows } = await client.query<Pick<WaitingRow, "teamId" | "lang" | "section" | "since">>(
+      `select r."teamId", r."lang", r."section", ${SINCE} as "since" ${WAITING} and r."id" = $1`,
+      [runId],
+    );
+    return rows[0];
+  });
+  return row ? changesOf(row, true) : null;
 }
 
 /**

@@ -122,6 +122,12 @@ export async function readSigned(store, key, publicKey) {
   return { ...openJson(o.body.toString("utf8"), publicKey), etag: o.etag };
 }
 
+/** An index entry's manifest, when it is on the channel and is the one the entry names by its sha; else null. */
+export async function readEntryManifest(store, folder, entry, publicKey) {
+  const manifest = await readSigned(store, `packs/${folder}/${entry.rev}.json`, publicKey);
+  return manifest && sha256Text(manifest.signed) === entry.manifestSha256 ? manifest : null;
+}
+
 // A pointer's manifest entry is the clip it names, never the pointer's own bytes.
 async function resolvePointers(root, files, archived) {
   for (const f of files) {
@@ -200,8 +206,8 @@ export async function publish({ store, packs: allPacks, languages = [], distDir,
     let before = [];
     const entry = live[folder];
     if (entry) {
-      const m = await readSigned(store, `packs/${folder}/${entry.rev}.json`, publicKey);
-      if (!m || sha256Text(m.signed) !== entry.manifestSha256) throw new Error(`packs/${folder}/${entry.rev}.json does not match the index`);
+      const m = await readEntryManifest(store, folder, entry, publicKey);
+      if (!m) throw new Error(`packs/${folder}/${entry.rev}.json does not match the index`);
       before = m.value.files;
       for (const f of before) known.add(f.sha256);
     }
@@ -270,7 +276,7 @@ export async function publish({ store, packs: allPacks, languages = [], distDir,
   // Files unchanged, but a team renamed or made official, or a language renamed.
   const relabelled = Object.keys(retagged).length > 0
     || canonical(listedLanguages({ ...live, ...retagged }, record, named)) !== canonical(record.languages ?? {});
-  if (dryRun || (changes.length === 0 && !behind && !relabelled)) return stage ? { ...result, staged: { packs: {}, languages: {} } } : result;
+  if (dryRun || (changes.length === 0 && !behind && !relabelled)) return stage ? { ...result, staged: { version, packs: {}, languages: {} } } : result;
 
   let done = 0;
   await eachLimit([...blobs], 16, async ([sha, b]) => {
@@ -305,16 +311,23 @@ export async function publish({ store, packs: allPacks, languages = [], distDir,
   if (stage) {
     // What promote() lists once a site owner approves it, with the rev each was staged over.
     const staged = Object.fromEntries(
-      Object.entries(entries).map(([folder, entry]) => [folder, { ...entry, baseRev: live[folder]?.rev ?? null, version }]),
+      Object.entries(entries).map(([folder, entry]) => [folder, { ...entry, baseRev: live[folder]?.rev ?? null }]),
     );
     const stagedLanguages = Object.fromEntries(Object.entries(named).filter(([code]) => Object.values(staged).some((e) => e.lang === code)));
     const folders = Object.keys(staged);
     log(folders.length > 0 ? `staged ${rev ?? "new metadata"} for ${folders.join(", ")}; no index changed` : "nothing to stage");
-    return { ...result, rev, staged: { packs: staged, languages: stagedLanguages } };
+    return { ...result, rev, staged: { version, packs: staged, languages: stagedLanguages } };
   }
   await writeIndexes({ store, signingKey, now, read: { legacy, current, record, addons }, packs: { ...live, ...entries }, languages: named });
   log(rev ? `index.json now at ${rev} for ${result.changed.join(", ")}` : "the indexes brought up to date");
   return { ...result, rev };
+}
+
+/** promote's and delist's start: the channel they sign for, said, and both indexes as they stand. */
+async function openChannel(store, signingKey, log) {
+  const publicKey = publicKeyOf(signingKey);
+  log(`signing with ${publicKey}`);
+  return { publicKey, read: await readIndexes(store, publicKey) };
 }
 
 /** Both indexes as they stand, index-v2.json seeded from index.json where it is missing. */
@@ -365,19 +378,17 @@ export async function writeIndexes({ store, signingKey, now, read: { legacy, cur
  * and one whose manifest is not on the channel as staged. Nothing is written unless every pack passes.
  */
 export async function promote({ store, signingKey, staged, now = new Date(), log = console.log }) {
-  const publicKey = publicKeyOf(signingKey);
-  log(`signing with ${publicKey}`);
-  const read = await readIndexes(store, publicKey);
+  const { publicKey, read } = await openChannel(store, signingKey, log);
   const live = read.record.packs ?? {};
   const entries = {};
-  for (const [folder, { baseRev = null, version: _version, ...entry }] of Object.entries(staged.packs ?? {})) {
+  for (const [folder, { baseRev = null, ...entry }] of Object.entries(staged.packs ?? {})) {
     if (!PACK_ID.test(folder)) throw new Error(`${folder} is not a pack id the manager accepts`);
     if ((live[folder]?.rev ?? null) !== baseRev) {
       throw new Error(`${folder} changed on the channel since it was staged: ask ${entry.team?.name ?? entry.team?.slug ?? "its team"} to release again`);
     }
-    const manifest = await readSigned(store, `packs/${folder}/${entry.rev}.json`, publicKey);
-    if (!manifest) throw new Error(`${folder} has no manifest packs/${folder}/${entry.rev}.json on the channel`);
-    if (sha256Text(manifest.signed) !== entry.manifestSha256) throw new Error(`packs/${folder}/${entry.rev}.json does not match what was staged`);
+    if (!(await readEntryManifest(store, folder, entry, publicKey))) {
+      throw new Error(`${folder} has no manifest packs/${folder}/${entry.rev}.json on the channel as it was staged`);
+    }
     entries[folder] = entry;
   }
   const promoted = Object.keys(entries);
@@ -392,9 +403,7 @@ export async function promote({ store, signingKey, staged, now = new Date(), log
 
 /** Takes `folders` out of both indexes. Their manifests and blobs stay, as nothing deletes them. */
 export async function delist({ store, signingKey, folders, now = new Date(), log = console.log }) {
-  const publicKey = publicKeyOf(signingKey);
-  log(`signing with ${publicKey}`);
-  const read = await readIndexes(store, publicKey);
+  const { read } = await openChannel(store, signingKey, log);
   const packs = { ...(read.record.packs ?? {}) };
   const delisted = [];
   for (const folder of folders) {

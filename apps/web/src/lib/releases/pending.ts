@@ -119,13 +119,14 @@ const SHIPPED_NAMES: Record<ReleaseSection, readonly string[]> = {
 
 /**
  * With `list` false, the counts alone: the release page asks for those on every check, and the
- * list with its text lookups only when a review opens.
+ * list with its text lookups only when a review opens. `people` (with the list by default) names
+ * who made them, as the review page shows without the list.
  */
 export async function pendingChanges(
   section: ReleaseSection,
   lang: Lang,
   since: Date | null,
-  { list = true }: { list?: boolean } = {},
+  { list = true, people: withPeople = list }: { list?: boolean; people?: boolean } = {},
 ): Promise<PendingView> {
   const CHANGED = changed(section);
   // One after another: a page asks for every section at once, and each query here holds a
@@ -147,7 +148,7 @@ export async function pendingChanges(
       )
     : [];
   // Everybody in the list, restores included, so a person's chip counts the rows it filters to.
-  const people = list ? byPerson : [];
+  const people = withPeople ? byPerson : [];
   // Before any release everything goes out anyway, so there is nothing to add.
   const text = since
     ? await readAs<{ count: string }>(

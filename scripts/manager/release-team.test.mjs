@@ -6,7 +6,7 @@ import assert from "node:assert/strict";
 import pg from "pg";
 
 import { seedDatabase } from "../../pipelines/lib/test-db.mjs";
-import { languageNames, releaseTeam } from "./release-team.mjs";
+import { languageNames, releaseTeam, teamPackFolders } from "./release-team.mjs";
 
 const seed = seedDatabase();
 const skip = seed ? false : "DATABASE_URL is not set";
@@ -63,4 +63,11 @@ test("every language's names come with it, for index-v2.json", { skip }, async (
   const names = await languageNames(db);
   assert.deepEqual(names.find((row) => row.code === lang), { code: lang, name: "Xq German", native: "Xq Deutsch" });
   assert.ok(names.some((row) => row.code === "deDE"));
+});
+
+test("a delisting takes every folder the team's pack can have: plain for the privileged team, else with its slug", { skip }, async () => {
+  const sides = ["Alliance", "Horde", "Shared", "Gossip"];
+  assert.deepEqual(await teamPackFolders(db, "quests", lang, second.slug), sides.map((side) => `SpokenQuestsAudio${side}_${lang}_${second.slug}`));
+  assert.deepEqual(await teamPackFolders(db, "places", lang, first.slug), [`SpokenPlacesAudio_${lang}`]);
+  await assert.rejects(teamPackFolders(db, "places", lang, elsewhere.slug), { message: `no team ${elsewhere.slug} voices ${lang}` });
 });

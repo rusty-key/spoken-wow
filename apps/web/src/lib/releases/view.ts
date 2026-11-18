@@ -64,8 +64,7 @@ export async function releaseView(lang: Lang): Promise<ReleaseView> {
       }),
     ),
     released: Object.fromEntries(done.map((run) => [run.section, ownView(run, names)])),
-    bumpable: runsOnDroplet(),
-    queues: runsOnDroplet(),
+    onDroplet: runsOnDroplet(),
     pending,
   };
 }

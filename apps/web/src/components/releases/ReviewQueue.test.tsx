@@ -82,3 +82,14 @@ test("says when nothing waits", () => {
   show([]);
   expect(screen.getByText("Nothing waiting.")).toBeTruthy();
 });
+
+test("asks for a version's lines only when Read and listen opens it", async () => {
+  const user = userEvent.setup();
+  const line = { file: "z:1", lineId: "z:1", version: 1, at: "2026-11-02T10:00:00Z", byId: "u1", by: "Ana", kind: "new", title: "Elwynn", text: "Hallo" };
+  fetchMock.mockResolvedValue(new Response(JSON.stringify({ pending: { ...version.pending, changes: [line] } }), { status: 200 }));
+  show([version]);
+  expect(fetchMock).not.toHaveBeenCalled();
+  await user.click(screen.getByRole("button", { name: "Read and listen" }));
+  expect(fetchMock.mock.calls[0][0]).toBe(`/api/releases/${version.id}/review`);
+  expect(await screen.findByText("“Hallo”")).toBeTruthy();
+});
