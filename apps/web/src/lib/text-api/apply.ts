@@ -54,8 +54,8 @@ function fieldError(error: unknown): FieldResult {
 
 const refused = (message: string): FieldResult => ({ status: "error", code: "invalid", message });
 
-const SHORT_IS_ORIGINAL = 'short is original text; send it without a layer or with "layer": "original"';
-const NAME_IS_ORIGINAL = 'a name is original text; send it without a layer or with "layer": "original"';
+const SHORT_IS_ORIGINAL = 'short is original text, written with "layer": "original" by a text maintainer';
+const NAME_IS_ORIGINAL = 'a name is original text, written with "layer": "original" by a text maintainer';
 
 export function noteError(note: unknown): string | null {
   if (note === undefined || note === null) return null;

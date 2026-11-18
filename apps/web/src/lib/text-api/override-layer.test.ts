@@ -173,12 +173,12 @@ describe("a second team's member", () => {
     expect((await first(ctxU, "places", { id: f.zone, short: "x" })).text).toEqual({
       status: "error",
       code: "invalid",
-      message: 'short is original text; send it without a layer or with "layer": "original"',
+      message: 'short is original text, written with "layer": "original" by a text maintainer',
     });
     expect((await first(ctxU, "places", { id: f.zone, name: "Unser Name" })).name).toEqual({
       status: "error",
       code: "invalid",
-      message: 'a name is original text; send it without a layer or with "layer": "original"',
+      message: 'a name is original text, written with "layer": "original" by a text maintainer',
     });
     const split = await first(ctxU, "quests", {
       id: f.quest.lineId,

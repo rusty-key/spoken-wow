@@ -223,8 +223,8 @@ On the override layer:
 - **An override needs original text under it.** A line with no text in the language is `invalid`:
   `this line has no {lang} text yet`.
 - **Names and `short` have no override.** Both are original text. A `name` is `invalid` with
-  `a name is original text; send it without a layer or with "layer": "original"`, and a `short`
-  with `short is original text; send it without a layer or with "layer": "original"`. A readable's
+  `a name is original text, written with "layer": "original" by a text maintainer`, and a `short`
+  with `short is original text, written with "layer": "original" by a text maintainer`. A readable's
   spoken title keeps the original name.
 - **No `$G` in a quest override.** It is `invalid`:
   `an override cannot split a line by the reader's gender; that changes the original text`.
