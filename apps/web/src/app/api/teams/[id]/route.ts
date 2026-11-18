@@ -1,4 +1,4 @@
-import { renameTeam, setOwnStorage } from "@/lib/teams/admin";
+import { deleteTeam, renameTeam, setOwnStorage } from "@/lib/teams/admin";
 
 import { bad, bodyOf, withAdmin } from "../guard";
 
@@ -15,5 +15,11 @@ export const PATCH = withAdmin(async (request, actorId, team) => {
   if (ownStorage !== undefined && typeof ownStorage !== "boolean") return bad("ownStorage is true or false.");
   if (typeof name === "string") await renameTeam(team, name.trim(), actorId);
   if (typeof ownStorage === "boolean") await setOwnStorage(team, ownStorage, actorId);
+  return Response.json({ ok: true });
+}, "id");
+
+/** Refused while the team holds a language or anything made under it. */
+export const DELETE = withAdmin(async (_request, actorId, team) => {
+  await deleteTeam(team, actorId);
   return Response.json({ ok: true });
 }, "id");

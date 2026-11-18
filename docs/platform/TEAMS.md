@@ -392,6 +392,6 @@ team-owned publishing; clients per team; several English teams; team-owned stora
 releases for teams; quotas and abuse limits; review before a take or release goes live; terms of
 service; publishing community packs (`SpokenCommunity_*`).
 
-Deleting a team, and a team admin's own page for their team. Removing `line_issue` and `line_flag`,
+A team admin's own page for their team (a site admin can delete an empty team: `SELF-SERVE-TEAMS.md`). Removing `line_issue` and `line_flag`,
 which have no readers. The English override route requiring `regenerate` rather than the team's
 `edit`.

@@ -46,6 +46,13 @@ Takes never leave the site through the API. Nothing downloads audio, English or 
   "New language…" choice takes the code, English name and native name, and creating the team
   adds the language and the team in one step (user, 2026-11-13). It runs the same step approval
   runs.
+- **Deletes a team** from its row on `/admin/teams` (user, 2026-11-18). Its roster, settings,
+  lexicon (and its history), pauses, members, invites and log go with it: the log was the team's
+  alone, and a row with no team would be everyone's to read. The site log keeps one
+  `team.deleted` row naming its members. A team that holds a language is refused until the
+  language is handed over; one with takes, recordings, buckets, jobs, overrides or anything else
+  of its own is refused, since work is never deleted. Its ElevenLabs pronunciation dictionary is
+  not deleted there and stays on the account.
 
 ## What approval does
 

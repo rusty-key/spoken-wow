@@ -277,6 +277,11 @@ export function describe(row: ActivityRow): { what: string; quote: string | null
       return { what: `added the language ${str(d.name) ?? ""}`.trim(), quote: null };
     case "team.created":
       return { what: `created the team ${str(d.slug) ?? ""}`.trim(), quote: null };
+    case "team.deleted": {
+      const members = Array.isArray(d.members) ? d.members : [];
+      const left = members.length ? `, removing ${plural(members.length, "membership")}` : "";
+      return { what: `deleted the team ${str(d.slug) ?? "?"}${left}`, quote: null };
+    }
     case "team.renamed":
       return { what: "renamed the team", quote: str(d.name) };
     case "team.own_storage":

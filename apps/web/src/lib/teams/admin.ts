@@ -9,6 +9,7 @@ import { addGrants, OtherTeamError, userByEmail } from "@/lib/grants/store";
 import type { Lang } from "@/lib/lang";
 import type { Capability } from "@/lib/permissions";
 
+import { membersOf } from "./members";
 import { forgetTeams, type TeamId } from "./store";
 
 export type TeamSummary = {
@@ -165,6 +166,76 @@ export async function renameTeam(team: TeamId, name: string, actorId: string): P
   if (!slug) throw new TeamError("No such team.");
   forgetTeams();
   await recordActivity({ kind: "team.renamed", lang: null, actorId, subject: slug, detail: { name } });
+}
+
+/**
+ * The team's setup, deleted with it: the roster, settings and lexicon every team is given or
+ * copies, the lexicon's history, and its pauses and dismissal mark. Children before parents.
+ */
+const SETUP = [
+  "voice_assignment", "voice", "generation_setting_locale", "generation_setting", "lexicon_change",
+  "pronunciation_lexicon_locale", "pronunciation_lexicon", "queue_dismissal", "regeneration_pause",
+];
+
+/** Plain words for a refusal; any other table goes by its name. */
+const WORK: Record<string, string> = {
+  take: "takes",
+  take_ack: "acknowledged takes",
+  recording: "recordings",
+  voice_clone: "voice clones",
+  voice_sample: "voice samples",
+  fish_reference: "voice references",
+  regeneration_batch: "regeneration batches",
+  regeneration_job: "regeneration jobs",
+  report: "reports",
+  line_ignore: "ignored lines",
+  line_override: "text overrides",
+  text_override: "text overrides",
+  release_run: "releases",
+  storage_backend: "a storage bucket",
+  archive_object: "archived audio",
+  storage_move: "storage moves",
+};
+
+/**
+ * Deletes a team that holds no language and has made nothing. Any row of work under it (a take,
+ * a recording, a bucket) refuses the delete, since work is never deleted.
+ */
+export async function deleteTeam(team: TeamId, actorId: string): Promise<void> {
+  await withTeam(ALL_TEAMS, async (client) => {
+    // Locked, so a hand-over to it cannot commit between the check and the delete.
+    const { rows } = await client.query<{ slug: string }>(`select "slug" from "team" where "id" = $1 for update`, [team]);
+    if (rows.length === 0) throw new TeamError("No such team.", 404);
+    const { rows: held } = await client.query<{ lang: string }>(
+      `select "lang" from "team_language" where "teamId" = $1 and "privileged" order by "lang"`,
+      [team],
+    );
+    if (held.length) {
+      throw new TeamError(`${rows[0].slug} holds ${held.map((row) => row.lang).join(", ")}; hand it to another team first.`, 409);
+    }
+    const members = await membersOf(client, team);
+    try {
+      for (const table of SETUP) await client.query(`delete from "${table}" where "teamId" = $1`, [team]);
+      // Only the team could read its log; left under no team, every team could (0090's "site_wide").
+      await client.query(`delete from "activity" where "teamId" = $1`, [team]);
+      // team_member, team_language and invite cascade; an approved request forgets the team.
+      await client.query(`delete from "team" where "id" = $1`, [team]);
+    } catch (error) {
+      const { code, table } = error as { code?: string; table?: string };
+      if (code !== "23503") throw error;
+      const work = (table && WORK[table]) ?? table ?? "work";
+      throw new TeamError(
+        `${rows[0].slug} still has ${work} of its own, and work is never deleted: keep the team.`,
+        409,
+      );
+    }
+    // In the transaction, so the log never loses the team's rows without saying why.
+    const slug = rows[0].slug;
+    await recordActivity({ kind: "team.deleted", lang: null, actorId, subject: slug, detail: { slug, members } }, client);
+    // Every worker drops its team memo at commit.
+    await client.query(`select pg_notify('spoken_team_language', '')`);
+  });
+  forgetTeams();
 }
 
 /** Hands `lang`, with every row of it, to `team`; returns the rows moved. */
