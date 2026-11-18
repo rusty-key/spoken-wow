@@ -97,6 +97,16 @@ const config: NextConfig = {
   async rewrites() {
     return { beforeFiles: localeRewrites(pageSections()), afterFiles: [], fallback: [] };
   },
+  // Pages that stream: they draw at once and the ElevenLabs account follows in the same
+  // response. nginx buffers a proxied response by default, which would hold the whole page
+  // back until ElevenLabs answered - the wait the streaming exists to remove.
+  async headers() {
+    const noBuffering = [{ key: "X-Accel-Buffering", value: "no" }];
+    return ["/voices", "/:lang/voices", "/lexicon", "/:lang/lexicon"].map((source) => ({
+      source,
+      headers: noBuffering,
+    }));
+  },
 
   outputFileTracingExcludes: {
     "*": [
