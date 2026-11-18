@@ -1,5 +1,5 @@
 /**
- * team_live_takes and team_live_overrides (migration 0115): another team's live takes, and the
+ * team_live_takes and team_live_overrides (migration 0118): another team's live takes, and the
  * overrides they speak, read through `query` with no team set, which row-level security would
  * otherwise answer with nothing.
  */

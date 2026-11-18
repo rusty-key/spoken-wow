@@ -2,7 +2,7 @@
  * A places take as another team's: `?team=<slug>` plays that team's live take of the file, and
  * nothing of a file it has no live take of. No session: an anonymous visitor.
  *
- * Needs DATABASE_URL and migrations through 0115 applied.
+ * Needs DATABASE_URL and migrations through 0118 applied.
  */
 import { afterAll, afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 

@@ -2,7 +2,7 @@
  * The places search as another team: `?team=<slug>` lists that team's live takes and the
  * overrides they speak, and nothing else of its rows. No session: an anonymous visitor.
  *
- * Needs DATABASE_URL and migrations through 0115 applied.
+ * Needs DATABASE_URL and migrations through 0118 applied.
  */
 import { afterAll, afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 

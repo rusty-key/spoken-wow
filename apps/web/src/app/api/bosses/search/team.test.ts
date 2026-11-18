@@ -2,7 +2,7 @@
  * The bosses search as another team: `?team=<slug>` plays its live takes. No session. The
  * language is given a story for one boss, since a boss with none reads stale whatever plays.
  *
- * Needs DATABASE_URL and migrations through 0115 applied.
+ * Needs DATABASE_URL and migrations through 0118 applied.
  */
 import { afterAll, afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 

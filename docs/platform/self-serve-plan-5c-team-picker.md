@@ -29,7 +29,7 @@
 
 ## Global Constraints
 
-- One migration, `0115_team_live_takes.sql`: plain SQL, additive, one transaction, applied by `deploy/web/bin/migrate.sh`. 5b's release must run against it (it never calls the function).
+- One migration, `0118_team_live_takes.sql`: plain SQL, additive, one transaction, applied by `deploy/web/bin/migrate.sh`. 5b's release must run against it (it never calls the function).
 - Tests run as `spoken_app` (vitest's default `DATABASE_ROLE`) on `spoken_ci_pin`, never `spoken_dev`. Fish: `set -x DATABASE_URL postgres://localhost/spoken_ci_pin; pnpm --dir apps/web vitest run <file>`. Migrate: `set -x DATABASE_URL postgres://localhost/spoken_ci_pin; deploy/web/bin/migrate.sh $PWD/apps/web`.
 - Fixtures: `uniqueLang`, `newTeamIn`, `addMember`, `testUser`, `asSystem`, `systemRows`, `runningJob`, `dropTeam`, `dropLang` from `src/lib/teams/testing.ts`. Takes are inserted through `asSystem`, never generated.
 - Nothing spends TTS credits. A test that queues cancels its jobs in `afterEach` (`cancelPending`) and deletes the batch.
@@ -49,10 +49,10 @@
 
 ---
 
-### Task 1: Migration 0115, `team_live_takes` and `team_live_overrides`
+### Task 1: Migration 0118, `team_live_takes` and `team_live_overrides`
 
 **Files:**
-- Create: `apps/web/migrations/0115_team_live_takes.sql`
+- Create: `apps/web/migrations/0118_team_live_takes.sql`
 - Test: `apps/web/src/lib/takes/team-live.test.ts`
 
 **Interfaces:**

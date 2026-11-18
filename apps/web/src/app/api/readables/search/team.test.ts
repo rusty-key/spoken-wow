@@ -1,7 +1,7 @@
 /**
  * The readables search as another team: `?team=<slug>` plays its live takes. No session.
  *
- * Needs DATABASE_URL and migrations through 0115 applied.
+ * Needs DATABASE_URL and migrations through 0118 applied.
  */
 import { afterAll, afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
