@@ -33,6 +33,42 @@ let u: { id: string; cleanup: () => Promise<void> };
 let m: { id: string; cleanup: () => Promise<void> };
 let ctxU: TokenContext;
 let ctxM: TokenContext;
+let welcome: string;
+let elsewhere: string;
+const npcIds: number[] = [];
+
+const RACE = "testrace";
+
+/**
+ * A quest line of `lang` alone, spoken by one NPC of RACE and `gender` and written in
+ * RACE-male's voice. A race no roster reads voices the NPC as RACE-gender, so a female speaker's
+ * line is listed only as that voice's line, under another id and file.
+ */
+async function questLine(gender: "male" | "female", text: string, ord: number): Promise<string> {
+  const questId = 900_000_000 + Math.floor(Math.random() * 100_000_000);
+  const npcId = -questId;
+  npcIds.push(npcId);
+  const lineId = `q:${questId}:accept`;
+  await asSystem.query(
+    `insert into "npc" ("npcKind", "npcId", "race", "gender", "provenance", "confirmed")
+     values ('creature', $1, $2, $3, 'moderator', true)`,
+    [npcId, RACE, gender],
+  );
+  await asSystem.query(
+    `insert into "quest_line_speaker"
+       ("lineId", "variant", "lang", "ord", "npcType", "npcId", "npcName", "race", "gender", "voice")
+     values ($1, 0, $2, $3, 'creature', $4, 'Test Speaker', $5, $6, $7)`,
+    [lineId, lang, ord, npcId, RACE, gender, `${RACE}-male`],
+  );
+  await asSystem.query(
+    `insert into "quest_line"
+       ("lineId", "variant", "lang", "version", "isCurrent", "origin", "source", "questId", "questTitle",
+        "fileName", "text", "originalText")
+     values ($1, 0, $2, 1, true, 'edited', 'accept', $3, 'Eine Probe', $4, $5, $5)`,
+    [lineId, lang, questId, `${questId}-accept`, text],
+  );
+  return lineId;
+}
 
 async function contextOf(userId: string): Promise<TokenContext> {
   const { row } = await createToken({
@@ -66,16 +102,23 @@ beforeAll(async () => {
   await saveStory({ lang, lineId: f.boss.lineId, text: "Der Boss spricht.", editedBy: m.id });
   await saveBookText({ lang, lineId: f.page.lineId, text: "Eine Seite.", editedBy: m.id });
   await saveQuestText({ lang, lineId: f.quest.lineId, variant: f.quest.variant, text: "Sei gegrüßt.", editedBy: m.id });
+  welcome = await questLine("male", "Sei willkommen.", 1);
+  elsewhere = await questLine("female", "Seid gegrüßt.", 2);
 
   ctxU = await contextOf(u.id);
   ctxM = await contextOf(m.id);
-});
+  // A language's corpus is a pass over every English line, too slow to build inside a test on CI.
+  await fileIndex(lang);
+  await asActor(u.id, () => fileIndex(lang));
+}, 30_000);
 
 afterAll(async () => {
   for (const table of ["line_override", "quest_line", "lore_line", "boss_line", "book_line", "api_batch", "api_token"]) {
     await asSystem.query(`delete from "${table}" where "lang" = $1`, [lang]);
   }
   await asSystem.query(`delete from "activity" where "lang" = $1`, [lang]);
+  await asSystem.query(`delete from "quest_line_speaker" where "lang" = $1`, [lang]);
+  await asSystem.query(`delete from "npc" where "npcKind" = 'creature' and "npcId" = any($1)`, [npcIds]);
   for (const team of [a, b]) await dropTeam(team);
   await u.cleanup();
   await m.cleanup();
@@ -186,14 +229,8 @@ describe("a second team's member", () => {
   });
 
   it("writes a quest override on the file the Explorer's rewrite writes", async () => {
-    // A line the Explorer lists under its own id: one heard in a voice the team's roster lacks
-    // is listed as a voice line of its own instead.
-    const explorerFile = async (id: string) =>
-      [...(await fileIndex(lang))].find(([, line]) => line.lineId === id && (line.variant ?? 0) === 0)?.[0];
-    const [, listed] = [...(await fileIndex(lang))].find(([, line]) => /^q:\d+:accept$/.test(line.lineId))!;
-    const lineId = listed.lineId;
-    await saveQuestText({ lang, lineId, variant: 0, text: "Sei willkommen.", editedBy: m.id });
-    const file = await explorerFile(lineId);
+    const lineId = welcome;
+    const file = [...(await fileIndex(lang))].find(([, line]) => line.lineId === lineId)?.[0];
     expect(file).toBeTruthy();
 
     const result = await first(ctxU, "quests", { id: lineId, text: "Seid willkommen, Freund." });
@@ -210,11 +247,12 @@ describe("a second team's member", () => {
   });
 
   it("is refused a quest line the site lists only in another voice, writing nothing", async () => {
-    const { lineId, variant } = f.quest;
-    // The fixture's line: its speakers all read in a voice the team's roster names otherwise.
-    expect([...(await fileIndex(lang)).values()].some((line) => line.lineId === lineId)).toBe(false);
-    for (const text of ["Seid gegrüßt.", null]) {
-      expect((await first(ctxU, "quests", { id: lineId, variant, text })).text).toEqual({
+    const lineId = elsewhere;
+    const ids = [...(await asActor(u.id, () => fileIndex(lang))).values()].map((line) => line.lineId);
+    expect(ids).toContain(`${lineId}~${RACE}-female`);
+    expect(ids).not.toContain(lineId);
+    for (const text of ["Seid gegrüßt, Freund.", null]) {
+      expect((await first(ctxU, "quests", { id: lineId, variant: 0, text })).text).toEqual({
         status: "error",
         code: "invalid",
         message: "this line is spoken in another voice; override it on the site",
