@@ -426,21 +426,24 @@ Designed now so phase 1 does not paint it into a corner; built when the first su
   Managers accept. Every release writes both.
 - **Clone names** keep their shape while one person works in one team per language; they gain the
   team slug only if that rule is ever lifted.
-- **Player side.**
-  - Every installed pack registers with Spoken along with its team and language; Settings lists them.
-  - Per language and per section (quests, places, readables, bosses), the player marks one pack
-    primary and one fallback. A line plays from the primary; if the primary lacks it, from the
-    fallback; then today's language fallback (`addons/Spoken_Quests/Language.lua:168-176`) applies.
-  - With no choice made, the pack with the most lines is primary. The setting only appears when two
-    packs for one language are installed.
-  - This replaces folder-name order and self-declared priority in `DataModules.lua` (`SortModules`),
-    and the "one pack per language" assumptions in `Spoken_Places/Audio.lua`,
-    `Spoken_Readables/Audio.lua` and `Spoken_Bosses/Audio.lua`. The Places picker (`/spp audio`) is
-    the existing pattern to generalise.
+- **Player side.** Built, with a change to this design: no primary
+  and fallback per language, but one ordered list of voices for every module.
+  - Every installed pack registers with Spoken along with its language and, from `X-Spoken-Team`
+    and `X-Spoken-TeamName`, its team (`addons/Spoken/Languages.lua`). A voice is a language
+    (`deDE`, the plain pack) or a language and a team (`deDE_stimmen`).
+  - The player orders voices on Spoken's page (`Language.Voices`, `Spoken:GetVoiceOrder`). A line
+    plays from the first voice whose pack has it, and past the last stays silent. With no list set,
+    each module keeps the voice language and fallback it had.
+  - Voice order replaces self-declared priority between packs of different teams in
+    `DataModules.lua`, and the "one pack per language" assumptions in `Spoken_Places/Audio.lua`,
+    `Spoken_Readables/Audio.lua` and `Spoken_Bosses/Audio.lua`. Packs of one voice keep their old
+    order (priority, `/spp audio`'s choice, bitrate).
 - **Explorer.** Built: a team picker per language, which plays the picked team's live takes,
   read-only when it is not the visitor's own team.
-- **Reports** from the addon carry the team of the pack that played the line, so audio reports reach
-  that team. A report without a team (older addons) goes to every team voicing that language.
+- **Reports** from the addon carry the team of the pack that played the line (`packTeam`, the team's
+  slug), and the site files them with that team when it voices the report's language
+  (`apps/web/src/lib/reports/store.ts`). Built. A report without a team came from a plain pack,
+  since an older addon can play no other, and is filed with the language's privileged team.
 - **Text layer.** Per-team overrides generalise `line_override` from quest lines to every `source`.
   The text a team voices is its override where present, else the original, and a take's staleness
   is judged against that. Built for the site as `text_override`: places, readables and bosses are
