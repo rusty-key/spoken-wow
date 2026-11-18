@@ -428,10 +428,8 @@ local function InstanceStory()
 	if not inside or kind == "pvp" or kind == "arena" then
 		return nil
 	end
-	local map = NotSecret((select(8, GetInstanceInfo())))
-	local dungeons = _G.SpokenDungeons and SpokenDungeons.dungeons
-	local dungeon = map and dungeons and dungeons[map]
-	return dungeon and dungeon.story
+	local mapID, key = SpokenPlaces:InstanceStory(NotSecret((select(8, GetInstanceInfo()))))
+	return mapID and { mapID, key }
 end
 
 local function ReadInstance()

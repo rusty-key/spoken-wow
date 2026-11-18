@@ -853,6 +853,84 @@ function Spoken:AddGate(fn)
     SoundQueue:AddGate(fn)
 end
 
+--------------------------------------------------------------------------------
+-- Stories: a dungeon's or a boss's, for another addon's Play button
+--------------------------------------------------------------------------------
+--
+-- Keyed by the game's own ids, so a caller needs none of the modules' keys:
+--   "instance"  an instance map id (GetInstanceInfo's 8th value), told by Spoken_Places
+--   "boss"      an encounter id (ENCOUNTER_START's first argument), told by Spoken_Bosses; a fight
+--               of two bosses plays the first with a story
+-- Only a voiced story counts, with its module on and the story not locked for this character.
+-- No event covers every change to HasStory: ask it as a button shows and on AUDIO_CHANGED and
+-- PART_SWITCHED. Bosses meets a boss in its own ENCOUNTER_START handler, which may run after the
+-- caller's, so ask a frame later. Additive: guard on the field, `if Spoken.PlayStory then`.
+
+local storyTellers = {}
+
+--- For a module: who tells the stories of `kind`. `teller.source` is the module's source;
+--- `teller.Keys(id)` lists the clip keys of the story `id`, a story per boss of an encounter; and
+--- `teller.Clip(id, key)` builds the clip of one, or nil where it cannot be played now.
+function Spoken:RegisterStoryTeller(kind, teller)
+    storyTellers[kind] = teller
+end
+
+-- The teller of `kind` and the clip keys of its story `id`, or nil.
+local function Story(kind, id)
+    local teller = id ~= nil and storyTellers[kind]
+    if teller then return teller, teller.Keys(id) end
+end
+
+-- The first clip of the story `id` that can be played now, or nil.
+local function Playable(kind, id)
+    local teller, keys = Story(kind, id)
+    for _, key in ipairs(keys or {}) do
+        local clip = teller.Clip(id, key)
+        if clip then return teller, clip end
+    end
+end
+
+local function Tells(teller, keys, clip)
+    if not (clip and clip.source == teller.source) then return false end
+    for _, key in ipairs(keys) do
+        if clip.key == key then return true end
+    end
+    return false
+end
+
+--- Whether the story `id` of `kind` ("instance" or "boss") can be played now.
+---@return boolean
+function Spoken:HasStory(kind, id)
+    return Playable(kind, id) ~= nil
+end
+
+--- Plays the story as the Compendium's Play does: at once where nothing speaks, else behind the line
+--- speaking. Returns whether it plays or waits.
+---@return boolean
+function Spoken:PlayStory(kind, id)
+    local teller, clip = Playable(kind, id)
+    return teller ~= nil and teller.source:PlayNow(clip) and true or false
+end
+
+--- Whether the story is speaking: not waiting, held or paused.
+---@return boolean
+function Spoken:IsPlayingStory(kind, id)
+    local teller, keys = Story(kind, id)
+    return teller ~= nil and not SoundQueue:IsPaused() and Tells(teller, keys, SoundQueue:GetNowPlaying())
+end
+
+--- Stops the story, speaking or waiting, and leaves every other line alone. Returns whether it was
+--- in the queue.
+---@return boolean
+function Spoken:StopStory(kind, id)
+    local teller, keys = Story(kind, id)
+    local stopped = false
+    for _, clip in ipairs(teller and SoundQueue:GetQueue() or {}) do
+        if Tells(teller, keys, clip) and teller.source:Remove(clip) then stopped = true end
+    end
+    return stopped
+end
+
 --- False in a battleground or arena with Read in Battlegrounds off, where a source's Enqueue
 --- refuses every line the player did not ask for (`source:Enqueue(clip, true)` is one they did):
 --- a module can skip the work of finding one. Additive: guard on the field.
@@ -936,6 +1014,7 @@ end
 --   CLIP_DROPPED       (clip, reason)      queue-limit | outranked | missing | an admit reason
 --   QUEUE_EMPTY        ()
 --   SOURCE_REGISTERED  (source)
+--   PART_SWITCHED      (key, on)           a part was switched on or off in Spoken's settings
 --   CONTRIBUTE_SETTINGS_CHANGED ()          the hide-Contribute-buttons setting was toggled
 --   REPORT_SETTINGS_CHANGED     ()          the hide-Report-buttons setting was toggled
 --   VOICE_PACKS_LOADED          ()          the quest and gossip voice packs found at login have loaded

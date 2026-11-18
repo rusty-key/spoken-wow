@@ -114,5 +114,43 @@ clip = Setup("enUS", "auto", "enUS", { SpokenBossesAudio = Pack("SpokenBossesAud
     Future = { version = 2, addon = "Future", language = "enUS", bitrate = 320, bosses = { [36] = { ["edwin vancleef"] = EDWIN } } } })
 Expect("a pack of another format is passed over", clip.path, ENGLISH_PATH)
 
+---------------------------------------------------------------- a boss's story for another addon
+-- Spoken:PlayStory("boss", encounterID) reaches Bosses through the teller it registers: the game's
+-- encounter id names the boss, and only a voiced story of a boss met (or unlocked) counts.
+do
+    local S = _G.Spoken
+    local EDWIN_FIGHT = 2747
+    Setup("enUS", "auto", "enUS", { SpokenBossesAudio = Pack("SpokenBossesAudio", "enUS", 128) })
+    SpokenBossesCharacter.found = {}
+    SpokenBossesSettings.unlockUnfound = false
+    Expect("a boss not met has no story to play", S:HasStory("boss", EDWIN_FIGHT), false)
+    SpokenBossesSettings.unlockUnfound = true
+    Expect("...unless Unlock Unfound Bosses is on", S:HasStory("boss", EDWIN_FIGHT), true)
+    SpokenBossesSettings.unlockUnfound = false
+    Bosses:FoundEncounter(EDWIN_FIGHT)
+    Expect("a boss met, voiced, has one", S:HasStory("boss", EDWIN_FIGHT), true)
+    Expect("...an unknown encounter has none", S:HasStory("boss", 1), false)
+
+    Expect("PlayStory plays it", S:PlayStory("boss", EDWIN_FIGHT), true)
+    Expect("...the boss's story", S:GetNowPlaying().key, "boss:36:edwin vancleef")
+    Expect("...and IsPlayingStory says so", S:IsPlayingStory("boss", EDWIN_FIGHT), true)
+    Expect("...as it does not of another fight", S:IsPlayingStory("boss", 2748), false)
+    S:Pause()
+    Expect("...nor while paused", S:IsPlayingStory("boss", EDWIN_FIGHT), false)
+    S:Resume()
+    Expect("PlayStory does not mark it read, so the boss still tells it when it falls",
+        Bosses:IsStoryRead(36, "edwin vancleef"), false)
+    Expect("StopStory stops it", tostring(S:StopStory("boss", EDWIN_FIGHT)) .. " " .. S:GetQueueSize(), "true 0")
+    Expect("...and a second stop finds nothing", S:StopStory("boss", EDWIN_FIGHT), false)
+
+    Setup("enUS", "auto", "enUS", nil)
+    Expect("words alone are no story to play", tostring(S:HasStory("boss", EDWIN_FIGHT)) .. " "
+        .. tostring(S:PlayStory("boss", EDWIN_FIGHT)), "false false")
+    Setup("enUS", "auto", "enUS", { SpokenBossesAudio = Pack("SpokenBossesAudio", "enUS", 128) })
+    S:SetPartOn("bosses", false)
+    Expect("with Bosses switched off there is none", S:HasStory("boss", EDWIN_FIGHT), false)
+    S:SetPartOn("bosses", true)
+end
+
 stub.SetLocale("enUS")
 if Failures() > 0 then os.exit(1) end

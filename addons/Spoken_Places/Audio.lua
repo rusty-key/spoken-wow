@@ -103,6 +103,31 @@ local function Source()
 	return nil
 end
 
+--------------------------------------------------------------------------------
+-- A dungeon's story for another addon (Spoken:PlayStory("instance", map))
+--------------------------------------------------------------------------------
+
+--- The area mapID, key that tells the story of the instance map `map`, from Spoken's dungeon table,
+--- or nil where none does.
+function SpokenPlaces:InstanceStory(map)
+	local dungeons = _G.SpokenDungeons and SpokenDungeons.dungeons
+	local story = map and dungeons and dungeons[map] and dungeons[map].story
+	if story then return story[1], story[2] end
+end
+
+local function InstanceKeys(map)
+	local mapID, key = SpokenPlaces:InstanceStory(map)
+	return mapID and { "s:" .. mapID .. ":" .. key } or {}
+end
+
+-- The story's clip where it is voiced, Places is on and reads aloud, and the area is not locked.
+local function InstanceClip(map)
+	local mapID, key = SpokenPlaces:InstanceStory(map)
+	if not (SpokenPlaces:IsVoiceEnabled() and SpokenPlaces:IsPartOn()) then return nil end
+	if SpokenPlaces.IsLocked and SpokenPlaces:IsLocked(mapID, key) then return nil end
+	return SpokenPlaces:NewLoreSound(mapID, key)
+end
+
 -- Registers with the player. Runs once the world is up, after the player itself has
 -- loaded; everything here degrades to "no narration" when it has not.
 function SpokenPlaces:SetupAudio()
@@ -146,6 +171,10 @@ function SpokenPlaces:SetupAudio()
 	Spoken:RegisterCallback("AUDIO_CHANGED", function()
 		SpokenPlaces:NotifyAudioChanged()
 	end)
+
+	if Spoken.RegisterStoryTeller then
+		Spoken:RegisterStoryTeller("instance", { source = self.source, Keys = InstanceKeys, Clip = InstanceClip })
+	end
 
 	-- Switched off or on in Spoken's settings: the map panel follows, and so does the Compendium's
 	-- Places tab.
