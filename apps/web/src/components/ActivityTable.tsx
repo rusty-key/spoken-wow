@@ -182,9 +182,9 @@ export function describe(row: ActivityRow): { what: string; quote: string | null
       if (num(d.contribution)) {
         return { what: `took a correction from the game (contribution #${num(d.contribution)})`, quote: str(d.text) };
       }
-      return { what: "overrode the English text", quote: str(d.text) };
+      return { what: "overrode the text", quote: str(d.text) };
     case "override.cleared":
-      return { what: "cleared the English text override", quote: str(d.before) };
+      return { what: "cleared the text override", quote: str(d.before) };
     case "ignore.set":
       return {
         what: row.lang === null ? "ignored a line in every language" : "ignored a line",

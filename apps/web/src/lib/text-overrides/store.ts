@@ -50,8 +50,8 @@ export async function overrideStamp(source: NarratedSource, lang: Lang): Promise
 /**
  * A catalogue's shared-text stamp and the acting team's override stamp, in one statement on one
  * connection. `shared` reads only shared tables, which answer the same under any team. An
- * unowned language reads no override and stamps `"-"`, as overrideStamp does: acting as
- * ALL_TEAMS, row-level security would count every team's rows.
+ * unowned language reads no override and stamps `"-"`: acting as ALL_TEAMS, row-level
+ * security would count every team's rows.
  */
 export async function stampsWithOverrides(
   source: NarratedSource,

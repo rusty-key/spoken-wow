@@ -113,3 +113,19 @@ test("cancelling drops the draft, so the dialog opens fresh", async () => {
   expect(draft()).toHaveProperty("value", "Der Lich erwacht.");
   expect(screen.queryByRole("alert")).toBeNull();
 });
+
+test("saving the original's words over an override removes the override", async () => {
+  fetchMock.mockResolvedValue(Response.json({ removed: true }));
+  const user = userEvent.setup();
+  const { onSaved } = open("Der Lichkönig erwacht.");
+
+  const draft = screen.getByLabelText(/What your team says/);
+  await user.clear(draft);
+  await user.type(draft, " Der Lich erwacht. ");
+  await user.click(screen.getByRole("button", { name: "Save" }));
+
+  await waitFor(() => expect(onSaved).toHaveBeenCalledWith("x:7", null));
+  const [url, init] = fetchMock.mock.calls[0];
+  expect(init.method).toBe("DELETE");
+  expect(new URL(url, "http://site").searchParams.get("lineId")).toBe("x:7");
+});

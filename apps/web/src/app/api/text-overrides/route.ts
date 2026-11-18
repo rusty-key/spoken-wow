@@ -1,8 +1,8 @@
 /**
  * What a place, readable or boss line should say instead of its text, in the acting team.
  *
- * `regenerate` in the language (`?lang=`), as a quest line's override: an override changes what
- * one file says, and the person who listens to the result is the one regenerating it.
+ * `regenerate` in the language (`?lang=`): an override changes what one file says, and the
+ * person who listens to the result is the one regenerating it.
  *
  * The line is looked up in the base catalogue, whose original text is what the catalogue judges
  * the override's drift against, so the hash saved here is the one it compares.

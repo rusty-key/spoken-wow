@@ -343,7 +343,7 @@ async function overlay(lang: Lang, stamps: { stamp: string; overrides: string })
     const override = overrides.get(page.id);
     // A page with no text of its own has nothing for an override to stand on.
     if (!override || page.missing?.text) return page;
-    // The title is said only where the language names the page, as build() decides.
+    // An English title standing in for the language's own is shown but never said.
     const title = page.missing?.title ? undefined : page.title;
     return {
       ...page,

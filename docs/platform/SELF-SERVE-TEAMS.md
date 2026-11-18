@@ -150,10 +150,10 @@ site. The rest of phase 2 is distribution and stays out.
 - The second team is a non-privileged `team_language` row. Its takes, voices, clones, settings,
   lexicon, ignores, queue and activity are its own, isolated by the existing row-level security.
 - **Text layer.** The team cannot edit the original. Per-team overrides generalise `line_override`
-  from quest lines to every source. The text a team voices and shows is its override where present,
-  else the original, and a take's staleness is judged against that. The text API's writes from a
-  non-text-maintainer team go to its override layer, under `regenerate`. *(My call: without this the
-  team cannot change a word, and TEAMS.md already designs it.)*
+  from quest lines to every source. The text a team voices is its override where present, else the
+  original, and a take's staleness is judged against that; the text shown stays the original. The
+  text API's writes from a non-text-maintainer team go to its override layer, under `regenerate`.
+  *(My call: without this the team cannot change a word, and TEAMS.md already designs it.)*
 - **One team per person per language.** A person works on a language in one team only. A deferred
   trigger on `team_member` enforces it, and the request, approval, grant and invite paths refuse
   it first with a message. *(User.)*
@@ -167,8 +167,8 @@ site. The rest of phase 2 is distribution and stays out.
   is filed under the second team.
 - **Tokens.** Only `text` writes the original text, in any language. A second team's token reads
   its language's original text and writes its team's overrides when its owner holds `regenerate`,
-  and never writes the original (plan 5b). A token route opts in to second teams, and one not yet
-  converted answers 403 to a second team's token. *(User.)* Until 5b, the text routes answer 403 to
+  and never writes the original (plan 5b2). A token route opts in to second teams, and one not yet
+  converted answers 403 to a second team's token. *(User.)* Until 5b2, the text routes answer 403 to
   the token of anyone whose team in the language is a second team, text maintainers included.
 - **Releases and gender splits.** A second team cannot release yet, and cannot split a line by the
   reader's gender, since that rewrites the original every team voices. A plain override is written

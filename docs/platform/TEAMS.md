@@ -131,9 +131,11 @@ in every team, and the original text only under `text`.
   your override"**, and the team keeps or drops it. Keeping saves the same text again, which marks
   the new original as seen. An override saved before this flag existed stays quiet until saved again.
 
-The pencil writes an override. The one exception is text that branches on the reader's gender on a
-plain line, in any language: one file cannot say both, so saving splits the line into `:m` and `:f`,
-which changes the original every team shares. That is deliberate for now, so a split needs `text` in
+In the quests explorer the pencil writes an override. In the places, readables and bosses explorers
+the pencil writes the original and the speech button writes the override. The one exception in
+quests is text that branches on the reader's gender on a plain line, in any language: one file
+cannot say both, so saving splits the line into `:m` and `:f`, which changes the original every
+team shares. That is deliberate for now, so a split needs `text` in
 the language beside `regenerate`, and a second team's save is refused: only the language's text
 maintainers split a line.
 

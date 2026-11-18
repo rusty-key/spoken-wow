@@ -48,9 +48,11 @@ export default function TextOverrideDialog({ source, line, onSaved, onCancel }: 
     return null;
   }
 
-  // Saving the original over no override would only store a copy of it.
   const trimmed = draft.trim();
-  const dirty = trimmed !== "" && trimmed !== (line.override ?? line.original);
+  const dirty = trimmed !== "" && trimmed !== (line.override ?? line.original).trim();
+  // An override saying the original would be a copy that drifts the moment the original
+  // changes, so going back to the original's words removes the override instead.
+  const backToOriginal = line.override !== null && trimmed === line.original.trim();
 
   function cancel() {
     setSeeded(null);
@@ -139,7 +141,7 @@ export default function TextOverrideDialog({ source, line, onSaved, onCancel }: 
             <Button variant="ghost" onClick={cancel} disabled={busy}>
               Cancel
             </Button>
-            <Button disabled={busy || !dirty} onClick={() => void send("PUT")}>
+            <Button disabled={busy || !dirty} onClick={() => void send(backToOriginal ? "DELETE" : "PUT")}>
               {busy ? "Saving…" : "Save"}
             </Button>
           </span>
