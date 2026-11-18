@@ -283,9 +283,14 @@ Oggs rather than the takes.
    checks still get errors 9 hours after the press, past any run the workflow allows, is failed too.
 
 **One release at a time, site-wide.** The partial unique index `release_run_one_active` allows one
-`dispatching` or `running` row across all teams, and a second press gets a 409 naming the active
-run. A team sees only
-that another team's release is running, not its step, link or error.
+`dispatching` or `running` row across all teams. On the droplet a press while another runs is
+**queued** (migration 0121): it waits as `queued`, with the bump it asked for, and whenever a run
+settles the oldest queued one starts (`lib/releases/launch.ts` `startNext`). A queued run whose job
+cannot start ends `failed`, and the next one starts, so the queue never stalls. Whoever pressed it, or
+a site owner, can cancel a queued run (`DELETE /api/releases/<id>`). A run dispatched to GitHub
+Actions still gets a 409 while another is active, since the workflow's own `concurrency` group queues
+there. Promotions and delistings (below) take the same queue. A team sees only that another team's
+release is running, not its step, link or error.
 
 Manager-only mode publishes to the Manager channel alone, with no CurseForge or GitHub upload, and
 publishes the folders present in `dist/` (`ONLY_PRESENT=1`), since a build holds one section and
@@ -339,10 +344,35 @@ passes its slug to `release.mjs --team`, and every builder query that picked the
   own zips are `publish-addon.mjs`'s, which writes `index.json`; each pack publish copies them to
   both. A publish that fails between the two writes leaves `index.json` behind, and the next one
   catches it up.
-- **Gated until review exists.** A press by a team that is not official, or not privileged, gets 409
-  unless the site sets `SPOKEN_TEAM_RELEASES=1` and releases on the droplet (`deploy/web/README.md`,
-  *Team releases, on staging only*); `release.mjs` refuses a derived pack without it. Set it only
-  where `release.env` signs for the staging channel. Review replaces the gate.
+- **Review.** An official team's release publishes as before and ends `done`. A release of a team
+  that is not official **stages**, decided at the press from `team.official` and kept on the row
+  (`stage`): `release.mjs --stage` uploads the blobs and signs each pack's manifest
+  (`packs/<folder>/<rev>.json`) but writes neither index, and leaves what it staged in the run's
+  directory (`staged.json`). The site stores that on the row and settles it `awaiting_review`, and
+  emails the site owners. They review it on `/admin/team-releases`: team, language, section, version,
+  who pressed it, and the lines it changes as the team's own release page counts them, each playing
+  the team's live take, with a link to the explorer on `?team=<slug>`. **Approve** queues a `promote`
+  run (`scripts/manager/promote.mjs`), which writes the staged entries into both indexes; its
+  success makes the staged run `done`, so `done` keeps meaning "players have it", and the team's
+  pending counts drop only then. Promotion refuses a pack whose live rev moved since it was staged
+  (each entry records the rev it was staged over), and one whose manifest is missing. A failed
+  promotion leaves the version waiting, with the reason. **Reject** needs a reason, settles the run
+  `rejected`, and the team sees "Not approved: <reason>" and gets it by email. Staged blobs and
+  manifests are public by address and listed nowhere; nothing deletes them. A team admin cannot
+  approve their own version: the review routes are a site owner's.
+- **One waiting version per pack.** A team's new staged version of a section and language marks the
+  older waiting one `superseded` once it reaches `awaiting_review`, not before, so a failed build
+  leaves the waiting one in place. Every version waits, the first and every update.
+- **Delisting.** A site owner can take a team's pack (one section, language and team) off the
+  channel from the same page: a `delist` run (`scripts/manager/delist.mjs`) removes every folder the
+  team's pack can have from both indexes, and its files stay. The team's release page says
+  "Delisted by a site owner."; its next approved release lists the pack again. An official team's
+  packs are not delisted here.
+- **Opened per site.** A press by a team that is not official, or not privileged, gets 409 unless the
+  site sets `SPOKEN_TEAM_RELEASES=1` and releases on the droplet (`deploy/web/README.md`, *Team
+  releases*); `release.mjs` refuses a derived pack without it. Staging sets it. Production sets it
+  only once a Manager that reads `index-v2.json` and a Spoken that orders a language's voices have
+  shipped, since no player could install such a pack before.
 
 **Today's release workflow** *(my call)*: `release-packs.yaml` stays the only Manager publisher, and
 the site starts it instead of publishing itself, so two publishers never race for one pack's revs.

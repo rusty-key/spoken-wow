@@ -667,23 +667,49 @@ language's activity log with its error.
 A job that stops beating for 3 minutes, from a reboot or an out-of-memory kill, fails on the page's
 next look and frees the lock.
 
-### Team releases, on staging only
+### Team releases
 
 A press by a team that is not official, or that is not its language's privileged team, builds that
-team's packs (`docs/platform/TEAMS.md`, *Team releases*). Until a site owner can review such a
-release before players get it, it is refused with a 409 everywhere except on a site that sets, in
-`app.env`:
+team's packs (`docs/platform/TEAMS.md`, *Team releases*). It is refused with a 409 except on a site
+that sets, in `app.env`:
 
 ```
 SPOKEN_TEAM_RELEASES=1
 ```
 
-Set it **only on a site whose `shared/release.env` signs for the staging channel**: its packs are
-live for every Manager pointed at that channel the moment the job ends. The site reads it for the
-press, and the job takes it from `app.env` too, so `release.mjs` refuses such a pack anywhere it is
-unset. It works on the droplet only (`SPOKEN_RELEASE_ENV` set): the workflow's synced database gives
-every take to the privileged team, so it cannot build another team's pack. Restart as above after
-changing it. Official privileged teams release as before, with or without it.
+Staging sets it. **Production sets it only once a Manager that reads `index-v2.json` and a Spoken
+that orders a language's voices have been released**: before that no player can install a team's
+pack, and a suffixed pack requires a Spoken that is not out. The site reads it for the press, and the
+job takes it from `app.env` too, so `release.mjs` refuses such a pack anywhere it is unset. It works
+on the droplet only (`SPOKEN_RELEASE_ENV` set): the workflow's synced database gives every take to
+the privileged team, so it cannot build another team's pack. Restart as above after changing it.
+Official privileged teams release as before, with or without it.
+
+**Review.** A release of a team that is not official uploads its packs and lists them nowhere: it
+ends *Waiting for review*, and every site owner gets an email. Review it on `/admin/team-releases`
+(the *Team releases* tab, with the count waiting): read and listen to the lines it changes, open the
+team's takes in the explorer, then **Approve** or **Reject** with a reason the team sees. Approving
+queues a promotion, which writes both indexes once its turn comes; the version is live when that
+run ends, and whoever pressed Release gets an email. If the pack changed on the channel since the
+version was staged (another approval or a delisting), the promotion is refused and the version keeps
+waiting with the reason: reject it and ask the team to release again. A newer version of the same
+pack replaces the waiting one.
+
+**Delisting.** The same page lists every team pack on the channel (teams that are not official).
+**Delist** takes one off both indexes, keeping its files; the team sees "Delisted by a site owner."
+and its next approved release lists it again. An official team's pack is taken off with the release
+workflow, as before.
+
+### The queue
+
+On the droplet, a press while another release runs waits its turn (*Waiting for … to finish* on
+the team's release page) and starts by itself when the run ahead of it ends; promotions and
+delistings wait in the same queue, so two runs never write the indexes at once. Whoever pressed a
+queued run, or a site owner, can cancel it from the release page. A run whose job fails to start is
+marked failed and the next one starts. A press on GitHub Actions is still refused while another
+runs. If the queue looks stuck, check for a `dispatching` or `running` row in `release_run` whose job
+directory (`shared/release-runs/<id>/`) has no recent heartbeat: the site fails it after three
+minutes without one, the next time anybody opens a release page.
 
 ### On GitHub Actions
 
