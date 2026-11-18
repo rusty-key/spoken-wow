@@ -4,6 +4,7 @@ import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } 
 import { memoryBlobs, useArchiveForTests } from "@/lib/blobs/store";
 import { closeDb } from "@/lib/db";
 import { BASE_LANG } from "@/lib/lang";
+import { placeObject, testBackend } from "@/lib/storage/testing";
 import { asSystem, ownTeam, testUser } from "@/lib/teams/testing";
 
 const who = vi.hoisted(() => ({ id: "" }));
@@ -55,7 +56,7 @@ beforeEach(() => {
 
 afterEach(async () => {
   restoreArchive();
-  await asSystem.query(`delete from "archive_object" where "backendId" in (select "id" from "storage_backend" where "teamId" = $1)`, [fr.team]);
+  await asSystem.query(`delete from "archive_object" where "teamId" = $1`, [fr.team]);
   await asSystem.query(`delete from "storage_backend" where "teamId" = $1`, [fr.team]);
 });
 
@@ -137,7 +138,7 @@ describe("storage routes", () => {
 
   it("retires a bucket for good, and removes only one that holds nothing", async () => {
     const { backend } = await (await make("frFR")).json();
-    await asSystem.query(`insert into "archive_object" ("prefix", "sha256", "backendId", "teamId") values ('takes', $1, $2, $3)`, ["b".repeat(64), backend.id, fr.team]);
+    await placeObject(`takes/${"b".repeat(64)}`, backend.id);
     const del = () => DELETE(new Request(`http://x/api/storage/${backend.id}?lang=frFR`, { method: "DELETE" }), { params: Promise.resolve({ id: backend.id }) });
     expect((await del()).status).toBe(409);
 
@@ -165,13 +166,8 @@ describe("storage routes", () => {
   it("finds no other team's bucket", async () => {
     const de = await ownTeam("deDE");
     try {
-      const [{ id }] = (await asSystem.query(
-        `insert into "storage_backend" ("teamId", "label", "provider", "endpoint", "bucket", "accessKeyId", "secretSealed")
-         values ($1, 'theirs', 'r2', 'https://x.r2.cloudflarestorage.com', 'theirs', 'k', 'v1:x') returning "id"`,
-        [de.team],
-      )).rows;
-      expect((await act("frFR", id, "test")).status).toBe(404);
-      await asSystem.query(`delete from "storage_backend" where "id" = $1`, [id]);
+      const theirs = await testBackend({ team: de.team });
+      expect((await act("frFR", theirs.id, "test")).status).toBe(404);
     } finally {
       await de.restore();
     }

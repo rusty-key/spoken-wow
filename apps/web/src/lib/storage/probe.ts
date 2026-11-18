@@ -10,6 +10,8 @@ import { randomBytes } from "node:crypto";
 
 import type { BlobStore } from "@/lib/blobs/store";
 
+import { errorText } from "./error-text";
+
 type ProbeStep = { name: string; ok: boolean; detail?: string };
 
 export type ProbeResult = {
@@ -19,7 +21,6 @@ export type ProbeResult = {
   conditionalPut: boolean;
 };
 
-const message = (error: unknown) => (error instanceof Error ? error.message : String(error)).slice(0, 300);
 
 export async function probe(
   store: BlobStore,
@@ -38,7 +39,7 @@ export async function probe(
       steps.push(problem ? { name, ok: false, detail: problem } : { name, ok: true });
       return !problem;
     } catch (error) {
-      steps.push({ name, ok: false, detail: message(error) });
+      steps.push({ name, ok: false, detail: errorText(error) });
       return false;
     }
   };

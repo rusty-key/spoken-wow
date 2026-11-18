@@ -13,6 +13,7 @@ import { readsBlobs } from "@/lib/blobs/store";
 import { BACKEND_COLUMNS, forgetBackends, storeOfRow, type BackendRow } from "@/lib/blobs/where";
 
 import { assertPublicHost, PrivateHostError } from "./host";
+import { errorText } from "./error-text";
 import { probe, type ProbeResult } from "./probe";
 
 export const PROVIDERS = {
@@ -27,7 +28,7 @@ export const PROVIDERS = {
 
 export type Provider = keyof typeof PROVIDERS;
 
-export const isProvider = (value: unknown): value is Provider => typeof value === "string" && value in PROVIDERS;
+const isProvider = (value: unknown): value is Provider => typeof value === "string" && value in PROVIDERS;
 
 export type BackendView = {
   id: string;
@@ -62,7 +63,7 @@ export class StorageError extends Error {
   }
 }
 
-export type BackendInput = {
+type BackendInput = {
   label: string;
   provider: Provider;
   endpoint: string;
@@ -211,7 +212,7 @@ export async function createBackend(team: TeamId, input: BackendInput, userId: s
   return backendView(team, id);
 }
 
-export type BackendChange = {
+type BackendChange = {
   label?: string;
   publicUrl?: string | null;
   accessKeyId?: string;
@@ -261,7 +262,7 @@ export async function testBackend(team: TeamId, id: string): Promise<ProbeResult
     await reachable(row.endpoint, row.publicUrl);
     result = await probe(storeOfRow(row));
   } catch (error) {
-    result = { ok: false, conditionalPut: row.conditionalPut, steps: [{ name: "Reach the bucket", ok: false, detail: error instanceof Error ? error.message : String(error) }] };
+    result = { ok: false, conditionalPut: row.conditionalPut, steps: [{ name: "Reach the bucket", ok: false, detail: errorText(error) }] };
   }
   const failed = result.steps.find((step) => !step.ok);
   await withTeam(team, (client) =>
