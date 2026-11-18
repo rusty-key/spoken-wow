@@ -41,6 +41,7 @@
   --bs-red-text: #ff8f8c;
   --bs-blue: #8cb8f5;
   --bs-shadow: 0 24px 64px rgba(0, 0, 0, 0.45);
+  --wrap: 1200px;
 
   min-height: calc(100vh - 64px);
   background: var(--background);
@@ -60,6 +61,19 @@ body:has(main.bs) {
 .bs :focus-visible {
   outline: 2px solid var(--ring);
   outline-offset: 2px;
+}
+
+/* A wide page's column: lists whose columns want more room than the 1200px wrap. */
+.bs-wide {
+  width: 100%;
+  max-width: 1480px;
+  margin: 0 auto;
+  padding: 0 24px;
+}
+@media (max-width: 720px) {
+  .bs-wide {
+    padding: 0 16px;
+  }
 }
 
 /* ---------- Page head ---------- */

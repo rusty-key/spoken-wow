@@ -6,6 +6,10 @@ import { notFound, redirect } from "next/navigation";
 
 import ContributionTable, { type ContributionRow } from "@/components/ContributionTable";
 import ContributionsTabs from "@/components/ContributionsTabs";
+import CorrectionTable from "@/components/CorrectionTable";
+import BackstagePage from "@/components/backstage/BackstagePage";
+import Panel from "@/components/backstage/Panel";
+import { correctionRowsFor } from "@/lib/contributions/correction-rows";
 import { auth } from "@/lib/auth";
 import { bookFacets, catalogue } from "@/lib/readables/catalogue";
 import { pageKeyOf } from "@/lib/readables/tools";
@@ -24,6 +28,7 @@ import { corpusLookup } from "@/lib/contributions/existing";
 import { tabOf } from "@/lib/contributions/known";
 import { isStatus, type ContributionStatus } from "@/lib/contributions/contributions";
 import { linesInExplorer, momentHasSpeaker } from "@/lib/contributions/accept";
+import { isQuestStage } from "@/lib/contributions/query";
 import {
   isSearchIn,
   bucketOf,
@@ -60,7 +65,6 @@ import type { Roster } from "@/lib/voices/roster";
 import { loadRoster } from "@/lib/voices/roster-store";
 import { can, isAdmin } from "@/lib/permissions";
 import { lineByPath } from "@/lib/places/catalogue";
-import { Contained, Wide } from "@/components/Width";
 
 export const metadata: Metadata = { title: "Contributions · Spoken" };
 
@@ -270,20 +274,17 @@ export default async function Page({
   // one: the queue is empty by construction, not because nobody has sent anything yet.
   if (!isClientLang(lang)) {
     return (
-      <main className="pt-6 pb-24">
-        <Contained>
-          <h1 className="text-xl font-semibold">Contributions</h1>
-          <p className="text-muted-foreground mt-1 mb-5 text-sm">
-            Contributions come from the game client, and no client runs in {langName(lang)}. Its
-            text is written here, on each line&apos;s page.
-          </p>
-          <ContributionsTabs
-            lang={lang}
-            section={source}
-            view="contributions"
-          />
-        </Contained>
-      </main>
+      <BackstagePage
+        title="Review"
+        description={
+          <>
+            Lines come from players&apos; game clients, and no client runs in {langName(lang)}. Its text is
+            written on each line&apos;s own page.
+          </>
+        }
+      >
+        <ContributionsTabs lang={lang} section={source} />
+      </BackstagePage>
     );
   }
 
@@ -329,6 +330,13 @@ export default async function Page({
   const npcs = await npcFor(contributions, roster);
 
   const build = buildFilterOf(rawBuild);
+  // Lines the corpus has, sent back with other words: a group of their own on the same page.
+  const corrections =
+    source === "quests" || source === "readables"
+      ? (await correctionRowsFor({ listed, states, source, client, stage, q, searchIn })).filter((row) =>
+          matchesBuild(row.client, build),
+        )
+      : [];
   const anyBuild = contributions
     .filter((row) => matchesClient(clientOf(row.build).family, client))
     .filter((row) => matchesStage(questFor(row), stage))
@@ -397,22 +405,14 @@ export default async function Page({
 
 
   return (
-    <main className="pt-6 pb-24">
-      <Contained>
-        <h1 className="text-xl font-semibold">Contributions</h1>
-        <p className="text-muted-foreground mt-1 mb-5 text-sm">
-          Envelopes players pasted in for text this corpus has no audio for. Accepting a row does
-          not queue anything -- it only marks the row for the next export, which the pipelines
-          pull on their own schedule.
-        </p>
-      </Contained>
-      <Wide>
-        <ContributionsTabs
-          lang={lang}
-          section={source}
-          view="contributions"
-          pending={pending}
-        />
+    <BackstagePage
+      width="wide"
+      title="Review"
+      description="Lines players' game clients sent. Compare each with the original, then keep it or drop it. Kept lines are voiced in a later voicing run."
+    >
+      <div className="mb-6">
+        <ContributionsTabs lang={lang} section={source} pending={pending} />
+      </div>
         <ContributionTable
           initial={rows}
           // Every row the filters match, on any page, as just its id, status and whether a bulk
@@ -441,8 +441,43 @@ export default async function Page({
           // somebody it will answer. Who an NPC is decides its voice in every language, so it
           // is the global admin's alone; everyone else sees where it stands.
           canAnswerNpc={isAdmin(session.user.role)}
+          corrections={
+            source === "quests" || source === "readables" ? (
+              <Panel
+                id="changes"
+                tone="info"
+                icon={<ChangesIcon />}
+                title="Changes to lines we already have"
+                count={corrections.length}
+                description="A player's client showed different words than ours. Replace ours if theirs fixes a mistake; keep both if it is just another way to say it."
+              >
+                <div className="px-5 py-4">
+                  <CorrectionTable
+                    embedded
+                    source={source}
+                    initial={corrections}
+                    status={status}
+                    client={client}
+                    build={build}
+                    builds={[]}
+                    stage={stage.filter(isQuestStage)}
+                    q={q}
+                    searchIn={searchIn}
+                  />
+                </div>
+              </Panel>
+            ) : null
+          }
         />
-      </Wide>
-    </main>
+    </BackstagePage>
+  );
+}
+
+function ChangesIcon() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M4 7h11M4 12h7M4 17h9" />
+      <path d="M17 14l3 3-3 3" />
+    </svg>
   );
 }

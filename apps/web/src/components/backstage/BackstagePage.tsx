@@ -6,8 +6,8 @@ import { cn } from "@/lib/utils";
  * A Backstage page in the front page's look: the `.bs` scope (backstage.css), a Cinzel title with
  * a line under it saying what the page is for, and the page's own content.
  *
- * The head sits in the header's 1200px `.bn-wrap`, so title and logo line up. `width="wide"` lets
- * the content below run to the window's edges less a gutter, for lists whose columns want the room.
+ * A page sits in the header's 1200px `.bn-wrap`, so title and logo line up. `width="wide"` gives
+ * the whole page a 1480px column instead, for lists whose columns want the room.
  */
 export default function BackstagePage({
   title,
@@ -25,14 +25,16 @@ export default function BackstagePage({
 }) {
   return (
     <main className="bs pb-24">
-      <div className="bn-wrap bs-head">
-        <div className="min-w-0">
-          <h1 className="bs-title">{title}</h1>
-          {description ? <p className="bs-lede">{description}</p> : null}
+      <div className={cn(width === "contained" ? "bn-wrap" : "bs-wide")}>
+        <div className="bs-head">
+          <div className="min-w-0">
+            <h1 className="bs-title">{title}</h1>
+            {description ? <p className="bs-lede">{description}</p> : null}
+          </div>
+          {actions ? <div className="flex flex-wrap items-center gap-2">{actions}</div> : null}
         </div>
-        {actions ? <div className="flex flex-wrap items-center gap-2">{actions}</div> : null}
+        {children}
       </div>
-      <div className={cn(width === "contained" ? "bn-wrap" : "px-4 sm:px-6")}>{children}</div>
     </main>
   );
 }

@@ -109,6 +109,7 @@ export default function CorrectionTable({
   stage,
   q,
   searchIn,
+  embedded = false,
 }: {
   source: CorrectionSource;
   initial: CorrectionRow[];
@@ -120,6 +121,11 @@ export default function CorrectionTable({
   stage: StageFilter;
   q: string;
   searchIn: Filter;
+  /**
+   * Shown as a group on the contributions page, whose own tabs and filters already narrow these
+   * rows: this table then draws neither.
+   */
+  embedded?: boolean;
 }) {
   const when = useLocalDates();
   const lang = useLang();
@@ -249,12 +255,14 @@ export default function CorrectionTable({
 
   return (
     <>
-      <StatusTabs
-        active={status}
-        onGo={push}
-        hrefFor={(next) => localeHref(lang, correctionsHref(source, { ...filters, status: next }))}
-      />
-      <nav className="mb-4 flex flex-wrap items-center gap-2">
+      {embedded ? null : (
+        <StatusTabs
+          active={status}
+          onGo={push}
+          hrefFor={(next) => localeHref(lang, correctionsHref(source, { ...filters, status: next }))}
+        />
+      )}
+      <nav className={cn("mb-4 flex flex-wrap items-center gap-2", embedded && "hidden")}>
         <Input
           type="search"
           value={query}

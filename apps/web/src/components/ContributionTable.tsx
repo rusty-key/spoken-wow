@@ -23,7 +23,7 @@ import { useLang } from "@/components/LangProvider";
 import { localeHref, type Lang } from "@/lib/lang";
 import { ChevronDownIcon } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { memo, useCallback, useMemo, useState } from "react";
+import { memo, useCallback, useMemo, useState, type ReactNode } from "react";
 
 import ClientSelect from "@/components/ClientSelect";
 import { SEARCH_IN_OPTIONS, STAGE_CHIP_OPTIONS, STAGE_LABELS } from "@/components/contribution-chips";
@@ -34,7 +34,7 @@ import SpeakerCell, { ProvenanceBadge, type SpeakerAnswer } from "@/components/S
 import { ACCEPT_TONE, LiteButton, LiteCheckbox, REJECT_TONE } from "@/components/LiteControls";
 import { Refreshing } from "@/components/Loading";
 import SendersButton from "@/components/SendersButton";
-import StatusTabs, { BucketTabs } from "@/components/StatusTabs";
+import { Tabs } from "@/components/backstage/Tabs";
 import { usePendingPush } from "@/components/usePendingPush";
 import { useLocalDates } from "@/components/useLocalDates";
 import { useSearchBox } from "@/components/useSearchBox";
@@ -156,6 +156,7 @@ export default function ContributionTable({
   books,
   roster: rosterData,
   canAnswerNpc,
+  corrections,
 }: {
   /** This page's rows. */
   initial: ContributionRow[];
@@ -185,6 +186,8 @@ export default function ContributionTable({
   roster: RosterData;
   /** Whether the viewer may set an NPC's race, gender and flavor; if not, they are shown only. */
   canAnswerNpc: boolean;
+  /** The section's corrections, as a group of their own under this view's lines. */
+  corrections?: ReactNode;
 }) {
   const { pending, push } = usePendingPush();
   const router = useRouter();
@@ -515,21 +518,34 @@ export default function ContributionTable({
 
   return (
     <>
-      <StatusTabs
-        active={status}
-        onGo={push}
-        hrefFor={(next) =>
-          localeHref(lang, contributionsHref(filters, { status: next }))
-        }
-      />
-      {status === "new" && namesSpeaker(source) ? (
-        <BucketTabs
-          active={bucket}
-          counts={bucketCounts}
+      <div className="mb-5">
+        <Tabs
+          label="Status"
           onGo={push}
-          hrefFor={(next) => localeHref(lang, contributionsHref(filters, { bucket: next }))}
+          active={status === "new" ? (bucket === "blocked" ? "waiting" : "review") : status}
+          tabs={[
+            {
+              value: "review",
+              label: "To review",
+              href: localeHref(lang, contributionsHref(filters, { status: "new", bucket: "ready" })),
+              count: status === "new" ? bucketCounts.ready : undefined,
+            },
+            // Readables and places name no speaker, so nothing of theirs waits on an admin.
+            ...(namesSpeaker(source)
+              ? [
+                  {
+                    value: "waiting",
+                    label: "Waiting on an admin",
+                    href: localeHref(lang, contributionsHref(filters, { status: "new", bucket: "blocked" })),
+                    count: status === "new" ? bucketCounts.blocked : undefined,
+                  },
+                ]
+              : []),
+            { value: "accepted", label: "Accepted", href: localeHref(lang, contributionsHref(filters, { status: "accepted" })) },
+            { value: "rejected", label: "Rejected", href: localeHref(lang, contributionsHref(filters, { status: "rejected" })) },
+          ]}
         />
-      ) : null}
+      </div>
       <nav className="mb-4 flex flex-wrap items-center gap-2">
         <Input
           type="search"
@@ -722,6 +738,7 @@ export default function ContributionTable({
           <Pager page={page} pages={pages} total={matching.length} onGo={(to) => go({}, to)} />
         </div>
       ) : null}
+      {corrections && !(status === "new" && bucket === "blocked") ? <div className="mt-8">{corrections}</div> : null}
     </>
   );
 }
