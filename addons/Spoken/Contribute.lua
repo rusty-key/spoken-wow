@@ -167,6 +167,15 @@ local function Fence(text)
     return table.concat(lines, "\n")
 end
 
+--- Add to a report's `fields` the pack that played, `folder`, and the team whose pack it is, which
+--- `voice` names ("deDE_stimmen"): the site files the report with that team. Nothing for no folder.
+function Contribute:PackFields(fields, folder, voice)
+    if not folder then return end
+    fields[#fields + 1] = { "packFolder", folder }
+    local _, team = Languages:SplitVoice(voice)
+    if team then fields[#fields + 1] = { "packTeam", team } end
+end
+
 ---@param source string  "quests" | "places" | "readables"
 ---@param fields table   array of { key, value }, in the order they are written
 ---@param text string|nil the one multi-line field, or nil where the source has none

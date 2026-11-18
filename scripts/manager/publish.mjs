@@ -186,6 +186,7 @@ export async function publish({ store, packs: allPacks, languages = [], distDir,
   if (onlyPresent && packs.length === 0) throw new Error("nothing in dist/ to publish: build a pack first");
 
   // Every folder and every requirement is checked before anything is read from or sent to R2.
+  const needsSpoken = new Map();
   for (const { folder, section } of packs) {
     const build = `${section}-package-audio`;
     if (!PACK_ID.test(folder)) throw new Error(`${folder} is not a pack id the manager accepts`);
@@ -197,6 +198,7 @@ export async function publish({ store, packs: allPacks, languages = [], distDir,
     const newer = readdirSync(distDir).some((n) => n.startsWith(`${folder}-`) && n.endsWith(".zip") && statSync(join(distDir, n)).mtimeMs > tocMs);
     if (newer) throw new Error(`dist/${folder} is older than its zip: rebuild it (make ${build})`);
     const needs = minSpokenFor(folder, section, minSpoken, minSpokenTeam);
+    needsSpoken.set(folder, needs);
     if (compareVersions(needs, latestSpoken) > 0) {
       throw new Error(`${folder} needs Spoken ${needs}, but the latest release is ${latestSpoken}`);
     }
@@ -214,7 +216,7 @@ export async function publish({ store, packs: allPacks, languages = [], distDir,
   const retagged = {};
   for (const given of packs) {
     const { folder, section } = given;
-    const requires = { Spoken: `>=${minSpokenFor(folder, section, minSpoken, minSpokenTeam)}` };
+    const requires = { Spoken: `>=${needsSpoken.get(folder)}` };
     let before = [];
     const entry = live[folder];
     if (entry) {

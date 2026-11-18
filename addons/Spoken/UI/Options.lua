@@ -234,8 +234,7 @@ function Options:VoiceName(code, menu)
     if not lang then return tostring(code) end
     local name = menu and self:MenuLanguageName(lang) or self:LanguageName(lang)
     if not team then return name end
-    local entry = Languages:Get(lang)
-    local voice = entry and entry.voices[code]
+    local voice = Languages:Voice(code)
     return format(L.OPT_VOICE_TEAM_FMT, name, voice and voice.teamName or team)
 end
 
@@ -271,9 +270,7 @@ end
 --- client's language has.
 function Options:VoiceInstalled(code)
     if code == "auto" then return true end
-    local lang = Languages:SplitVoice(code)
-    local entry = lang and Languages:Get(lang)
-    local voice = entry and entry.voices[code]
+    local voice = Languages:Voice(code)
     return voice ~= nil and #voice.folders > 0
 end
 

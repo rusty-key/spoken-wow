@@ -330,7 +330,7 @@ end
 function SpokenPlaces:PackVoice(pack)
 	local Spoken = _G.Spoken
 	if Spoken and Spoken.VoiceOf and pack.addon then
-		return Spoken:VoiceOf(pack.addon, pack.language) or pack.language
+		return Spoken:VoiceOf(pack.addon, pack.language)
 	end
 	return pack.language
 end
@@ -338,53 +338,64 @@ end
 -- The voices narration may play in, most wanted first: the player's list on Spoken's page once
 -- set, else the voice language and the fallback, each its plain voice.
 function SpokenPlaces:GetVoiceOrder()
-	local Spoken = _G.Spoken
-	local shared = Spoken and Spoken.GetVoiceOrder and Spoken:GetVoiceOrder()
-	if shared then
-		return shared
-	end
 	local voice, fallback = self:GetVoiceLanguage(), self:GetFallbackLanguage()
-	local order = { voice }
-	if fallback and fallback ~= voice then
-		table.insert(order, fallback)
+	local Spoken = _G.Spoken
+	if Spoken and Spoken.VoiceOrder then
+		return Spoken:VoiceOrder(voice, fallback)
 	end
-	return order
+	if fallback and fallback ~= voice then
+		return { voice, fallback }
+	end
+	return { voice }
 end
 
--- The packs in `voice`, best first. Between two packs of one voice (a retired 64 kbps pack beside
--- the current one), the one /spp audio chose comes first, kept as a folder name rather than an
--- index: a player who uninstalls the high-quality pack should fall back to whatever is left instead
--- of pointing at whichever pack happens to occupy that slot afterwards. A plain voice's code is its
--- language's, so a choice saved before there were voices keeps meaning the plain pack.
-function SpokenPlaces:GetVoicePacks(voice)
-	local packs = {}
+-- The installed packs by voice, each voice's best first; a voice with none is absent. Between two
+-- packs of one voice (a retired 64 kbps pack beside the current one), the one /spp audio chose
+-- comes first, kept as a folder name rather than an index: a player who uninstalls the
+-- high-quality pack should fall back to whatever is left instead of pointing at whichever pack
+-- happens to occupy that slot afterwards. A plain voice's code is its language's, so a choice
+-- saved before there were voices keeps meaning the plain pack.
+function SpokenPlaces:GetPacksByVoice()
+	local byVoice = {}
 	for _, pack in ipairs(self:GetAudioPacks()) do
-		if pack.voice == voice then
-			table.insert(packs, pack)
+		local packs = byVoice[pack.voice]
+		if not packs then
+			packs = {}
+			byVoice[pack.voice] = packs
 		end
+		table.insert(packs, pack)
 	end
 	local stored = self:Get("audioPack")
-	local preferred = type(stored) == "table" and stored[voice] or nil
-	if type(preferred) == "string" then
-		for i = 2, #packs do
-			if packs[i].addon == preferred then
-				table.insert(packs, 1, table.remove(packs, i))
-				break
+	if type(stored) == "table" then
+		for voice, packs in pairs(byVoice) do
+			local preferred = stored[voice]
+			for i = 2, #packs do
+				if packs[i].addon == preferred then
+					table.insert(packs, 1, table.remove(packs, i))
+					break
+				end
 			end
 		end
 	end
-	return packs
+	return byVoice
 end
 
--- The pack narration plays from: the best one in the first voice that has a pack, else nil.
-function SpokenPlaces:GetActiveAudioPack()
-	for _, voice in ipairs(self:GetVoiceOrder()) do
-		local packs = self:GetVoicePacks(voice)
-		if #packs > 0 then
-			return packs[1]
+-- The pack narration plays from: the best one in the first voice that has a pack, else nil. Then
+-- where that voice is in the order, the order, and the packs by voice, for GetAudioClip to go on
+-- from without gathering the packs again.
+local function ActivePack(self)
+	local order, byVoice = self:GetVoiceOrder(), self:GetPacksByVoice()
+	for i, voice in ipairs(order) do
+		local packs = byVoice[voice]
+		if packs then
+			return packs[1], i, order, byVoice
 		end
 	end
 	return nil
+end
+
+function SpokenPlaces:GetActiveAudioPack()
+	return (ActivePack(self))
 end
 
 -- Switches packs. Returns false when the name is not an installed pack, so the
@@ -397,7 +408,7 @@ function SpokenPlaces:SetActiveAudioPack(name)
 			if type(stored) ~= "table" then
 				stored = {}
 			end
-			stored[packs[i].voice or packs[i].language] = name
+			stored[packs[i].voice] = name
 			self:Set("audioPack", stored)
 			self:StopLore()
 			self:NotifyAudioChanged()
@@ -474,7 +485,7 @@ function SpokenPlaces:GetAudioClip(mapID, areaKey)
 		return nil, nil
 	end
 
-	local active = self:GetActiveAudioPack()
+	local active, at, order, byVoice = ActivePack(self)
 	if not active then
 		return nil, nil
 	end
@@ -484,14 +495,10 @@ function SpokenPlaces:GetAudioClip(mapID, areaKey)
 	-- a quest line falls back. The entry keys are the same in every language, so any pack names the
 	-- area alike. Past the last voice, nothing else is tried.
 	local candidates = { active }
-	local after = false
-	for _, voice in ipairs(self:GetVoiceOrder()) do
-		if after then
-			for _, pack in ipairs(self:GetVoicePacks(voice)) do
-				table.insert(candidates, pack)
-			end
+	for i = at + 1, #order do
+		for _, pack in ipairs(byVoice[order[i]] or {}) do
+			table.insert(candidates, pack)
 		end
-		after = after or voice == active.voice
 	end
 
 	for _, pack in ipairs(candidates) do

@@ -174,7 +174,7 @@ end
 ---@param language string The pack's language, normalized
 ---@return string voice
 function Language:VoiceOf(folder, language)
-    if Spoken and Spoken.VoiceOf then return Spoken:VoiceOf(folder, language) or language end
+    if Spoken and Spoken.VoiceOf then return Spoken:VoiceOf(folder, language) end
     return language
 end
 
@@ -195,13 +195,8 @@ end
 --- fallback is off or is the selected language itself; never more than two.
 ---@return string[] voices
 function Language:ResolutionOrder()
-    local shared = Spoken and Spoken.GetVoiceOrder and Spoken:GetVoiceOrder()
-    if shared then return shared end
-    local selected = self:GetVoiceLanguage()
-    local order = { selected }
-    local fallback = self:GetFallbackLanguage()
-    if fallback and fallback ~= selected then
-        table.insert(order, fallback)
-    end
-    return order
+    local selected, fallback = self:GetVoiceLanguage(), self:GetFallbackLanguage()
+    if Spoken and Spoken.VoiceOrder then return Spoken:VoiceOrder(selected, fallback) end
+    if fallback and fallback ~= selected then return { selected, fallback } end
+    return { selected }
 end

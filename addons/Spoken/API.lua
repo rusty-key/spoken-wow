@@ -514,24 +514,49 @@ function Spoken:GetLanguageChoice()
     return language.Voice, language.Fallback
 end
 
+-- GetVoiceOrder's answer, asked for every line played, and the stored list it was read from: kept
+-- until that list or the profile changes (Addon:ForgetVoiceOrder).
+local voiceOrder
+
+--- Drop GetVoiceOrder's kept answer, for whatever writes the player's voices or swaps the profile.
+function Addon:ForgetVoiceOrder()
+    voiceOrder = nil
+end
+
 --- The voices the player hears every module in, most wanted first: voice codes ("deDE",
 --- "deDE_stimmen"), "auto" resolved to the client's language and a voice listed twice once. A line
 --- plays in the first voice whose pack has it, and past the last stays silent. Nil while the player
---- has set no list, and each module then keeps its own two settings. A new table each call.
+--- has set no list, and each module then keeps its own two settings. One table, kept between
+--- calls: read it, never change it.
 function Spoken:GetVoiceOrder()
     local language = Addon.db and Addon.db.profile.Language
     local stored = language and language.Voices
-    if type(stored) ~= "table" then return nil end
-    local list, seen = {}, {}
-    for _, code in ipairs(stored) do
-        if code == "auto" then code = Languages:Client() end
-        if Languages:IsVoice(code) and not seen[code] then
-            seen[code] = true
-            table.insert(list, code)
+    if voiceOrder and voiceOrder.stored == stored then return voiceOrder.list end
+    local list
+    if type(stored) == "table" then
+        local seen = {}
+        list = {}
+        for _, code in ipairs(stored) do
+            if code == "auto" then code = Languages:Client() end
+            if Languages:IsVoice(code) and not seen[code] then
+                seen[code] = true
+                table.insert(list, code)
+            end
         end
+        if #list == 0 then list = nil end
     end
-    if #list == 0 then return nil end
+    voiceOrder = { stored = stored, list = list }
     return list
+end
+
+--- The voices a module plays in: the player's list (GetVoiceOrder) once set, else the module's own
+--- `voice` and `fallback` (nil for Stay Silent), each a plain voice, the fallback only where it is
+--- another. Read it, never change it.
+function Spoken:VoiceOrder(voice, fallback)
+    local shared = self:GetVoiceOrder()
+    if shared then return shared end
+    if fallback and fallback ~= voice then return { voice, fallback } end
+    return { voice }
 end
 
 --- Store the player's voices: an array of "auto" or voice codes, at least one, none twice. False,
@@ -548,6 +573,7 @@ function Spoken:SetVoiceOrder(list)
         copy[i] = code
     end
     language.Voices = copy
+    Addon:ForgetVoiceOrder()
     language.Voice = copy[1] == "auto" and "auto" or (Languages:SplitVoice(copy[1]))
     if copy[2] == nil then
         language.Fallback = "none"
@@ -741,16 +767,12 @@ function Spoken:VoiceLanguage()
     return voice
 end
 
---- What a module's page says under its voice packs when nothing can be heard: no pack in the voice
---- language exists for `module` ("quests", "places", "readables" or "bosses"), and If a Voice Is Missing is Stay
---- Silent. Nil otherwise.
 --- Whether `module` has a pack in `voice` to be heard from: for a language's plain voice one to get
 --- (VoicePack) or English's own, for a team's one installed.
 local function HasPack(self, module, voice)
     local lang, team = Languages:SplitVoice(voice)
     if not team then return lang == "enUS" or self:VoicePack(module, lang) ~= nil end
-    local entry = Languages:Get(lang)
-    local own = entry and entry.voices[voice]
+    local own = Languages:Voice(voice)
     local prefix = "^" .. (PACK_FOLDERS[module] or "")
     for _, folder in ipairs(own and own.folders or {}) do
         if folder:find(prefix) then return true end
@@ -758,6 +780,9 @@ local function HasPack(self, module, voice)
     return false
 end
 
+--- What a module's page says under its voice packs when nothing can be heard: no pack in the voice
+--- language exists for `module` ("quests", "places", "readables" or "bosses"), and If a Voice Is Missing is Stay
+--- Silent. Nil otherwise.
 function Spoken:SilentNote(module)
     local order = self:GetVoiceOrder()
     if order then

@@ -19,7 +19,7 @@ import { validateSubmission } from "@/lib/reports/reports";
 import { langParam } from "@/lib/lang-server";
 import { countRecent, createReport } from "@/lib/reports/store";
 import { envelopeFor } from "@/lib/reports/context";
-import { isEnvelopeSource, type Envelope } from "@/lib/contributions/envelope";
+import { isContributionEnvelope, type Envelope } from "@/lib/contributions/envelope";
 import { keepClassWords } from "@/lib/contributions/class-words";
 import { submissionFrom } from "@/lib/contributions/submission";
 import {
@@ -144,7 +144,7 @@ export async function POST(request: Request) {
 
   // The report is filed by now: a failure here must not answer 500 and invite a second one.
   // A boss's context is never a contribution: there are none for bosses.
-  const contributing = envelope && isEnvelopeSource(envelope.source) ? { ...envelope, source: envelope.source } : null;
+  const contributing = envelope && isContributionEnvelope(envelope) ? envelope : null;
   if (contributing && validated.value.category === "missing") {
     await contributeMissing(contributing, validated.value.body, identity).catch((error) =>
       console.error("filing a missing report as a contribution failed", error),

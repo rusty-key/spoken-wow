@@ -104,12 +104,8 @@ function SpokenReadables:ReportContext(pageId, clip)
 	local fields = BaseFields(self)
 	fields[#fields + 1] = { "id", pageId }
 	clip = clip or self:ClipFor(pageId)
-	if clip and clip.packFolder then
-		fields[#fields + 1] = { "packFolder", clip.packFolder }
-		local team = Spoken.SplitVoice and select(2, Spoken:SplitVoice(clip.voice))
-		if team then
-			fields[#fields + 1] = { "packTeam", team }
-		end
+	if clip and Spoken.Contribute.PackFields then
+		Spoken.Contribute:PackFields(fields, clip.packFolder, clip.voice)
 	end
 	local text
 	local open = ItemTextGetText and NotSecret(ItemTextGetText())

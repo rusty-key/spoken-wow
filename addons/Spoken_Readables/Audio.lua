@@ -166,6 +166,7 @@ function SpokenReadables:BuildAudioPacks()
 				if Spoken and Spoken.DeclareLanguage then
 					Spoken:DeclareLanguage(self:PackLanguage(pack), pack.addon)
 				end
+				pack.voice = self:PackVoice(pack)
 				table.insert(packs, pack)
 			end
 		end
@@ -246,7 +247,7 @@ function SpokenReadables:ClipFor(pageId)
 	local packs = self:GetAudioPacks()
 	for _, voice in ipairs(self:LanguageOrder()) do
 		for _, pack in ipairs(packs) do
-			local entry = self:PackVoice(pack) == voice and pack.pages[pageId]
+			local entry = pack.voice == voice and pack.pages[pageId]
 			if entry then
 				local language = self:PackLanguage(pack)
 				local book = self:BookOf(pageId)
@@ -313,7 +314,7 @@ function SpokenReadables:PageLength(pageId)
 	local packs = self:GetAudioPacks()
 	for _, voice in ipairs(self:LanguageOrder()) do
 		for _, pack in ipairs(packs) do
-			local entry = self:PackVoice(pack) == voice and pack.pages[pageId]
+			local entry = pack.voice == voice and pack.pages[pageId]
 			if entry then
 				return (entry.len and entry.len > 0) and entry.len or nil
 			end
@@ -340,7 +341,7 @@ function SpokenReadables:HasAudio(pageId)
 	local packs = self:GetAudioPacks()
 	for _, voice in ipairs(self:LanguageOrder()) do
 		for _, pack in ipairs(packs) do
-			if self:PackVoice(pack) == voice and pack.pages[pageId] then
+			if pack.voice == voice and pack.pages[pageId] then
 				return true
 			end
 		end

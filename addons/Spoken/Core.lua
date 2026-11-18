@@ -228,6 +228,7 @@ function Addon:InitDB()
     -- else: its settings apply now rather than at the next reload.
     if self.db.RegisterCallback then
         local function Apply()
+            Addon:ForgetVoiceOrder()
             Addon:RebindModules()
             Addon:ApplyProfile()
         end
@@ -780,6 +781,7 @@ function Addon:BuildVoiceList()
     if not language or language.Voices ~= nil then return end
     if language.Voice == nil and language.Fallback == nil then return end
     language.Voices = self:VoiceListFrom(language.Voice, language.Fallback)
+    self:ForgetVoiceOrder()
 end
 
 --- The list of voices the old voice language and fallback make, as BuildVoiceList stores it.

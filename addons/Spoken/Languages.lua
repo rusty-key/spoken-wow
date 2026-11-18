@@ -97,6 +97,13 @@ function Languages:IsVoice(code)
     return (self:SplitVoice(code)) ~= nil
 end
 
+--- The installed voice `code`, as Voices lists it, or nil where no pack is in it.
+function Languages:Voice(code)
+    local lang = self:SplitVoice(code)
+    local entry = lang and self:Get(lang)
+    return entry and entry.voices[code]
+end
+
 --- The voice of the language `lang` that a pack of `team` (nil for none) is in.
 local function VoiceCode(lang, team)
     return team and (lang .. "_" .. team) or lang

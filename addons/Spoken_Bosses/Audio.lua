@@ -29,19 +29,17 @@ local function FallbackLanguage() return Bosses:GetFallbackLanguage() end
 --- The voice a pack is in: its language, or its language and team where its .toc names one
 --- ("deDE_stimmen"), as Spoken's registry read it.
 function Bosses:PackVoice(pack)
-	if Spoken and Spoken.VoiceOf and pack.addon then return Spoken:VoiceOf(pack.addon, pack.language) or pack.language end
+	if Spoken and Spoken.VoiceOf and pack.addon then return Spoken:VoiceOf(pack.addon, pack.language) end
 	return pack.language
 end
 
 --- The voices a story may be heard in, most wanted first: the player's list on Spoken's page once
 --- set, else the voice language and the fallback, each its plain voice.
 function Bosses:GetVoiceOrder()
-	local shared = Spoken and Spoken.GetVoiceOrder and Spoken:GetVoiceOrder()
-	if shared then return shared end
 	local voice, fallback = VoiceLanguage(), FallbackLanguage()
-	local order = { voice }
-	if fallback and fallback ~= voice then table.insert(order, fallback) end
-	return order
+	if Spoken and Spoken.VoiceOrder then return Spoken:VoiceOrder(voice, fallback) end
+	if fallback and fallback ~= voice then return { voice, fallback } end
+	return { voice }
 end
 
 --- Every installed pack this build reads, best first: the voice language's, then the client's,

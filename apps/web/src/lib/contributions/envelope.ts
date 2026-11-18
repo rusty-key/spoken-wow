@@ -36,6 +36,11 @@ export type Envelope<S extends string = EnvelopeSource> = {
   text: string | null;
 };
 
+/** Whether a report's envelope is one a contribution can be read from: a boss's never is. */
+export function isContributionEnvelope(envelope: Envelope<ReportSource>): envelope is Envelope {
+  return isEnvelopeSource(envelope.source);
+}
+
 export type ParseError = "version" | "source" | "checksum" | "truncated" | "oversize" | "malformed";
 
 type Result<S extends string = EnvelopeSource> = { ok: true; value: Envelope<S> } | { ok: false; error: ParseError };

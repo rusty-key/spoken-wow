@@ -8,6 +8,7 @@
 import { parseReportEnvelope, type Envelope, type ReportSource } from "@/lib/contributions/envelope";
 import { nameless } from "@/lib/contributions/reader";
 import type { Source } from "@/lib/sections";
+import { isSlug } from "@/lib/teams/slug";
 
 export type ReportContext = { fields: Record<string, string>; text: string | null };
 
@@ -32,16 +33,13 @@ export function envelopeFor(raw: unknown, source: Source): Envelope<ReportSource
   return parsed.ok && parsed.value.source === source ? nameless(parsed.value) : null;
 }
 
-/** A team's slug, as the site makes them: what an addon may name in packTeam. */
-const TEAM_SLUG = /^[a-z][a-z0-9-]{1,40}$/;
-
 /**
  * The slug of the team whose pack played the reported line, or null: a language's plain pack,
  * which is its privileged team's, or an addon from before packs had teams.
  */
 export function packTeam(context: ReportContext | null | undefined): string | null {
   const slug = context?.fields.packTeam;
-  return slug && TEAM_SLUG.test(slug) ? slug : null;
+  return slug && isSlug(slug) ? slug : null;
 }
 
 /**

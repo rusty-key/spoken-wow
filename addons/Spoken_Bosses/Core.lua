@@ -76,11 +76,7 @@ function Bosses:ReportContext(map, key, clip)
 		local recording = self.GetAudioClip and self:GetAudioClip(map, key)
 		folder, voice = recording and recording.pack, recording and recording.voice
 	end
-	if folder then
-		table.insert(fields, { "packFolder", folder })
-		local team = Spoken.SplitVoice and select(2, Spoken:SplitVoice(voice))
-		if team then table.insert(fields, { "packTeam", team }) end
-	end
+	if Spoken.Contribute.PackFields then Spoken.Contribute:PackFields(fields, folder, voice) end
 	return Spoken.Contribute:Envelope("bosses", fields, nil)
 end
 

@@ -132,15 +132,10 @@ end
 --- The voices a page may be read in, most wanted first: the player's list on Spoken's page once
 --- set, else this addon's own two languages, each its plain voice, never more than two.
 function SpokenReadables:LanguageOrder()
-	local shared = Spoken and Spoken.GetVoiceOrder and Spoken:GetVoiceOrder()
-	if shared then return shared end
-	local voice = self:GetVoiceLanguage()
-	local order = { voice }
-	local fallback = self:GetFallbackLanguage()
-	if fallback and fallback ~= voice then
-		table.insert(order, fallback)
-	end
-	return order
+	local voice, fallback = self:GetVoiceLanguage(), self:GetFallbackLanguage()
+	if Spoken and Spoken.VoiceOrder then return Spoken:VoiceOrder(voice, fallback) end
+	if fallback and fallback ~= voice then return { voice, fallback } end
+	return { voice }
 end
 
 --- The language a pack is recorded in.
@@ -153,7 +148,7 @@ end
 function SpokenReadables:PackVoice(pack)
 	local language = self:PackLanguage(pack)
 	if Spoken and Spoken.VoiceOf and pack and pack.addon then
-		return Spoken:VoiceOf(pack.addon, language) or language
+		return Spoken:VoiceOf(pack.addon, language)
 	end
 	return language
 end
@@ -166,7 +161,7 @@ function SpokenReadables:GetPackLanguage()
 	local packs = self:GetAudioPacks()
 	for _, voice in ipairs(order) do
 		for _, pack in ipairs(packs) do
-			if self:PackVoice(pack) == voice then
+			if pack.voice == voice then
 				return self:PackLanguage(pack)
 			end
 		end

@@ -105,12 +105,8 @@ function SpokenPlaces:ReportContext(mapID, areaKey, clip)
         fields[#fields + 1] = { "key", areaKey }
     end
     local pack = clip and clip.pack
-    if pack and pack.addon then
-        fields[#fields + 1] = { "packFolder", pack.addon }
-        local team = Spoken.SplitVoice and select(2, Spoken:SplitVoice(pack.voice or pack.language))
-        if team then
-            fields[#fields + 1] = { "packTeam", team }
-        end
+    if pack and Spoken.Contribute.PackFields then
+        Spoken.Contribute:PackFields(fields, pack.addon, pack.voice)
     end
     return Spoken.Contribute:Envelope("places", fields, nil)
 end

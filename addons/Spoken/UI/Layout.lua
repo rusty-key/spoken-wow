@@ -1188,6 +1188,22 @@ local function Refont(fontString, path)
     end
 end
 
+-- Draw an entry of the game's menu in `face`. Menu buttons are pooled, also with other addons' and
+-- the game's menus, so an entry with no face puts back the font a previous entry's face replaced,
+-- and each entry puts it back when its button goes back to the pool.
+local function FaceEntry(element, face)
+    if not (element and element.AddInitializer) then return end
+    element:AddInitializer(function(button) Refont(button.fontString, face) end)
+    if element.AddResetter then
+        element:AddResetter(function(button) Refont(button.fontString, nil) end)
+    end
+end
+
+-- Draw an entry of the classic menu in `face`, where it is given one.
+local function FaceInfo(info, face)
+    if face then info.fontObject = FaceObject(face) end
+end
+
 --- A dropdown: the game's settings dropdown, with steppers either side (SettingsDropdownWithButtons
 --- Template, the dropdown 220 wide, 48 left of the row's middle), its list the game's own menu.
 --- The plain dropdown where the steppers are missing, the classic one where the menu is, and a
@@ -1232,16 +1248,7 @@ function Layout:Dropdown(label, tooltip, values, read, write, apply, describe, f
             for _, value in ipairs(Resolve(values)) do
                 local element = root:CreateRadio(describe(value), function() return Chosen(value, read()) end,
                     function() Choose(value) end, value)
-                -- Menu buttons are pooled, also with other addons' and the game's menus, so an
-                -- entry with no face puts back the font a previous entry's face replaced, and each
-                -- entry puts it back when its button goes back to the pool.
-                if fontOf and element and element.AddInitializer then
-                    local face = fontOf(value)
-                    element:AddInitializer(function(button) Refont(button.fontString, face) end)
-                    if element.AddResetter then
-                        element:AddResetter(function(button) Refont(button.fontString, nil) end)
-                    end
-                end
+                if fontOf then FaceEntry(element, fontOf(value)) end
             end
         end)
         Sync = function()
@@ -1268,8 +1275,7 @@ function Layout:Dropdown(label, tooltip, values, read, write, apply, describe, f
                 local info = UIDropDownMenu_CreateInfo()
                 info.text = describe(value)
                 info.checked = Chosen(value, current)
-                local face = fontOf and fontOf(value)
-                if face then info.fontObject = FaceObject(face) end
+                FaceInfo(info, fontOf and fontOf(value))
                 info.func = function()
                     Choose(value)
                     if CloseDropDownMenus then CloseDropDownMenus() end
@@ -1500,13 +1506,7 @@ function Layout:OrderedList(label, tooltip, read, write, choices, describe, font
             MenuUtil.CreateContextMenu(add, function(_, root)
                 for _, value in ipairs(Offered()) do
                     local element = root:CreateButton(describe(value), function() Added(value) end)
-                    if fontOf and element and element.AddInitializer then
-                        local face = fontOf(value)
-                        element:AddInitializer(function(button) Refont(button.fontString, face) end)
-                        if element.AddResetter then
-                            element:AddResetter(function(button) Refont(button.fontString, nil) end)
-                        end
-                    end
+                    if fontOf then FaceEntry(element, fontOf(value)) end
                 end
             end)
             return
@@ -1525,8 +1525,7 @@ function Layout:OrderedList(label, tooltip, read, write, choices, describe, font
                     local info = UIDropDownMenu_CreateInfo()
                     info.text = describe(value)
                     info.notCheckable = true
-                    local face = fontOf and fontOf(value)
-                    if face then info.fontObject = FaceObject(face) end
+                    FaceInfo(info, fontOf and fontOf(value))
                     info.func = function()
                         Added(value)
                         if CloseDropDownMenus then CloseDropDownMenus() end
