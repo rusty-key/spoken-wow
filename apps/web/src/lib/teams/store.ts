@@ -152,8 +152,11 @@ export async function privilegedOwners(langs: readonly (Lang | null)[]): Promise
 
 /** Owners of `langs` for the acting person. Reads the session only when a language in `langs` has a second team. */
 export async function freshOwners(langs: readonly (Lang | null)[]): Promise<Map<Lang, TeamId>> {
-  const owners = await privilegedOwners(langs);
-  const second = await secondTeamLangs();
+  return overlay(await mappingFor(langs), langs);
+}
+
+/** `read`'s privileged owners with the acting person's team over each of `langs` that has a second team. */
+async function overlay({ owners, second }: Mapping, langs: readonly (Lang | null)[]): Promise<Map<Lang, TeamId>> {
   const shared = langs.filter((lang): lang is Lang => lang !== null && second.has(lang));
   if (!shared.length) return owners;
   const acting = await actingTeams();
@@ -173,23 +176,21 @@ export async function scopeKey(lang: Lang): Promise<string> {
   return `${await ownerOrAll(lang)}:${lang}`;
 }
 
-/** The name of the team that owns `lang` for the acting person, as ownerOf; null when nobody owns it. */
-export async function ownerName(lang: Lang): Promise<string | null> {
-  const [team, { teams }] = await Promise.all([ownerOf(lang), mappingFor([lang])]);
-  return (team && teams.get(team)?.name) ?? null;
-}
+/** The team someone acts as in a language, by name; `second` when it is not the privileged team. */
+export type ActingTeamName = { name: string; second: boolean };
 
 /**
- * The names of the teams the acting person works in among `langs`, for only the languages where
- * that is a second team: the privileged team goes unnamed.
+ * The team the acting person works as in each of `langs` that has one, by name. From the memo as
+ * it stands, with no re-read for a language nobody owns: a label may lag a new team by a minute.
  */
-export async function secondTeamNames(langs: readonly Lang[]): Promise<Partial<Record<Lang, string>>> {
-  const [acting, { owners, teams }] = await Promise.all([freshOwners(langs), mappingFor(langs)]);
+export async function actingTeamNames(langs: readonly Lang[]): Promise<Partial<Record<Lang, ActingTeamName>>> {
+  const read = await mapping();
+  const acting = await overlay(read, langs);
   return Object.fromEntries(
     langs.flatMap((lang) => {
       const team = acting.get(lang);
-      const name = team && team !== owners.get(lang) && teams.get(team)?.name;
-      return name ? [[lang, name]] : [];
+      const name = team && read.teams.get(team)?.name;
+      return name ? [[lang, { name, second: team !== read.owners.get(lang) }]] : [];
     }),
   );
 }
