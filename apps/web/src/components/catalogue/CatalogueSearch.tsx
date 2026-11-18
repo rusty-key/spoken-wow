@@ -1,7 +1,7 @@
 "use client";
 
 import { SearchIcon, SlidersHorizontalIcon, XIcon } from "lucide-react";
-import { useId, useState, type ReactNode, type RefObject } from "react";
+import { useId, useState, type ReactNode, type Ref } from "react";
 
 import { cn } from "@/lib/utils";
 
@@ -42,7 +42,7 @@ export function CatalogueSearch({
   active,
   onClearAll,
 }: {
-  inputRef?: RefObject<HTMLInputElement | null>;
+  inputRef?: Ref<HTMLInputElement>;
   query: string;
   placeholder: string;
   onQueryChange: (value: string) => void;

@@ -292,6 +292,7 @@ export function PageRow({
           column keeps its width whatever a row happens to offer. */}
       <td className="py-1.5 pr-1 pl-2">
         <RowActions
+          subject={`page ${line.pageNumber} of ${line.title}`}
           badge={
             // The same chip the quests and places rows carry; ReportsBadge says why.
             <ReportsBadge source="readables" lineId={line.id} count={line.reportsOpen} canTriage={canTriage} />

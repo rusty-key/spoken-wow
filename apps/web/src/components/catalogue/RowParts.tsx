@@ -23,11 +23,14 @@ export type RowAction = {
  * single item is one more click for nothing.
  */
 export function RowActions({
+  subject,
   primary,
   regenerate,
   more,
   badge,
 }: {
+  /** The line, as the action names say it, so the More button is not the same name on every row. */
+  subject: string;
   primary: RowAction[];
   regenerate?: ReactNode;
   more: RowAction[];
@@ -57,7 +60,7 @@ export function RowActions({
       {inMenu.length > 0 && (
         <Popover open={open} onOpenChange={setOpen}>
           <PopoverTrigger asChild>
-            <button type="button" className="bs-btn bs-btn-text cat-act cat-more" aria-label="More actions" title="More actions">
+            <button type="button" className="bs-btn bs-btn-text cat-act cat-more" aria-label={`More actions for ${subject}`} title="More actions">
               <MoreHorizontalIcon aria-hidden="true" />
             </button>
           </PopoverTrigger>

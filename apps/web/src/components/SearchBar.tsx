@@ -174,7 +174,7 @@ const SearchBar = forwardRef<HTMLInputElement, Props>(function SearchBar(
 
   return (
     <CatalogueSearch
-      inputRef={ref as React.RefObject<HTMLInputElement | null>}
+      inputRef={ref}
       query={query}
       placeholder="NPC, quest or what the line says"
       onQueryChange={onQuery}

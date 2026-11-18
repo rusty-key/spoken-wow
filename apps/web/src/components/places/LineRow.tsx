@@ -278,6 +278,7 @@ export function LineRow<L extends ExplorerLine>({
 
       <td className="py-1.5 pr-1 pl-2">
         <RowActions
+          subject={line.name}
           badge={
             // Beside the actions rather than in a column of its own: it is the same subject.
             <ReportsBadge source={section.source} lineId={line.id} count={line.reportsOpen} canTriage={canTriage} />

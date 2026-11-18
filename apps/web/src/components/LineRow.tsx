@@ -542,6 +542,7 @@ export default function LineRow({
 
       <td className="py-1.5 pr-1 pl-0">
         <RowActions
+          subject={`${line.npcName}'s line`}
           badge={
             // The same chip the places and readables rows carry; ReportsBadge says why.
             <ReportsBadge source="quests" lineId={line.lineId} count={line.reportsOpen} canTriage={canTriage} />
