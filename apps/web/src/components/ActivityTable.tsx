@@ -321,6 +321,12 @@ export function describe(row: ActivityRow): { what: string; quote: string | null
         }`,
         quote: str(d.version),
       };
+    case "release.approved":
+      return { what: `approved the team's release of ${str(d.section) ?? "a section"}`, quote: str(d.version) };
+    case "release.rejected":
+      return { what: `did not approve the team's release of ${str(d.section) ?? "a section"} ${str(d.version) ?? ""}`.trim(), quote: str(d.reason) };
+    case "release.delisted":
+      return { what: `delisted the team's ${str(d.section) ?? "a section"} pack`, quote: null };
     case "pack.submitted":
       return { what: `submitted the community pack ${row.subject} ${str(d.version) ?? ""}`.trim(), quote: null };
     case "pack.approved":

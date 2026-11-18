@@ -23,6 +23,21 @@ export async function launchRun(run: ReleaseRun): Promise<void> {
 export const failureOf = (error: unknown) => (error instanceof Error ? error.message : "the release could not be started");
 
 /**
+ * Starts a run that took the lock as it was made; a queued one waits for startNext. A job that
+ * cannot start settles the run `failed`, starts the next, and throws.
+ */
+export async function begin(run: ReleaseRun, launch: Launch = launchRun): Promise<void> {
+  if (run.state !== "dispatching") return;
+  try {
+    await launch(run);
+  } catch (error) {
+    await updateRun(run.id, { state: "failed", error: failureOf(error) });
+    await startNext(launch);
+    throw error;
+  }
+}
+
+/**
  * Starts the oldest queued run when nothing is active, and returns it. A run whose job cannot
  * start settles `failed` and the next is tried, so one bad run never stalls the queue.
  */

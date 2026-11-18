@@ -5,10 +5,10 @@
 import "server-only";
 
 import { currentStep, failureReason, outcome, readDropletRun, readStaged, type DropletRun } from "./droplet";
-import { tellOwnersOfReview } from "./notify";
+import { tellOwnersOfReview, tellPresser } from "./notify";
 import { GithubNotConfiguredError, findRun, type GithubRun } from "./github";
 import { startNext } from "./launch";
-import { activeRun, applyUpdate, updateRun, type ReleaseRun } from "./store";
+import { activeRun, applyUpdate, runById, updateRun, type ReleaseRun } from "./store";
 
 // Twelve missed heartbeats. A reboot or an out-of-memory kill leaves no exit file, and nobody
 // could press Release until someone noticed.
@@ -46,7 +46,10 @@ async function settle(run: ReleaseRun, job: DropletRun & { exitCode: number }): 
   }
   const result = outcome(job.log);
   if (result.state !== "awaiting_review") {
-    await updateRun(run.id, result);
+    const { changed } = await applyUpdate(run.id, result);
+    // The version a site owner approved is what players have now.
+    const promoted = changed && run.kind === "promote" && run.promotes ? await runById(run.promotes) : null;
+    if (promoted?.state === "done") await tellPresser(promoted, "approved");
     return;
   }
   const staged = (await readStaged(run.id)) as ReleaseRun["staged"];

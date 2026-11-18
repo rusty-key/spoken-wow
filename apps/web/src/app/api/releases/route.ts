@@ -2,10 +2,10 @@ import { requireCapability } from "@/lib/generation/authz";
 import { langName } from "@/lib/lang";
 import { langParam } from "@/lib/lang-server";
 import { releasesClosedFor, runsOnDroplet } from "@/lib/releases/droplet";
-import { failureOf, launchRun, startNext } from "@/lib/releases/launch";
+import { begin, failureOf } from "@/lib/releases/launch";
 import { isReleaseBump, isReleaseSection, RELEASE_BUMPS, RELEASE_SECTIONS, TEAM_RELEASES_CLOSED } from "@/lib/releases/sections";
 import { pendingChanges } from "@/lib/releases/pending";
-import { ReleaseBusyError, lastReleasedAt, startRun, updateRun } from "@/lib/releases/store";
+import { ReleaseBusyError, lastReleasedAt, startRun } from "@/lib/releases/store";
 import { syncActive } from "@/lib/releases/sync";
 import { releaseView } from "@/lib/releases/view";
 import { actingTeamRow, NoTeamError } from "@/lib/teams/store";
@@ -63,16 +63,11 @@ export async function POST(request: Request) {
     throw error;
   }
 
-  if (run.state === "dispatching") {
-    try {
-      // After startRun, which holds the lock, so a second press cannot encode the same takes.
-      await launchRun(run);
-    } catch (error) {
-      const reason = failureOf(error);
-      await updateRun(run.id, { state: "failed", error: reason });
-      await startNext();
-      return fail(502, reason);
-    }
+  try {
+    // After startRun, which holds the lock, so a second press cannot encode the same takes.
+    await begin(run);
+  } catch (error) {
+    return fail(502, failureOf(error));
   }
   return Response.json({ run: { id: run.id, section: run.section, lang: run.lang, state: run.state } }, { status: 202 });
 }

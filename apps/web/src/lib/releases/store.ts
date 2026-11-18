@@ -179,6 +179,7 @@ export async function cancelQueued(id: string): Promise<ReleaseRun | null> {
     );
     const run = rows[0];
     if (run?.kind === "release") await recordFinish(run, "failed", client);
+    if (run?.kind === "promote" && run.promotes) await settlePromoted(client, run, "failed");
     return run ?? null;
   });
 }
@@ -197,6 +198,26 @@ async function recordFinish(run: ReleaseRun, state: ReleaseState, client: PoolCl
       team: run.teamId,
     },
     client,
+  );
+}
+
+/**
+ * The staged run a promotion lists: `done` once it is listed, since `done` is what players have,
+ * and still waiting, with the reason, when listing it failed.
+ */
+async function settlePromoted(client: PoolClient, promote: ReleaseRun, state: ReleaseState): Promise<void> {
+  if (state === "done") {
+    const { rows } = await client.query<ReleaseRun>(
+      `update "release_run" set "state" = 'done', "error" = null, "finishedAt" = now()
+        where "id" = $1 and "state" = 'awaiting_review' returning ${COLUMNS}`,
+      [promote.promotes],
+    );
+    if (rows[0]) await recordFinish(rows[0], "done", client);
+    return;
+  }
+  await client.query(
+    `update "release_run" set "error" = $2 where "id" = $1 and "state" = 'awaiting_review'`,
+    [promote.promotes, `Approving failed: ${promote.error ?? "the promotion did not finish"}`],
   );
 }
 
@@ -234,14 +255,18 @@ export async function applyUpdate(id: string, patch: RunPatch): Promise<{ run: R
     );
     const run = rows[0];
     // At most one version of a pack waits for review: the older one goes once this one waits, and
-    // not before, so a build that fails leaves it in place.
+    // not before, so a build that fails leaves it in place. One approved and being listed is let
+    // finish; listing this one after it is then refused, as staged over an older rev.
     if (settles === "awaiting_review") {
       await client.query(
-        `update "release_run" set "state" = 'superseded'
-          where "state" = 'awaiting_review' and "id" <> $1 and "teamId" = $2 and "section" = $3 and "lang" = $4`,
+        `update "release_run" r set "state" = 'superseded'
+          where r."state" = 'awaiting_review' and r."id" <> $1 and r."teamId" = $2 and r."section" = $3 and r."lang" = $4
+            and not exists (select 1 from "release_run" p
+                             where p."promotes" = r."id" and p."state" in ('queued', 'dispatching', 'running'))`,
         [run.id, run.teamId, run.section, run.lang],
       );
     }
+    if (settles && run.kind === "promote" && run.promotes) await settlePromoted(client, run, settles);
     // A promotion or delisting is recorded as the review that asked for it (review.ts).
     if (settles && run.kind === "release") await recordFinish(run, settles, client);
     return { run, changed: true };
