@@ -416,8 +416,18 @@ do
     language.Fallback = "enUS"
     quests:Refresh()
     Expect("...and not while English fills in", Silent(), nil)
+    -- With a list of voices, the note stands while no voice in it has a pack for the module.
+    language.Voices = { "zhCN" }
+    quests:Refresh()
+    Expect("a list whose only voice has no Quests pack is said too", Silent() ~= nil, true)
+    language.Voices = { "zhCN", "deDE" }
+    quests:Refresh()
+    Expect("...and not while a later voice has one", Silent(), nil)
+    language.Voices = { "zhCN", "enUS" }
+    quests:Refresh()
+    Expect("...nor while English is in the list", Silent(), nil)
     _G.Spoken.VoicePack = voicePack
-    language.Voice, language.Fallback = nil, nil
+    language.Voice, language.Fallback, language.Voices = nil, nil, nil
     quests:Refresh()
 end
 

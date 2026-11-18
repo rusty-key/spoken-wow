@@ -226,6 +226,19 @@ function Options:LanguageName(code)
     return language.name or code
 end
 
+--- A voice's name: its language's, as `LanguageName` gives it ("Deutsch"), or for a team's voice
+--- with the team's name after it ("Deutsch · Stimmen"). `menu` names the language as
+--- `MenuLanguageName` does, for a row drawn in `LanguageFace`.
+function Options:VoiceName(code, menu)
+    local lang, team = Languages:SplitVoice(code)
+    if not lang then return tostring(code) end
+    local name = menu and self:MenuLanguageName(lang) or self:LanguageName(lang)
+    if not team then return name end
+    local entry = Languages:Get(lang)
+    local voice = entry and entry.voices[code]
+    return format(L.OPT_VOICE_TEAM_FMT, name, voice and voice.teamName or team)
+end
+
 --- The name a menu entry shows, for a menu that draws it in `LanguageFace`: its own where only the
 --- pack's font can draw it, else what `LanguageName` gives.
 function Options:MenuLanguageName(code)

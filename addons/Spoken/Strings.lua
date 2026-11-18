@@ -210,6 +210,7 @@ L = {
     OPT_VOICE_LANGUAGE = "Voice Language",
     OPT_LANG_AUTO_FMT = "Auto (%1$s)",
     OPT_FALLBACK_LANGUAGE = "If a Voice Is Missing",
+    OPT_VOICE_TEAM_FMT = "%1$s · %2$s",
     OPT_TEXT_LANGUAGE = "Text Language",
     OPT_TEXT_LANGUAGE_SET_FMT = "The text will be in %1$s after the interface reloads.",
     OPT_TEXT_LANGUAGE_RELOAD = "Type /reload to switch to it.",
