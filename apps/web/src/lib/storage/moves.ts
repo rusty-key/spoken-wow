@@ -9,9 +9,9 @@
  */
 import "server-only";
 
-import { ALL_TEAMS, query, queryIn, TEAM_ROWS, type TeamId } from "@/lib/db";
-import { recordObject } from "@/lib/blobs/keep";
-import { archive, sha256Of, type BlobStore } from "@/lib/blobs/store";
+import { ALL_TEAMS, query, queryIn, TEAM_ROWS, withTeam, type TeamId } from "@/lib/db";
+import { dropQuarantined, recordObject } from "@/lib/blobs/keep";
+import { archive, readsBlobs, sha256Of, type BlobStore } from "@/lib/blobs/store";
 import { backendStore, markMissing, OBJECT_ROW, objectParams, split } from "@/lib/blobs/where";
 
 import { StorageError } from "./backends";
@@ -23,6 +23,9 @@ export type MoveView = {
   id: string;
   fromBackendId: string | null;
   toBackendId: string | null;
+  /** The buckets' names when the move started; null for our archive. */
+  fromLabel: string | null;
+  toLabel: string | null;
   state: MoveState;
   total: number | null;
   copied: number;
@@ -40,7 +43,7 @@ type MoveRow = Omit<MoveView, "createdAt" | "finishedAt"> & {
   finishedAt: Date | null;
 };
 
-const COLUMNS = `"id", "teamId", "fromBackendId", "toBackendId", "state", "total", "copied", "already", "missing",
+const COLUMNS = `"id", "teamId", "fromBackendId", "toBackendId", "fromLabel", "toLabel", "state", "total", "copied", "already", "missing",
   "cursor", "lastError", "createdAt", "finishedAt"`;
 
 const toView = ({ teamId: _team, cursor: _cursor, ...row }: MoveRow): MoveView => ({
@@ -117,25 +120,33 @@ export async function listMoves(team: TeamId, limit = 5): Promise<MoveView[]> {
 /** Queues a move. Into a team bucket only one that passed its test and is not retired. */
 export async function startMove(team: TeamId, from: string | null, to: string | null, userId: string): Promise<MoveView> {
   if (from === to) throw new StorageError("A move goes from one bucket to another.");
-  const ends = await queryIn<{ id: string; health: string; retiredAt: Date | null }>(
-    team,
-    `select "id", "health", "retiredAt" from "storage_backend" where "id" = any($1::uuid[]) and ${TEAM_ROWS}`,
-    [[from, to].filter(Boolean)],
-  );
-  for (const end of [from, to]) {
-    if (end && !ends.some((row) => row.id === end)) throw new StorageError("No such bucket in this team.", 404);
-  }
-  const target = ends.find((row) => row.id === to);
-  if (target && (target.health !== "ok" || target.retiredAt)) {
-    throw new StorageError("Move only into a bucket that passed its test and is not retired.", 409);
-  }
+  // The upkeep that runs moves only works once our archive is a bucket: a move queued before would
+  // hold the team's one slot for good.
+  if (!readsBlobs()) throw new StorageError("The site's archive is not a bucket yet (SPOKEN_ARCHIVE_STORE=r2), so nothing can be moved.", 409);
   try {
-    const [row] = await queryIn<MoveRow>(
-      team,
-      `insert into "storage_move" ("fromBackendId", "toBackendId", "requestedBy") values ($1, $2, $3) returning ${COLUMNS}`,
-      [from, to, userId],
-    );
-    return toView(row);
+    // One transaction, the buckets locked: a bucket cannot be removed between the check and the
+    // insert, which would leave the move aimed at nothing (lib/storage/backends.ts removeBackend).
+    return await withTeam(team, async (client) => {
+      const { rows: ends } = await client.query<{ id: string; label: string; health: string; retiredAt: Date | null }>(
+        `select "id", "label", "health", "retiredAt" from "storage_backend"
+          where "id" = any($1::uuid[]) and ${TEAM_ROWS} for share`,
+        [[from, to].filter(Boolean)],
+      );
+      for (const end of [from, to]) {
+        if (end && !ends.some((row) => row.id === end)) throw new StorageError("No such bucket in this team.", 404);
+      }
+      const target = ends.find((row) => row.id === to);
+      if (target && (target.health !== "ok" || target.retiredAt)) {
+        throw new StorageError("Move only into a bucket that passed its test and is not retired.", 409);
+      }
+      const label = (id: string | null) => ends.find((row) => row.id === id)?.label ?? null;
+      const { rows: [row] } = await client.query<MoveRow>(
+        `insert into "storage_move" ("fromBackendId", "toBackendId", "fromLabel", "toLabel", "requestedBy")
+         values ($1, $2, $3, $4, $5) returning ${COLUMNS}`,
+        [from, to, label(from), label(to), userId],
+      );
+      return toView(row);
+    });
   } catch (error) {
     if ((error as { code?: string }).code === "23505") throw new StorageError("A move is already running for this team.", 409);
     throw error;
@@ -154,6 +165,9 @@ export async function cancelMove(team: TeamId, id: string): Promise<void> {
 
 type Outcome = "copied" | "already" | "missing";
 
+/** Larger than any clip, recording or reference: a source answering more is not trusted to be ours. */
+const MAX_OBJECT_BYTES = 100 * 1024 * 1024;
+
 async function moveOne(key: string, move: MoveRow, source: BlobStore, target: BlobStore): Promise<Outcome> {
   const { prefix, sha256 } = split(key);
   const object = await source.get(key);
@@ -161,11 +175,18 @@ async function moveOne(key: string, move: MoveRow, source: BlobStore, target: Bl
     await markMissing(key, move.fromBackendId);
     return "missing";
   }
+  if (object.size > MAX_OBJECT_BYTES) {
+    await object.body.cancel();
+    throw new Error(`${key} is ${object.size} bytes in the source, more than any archive object`);
+  }
   const data = Buffer.from(await new Response(object.body).arrayBuffer());
   if (sha256Of(data) !== sha256) throw new Error(`${key} does not match its hash in the source`);
   const there = await target.head(key);
   if (!there) await target.put(key, data, object.contentType);
-  if (move.toBackendId) await recordObject(prefix, sha256, move.toBackendId, move.teamId, false);
+  // A copy that was waiting in our quarantine for this bucket is landed by this one: drop ours.
+  if (move.toBackendId) {
+    if ((await recordObject(prefix, sha256, move.toBackendId, move.teamId, false)).was) await dropQuarantined(move.toBackendId, key);
+  }
   // Into ours: the source's row goes, so reads find our copy. The team's bytes stay where they are.
   else await query(`delete from "archive_object" where ${OBJECT_ROW}`, objectParams(key, move.fromBackendId!));
   return there ? "already" : "copied";

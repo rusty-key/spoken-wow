@@ -65,6 +65,8 @@ export default function StoragePanel({ lang, initial }: { lang: Lang; initial: S
     setError(null);
     const answer = await call(`/api/storage/moves?lang=${lang}`, { method: "POST", body: JSON.stringify({ from, to }) });
     if (answer.error) return setError(answer.error);
+    // Shown at once, and the polling that follows it starts, even if the refresh is slow.
+    if (answer.move) setView((current) => ({ ...current, moves: [answer.move!, ...current.moves] }));
     await refresh();
   };
 
@@ -74,7 +76,8 @@ export default function StoragePanel({ lang, initial }: { lang: Lang; initial: S
     await refresh();
   };
 
-  const nameOf = (id: string | null) => (id ? (view.backends.find((b) => b.id === id)?.label ?? "a removed bucket") : "Spoken's archive");
+  const nameOf = (id: string | null, label: string | null) =>
+    id ? (view.backends.find((b) => b.id === id)?.label ?? label ?? "a removed bucket") : label ? `${label} (removed)` : "Spoken's archive";
 
   const replace = (backend: BackendView) =>
     setView((current) => {
@@ -133,7 +136,7 @@ export default function StoragePanel({ lang, initial }: { lang: Lang; initial: S
         <section className="bg-card flex flex-col gap-2 rounded-lg border p-4 text-sm">
           <h2 className="font-medium">Moves</h2>
           {view.moves.map((m) => (
-            <MoveLine key={m.id} move={m} from={nameOf(m.fromBackendId)} to={nameOf(m.toBackendId)} onStop={() => void stopMove(m.id)} />
+            <MoveLine key={m.id} move={m} from={nameOf(m.fromBackendId, m.fromLabel)} to={nameOf(m.toBackendId, m.toLabel)} onStop={() => void stopMove(m.id)} />
           ))}
         </section>
       )}
@@ -152,6 +155,8 @@ export default function StoragePanel({ lang, initial }: { lang: Lang; initial: S
           moving={moving !== null}
           onMoveIn={() => void move(null, backend.id)}
           onMoveOut={() => void move(backend.id, null)}
+          onMoveTo={(to) => void move(backend.id, to)}
+          others={view.backends.filter((b) => b.id !== backend.id && b.health === "ok" && !b.retiredAt)}
         />
       ))}
 
@@ -180,6 +185,8 @@ function BackendCard({
   moving,
   onMoveIn,
   onMoveOut,
+  onMoveTo,
+  others,
 }: {
   backend: BackendView;
   test: ProbeResult | undefined;
@@ -192,6 +199,9 @@ function BackendCard({
   moving: boolean;
   onMoveIn: () => void;
   onMoveOut: () => void;
+  onMoveTo: (to: string) => void;
+  /** The team's other buckets this one's objects can move into. */
+  others: BackendView[];
 }) {
   const date = useLocalDates();
   const [rekeying, setRekeying] = useState(false);
@@ -265,12 +275,26 @@ function BackendCard({
           </Button>
         )}
         {!retired && backend.health === "ok" && (
-          <Button size="sm" variant="outline" disabled={busy !== null || moving} onClick={onMoveIn} title="Copies what Spoken's archive holds for this team. Spoken keeps its copy.">
+          <Button size="sm" variant="outline" disabled={busy !== null || moving || !canWrite} onClick={onMoveIn} title="Copies what Spoken's archive holds for this team. Spoken keeps its copy.">
             Copy Spoken&apos;s archive here
           </Button>
         )}
+        {backend.objects > 0 && others.length > 0 && (
+          <select
+            aria-label={`Move ${backend.label}'s objects into another bucket`}
+            className="bg-background h-8 rounded-md border px-2 text-sm"
+            disabled={busy !== null || moving || !canWrite}
+            value=""
+            onChange={(event) => event.target.value && onMoveTo(event.target.value)}
+          >
+            <option value="">Move objects into…</option>
+            {others.map((other) => (
+              <option key={other.id} value={other.id}>{other.label}</option>
+            ))}
+          </select>
+        )}
         {backend.objects > 0 && (
-          <Button size="sm" variant="outline" disabled={busy !== null || moving} onClick={onMoveOut} title="Copies this bucket's objects into Spoken's archive and reads them from there. Nothing is deleted here.">
+          <Button size="sm" variant="outline" disabled={busy !== null || moving || !canWrite} onClick={onMoveOut} title="Copies this bucket's objects into Spoken's archive and reads them from there. Nothing is deleted here.">
             Bring objects back to Spoken&apos;s archive
           </Button>
         )}
@@ -310,7 +334,8 @@ function MoveLine({ move, from, to, onStop }: { move: MoveView; from: string; to
     <div className="flex flex-wrap items-center gap-2">
       <span>
         {from} → {to}: {MOVE_STATE[move.state]}
-        {move.total !== null && ` · ${done.toLocaleString()} of ${move.total.toLocaleString()}`}
+        {/* The total is counted when the move starts; objects kept since can take it past that. */}
+        {move.total !== null && ` · ${done.toLocaleString()} of ${Math.max(done, move.total).toLocaleString()}`}
         {move.missing > 0 && <span className="text-destructive"> · {move.missing.toLocaleString()} missing at the source</span>}
       </span>
       {move.lastError && <span className="text-destructive">{move.lastError}</span>}

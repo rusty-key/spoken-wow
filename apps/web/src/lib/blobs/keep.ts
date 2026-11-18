@@ -137,7 +137,7 @@ export async function keep(
   return kept;
 }
 
-async function dropQuarantined(backendId: string, key: string): Promise<void> {
+export async function dropQuarantined(backendId: string, key: string): Promise<void> {
   await archive().delete(quarantineKey(backendId, key)).catch((error) => console.error(`storage: could not delete the quarantined ${key}:`, error));
 }
 

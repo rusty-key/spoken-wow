@@ -9,7 +9,7 @@ export const dynamic = "force-dynamic";
 
 const end = (value: unknown, name: string): string | null => {
   if (value === null) return null;
-  if (typeof value === "string" && isUuid(value)) return value;
+  if (typeof value === "string" && isUuid(value)) return value.toLowerCase();
   throw new StorageError(`${name} is a bucket's id, or null for Spoken's archive.`);
 };
 

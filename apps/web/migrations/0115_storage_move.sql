@@ -12,6 +12,9 @@ create table "storage_move" (
   -- A bucket removed later leaves its finished moves behind, naming no bucket.
   "fromBackendId" uuid        references "storage_backend" ("id") on delete set null,
   "toBackendId"   uuid        references "storage_backend" ("id") on delete set null,
+  -- The buckets' names when the move started, so the history still says which a removed one was.
+  "fromLabel"     text,
+  "toLabel"       text,
   "state"         text        not null default 'queued'
                     check ("state" in ('queued', 'running', 'done', 'failed', 'cancelled')),
   "total"         integer,

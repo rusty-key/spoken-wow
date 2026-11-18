@@ -9,7 +9,7 @@ import { closeDb } from "@/lib/db";
 import { asSystem, ownTeam, systemRows, testUser } from "@/lib/teams/testing";
 
 import { StorageError } from "./backends";
-import { advanceMoves, cancelMove, runMoveForTests, startMove } from "./moves";
+import { cancelMove, runMoveForTests, startMove } from "./moves";
 import { placeObject, testBackend } from "./testing";
 
 let fr: Awaited<ReturnType<typeof ownTeam>>;
@@ -148,6 +148,19 @@ describe("moving a team's objects", () => {
     expect((await locate(`takes/${sha}`, "frFR")).backendId).toBe(mine.id);
   });
 
+  it("refuses to retire a bucket a move is copying into, and to start one while the archive is the volume", async () => {
+    const house = ours();
+    const { retireBackend } = await import("./backends");
+    const target = await bucket();
+    await takes(house, 1);
+    await startMove(fr.team, null, target.id, user.id);
+    await expect(retireBackend(fr.team, target.id)).rejects.toThrow("copying into this bucket");
+
+    restores.push(useArchiveForTests(memoryBlobs(), "dual"));
+    await asSystem.query(`delete from "storage_move" where "teamId" = $1`, [fr.team]);
+    await expect(startMove(fr.team, null, target.id, user.id)).rejects.toThrow("not a bucket yet");
+  });
+
   it("lets a bucket a finished move used be removed, and keeps the move's history", async () => {
     ours();
     const { removeBackend } = await import("./backends");
@@ -156,8 +169,8 @@ describe("moving a team's objects", () => {
     await expect(removeBackend(fr.team, empty.id)).rejects.toThrow("A move is using this bucket");
     expect(await runMoveForTests(move.id)).toBe("done");
     await removeBackend(fr.team, empty.id);
-    const [row] = await systemRows(`select "state", "toBackendId" from "storage_move" where "id" = $1`, [move.id]);
-    expect(row).toEqual({ state: "done", toBackendId: null });
+    const [row] = await systemRows(`select "state", "toBackendId", "toLabel" from "storage_move" where "id" = $1`, [move.id]);
+    expect(row).toEqual({ state: "done", toBackendId: null, toLabel: "test" });
   });
 
   it("allows one move at a time, only into a working bucket, and stops when asked", async () => {
@@ -169,7 +182,8 @@ describe("moving a team's objects", () => {
     const move = await startMove(fr.team, null, backend.id, user.id);
     await expect(startMove(fr.team, backend.id, null, user.id)).rejects.toThrow("already running");
     await cancelMove(fr.team, move.id);
-    await advanceMoves();
+    // Its own move only: advanceMoves would run every team's in a shared database.
+    expect(await runMoveForTests(move.id)).toBe("cancelled");
     expect(backend.store.objects.size).toBe(0);
   });
 });

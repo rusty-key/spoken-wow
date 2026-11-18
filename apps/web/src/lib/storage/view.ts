@@ -23,11 +23,12 @@ export type StorageView = {
 
 export async function storageView(lang: Lang): Promise<StorageView> {
   const team = await teamOf(lang);
-  const [[about], langs, backends, moves] = await Promise.all([
+  // Moves before the buckets' counts, so a move shown as done never has counts from before it.
+  const moves = await listMoves(team);
+  const [[about], langs, backends] = await Promise.all([
     query<{ id: string; name: string }>(`select "id", "name" from "team" where "id" = $1`, [team]),
     query<{ lang: Lang }>(`select "lang" from "team_language" where "teamId" = $1 and "privileged" order by "lang"`, [team]),
     listBackends(team),
-    listMoves(team),
   ]);
   return {
     team: { ...about, langs: langs.map((row) => row.lang) },

@@ -357,9 +357,14 @@ export async function stopWriting(team: TeamId, id: string): Promise<void> {
 /** No new objects, for good. It keeps serving what it holds until they are moved away. */
 export async function retireBackend(team: TeamId, id: string): Promise<void> {
   await rowOf(team, id);
-  await withTeam(team, (client) =>
-    client.query(`update "storage_backend" set "writing" = false, "retiredAt" = coalesce("retiredAt", now()) where "id" = $1 and ${TEAM_ROWS}`, [id]),
-  );
+  await withTeam(team, async (client) => {
+    const { rows } = await client.query(
+      `select 1 from "storage_move" where "toBackendId" = $1 and "state" in ('queued', 'running') and ${TEAM_ROWS}`,
+      [id],
+    );
+    if (rows.length > 0) throw new StorageError("A move is copying into this bucket. Stop it first.", 409);
+    await client.query(`update "storage_backend" set "writing" = false, "retiredAt" = coalesce("retiredAt", now()) where "id" = $1 and ${TEAM_ROWS}`, [id]);
+  });
   forgetBackends();
 }
 
@@ -368,15 +373,18 @@ export async function removeBackend(team: TeamId, id: string): Promise<void> {
   await rowOf(team, id);
   const [{ n }] = await query<{ n: number }>(`select count(*)::int as "n" from "archive_object" where "backendId" = $1`, [id]);
   if (n > 0) throw new StorageError(`The bucket holds ${n} of the archive's objects. Retire it, or move them away first.`, 409);
-  const moving = await withTeam(team, async (client) =>
-    (await client.query(
-      `select 1 from "storage_move" where $1 in ("fromBackendId", "toBackendId") and "state" in ('queued', 'running') and ${TEAM_ROWS}`,
-      [id],
-    )).rows,
-  );
-  if (moving.length > 0) throw new StorageError("A move is using this bucket. Stop it first.", 409);
   try {
-    await withTeam(team, (client) => client.query(`delete from "storage_backend" where "id" = $1 and ${TEAM_ROWS}`, [id]));
+    // One transaction, the bucket locked: a move cannot start on it between the check and the delete
+    // (startMove locks its buckets for share).
+    await withTeam(team, async (client) => {
+      await client.query(`select 1 from "storage_backend" where "id" = $1 and ${TEAM_ROWS} for update`, [id]);
+      const { rows } = await client.query(
+        `select 1 from "storage_move" where $1 in ("fromBackendId", "toBackendId") and "state" in ('queued', 'running') and ${TEAM_ROWS}`,
+        [id],
+      );
+      if (rows.length > 0) throw new StorageError("A move is using this bucket. Stop it first.", 409);
+      await client.query(`delete from "storage_backend" where "id" = $1 and ${TEAM_ROWS}`, [id]);
+    });
   } catch (error) {
     if ((error as { code?: string }).code === "23503") throw new StorageError("The bucket holds objects of the archive now.", 409);
     throw error;
