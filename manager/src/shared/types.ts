@@ -78,6 +78,21 @@ export interface Product {
    * folder is still this product's, and installing the new one moves it to the backup.
    */
   legacy?: { id: string; tagPrefix: string; folders: string[]; assetPattern: string }
+  /** Who released a voice pack, as the channel says; null for a page pack, absent when the channel does not carry it. */
+  team?: ChannelTeam | null
+}
+
+/** A voice language the Voice Packs page can list, named in its own words. */
+export interface VoiceLanguage {
+  code: string
+  name: string
+}
+
+/** What the window is told when the catalog changes: the products and languages follow the channel. */
+export interface CatalogUpdate {
+  catalog: Catalog
+  products: Product[]
+  languages: VoiceLanguage[]
 }
 
 /**
@@ -291,6 +306,8 @@ export interface Snapshot {
   catalog: Catalog
   community: CommunityCatalog
   products: Product[]
+  /** The voice languages, today's and the channel's. */
+  languages: VoiceLanguage[]
   appVersion: string
   /** The operating system the manager runs on: the window's frame and the game search differ. */
   platform: 'win32' | 'darwin' | 'linux'

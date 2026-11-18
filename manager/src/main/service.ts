@@ -2,8 +2,8 @@
 // the settings and the catalog, and runs jobs.
 import path from 'node:path'
 import { CHANNELS, type AddGameResult, type ClearDownloadsResult, type InstallOptions } from '../shared/api'
-import { isSupportedFlavor, type Catalog, type CommunityCatalog, type GameInstall, type JobProgress, type Product, type ProductStatus, type ReleaseInfo, type Settings, type SharingChoice, type SharingStatus, type Snapshot } from '../shared/types'
-import { PRODUCTS, productById } from '../shared/products'
+import { isSupportedFlavor, type Catalog, type CatalogUpdate, type CommunityCatalog, type GameInstall, type JobProgress, type Product, type ProductStatus, type ReleaseInfo, type Settings, type SharingChoice, type SharingStatus, type Snapshot } from '../shared/types'
+import { languagesFor, productById, productsFor } from '../shared/products'
 import { compareVersions } from '../shared/version'
 import { buildCatalog, latestFor, loadCatalog, saveCatalog } from './catalog'
 import { COMMUNITY_PREFIX, communityProduct, communityRelease, fetchCommunity, isCommunityProductId, loadCommunity, saveCommunity } from './community'
@@ -148,7 +148,8 @@ export class ManagerService {
       settings: this.settings,
       catalog: this.effectiveCatalog(),
       community: this.community,
-      products: PRODUCTS,
+      products: this.products(),
+      languages: languagesFor(this.channel),
       appVersion: this.opts.appVersion,
       dataPath: this.opts.dataPath,
       platform: process.platform === 'darwin' ? 'darwin' : process.platform === 'win32' ? 'win32' : 'linux',
@@ -237,7 +238,7 @@ export class ManagerService {
     }
     // The file keeps GitHub's list alone; the window is offered what can be installed, channel packs too.
     const offered = this.effectiveCatalog()
-    this.opts.send(CHANNELS.catalogChanged, offered)
+    this.catalogChanged(offered)
     await this.warmManifests(offered)
     return offered
   }
@@ -269,7 +270,7 @@ export class ManagerService {
   private async warmManifests(offered: Catalog): Promise<void> {
     const wanted = new Map<string, ChannelPack>()
     for (const game of this.games) {
-      for (const p of PRODUCTS) {
+      for (const p of this.products()) {
         const packs = this.channelPacks(p)
         if (!packs || !p.folders!.some((f) => loadPackState(game, f))) continue
         p.folders!.forEach((f, i) => {
@@ -290,7 +291,7 @@ export class ManagerService {
           )
         )
       )
-      if (got.some(Boolean)) this.opts.send(CHANNELS.catalogChanged, offered)
+      if (got.some(Boolean)) this.catalogChanged(offered)
     }
   }
 
@@ -318,7 +319,7 @@ export class ManagerService {
     if (!changed) return
     // A row saying "update first" needs the update it points at to be on offer.
     const offered = this.effectiveCatalog()
-    this.opts.send(CHANNELS.catalogChanged, offered)
+    this.catalogChanged(offered)
     void this.warmManifests(offered).catch((err) => log('Manifests of the channel:', err))
   }
 
@@ -353,16 +354,29 @@ export class ManagerService {
     return next
   }
 
-  /** The official table plus the registry's packs. */
+  private productsMemo: { channel: ChannelIndexV2 | null; products: Product[] } | null = null
+
+  /** The voice products and Spoken: the table, and every team's and new language's pack the channel lists. */
+  products(): Product[] {
+    if (this.productsMemo?.channel !== this.channel) this.productsMemo = { channel: this.channel, products: productsFor(this.channel) }
+    return this.productsMemo.products
+  }
+
+  /** The products follow the channel, so the window is sent them with every catalog. */
+  private catalogChanged(catalog: Catalog): void {
+    this.opts.send(CHANNELS.catalogChanged, { catalog, products: this.products(), languages: languagesFor(this.channel) } satisfies CatalogUpdate)
+  }
+
+  /** The products plus the registry's packs. */
   private allProducts(): Product[] {
-    return [...PRODUCTS, ...this.community.packs.map((p) => communityProduct(p))]
+    return [...this.products(), ...this.community.packs.map((p) => communityProduct(p))]
   }
 
   /** The catalog with the registry's packs as one release each. */
   private effectiveCatalog(): Catalog {
     const releases = { ...this.catalog.releases }
     for (const p of this.community.packs) releases[COMMUNITY_PREFIX + p.id] = [communityRelease(p)]
-    return withChannel({ ...this.catalog, releases }, PRODUCTS, this.channel, this.packsBase())
+    return withChannel({ ...this.catalog, releases }, this.products(), this.channel, this.packsBase())
   }
 
   private packsBase(): string {

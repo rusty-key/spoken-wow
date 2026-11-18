@@ -1,7 +1,7 @@
 // What the manager can install, as a table. The names follow scripts/lib/packs.mjs in the repo:
 // a release tag is `<product id>/v<version>`, English's folders are the plain names and a
 // language's are those plus `_<lang>`. Which of these have a release is the catalog's business.
-import type { Product, QuestsPack, Section } from './types'
+import type { ChannelTeam, Product, QuestsPack, QuestsSide, Section } from './types'
 
 export const BASE_LANGUAGE = 'enUS'
 
@@ -167,6 +167,91 @@ export function productById(id: string): Product | undefined {
 /** The product an id names now: `zones-audio-deDE`, saved before the rename, is `places-audio-deDE`. */
 export function currentProductId(id: string): string {
   return PRODUCTS.find((p) => p.legacy?.id === id)?.id ?? id
+}
+
+/** What products and languages are read from in the channel's index-v2.json. */
+export interface ChannelListing {
+  packs: Record<string, { lang: string; section: Section; pack: QuestsSide | null; team: ChannelTeam | null }>
+  languages: Record<string, { name: string; native: string }>
+}
+
+const QUESTS_SIDES: QuestsSide[] = ['alliance', 'horde', 'shared', 'gossip']
+
+/** A pack the table does not name, from its folders as the index lists them. */
+function channelProduct(section: Section, lang: string, slug: string | null, pack: QuestsPack | undefined, folders: string[], team: ChannelTeam | null): Product {
+  const tail = `-${lang}${slug ? `-${slug}` : ''}`
+  const id = section !== 'quests' ? `${section}-audio${tail}` : pack === 'all' ? `quests-audio${tail}` : `quests-audio-${pack}${tail}`
+  const base = pack === 'all' ? `SpokenQuestsAudioAll_${lang}${slug ? `_${slug}` : ''}` : folders[0]!
+  return {
+    id,
+    kind: 'voices',
+    title: `${SECTION_TITLE[section]} voices`,
+    description: section === 'quests' ? SIDE_BLURB[pack!] : SECTION_BLURB[section],
+    section,
+    lang,
+    pack,
+    tagPrefix: id,
+    folders,
+    assetPattern: zip(base),
+    team
+  }
+}
+
+/** The team slug a folder carries after its language; null for a language's plain folder. */
+function folderSlug(folder: string, lang: string): string | null {
+  const at = folder.lastIndexOf(`_${lang}_`)
+  return at >= 0 ? folder.slice(at + lang.length + 2) : null
+}
+
+/**
+ * The table's products with their teams from the channel, then one product for each folder the table does not name: a
+ * team's packs and a new language's. Quests sides get one each, and a bundle of the four when all four are there. The
+ * table keeps today's packs' ids, which installs, settings and jobs are keyed by.
+ */
+export function productsFor(index: ChannelListing | null): Product[] {
+  if (!index) return PRODUCTS
+  const named = new Set(PRODUCTS.flatMap((p) => [...(p.folders ?? []), ...(p.legacy?.folders ?? [])]))
+  const out = PRODUCTS.map((p) => {
+    const entry = p.kind === 'voices' ? index.packs[p.folders![0]!] : undefined
+    return entry ? { ...p, team: entry.team } : p
+  })
+  const groups = new Map<string, { section: Section; lang: string; slug: string | null; team: ChannelTeam | null; folders: Map<QuestsSide | null, string> }>()
+  for (const [folder, entry] of Object.entries(index.packs)) {
+    if (named.has(folder)) continue
+    const slug = folderSlug(folder, entry.lang)
+    const key = `${entry.section}|${entry.lang}|${slug ?? ''}`
+    const group = groups.get(key) ?? { section: entry.section, lang: entry.lang, slug, team: entry.team, folders: new Map() }
+    group.folders.set(entry.pack, folder)
+    groups.set(key, group)
+  }
+  const ids = new Set(out.map((p) => p.id))
+  const add = (p: Product): void => {
+    if (ids.has(p.id)) return
+    ids.add(p.id)
+    out.push(p)
+  }
+  for (const g of groups.values()) {
+    if (g.section !== 'quests') {
+      add(channelProduct(g.section, g.lang, g.slug, undefined, [...g.folders.values()], g.team))
+      continue
+    }
+    const present = QUESTS_SIDES.filter((s) => g.folders.has(s))
+    if (present.length === QUESTS_SIDES.length) add(channelProduct('quests', g.lang, g.slug, 'all', present.map((s) => g.folders.get(s)!), g.team))
+    for (const side of present) add(channelProduct('quests', g.lang, g.slug, side, [g.folders.get(side)!], g.team))
+  }
+  return out
+}
+
+/**
+ * Every language the Manager can list: today's in their order and words, then the index's others by English name,
+ * each in its own words. Today's keep the table's names, which tell esES from esMX.
+ */
+export function languagesFor(index: ChannelListing | null): { code: string; name: string }[] {
+  const known = new Set(LANGUAGES.map((l) => l.code))
+  const others = new Set([...Object.keys(index?.languages ?? {}), ...Object.values(index?.packs ?? {}).map((p) => p.lang)].filter((c) => !known.has(c)))
+  const english = (code: string): string => index?.languages[code]?.name ?? code
+  const more = [...others].sort((a, b) => english(a).localeCompare(english(b), 'en')).map((code) => ({ code, name: index?.languages[code]?.native ?? code }))
+  return [...LANGUAGES, ...more]
 }
 
 /** The folders of every voice pack and Spoken's known ones: the only names the installer may touch. */

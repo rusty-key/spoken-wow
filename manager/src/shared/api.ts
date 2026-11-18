@@ -1,6 +1,6 @@
 // The contract between the window and the main process. The preload exposes `ManagerApi` as
 // `window.manager`; the main process answers each channel.
-import type { Catalog, CommunityCatalog, ContributorView, GameInstall, JobProgress, ProductStatus, ReleaseRow, Settings, SharingStatus, Snapshot, StoreId } from './types'
+import type { Catalog, CatalogUpdate, CommunityCatalog, ContributorView, GameInstall, JobProgress, ProductStatus, ReleaseRow, Settings, SharingStatus, Snapshot, StoreId } from './types'
 
 export const CHANNELS = {
   snapshot: 'manager:snapshot',
@@ -141,7 +141,7 @@ export interface ManagerApi {
 
   onJob(listener: (progress: JobProgress) => void): () => void
   onGamesChanged(listener: (games: GameInstall[]) => void): () => void
-  onCatalogChanged(listener: (catalog: Catalog) => void): () => void
+  onCatalogChanged(listener: (update: CatalogUpdate) => void): () => void
   onCommunityChanged(listener: (community: CommunityCatalog) => void): () => void
   onUpdater(listener: (state: UpdaterState) => void): () => void
   onSharing(listener: (status: SharingStatus) => void): () => void

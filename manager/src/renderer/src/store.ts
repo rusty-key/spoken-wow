@@ -2,7 +2,7 @@
 // nothing here guesses the result of an install before the job says so.
 import { createContext, createElement, useContext, useEffect, useMemo, useReducer, useRef, type Dispatch, type ReactNode } from 'react'
 import type { AddGameResult, UpdaterState } from '@shared/api'
-import type { Catalog, CommunityCatalog, ContributorView, GameInstall, JobProgress, Product, ProductStatus, Settings, SharingStatus, Snapshot } from '@shared/types'
+import type { Catalog, CatalogUpdate, CommunityCatalog, ContributorView, GameInstall, JobProgress, Product, ProductStatus, Settings, SharingStatus, Snapshot, VoiceLanguage } from '@shared/types'
 import { DEFAULT_SETTINGS, isSupportedFlavor } from '@shared/types'
 import { api, errorText } from './api'
 import type { Platform } from './strings'
@@ -19,6 +19,8 @@ export interface State {
   catalog: Catalog
   community: CommunityCatalog
   products: Product[]
+  /** The voice languages the Voice Packs page may list. */
+  languages: VoiceLanguage[]
   appVersion: string
   platform: Platform
   dataPath: string
@@ -42,6 +44,7 @@ type Action =
   | { type: 'fatal'; message: string }
   | { type: 'games'; games: GameInstall[] }
   | { type: 'catalog'; catalog: Catalog }
+  | { type: 'channel'; update: CatalogUpdate }
   | { type: 'community'; community: CommunityCatalog }
   | { type: 'settings'; settings: Settings }
   | { type: 'statuses'; gameId: string; list: ProductStatus[] }
@@ -66,6 +69,7 @@ export const initial: State = {
   catalog: EMPTY_CATALOG,
   community: EMPTY_COMMUNITY,
   products: [],
+  languages: [],
   appVersion: '',
   platform: 'win32',
   dataPath: '',
@@ -93,6 +97,7 @@ export function reducer(s: State, a: Action): State {
         catalog: a.snap.catalog,
         community: a.snap.community ?? EMPTY_COMMUNITY,
         products: a.snap.products,
+        languages: a.snap.languages ?? [],
         appVersion: a.snap.appVersion,
         platform: a.snap.platform,
         dataPath: a.snap.dataPath,
@@ -111,6 +116,8 @@ export function reducer(s: State, a: Action): State {
       const statuses = Object.fromEntries(Object.entries(s.statuses).filter(([id]) => keep.has(id)))
       return { ...s, games: a.games, statuses }
     }
+    case 'channel':
+      return { ...s, catalog: a.update.catalog, products: a.update.products, languages: a.update.languages }
     case 'catalog':
       return { ...s, catalog: a.catalog }
     case 'community':
@@ -363,8 +370,8 @@ export function StoreProvider({ children }: { children: ReactNode }): ReactNode 
         dispatch({ type: 'games', games })
         games.forEach((g) => refetch(g.id))
       }),
-      a.onCatalogChanged((catalog) => {
-        dispatch({ type: 'catalog', catalog })
+      a.onCatalogChanged((update) => {
+        dispatch({ type: 'channel', update })
         refetchAll()
       }),
       a.onCommunityChanged((community) => dispatch({ type: 'community', community })),

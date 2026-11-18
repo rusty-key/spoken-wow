@@ -2,7 +2,7 @@
 // `npm run dev:web`). Address options: ?offline=1, ?empty=1 (no games), ?empty=packs (an empty community
 // list), ?readonly=1 (Anniversary is read-only), ?missing=anniversary (that game was not found; also forever, era), ?linked=1 (Spoken on Anniversary is a link to a development folder), ?update=1 (a manager update banner), ?update=url (an update to download in the browser), ?platform=darwin|linux|win32 (the window frame of that system), ?sharing=on|off (the first-start question already answered), ?contrib=out|fail|nonadmin|result|expire|unreachable (Contributor: start signed out, sign-in refused, an account without admin rights, a finished release to show, a session that ends after a few seconds, a site that answers Retry only after ten seconds).
 import type { AddGameResult, InstallOptions, ManagerApi, UpdaterState } from '@shared/api'
-import { LANGUAGES, PRODUCTS, languageFolders, SPOKEN_FOLDERS, productById } from '@shared/products'
+import { LANGUAGES, PRODUCTS, languageFolders, languagesFor, SPOKEN_FOLDERS, productById } from '@shared/products'
 import type { Catalog, CommunityCatalog, CommunityPack, ContributorView, GameInstall, JobProgress, Product, PublishResult, ProductStatus, ReleaseInfo, ReleaseRow, Settings, SharingStatus, Snapshot } from '@shared/types'
 import { DEFAULT_SETTINGS, FLAVOR_FOLDER_LIST, communityFolder } from '@shared/types'
 import { compareVersions } from '@shared/version'
@@ -452,7 +452,7 @@ export function createMockApi(): ManagerApi {
   const api: ManagerApi = {
     async snapshot(): Promise<Snapshot> {
       await sleep(250)
-      return { games, settings, sharingStatus, catalog: catalog(), community: community(), products: PRODUCTS, appVersion: '0.1.0', platform, dataPath: platform === 'darwin' ? '/Users/hello/Library/Application Support/Spoken Manager' : platform === 'linux' ? '/home/hello/.config/Spoken Manager' : 'C:\\Users\\hello\\AppData\\Roaming\\Spoken Manager' }
+      return { games, settings, sharingStatus, catalog: catalog(), community: community(), products: PRODUCTS, languages: languagesFor(null), appVersion: '0.1.0', platform, dataPath: platform === 'darwin' ? '/Users/hello/Library/Application Support/Spoken Manager' : platform === 'linux' ? '/home/hello/.config/Spoken Manager' : 'C:\\Users\\hello\\AppData\\Roaming\\Spoken Manager' }
     },
     async scanGames() {
       await sleep(900)

@@ -2,7 +2,7 @@ import fs from 'node:fs'
 import path from 'node:path'
 import { afterEach, describe, expect, it } from 'vitest'
 import { CHANNELS } from '../src/shared/api'
-import type { Catalog, JobProgress } from '../src/shared/types'
+import type { CatalogUpdate, JobProgress } from '../src/shared/types'
 import { ManagerService } from '../src/main/service'
 import { loadPackState } from '../src/main/packs-state'
 import { channelFixture, channelKeys, serveChannel, type PackSpec } from './channel-helpers'
@@ -62,10 +62,66 @@ function waitFor(sent: { channel: string; payload: unknown }[], jobId: string): 
 describe('the channel through the service', () => {
   it('offers the window a pack only the channel has', async () => {
     const { svc, sent } = await setup()
-    const told = sent.filter((s) => s.channel === CHANNELS.catalogChanged).at(-1)?.payload as Catalog
+    const told = (sent.filter((s) => s.channel === CHANNELS.catalogChanged).at(-1)?.payload as CatalogUpdate).catalog
     expect(told.releases['places-audio-deDE']?.[0]?.tag).toBe(`channel/${spec.rev}`)
     expect(svc.snapshot().catalog.releases['places-audio-deDE']?.[0]?.tag).toBe(`channel/${spec.rev}`)
     expect((await svc.refreshCatalog()).releases['places-audio-deDE']?.[0]?.tag).toBe(`channel/${spec.rev}`)
+  })
+
+  it("installs a team's pack beside the language's, and removing it leaves the other alone", async () => {
+    const TEAM = 'SpokenPlacesAudio_deDE_stimmen'
+    const team: PackSpec = { packId: TEAM, rev: '20261019T000000Z', files: { [`${TEAM}.toc`]: 'toc', 'Sounds/1.ogg': 'stimmen' }, team: { slug: 'stimmen', name: 'Stimmen', official: false } }
+    const game = await makeGame(tmpDir())
+    write(path.join(game.addOnsPath, 'Spoken', 'Spoken.toc'), toc('Spoken', '3.0.0'))
+    const s = await serveChannel(channelFixture(keys, [spec, team]))
+    server = s
+    const sent: { channel: string; payload: unknown }[] = []
+    const svc = new ManagerService({
+      dataPath: tmpDir(), appVersion: '0.1.0', send: (channel, payload) => sent.push({ channel, payload }),
+      fetchImpl: githubFetch(), autoPaths: [game.root], isRunning: async () => false, backoffMs: 1, packsBaseUrl: s.base, packsPublicKey: keys.publicKey
+    })
+    await svc.init()
+    await svc.refreshCatalog(true)
+    expect(svc.snapshot().products.find((p) => p.id === 'places-audio-deDE-stimmen')?.team?.name).toBe('Stimmen')
+
+    expect((await waitFor(sent, svc.install(game.id, 'places-audio-deDE'))).phase).toBe('done')
+    expect((await waitFor(sent, svc.install(game.id, 'places-audio-deDE-stimmen'))).phase).toBe('done')
+    const states = async () => Object.fromEntries((await svc.statuses(game.id)).filter((s) => s.productId.startsWith('places-audio-deDE')).map((s) => [s.productId, s.state]))
+    expect(await states()).toEqual({ 'places-audio-deDE': 'up-to-date', 'places-audio-deDE-stimmen': 'up-to-date' })
+    expect(fs.readFileSync(path.join(game.addOnsPath, PACK, 'Sounds', '1.ogg'), 'utf8')).toBe('one')
+    expect(fs.readFileSync(path.join(game.addOnsPath, TEAM, 'Sounds', '1.ogg'), 'utf8')).toBe('stimmen')
+
+    const kept = loadPackState(game, PACK)
+    expect((await waitFor(sent, svc.uninstall(game.id, 'places-audio-deDE-stimmen'))).phase).toBe('done')
+    expect(fs.existsSync(path.join(game.addOnsPath, TEAM))).toBe(false)
+    expect(loadPackState(game, TEAM)).toBeNull()
+    expect(fs.readFileSync(path.join(game.addOnsPath, PACK, 'Sounds', '1.ogg'), 'utf8')).toBe('one')
+    expect(loadPackState(game, PACK)).toEqual(kept)
+    expect(await states()).toEqual({ 'places-audio-deDE': 'up-to-date', 'places-audio-deDE-stimmen': 'not-installed' })
+  })
+
+  it("tells the window of a team's new pack when a refresh of the channel brings one", async () => {
+    const fx = channelFixture(keys, [spec])
+    const s = await serveChannel(fx)
+    server = s
+    const sent: { channel: string; payload: unknown }[] = []
+    const svc = new ManagerService({
+      dataPath: tmpDir(), appVersion: '0.1.0', send: (channel, payload) => sent.push({ channel, payload }),
+      fetchImpl: githubFetch(), autoPaths: [], isRunning: async () => false, packsBaseUrl: s.base, packsPublicKey: keys.publicKey
+    })
+    await svc.refreshChannel()
+    const TEAM = 'SpokenPlacesAudio_jaJP_kotoba'
+    const next = channelFixture(
+      keys,
+      [spec, { packId: TEAM, rev: '20261019T000000Z', files: { [`${TEAM}.toc`]: 'toc' }, team: { slug: 'kotoba', name: 'Kotoba', official: false } }],
+      { generatedAt: '2026-10-19T00:00:00.000Z', languages: { jaJP: { code: 'jaJP', name: 'Japanese', native: '日本語' } } }
+    )
+    fx.objects = next.objects
+    await svc.refreshChannel()
+    const told = sent.filter((e) => e.channel === CHANNELS.catalogChanged).at(-1)?.payload as CatalogUpdate
+    expect(told.products.find((p) => p.id === 'places-audio-jaJP-kotoba')).toMatchObject({ folders: [TEAM], team: { name: 'Kotoba' } })
+    expect(told.catalog.releases['places-audio-jaJP-kotoba']?.[0]?.tag).toBe('channel/20261019T000000Z')
+    expect(told.languages.at(-1)).toEqual({ code: 'jaJP', name: '日本語' })
   })
 
   it('offers, installs and removes a channel pack', async () => {
