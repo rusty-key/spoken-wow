@@ -1,9 +1,8 @@
 /*
  * The front page.
  *
- * Every class starts with `bn-` and every token hangs off `.bn`, so nothing here reaches the
- * explorers. The tokens, buttons and top bar live in brand.css, which the site header shares. The colours are the Spoken Manager window's own (sampled from the Battle.net desktop
- * app), so the page and the app read as one product.
+ * The palette matches the Spoken Manager window. The tokens, buttons and top bar live in
+ * brand.css, which the site header shares.
  *
  * SPACING IS ON A 4px GRID. Every margin, padding, gap, width and height is a multiple of 4. The
  * exceptions are the drawn Manager window, which copies the app to the pixel (its type sizes

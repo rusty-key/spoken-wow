@@ -107,23 +107,31 @@ export default function UserMenu() {
   const grants = useGrants();
   const [pendingPacks] = usePendingPacks();
   const lang = useLang();
-  // Asked once for both switches, the row's and the burger's.
-  const offered = useOfferedLanguages();
+  // Asked once for both switches, the row's and the burger's, and again when the session changes.
+  const { offered, retry: retryLanguages } = useOfferedLanguages(
+    !isPending,
+    `${session?.user.id ?? ""}:${session?.user.role ?? ""}`,
+  );
 
   // A menu whose trigger the breakpoint hides would stay open over the page, so crossing it closes
-  // both and, if focus was in a menu, hands it to the trigger that is now shown.
+  // both. Focus on a header control the new layout hides moves to one it shows; focus in the page
+  // stays where it is.
   const crossed = useRef(false);
   useEffect(() => {
     const narrow = window.matchMedia(NARROW);
     const onChange = () => {
-      const inMenu = document.activeElement?.closest(".sn-pop");
-      crossed.current = Boolean(inMenu);
+      const inMenu = Boolean(document.activeElement?.closest(".sn-pop"));
+      const inHeader = inMenu || Boolean(document.activeElement?.closest(".sn"));
+      crossed.current = inMenu;
       setOpen(false);
       setBurger(false);
-      if (inMenu) {
-        requestAnimationFrame(() =>
-          document.querySelector<HTMLElement>(narrow.matches ? ".sn-burger" : ".sn .bn-links a")?.focus(),
-        );
+      if (inHeader) {
+        requestAnimationFrame(() => {
+          // A closing menu is still on screen here, so focus in one always moves.
+          const now = document.activeElement as HTMLElement | null;
+          if (!inMenu && now && now !== document.body && now.checkVisibility()) return;
+          document.querySelector<HTMLElement>(narrow.matches ? ".sn-burger" : ".sn .bn-links a")?.focus();
+        });
       }
     };
     narrow.addEventListener("change", onChange);
@@ -245,7 +253,13 @@ export default function UserMenu() {
           </Popover>
         )}
 
-        <Popover open={burger} onOpenChange={setBurger}>
+        <Popover
+          open={burger}
+          onOpenChange={(next) => {
+            setBurger(next);
+            if (next) retryLanguages();
+          }}
+        >
           <PopoverTrigger asChild>
             <button type="button" className="sn-burger" aria-label="Menu">
               <Menu size={20} aria-hidden />

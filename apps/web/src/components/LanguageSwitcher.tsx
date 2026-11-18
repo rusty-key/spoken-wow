@@ -1,7 +1,7 @@
 "use client";
 
 import { usePathname } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 
 import { Refreshing } from "@/components/Loading";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -13,25 +13,41 @@ import { usePendingPush } from "./usePendingPush";
 export type Offered = { code: Lang; name: string; enabled: boolean };
 
 /**
- * The languages the switch offers, asked of the API once per caller. The site header holds two
- * switches (its row and its burger) and asks once for both; `enabled` false skips the request.
+ * The languages the switch offers, asked of the API. The site header holds two switches (its row
+ * and its burger) and asks once for both. The answer depends on who is signed in (an admin sees
+ * languages that are off), so a new `scope` asks again; `retry` asks again after a failed request.
+ * `enabled` false skips the request.
  */
-export function useOfferedLanguages(enabled = true): Offered[] {
+export function useOfferedLanguages(enabled = true, scope = ""): { offered: Offered[]; retry: () => void } {
   const [offered, setOffered] = useState<Offered[]>([]);
+  const [failed, setFailed] = useState(false);
+  const [attempt, setAttempt] = useState(0);
   useEffect(() => {
     if (!enabled) return;
     let live = true;
+    // A list answered for another session must not be offered to this one, not even for a moment.
+    setOffered([]);
     fetch("/api/languages")
-      .then((response) => (response.ok ? response.json() : { languages: [] }))
-      .then((body: { languages: Offered[] }) => {
-        if (live) setOffered(body.languages);
+      .then((response) => {
+        if (!response.ok) throw new Error(String(response.status));
+        return response.json();
       })
-      .catch(() => {});
+      .then((body: { languages: Offered[] }) => {
+        if (!live) return;
+        setOffered(body.languages);
+        setFailed(false);
+      })
+      .catch(() => {
+        if (live) setFailed(true);
+      });
     return () => {
       live = false;
     };
-  }, [enabled]);
-  return offered;
+  }, [enabled, scope, attempt]);
+  const retry = useCallback(() => {
+    if (failed) setAttempt((n) => n + 1);
+  }, [failed]);
+  return { offered, retry };
 }
 
 /**
@@ -53,7 +69,7 @@ export default function LanguageSwitcher({ offered: given }: { offered?: Offered
   // language, and without this it snapped back to the old one for as long as the new page
   // took to render, which read as a switch that had refused.
   const [chosen, setChosen] = useState<string>(lang);
-  const own = useOfferedLanguages(given === undefined);
+  const { offered: own } = useOfferedLanguages(given === undefined);
   const offered = given ?? own;
 
   if (offered.length < 2) return null;

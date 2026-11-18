@@ -1,9 +1,6 @@
 /*
- * What the front page and the site header share: the palette, the buttons and the top bar.
- *
- * The palette is the Spoken Manager window's own (see landing.css). `.bn` is the front page and
- * `.bn-theme` anything else drawn in it: the site header and its menus, which are portalled out of
- * the header and so carry the class themselves.
+ * The palette, buttons and top bar the front page (`.bn`) and the site header (`.bn-theme`) share.
+ * The Profile and Menu popovers carry `.bn-theme` because they render outside the header.
  */
 
 .bn,
