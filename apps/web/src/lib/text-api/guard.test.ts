@@ -8,9 +8,10 @@ import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vites
 
 import { closeDb } from "@/lib/db";
 import type { Grant } from "@/lib/permissions";
+import { actingTeams } from "@/lib/teams/acting";
 import { asSystem } from "@/lib/teams/testing";
 
-const viewer = vi.hoisted(() => ({ grants: [] as Grant[] }));
+const viewer = vi.hoisted(() => ({ grants: [] as Grant[], teamGrants: {} as Record<string, Grant[]> }));
 
 vi.mock("@/lib/grants/store", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@/lib/grants/store")>()),
@@ -18,6 +19,8 @@ vi.mock("@/lib/grants/store", async (importOriginal) => ({
     role: session.user.role,
     grants: viewer.grants,
   }),
+  grantsInTeam: async (_userId: string, _lang: string, team: string | null) =>
+    team === null ? viewer.grants.filter((grant) => grant.capability === "text") : (viewer.teamGrants[team] ?? viewer.grants),
 }));
 
 const acting = vi.hoisted(() => ({
@@ -29,9 +32,9 @@ const acting = vi.hoisted(() => ({
 
 vi.mock("@/lib/teams/acting", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@/lib/teams/acting")>()),
-  teamIn: async () => {
+  memberTeams: async () => {
     acting.reads += 1;
-    return acting.team;
+    return new Map(acting.team ? [["deDE", acting.team]] : []);
   },
 }));
 vi.mock("@/lib/teams/store", async (importOriginal) => ({
@@ -78,6 +81,7 @@ beforeEach(() => {
   acting.second = new Set();
   acting.reads = 0;
   viewer.grants = [{ lang: "deDE", capability: "text" }];
+  viewer.teamGrants = {};
 });
 
 afterAll(async () => {
@@ -294,6 +298,23 @@ describe("a second team's owner", () => {
 
     const passed = await withToken(request(`Bearer ${token}`), { need: "read" }, async () => new Response("ran"));
     expect(await passed.text()).toBe("ran");
+  });
+
+  it("counts only the grants of the team it acts as, and works in the team it read once", async () => {
+    acting.team = "team-a";
+    viewer.grants = [
+      { lang: "deDE", capability: "text" },
+      { lang: "deDE", capability: "regenerate" },
+    ];
+    viewer.teamGrants = { "team-a": [{ lang: "deDE", capability: "text" }] };
+    const { token } = await make("write");
+    let seen: { layers: Record<Layer, boolean>; team: string | undefined } | null = null;
+    await withToken(request(`Bearer ${token}`, "PATCH"), { need: "write" }, async (context) => {
+      seen = { layers: context.layers, team: (await actingTeams()).get("deDE") };
+      return new Response("ran");
+    });
+    expect(seen).toEqual({ layers: { original: true, override: false }, team: "team-a" });
+    expect(acting.reads).toBe(1);
   });
 
   it("is not refused in the privileged team", async () => {

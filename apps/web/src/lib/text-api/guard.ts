@@ -6,10 +6,11 @@
  */
 import "server-only";
 
-import { viewerOf } from "@/lib/grants/store";
+import type { TeamId } from "@/lib/db";
+import { grantsInTeam, viewerOf } from "@/lib/grants/store";
 import type { Lang } from "@/lib/lang";
 import { can, type Capability, type Viewer } from "@/lib/permissions";
-import { asActor, teamIn } from "@/lib/teams/acting";
+import { asTeams, memberTeams } from "@/lib/teams/acting";
 import { privilegedOf, secondTeamLangs } from "@/lib/teams/store";
 import { findLiveToken } from "@/lib/tokens/store";
 import type { TokenAccess } from "@/lib/tokens/types";
@@ -96,27 +97,43 @@ export async function requireToken(
 
 /**
  * requireToken for a route that works for a second team too. A token has no session, so `work`
- * runs as the token's owner, in asActor where the language has a second team; a language with
- * one team reads no membership.
+ * runs as the token's owner, in the teams its grants were checked in where the language has a
+ * second team; a language with one team reads no membership.
  */
 export async function withToken(
   request: Request,
   options: TokenOptions,
   work: (context: TokenContext) => Promise<Response>,
 ): Promise<Response> {
-  const { context, denied } = await checkToken(request, options, true);
+  const { context, denied, teams } = await checkToken(request, options, true);
   if (denied) return denied;
-  if (!(await secondTeamLangs()).has(context.lang)) return work(context);
-  return asActor(context.userId, () => work(context));
+  return teams ? asTeams(teams, () => work(context)) : work(context);
 }
 
 type TokenOptions = { need?: TokenNeed; also?: Capability; noQuery?: true | string };
+
+/**
+ * The owner where the language has a second team, with only the grants of the team they act as.
+ * Membership is read first, so a grant from another team, or from one left between the two reads,
+ * never backs a write that lands in this one.
+ */
+async function ownerInTeam(
+  userId: string,
+  role: string | null,
+  lang: Lang,
+): Promise<{ viewer: Viewer; teams: Map<string, TeamId> }> {
+  const teams = await memberTeams(userId);
+  return { viewer: { role, grants: await grantsInTeam(userId, lang, teams.get(lang) ?? null) }, teams };
+}
 
 async function checkToken(
   request: Request,
   options: TokenOptions,
   teams: boolean,
-): Promise<{ context: TokenContext; denied: null } | { context: null; denied: Response }> {
+): Promise<
+  | { context: TokenContext; denied: null; teams?: Map<string, TeamId> }
+  | { context: null; denied: Response; teams?: undefined }
+> {
   const need = options.need ?? "read";
   const denied = (status: number, error: string) => ({
     context: null,
@@ -127,7 +144,11 @@ async function checkToken(
   const token = raw ? await findLiveToken(raw) : null;
   if (!token) return denied(401, "a valid API token is required");
 
-  const viewer = await viewerOf({ user: { id: token.userId, role: token.role } });
+  // A language with one team reads no membership.
+  const owner = (await secondTeamLangs()).has(token.lang)
+    ? await ownerInTeam(token.userId, token.role, token.lang)
+    : { viewer: await viewerOf({ user: { id: token.userId, role: token.role } }), teams: undefined };
+  const { viewer } = owner;
   const hasText = token.access !== "none";
   const backed = backedScopes(viewer, token.lang, token.access, token.generate);
   const { text: textOk, generate: generateOk } = backed;
@@ -152,9 +173,8 @@ async function checkToken(
   if (options.also && !can(viewer, options.also, token.lang)) {
     return denied(403, `this token's owner does not hold ${options.also} in ${token.lang}`);
   }
-  // A language with one team reads no membership.
-  if (!teams && (await secondTeamLangs()).has(token.lang)) {
-    const team = await teamIn(token.userId, token.lang);
+  if (!teams && owner.teams) {
+    const team = owner.teams.get(token.lang);
     if (team && team !== (await privilegedOf(token.lang))) {
       return denied(403, "this route does not work for a second team yet");
     }
@@ -175,5 +195,6 @@ async function checkToken(
       layers: textOk ? backed.layers : { original: false, override: false },
     },
     denied: null,
+    teams: owner.teams,
   };
 }
