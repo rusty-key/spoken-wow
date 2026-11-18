@@ -15,6 +15,7 @@ function dateInDays(days: number): string {
   return new Date(Date.now() + days * DAY_MS).toISOString().slice(0, 10);
 }
 
+/** `text`: the person holds `text` or `regenerate` there, either of which backs text access. */
 export type TokenLang = { lang: Lang; text: boolean; generate: boolean };
 
 const SELECT = "border-input bg-background h-9 rounded-md border px-2 text-sm";
@@ -75,10 +76,12 @@ export default function ApiTokenSection({ langs, initial }: { langs: TokenLang[]
       <h2 className="mb-1 font-medium">API tokens</h2>
       <p className="text-muted-foreground mb-4 text-sm">
         Lets a script or an agent read or change text in one language on your behalf. Point it at{" "}
-        <code>/api/v1</code>. Writes go live at once, under your name. A token stops working at its
-        expiry, when revoked, or when you stop being a text maintainer in its language. A generate
-        token also queues audio, which spends your own ElevenLabs or fish.audio key, and stops
-        working when you lose the right to regenerate in its language.
+        <code>/api/v1</code>. Writes go live at once, under your name. If you are a text maintainer
+        in the token's language, it writes the original text; if not, it writes only your team's
+        overrides. A token stops working at its expiry, when revoked, or when you hold neither the
+        text grant nor the right to regenerate in its language. A generate token also queues audio,
+        which spends your own ElevenLabs or fish.audio key, and stops working when you lose the
+        right to regenerate in its language.
       </p>
 
       {error && (

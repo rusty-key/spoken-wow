@@ -88,9 +88,11 @@ describe("GET /api/v1", () => {
       label: "both",
       expiresAt: new Date(Date.now() + 86_400_000),
     });
+    owner.grants = [{ lang: "koKR", capability: "text" }];
+    expect(await (await get(both)).json()).toMatchObject({ token: { access: "read", generate: false } });
     owner.grants = [{ lang: "koKR", capability: "regenerate" }];
     try {
-      expect(await (await get(both)).json()).toMatchObject({ token: { access: "none", generate: true } });
+      expect(await (await get(both)).json()).toMatchObject({ token: { access: "read", generate: true } });
     } finally {
       owner.grants = [{ lang: "koKR", capability: "text" }];
     }
