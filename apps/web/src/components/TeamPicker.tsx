@@ -1,7 +1,7 @@
 "use client";
 
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { useId, useState } from "react";
+import { createContext, useContext, useId, useState } from "react";
 
 import { useLang } from "@/components/LangProvider";
 import { useSession } from "@/lib/auth-client";
@@ -9,6 +9,17 @@ import { isAdmin } from "@/lib/permissions";
 import { pickedHref } from "@/lib/teams/view";
 import type { TeamChoice, ViewedTeam } from "@/lib/teams/viewing";
 import { cn } from "@/lib/utils";
+
+/**
+ * True below the site owner's acting banner, whose picker is then the page's one: a second
+ * select could show another value.
+ */
+const BannerPicker = createContext(false);
+
+/** For the layout, a server component, which cannot render a context's provider itself. */
+export function BannerShown({ shown, children }: { shown: boolean; children: React.ReactNode }) {
+  return <BannerPicker value={shown}>{children}</BannerPicker>;
+}
 
 /**
  * Which team's takes the explorer plays, where the language has a second team, and a note
@@ -36,7 +47,8 @@ export default function TeamPicker({
   const params = useSearchParams();
   const { data: session } = useSession();
   const [error, setError] = useState<string | null>(null);
-  if (teams.length < 2 || viewed === null) return null;
+  const bannerShows = useContext(BannerPicker);
+  if (bannerShows || teams.length < 2 || viewed === null) return null;
   const ordered = [...teams].sort((a, b) => Number(b.privileged) - Number(a.privileged));
 
   async function pick(slug: string) {

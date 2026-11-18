@@ -4,7 +4,7 @@ import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vites
 import { closeDb } from "@/lib/db";
 import type { Lang } from "@/lib/lang";
 import { ACTING_COOKIE, parseChoice } from "@/lib/teams/acting-cookie";
-import { forgetTeams, type TeamId } from "@/lib/teams/store";
+import { forgetTeams, ownerOrAll, type TeamId } from "@/lib/teams/store";
 import { addMember, asSystem, dropLang, dropTeam, newTeamIn, systemRows, testUser, uniqueLang } from "@/lib/teams/testing";
 
 const mocks = vi.hoisted(() => ({
@@ -61,8 +61,14 @@ afterAll(async () => {
   await closeDb();
 });
 
-const post = (body: unknown) =>
-  POST(new Request("http://x/api/teams/acting", { method: "POST", body: JSON.stringify(body) }));
+const post = (body: unknown, type = "application/json") =>
+  POST(
+    new Request("http://x/api/teams/acting", {
+      method: "POST",
+      headers: { "content-type": type },
+      body: JSON.stringify(body),
+    }),
+  );
 
 /** The choice the response's Set-Cookie keeps; null when it sets none. */
 function kept(response: Response): Record<string, string> | null {
@@ -112,11 +118,19 @@ describe("POST /api/teams/acting", () => {
     expect(response.headers.get("set-cookie")).toMatch(/Max-Age=0/);
   });
 
-  it("answers the site owner's own team as home when the entry clears", async () => {
+  it("keeps the main team for a site owner in a second team, so the choice wins", async () => {
     await addMember(b, owner.id, lang, "regenerate");
     try {
       const response = await post({ lang, team: slugs.a });
-      expect(await response.json()).toEqual({ team: null, home: slugs.b });
+      expect(await response.json()).toEqual({ team: slugs.a, home: slugs.a });
+      const choice = kept(response)!;
+      expect(choice).toEqual({ [lang]: slugs.a });
+      mocks.cookie = encodeURIComponent(JSON.stringify(choice));
+      expect(await ownerOrAll(lang)).toBe(a);
+
+      const back = await post({ lang, team: slugs.b });
+      expect(await back.json()).toEqual({ team: null, home: slugs.b });
+      expect(back.headers.get("set-cookie")).toMatch(/Max-Age=0/);
     } finally {
       await asSystem.query(`delete from "team_member" where "userId" = $1`, [owner.id]);
     }
@@ -126,6 +140,12 @@ describe("POST /api/teams/acting", () => {
     const response = await post({ lang, team: slugs.c });
     expect(response.status).toBe(404);
     expect(await response.json()).toEqual({ error: `no team ${slugs.c} voices ${lang}` });
+    expect(response.headers.get("set-cookie")).toBeNull();
+  });
+
+  it("415s a body that is not JSON, setting nothing", async () => {
+    const response = await post({ lang, team: slugs.b }, "text/plain");
+    expect(response.status).toBe(415);
     expect(response.headers.get("set-cookie")).toBeNull();
   });
 

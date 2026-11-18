@@ -4,7 +4,7 @@ import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, expect, test, vi } from "vitest";
 
 import { LangProvider } from "./LangProvider";
-import TeamPicker from "./TeamPicker";
+import TeamPicker, { BannerShown } from "./TeamPicker";
 
 const navigation = vi.hoisted(() => ({
   push: vi.fn(),
@@ -108,4 +108,18 @@ test("a refused save navigates nowhere and says why", async () => {
   await userEvent.setup().selectOptions(screen.getByLabelText("Team"), "second-crew");
   expect(await screen.findByText("not allowed")).not.toBeNull();
   expect(navigation.push).not.toHaveBeenCalled();
+});
+
+test("below the site owner's banner the explorer's picker hides, so one select shows", () => {
+  const { container } = render(
+    <LangProvider lang="deDE">
+      <BannerShown shown>
+        <TeamPicker teams={[main, second]} viewed={secondOwn} home={second.slug} />
+      </BannerShown>
+    </LangProvider>,
+  );
+  expect(container.innerHTML).toBe("");
+  cleanup();
+  picker({ viewed: secondOwn, home: second.slug });
+  expect(screen.getByLabelText("Team")).not.toBeNull();
 });

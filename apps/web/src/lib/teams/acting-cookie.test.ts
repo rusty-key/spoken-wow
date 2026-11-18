@@ -20,10 +20,11 @@ const mocks = vi.hoisted(() => ({
   cookie: undefined as string | undefined,
   session: null as { user: { id: string; role: string | null } } | null,
   cookies: vi.fn(),
+  currentSession: vi.fn(),
 }));
 
 vi.mock("next/headers", () => ({ headers: async () => new Headers(), cookies: mocks.cookies }));
-vi.mock("@/lib/session", () => ({ currentSession: async () => mocks.session }));
+vi.mock("@/lib/session", () => ({ currentSession: mocks.currentSession }));
 vi.mock("./store", async (importOriginal) => {
   const real = await importOriginal<typeof import("./store")>();
   return { ...real, secondTeamLangs: vi.fn(real.secondTeamLangs) };
@@ -58,6 +59,8 @@ beforeEach(() => {
   mocks.cookie = undefined;
   mocks.session = null;
   mocks.cookies.mockReset();
+  mocks.currentSession.mockReset();
+  mocks.currentSession.mockImplementation(async () => mocks.session);
   mocks.cookies.mockImplementation(async () => ({
     get: (name: string) => (name === ACTING_COOKIE && mocks.cookie !== undefined ? { name, value: mocks.cookie } : undefined),
   }));
@@ -188,5 +191,6 @@ describe("a token", () => {
     expect(response.status).toBe(200);
     expect(acted).toBe(a);
     expect(mocks.cookies).not.toHaveBeenCalled();
+    expect(mocks.currentSession).not.toHaveBeenCalled();
   });
 });

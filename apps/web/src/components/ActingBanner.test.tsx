@@ -31,7 +31,7 @@ vi.mock("next/navigation", () => ({
 }));
 vi.mock("@/lib/auth-client", () => ({ useSession: () => ({ data: null }) }));
 
-import ActingBanner from "./ActingBanner";
+import ActingBanner, { actingIn } from "./ActingBanner";
 
 let lang: Lang;
 let single: Lang;
@@ -39,15 +39,15 @@ let a: TeamId;
 let b: TeamId;
 let c: TeamId;
 let slugs: Record<"a" | "b" | "c", string>;
-let names: Record<"b", string>;
+let names: Record<"a" | "b", string>;
 let owner: Awaited<ReturnType<typeof testUser>>;
 
 const choose = (choice: Record<string, string>) => {
   mocks.cookie = encodeURIComponent(JSON.stringify(choice));
 };
 const banner = async (at: Lang) => {
-  const element = await ActingBanner({ lang: at });
-  return element === null ? null : renderToStaticMarkup(element);
+  const acting = await actingIn(at);
+  return acting === null ? null : renderToStaticMarkup(<ActingBanner {...acting} />);
 };
 
 beforeAll(async () => {
@@ -61,7 +61,7 @@ beforeAll(async () => {
     (await systemRows<{ slug: string; name: string }>(`select "slug", "name" from "team" where "id" = $1`, [team]))[0];
   const [ra, rb, rc] = [await row(a), await row(b), await row(c)];
   slugs = { a: ra.slug, b: rb.slug, c: rc.slug };
-  names = { b: rb.name };
+  names = { a: ra.name, b: rb.name };
 });
 
 beforeEach(() => {
@@ -94,9 +94,12 @@ describe("ActingBanner", () => {
     expect(await banner(lang)).toBeNull();
   });
 
-  it("shows nothing for the main team, another language's entry or a team of another language", async () => {
+  it("names the main team when the cookie keeps it, which it does only where that changes who acts", async () => {
     choose({ [lang]: slugs.a });
-    expect(await banner(lang)).toBeNull();
+    expect(await banner(lang)).toContain(`Working as ${names.a}`);
+  });
+
+  it("shows nothing for another language's entry or a team of another language", async () => {
     choose({ [single]: slugs.c });
     expect(await banner(lang)).toBeNull();
     choose({ [lang]: slugs.c });

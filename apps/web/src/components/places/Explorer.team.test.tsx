@@ -7,6 +7,8 @@ import { LangProvider } from "@/components/LangProvider";
 import type { ResultLine, SearchResult } from "@/lib/places/search";
 import type { TeamChoice, ViewedTeam } from "@/lib/teams/viewing";
 
+import { BannerShown } from "@/components/TeamPicker";
+
 import { Explorer } from "./Explorer";
 import { placesSection } from "./sections";
 
@@ -170,4 +172,16 @@ test("picking a team names it in the URL, and picking the default drops it, keep
   explorer(mainView);
   await user.selectOptions(await screen.findByLabelText("Team"), "second-crew");
   expect(navigation.push).toHaveBeenLastCalledWith("/deDE/places?q=town", { scroll: false });
+});
+
+test("below a site owner's acting banner the explorer shows no picker of its own", async () => {
+  render(
+    <LangProvider lang="deDE">
+      <BannerShown shown>
+        <Explorer section={placesSection()} teams={[main, second]} viewed={ownView} home={second.slug} />
+      </BannerShown>
+    </LangProvider>,
+  );
+  await screen.findByText("A town at a crossroads.");
+  expect(screen.queryByLabelText("Team")).toBeNull();
 });
