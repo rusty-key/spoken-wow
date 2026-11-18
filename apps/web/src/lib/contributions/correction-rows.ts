@@ -58,7 +58,9 @@ export async function correctionRowsFor({
       before: readable(line.text),
     }));
     const corpusText = wordings.map((line) => line.before).join("\n");
-    if (!matchesSearch({ text: `${row.text ?? ""}\n${corpusText}`, npc: npc ?? undefined, quest }, q, searchIn)) return [];
+    // Readables have no NPC or quest, so a number there is text to find, not an id.
+    const searchedIn = source === "readables" ? "text" : searchIn;
+    if (!matchesSearch({ text: `${row.text ?? ""}\n${corpusText}`, npc: npc ?? undefined, quest }, q, searchedIn)) return [];
     return [
       {
         id: row.id,

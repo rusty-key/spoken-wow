@@ -16,7 +16,7 @@
  * a client component's props are readable in the page's payload.
  */
 import Link from "next/link";
-import { useCallback, useState } from "react";
+import { useCallback, useRef, useState } from "react";
 
 import { useLang } from "@/components/LangProvider";
 import { STAGE_LABELS } from "@/components/contribution-chips";
@@ -79,6 +79,9 @@ type Extra = Accept | { reason: string };
 
 export type CorrectionSource = "quests" | "readables";
 
+/** How many corrections render at first, and how many more each "Show more" adds. */
+const CORRECTIONS_SHOWN = 25;
+
 export default function CorrectionTable({
   source,
   initial,
@@ -89,12 +92,18 @@ export default function CorrectionTable({
 }) {
   const when = useLocalDates();
   const lang = useLang();
-  /** Statuses changed here since the page loaded, shown without waiting for a reload. */
-  const [resolved, setResolved] = useState<Record<number, ContributionStatus>>({});
-  const [busy, setBusy] = useState<number | null>(null);
-  /** The row whose drop reasons are open, and the reasons given this session. */
+  /**
+   * Statuses changed here, with the server's status they were changed from: once a refresh brings
+   * another status for the row (another tab reopened it), the server's wins.
+   */
+  const [resolved, setResolved] = useState<Record<number, { next: ContributionStatus; from: ContributionStatus }>>({});
+  /** Rows with a request in flight: each stays locked until its own request answers. */
+  const [busy, setBusy] = useState<ReadonlySet<number>>(new Set());
+  const inFlight = useRef(new Set<number>());
   const [droppingId, setDroppingId] = useState<number | null>(null);
   const [reasonsOf, setReasonsOf] = useState<Record<number, string>>({});
+  /** A long backlog renders a page at a time: every row diffs both texts. */
+  const [limit, setLimit] = useState(CORRECTIONS_SHOWN);
   const [refusals, setRefusals] = useState<Record<number, string>>({});
   /** The wording each row is set against, where a moderator picked one other than the closest. */
   const [picked, setPicked] = useState<Record<number, number>>({});
@@ -129,39 +138,52 @@ export default function CorrectionTable({
       const url = next === "accepted" ? "/api/contributions/correction" : "/api/contributions/resolve";
       const body = await post(url, id, { status: next, ...as });
       if (!body) return false;
-      setResolved((current) => ({ ...current, [id]: next }));
+      const from = initial.find((row) => row.id === id)?.status ?? "new";
+      setResolved((current) => ({ ...current, [id]: { next, from } }));
       // The text as the server saved it, normalised, rather than as typed.
       const saved = (body.contribution as { text?: unknown } | undefined)?.text;
       if (as && "text" in as && as.text !== undefined && typeof saved === "string") setTexts((current) => ({ ...current, [id]: saved }));
       setDrafts(({ [id]: _, ...rest }) => rest);
       return true;
     },
-    [post],
+    [post, initial],
   );
 
+  /** Runs `work` for a row unless one of its requests is already in flight. */
+  const held = useCallback(async <T,>(id: number, work: () => Promise<T>): Promise<T | undefined> => {
+    if (inFlight.current.has(id)) return undefined;
+    inFlight.current.add(id);
+    setBusy(new Set(inFlight.current));
+    try {
+      return await work();
+    } finally {
+      inFlight.current.delete(id);
+      setBusy(new Set(inFlight.current));
+    }
+  }, []);
+
   const resolve = useCallback(
-    async (id: number, next: ContributionStatus, as?: Extra) => {
-      setBusy(id);
-      await send(id, next, as);
-      setBusy(null);
+    async (id: number, next: ContributionStatus, as?: Extra): Promise<boolean> => {
+      const ok = (await held(id, () => send(id, next, as))) ?? false;
+      if (ok && next === "accepted") setDroppingId((open) => (open === id ? null : open));
+      return ok;
     },
-    [send],
+    [send, held],
   );
 
   const markClassWord = useCallback(
     async (id: number, questId: number, kept: boolean) => {
-      setBusy(id);
-      const body = await post("/api/contributions/class-word", id, { kept });
-      if (body) {
+      await held(id, async () => {
+        const body = await post("/api/contributions/class-word", id, { kept });
+        if (!body) return;
         const rewritten = body.texts as Record<number, string>;
         setClassWords((current) => ({ ...current, [questId]: kept }));
         setTexts((current) => ({ ...current, ...rewritten }));
         // An open edit of a rewritten row holds the slot just put back, and Accept would send it.
         setDrafts((current) => Object.fromEntries(Object.entries(current).filter(([open]) => !(open in rewritten))));
-      }
-      setBusy(null);
+      });
     },
-    [post],
+    [post, held],
   );
 
   /** The player's text as it now stands, or as typed where the row is open for editing. */
@@ -181,16 +203,17 @@ export default function CorrectionTable({
   };
   return (
     <div className="bs-rows">
-      {initial.map((row) => {
-        const current = resolved[row.id] ?? row.status;
+      {initial.slice(0, limit).map((row) => {
+        const change = resolved[row.id];
+        const current = change && change.from === row.status ? change.next : row.status;
         const chosen = chosenOf(row);
         const wording = row.wordings[chosen];
         const after = afterOf(row);
         const diff = wordDiff(wording.before, after);
         const editing = drafts[row.id] !== undefined;
         const classWord = classWordOf(row);
-        const hold = busy === row.id;
-        const dropping = droppingId === row.id;
+        const hold = busy.has(row.id);
+        const dropping = droppingId === row.id && current === "new";
         return (
           <div key={row.id} id={`contribution-${row.id}`} className="bs-review-row" data-moved={current !== row.status ? "" : undefined}>
             <div className="bs-who">
@@ -342,9 +365,11 @@ export default function CorrectionTable({
                 reasons={correctionDropReasons(langName(lang))}
                 disabled={hold}
                 onPick={(why) => {
-                  setDroppingId(null);
-                  setReasonsOf((all) => ({ ...all, [row.id]: why }));
-                  void resolve(row.id, "rejected", { reason: why });
+                  void resolve(row.id, "rejected", { reason: why }).then((ok) => {
+                    if (!ok) return;
+                    setDroppingId(null);
+                    setReasonsOf((all) => ({ ...all, [row.id]: why }));
+                  });
                 }}
                 onCancel={() => setDroppingId(null)}
               />
@@ -352,6 +377,13 @@ export default function CorrectionTable({
           </div>
         );
       })}
+      {initial.length > limit ? (
+        <div className="px-4 py-3">
+          <button type="button" className="bs-btn bs-btn-text" onClick={() => setLimit((shown) => shown + CORRECTIONS_SHOWN)}>
+            Show {Math.min(CORRECTIONS_SHOWN, initial.length - limit)} more of {initial.length - limit}
+          </button>
+        </div>
+      ) : null}
     </div>
   );
 }

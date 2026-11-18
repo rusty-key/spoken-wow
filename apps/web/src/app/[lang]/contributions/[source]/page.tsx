@@ -496,7 +496,11 @@ export default async function Page({
                 icon={<ChangesIcon />}
                 title="Changes to lines we already have"
                 count={corrections.length}
-                description="A player's client showed different words than ours. Replace ours if theirs fixes a mistake; keep both if it is just another way to say it."
+                description={
+                  source === "readables"
+                    ? "A player's client showed different words than ours. Replace ours if theirs fixes a mistake; drop it if ours is right."
+                    : "A player's client showed different words than ours. Replace ours if theirs fixes a mistake; keep both if it is just another way to say it."
+                }
               >
                 <div>
                   <CorrectionTable source={source} initial={corrections} />
