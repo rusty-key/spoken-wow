@@ -48,6 +48,8 @@ export function seal(secret: string, boundTo: string): string {
 export function unseal(sealed: string, boundTo: string): string {
   const [version, iv, tag, body] = sealed.split(":");
   if (version !== VERSION || !iv || !tag || body === undefined) throw new SealError("not a sealed secret");
+  // A damaged IV or tag would make the cipher throw its own error rather than refuse.
+  if (Buffer.from(iv, "base64").byteLength !== 12 || Buffer.from(tag, "base64").byteLength !== 16) throw new SealError("not a sealed secret");
   // A tag shorter than GCM's full 16 bytes would be easier to forge: refuse anything else.
   const decipher = createDecipheriv("aes-256-gcm", sealingKey(), Buffer.from(iv, "base64"), { authTagLength: 16 });
   decipher.setAAD(Buffer.from(boundTo));

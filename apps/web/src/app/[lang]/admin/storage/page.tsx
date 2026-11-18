@@ -14,8 +14,11 @@ export const metadata: Metadata = { title: "Storage · Spoken" };
 
 export const dynamic = "force-dynamic";
 
+/** A repeated query parameter arrives as an array; only its first value counts. */
+const first = (value: string | string[] | undefined) => (Array.isArray(value) ? value[0] : value);
+
 /** A team's own buckets. The language in `?lang=` names the acting team; only languages with one are offered. */
-export default async function Page({ searchParams }: { searchParams: Promise<{ lang?: string; cloudflare?: string; cloudflare_error?: string }> }) {
+export default async function Page({ searchParams }: { searchParams: Promise<{ lang?: string; cloudflare?: string | string[]; cloudflare_error?: string | string[] }> }) {
   const session = await currentSession();
   const viewer = await viewerOf(session);
   if (!session || !viewer) notFound();
@@ -41,7 +44,7 @@ export default async function Page({ searchParams }: { searchParams: Promise<{ l
           key={lang}
           lang={lang}
           initial={await storageView(lang)}
-          cloudflare={{ connected: cloudflare === "connected", error: cloudflareError?.slice(0, 300) ?? null }}
+          cloudflare={{ connected: first(cloudflare) === "connected", error: first(cloudflareError)?.slice(0, 300) ?? null }}
         />
       </Contained>
     </main>

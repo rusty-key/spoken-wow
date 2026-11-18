@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import { seal, unseal } from "./seal";
+import { seal, SealError, unseal } from "./seal";
 
 const KEY = Buffer.alloc(32, 7).toString("base64");
 
@@ -26,7 +26,7 @@ describe("sealing a storage secret", () => {
     vi.stubEnv("SPOKEN_STORAGE_KEY", KEY);
     const [version, iv, tag, body] = seal("s3cret", "a").split(":");
     const short = Buffer.from(tag, "base64").subarray(0, 4).toString("base64");
-    expect(() => unseal([version, iv, short, body].join(":"), "a")).toThrow();
+    expect(() => unseal([version, iv, short, body].join(":"), "a")).toThrow(SealError);
   });
 
   it("does not open under another key", () => {

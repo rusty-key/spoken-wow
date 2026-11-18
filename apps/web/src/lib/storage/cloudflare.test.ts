@@ -3,7 +3,7 @@ import { createHash } from "node:crypto";
 
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 
-import { authorization, cookieFor, ensureBucket, exchangeCode, mintKey, pendingOf, suggestedBucket, type Pending } from "./cloudflare";
+import { accountsOf, authorization, CloudflareError, cookieFor, ensureBucket, exchangeCode, mintKey, pendingOf, suggestedBucket, type Pending } from "./cloudflare";
 
 const ACCOUNT = "0123456789abcdef0123456789abcdef";
 
@@ -82,6 +82,34 @@ describe("mintKey", () => {
   it("stops when the account offers no bucket-scoped permission", async () => {
     const cf = cloudflare({ groups: [] });
     await expect(mintKey("t", { accountId: ACCOUNT, bucket: "spoken-frfr", keyName: "k" }, cf.impl)).rejects.toThrow("no \"Workers R2 Storage Bucket Item Write\"");
+  });
+});
+
+describe("accountsOf", () => {
+  it("reads every page of accounts", async () => {
+    const pages: number[] = [];
+    const impl = (async (input: string) => {
+      const page = Number(new URL(input).searchParams.get("page"));
+      pages.push(page);
+      const count = page === 1 ? 50 : 3;
+      const result = Array.from({ length: count }, (_, i) => ({ id: `${page}-${i}`, name: `Account ${page}-${i}`, type: "standard" }));
+      return Response.json({ success: true, errors: [], result });
+    }) as typeof fetch;
+    const accounts = await accountsOf("t", impl);
+    expect(pages).toEqual([1, 2]);
+    expect(accounts).toHaveLength(53);
+    expect(accounts[52]).toEqual({ id: "2-2", name: "Account 2-2" });
+  });
+});
+
+describe("reaching Cloudflare", () => {
+  it("names the step when Cloudflare does not answer at all", async () => {
+    const impl = (async () => {
+      throw new TypeError("fetch failed");
+    }) as typeof fetch;
+    await expect(exchangeCode("c", "v", impl)).rejects.toThrow(CloudflareError);
+    await expect(exchangeCode("c", "v", impl)).rejects.toThrow("Cloudflare did not answer while trying to hand over access (fetch failed): try again.");
+    await expect(accountsOf("t", impl)).rejects.toThrow("while trying to list your accounts");
   });
 });
 

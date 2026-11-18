@@ -378,11 +378,7 @@ function MoveLine({ move, from, to, onStop }: { move: MoveView; from: string; to
   );
 }
 
-/**
- * One click to Cloudflare and back: the site makes the bucket, and its key when the admin granted
- * that, then forgets the grant. Without it the admin makes the key on Cloudflare and pastes it. The
- * grant itself waits in an httpOnly cookie; this only asks which account, which name, and the key.
- */
+/** The Cloudflare grant stays in an httpOnly cookie; this asks only which account, which name, and the key. */
 function CloudflareSetup({
   lang,
   returned,
@@ -412,10 +408,12 @@ function CloudflareSetup({
     window.history.replaceState(null, "", here);
   }, [returned]);
 
+  // Asked on every load, not only on the way back from Cloudflare: a reload must not lose a grant
+  // still waiting. No grant (409) is the usual state, worth a word only on the way back.
   useEffect(() => {
-    if (!returned.connected) return;
     void (async () => {
       const res = await fetch(url).catch(() => null);
+      if (res?.status === 409 && !returned.connected) return;
       const answer = (await res?.json().catch(() => null)) as
         | { accounts?: CloudflareAccount[]; bucket?: string; mintsKeys?: boolean; error?: string }
         | null;
@@ -446,7 +444,12 @@ function CloudflareSetup({
   };
 
   const cancel = async () => {
-    await call(url, { method: "DELETE" });
+    setWorking(true);
+    setError(null);
+    const answer = await call(url, { method: "DELETE" });
+    setWorking(false);
+    // The form stays while the grant may still be waiting.
+    if (answer.error) return setError(answer.error);
     setAccounts(null);
     setNeedsKey(false);
   };

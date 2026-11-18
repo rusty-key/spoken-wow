@@ -79,6 +79,15 @@ export function authorization(): { url: string; state: string; verifier: string 
 
 type Fetch = typeof fetch;
 
+/** A request to Cloudflare; one that never gets an answer is a CloudflareError naming what it was for. */
+async function reach(fetchImpl: Fetch, doing: string, url: string, init: RequestInit): Promise<Response> {
+  try {
+    return await fetchImpl(url, { ...init, redirect: "manual" });
+  } catch (error) {
+    throw new CloudflareError(`Cloudflare did not answer while trying to ${doing} (${error instanceof Error ? error.message : String(error)}): try again.`);
+  }
+}
+
 const basic = ({ clientId, clientSecret }: Config) =>
   `Basic ${Buffer.from(`${encodeURIComponent(clientId)}:${encodeURIComponent(clientSecret)}`).toString("base64")}`;
 
@@ -95,11 +104,10 @@ export async function exchangeCode(
   fetchImpl: Fetch = fetch,
 ): Promise<{ accessToken: string; expiresIn: number; mintsKeys: boolean }> {
   const conf = required();
-  const res = await fetchImpl(TOKEN, {
+  const res = await reach(fetchImpl, "hand over access", TOKEN, {
     method: "POST",
     headers: { authorization: basic(conf), "content-type": "application/x-www-form-urlencoded" },
     body: new URLSearchParams({ grant_type: "authorization_code", code, redirect_uri: redirectUri(), code_verifier: verifier }),
-    redirect: "manual",
     signal: AbortSignal.timeout(30_000),
   });
   const body = (await res.json().catch(() => null)) as
@@ -141,11 +149,10 @@ async function api<T>(
   path: string,
   { method = "GET", body, missingOk = false, fetchImpl = fetch }: { method?: string; body?: unknown; missingOk?: boolean; fetchImpl?: Fetch } = {},
 ): Promise<T | null> {
-  const res = await fetchImpl(`${API}${path}`, {
+  const res = await reach(fetchImpl, doing, `${API}${path}`, {
     method,
     headers: { authorization: `Bearer ${token}`, ...(body === undefined ? {} : { "content-type": "application/json" }) },
     body: body === undefined ? undefined : JSON.stringify(body),
-    redirect: "manual",
     signal: AbortSignal.timeout(30_000),
   });
   if (missingOk && res.status === 404) {
@@ -163,9 +170,17 @@ async function api<T>(
 
 export type CloudflareAccount = { id: string; name: string };
 
+/** Pages of 50 until a short one; bounded, since the chooser is a select. */
+const ACCOUNT_PAGES = 20;
+
 export async function accountsOf(token: string, fetchImpl: Fetch = fetch): Promise<CloudflareAccount[]> {
-  const rows = (await api<{ id: string; name: string }[]>(token, "list your accounts", "/accounts?per_page=50", { fetchImpl })) ?? [];
-  return rows.map(({ id, name }) => ({ id, name }));
+  const accounts: CloudflareAccount[] = [];
+  for (let page = 1; page <= ACCOUNT_PAGES; page++) {
+    const rows = (await api<{ id: string; name: string }[]>(token, "list your accounts", `/accounts?per_page=50&page=${page}`, { fetchImpl })) ?? [];
+    accounts.push(...rows.map(({ id, name }) => ({ id, name })));
+    if (rows.length < 50) break;
+  }
+  return accounts;
 }
 
 const ACCOUNT_ID = /^[0-9a-f]{32}$/;
@@ -242,13 +257,20 @@ export async function connectCloudflare(
     backendInput({ provider: "r2", label, endpoint: r2Endpoint(accountId), region: "auto", bucket, pathStyle: true, accessKeyId, secretAccessKey }),
     userId,
   );
+  // Saved from here on: a retried POST would make a second key, so nothing after this fails the
+  // request. A test that throws leaves the bucket untested, and its card offers the test again.
   let test: ProbeResult | null = null;
-  for (let attempt = 1; attempt <= tries; attempt++) {
-    test = await testBackend(team, backend.id);
-    if (!test || test.ok || attempt === tries) break;
-    await new Promise((resolve) => setTimeout(resolve, pauseMs));
+  try {
+    for (let attempt = 1; attempt <= tries; attempt++) {
+      test = await testBackend(team, backend.id);
+      if (!test || test.ok || attempt === tries) break;
+      await new Promise((resolve) => setTimeout(resolve, pauseMs));
+    }
+  } catch (error) {
+    console.error(`storage: testing the Cloudflare bucket ${backend.id} after setup failed:`, error);
+    test = null;
   }
-  return { backend: await backendView(team, backend.id), test };
+  return { backend: await backendView(team, backend.id).catch(() => backend), test };
 }
 
 /*

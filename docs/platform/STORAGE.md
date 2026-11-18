@@ -106,11 +106,14 @@ Added 2026-11-18. A one-click alternative to the form for R2, through Cloudflare
 developer since June 2026). `lib/storage/cloudflare.ts` and `/api/storage/cloudflare/`:
 
 1. `start` sends the admin to `dash.cloudflare.com/oauth2/auth` with a state and a PKCE (S256)
-   challenge, both kept in the `spoken_cloudflare` cookie: sealed under `SPOKEN_STORAGE_KEY`, bound
-   to the person, httpOnly, Lax, scoped to `/api/storage/cloudflare`, ten minutes.
+   challenge. The state and the verifier the challenge was made from wait in the `spoken_cloudflare`
+   cookie: sealed under `SPOKEN_STORAGE_KEY`, bound to the person, httpOnly, Lax, scoped to
+   `/api/storage/cloudflare`, ten minutes.
 2. `callback` checks the state and that the person still administers the language, exchanges the
    code (client secret and verifier), and keeps the access token in the same cookie for fifteen
    minutes at most. Every outcome redirects to the Storage page, a refusal in `?cloudflare_error=`.
+   An answer without this connection's state leaves the cookie alone, since any page can link
+   there. The Storage page asks for a waiting grant on every load, so a reload does not lose it.
 3. The page lists the accounts the grant reaches and suggests `spoken-<lang>` as the bucket. POST
    creates the bucket unless the account has one by that name.
 4. The key. `account-api-tokens.write` is optional on the consent screen (decided 2026-11-18): it
@@ -139,7 +142,7 @@ bucket is a pasted key. Keeping the OAuth grant and using Cloudflare's REST API 
 a long-lived grant over all of the account's R2, with no presigned addresses.
 
 Off unless `CLOUDFLARE_OAUTH_CLIENT_ID`, `CLOUDFLARE_OAUTH_CLIENT_SECRET` and
-`CLOUDFLARE_OAUTH_SCOPES` are set. The client is registered in our Cloudflare account with the
+`CLOUDFLARE_OAUTH_SCOPES` are set, and `SPOKEN_STORAGE_KEY` is valid: it seals the cookie and the key. The client is registered in our Cloudflare account with the
 redirect URI `https://spoken.quest/api/storage/cloudflare/callback`; until its visibility is public
 (which needs `spoken.quest` verified by a TXT record, and cannot be undone) only members of our
 account can use it. Cloudflare publishes its scopes only at `GET /client/v4/oauth/scopes`, so the

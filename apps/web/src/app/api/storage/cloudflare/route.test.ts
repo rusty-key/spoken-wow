@@ -17,6 +17,8 @@ vi.mock("@/lib/storage/probe", () => probed);
 // The account's endpoint is a real Cloudflare host: no lookup leaves the test.
 vi.mock("@/lib/storage/host", () => ({ assertPublicHost: async () => {}, PrivateHostError: class extends Error {} }));
 
+import { connectCloudflare } from "@/lib/storage/cloudflare";
+
 import { GET as CALLBACK } from "./callback/route";
 import { DELETE, GET, POST } from "./route";
 import { GET as START } from "./start/route";
@@ -26,6 +28,8 @@ const OK = { ok: true, conditionalPut: true, steps: [{ name: "Write an object", 
 
 let user: Awaited<ReturnType<typeof testUser>>;
 let fr: Awaited<ReturnType<typeof ownTeam>>;
+/** A second language the same person administers, so the admin gate cannot hide a mismatch. */
+let de: Awaited<ReturnType<typeof ownTeam>>;
 let restoreArchive = () => {};
 let calls: string[] = [];
 /** What the admin granted on Cloudflare's consent screen. */
@@ -72,10 +76,13 @@ beforeAll(async () => {
   user = await testUser("test-storage-cloudflare");
   who.id = user.id;
   fr = await ownTeam("frFR");
-  await asSystem.query(
-    `insert into "team_member" ("teamId", "userId", "lang", "capability", "grantedBy") values ($1, $2, 'frFR', 'admin', $2)`,
-    [fr.team, user.id],
-  );
+  de = await ownTeam("deDE");
+  for (const [team, lang] of [[fr.team, "frFR"], [de.team, "deDE"]]) {
+    await asSystem.query(
+      `insert into "team_member" ("teamId", "userId", "lang", "capability", "grantedBy") values ($1, $2, $3, 'admin', $2)`,
+      [team, user.id, lang],
+    );
+  }
 });
 
 beforeEach(() => {
@@ -93,6 +100,7 @@ afterEach(async () => {
 afterAll(async () => {
   await asSystem.query(`delete from "team_member" where "userId" = $1`, [user.id]);
   await fr.restore();
+  await de.restore();
   await user.cleanup();
   vi.unstubAllEnvs();
   vi.unstubAllGlobals();
@@ -116,9 +124,16 @@ describe("connecting Cloudflare", () => {
     const start = await START(new Request("http://x/api/storage/cloudflare/start?lang=frFR"));
     const forged = await CALLBACK(withCookie("http://x/api/storage/cloudflare/callback?code=c&state=other", cookieOf(start)));
     expect(new URL(forged.headers.get("location")!, "http://x").searchParams.get("cloudflare_error")).toContain("not for this connection");
+    // Any page can link here: a stray answer must not end the setup in progress.
+    expect(forged.headers.get("set-cookie")).toBeNull();
     const none = await CALLBACK(new Request("http://x/api/storage/cloudflare/callback?code=c&state=s"));
     expect(new URL(none.headers.get("location")!, "http://x").searchParams.get("cloudflare_error")).toContain("start it again");
+    expect(none.headers.get("set-cookie")).toBeNull();
     expect(calls).not.toContain("POST /oauth2/token");
+
+    const state = new URL(start.headers.get("location")!).searchParams.get("state")!;
+    const real = await CALLBACK(withCookie(`http://x/api/storage/cloudflare/callback?code=c&state=${state}`, cookieOf(start)));
+    expect(real.headers.get("location")).toBe("/admin/storage?lang=frFR&cloudflare=connected");
   });
 
   it("says when the admin declined at Cloudflare", async () => {
@@ -173,18 +188,28 @@ describe("connecting Cloudflare", () => {
   });
 
   it("tests a new key again while it reaches R2", async () => {
-    const cookie = await grantedCookie();
     probed.probe.mockResolvedValueOnce({ ok: false, conditionalPut: null, steps: [{ name: "Write an object", ok: false, detail: "HTTP 401" }] });
-    vi.useFakeTimers({ toFake: ["setTimeout"] });
+    // Called directly with no pause: a fake clock would also fire the database driver's timers.
+    const done = await connectCloudflare(fr.team, user.id, "cf-access", { accountId: ACCOUNT, bucket: "spoken-frfr", label: "spoken-frfr", key: null }, { mintsKeys: true, pauseMs: 0 });
+    expect(probed.probe).toHaveBeenCalledTimes(2);
+    expect("backend" in done && done.backend.health).toBe("ok");
+  });
+
+  it("keeps a saved bucket when its test throws, so a retry makes no second key", async () => {
+    // The first test fails; the retry then throws, as a lost key or database would, before it probes.
+    probed.probe.mockImplementationOnce(async () => {
+      vi.stubEnv("SPOKEN_STORAGE_KEY", Buffer.alloc(32, 9).toString("base64"));
+      return { ok: false, conditionalPut: null, steps: [{ name: "Write an object", ok: false, detail: "HTTP 401" }] };
+    });
+    const error = vi.spyOn(console, "error").mockImplementation(() => {});
     try {
-      const pending = POST(withCookie("http://x/api/storage/cloudflare?lang=frFR", cookie, { method: "POST", body: JSON.stringify({ accountId: ACCOUNT, bucket: "spoken-frfr" }) }));
-      await vi.waitFor(() => expect(probed.probe).toHaveBeenCalledTimes(1));
-      await vi.advanceTimersByTimeAsync(3_000);
-      const { backend } = await (await pending).json();
-      expect(probed.probe).toHaveBeenCalledTimes(2);
-      expect(backend.health).toBe("ok");
+      const done = await connectCloudflare(fr.team, user.id, "cf-access", { accountId: ACCOUNT, bucket: "spoken-frfr", label: "spoken-frfr", key: null }, { mintsKeys: true, pauseMs: 0 });
+      expect("backend" in done && done.test).toBeNull();
+      const { rows } = await asSystem.query(`select "accessKeyId" from "storage_backend" where "teamId" = $1`, [fr.team]);
+      expect(rows).toEqual([{ accessKeyId: "minted-id" }]);
     } finally {
-      vi.useRealTimers();
+      vi.stubEnv("SPOKEN_STORAGE_KEY", Buffer.alloc(32, 3).toString("base64"));
+      error.mockRestore();
     }
   });
 
@@ -202,5 +227,15 @@ describe("connecting Cloudflare", () => {
     const res = await DELETE(withCookie("http://x/api/storage/cloudflare?lang=frFR", cookie, { method: "DELETE" }));
     expect(res.status).toBe(204);
     expect(calls).toContain("POST /oauth2/revoke");
+  });
+
+  it("leaves a grant for one language alone when the admin cancels in another", async () => {
+    const cookie = await grantedCookie();
+    expect((await GET(withCookie("http://x/api/storage/cloudflare?lang=deDE", cookie))).status).toBe(409);
+    const res = await DELETE(withCookie("http://x/api/storage/cloudflare?lang=deDE", cookie, { method: "DELETE" }));
+    expect(res.status).toBe(204);
+    expect(res.headers.get("set-cookie")).toBeNull();
+    expect(calls).not.toContain("POST /oauth2/revoke");
+    expect((await GET(withCookie("http://x/api/storage/cloudflare?lang=frFR", cookie))).status).toBe(200);
   });
 });

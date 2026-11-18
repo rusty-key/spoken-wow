@@ -51,8 +51,10 @@ export const POST = withTeamAdmin(async (request, at) => {
   return Response.json(done, { status: 201, headers: { "Set-Cookie": clearedCookie() } });
 });
 
-export const DELETE = withTeamAdmin(async (request, { userId }) => {
+/** Only this language's grant: one for another language the admin is setting up is left alone. */
+export const DELETE = withTeamAdmin(async (request, { lang, userId }) => {
   const pending = pendingOf(request, userId);
+  if (pending && pending.lang !== lang) return new Response(null, { status: 204 });
   if (pending?.step === "connected") await revoke(pending.token);
   return new Response(null, { status: 204, headers: { "Set-Cookie": clearedCookie() } });
 });
