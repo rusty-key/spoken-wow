@@ -2,6 +2,7 @@
 
 import { useLang } from "@/components/LangProvider";
 import { withLang } from "@/lib/lang";
+import { forTeam } from "@/lib/teams/view";
 import AudioPlayer from "@/components/AudioPlayer";
 import { canPlay, type ExplorerLine, type ExplorerSection } from "@/components/explorer/section";
 
@@ -14,12 +15,14 @@ import { canPlay, type ExplorerLine, type ExplorerSection } from "@/components/e
 type Props<L extends ExplorerLine> = {
   section: Pick<ExplorerSection<L>, "api">;
   line: L | null;
+  /** Another team whose take plays, from otherTeam; null for the visitor's own. */
+  team?: string | null;
   /** Take version, used only to bust the browser cache after a regeneration. */
   version?: number;
   audioRef: React.RefObject<HTMLAudioElement | null>;
 };
 
-export function Player<L extends ExplorerLine>({ section, line, version, audioRef }: Props<L>) {
+export function Player<L extends ExplorerLine>({ section, line, team = null, version, audioRef }: Props<L>) {
   const lang = useLang();
   const query = new URLSearchParams();
   if (version !== undefined) query.set("v", String(version));
@@ -32,7 +35,9 @@ export function Player<L extends ExplorerLine>({ section, line, version, audioRe
     <AudioPlayer
       audioRef={audioRef}
       src={
-        playable ? withLang(lang, `${section.api}/audio/${line.file}.mp3${query.size ? `?${query}` : ""}`) : undefined
+        playable
+          ? withLang(lang, forTeam(`${section.api}/audio/${line.file}.mp3${query.size ? `?${query}` : ""}`, team))
+          : undefined
       }
       title={line?.name ?? null}
       meta={line?.id}

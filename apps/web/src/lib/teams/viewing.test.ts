@@ -10,7 +10,7 @@ const { teamLivePath, teamLiveTakes } = await import("@/lib/takes/store");
 const { asActor } = await import("./acting");
 const { everyTeamOf, forgetTeams, privilegedOf, secondTeamLangs } = await import("./store");
 const { addMember, asSystem, dropLang, dropTeam, newTeamIn, systemRows, testUser, uniqueLang } = await import("./testing");
-const { teamLiveOverrides, teamsVoicing, viewedTeam } = await import("./viewing");
+const { teamLiveOverrides, teamsVoicing, teamView, viewedTeam } = await import("./viewing");
 
 let lang: Lang;
 let otherLang: Lang;
@@ -111,6 +111,47 @@ describe("viewedTeam", () => {
   it("is null for a team of another language", async () => {
     expect(await viewedTeam(lang, slugs.get(c)!)).toBeNull();
     expect(await viewedTeam(lang, "no-such-team")).toBeNull();
+  });
+});
+
+describe("teamView", () => {
+  it("is no view at all in a single-team language, from the memo alone", async () => {
+    await secondTeamLangs();
+    const pool = db();
+    const queries = vi.spyOn(pool, "query");
+    const connects = vi.spyOn(pool, "connect");
+
+    expect(await teamView("deDE", "anything")).toEqual({ teams: [], viewed: null, home: null });
+    expect(queries).not.toHaveBeenCalled();
+    expect(connects).not.toHaveBeenCalled();
+  });
+
+  it("is no view in a language nobody owns", async () => {
+    const unowned = await uniqueLang();
+    try {
+      expect(await teamView(unowned, null)).toEqual({ teams: [], viewed: null, home: null });
+    } finally {
+      await dropLang(unowned);
+    }
+  });
+
+  it("is the acting team without a slug, and the named one with", async () => {
+    const own = await asActor(user.id, () => teamView(lang, null));
+    expect(own.teams.map((team) => team.id)).toEqual([a, d, b]);
+    expect(own.viewed).toMatchObject({ team: b, own: true });
+    expect(own.home).toBe(slugs.get(b));
+
+    const other = await asActor(user.id, () => teamView(lang, slugs.get(a)!));
+    expect(other.viewed).toMatchObject({ team: a, slug: slugs.get(a), own: false });
+    expect(other.home).toBe(slugs.get(b));
+  });
+
+  it("falls back to the default for a slug naming no team of the language", async () => {
+    for (const slug of ["no-such-team", slugs.get(c)!]) {
+      const view = await asActor(user.id, () => teamView(lang, slug));
+      expect(view.viewed).toMatchObject({ team: b, own: true });
+    }
+    expect((await teamView(lang, "no-such-team")).viewed).toMatchObject({ team: a, own: true });
   });
 });
 

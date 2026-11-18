@@ -5,6 +5,7 @@ import { Suspense } from "react";
 import { BossesExplorer } from "@/components/bosses/BossesExplorer";
 import { instanceFacets } from "@/lib/bosses/catalogue";
 import { Contained } from "@/components/Width";
+import { teamView } from "@/lib/teams/viewing";
 
 export const metadata: Metadata = { title: "Bosses · Spoken" };
 
@@ -14,7 +15,13 @@ export const metadata: Metadata = { title: "Bosses · Spoken" };
  */
 export const dynamic = "force-dynamic";
 
-export default async function Page({ params }: { params: Promise<{ lang: string }> }) {
+export default async function Page({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ lang: string }>;
+  searchParams: Promise<{ team?: string | string[] }>;
+}) {
   const lang = await pageLang(params);
   const instances = await instanceFacets(lang);
 
@@ -36,6 +43,11 @@ export default async function Page({ params }: { params: Promise<{ lang: string 
     );
   }
 
+  // Whose takes the explorer plays, picked by `?team=`; a slug naming no team of the
+  // language plays the default's.
+  const { team } = await searchParams;
+  const view = await teamView(lang, typeof team === "string" ? team : null);
+
   return (
     <main className="pt-6 pb-36">
       <Contained>
@@ -47,7 +59,7 @@ export default async function Page({ params }: { params: Promise<{ lang: string 
       </Contained>
       {/* Suspense is required: Explorer calls useSearchParams(). */}
       <Suspense>
-        <BossesExplorer instances={instances} />
+        <BossesExplorer instances={instances} {...view} />
       </Suspense>
     </main>
   );

@@ -2,6 +2,7 @@
 
 import { useLang } from "@/components/LangProvider";
 import { withLang } from "@/lib/lang";
+import { forTeam } from "@/lib/teams/view";
 import AudioPlayer from "@/components/AudioPlayer";
 import type { ResultLine } from "@/lib/search";
 
@@ -24,6 +25,8 @@ function downloadName(line: ResultLine): string {
 
 type Props = {
   line: ResultLine | null;
+  /** Another team whose take plays, from otherTeam; null for the visitor's own. */
+  team?: string | null;
   /**
    * The live take: the one regenerated in this session, else the one the search reported.
    *
@@ -37,7 +40,7 @@ type Props = {
   ref: React.RefObject<HTMLAudioElement | null>;
 };
 
-export default function Player({ line, version, ref }: Props) {
+export default function Player({ line, team = null, version, ref }: Props) {
   const lang = useLang();
   return (
     <AudioPlayer
@@ -46,7 +49,7 @@ export default function Player({ line, version, ref }: Props) {
         line
           ? withLang(
               lang,
-              `/api/quests/audio/${line.audioPath}${version === undefined ? "" : `?v=${version}`}`,
+              forTeam(`/api/quests/audio/${line.audioPath}${version === undefined ? "" : `?v=${version}`}`, team),
             )
           : undefined
       }

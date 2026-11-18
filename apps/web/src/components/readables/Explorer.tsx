@@ -5,7 +5,7 @@ import { useCan } from "@/components/useCan";
 import { useHistoryMode } from "@/components/useHistoryMode";
 import { useLang } from "@/components/LangProvider";
 import { BASE_LANG, withLang } from "@/lib/lang";
-import { usePathname, useSearchParams } from "next/navigation";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import ApiKeyRequiredDialog from "@/components/ApiKeyRequiredDialog";
@@ -20,10 +20,12 @@ import TextOverrideDialog from "@/components/TextOverrideDialog";
 import type { RowState } from "@/components/readables/PageRow";
 import { Player } from "@/components/readables/Player";
 import { SearchBar } from "@/components/readables/SearchBar";
+import TeamPicker from "@/components/TeamPicker";
 import { Contained, Wide } from "@/components/Width";
 import { Loading, Refreshing } from "@/components/Loading";
 import { Button } from "@/components/ui/button";
 import type { BookFacet } from "@/lib/readables/catalogue";
+import { forTeam, isOwn, keepTeam, otherTeam, pickedHref, type TeamView } from "@/lib/teams/view";
 import {
   filterParams,
   filtersFromParams,
@@ -54,18 +56,25 @@ const DEBOUNCE_MS = 500;
 
 type Batch = PendingBatch & { lineIds: string[] };
 
-export function Explorer({ books }: { books: BookFacet[] }) {
+export function Explorer({ books, teams, viewed, home }: { books: BookFacet[] } & TeamView) {
   const lang = useLang();
+  const router = useRouter();
   const pathname = usePathname();
   const params = useSearchParams();
 
   // What this visitor may do. Read in the browser for UserMenu's reason: a session read in
   // the layout would put a database round trip in front of every page view. Every one of
   // these is checked again server-side; nothing here is an access control.
+  //
+  // Another team's view is read-only: its takes play, but a take, an override or a triage
+  // would land in the visitor's own team. The original text is every team's, so its pencil
+  // stays.
   const may = useCan();
-  const canRegenerate = may("regenerate");
+  const own = isOwn(viewed);
+  const team = otherTeam(viewed);
+  const canRegenerate = own && may("regenerate");
   const canEdit = may("text");
-  const canTriage = triages(may);
+  const canTriage = own && triages(may);
   // The book owner's name in this language, written as its own version in entity_name.
   const [naming, setNaming] = useState<TranslateSubject | null>(null);
 
@@ -184,17 +193,17 @@ export function Explorer({ books }: { books: BookFacet[] }) {
 
   const updateFilters = useCallback(
     (next: Partial<PageFilters>) => {
-      writeQuery(filterParams({ ...filters, ...next }));
+      writeQuery(keepTeam(filterParams({ ...filters, ...next }), params));
     },
-    [filters, writeQuery],
+    [filters, params, writeQuery],
   );
 
   const filtersHref = useCallback(
     (next: Partial<PageFilters>) => {
-      const query = filterParams({ ...filters, ...next }).toString();
+      const query = keepTeam(filterParams({ ...filters, ...next }), params).toString();
       return query ? `${pathname}?${query}` : pathname;
     },
-    [filters, pathname],
+    [filters, params, pathname],
   );
 
   //----------------------------------------------------------------------------
@@ -224,7 +233,7 @@ export function Explorer({ books }: { books: BookFacet[] }) {
     const search = new URLSearchParams(filterQuery);
     if (page > 1) search.set("page", String(page));
 
-    fetch(withLang(lang, `/api/readables/search?${search}`), { signal: controller.signal })
+    fetch(withLang(lang, forTeam(`/api/readables/search?${search}`, team)), { signal: controller.signal })
       .then(async (response) => {
         const data = await response.json();
         // 503 with a code, not a crash: "nobody has run the import yet" is a deployment
@@ -243,16 +252,16 @@ export function Explorer({ books }: { books: BookFacet[] }) {
       });
 
     return () => controller.abort();
-  }, [filterQuery, page, lang]);
+  }, [filterQuery, page, lang, team]);
 
   const refetch = useCallback(() => {
     const search = new URLSearchParams(filterQueryRef.current);
     if (pageRef.current > 1) search.set("page", String(pageRef.current));
-    fetch(withLang(lang, `/api/readables/search?${search}`))
+    fetch(withLang(lang, forTeam(`/api/readables/search?${search}`, team)))
       .then((response) => response.json())
       .then((data: SearchResult) => setResult(data))
       .catch(() => {});
-  }, [lang]);
+  }, [lang, team]);
 
   /**
    * Fetch these rows again by id and swap them in where they sit, so a row the change moved
@@ -261,14 +270,14 @@ export function Explorer({ books }: { books: BookFacet[] }) {
   const refreshRows = useCallback(
     async (ids: string[]) => {
       const fresh = await fetchRows<ResultLine>(
-        (id) => withLang(lang, `/api/readables/search?${new URLSearchParams({ line: id })}`),
+        (id) => withLang(lang, forTeam(`/api/readables/search?${new URLSearchParams({ line: id })}`, team)),
         ids,
       );
       setResult((current) =>
         current && { ...current, lines: patchRows(current.lines, fresh, (row) => row.id, (row) => row.id) },
       );
     },
-    [lang],
+    [lang, team],
   );
 
   // Laid over the row at once, then fetched again for the server's view of it.
@@ -496,6 +505,7 @@ export function Explorer({ books }: { books: BookFacet[] }) {
   //----------------------------------------------------------------------------
 
   const pageCount = result ? Math.max(1, Math.ceil(result.total / PAGE_SIZE)) : 1;
+  const showRecordings = own && result?.recordable === true;
 
   if (empty) {
     return (
@@ -508,6 +518,13 @@ export function Explorer({ books }: { books: BookFacet[] }) {
   return (
     <>
       <Contained>
+        {/* The router, not a history write: the page resolves the view from `team`. */}
+        <TeamPicker
+          teams={teams}
+          viewed={viewed}
+          onPick={(slug) => router.push(pickedHref(pathname, params, slug, home), { scroll: false })}
+        />
+
         <SearchBar
           books={books}
           filters={filters}
@@ -516,13 +533,13 @@ export function Explorer({ books }: { books: BookFacet[] }) {
           onQueryChange={setQuery}
           onQuerySubmit={submitQuery}
           onChange={updateFilters}
-          onClearAll={() => writeQuery(new URLSearchParams())}
+          onClearAll={() => writeQuery(keepTeam(new URLSearchParams(), params))}
           canTriage={canTriage}
           madeBy={result?.madeBy}
-          recordable={result?.recordable === true}
+          recordable={showRecordings}
         />
 
-        {result?.recordable && <RecordingDropZone source="readables" onUploaded={refetch} />}
+        {showRecordings && <RecordingDropZone source="readables" onUploaded={refetch} />}
 
         {/* A line id has no dropdown to sit in - it arrives by link from /reports - so
             without this the list would be narrowed with nothing on the page saying so. */}
@@ -589,7 +606,7 @@ export function Explorer({ books }: { books: BookFacet[] }) {
                 })}
                 current={current}
                 showMadeBy={result.madeBy !== undefined}
-                showRecordings={result.recordable === true}
+                showRecordings={showRecordings}
                 onRecordingChanged={(line) => void refreshRows([line.id])}
                 canRegenerate={canRegenerate}
                 canEdit={canEdit}
@@ -646,6 +663,7 @@ export function Explorer({ books }: { books: BookFacet[] }) {
           onDismiss={() => setQueueNote(null)}
         />
         <Player
+          team={team}
           line={current}
           version={current ? (versions[current.id] ?? current.take?.version) : undefined}
           audioRef={audio}

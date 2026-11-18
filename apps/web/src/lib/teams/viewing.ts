@@ -21,19 +21,36 @@ export async function teamsVoicing(lang: Lang): Promise<TeamChoice[]> {
   return (await teamsOf(lang)).map((team, index) => ({ ...team, privileged: index === 0 }));
 }
 
+export type ViewedTeam = { team: TeamId; slug: string; name: string; own: boolean };
+
 /**
  * The team whose takes play: the one `slug` names, else the acting team, else the privileged
  * team. Null for a slug naming no team of `lang`, or for a language nobody owns. `own` is
  * whether the view is the visitor's acting team, the one their work goes to.
  */
-export async function viewedTeam(
-  lang: Lang,
-  slug: string | null,
-): Promise<{ team: TeamId; slug: string; name: string; own: boolean } | null> {
+export async function viewedTeam(lang: Lang, slug: string | null): Promise<ViewedTeam | null> {
   const acting = await ownerOrAll(lang);
   if (acting === ALL_TEAMS) return null;
   const found = (await teamsOf(lang)).find((team) => (slug === null ? team.id === acting : team.slug === slug));
   return found ? { team: found.id, slug: found.slug, name: found.name, own: found.id === acting } : null;
+}
+
+/**
+ * What an explorer page needs for its picker: the teams to pick between, the one whose takes
+ * play and the slug of the default one, which a link names by leaving `team` out. A slug
+ * naming no team of `lang` falls back to the default. In a language with one team, or none,
+ * there is nothing to pick and no view (`viewed` null: the visitor's own), and nothing is read
+ * beyond the memo.
+ */
+export async function teamView(
+  lang: Lang,
+  slug: string | null,
+): Promise<{ teams: TeamChoice[]; viewed: ViewedTeam | null; home: string | null }> {
+  const teams = await teamsVoicing(lang);
+  if (teams.length === 0) return { teams, viewed: null, home: null };
+  const home = await viewedTeam(lang, null);
+  const named = slug && slug !== home?.slug ? await viewedTeam(lang, slug) : null;
+  return { teams, viewed: named ?? home, home: home?.slug ?? null };
 }
 
 /** The override text `team`'s live takes speak, by line key: a quest line's file, else its line id. */
