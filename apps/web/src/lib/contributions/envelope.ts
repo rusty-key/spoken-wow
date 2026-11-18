@@ -16,6 +16,10 @@ export const MAX_BYTES = 64 * 1024;
 export const SOURCES = ["quests", "places", "readables"] as const;
 export type EnvelopeSource = (typeof SOURCES)[number];
 
+/** The sections a report's context comes from: those, and bosses, which send reports but no contributions. */
+export const REPORT_SOURCES = [...SOURCES, "bosses"] as const;
+export type ReportSource = (typeof REPORT_SOURCES)[number];
+
 /**
  * The keys addons released before the rename write, and every raw envelope stored before it
  * carries. Read as the new key forever: a player can paste from a years-old saved file.
@@ -26,15 +30,15 @@ export function isEnvelopeSource(value: unknown): value is EnvelopeSource {
   return typeof value === "string" && (SOURCES as readonly string[]).includes(value);
 }
 
-export type Envelope = {
-  source: EnvelopeSource;
+export type Envelope<S extends string = EnvelopeSource> = {
+  source: S;
   fields: Record<string, string>;
   text: string | null;
 };
 
 export type ParseError = "version" | "source" | "checksum" | "truncated" | "oversize" | "malformed";
 
-type Result = { ok: true; value: Envelope } | { ok: false; error: ParseError };
+type Result<S extends string = EnvelopeSource> = { ok: true; value: Envelope<S> } | { ok: false; error: ParseError };
 
 const MODULUS = 2147483647;
 const FACTOR = 31;
@@ -55,6 +59,15 @@ export function checksum(body: string): number {
 }
 
 export function parseEnvelope(raw: string): Result {
+  return parse(raw, SOURCES);
+}
+
+/** parseEnvelope for a report's context, which may also be a boss's. */
+export function parseReportEnvelope(raw: string): Result<ReportSource> {
+  return parse(raw, REPORT_SOURCES);
+}
+
+function parse<S extends string>(raw: string, accepted: readonly S[]): Result<S> {
   // Cheap pre-filter: UTF-8 spends at least one byte per UTF-16 unit, so a string already
   // longer than MAX_BYTES in units cannot be under MAX_BYTES in bytes either. That rejects the
   // actual attack shape -- someone pasting megabytes -- without allocating a full encode of it.
@@ -85,8 +98,8 @@ export function parseEnvelope(raw: string): Result {
   if (!headerMatch) return { ok: false, error: "malformed" };
   if (headerMatch[1] !== "1") return { ok: false, error: "version" };
 
-  const source = LEGACY_SOURCES[headerMatch[2]] ?? (headerMatch[2] as EnvelopeSource);
-  if (!SOURCES.includes(source)) return { ok: false, error: "source" };
+  const source = (LEGACY_SOURCES[headerMatch[2]] ?? headerMatch[2]) as S;
+  if (!accepted.includes(source)) return { ok: false, error: "source" };
 
   // The checksum is verified before the body is trusted, but after the header: a 2.x envelope
   // should say so rather than reporting a checksum failure at someone who pasted correctly.
@@ -130,7 +143,7 @@ export function parseEnvelope(raw: string): Result {
  * site kept only parsed, as a report keeps its context, and now stores as a contribution's raw.
  * Parsing what this writes gives the same envelope back.
  */
-export function formatEnvelope(envelope: Envelope): string {
+export function formatEnvelope(envelope: Envelope<ReportSource>): string {
   const out = [`!SPOKEN1 ${envelope.source}`];
   for (const [key, value] of Object.entries(envelope.fields)) out.push(`${key}=${value}`);
   if (envelope.text) {

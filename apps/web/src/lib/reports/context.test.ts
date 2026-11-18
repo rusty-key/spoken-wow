@@ -2,7 +2,19 @@ import { readFileSync } from "node:fs";
 
 import { describe, expect, it } from "vitest";
 
-import { addonVersion, contextFacts, contextFrom, folderVersion, isOlder, lineNews, outdatedPack, packVersion } from "./context";
+import { formatEnvelope, parseEnvelope } from "@/lib/contributions/envelope";
+
+import {
+  addonVersion,
+  contextFacts,
+  contextFrom,
+  folderVersion,
+  isOlder,
+  lineNews,
+  outdatedPack,
+  packTeam,
+  packVersion,
+} from "./context";
 
 const fixture = (name: string) =>
   readFileSync(new URL(`../../../../../tests/fixtures/contributions/${name}`, import.meta.url), "utf8");
@@ -18,6 +30,21 @@ describe("contextFrom", () => {
     expect(contextFrom(fixture("quests-observed.txt"), "readables")).toBeNull();
     expect(contextFrom(fixture("quests-observed.txt").replace("druid", "rogue"), "quests")).toBeNull();
     expect(contextFrom({ fields: {} }, "quests")).toBeNull();
+  });
+
+  it("reads a boss's, which is a report's alone", () => {
+    const raw = formatEnvelope({ source: "bosses", fields: { map: "36", packTeam: "stimmen" }, text: null });
+    expect(contextFrom(raw, "bosses")?.fields.packTeam).toBe("stimmen");
+    expect(parseEnvelope(raw)).toEqual({ ok: false, error: "source" });
+  });
+});
+
+describe("packTeam", () => {
+  it("is the slug the addon names, and nothing for a plain pack or a malformed slug", () => {
+    expect(packTeam({ fields: { packTeam: "stimmen" }, text: null })).toBe("stimmen");
+    expect(packTeam({ fields: { packFolder: "SpokenPlacesAudio_deDE" }, text: null })).toBeNull();
+    expect(packTeam({ fields: { packTeam: "Stimmen!" }, text: null })).toBeNull();
+    expect(packTeam(null)).toBeNull();
   });
 });
 

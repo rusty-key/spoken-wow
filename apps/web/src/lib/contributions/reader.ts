@@ -136,7 +136,7 @@ function swapsOf(fields: Record<string, string>, tokens: boolean): Swap[] {
  * The envelope with the reader's name out of its text and fields; any other envelope as it is. Taken
  * out wherever a name is given, whether or not the text is marked as shown.
  */
-export function nameless(envelope: Envelope): Envelope {
+export function nameless<S extends string>(envelope: Envelope<S>): Envelope<S> {
   if (!(NAME in envelope.fields)) return envelope;
   const { [NAME]: _name, ...fields } = envelope.fields;
   const text = envelope.text === null ? null : swapWords(envelope.text, swapsOf(envelope.fields, false));
