@@ -248,6 +248,13 @@ export async function lineByPath(map: number, slug: string, lang: Lang = BASE_LA
   return byPath.get(`${map}/${slug}`);
 }
 
+/** lineByPath in the acting team's catalogue, for a page that shows what the team's take says. */
+export async function teamLineByPath(map: number, slug: string, lang: Lang = BASE_LANG): Promise<BossEntry | undefined> {
+  if (!Number.isInteger(map)) return undefined;
+  const path = `${map}/${slug}`;
+  return (await catalogue(lang)).find((e) => e.file === path);
+}
+
 /**
  * Whether a line id names a live boss. Every route that takes a line id from outside asks,
  * since `report` has no foreign key onto boss. Every boss is in every language's catalogue,

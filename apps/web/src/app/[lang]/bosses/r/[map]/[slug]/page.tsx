@@ -7,7 +7,7 @@ import { notFound } from "next/navigation";
 import ReportForm from "@/components/ReportForm";
 import ListenFirst from "@/components/reports/ListenFirst";
 import { audioRelPath } from "@/lib/bosses/audio";
-import { lineByPath, loadContext } from "@/lib/bosses/catalogue";
+import { loadContext, teamLineByPath } from "@/lib/bosses/catalogue";
 import { bossesHref } from "@/lib/links";
 import { Contained } from "@/components/Width";
 
@@ -23,7 +23,7 @@ type Params = { lang: string; map: string; slug: string };
 async function resolve(params: Promise<Params>) {
   const lang = await pageLang(params);
   const { map, slug } = await params;
-  return lineByPath(Number(map), slug, lang);
+  return teamLineByPath(Number(map), slug, lang);
 }
 
 export const dynamic = "force-dynamic";
@@ -73,7 +73,16 @@ export default async function Page({ params }: { params: Promise<Params> }) {
           )}
 
           {entry.text ? (
-            <p className="mt-5 whitespace-pre-line">{entry.text}</p>
+            <>
+              <p className="mt-5 whitespace-pre-line">{entry.text}</p>
+              {/* Under the original rather than in its place, as the explorer shows it: the original is
+                  what the game shows, and the override is only what the team's take says. */}
+              {entry.override && (
+                <p className="mt-2 border-l-2 border-sky-400/60 pl-2 whitespace-pre-line" title="What the narration says">
+                  {entry.override.text}
+                </p>
+              )}
+            </>
           ) : (
             <p className="text-muted-foreground mt-5 italic">No story in this language yet.</p>
           )}

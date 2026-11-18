@@ -9,7 +9,7 @@ import { addMember, asSystem, dropLang, dropTeam, newTeamIn, testUser, uniqueLan
 import { createFixtures, type Fixtures } from "@/lib/text-api/testing";
 import { writeTextOverride } from "@/lib/text-overrides/store";
 
-import { baseCatalogue, catalogue, loadContext, type BossEntry } from "./catalogue";
+import { baseCatalogue, catalogue, lineByPath, loadContext, teamLineByPath, type BossEntry } from "./catalogue";
 import { search } from "./search";
 
 let fx: Fixtures;
@@ -76,6 +76,18 @@ describe("the bosses catalogue overlay", () => {
     const entry = entryOf(await asActor(u.id, () => catalogue(lang)));
     expect(entry.spoken).toBe("Written here.");
     expect(await storedHash(fx.boss.lineId)).toBe(entry.hash);
+  });
+
+  it("resolves a permalink in the acting team's catalogue, override and all", async () => {
+    await story();
+    await asActor(u.id, () =>
+      writeTextOverride({ source: "bosses", lang, lineId: fx.boss.lineId, text: "Written here.", original: "The translated story.", userId: u.id }),
+    );
+    const [map, slug] = entryOf(await baseCatalogue(lang)).file.split("/");
+    const entry = await asActor(u.id, () => teamLineByPath(Number(map), slug, lang));
+    expect(entry?.override?.text).toBe("Written here.");
+    expect(entry?.hash).toBe(await storedHash(fx.boss.lineId));
+    expect((await asActor(u.id, () => lineByPath(Number(map), slug, lang)))?.override).toBeUndefined();
   });
 
   it("is the base for a team with no overrides", async () => {

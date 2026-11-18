@@ -389,6 +389,17 @@ export async function lineByPath(
   return (await linesByPath(lang)).get(`${mapID}/${slug}`);
 }
 
+/** lineByPath in the acting team's catalogue, for a page that shows what the team's take says. */
+export async function teamLineByPath(
+  mapID: number,
+  slug: string,
+  lang: Lang = BASE_LANG,
+): Promise<CatalogueEntry | undefined> {
+  if (!Number.isInteger(mapID)) return undefined;
+  const path = `${mapID}/${slug}`;
+  return (await catalogue(lang)).find((e) => e.file === path);
+}
+
 /** `seesMadeBy`: whether the viewer works in the language. See SearchContext.madeBy. */
 export async function loadContext(
   lang: Lang = BASE_LANG,

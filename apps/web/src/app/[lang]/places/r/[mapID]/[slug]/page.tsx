@@ -8,7 +8,7 @@ import ReportForm from "@/components/ReportForm";
 import { packReleases } from "@/lib/releases/store";
 import ListenFirst from "@/components/reports/ListenFirst";
 import { audioRelPath } from "@/lib/places/audio";
-import { isCorpusEmpty, lineByPath, loadContext } from "@/lib/places/catalogue";
+import { isCorpusEmpty, loadContext, teamLineByPath } from "@/lib/places/catalogue";
 import { Contained } from "@/components/Width";
 
 /**
@@ -35,7 +35,7 @@ async function resolve(params: Promise<Params>) {
   const lang = await pageLang(params);
   const { mapID, slug } = await params;
   try {
-    return await lineByPath(Number(mapID), slug, lang);
+    return await teamLineByPath(Number(mapID), slug, lang);
   } catch (error) {
     // An unseeded corpus names no lines, so no address resolves to one. The page a player
     // arriving from the game should see is the same one an unknown place gives them.
@@ -101,7 +101,16 @@ export default async function Page({ params }: { params: Promise<Params> }) {
           )}
 
           {entry.full ? (
-            <p className="mt-5 whitespace-pre-line">{entry.full}</p>
+            <>
+              <p className="mt-5 whitespace-pre-line">{entry.full}</p>
+              {/* Under the original rather than in its place, as the explorer shows it: the original is
+                  what the game shows, and the override is only what the team's take says. */}
+              {entry.override && (
+                <p className="mt-2 border-l-2 border-sky-400/60 pl-2 whitespace-pre-line" title="What the narration says">
+                  {entry.override.text}
+                </p>
+              )}
+            </>
           ) : (
             // Said plainly rather than left as an empty gap, because somebody arriving from
             // the game is here to report a problem and "there is no text yet" is the answer

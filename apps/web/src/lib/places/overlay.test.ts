@@ -9,7 +9,7 @@ import { addMember, asSystem, dropLang, dropTeam, newTeamIn, systemRows, testUse
 import { createFixtures, type Fixtures } from "@/lib/text-api/testing";
 import { writeTextOverride } from "@/lib/text-overrides/store";
 
-import { baseCatalogue, catalogue, loadContext, type CatalogueEntry } from "./catalogue";
+import { baseCatalogue, catalogue, lineByPath, loadContext, teamLineByPath, type CatalogueEntry } from "./catalogue";
 import { search } from "./search";
 
 let fx: Fixtures;
@@ -144,6 +144,18 @@ describe("the places catalogue overlay", () => {
     const entry = entryOf(await asActor(u.id, () => catalogue(lang)), fx.zone);
     expect(entry.spoken).toBe("Written here.");
     expect(await storedHash(fx.zone)).toBe(entry.hash);
+  });
+
+  it("resolves a permalink in the acting team's catalogue, override and all", async () => {
+    await asActor(u.id, () =>
+      writeTextOverride({ source: "places", lang, lineId: fx.zone, text: "Written here.", original: "Translated lore.", userId: u.id }),
+    );
+    const { file } = entryOf(await baseCatalogue(lang), fx.zone);
+    const [mapID, slug] = file.split("/");
+    const entry = await asActor(u.id, () => teamLineByPath(Number(mapID), slug, lang));
+    expect(entry?.override?.text).toBe("Written here.");
+    expect(entry?.hash).toBe(await storedHash(fx.zone));
+    expect((await asActor(u.id, () => lineByPath(Number(mapID), slug, lang)))?.override).toBeUndefined();
   });
 
   it("keeps a second team's override from the privileged team", async () => {

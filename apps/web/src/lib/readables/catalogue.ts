@@ -419,6 +419,15 @@ export async function isKnownLine(lineId: string, lang: Lang = BASE_LANG): Promi
 
 /** One page, by the key the addon and the landing URL know it as: '1381' or 'n{uuid}'. */
 export async function pageById(key: string, lang: Lang = BASE_LANG): Promise<BookPage | undefined> {
+  return pageIn(key, () => baseCatalogue(lang));
+}
+
+/** pageById in the acting team's catalogue, for a page that shows what the team's take says. */
+export async function teamPageById(key: string, lang: Lang = BASE_LANG): Promise<BookPage | undefined> {
+  return pageIn(key, () => catalogue(lang));
+}
+
+async function pageIn(key: string, pages: () => Promise<BookPage[]>): Promise<BookPage | undefined> {
   const keyed = lineIdOfKey(key);
   if (!keyed) return undefined;
   // A minted page folded into a real one is still addressed by its old key, from packs and
@@ -428,7 +437,7 @@ export async function pageById(key: string, lang: Lang = BASE_LANG): Promise<Boo
     [keyed],
   );
   const lineId = rows[0]?.aliasOf ?? keyed;
-  return (await baseCatalogue(lang)).find((page) => page.id === lineId);
+  return (await pages()).find((page) => page.id === lineId);
 }
 
 /** The book dropdown's options, derived from the corpus rather than hardcoded. */

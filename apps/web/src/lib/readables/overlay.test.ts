@@ -9,7 +9,7 @@ import { addMember, asSystem, dropLang, dropTeam, newTeamIn, testUser, uniqueLan
 import { createFixtures, type Fixtures } from "@/lib/text-api/testing";
 import { writeTextOverride } from "@/lib/text-overrides/store";
 
-import { baseCatalogue, catalogue, loadContext, type BookPage } from "./catalogue";
+import { baseCatalogue, catalogue, loadContext, pageById, teamPageById, type BookPage } from "./catalogue";
 import { search } from "./search";
 import { spokenHash } from "./tools";
 
@@ -121,6 +121,17 @@ describe("the readables catalogue overlay", () => {
     expect(page.spoken.startsWith(TITLE)).toBe(true);
     expect(page.spoken.endsWith("Written here.")).toBe(true);
     expect(await storedHash(fx.page.lineId)).toBe(page.hash);
+  });
+
+  it("resolves a permalink in the acting team's catalogue, override and all", async () => {
+    await asActor(u.id, () =>
+      writeTextOverride({ source: "readables", lang, lineId: fx.page.lineId, text: "Written here.", original: "Translated first page.", userId: u.id }),
+    );
+    const { key } = pageOf(await baseCatalogue(lang), fx.page.lineId);
+    const page = await asActor(u.id, () => teamPageById(key, lang));
+    expect(page?.override?.text).toBe("Written here.");
+    expect(page?.hash).toBe(await storedHash(fx.page.lineId));
+    expect((await asActor(u.id, () => pageById(key, lang)))?.override).toBeUndefined();
   });
 
   it("speaks the override alone on a later page", async () => {
