@@ -182,6 +182,9 @@
   flex-direction: column;
   gap: 2px;
   width: 256px;
+  /* A signed-in admin's burger is taller than a phone: the menu scrolls inside the screen. */
+  max-height: calc(var(--radix-popover-content-available-height, 100dvh) - 8px);
+  overflow-y: auto;
   padding: 8px;
   border: 0;
   border-radius: 8px;
