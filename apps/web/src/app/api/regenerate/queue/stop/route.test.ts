@@ -148,6 +148,19 @@ describe("POST /api/regenerate/queue/stop in a language with a second team", () 
     expect(await (await POST(post({}))).json()).toEqual({ cancelled: 2 });
     expect(await states()).toEqual({ a: "cancelled", b: "cancelled" });
     expect(await stoppedBecause(batchB)).toBe("Stopped by Stopper");
+
+    // Each team's stop is in its own log, not folded into one group under the acting team.
+    const logged = await systemRows<{ subject: string; teamId: string; groupId: string | null }>(
+      `select "subject", "teamId", "detail"->>'groupId' as "groupId" from "activity"
+        where "lang" = $1 and "kind" in ('batch.stopped', 'queue.stopped') order by "subject"`,
+      [lang],
+    );
+    expect(logged).toEqual(
+      [
+        { subject: batchA, teamId: a, groupId: null },
+        { subject: batchB, teamId: b, groupId: null },
+      ].sort((x, y) => x.subject.localeCompare(y.subject)),
+    );
   });
 
   it("cancels only a second team's batch named by id, though the site owner acts as the privileged team", async () => {

@@ -408,7 +408,7 @@ export async function cancelPending(
   const teams = scope.everyTeam ? await everyTeamWith(langs, batchId) : await byTeam(langs);
 
   let cancelled = 0;
-  const stopped: { id: string; label: string; source: Source; lang: Lang; cancelled: number }[] = [];
+  const stopped: StoppedBatch[] = [];
   // One team at a time, each as itself: a Stop across languages is several teams' queues.
   for (const [team, langs] of teams) {
     await withTeam(team, async (client) => {
@@ -424,7 +424,7 @@ export async function cancelPending(
       // Only batches that actually lost work are stamped. Stamping every unstopped batch would
       // put "Stopped by an admin" on ones that had already finished cleanly, and the panel reads
       // the most recent reason it can find.
-      const { rows } = await client.query<(typeof stopped)[number]>(
+      const { rows } = await client.query<Omit<StoppedBatch, "team">>(
         `update "regeneration_batch" as b
             set "stoppedAt" = now(), "stoppedBecause" = $1
           where b."stoppedAt" is null
@@ -437,7 +437,7 @@ export async function cancelPending(
                       where j."batchId" = b."id" and j."state" = 'cancelled') as "cancelled"`,
         [because, batchId, langs],
       );
-      stopped.push(...rows);
+      stopped.push(...rows.map((row) => ({ ...row, team })));
     });
   }
   await recordActivities(stopEvents(stopped, because, scope.by ?? null));
@@ -459,26 +459,29 @@ async function everyTeamWith(langs: readonly Lang[], batchId: string | null): Pr
   return own ? new Map([[batch.teamId, own]]) : new Map();
 }
 
+type StoppedBatch = { id: string; label: string; source: Source; lang: Lang; cancelled: number; team: TeamId };
+
 /**
  * The log rows for one Stop. One press stops every batch with work waiting, and a batch
  * per Regenerate click is a batch of one or two lines, so one press was a screenful of
  * "stopped a batch" rows. Several batches in a language are one "queue.stopped" row, with
  * each batch's row carrying its group id for the page to fold, as cleared marks are
  * (migration 0057). One statement, so a group row never lands without its batches.
+ *
+ * Each row is filed under the team whose batch it stopped, and groups never span teams: a site
+ * owner's Stop reaches teams other than the one they act as, and each team's log is its own.
  */
-function stopEvents(
-  stopped: { id: string; label: string; source: Source; lang: Lang; cancelled: number }[],
-  reason: string,
-  actorId: string | null,
-): ActivityEvent[] {
-  const byLang = new Map<Lang, typeof stopped>();
+function stopEvents(stopped: StoppedBatch[], reason: string, actorId: string | null): ActivityEvent[] {
+  const byTeamLang = new Map<string, StoppedBatch[]>();
   for (const batch of stopped) {
-    const batches = byLang.get(batch.lang);
+    const key = `${batch.team}:${batch.lang}`;
+    const batches = byTeamLang.get(key);
     if (batches) batches.push(batch);
-    else byLang.set(batch.lang, [batch]);
+    else byTeamLang.set(key, [batch]);
   }
 
-  return [...byLang.entries()].flatMap(([lang, batches]) => {
+  return [...byTeamLang.values()].flatMap((batches) => {
+    const { lang, team } = batches[0];
     const groupId = batches.length > 1 ? randomUUID() : null;
     const sources = new Set(batches.map((batch) => batch.source));
     const group: ActivityEvent[] = groupId
@@ -486,6 +489,7 @@ function stopEvents(
           {
             kind: "queue.stopped",
             lang,
+            team,
             // A press can stop quests and places batches alike; the row then names neither.
             source: sources.size === 1 ? batches[0].source : null,
             actorId,
@@ -504,6 +508,7 @@ function stopEvents(
         (batch): ActivityEvent => ({
           kind: "batch.stopped",
           lang,
+          team,
           source: batch.source,
           subject: batch.id,
           actorId,
@@ -636,7 +641,8 @@ type JobAggregateRow = {
  * was showing when the X was pressed. A job that finished in between stays news.
  *
  * Each team keeps its own mark. The one panel every team watches (snapshot) is cut at the
- * latest of them, so a dismissal still hides the news for everybody.
+ * latest of them, so a dismissal still hides the news for everybody, except the finished lines
+ * of a language narrowed to one team, which that team's own mark cuts.
  */
 export async function dismissThrough(jobId: string, userId: string | null, lang: Lang): Promise<void> {
   await queryAs(
@@ -667,7 +673,8 @@ export async function snapshot(
   // what it is waiting behind - only what is being said, and why it failed, is private.
   const linesOf = options.linesOf ?? null;
   // The team whose finished lines and pauses to list, per language; a language not named keeps
-  // every team's. A second team's finished lines are its own work, as its pauses are.
+  // every team's. A second team's finished lines are its own work, as its pauses are, and only
+  // its own dismissal hides them. Both "teamId" columns are not null, so the match is exact.
   const teams = JSON.stringify(Object.fromEntries(options.teams ?? []));
   // Live work first, then whatever finished recently: the two halves of what the panel is
   // for. Never just the age, for the reason WINDOW records.
@@ -715,8 +722,13 @@ export async function snapshot(
        finished_page as (
          select "id"::text as "id", "source", "lang", "lineId", "file", "version" from "regeneration_job"
           where "state" = 'done' and "version" is not null
-            and "id" > greatest(coalesce($1::bigint, 0), (select through from dismissal))
             and (not ($3::jsonb ? "lang") or "teamId" = ($3::jsonb ->> "lang")::uuid)
+            and "id" > greatest(
+                  coalesce($1::bigint, 0),
+                  case when $3::jsonb ? "lang"
+                       then coalesce((select d."throughJobId" from "queue_dismissal" d
+                                       where d."teamId" = ($3::jsonb ->> "lang")::uuid), 0)
+                       else (select through from dismissal) end)
           order by "id" limit ${FINISHED_PAGE}
        ),
        terminal as (

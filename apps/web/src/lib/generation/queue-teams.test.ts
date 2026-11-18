@@ -44,6 +44,9 @@ let a: TeamId;
 let b: TeamId;
 let s: TeamId;
 let owner: Awaited<ReturnType<typeof testUser>>;
+/** Who paused each team, so a pause in the panel says whose it is. */
+let pausers: Record<"a" | "b", Awaited<ReturnType<typeof testUser>>>;
+const ids: Record<string, string> = {};
 let tag: string;
 let batches: string[];
 /** Just before the first job here, so older done jobs on the database never fill the page. */
@@ -61,13 +64,14 @@ async function doneJob(team: TeamId, jobLang: Lang, name: string): Promise<void>
      values ($1, $2, $3, '', '', 1, 'done', 1, $4, $5) returning "id"::text`,
     [batch.id, `g:${tag}-${name}`, `${tag}/${name}.mp3`, jobLang, team],
   );
+  ids[name] = job.id;
   since ??= String(BigInt(job.id) - 1n);
 }
 
 const finishedOf = (seen: QueueSnapshot) =>
   seen.finished.filter((job) => job.lineId.startsWith(`g:${tag}-`)).map((job) => job.lineId);
 const pausedOf = (seen: QueueSnapshot) =>
-  seen.paused.filter((pause) => pause.lang === lang || pause.lang === single).map((pause) => pause.lang);
+  seen.paused.filter((pause) => pause.lang === lang || pause.lang === single).map((pause) => pause.by).sort();
 
 beforeEach(async () => {
   forgetTeams();
@@ -84,8 +88,11 @@ beforeEach(async () => {
   await doneJob(a, lang, "a");
   await doneJob(b, lang, "b");
   await doneJob(s, single, "s");
-  for (const team of [a, b]) {
-    await asSystem.query(`insert into "regeneration_pause" ("lang", "teamId") values ($1, $2)`, [lang, team]);
+  pausers = { a: await testUser("test-queue-pauser-a"), b: await testUser("test-queue-pauser-b") };
+  for (const [team, pauser] of [[a, pausers.a], [b, pausers.b]] as const) {
+    await asSystem.query(`insert into "regeneration_pause" ("lang", "teamId", "pausedBy") values ($1, $2, $3)`, [
+      lang, team, pauser.id,
+    ]);
   }
   mocks.cookie = undefined;
   mocks.session = { user: { id: owner.id, name: "Owner", role: "admin" } };
@@ -99,6 +106,8 @@ afterEach(async () => {
   await asSystem.query(`delete from "regeneration_batch" where "id" = any($1::uuid[])`, [batches]);
   await asSystem.query(`delete from "regeneration_pause" where "teamId" = any($1::uuid[])`, [[a, b, s]]);
   await owner.cleanup();
+  await pausers.a.cleanup();
+  await pausers.b.cleanup();
   for (const team of [b, a, s]) await dropTeam(team);
   await dropLang(lang);
   await dropLang(single);
@@ -111,19 +120,29 @@ describe("snapshot with teams", () => {
   it("lists only the named team's finished lines and pauses in its language", async () => {
     const seen = await snapshot(since, { teams: new Map([[lang, b]]) });
     expect(finishedOf(seen)).toEqual([`g:${tag}-b`, `g:${tag}-s`]);
-    expect(pausedOf(seen)).toEqual([lang]);
-    expect(seen.paused.find((pause) => pause.lang === lang)).toBeDefined();
+    expect(pausedOf(seen)).toEqual([pausers.b.id]);
   });
 
   it("lists every team's without", async () => {
     const seen = await snapshot(since);
     expect(finishedOf(seen)).toEqual([`g:${tag}-a`, `g:${tag}-b`, `g:${tag}-s`]);
-    expect(pausedOf(seen)).toEqual([lang, lang]);
+    expect(pausedOf(seen)).toEqual([pausers.a.id, pausers.b.id].sort());
   });
 
   it("keeps a single-team language's rows whatever another language is narrowed to", async () => {
     const seen = await snapshot(since, { teams: new Map([[lang, a]]) });
     expect(finishedOf(seen)).toEqual([`g:${tag}-a`, `g:${tag}-s`]);
+  });
+
+  it("hides a narrowed language's finished lines only behind their own team's dismissal", async () => {
+    // Briefly the latest mark of all, which the panel cuts every other language at.
+    await asSystem.query(`insert into "queue_dismissal" ("teamId", "throughJobId") values ($1, $2)`, [b, ids.b]);
+    try {
+      expect(finishedOf(await snapshot(since, { teams: new Map([[lang, a]]) }))).toEqual([`g:${tag}-a`, `g:${tag}-s`]);
+      expect(finishedOf(await snapshot(since, { teams: new Map([[lang, b]]) }))).toEqual([`g:${tag}-s`]);
+    } finally {
+      await asSystem.query(`delete from "queue_dismissal" where "teamId" = $1`, [b]);
+    }
   });
 });
 
@@ -135,7 +154,7 @@ describe("GET /api/regenerate/queue", () => {
     mocks.cookie = encodeURIComponent(JSON.stringify({ [lang]: slug }));
     const seen = (await (await get()).json()) as QueueSnapshot;
     expect(finishedOf(seen)).toEqual([`g:${tag}-b`, `g:${tag}-s`]);
-    expect(pausedOf(seen)).toEqual([lang]);
+    expect(pausedOf(seen)).toEqual([pausers.b.id]);
   });
 
   it("narrows a site owner with no choice to the privileged team", async () => {
