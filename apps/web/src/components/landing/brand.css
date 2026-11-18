@@ -1,0 +1,154 @@
+/*
+ * What the front page and the site header share: the palette, the buttons and the top bar.
+ *
+ * The palette is the Spoken Manager window's own (see landing.css). `.bn` is the front page and
+ * `.bn-theme` anything else drawn in it: the site header and its menus, which are portalled out of
+ * the header and so carry the class themselves.
+ */
+
+.bn,
+.bn-theme {
+  --bg: #16171d;
+  --bg-deep: #101216;
+  --panel: #222329;
+  --panel-2: #1b1c22;
+  --field: #25272e;
+  --field-input: #121318;
+  --btn: #31333a;
+  --btn-hover: #3c3e46;
+  --text: #f4f5f7;
+  --text-2: #c9cacf;
+  --muted: #8f9197;
+  --cta: oklch(0.83 0.12 85);
+  --cta-ink: #16171d;
+  --cta-hover: #f7d27a;
+  --cta-press: #d9a93d;
+  --accent: #f0c25a;
+  --focus: #fff1c4;
+  --green: #5fcf4f;
+  --yellow: #f5b335;
+  --red: #f0605d;
+  --gold-hi: #fff1c4;
+  --gold-mid: #f0c25a;
+  --gold-lo: #b3752a;
+  --nav-h: 64px;
+  --wrap: 1200px;
+}
+
+.bn-theme {
+  font-family: var(--bn-body), "Segoe UI", sans-serif;
+}
+
+.bn-display {
+  font-family: var(--bn-display), "Palatino Linotype", Georgia, serif;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+
+/* ---------- Buttons ---------- */
+
+.bn-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 44px;
+  padding: 0 24px;
+  border: 0;
+  border-radius: 4px;
+  background: var(--btn);
+  color: var(--text);
+  font: 700 14px/16px var(--bn-body), sans-serif;
+  letter-spacing: 0.04em;
+  text-decoration: none;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+.bn-btn:hover {
+  background: var(--btn-hover);
+}
+.bn-btn:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+.bn-btn-primary {
+  background: var(--cta);
+  color: var(--cta-ink);
+}
+.bn-btn-primary:hover {
+  background: var(--cta-hover);
+}
+.bn-btn-primary:active {
+  background: var(--cta-press);
+}
+.bn-btn-ghost {
+  background: rgba(255, 255, 255, 0.1);
+}
+.bn-btn-ghost:hover {
+  background: rgba(255, 255, 255, 0.16);
+}
+.bn-btn-lg {
+  min-height: 56px;
+  padding: 0 32px;
+  font-size: 16px;
+}
+.bn-btn-sm {
+  min-height: 40px;
+  padding: 0 16px;
+  font-size: 12px;
+}
+
+/* ---------- Top bar ---------- */
+
+.bn-nav {
+  position: sticky;
+  top: 0;
+  z-index: 50;
+  height: var(--nav-h);
+  background: rgba(16, 18, 22, 0.88);
+  backdrop-filter: blur(12px);
+}
+.bn-brand {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex: none;
+  text-decoration: none;
+}
+.bn-brand img {
+  width: 40px;
+  height: 40px;
+}
+.bn-brand-name {
+  font-size: 20px;
+  line-height: 24px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.bn-links {
+  display: flex;
+  gap: 4px;
+  margin-right: auto;
+}
+.bn-links a {
+  padding: 8px 12px;
+  color: var(--text-2);
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 24px;
+  letter-spacing: 0.08em;
+  text-decoration: none;
+  text-transform: uppercase;
+  box-shadow: inset 0 -2px 0 transparent;
+}
+.bn-links a:hover {
+  color: var(--text);
+  box-shadow: inset 0 -2px 0 var(--accent);
+}
+.bn-nav-end {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-left: auto;
+}

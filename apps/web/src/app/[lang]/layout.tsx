@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import "../globals.css";
+import "@/components/landing/brand.css";
 import "@/components/site-nav.css";
 import localFont from "next/font/local";
 import Image from "next/image";
@@ -67,12 +68,11 @@ export default async function RootLayout({
           <LangProvider lang={lang}>
             <GrantsProvider>
               <SiteHeader>
-                {/* Drawn like the front page's top bar (site-nav.css), in the front page's fonts. */}
-                <header className="sn">
+                <header className="bn-theme bn-nav sn">
                   <Contained className="sn-row">
-                    <Link href="/" className="sn-brand" aria-label="Spoken">
+                    <Link href="/" className="bn-brand" aria-label="Spoken">
                       <Image src="/landing/icons/spoken-192.png" alt="" width={96} height={96} priority unoptimized />
-                      <span>Spoken</span>
+                      <span className="bn-brand-name bn-display">Spoken</span>
                     </Link>
                     <UserMenu />
                   </Contained>

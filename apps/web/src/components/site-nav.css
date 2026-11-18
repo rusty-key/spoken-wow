@@ -1,40 +1,17 @@
 /*
- * The site header on every page but the front page, drawn like the front page's top bar
- * (components/landing/landing.css, `.bn-nav`) so the two read as one site.
- *
- * Its colours are the front page's, copied rather than shared: landing.css scopes everything to
- * `.bn`, and loading all of it for a header would bring the whole landing page along. The menus
- * are portalled out of the header, so `.sn-pop` carries the same tokens.
- *
- * Not sticky, unlike the front page's: the explorers pin their own search bars to the top.
+ * The site header on every page but the front page: the front page's top bar from brand.css, with
+ * what differs here. It scrolls away, because the explorers pin their own search bars to the top.
  */
 
-.sn,
-.sn-pop {
-  --sn-bg: #101216;
-  --sn-panel: #222329;
-  --sn-btn: #31333a;
-  --sn-btn-hover: #3c3e46;
-  --sn-text: #f4f5f7;
-  --sn-text-2: #c9cacf;
-  --sn-muted: #8f9197;
-  --sn-cta: oklch(0.83 0.12 85);
-  --sn-cta-ink: #16171d;
-  --sn-cta-hover: #f7d27a;
-  --sn-accent: #f0c25a;
-  --sn-focus: #fff1c4;
-  font-family: var(--bn-body), "Segoe UI", sans-serif;
-}
-
-.sn {
-  background: var(--sn-bg);
-  color: var(--sn-text);
+.sn.bn-nav {
+  position: static;
+  background: var(--bg-deep);
+  backdrop-filter: none;
   box-shadow: inset 0 -1px 0 rgba(255, 255, 255, 0.06);
 }
 
-.sn :focus-visible,
-.sn-pop :focus-visible {
-  outline: 2px solid var(--sn-focus);
+.bn-theme :focus-visible {
+  outline: 2px solid var(--focus);
   outline-offset: 2px;
 }
 
@@ -42,71 +19,34 @@
   display: flex;
   align-items: center;
   gap: 24px;
-  height: 64px;
+  height: 100%;
 }
 
-.sn-brand {
-  display: flex;
-  flex: none;
-  align-items: center;
-  gap: 12px;
-  color: var(--sn-text);
-  text-decoration: none;
+.sn .bn-brand {
+  color: var(--text);
 }
-.sn-brand img {
+.sn .bn-brand img {
   width: 36px;
   height: 36px;
 }
-.sn-brand span {
-  font-family: var(--bn-display), "Palatino Linotype", Georgia, serif;
-  font-size: 20px;
-  font-weight: 700;
-  line-height: 24px;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-}
 
-.sn-links {
-  display: flex;
-  gap: 4px;
-  margin-right: auto;
-}
-
-.sn-link {
+.sn .bn-links a {
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  padding: 8px 12px;
-  color: var(--sn-text-2);
-  font-size: 12px;
-  font-weight: 700;
-  line-height: 24px;
-  letter-spacing: 0.08em;
-  text-decoration: none;
-  text-transform: uppercase;
   white-space: nowrap;
-  box-shadow: inset 0 -2px 0 transparent;
 }
-.sn-link:hover,
-.sn-link[aria-current="page"] {
-  color: var(--sn-text);
-  box-shadow: inset 0 -2px 0 var(--sn-accent);
+.sn .bn-links a[aria-current],
+.sn .bn-links a[data-section] {
+  color: var(--text);
+  box-shadow: inset 0 -2px 0 var(--accent);
 }
-.sn-link-admin,
-.sn-link-admin:hover {
-  color: var(--sn-accent);
+.sn .bn-links a.sn-admin {
+  color: var(--accent);
 }
-.sn-link svg {
+.sn-admin svg {
   width: 14px;
   height: 14px;
-}
-
-.sn-end {
-  display: flex;
-  flex: none;
-  align-items: center;
-  gap: 12px;
-  margin-left: auto;
 }
 
 .sn-signin {
@@ -114,51 +54,17 @@
   gap: 8px;
 }
 
-/* The language switch is a shadcn Select; it takes the front page's button look here. */
-.sn [data-slot="select-trigger"],
-.sn-pop [data-slot="select-trigger"] {
+.bn-theme [data-slot="select-trigger"] {
   height: 40px;
   border: 0;
   border-radius: 4px;
-  background: var(--sn-btn);
-  color: var(--sn-text);
+  background: var(--btn);
+  color: var(--text);
   font-size: 14px;
   box-shadow: none;
 }
-.sn [data-slot="select-trigger"]:hover,
-.sn-pop [data-slot="select-trigger"]:hover {
-  background: var(--sn-btn-hover);
-}
-
-/* .bn-btn and .bn-btn-sm, copied. */
-.sn-btn {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-  min-height: 40px;
-  padding: 0 16px;
-  border: 0;
-  border-radius: 4px;
-  background: var(--sn-btn);
-  color: var(--sn-text);
-  font: 700 12px/16px var(--bn-body), sans-serif;
-  letter-spacing: 0.04em;
-  text-decoration: none;
-  text-transform: uppercase;
-  white-space: nowrap;
-  cursor: pointer;
-  transition: background 0.15s;
-}
-.sn-btn:hover {
-  background: var(--sn-btn-hover);
-}
-.sn-btn-primary {
-  background: var(--sn-cta);
-  color: var(--sn-cta-ink);
-}
-.sn-btn-primary:hover {
-  background: var(--sn-cta-hover);
+.bn-theme [data-slot="select-trigger"]:hover {
+  background: var(--btn-hover);
 }
 
 .sn-burger {
@@ -169,14 +75,14 @@
   border: 0;
   border-radius: 4px;
   background: rgba(255, 255, 255, 0.1);
-  color: var(--sn-text);
+  color: var(--text);
   cursor: pointer;
 }
 .sn-burger:hover {
   background: rgba(255, 255, 255, 0.16);
 }
 
-/* The menus: .bn-menu nav, copied. Plain CSS outranks the popover's own utility classes. */
+/* Plain CSS outranks the popover's own utility classes, which sit in a cascade layer. */
 .sn-pop {
   display: flex;
   flex-direction: column;
@@ -188,8 +94,8 @@
   padding: 8px;
   border: 0;
   border-radius: 8px;
-  background: var(--sn-panel);
-  color: var(--sn-text);
+  background: var(--panel);
+  color: var(--text);
   box-shadow: 0 24px 64px rgba(0, 0, 0, 0.6);
 }
 .sn-item {
@@ -201,7 +107,7 @@
   border: 0;
   border-radius: 4px;
   background: none;
-  color: var(--sn-text);
+  color: var(--text);
   font-size: 13px;
   font-weight: 700;
   line-height: 20px;
@@ -214,15 +120,14 @@
 .sn-item:hover {
   background: rgba(255, 255, 255, 0.08);
 }
-.sn-item[aria-current="page"] {
-  color: var(--sn-accent);
+.sn-item[aria-current],
+.sn-item[data-section],
+.sn-pop .sn-admin {
+  color: var(--accent);
 }
 .sn-item svg {
   width: 14px;
   height: 14px;
-}
-.sn-pop .sn-link-admin {
-  color: var(--sn-accent);
 }
 .sn-account {
   display: flex;
@@ -230,7 +135,7 @@
   justify-content: space-between;
   gap: 8px;
   padding: 8px 12px 10px;
-  color: var(--sn-muted);
+  color: var(--muted);
   font-size: 12px;
   line-height: 16px;
 }
@@ -243,8 +148,8 @@
   flex: none;
   padding: 2px 8px;
   border-radius: 4px;
-  background: var(--sn-btn);
-  color: var(--sn-text-2);
+  background: var(--btn);
+  color: var(--text-2);
   font-size: 11px;
   font-weight: 700;
   letter-spacing: 0.06em;
@@ -259,9 +164,9 @@
   padding: 4px 4px 8px;
 }
 
-/* The row of links needs about 1000px; below that everything folds into the burger. */
+/* NARROW must match UserMenu.tsx: the row of links needs about 1000px. */
 @media (max-width: 1023px) {
-  .sn-links,
+  .sn .bn-links,
   .sn-wide {
     display: none;
   }

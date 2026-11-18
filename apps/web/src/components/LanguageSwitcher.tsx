@@ -10,7 +10,29 @@ import { localeHref, stripLang, type Lang } from "@/lib/lang";
 import { useLang } from "./LangProvider";
 import { usePendingPush } from "./usePendingPush";
 
-type Offered = { code: Lang; name: string; enabled: boolean };
+export type Offered = { code: Lang; name: string; enabled: boolean };
+
+/**
+ * The languages the switch offers, asked of the API once per caller. The site header holds two
+ * switches (its row and its burger) and asks once for both; `enabled` false skips the request.
+ */
+export function useOfferedLanguages(enabled = true): Offered[] {
+  const [offered, setOffered] = useState<Offered[]>([]);
+  useEffect(() => {
+    if (!enabled) return;
+    let live = true;
+    fetch("/api/languages")
+      .then((response) => (response.ok ? response.json() : { languages: [] }))
+      .then((body: { languages: Offered[] }) => {
+        if (live) setOffered(body.languages);
+      })
+      .catch(() => {});
+    return () => {
+      live = false;
+    };
+  }, [enabled]);
+  return offered;
+}
 
 /**
  * The site's one language switch.
@@ -23,7 +45,7 @@ type Offered = { code: Lang; name: string; enabled: boolean };
  * reads the session there: the layout would otherwise put a query in front of every English
  * page. Renders nothing while only one language is on, which is the site as it stands.
  */
-export default function LanguageSwitcher() {
+export default function LanguageSwitcher({ offered: given }: { offered?: Offered[] } = {}) {
   const lang = useLang();
   const pathname = usePathname();
   const { pending, push } = usePendingPush();
@@ -31,20 +53,8 @@ export default function LanguageSwitcher() {
   // language, and without this it snapped back to the old one for as long as the new page
   // took to render, which read as a switch that had refused.
   const [chosen, setChosen] = useState<string>(lang);
-  const [offered, setOffered] = useState<Offered[]>([]);
-
-  useEffect(() => {
-    let live = true;
-    fetch("/api/languages")
-      .then((response) => (response.ok ? response.json() : { languages: [] }))
-      .then((body: { languages: Offered[] }) => {
-        if (live) setOffered(body.languages);
-      })
-      .catch(() => {});
-    return () => {
-      live = false;
-    };
-  }, []);
+  const own = useOfferedLanguages(given === undefined);
+  const offered = given ?? own;
 
   if (offered.length < 2) return null;
 

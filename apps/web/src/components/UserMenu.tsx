@@ -6,9 +6,9 @@ import { useLang } from "@/components/LangProvider";
 import { useCan } from "@/components/useCan";
 import { Menu, ShieldCheck } from "lucide-react";
 import { usePathname, useRouter } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
-import LanguageSwitcher from "@/components/LanguageSwitcher";
+import LanguageSwitcher, { useOfferedLanguages } from "@/components/LanguageSwitcher";
 import PendingCount, { packsWaiting } from "@/components/PendingCount";
 
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -38,13 +38,19 @@ type MenuLink = {
   count?: { value: number; title: string };
 };
 
-/** Whether a link opens the page the reader is on, or a page under it. */
-function current(href: string, path: string): boolean {
+/** Must match site-nav.css's breakpoint, where the row of links gives way to the burger. */
+const NARROW = "(max-width: 1023px)";
+
+/**
+ * How a link relates to the page the reader is on: "page" when it opens that page, "section" when
+ * the page is under it (Admin on /admin/packs), so assistive tech hears "current page" only once.
+ */
+function where(href: string, path: string): "page" | "section" | null {
   const target = href.split("?")[0];
-  return path === target || path.startsWith(`${target}/`);
+  if (path === target) return "page";
+  return path.startsWith(`${target}/`) ? "section" : null;
 }
 
-/** A column of links for a menu, or a row for the header. */
 function Links({
   links,
   column,
@@ -56,20 +62,24 @@ function Links({
   path: string;
   onPick?: () => void;
 }) {
-  return links.map((link) => (
-    <Link
-      key={link.href}
-      href={link.href}
-      onClick={onPick}
-      aria-current={current(link.href, path) ? "page" : undefined}
-      className={cn(column ? "sn-item" : "sn-link", link.admin && "sn-link-admin")}
-    >
-      {/* Gold and a shield, so the way into the admin pages does not read as one more section. */}
-      {link.admin && <ShieldCheck aria-hidden />}
-      {link.label}
-      {link.count && <PendingCount {...link.count} />}
-    </Link>
-  ));
+  return links.map((link) => {
+    const here = where(link.href, path);
+    return (
+      <Link
+        key={link.href}
+        href={link.href}
+        onClick={onPick}
+        aria-current={here === "page" ? "page" : undefined}
+        data-section={here === "section" ? "" : undefined}
+        className={cn(column && "sn-item", link.admin && "sn-admin")}
+      >
+        {/* Gold and a shield, so the way into the admin pages does not read as one more section. */}
+        {link.admin && <ShieldCheck aria-hidden />}
+        {link.label}
+        {link.count && <PendingCount {...link.count} />}
+      </Link>
+    );
+  });
 }
 
 /**
@@ -94,6 +104,33 @@ export default function UserMenu() {
   const grants = useGrants();
   const [pendingPacks] = usePendingPacks();
   const lang = useLang();
+  // Asked once for both switches, the row's and the burger's.
+  const offered = useOfferedLanguages();
+
+  // A menu whose trigger the breakpoint hides would stay open over the page, so crossing it closes
+  // both and, if focus was in a menu, hands it to the trigger that is now shown.
+  const crossed = useRef(false);
+  useEffect(() => {
+    const narrow = window.matchMedia(NARROW);
+    const onChange = () => {
+      const inMenu = document.activeElement?.closest(".sn-pop");
+      crossed.current = Boolean(inMenu);
+      setOpen(false);
+      setBurger(false);
+      if (inMenu) {
+        requestAnimationFrame(() =>
+          document.querySelector<HTMLElement>(narrow.matches ? ".sn-burger" : ".sn .bn-links a")?.focus(),
+        );
+      }
+    };
+    narrow.addEventListener("change", onChange);
+    return () => narrow.removeEventListener("change", onChange);
+  }, []);
+  const keepFocus = (event: Event) => {
+    if (!crossed.current) return;
+    event.preventDefault();
+    crossed.current = false;
+  };
 
   const role = session?.user.role;
   // Everything only a signed-in person can reach, in one menu rather than a header row that
@@ -167,33 +204,32 @@ export default function UserMenu() {
 
   return (
     <>
-      <nav className="sn-links" aria-label="Sections">
+      <nav className="bn-links" aria-label="Sections">
         <Links links={SECTIONS} path={path} />
         <Links links={admin} path={path} />
       </nav>
-      <div className="sn-end">
-        {/* On a narrow screen the switch lives in the burger, with the links. */}
+      <div className="bn-nav-end">
         <div className="sn-wide">
-          <LanguageSwitcher />
+          <LanguageSwitcher offered={offered} />
         </div>
         {/* Nothing until the session resolves, so a signed-in reader never sees "Sign in" flash. */}
         {isPending ? null : !session ? (
           <div className="sn-wide sn-signin">
-            <Link className="sn-btn" href="/login">
+            <Link className="bn-btn bn-btn-sm" href="/login">
               Sign in
             </Link>
-            <Link className="sn-btn sn-btn-primary" href="/register">
+            <Link className="bn-btn bn-btn-primary bn-btn-sm" href="/register">
               Register
             </Link>
           </div>
         ) : (
           <Popover open={open} onOpenChange={setOpen}>
             <PopoverTrigger asChild>
-              <button type="button" className="sn-btn sn-wide">
+              <button type="button" className="bn-btn bn-btn-sm sn-wide">
                 Profile
               </button>
             </PopoverTrigger>
-            <PopoverContent align="end" className="sn-pop">
+            <PopoverContent align="end" className="bn-theme sn-pop" onCloseAutoFocus={keepFocus}>
               {account}
               <Links links={links} column path={path} onPick={() => setOpen(false)} />
               <div className="sn-rule" />
@@ -204,16 +240,15 @@ export default function UserMenu() {
           </Popover>
         )}
 
-        {/* Below the width the row of links needs, everything folds into one menu. */}
         <Popover open={burger} onOpenChange={setBurger}>
           <PopoverTrigger asChild>
             <button type="button" className="sn-burger" aria-label="Menu">
               <Menu size={20} aria-hidden />
             </button>
           </PopoverTrigger>
-          <PopoverContent align="end" className="sn-pop">
+          <PopoverContent align="end" className="bn-theme sn-pop" onCloseAutoFocus={keepFocus}>
             <div className="sn-pop-lang">
-              <LanguageSwitcher />
+              <LanguageSwitcher offered={offered} />
             </div>
             <Links links={SECTIONS} column path={path} onPick={() => setBurger(false)} />
             <div className="sn-rule" />
