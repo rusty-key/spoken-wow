@@ -32,7 +32,12 @@ async function answer(request: Request, params: Promise<{ prefix: string; sha: s
   if (!PREFIXES.has(prefix) || !/^[0-9a-f]{64}$/.test(sha)) return new Response("not an archive object", { status: 404 });
   const key = blobKey(prefix as "takes", sha);
   if (!isShared({ kind: "blob", key }) && !trusted(request)) return new Response("not allowed", { status: 403 });
-  const { url, signed } = await addressOf(await locate(key), method);
+  const where = await locate(key);
+  // A recording always gets an address that expires: a bucket's public one would hand it to anyone
+  // given it, token or not, and for good.
+  const { url, signed } = isShared({ kind: "blob", key })
+    ? await addressOf(where, method)
+    : { url: await where.store.presign(where.key, { method, expiresSec: SIGNED_FOR_SEC }), signed: true };
   // A copy may move, but every copy holds these bytes: a cached redirect is never wrong for long.
   // A recording's is answered to a token alone, so no shared cache may keep it.
   const cache = !isShared({ kind: "blob", key })

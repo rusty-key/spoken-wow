@@ -52,6 +52,8 @@ describe("GET /api/archive/[prefix]/[sha]", () => {
     const granted = await ask(GET, "recordings", sha, { authorization: "Bearer t0ken" });
     expect(granted.status).toBe(302);
     expect(granted.headers.get("cache-control")).toBe("private, no-store");
+    // Signed, though our bucket has a public address: that address would outlive the token.
+    expect(granted.headers.get("location")).toBe(`https://signed.test/recordings/${sha}?method=GET&expires=3600`);
   });
 
   it("knows no other prefix or name, and nothing while the archive is the volume", async () => {
