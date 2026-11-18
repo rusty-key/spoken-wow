@@ -123,3 +123,15 @@ test("below the site owner's banner the explorer's picker hides, so one select s
   picker({ viewed: secondOwn, home: second.slug });
   expect(screen.getByLabelText("Team")).not.toBeNull();
 });
+
+test("below the site owner's banner another team's view still says whose takes play", () => {
+  render(
+    <LangProvider lang="deDE">
+      <BannerShown shown>
+        <TeamPicker teams={[main, second]} viewed={{ ...mainOwn, own: false }} home={second.slug} />
+      </BannerShown>
+    </LangProvider>,
+  );
+  expect(screen.queryByLabelText("Team")).toBeNull();
+  expect(screen.getByText("You are listening to Main Crew. Their takes play; their work is theirs.")).not.toBeNull();
+});

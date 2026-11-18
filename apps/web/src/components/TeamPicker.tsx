@@ -12,7 +12,7 @@ import { cn } from "@/lib/utils";
 
 /**
  * True below the site owner's acting banner, whose picker is then the page's one: a second
- * select could show another value.
+ * select could show another value. The read-only note still shows.
  */
 const BannerPicker = createContext(false);
 
@@ -48,7 +48,13 @@ export default function TeamPicker({
   const { data: session } = useSession();
   const [error, setError] = useState<string | null>(null);
   const bannerShows = useContext(BannerPicker);
-  if (bannerShows || teams.length < 2 || viewed === null) return null;
+  if (teams.length < 2 || viewed === null) return null;
+  const note = !viewed.own && (
+    <p className="text-muted-foreground">
+      {`You are listening to ${viewed.name}. Their takes play; their work is theirs.`}
+    </p>
+  );
+  if (bannerShows) return note ? <div className={cn("text-sm", className)}>{note}</div> : null;
   const ordered = [...teams].sort((a, b) => Number(b.privileged) - Number(a.privileged));
 
   async function pick(slug: string) {
@@ -90,11 +96,7 @@ export default function TeamPicker({
           ))}
         </select>
       </span>
-      {!viewed.own && (
-        <p className="text-muted-foreground">
-          {`You are listening to ${viewed.name}. Their takes play; their work is theirs.`}
-        </p>
-      )}
+      {note}
       {error && <p className="text-destructive">{error}</p>}
     </div>
   );
