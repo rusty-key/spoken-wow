@@ -82,12 +82,18 @@ type Fetch = typeof fetch;
 const basic = ({ clientId, clientSecret }: Config) =>
   `Basic ${Buffer.from(`${encodeURIComponent(clientId)}:${encodeURIComponent(clientSecret)}`).toString("base64")}`;
 
-/** The access token the code is worth, and how many seconds it lasts. */
+/** The scope that lets the site make the bucket's key. Optional on the consent screen: without it the admin makes the key. */
+export const KEY_SCOPE = "account-api-tokens.write";
+
+/**
+ * The access token the code is worth, how many seconds it lasts, and whether the admin granted
+ * KEY_SCOPE. A token answer that names no scopes granted every one asked for (RFC 6749, 5.1).
+ */
 export async function exchangeCode(
   code: string,
   verifier: string,
   fetchImpl: Fetch = fetch,
-): Promise<{ accessToken: string; expiresIn: number }> {
+): Promise<{ accessToken: string; expiresIn: number; mintsKeys: boolean }> {
   const conf = required();
   const res = await fetchImpl(TOKEN, {
     method: "POST",
@@ -96,12 +102,19 @@ export async function exchangeCode(
     redirect: "manual",
     signal: AbortSignal.timeout(30_000),
   });
-  const body = (await res.json().catch(() => null)) as { access_token?: unknown; expires_in?: unknown; error?: unknown; error_description?: unknown } | null;
+  const body = (await res.json().catch(() => null)) as
+    | { access_token?: unknown; expires_in?: unknown; scope?: unknown; error?: unknown; error_description?: unknown }
+    | null;
   if (!res.ok || typeof body?.access_token !== "string") {
     const why = typeof body?.error_description === "string" ? body.error_description : typeof body?.error === "string" ? body.error : `HTTP ${res.status}`;
     throw new CloudflareError(`Cloudflare did not hand over access: ${why}`);
   }
-  return { accessToken: body.access_token, expiresIn: typeof body.expires_in === "number" ? body.expires_in : 3600 };
+  const granted = (typeof body.scope === "string" ? body.scope : conf.scopes).split(/\s+/);
+  return {
+    accessToken: body.access_token,
+    expiresIn: typeof body.expires_in === "number" ? body.expires_in : 3600,
+    mintsKeys: granted.includes(KEY_SCOPE),
+  };
 }
 
 /** Best effort: a token that outlives the setup lapses on its own within the hour. */
@@ -162,23 +175,35 @@ const R2_BUCKET = /^[a-z0-9][a-z0-9-]{1,61}[a-z0-9]$/;
 /** What the bucket is called unless the admin says otherwise. */
 export const suggestedBucket = (lang: Lang): string => `spoken-${lang.toLowerCase()}`.replace(/[^a-z0-9-]/g, "-");
 
-export type MadeBucket = { endpoint: string; bucket: string; accessKeyId: string; secretAccessKey: string; created: boolean };
+export const r2Endpoint = (accountId: string) => `https://${accountId}.r2.cloudflarestorage.com`;
 
-/**
- * The bucket, created unless the account has one by that name, and a new key for it alone. An R2
- * key is an API token: its id is the access key id and the SHA-256 of its value the secret.
- */
-export async function makeBucket(
+/** The bucket, created unless the account has one by that name. True when it was created. */
+export async function ensureBucket(
   token: string,
-  { accountId, bucket, keyName }: { accountId: string; bucket: string; keyName: string },
+  { accountId, bucket }: { accountId: string; bucket: string },
   fetchImpl: Fetch = fetch,
-): Promise<MadeBucket> {
+): Promise<boolean> {
   if (!ACCOUNT_ID.test(accountId)) throw new CloudflareError("That is not a Cloudflare account id.");
   if (!R2_BUCKET.test(bucket)) throw new CloudflareError("The bucket's name is 3 to 63 lowercase letters, digits and dashes, starting and ending with a letter or digit.");
   const account = `/accounts/${accountId}`;
   const found = await api(token, "look for the bucket", `${account}/r2/buckets/${bucket}`, { missingOk: true, fetchImpl });
-  if (!found) await api(token, "create the bucket", `${account}/r2/buckets`, { method: "POST", body: { name: bucket }, fetchImpl });
+  if (found) return false;
+  await api(token, "create the bucket", `${account}/r2/buckets`, { method: "POST", body: { name: bucket }, fetchImpl });
+  return true;
+}
 
+export type BucketKey = { accessKeyId: string; secretAccessKey: string };
+
+/**
+ * A new key for the bucket alone, which needs KEY_SCOPE. An R2 key is an API token: its id is the
+ * access key id and the SHA-256 of its value the secret.
+ */
+export async function mintKey(
+  token: string,
+  { accountId, bucket, keyName }: { accountId: string; bucket: string; keyName: string },
+  fetchImpl: Fetch = fetch,
+): Promise<BucketKey> {
+  const account = `/accounts/${accountId}`;
   const groups = (await api<{ id: string; name: string }[]>(token, "list the permissions a key can have", `${account}/tokens/permission_groups`, { fetchImpl })) ?? [];
   const group = groups.find((g) => g.name === OBJECT_WRITE);
   if (!group) throw new CloudflareError(`Cloudflare offers no "${OBJECT_WRITE}" permission to give the bucket's key.`);
@@ -191,33 +216,30 @@ export async function makeBucket(
     fetchImpl,
   });
   if (!minted?.id || !minted.value) throw new CloudflareError("Cloudflare created the bucket's key but did not show it.");
-  return {
-    endpoint: `https://${accountId}.r2.cloudflarestorage.com`,
-    bucket,
-    accessKeyId: minted.id,
-    secretAccessKey: createHash("sha256").update(minted.value).digest("hex"),
-    created: !found,
-  };
+  return { accessKeyId: minted.id, secretAccessKey: createHash("sha256").update(minted.value).digest("hex") };
 }
 
+export type Connected = { backend: BackendView; test: ProbeResult | null };
+
 /**
- * Makes the bucket and its key, saves it as the team's, and tests it. A new key can take a few
- * seconds to reach R2, so a failing test is tried again a few times before it stands.
+ * Makes the bucket, then saves it as the team's with a key and tests it. The key is the one the
+ * admin pasted, else one minted when the grant allows it. Without either, the bucket is made and
+ * `needsKey` asks the admin for one: they make it on Cloudflare, scoped to the bucket that now
+ * exists. A new key can take a few seconds to reach R2, so a failing test is tried again a few times.
  */
 export async function connectCloudflare(
   team: TeamId,
   userId: string,
   token: string,
-  { accountId, bucket, label }: { accountId: string; bucket: string; label: string },
-  { fetchImpl = fetch, tries = 5, pauseMs = 3_000 }: { fetchImpl?: Fetch; tries?: number; pauseMs?: number } = {},
-): Promise<{ backend: BackendView; test: ProbeResult | null }> {
-  const made = await makeBucket(token, { accountId, bucket, keyName: `Spoken: ${label}` }, fetchImpl);
+  { accountId, bucket, label, key }: { accountId: string; bucket: string; label: string; key: BucketKey | null },
+  { mintsKeys, fetchImpl = fetch, tries = 5, pauseMs = 3_000 }: { mintsKeys: boolean; fetchImpl?: Fetch; tries?: number; pauseMs?: number },
+): Promise<Connected | { needsKey: true }> {
+  await ensureBucket(token, { accountId, bucket }, fetchImpl);
+  if (!key && !mintsKeys) return { needsKey: true };
+  const { accessKeyId, secretAccessKey } = key ?? (await mintKey(token, { accountId, bucket, keyName: `Spoken: ${label}` }, fetchImpl));
   const backend = await createBackend(
     team,
-    backendInput({
-      provider: "r2", label, endpoint: made.endpoint, region: "auto", bucket: made.bucket, pathStyle: true,
-      accessKeyId: made.accessKeyId, secretAccessKey: made.secretAccessKey,
-    }),
+    backendInput({ provider: "r2", label, endpoint: r2Endpoint(accountId), region: "auto", bucket, pathStyle: true, accessKeyId, secretAccessKey }),
     userId,
   );
   let test: ProbeResult | null = null;
@@ -239,7 +261,7 @@ export const COOKIE = "spoken_cloudflare";
 
 export type Pending =
   | { step: "authorize"; lang: Lang; state: string; verifier: string; until: number }
-  | { step: "connected"; lang: Lang; token: string; until: number };
+  | { step: "connected"; lang: Lang; token: string; mintsKeys: boolean; until: number };
 
 const bound = (userId: string) => `cloudflare-oauth:${userId}`;
 

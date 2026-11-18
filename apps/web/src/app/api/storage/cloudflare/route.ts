@@ -1,7 +1,8 @@
 /**
  * The Cloudflare grant waiting in the admin's cookie (docs/platform/STORAGE.md, "Connecting
- * Cloudflare"). GET lists the accounts it reaches; POST makes the bucket and its key, saves and
- * tests it, then revokes the grant; DELETE revokes it unused.
+ * Cloudflare"). GET lists the accounts it reaches and whether the grant can make the bucket's key.
+ * POST makes the bucket; with a key, pasted or made, it saves and tests it and revokes the grant,
+ * and without one it answers `needsKey`. DELETE revokes the grant unused.
  */
 import { StorageError } from "@/lib/storage/backends";
 import {
@@ -9,6 +10,7 @@ import {
   clearedCookie,
   connectCloudflare,
   pendingOf,
+  r2Endpoint,
   revoke,
   suggestedBucket,
 } from "@/lib/storage/cloudflare";
@@ -17,29 +19,36 @@ import { jsonBody, withTeamAdmin, type StorageContext } from "../guard";
 
 export const dynamic = "force-dynamic";
 
-function grant(request: Request, { lang, userId }: StorageContext): string {
+function grant(request: Request, { lang, userId }: StorageContext): { token: string; mintsKeys: boolean } {
   const pending = pendingOf(request, userId);
   if (pending?.step !== "connected" || pending.lang !== lang) {
     throw new StorageError("No Cloudflare grant is waiting, or it lapsed: connect Cloudflare again.", 409);
   }
-  return pending.token;
+  return pending;
 }
 
+const trimmed = (value: unknown) => (typeof value === "string" ? value.trim() : "");
+
 export const GET = withTeamAdmin(async (request, at) => {
-  const accounts = await accountsOf(grant(request, at));
-  return Response.json({ accounts, bucket: suggestedBucket(at.lang) });
+  const { token, mintsKeys } = grant(request, at);
+  return Response.json({ accounts: await accountsOf(token), bucket: suggestedBucket(at.lang), mintsKeys });
 });
 
 export const POST = withTeamAdmin(async (request, at) => {
-  const token = grant(request, at);
+  const { token, mintsKeys } = grant(request, at);
   const body = await jsonBody(request);
-  const accountId = typeof body.accountId === "string" ? body.accountId.trim() : "";
-  const bucket = typeof body.bucket === "string" ? body.bucket.trim() : "";
-  const label = typeof body.label === "string" && body.label.trim() ? body.label.trim().slice(0, 80) : bucket;
-  // A refusal keeps the grant, so the admin can pick another name or account without going back to Cloudflare.
-  const { backend, test } = await connectCloudflare(at.team, at.userId, token, { accountId, bucket, label });
+  const accountId = trimmed(body.accountId);
+  const bucket = trimmed(body.bucket);
+  const label = trimmed(body.label).slice(0, 80) || bucket;
+  const accessKeyId = trimmed(body.accessKeyId);
+  const secretAccessKey = trimmed(body.secretAccessKey);
+  if (Boolean(accessKeyId) !== Boolean(secretAccessKey)) throw new StorageError("Paste both the access key id and the secret access key.");
+  const key = accessKeyId ? { accessKeyId, secretAccessKey } : null;
+  // A refusal, or a bucket waiting for its key, keeps the grant: the admin carries on without going back to Cloudflare.
+  const done = await connectCloudflare(at.team, at.userId, token, { accountId, bucket, label, key }, { mintsKeys });
+  if ("needsKey" in done) return Response.json({ needsKey: true, endpoint: r2Endpoint(accountId), bucket });
   await revoke(token);
-  return Response.json({ backend, test }, { status: 201, headers: { "Set-Cookie": clearedCookie() } });
+  return Response.json(done, { status: 201, headers: { "Set-Cookie": clearedCookie() } });
 });
 
 export const DELETE = withTeamAdmin(async (request, { userId }) => {

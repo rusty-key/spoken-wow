@@ -182,17 +182,6 @@ export default function StoragePanel({
         />
       ))}
 
-      {view.canSeal && view.cloudflare && (
-        <ConnectCloudflare
-          lang={lang}
-          returned={cloudflare}
-          onConnected={(backend, test) => {
-            replace(backend);
-            if (test) setTests((current) => ({ ...current, [backend.id]: test }));
-          }}
-        />
-      )}
-
       {view.canSeal && (
         <NewBackend
           providers={view.providers}
@@ -201,6 +190,11 @@ export default function StoragePanel({
             await post(backend.id, "test");
           }}
           lang={lang}
+          cloudflare={view.cloudflare ? cloudflare : null}
+          onConnected={(backend, test) => {
+            replace(backend);
+            if (test) setTests((current) => ({ ...current, [backend.id]: test }));
+          }}
         />
       )}
     </div>
@@ -385,10 +379,11 @@ function MoveLine({ move, from, to, onStop }: { move: MoveView; from: string; to
 }
 
 /**
- * One click to Cloudflare and back: the site makes the bucket and a key for it alone, then forgets
- * the grant. The grant itself waits in an httpOnly cookie; this only asks which account and name.
+ * One click to Cloudflare and back: the site makes the bucket, and its key when the admin granted
+ * that, then forgets the grant. Without it the admin makes the key on Cloudflare and pastes it. The
+ * grant itself waits in an httpOnly cookie; this only asks which account, which name, and the key.
  */
-function ConnectCloudflare({
+function CloudflareSetup({
   lang,
   returned,
   onConnected,
@@ -398,8 +393,12 @@ function ConnectCloudflare({
   onConnected: (backend: BackendView, test: ProbeResult | null) => void;
 }) {
   const [accounts, setAccounts] = useState<CloudflareAccount[] | null>(null);
+  const [mintsKeys, setMintsKeys] = useState(false);
   const [accountId, setAccountId] = useState("");
   const [bucket, setBucket] = useState("");
+  /** Set once the bucket exists and waits for the key the admin makes. */
+  const [needsKey, setNeedsKey] = useState(false);
+  const [key, setKey] = useState({ accessKeyId: "", secretAccessKey: "" });
   const [error, setError] = useState<string | null>(returned.error);
   const [working, setWorking] = useState(false);
   const url = `/api/storage/cloudflare?lang=${lang}`;
@@ -417,76 +416,121 @@ function ConnectCloudflare({
     if (!returned.connected) return;
     void (async () => {
       const res = await fetch(url).catch(() => null);
-      const answer = (await res?.json().catch(() => null)) as { accounts?: CloudflareAccount[]; bucket?: string; error?: string } | null;
+      const answer = (await res?.json().catch(() => null)) as
+        | { accounts?: CloudflareAccount[]; bucket?: string; mintsKeys?: boolean; error?: string }
+        | null;
       if (!res?.ok || !answer?.accounts) return setError(answer?.error ?? "Cloudflare's accounts could not be read: connect again.");
       if (answer.accounts.length === 0) return setError("The grant reaches no Cloudflare account: connect again and pick one.");
       setAccounts(answer.accounts);
+      setMintsKeys(answer.mintsKeys === true);
       setAccountId(answer.accounts[0].id);
       setBucket(answer.bucket ?? "");
     })();
   }, [returned.connected, url]);
 
-  const create = async (event: React.FormEvent) => {
+  const submit = async (event: React.FormEvent) => {
     event.preventDefault();
     setWorking(true);
     setError(null);
-    const answer = await call(url, { method: "POST", body: JSON.stringify({ accountId, bucket: bucket.trim() }) });
+    const body = { accountId, bucket: bucket.trim(), ...(needsKey ? { accessKeyId: key.accessKeyId.trim(), secretAccessKey: key.secretAccessKey.trim() } : {}) };
+    const res = await fetch(url, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(body) }).catch(() => null);
+    const answer = (await res?.json().catch(() => null)) as (Answer & { needsKey?: boolean }) | null;
     setWorking(false);
-    if (answer.error || !answer.backend) return setError(answer.error ?? "not connected");
+    if (!res?.ok || !answer) return setError(answer?.error ?? (res ? `HTTP ${res.status}` : "No answer from the site."));
+    if (answer.needsKey) return setNeedsKey(true);
+    if (!answer.backend) return setError("not connected");
     setAccounts(null);
+    setNeedsKey(false);
+    setKey({ accessKeyId: "", secretAccessKey: "" });
     onConnected(answer.backend, answer.test ?? null);
   };
 
   const cancel = async () => {
     await call(url, { method: "DELETE" });
     setAccounts(null);
+    setNeedsKey(false);
   };
 
+  if (!accounts) {
+    return (
+      <div className="flex flex-col gap-3">
+        <ul className="text-muted-foreground flex list-disc flex-col gap-1 pl-5">
+          <li>Spoken creates the bucket in your Cloudflare account.</li>
+          <li>It keeps only a key to that bucket, nothing else.</li>
+          <li>Creating API tokens is optional: skip it, and you make the key yourself.</li>
+        </ul>
+        <div>
+          <Button asChild size="sm">
+            <a href={`/api/storage/cloudflare/start?lang=${lang}`}>Connect Cloudflare</a>
+          </Button>
+        </div>
+        {error && <p className="text-destructive">{error}</p>}
+      </div>
+    );
+  }
+
+  const ready = bucket.trim() && (!needsKey || (key.accessKeyId.trim() && key.secretAccessKey.trim()));
   return (
-    <section className="bg-card flex flex-col gap-3 rounded-lg border p-4 text-sm">
-      <h2 className="font-medium">Connect Cloudflare R2</h2>
-      {accounts ? (
-        <form onSubmit={create} className="flex flex-col gap-3">
-          <fieldset disabled={working} className="contents">
+    <form onSubmit={submit} className="flex flex-col gap-3">
+      <fieldset disabled={working} className="contents">
+        <div className="grid gap-3 sm:grid-cols-2">
+          <label className="flex flex-col gap-1">
+            <span className="text-muted-foreground">Account</span>
+            <select className="bg-background h-9 rounded-md border px-2" value={accountId} disabled={needsKey} onChange={(e) => setAccountId(e.target.value)}>
+              {accounts.map((account) => (
+                <option key={account.id} value={account.id}>{account.name}</option>
+              ))}
+            </select>
+          </label>
+          <label className="flex flex-col gap-1">
+            <span className="text-muted-foreground">Bucket</span>
+            <Input aria-label="Bucket" value={bucket} disabled={needsKey} onChange={(e) => setBucket(e.target.value)} />
+          </label>
+        </div>
+        {needsKey ? (
+          <>
+            <p>The bucket {bucket} is ready. Now make its key on Cloudflare and paste it here:</p>
+            <ol className="text-muted-foreground flex list-decimal flex-col gap-1 pl-5">
+              <li>
+                Open{" "}
+                <a className="text-primary-ink underline" href={`https://dash.cloudflare.com/${accountId}/r2/api-tokens`} target="_blank" rel="noreferrer">
+                  R2 API tokens
+                </a>{" "}
+                and choose <span className="text-foreground">Create Account API token</span>.
+              </li>
+              <li>Permissions: <span className="text-foreground">Object Read &amp; Write</span>.</li>
+              <li>
+                Specify bucket: <span className="text-foreground">Apply to specific buckets only</span>, then{" "}
+                <span className="text-foreground font-mono">{bucket}</span>.
+              </li>
+              <li>TTL: <span className="text-foreground">Forever</span>. Create the token.</li>
+              <li>
+                Copy the <span className="text-foreground">Access Key ID</span> and the{" "}
+                <span className="text-foreground">Secret Access Key</span> (the S3 ones, not the token value). Cloudflare
+                shows the secret only once.
+              </li>
+            </ol>
             <div className="grid gap-3 sm:grid-cols-2">
-              <label className="flex flex-col gap-1">
-                <span className="text-muted-foreground">Account</span>
-                <select className="bg-background h-9 rounded-md border px-2" value={accountId} onChange={(e) => setAccountId(e.target.value)}>
-                  {accounts.map((account) => (
-                    <option key={account.id} value={account.id}>{account.name}</option>
-                  ))}
-                </select>
-              </label>
-              <label className="flex flex-col gap-1">
-                <span className="text-muted-foreground">Bucket</span>
-                <Input aria-label="Bucket" value={bucket} onChange={(e) => setBucket(e.target.value)} />
-              </label>
+              <Input placeholder="Access key id" aria-label="Access key id" value={key.accessKeyId} onChange={(e) => setKey({ ...key, accessKeyId: e.target.value })} />
+              <Input type="password" autoComplete="off" placeholder="Secret access key" aria-label="Secret access key" value={key.secretAccessKey} onChange={(e) => setKey({ ...key, secretAccessKey: e.target.value })} />
             </div>
-            <p className="text-muted-foreground">
-              Spoken creates the bucket unless the account already has one by that name, and a key that reads and
-              writes objects in it alone. Then it tests the bucket and lets go of the access you granted.
-            </p>
-            <div className="flex gap-2">
-              <Button type="submit" size="sm" disabled={!bucket.trim()}>{working ? "Setting up…" : "Create and test"}</Button>
-              <Button type="button" size="sm" variant="ghost" onClick={() => void cancel()}>Cancel</Button>
-            </div>
-          </fieldset>
-        </form>
-      ) : (
-        <>
+          </>
+        ) : (
           <p className="text-muted-foreground">
-            Sign in to Cloudflare and grant access once: Spoken creates an R2 bucket and its key for you, so there is
-            nothing to copy over.
+            {mintsKeys
+              ? "Spoken creates the bucket unless the account already has one by that name, and a key that reads and writes objects in it alone. Then it tests the bucket and gives up the access you granted."
+              : "Spoken creates this bucket, or uses it if it already exists. Then you make its key on Cloudflare and paste it here."}
           </p>
-          <div>
-            <Button asChild size="sm">
-              <a href={`/api/storage/cloudflare/start?lang=${lang}`}>Connect Cloudflare</a>
-            </Button>
-          </div>
-        </>
-      )}
+        )}
+        <div className="flex gap-2">
+          <Button type="submit" size="sm" disabled={!ready}>
+            {working ? "Working…" : needsKey ? "Save and test" : mintsKeys ? "Create and test" : "Create bucket"}
+          </Button>
+          <Button type="button" size="sm" variant="ghost" onClick={() => void cancel()}>Cancel</Button>
+        </div>
+      </fieldset>
       {error && <p className="text-destructive">{error}</p>}
-    </section>
+    </form>
   );
 }
 
@@ -496,16 +540,23 @@ function NewBackend({
   providers,
   onSaved,
   lang,
+  cloudflare,
+  onConnected,
 }: {
   providers: StorageView["providers"];
   onSaved: (backend: BackendView) => Promise<void>;
   lang: Lang;
+  /** Where the Cloudflare grant stands, or null when this site cannot connect Cloudflare. */
+  cloudflare: CloudflareReturn | null;
+  onConnected: (backend: BackendView, test: ProbeResult | null) => void;
 }) {
   const [provider, setProvider] = useState<Provider>("r2");
+  const [byHand, setByHand] = useState(false);
   const [form, setForm] = useState(EMPTY);
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const preset = providers.find((p) => p.id === provider)!;
+  const viaCloudflare = provider === "r2" && cloudflare !== null && !byHand;
   const field = (name: keyof typeof EMPTY) => ({
     value: form[name],
     onChange: (e: React.ChangeEvent<HTMLInputElement>) => setForm({ ...form, [name]: e.target.value }),
@@ -526,37 +577,58 @@ function NewBackend({
   };
 
   return (
-    <form onSubmit={save} className="bg-card flex flex-col gap-3 rounded-lg border p-4 text-sm">
-      {/* Held while saving: the form clears when the save returns, and would take edits with it. */}
-      <fieldset disabled={saving} className="contents">
+    <section className="bg-card flex flex-col gap-3 rounded-lg border p-4 text-sm">
       <h2 className="font-medium">Connect a bucket</h2>
       <label className="flex flex-col gap-1">
         <span className="text-muted-foreground">Provider</span>
-        <select className="bg-background h-9 w-72 rounded-md border px-2" value={provider} onChange={(e) => setProvider(e.target.value as Provider)}>
+        <select
+          className="bg-background h-9 w-72 rounded-md border px-2"
+          value={provider}
+          disabled={saving}
+          onChange={(e) => setProvider(e.target.value as Provider)}
+        >
           {providers.map((p) => (
             <option key={p.id} value={p.id}>{p.label}</option>
           ))}
         </select>
       </label>
-      <div className="grid gap-3 sm:grid-cols-2">
-        <Input placeholder={`Endpoint: ${preset.endpoint}`} aria-label="Endpoint" {...field("endpoint")} />
-        <Input placeholder={preset.region ? `Region: ${preset.region}` : "Region, e.g. eu-central-1"} aria-label="Region" {...field("region")} />
-        <Input placeholder="Bucket" aria-label="Bucket" {...field("bucket")} />
-        <Input placeholder="Public address (optional), e.g. https://audio.example.org/" aria-label="Public address" {...field("publicUrl")} />
-        <Input placeholder="Access key id" aria-label="Access key id" {...field("accessKeyId")} />
-        <Input type="password" autoComplete="off" placeholder="Secret access key" aria-label="Secret access key" {...field("secretAccessKey")} />
-        <Input placeholder="Name (optional)" aria-label="Name" {...field("label")} />
-      </div>
-      <p className="text-muted-foreground">
-        The key needs to read and write objects (GetObject and PutObject; on Amazon S3 also ListBucket, without
-        which a missing object answers 403 rather than 404). Without a public address the site hands listeners signed
-        addresses that expire. Saving tests the bucket; nothing goes to it until you switch it on.
-      </p>
-      </fieldset>
-      {error && <p className="text-destructive">{error}</p>}
-      <div>
-        <Button type="submit" size="sm" disabled={saving}>{saving ? "Saving…" : "Save and test"}</Button>
-      </div>
-    </form>
+      {provider === "r2" && cloudflare && (
+        <div className="flex flex-wrap gap-2" role="group" aria-label="How to connect R2">
+          <Button type="button" size="sm" variant={byHand ? "outline" : "secondary"} aria-pressed={!byHand} onClick={() => setByHand(false)}>
+            Connect with Cloudflare
+          </Button>
+          <Button type="button" size="sm" variant={byHand ? "secondary" : "outline"} aria-pressed={byHand} onClick={() => setByHand(true)}>
+            Enter details by hand
+          </Button>
+        </div>
+      )}
+      {viaCloudflare ? (
+        <CloudflareSetup lang={lang} returned={cloudflare} onConnected={onConnected} />
+      ) : (
+        <form onSubmit={save} className="flex flex-col gap-3">
+          {/* Held while saving: the form clears when the save returns, and would take edits with it. */}
+          <fieldset disabled={saving} className="contents">
+            <div className="grid gap-3 sm:grid-cols-2">
+              <Input placeholder={`Endpoint: ${preset.endpoint}`} aria-label="Endpoint" {...field("endpoint")} />
+              <Input placeholder={preset.region ? `Region: ${preset.region}` : "Region, e.g. eu-central-1"} aria-label="Region" {...field("region")} />
+              <Input placeholder="Bucket" aria-label="Bucket" {...field("bucket")} />
+              <Input placeholder="Public address (optional), e.g. https://audio.example.org/" aria-label="Public address" {...field("publicUrl")} />
+              <Input placeholder="Access key id" aria-label="Access key id" {...field("accessKeyId")} />
+              <Input type="password" autoComplete="off" placeholder="Secret access key" aria-label="Secret access key" {...field("secretAccessKey")} />
+              <Input placeholder="Name (optional)" aria-label="Name" {...field("label")} />
+            </div>
+            <p className="text-muted-foreground">
+              The key needs to read and write objects (GetObject and PutObject; on Amazon S3 also ListBucket, without
+              which a missing object answers 403 rather than 404). Without a public address the site hands listeners signed
+              addresses that expire. Saving tests the bucket; nothing goes to it until you switch it on.
+            </p>
+          </fieldset>
+          {error && <p className="text-destructive">{error}</p>}
+          <div>
+            <Button type="submit" size="sm" disabled={saving}>{saving ? "Saving…" : "Save and test"}</Button>
+          </div>
+        </form>
+      )}
+    </section>
   );
 }

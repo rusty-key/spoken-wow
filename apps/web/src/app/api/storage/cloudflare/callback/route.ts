@@ -1,6 +1,6 @@
 /**
  * Where Cloudflare sends the admin back. The code is exchanged for an access token, which waits in
- * the sealed cookie while the Storage page asks which account and bucket. Every outcome goes back to
+ * the sealed cookie, with whether it may make keys, while the Storage page asks which account and bucket. Every outcome goes back to
  * the Storage page, a refusal in `?cloudflare_error=`. Relative, so the redirect stays on the host
  * the browser used.
  */
@@ -39,9 +39,10 @@ export async function GET(request: Request) {
   if (!code) return fail("Cloudflare sent no code back: start again.");
 
   try {
-    const { accessToken, expiresIn } = await exchangeCode(code, pending.verifier);
+    const { accessToken, expiresIn, mintsKeys } = await exchangeCode(code, pending.verifier);
     const until = Date.now() + Math.min(CHOOSE_MS, expiresIn * 1000);
-    return back(pending.lang, { cloudflare: "connected" }, cookieFor(session.user.id, { step: "connected", lang: pending.lang, token: accessToken, until }));
+    const cookie = cookieFor(session.user.id, { step: "connected", lang: pending.lang, token: accessToken, mintsKeys, until });
+    return back(pending.lang, { cloudflare: "connected" }, cookie);
   } catch (error) {
     if (error instanceof CloudflareError) return fail(error.message);
     throw error;

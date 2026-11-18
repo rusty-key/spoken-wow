@@ -28,6 +28,9 @@ let user: Awaited<ReturnType<typeof testUser>>;
 let fr: Awaited<ReturnType<typeof ownTeam>>;
 let restoreArchive = () => {};
 let calls: string[] = [];
+/** What the admin granted on Cloudflare's consent screen. */
+let granted = "";
+const ALL = "account-settings.read workers-r2.write account-api-tokens.write";
 
 /** Cloudflare: its token endpoint, its revoke, and an account with no buckets. */
 const cloudflare = (async (input: string, init?: RequestInit) => {
@@ -35,7 +38,7 @@ const cloudflare = (async (input: string, init?: RequestInit) => {
   const method = init?.method ?? "GET";
   calls.push(`${method} ${url.pathname}`);
   const ok = (result: unknown) => Response.json({ success: true, errors: [], result });
-  if (url.pathname === "/oauth2/token") return Response.json({ access_token: "cf-access", expires_in: 3600 });
+  if (url.pathname === "/oauth2/token") return Response.json({ access_token: "cf-access", expires_in: 3600, scope: granted });
   if (url.pathname === "/oauth2/revoke") return new Response(null, { status: 200 });
   const path = url.pathname.replace("/client/v4", "");
   if (path === "/accounts") return ok([{ id: ACCOUNT, name: "Team account", type: "standard" }]);
@@ -52,7 +55,7 @@ const withCookie = (url: string, cookie: string, init: RequestInit = {}) =>
   new Request(url, { ...init, headers: { ...(init.headers ?? {}), cookie } });
 
 /** Start, and come back from Cloudflare with its code: the cookie holding the grant. */
-async function granted(): Promise<string> {
+async function grantedCookie(): Promise<string> {
   const start = await START(new Request("http://x/api/storage/cloudflare/start?lang=frFR"));
   const state = new URL(start.headers.get("location")!).searchParams.get("state")!;
   const back = await CALLBACK(withCookie(`http://x/api/storage/cloudflare/callback?code=c&state=${state}`, cookieOf(start)));
@@ -64,7 +67,7 @@ beforeAll(async () => {
   vi.stubEnv("SPOKEN_STORAGE_KEY", Buffer.alloc(32, 3).toString("base64"));
   vi.stubEnv("CLOUDFLARE_OAUTH_CLIENT_ID", "client");
   vi.stubEnv("CLOUDFLARE_OAUTH_CLIENT_SECRET", "secret");
-  vi.stubEnv("CLOUDFLARE_OAUTH_SCOPES", "account:read");
+  vi.stubEnv("CLOUDFLARE_OAUTH_SCOPES", ALL);
   vi.stubGlobal("fetch", cloudflare);
   user = await testUser("test-storage-cloudflare");
   who.id = user.id;
@@ -77,6 +80,7 @@ beforeAll(async () => {
 
 beforeEach(() => {
   calls = [];
+  granted = ALL;
   probed.probe.mockReset().mockResolvedValue(OK);
   restoreArchive = useArchiveForTests(memoryBlobs(), "r2");
 });
@@ -125,9 +129,9 @@ describe("connecting Cloudflare", () => {
   });
 
   it("makes the bucket and its key, saves and tests it, and lets go of the grant", async () => {
-    const cookie = await granted();
+    const cookie = await grantedCookie();
     const accounts = await (await GET(withCookie("http://x/api/storage/cloudflare?lang=frFR", cookie))).json();
-    expect(accounts).toEqual({ accounts: [{ id: ACCOUNT, name: "Team account" }], bucket: "spoken-frfr" });
+    expect(accounts).toEqual({ accounts: [{ id: ACCOUNT, name: "Team account" }], bucket: "spoken-frfr", mintsKeys: true });
 
     const res = await POST(withCookie("http://x/api/storage/cloudflare?lang=frFR", cookie, { method: "POST", body: JSON.stringify({ accountId: ACCOUNT, bucket: "spoken-frfr" }) }));
     expect(res.status).toBe(201);
@@ -145,8 +149,31 @@ describe("connecting Cloudflare", () => {
     expect(calls).toContain("POST /oauth2/revoke");
   });
 
+  it("makes only the bucket when the admin declined to let it make keys, then takes the key they paste", async () => {
+    granted = "account-settings.read workers-r2.write";
+    const cookie = await grantedCookie();
+    expect((await (await GET(withCookie("http://x/api/storage/cloudflare?lang=frFR", cookie))).json()).mintsKeys).toBe(false);
+    const post = (body: object) =>
+      POST(withCookie("http://x/api/storage/cloudflare?lang=frFR", cookie, { method: "POST", body: JSON.stringify({ accountId: ACCOUNT, bucket: "spoken-frfr", ...body }) }));
+
+    const first = await post({});
+    expect(first.status).toBe(200);
+    expect(first.headers.get("set-cookie")).toBeNull();
+    expect(await first.json()).toEqual({ needsKey: true, endpoint: `https://${ACCOUNT}.r2.cloudflarestorage.com`, bucket: "spoken-frfr" });
+    expect(calls).toContain(`POST /client/v4/accounts/${ACCOUNT}/r2/buckets`);
+
+    expect((await post({ accessKeyId: "pasted-id" })).status).toBe(400);
+
+    const second = await post({ accessKeyId: "pasted-id", secretAccessKey: "pasted-secret" });
+    expect(second.status).toBe(201);
+    expect(second.headers.get("set-cookie")).toContain("Max-Age=0");
+    expect((await second.json()).backend).toMatchObject({ accessKeyId: "pasted-id", health: "ok" });
+    expect(calls.some((call) => call.endsWith("/tokens") || call.endsWith("/tokens/permission_groups"))).toBe(false);
+    expect(calls).toContain("POST /oauth2/revoke");
+  });
+
   it("tests a new key again while it reaches R2", async () => {
-    const cookie = await granted();
+    const cookie = await grantedCookie();
     probed.probe.mockResolvedValueOnce({ ok: false, conditionalPut: null, steps: [{ name: "Write an object", ok: false, detail: "HTTP 401" }] });
     vi.useFakeTimers({ toFake: ["setTimeout"] });
     try {
@@ -162,7 +189,7 @@ describe("connecting Cloudflare", () => {
   });
 
   it("keeps the grant when Cloudflare refuses, so the admin can try another name", async () => {
-    const cookie = await granted();
+    const cookie = await grantedCookie();
     const res = await POST(withCookie("http://x/api/storage/cloudflare?lang=frFR", cookie, { method: "POST", body: JSON.stringify({ accountId: ACCOUNT, bucket: "Bad_Name" }) }));
     expect(res.status).toBe(400);
     expect(res.headers.get("set-cookie")).toBeNull();
@@ -170,7 +197,7 @@ describe("connecting Cloudflare", () => {
   });
 
   it("refuses a grant made for another language, and revokes one cancelled", async () => {
-    const cookie = await granted();
+    const cookie = await grantedCookie();
     expect((await GET(withCookie(`http://x/api/storage/cloudflare?lang=${BASE_LANG}`, cookie))).status).toBe(403);
     const res = await DELETE(withCookie("http://x/api/storage/cloudflare?lang=frFR", cookie, { method: "DELETE" }));
     expect(res.status).toBe(204);

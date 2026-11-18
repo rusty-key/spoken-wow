@@ -3,7 +3,7 @@ import { createHash } from "node:crypto";
 
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 
-import { authorization, cookieFor, makeBucket, pendingOf, suggestedBucket, type Pending } from "./cloudflare";
+import { authorization, cookieFor, ensureBucket, exchangeCode, mintKey, pendingOf, suggestedBucket, type Pending } from "./cloudflare";
 
 const ACCOUNT = "0123456789abcdef0123456789abcdef";
 
@@ -39,18 +39,39 @@ function cloudflare({ buckets = [] as string[], groups = [{ id: "g-write", name:
   return { impl, calls };
 }
 
-describe("makeBucket", () => {
-  it("creates the bucket and a key for it alone, whose secret is the SHA-256 of the token", async () => {
+describe("ensureBucket", () => {
+  it("creates the bucket when the account has none by that name", async () => {
     const cf = cloudflare();
-    const made = await makeBucket("t", { accountId: ACCOUNT, bucket: "spoken-frfr", keyName: "Spoken: x" }, cf.impl);
-    expect(made).toEqual({
-      endpoint: `https://${ACCOUNT}.r2.cloudflarestorage.com`,
-      bucket: "spoken-frfr",
-      accessKeyId: "token-id",
-      secretAccessKey: createHash("sha256").update("token-value").digest("hex"),
-      created: true,
-    });
+    expect(await ensureBucket("t", { accountId: ACCOUNT, bucket: "spoken-frfr" }, cf.impl)).toBe(true);
     expect(cf.calls.some((c) => c.method === "POST" && c.path.endsWith("/r2/buckets"))).toBe(true);
+  });
+
+  it("uses a bucket the account already has", async () => {
+    const cf = cloudflare({ buckets: ["spoken-frfr"] });
+    expect(await ensureBucket("t", { accountId: ACCOUNT, bucket: "spoken-frfr" }, cf.impl)).toBe(false);
+    expect(cf.calls.some((c) => c.method === "POST")).toBe(false);
+  });
+
+  it("refuses a malformed account or bucket before asking Cloudflare", async () => {
+    const cf = cloudflare();
+    await expect(ensureBucket("t", { accountId: "../user", bucket: "ok-name" }, cf.impl)).rejects.toThrow("account id");
+    await expect(ensureBucket("t", { accountId: ACCOUNT, bucket: "Bad_Name" }, cf.impl)).rejects.toThrow("bucket's name");
+    expect(cf.calls).toEqual([]);
+  });
+
+  it("says which step Cloudflare refused, and that a grant may lack a permission", async () => {
+    const impl = (async () => Response.json({ success: false, errors: [{ message: "Authentication error" }] }, { status: 403 })) as typeof fetch;
+    await expect(ensureBucket("t", { accountId: ACCOUNT, bucket: "spoken-frfr" }, impl)).rejects.toThrow(
+      "Cloudflare refused to look for the bucket: Authentication error. The grant may lack a permission this needs.",
+    );
+  });
+});
+
+describe("mintKey", () => {
+  it("makes a key for the bucket alone, whose secret is the SHA-256 of the token", async () => {
+    const cf = cloudflare();
+    const key = await mintKey("t", { accountId: ACCOUNT, bucket: "spoken-frfr", keyName: "Spoken: x" }, cf.impl);
+    expect(key).toEqual({ accessKeyId: "token-id", secretAccessKey: createHash("sha256").update("token-value").digest("hex") });
     const minted = cf.calls.find((c) => c.method === "POST" && c.path.endsWith("/tokens"))!;
     expect(minted.body).toEqual({
       name: "Spoken: x",
@@ -58,36 +79,35 @@ describe("makeBucket", () => {
     });
   });
 
-  it("uses a bucket the account already has", async () => {
-    const cf = cloudflare({ buckets: ["spoken-frfr"] });
-    const made = await makeBucket("t", { accountId: ACCOUNT, bucket: "spoken-frfr", keyName: "k" }, cf.impl);
-    expect(made.created).toBe(false);
-    expect(cf.calls.some((c) => c.method === "POST" && c.path.endsWith("/r2/buckets"))).toBe(false);
-  });
-
-  it("refuses a malformed account or bucket before asking Cloudflare", async () => {
-    const cf = cloudflare();
-    await expect(makeBucket("t", { accountId: "../user", bucket: "ok-name", keyName: "k" }, cf.impl)).rejects.toThrow("account id");
-    await expect(makeBucket("t", { accountId: ACCOUNT, bucket: "Bad_Name", keyName: "k" }, cf.impl)).rejects.toThrow("bucket's name");
-    expect(cf.calls).toEqual([]);
-  });
-
-  it("says which step Cloudflare refused, and that a grant may lack a permission", async () => {
-    const impl = (async () => Response.json({ success: false, errors: [{ message: "Authentication error" }] }, { status: 403 })) as typeof fetch;
-    await expect(makeBucket("t", { accountId: ACCOUNT, bucket: "spoken-frfr", keyName: "k" }, impl)).rejects.toThrow(
-      "Cloudflare refused to look for the bucket: Authentication error. The grant may lack a permission this needs.",
-    );
-  });
-
   it("stops when the account offers no bucket-scoped permission", async () => {
     const cf = cloudflare({ groups: [] });
-    await expect(makeBucket("t", { accountId: ACCOUNT, bucket: "spoken-frfr", keyName: "k" }, cf.impl)).rejects.toThrow("no \"Workers R2 Storage Bucket Item Write\"");
+    await expect(mintKey("t", { accountId: ACCOUNT, bucket: "spoken-frfr", keyName: "k" }, cf.impl)).rejects.toThrow("no \"Workers R2 Storage Bucket Item Write\"");
+  });
+});
+
+describe("exchangeCode", () => {
+  const answering = (body: object) => (async () => Response.json(body)) as unknown as typeof fetch;
+
+  it("sees whether the admin let the site make keys", async () => {
+    const without = await exchangeCode("c", "v", answering({ access_token: "a", expires_in: 60, scope: "account-settings.read workers-r2.write" }));
+    expect(without).toEqual({ accessToken: "a", expiresIn: 60, mintsKeys: false });
+    const granted = await exchangeCode("c", "v", answering({ access_token: "a", scope: "workers-r2.write account-api-tokens.write" }));
+    expect(granted.mintsKeys).toBe(true);
+  });
+
+  it("takes an answer naming no scopes as every scope asked for", async () => {
+    vi.stubEnv("CLOUDFLARE_OAUTH_SCOPES", "account-settings.read account-api-tokens.write");
+    try {
+      expect((await exchangeCode("c", "v", answering({ access_token: "a" }))).mintsKeys).toBe(true);
+    } finally {
+      vi.stubEnv("CLOUDFLARE_OAUTH_SCOPES", "account:read r2:write");
+    }
   });
 });
 
 describe("the grant's cookie", () => {
   const withCookie = (header: string) => new Request("http://x/", { headers: { cookie: header.split(";")[0] } });
-  const pending: Pending = { step: "connected", lang: "frFR", token: "abc", until: Date.now() + 60_000 };
+  const pending: Pending = { step: "connected", lang: "frFR", token: "abc", mintsKeys: false, until: Date.now() + 60_000 };
 
   it("opens for the person it was made for", () => {
     expect(pendingOf(withCookie(cookieFor("u1", pending)), "u1")).toEqual(pending);

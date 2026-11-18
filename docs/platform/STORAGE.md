@@ -112,11 +112,20 @@ developer since June 2026). `lib/storage/cloudflare.ts` and `/api/storage/cloudf
    code (client secret and verifier), and keeps the access token in the same cookie for fifteen
    minutes at most. Every outcome redirects to the Storage page, a refusal in `?cloudflare_error=`.
 3. The page lists the accounts the grant reaches and suggests `spoken-<lang>` as the bucket. POST
-   creates the bucket unless the account has one by that name, then an account-owned API token with
-   `Workers R2 Storage Bucket Item Write` on that bucket alone: its id is the access key id and the
-   SHA-256 of its value the secret. The bucket is saved like one entered by hand and tested, again up
-   to five times three seconds apart while the new key reaches R2. Then the grant is revoked and the
-   cookie cleared. A refusal keeps the grant, so the admin can try another name.
+   creates the bucket unless the account has one by that name.
+4. The key. `account-api-tokens.write` is optional on the consent screen (decided 2026-11-18): it
+   lets its holder create a token with any permission in the account, so the admin may decline it,
+   and the token answer's `scope` says whether they did.
+   - Granted: the site creates an account-owned API token with `Workers R2 Storage Bucket Item
+     Write` on that bucket alone. Its id is the access key id and the SHA-256 of its value the
+     secret.
+   - Declined: POST answers `needsKey` once the bucket exists, and the page shows how to make an
+     R2 token on Cloudflare (Object Read & Write, that bucket only) with two fields for its access
+     key id and secret. A second POST carries them.
+5. The bucket is saved like one entered by hand and tested, again up to five times three seconds
+   apart while a new key reaches R2. Then the grant is revoked and the cookie cleared. A refusal, or
+   a bucket waiting for its key, keeps the grant, so the admin can carry on without going back to
+   Cloudflare.
 
 The site keeps no Cloudflare grant, only the bucket's key, so nothing else of the account is
 reachable afterwards. R2 has no permission that writes without deleting, so the key can delete
@@ -124,13 +133,19 @@ objects in its bucket; a bucket lock on `takes/` and `recordings/` is the team's
 The bucket has no public address; takes redirect to signed addresses until the team sets one. A
 setup that fails after the key was made leaves that key in the account, named `Spoken: <bucket>`.
 
+Why not something else: R2's S3 API takes only keys made from API tokens, and Cloudflare has no
+cross-account role (AWS) or grant to our service account (GCS), so the industry's way to an R2
+bucket is a pasted key. Keeping the OAuth grant and using Cloudflare's REST API instead would hold
+a long-lived grant over all of the account's R2, with no presigned addresses.
+
 Off unless `CLOUDFLARE_OAUTH_CLIENT_ID`, `CLOUDFLARE_OAUTH_CLIENT_SECRET` and
 `CLOUDFLARE_OAUTH_SCOPES` are set. The client is registered in our Cloudflare account with the
 redirect URI `https://spoken.quest/api/storage/cloudflare/callback`; until its visibility is public
 (which needs `spoken.quest` verified by a TXT record, and cannot be undone) only members of our
 account can use it. Cloudflare publishes its scopes only at `GET /client/v4/oauth/scopes`, so the
-scopes are configured rather than written here: the grant must list accounts, read and create R2
-buckets, and list permission groups and create account API tokens.
+scopes are configured rather than written here. They are `account-settings.read`,
+`workers-r2.read`, `workers-r2.write` and `account-api-tokens.write`, the last marked optional on
+the client.
 
 ### Testing a backend
 
