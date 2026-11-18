@@ -27,8 +27,11 @@ import { addMember, asSystem, dropLang, dropTeam, newTeamIn, systemRows, testUse
 import { POST } from "./route";
 
 let lang: Lang;
+let otherLang: Lang;
 let a: TeamId;
 let b: TeamId;
+let c: TeamId;
+let d: TeamId;
 let owner: Awaited<ReturnType<typeof testUser>>;
 let member: Awaited<ReturnType<typeof testUser>>;
 
@@ -45,9 +48,10 @@ const dismiss = () =>
 async function marks(): Promise<Record<string, string>> {
   const rows = await systemRows<{ teamId: TeamId; through: string }>(
     `select "teamId", "throughJobId"::text as through from "queue_dismissal" where "teamId" = any($1::uuid[])`,
-    [[a, b]],
+    [[a, b, c, d]],
   );
-  return Object.fromEntries(rows.map((row) => [row.teamId === a ? "a" : "b", row.through]));
+  const names = new Map([[a, "a"], [b, "b"], [c, "c"], [d, "d"]]);
+  return Object.fromEntries(rows.map((row) => [names.get(row.teamId)!, row.through]));
 }
 
 beforeEach(async () => {
@@ -55,6 +59,9 @@ beforeEach(async () => {
   lang = await uniqueLang();
   a = await newTeamIn(lang, true, "test-dismiss-a");
   b = await newTeamIn(lang, false, "test-dismiss-b");
+  otherLang = await uniqueLang();
+  c = await newTeamIn(otherLang, true, "test-dismiss-c");
+  d = await newTeamIn(otherLang, false, "test-dismiss-d");
   owner = await testUser("test-dismiss-owner");
   member = await testUser("test-dismiss-member");
   await asSystem.query(`update "user" set "role" = 'admin' where "id" = $1`, [owner.id]);
@@ -66,8 +73,9 @@ beforeEach(async () => {
 
 afterEach(async () => {
   mocks.session = null;
-  for (const team of [b, a]) await dropTeam(team);
+  for (const team of [b, a, d, c]) await dropTeam(team);
   await dropLang(lang);
+  await dropLang(otherLang);
   await owner.cleanup();
   await member.cleanup();
   forgetTeams();
@@ -76,15 +84,23 @@ afterEach(async () => {
 afterAll(closeDb);
 
 describe("POST /api/regenerate/queue/dismiss", () => {
-  it("moves the mark of the team a site owner acts as in a language with a second team", async () => {
+  it("moves the mark of the team a site owner acts as in each language", async () => {
     mocks.session = { user: { id: owner.id, name: "Owner", role: "admin" } };
     expect((await dismiss()).status).toBe(200);
-    expect(await marks()).toEqual({ b: "1" });
+    expect(await marks()).toEqual({ b: "1", c: "1" });
   });
 
   it("moves only a member's own team's mark, whatever the cookie names", async () => {
     mocks.session = { user: { id: member.id, name: "Member", role: null } };
     expect((await dismiss()).status).toBe(200);
     expect(await marks()).toEqual({ a: "1", b: "0" });
+  });
+
+  it("moves the mark of every team a member works in, a second team's included", async () => {
+    await addMember(d, member.id, otherLang, "regenerate");
+    forgetTeams();
+    mocks.session = { user: { id: member.id, name: "Member", role: null } };
+    expect((await dismiss()).status).toBe(200);
+    expect(await marks()).toEqual({ a: "1", b: "0", d: "1" });
   });
 });
