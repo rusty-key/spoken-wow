@@ -915,7 +915,7 @@ function Spoken:PlayStory(kind, id)
     local playing = teller.source:PlayNow(clip) and true or false
     -- Already waiting, the line keeps its own clip: GetCaption reads the tag from that one.
     for _, queued in ipairs(SoundQueue:GetQueue()) do
-        if queued.source == teller.source and queued.key == clip.key then queued.story = story end
+        if Tells(teller, { clip.key }, queued) then queued.story = story end
     end
     return playing
 end
@@ -952,16 +952,6 @@ end
 --
 -- Additive, so guard on the field: `if Spoken.GetCaption then`. The timing is the captions' own: the clip's present.timings when it
 -- brings them, an estimate otherwise, so another view marks the same word they would.
---
--- CAPTION_WORD (clip, word, speaking) fires as the voice reaches a word of the line the captions
--- follow, `word` its index in GetCaption's words, and once as (clip, nil, false) when that voice
--- ends, is stopped or paused, so another view can follow the words without polling. `word` is the
--- word being read: after a slow frame it can skip ahead. Paused, GetCaption still says speaking, on
--- the word the captions keep showing; Resume reads the line again from its first word. Spoken
--- times it only while something listens. A listener is not called as it registers: GetCaption has
--- the word being read then. An older Spoken never fires it, so a caller keeps its own timing until
--- the first one comes.
---
 -- An older Spoken has no `story`, so nil also means an older Spoken.
 
 local caption = {}
@@ -1040,7 +1030,6 @@ end
 --   REPORT_SETTINGS_CHANGED     ()          the hide-Report-buttons setting was toggled
 --   VOICE_PACKS_LOADED          ()          the quest and gossip voice packs found at login have loaded
 --   COMPENDIUM_FONT_CHANGED     ()          the Compendium's Text Size changed (Spoken:CompendiumFontSize)
---   CAPTION_WORD                (clip, word, speaking)  the voice reached a word, or stopped (Captions above)
 
 function Spoken:RegisterCallback(event, fn)
     return Callbacks:Register(event, fn)

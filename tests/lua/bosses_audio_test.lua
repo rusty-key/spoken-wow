@@ -131,10 +131,7 @@ do
     Expect("a boss met, voiced, has one", S:HasStory("boss", EDWIN_FIGHT), true)
     Expect("...an unknown encounter has none", S:HasStory("boss", 1), false)
 
-    local function Named()
-        local story = S:GetCaption() and S:GetCaption().story
-        return story and (story.kind .. " " .. story.id) or "none"
-    end
+    local Named = H.CaptionStory
     Expect("PlayStory plays it", S:PlayStory("boss", EDWIN_FIGHT), true)
     Expect("...the boss's story", S:GetNowPlaying().key, "boss:36:edwin vancleef")
     Expect("...which GetCaption names as PlayStory took it", Named(), "boss " .. EDWIN_FIGHT)

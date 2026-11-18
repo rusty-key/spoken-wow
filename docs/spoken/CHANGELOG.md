@@ -4,9 +4,6 @@ Spoken Player until 3.0.0, when it became Spoken and took its modules into one d
 
 ## Unreleased
 
-- For feature addons: a `CAPTION_WORD` callback fires as the voice reaches a word of the line,
-  and once more when it ends, is stopped or paused, so another window can follow the words without
-  timing them itself. *([Torchlite-bit](https://github.com/Torchlite-bit))*
 - For feature addons: `Spoken:GetCaption()` names the story `Spoken:PlayStory` played in `story`,
   as the `{ kind, id }` it was asked for, so an addon knows the line is its own without comparing
   text. *([Torchlite-bit](https://github.com/Torchlite-bit))*

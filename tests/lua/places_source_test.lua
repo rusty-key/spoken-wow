@@ -412,10 +412,7 @@ do
     Expect("...which PlayStory leaves unplayed", tostring(S:PlayStory("instance", 389)) .. " " .. S:GetQueueSize(), "false 0")
     locked = false
 
-    local function Named()
-        local story = S:GetCaption() and S:GetCaption().story
-        return story and (story.kind .. " " .. story.id) or "none"
-    end
+    local Named = H.CaptionStory
     Expect("PlayStory plays it", S:PlayStory("instance", 389), true)
     Expect("...the area's story", S:GetNowPlaying().key, "s:1411:valley of trials")
     Expect("...which GetCaption names as PlayStory took it", Named(), "instance 389")

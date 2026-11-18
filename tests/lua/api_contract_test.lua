@@ -107,20 +107,6 @@ src:Enqueue(H.Clip())
 Spoken:Skip()
 Expect("an unregistered callback stays quiet", started, nil)
 
-local calls, once = {}, nil
-once = Spoken:RegisterCallback("CLIP_STARTED", function()
-    table.insert(calls, "once")
-    Spoken:UnregisterCallback(once)
-end)
-local always = Spoken:RegisterCallback("CLIP_STARTED", function() table.insert(calls, "always") end)
-src:Enqueue(H.Clip())
-src:Enqueue(H.Clip())
-Spoken:Skip()
-Spoken:Skip()
-Expect("a callback that unregisters itself as it runs leaves the next one called", table.concat(calls, ", "),
-    "once, always, always")
-Spoken:UnregisterCallback(always)
-
 Spoken:Pause()
 Expect("Pause", Spoken:IsPaused(), true)
 Spoken:Resume()
@@ -130,162 +116,6 @@ Expect("TogglePause", Spoken:IsPaused(), true)
 Spoken:StopAll()
 Expect("StopAll empties", Spoken:GetQueueSize(), 0)
 Expect("...and unpauses", Spoken:IsPaused(), false)
-
----------------------------------------------------------------- the word being read
--- CAPTION_WORD lets another addon's window follow the voice word by word, and tells it once when
--- the voice ends, is stopped or paused. With nothing listening the captions set no timer for it.
-do
-    local E = SpokenEnv
-    E.Addon:Enable()
-    -- The captions' timers, told from the queue's by the file that sets them.
-    local captionTimers = 0
-    local Schedule = E.Addon.ScheduleTimer
-    E.Addon.ScheduleTimer = function(addon, ...)
-        if debug.getinfo(2, "S").source:find("Transcript", 1, true) then captionTimers = captionTimers + 1 end
-        return Schedule(addon, ...)
-    end
-    -- Four words, one a second, timed by the recording.
-    local function Line(key)
-        return H.Clip({ key = key, length = 4, present = { header = "h", label = "l", bullet = "b",
-            portrait = { kind = "none" }, transcript = "One two three four.", timings = "0 1 2 3" } })
-    end
-    local heard = {}
-    local function Listen(clip, word, speaking)
-        heard[#heard + 1] = clip.key .. " " .. tostring(word) .. " " .. tostring(speaking)
-    end
-    local function Heard()
-        local said = table.concat(heard, ", ")
-        heard = {}
-        return said
-    end
-
-    src:Enqueue(Line("unheard"))
-    stub.Advance(5)
-    Expect("with nothing listening the captions set no timer for it", captionTimers, 0)
-
-    local listener = Spoken:RegisterCallback("CAPTION_WORD", Listen)
-    src:Enqueue(Line("a"))
-    Expect("it fires as the voice starts, on the first word", Heard(), "a 1 true")
-    Expect("...timed by the captions, which the count above sees", captionTimers > 0, true)
-    stub.Advance(1.5)
-    Expect("...and as the voice reaches the next", Heard(), "a 2 true")
-    Spoken:Pause()
-    Expect("a pause stops the voice, and it says so", Heard(), "a nil false")
-    local paused = Spoken:GetCaption()
-    Expect("...where GetCaption keeps the word, as the captions do",
-        tostring(paused.speaking) .. " " .. tostring(paused.activeWord), "true 2")
-    stub.Advance(3)
-    Expect("...and nothing comes while paused", Heard(), "")
-    Spoken:Resume()
-    Expect("Resume reads the line from its first word", Heard(), "a 1 true")
-    src:Enqueue(Line("b"))
-    -- The line, then the source's gap between lines.
-    stub.Advance(5)
-    Expect("each word once, then the end, then the next line", Heard(),
-        "a 2 true, a 3 true, a 4 true, a nil false, b 1 true")
-    Spoken:Skip()
-    Expect("a line skipped says it stopped", Heard(), "b nil false")
-    -- A gate closing on a speaking line stops it and keeps it, to read again once the gate opens.
-    local closed = false
-    src:AddGate(function() if closed then return "closed" end end)
-    src:Enqueue(Line("c"))
-    stub.Advance(0.5)
-    closed = true
-    src:RecheckGates()
-    Expect("a line a gate stops says it stopped", Heard(), "c 1 true, c nil false")
-    closed = false
-    stub.Advance(1.2)
-    Spoken:StopAll()
-    Expect("...read again when the gate opens, and StopAll stops it", Heard(), "c 1 true, c nil false")
-
-    local errors = #E.Callbacks.errors
-    local broken = Spoken:RegisterCallback("CAPTION_WORD", function() error("a listener's own bug") end)
-    src:Enqueue(Line("e"))
-    stub.Advance(1.5)
-    Expect("a listener that throws silences neither the others nor the captions", Heard() .. " / "
-        .. tostring(Spoken:GetCaption().activeWord) .. " / " .. (#E.Callbacks.errors - errors), "e 1 true, e 2 true / 2 / 2")
-    Spoken:UnregisterCallback(broken)
-    Spoken:UnregisterCallback(listener)
-    captionTimers = 0
-    stub.Advance(4)
-    Expect("unregistered, nothing is heard and no timer set", Heard() .. captionTimers, "0")
-
-    src:Enqueue(Line("f"))
-    stub.Advance(1.5)
-    listener = Spoken:RegisterCallback("CAPTION_WORD", Listen)
-    Expect("registered mid-line, it is not called as it registers; GetCaption has the word",
-        Heard() .. "/" .. tostring(Spoken:GetCaption().activeWord), "/2")
-    stub.Advance(3)
-    Expect("...and it follows the words from the next to the end", Heard(), "f 3 true, f 4 true, f nil false")
-
-    -- A window that fades out a line before the next holds the captions on it until it lets go.
-    src:Enqueue(Line("g"))
-    src:Enqueue(Line("h"))
-    E.Transcript.holdFor = function() return true end
-    Spoken:Skip()
-    E.Transcript.holdFor = nil
-    Expect("captions held on a line skipped: the stop is told at once", Heard(), "g 1 true, g nil false")
-    E.Transcript:Release()
-    Expect("...and the next line's words once they are let go", Heard(), "h 1 true")
-    stub.Advance(2.5)
-    Heard()
-    E.Transcript:Hold()
-    Spoken:Pause()
-    Expect("held, a pause is told at once", Heard(), "h nil false")
-    Spoken:Resume()
-    stub.Advance(0.3)
-    Expect("...but the line read again is not timed from its old start while held", Heard(), "")
-    E.Transcript:Release()
-    Expect("...only from its first word once let go", Heard(), "h 1 true")
-
-    -- A listener may stop the voice from inside its own call: every listener hears what follows in
-    -- order, the ones after it included, and ends on what is so.
-    local pauser = Spoken:RegisterCallback("CAPTION_WORD", function(clip, _, speaking)
-        if clip.key == "h" and not speaking then Spoken:Pause() end
-    end)
-    local late = {}
-    local after = Spoken:RegisterCallback("CAPTION_WORD", function(clip, word, speaking)
-        late[#late + 1] = clip.key .. " " .. tostring(word) .. " " .. tostring(speaking)
-    end)
-    src:Enqueue(Line("i"))
-    Spoken:Skip()
-    Expect("a listener that pauses as one line stops: the next starts, then pauses, for all",
-        Heard() .. " / " .. table.concat(late, ", "), "h nil false, i 1 true, i nil false / h nil false, i 1 true, i nil false")
-    Spoken:UnregisterCallback(pauser)
-    Spoken:UnregisterCallback(after)
-    Spoken:Resume()
-    Expect("...until it does", Heard(), "i 1 true")
-
-    -- A listener registered inside another's call is not called in that same Fire.
-    local added
-    local adder = Spoken:RegisterCallback("CAPTION_WORD", function()
-        if not added then added = Spoken:RegisterCallback("CAPTION_WORD", function() late[#late + 1] = "added" end) end
-    end)
-    late = {}
-    Spoken:Skip()
-    Expect("a listener added during a Fire waits for the next", table.concat(late, ","), "")
-    Spoken:UnregisterCallback(adder)
-    Spoken:UnregisterCallback(added)
-
-    -- A queue change that leaves the voice on its word keeps the word's timer.
-    src:Enqueue(Line("j"))
-    captionTimers = 0
-    src:Enqueue(H.Clip())
-    Expect("a line queued behind sets no new timer", captionTimers, 0)
-    Spoken:UnregisterCallback(listener)
-    Spoken:StopAll()
-    E.Addon.ScheduleTimer = Schedule
-
-    -- Listening through Callbacks directly starts and stops the word timer too.
-    Heard()
-    local internal = E.Callbacks:Register("CAPTION_WORD", Listen)
-    src:Enqueue(Line("k"))
-    stub.Advance(1.5)
-    E.Callbacks:Unregister(internal)
-    Expect("Callbacks:Register starts the timer, Unregister stops it", Heard() .. " / " .. tostring(E.Transcript.wordTimer),
-        "k 1 true, k 2 true / nil")
-    Spoken:StopAll()
-end
 
 ---------------------------------------------------------------- stories
 -- No teller for a kind, or no id: every answer is false.
@@ -309,6 +139,7 @@ do
         .. tostring(Spoken:PlayStory("contract", 7)), "false true")
     Expect("...the playable part, through the teller's source", Spoken:GetNowPlaying().key .. " "
         .. tostring(Spoken:GetNowPlaying().source == tellerSource), "story:7b true")
+    SpokenEnv.Addon:Enable() -- the captions GetCaption reads
     local story = Spoken:GetCaption().story
     Expect("...which GetCaption names as PlayStory was asked", story.kind .. " " .. story.id, "contract 7")
     Expect("IsPlayingStory: its own story only", tostring(Spoken:IsPlayingStory("contract", 7)) .. " "

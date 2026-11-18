@@ -181,16 +181,6 @@ The caption's `story` is the `{ kind, id }` that `Spoken:PlayStory` was asked fo
 the line, so an addon that played a story knows the caption is its line without comparing text. It
 is nil for any other line, a story that autoplays included.
 
-An addon that would rather not poll `GetCaption` registers for `CAPTION_WORD`, `(clip, word,
-speaking)`. It fires as the voice reaches a word, `word` being the index in the caption's words,
-and once with `speaking` false when the voice ends, is stopped or paused. `word` is the word being
-read, so after a slow frame it can skip ahead. Spoken times it with one timer to the end of that
-word, and only while something listens. A listener is not called as it registers; `GetCaption` has
-the word being read then. Paused, `GetCaption` still says `speaking` on the word the captions keep
-showing, while the callback says the voice stopped; Resume reads the line again from its first
-word. Spoken's own windows keep their own update while shown: typing out by letter and scrolling
-with the voice move between words, which one call a word cannot drive.
-
 ## Checks
 
 Run from the repository root:

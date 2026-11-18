@@ -259,7 +259,6 @@ function Transcript:Release()
         self.startedAt = start.at
     end
     self:Sync()
-    self:WatchWords()
 end
 
 --- A window that turns to the next line by fading out first sets this: fn(clip) is true while it
@@ -300,62 +299,6 @@ function Transcript:Sync()
         self.startedAt = nil
     end
     self:Update()
-end
-
--- Paused, the captions keep showing the word they were on, but the voice has stopped: a window
--- following CAPTION_WORD must hear that it did.
-local function Voiced(self, progress)
-    -- A line resumed or replayed while the captions are held keeps its old start until Release:
-    -- timed from that, it would name a word the voice has not reached.
-    if self.heldStart and self.heldStart.clip == self.clip then return false end
-    return self.startedAt and self.clip and SoundQueue:IsPlaying(self.clip) and self:IsSpeaking(progress)
-end
-
-local function Wake()
-    Transcript.wordTimer = nil
-    Transcript:WatchWords()
-end
-
-function Transcript:WatchWords(quiet)
-    -- A listener that pauses or skips inside its call brings this back before the listeners after
-    -- it have heard the word, and they would end on one no longer read: it runs once they have.
-    if self.firingWords then
-        self.wordsAgain = true
-        return
-    end
-    local listening = Callbacks:Has("CAPTION_WORD")
-    local clip, progress = self.clip, self:GetProgress()
-    local word = listening and Voiced(self, progress) and self:WordAt(progress) or nil
-    -- Most AUDIO_CHANGED leave the voice on the same word: its timer stands.
-    if listening and self.wordTimer and clip == self.wordClip and word == self.wordAt then return end
-    if self.wordTimer then
-        Addon:CancelTimer(self.wordTimer)
-        self.wordTimer = nil
-    end
-    if not listening then
-        self.wordClip, self.wordAt = nil, nil
-        return
-    end
-    local was, wasAt = self.wordClip, self.wordAt
-    self.wordClip, self.wordAt = clip, word
-    if word then
-        local ends = self.words[word].finish / self.totalWeight * tonumber(clip.length)
-        -- Rounding can wake this a hair before the word ends: never a timer of no time.
-        self.wordTimer = Addon:ScheduleTimer(Wake, math.max(0.01, ends - self:GetElapsed()))
-    end
-    if quiet then return end
-    self.firingWords = true
-    if wasAt and (clip ~= was or not word) then
-        Callbacks:Fire("CAPTION_WORD", was, nil, false)
-    end
-    if word and (clip ~= was or word ~= wasAt) then
-        Callbacks:Fire("CAPTION_WORD", clip, word, true)
-    end
-    self.firingWords = nil
-    if self.wordsAgain then
-        self.wordsAgain = nil
-        self:WatchWords()
-    end
 end
 
 function Transcript:TextWidth(text)
@@ -839,12 +782,7 @@ function Transcript:Initialize()
         if accumulated >= 0.05 then accumulated = 0; self:Update() end
     end)
     Callbacks:Register("CLIP_STARTED", function(clip) self:Started(clip) end)
-    -- Not inside Sync, which returns early while held: a voice stopped meanwhile is told at once.
-    Callbacks:Register("AUDIO_CHANGED", function() self:Sync(); self:WatchWords() end)
-    -- The first listener starts the word timer quietly: called as it registers, it would run before
-    -- it has its handle. A later one leaves the timer be, as a quiet start could swallow a word the
-    -- others are owed. The last one gone stops it.
-    Callbacks:WatchListeners("CAPTION_WORD", function(first) self:WatchWords(first) end)
+    Callbacks:Register("AUDIO_CHANGED", function() self:Sync() end)
     self:RefreshConfig()
     self:Sync()
 end
