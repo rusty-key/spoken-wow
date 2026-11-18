@@ -462,18 +462,3 @@ export async function contributionLocales(ids: readonly number[]): Promise<Map<n
 
 /** The longest reason a reject may carry (migration 0117's check). */
 export const REJECT_REASON_MAX = 200;
-
-/**
- * Record why these rows were rejected, or clear it: a reason belongs to a reject, so a row that is
- * accepted or reopened loses the one it had. Only rows whose status matches are touched, so a
- * reason never lands on a row a concurrent resolve has just moved elsewhere.
- */
-export async function setRejectReasons(ids: readonly number[], reason: string | null): Promise<void> {
-  if (ids.length === 0) return;
-  const trimmed = reason?.trim().slice(0, REJECT_REASON_MAX) || null;
-  await db().query(
-    `update "contribution" set "rejectReason" = $2
-      where "id" = any($1::int[]) and ("status" = 'rejected' or $2::text is null)`,
-    [ids, trimmed],
-  );
-}

@@ -18,7 +18,7 @@
  * reject landed on; any other status clears the rows' reasons.
  */
 import { mayIgnoreIn, requireCapability } from "@/lib/generation/authz";
-import { readablesContributions, contributionLocales, setRejectReasons } from "@/lib/contributions/store";
+import { readablesContributions, contributionLocales } from "@/lib/contributions/store";
 import { BASE_LANG, type Lang } from "@/lib/lang";
 import { knownLang } from "@/lib/languages/catalogue";
 import { isStatus, RESOLVE_MANY_MAX, type ResolveManyResult } from "@/lib/contributions/contributions";
@@ -96,6 +96,7 @@ export async function POST(request: Request) {
       return locale !== undefined && ignorable.has(langOf.get(locale)!);
     },
     bookMatches,
+    typeof body.reason === "string" ? body.reason : null,
   );
 
   const results: Record<number, ResolveManyResult> = {};
@@ -114,7 +115,5 @@ export async function POST(request: Request) {
       results[id] = { ok: true };
     }
   }
-  const landed = ids.filter((id) => results[id]?.ok);
-  await setRejectReasons(landed, body.status === "rejected" && typeof body.reason === "string" ? body.reason : null);
   return Response.json({ results });
 }

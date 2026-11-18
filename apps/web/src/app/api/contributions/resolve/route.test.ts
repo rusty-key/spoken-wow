@@ -138,6 +138,19 @@ describe("POST /api/contributions/resolve", () => {
     expect(after[0]).toEqual({ status: "new", text: "Hallo, Digawen." });
   });
 
+  it("refuses an edit to a row someone decided meanwhile, keeping its text", async () => {
+    const { rows } = await asSystem.query<{ id: number }>(
+      `insert into "contribution" ("source", "key", "raw", "dedup", "text", "ip", "status")
+       values ('places', '127', 'raw', $2, 'Words.', $1, 'rejected') returning "id"`,
+      [ip, `${dedup}-decided`],
+    );
+    const response = await POST(post({ id: rows[0].id, status: "accepted", text: "Other words." }));
+    expect(response.status).toBe(409);
+    expect((await response.json()).kind).toBe("changed");
+    const { rows: after } = await asSystem.query(`select "status", "text" from "contribution" where "id" = $1`, [rows[0].id]);
+    expect(after[0]).toEqual({ status: "rejected", text: "Words." });
+  });
+
   it("refuses an empty edit without touching the row", async () => {
     const { rows } = await asSystem.query<{ id: number }>(
       `insert into "contribution" ("source", "key", "raw", "dedup", "text", "ip")

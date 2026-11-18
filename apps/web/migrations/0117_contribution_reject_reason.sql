@@ -4,4 +4,5 @@
 
 alter table "contribution" add column "rejectReason" text;
 
-alter table "contribution" add constraint "contribution_reject_reason_length" check (char_length("rejectReason") <= 200);
+-- NOT VALID: no scan of the whole table under its lock; 0118 validates the existing rows separately.
+alter table "contribution" add constraint "contribution_reject_reason_length" check (char_length("rejectReason") <= 200) not valid;
