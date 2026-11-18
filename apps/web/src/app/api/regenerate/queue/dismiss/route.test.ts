@@ -1,13 +1,15 @@
 /**
- * Whose mark the X moves. Needs DATABASE_URL and migrations applied; only the session and the
- * cookie jar are mocked. The marks written are job id 1, below any real job, so no panel loses
- * anything while this runs.
+ * Whose mark the X moves. Needs DATABASE_URL and migrations applied; only the session, the
+ * cookie jar and a site owner's languages are mocked. The marks written are job id 1, below any
+ * real job, so no panel loses anything while this runs.
  */
 import { NextRequest } from "next/server";
 import { afterAll, afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
   cookie: undefined as string | undefined,
+  /** The site owner's languages, cut to the fixtures' so no other team's mark is written. */
+  ownerLangs: [] as string[],
   session: null as { user: { id: string; name: string; role: string | null } } | null,
 }));
 
@@ -18,6 +20,17 @@ vi.mock("next/headers", () => ({
   }),
 }));
 vi.mock("@/lib/session", () => ({ currentSession: async () => mocks.session }));
+vi.mock("@/lib/generation/authz", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@/lib/generation/authz")>();
+  return {
+    ...actual,
+    requireAnyRegenerate: async () => {
+      const found = await actual.requireAnyRegenerate();
+      if (found.denied || found.session.user.role !== "admin") return found;
+      return { ...found, langs: found.langs.filter((lang) => mocks.ownerLangs.includes(lang)) };
+    },
+  };
+});
 
 import { closeDb } from "@/lib/db";
 import type { Lang } from "@/lib/lang";
@@ -60,6 +73,7 @@ beforeEach(async () => {
   a = await newTeamIn(lang, true, "test-dismiss-a");
   b = await newTeamIn(lang, false, "test-dismiss-b");
   otherLang = await uniqueLang();
+  mocks.ownerLangs = [lang, otherLang];
   c = await newTeamIn(otherLang, true, "test-dismiss-c");
   d = await newTeamIn(otherLang, false, "test-dismiss-d");
   owner = await testUser("test-dismiss-owner");
