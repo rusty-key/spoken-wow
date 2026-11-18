@@ -106,9 +106,9 @@ export default async function Page({ params }: { params: Promise<Params> }) {
           )}
 
           <p className="mt-5 whitespace-pre-line">{page.text}</p>
-          {/* Under the original rather than in its place, as the explorer shows it: the original is
-              what the game shows, and the override is only what the team's take says. */}
-          {page.override && (
+          {/* Under the original, which is what the game shows, and only while the live take speaks it:
+              until then the override is the team's work in progress and the narration says the original. */}
+          {page.override && take?.textHash === page.hash && (
             <p className="mt-2 border-l-2 border-sky-400/60 pl-2 whitespace-pre-line" title="What the narration says">
               {page.override.text}
             </p>
