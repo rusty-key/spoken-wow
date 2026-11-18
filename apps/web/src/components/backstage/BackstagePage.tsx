@@ -3,8 +3,8 @@ import type { ReactNode } from "react";
 import { cn } from "@/lib/utils";
 
 /**
- * A Backstage page in the front page's look: the `.bs` scope (backstage.css), a Cinzel title with
- * a line under it saying what the page is for, and the page's own content.
+ * A Backstage page: the `.bs` scope (backstage.css), a title with a line under it saying what the
+ * page is for, and the page's own content.
  *
  * A page sits in the header's 1200px `.bn-wrap`, so title and logo line up. `width="wide"` gives
  * the whole page a 1480px column instead, for lists whose columns want the room.

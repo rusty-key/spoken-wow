@@ -23,7 +23,7 @@ function follow(onGo: ((href: string) => void) | undefined, href: string) {
   };
 }
 
-/** The front page's uppercase tabs with the gold underline: where a page splits into views. */
+/** Tabs with the front page's gold underline: where a page splits into views. */
 export function Tabs({
   label,
   tabs,
