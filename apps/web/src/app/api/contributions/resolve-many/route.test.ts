@@ -99,15 +99,16 @@ describe("POST /api/contributions/resolve-many", () => {
   });
 
   it("leaves a row decided since the page was loaded as it was", async () => {
+    // A reject, which the route sends straight to the resolve: only the locked status check refuses it.
     const { rows } = await asSystem.query<{ id: number }>(
       `insert into "contribution" ("source", "key", "raw", "dedup", "text", "ip", "status")
-       values ('readables', '5', 'raw', $2, 'Words.', $1, 'rejected') returning "id"`,
+       values ('readables', '5', 'raw', $2, 'Words.', $1, 'accepted') returning "id"`,
       [ip, `${dedup}-decided`],
     );
-    const { results } = await (await POST(post({ ids: [rows[0].id], status: "accepted" }))).json();
-    expect(results[rows[0].id].ok).toBe(false);
+    const { results } = await (await POST(post({ ids: [rows[0].id], status: "rejected" }))).json();
+    expect(results[rows[0].id]).toEqual({ ok: false, error: "Someone decided this line meanwhile; reload to see it." });
     const { rows: after } = await asSystem.query(`select "status" from "contribution" where "id" = $1`, [rows[0].id]);
-    expect(after[0].status).toBe("rejected");
+    expect(after[0].status).toBe("accepted");
   });
 
   describe("accepting readables rows", () => {
