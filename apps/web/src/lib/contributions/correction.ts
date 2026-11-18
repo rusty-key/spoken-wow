@@ -118,7 +118,7 @@ export async function acceptCorrection(
       contribution.source === "quests" && branchesOnPlayerGender(contribution.text)
         ? (await momentLines(lang, target.lineId, target.variant)).map((row) => row.text)
         : [target.text];
-    const dropped = [...new Set(replaced.flatMap((text) => droppedTokens(text, contribution.text!)))];
+    const dropped = [...new Set(replaced.flatMap((text) => droppedTokens(text, contribution.text!, lang)))];
     if (dropped.length > 0) {
       return {
         ok: false,
@@ -270,10 +270,13 @@ async function markAccepted(
   });
 }
 
-function droppedTokens(corpus: string, correction: string): string[] {
-  const before = playerTokenCounts(corpus);
-  const after = playerTokenCounts(correction);
-  return (["N", "C", "R", "G"] as const).filter((token) => after[token] < before[token]).map((token) => `$${token}`);
+function droppedTokens(corpus: string, correction: string, lang: Lang): string[] {
+  const before = playerTokenCounts(corpus, lang);
+  const after = playerTokenCounts(correction, lang);
+  const dropped = (["N", "C", "R"] as const).filter(
+    (token) => after.m[token] < before.m[token] || after.f[token] < before.f[token],
+  );
+  return [...dropped, ...(after.G < before.G ? (["G"] as const) : [])].map((token) => `$${token}`);
 }
 
 /**

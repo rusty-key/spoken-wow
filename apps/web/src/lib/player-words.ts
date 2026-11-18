@@ -9,7 +9,11 @@ export const branchesOnPlayerGender = words.branchesOnPlayerGender as (text: str
 
 export const playerGenderSides = words.playerGenderSides as (text: string) => [string, string];
 
-export const playerTokenCounts = words.playerTokenCounts as (text: string) => Record<"N" | "C" | "R" | "G", number>;
+type ReaderTokens = Record<"N" | "C" | "R", number>;
+export const playerTokenCounts = words.playerTokenCounts as (
+  text: string,
+  lang: Lang,
+) => { G: number; m: ReaderTokens; f: ReaderTokens };
 
 export const speakPlayerTokens = words.speakPlayerTokens as (
   text: string,
