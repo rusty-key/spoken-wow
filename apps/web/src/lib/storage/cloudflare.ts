@@ -13,11 +13,13 @@ import { createHash, randomBytes } from "node:crypto";
 
 import { canSeal, seal, SealError, unseal } from "@/lib/blobs/seal";
 import type { Lang } from "@/lib/lang";
+import { hashSecret } from "@/lib/secret-token";
 import { SITE } from "@/lib/site";
 import type { TeamId } from "@/lib/teams/store";
 
-import { backendInput, backendView, createBackend, testBackend, type BackendView } from "./backends";
-import type { ProbeResult } from "./probe";
+import { backendInput, backendView, createBackend, StorageError, testBackend, type BackendView } from "./backends";
+import { errorText } from "./error-text";
+import { WRITE_STEP, type ProbeResult } from "./probe";
 
 const AUTHORIZE = "https://dash.cloudflare.com/oauth2/auth";
 const TOKEN = "https://dash.cloudflare.com/oauth2/token";
@@ -27,12 +29,15 @@ const API = "https://api.cloudflare.com/client/v4";
 /** The permission group a bucket's key gets: read, write and list objects in that one bucket. */
 const OBJECT_WRITE = "Workers R2 Storage Bucket Item Write";
 
-export const CALLBACK_PATH = "/api/storage/cloudflare/callback";
+/** The scope that lets the site make the bucket's key. Optional on the consent screen: without it the admin makes the key. */
+const KEY_SCOPE = "account-api-tokens.write";
 
-/** A refusal from Cloudflare, or a step of the setup that could not go on; its message is fit to show. */
-export class CloudflareError extends Error {
-  constructor(message: string) {
-    super(message);
+const CALLBACK_PATH = "/api/storage/cloudflare/callback";
+
+/** A refusal from Cloudflare, or a step of the setup that could not go on; the storage gate answers it like any StorageError. */
+export class CloudflareError extends StorageError {
+  constructor(message: string, status: 400 | 404 = 400) {
+    super(message, status);
     this.name = "CloudflareError";
   }
 }
@@ -51,7 +56,7 @@ export const cloudflareReady = (): boolean => config() !== null && canSeal();
 
 function required(): Config {
   const found = config();
-  if (!found) throw new CloudflareError("Connecting Cloudflare is not set up on this site.");
+  if (!found) throw new CloudflareError("Connecting Cloudflare is not set up on this site.", 404);
   return found;
 }
 
@@ -84,15 +89,12 @@ async function reach(fetchImpl: Fetch, doing: string, url: string, init: Request
   try {
     return await fetchImpl(url, { ...init, redirect: "manual" });
   } catch (error) {
-    throw new CloudflareError(`Cloudflare did not answer while trying to ${doing} (${error instanceof Error ? error.message : String(error)}): try again.`);
+    throw new CloudflareError(`Cloudflare did not answer while trying to ${doing} (${errorText(error)}): try again.`);
   }
 }
 
 const basic = ({ clientId, clientSecret }: Config) =>
   `Basic ${Buffer.from(`${encodeURIComponent(clientId)}:${encodeURIComponent(clientSecret)}`).toString("base64")}`;
-
-/** The scope that lets the site make the bucket's key. Optional on the consent screen: without it the admin makes the key. */
-export const KEY_SCOPE = "account-api-tokens.write";
 
 /**
  * The access token the code is worth, how many seconds it lasts, and whether the admin granted
@@ -190,24 +192,20 @@ const R2_BUCKET = /^[a-z0-9][a-z0-9-]{1,61}[a-z0-9]$/;
 /** What the bucket is called unless the admin says otherwise. */
 export const suggestedBucket = (lang: Lang): string => `spoken-${lang.toLowerCase()}`.replace(/[^a-z0-9-]/g, "-");
 
-export const r2Endpoint = (accountId: string) => `https://${accountId}.r2.cloudflarestorage.com`;
-
-/** The bucket, created unless the account has one by that name. True when it was created. */
+/** The bucket, created unless the account has one by that name. */
 export async function ensureBucket(
   token: string,
   { accountId, bucket }: { accountId: string; bucket: string },
   fetchImpl: Fetch = fetch,
-): Promise<boolean> {
+): Promise<void> {
   if (!ACCOUNT_ID.test(accountId)) throw new CloudflareError("That is not a Cloudflare account id.");
   if (!R2_BUCKET.test(bucket)) throw new CloudflareError("The bucket's name is 3 to 63 lowercase letters, digits and dashes, starting and ending with a letter or digit.");
   const account = `/accounts/${accountId}`;
   const found = await api(token, "look for the bucket", `${account}/r2/buckets/${bucket}`, { missingOk: true, fetchImpl });
-  if (found) return false;
-  await api(token, "create the bucket", `${account}/r2/buckets`, { method: "POST", body: { name: bucket }, fetchImpl });
-  return true;
+  if (!found) await api(token, "create the bucket", `${account}/r2/buckets`, { method: "POST", body: { name: bucket }, fetchImpl });
 }
 
-export type BucketKey = { accessKeyId: string; secretAccessKey: string };
+type BucketKey = { accessKeyId: string; secretAccessKey: string };
 
 /**
  * A new key for the bucket alone, which needs KEY_SCOPE. An R2 key is an API token: its id is the
@@ -231,16 +229,14 @@ export async function mintKey(
     fetchImpl,
   });
   if (!minted?.id || !minted.value) throw new CloudflareError("Cloudflare created the bucket's key but did not show it.");
-  return { accessKeyId: minted.id, secretAccessKey: createHash("sha256").update(minted.value).digest("hex") };
+  return { accessKeyId: minted.id, secretAccessKey: hashSecret(minted.value) };
 }
 
-export type Connected = { backend: BackendView; test: ProbeResult | null };
+type Connected = { backend: BackendView; test: ProbeResult | null };
 
 /**
- * Makes the bucket, then saves it as the team's with a key and tests it. The key is the one the
- * admin pasted, else one minted when the grant allows it. Without either, the bucket is made and
- * `needsKey` asks the admin for one: they make it on Cloudflare, scoped to the bucket that now
- * exists. A new key can take a few seconds to reach R2, so a failing test is tried again a few times.
+ * Makes the bucket, then saves and tests it with the pasted key, or one minted when the grant
+ * allows. With neither, `needsKey`: the admin makes one for the bucket that now exists.
  */
 export async function connectCloudflare(
   team: TeamId,
@@ -254,16 +250,17 @@ export async function connectCloudflare(
   const { accessKeyId, secretAccessKey } = key ?? (await mintKey(token, { accountId, bucket, keyName: `Spoken: ${label}` }, fetchImpl));
   const backend = await createBackend(
     team,
-    backendInput({ provider: "r2", label, endpoint: r2Endpoint(accountId), region: "auto", bucket, pathStyle: true, accessKeyId, secretAccessKey }),
+    backendInput({ provider: "r2", label, endpoint: `https://${accountId}.r2.cloudflarestorage.com`, region: "auto", bucket, pathStyle: true, accessKeyId, secretAccessKey }),
     userId,
   );
   // Saved from here on: a retried POST would make a second key, so nothing after this fails the
   // request. A test that throws leaves the bucket untested, and its card offers the test again.
+  // A new key can take a few seconds to reach R2, so only a refused first write is tried again.
   let test: ProbeResult | null = null;
   try {
     for (let attempt = 1; attempt <= tries; attempt++) {
       test = await testBackend(team, backend.id);
-      if (!test || test.ok || attempt === tries) break;
+      if (!test || test.ok || test.steps[0]?.name !== WRITE_STEP || test.steps[0].ok || attempt === tries) break;
       await new Promise((resolve) => setTimeout(resolve, pauseMs));
     }
   } catch (error) {
@@ -279,7 +276,7 @@ export async function connectCloudflare(
  * routes, httpOnly, and gone within minutes.
  */
 
-export const COOKIE = "spoken_cloudflare";
+const COOKIE = "spoken_cloudflare";
 
 export type Pending =
   | { step: "authorize"; lang: Lang; state: string; verifier: string; until: number }
@@ -287,14 +284,17 @@ export type Pending =
 
 const bound = (userId: string) => `cloudflare-oauth:${userId}`;
 
-export function cookieFor(userId: string, pending: Pending): string {
-  const maxAge = Math.max(0, Math.floor((pending.until - Date.now()) / 1000));
+function cookie(value: string, maxAge: number): string {
   const secure = process.env.NODE_ENV === "production" ? "; Secure" : "";
-  const value = seal(JSON.stringify(pending), bound(userId));
-  return `${COOKIE}=${encodeURIComponent(value)}; Path=/api/storage/cloudflare; Max-Age=${maxAge}; HttpOnly; SameSite=Lax${secure}`;
+  return `${COOKIE}=${value}; Path=/api/storage/cloudflare; Max-Age=${maxAge}; HttpOnly; SameSite=Lax${secure}`;
 }
 
-export const clearedCookie = () => `${COOKIE}=; Path=/api/storage/cloudflare; Max-Age=0; HttpOnly; SameSite=Lax`;
+export function cookieFor(userId: string, pending: Pending): string {
+  const maxAge = Math.max(0, Math.floor((pending.until - Date.now()) / 1000));
+  return cookie(encodeURIComponent(seal(JSON.stringify(pending), bound(userId))), maxAge);
+}
+
+export const clearedCookie = () => cookie("", 0);
 
 /** What this person's cookie holds, or null when it is missing, expired, or someone else's. */
 export function pendingOf(request: Request, userId: string): Pending | null {

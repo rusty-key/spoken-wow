@@ -19,7 +19,7 @@ const HEALTH: Record<BackendView["health"], { text: string; tone: string }> = {
   failing: { text: "Failing", tone: "border-destructive/40 bg-destructive/10 text-destructive" },
 };
 
-type Answer = { backend?: BackendView; test?: ProbeResult | null; move?: MoveView; error?: string };
+type Answer = { backend?: BackendView; test?: ProbeResult | null; move?: MoveView; needsKey?: boolean; error?: string };
 
 const POLL_MS = 10_000;
 
@@ -47,11 +47,11 @@ export type CloudflareReturn = { connected: boolean; error: string | null };
 export default function StoragePanel({
   lang,
   initial,
-  cloudflare = { connected: false, error: null },
+  cloudflare,
 }: {
   lang: Lang;
   initial: StorageView;
-  cloudflare?: CloudflareReturn;
+  cloudflare: CloudflareReturn;
 }) {
   const [view, setView] = useState(initial);
   const [tests, setTests] = useState<Record<string, ProbeResult>>({});
@@ -388,8 +388,8 @@ function CloudflareSetup({
   returned: CloudflareReturn;
   onConnected: (backend: BackendView, test: ProbeResult | null) => void;
 }) {
-  const [accounts, setAccounts] = useState<CloudflareAccount[] | null>(null);
-  const [mintsKeys, setMintsKeys] = useState(false);
+  /** The grant waiting in the cookie: the accounts it reaches, and whether it may make the key. */
+  const [grant, setGrant] = useState<{ accounts: CloudflareAccount[]; mintsKeys: boolean } | null>(null);
   const [accountId, setAccountId] = useState("");
   const [bucket, setBucket] = useState("");
   /** Set once the bucket exists and waits for the key the admin makes. */
@@ -419,8 +419,7 @@ function CloudflareSetup({
         | null;
       if (!res?.ok || !answer?.accounts) return setError(answer?.error ?? "Cloudflare's accounts could not be read: connect again.");
       if (answer.accounts.length === 0) return setError("The grant reaches no Cloudflare account: connect again and pick one.");
-      setAccounts(answer.accounts);
-      setMintsKeys(answer.mintsKeys === true);
+      setGrant({ accounts: answer.accounts, mintsKeys: answer.mintsKeys === true });
       setAccountId(answer.accounts[0].id);
       setBucket(answer.bucket ?? "");
     })();
@@ -431,16 +430,18 @@ function CloudflareSetup({
     setWorking(true);
     setError(null);
     const body = { accountId, bucket: bucket.trim(), ...(needsKey ? { accessKeyId: key.accessKeyId.trim(), secretAccessKey: key.secretAccessKey.trim() } : {}) };
-    const res = await fetch(url, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(body) }).catch(() => null);
-    const answer = (await res?.json().catch(() => null)) as (Answer & { needsKey?: boolean }) | null;
+    const answer = await call(url, { method: "POST", body: JSON.stringify(body) });
     setWorking(false);
-    if (!res?.ok || !answer) return setError(answer?.error ?? (res ? `HTTP ${res.status}` : "No answer from the site."));
+    if (answer.error) return setError(answer.error);
     if (answer.needsKey) return setNeedsKey(true);
-    if (!answer.backend) return setError("not connected");
-    setAccounts(null);
+    reset();
+    if (answer.backend) onConnected(answer.backend, answer.test ?? null);
+  };
+
+  const reset = () => {
+    setGrant(null);
     setNeedsKey(false);
     setKey({ accessKeyId: "", secretAccessKey: "" });
-    onConnected(answer.backend, answer.test ?? null);
   };
 
   const cancel = async () => {
@@ -450,11 +451,10 @@ function CloudflareSetup({
     setWorking(false);
     // The form stays while the grant may still be waiting.
     if (answer.error) return setError(answer.error);
-    setAccounts(null);
-    setNeedsKey(false);
+    reset();
   };
 
-  if (!accounts) {
+  if (!grant) {
     return (
       <div className="flex flex-col gap-3">
         <ul className="text-muted-foreground flex list-disc flex-col gap-1 pl-5">
@@ -472,6 +472,7 @@ function CloudflareSetup({
     );
   }
 
+  const { accounts, mintsKeys } = grant;
   const ready = bucket.trim() && (!needsKey || (key.accessKeyId.trim() && key.secretAccessKey.trim()));
   return (
     <form onSubmit={submit} className="flex flex-col gap-3">

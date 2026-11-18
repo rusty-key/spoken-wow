@@ -125,8 +125,10 @@ developer since June 2026). `lib/storage/cloudflare.ts` and `/api/storage/cloudf
    - Declined: POST answers `needsKey` once the bucket exists, and the page shows how to make an
      R2 token on Cloudflare (Object Read & Write, that bucket only) with two fields for its access
      key id and secret. A second POST carries them.
-5. The bucket is saved like one entered by hand and tested, again up to five times three seconds
-   apart while a new key reaches R2. Then the grant is revoked and the cookie cleared. A refusal, or
+5. The bucket is saved like one entered by hand and tested. A first write the bucket refuses is
+   tried again up to five times three seconds apart, while a new key reaches R2; any other failure
+   stands. Once saved, nothing fails the request: a test that throws leaves the bucket untested.
+   Then the grant is revoked, after the answer, and the cookie cleared. A refusal, or
    a bucket waiting for its key, keeps the grant, so the admin can carry on without going back to
    Cloudflare.
 

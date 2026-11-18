@@ -4,13 +4,14 @@
  * POST makes the bucket; with a key, pasted or made, it saves and tests it and revokes the grant,
  * and without one it answers `needsKey`. DELETE revokes the grant unused.
  */
+import { after } from "next/server";
+
 import { StorageError } from "@/lib/storage/backends";
 import {
   accountsOf,
   clearedCookie,
   connectCloudflare,
   pendingOf,
-  r2Endpoint,
   revoke,
   suggestedBucket,
 } from "@/lib/storage/cloudflare";
@@ -46,8 +47,8 @@ export const POST = withTeamAdmin(async (request, at) => {
   const key = accessKeyId ? { accessKeyId, secretAccessKey } : null;
   // A refusal, or a bucket waiting for its key, keeps the grant: the admin carries on without going back to Cloudflare.
   const done = await connectCloudflare(at.team, at.userId, token, { accountId, bucket, label, key }, { mintsKeys });
-  if ("needsKey" in done) return Response.json({ needsKey: true, endpoint: r2Endpoint(accountId), bucket });
-  await revoke(token);
+  if ("needsKey" in done) return Response.json({ needsKey: true });
+  after(() => revoke(token));
   return Response.json(done, { status: 201, headers: { "Set-Cookie": clearedCookie() } });
 });
 
@@ -55,6 +56,6 @@ export const POST = withTeamAdmin(async (request, at) => {
 export const DELETE = withTeamAdmin(async (request, { lang, userId }) => {
   const pending = pendingOf(request, userId);
   if (pending && pending.lang !== lang) return new Response(null, { status: 204 });
-  if (pending?.step === "connected") await revoke(pending.token);
+  if (pending?.step === "connected") after(() => revoke(pending.token));
   return new Response(null, { status: 204, headers: { "Set-Cookie": clearedCookie() } });
 });

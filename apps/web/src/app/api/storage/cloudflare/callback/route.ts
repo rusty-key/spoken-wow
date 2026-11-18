@@ -1,9 +1,7 @@
 /**
- * Where Cloudflare sends the admin back. The code is exchanged for an access token, which waits in
- * the sealed cookie, with whether it may make keys, while the Storage page asks which account and
- * bucket. Every outcome goes back to the Storage page, a refusal in `?cloudflare_error=`. Only an
- * answer carrying this connection's state touches the cookie: any page can link here, and must not
- * end a setup in progress. Relative, so the redirect stays on the host the browser used.
+ * Where Cloudflare sends the admin back: the code becomes an access token in the sealed cookie, and
+ * every outcome redirects (relatively) to the Storage page. Any page can link here, so only an answer
+ * with this connection's state touches the cookie.
  */
 import { requireCapability } from "@/lib/generation/authz";
 import { currentSession } from "@/lib/session";

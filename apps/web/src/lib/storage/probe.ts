@@ -22,6 +22,9 @@ export type ProbeResult = {
 };
 
 
+/** The first step: a key Cloudflare has not yet spread to R2 fails here. */
+export const WRITE_STEP = "Write an object";
+
 /** How long a test waits for any one body or the browser fetch: the test is a request an admin waits on. */
 const READ_MS = 30_000;
 
@@ -59,7 +62,7 @@ export async function probe(
     }
   };
 
-  const wrote = await step("Write an object", () => store.put(key, first, "application/octet-stream"));
+  const wrote = await step(WRITE_STEP, () => store.put(key, first, "application/octet-stream"));
   if (wrote) {
     await step("Never replace an object", async () => {
       await store.put(key, second, "application/octet-stream");

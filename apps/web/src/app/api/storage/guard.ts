@@ -1,7 +1,7 @@
 /**
  * The storage routes' one gate (docs/platform/STORAGE.md): whoever administers `?lang=` administers
  * its team's buckets. With an [id], one that is not a uuid is no such thing. A StorageError, a
- * NoTeamError, a SealError or a CloudflareError answers with its message; anything else rethrows.
+ * NoTeamError or a SealError answers with its message; anything else rethrows.
  */
 import { bodyOf, objectOf } from "@/lib/api-body";
 import { SealError } from "@/lib/blobs/seal";
@@ -9,7 +9,6 @@ import { requireCapability } from "@/lib/generation/authz";
 import type { Lang } from "@/lib/lang";
 import { langParam } from "@/lib/lang-server";
 import { StorageError } from "@/lib/storage/backends";
-import { CloudflareError } from "@/lib/storage/cloudflare";
 import { NoTeamError, teamOf, type TeamId } from "@/lib/teams/store";
 import { isUuid } from "@/lib/uuid";
 
@@ -22,7 +21,6 @@ function refusal(error: unknown): Response {
   if (error instanceof StorageError) return Response.json({ error: error.message }, { status: error.status });
   if (error instanceof NoTeamError) return Response.json({ error: `${error.lang} has no team.` }, { status: 400 });
   if (error instanceof SealError) return Response.json({ error: error.message }, { status: 400 });
-  if (error instanceof CloudflareError) return Response.json({ error: error.message }, { status: 400 });
   throw error;
 }
 

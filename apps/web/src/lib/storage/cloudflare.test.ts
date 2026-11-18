@@ -42,13 +42,13 @@ function cloudflare({ buckets = [] as string[], groups = [{ id: "g-write", name:
 describe("ensureBucket", () => {
   it("creates the bucket when the account has none by that name", async () => {
     const cf = cloudflare();
-    expect(await ensureBucket("t", { accountId: ACCOUNT, bucket: "spoken-frfr" }, cf.impl)).toBe(true);
+    await ensureBucket("t", { accountId: ACCOUNT, bucket: "spoken-frfr" }, cf.impl);
     expect(cf.calls.some((c) => c.method === "POST" && c.path.endsWith("/r2/buckets"))).toBe(true);
   });
 
   it("uses a bucket the account already has", async () => {
     const cf = cloudflare({ buckets: ["spoken-frfr"] });
-    expect(await ensureBucket("t", { accountId: ACCOUNT, bucket: "spoken-frfr" }, cf.impl)).toBe(false);
+    await ensureBucket("t", { accountId: ACCOUNT, bucket: "spoken-frfr" }, cf.impl);
     expect(cf.calls.some((c) => c.method === "POST")).toBe(false);
   });
 
