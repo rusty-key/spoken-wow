@@ -438,11 +438,14 @@ def write_lua_table(path: str, module_name: str, table_name: str, data,
 
 
 def module_toc(module_name: str, generated_files: list, version: str = "1.0.1",
-               title: str = DEFAULT_TITLE, language: str = None) -> str:
+               title: str = DEFAULT_TITLE, language: str = None, extra=()) -> str:
     """The TOC, listing exactly the files this build produced.
 
     The title is what tells the packs apart in the AddOns list, where five of them can sit at
     once and their folder names differ only by a suffix.
+
+    `extra` is (key, value) pairs written after the header: a team's pack names its team, and a
+    language Spoken does not build in its names, so the addon can show them.
     """
     lines = [TOC_HEADER.format(version=version, title=toc_title(title),
                                module=module_name, icon=ICON_NAME)]
@@ -450,6 +453,8 @@ def module_toc(module_name: str, generated_files: list, version: str = "1.0.1",
         # Only when asked: the addon reads an absent key as enUS, so every English pack keeps
         # its exact TOC.
         lines.insert(0, f"## {LANGUAGE_KEY}: {language}\n")
+    if extra:
+        lines.append("".join(f"## {key}: {value}\n" for key, value in extra))
     lines.extend(f"generated\\{name}" for name in generated_files)
     return "\n".join(lines) + "\n"
 
@@ -458,7 +463,7 @@ def build_module(corpus: dict, store_dir: str, dist_dir: str = DEFAULT_DIST_DIR,
                  module_name: str = DEFAULT_MODULE_NAME, version: str = "1.0.1",
                  progress: bool = False, ignored=(), include=None,
                  title: str = DEFAULT_TITLE, language: str = None,
-                 locale_text: list = None) -> dict:
+                 locale_text: list = None, icon_language: str = None, toc_extra=()) -> dict:
     """Assemble the data module. Returns a report.
 
     An ignored line's audio is left behind as well as its lookup entry, so a take made
@@ -477,6 +482,10 @@ def build_module(corpus: dict, store_dir: str, dist_dir: str = DEFAULT_DIST_DIR,
     language's pack holding its gossip - Gossip, or All - is given them (cli-main.py refuses
     the rest). The English tables
     are written either way: they are what matches on an English client.
+
+    `icon_language` is the badge the pack wears, `language`'s unless given: a team's pack in a
+    language nobody drew a badge for wears English's mark, and its title names the language.
+    `toc_extra` is module_toc's `extra`.
     """
     if locale_text is not None and (not language or language == "enUS"):
         raise ValueError("locale text belongs to a language pack; pass its language")
@@ -551,7 +560,7 @@ def build_module(corpus: dict, store_dir: str, dist_dir: str = DEFAULT_DIST_DIR,
                     module_name, "TextByFileName", texts, only_on=language or "enUS")
     written.append("text_table.lua")
 
-    shutil.copy2(icon_source(language), os.path.join(module_dir, ICON_NAME))
+    shutil.copy2(icon_source(icon_language or language), os.path.join(module_dir, ICON_NAME))
 
     with open(os.path.join(module_dir, "Module.lua"), "w", encoding="utf-8") as f:
         f.write(MODULE_LUA.format(module=module_name, extension=extension))
@@ -559,7 +568,7 @@ def build_module(corpus: dict, store_dir: str, dist_dir: str = DEFAULT_DIST_DIR,
             # The unguarded tables are built from the English corpus whatever the pack speaks.
             f.write(f'{module_name}.LookupLocale = "enUS"\n')
     with open(os.path.join(module_dir, module_name + ".toc"), "w", encoding="utf-8") as f:
-        f.write(module_toc(module_name, sorted(written), version, title, language))
+        f.write(module_toc(module_name, sorted(written), version, title, language, toc_extra))
 
     return {
         "moduleDir": module_dir,

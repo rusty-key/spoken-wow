@@ -109,3 +109,52 @@ test("no clips or no lookup stops the stage", async () => {
 test("quests has no such build", async () => {
   await assert.rejects(stagePack("quests", "enUS", { pack: {} }), /no Manager-only build/);
 });
+
+test("a second team's pack is its own folder, named for the team, with the language's badge", async () => {
+  const root = mkdtempSync(join(tmpdir(), "stage-"));
+  tree(join(root, "addons/SpokenPlacesAudio"), source);
+  tree(join(root, "build/places/deDE"), { "Sounds/1/zone.mp3": "german clip", "Data/Sounds.lua": "german lookup" });
+  tree(root, { "pipelines/places/assets/spoken-zones-deDE.tga": "german icon" });
+  const pack = {
+    folder: "SpokenPlacesAudio_deDE_stimmen", name: "Spoken German Audio: Places (Stimmen)", version: "1.0.0",
+    derived: true, toc: { team: "stimmen", teamName: "Stimmen" },
+  };
+  const out = await stagePack("places", "deDE", { root, pack, readme: null });
+  assert.deepEqual(out, { folder: "SpokenPlacesAudio_deDE_stimmen", version: "1.0.0" });
+  const read = files(root);
+  const toc = read("SpokenPlacesAudio_deDE_stimmen/SpokenPlacesAudio_deDE_stimmen.toc");
+  assert.match(toc, /^## Title: \|cffb48cffSpoken\|r German Audio: Places \(Stimmen\)$/m);
+  assert.match(toc, /^## Version: 1\.0\.0\n## X-Spoken-Team: stimmen\n## X-Spoken-TeamName: Stimmen$/m);
+  assert.match(toc, /^## X-SpokenPlaces-Language: deDE$/m);
+  assert.equal(read("SpokenPlacesAudio_deDE_stimmen/Textures/AddonIcon.tga"), "german icon");
+  assert.equal(read("SpokenPlacesAudio_deDE_stimmen/Sounds/1/zone.mp3"), "german clip");
+});
+
+test("a new language's pack names its language and wears English's mark when it has no badge", async () => {
+  const root = mkdtempSync(join(tmpdir(), "stage-"));
+  tree(join(root, "addons/SpokenReadablesAudio"), {
+    "SpokenReadablesAudio.toc": "## Title: Spoken Audio: Readables\n## Version: 2.3.0\n## IconTexture: x\n## X-SpokenReadables-Language: enUS\n",
+    "Textures/AddonIcon.tga": "english icon",
+    "Data/Sounds.lua": "english lookup",
+  });
+  tree(join(root, "build/readables/jaJP"), { "Sounds/1.mp3": "japanese clip", "Data/Sounds.lua": "japanese lookup" });
+  const pack = {
+    folder: "SpokenReadablesAudio_jaJP", name: "Spoken Japanese Audio: Readables", version: "1.0.0",
+    derived: true, toc: { languageName: "Japanese", languageNative: "日本語" },
+  };
+  await stagePack("readables", "jaJP", { root, pack, readme: null });
+  const read = files(root);
+  const toc = read("SpokenReadablesAudio_jaJP/SpokenReadablesAudio_jaJP.toc");
+  assert.match(toc, /^## X-Spoken-LanguageName: Japanese\n## X-Spoken-LanguageNative: 日本語$/m);
+  // The language the addon files the pack under.
+  assert.match(toc, /^## X-SpokenReadables-Language: jaJP$/m);
+  assert.equal(read("SpokenReadablesAudio_jaJP/Textures/AddonIcon.tga"), "english icon");
+});
+
+test("a page pack missing its badge is still an error", async () => {
+  const root = mkdtempSync(join(tmpdir(), "stage-"));
+  tree(join(root, "addons/SpokenPlacesAudio"), source);
+  tree(join(root, "build/places/frFR"), { "Sounds/1/zone.mp3": "french clip", "Data/Sounds.lua": "french lookup" });
+  const pack = { folder: "SpokenPlacesAudio_frFR", name: "Spoken French Audio: Places", version: "2.0.0" };
+  await assert.rejects(stagePack("places", "frFR", { root, pack, readme: null }), /spoken-zones-frFR\.tga/);
+});

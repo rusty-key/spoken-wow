@@ -222,6 +222,21 @@ def test_toc_declares_both_generations_of_the_module_key():
     assert "-DataModule-Maps" not in toc
 
 
+def test_toc_carries_extra_keys_after_its_header():
+    # A team's pack names its team, and a language Spoken does not build in its names, in keys
+    # the addon reads from the TOC.
+    toc = module_toc("Mod", ["a.lua"], language="jaJP",
+                     extra=[("X-Spoken-LanguageName", "Japanese"), ("X-Spoken-Team", "stimmen")])
+
+    assert "## X-SpokenQuests-Language: jaJP\n" in toc
+    assert "## X-Spoken-LanguageName: Japanese\n## X-Spoken-Team: stimmen\n" in toc
+    assert toc.index("## X-Spoken-Team: stimmen") < toc.index("generated\\a.lua")
+
+
+def test_toc_without_extra_keys_is_unchanged():
+    assert module_toc("Mod", ["a.lua"], extra=()) == module_toc("Mod", ["a.lua"])
+
+
 def test_toc_nests_the_pack_under_spoken():
     # Group is the one the client reads (11.1.0+), and its value is the main addon's *name*,
     # so it is the folder and not the title. X-Part-Of carries the title for addon managers,

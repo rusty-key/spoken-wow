@@ -220,6 +220,48 @@ def test_a_language_pack_wears_its_badged_icon(tmp_path):
         assert data != english.read()
 
 
+def test_a_language_without_a_badge_can_wear_englishs_mark(tmp_path):
+    # A team's pack in a language nobody drew a badge for; its title and TOC name the language.
+    store = _store(tmp_path, "quests/5-accept.ogg")
+
+    build_module(CORPUS, store, str(tmp_path / "dist"), "Mod", language="jaJP", icon_language="enUS",
+                 toc_extra=[("X-Spoken-LanguageName", "Japanese")])
+
+    with open(tmp_path / "dist" / "Mod" / "icon.tga", "rb") as shipped, open(icon_source(), "rb") as english:
+        assert shipped.read() == english.read()
+    with open(tmp_path / "dist" / "Mod" / "Mod.toc", encoding="utf-8") as f:
+        toc = f.read()
+    assert "## X-SpokenQuests-Language: jaJP\n" in toc
+    assert "## X-Spoken-LanguageName: Japanese\n" in toc
+
+
+def test_a_language_without_a_badge_is_still_an_error_by_default(tmp_path):
+    store = _store(tmp_path, "quests/5-accept.ogg")
+
+    with pytest.raises(FileNotFoundError, match="no icon for jaJP"):
+        build_module(CORPUS, store, str(tmp_path / "dist"), "Mod", language="jaJP")
+
+
+def test_the_cli_passes_the_icon_language_and_toc_extras(tmp_path):
+    import subprocess
+    import sys
+    store = _store(tmp_path, "quests/5-accept.ogg")
+    import gzip
+    corpus = tmp_path / "corpus.json.gz"
+    with gzip.open(corpus, "wt", encoding="utf-8") as f:
+        json.dump({"lines": [{**line, "voice": None} for line in CORPUS["lines"]]}, f)
+    quests = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    subprocess.run([sys.executable, "cli-main.py", "build", "--store", store, "--corpus", str(corpus),
+                    "--dist", str(tmp_path / "dist"), "--module", "Mod", "--pack", "all",
+                    "--ignored", str(tmp_path / "none.json"), "--overrides", str(tmp_path / "none.lua"),
+                    "--language", "jaJP", "--icon-language", "enUS",
+                    "--toc-extra", "X-Spoken-Team=stimmen", "--toc-extra", "X-Spoken-TeamName=Die Stimmen"],
+                   cwd=quests, check=True, capture_output=True)
+    with open(tmp_path / "dist" / "Mod" / "Mod.toc", encoding="utf-8") as f:
+        toc = f.read()
+    assert "## X-Spoken-Team: stimmen\n## X-Spoken-TeamName: Die Stimmen\n" in toc
+
+
 def test_the_length_table_measures_ogg(tmp_path):
     store = _store(tmp_path, "quests/5-accept.ogg")
 

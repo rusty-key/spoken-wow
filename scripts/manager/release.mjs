@@ -20,10 +20,11 @@ import pg from "pg";
 
 import { loadEnv } from "../../pipelines/lib/env.mjs";
 import { parseFrontmatter, forStore } from "../lib/frontmatter.mjs";
-import { findPack, managerFolders, PUBLISHERS_DIR } from "../lib/packs.mjs";
+import { PUBLISHERS_DIR } from "../lib/packs.mjs";
 import { errorText, publishFromEnv } from "./channel.mjs";
 import { BUMPS } from "./pack-version.mjs";
 import { questsSteps } from "./quests-pack.mjs";
+import { releasePlan } from "./release-pack.mjs";
 import { releaseTeam } from "./release-team.mjs";
 import { keepsCommittedFolder, stagePack } from "./stage-pack.mjs";
 
@@ -74,24 +75,34 @@ function runNode(script, args = []) {
   run(process.execPath, [join(ROOT, script), ...args], { cwd: ROOT, env, label: script });
 }
 
-async function questsPack() {
-  const folders = managerFolders().filter((p) => p.section === section && p.lang === lang);
-  return { folders, build: await questsSteps(lang, { root: ROOT, folders: folders.map((p) => p.folder), run }) };
+async function questsPack({ folders, derived }) {
+  return { folders, build: await questsSteps(lang, { root: ROOT, folders: folders.map((p) => p.folder), run, derived }) };
 }
 
-function soundPack() {
-  const pack = findPack(section, lang);
+function soundPack({ folders, pack, derived }) {
   return {
-    folders: managerFolders().filter((p) => p.folder === pack.folder),
+    folders,
     build: [
       ...LOOKUPS[section](lang).map(([name, script, ...args]) => [name, () => runNode(script, args)]),
       ["the pack's folder", async () => {
-        const page = keepsCommittedFolder(section, lang) ? null : parseFrontmatter(await readFile(join(PUBLISHERS_DIR, pack.page), "utf8"), pack.page);
-        const staged = await stagePack(section, lang, { root: ROOT, pack, readme: page && forStore(page.body, "curseforge") });
+        // A derived pack has no page: English's README, which the folder already holds, stays.
+        const staged = derived
+          ? await stagePack(section, lang, {
+              root: ROOT,
+              pack: { folder: derived.folders[0].folder, name: derived.folders[0].title, version: derived.version, derived: true, toc: derived.toc },
+              readme: null,
+            })
+          : await stagePack(section, lang, { root: ROOT, pack, readme: await pageReadme(pack) });
         console.log(`${staged.folder} ${staged.version}`);
       }],
     ],
   };
+}
+
+async function pageReadme(pack) {
+  if (keepsCommittedFolder(section, lang)) return null;
+  const page = parseFrontmatter(await readFile(join(PUBLISHERS_DIR, pack.page), "utf8"), pack.page);
+  return forStore(page.body, "curseforge");
 }
 
 try {
@@ -99,10 +110,15 @@ try {
   if (!process.env.DATABASE_URL) throw new Error("DATABASE_URL is not set");
   if (!process.env.SPOKEN_ARCHIVE_URL) throw new Error("SPOKEN_ARCHIVE_URL is not set");
   const team = await readTeam();
+  const plan = releasePlan(section, lang, team);
+  // Until a site owner reviews a team's release (docs/platform/TEAMS.md, *Releases*), only a
+  // release that signs for the staging channel builds a pack with no page.
+  if (plan.derived && process.env.SPOKEN_TEAM_RELEASES !== "1") {
+    throw new Error("team releases are not open here: set SPOKEN_TEAM_RELEASES=1 where the release signs for staging");
+  }
   // Every step this runs inherits it, so each reads this team's live takes.
   process.env.SPOKEN_RELEASE_TEAM = team.id;
-  const { folders, build } = await (quests ? questsPack() : soundPack());
-  if (folders.length === 0) throw new Error(`${section} ${lang} is not on the Manager channel: its page has no manager: true`);
+  const { folders, build } = await (quests ? questsPack(plan) : soundPack(plan));
 
   const dryRun = flags.includes("--dry-run");
   let published = null;

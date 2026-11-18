@@ -7,6 +7,7 @@ import { dirname, join } from "node:path";
 
 import { BASE_LOCALE, isClientLocale } from "../../pipelines/lib/locales.mjs";
 import { packsFor } from "../lib/packs.mjs";
+import { tocExtra } from "./stage-pack.mjs";
 
 // The changelog lists its newest section first.
 export function englishVersion(changelog) {
@@ -15,8 +16,14 @@ export function englishVersion(changelog) {
   return version;
 }
 
-/** Each folder with the arguments of its `cli-main.py build`, past its store and dist. */
-export function buildArgs(lang, folders, { version, localeText }) {
+/**
+ * Each folder with the arguments of its `cli-main.py build`, past its store and dist. `derived` is
+ * a pack with no page (scripts/manager/release-pack.mjs), whose folders carry their own titles;
+ * `badge` says whether the language has a badged icon, without which a derived pack wears
+ * English's mark.
+ */
+export function buildArgs(lang, folders, { version, localeText, derived = null, badge = true }) {
+  if (derived) return derivedArgs(lang, folders, { derived, localeText, badge });
   const packs = packsFor("quests", lang);
   return folders.map((folder) => {
     const pack = packs.find((p) => p.folder === folder);
@@ -36,12 +43,34 @@ export function buildArgs(lang, folders, { version, localeText }) {
   });
 }
 
-export async function questsSteps(lang, { root, folders, run }) {
+function derivedArgs(lang, folders, { derived, localeText, badge }) {
+  const extra = tocExtra(derived.toc).flatMap(([key, value]) => ["--toc-extra", `${key}=${value}`]);
+  return folders.map((folder) => {
+    const pack = derived.folders.find((p) => p.folder === folder);
+    if (!pack) throw new Error(`${folder} is not one of the derived pack's folders`);
+    return {
+      folder,
+      args: [
+        "--module", folder,
+        "--pack", pack.pack,
+        "--version", derived.version,
+        "--module-title", pack.title,
+        "--language", lang,
+        ...(badge ? [] : ["--icon-language", BASE_LOCALE]),
+        ...extra,
+        ...(localeText && pack.pack === "gossip" ? ["--locale-text", localeText] : []),
+      ],
+    };
+  });
+}
+
+export async function questsSteps(lang, { root, folders, run, derived = null }) {
   const quests = join(root, "pipelines/quests");
   const english = lang === BASE_LOCALE;
   const store = english ? join(quests, "audio") : join(root, "build/quests", lang, "audio");
   const localeText = !english && isClientLocale(lang) ? join(root, "build/quests", lang, "locale-text.json.gz") : null;
-  const version = english ? englishVersion(await readFile(join(root, "docs/quests/CHANGELOG.md"), "utf8")) : null;
+  const version = english && !derived ? englishVersion(await readFile(join(root, "docs/quests/CHANGELOG.md"), "utf8")) : null;
+  const badge = existsSync(join(quests, "assets/icon", `spoken-quests-${lang}.tga`));
   const venv = join(quests, ".venv/bin/python");
   const env = {
     DATABASE_URL: process.env.LOCAL_DB || process.env.DATABASE_URL,
@@ -58,7 +87,7 @@ export async function questsSteps(lang, { root, folders, run }) {
           python(["export-locale-text", "--lang", lang, "--out", localeText]);
         }]]
       : []),
-    ...buildArgs(lang, folders, { version, localeText }).map(({ folder, args }) => [
+    ...buildArgs(lang, folders, { version, localeText, derived, badge }).map(({ folder, args }) => [
       `build ${folder}`,
       () => python(["build", "--store", store, "--dist", join(root, "dist"), ...args]),
     ]),

@@ -8,22 +8,49 @@ import { BASE_LOCALE } from "../../pipelines/lib/locales.mjs";
 import { englishFolder } from "../lib/packs.mjs";
 
 // Whatever a section does differently: its English folder, its languages' badged icons, and the
-// .toc lines naming a pack's tier and language, which its Data/Sounds.lua reads back.
+// .toc lines naming a pack's tier and language, which its Data/Sounds.lua reads back. Readables
+// names its language in its .toc only (`languageKey`), which a derived pack sets.
 const SECTIONS = {
   places: { icon: (lang) => `pipelines/places/assets/spoken-zones-${lang}.tga`, tocPrefix: "X-SpokenPlaces" },
   bosses: { icon: (lang) => `pipelines/bosses/assets/spoken-bosses-${lang}.tga`, tocPrefix: "X-SpokenBosses" },
-  readables: { icon: (lang) => `pipelines/readables/assets/spoken-books-${lang}.tga`, tocPrefix: null },
+  readables: {
+    icon: (lang) => `pipelines/readables/assets/spoken-books-${lang}.tga`,
+    tocPrefix: null,
+    languageKey: "X-SpokenReadables-Language",
+  },
 };
+
+// The .toc keys a derived pack adds (scripts/manager/release-pack.mjs), which the addon reads: the
+// team of a pack carrying a slug, and the names of a language Spoken does not build in
+// (addons/Spoken/Languages.lua).
+const TOC_KEYS = {
+  team: "X-Spoken-Team",
+  teamName: "X-Spoken-TeamName",
+  languageName: "X-Spoken-LanguageName",
+  languageNative: "X-Spoken-LanguageNative",
+};
+
+/** A derived pack's `toc` as [key, value] lines, in a fixed order. */
+export function tocExtra(toc = {}) {
+  return Object.entries(TOC_KEYS).flatMap(([field, key]) => {
+    const value = toc[field];
+    if (value == null) return [];
+    // A line break would end the line and start a key of the value's choosing.
+    if (/[\r\n]/.test(value)) throw new Error(`${key} must be one line`);
+    return [[key, value]];
+  });
+}
 
 // English readables are their folder as committed, .toc and README: nothing is rewritten.
 export const keepsCommittedFolder = (section, lang) => section === "readables" && lang === BASE_LOCALE;
 
-export function rewriteToc(text, { folder, title, version, lang, tocPrefix }) {
+export function rewriteToc(text, { folder, title, version, lang, tocPrefix, languageKey = null, extra = [] }) {
   const rewrites = [
     ["IconTexture", `Interface\\AddOns\\${folder}\\Textures\\AddonIcon.tga`],
     ["Title", title.replace(/^Spoken/, "|cffb48cffSpoken|r")],
     ["Version", version],
     ...(tocPrefix ? [[`${tocPrefix}-Quality`, "high"], [`${tocPrefix}-Bitrate`, "128"], [`${tocPrefix}-Language`, lang]] : []),
+    ...(languageKey ? [[languageKey, lang]] : []),
   ];
   let out = text;
   for (const [name, value] of rewrites) {
@@ -32,11 +59,20 @@ export function rewriteToc(text, { folder, title, version, lang, tocPrefix }) {
     if (!line.test(out)) throw new Error(`the .toc has no '## ${name}:' line to rewrite`);
     out = out.replace(line, () => `## ${name}: ${value}`);
   }
+  if (extra.length > 0) {
+    const lines = extra.map(([key, value]) => `## ${key}: ${value}`).join("\n");
+    out = out.replace(/^## Version:.*$/m, (version) => `${version}\n${lines}`);
+  }
   return out;
 }
 
 const notHidden = (path) => !basename(path).startsWith(".") && !path.endsWith(".part");
 
+/**
+ * `pack` is a page's (findPack), or a derived pack's folder: `{ folder, name, version, derived:
+ * true, toc }`, which names its team and language in its .toc and, with no badge drawn for its
+ * language, wears English's mark.
+ */
 export async function stagePack(section, lang, { root, pack, readme }) {
   const shape = SECTIONS[section];
   if (!shape) throw new Error(`${section} has no Manager-only build`);
@@ -59,7 +95,10 @@ export async function stagePack(section, lang, { root, pack, readme }) {
   await cp(source, target, { recursive: true, filter: fromSource });
   await cp(lookup, join(target, "Data/Sounds.lua"));
   await cp(sounds, join(target, "Sounds"), { recursive: true, filter: notHidden });
-  if (!english && shape.icon) await cp(join(root, shape.icon(lang)), join(target, "Textures/AddonIcon.tga"));
+  const badge = shape.icon && join(root, shape.icon(lang));
+  // A page pack's missing badge stays an error: it would look like English's in the AddOns list.
+  // A derived pack's title names its language.
+  if (!english && badge && (!pack.derived || existsSync(badge))) await cp(badge, join(target, "Textures/AddonIcon.tga"));
   if (readme != null) await writeFile(join(target, "README.md"), readme);
 
   const toc = join(target, `${folder}.toc`);
@@ -68,7 +107,12 @@ export async function stagePack(section, lang, { root, pack, readme }) {
   // A language's version is its page's; English's is its .toc's.
   const version = pack.version ?? /^## Version:\s*(.+?)\s*$/m.exec(text)?.[1];
   if (!version) throw new Error(`no version for ${folder}`);
-  if (!keepsCommittedFolder(section, lang)) {
+  if (pack.derived) {
+    await writeFile(toc, rewriteToc(text, {
+      folder, title: pack.name, version, lang, tocPrefix: shape.tocPrefix,
+      languageKey: shape.languageKey ?? null, extra: tocExtra(pack.toc),
+    }));
+  } else if (!keepsCommittedFolder(section, lang)) {
     await writeFile(toc, rewriteToc(text, { folder, title: pack.name, version, lang, tocPrefix: shape.tocPrefix }));
   }
   return { folder, version };

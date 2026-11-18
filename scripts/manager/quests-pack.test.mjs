@@ -42,3 +42,41 @@ test("every language builds English's four folders from their pages, its gossip 
 test("a folder with no page is an error, not a pack built from nothing", () => {
   assert.throws(() => buildArgs("frFR", ["SpokenQuestsAudio_nope"], {}), /no quests page/);
 });
+
+const derived = (lang, toc) => ({
+  folders: ["Alliance", "Horde", "Shared", "Gossip"].map((side) => ({
+    folder: `SpokenQuestsAudio${side}_${lang}`, section: "quests", lang, pack: side.toLowerCase(), title: `T ${side}`,
+  })),
+  version: "1.0.0",
+  toc,
+});
+
+test("a derived pack builds from its own titles and keys, wearing English's mark without a badge", () => {
+  const plan = derived("jaJP", { languageName: "Japanese", languageNative: "日本語" });
+  const builds = buildArgs("jaJP", plan.folders.map((p) => p.folder), { derived: plan, badge: false });
+  assert.deepEqual(builds[0].args, [
+    "--module", "SpokenQuestsAudioAlliance_jaJP",
+    "--pack", "alliance",
+    "--version", "1.0.0",
+    "--module-title", "T Alliance",
+    "--language", "jaJP",
+    "--icon-language", "enUS",
+    "--toc-extra", "X-Spoken-LanguageName=Japanese",
+    "--toc-extra", "X-Spoken-LanguageNative=日本語",
+  ]);
+});
+
+test("a second team's derived pack keeps its language's badge and gossip text", () => {
+  const plan = derived("deDE", { team: "stimmen", teamName: "Stimmen" });
+  const builds = buildArgs("deDE", plan.folders.map((p) => p.folder), { derived: plan, badge: true, localeText: "text.json.gz" });
+  assert.deepEqual(builds[3].args, [
+    "--module", "SpokenQuestsAudioGossip_deDE",
+    "--pack", "gossip",
+    "--version", "1.0.0",
+    "--module-title", "T Gossip",
+    "--language", "deDE",
+    "--toc-extra", "X-Spoken-Team=stimmen",
+    "--toc-extra", "X-Spoken-TeamName=Stimmen",
+    "--locale-text", "text.json.gz",
+  ]);
+});
