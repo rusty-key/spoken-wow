@@ -1,14 +1,13 @@
 import { requireCapability } from "@/lib/generation/authz";
 import { langName } from "@/lib/lang";
 import { langParam } from "@/lib/lang-server";
-import { releasesClosedFor, runsOnDroplet, startDropletRun } from "@/lib/releases/droplet";
-import { dispatchRelease } from "@/lib/releases/github";
+import { releasesClosedFor, runsOnDroplet } from "@/lib/releases/droplet";
+import { failureOf, launchRun, startNext } from "@/lib/releases/launch";
 import { isReleaseBump, isReleaseSection, RELEASE_BUMPS, RELEASE_SECTIONS, TEAM_RELEASES_CLOSED } from "@/lib/releases/sections";
 import { pendingChanges } from "@/lib/releases/pending";
 import { ReleaseBusyError, lastReleasedAt, startRun, updateRun } from "@/lib/releases/store";
 import { syncActive } from "@/lib/releases/sync";
 import { releaseView } from "@/lib/releases/view";
-import { encodeMissingForPack } from "@/lib/takes/encode";
 import { actingTeamRow, NoTeamError } from "@/lib/teams/store";
 
 export const dynamic = "force-dynamic";
@@ -51,7 +50,9 @@ export async function POST(request: Request) {
 
   let run;
   try {
-    run = await startRun(body.section, lang, session.user.id);
+    // A run on GitHub is refused while another is active: the workflow's own concurrency group
+    // queues there, and cancels what waits.
+    run = await startRun(body.section, lang, session.user.id, { bump, queue: runsOnDroplet() });
   } catch (error) {
     if (error instanceof ReleaseBusyError) {
       return fail(409, `A release is already running: ${error.active.section} in ${langName(error.active.lang)}.`);
@@ -60,14 +61,16 @@ export async function POST(request: Request) {
     throw error;
   }
 
-  try {
-    // After startRun, which holds the lock, so a second press cannot encode the same takes.
-    await encodeMissingForPack(run.section, run.lang, run.teamId);
-    await (runsOnDroplet() ? startDropletRun(run, bump) : dispatchRelease(run));
-  } catch (error) {
-    const reason = error instanceof Error ? error.message : "the release could not be started";
-    await updateRun(run.id, { state: "failed", error: reason });
-    return fail(502, reason);
+  if (run.state === "dispatching") {
+    try {
+      // After startRun, which holds the lock, so a second press cannot encode the same takes.
+      await launchRun(run);
+    } catch (error) {
+      const reason = failureOf(error);
+      await updateRun(run.id, { state: "failed", error: reason });
+      await startNext();
+      return fail(502, reason);
+    }
   }
   return Response.json({ run: { id: run.id, section: run.section, lang: run.lang, state: run.state } }, { status: 202 });
 }

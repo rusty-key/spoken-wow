@@ -25,17 +25,48 @@ export function isReleaseBump(value: unknown): value is ReleaseBump {
   return typeof value === "string" && (RELEASE_BUMPS as readonly string[]).includes(value);
 }
 
-export type ReleaseState = "dispatching" | "running" | "done" | "unchanged" | "failed";
+/**
+ * A run waits `queued` while another is active, then runs. A staged release (a team that is not
+ * official) ends `awaiting_review`, then `done` once a site owner approves it and its promotion
+ * runs, `rejected`, or `superseded` by a newer staged version of the same pack.
+ */
+export type ReleaseState =
+  | "queued"
+  | "dispatching"
+  | "running"
+  | "awaiting_review"
+  | "done"
+  | "unchanged"
+  | "failed"
+  | "rejected"
+  | "superseded";
 
-export function isSettled(state: ReleaseState): state is "done" | "unchanged" | "failed" {
-  return state === "done" || state === "unchanged" || state === "failed";
+/** A release builds and publishes; a promote lists a staged release a site owner approved; a delist unlists a team's pack. */
+export type ReleaseKind = "release" | "promote" | "delist";
+
+/** The one run site-wide that holds the lock. */
+export function isActive(state: ReleaseState): boolean {
+  return state === "dispatching" || state === "running";
+}
+
+/** Whether its job is over: nothing the job reports changes it, though a review still may (awaiting_review). */
+export function isSettled(state: ReleaseState): boolean {
+  return !isActive(state) && state !== "queued";
+}
+
+/** Waiting on somebody else: another run to end, or a site owner. */
+export function isWaiting(state: ReleaseState): boolean {
+  return state === "queued" || state === "awaiting_review";
 }
 
 /** What the panel draws of a run; another team's active run carries only the first four. */
 export type RunView = {
+  /** Absent for another team's active run. */
+  id?: string;
   section: ReleaseSection;
   lang: Lang;
   state: ReleaseState;
+  kind?: ReleaseKind;
   /** False for another team's run. */
   own: boolean;
   githubUrl?: string | null;
@@ -52,6 +83,8 @@ export type RunView = {
   finishedAt?: string | null;
   /** Who pressed it, by name; null when they have none, or their account is gone. */
   by?: string | null;
+  /** A site owner's reason for not approving it. */
+  reviewNote?: string | null;
 };
 
 /** One line whose audio went live since the section's last release. */
@@ -101,6 +134,8 @@ export type ReleaseView = {
    * one dispatched to GitHub Actions takes no bump, so offering one would be a choice ignored.
    */
   bumpable: boolean;
+  /** Whether a press while another release runs waits its turn (on this machine), rather than being refused. */
+  queues: boolean;
   /** Per section: what a release would send that players do not have yet. */
   pending: Record<string, PendingView>;
 };

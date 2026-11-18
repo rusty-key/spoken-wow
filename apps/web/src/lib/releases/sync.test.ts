@@ -7,6 +7,12 @@ import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } 
 import { closeDb } from "@/lib/db";
 import { asSystem, systemRows, testUser } from "@/lib/teams/testing";
 
+const droplet = vi.hoisted(() => ({ startDropletRun: vi.fn() }));
+vi.mock("./droplet", async (original) => ({ ...(await original<typeof import("./droplet")>()), ...droplet }));
+
+const encode = vi.hoisted(() => ({ encodeMissingForPack: vi.fn() }));
+vi.mock("@/lib/takes/encode", () => encode);
+
 import { forgetReleaseCheck, syncActive } from "./sync";
 import { activeRun, startRun } from "./store";
 
@@ -38,6 +44,8 @@ describe("syncActive", () => {
     vi.stubEnv("SPOKEN_RELEASE_GITHUB_REPO", "rusty-key/spoken-wow");
     forgetReleaseCheck();
     vi.spyOn(console, "error").mockImplementation(() => {});
+    droplet.startDropletRun.mockReset().mockResolvedValue(undefined);
+    encode.encodeMissingForPack.mockReset().mockResolvedValue(undefined);
   });
 
   afterEach(async () => {
@@ -114,6 +122,36 @@ describe("syncActive", () => {
       utimesSync(join(dir, "heartbeat"), old, old);
       expect(await syncActive()).toBeNull();
       expect(await row(run.id)).toMatchObject({ state: "failed", error: "The release process stopped without finishing" });
+    });
+
+    it("starts the next queued run, with its own bump, once the active one settles", async () => {
+      const first = await startRun("bosses", "frFR", user.id);
+      const second = await startRun("places", "deDE", user.id, { bump: "minor" });
+      expect(second.state).toBe("queued");
+      job(first.id, { exit: "0", log: "==> released 1.0.1: SpokenBossesAudio_frFR\n" });
+      expect(await syncActive()).toMatchObject({ id: second.id, state: "dispatching" });
+      expect((await row(first.id)).state).toBe("done");
+      expect(encode.encodeMissingForPack).toHaveBeenCalledWith("places", "deDE", second.teamId);
+      expect(droplet.startDropletRun).toHaveBeenCalledTimes(1);
+      expect(droplet.startDropletRun.mock.calls[0][0]).toMatchObject({ id: second.id, kind: "release", bump: "minor", lang: "deDE" });
+    });
+
+    it("fails a queued run whose job cannot start, and starts the one after it", async () => {
+      const first = await startRun("bosses", "frFR", user.id);
+      const second = await startRun("places", "deDE", user.id);
+      const third = await startRun("readables", "frFR", user.id);
+      droplet.startDropletRun.mockRejectedValueOnce(new Error("spawn setsid ENOENT"));
+      job(first.id, { exit: "0" });
+      expect(await syncActive()).toMatchObject({ id: third.id, state: "dispatching" });
+      expect(await row(second.id)).toMatchObject({ state: "failed", error: "spawn setsid ENOENT" });
+      expect(droplet.startDropletRun).toHaveBeenCalledTimes(2);
+    });
+
+    it("starts a queued run when it finds nothing active", async () => {
+      const first = await startRun("bosses", "frFR", user.id);
+      const second = await startRun("places", "deDE", user.id);
+      await asSystem.query(`update "release_run" set "state" = 'failed' where "id" = $1`, [first.id]);
+      expect(await syncActive()).toMatchObject({ id: second.id, state: "dispatching" });
     });
 
     it("leaves a run with no job directory to GitHub", async () => {

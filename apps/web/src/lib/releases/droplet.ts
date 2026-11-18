@@ -10,7 +10,7 @@ import { closeSync, openSync, realpathSync } from "node:fs";
 import { mkdir, open, readFile, stat, writeFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
 
-import type { ReleaseBump } from "./sections";
+import type { ReleaseBump, ReleaseKind } from "./sections";
 
 const LOG_TAIL_BYTES = 8_000;
 
@@ -55,16 +55,34 @@ function runDir(id: string): string | null {
 
 type Spawn = (command: string, args: string[], options: SpawnOptions) => ChildProcess;
 
-export async function startDropletRun(
-  run: { id: string; section: string; lang: string; teamSlug: string },
-  bump: ReleaseBump,
-  spawnFn: Spawn = spawn,
-): Promise<void> {
+export type DropletJob = {
+  id: string;
+  kind: ReleaseKind;
+  section: string;
+  lang: string;
+  teamSlug: string;
+  bump: ReleaseBump | null;
+  stage: boolean;
+  /** What a promote lists, or a delist's `{ folders }`, handed to the job as input.json. */
+  staged: unknown;
+};
+
+/** The job's arguments after its run directory. */
+export function jobArgs(run: DropletJob): string[] {
+  // The team as a flag, after the positionals: a job from before teams released had none.
+  return [
+    run.section, run.lang, run.bump ?? "patch", `--team=${run.teamSlug}`,
+    ...(run.kind === "release" ? (run.stage ? ["--stage"] : []) : [`--kind=${run.kind}`]),
+  ];
+}
+
+export async function startDropletRun(run: DropletJob, spawnFn: Spawn = spawn): Promise<void> {
   const dir = runDir(run.id);
   if (!dir) throw new Error("releases on this machine need SPOKEN_RELEASE_ENV set");
   await mkdir(dir, { recursive: true });
   await writeFile(join(dir, "heartbeat"), "");
   await writeFile(join(dir, "log"), "");
+  if (run.kind !== "release") await writeFile(join(dir, "input.json"), JSON.stringify(run.staged));
 
   // Resolved now, so the job keeps the release it started from through a symlink swap.
   const tools = realpathSync(join(process.env.SPOKEN_PLACES_ROOT ?? process.cwd(), "release-tools"));
@@ -74,11 +92,7 @@ export async function startDropletRun(
       const child = spawnFn(
         "setsid",
         // The site keeps the machine's one CPU.
-        // The team last, as a flag: the job builds that team's packs (scripts/manager/release-team.mjs).
-        [
-          "--fork", "nice", "-n", "10", process.execPath, join(tools, "scripts/manager/release-job.mjs"),
-          dir, run.section, run.lang, bump, `--team=${run.teamSlug}`,
-        ],
+        ["--fork", "nice", "-n", "10", process.execPath, join(tools, "scripts/manager/release-job.mjs"), dir, ...jobArgs(run)],
         {
           cwd: tools,
           env: { NODE_ENV: process.env.NODE_ENV, PATH: process.env.PATH, HOME: process.env.HOME, SPOKEN_RELEASE_ENV: process.env.SPOKEN_RELEASE_ENV },

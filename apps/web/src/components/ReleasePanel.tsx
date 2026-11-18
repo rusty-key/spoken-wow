@@ -27,15 +27,23 @@ const SINCE: Intl.DateTimeFormatOptions = { hour: "2-digit", minute: "2-digit" }
 const WHEN: Intl.DateTimeFormatOptions = { day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" };
 
 const SHOWN: Record<RunView["state"], string> = {
+  queued: "Waiting its turn",
   dispatching: "Starting",
   running: "Running",
+  awaiting_review: "Waiting for review",
   done: "Done",
   unchanged: "Nothing changed",
   failed: "Failed",
+  rejected: "Not approved",
+  superseded: "Replaced",
 };
 
 /** What came of a settled run. */
-function outcomeText(run: RunView): string {
+export function outcomeText(run: RunView): string {
+  if (run.kind === "delist") return "Delisted by a site owner.";
+  if (run.state === "awaiting_review") return "Waiting for a site owner to review it.";
+  if (run.state === "rejected") return `Not approved: ${run.reviewNote ?? ""}`;
+  if (run.state === "superseded") return "Replaced by a newer version before it was reviewed.";
   if (run.state === "done") return run.version ? `Released ${run.version}.` : "Released.";
   return run.error ? `Nothing was released: ${run.error}` : "Nothing was released.";
 }
@@ -54,6 +62,10 @@ const ownRun = (view: ReleaseView, lang: Lang) => (view.active?.own && view.acti
 const lastSettled = (view: ReleaseView, section: ReleaseSection) =>
   view.recent.find((run) => run.section === section && isSettled(run.state));
 
+/** The team's run of `section` in `lang` waiting for another to end. */
+const queuedRun = (view: ReleaseView, lang: Lang, section: ReleaseSection) =>
+  view.recent.find((run) => run.section === section && run.lang === lang && run.state === "queued") ?? null;
+
 // A shell, because useToast has to find a provider above the component that calls it.
 export default function ReleasePanel(props: { lang: Lang; initial: ReleaseView }) {
   return (
@@ -71,6 +83,8 @@ function Panel({ lang, initial }: { lang: Lang; initial: ReleaseView }) {
   // Checks in a row that got no answer; without it a stale "running" looks like a live one.
   const [missed, setMissed] = useState(0);
   const running = view.active !== null;
+  // A queued run of the team's also wants watching, to show it start.
+  const watched = running || view.recent.some((run) => run.state === "queued");
   const watching = useRef(ownRun(initial, lang)?.section ?? null);
   const asked = useRef(0);
   // Which ask an answer belongs to: a focus check still out when a press asks again must not land
@@ -106,13 +120,13 @@ function Panel({ lang, initial }: { lang: Lang; initial: ReleaseView }) {
   }, [lang, toast]);
 
   useEffect(() => {
-    if (!running) return;
+    if (!watched) return;
     // A hidden tab asking every 15 s could last the hours a release takes.
     const timer = setInterval(() => {
       if (!document.hidden) void refresh();
     }, POLL_MS);
     return () => clearInterval(timer);
-  }, [running, refresh]);
+  }, [watched, refresh]);
 
   // The interval skips a hidden tab, and a release lasts long enough to switch away from, so
   // coming back asks at once instead of showing a finished run as running until the next tick.
@@ -157,6 +171,16 @@ function Panel({ lang, initial }: { lang: Lang; initial: ReleaseView }) {
     setPressing(false);
   }
 
+  async function cancel(run: RunView) {
+    setError(null);
+    const response = await fetch(`/api/releases/${run.id}`, { method: "DELETE" }).catch(() => null);
+    if (!response?.ok) {
+      const { error: message } = ((await response?.json().catch(() => ({}))) ?? {}) as { error?: string };
+      setError(`It was not cancelled: ${message ?? "could not reach the server."}`);
+    }
+    await refresh();
+  }
+
   const { active } = view;
   const elsewhere = active && !ours ? active : null;
   const holdUp = active ? `${SOURCE_LABELS[active.section]} in ${langName(active.lang)}` : null;
@@ -189,7 +213,11 @@ function Panel({ lang, initial }: { lang: Lang; initial: ReleaseView }) {
                 releasing for another team.
               </>
             )}{" "}
-            <span className="text-muted-foreground">Only one release runs at a time; yours can start once it ends.</span>
+            <span className="text-muted-foreground">
+              {view.queues
+                ? "Only one release runs at a time; a release you press now waits its turn."
+                : "Only one release runs at a time; yours can start once it ends."}
+            </span>
           </p>
         </div>
       )}
@@ -203,7 +231,11 @@ function Panel({ lang, initial }: { lang: Lang; initial: ReleaseView }) {
             last={lastSettled(view, section)}
             released={view.released[section]}
             current={ours?.section === section ? ours : null}
-            disabled={running || pressing}
+            queued={queuedRun(view, lang, section)}
+            onCancel={(run) => void cancel(run)}
+            disabled={
+              pressing || (running && (!view.queues || ours?.section === section)) || queuedRun(view, lang, section) !== null
+            }
             waitingFor={running && ours?.section !== section ? holdUp : null}
             bumpable={view.bumpable}
             onRelease={(bump) => void release(section, bump)}
@@ -222,6 +254,8 @@ function SectionCard({
   last,
   released,
   current,
+  queued,
+  onCancel,
   disabled,
   waitingFor,
   bumpable,
@@ -235,6 +269,9 @@ function SectionCard({
   /** Its newest run that released, however far back. */
   released: RunView | undefined;
   current: RunView | null;
+  /** Its run waiting for another to end. */
+  queued: RunView | null;
+  onCancel: (run: RunView) => void;
   disabled: boolean;
   /** The run this card's button waits on, when it is another section's or language's. */
   waitingFor: string | null;
@@ -320,13 +357,32 @@ function SectionCard({
                 <span className="text-muted-foreground tabular-nums">since {date(current.startedAt, SINCE)}</span>
               )}
             </span>
+          ) : queued ? (
+            <span className="inline-flex flex-wrap items-center gap-x-2">
+              <span aria-hidden className="bg-muted-foreground size-2 rounded-full" />
+              {waitingFor ? `Waiting for ${waitingFor} to finish` : SHOWN.queued}
+              <Button variant="link" size="sm" className="h-auto px-0" onClick={() => onCancel(queued)}>
+                Cancel
+              </Button>
+            </span>
           ) : last ? (
-            <span className={cn("inline-flex flex-wrap items-center gap-x-2", last.state === "failed" && "text-destructive")}>
+            <span
+              className={cn(
+                "inline-flex flex-wrap items-center gap-x-2",
+                (last.state === "failed" || last.state === "rejected") && "text-destructive",
+              )}
+            >
               <span
                 aria-hidden
                 className={cn(
                   "size-2 rounded-full",
-                  last.state === "done" ? "bg-emerald-400" : last.state === "failed" ? "bg-destructive" : "bg-muted-foreground",
+                  last.state === "done"
+                    ? "bg-emerald-400"
+                    : last.state === "failed" || last.state === "rejected"
+                      ? "bg-destructive"
+                      : last.state === "awaiting_review"
+                        ? "bg-primary"
+                        : "bg-muted-foreground",
                 )}
               />
               {outcomeText(last)}
@@ -343,8 +399,10 @@ function SectionCard({
           {logRun && <ReleaseLog run={logRun} />}
           {current ? (
             <p className="text-muted-foreground text-xs">Releasing now. You can leave this page.</p>
+          ) : queued ? (
+            <p className="text-muted-foreground text-xs">It starts by itself. You can leave this page.</p>
           ) : (
-            waitingFor && <p className="text-muted-foreground text-xs">Waits for {waitingFor} to finish.</p>
+            waitingFor && !bumpable && <p className="text-muted-foreground text-xs">Waits for {waitingFor} to finish.</p>
           )}
         </div>
         {/* The count sees audio and text, not lines removed by a fold; the release decides. */}
@@ -361,7 +419,9 @@ function SectionCard({
         >
           {current
             ? "Releasing…"
-            : nothing
+            : queued
+              ? "Waiting its turn"
+              : nothing
               ? "Nothing to release"
               : `Review release · ${total.toLocaleString()}`}
         </Button>

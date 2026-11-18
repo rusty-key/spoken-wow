@@ -83,7 +83,7 @@ describe("releasesClosedFor", () => {
 });
 
 describe("startDropletRun", () => {
-  const run = { id: "run-1", section: "bosses", lang: "enUS", teamSlug: "english" };
+  const run = { id: "run-1", kind: "release" as const, section: "bosses", lang: "enUS", teamSlug: "english", bump: "minor" as const, stage: false, staged: null };
 
   beforeEach(() => {
     mkdirSync(join(shared, "release-tools"));
@@ -93,7 +93,7 @@ describe("startDropletRun", () => {
 
   it("forks the job away and hands it none of the site's secrets", async () => {
     const spawnFn = fakeSpawn(0);
-    await startDropletRun(run, "minor", spawnFn);
+    await startDropletRun(run, spawnFn);
     const [command, args, options] = spawnFn.mock.calls[0] as unknown as [string, string[], { env: Record<string, string> }];
     expect(command).toBe("setsid");
     expect(args[0]).toBe("--fork");
@@ -104,8 +104,8 @@ describe("startDropletRun", () => {
   });
 
   it("refuses when the fork could not start", async () => {
-    await expect(startDropletRun(run, "patch", fakeSpawn(new Error("spawn setsid ENOENT")))).rejects.toThrow("ENOENT");
-    await expect(startDropletRun(run, "patch", fakeSpawn(1))).rejects.toThrow("setsid exited 1");
+    await expect(startDropletRun(run, fakeSpawn(new Error("spawn setsid ENOENT")))).rejects.toThrow("ENOENT");
+    await expect(startDropletRun(run, fakeSpawn(1))).rejects.toThrow("setsid exited 1");
   });
 });
 

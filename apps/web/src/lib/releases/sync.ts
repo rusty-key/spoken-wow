@@ -6,6 +6,7 @@ import "server-only";
 
 import { currentStep, failureReason, outcome, readDropletRun, type DropletRun } from "./droplet";
 import { GithubNotConfiguredError, findRun, type GithubRun } from "./github";
+import { startNext } from "./launch";
 import { activeRun, updateRun, type ReleaseRun } from "./store";
 
 // Twelve missed heartbeats. A reboot or an out-of-memory kill leaves no exit file, and nobody
@@ -54,7 +55,15 @@ async function settleFromJob(run: ReleaseRun, job: DropletRun, now: number): Pro
   return updated.state === "running" ? updated : null;
 }
 
+/**
+ * The active run after moving it on, or the queued run that starts because none is active any
+ * more; null when nothing runs.
+ */
 export async function syncActive(fetchFn: typeof fetch = fetch, now: number = Date.now()): Promise<ReleaseRun | null> {
+  return (await syncRun(fetchFn, now)) ?? startNext();
+}
+
+async function syncRun(fetchFn: typeof fetch, now: number): Promise<ReleaseRun | null> {
   const run = await activeRun();
   if (!run) return null;
   const job = await readDropletRun(run.id);

@@ -7,6 +7,8 @@ import { asSystem, ownTeam, unowned, systemRows, testUser } from "@/lib/teams/te
 import {
   ReleaseBusyError,
   activeRun,
+  cancelQueued,
+  claimNext,
   lastDoneRuns,
   lastReleasedAt,
   latestPackVersions,
@@ -41,13 +43,52 @@ describe("release runs", () => {
     await closeDb();
   });
 
-  it("refuses a second run while one is active, naming the first even when it is another team's", async () => {
+  it("queues a second press while one is active, even another team's, and keeps its bump", async () => {
     const first = await startRun("quests", "frFR", user.id);
     expect(first.state).toBe("dispatching");
-    const error = await startRun("places", "deDE", user.id).catch((e) => e);
+    const second = await startRun("places", "deDE", user.id, { bump: "minor" });
+    expect(second).toMatchObject({ state: "queued", bump: "minor", kind: "release", stage: false, teamId: de.team });
+    expect((await activeRun())?.id).toBe(first.id);
+  });
+
+  it("refuses a second press that may not queue, naming the first even when it is another team's", async () => {
+    await startRun("quests", "frFR", user.id);
+    const error = await startRun("places", "deDE", user.id, { queue: false }).catch((e) => e);
     expect(error).toBeInstanceOf(ReleaseBusyError);
     expect((error as ReleaseBusyError).active).toEqual({ section: "quests", lang: "frFR" });
-    expect((await activeRun())?.id).toBe(first.id);
+  });
+
+  it("queues a press behind one already waiting, though nothing is active", async () => {
+    const first = await startRun("quests", "frFR", user.id);
+    await startRun("places", "deDE", user.id);
+    await updateRun(first.id, { state: "done" });
+    expect((await startRun("bosses", "frFR", user.id)).state).toBe("queued");
+  });
+
+  it("starts the oldest queued run once nothing is active, and only one", async () => {
+    const first = await startRun("quests", "frFR", user.id);
+    const second = await startRun("places", "deDE", user.id, { bump: "major" });
+    await startRun("bosses", "frFR", user.id);
+    expect(await claimNext()).toBeNull();
+    await updateRun(first.id, { state: "done" });
+    expect(await claimNext()).toMatchObject({ id: second.id, state: "dispatching", bump: "major" });
+    expect(await claimNext()).toBeNull();
+    expect((await activeRun())?.id).toBe(second.id);
+  });
+
+  it("cancels a queued run, and only a queued one", async () => {
+    const first = await startRun("quests", "frFR", user.id);
+    const second = await startRun("places", "frFR", user.id);
+    expect(await cancelQueued(first.id)).toBeNull();
+    expect(await cancelQueued(second.id)).toMatchObject({ state: "failed", error: "Cancelled" });
+    expect(await cancelQueued(second.id)).toBeNull();
+    await updateRun(first.id, { state: "done" });
+    expect(await claimNext()).toBeNull();
+  });
+
+  it("reads a run from before kinds as a release", async () => {
+    const run = await startRun("quests", "frFR", user.id);
+    expect(run).toMatchObject({ kind: "release", stage: false, staged: null, promotes: null });
   });
 
   it("starts again once the active run is done", async () => {
