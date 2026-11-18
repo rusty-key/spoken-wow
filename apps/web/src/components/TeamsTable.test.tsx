@@ -53,3 +53,32 @@ test("with the toggle off, the chosen languages are sent and no newLanguage", as
   expect(body.langs).toEqual(["deDE"]);
   expect(body).not.toHaveProperty("newLanguage");
 });
+
+const team = (langs: Lang[], alsoIn: Lang[] = []) => ({
+  id: "00000000-0000-0000-0000-000000000001",
+  slug: "spare",
+  name: "Spare",
+  ownStorage: true,
+  langs,
+  alsoIn,
+  members: [],
+});
+
+test("a team holding a language cannot be deleted", () => {
+  render(<TeamsTable initial={[team(["deDE" as Lang])]} takes={{}} languages={languages} />);
+  expect((screen.getByRole("button", { name: "Delete spare" }) as HTMLButtonElement).disabled).toBe(true);
+});
+
+test("deleting asks first, then sends DELETE for the team", async () => {
+  const user = userEvent.setup();
+  render(<TeamsTable initial={[team([], ["deDE" as Lang])]} takes={{}} languages={languages} />);
+  await user.click(screen.getByRole("button", { name: "Delete spare" }));
+  expect(screen.getByText(/stops being a second team in deDE/)).toBeTruthy();
+  expect(fetchMock).not.toHaveBeenCalled();
+  await user.click(screen.getByRole("button", { name: "Delete team" }));
+
+  await waitFor(() => expect(fetchMock).toHaveBeenCalled());
+  expect(fetchMock.mock.calls[0][0]).toBe("/api/teams/00000000-0000-0000-0000-000000000001");
+  expect(fetchMock.mock.calls[0][1].method).toBe("DELETE");
+  expect(refresh).toHaveBeenCalled();
+});

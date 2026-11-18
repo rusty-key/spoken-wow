@@ -2,7 +2,20 @@
 import type { ClientBase } from "pg";
 
 import { query } from "@/lib/db";
+import type { Lang } from "@/lib/lang";
 import type { Capability } from "@/lib/permissions";
+
+export async function membersOf(
+  client: ClientBase,
+  team: string,
+): Promise<{ email: string; lang: Lang; capability: Capability }[]> {
+  const { rows } = await client.query<{ email: string; lang: Lang; capability: Capability }>(
+    `select u."email", m."lang", m."capability" from "team_member" m join "user" u on u."id" = m."userId"
+      where m."teamId" = $1 order by u."email", m."lang", m."capability"`,
+    [team],
+  );
+  return rows;
+}
 
 /** The capabilities that were handed out; the ones already held are left out. */
 export async function insertMembers(

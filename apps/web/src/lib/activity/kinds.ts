@@ -12,6 +12,7 @@
  * a lexicon change with no before or after, a text edit with no previous version -- so
  * every field a backfill could not supply is optional.
  */
+import type { Lang } from "@/lib/lang";
 import type { Capability } from "@/lib/permissions";
 import type { Branch, Settings } from "@/lib/teams/found";
 
@@ -151,6 +152,8 @@ export type ActivityDetail = {
   "language.added": { name: string };
   "team.created": { slug: string };
   "team.renamed": { name: string };
+  /** Filed under no team, since the team is gone. */
+  "team.deleted": { slug: string; members: { email: string; lang: Lang; capability: Capability }[] };
   /** Whether the team must keep its audio in its own bucket (docs/platform/STORAGE.md). */
   "team.own_storage": { ownStorage: boolean };
   /** A language handed to another team, by team slug. */
