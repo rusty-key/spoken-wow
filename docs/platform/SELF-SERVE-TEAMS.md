@@ -1,6 +1,6 @@
 # Self-serve teams
 
-Design, 2026-11-12. Requests and approval are built (plan 2) for new and unmaintained languages, the second team for a maintained one (plan 5a), on the site the text layer for places, readables and bosses (plan 5b), and the text API's override layer (plan 5b2). The Explorer's team picker is left to 5c. Builds on [`TEAMS.md`](TEAMS.md) phase 1.
+Design, 2026-11-12. Requests and approval are built (plan 2) for new and unmaintained languages, the second team for a maintained one (plan 5a), on the site the text layer for places, readables and bosses (plan 5b), the text API's override layer (plan 5b2), and the Explorer's team picker (plan 5c). Builds on [`TEAMS.md`](TEAMS.md) phase 1.
 
 ## Why
 
@@ -180,7 +180,23 @@ site. The rest of phase 2 is distribution and stays out.
 - **Releases and gender splits.** A second team cannot release yet, and cannot split a line by the
   reader's gender, since that rewrites the original every team voices. A plain override is written
   into its own team's layer.
-- **Explorer** gets a team picker per language, so either team's takes can be viewed.
+- **Explorer.** In a language with a second team, the places, bosses, readables and quests
+  explorers show a "Team" picker listing every team that voices it, the main team first. The
+  pick is `?team=<slug>` and chooses whose live takes play, anonymous visitors included. With
+  none, the explorer plays the team the visitor works in, else the main team, so existing links
+  play what they always did. A single-team language shows no picker.
+- **Another team's view is read-only.** It plays that team's live takes and shows its override
+  on a line it has a live take of, made since the override's last save. Each line reads voiced or
+  missing, with no stale, dirty, made-by, report or recording marks, and the regenerate,
+  override, ignore, record, report and clear-mark controls are hidden. The pencil that writes the
+  original stays, since the original is shared. A note says whose takes play.
+- **A site owner acts inside a team through the picker.** Their pick is kept per language in the
+  `spoken_team` cookie, read only for a site owner, and every read and write in that language
+  goes to the picked team until they pick again. An entry is kept only where it changes who they
+  act as, so a site owner who is a member of a second team can still act as the main team. While
+  an entry holds, every page of the language shows "Working as {team}" with the picker. The queue
+  panel shows each team only its own finished lines and pauses, and a site owner's Stop cancels
+  pending work in every team of their languages.
 - Contributions and text reports keep going to the text maintainers.
 
 ## Left to the builder
@@ -197,3 +213,6 @@ site. The rest of phase 2 is distribution and stays out.
 
 - A later migration sets language `name`, `native`, `bcp47` and `provider` NOT NULL once no pre-0109 release runs.
 - The CLI `apps/web/scripts/seed-voice-sources.mts` knows only the built-in languages; it does not load the registry.
+- The queue panel's counts, failures and cursor still cut at the latest dismissal mark of any team, so one team's dismissal clears another's counts.
+- A site owner acting as a second team cannot dismiss its finished lines: dismissing writes the mark into the team of the first of their languages.
+- On a line with several voices, one voice's take made after an override publishes that override for every voice of the line.

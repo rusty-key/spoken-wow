@@ -76,7 +76,9 @@ picker, and reports that carry the pack's team. See *Phase 2* below.
 
 Today's global `admin`. Above all teams: create teams and set their languages and first admin,
 appoint text maintainers, act inside any team with full rights without being a member *(my call)*,
-and delist a team's packs.
+and delist a team's packs. A site owner acts inside a team by picking it in the explorer's team
+picker; the choice is kept per language in a cookie and lasts until they pick again. While it holds,
+every page of the language says "Working as {team}".
 
 ### Text maintainers
 
@@ -206,6 +208,9 @@ takes. Everything else is private to the team: take history, recordings not yet 
 clones, settings, lexicon, overrides in progress, queue, activity, audio reports and issues. Writes
 are always scoped to the team being worked in.
 
+A team's override is public on a line it has a live take of, made since the override's last save,
+so the text shown with another team's takes is what they say. Otherwise it stays private. *(User.)*
+
 In phase 1 there is one team per language, so the explorer shows what it shows today.
 
 ## Isolation with row-level security
@@ -219,10 +224,18 @@ In phase 1 there is one team per language, so the explorer shows what it shows t
   a pooled connection must never carry one team's setting into another's request. `lib/db.ts`
   (`db()`, `query()`, `inTransaction`) is where this lives.
 - The team for a request: the person's team in the language, else the language's privileged team.
-  One person works in one team per language, so no switcher is needed.
+  One person works in one team per language, so members need no switcher. A site owner's pick in
+  the team picker overrides both (see *Site owners*).
 - The queue worker sets the team from the job it runs. Jobs, batches and pauses carry the team.
-- The public cross-team read of live takes and their text goes through a narrow path (a view or
-  security-definer function returning only live rows), not by loosening the per-team policies.
+- The public cross-team read of live takes and their text goes through two security-definer
+  functions, not by loosening the per-team policies. Both answer nothing for a team that does not
+  voice the language, and only the app role may call them.
+  - `team_live_takes` returns a team's current takes in a language and source: line id, file,
+    version, spoken hash, characters, duration, bytes and date, plus the archive location the
+    server needs to serve the audio, which never reaches a browser. No credits, cost, model, voice,
+    provider, author, settings or take count, which would reveal the team's history.
+  - `team_live_overrides` returns a team's override text, keyed by line, only on lines it has a
+    live take of made since the override's last save. No author, date or original hash.
 - Migrations and the pipelines keep the owner role. Pipelines mostly touch shared data, with these
   exceptions *(my calls)*:
   - `pipelines/quests/tts_cli/corpus_db.py` seeds `voice` / `voice_assignment` rows when a new
@@ -346,7 +359,8 @@ Designed now so phase 1 does not paint it into a corner; built when the first su
     and the "one pack per language" assumptions in `Spoken_Places/Audio.lua`,
     `Spoken_Readables/Audio.lua` and `Spoken_Bosses/Audio.lua`. The Places picker (`/spp audio`) is
     the existing pattern to generalise.
-- **Explorer** gets a team picker per language.
+- **Explorer.** Built: a team picker per language, which plays the picked team's live takes,
+  read-only when it is not the visitor's own team.
 - **Reports** from the addon carry the team of the pack that played the line, so audio reports reach
   that team. A report without a team (older addons) goes to every team voicing that language.
 - **Text layer.** Per-team overrides generalise `line_override` from quest lines to every `source`.
