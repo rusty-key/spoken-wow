@@ -9,11 +9,17 @@ import { closeDb } from "@/lib/db";
 import { keepLanguage } from "@/lib/quests/keep-language";
 import { asSystem } from "@/lib/teams/testing";
 
+/** People who hold regenerate where everyone else holds text. */
+const lostText = new Set<string>();
+
 vi.mock("@/lib/grants/store", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@/lib/grants/store")>()),
-  viewerOf: async (session: { user: { role?: string | null } }) => ({
+  viewerOf: async (session: { user: { id: string; role?: string | null } }) => ({
     role: session.user.role,
-    grants: ["koKR", "zhTW"].map((lang) => ({ lang, capability: "text" })),
+    grants: ["koKR", "zhTW"].map((lang) => ({
+      lang,
+      capability: lostText.has(session.user.id) ? "regenerate" : "text",
+    })),
   }),
 }));
 
@@ -31,6 +37,7 @@ const token = (userId: string, access: "read" | "write" = "write", lang: "koKR" 
   createToken({ userId, lang, access, generate: false, label: "agent", expiresAt: new Date(Date.now() + 86_400_000) });
 
 beforeEach(async () => {
+  lostText.clear();
   f = await createFixtures();
   other = await createFixtures();
   return async () => {
@@ -98,6 +105,17 @@ describe("POST /api/v1/batches/[batchId]/restore", () => {
     const response = await restore(mine.token, batchId);
     expect(response.status).toBe(200);
     expect(await response.json()).toEqual({ results: [{ id: f.zone, field: "text", status: "retired" }] });
+  });
+
+  it("skips the original edits of an owner who has since lost text", async () => {
+    const mine = await token(f.user);
+    const batchId = await runBatch(mine.token, [{ id: f.zone, text: "남음." }]);
+    lostText.add(f.user);
+    const response = await restore(mine.token, batchId);
+    expect(response.status).toBe(200);
+    expect(await response.json()).toEqual({
+      results: [{ id: f.zone, field: "text", status: "skipped", reason: "not_allowed" }],
+    });
   });
 
   it("survives its token being revoked: a new token restores it", async () => {

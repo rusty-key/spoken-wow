@@ -23,6 +23,6 @@ export async function POST(request: Request, { params }: { params: Promise<{ bat
       return Response.json({ error: `this batch is in ${batch.lang}; use a token for that language` }, { status: 403 });
     }
 
-    return Response.json({ results: await restoreBatch(batch, context.userId, context.layers) });
+    return Response.json({ results: await restoreBatch(batch, { by: context.userId, layers: context.layers, admin: isAdmin(context.role) }) });
   });
 }

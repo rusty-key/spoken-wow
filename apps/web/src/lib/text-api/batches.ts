@@ -8,7 +8,8 @@ import { restoreName, retireName, type NameKind } from "@/lib/names/store";
 import { clearOverride, readOverrides, writeOverride } from "@/lib/quests/overrides";
 import type { Source } from "@/lib/sections";
 import { asTeam } from "@/lib/teams/acting";
-import { readTextOverrides } from "@/lib/text-overrides/store";
+import { freshOwners } from "@/lib/teams/store";
+import { clearTextOverride, readTextOverrides } from "@/lib/text-overrides/store";
 
 import { describeError } from "./errors";
 import type { Layer } from "./guard";
@@ -71,7 +72,7 @@ type UndoResult = {
   entity?: NameTarget;
   field: "text" | "name" | "override";
   status: "restored" | "retired" | "skipped";
-  reason?: "edited_since" | "gender_split" | "not_allowed" | "error";
+  reason?: "edited_since" | "gender_split" | "not_allowed" | "retired_original" | "error";
   message?: string;
 };
 
@@ -119,12 +120,26 @@ function nameTargetOf(edit: Edit): NameTarget {
 
 type Head = Pick<UndoResult, "id" | "variant" | "entity" | "field">;
 
-/** A quest override is logged by file; its line and variant are the corpus's line for it. */
+/**
+ * A quest override is logged by file, so its variant is the corpus's line on that file, 0 where
+ * that line is another. Undefined where the corpus cannot be read: the head only names the line,
+ * and must not stop the undo.
+ */
+async function questVariant(lang: Lang, edit: Edit): Promise<number | undefined> {
+  try {
+    const line = (await fileIndex(lang)).get(edit.subject);
+    return line && line.lineId === edit.lineId ? (line.variant ?? 0) : 0;
+  } catch (error) {
+    console.error("text-api: no corpus to name an undone quest override by", error);
+    return undefined;
+  }
+}
+
 async function headOf(lang: Lang, section: Source, edit: Edit): Promise<Head> {
   if (isOverride(edit)) {
-    if (edit.source !== "quests") return { id: edit.subject, field: "override" };
-    const line = (await fileIndex(lang)).get(edit.subject);
-    return { id: edit.lineId ?? edit.subject, variant: line?.variant ?? 0, field: "override" };
+    const id = edit.lineId ?? edit.subject;
+    const variant = edit.source === "quests" ? await questVariant(lang, edit) : undefined;
+    return { id, ...(variant === undefined ? {} : { variant }), field: "override" };
   }
   if (edit.kind === "name.edited") {
     const entity = nameTargetOf(edit);
@@ -175,40 +190,57 @@ async function currentOverride(lang: Lang, edit: Edit): Promise<string | null> {
 
 /**
  * In the team that made the edit, which for a site owner undoing a second team's batch is not
- * their own. The write back carries no batch, as an original restore does not.
+ * their own. The write back carries no batch, as an original restore does not. Taking back a new
+ * override needs no original under it; putting back an old one does, as writing it did.
  */
-async function undoOverride(lang: Lang, edit: Edit, by: string): Promise<Outcome> {
+async function undoOverride(lang: Lang, edit: Edit, variant: number, by: string): Promise<Outcome> {
   return asTeam(lang, edit.teamId, async () => {
     if ((await currentOverride(lang, edit)) !== edit.after) return { status: "skipped", reason: "edited_since" };
     const { before } = edit;
+    const lineId = edit.lineId ?? edit.subject;
+    if (before === null) {
+      if (edit.source === "quests") await clearOverride(lang, edit.subject, by);
+      else await clearTextOverride({ source: edit.source, lang, lineId, by });
+      return { status: "retired" };
+    }
+    if ((await sections[edit.source].version(lang, lineId, variant)) === null) {
+      return { status: "skipped", reason: "retired_original" };
+    }
     if (edit.source === "quests") {
-      if (before === null) await clearOverride(lang, edit.subject, by);
-      else await writeOverride(lang, edit.subject, edit.lineId ?? edit.subject, before, by);
+      await writeOverride(lang, edit.subject, lineId, before, by);
     } else {
       // Through the section, which reads the original the override's drift hash is taken from.
-      const args = { lang, id: edit.subject, variant: 0, text: before, by, expectedVersion: null };
+      const args = { lang, id: lineId, variant: 0, text: before, by, expectedVersion: null };
       await sections[edit.source].saveOverride(args);
     }
-    return { status: before === null ? "retired" : "restored" };
+    return { status: "restored" };
   });
 }
 
 /**
- * Each edit stands alone, as it did when written: one line that fails must not stop the rest.
- * `layers` are what the caller may write now: an edit to a layer they may not is skipped, so
- * an undo never writes what a write would be refused.
+ * Who undoes, and what they may write now: an edit to a layer they may not write is skipped, so
+ * an undo never writes what a write would be refused. Outside a global admin, an override is
+ * undone only by someone acting as the team that wrote it, as a write lands in that team.
  */
-export async function restoreBatch(batch: Batch, by: string, layers: Record<Layer, boolean>): Promise<UndoResult[]> {
+type Restorer = { by: string; layers: Record<Layer, boolean>; admin: boolean };
+
+/** Each edit stands alone, as it did when written: one line that fails must not stop the rest. */
+export async function restoreBatch(batch: Batch, { by, layers, admin }: Restorer): Promise<UndoResult[]> {
   const results: UndoResult[] = [];
+  let acting: Promise<TeamId | undefined> | undefined;
+  const actingTeam = () => (acting ??= freshOwners([batch.lang]).then((owners) => owners.get(batch.lang)));
   for (const edit of await editsOf(batch.id)) {
     const head = await headOf(batch.lang, batch.section, edit);
-    if (!layers[isOverride(edit) ? "override" : "original"]) {
+    const allowed = isOverride(edit)
+      ? layers.override && (admin || (await actingTeam()) === edit.teamId)
+      : layers.original;
+    if (!allowed) {
       results.push({ ...head, status: "skipped", reason: "not_allowed" });
       continue;
     }
     try {
       const outcome = isOverride(edit)
-        ? await undoOverride(batch.lang, edit, by)
+        ? await undoOverride(batch.lang, edit, head.variant ?? 0, by)
         : edit.kind === "name.edited"
           ? await undoName(batch.lang, edit, by)
           : await undoText(batch.section, batch.lang, edit, by);
