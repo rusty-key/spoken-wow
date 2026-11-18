@@ -11,10 +11,11 @@ export function isReleaseSection(value: unknown): value is ReleaseSection {
 
 /**
  * What a team that is not official, or not the language's privileged team, is told when it asks to
- * release where team releases are closed: everywhere until a site owner can review a release.
+ * release where team releases are closed (SPOKEN_TEAM_RELEASES): on production until the Manager and
+ * Spoken that list a team's packs have shipped (docs/platform/TEAMS.md, *Releases*).
  */
 export const TEAM_RELEASES_CLOSED =
-  "Releases for your team open once a site owner can review them; your takes stay on the site.";
+  "Releases for your team are not open on this site yet; your takes stay on the site.";
 
 export const RELEASE_BUMPS = ["patch", "minor", "major"] as const;
 

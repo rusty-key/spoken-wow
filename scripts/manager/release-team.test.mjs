@@ -34,7 +34,7 @@ after(async () => {
 test("the language's privileged team builds plain packs", { skip }, async () => {
   const team = await releaseTeam(db, lang, first.slug);
   assert.deepEqual(team, {
-    id: first.id, slug: first.slug, name: first.name, official: true, privileged: true, plain: true,
+    id: first.id, slug: first.slug, name: first.name, official: true, privileged: true,
     language: { code: lang, name: "Xq German", native: "Xq Deutsch", client: false },
   });
 });
@@ -45,7 +45,6 @@ test("a second team does not", { skip }, async () => {
   assert.equal(team.name, "Stimmen");
   assert.equal(team.official, false);
   assert.equal(team.privileged, false);
-  assert.equal(team.plain, false);
 });
 
 test("no slug is the privileged team, as a release from before teams had", { skip }, async () => {

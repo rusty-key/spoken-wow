@@ -1,5 +1,5 @@
 // Deletes what no recent manifest needs. Run by hand (make manager-gc), never by publish.
-import { eachLimit } from "./publish.mjs";
+import { eachLimit, readIndexes } from "./publish.mjs";
 import { openJson, publicKeyOf } from "./sign.mjs";
 
 export const KEEP_REVS = 10;
@@ -15,15 +15,14 @@ export function revTime(rev) {
 
 export async function gc({ store, signingKey, now = new Date(), dryRun = false, log = console.log }) {
   const publicKey = publicKeyOf(signingKey);
-  const idx = await store.get("index.json");
-  if (!idx) {
+  const { legacy, current } = await readIndexes(store, publicKey);
+  if (!legacy) {
     log("no index.json: nothing to collect");
     return { deleted: [] };
   }
   // A team's pack is live in index-v2.json alone, and index.json can lag it after a failed
   // publish, so what either lists is live.
-  const v2 = await store.get("index-v2.json");
-  const indexes = [idx, ...(v2 ? [v2] : [])].map((o) => openJson(o.body.toString("utf8"), publicKey).value);
+  const indexes = [legacy, ...(current ? [current] : [])].map((index) => index.value);
   const live = new Set(indexes.flatMap((index) => Object.entries(index.packs ?? {}).map(([pack, entry]) => `${pack}/${entry.rev}`)));
 
   const revsByPack = new Map();

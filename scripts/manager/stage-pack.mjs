@@ -9,7 +9,7 @@ import { englishFolder } from "../lib/packs.mjs";
 
 // Whatever a section does differently: its English folder, its languages' badged icons, and the
 // .toc lines naming a pack's tier and language, which its Data/Sounds.lua reads back. Readables
-// names its language in its .toc only (`languageKey`), which a derived pack sets.
+// names its language in its .toc only (`languageKey`), which a plan's `tocLanguage` sets.
 const SECTIONS = {
   places: { icon: (lang) => `pipelines/places/assets/spoken-zones-${lang}.tga`, tocPrefix: "X-SpokenPlaces" },
   bosses: { icon: (lang) => `pipelines/bosses/assets/spoken-bosses-${lang}.tga`, tocPrefix: "X-SpokenBosses" },
@@ -30,7 +30,7 @@ const TOC_KEYS = {
   languageNative: "X-Spoken-LanguageNative",
 };
 
-/** A derived pack's `toc` as [key, value] lines, in a fixed order. */
+/** A plan's `toc` as [key, value] lines, in a fixed order; none for a page pack's. */
 export function tocExtra(toc = {}) {
   return Object.entries(TOC_KEYS).flatMap(([field, key]) => {
     const value = toc[field];
@@ -42,7 +42,7 @@ export function tocExtra(toc = {}) {
 }
 
 // English readables are their folder as committed, .toc and README: nothing is rewritten.
-export const keepsCommittedFolder = (section, lang) => section === "readables" && lang === BASE_LOCALE;
+export const keepsCommittedFolder = (section, folder) => section === "readables" && folder === englishFolder(section);
 
 export function rewriteToc(text, { folder, title, version, lang, tocPrefix, languageKey = null, extra = [] }) {
   const rewrites = [
@@ -69,11 +69,10 @@ export function rewriteToc(text, { folder, title, version, lang, tocPrefix, lang
 const notHidden = (path) => !basename(path).startsWith(".") && !path.endsWith(".part");
 
 /**
- * `pack` is a page's (findPack), or a derived pack's folder: `{ folder, name, version, derived:
- * true, toc }`, which names its team and language in its .toc and, with no badge drawn for its
- * language, wears English's mark.
+ * `plan` is releasePlan's (release-pack.mjs), of the section's one folder; `readme` the README's
+ * text, or null to keep English's.
  */
-export async function stagePack(section, lang, { root, pack, readme }) {
+export async function stagePack(section, lang, { root, plan, readme = null }) {
   const shape = SECTIONS[section];
   if (!shape) throw new Error(`${section} has no Manager-only build`);
   const english = lang === BASE_LOCALE;
@@ -85,7 +84,8 @@ export async function stagePack(section, lang, { root, pack, readme }) {
   if (!existsSync(sounds)) throw new Error(`no ${sounds}: run sounds.mjs first`);
   if (!existsSync(lookup)) throw new Error(`no ${lookup}: build its lookup first`);
 
-  const folder = pack.folder;
+  if (plan.folders.length !== 1) throw new Error(`a ${section} pack is one folder, not ${plan.folders.length}`);
+  const [{ folder, title, version: planned }] = plan.folders;
   const target = join(root, "dist", folder);
   await rm(target, { recursive: true, force: true });
   const fromSource = (path) => {
@@ -98,22 +98,20 @@ export async function stagePack(section, lang, { root, pack, readme }) {
   const badge = shape.icon && join(root, shape.icon(lang));
   // A page pack's missing badge stays an error: it would look like English's in the AddOns list.
   // A derived pack's title names its language.
-  if (!english && badge && (!pack.derived || existsSync(badge))) await cp(badge, join(target, "Textures/AddonIcon.tga"));
+  if (!english && badge && (!plan.badgeOptional || existsSync(badge))) await cp(badge, join(target, "Textures/AddonIcon.tga"));
   if (readme != null) await writeFile(join(target, "README.md"), readme);
 
   const toc = join(target, `${folder}.toc`);
   if (folder !== sourceName) await rename(join(target, `${sourceName}.toc`), toc);
   const text = await readFile(toc, "utf8");
   // A language's version is its page's; English's is its .toc's.
-  const version = pack.version ?? /^## Version:\s*(.+?)\s*$/m.exec(text)?.[1];
+  const version = planned ?? /^## Version:\s*(.+?)\s*$/m.exec(text)?.[1];
   if (!version) throw new Error(`no version for ${folder}`);
-  if (pack.derived) {
+  if (!keepsCommittedFolder(section, folder)) {
     await writeFile(toc, rewriteToc(text, {
-      folder, title: pack.name, version, lang, tocPrefix: shape.tocPrefix,
-      languageKey: shape.languageKey ?? null, extra: tocExtra(pack.toc),
+      folder, title, version, lang, tocPrefix: shape.tocPrefix,
+      languageKey: plan.tocLanguage ? shape.languageKey ?? null : null, extra: tocExtra(plan.toc),
     }));
-  } else if (!keepsCommittedFolder(section, lang)) {
-    await writeFile(toc, rewriteToc(text, { folder, title: pack.name, version, lang, tocPrefix: shape.tocPrefix }));
   }
   return { folder, version };
 }

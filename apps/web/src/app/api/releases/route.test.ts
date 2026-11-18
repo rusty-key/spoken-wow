@@ -227,7 +227,7 @@ describe("release route", () => {
   });
 
   describe("a team that is not official, or not the language's privileged team", () => {
-    const CLOSED = "Releases for your team open once a site owner can review them; your takes stay on the site.";
+    const CLOSED = "Releases for your team are not open on this site yet; your takes stay on the site.";
     let team = "";
     let second: Awaited<ReturnType<typeof testUser>>;
     let before = "";

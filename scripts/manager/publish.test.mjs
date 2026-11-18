@@ -5,7 +5,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 
 import { pointerText } from "../lib/clip-pointer.mjs";
-import { generateKeys, openJson, sha256Text } from "./sign.mjs";
+import { generateKeys, openJson, sealJson, sha256Text } from "./sign.mjs";
 import { ConflictError, memoryStore } from "./store.mjs";
 import { IMMUTABLE, INDEX_CACHE, latestSpokenRelease, publish } from "./publish.mjs";
 
@@ -14,13 +14,15 @@ const minSpoken = { quests: "3.0.0", places: "3.0.0", readables: "3.0.0" };
 const packs = [{ folder: "SpokenPlacesAudio_deDE", section: "places", lang: "deDE" }];
 const quiet = () => {};
 
-function dist(files) {
+/** A dist/ holding each of `folders`, a folder name to its files. */
+function distOf(folders) {
   const dir = mkdtempSync(join(tmpdir(), "dist-"));
-  writeFolder(dir, files);
+  for (const [folder, files] of Object.entries(folders)) writeFolder(dir, files, folder);
   return dir;
 }
-function writeFolder(dir, files) {
-  const root = join(dir, "SpokenPlacesAudio_deDE");
+const dist = (files) => distOf({ SpokenPlacesAudio_deDE: files });
+function writeFolder(dir, files, folder = "SpokenPlacesAudio_deDE") {
+  const root = join(dir, folder);
   rmSync(root, { recursive: true, force: true });
   for (const [p, text] of Object.entries(files)) {
     mkdirSync(join(root, ...p.split("/").slice(0, -1)), { recursive: true });
@@ -331,11 +333,7 @@ test("one press gives its changed folders one version, past the highest, and lea
   const folders = ["SpokenQuestsAudioAlliance", "SpokenQuestsAudioHorde", "SpokenQuestsAudioShared"];
   const quests = folders.map((folder) => ({ folder, section: "quests", lang: "enUS" }));
   const distDir = mkdtempSync(join(tmpdir(), "dist-"));
-  const write = (folder, version, clip) => {
-    mkdirSync(join(distDir, folder), { recursive: true });
-    writeFileSync(join(distDir, folder, `${folder}.toc`), toc(version));
-    writeFileSync(join(distDir, folder, "1.ogg"), clip);
-  };
+  const write = (folder, version, clip) => writeFolder(distDir, { [`${folder}.toc`]: toc(version), "1.ogg": clip }, folder);
   const store = memoryStore();
   write(folders[0], "2.5.0", "a");
   write(folders[1], "2.6.0", "b");
@@ -357,16 +355,6 @@ test("one press gives its changed folders one version, past the highest, and lea
 // index-v2.json is the channel's record; index.json is written from it with only the ids an
 // older Manager accepts.
 const indexV2 = (store) => openJson(store.objects.get("index-v2.json").body.toString(), keys.publicKey).value;
-function distOf(folders) {
-  const dir = mkdtempSync(join(tmpdir(), "dist-"));
-  for (const [folder, files] of Object.entries(folders)) {
-    for (const [p, text] of Object.entries(files)) {
-      mkdirSync(join(dir, folder, ...p.split("/").slice(0, -1)), { recursive: true });
-      writeFileSync(join(dir, folder, ...p.split("/")), text);
-    }
-  }
-  return dir;
-}
 const stimmen = { slug: "stimmen", name: "Stimmen", official: false };
 const SPOKEN = { spoken: [{ version: "3.6.0", sha256: "z".repeat(64), size: 1 }] };
 
@@ -375,7 +363,6 @@ async function legacyChannel() {
   const store = memoryStore();
   await run(store, dist({ "SpokenPlacesAudio_deDE.toc": "toc", "s/1.ogg": "one" }));
   store.objects.delete("index-v2.json");
-  const { sealJson } = await import("./sign.mjs");
   const legacy = { ...index(store), addons: SPOKEN };
   await store.put("index.json", sealJson(legacy, keys.privateKey).text, {});
   return store;
@@ -452,7 +439,6 @@ test("a publish that finds index.json behind index-v2.json brings it up to date"
   const store = memoryStore();
   const d = dist({ "SpokenPlacesAudio_deDE.toc": "toc", "s/1.ogg": "one" });
   await run(store, d);
-  const { sealJson } = await import("./sign.mjs");
   await store.put("index.json", sealJson({ ...index(store), packs: {} }, keys.privateKey).text, {});
   await run(store, d, { now: later });
   assert.equal(index(store).packs.SpokenPlacesAudio_deDE.rev, indexV2(store).packs.SpokenPlacesAudio_deDE.rev);

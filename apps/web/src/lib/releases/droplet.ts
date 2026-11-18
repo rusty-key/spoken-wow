@@ -38,6 +38,14 @@ export function teamReleasesOpen(): boolean {
   return process.env.SPOKEN_TEAM_RELEASES === "1" && runsOnDroplet();
 }
 
+/**
+ * Whether the acting team (actingTeamRow) is refused a release here: one that is not both official
+ * and the language's privileged team, where team releases are not open. No team is not refused.
+ */
+export function releasesClosedFor(team: { official: boolean; privileged: boolean } | null): boolean {
+  return team !== null && !(team.official && team.privileged) && !teamReleasesOpen();
+}
+
 function runDir(id: string): string | null {
   const env = process.env.SPOKEN_RELEASE_ENV;
   return env ? join(dirname(env), "release-runs", id) : null;

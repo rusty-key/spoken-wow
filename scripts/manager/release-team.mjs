@@ -38,7 +38,6 @@ export async function releaseTeam(db, lang, slug = null) {
     name: team.name,
     official: team.official,
     privileged: team.privileged,
-    plain: team.privileged,
     language: { code: language.code, name: language.name, native: language.native, client: language.client },
   };
 }

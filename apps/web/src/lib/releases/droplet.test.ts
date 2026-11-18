@@ -6,7 +6,15 @@ import { join } from "node:path";
 
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import { currentStep, failureReason, outcome, readDropletRun, runsOnDroplet, startDropletRun } from "./droplet";
+import {
+  currentStep,
+  failureReason,
+  outcome,
+  readDropletRun,
+  releasesClosedFor,
+  runsOnDroplet,
+  startDropletRun,
+} from "./droplet";
 
 let shared: string;
 
@@ -32,6 +40,25 @@ describe("runsOnDroplet", () => {
     expect(runsOnDroplet()).toBe(true);
     vi.stubEnv("SPOKEN_RELEASE_ENV", "");
     expect(runsOnDroplet()).toBe(false);
+  });
+});
+
+describe("releasesClosedFor", () => {
+  const privileged = { official: true, privileged: true };
+  const second = { official: false, privileged: false };
+
+  it("refuses any team but the official privileged one until team releases open", () => {
+    vi.stubEnv("SPOKEN_TEAM_RELEASES", "");
+    expect(releasesClosedFor(privileged)).toBe(false);
+    expect(releasesClosedFor(null)).toBe(false);
+    expect(releasesClosedFor(second)).toBe(true);
+    expect(releasesClosedFor({ official: true, privileged: false })).toBe(true);
+    expect(releasesClosedFor({ official: false, privileged: true })).toBe(true);
+  });
+
+  it("refuses nobody where they are open", () => {
+    vi.stubEnv("SPOKEN_TEAM_RELEASES", "1");
+    expect(releasesClosedFor(second)).toBe(false);
   });
 });
 

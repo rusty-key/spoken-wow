@@ -23,7 +23,7 @@ const ICONS = {
 };
 
 const privileged = (lang) => ({
-  id: "0b7e6a3c-1d2f-4a5b-8c9d-0e1f2a3b4c5d", slug: "x", name: "X", official: true, privileged: true, plain: true,
+  id: "0b7e6a3c-1d2f-4a5b-8c9d-0e1f2a3b4c5d", slug: "x", name: "X", official: true, privileged: true,
   language: { code: lang, name: "X", native: "X", client: true },
 });
 
@@ -38,7 +38,7 @@ async function stagedToc(section, lang, plan) {
   writeFileSync(join(work, "Data/Sounds.lua"), "");
   const icon = ICONS[section](lang);
   if (existsSync(join(REPO, icon))) cpSync(join(REPO, icon), join(root, icon));
-  const staged = await stagePack(section, lang, { root, pack: plan.pack, readme: null });
+  const staged = await stagePack(section, lang, { root, plan, readme: null });
   return { version: staged.version, toc: readFileSync(join(root, "dist", staged.folder, `${staged.folder}.toc`), "utf8") };
 }
 
@@ -47,10 +47,11 @@ test("every page pack stages as it did before teams released", async () => {
   assert.equal(GOLDEN.length, pages.length);
   for (const was of GOLDEN) {
     const plan = releasePlan(was.section, was.lang, privileged(was.lang));
-    assert.equal(plan.derived, null, `${was.section} ${was.lang}`);
-    assert.deepEqual(plan.folders, was.folders, `${was.section} ${was.lang}`);
+    assert.deepEqual(plan.folders.map((p) => p.team), plan.folders.map(() => null), `${was.section} ${was.lang}`);
+    assert.deepEqual(plan.toc, {}, `${was.section} ${was.lang}`);
+    assert.deepEqual(plan.folders.map(({ folder, section, lang }) => ({ folder, section, lang })), was.folders, `${was.section} ${was.lang}`);
     if (was.section === "quests") {
-      const builds = buildArgs(was.lang, plan.folders.map((p) => p.folder), { version: "9.9.9", localeText: "LOCALE_TEXT" });
+      const builds = buildArgs(was.lang, plan, { changelogVersion: "9.9.9", localeText: "LOCALE_TEXT" });
       assert.deepEqual(builds, was.builds, `${was.section} ${was.lang}`);
     } else {
       assert.deepEqual(await stagedToc(was.section, was.lang, plan), { version: was.version, toc: was.toc }, `${was.section} ${was.lang}`);
@@ -58,31 +59,45 @@ test("every page pack stages as it did before teams released", async () => {
   }
 });
 
+test("a page pack's README is its page's, but English readables keep their folder's", () => {
+  assert.equal(releasePlan("places", "deDE", privileged("deDE")).readmePage, loadPacks().find((p) => p.section === "places" && p.lang === "deDE").page);
+  assert.equal(releasePlan("readables", "enUS", privileged("enUS")).readmePage, null);
+  assert.equal(releasePlan("quests", "deDE", privileged("deDE")).readmePage, null);
+});
+
+test("a quests folder with no page is an error, not a pack built from nothing", () => {
+  const packs = loadPacks().filter((p) => !(p.section === "quests" && p.lang === "frFR" && p.pack === "horde"));
+  assert.throws(() => releasePlan("quests", "frFR", privileged("frFR"), packs), /SpokenQuestsAudioHorde_frFR has no quests page for frFR/);
+});
+
 test("a second team's pack is derived from English's folders, with the team's slug and name", () => {
   const team = {
-    ...privileged("deDE"), slug: "stimmen", name: "Stimmen", official: false, privileged: false, plain: false,
+    ...privileged("deDE"), slug: "stimmen", name: "Stimmen", official: false, privileged: false,
     language: { code: "deDE", name: "German", native: "Deutsch", client: true },
   };
-  const plan = releasePlan("places", "deDE", team);
-  assert.equal(plan.pack, null);
-  assert.deepEqual(plan.folders, [{ folder: "SpokenPlacesAudio_deDE_stimmen", section: "places", lang: "deDE" }]);
-  assert.deepEqual(plan.derived, {
-    folders: [{ folder: "SpokenPlacesAudio_deDE_stimmen", section: "places", lang: "deDE", pack: null, title: "Spoken German Audio: Places (Stimmen)" }],
-    version: "1.0.0",
+  assert.deepEqual(releasePlan("places", "deDE", team), {
+    folders: [{
+      folder: "SpokenPlacesAudio_deDE_stimmen", section: "places", lang: "deDE", pack: null,
+      title: "Spoken German Audio: Places (Stimmen)", version: "1.0.0", team: { slug: "stimmen", name: "Stimmen", official: false },
+    }],
     toc: { team: "stimmen", teamName: "Stimmen" },
+    readmePage: null,
+    badgeOptional: true,
+    tocLanguage: true,
   });
 });
 
 test("a new language's own team builds plain folders, which name the language", () => {
   const team = { ...privileged("jaJP"), language: { code: "jaJP", name: "Japanese", native: "日本語", client: false } };
   const plan = releasePlan("quests", "jaJP", team);
-  assert.deepEqual(plan.derived.folders.map((p) => [p.folder, p.pack, p.title]), [
+  assert.deepEqual(plan.folders.map((p) => [p.folder, p.pack, p.title]), [
     ["SpokenQuestsAudioAlliance_jaJP", "alliance", "Spoken Japanese Audio: Quests - Alliance"],
     ["SpokenQuestsAudioHorde_jaJP", "horde", "Spoken Japanese Audio: Quests - Horde"],
     ["SpokenQuestsAudioShared_jaJP", "shared", "Spoken Japanese Audio: Quests - Shared"],
     ["SpokenQuestsAudioGossip_jaJP", "gossip", "Spoken Japanese Audio: Gossip"],
   ]);
-  assert.deepEqual(plan.derived.toc, { languageName: "Japanese", languageNative: "日本語" });
+  assert.deepEqual(plan.toc, { languageName: "Japanese", languageNative: "日本語" });
+  assert.ok(plan.folders.every((p) => p.version === "1.0.0" && p.team.slug === "x"));
 });
 
 // Needs DATABASE_URL naming a migrated test database (spoken_ci_pin), as an owner that bypasses
@@ -105,6 +120,6 @@ test("a derived pack is refused before any step where team releases are not open
     encoding: "utf8",
   });
   assert.equal(run.status, 1);
-  assert.match(run.stderr, /team releases are not open here: set SPOKEN_TEAM_RELEASES=1 where the release signs for staging/);
+  assert.match(run.stderr, /team releases are not open here: set SPOKEN_TEAM_RELEASES=1 in app.env to open them/);
   assert.doesNotMatch(run.stdout, /==> step/);
 });

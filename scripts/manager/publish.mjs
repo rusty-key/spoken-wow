@@ -178,11 +178,8 @@ export async function publish({ store, packs: allPacks, languages = [], distDir,
     }
   }
 
-  const legacy = await readSigned(store, "index.json", publicKey);
-  const current = await readSigned(store, "index-v2.json", publicKey);
-  const record = current?.value ?? seedV2(legacy?.value);
+  const { legacy, current, record, addons } = await readIndexes(store, publicKey);
   const live = record.packs ?? {};
-  const addons = legacy?.value.addons ?? record.addons;
   const known = new Set();
   const changes = [];
   const archived = new Map();
@@ -272,7 +269,7 @@ export async function publish({ store, packs: allPacks, languages = [], distDir,
   log(`${done} blobs in place`);
 
   const rev = changes.length > 0 ? revOf(now) : null;
-  const nextPacks = { ...live };
+  const entries = {};
   const given = new Map(packs.map((p) => [p.folder, p]));
   for (const c of changes) {
     const manifest = buildManifest({ packId: c.folder, rev, requires: c.requires, files: c.files });
@@ -280,13 +277,35 @@ export async function publish({ store, packs: allPacks, languages = [], distDir,
     // If-None-Match: a manifest is immutable and cached for a year, so a second publish within the
     // same second must fail rather than replace it.
     await store.put(`packs/${c.folder}/${rev}.json`, sealed.text, { contentType: "application/json", cacheControl: IMMUTABLE, ifNoneMatch: "*" });
-    nextPacks[c.folder] = {
+    entries[c.folder] = {
       rev, manifestSha256: sha256Text(sealed.signed), fileCount: manifest.fileCount, totalSize: manifest.totalSize, requires: c.requires,
       ...packFields(given.get(c.folder)),
     };
   }
-  const listed = new Set(Object.values(nextPacks).map((entry) => entry.lang));
-  const named = { ...record.languages, ...Object.fromEntries(languages.map(({ code, name, native }) => [code, { code, name, native }])) };
+  const named = Object.fromEntries(languages.map(({ code, name, native }) => [code, { code, name, native }]));
+  await writeIndexes({ store, signingKey, now, read: { legacy, current, record, addons }, packs: { ...live, ...entries }, languages: named });
+  log(rev ? `index.json now at ${rev} for ${result.changed.join(", ")}` : "index.json brought up to date with index-v2.json");
+  return { ...result, rev };
+}
+
+/** Both indexes as they stand, index-v2.json seeded from index.json where it is missing. */
+export async function readIndexes(store, publicKey) {
+  const [legacy, current] = await Promise.all([
+    readSigned(store, "index.json", publicKey),
+    readSigned(store, "index-v2.json", publicKey),
+  ]);
+  const record = current?.value ?? seedV2(legacy?.value);
+  return { legacy, current, record, addons: legacy?.value.addons ?? record.addons };
+}
+
+/**
+ * index-v2.json with `packs`, then index.json from it; each write conditional on what was read, so
+ * two writers racing cannot both win. The languages named are those `languages` adds to the
+ * record's, kept only while a pack lists them.
+ */
+export async function writeIndexes({ store, signingKey, now, read: { legacy, current, record, addons }, packs, languages = {} }) {
+  const listed = new Set(Object.values(packs).map((entry) => entry.lang));
+  const named = { ...record.languages, ...languages };
   const nextLanguages = Object.fromEntries(Object.entries(named).filter(([code]) => listed.has(code)));
   const generatedAt = now.toISOString();
   const indexOpts = (was) => ({
@@ -294,16 +313,14 @@ export async function publish({ store, packs: allPacks, languages = [], distDir,
     ...(was ? { ifMatch: was.etag } : { ifNoneMatch: "*" }),
   });
   // The spread keeps whatever else each index holds; Spoken's own zips are index.json's.
-  const v2 = { ...record, generatedAt, packs: nextPacks, addons, languages: nextLanguages };
+  const v2 = { ...record, generatedAt, packs, addons, languages: nextLanguages };
   await store.put("index-v2.json", sealJson(v2, signingKey).text, indexOpts(current));
   try {
-    const old = { ...legacy?.value, generatedAt, packs: legacyPacks(nextPacks), addons };
+    const old = { ...legacy?.value, generatedAt, packs: legacyPacks(packs), addons };
     await store.put("index.json", sealJson(old, signingKey).text, indexOpts(legacy));
   } catch (err) {
     // Lost to another write, which the run-again message covers: the next publish catches index.json up.
     if (err instanceof ConflictError) throw err;
     throw new Error(`index.json is behind index-v2.json until the next publish rewrites it: ${err.message}`, { cause: err });
   }
-  log(rev ? `index.json now at ${rev} for ${result.changed.join(", ")}` : "index.json brought up to date with index-v2.json");
-  return { ...result, rev };
 }

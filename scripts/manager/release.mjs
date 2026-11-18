@@ -26,7 +26,7 @@ import { BUMPS } from "./pack-version.mjs";
 import { questsSteps } from "./quests-pack.mjs";
 import { releasePlan } from "./release-pack.mjs";
 import { languageNames, releaseTeam } from "./release-team.mjs";
-import { keepsCommittedFolder, stagePack } from "./stage-pack.mjs";
+import { stagePack } from "./stage-pack.mjs";
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "../..");
 
@@ -75,33 +75,19 @@ function runNode(script, args = []) {
   run(process.execPath, [join(ROOT, script), ...args], { cwd: ROOT, env, label: script });
 }
 
-async function questsPack({ folders, derived }) {
-  return { folders, build: await questsSteps(lang, { root: ROOT, folders: folders.map((p) => p.folder), run, derived }) };
+function soundSteps(plan) {
+  return [
+    ...LOOKUPS[section](lang).map(([name, script, ...args]) => [name, () => runNode(script, args)]),
+    ["the pack's folder", async () => {
+      const staged = await stagePack(section, lang, { root: ROOT, plan, readme: await readmeOf(plan) });
+      console.log(`${staged.folder} ${staged.version}`);
+    }],
+  ];
 }
 
-function soundPack({ folders, pack, derived }) {
-  return {
-    folders,
-    build: [
-      ...LOOKUPS[section](lang).map(([name, script, ...args]) => [name, () => runNode(script, args)]),
-      ["the pack's folder", async () => {
-        // A derived pack has no page: English's README, which the folder already holds, stays.
-        const staged = derived
-          ? await stagePack(section, lang, {
-              root: ROOT,
-              pack: { folder: derived.folders[0].folder, name: derived.folders[0].title, version: derived.version, derived: true, toc: derived.toc },
-              readme: null,
-            })
-          : await stagePack(section, lang, { root: ROOT, pack, readme: await pageReadme(pack) });
-        console.log(`${staged.folder} ${staged.version}`);
-      }],
-    ],
-  };
-}
-
-async function pageReadme(pack) {
-  if (keepsCommittedFolder(section, lang)) return null;
-  const page = parseFrontmatter(await readFile(join(PUBLISHERS_DIR, pack.page), "utf8"), pack.page);
+async function readmeOf({ readmePage }) {
+  if (readmePage === null) return null;
+  const page = parseFrontmatter(await readFile(join(PUBLISHERS_DIR, readmePage), "utf8"), readmePage);
   return forStore(page.body, "curseforge");
 }
 
@@ -111,14 +97,14 @@ try {
   if (!process.env.SPOKEN_ARCHIVE_URL) throw new Error("SPOKEN_ARCHIVE_URL is not set");
   const { team, languages } = await readTeam();
   const plan = releasePlan(section, lang, team);
-  // Until a site owner reviews a team's release (docs/platform/TEAMS.md, *Releases*), only a
-  // release that signs for the staging channel builds a pack with no page.
-  if (plan.derived && process.env.SPOKEN_TEAM_RELEASES !== "1") {
-    throw new Error("team releases are not open here: set SPOKEN_TEAM_RELEASES=1 where the release signs for staging");
+  // Only where the site has opened team releases (docs/platform/TEAMS.md, *Releases*) does a
+  // release build a pack with no page.
+  if (plan.folders.some((p) => p.team) && process.env.SPOKEN_TEAM_RELEASES !== "1") {
+    throw new Error("team releases are not open here: set SPOKEN_TEAM_RELEASES=1 in app.env to open them");
   }
   // Every step this runs inherits it, so each reads this team's live takes.
   process.env.SPOKEN_RELEASE_TEAM = team.id;
-  const { folders, build } = await (quests ? questsPack(plan) : soundPack(plan));
+  const build = quests ? await questsSteps(lang, { root: ROOT, plan, run }) : soundSteps(plan);
 
   const dryRun = flags.includes("--dry-run");
   let published = null;
@@ -127,12 +113,7 @@ try {
     ...build,
     ...(stageOnly ? [] : [["publish", async () => {
       published = await publishFromEnv({
-        // A page pack is listed with no team, as one with no label (index-v2.json).
-        packs: plan.derived
-          ? plan.derived.folders.map(({ folder, section, lang, pack }) => ({
-              folder, section, lang, pack, team: { slug: team.slug, name: team.name, official: team.official },
-            }))
-          : folders,
+        packs: plan.folders,
         languages,
         distDir: join(ROOT, "dist"),
         cache: new Map(),

@@ -227,12 +227,11 @@ test("teamFolder refuses a slug or a code of the wrong shape", () => {
 });
 
 test("derivedFolders gives English's split quests folders for a new language", () => {
-  assert.deepEqual(derivedFolders("quests", "jaJP", null), [
-    "SpokenQuestsAudioAlliance_jaJP", "SpokenQuestsAudioHorde_jaJP",
-    "SpokenQuestsAudioShared_jaJP", "SpokenQuestsAudioGossip_jaJP",
-  ].map((folder) => ({ folder, section: "quests", lang: "jaJP" })));
+  assert.deepEqual(derivedFolders("quests", "jaJP", null), ["Alliance", "Horde", "Shared", "Gossip"].map((side) => ({
+    folder: `SpokenQuestsAudio${side}_jaJP`, section: "quests", lang: "jaJP", english: `SpokenQuestsAudio${side}`,
+  })));
   assert.deepEqual(derivedFolders("places", "deDE", "stimmen"),
-    [{ folder: "SpokenPlacesAudio_deDE_stimmen", section: "places", lang: "deDE" }]);
+    [{ folder: "SpokenPlacesAudio_deDE_stimmen", section: "places", lang: "deDE", english: "SpokenPlacesAudio" }]);
 });
 
 test("every folder the pages give today is unchanged and a valid id; a suffixed one is not legacy", () => {

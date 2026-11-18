@@ -4,6 +4,7 @@ import "server-only";
 import type { ClientBase } from "pg";
 
 import { ALL_TEAMS, query, queryIn, withTeam } from "@/lib/db";
+import type { ActivityDetail } from "@/lib/activity/kinds";
 import { recordActivity } from "@/lib/activity/store";
 import { addGrants, OtherTeamError, userByEmail } from "@/lib/grants/store";
 import type { Lang } from "@/lib/lang";
@@ -143,30 +144,30 @@ export async function createTeamWithLangs(
   return { team, moved };
 }
 
-/** Whether the team may use our archive. Its buckets and what is already kept stay as they are. */
-export async function setOwnStorage(team: TeamId, ownStorage: boolean, actorId: string): Promise<void> {
+// A team's flags a site owner sets, each logged under its own kind with the flag as its detail.
+const FLAG_KINDS = { ownStorage: "team.own_storage", official: "team.official" } as const;
+
+async function setFlag(team: TeamId, flag: keyof typeof FLAG_KINDS, value: boolean, actorId: string): Promise<void> {
   const slug = await withTeam(ALL_TEAMS, async (client) => {
     const { rows } = await client.query<{ slug: string }>(
-      `update "team" set "ownStorage" = $2 where "id" = $1 returning "slug"`,
-      [team, ownStorage],
+      `update "team" set "${flag}" = $2 where "id" = $1 returning "slug"`,
+      [team, value],
     );
     if (rows.length === 0) throw new TeamError("No such team.", 404);
     return rows[0].slug;
   });
-  await recordActivity({ kind: "team.own_storage", lang: null, actorId, subject: slug, detail: { ownStorage } });
+  const kind = FLAG_KINDS[flag];
+  await recordActivity({ kind, lang: null, actorId, subject: slug, detail: { [flag]: value } as ActivityDetail[typeof kind] });
+}
+
+/** Whether the team may use our archive. Its buckets and what is already kept stay as they are. */
+export async function setOwnStorage(team: TeamId, ownStorage: boolean, actorId: string): Promise<void> {
+  await setFlag(team, "ownStorage", ownStorage, actorId);
 }
 
 /** Whether the team's releases skip review and its packs go unlabelled. */
 export async function setOfficial(team: TeamId, official: boolean, actorId: string): Promise<void> {
-  const slug = await withTeam(ALL_TEAMS, async (client) => {
-    const { rows } = await client.query<{ slug: string }>(
-      `update "team" set "official" = $2 where "id" = $1 returning "slug"`,
-      [team, official],
-    );
-    if (rows.length === 0) throw new TeamError("No such team.", 404);
-    return rows[0].slug;
-  });
-  await recordActivity({ kind: "team.official", lang: null, actorId, subject: slug, detail: { official } });
+  await setFlag(team, "official", official, actorId);
 }
 
 export async function renameTeam(team: TeamId, name: string, actorId: string): Promise<void> {

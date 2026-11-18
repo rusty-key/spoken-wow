@@ -7,7 +7,7 @@ import { Contained } from "@/components/Width";
 import { viewerOf } from "@/lib/grants/store";
 import { langName } from "@/lib/lang";
 import { isAdmin, langsWhere } from "@/lib/permissions";
-import { teamReleasesOpen } from "@/lib/releases/droplet";
+import { releasesClosedFor } from "@/lib/releases/droplet";
 import { TEAM_RELEASES_CLOSED } from "@/lib/releases/sections";
 import { releaseView } from "@/lib/releases/view";
 import { currentSession } from "@/lib/session";
@@ -29,8 +29,7 @@ export default async function Page({ searchParams }: { searchParams: Promise<{ l
 
   const { lang: asked } = await searchParams;
   const lang = administered.find((code) => code === asked) ?? administered[0];
-  const team = await actingTeamRow(lang);
-  const closed = team !== null && !(team.official && team.privileged) && !teamReleasesOpen();
+  const closed = releasesClosedFor(await actingTeamRow(lang));
 
   return (
     <main className="pb-36">

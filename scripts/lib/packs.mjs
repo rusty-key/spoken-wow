@@ -68,11 +68,12 @@ export function teamFolder(englishFolder, lang, slug) {
 }
 
 // The folders of a pack with no store page, a team's or a new language's: English's Manager
-// folders for the section, each carrying the language and slug.
+// folders for the section, each carrying the language and slug, and naming the English folder
+// (`english`) it is derived from.
 export function derivedFolders(section, lang, slug, packs = loadPacks()) {
   const english = managerFolders(packs).filter((p) => p.section === section && p.lang === BASE_LOCALE);
   if (english.length === 0) throw new Error(`English has no ${section} folders on the Manager's channel`);
-  return english.map((p) => ({ folder: teamFolder(p.folder, lang, slug), section, lang }));
+  return english.map((p) => ({ folder: teamFolder(p.folder, lang, slug), section, lang, english: p.folder }));
 }
 
 const FOLDER_PARTS = /^Spoken(Quests|Places|Readables|Bosses)Audio(Alliance|Horde|Shared|Gossip|All)?(?:_([a-z]{2}[A-Z]{2})(?:_([a-z][a-z0-9-]{1,40}))?)?$/;
