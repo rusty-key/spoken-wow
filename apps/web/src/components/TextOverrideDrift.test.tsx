@@ -53,6 +53,6 @@ test("a refusal stays on the row", async () => {
   const onAnswered = drift();
   await userEvent.setup().click(screen.getByRole("button", { name: "Drop" }));
 
-  expect(await screen.findByText("unknown line")).not.toBeNull();
+  expect(await screen.findByRole("alert")).toHaveProperty("textContent", "unknown line");
   expect(onAnswered).not.toHaveBeenCalled();
 });

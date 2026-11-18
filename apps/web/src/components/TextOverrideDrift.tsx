@@ -29,14 +29,18 @@ export default function TextOverrideDrift({
   async function answer(request: () => Promise<Response>) {
     setBusy(true);
     setError(null);
-    const response = await request().catch(() => null);
-    setBusy(false);
-    if (response?.ok) {
-      onAnswered();
-      return;
+    try {
+      const response = await request().catch(() => null);
+      if (response?.ok) {
+        onAnswered();
+        return;
+      }
+      const body = (await response?.json().catch(() => null)) as { error?: string } | null;
+      setError(body?.error ?? "That didn't go through -- try again.");
+    } finally {
+      // Only once the refusal is read: a retry started sooner would have its error overwritten.
+      setBusy(false);
     }
-    const body = (await response?.json().catch(() => null)) as { error?: string } | null;
-    setError(body?.error ?? "That didn't go through -- try again.");
   }
 
   return (
@@ -48,7 +52,11 @@ export default function TextOverrideDrift({
       <LiteButton disabled={busy} onClick={() => void answer(() => dropTextOverride(lang, source, lineId))}>
         Drop
       </LiteButton>
-      {error ? <span className="text-destructive">{error}</span> : null}
+      {error ? (
+        <span role="alert" className="text-destructive">
+          {error}
+        </span>
+      ) : null}
     </span>
   );
 }
