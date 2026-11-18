@@ -5,9 +5,8 @@
  *
  * Point SPOKEN_ARCHIVE_URL at `<site>/api/archive/` and every script that reads the archive by hash
  * finds team buckets too. Takes and their encodings are anybody's to hear. A voice actor's
- * recording also needs `Authorization: Bearer <SPOKEN_ARCHIVE_TOKEN>`, which the release job and
- * fetch-blobs.mjs send, because a team's private bucket would otherwise hand it to anyone with
- * its hash.
+ * recording also needs `Authorization: Bearer <SPOKEN_ARCHIVE_TOKEN>`, which fetch-blobs.mjs
+ * sends, because a team's private bucket would otherwise hand it to anyone with its hash.
  */
 import { timingSafeEqual } from "node:crypto";
 
@@ -27,14 +26,20 @@ function trusted(request: Request): boolean {
 }
 
 async function answer(request: Request, params: Promise<{ prefix: string; sha: string }>, method: "GET" | "HEAD") {
-  if (!readsBlobs()) return new Response("this site's archive is not a bucket", { status: 404 });
+  // Not a 404: a build reads that as a team's deletion and would leave every team-kept line out.
+  if (!readsBlobs()) return new Response("this site's archive is not a bucket", { status: 503 });
   const { prefix, sha } = await params;
   if (!PREFIXES.has(prefix) || !/^[0-9a-f]{64}$/.test(sha)) return new Response("not an archive object", { status: 404 });
   const key = blobKey(prefix as "takes", sha);
   if (!isShared({ kind: "blob", key }) && !trusted(request)) return new Response("not allowed", { status: 403 });
   const { url, signed } = await addressOf(await locate(key), method);
   // A copy may move, but every copy holds these bytes: a cached redirect is never wrong for long.
-  const cache = signed ? `private, max-age=${Math.min(300, SIGNED_FOR_SEC / 2)}` : "public, max-age=300";
+  // A recording's is answered to a token alone, so no shared cache may keep it.
+  const cache = !isShared({ kind: "blob", key })
+    ? "private, no-store"
+    : signed
+      ? `private, max-age=${Math.min(300, SIGNED_FOR_SEC / 2)}`
+      : "public, max-age=300";
   return new Response(null, { status: 302, headers: { Location: url, "Cache-Control": cache } });
 }
 

@@ -24,6 +24,11 @@ export function objectsIn(lines) {
 export function archiveFetch(token, fetchImpl = fetch) {
   if (!token) return fetchImpl;
   return async (url, init = {}) => {
+    // Only to the site's archive route, and only encrypted or on this machine: a base pointed
+    // straight at a bucket, or at plain http elsewhere, gets no token.
+    const at = new URL(url);
+    const local = at.hostname === "localhost" || at.hostname === "127.0.0.1" || at.hostname === "[::1]";
+    if (!at.pathname.includes("/api/archive/") || (at.protocol !== "https:" && !local)) return fetchImpl(url, init);
     const first = await fetchImpl(url, { ...init, redirect: "manual", headers: { ...init.headers, authorization: `Bearer ${token}` } });
     const location = first.status >= 300 && first.status < 400 ? first.headers.get("location") : null;
     if (!location) return first;

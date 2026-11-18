@@ -49,7 +49,9 @@ describe("GET /api/archive/[prefix]/[sha]", () => {
     const sha = randomBytes(32).toString("hex");
     expect((await ask(GET, "recordings", sha)).status).toBe(403);
     expect((await ask(GET, "recordings", sha, { authorization: "Bearer wrong" })).status).toBe(403);
-    expect((await ask(GET, "recordings", sha, { authorization: "Bearer t0ken" })).status).toBe(302);
+    const granted = await ask(GET, "recordings", sha, { authorization: "Bearer t0ken" });
+    expect(granted.status).toBe(302);
+    expect(granted.headers.get("cache-control")).toBe("private, no-store");
   });
 
   it("knows no other prefix or name, and nothing while the archive is the volume", async () => {
@@ -57,6 +59,6 @@ describe("GET /api/archive/[prefix]/[sha]", () => {
     expect((await ask(GET, "references", "a".repeat(64))).status).toBe(404);
     expect((await ask(GET, "takes", "../etc")).status).toBe(404);
     restores.push(useArchiveForTests(memoryBlobs(), "dual"));
-    expect((await ask(GET, "takes", "a".repeat(64))).status).toBe(404);
+    expect((await ask(GET, "takes", "a".repeat(64))).status).toBe(503);
   });
 });

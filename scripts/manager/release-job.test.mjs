@@ -37,13 +37,14 @@ test("the job gets the signing keys and only what it needs of the site's", async
   });
 });
 
-test("release.env can send the archive's reads through the site, and the token comes from app.env", async () => {
+test("release.env can send the archive's reads through the site; the job needs no recordings token", async () => {
   const shared = temp();
   writeFileSync(join(shared, "app.env"), "SPOKEN_ARCHIVE_URL=https://a\nSPOKEN_ARCHIVE_TOKEN=t\n");
   writeFileSync(join(shared, "release.env"), "SPOKEN_ARCHIVE_URL=http://127.0.0.1:3010/api/archive/\n");
   const env = await jobEnv(join(shared, "release.env"), { PATH: "/bin", HOME: "/h" });
   assert.equal(env.SPOKEN_ARCHIVE_URL, "http://127.0.0.1:3010/api/archive/");
-  assert.equal(env.SPOKEN_ARCHIVE_TOKEN, "t");
+  // It pulls takes only, which are anybody's.
+  assert.equal(env.SPOKEN_ARCHIVE_TOKEN, undefined);
 });
 
 test("a run logs its output, records its code, and leaves no scratch copy", async () => {

@@ -61,3 +61,20 @@ test("sends the token to the site alone, never on to the bucket it redirects to"
   ]);
   assert.equal(archiveFetch(undefined, fake), fake);
 });
+
+test("sends the token only to the site's archive route, over https or on this machine", async () => {
+  const sent = [];
+  const fake = async (url, init = {}) => {
+    sent.push([url, init.headers?.authorization ?? null]);
+    return new Response("bytes");
+  };
+  const fetchWith = archiveFetch("secret", fake);
+  await fetchWith("http://site.example/api/archive/recordings/x");
+  await fetchWith("https://bucket.example/recordings/x");
+  await fetchWith("http://127.0.0.1:3010/api/archive/recordings/x");
+  assert.deepEqual(sent, [
+    ["http://site.example/api/archive/recordings/x", null],
+    ["https://bucket.example/recordings/x", null],
+    ["http://127.0.0.1:3010/api/archive/recordings/x", "Bearer secret"],
+  ]);
+});
