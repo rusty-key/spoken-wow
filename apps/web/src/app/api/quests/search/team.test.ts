@@ -141,6 +141,19 @@ describe("GET /api/quests/search?team=", () => {
     expect((await rows(picked[0])).rows.every((row) => !row.hasAudio && row.override === null)).toBe(true);
   });
 
+  it("shows a visitor outside the language only the acting team's overrides a live take speaks", async () => {
+    await asSystem.query(`update "take" set "spokenHash" = $1 where "teamId" = $2 and "file" = $3`, [
+      await hashOf(picked[1].line, "A's words, spoken"), a, picked[1].file,
+    ]);
+    await override(a, picked[1], "A's words, spoken");
+    await override(a, picked[2], "A's words, unfinished");
+
+    expect((await rows(picked[1])).rows.every((row) => row.override === "A's words, spoken")).toBe(true);
+    const unfinished = await rows(picked[2]);
+    expect(unfinished.rows.every((row) => row.override === null)).toBe(true);
+    expect(unfinished.raw).not.toContain("unfinished");
+  });
+
   it("reads the voice filter as the named team, whose roster names the voice", async () => {
     // B alone reads orc male guards with a voice of its own.
     await asSystem.query(`insert into "voice" ("teamId", "name", "race", "gender") values ($1, 'test-bvoice', 'orc', 'male')`, [b]);

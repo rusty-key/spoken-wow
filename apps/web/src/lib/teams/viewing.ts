@@ -10,6 +10,7 @@ import type { Lang } from "@/lib/lang";
 import type { Source } from "@/lib/sections";
 import { serveTake } from "@/lib/takes/serve";
 import { livePath, teamLivePath } from "@/lib/takes/store";
+import type { LineOverride } from "@/lib/quests/override";
 import type { OverrideView } from "@/lib/text-overrides/types";
 
 import { asTeam } from "./acting";
@@ -70,6 +71,42 @@ export async function teamLiveOverrides(team: TeamId, source: Source, lang: Lang
     team, lang, source,
   ]);
   return new Map(rows.map((row) => [row.key, row.text]));
+}
+
+/**
+ * Entries as somebody who does not work in the language sees their team's: an override only
+ * where a live take speaks it, as another team's view shows one, and never who wrote it. An
+ * override still in progress is the team's unfinished work, so the line shows as `base` has it.
+ */
+export async function asPublished<E extends { id: string; override?: OverrideView }>(
+  entries: E[],
+  base: () => Promise<E[]>,
+  source: Exclude<Source, "quests">,
+  lang: Lang,
+): Promise<E[]> {
+  if (!entries.some((entry) => entry.override)) return entries;
+  const team = await ownerOrAll(lang);
+  const live = team === ALL_TEAMS ? new Map<string, string>() : await teamLiveOverrides(team, source, lang);
+  const original = new Map((await base()).map((entry) => [entry.id, entry]));
+  return entries.map((entry) => {
+    if (!entry.override) return entry;
+    if (live.get(entry.id) === entry.override.text) {
+      return { ...entry, override: { ...entry.override, updatedAt: "", updatedBy: null } };
+    }
+    return original.get(entry.id) ?? { ...entry, override: undefined };
+  });
+}
+
+/** Quest overrides as asPublished leaves them: those a live take speaks, without their author. */
+export async function publishedOverrides(lang: Lang, overrides: Map<string, LineOverride>): Promise<Map<string, LineOverride>> {
+  if (overrides.size === 0) return overrides;
+  const team = await ownerOrAll(lang);
+  const live = team === ALL_TEAMS ? new Map<string, string>() : await teamLiveOverrides(team, "quests", lang);
+  return new Map(
+    [...overrides]
+      .filter(([file, override]) => live.get(file) === override.text)
+      .map(([file, override]) => [file, { ...override, updatedAt: "", updatedBy: null }]),
+  );
 }
 
 /** The answer to a `team` parameter naming no team of the language. */

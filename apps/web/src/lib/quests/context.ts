@@ -26,7 +26,7 @@ import { staleFiles } from "./staleness";
 import type { SearchContext } from "../search";
 import { NO_CONTEXT } from "../search";
 import { readAs, type TeamId } from "../teams/store";
-import { teamLiveOverrides } from "../teams/viewing";
+import { publishedOverrides, teamLiveOverrides } from "../teams/viewing";
 import { readIgnores } from "./ignores";
 import { questLevels } from "./levels";
 import { readOverrides } from "./overrides";
@@ -69,7 +69,8 @@ async function openReports(lang: Lang): Promise<Map<string, number>> {
  *   per take, paid for only by the searches that ask.
  * @param dirty whether the pronunciation filter is in force. The same bargain.
  * @param seesMadeBy whether the viewer works in the language, and so may know who made each
- *   take. Nobody else gets the map, so no route can hand an author's name to a visitor.
+ *   take. Nobody else gets the map, so no route can hand an author's name to a visitor, nor an
+ *   override no live take speaks yet (publishedOverrides).
  * @param levels whether a level bound is in force. Reads the whole table, so only those searches pay.
  * @param index the file index of a corpus the caller already read, which saves its stamp check.
  */
@@ -100,7 +101,7 @@ export async function searchContext(
     return {
       voiced,
       context: {
-        overrides,
+        overrides: seesMadeBy ? overrides : await publishedOverrides(lang, overrides),
         ignores,
         reports,
         levels: questLevelsByQuest ?? undefined,

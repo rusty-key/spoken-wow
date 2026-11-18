@@ -11,7 +11,7 @@ import { baseCatalogue, catalogue, loadContext, publicContext } from "@/lib/boss
 import { filtersFromParams, PAGE_SIZE, type LineFilters } from "@/lib/bosses/filters";
 import { search } from "@/lib/bosses/search";
 import type { TeamId } from "@/lib/teams/store";
-import { asHeard, teamLiveOverrides, viewedOther, viewOnly } from "@/lib/teams/viewing";
+import { asHeard, asPublished, teamLiveOverrides, viewedOther, viewOnly } from "@/lib/teams/viewing";
 
 export const dynamic = "force-dynamic";
 
@@ -45,7 +45,11 @@ async function own(lang: Lang, filters: LineFilters) {
     recordingsFor("bosses", lang),
   ]);
   if (!recordings) filters.recorded = undefined;
-  return { entries, context: { ...context, recordings }, filters };
+  return {
+    entries: seesMadeBy ? entries : await asPublished(entries, () => baseCatalogue(lang), "bosses", lang),
+    context: { ...context, recordings },
+    filters,
+  };
 }
 
 /** The bosses as another team is heard: the original stories, its live takes and the overrides they speak. */

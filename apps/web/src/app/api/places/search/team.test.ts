@@ -140,6 +140,27 @@ describe("GET /api/places/search?team=", () => {
     expect(((await response.json()) as { lines: Line[] }).lines).toHaveLength(1);
   });
 
+  it("shows a visitor outside the language only the overrides a live take speaks, without their author", async () => {
+    // Translated, since an override stands on a line's own text; the fixtures' cleanup removes these.
+    for (const [index, key] of [[1, "test-key"], [2, "test-key-2"]] as const) {
+      await asSystem.query(
+        `insert into "lore_line"
+           ("lineId", "lang", "version", "isCurrent", "origin", "mapID", "kind", "key", "name", "full", "short")
+         values ($1, $2, 1, true, 'translated', $3, 'subzone', $4, 'Test', 'Translated lore.', 'Translated.')`,
+        [lines[index].id, lang, fx.map, key],
+      );
+    }
+    await override(a, lines[1], "A's words for line 2", "a-spoken");
+    await take(a, lines[1], "a-spoken");
+    await override(a, lines[2], "A's unfinished words for line 3", "a-unspoken");
+
+    const two = await line(1);
+    expect(two.line.override).toMatchObject({ text: "A's words for line 2", updatedBy: null, updatedAt: "" });
+    const three = await line(2);
+    expect(three.line.override).toBeNull();
+    expect(three.raw).not.toContain("unfinished");
+  });
+
   it("lists the acting team's takes without a team, as it always has", async () => {
     expect((await line(0)).line.take).not.toBeNull();
     expect((await line(1)).line.take).toBeNull();

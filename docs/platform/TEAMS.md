@@ -236,7 +236,9 @@ In phase 1 there is one team per language, so the explorer shows what it shows t
     provider, author, settings or take count, which would reveal the team's history.
   - `team_live_overrides` returns a team's override text, keyed by line, only on lines with a
     live take that speaks it, judged by spoken hash; on a quest line, every voice's take must.
-    No author, date or original hash.
+    No author, date or original hash. The same rule holds for a visitor who does not work in the
+    language looking at the team they are given by default: the search shows an override only
+    once a live take speaks it, and never who wrote it.
 - Migrations and the pipelines keep the owner role. Pipelines mostly touch shared data, with these
   exceptions *(my calls)*:
   - `pipelines/quests/tts_cli/corpus_db.py` seeds `voice` / `voice_assignment` rows when a new

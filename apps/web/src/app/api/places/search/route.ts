@@ -11,7 +11,7 @@ import { baseCatalogue, catalogue, isCorpusEmpty, loadContext, publicContext } f
 import { filtersFromParams, PAGE_SIZE, type LineFilters } from "@/lib/places/filters";
 import { search } from "@/lib/places/search";
 import type { TeamId } from "@/lib/teams/store";
-import { asHeard, teamLiveOverrides, viewedOther, viewOnly } from "@/lib/teams/viewing";
+import { asHeard, asPublished, teamLiveOverrides, viewedOther, viewOnly } from "@/lib/teams/viewing";
 
 export const dynamic = "force-dynamic";
 
@@ -49,7 +49,11 @@ async function own(lang: Lang, filters: LineFilters) {
   ]);
   // Dropped for anybody who may not see recordings, as the made-by filters are above.
   if (!recordings) filters.recorded = undefined;
-  return { entries, context: { ...context, recordings }, filters };
+  return {
+    entries: seesMadeBy ? entries : await asPublished(entries, () => baseCatalogue(lang), "places", lang),
+    context: { ...context, recordings },
+    filters,
+  };
 }
 
 /** The lines as another team is heard: the original text, its live takes and the overrides they speak. */

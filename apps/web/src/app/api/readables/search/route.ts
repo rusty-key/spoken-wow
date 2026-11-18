@@ -11,7 +11,7 @@ import { recordingsFor } from "@/lib/recordings/store";
 import { filtersFromParams, PAGE_SIZE, type PageFilters } from "@/lib/readables/filters";
 import { search } from "@/lib/readables/search";
 import type { TeamId } from "@/lib/teams/store";
-import { asHeard, teamLiveOverrides, viewedOther, viewOnly } from "@/lib/teams/viewing";
+import { asHeard, asPublished, teamLiveOverrides, viewedOther, viewOnly } from "@/lib/teams/viewing";
 
 export const dynamic = "force-dynamic";
 
@@ -43,7 +43,11 @@ async function own(lang: Lang, filters: PageFilters) {
   ]);
   // Dropped for anybody who may not see recordings, as the made-by filters are above.
   if (!recordings) filters.recorded = undefined;
-  return { entries: pages, context: { ...context, recordings }, filters };
+  return {
+    entries: seesMadeBy ? pages : await asPublished(pages, () => baseCatalogue(lang), "readables", lang),
+    context: { ...context, recordings },
+    filters,
+  };
 }
 
 /** The pages as another team is heard: the original text, its live takes and the overrides they speak. */
