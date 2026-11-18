@@ -196,4 +196,8 @@ describe("playerTokenCounts", () => {
   it("counts a token inside a branch as the branch alone", () => {
     expect(playerTokenCounts("Sei $Gun $C:una $C; coraggioso.")).toEqual({ N: 0, C: 0, R: 0, G: 1 });
   });
+
+  it("does not join the text around a removed branch into a token", () => {
+    expect(playerTokenCounts("$$gHerr:Dame;Name")).toEqual({ N: 0, C: 0, R: 0, G: 1 });
+  });
 });

@@ -25,7 +25,9 @@ const ip = `test-${Math.random().toString(36).slice(2, 10)}`;
 const contributedQuest = quest - 1;
 const splitQuest = quest - 2;
 const extractedQuest = quest - 3;
-const quests = [quest, contributedQuest, splitQuest, extractedQuest];
+// A deDE moment split by player gender whose sides differ: only :m names the reader.
+const twoSidedQuest = quest - 4;
+const quests = [quest, contributedQuest, splitQuest, extractedQuest, twoSidedQuest];
 const moments = quests.map((q) => `q:${q}:accept`);
 const linesOf = (q: number) => [`q:${q}:accept`, `q:${q}:accept:m`, `q:${q}:accept:f`];
 
@@ -75,6 +77,16 @@ beforeAll(async () => {
      values ($1 || ':m', 0, 'enUS', 1, true, 'extracted', 'accept', 'm', 'm-' || $2, 'Hail, lad.', 'Hail, $glad:lass;.', null),
             ($1 || ':f', 0, 'enUS', 1, true, 'extracted', 'accept', 'f', 'f-' || $2, 'Hail, lass.', 'Hail, $glad:lass;.', null)`,
     [moments[2], `${splitQuest}-accept`],
+  );
+  await asSystem.query(
+    `insert into "quest_line"
+       ("lineId", "variant", "lang", "version", "isCurrent", "origin", "source", "playerGender", "fileName",
+        "text", "originalText", "localeText")
+     values ($1 || ':m', 0, 'enUS', 1, true, 'extracted', 'accept', 'm', 'm-' || $2, 'Welcome, hero.', 'Welcome, $ghero:heroine;.', null),
+            ($1 || ':f', 0, 'enUS', 1, true, 'extracted', 'accept', 'f', 'f-' || $2, 'Welcome, heroine.', 'Welcome, $ghero:heroine;.', null),
+            ($1 || ':m', 0, 'deDE', 1, true, 'extracted', 'accept', 'm', 'm-' || $2, 'Seid willkommen, $gHeld:Heldin;, $N.', 'Welcome, $ghero:heroine;.', null),
+            ($1 || ':f', 0, 'deDE', 1, true, 'extracted', 'accept', 'f', 'f-' || $2, 'Seid willkommen, $gHeld:Heldin;.', 'Welcome, $ghero:heroine;.', null)`,
+    [`q:${twoSidedQuest}:accept`, `${twoSidedQuest}-accept`],
   );
   // Every quest row carries its quest id, which is what known.ts finds a moment's lines by.
   await asSystem.query(
@@ -161,6 +173,26 @@ describe("acceptCorrection", () => {
       [lineId],
     );
     expect(rows).toEqual([{ text: "Guten Tag, $N." }]);
+  });
+
+  it("refuses a $g correction that would drop a token from the side it was not compared with", async () => {
+    // Closest to the :f wording, which has no $N; the save would also rewrite :m, which has one.
+    const id = await contribution("deDE", "Willkommen, $gHeld:Heldin;.", "accept", twoSidedQuest);
+    expect(await acceptCorrection(id, ACCEPTER)).toMatchObject({
+      ok: false,
+      reason: "malformed",
+      message: expect.stringContaining("$N"),
+    });
+
+    const { rows } = await asSystem.query(
+      `select "lineId", "version" from "quest_line"
+        where "lineId" like $1 and "lang" = 'deDE' and "isCurrent" order by "lineId"`,
+      [`q:${twoSidedQuest}:accept:%`],
+    );
+    expect(rows).toEqual([
+      { lineId: `q:${twoSidedQuest}:accept:f`, version: 1 },
+      { lineId: `q:${twoSidedQuest}:accept:m`, version: 1 },
+    ]);
   });
 
   it("splits a plain line the site wrote when the correction branches on $g", async () => {

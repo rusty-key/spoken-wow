@@ -132,20 +132,19 @@ export function branchesOnPlayerGender(text) {
   return HAS_GENDER.test(text);
 }
 
-// Every $N, $C or $R, glued or not and with its $ doubled or not: counting, not speaking.
 const ANY_TOKEN = /\$\$?([NnCcRr])/g;
 const ANY_GENDER = new RegExp(HAS_GENDER.source, "gu");
 
 /**
- * How many of each player token a text holds: `N`, `C` and `R`, and `G` for a gender branch
- * ($g, $u, either way round). A token inside a branch counts as the branch alone. What a
- * correction is checked by: a client fills these in for its own reader before it sends.
+ * Count a gender branch once, including any tokens inside it. Correction acceptance uses these
+ * counts to detect tokens the client filled in for one reader.
  */
 export function playerTokenCounts(text) {
   const counts = { N: 0, C: 0, R: 0, G: 0 };
+  // A space, not nothing: "$$gHerr:Dame;Name" must not join "$" and "Name" into a $N.
   const rest = text.replace(ANY_GENDER, () => {
     counts.G += 1;
-    return "";
+    return " ";
   });
   for (const [, token] of rest.matchAll(ANY_TOKEN)) counts[token.toUpperCase()] += 1;
   return counts;

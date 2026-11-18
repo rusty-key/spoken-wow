@@ -111,10 +111,14 @@ export async function acceptCorrection(
     };
   }
 
-  // An English quest line is written spoken, its tokens already words (correctEnglish); a
-  // translation and a book page keep theirs, so one the player's client filled in is lost here.
+  // English quest corrections write spoken text, not the player-token template.
   if (contribution.source === "readables" || lang !== BASE_LANG) {
-    const dropped = droppedTokens(target.text, contribution.text);
+    // A $G text replaces every line of its moment (saveQuestText), not only the wording picked.
+    const replaced =
+      contribution.source === "quests" && branchesOnPlayerGender(contribution.text)
+        ? (await momentLines(lang, target.lineId, target.variant)).map((row) => row.text)
+        : [target.text];
+    const dropped = [...new Set(replaced.flatMap((text) => droppedTokens(text, contribution.text!)))];
     if (dropped.length > 0) {
       return {
         ok: false,
@@ -266,11 +270,6 @@ async function markAccepted(
   });
 }
 
-/**
- * The player tokens the corpus text has more of than the correction, as they are written
- * (`$N`, `$C`, `$R`, `$G` for a gender branch). The envelope does not say which reader sent it,
- * so a token the client resolved cannot be put back.
- */
 function droppedTokens(corpus: string, correction: string): string[] {
   const before = playerTokenCounts(corpus);
   const after = playerTokenCounts(correction);
