@@ -16,6 +16,8 @@ import { isSettled, type ReleaseSection, type ReleaseState } from "./sections";
 export type ReleaseRun = {
   id: string;
   teamId: string;
+  /** The team's slug, which names it to the release job. */
+  teamSlug: string;
   section: ReleaseSection;
   lang: Lang;
   state: ReleaseState;
@@ -35,7 +37,7 @@ export class ReleaseBusyError extends Error {
   }
 }
 
-const COLUMNS = `"id", "teamId", "section", "lang", "state", "githubRunId"::float8 as "githubRunId", "githubUrl",
+const COLUMNS = `"id", "teamId", (select t."slug" from "team" t where t."id" = "release_run"."teamId") as "teamSlug", "section", "lang", "state", "githubRunId"::float8 as "githubRunId", "githubUrl",
                  "step", "error", "version", "requestedBy", "createdAt", "finishedAt"`;
 const ACTIVE = `"state" in ('dispatching', 'running')`;
 const UNIQUE_VIOLATION = "23505";

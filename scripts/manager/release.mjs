@@ -2,7 +2,11 @@
 // One section and language onto the Manager channel, with no clips on this machine and no zip:
 // pointers for the clips, the pack's generated files from the database, then the publish.
 //
-//   node scripts/manager/release.mjs <quests|places|readables|bosses> <lang> [--bump=patch|minor|major] [--dry-run] [--allow-removals] [--stage-only]
+//   node scripts/manager/release.mjs <quests|places|readables|bosses> <lang> [--team=<slug>] [--bump=patch|minor|major] [--dry-run] [--allow-removals] [--stage-only]
+//
+// --team names the team the release builds for, which the site passes; without it, the
+// language's privileged team. Every step reads that team's live takes (SPOKEN_RELEASE_TEAM,
+// pipelines/lib/release-team.mjs).
 //
 // DATABASE_URL names the database; a checkout's LOCAL_DB wins for the steps that read it. The
 // channel's keys come as for cli.mjs. Each step prints `==> step n/m`, then its own progress, and
@@ -12,12 +16,15 @@ import { readFile } from "node:fs/promises";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
+import pg from "pg";
+
 import { loadEnv } from "../../pipelines/lib/env.mjs";
 import { parseFrontmatter, forStore } from "../lib/frontmatter.mjs";
 import { findPack, managerFolders, PUBLISHERS_DIR } from "../lib/packs.mjs";
 import { errorText, publishFromEnv } from "./channel.mjs";
 import { BUMPS } from "./pack-version.mjs";
 import { questsSteps } from "./quests-pack.mjs";
+import { releaseTeam } from "./release-team.mjs";
 import { keepsCommittedFolder, stagePack } from "./stage-pack.mjs";
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "../..");
@@ -39,10 +46,22 @@ const [section, lang, ...flags] = process.argv.slice(2);
 const quests = section === "quests";
 const bump = flags.find((flag) => flag.startsWith("--bump="))?.slice("--bump=".length) ?? "patch";
 if ((!quests && !LOOKUPS[section]) || !/^[a-z]{2}[A-Z]{2}$/.test(lang ?? "") || !BUMPS.includes(bump)) {
-  console.error("usage: release.mjs <quests|places|readables|bosses> <lang> [--bump=patch|minor|major] [--dry-run] [--allow-removals] [--stage-only]");
+  console.error("usage: release.mjs <quests|places|readables|bosses> <lang> [--team=<slug>] [--bump=patch|minor|major] [--dry-run] [--allow-removals] [--stage-only]");
   process.exit(2);
 }
 const stageOnly = flags.includes("--stage-only");
+const teamSlug = flags.find((flag) => flag.startsWith("--team="))?.slice("--team=".length) || null;
+
+/** The team and language the release builds for, read before any step runs. */
+async function readTeam() {
+  const db = new pg.Client({ connectionString: process.env.LOCAL_DB || process.env.DATABASE_URL });
+  await db.connect();
+  try {
+    return await releaseTeam(db, lang, teamSlug);
+  } finally {
+    await db.end();
+  }
+}
 
 function run(command, args, { cwd, env, label }) {
   const { status, error } = spawnSync(command, args, { cwd, env: { ...process.env, ...env }, stdio: "inherit" });
@@ -79,6 +98,9 @@ try {
   await loadEnv();
   if (!process.env.DATABASE_URL) throw new Error("DATABASE_URL is not set");
   if (!process.env.SPOKEN_ARCHIVE_URL) throw new Error("SPOKEN_ARCHIVE_URL is not set");
+  const team = await readTeam();
+  // Every step this runs inherits it, so each reads this team's live takes.
+  process.env.SPOKEN_RELEASE_TEAM = team.id;
   const { folders, build } = await (quests ? questsPack() : soundPack());
   if (folders.length === 0) throw new Error(`${section} ${lang} is not on the Manager channel: its page has no manager: true`);
 

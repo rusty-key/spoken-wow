@@ -36,7 +36,7 @@ function runDir(id: string): string | null {
 type Spawn = (command: string, args: string[], options: SpawnOptions) => ChildProcess;
 
 export async function startDropletRun(
-  run: { id: string; section: string; lang: string },
+  run: { id: string; section: string; lang: string; teamSlug: string },
   bump: ReleaseBump,
   spawnFn: Spawn = spawn,
 ): Promise<void> {
@@ -54,7 +54,11 @@ export async function startDropletRun(
       const child = spawnFn(
         "setsid",
         // The site keeps the machine's one CPU.
-        ["--fork", "nice", "-n", "10", process.execPath, join(tools, "scripts/manager/release-job.mjs"), dir, run.section, run.lang, bump],
+        // The team last, as a flag: the job builds that team's packs (scripts/manager/release-team.mjs).
+        [
+          "--fork", "nice", "-n", "10", process.execPath, join(tools, "scripts/manager/release-job.mjs"),
+          dir, run.section, run.lang, bump, `--team=${run.teamSlug}`,
+        ],
         {
           cwd: tools,
           env: { NODE_ENV: process.env.NODE_ENV, PATH: process.env.PATH, HOME: process.env.HOME, SPOKEN_RELEASE_ENV: process.env.SPOKEN_RELEASE_ENV },

@@ -36,7 +36,7 @@ describe("runsOnDroplet", () => {
 });
 
 describe("startDropletRun", () => {
-  const run = { id: "run-1", section: "bosses", lang: "enUS" };
+  const run = { id: "run-1", section: "bosses", lang: "enUS", teamSlug: "english" };
 
   beforeEach(() => {
     mkdirSync(join(shared, "release-tools"));
@@ -51,7 +51,8 @@ describe("startDropletRun", () => {
     expect(command).toBe("setsid");
     expect(args[0]).toBe("--fork");
     expect(args).toContain(join(realpathSync(shared), "release-tools/scripts/manager/release-job.mjs"));
-    expect(args.slice(-4)).toEqual([join(shared, "release-runs/run-1"), "bosses", "enUS", "minor"]);
+    // The team last: the job takes it as a flag, and a job from before teams released had none.
+    expect(args.slice(-5)).toEqual([join(shared, "release-runs/run-1"), "bosses", "enUS", "minor", "--team=english"]);
     expect(Object.keys(options.env).sort()).toEqual(["HOME", "NODE_ENV", "PATH", "SPOKEN_RELEASE_ENV"]);
   });
 

@@ -58,6 +58,20 @@ test("a run logs its output, records its code, and leaves no scratch copy", asyn
   assert.equal(existsSync(join(runDir, "work")), false);
 });
 
+test("the job forwards the team the release is for", async () => {
+  const tools = fakeTools(`console.log("args: " + process.argv.slice(2).join(" "));`);
+  const runDir = runDirectory();
+  assert.equal(await runJob({ runDir, section: "places", lang: "deDE", bump: "minor", team: "stimmen", env: { PATH: process.env.PATH }, tools }), 0);
+  assert.match(readFileSync(join(runDir, "log"), "utf8"), /^args: places deDE --bump=minor --team=stimmen$/m);
+});
+
+test("a run with no team, as one started before teams released, names none", async () => {
+  const tools = fakeTools(`console.log("args: " + process.argv.slice(2).join(" "));`);
+  const runDir = runDirectory();
+  assert.equal(await runJob({ runDir, section: "places", lang: "deDE", env: { PATH: process.env.PATH }, tools }), 0);
+  assert.match(readFileSync(join(runDir, "log"), "utf8"), /^args: places deDE --bump=patch$/m);
+});
+
 test("a failing release is recorded, not thrown", async () => {
   const tools = fakeTools(`console.error("error: nope"); process.exit(3);`);
   const runDir = runDirectory();
