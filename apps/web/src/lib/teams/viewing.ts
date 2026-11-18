@@ -79,16 +79,17 @@ export function unknownTeam(slug: string, lang: Lang): Response {
 
 /**
  * Filters a view of another team cannot answer, dropped rather than left to match nothing: who
- * made a take, recordings, dirt and staleness are that team's private rows.
+ * made a take, recordings, reports, dirt and staleness are that team's private rows.
  */
-export function viewOnly<F extends { model?: string; author?: string; recorded?: unknown; dirty?: boolean; state?: string }>(
-  filters: F,
-): F {
+export function viewOnly<
+  F extends { model?: string; author?: string; recorded?: unknown; reports?: unknown; dirty?: boolean; state?: string },
+>(filters: F): F {
   return {
     ...filters,
     model: undefined,
     author: undefined,
     recorded: undefined,
+    reports: undefined,
     dirty: undefined,
     state: filters.state === "stale" ? undefined : filters.state,
   };

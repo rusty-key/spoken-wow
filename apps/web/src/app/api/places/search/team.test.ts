@@ -135,6 +135,11 @@ describe("GET /api/places/search?team=", () => {
     }
   });
 
+  it("drops the reports filter, since another team's reports are its own", async () => {
+    const response = await get(`&line=${encodeURIComponent(lines[1].id)}&fb=open&team=${slugs.get(b)}`);
+    expect(((await response.json()) as { lines: Line[] }).lines).toHaveLength(1);
+  });
+
   it("lists the acting team's takes without a team, as it always has", async () => {
     expect((await line(0)).line.take).not.toBeNull();
     expect((await line(1)).line.take).toBeNull();
