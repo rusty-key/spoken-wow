@@ -158,10 +158,11 @@ export async function renameTeam(team: TeamId, name: string, actorId: string): P
       `update "team" set "name" = $2 where "id" = $1 returning "slug"`,
       [team, name],
     );
+    // The team memo holds names: every worker drops it at commit.
+    await client.query(`select pg_notify('spoken_team_language', '')`);
     return rows[0]?.slug;
   });
   if (!slug) throw new TeamError("No such team.");
-  // The team memo holds names; the other worker's copy keeps the old one until it expires.
   forgetTeams();
   await recordActivity({ kind: "team.renamed", lang: null, actorId, subject: slug, detail: { name } });
 }

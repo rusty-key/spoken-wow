@@ -22,7 +22,7 @@ export async function teamsVoicing(lang: Lang): Promise<TeamChoice[]> {
 /**
  * The team whose takes play: the one `slug` names, else the acting team, else the privileged
  * team. Null for a slug naming no team of `lang`, or for a language nobody owns. `own` is
- * whether the visitor acts as it, and so may change its work.
+ * whether the view is the visitor's acting team, the one their work goes to.
  */
 export async function viewedTeam(
   lang: Lang,
@@ -30,8 +30,7 @@ export async function viewedTeam(
 ): Promise<{ team: TeamId; slug: string; name: string; own: boolean } | null> {
   const acting = await ownerOrAll(lang);
   if (acting === ALL_TEAMS) return null;
-  const teams = slug === null ? await teamsOf(lang) : await teamsVoicing(lang);
-  const found = teams.find((team) => (slug === null ? team.id === acting : team.slug === slug));
+  const found = (await teamsOf(lang)).find((team) => (slug === null ? team.id === acting : team.slug === slug));
   return found ? { team: found.id, slug: found.slug, name: found.name, own: found.id === acting } : null;
 }
 

@@ -17,6 +17,7 @@ let otherLang: Lang;
 let a: string;
 let b: string;
 let c: string;
+let d: string;
 let slugs: Map<string, string>;
 let user: { id: string; cleanup: () => Promise<void> };
 let tag: string;
@@ -26,9 +27,10 @@ beforeEach(async () => {
   otherLang = await uniqueLang();
   a = await newTeamIn(lang, true, "test-view-a");
   b = await newTeamIn(lang, false, "test-view-b");
+  d = await newTeamIn(lang, false, "test-view-0d");
   c = await newTeamIn(otherLang, true, "test-view-c");
   const rows = await systemRows<{ id: string; slug: string }>(`select "id", "slug" from "team" where "id" = any($1)`, [
-    [a, b, c],
+    [a, b, c, d],
   ]);
   slugs = new Map(rows.map((row) => [row.id, row.slug]));
   user = await testUser("test-view");
@@ -39,10 +41,10 @@ beforeEach(async () => {
 afterEach(async () => {
   vi.restoreAllMocks();
   for (const table of ["take", "text_override"]) {
-    await asSystem.query(`delete from "${table}" where "teamId" = any($1)`, [[a, b, c]]);
+    await asSystem.query(`delete from "${table}" where "teamId" = any($1)`, [[a, b, c, d]]);
   }
   await user.cleanup();
-  for (const team of [b, a, c]) await dropTeam(team);
+  for (const team of [b, d, a, c]) await dropTeam(team);
   await dropLang(lang);
   await dropLang(otherLang);
   forgetTeams();
@@ -51,14 +53,16 @@ afterEach(async () => {
 afterAll(closeDb);
 
 describe("teamsVoicing", () => {
-  it("lists the privileged team first, then the second", async () => {
+  it("lists the privileged team first, then the second teams by name", async () => {
     const teams = await teamsVoicing(lang);
+    // "test-view-0d-…" sorts before "test-view-b-…", the reverse of the order they were made in.
     expect(teams.map((team) => [team.id, team.privileged])).toEqual([
       [a, true],
+      [d, false],
       [b, false],
     ]);
-    expect(teams[1].slug).toBe(slugs.get(b));
-    expect(teams[1].name).toBe(slugs.get(b));
+    expect(teams[2].slug).toBe(slugs.get(b));
+    expect(teams[2].name).toBe(slugs.get(b));
   });
 
   it("answers a single-team language from the memo alone", async () => {
@@ -73,6 +77,20 @@ describe("teamsVoicing", () => {
     expect(viewed).toMatchObject({ team: await privilegedOf("deDE"), own: true });
     expect(viewed?.slug).toBeTruthy();
 
+    expect(queries).not.toHaveBeenCalled();
+    expect(connects).not.toHaveBeenCalled();
+  });
+});
+
+describe("viewedTeam in a single-team language", () => {
+  it("takes the privileged team's own slug, from the memo alone", async () => {
+    const privileged = (await privilegedOf("deDE"))!;
+    const [row] = await systemRows<{ slug: string }>(`select "slug" from "team" where "id" = $1`, [privileged]);
+    const pool = db();
+    const queries = vi.spyOn(pool, "query");
+    const connects = vi.spyOn(pool, "connect");
+
+    expect(await viewedTeam("deDE", row.slug)).toMatchObject({ team: privileged, slug: row.slug, own: true });
     expect(queries).not.toHaveBeenCalled();
     expect(connects).not.toHaveBeenCalled();
   });
