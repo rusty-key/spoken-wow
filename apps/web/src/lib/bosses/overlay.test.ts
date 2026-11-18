@@ -6,13 +6,13 @@ import type { Lang } from "@/lib/lang";
 import { asActor } from "@/lib/teams/acting";
 import { forgetTeams } from "@/lib/teams/store";
 import { addMember, asSystem, dropLang, dropTeam, newTeamIn, testUser, uniqueLang } from "@/lib/teams/testing";
-import { createFixtures, type Fixtures } from "@/lib/text-api/testing";
+import { createNarratedFixtures, type NarratedFixtures } from "@/lib/text-api/testing";
 import { writeTextOverride } from "@/lib/text-overrides/store";
 
 import { baseCatalogue, catalogue, lineByPath, loadContext, teamLineByPath, type BossEntry } from "./catalogue";
 import { search } from "./search";
 
-let fx: Fixtures;
+let fx: NarratedFixtures;
 let lang: Lang;
 let a: string;
 let b: string;
@@ -40,7 +40,7 @@ async function story(): Promise<void> {
 }
 
 beforeEach(async () => {
-  fx = await createFixtures();
+  fx = await createNarratedFixtures();
   lang = await uniqueLang();
   a = await newTeamIn(lang, true);
   b = await newTeamIn(lang, false);

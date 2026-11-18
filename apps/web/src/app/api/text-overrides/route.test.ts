@@ -15,7 +15,7 @@ import { catalogue as readableCatalogue } from "@/lib/readables/catalogue";
 import { asActor } from "@/lib/teams/acting";
 import { forgetTeams } from "@/lib/teams/store";
 import { addMember, asSystem, dropLang, dropTeam, newTeamIn, testUser, uniqueLang } from "@/lib/teams/testing";
-import { createFixtures, type Fixtures } from "@/lib/text-api/testing";
+import { createNarratedFixtures, type NarratedFixtures } from "@/lib/text-api/testing";
 
 const viewer = vi.hoisted(() => ({ id: "", grants: [] as Grant[] }));
 
@@ -27,7 +27,7 @@ vi.mock("@/lib/grants/store", async (importOriginal) => ({
 
 import { DELETE, PUT } from "./route";
 
-let fx: Fixtures;
+let fx: NarratedFixtures;
 let lang: Lang;
 let a: string;
 let b: string;
@@ -66,7 +66,7 @@ async function rows(lineId: string): Promise<{ teamId: string; text: string }[]>
 }
 
 beforeEach(async () => {
-  fx = await createFixtures();
+  fx = await createNarratedFixtures();
   lang = await uniqueLang();
   a = await newTeamIn(lang, true);
   b = await newTeamIn(lang, false);

@@ -5,7 +5,7 @@ import { closeDb } from "@/lib/db";
 import { asActor } from "@/lib/teams/acting";
 import { forgetTeams } from "@/lib/teams/store";
 import { addMember, asSystem, dropLang, dropTeam, newTeamIn, testUser, uniqueLang } from "@/lib/teams/testing";
-import { createFixtures, type Fixtures } from "@/lib/text-api/testing";
+import { createNarratedFixtures, type NarratedFixtures } from "@/lib/text-api/testing";
 
 import {
   clearTextOverride,
@@ -16,7 +16,7 @@ import {
   writeTextOverride,
 } from "./store";
 
-let fx: Fixtures;
+let fx: NarratedFixtures;
 let lang: Awaited<ReturnType<typeof uniqueLang>>;
 let a: string;
 let b: string;
@@ -25,7 +25,7 @@ let v: { id: string; cleanup: () => Promise<void> };
 
 beforeEach(async () => {
   // A write hashes its text through the catalogue, which a database with no places cannot build.
-  fx = await createFixtures();
+  fx = await createNarratedFixtures();
   lang = await uniqueLang();
   a = await newTeamIn(lang, true);
   b = await newTeamIn(lang, false);
