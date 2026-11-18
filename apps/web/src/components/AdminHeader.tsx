@@ -7,7 +7,7 @@ import { actingTeamNames } from "@/lib/teams/store";
 
 export type { AdminTab } from "@/components/AdminHeaderView";
 
-/** AdminHeaderView with the teams it names read here, so no admin page has to pass them. */
+/** The view is a client component, so the teams it names are read here, on the server. */
 export default async function AdminHeader(props: Omit<ComponentProps<typeof AdminHeaderView>, "teams">) {
   return <AdminHeaderView {...props} teams={await actingTeamNames(props.administered)} />;
 }

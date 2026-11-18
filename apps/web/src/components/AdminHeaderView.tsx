@@ -36,9 +36,8 @@ const TITLES: Partial<Record<AdminTab, string>> = { teams: "Teams", packs: "Comm
  * administers, and the two differ for anybody who looks after more than one language - so the
  * language acted on is the title, and a team admin is told other languages are other teams'.
  *
- * `lang` is null for the site admin's user list, which spans every language. `teams` is the team
- * acted as in each administered language: the title names it beside `lang`, since a language can
- * have more than one team, and the switch names a second team to tell it from the privileged one.
+ * `lang` is null for the site admin's user list, which spans every language. `teams` names the
+ * team acted as in each administered language, since a language can have more than one.
  *
  * `pendingPacks` is the review page's own count, fresher than the one the header was given when
  * the page first loaded; it replaces that one, so the Admin link's badge agrees with it.

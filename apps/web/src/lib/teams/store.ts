@@ -176,12 +176,12 @@ export async function scopeKey(lang: Lang): Promise<string> {
   return `${await ownerOrAll(lang)}:${lang}`;
 }
 
-/** The team someone acts as in a language, by name; `second` when it is not the privileged team. */
+/** `second`: not the language's privileged team. */
 export type ActingTeamName = { name: string; second: boolean };
 
 /**
- * The team the acting person works as in each of `langs` that has one, by name. From the memo as
- * it stands, with no re-read for a language nobody owns: a label may lag a new team by a minute.
+ * No re-read for a language nobody owns, since a site admin passes every language: a new team's
+ * name may lag by a minute.
  */
 export async function actingTeamNames(langs: readonly Lang[]): Promise<Partial<Record<Lang, ActingTeamName>>> {
   const read = await mapping();
