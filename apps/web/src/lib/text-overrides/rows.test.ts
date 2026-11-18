@@ -23,6 +23,13 @@ describe("withTextOverride", () => {
     expect(withTextOverride(rows, "b", "Said otherwise.")[1].state).toBe("missing");
   });
 
+  it("leaves the take's state on a Keep, which saves the words the take already speaks", () => {
+    const kept: Row[] = [
+      { id: "a", state: "current", override: { text: "Said.", drifted: true, updatedAt: "", updatedBy: null } },
+    ];
+    expect(withTextOverride(kept, "a", "Said.")[0]).toMatchObject({ state: "current", override: { drifted: false } });
+  });
+
   it("clears the override on a removal, and the take reads stale until the server says otherwise", () => {
     const overridden = withTextOverride(rows, "c", "Said otherwise.");
     expect(withTextOverride(overridden, "c", null)[2]).toMatchObject({ override: null, state: "stale" });

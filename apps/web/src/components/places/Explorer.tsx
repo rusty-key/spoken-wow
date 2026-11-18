@@ -339,6 +339,12 @@ export function Explorer<L extends ExplorerLine, F extends ExplorerFilters>({
     (lineId: string, text: string | null) => {
       setOverriding(null);
       setResult((current) => current && { ...current, lines: withTextOverride(current.lines, lineId, text) });
+      // A finished regeneration's version would hide that the new words make its take stale.
+      setRowStates((current) => {
+        if (current[lineId]?.phase !== "done") return current;
+        const { [lineId]: _done, ...rest } = current;
+        return rest;
+      });
       void refreshRows([lineId]);
     },
     [refreshRows],
