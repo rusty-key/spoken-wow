@@ -13,7 +13,10 @@ import { addMember, asSystem, dropLang, dropTeam, newTeamIn, systemRows, testUse
 
 const who = vi.hoisted(() => ({ viewer: { role: null, grants: [] } as Viewer, id: "" }));
 
-vi.mock("next/headers", () => ({ headers: async () => new Headers() }));
+vi.mock("next/headers", () => ({
+  headers: async () => new Headers(),
+  cookies: async () => ({ get: () => undefined }),
+}));
 vi.mock("@/lib/auth", () => ({
   auth: { api: { getSession: async () => ({ user: { id: who.id, role: who.viewer.role } }) } },
 }));
