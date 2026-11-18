@@ -72,6 +72,34 @@ describe("checkLine", () => {
     expect(check.fix).toBeUndefined();
   });
 
+  it("keeps a name that is the same in every language", () => {
+    expect(de("Thrall", "Thrall").verdict).toBe("clean");
+  });
+
+  it("asks for a look, not a drop, when only a closing ellipsis differs", () => {
+    const check = de("Wartet hier …", "Wait here.");
+    expect(check.verdict).toBe("look");
+    expect(check.findings[0].tone).toBe("info");
+  });
+
+  it("counts a gender branch's placeholders on the side the player saw", () => {
+    expect(de("Willkommen, $N.", "Welcome, $g$N:$N;.").verdict).toBe("clean");
+    expect(de("Willkommen, Fremde.", "Welcome, $gfriend:$N;.").verdict).toBe("clean");
+  });
+
+  it("offers a swap only for a unique target", () => {
+    // Two $R against $R and $N: which one changes is not knowable.
+    const two = de("Nur ein $R darf hinein, $R.", "Only a $R may enter, $N.");
+    expect(two.verdict).toBe("fix");
+    expect(two.fix).toBeUndefined();
+    // Two too many and two too few is not one swap.
+    expect(de("Hallo, $R und $R.", "Hello, $N and $N.").fix).toBeUndefined();
+  });
+
+  it("keeps the genitive of the token it swaps", () => {
+    expect(de("Das ist $Cs Schwert.", "That is $N's sword.").fix).toEqual({ removed: "$Cs", added: "$Ns", text: "Das ist $Ns Schwert." });
+  });
+
   it("asks for a look when there is no English line to compare with", () => {
     expect(de("Ein ganz normaler Satz.", null)).toEqual({
       verdict: "look",

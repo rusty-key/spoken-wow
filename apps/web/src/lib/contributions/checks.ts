@@ -51,29 +51,45 @@ function slotsOf(text: string): Map<Slot, string[]> {
 
 const count = (slots: Map<Slot, string[]>, slot: Slot) => slots.get(slot)?.length ?? 0;
 
+const SLOTS: readonly Slot[] = ["N", "C", "R"];
+
 // Words that are English and nothing else in the site's languages; a line mostly made of them was not
 // translated. Not "was" or "will" (German), "has" (Spanish), "die" or "also" (German).
 const ENGLISH_WORDS = new Set(
   "the and you your have are were that this with for but not what would there their they them been from".split(" "),
 );
 
-/** Whether a line in another language reads as English: the same words, or mostly English ones. */
+/**
+ * Whether a line in another language reads as English: mostly English words, or the English line's
+ * own words with at least one of them. A name alone ("Thrall") is the same in every language.
+ */
 function readsAsEnglish(text: string, english: string | null): boolean {
   const flat = (value: string) => value.toLowerCase().replace(/\s+/g, " ").trim();
-  if (english && flat(text) === flat(english)) return true;
   const words = text.toLowerCase().match(/[a-zà-ÿ']+/g) ?? [];
+  const englishWords = words.filter((word) => ENGLISH_WORDS.has(word)).length;
+  if (english && flat(text) === flat(english)) return englishWords > 0;
   if (words.length < 4) return false;
-  return words.filter((word) => ENGLISH_WORDS.has(word)).length / words.length >= 0.3;
+  return englishWords / words.length >= 0.3;
 }
 
 const ELLIPSIS_END = /(?:\.\.\.|…)\s*$/;
 const paragraphs = (value: string) => value.split(/\n\s*\n/).filter((part) => part.trim() && !/^\s*(?:\.\.\.|…)\s*$/.test(part));
 
-/** Whether the sent line stops where the English one goes on. */
-function cutOff(text: string, english: string | null): boolean {
-  if (!english) return false;
-  if (ELLIPSIS_END.test(text) && !ELLIPSIS_END.test(english)) return true;
-  return paragraphs(english).length > paragraphs(text).length && /\n\s*\n\s*(?:\.\.\.|…)?\s*$/.test(text);
+/**
+ * Whether the sent line stops where the English one goes on: "lost" when whole paragraphs are
+ * missing behind a break, "maybe" when it only ends in an ellipsis the English line lacks, which a
+ * translation may simply prefer.
+ */
+function cutOff(text: string, english: string | null): "lost" | "maybe" | null {
+  if (!english) return null;
+  if (paragraphs(english).length > paragraphs(text).length && /\n\s*\n\s*(?:\.\.\.|…)?\s*$/.test(text)) return "lost";
+  return ELLIPSIS_END.test(text) && !ELLIPSIS_END.test(english) ? "maybe" : null;
+}
+
+/** The English line as a player of each gender sees it: every `$G` branch resolved one way. */
+function genderSides(english: string): [string, string] {
+  const branch = /\$[GgUu]([^:;]*):([^;]*);/g;
+  return [english.replace(branch, (_, male: string) => male), english.replace(branch, (_, _male: string, female: string) => female)];
 }
 
 export function checkLine({
@@ -93,23 +109,40 @@ export function checkLine({
   if (translated && readsAsEnglish(text, english)) {
     findings.push({ tone: "drop", message: "Reads as English: the line was not translated." });
   }
-  if (cutOff(text, english)) {
+  const cut = cutOff(text, english);
+  if (cut === "lost") {
     findings.push({ tone: "drop", message: 'Looks cut off: it stops in "..." where the English line goes on.' });
+  } else if (cut === "maybe") {
+    findings.push({ tone: "info", message: 'Ends in "..." where the English line does not: check nothing is missing.' });
   }
 
   let fix: LineCheck["fix"];
   if (english) {
-    const want = slotsOf(english);
     const have = slotsOf(text);
-    const missing = (["N", "C", "R"] as Slot[]).filter((slot) => count(have, slot) < count(want, slot));
-    const extra = (["N", "C", "R"] as Slot[]).filter((slot) => count(have, slot) > count(want, slot));
-    if (missing.length === 1 && extra.length === 1) {
+    // A gender branch can hold a placeholder on one side only: the sent line, one side already
+    // picked, matches if it matches either.
+    const sides = genderSides(english).map(slotsOf);
+    const want = sides.find((side) => SLOTS.every((slot) => count(side, slot) === count(have, slot))) ?? sides[0];
+    const sidesAgree = SLOTS.every((slot) => count(sides[0], slot) === count(sides[1], slot));
+    const missing = SLOTS.filter((slot) => count(have, slot) < count(want, slot));
+    const extra = SLOTS.filter((slot) => count(have, slot) > count(want, slot));
+    const swap =
+      missing.length === 1 &&
+      extra.length === 1 &&
+      count(want, missing[0]) - count(have, missing[0]) === 1 &&
+      count(have, extra[0]) - count(want, extra[0]) === 1;
+    if (swap) {
       const removed = have.get(extra[0])![0];
-      const added = want.get(missing[0])![0].replace("$$", "$");
-      fix = { removed, added, text: text.replace(removed, added) };
+      // The submitted token's genitive stays: `$Cs` becomes `$Ns`. `$R` has no genitive.
+      const genitive = /s$/.test(removed);
+      const added = `$${missing[0]}${genitive ? "s" : ""}`;
+      // Offered only when the token to change is the one of its kind in the line, the English
+      // line reads the same for both genders, and the genitive survives the change.
+      const unique = count(have, extra[0]) === 1;
+      if (unique && sidesAgree && !(genitive && missing[0] === "R")) fix = { removed, added, text: text.replace(removed, added) };
       findings.push({
         tone: "fix",
-        message: `English has the player's ${SLOT_WORDS[missing[0]]} (${added}); this line has their ${SLOT_WORDS[extra[0]]} (${removed}).`,
+        message: `English has the player's ${SLOT_WORDS[missing[0]]} ($${missing[0]}); this line has their ${SLOT_WORDS[extra[0]]} (${removed}).`,
       });
     } else {
       for (const slot of missing) {
@@ -136,7 +169,7 @@ export function checkLine({
     ? "drop"
     : findings.some((finding) => finding.tone === "fix")
       ? "fix"
-      : unread
+      : findings.some((finding) => finding.tone === "info")
         ? "look"
         : "clean";
   // Offered only when it is the whole story: a fix beside another problem would not settle the line.
