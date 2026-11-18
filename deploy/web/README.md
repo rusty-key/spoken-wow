@@ -734,7 +734,7 @@ make web-logs                      # pm2 logs spoken
 ```
 
 A deploy does not install nginx config. After a change to `nginx-spoken-api.conf`, such as the
-`/api/v1/` location the contributors' text API needs for long runs, copy it as its header says and
+`/api/v1` location the contributors' text API needs for long runs, copy it as its header says and
 run `sudo nginx -t && sudo systemctl reload nginx`.
 
 Rollback walks strictly backwards in time, so running it repeatedly keeps stepping to older
