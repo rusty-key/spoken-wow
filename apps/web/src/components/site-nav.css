@@ -61,11 +61,6 @@
   height: 14px;
 }
 
-.sn-signin {
-  display: flex;
-  gap: 8px;
-}
-
 .sn-burger {
   display: none;
   place-items: center;
