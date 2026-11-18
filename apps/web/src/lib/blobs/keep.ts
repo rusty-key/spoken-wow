@@ -115,10 +115,14 @@ type Refusal = { kind: "storage-required" | "storage-failing"; message: string }
 export const refusalResponse = ({ kind, message }: Refusal): Response =>
   Response.json({ error: message, kind }, { status: 409 });
 
-/** The 409 a route answers before it reads an upload or pays for anything, or null when the team may keep audio. */
-export async function storageRequiredResponse(lang: Lang): Promise<Response | null> {
-  const message = await ownStorageRefusal(lang);
-  return message ? refusalResponse({ kind: "storage-required", message }) : null;
+/**
+ * The 409 a route answers before it reads an upload or pays for anything, or null when the team may
+ * keep audio now: not while it has no bucket it must have, nor while its bucket is failing (the
+ * quarantine is for takes already paid for, not uploads).
+ */
+export async function storageRefusalResponse(lang: Lang): Promise<Response | null> {
+  const refused = await storageRefusal(lang);
+  return refused ? refusalResponse(refused) : null;
 }
 
 /** Whether the team may keep nothing in our archive (team."ownStorage"). */

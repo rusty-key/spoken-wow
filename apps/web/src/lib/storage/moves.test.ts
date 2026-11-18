@@ -1,4 +1,4 @@
-/** Needs DATABASE_URL and migrations through 0115. */
+/** Needs DATABASE_URL and migrations through 0116. */
 import { randomBytes } from "node:crypto";
 
 import { afterAll, afterEach, beforeAll, describe, expect, it } from "vitest";

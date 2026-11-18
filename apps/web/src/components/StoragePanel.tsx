@@ -208,7 +208,7 @@ function BackendCard({
   onRekey: (fields: { accessKeyId: string; secretAccessKey: string }) => Promise<boolean>;
   /** A move of this team's is queued or running, so no other may start. */
   moving: boolean;
-  /** The team keeps nothing in Spoken's archive: no switching back to it, no moving into it. */
+  /** New audio goes only to the team's own bucket: no switching new objects back to Spoken's archive, no move into it. */
   ownStorage: boolean;
   onMoveIn: () => void;
   onMoveOut: () => void;

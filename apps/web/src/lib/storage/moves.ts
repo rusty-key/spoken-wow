@@ -210,6 +210,15 @@ async function advanceMove(id: string, chunk = CHUNK): Promise<MoveState> {
     [id],
   );
   if (!move) return "cancelled";
+  // The team was made to keep its own storage after this move into ours was queued.
+  if (move.toBackendId === null && (await keepsOwnStorage(move.teamId))) {
+    await queryIn(
+      ALL_TEAMS,
+      `update "storage_move" set "state" = 'failed', "lastError" = $2, "finishedAt" = now() where "id" = $1 and "state" = 'running'`,
+      [id, "The team now keeps its audio only in its own buckets, so nothing moves into Spoken's archive."],
+    );
+    return "failed";
+  }
   if (move.total === null) {
     const total = await countObjects(move.teamId, move.fromBackendId);
     await queryIn(ALL_TEAMS, `update "storage_move" set "total" = $2 where "id" = $1`, [id, total]);

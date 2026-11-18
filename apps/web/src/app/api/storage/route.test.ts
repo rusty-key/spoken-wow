@@ -1,4 +1,4 @@
-/** Needs DATABASE_URL and migrations through 0114; the session and the bucket's answers are mocked. */
+/** Needs DATABASE_URL and migrations through 0116; the session and the bucket's answers are mocked. */
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { memoryBlobs, useArchiveForTests } from "@/lib/blobs/store";

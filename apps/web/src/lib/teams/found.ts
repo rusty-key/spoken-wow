@@ -141,8 +141,9 @@ export async function foundTeam(client: PoolClient, input: FoundInput, actorId: 
         return addSecondTeam(client, input, actorId);
     }
   })();
-  // A team a person founds keeps its audio in its own bucket, never our archive
-  // (docs/platform/STORAGE.md). A site admin can lift that on /admin/teams.
+  // A team a person founds keeps its new audio in its own bucket (docs/platform/STORAGE.md); a site
+  // admin can lift that on /admin/teams. After every branch, since a hand-over can claim the team
+  // adopt_lang made, which has the default false.
   await client.query(`update "team" set "ownStorage" = true where "id" = $1`, [founded.teamId]);
   return founded;
 }

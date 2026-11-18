@@ -20,7 +20,7 @@ export type StorageView = {
   archiveIsBucket: boolean;
   /** False without SPOKEN_STORAGE_KEY: no secret can be saved. */
   canSeal: boolean;
-  /** The team keeps nothing in our archive (team."ownStorage"). */
+  /** New objects may not go to our archive; what is already there stays (team."ownStorage"). */
   ownStorage: boolean;
 };
 

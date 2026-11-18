@@ -276,7 +276,14 @@ export function startWorker(isLeader: () => boolean, options: WorkerOptions = {}
     // For the provider the job was queued with, not whichever the owner has chosen since.
     //
     // The storage check starts alongside: it depends on nothing here, and is read below in its turn.
-    const storage = storageFor(job.lang).catch(() => null);
+    // An error checking fails the job too: nothing is paid for that might not be kept.
+    const storage = storageFor(job.lang).then(
+      (refused) => (refused ? { kind: "bad-request" as const, message: refused } : null),
+      (error: unknown) => ({
+        kind: "upstream" as const,
+        message: `could not check the team's storage: ${error instanceof Error ? error.message : String(error)}`,
+      }),
+    );
     let apiKey: string | null;
     try {
       apiKey = await apiKeyFor(job.createdBy ?? "", job.provider);
@@ -312,7 +319,7 @@ export function startWorker(isLeader: () => boolean, options: WorkerOptions = {}
     // switched on could keep nothing this job makes.
     const refused = await storage;
     if (refused) {
-      await withTeam(job.teamId, (client) => failJob(job.id, { kind: "bad-request", message: refused }, client)).catch((error: unknown) =>
+      await withTeam(job.teamId, (client) => failJob(job.id, refused, client)).catch((error: unknown) =>
         console.error(`regeneration queue: job ${job.id} could not be failed`, error),
       );
       return;

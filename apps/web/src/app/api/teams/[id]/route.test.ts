@@ -43,9 +43,10 @@ describe("PATCH /api/teams/[id]", () => {
   });
 
   it("refuses a bad ownStorage by its own message, and changes nothing", async () => {
+    const before = await stateOf();
     const res = await patch({ name: "Other", ownStorage: "false" });
     expect(res.status).toBe(400);
     expect((await res.json()).error).toBe("ownStorage is true or false.");
-    expect(await stateOf()).toEqual({ name: "Renamed", ownStorage: true });
+    expect(await stateOf()).toEqual(before);
   });
 });

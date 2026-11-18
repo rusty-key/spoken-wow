@@ -31,7 +31,7 @@ afterAll(async () => {
   await closeDb();
 });
 
-const ours = (mode: "dual" | "r2") => {
+const ours = (mode: "disk" | "dual" | "r2") => {
   const store = memoryBlobs();
   restores.push(useArchiveForTests(store, mode));
   return store;
@@ -40,8 +40,13 @@ const ours = (mode: "dual" | "r2") => {
 describe("a team that keeps its own storage", () => {
   it("keeps nothing in our archive or on our volume without a bucket, in any mode", async () => {
     const file = path.join(dir, "refused.mp3");
-    await expect(keep("takes", randomBytes(16), "audio/mpeg", file, "frFR")).rejects.toBeInstanceOf(OwnStorageError);
-    expect(fs.existsSync(file)).toBe(false);
+    // Each mode pinned: vitest leaves SPOKEN_ARCHIVE_STORE alone when the shell exports one.
+    for (const mode of ["disk", "dual"] as const) {
+      const house = ours(mode);
+      await expect(keep("takes", randomBytes(16), "audio/mpeg", file, "frFR")).rejects.toBeInstanceOf(OwnStorageError);
+      expect(fs.existsSync(file)).toBe(false);
+      expect(house.objects.size).toBe(0);
+    }
 
     const house = ours("r2");
     await expect(keep("takes", randomBytes(16), "audio/mpeg", file, "frFR")).rejects.toThrow("connect one on the Storage page");

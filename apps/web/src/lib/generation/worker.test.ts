@@ -286,8 +286,11 @@ describe("startWorker", () => {
       } },
     });
 
-    await until(async () => (await statesOf(batch)).failed === 2);
-    await worker.stop();
+    try {
+      await until(async () => (await statesOf(batch)).failed === 2);
+    } finally {
+      await worker.stop();
+    }
 
     expect(generated).toBe(0);
     const { rows } = await asSystem.query<{ error: string }>(
@@ -295,6 +298,35 @@ describe("startWorker", () => {
       [batch],
     );
     expect(rows[0].error).toBe("connect a bucket");
+  });
+
+  it("fails a job when its team's storage cannot be checked, without generating", async () => {
+    const batch = await seed(1);
+    let generated = 0;
+    const worker = startWorker(() => true, {
+      apiKeyFor: KEYED,
+      budget: async () => 1,
+      storageRefusal: async () => {
+        throw new Error("connection reset");
+      },
+      regenerate: { quests: async () => {
+        generated += 1;
+        return OK;
+      } },
+    });
+
+    try {
+      await until(async () => (await statesOf(batch)).failed === 1);
+    } finally {
+      await worker.stop();
+    }
+
+    expect(generated).toBe(0);
+    const { rows } = await asSystem.query<{ error: string }>(
+      `select "error" from "regeneration_job" where "batchId" = $1 limit 1`,
+      [batch],
+    );
+    expect(rows[0].error).toBe("could not check the team's storage: connection reset");
   });
 
   it("fails every job of an owner with no usable key, without generating", async () => {

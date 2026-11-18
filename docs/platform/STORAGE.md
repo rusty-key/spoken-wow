@@ -41,7 +41,8 @@ key needs GetObject and PutObject (on Amazon S3 also ListBucket, without which a
 answers 403 rather than 404 and the test fails); it never needs to delete. Saving tests the bucket,
 and nothing goes to it until it passed and an admin switches it on. From then on the team's new
 takes, recordings, clone clips, references and pack encodings go there. The page also moves what
-is already in our archive into the bucket, or brings a bucket's objects back.
+is already in our archive into the bucket, or brings a bucket's objects back unless the team keeps
+its own storage.
 
 ## Design
 
@@ -133,7 +134,7 @@ API, with a 409 that says what to do. Jobs already queued carry on, into the qua
 ### Moving objects
 
 `lib/storage/moves.ts`. A team admin starts a move from our bucket into theirs, from theirs back into
-ours, or between two of theirs; one per team at a time, and only into a bucket that passed its test.
+ours (unless the team keeps its own storage), or between two of theirs; one per team at a time, and only into a bucket that passed its test.
 The upkeep advances each move a chunk a minute in key order from a cursor, so a restart carries on.
 Every copy is checked against its hash. Nothing is deleted from the source (decision 3). Into a team
 bucket a move adds the `archive_object` row; into ours it drops the source's row, so reads come
@@ -144,7 +145,8 @@ move with the reason.
 
 `team."ownStorage"` (migration 0116) is set by `createTeam` and `foundTeam`, so every team a person
 creates, from a request or the New team form, has it; existing teams and `adopt_lang`'s do not.
-Such a team keeps nothing on our volume or in our archive (`ownStorageRefusal`, `lib/blobs/keep.ts`):
+Such a team keeps no new audio on our volume or in our archive; what is already there stays
+(decision 3) (`ownStorageRefusal`, `lib/blobs/keep.ts`):
 
 - `keep()` and the pack encodings refuse with an `OwnStorageError` while it has no bucket switched
   on, or our archive is not in `r2` mode, before anything is written anywhere;

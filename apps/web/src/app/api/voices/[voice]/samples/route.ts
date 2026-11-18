@@ -8,7 +8,7 @@
  * Note nginx's client_max_body_size defaults to 1 MiB, which would reject every real clip
  * before it reached here — see deploy/nginx-voiceover.conf.
  */
-import { storageRequiredResponse } from "@/lib/blobs/keep";
+import { storageRefusalResponse } from "@/lib/blobs/keep";
 import { recordActivity } from "@/lib/activity/store";
 import { cloneName } from "@/lib/voices/clone-name";
 import { requireVoiceManager, requireVoiceViewer } from "@/lib/voices/authz";
@@ -35,7 +35,7 @@ export async function POST(request: Request, context: Context) {
   if (denied) return denied;
   // Before the upload is read: a team that keeps its audio only in its own bucket and has none
   // switched on could keep nothing of it.
-  const refused = await storageRequiredResponse(lang);
+  const refused = await storageRefusalResponse(lang);
   if (refused) return refused;
   const clone = cloneName(voice, lang);
 

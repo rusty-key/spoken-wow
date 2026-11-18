@@ -322,9 +322,6 @@ export async function testBackend(team: TeamId, id: string): Promise<ProbeResult
  * record, and nothing could be read back from a team's bucket.
  */
 export async function setWriting(team: TeamId, id: string | null): Promise<void> {
-  if (id === null && (await keepsOwnStorage(team))) {
-    throw new StorageError("Your team keeps its audio only in its own bucket: switch on another bucket instead.", 409);
-  }
   if (id !== null) {
     if (!readsBlobs()) throw new StorageError("The site's archive is not a bucket yet (SPOKEN_ARCHIVE_STORE=r2), so a team's bucket cannot be switched on.", 409);
     const row = await rowOf(team, id);
@@ -352,6 +349,9 @@ export async function setWriting(team: TeamId, id: string | null): Promise<void>
 /** Stops sending new objects to `id`, if it is still the one they go to. Ours takes them again. */
 export async function stopWriting(team: TeamId, id: string): Promise<void> {
   await rowOf(team, id);
+  if (await keepsOwnStorage(team)) {
+    throw new StorageError("Your team keeps its audio only in its own bucket: switch on another bucket instead.", 409);
+  }
   await withTeam(team, (client) =>
     client.query(`update "storage_backend" set "writing" = false where "id" = $1 and "writing" and ${TEAM_ROWS}`, [id]),
   );

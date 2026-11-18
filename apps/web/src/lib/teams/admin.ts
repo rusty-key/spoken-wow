@@ -15,7 +15,7 @@ export type TeamSummary = {
   id: TeamId;
   slug: string;
   name: string;
-  /** Keeps its audio only in its own bucket, never our archive (docs/platform/STORAGE.md). */
+  /** New audio goes only to its own bucket; what our archive holds stays (docs/platform/STORAGE.md). */
   ownStorage: boolean;
   /** The languages it is privileged in. */
   langs: Lang[];

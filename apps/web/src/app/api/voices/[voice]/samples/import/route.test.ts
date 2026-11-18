@@ -18,6 +18,8 @@ vi.mock("@/lib/voices/authz", () => ({
   }),
 }));
 vi.mock("@/lib/activity/store", () => ({ recordActivities: async () => {} }));
+// The storage check reads the database; this suite needs none.
+vi.mock("@/lib/blobs/keep", () => ({ storageRefusalResponse: async () => null }));
 vi.mock("@/lib/voices/seedClips", () => ({
   seedClips: async () => ["/clips/A01.ogg", "/clips/A02.ogg"],
 }));
