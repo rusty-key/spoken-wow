@@ -1,15 +1,15 @@
 import { requireCapability } from "@/lib/generation/authz";
 import { langName } from "@/lib/lang";
 import { langParam } from "@/lib/lang-server";
-import { runsOnDroplet, startDropletRun } from "@/lib/releases/droplet";
+import { runsOnDroplet, startDropletRun, teamReleasesOpen } from "@/lib/releases/droplet";
 import { dispatchRelease } from "@/lib/releases/github";
-import { isReleaseBump, SECOND_TEAM_RELEASE, isReleaseSection, RELEASE_BUMPS, RELEASE_SECTIONS } from "@/lib/releases/sections";
+import { isReleaseBump, isReleaseSection, RELEASE_BUMPS, RELEASE_SECTIONS, TEAM_RELEASES_CLOSED } from "@/lib/releases/sections";
 import { pendingChanges } from "@/lib/releases/pending";
 import { ReleaseBusyError, lastReleasedAt, startRun, updateRun } from "@/lib/releases/store";
 import { syncActive } from "@/lib/releases/sync";
 import { releaseView } from "@/lib/releases/view";
 import { encodeMissingForPack } from "@/lib/takes/encode";
-import { actsAsSecondTeam, NoTeamError } from "@/lib/teams/store";
+import { actingTeamRow, NoTeamError } from "@/lib/teams/store";
 
 export const dynamic = "force-dynamic";
 
@@ -37,7 +37,9 @@ export async function POST(request: Request) {
   if (unknown) return unknown;
   const { session, denied } = await requireCapability("admin", lang);
   if (denied) return denied;
-  if (await actsAsSecondTeam(lang)) return fail(409, SECOND_TEAM_RELEASE);
+  // The run is written under the acting team (startRun), and the job builds that team's packs.
+  const team = await actingTeamRow(lang);
+  if (team && !(team.official && team.privileged) && !teamReleasesOpen()) return fail(409, TEAM_RELEASES_CLOSED);
 
   const body = (await request.json().catch(() => ({}))) as { section?: unknown; bump?: unknown };
   if (!isReleaseSection(body.section)) return fail(400, `section is one of ${RELEASE_SECTIONS.join(", ")}`);

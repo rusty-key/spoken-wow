@@ -28,6 +28,16 @@ export function runsOnDroplet(): boolean {
   return Boolean(process.env.SPOKEN_RELEASE_ENV);
 }
 
+/**
+ * Whether a team that is not official, or not the language's privileged team, may release: only
+ * where SPOKEN_TEAM_RELEASES=1, set where release.env signs for the staging channel, until a site
+ * owner reviews a team's release. On the droplet only: the workflow builds from a synced database,
+ * whose sync gives every take to the privileged team.
+ */
+export function teamReleasesOpen(): boolean {
+  return process.env.SPOKEN_TEAM_RELEASES === "1" && runsOnDroplet();
+}
+
 function runDir(id: string): string | null {
   const env = process.env.SPOKEN_RELEASE_ENV;
   return env ? join(dirname(env), "release-runs", id) : null;

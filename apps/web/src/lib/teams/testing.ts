@@ -94,10 +94,11 @@ export async function unowned(lang: Lang): Promise<{ restore: () => Promise<void
   };
 }
 
+/** A site owner's move, so the team is official. */
 export async function ownTeam(lang: Lang): Promise<{ team: TeamId; restore: () => Promise<void> }> {
   const slug = `test-${lang.toLowerCase()}-${Math.random().toString(36).slice(2, 8)}`;
   const { rows } = await db().query<{ id: TeamId }>(
-    `insert into "team" ("slug", "name") values ($1, $1) returning "id"`,
+    `insert into "team" ("slug", "name", "official") values ($1, $1, true) returning "id"`,
     [slug],
   );
   const team = rows[0].id;

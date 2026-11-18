@@ -133,6 +133,24 @@ export async function actsAsSecondTeam(lang: Lang): Promise<boolean> {
 }
 
 /**
+ * The team the acting person works on `lang` in, as teamOf picks it, with what decides whether its
+ * release builds plain packs (privileged) and skips review (official). Null when nobody owns `lang`.
+ */
+export async function actingTeamRow(
+  lang: Lang,
+): Promise<{ id: TeamId; slug: string; official: boolean; privileged: boolean } | null> {
+  const team = await ownerOf(lang);
+  if (!team) return null;
+  const rows = await query<{ id: TeamId; slug: string; official: boolean; privileged: boolean }>(
+    `select t."id", t."slug", t."official", coalesce(tl."privileged", false) as "privileged"
+       from "team" t left join "team_language" tl on tl."teamId" = t."id" and tl."lang" = $2
+      where t."id" = $1`,
+    [team, lang],
+  );
+  return rows[0] ?? null;
+}
+
+/**
  * The mapping, read again once (unless the memo is fresh) when any of `langs` has no team. Whole,
  * so a caller reads every field from one read: a handover between two reads could leave the old
  * privileged team beside the new second teams.
