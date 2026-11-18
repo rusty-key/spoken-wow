@@ -114,6 +114,7 @@ test("the visitor's own view keeps every control and sends no team", async () =>
   expect(named(/^Override/)).toHaveLength(1);
   expect(named(/regenerate/i)).not.toHaveLength(0);
   // Report sits behind the row's More menu once the row has edit actions.
-  await userEvent.setup().click(named(/^More actions/)[0]);
+  expect(named(/^Report /)).toHaveLength(0);
+  await userEvent.setup().click(screen.getAllByRole("button", { name: "More actions" })[0]);
   expect(named(/^Report /)).toHaveLength(1);
 });

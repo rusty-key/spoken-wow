@@ -148,6 +148,7 @@ for (const [name, viewed] of [
     expect(overrideButton()).not.toBeNull();
     expect(pencil()).not.toBeNull();
     // Report sits behind the row's More menu once the row has edit actions.
+    expect(screen.queryByRole("button", { name: "Report Goldshire" })).toBeNull();
     await userEvent.setup().click(screen.getByRole("button", { name: "More actions" }));
     expect(screen.queryByRole("button", { name: "Report Goldshire" })).not.toBeNull();
     expect(screen.queryByText(/You are listening to/)).toBeNull();

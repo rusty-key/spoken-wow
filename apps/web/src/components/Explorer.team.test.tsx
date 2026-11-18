@@ -126,7 +126,8 @@ test("the visitor's own view offers the batch and sends no team", async () => {
   await waitFor(() => expect(urls().some((url) => url.includes("/api/regenerate/queue"))).toBe(true));
   expect(named(/^Edit the spoken text/)).toHaveLength(1);
   // Report and Ignore sit behind the row's More menu once the row has edit actions.
-  await userEvent.setup().click(named(/^More actions/)[0]);
+  expect(named(/^Report /)).toHaveLength(0);
+  await userEvent.setup().click(screen.getAllByRole("button", { name: "More actions" })[0]);
   expect(named(/^Report /)).toHaveLength(1);
   expect(named(/^Ignore/)).toHaveLength(1);
 
