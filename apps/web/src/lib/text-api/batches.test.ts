@@ -486,6 +486,24 @@ describe("restoreBatch on overrides", () => {
     },
   );
 
+  it("puts back a quest override whose original is current at another variant", async () => {
+    const ctxU = await contextOf(people.u.id);
+    await write(ctxU, "quests", [{ id: questLine, text: "Alt." }]);
+    const batchId = await write(ctxU, "quests", [{ id: questLine, text: "Neu." }]);
+    const moveTo = (variant: number) =>
+      asSystem.query(`update "quest_line" set "variant" = $1 where "lang" = $2 and "lineId" = $3`, [variant, lang, questLine]);
+    await moveTo(1);
+    try {
+      expect(await restoreAs(people.u.id, batchId, ctxU.layers)).toEqual([
+        expect.objectContaining({ id: questLine, field: "override", status: "restored" }),
+      ]);
+    } finally {
+      await moveTo(0);
+    }
+    const { rows } = await asSystem.query(`select "lineId", "text" from "line_override" where "lang" = $1`, [lang]);
+    expect(rows).toEqual([{ lineId: questLine, text: "Alt." }]);
+  });
+
   it("skips the original edits of one who has since lost text and kept regenerate", async () => {
     const ctxP = await contextOf(people.p.id);
     expect(ctxP.layers).toEqual({ original: true, override: true });

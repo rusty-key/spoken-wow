@@ -15,8 +15,8 @@ function dateInDays(days: number): string {
   return new Date(Date.now() + days * DAY_MS).toISOString().slice(0, 10);
 }
 
-/** `text`: the person holds `text` or `regenerate` there, either of which backs text access. */
-export type TokenLang = { lang: Lang; text: boolean; generate: boolean };
+/** A language where the person holds `text` or `regenerate`, either of which backs text access. */
+export type TokenLang = { lang: Lang; generate: boolean };
 
 const SELECT = "border-input bg-background h-9 rounded-md border px-2 text-sm";
 
@@ -31,22 +31,18 @@ export default function ApiTokenSection({ langs, initial }: { langs: TokenLang[]
   );
   const [label, setLabel] = useState("");
   const [lang, setLang] = useState<Lang>(langs[0].lang);
-  const [access, setAccess] = useState<TokenAccess>(langs[0].text ? "read" : "none");
-  const [generate, setGenerate] = useState(!langs[0].text && langs[0].generate);
+  const [access, setAccess] = useState<TokenAccess>("read");
+  const [generate, setGenerate] = useState(false);
   const [expires, setExpires] = useState(() => dateInDays(90));
   const [created, setCreated] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
   const chosen = langs.find((entry) => entry.lang === lang) ?? langs[0];
 
-  // Switching language drops a choice the owner cannot make there and restores the one that
-  // was dropped: Read when text is back, generate on when it is all they can do.
+  // Switching language drops generate where the owner cannot regenerate.
   function chooseLang(code: Lang) {
     const next = langs.find((entry) => entry.lang === code) ?? langs[0];
     setLang(code);
-    if (!next.text) setAccess("none");
-    else if (access === "none") setAccess("read");
     if (!next.generate) setGenerate(false);
-    else if (!next.text) setGenerate(true);
   }
 
   const create = () =>
@@ -119,8 +115,8 @@ export default function ApiTokenSection({ langs, initial }: { langs: TokenLang[]
           Access
           <select value={access} onChange={(e) => setAccess(e.target.value as TokenAccess)} className={SELECT}>
             <option value="none">No text</option>
-            {chosen.text && <option value="read">Read</option>}
-            {chosen.text && <option value="write">Read and write</option>}
+            <option value="read">Read</option>
+            <option value="write">Read and write</option>
           </select>
         </label>
         <label className="flex items-center gap-2 pb-2">
