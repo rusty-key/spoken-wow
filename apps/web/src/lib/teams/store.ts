@@ -152,8 +152,11 @@ export async function privilegedOwners(langs: readonly (Lang | null)[]): Promise
 
 /** Owners of `langs` for the acting person. Reads the session only when a language in `langs` has a second team. */
 export async function freshOwners(langs: readonly (Lang | null)[]): Promise<Map<Lang, TeamId>> {
-  const owners = await privilegedOwners(langs);
-  const second = await secondTeamLangs();
+  return overlay(await mappingFor(langs), langs);
+}
+
+/** `read`'s privileged owners with the acting person's team over each of `langs` that has a second team. */
+async function overlay({ owners, second }: Mapping, langs: readonly (Lang | null)[]): Promise<Map<Lang, TeamId>> {
   const shared = langs.filter((lang): lang is Lang => lang !== null && second.has(lang));
   if (!shared.length) return owners;
   const acting = await actingTeams();
@@ -171,6 +174,25 @@ export async function freshOwners(langs: readonly (Lang | null)[]): Promise<Map<
  */
 export async function scopeKey(lang: Lang): Promise<string> {
   return `${await ownerOrAll(lang)}:${lang}`;
+}
+
+/** `second`: not the language's privileged team. */
+export type ActingTeamName = { name: string; second: boolean };
+
+/**
+ * No re-read for a language nobody owns, since a site admin passes every language: a new team's
+ * name may lag by a minute.
+ */
+export async function actingTeamNames(langs: readonly Lang[]): Promise<Partial<Record<Lang, ActingTeamName>>> {
+  const read = await mapping();
+  const acting = await overlay(read, langs);
+  return Object.fromEntries(
+    langs.flatMap((lang) => {
+      const team = acting.get(lang);
+      const name = team && read.teams.get(team)?.name;
+      return name ? [[lang, { name, second: team !== read.owners.get(lang) }]] : [];
+    }),
+  );
 }
 
 export async function teamOf(lang: Lang): Promise<TeamId> {
