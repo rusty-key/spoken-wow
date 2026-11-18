@@ -1,4 +1,4 @@
-/** Needs DATABASE_URL and migrations through 0114 applied. */
+/** Needs DATABASE_URL and migrations through 0117 applied. */
 import { afterAll, afterEach, beforeEach, describe, expect, it } from "vitest";
 
 import { closeDb } from "@/lib/db";

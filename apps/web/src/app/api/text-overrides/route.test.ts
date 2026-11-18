@@ -2,7 +2,7 @@
  * The text override route against a real Postgres, with only the session and its grants mocked,
  * so the language check is the real requireIn and the catalogues are the real ones.
  *
- * Needs DATABASE_URL and migrations through 0114 applied.
+ * Needs DATABASE_URL and migrations through 0117 applied.
  */
 import { afterAll, afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 

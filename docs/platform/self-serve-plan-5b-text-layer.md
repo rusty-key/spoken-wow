@@ -33,7 +33,7 @@ This plan alone leaves the text API as 5a left it (a second team's token gets 40
 
 ## Global Constraints
 
-- One migration, `0114_text_override.sql`: plain SQL, additive, one transaction, applied by `deploy/web/bin/migrate.sh`. 5a's release must run against it (it never reads `text_override`, and the replaced `move_team_lang` only moves one more table).
+- One migration, `0117_text_override.sql`: plain SQL, additive, one transaction, applied by `deploy/web/bin/migrate.sh`. 5a's release must run against it (it never reads `text_override`, and the replaced `move_team_lang` only moves one more table).
 - Tests run as `spoken_app` (vitest's default `DATABASE_ROLE`) on `spoken_ci_pin`, never `spoken_dev`. Fish: `set -x DATABASE_URL postgres://localhost/spoken_ci_pin; pnpm --dir apps/web vitest run <file>`. Migrate: `set -x DATABASE_URL postgres://localhost/spoken_ci_pin; deploy/web/bin/migrate.sh $PWD/apps/web`.
 - Fixtures: `uniqueLang`, `newTeamIn`, `addMember`, `testUser`, `asSystem`, `dropTeam`, `dropLang` from `src/lib/teams/testing.ts`; the section rows from `createFixtures` in `src/lib/text-api/testing.ts`. A second team is `newTeamIn(lang, false)`. Never a built-in language code for a second team.
 - Nothing spends TTS credits. No test queues a job it does not cancel; generation is not run.
@@ -54,10 +54,10 @@ This plan alone leaves the text API as 5a left it (a second team's token gets 40
 
 ---
 
-### Task 1: Migration 0114, the `text_override` table
+### Task 1: Migration 0117, the `text_override` table
 
 **Files:**
-- Create: `apps/web/migrations/0114_text_override.sql`
+- Create: `apps/web/migrations/0117_text_override.sql`
 - Modify: `apps/web/src/lib/teams/testing.ts` (`STAMPED` and `dropTeam` delete `text_override` rows first)
 - Test: `apps/web/src/lib/text-overrides/schema.test.ts`
 
