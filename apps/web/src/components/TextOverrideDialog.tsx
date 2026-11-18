@@ -35,8 +35,7 @@ export default function TextOverrideDialog({ source, line, onSaved, onCancel }: 
   const [draft, setDraft] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  // Which line the draft belongs to, so opening another row reseeds it without an effect that
-  // would fight the user's typing.
+  // Keyed by line, not reseeded in an effect, so a refresh of the same line keeps the draft.
   const [seeded, setSeeded] = useState<string | null>(null);
 
   if (!line) return null;
@@ -83,7 +82,7 @@ export default function TextOverrideDialog({ source, line, onSaved, onCancel }: 
   }
 
   return (
-    <Dialog open onOpenChange={(open) => !open && cancel()}>
+    <Dialog open onOpenChange={(open) => !open && !busy && cancel()}>
       <DialogContent className="sm:max-w-2xl">
         <DialogHeader>
           <DialogTitle>What should your team say?</DialogTitle>

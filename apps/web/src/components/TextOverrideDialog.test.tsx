@@ -129,3 +129,19 @@ test("saving the original's words over an override removes the override", async 
   expect(init.method).toBe("DELETE");
   expect(new URL(url, "http://site").searchParams.get("lineId")).toBe("x:7");
 });
+
+test("Escape cannot close the dialog while a save is in flight", async () => {
+  let settle: (response: Response) => void = () => {};
+  fetchMock.mockReturnValue(new Promise<Response>((resolve) => (settle = resolve)));
+  const user = userEvent.setup();
+  const { onSaved, onCancel } = open(null);
+
+  await user.type(screen.getByLabelText(/What your team says/), " Und spricht.");
+  await user.click(screen.getByRole("button", { name: "Save" }));
+  await user.keyboard("{Escape}");
+  expect(onCancel).not.toHaveBeenCalled();
+  expect(screen.getByRole("dialog")).toBeTruthy();
+
+  settle(Response.json({ override: {} }));
+  await waitFor(() => expect(onSaved).toHaveBeenCalled());
+});
