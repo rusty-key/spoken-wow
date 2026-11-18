@@ -139,7 +139,10 @@ its reads go through the site, which knows which bucket holds each clip. The
 `release-packs.yaml` workflow's `SPOKEN_ARCHIVE_URL` variable becomes
 `https://spoken.quest/api/archive/`. Whichever worker leads the queue lands quarantined objects and
 advances moves between buckets once a minute, and samples 50 team-bucket objects for ones a team
-deleted every 15 minutes.
+deleted every 15 minutes. `CLOUDFLARE_OAUTH_CLIENT_ID`, `CLOUDFLARE_OAUTH_CLIENT_SECRET` and
+`CLOUDFLARE_OAUTH_SCOPES` switch on "Connect Cloudflare", which makes a team's R2 bucket and key
+for it (STORAGE.md, "Connecting Cloudflare"). It stays hidden without a valid `SPOKEN_STORAGE_KEY`
+too.
 
 Before `SPOKEN_ARCHIVE_STORE` becomes `dual`, install **`oggenc`** beside ffmpeg
 (`apt install vorbis-tools`): with the bucket in use every quests take is encoded to its

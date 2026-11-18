@@ -14,8 +14,11 @@ export const metadata: Metadata = { title: "Storage · Spoken" };
 
 export const dynamic = "force-dynamic";
 
+/** A repeated query parameter arrives as an array; only its first value counts. */
+const first = (value: string | string[] | undefined) => (Array.isArray(value) ? value[0] : value);
+
 /** A team's own buckets. The language in `?lang=` names the acting team; only languages with one are offered. */
-export default async function Page({ searchParams }: { searchParams: Promise<{ lang?: string }> }) {
+export default async function Page({ searchParams }: { searchParams: Promise<{ lang?: string; cloudflare?: string | string[]; cloudflare_error?: string | string[] }> }) {
   const session = await currentSession();
   const viewer = await viewerOf(session);
   if (!session || !viewer) notFound();
@@ -24,7 +27,7 @@ export default async function Page({ searchParams }: { searchParams: Promise<{ l
   const administered = all.filter((code) => owners.has(code));
   if (administered.length === 0) notFound();
 
-  const { lang: asked } = await searchParams;
+  const { lang: asked, cloudflare, cloudflare_error: cloudflareError } = await searchParams;
   const lang = administered.find((code) => code === asked) ?? administered[0];
 
   return (
@@ -37,7 +40,12 @@ export default async function Page({ searchParams }: { searchParams: Promise<{ l
         description="Where your team's audio is kept. Connect your own S3-compatible bucket (R2, S3, B2, Wasabi, GCS, MinIO) and send new takes there instead of Spoken's archive."
       />
       <Contained className="pt-6">
-        <StoragePanel key={lang} lang={lang} initial={await storageView(lang)} />
+        <StoragePanel
+          key={lang}
+          lang={lang}
+          initial={await storageView(lang)}
+          cloudflare={{ connected: first(cloudflare) === "connected", error: first(cloudflareError)?.slice(0, 300) ?? null }}
+        />
       </Contained>
     </main>
   );
