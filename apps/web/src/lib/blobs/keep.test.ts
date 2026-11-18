@@ -189,6 +189,24 @@ describe("the quarantine", () => {
     expect(house.objects.has(quarantineKey(backend.id, key))).toBe(false);
   });
 
+  it("lands the rest when our bucket cannot give back one quarantined copy", async () => {
+    vi.spyOn(console, "error").mockImplementation(() => {});
+    const house = ours("r2");
+    const backend = await team();
+    restores.push(useBackendForTests(backend.id, refusing(backend.store)));
+    const [bad, good] = [randomBytes(32), randomBytes(32)];
+    await keep("takes", bad, "audio/mpeg", path.join(dir, "bad.mp3"), "enUS");
+    await keep("takes", good, "audio/mpeg", path.join(dir, "good.mp3"), "enUS");
+    restores.push(useBackendForTests(backend.id, backend.store));
+    const get = house.get;
+    house.get = async (key, range) => {
+      if (key.endsWith(sha256Of(bad))) throw new Error("our bucket timed out");
+      return get(key, range);
+    };
+    expect(await landQuarantined()).toBe(1);
+    expect(backend.store.objects.has(`takes/${sha256Of(good)}`)).toBe(true);
+  });
+
   it("lands one bucket's objects while another's keeps refusing", async () => {
     vi.spyOn(console, "error").mockImplementation(() => {});
     const { ownTeam } = await import("@/lib/teams/testing");

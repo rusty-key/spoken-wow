@@ -91,14 +91,18 @@ export async function putArchived(prefix: BlobPrefix, sha256: string, data: Buff
       return;
     }
   }
-  // These same bytes already in the bucket need no copy of ours.
-  if (!(await holds(prefix, sha256, target.id))) {
-    await archive().put(quarantineKey(target.id, key), data, contentType);
-    // A direct write of these bytes may have landed meanwhile: then nothing would land this copy.
-    if (!(await record(prefix, sha256, target.id, team, true)).now) await dropQuarantined(target.id, key);
+  try {
+    // These same bytes already in the bucket need no copy of ours.
+    if (!(await holds(prefix, sha256, target.id))) {
+      await archive().put(quarantineKey(target.id, key), data, contentType);
+      // A direct write of these bytes may have landed meanwhile: then nothing would land this copy.
+      if (!(await record(prefix, sha256, target.id, team, true)).now) await dropQuarantined(target.id, key);
+    }
+  } finally {
+    // After the bytes are safe, or once our own bucket refused them too: marking the bucket failing
+    // must never cost the paid-for take, and must happen even when the take is lost.
+    if (refusal) await markFailing(target.id, refusal).catch((error) => console.error(`storage: could not mark ${target.id} failing:`, error));
   }
-  // After the bytes are safe: marking the bucket failing must not cost the paid-for take.
-  if (refusal) await markFailing(target.id, refusal).catch((error) => console.error(`storage: could not mark ${target.id} failing:`, error));
 }
 
 /**
@@ -164,13 +168,22 @@ export async function landQuarantined(perBucket = 20): Promise<number> {
   for (const row of rows) {
     if (refused.has(row.backendId)) continue;
     const key = blobKey(row.prefix, row.sha256);
-    const held = await archive().get(quarantineKey(row.backendId, key));
-    if (!held?.body) {
-      console.error(`storage: ${key} is pending but not in the quarantine`);
+    // Our own bucket failing to give back one copy is that copy's problem, not the round's.
+    let held: Awaited<ReturnType<ReturnType<typeof archive>["get"]>>;
+    let data: Buffer;
+    try {
+      held = await archive().get(quarantineKey(row.backendId, key));
+      if (!held?.body) {
+        console.error(`storage: ${key} is pending but not in the quarantine`);
+        await requeue(row.prefix, row.sha256, row.backendId);
+        continue;
+      }
+      data = Buffer.from(await new Response(held.body).arrayBuffer());
+    } catch (error) {
+      console.error(`storage: could not read the quarantined ${key}:`, error);
       await requeue(row.prefix, row.sha256, row.backendId);
       continue;
     }
-    const data = Buffer.from(await new Response(held.body).arrayBuffer());
     if (sha256Of(data) !== row.sha256) {
       console.error(`storage: the quarantined ${key} does not match its hash`);
       await requeue(row.prefix, row.sha256, row.backendId);
