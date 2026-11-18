@@ -49,6 +49,8 @@ test("a success whose body does not parse keeps the reference the panel showed",
 
   const recut = screen.getByRole("button", { name: "Re-cut" }) as HTMLButtonElement;
   await userEvent.setup().click(recut);
+  // The failure is reported, whatever words the parser chose for it, and nothing else moved.
+  expect((await screen.findByRole("alert")).textContent).not.toBe("");
   await waitFor(() => expect(recut.disabled).toBe(false));
   expect(onChange).not.toHaveBeenCalled();
   expect((screen.getByDisplayValue("Hello there.") as HTMLTextAreaElement).value).toBe("Hello there.");
