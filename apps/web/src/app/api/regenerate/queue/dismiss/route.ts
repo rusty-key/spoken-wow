@@ -16,6 +16,8 @@ import { NextRequest, NextResponse } from "next/server";
 
 import { requireAnyRegenerate } from "@/lib/generation/authz";
 import { dismissThrough } from "@/lib/generation/queue";
+import { isAdmin } from "@/lib/permissions";
+import { byTeam, secondTeamLangs } from "@/lib/teams/store";
 
 export const dynamic = "force-dynamic";
 
@@ -34,5 +36,12 @@ export async function POST(request: NextRequest) {
   // Written as the team of the caller's first language: the one panel is cut at the latest of
   // every team's mark.
   await dismissThrough(through, session.user.id, langs[0]);
+  // A language with a second team cuts its finished lines at its own team's mark, and a site
+  // owner may act as any of its teams, so their X also clears the team they act as in each.
+  if (isAdmin(session.user.role)) {
+    const second = await secondTeamLangs();
+    const shared = langs.filter((lang) => second.has(lang));
+    for (const own of (await byTeam(shared)).values()) await dismissThrough(through, session.user.id, own[0]);
+  }
   return NextResponse.json({ ok: true });
 }

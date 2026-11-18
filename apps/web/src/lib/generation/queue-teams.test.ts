@@ -134,6 +134,12 @@ describe("snapshot with teams", () => {
     expect(finishedOf(seen)).toEqual([`g:${tag}-a`, `g:${tag}-s`]);
   });
 
+  it("lists a narrowed language's finished lines from the panel's window when its team never dismissed", async () => {
+    await doneJob(a, lang, "old");
+    await asSystem.query(`update "regeneration_job" set "queuedAt" = now() - interval '2 days' where "id" = $1`, [ids.old]);
+    expect(finishedOf(await snapshot(since, { teams: new Map([[lang, a]]) }))).toEqual([`g:${tag}-a`, `g:${tag}-s`]);
+  });
+
   it("hides a narrowed language's finished lines only behind their own team's dismissal", async () => {
     // Briefly the latest mark of all, which the panel cuts every other language at.
     await asSystem.query(`insert into "queue_dismissal" ("teamId", "throughJobId") values ($1, $2)`, [b, ids.b]);

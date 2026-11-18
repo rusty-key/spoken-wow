@@ -214,5 +214,5 @@ site. The rest of phase 2 is distribution and stays out.
 - A later migration sets language `name`, `native`, `bcp47` and `provider` NOT NULL once no pre-0109 release runs.
 - The CLI `apps/web/scripts/seed-voice-sources.mts` knows only the built-in languages; it does not load the registry.
 - The queue panel's counts, failures and cursor still cut at the latest dismissal mark of any team, so one team's dismissal clears another's counts.
-- A site owner acting as a second team cannot dismiss its finished lines: dismissing writes the mark into the team of the first of their languages.
+- A member of a second team who also regenerates in another language dismisses into the team of the first of their languages, so their own team's finished lines can stay on the panel.
 - On a line with several voices, one voice's take made after an override publishes that override for every voice of the line.

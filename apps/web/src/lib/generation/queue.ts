@@ -722,7 +722,10 @@ export async function snapshot(
        finished_page as (
          select "id"::text as "id", "source", "lang", "lineId", "file", "version" from "regeneration_job"
           where "state" = 'done' and "version" is not null
-            and (not ($3::jsonb ? "lang") or "teamId" = ($3::jsonb ->> "lang")::uuid)
+            and (not ($3::jsonb ? "lang")
+                 or ("teamId" = ($3::jsonb ->> "lang")::uuid
+                     -- A team's own mark is 0 until it first dismisses, so the window bounds it.
+                     and "queuedAt" > now() - interval '${WINDOW}'))
             and "id" > greatest(
                   coalesce($1::bigint, 0),
                   case when $3::jsonb ? "lang"
