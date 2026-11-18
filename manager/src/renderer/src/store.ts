@@ -321,12 +321,14 @@ function makeActions(dispatch: Dispatch<Action>, get: () => State): Actions {
   }
 }
 
-interface Store {
+export interface Store {
   state: State
   actions: Actions
 }
 
 const Ctx = createContext<Store | null>(null)
+/** The store's context, for drawing a page from a made-up state (tests). */
+export const StoreContext = Ctx
 
 export function StoreProvider({ children }: { children: ReactNode }): ReactNode {
   const [state, dispatch] = useReducer(reducer, initial)

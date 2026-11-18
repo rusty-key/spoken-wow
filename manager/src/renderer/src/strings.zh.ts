@@ -139,6 +139,8 @@ export const S_ZH: Dict = {
     } satisfies Record<Section, { title: string; text: string }>,
     packNames: { all: '全部任务', alliance: '联盟', horde: '部落', shared: '通用', gossip: '闲聊' },
     splitHint: '或只装其中一部分',
+    by: (name: string) => `由 ${name} 制作`,
+    pageAuthor: '官方',
     notInstalled: '未安装',
     installedVersion: (v: string) => `已安装 ${v}`,
     badge: { installed: '已安装', update: '有可用更新', linked: '已关联', ahead: '比发布版更新', unknown: '手动安装' },

@@ -9,6 +9,7 @@ import { PackRow } from '../components/PackRow'
 import { formatBytes, formatDate } from '../format'
 import { jobKey, useGame, useStore } from '../store'
 import { S } from '../strings'
+import { authorsOf, groupByAuthor, type Author } from '../voices'
 
 const SECTIONS: Section[] = ['quests', 'places', 'readables', 'bosses']
 
@@ -22,11 +23,13 @@ export function VoicePacksPage(): ReactNode {
   const released = (p: Product): boolean => releasesFor(state.catalog, p.id, pre).length > 0
   const withRelease = new Set(voices.filter(released).map((p) => p.lang))
   const chosen = state.settings.voiceLanguage || BASE_LANGUAGE
-  const chips = LANGUAGES.filter((l) => withRelease.has(l.code) || l.code === chosen)
+  const languages = state.languages.length > 0 ? state.languages : LANGUAGES
+  const chips = languages.filter((l) => withRelease.has(l.code) || l.code === chosen)
 
   if (!game) return <NoGame />
 
   const inLang = voices.filter((p) => p.lang === chosen)
+  const authors = authorsOf(inLang.filter(released))
   const statusFor = (p: Product): ProductStatus | undefined => statusOf(state, game.id, p.id)
 
   // Everything of the language that is not installed: the one "All quests" bundle instead of its
@@ -39,7 +42,7 @@ export function VoicePacksPage(): ReactNode {
     return (s?.state ?? 'not-installed') === 'not-installed'
   })
   const totalBytes = todo.reduce((sum, p) => sum + (latestOf(state, game.id, p.id)?.assetSize ?? 0), 0)
-  const lang = languageName(chosen)
+  const lang = languages.find((l) => l.code === chosen)?.name ?? languageName(chosen)
   const installAll = (): void => {
     setConfirmAll(false)
     void (async () => {
@@ -108,10 +111,9 @@ export function VoicePacksPage(): ReactNode {
               {SECTIONS.map((section) => {
                 const all = inLang.filter((p) => p.section === section)
                 const some = all.filter(released)
-                const rows = some.length > 0 ? some : all.slice(0, 1)
-                if (rows.length === 0) return null
-                const bundle = rows.filter((p) => p.pack === 'all' || p.pack === undefined)
-                const split = rows.filter((p) => p.pack && p.pack !== 'all')
+                // With nothing released, the section still shows its first product, as not released.
+                const groups = some.length > 0 ? groupByAuthor(some, authors) : all.slice(0, 1).map((p) => ({ author: null, rows: [p] }))
+                if (groups.length === 0) return null
                 const meta = S.voices.sections[section]
                 return (
                   <section key={section} className="card section" aria-labelledby={`sec-${section}`}>
@@ -120,16 +122,8 @@ export function VoicePacksPage(): ReactNode {
                       <p>{meta.text}</p>
                     </header>
                     <ul className="list">
-                      {bundle.map((p) => (
-                        <VoiceRow key={p.id} product={p} gameId={game.id} writable={game.writable} />
-                      ))}
-                      {split.length > 0 && (
-                        <li className="row-label" aria-hidden="true">
-                          {S.voices.splitHint}
-                        </li>
-                      )}
-                      {split.map((p) => (
-                        <VoiceRow key={p.id} product={p} gameId={game.id} writable={game.writable} />
+                      {groups.map(({ author, rows }) => (
+                        <AuthorRows key={author?.key ?? ''} heading={groups.length > 1 && author ? authorName(author) : null} rows={rows} gameId={game.id} writable={game.writable} />
                       ))}
                     </ul>
                   </section>
@@ -140,6 +134,32 @@ export function VoicePacksPage(): ReactNode {
         </div>
       </section>
     </div>
+  )
+}
+
+export function authorName(author: Author): string {
+  return author.name || S.voices.pageAuthor
+}
+
+/** One author's rows of a section: the bundle, then the split packs. */
+function AuthorRows({ heading, rows, gameId, writable }: { heading: string | null; rows: Product[]; gameId: string; writable: boolean }): ReactNode {
+  const bundle = rows.filter((p) => p.pack === 'all' || p.pack === undefined)
+  const split = rows.filter((p) => p.pack && p.pack !== 'all')
+  return (
+    <>
+      {heading !== null && <li className="row-label">{heading}</li>}
+      {bundle.map((p) => (
+        <VoiceRow key={p.id} product={p} gameId={gameId} writable={writable} />
+      ))}
+      {split.length > 0 && (
+        <li className="row-label" aria-hidden="true">
+          {S.voices.splitHint}
+        </li>
+      )}
+      {split.map((p) => (
+        <VoiceRow key={p.id} product={p} gameId={gameId} writable={writable} />
+      ))}
+    </>
   )
 }
 
@@ -165,6 +185,7 @@ function VoiceRow({ product, gameId, writable }: { product: Product; gameId: str
       title={packName(product)}
       text={
         <>
+          {product.team && !product.team.official ? `${S.voices.by(product.team.name)} · ` : ''}
           {latest ? `${size} · ` : ''}
           {present && status?.installedVersion ? S.voices.installedVersion(status.installedVersion) : S.voices.notInstalled}
           {s === 'update-available' && latest ? ` → ${channel ? formatDate(latest.publishedAt) : latest.version}` : ''}
