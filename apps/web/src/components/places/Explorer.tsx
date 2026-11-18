@@ -657,7 +657,6 @@ export function Explorer<L extends ExplorerLine, F extends ExplorerFilters>({
           fields={section.filters.fields}
           kinds={section.filters.kinds}
           filters={filters}
-          active={section.filters.activeCount(filters)}
           canTriage={canTriage}
           madeBy={result?.madeBy}
           recordable={showRecordings}

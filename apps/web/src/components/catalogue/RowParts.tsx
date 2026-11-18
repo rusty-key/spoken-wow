@@ -7,7 +7,6 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { cn } from "@/lib/utils";
 
 export type RowAction = {
-  /** What the button says. */
   label: string;
   /** The accessible name, which names the line, so a screen reader hears whose line it acts on. */
   aria: string;
