@@ -20,6 +20,9 @@ type PrivateOptions = {
   headers?: Record<string, string>;
 };
 
+/** One audio type, parameters allowed; a list (`audio/ogg, text/html`) is not one, and a browser may render it. */
+const AUDIO_TYPE = /^audio\/[\w.+-]+(\s*;[^,]*)?$/i;
+
 const same = (a: Range | null, b: Range | null) => a?.start === b?.start && a?.end === b?.end;
 
 export async function serveBlob(
@@ -59,7 +62,7 @@ export async function serveBlob(
       etag,
       cacheControl: scoped,
       // A team's bucket says what its objects are; on our origin only audio is served as such.
-      contentType: contentType ?? (object.contentType.startsWith("audio/") ? object.contentType : "application/octet-stream"),
+      contentType: contentType ?? (AUDIO_TYPE.test(object.contentType) ? object.contentType : "application/octet-stream"),
       headers: { ...headers, "X-Content-Type-Options": "nosniff" },
       revalidate: false,
     },

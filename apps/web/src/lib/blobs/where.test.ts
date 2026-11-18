@@ -91,12 +91,19 @@ describe("readLocated", () => {
     const backend = await team();
     const key = fresh();
     await placeObject(key, backend.id, { pending: true });
-    // The landing ran between locate and the read: our copy is gone, the bucket has it.
-    backend.store.objects.set(key, { data: bytes, contentType: "audio/mpeg" });
     const { systemRows } = await import("@/lib/teams/testing");
-    await systemRows(`update "archive_object" set "pending" = false where "sha256" = $1`, [key.slice("takes/".length)]);
-    expect(house.objects.size).toBe(0);
+    // The landing runs between locate and the read: the quarantine read finds our copy gone,
+    // while the row now says the team's bucket has it.
+    const asked: string[] = [];
+    const get = house.get;
+    house.get = async (at, range) => {
+      asked.push(at);
+      backend.store.objects.set(key, { data: bytes, contentType: "audio/mpeg" });
+      await systemRows(`update "archive_object" set "pending" = false where "sha256" = $1`, [key.slice("takes/".length)]);
+      return get(at, range);
+    };
     expect((await blobBytes(key))?.equals(bytes)).toBe(true);
+    expect(asked).toEqual([`${QUARANTINE}${backend.id}/${key}`]);
   });
 });
 
@@ -160,6 +167,10 @@ describe("serving a team's object", () => {
     backend.store.objects.set(key, { data: bytes, contentType: "text/html" });
     const res = await serveBlob(new Request("https://spoken.test/a"), key, { cacheControl: "no-cache" });
     expect(res.headers.get("content-type")).toBe("application/octet-stream");
+    // A list a browser may render as its last type is not audio either.
+    backend.store.objects.set(key, { data: bytes, contentType: "audio/ogg, text/html" });
+    const listed = await serveBlob(new Request("https://spoken.test/a"), key, { cacheControl: "no-cache" });
+    expect(listed.headers.get("content-type")).toBe("application/octet-stream");
     expect(res.headers.get("x-content-type-options")).toBe("nosniff");
   });
 

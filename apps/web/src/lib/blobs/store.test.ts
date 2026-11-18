@@ -4,7 +4,7 @@ import path from "node:path";
 
 import { afterAll, afterEach, describe, expect, it, vi } from "vitest";
 
-import { keep, memoryBlobs, r2Blobs, s3Blobs, sha256Of, useArchiveForTests } from "./store";
+import { BodyLimitError, keep, memoryBlobs, r2Blobs, readBounded, s3Blobs, sha256Of, useArchiveForTests } from "./store";
 
 vi.mock("node:timers/promises", () => ({ setTimeout: async () => {} }));
 
@@ -192,5 +192,29 @@ describe("any S3-compatible bucket", () => {
     });
     await s3Blobs({ ...S3, conditionalPut: false }).put("takes/x", Buffer.from("same"), "audio/mpeg");
     expect(methods).toEqual(["HEAD"]);
+  });
+});
+
+describe("readBounded", () => {
+  const trickle = (chunks: number, everyMs: number) =>
+    new ReadableStream<Uint8Array>({
+      async pull(controller) {
+        if (chunks-- <= 0) return controller.close();
+        await new Promise((resolve) => setTimeout(resolve, everyMs));
+        controller.enqueue(new Uint8Array(4));
+      },
+    });
+
+  it("reads a body within its limits", async () => {
+    expect((await readBounded(trickle(3, 0), { maxBytes: 100, deadlineMs: 1_000 })).byteLength).toBe(12);
+  });
+
+  it("refuses a body past its size, or keeps its start when truncating", async () => {
+    await expect(readBounded(trickle(10, 0), { maxBytes: 10, deadlineMs: 1_000 })).rejects.toBeInstanceOf(BodyLimitError);
+    expect((await readBounded(trickle(10, 0), { maxBytes: 10, deadlineMs: 1_000, truncate: true })).byteLength).toBe(10);
+  });
+
+  it("gives up on a body that trickles past its deadline", async () => {
+    await expect(readBounded(trickle(100, 20), { maxBytes: 10_000, deadlineMs: 50 })).rejects.toThrow("no whole answer");
   });
 });

@@ -95,6 +95,51 @@ type S3Config = {
   conditionalPut: boolean;
 };
 
+export class BodyLimitError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "BodyLimitError";
+  }
+}
+
+/**
+ * A bucket's body read whole, within `maxBytes` and `deadlineMs`: a team's bucket is not trusted to
+ * send a small body, or to send it at all. Past either it is cancelled, and a BodyLimitError
+ * thrown; with `truncate`, the first `maxBytes` are kept instead of the size failing.
+ */
+export async function readBounded(
+  body: ReadableStream<Uint8Array>,
+  { maxBytes, deadlineMs, truncate = false }: { maxBytes: number; deadlineMs: number; truncate?: boolean },
+): Promise<Buffer> {
+  const reader = body.getReader();
+  const chunks: Uint8Array[] = [];
+  let size = 0;
+  let timer: NodeJS.Timeout | undefined;
+  const deadline = new Promise<never>((_, reject) => {
+    timer = setTimeout(() => reject(new BodyLimitError(`no whole answer within ${deadlineMs / 1000}s`)), deadlineMs);
+  });
+  deadline.catch(() => {});
+  try {
+    for (;;) {
+      const { done, value } = await Promise.race([reader.read(), deadline]);
+      if (done) return Buffer.concat(chunks);
+      if (size + value.byteLength > maxBytes) {
+        if (!truncate) throw new BodyLimitError(`more than ${maxBytes} bytes`);
+        chunks.push(value.subarray(0, maxBytes - size));
+        await reader.cancel().catch(() => {});
+        return Buffer.concat(chunks);
+      }
+      size += value.byteLength;
+      chunks.push(value);
+    }
+  } catch (error) {
+    await reader.cancel().catch(() => {});
+    throw error;
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
 /** How long a bucket has to answer a request, its upload included. */
 const ANSWER_MS = 120_000;
 
@@ -117,10 +162,8 @@ export function s3Blobs(env: S3Config): BlobStore {
     // Fetch the bytes themselves, not the signed Request: Next's fetch sends a Request's body
     // as a chunked stream, and R2 refuses a PUT without a Content-Length.
     const request = await (await awsClient()).sign(input, init);
-    // A bucket that does not answer within ANSWER_MS is down: nothing waits on it for good. The
-    // limit is on the answer, not the body, so a long stream to a slow listener is not cut. A
-    // redirect is never followed, since it could send the request to a host the endpoint check
-    // never saw (lib/storage/host.ts); a 3xx fails as any other answer that is not ok.
+    // ANSWER_MS bounds the answer, not the body: a reader bounds that (readBounded). A redirect
+    // is never followed: it could reach a host the endpoint check never saw.
     const abort = new AbortController();
     const timer = setTimeout(() => abort.abort(new Error(`${env.bucket} did not answer within ${ANSWER_MS / 1000}s`)), ANSWER_MS);
     try {
@@ -141,7 +184,9 @@ export function s3Blobs(env: S3Config): BlobStore {
     : `${endpoint.protocol}//${env.bucket}.${endpoint.host}`;
   const at = (key: string) => `${base}/${key.split("/").map(encodeURIComponent).join("/")}`;
   const fail = async (what: string, key: string, res: Response): Promise<never> => {
-    throw new Error(`${env.bucket} ${what} ${key}: HTTP ${res.status} ${(await res.text()).slice(0, 200)}`);
+    // A taste of the bucket's error, never more: it may send a body without end.
+    const said = res.body ? (await readBounded(res.body, { maxBytes: 1024, deadlineMs: 5_000, truncate: true }).catch(() => null)) : null;
+    throw new Error(`${env.bucket} ${what} ${key}: HTTP ${res.status} ${said?.toString("utf8").slice(0, 200) ?? ""}`);
   };
   const publicBase = env.publicUrl && (env.publicUrl.endsWith("/") ? env.publicUrl : `${env.publicUrl}/`);
   const lengthOf = async (key: string, res: Response): Promise<number> => {
