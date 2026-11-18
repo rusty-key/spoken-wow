@@ -84,9 +84,8 @@ export function Explorer<L extends ExplorerLine, F extends ExplorerFilters>({
   // to regenerate it, so editing and regenerating are asked separately. Triage goes with
   // editing -- reading a report and fixing the text it is about are one job.
   //
-  // Another team's view is read-only: its takes play, but a take, an override or a triage
-  // would land in the visitor's own team. The original text is every team's, so its pencil
-  // stays.
+  // Team-specific writes target the acting team, so another team's view hides them. The
+  // original text is shared, so its pencil stays.
   const may = useCan();
   const own = isOwn(viewed);
   const team = otherTeam(viewed);
@@ -262,9 +261,9 @@ export function Explorer<L extends ExplorerLine, F extends ExplorerFilters>({
     if (page > 1) search.set("page", String(page));
 
     fetch(withLang(lang, forTeam(`${api}/search?${search}`, team)), { signal: controller.signal })
-      .then((response) => response.json())
-      .then((data: ExplorerResult<L>) => {
-        setResult(data);
+      .then(async (response) => {
+        // An error body is no result: a team renamed since the page loaded answers 404.
+        setResult(response.ok ? ((await response.json()) as ExplorerResult<L>) : null);
         setLoading(false);
       })
       .catch((err) => {
@@ -323,8 +322,9 @@ export function Explorer<L extends ExplorerLine, F extends ExplorerFilters>({
     const search = new URLSearchParams(filterQueryRef.current);
     if (pageRef.current > 1) search.set("page", String(pageRef.current));
     fetch(withLang(lang, forTeam(`${api}/search?${search}`, team)))
-      .then((response) => response.json())
-      .then((data: ExplorerResult<L>) => setResult(data))
+      .then(async (response) => {
+        if (response.ok) setResult((await response.json()) as ExplorerResult<L>);
+      })
       .catch(() => {});
   }, [api, lang, team]);
 

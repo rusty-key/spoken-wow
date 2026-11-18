@@ -108,7 +108,6 @@ test("another team's view asks for its lines, and offers no batch or queue", asy
   for (const url of urls()) expect(new URL(url, "http://x").searchParams.get("team")).toBe("main-crew");
   expect(screen.queryByRole("button", { name: /Regenerate all/ })).toBeNull();
   expect(urls().some((url) => url.includes("/api/regenerate/queue"))).toBe(false);
-  // The override is what B's take speaks, with no pencil to change it, and no report.
   expect(screen.getByText("Lok'tar ogar.")).not.toBeNull();
   expect(named(/^Edit the spoken text/)).toHaveLength(0);
   expect(named(/^Report/)).toHaveLength(0);
@@ -130,4 +129,12 @@ test("the visitor's own view offers the batch and sends no team", async () => {
 
   await playGrunt();
   expect(audioSrc()).not.toContain("team=");
+});
+
+test("a team the search no longer knows leaves no rows, rather than breaking the page", async () => {
+  fetchMock.mockImplementation(async () => Response.json({ error: "no team main-crew voices deDE" }, { status: 404 }));
+  explorer({ team: "t-main", slug: "main-crew", name: "Main Crew", own: false });
+  await waitFor(() => expect(fetchMock).toHaveBeenCalled());
+  await waitFor(() => expect(screen.getByLabelText("Team")).not.toBeNull());
+  expect(screen.queryByText(/lines across/)).toBeNull();
 });

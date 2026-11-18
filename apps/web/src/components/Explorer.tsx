@@ -141,9 +141,8 @@ export default function Explorer({ facets, teams, viewed, home }: { facets: Face
   // Read once here and drilled down, rather than a hook per row: a page renders fifty
   // LineRows and the answer is the same for all of them.
   //
-  // Another team's view is read-only: its takes play, but a take, an override, an ignore or a
-  // triage would land in the visitor's own team. Names and speakers are every team's, so
-  // their controls stay.
+  // Team-specific writes target the acting team, so another team's view hides them. Names
+  // and speakers are shared.
   const may = useCan();
   const own = isOwn(viewed);
   const team = otherTeam(viewed);
@@ -373,7 +372,6 @@ export default function Explorer({ facets, teams, viewed, home }: { facets: Face
   const clearAll = useCallback(() => {
     setQuery("");
     pending.current = write(pending.current, "");
-    // The team stays: the view is not a filter.
     const kept = keepTeam(new URLSearchParams(), params).toString();
     router[historyMode(false)](kept ? `${pathname}?${kept}` : pathname, { scroll: false });
   }, [historyMode, params, pathname, router]);
@@ -406,9 +404,9 @@ export default function Explorer({ facets, teams, viewed, home }: { facets: Face
 
     setLoading(true);
     fetch(withLang(lang, forTeam(`/api/quests/search?${search}`, team)), { signal: controller.signal })
-      .then((r) => r.json())
-      .then((data: SearchResult) => {
-        setResult(data);
+      .then(async (r) => {
+        // An error body is no result: a team renamed since the page loaded answers 404.
+        setResult(r.ok ? ((await r.json()) as SearchResult) : null);
         setLoading(false);
       })
       .catch((error) => {

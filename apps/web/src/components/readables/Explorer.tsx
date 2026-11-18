@@ -65,9 +65,8 @@ export function Explorer({ books, teams, viewed, home }: { books: BookFacet[] } 
   // the layout would put a database round trip in front of every page view. Every one of
   // these is checked again server-side; nothing here is an access control.
   //
-  // Another team's view is read-only: its takes play, but a take, an override or a triage
-  // would land in the visitor's own team. The original text is every team's, so its pencil
-  // stays.
+  // Team-specific writes target the acting team, so another team's view hides them. The
+  // original text is shared, so its pencil stays.
   const may = useCan();
   const own = isOwn(viewed);
   const team = otherTeam(viewed);
@@ -242,7 +241,8 @@ export function Explorer({ books, teams, viewed, home }: { books: BookFacet[] } 
           setResult(null);
         } else {
           setEmpty(null);
-          setResult(data as SearchResult);
+          // An error body is no result: a team renamed since the page loaded answers 404.
+          setResult(response.ok ? (data as SearchResult) : null);
         }
         setLoading(false);
       })
@@ -257,8 +257,9 @@ export function Explorer({ books, teams, viewed, home }: { books: BookFacet[] } 
     const search = new URLSearchParams(filterQueryRef.current);
     if (pageRef.current > 1) search.set("page", String(pageRef.current));
     fetch(withLang(lang, forTeam(`/api/readables/search?${search}`, team)))
-      .then((response) => response.json())
-      .then((data: SearchResult) => setResult(data))
+      .then(async (response) => {
+        if (response.ok) setResult((await response.json()) as SearchResult);
+      })
       .catch(() => {});
   }, [lang, team]);
 
