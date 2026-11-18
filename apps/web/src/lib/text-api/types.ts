@@ -48,7 +48,8 @@ type SaveOverrideArgs = {
   by: string;
   /** The original's version: an override has none of its own. */
   expectedVersion: number | null;
-  audit: ApiAudit;
+  /** None for an undo, which belongs to no batch. */
+  audit?: ApiAudit;
 };
 
 export type SectionApi = {

@@ -1,6 +1,7 @@
 /**
  * Undoes a mass update, as far as nobody has edited its lines since. The owner may, whichever of
  * their tokens asks, and so may a global admin, but only with a token in the batch's language.
+ * Each edit is undone only in a layer the token's owner may write now.
  */
 import { isAdmin } from "@/lib/permissions";
 import { getBatch, restoreBatch } from "@/lib/text-api/batches";
@@ -22,6 +23,6 @@ export async function POST(request: Request, { params }: { params: Promise<{ bat
       return Response.json({ error: `this batch is in ${batch.lang}; use a token for that language` }, { status: 403 });
     }
 
-    return Response.json({ results: await restoreBatch(batch, context.userId) });
+    return Response.json({ results: await restoreBatch(batch, context.userId, context.layers) });
   });
 }

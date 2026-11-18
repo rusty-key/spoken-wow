@@ -1,12 +1,17 @@
 import "server-only";
 
+import { fileIndex } from "@/lib/audio";
 import { momentOf } from "@/lib/contributions/naming";
-import { ALL_TEAMS, query, withTeam } from "@/lib/db";
+import { ALL_TEAMS, query, withTeam, type TeamId } from "@/lib/db";
 import type { Lang } from "@/lib/lang";
 import { restoreName, retireName, type NameKind } from "@/lib/names/store";
+import { clearOverride, readOverrides, writeOverride } from "@/lib/quests/overrides";
 import type { Source } from "@/lib/sections";
+import { asTeam } from "@/lib/teams/acting";
+import { readTextOverrides } from "@/lib/text-overrides/store";
 
 import { describeError } from "./errors";
+import type { Layer } from "./guard";
 import { sections } from "./index";
 import type { NameTarget } from "./types";
 
@@ -64,19 +69,28 @@ type UndoResult = {
   id: string;
   variant?: number;
   entity?: NameTarget;
-  field: "text" | "name";
+  field: "text" | "name" | "override";
   status: "restored" | "retired" | "skipped";
-  reason?: "edited_since" | "gender_split" | "error";
+  reason?: "edited_since" | "gender_split" | "not_allowed" | "error";
   message?: string;
 };
 
 type Outcome = Pick<UndoResult, "status" | "reason">;
 
 type Edit = {
-  kind: "text.edited" | "name.edited";
+  kind: "text.edited" | "name.edited" | "override.set" | "override.cleared";
+  source: Source;
+  /** The line id, or for a name its entity, or for a quest override its file. */
   subject: string;
+  lineId: string | null;
+  teamId: TeamId | null;
   detail: { version: number; previous?: number | null; variant?: number; replaces?: string[] };
+  /** An override's text before the edit and after it, null where there was none. */
+  before: string | null;
+  after: string | null;
 };
+
+const isOverride = (edit: Edit) => edit.kind === "override.set" || edit.kind === "override.cleared";
 
 /**
  * As every team: the batch's owner has already been checked, and the language may have moved
@@ -85,9 +99,12 @@ type Edit = {
 async function editsOf(batchId: string): Promise<Edit[]> {
   return withTeam(ALL_TEAMS, async (client) => {
     const { rows } = await client.query<Edit>(
-      `select "kind", "subject", "detail" - 'text' - 'short' - 'name' - 'note' as "detail" from "activity"
+      `select "kind", "source", "subject", "lineId", "teamId",
+              "detail" - 'text' - 'short' - 'name' - 'note' - 'before' as "detail",
+              "detail"->>'before' as "before", "detail"->>'text' as "after"
+         from "activity"
         where "detail" ? 'apiBatchId' and "detail"->>'apiBatchId' = $1
-          and "kind" in ('text.edited', 'name.edited')
+          and "kind" in ('text.edited', 'name.edited', 'override.set', 'override.cleared')
         order by "id" desc`,
       [batchId],
     );
@@ -100,7 +117,15 @@ function nameTargetOf(edit: Edit): NameTarget {
   return { kind: edit.subject.slice(0, at) as NameKind, entityId: edit.subject.slice(at + 1) };
 }
 
-function headOf(section: Source, edit: Edit): Pick<UndoResult, "id" | "variant" | "entity" | "field"> {
+type Head = Pick<UndoResult, "id" | "variant" | "entity" | "field">;
+
+/** A quest override is logged by file; its line and variant are the corpus's line for it. */
+async function headOf(lang: Lang, section: Source, edit: Edit): Promise<Head> {
+  if (isOverride(edit)) {
+    if (edit.source !== "quests") return { id: edit.subject, field: "override" };
+    const line = (await fileIndex(lang)).get(edit.subject);
+    return { id: edit.lineId ?? edit.subject, variant: line?.variant ?? 0, field: "override" };
+  }
   if (edit.kind === "name.edited") {
     const entity = nameTargetOf(edit);
     return { id: entity.entityId, entity, field: "name" };
@@ -142,14 +167,49 @@ async function undoName(lang: Lang, edit: Edit, by: string): Promise<Outcome> {
   return { status: "restored" };
 }
 
-/** Each edit stands alone, as it did when written: one line that fails must not stop the rest. */
-export async function restoreBatch(batch: Batch, by: string): Promise<UndoResult[]> {
+/** The acting team's override on the edit's line, null where it has none. */
+async function currentOverride(lang: Lang, edit: Edit): Promise<string | null> {
+  if (edit.source === "quests") return (await readOverrides(lang)).get(edit.subject)?.text ?? null;
+  return (await readTextOverrides(edit.source, lang)).get(edit.subject)?.text ?? null;
+}
+
+/**
+ * In the team that made the edit, which for a site owner undoing a second team's batch is not
+ * their own. The write back carries no batch, as an original restore does not.
+ */
+async function undoOverride(lang: Lang, edit: Edit, by: string): Promise<Outcome> {
+  return asTeam(lang, edit.teamId, async () => {
+    if ((await currentOverride(lang, edit)) !== edit.after) return { status: "skipped", reason: "edited_since" };
+    const { before } = edit;
+    if (edit.source === "quests") {
+      if (before === null) await clearOverride(lang, edit.subject, by);
+      else await writeOverride(lang, edit.subject, edit.lineId ?? edit.subject, before, by);
+    } else {
+      // Through the section, which reads the original the override's drift hash is taken from.
+      const args = { lang, id: edit.subject, variant: 0, text: before, by, expectedVersion: null };
+      await sections[edit.source].saveOverride(args);
+    }
+    return { status: before === null ? "retired" : "restored" };
+  });
+}
+
+/**
+ * Each edit stands alone, as it did when written: one line that fails must not stop the rest.
+ * `layers` are what the caller may write now: an edit to a layer they may not is skipped, so
+ * an undo never writes what a write would be refused.
+ */
+export async function restoreBatch(batch: Batch, by: string, layers: Record<Layer, boolean>): Promise<UndoResult[]> {
   const results: UndoResult[] = [];
   for (const edit of await editsOf(batch.id)) {
-    const head = headOf(batch.section, edit);
+    const head = await headOf(batch.lang, batch.section, edit);
+    if (!layers[isOverride(edit) ? "override" : "original"]) {
+      results.push({ ...head, status: "skipped", reason: "not_allowed" });
+      continue;
+    }
     try {
-      const outcome =
-        edit.kind === "name.edited"
+      const outcome = isOverride(edit)
+        ? await undoOverride(batch.lang, edit, by)
+        : edit.kind === "name.edited"
           ? await undoName(batch.lang, edit, by)
           : await undoText(batch.section, batch.lang, edit, by);
       results.push({ ...head, ...outcome });

@@ -4,19 +4,25 @@
  *
  * Needs DATABASE_URL, migrations applied and the corpus imported.
  */
-import { afterAll, beforeEach, describe, expect, it, vi } from "vitest";
+import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 
-import { StoryConflict } from "@/lib/bosses/story";
+import { fileIndex } from "@/lib/audio";
+import { saveStory, StoryConflict } from "@/lib/bosses/story";
 import { closeDb, query } from "@/lib/db";
+import { viewerOf } from "@/lib/grants/store";
+import type { Lang } from "@/lib/lang";
+import { saveLore } from "@/lib/places/lore";
 import { keepLanguage } from "@/lib/quests/keep-language";
-import { forgetTeams } from "@/lib/teams/store";
-import { asSystem } from "@/lib/teams/testing";
+import { saveQuestText } from "@/lib/quests/text";
+import { asActor } from "@/lib/teams/acting";
+import { forgetTeams, type TeamId } from "@/lib/teams/store";
+import { addMember, asSystem, dropLang, dropTeam, newTeamIn, testUser, uniqueLang } from "@/lib/teams/testing";
 import { createToken } from "@/lib/tokens/store";
 
 import { applyItem, applyItems } from "./apply";
 import { createBatch, getBatch, listBatches, restoreBatch as undo } from "./batches";
 import { Refused } from "./errors";
-import type { TokenContext } from "./guard";
+import { backedScopes, type Layer, type TokenContext } from "./guard";
 import { sections } from "./index";
 import { createFixtures, LANG, type Fixtures } from "./testing";
 import { keyOf } from "./types";
@@ -46,7 +52,8 @@ afterAll(async () => {
 });
 
 const run = (section: Source, items: unknown[]) => applyItems(section, context, items, null, "original");
-const restoreBatch = async (batchId: string, by: string) => undo((await getBatch(batchId))!, by);
+const BOTH = { original: true, override: true };
+const restoreBatch = async (batchId: string, by: string) => undo((await getBatch(batchId))!, by, BOTH);
 const textOf = async (section: Source, id: string, variant = 0) => (await sections[section].one(LANG, id, variant))?.text;
 
 describe("restoreBatch", () => {
@@ -255,6 +262,166 @@ describe("restoreBatch", () => {
 
     expect(results.map((r) => r.status).sort()).toEqual(["retired", "skipped"]);
     expect(results.find((r) => r.status === "skipped")).toMatchObject({ reason: "error", message: "boom" });
+  });
+});
+
+describe("restoreBatch on overrides", () => {
+  let g: Fixtures;
+  let lang: Lang;
+  let a: TeamId;
+  let b: TeamId;
+  let questLine: string;
+  const people: Record<"u" | "owner" | "p", { id: string; cleanup: () => Promise<void> }> = {} as never;
+
+  const layersOf = async (userId: string) =>
+    backedScopes(await viewerOf({ user: { id: userId, role: null } }), lang, "write", false).layers;
+
+  async function contextOf(userId: string): Promise<TokenContext> {
+    const { row } = await createToken({
+      userId,
+      lang,
+      access: "write",
+      generate: false,
+      label: "agent",
+      expiresAt: new Date(Date.now() + 86_400_000),
+    });
+    return { tokenId: row.id, userId, role: null, lang, access: "write", generate: false, layers: await layersOf(userId) };
+  }
+
+  const write = async (ctx: TokenContext, section: Source, items: unknown[], layer: Layer = "override") =>
+    (await asActor(ctx.userId, () => applyItems(section, ctx, items, null, layer))).batchId;
+
+  const restoreAs = (userId: string, batchId: string, layers: Record<Layer, boolean>) =>
+    asActor(userId, async () => undo((await getBatch(batchId))!, userId, layers));
+
+  const narrated = async (source: string, lineId: string) =>
+    (
+      await asSystem.query<{ teamId: string; text: string }>(
+        `select "teamId", "text" from "text_override" where "lang" = $1 and "source" = $2 and "lineId" = $3`,
+        [lang, source, lineId],
+      )
+    ).rows;
+
+  beforeAll(async () => {
+    g = await createFixtures();
+    lang = await uniqueLang();
+    a = await newTeamIn(lang, true, "undo-a");
+    b = await newTeamIn(lang, false, "undo-b");
+    people.u = await testUser("test-undo-u");
+    people.owner = await testUser("test-undo-owner");
+    people.p = await testUser("test-undo-p");
+    await addMember(b, people.u.id, lang, "regenerate");
+    await addMember(a, people.owner.id, lang, "regenerate");
+    await addMember(a, people.p.id, lang, "regenerate");
+    await asSystem.query(`update "user" set "role" = 'admin' where "id" = $1`, [people.owner.id]);
+    await asSystem.query(`insert into "language_grant" ("userId", "lang", "capability") values ($1, $2, 'edit')`, [
+      people.p.id,
+      lang,
+    ]);
+    forgetTeams();
+
+    const by = people.owner.id;
+    await saveLore({ lang, lineId: g.zone, full: "Unser Land.", editedBy: by });
+    await saveLore({ lang, lineId: g.subzone, full: "Unser Tal.", editedBy: by });
+    await saveStory({ lang, lineId: g.boss.lineId, text: "Der Boss spricht.", editedBy: by });
+    // A line the Explorer lists under its own id, so the API may override it.
+    const [, listed] = [...(await fileIndex(lang))].find(([, line]) => /^q:\d+:accept$/.test(line.lineId))!;
+    questLine = listed.lineId;
+    await saveQuestText({ lang, lineId: questLine, variant: 0, text: "Sei willkommen.", editedBy: by });
+  });
+
+  beforeEach(async () => {
+    await asSystem.query(`delete from "text_override" where "lang" = $1`, [lang]);
+    await asSystem.query(`delete from "line_override" where "lang" = $1`, [lang]);
+  });
+
+  afterAll(async () => {
+    for (const table of ["text_override", "line_override", "quest_line", "lore_line", "boss_line", "api_batch", "api_token"]) {
+      await asSystem.query(`delete from "${table}" where "lang" = $1`, [lang]);
+    }
+    await asSystem.query(`delete from "activity" where "lang" = $1`, [lang]);
+    for (const team of [a, b]) await dropTeam(team);
+    for (const person of Object.values(people)) await person.cleanup();
+    await dropLang(lang);
+    forgetTeams();
+    await g.remove();
+  });
+
+  it("puts back an override the batch replaced and clears one it made", async () => {
+    const ctxU = await contextOf(people.u.id);
+    await write(ctxU, "places", [{ id: g.zone, text: "Alt." }]);
+    const batchId = await write(ctxU, "places", [
+      { id: g.zone, text: "Neu." },
+      { id: g.subzone, text: "Ganz neu." },
+    ]);
+
+    const results = await restoreAs(people.u.id, batchId, ctxU.layers);
+    expect(results).toEqual(
+      expect.arrayContaining([
+        { id: g.zone, field: "override", status: "restored" },
+        { id: g.subzone, field: "override", status: "retired" },
+      ]),
+    );
+    expect(results).toHaveLength(2);
+    expect(await narrated("places", g.zone)).toEqual([{ teamId: b, text: "Alt." }]);
+    expect(await narrated("places", g.subzone)).toEqual([]);
+  });
+
+  it("clears a quest override the batch made, carrying its variant", async () => {
+    const ctxU = await contextOf(people.u.id);
+    const batchId = await write(ctxU, "quests", [{ id: questLine, text: "Seid willkommen, Freund." }]);
+
+    expect(await restoreAs(people.u.id, batchId, ctxU.layers)).toEqual([
+      { id: questLine, variant: 0, field: "override", status: "retired" },
+    ]);
+    const { rows } = await asSystem.query(`select 1 from "line_override" where "lang" = $1`, [lang]);
+    expect(rows).toEqual([]);
+  });
+
+  it("restores a second team's batch for a site owner into that team, giving theirs none", async () => {
+    const ctxU = await contextOf(people.u.id);
+    await write(ctxU, "bosses", [{ id: g.boss.lineId, text: "Alt." }]);
+    const batchId = await write(ctxU, "bosses", [{ id: g.boss.lineId, text: "Neu." }]);
+
+    expect(await restoreAs(people.owner.id, batchId, { original: true, override: true })).toEqual([
+      { id: g.boss.lineId, field: "override", status: "restored" },
+    ]);
+    expect(await narrated("bosses", g.boss.lineId)).toEqual([{ teamId: b, text: "Alt." }]);
+  });
+
+  it("skips an override edited since the batch", async () => {
+    const ctxU = await contextOf(people.u.id);
+    const batchId = await write(ctxU, "places", [{ id: g.zone, text: "Vom Lauf." }]);
+    await write(ctxU, "places", [{ id: g.zone, text: "Von Hand." }]);
+
+    expect(await restoreAs(people.u.id, batchId, ctxU.layers)).toEqual([
+      { id: g.zone, field: "override", status: "skipped", reason: "edited_since" },
+    ]);
+    expect(await narrated("places", g.zone)).toEqual([{ teamId: b, text: "Von Hand." }]);
+  });
+
+  it("skips an override edit for one who may not write overrides", async () => {
+    const ctxU = await contextOf(people.u.id);
+    const batchId = await write(ctxU, "places", [{ id: g.zone, text: "Bleibt." }]);
+
+    expect(await restoreAs(people.u.id, batchId, { original: true, override: false })).toEqual([
+      { id: g.zone, field: "override", status: "skipped", reason: "not_allowed" },
+    ]);
+    expect(await narrated("places", g.zone)).toEqual([{ teamId: b, text: "Bleibt." }]);
+  });
+
+  it("skips the original edits of one who has since lost text and kept regenerate", async () => {
+    const ctxP = await contextOf(people.p.id);
+    expect(ctxP.layers).toEqual({ original: true, override: true });
+    const batchId = await write(ctxP, "bosses", [{ id: g.boss.lineId, text: "Vom Lauf.", name: "Lauf-Name" }], "original");
+    await asSystem.query(`delete from "language_grant" where "userId" = $1 and "lang" = $2`, [people.p.id, lang]);
+    const layers = await layersOf(people.p.id);
+    expect(layers).toEqual({ original: false, override: true });
+
+    const results = await restoreAs(people.p.id, batchId, layers);
+    expect(results).toHaveLength(2);
+    expect(results.every((r) => r.status === "skipped" && r.reason === "not_allowed")).toBe(true);
+    expect(await sections.bosses.one(lang, g.boss.lineId, 0)).toMatchObject({ text: "Vom Lauf.", name: "Lauf-Name" });
   });
 });
 
