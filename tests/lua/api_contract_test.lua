@@ -117,30 +117,41 @@ Spoken:StopAll()
 Expect("StopAll empties", Spoken:GetQueueSize(), 0)
 Expect("...and unpauses", Spoken:IsPaused(), false)
 
+---------------------------------------------------------------- stories
+-- No teller for a kind, or no id: every answer is false.
+Expect("a kind no module tells has no story", tostring(Spoken:HasStory("contract", 1)) .. " "
+    .. tostring(Spoken:PlayStory("contract", 1)) .. " " .. tostring(Spoken:IsPlayingStory("contract", 1)) .. " "
+    .. tostring(Spoken:StopStory("contract", 1)), "false false false false")
+do
+    -- Story 7 has two parts, a locked "story:7a" and a playable "story:7b"; story 8 none playable.
+    local tellerSource = Spoken:RegisterSource("story-contract", { title = "Stories", addon = "X", order = 9 })
+    Spoken:RegisterStoryTeller("contract", {
+        source = tellerSource,
+        Keys = function(id) return { "story:" .. id .. "a", "story:" .. id .. "b" } end,
+        Clip = function(id, key)
+            if key == "story:7b" then local clip = H.Clip(); clip.key = key; return clip end
+        end,
+    })
+    Spoken:StopAll()
+    Expect("HasStory: a story with a playable part", tostring(Spoken:HasStory("contract", 7)) .. " "
+        .. tostring(Spoken:HasStory("contract", 8)) .. " " .. tostring(Spoken:HasStory("contract", nil)), "true false false")
+    Expect("PlayStory plays only a story with one", tostring(Spoken:PlayStory("contract", 8)) .. " "
+        .. tostring(Spoken:PlayStory("contract", 7)), "false true")
+    Expect("...the playable part, through the teller's source", Spoken:GetNowPlaying().key .. " "
+        .. tostring(Spoken:GetNowPlaying().source == tellerSource), "story:7b true")
+    Expect("IsPlayingStory: its own story only", tostring(Spoken:IsPlayingStory("contract", 7)) .. " "
+        .. tostring(Spoken:IsPlayingStory("contract", 8)), "true false")
+    Spoken:Pause()
+    Expect("...and not while paused", Spoken:IsPlayingStory("contract", 7), false)
+    Spoken:Resume()
+    Expect("StopStory takes it out", tostring(Spoken:StopStory("contract", 7)) .. " " .. Spoken:GetQueueSize(), "true 0")
+    Expect("...and a second stop finds nothing", Spoken:StopStory("contract", 7), false)
+end
+
 Spoken:AddGate(function() return "held by the player" end)
 local held = H.Clip()
 src:Enqueue(held)
 Expect("a player-wide gate holds every source", Spoken:GetHeldReason(held), "held by the player")
-
----------------------------------------------------------------- stories
--- No teller for a kind, or no id: every answer is false and nothing is called.
-Expect("a kind no module tells has no story", tostring(Spoken:HasStory("contract", 1)) .. " "
-    .. tostring(Spoken:PlayStory("contract", 1)) .. " " .. tostring(Spoken:IsPlayingStory("contract", 1)) .. " "
-    .. tostring(Spoken:StopStory("contract", 1)), "false false false false")
-local told = {}
-Spoken:RegisterStoryTeller("contract", {
-    Has = function(id) return id == 7 end,
-    Play = function(id) table.insert(told, "play " .. id); return true end,
-    IsPlaying = function(id) return id == 7 end,
-    Stop = function(id) table.insert(told, "stop " .. id); return true end,
-})
-Expect("HasStory asks the kind's teller", tostring(Spoken:HasStory("contract", 7)) .. " " .. tostring(Spoken:HasStory("contract", 8)),
-    "true false")
-Expect("PlayStory plays only a story the teller has", tostring(Spoken:PlayStory("contract", 8)) .. " "
-    .. tostring(Spoken:PlayStory("contract", 7)) .. " " .. table.concat(told, ","), "false true play 7")
-Expect("IsPlayingStory and StopStory ask it too", tostring(Spoken:IsPlayingStory("contract", 7)) .. " "
-    .. tostring(Spoken:StopStory("contract", 7)) .. " " .. told[2], "true true stop 7")
-Expect("no id is no story", Spoken:HasStory("contract", nil), false)
 
 ---------------------------------------------------------------- registries
 Spoken:RegisterBullet("contract-bullet", "Interface\\X", 12)

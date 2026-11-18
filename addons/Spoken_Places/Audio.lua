@@ -103,6 +103,31 @@ local function Source()
 	return nil
 end
 
+--------------------------------------------------------------------------------
+-- A dungeon's story for another addon (Spoken:PlayStory("instance", map))
+--------------------------------------------------------------------------------
+
+--- The area mapID, key that tells the story of the instance map `map`, from Spoken's dungeon table,
+--- or nil where none does.
+function SpokenPlaces:InstanceStory(map)
+	local dungeons = _G.SpokenDungeons and SpokenDungeons.dungeons
+	local story = map and dungeons and dungeons[map] and dungeons[map].story
+	if story then return story[1], story[2] end
+end
+
+local function InstanceKeys(map)
+	local mapID, key = SpokenPlaces:InstanceStory(map)
+	return mapID and { "s:" .. mapID .. ":" .. key } or {}
+end
+
+-- The story's clip where it is voiced, Places is on and reads aloud, and the area is not locked.
+local function InstanceClip(map)
+	local mapID, key = SpokenPlaces:InstanceStory(map)
+	if not (SpokenPlaces:IsVoiceEnabled() and SpokenPlaces:IsPartOn()) then return nil end
+	if SpokenPlaces.IsLocked and SpokenPlaces:IsLocked(mapID, key) then return nil end
+	return SpokenPlaces:NewLoreSound(mapID, key)
+end
+
 -- Registers with the player. Runs once the world is up, after the player itself has
 -- loaded; everything here degrades to "no narration" when it has not.
 function SpokenPlaces:SetupAudio()
@@ -148,7 +173,7 @@ function SpokenPlaces:SetupAudio()
 	end)
 
 	if Spoken.RegisterStoryTeller then
-		Spoken:RegisterStoryTeller("instance", SpokenPlaces.InstanceTeller)
+		Spoken:RegisterStoryTeller("instance", { source = self.source, Keys = InstanceKeys, Clip = InstanceClip })
 	end
 
 	-- Switched off or on in Spoken's settings: the map panel follows, and so does the Compendium's
@@ -750,40 +775,6 @@ function SpokenPlaces:PlayLore(mapID, areaKey)
 	end
 	return playing and true or false
 end
-
---------------------------------------------------------------------------------
--- A dungeon's story for another addon (Spoken:PlayStory("instance", map))
---------------------------------------------------------------------------------
-
--- The area { uiMapID, key } that tells the story of the instance map `map`, from Spoken's dungeon table.
-local function InstanceStory(map)
-	local dungeons = _G.SpokenDungeons and SpokenDungeons.dungeons
-	local story = dungeons and dungeons[map] and dungeons[map].story
-	if story then return story[1], story[2] end
-end
-
-SpokenPlaces.InstanceTeller = {
-	Has = function(map)
-		local mapID, key = InstanceStory(map)
-		if not mapID or not SpokenPlaces:IsVoiceEnabled() or not SpokenPlaces:IsPartOn() then return false end
-		if SpokenPlaces.IsLocked and SpokenPlaces:IsLocked(mapID, key) then return false end
-		return SpokenPlaces:HasAudio(mapID, key)
-	end,
-	-- Not PlayLore, which says in chat why it refused: the player did not press this.
-	Play = function(map)
-		local item = SpokenPlaces:NewLoreSound(InstanceStory(map))
-		return item ~= nil and SpokenPlaces.source:PlayNow(item) == true
-	end,
-	IsPlaying = function(map)
-		local mapID, key = InstanceStory(map)
-		return mapID ~= nil and SpokenPlaces:IsPlayingLore(mapID, key)
-	end,
-	Stop = function(map)
-		local mapID, key = InstanceStory(map)
-		local clip = mapID and SpokenPlaces:LoreClip(mapID, key)
-		return clip ~= nil and SpokenPlaces.source:Remove(clip) == true
-	end,
-}
 
 --------------------------------------------------------------------------------
 -- Why nothing here stops playback on its own

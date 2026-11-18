@@ -92,8 +92,13 @@ local function Found(map, key)
 	return Bosses:IsBossFound(map, key)
 end
 
-local function Unlocked()
+--- Whether Unlock Unfound Bosses is on: every boss openable, met or not.
+function Bosses:IsUnlocked()
 	return SpokenBossesSettings ~= nil and SpokenBossesSettings.unlockUnfound == true
+end
+
+local function Unlocked()
+	return Bosses:IsUnlocked()
 end
 
 local function OnlyFound()
