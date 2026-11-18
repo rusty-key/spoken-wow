@@ -9,6 +9,10 @@
 // Manager accepts (LEGACY_PACK_ID), in the shape it has always had: that Manager rejects the whole
 // index when one entry fails its check. Spoken's own zips (`addons`) are publish-addon.mjs's,
 // which writes index.json, so they are read from there and written to both.
+//
+// STAGING. A release of a team that is not official stages: publish({ stage: true }) uploads
+// blobs and manifests and writes neither index. promote() lists what it staged once a site owner
+// approves it, and delist() takes a pack out of both indexes.
 import { existsSync, readdirSync, statSync } from "node:fs";
 import { readFile, writeFile } from "node:fs/promises";
 import { join } from "node:path";
@@ -153,7 +157,9 @@ function nextVersion(liveVersions, stagedVersions, bump) {
 // With `bump`, a changed pack gets a new version in its .toc, and the version alone never counts as a change.
 // `packs` are { folder, section, lang, pack?, team?: { slug, name, official } }: a pack with no team
 // is a page pack. `languages` are { code, name, native }, named in index-v2.json for the packs it lists.
-export async function publish({ store, packs: allPacks, languages = [], distDir, signingKey, minSpoken, latestSpoken, cache, now = new Date(), dryRun = false, allowRemovals = false, onlyPresent = false, bump = null, archiveUrl, fetchImpl = fetch, log = console.log }) {
+// With `stage`, it uploads the blobs and manifests and writes no index: it returns `staged`, the
+// entries promote() lists once a site owner approves them (docs/platform/TEAMS.md, *Releases*).
+export async function publish({ store, packs: allPacks, languages = [], distDir, signingKey, minSpoken, latestSpoken, cache, now = new Date(), dryRun = false, allowRemovals = false, onlyPresent = false, bump = null, stage = false, archiveUrl, fetchImpl = fetch, log = console.log }) {
   const publicKey = publicKeyOf(signingKey);
   // The bucket's name is masked in CI logs; this says which channel a run signed for.
   log(`signing with ${publicKey}`);
@@ -257,14 +263,14 @@ export async function publish({ store, packs: allPacks, languages = [], distDir,
   log(`${blobs.size} new blobs, ${bytes} bytes${dryRun ? " (dry run: nothing sent)" : ""}`);
   const result = { changed: changes.map((c) => c.folder), blobs: blobs.size, bytes, rev: null, version };
   // A publish that failed between the two writes left index.json behind; with nothing new, this
-  // one still brings it up to date.
-  const behind = !current || canonical(legacyPacks(live)) !== canonical(legacy?.value.packs ?? {})
-    || canonical(record.addons ?? null) !== canonical(addons ?? null);
+  // one still brings it up to date. A staged publish writes no index, so it has none to bring up to date.
+  const behind = !stage && (!current || canonical(legacyPacks(live)) !== canonical(legacy?.value.packs ?? {})
+    || canonical(record.addons ?? null) !== canonical(addons ?? null));
   const named = Object.fromEntries(languages.map(({ code, name, native }) => [code, { code, name, native }]));
   // Files unchanged, but a team renamed or made official, or a language renamed.
   const relabelled = Object.keys(retagged).length > 0
     || canonical(listedLanguages({ ...live, ...retagged }, record, named)) !== canonical(record.languages ?? {});
-  if (dryRun || (changes.length === 0 && !behind && !relabelled)) return result;
+  if (dryRun || (changes.length === 0 && !behind && !relabelled)) return stage ? { ...result, staged: { packs: {}, languages: {} } } : result;
 
   let done = 0;
   await eachLimit([...blobs], 16, async ([sha, b]) => {
@@ -295,6 +301,16 @@ export async function publish({ store, packs: allPacks, languages = [], distDir,
       rev, manifestSha256: sha256Text(sealed.signed), fileCount: manifest.fileCount, totalSize: manifest.totalSize, requires: c.requires,
       ...packFields(given.get(c.folder)),
     };
+  }
+  if (stage) {
+    // What promote() lists once a site owner approves it, with the rev each was staged over.
+    const staged = Object.fromEntries(
+      Object.entries(entries).map(([folder, entry]) => [folder, { ...entry, baseRev: live[folder]?.rev ?? null, version }]),
+    );
+    const stagedLanguages = Object.fromEntries(Object.entries(named).filter(([code]) => Object.values(staged).some((e) => e.lang === code)));
+    const folders = Object.keys(staged);
+    log(folders.length > 0 ? `staged ${rev ?? "new metadata"} for ${folders.join(", ")}; no index changed` : "nothing to stage");
+    return { ...result, rev, staged: { packs: staged, languages: stagedLanguages } };
   }
   await writeIndexes({ store, signingKey, now, read: { legacy, current, record, addons }, packs: { ...live, ...entries }, languages: named });
   log(rev ? `index.json now at ${rev} for ${result.changed.join(", ")}` : "the indexes brought up to date");
@@ -341,4 +357,54 @@ export async function writeIndexes({ store, signingKey, now, read: { legacy, cur
     if (err instanceof ConflictError) throw err;
     throw new Error(`index.json is behind index-v2.json until the next publish rewrites it: ${err.message}`, { cause: err });
   }
+}
+
+/**
+ * Lists a staged release, as publish({ stage: true }) returned it, in both indexes. Refuses a pack
+ * whose live rev is not the one it was staged over, since listing it would undo a newer version,
+ * and one whose manifest is not on the channel as staged. Nothing is written unless every pack passes.
+ */
+export async function promote({ store, signingKey, staged, now = new Date(), log = console.log }) {
+  const publicKey = publicKeyOf(signingKey);
+  log(`signing with ${publicKey}`);
+  const read = await readIndexes(store, publicKey);
+  const live = read.record.packs ?? {};
+  const entries = {};
+  for (const [folder, { baseRev = null, version: _version, ...entry }] of Object.entries(staged.packs ?? {})) {
+    if (!PACK_ID.test(folder)) throw new Error(`${folder} is not a pack id the manager accepts`);
+    if ((live[folder]?.rev ?? null) !== baseRev) {
+      throw new Error(`${folder} changed on the channel since it was staged: ask ${entry.team?.name ?? entry.team?.slug ?? "its team"} to release again`);
+    }
+    const manifest = await readSigned(store, `packs/${folder}/${entry.rev}.json`, publicKey);
+    if (!manifest) throw new Error(`${folder} has no manifest packs/${folder}/${entry.rev}.json on the channel`);
+    if (sha256Text(manifest.signed) !== entry.manifestSha256) throw new Error(`packs/${folder}/${entry.rev}.json does not match what was staged`);
+    entries[folder] = entry;
+  }
+  const promoted = Object.keys(entries);
+  if (promoted.length === 0) {
+    log("nothing staged to promote");
+    return { promoted };
+  }
+  await writeIndexes({ store, signingKey, now, read, packs: { ...live, ...entries }, languages: staged.languages ?? {} });
+  log(`index-v2.json now lists ${promoted.join(", ")}`);
+  return { promoted };
+}
+
+/** Takes `folders` out of both indexes. Their manifests and blobs stay, as nothing deletes them. */
+export async function delist({ store, signingKey, folders, now = new Date(), log = console.log }) {
+  const publicKey = publicKeyOf(signingKey);
+  log(`signing with ${publicKey}`);
+  const read = await readIndexes(store, publicKey);
+  const packs = { ...(read.record.packs ?? {}) };
+  const delisted = [];
+  for (const folder of folders) {
+    if (!packs[folder]) {
+      log(`${folder} is not listed: nothing to take out`);
+      continue;
+    }
+    delete packs[folder];
+    delisted.push(folder);
+  }
+  if (delisted.length > 0) await writeIndexes({ store, signingKey, now, read, packs });
+  return { delisted };
 }

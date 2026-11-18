@@ -79,6 +79,24 @@ test("a run with no team, as one started before teams released, names none", asy
   assert.match(readFileSync(join(runDir, "log"), "utf8"), /^args: places deDE --bump=patch$/m);
 });
 
+test("a staged release writes what it staged into the run's directory", async () => {
+  const tools = fakeTools(`console.log("args: " + process.argv.slice(2).join(" "));`);
+  const runDir = runDirectory();
+  assert.equal(await runJob({ runDir, section: "places", lang: "deDE", team: "stimmen", stage: true, env: { PATH: process.env.PATH }, tools }), 0);
+  const staged = join(runDir, "staged.json");
+  assert.match(readFileSync(join(runDir, "log"), "utf8"), new RegExp(`^args: places deDE --bump=patch --team=stimmen --stage=${staged}$`, "m"));
+});
+
+for (const kind of ["promote", "delist"]) {
+  test(`a ${kind} runs ${kind}.mjs on the input the site left in the run's directory`, async () => {
+    const tools = fakeTools(`process.exit(9);`);
+    writeFileSync(join(tools, `scripts/manager/${kind}.mjs`), `console.log("${kind}: " + process.argv.slice(2).join(" "));`);
+    const runDir = runDirectory();
+    assert.equal(await runJob({ runDir, kind, section: "places", lang: "deDE", team: "stimmen", env: { PATH: process.env.PATH }, tools }), 0);
+    assert.match(readFileSync(join(runDir, "log"), "utf8"), new RegExp(`^${kind}: ${join(runDir, "input.json")}$`, "m"));
+  });
+}
+
 test("a failing release is recorded, not thrown", async () => {
   const tools = fakeTools(`console.error("error: nope"); process.exit(3);`);
   const runDir = runDirectory();

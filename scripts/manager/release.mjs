@@ -2,17 +2,22 @@
 // One section and language onto the Manager channel, with no clips on this machine and no zip:
 // pointers for the clips, the pack's generated files from the database, then the publish.
 //
-//   node scripts/manager/release.mjs <quests|places|readables|bosses> <lang> [--team=<slug>] [--bump=patch|minor|major] [--dry-run] [--allow-removals] [--stage-only]
+//   node scripts/manager/release.mjs <quests|places|readables|bosses> <lang> [--team=<slug>] [--bump=patch|minor|major] [--dry-run] [--allow-removals] [--stage-only] [--stage[=<file>]]
 //
 // --team names the team the release builds for, which the site passes; without it, the
 // language's privileged team. Every step reads that team's live takes (SPOKEN_RELEASE_TEAM,
 // pipelines/lib/release-team.mjs).
 //
+// --stage publishes without listing: blobs and manifests go up, no index changes, and what a
+// site owner's approval would list goes to <file> (dist/staged.json without one) for
+// promote.mjs. The site stages every release of a team that is not official.
+//
 // DATABASE_URL names the database; a checkout's LOCAL_DB wins for the steps that read it. The
 // channel's keys come as for cli.mjs. Each step prints `==> step n/m`, then its own progress, and
-// the last line says what came of it: `==> released <version>` or `==> nothing changed`.
+// the last line says what came of it: `==> released <version>`, `==> staged <version>` or
+// `==> nothing changed`.
 import { spawnSync } from "node:child_process";
-import { readFile } from "node:fs/promises";
+import { readFile, writeFile } from "node:fs/promises";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -47,10 +52,12 @@ const [section, lang, ...flags] = process.argv.slice(2);
 const quests = section === "quests";
 const bump = flags.find((flag) => flag.startsWith("--bump="))?.slice("--bump=".length) ?? "patch";
 if ((!quests && !LOOKUPS[section]) || !/^[a-z]{2}[A-Z]{2}$/.test(lang ?? "") || !BUMPS.includes(bump)) {
-  console.error("usage: release.mjs <quests|places|readables|bosses> <lang> [--team=<slug>] [--bump=patch|minor|major] [--dry-run] [--allow-removals] [--stage-only]");
+  console.error("usage: release.mjs <quests|places|readables|bosses> <lang> [--team=<slug>] [--bump=patch|minor|major] [--dry-run] [--allow-removals] [--stage-only] [--stage[=<file>]]");
   process.exit(2);
 }
 const stageOnly = flags.includes("--stage-only");
+const stageFlag = flags.find((flag) => flag === "--stage" || flag.startsWith("--stage="));
+const stagedFile = stageFlag ? stageFlag.slice("--stage=".length) || join(ROOT, "dist", "staged.json") : null;
 const teamSlug = flags.find((flag) => flag.startsWith("--team="))?.slice("--team=".length) || null;
 
 /** The team and language the release builds for, and every language's names, read before any step runs. */
@@ -119,6 +126,7 @@ try {
         cache: new Map(),
         bump,
         dryRun,
+        stage: Boolean(stagedFile),
         allowRemovals: flags.includes("--allow-removals"),
       });
     }]]),
@@ -127,7 +135,11 @@ try {
     console.log(`==> step ${i + 1}/${steps.length}: ${name}`);
     await work();
   }
-  if (published?.version) console.log(`==> ${dryRun ? "would release" : "released"} ${published.version}: ${published.changed.join(", ")}`);
+  const staged = published?.staged ? Object.keys(published.staged.packs) : [];
+  if (staged.length > 0 && !dryRun) {
+    await writeFile(stagedFile, `${JSON.stringify(published.staged, null, 2)}\n`);
+    console.log(`==> staged ${published.version ?? "(no version)"}: ${staged.join(", ")}`);
+  } else if (published?.version) console.log(`==> ${dryRun ? "would release" : "released"} ${published.version}: ${published.changed.join(", ")}`);
   else if (published) console.log("==> nothing changed: nothing was released");
   else console.log("==> done");
 } catch (error) {
