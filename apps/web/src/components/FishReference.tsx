@@ -106,7 +106,9 @@ export default function FishReference({
         headers: { "Content-Type": "application/json" },
         ...init,
       });
-      const body = (await response.json().catch(() => ({}))) as { reference?: ReferenceView | null; error?: string };
+      // A failure may be a proxy's page rather than the route's JSON: its status is the message. A
+      // success that does not parse throws, and the panel keeps what it showed.
+      const body = (await (response.ok ? response.json() : response.json().catch(() => ({})))) as { reference?: ReferenceView | null; error?: string };
       if (!response.ok) throw new Error(body.error ?? `failed (${response.status})`);
       const next = body.reference ?? null;
       setReference(next);
@@ -133,7 +135,9 @@ export default function FishReference({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ replace: false }),
       });
-      const body = (await response.json().catch(() => ({}))) as { samples?: Sample[]; error?: string };
+      // A failure may be a proxy's page rather than the route's JSON: its status is the message. A
+      // success that does not parse throws, and the panel keeps what it showed.
+      const body = (await (response.ok ? response.json() : response.json().catch(() => ({})))) as { samples?: Sample[]; error?: string };
       if (!response.ok) throw new Error(body.error ?? `import failed (${response.status})`);
       onSamples(body.samples ?? []);
     } catch (err) {
