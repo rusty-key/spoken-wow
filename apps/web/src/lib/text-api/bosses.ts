@@ -1,11 +1,12 @@
 import "server-only";
 
-import { baseCatalogue, type BossEntry } from "@/lib/bosses/catalogue";
+import { baseCatalogue, catalogue, type BossEntry } from "@/lib/bosses/catalogue";
 import { bossIdOf, parseBossLineId, restoreStory, retireStory, saveStory } from "@/lib/bosses/story";
 import { query } from "@/lib/db";
 import { BASE_LANG, type Lang } from "@/lib/lang";
 
 import { catalogueReads, nameVersionOf, nameVersions } from "./catalogue-page";
+import { saveNarratedOverride } from "./narrated-override";
 import type { NameTarget, SectionApi, TextItem } from "./types";
 
 function targetOf(entry: BossEntry): NameTarget {
@@ -26,6 +27,7 @@ async function itemsOf(lang: Lang, entries: BossEntry[]): Promise<TextItem[]> {
   return entries.map((entry) => ({
     id: entry.id,
     text: entry.text,
+    override: entry.override?.text ?? null,
     version: version.get(entry.bossId) ?? null,
     name: entry.nameMissing ? null : entry.name,
     nameVersion: nameVersionOf(names, targetOf(entry)),
@@ -35,14 +37,30 @@ async function itemsOf(lang: Lang, entries: BossEntry[]): Promise<TextItem[]> {
   }));
 }
 
+async function versionOf(lang: Lang, id: string): Promise<number | null> {
+  const parsed = parseBossLineId(id);
+  if (!parsed) return null;
+  const [row] = await query<{ version: number }>(
+    `select l."version" from "boss_line" l join "boss" b on b."id" = l."bossId"
+      where b."map" = $1 and b."key" = $2 and l."lang" = $3 and l."isCurrent"`,
+    [parsed.map, parsed.key, lang],
+  );
+  return row?.version ?? null;
+}
+
 export const bosses: SectionApi = {
   filters: { instance: /^-?\d+$/ },
 
-  ...catalogueReads(baseCatalogue, itemsOf, (e, f) => f.instance === undefined || e.map === Number(f.instance)),
+  ...catalogueReads(catalogue, itemsOf, (e, f) => f.instance === undefined || e.map === Number(f.instance)),
 
   async saveText({ lang, id, text, note, by, expectedVersion, audit }) {
     const saved = await saveStory({ lang, lineId: id, text: text ?? "", note, editedBy: by, expectedVersion, audit });
     return { version: saved.version, lines: [id], wrote: saved.wrote };
+  },
+
+  async saveOverride(args) {
+    const entry = (await catalogue(args.lang)).find((e) => e.id === args.id);
+    return saveNarratedOverride("bosses", args, entry?.text ?? null, await versionOf(args.lang, args.id));
   },
 
   async nameTarget(_lang, id) {
@@ -50,16 +68,7 @@ export const bosses: SectionApi = {
     return bossId === null ? null : { kind: "boss", entityId: String(bossId) };
   },
 
-  async version(lang, id) {
-    const parsed = parseBossLineId(id);
-    if (!parsed) return null;
-    const [row] = await query<{ version: number }>(
-      `select l."version" from "boss_line" l join "boss" b on b."id" = l."bossId"
-        where b."map" = $1 and b."key" = $2 and l."lang" = $3 and l."isCurrent"`,
-      [parsed.map, parsed.key, lang],
-    );
-    return row?.version ?? null;
-  },
+  version: versionOf,
 
   restore: (lang, id, _variant, version, by) => restoreStory(id, version, lang, by),
 

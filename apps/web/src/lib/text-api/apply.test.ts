@@ -35,7 +35,7 @@ afterAll(async () => {
 
 function apply(section: Source, input: ItemInput, ctx = context) {
   const known = new Set([keyOf(input.id, typeof input.variant === "number" ? input.variant : 0)]);
-  return applyItem(section, ctx, input, known, AUDIT);
+  return applyItem(section, ctx, input, known, AUDIT, "original");
 }
 
 describe("text", () => {
@@ -67,7 +67,7 @@ describe("text", () => {
   });
 
   it("an unknown id is unknown_id", async () => {
-    const result = await applyItem("places", context, { id: "z:nothing", text: "글." }, new Set(), AUDIT);
+    const result = await applyItem("places", context, { id: "z:nothing", text: "글." }, new Set(), AUDIT, "original");
     expect(result.error).toMatchObject({ code: "unknown_id" });
   });
 

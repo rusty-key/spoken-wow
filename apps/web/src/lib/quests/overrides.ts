@@ -8,6 +8,7 @@
  * A file has the same name in every language, so an override is its language's, and is read and
  * written as that language's team.
  */
+import { auditDetail, type ApiAudit } from "../activity/kinds";
 import { recordActivity } from "../activity/store";
 import { fileIndex } from "../audio";
 import { spokenHash } from "../generation/spoken-hash";
@@ -77,6 +78,7 @@ export async function writeOverride(
   text: string,
   // Nullable to match the column, which is SET NULL: who rewrote a line outlives the account.
   userId: string | null,
+  audit?: ApiAudit,
 ): Promise<LineOverride> {
   const original = (await fileIndex(lang)).get(file);
   // "before" is read in the same statement, from the snapshot the upsert started with, so
@@ -107,14 +109,19 @@ export async function writeOverride(
       source: "quests",
       subject: file,
       lineId,
-      detail: { text, before },
+      detail: { text, before, ...auditDetail(audit, null) },
     });
   }
   return toOverride(row);
 }
 
 /** `by` is who reverted it, for the activity log: the delete leaves nothing else behind. */
-export async function clearOverride(lang: Lang, file: string, by: string | null): Promise<boolean> {
+export async function clearOverride(
+  lang: Lang,
+  file: string,
+  by: string | null,
+  audit?: ApiAudit,
+): Promise<boolean> {
   const { rows } = await queryAs<{ lineId: string; text: string }>(
     lang,
     `delete from "line_override" where "file" = $1 and "lang" = $2 returning "lineId", "text"`,
@@ -129,7 +136,7 @@ export async function clearOverride(lang: Lang, file: string, by: string | null)
       source: "quests",
       subject: file,
       lineId: rows[0].lineId,
-      detail: { before: rows[0].text },
+      detail: { before: rows[0].text, ...auditDetail(audit, null) },
     });
   }
   return rows.length > 0;

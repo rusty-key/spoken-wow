@@ -260,6 +260,15 @@ describe("writeLayer", () => {
     expect(writeLayer(context, "override")).toBe("override");
   });
 
+  it("refuses a write with no layer from a context that backs neither", async () => {
+    const context = await contextWith([{ lang: "deDE", capability: "text" }]);
+    const bare = { ...context, layers: { original: false, override: false } };
+    expect(await refusal(writeLayer(bare, undefined))).toEqual([
+      403,
+      { error: "this token's owner holds neither text nor regenerate in deDE" },
+    ]);
+  });
+
   it("keeps a text-only owner on the original", async () => {
     const context = await contextWith([{ lang: "deDE", capability: "text" }]);
     expect(context.layers).toEqual({ original: true, override: false });

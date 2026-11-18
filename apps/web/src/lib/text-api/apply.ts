@@ -11,7 +11,7 @@ import type { Source } from "@/lib/sections";
 
 import { createBatch } from "./batches";
 import { describeError, type ErrorCode } from "./errors";
-import type { TokenContext } from "./guard";
+import type { Layer, TokenContext } from "./guard";
 import { sections } from "./index";
 import { BAD_VARIANT, hasNul, isVariant, keyOf, type NameTarget } from "./types";
 
@@ -31,7 +31,13 @@ export type ItemInput = {
 };
 
 type FieldResult =
-  | { status: "updated" | "unchanged"; version: number; lines?: string[]; entity?: NameTarget }
+  | {
+      status: "updated" | "unchanged" | "removed";
+      layer: Layer;
+      version: number | null;
+      lines?: string[];
+      entity?: NameTarget;
+    }
   | { status: "error"; code: ErrorCode; message: string };
 
 type ItemResult = {
@@ -47,6 +53,9 @@ function fieldError(error: unknown): FieldResult {
 }
 
 const refused = (message: string): FieldResult => ({ status: "error", code: "invalid", message });
+
+const SHORT_IS_ORIGINAL = 'short is original text; send it without a layer or with "layer": "original"';
+const NAME_IS_ORIGINAL = 'a name is original text; send it without a layer or with "layer": "original"';
 
 export function noteError(note: unknown): string | null {
   if (note === undefined || note === null) return null;
@@ -93,6 +102,14 @@ function checkedText(input: ItemInput): string | null {
   return null;
 }
 
+/** An override replaces what is spoken, so null removes it and short, never spoken, has none. */
+function checkedOverride(input: ItemInput): string | null {
+  if (input.short !== undefined) return SHORT_IS_ORIGINAL;
+  if (input.text === null) return null;
+  if (typeof input.text !== "string" || !input.text.trim()) return "text must be a string that is not empty, or null";
+  return lengthError("text", input.text, MAX_TEXT);
+}
+
 type Write = {
   section: Source;
   context: TokenContext;
@@ -100,9 +117,32 @@ type Write = {
   variant: number;
   note: string | null;
   audit: ApiAudit;
+  layer: Layer;
 };
 
-async function writeText({ section, context, input, variant, note, audit }: Write): Promise<FieldResult> {
+async function writeOverrideText({ section, context, input, variant, audit }: Write): Promise<FieldResult> {
+  const problem = checkedOverride(input);
+  if (problem) return refused(problem);
+  try {
+    const saved = await sections[section].saveOverride({
+      lang: context.lang,
+      id: input.id,
+      variant,
+      text: input.text as string | null,
+      by: context.userId,
+      expectedVersion: (input.expectedVersion as number | null | undefined) ?? null,
+      audit,
+    });
+    const status = saved.removed ? "removed" : saved.wrote ? "updated" : "unchanged";
+    return { status, layer: "override", version: saved.version, lines: saved.lines };
+  } catch (error) {
+    return fieldError(error);
+  }
+}
+
+async function writeText(write: Write): Promise<FieldResult> {
+  if (write.layer === "override") return writeOverrideText(write);
+  const { section, context, input, variant, note, audit } = write;
   const problem = checkedText(input);
   if (problem) return refused(problem);
   try {
@@ -117,13 +157,14 @@ async function writeText({ section, context, input, variant, note, audit }: Writ
       expectedVersion: (input.expectedVersion as number | null | undefined) ?? null,
       audit,
     });
-    return { status: saved.wrote ? "updated" : "unchanged", version: saved.version, lines: saved.lines };
+    return { status: saved.wrote ? "updated" : "unchanged", layer: "original", version: saved.version, lines: saved.lines };
   } catch (error) {
     return fieldError(error);
   }
 }
 
-async function writeName({ section, context, input, variant, note, audit }: Write): Promise<FieldResult> {
+async function writeName({ section, context, input, variant, note, audit, layer }: Write): Promise<FieldResult> {
+  if (layer === "override") return refused(NAME_IS_ORIGINAL);
   if (typeof input.name !== "string" || !input.name.trim()) return refused("name must be a string that is not empty");
   const problem = lengthError("name", input.name, MAX_NAME);
   if (problem) return refused(problem);
@@ -140,7 +181,7 @@ async function writeName({ section, context, input, variant, note, audit }: Writ
       expectedVersion: (input.expectedNameVersion as number | null | undefined) ?? null,
       audit,
     });
-    return { status: saved.wrote ? "updated" : "unchanged", version: saved.version, entity: target };
+    return { status: saved.wrote ? "updated" : "unchanged", layer: "original", version: saved.version, entity: target };
   } catch (error) {
     return fieldError(error);
   }
@@ -161,9 +202,10 @@ export async function applyItem(
   input: ItemInput,
   known: Set<string>,
   audit: ApiAudit,
+  layer: Layer,
 ): Promise<ItemResult> {
   const problem = shapeError(section, input);
-  return problem ? refusedItem(input.id, problem) : applyChecked(section, context, input, known, audit);
+  return problem ? refusedItem(input.id, problem) : applyChecked(section, context, input, known, audit, layer);
 }
 
 async function applyChecked(
@@ -172,6 +214,7 @@ async function applyChecked(
   input: ItemInput,
   known: Set<string>,
   audit: ApiAudit,
+  layer: Layer,
 ): Promise<ItemResult> {
   const variant = variantOf(input);
   const head = { id: input.id, ...(section === "quests" ? { variant } : {}) };
@@ -179,7 +222,8 @@ async function applyChecked(
     return { ...head, error: { code: "unknown_id", message: `no item ${input.id} in ${section}` } };
   }
 
-  const write = { section, context, input, variant, note: typeof input.note === "string" ? input.note : null, audit };
+  const note = typeof input.note === "string" ? input.note : null;
+  const write = { section, context, input, variant, note, audit, layer };
   return {
     ...head,
     ...(input.text !== undefined || input.short !== undefined ? { text: await writeText(write) } : {}),
@@ -208,6 +252,7 @@ export async function applyItems(
   context: TokenContext,
   items: unknown[],
   note: string | null,
+  layer: Layer,
 ): Promise<{ batchId: string; results: ItemResult[] }> {
   const wanted = items
     .filter(isItem)
@@ -243,7 +288,7 @@ export async function applyItems(
       continue;
     }
     seen.add(key);
-    results.push(await applyChecked(section, context, input, known, audit));
+    results.push(await applyChecked(section, context, input, known, audit, layer));
   }
   return { batchId, results };
 }

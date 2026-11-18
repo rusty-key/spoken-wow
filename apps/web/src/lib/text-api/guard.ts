@@ -59,7 +59,11 @@ export function backedScopes(
  */
 export function writeLayer(context: TokenContext, requested: unknown): Layer | Response {
   const refuse = (status: number, error: string) => Response.json({ error }, { status });
-  if (requested === undefined) return context.layers.original ? "original" : "override";
+  if (requested === undefined) {
+    if (context.layers.original) return "original";
+    if (context.layers.override) return "override";
+    return refuse(403, `this token's owner holds neither text nor regenerate in ${context.lang}`);
+  }
   if (requested === "original") {
     return context.layers.original
       ? "original"

@@ -12,11 +12,11 @@ import { momentOf, momentSql, answersQuestMomentSql } from "@/lib/contributions/
 import { query } from "@/lib/db";
 import { BASE_LANG, type Lang } from "@/lib/lang";
 import { branchesOnPlayerGender } from "@/lib/player-words";
-import { overrideOf, type LineOverride } from "@/lib/quests/override";
-import { readOverrides } from "@/lib/quests/overrides";
+import { OverrideError, overrideOf, validateOverride, type LineOverride } from "@/lib/quests/override";
+import { clearOverride, readOverrides, writeOverride } from "@/lib/quests/overrides";
 import { restoreQuestText, retireQuestText, saveQuestText } from "@/lib/quests/text";
 
-import { Refused } from "./errors";
+import { checkOriginalVersion, Refused, untranslated } from "./errors";
 import { decodeCursor, encodeCursor, hasNul, isVariant, keyOf, type SectionApi, type TextItem } from "./types";
 
 type Row = {
@@ -138,6 +138,17 @@ export function listSql(
   return { text: linesSql(where, `limit ${add(limit + 1)}`, scope), params };
 }
 
+async function lineOf(lang: Lang, id: string, variant: number): Promise<Row | null> {
+  if (hasNul(id)) return null;
+  const rows = await query<Row>(
+    linesSql(`where ln."lineId" = $3 and ln."variant" = $4`, "", (alias) => answersQuestMomentSql(`${alias}."lineId"`, "$5")),
+    [lang, BASE_LANG, id, variant, momentOf(id)],
+  );
+  return rows[0] ?? null;
+}
+
+const GENDER_SPLIT = "an override cannot split a line by the reader's gender; that changes the original text";
+
 export const quests: SectionApi = {
   filters: {
     quest: /^\d{1,9}$/,
@@ -155,17 +166,8 @@ export const quests: SectionApi = {
   },
 
   async one(lang, id, variant) {
-    if (hasNul(id)) return null;
-    const [rows, overrides] = await Promise.all([
-      query<Row>(
-        linesSql(`where ln."lineId" = $3 and ln."variant" = $4`, "", (alias) =>
-          answersQuestMomentSql(`${alias}."lineId"`, "$5"),
-        ),
-        [lang, BASE_LANG, id, variant, momentOf(id)],
-      ),
-      readOverrides(lang),
-    ]);
-    return rows[0] ? toItem(rows[0], overrides) : null;
+    const [line, overrides] = await Promise.all([lineOf(lang, id, variant), readOverrides(lang)]);
+    return line ? toItem(line, overrides) : null;
   },
 
   async known(lang, asked) {
@@ -216,6 +218,32 @@ export const quests: SectionApi = {
       expectedVersion,
       audit,
     });
+  },
+
+  async saveOverride({ lang, id, variant, text, by, expectedVersion, audit }) {
+    const line = await lineOf(lang, id, variant);
+    if (!line || line.text === null) throw untranslated(lang);
+    checkOriginalVersion(line.version, expectedVersion);
+    // The file the Explorer's rewrite writes: named by the language's row, else by English's, so
+    // the site and the API edit one override.
+    const file = audioRelPath(line);
+    const done = (wrote: boolean, removed: boolean) => ({ version: line.version, lines: [id], wrote, removed });
+    if (text === null) {
+      const removed = await clearOverride(lang, file, by, audit);
+      return done(removed, removed);
+    }
+    // A split rewrites the moment's original lines, which every team voices.
+    if (branchesOnPlayerGender(text)) throw new Refused(GENDER_SPLIT);
+    let draft;
+    try {
+      draft = validateOverride({ file, lineId: line.lineId, text }, lang);
+    } catch (error) {
+      if (error instanceof OverrideError) throw new Refused(error.message);
+      throw error;
+    }
+    const before = overrideOf(await readOverrides(lang), file)?.text;
+    await writeOverride(lang, file, draft.lineId, draft.text, by, audit);
+    return done(before !== draft.text, false);
   },
 
   async nameTarget(lang, id, variant) {

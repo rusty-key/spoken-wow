@@ -45,7 +45,7 @@ afterAll(async () => {
   await closeDb();
 });
 
-const run = (section: Source, items: unknown[]) => applyItems(section, context, items, null);
+const run = (section: Source, items: unknown[]) => applyItems(section, context, items, null, "original");
 const restoreBatch = async (batchId: string, by: string) => undo((await getBatch(batchId))!, by);
 const textOf = async (section: Source, id: string, variant = 0) => (await sections[section].one(LANG, id, variant))?.text;
 
@@ -102,8 +102,8 @@ describe("restoreBatch", () => {
     });
     const known = new Set([keyOf(f.boss.lineId, 0)]);
     const audit = { tokenId: context.tokenId, batchId };
-    await applyItem("bosses", context, { id: f.boss.lineId, name: "첫 이름" }, known, audit);
-    await applyItem("bosses", context, { id: f.boss.lineId, name: "둘째 이름" }, known, audit);
+    await applyItem("bosses", context, { id: f.boss.lineId, name: "첫 이름" }, known, audit, "original");
+    await applyItem("bosses", context, { id: f.boss.lineId, name: "둘째 이름" }, known, audit, "original");
 
     expect((await restoreBatch(batchId, f.user)).map((r) => r.status)).toEqual(["restored", "retired"]);
     expect((await sections.bosses.one(LANG, f.boss.lineId, 0))?.name).toBeNull();
