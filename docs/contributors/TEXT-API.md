@@ -1,8 +1,8 @@
 # Text API
 
-For text maintainers who want a script or an AI agent to read and change their language's text
-on spoken.quest. Everything here does what the site's edit dialogs do: each change is a new
-version under your name, listed in the activity log.
+For text maintainers and audio team members who want a script or an AI agent to read and change
+their language's text on spoken.quest. Everything here does what the site's edit dialogs do: each
+change is made under your name and listed in the activity log.
 
 Writes go live at once, with no review. The text routes make no audio and spend no credits. An edited
 line reads as "audio outdated" until someone regenerates it, which a generate token can do (see
@@ -11,13 +11,13 @@ line reads as "audio outdated" until someone regenerates it, which a generate to
 ## Getting a token
 
 Open your **Profile**. If you are a text maintainer, or hold regenerate, in a language, there is
-an **API tokens** section. Choose a label, a language, no text, read or read-and-write access (the
-last two need text in that language), and an expiry. Tick **Generate audio on my key** to let the
+an **API tokens** section. Choose a label, a language, no text, read or read-and-write access, and
+an expiry. What a write changes depends on what you hold (see *Original or override*). Tick **Generate audio on my key** to let the
 token queue audio too; that needs regenerate, spends your own ElevenLabs or fish.audio key, and
 stops working when you lose regenerate. The token is shown once, so copy it then.
 
 A token stops working when it expires, when you revoke it, or when you lose what it needs in its
-language: text for a read or write token, regenerate for a generate token. It covers one language. All requests send it as a header:
+language: text or regenerate for a read or write token, regenerate for a generate token. It covers one language. All requests send it as a header:
 
 ```sh
 curl -H "Authorization: Bearer $SPOKEN_TOKEN" https://spoken.quest/api/v1
@@ -69,15 +69,16 @@ URL-encode an id in a path, because place and boss ids can contain spaces:
 places only. `variant` is on quest lines only, because a few line ids name two different lines; a
 single-item URL takes `?variant=`, default 0, and refuses a `variant` in its body.
 
-`override` is on quest lines only. When it is not null, it is what the line is spoken as in place of
-`text`: a rewrite made with the pencil on the site. This API only reads it. A `PATCH` changes `text`
-and leaves `override` in place, so the line keeps speaking the override.
+`override` is your team's override: when it is not null, it is what your team's audio speaks in
+place of `text`. The text shown on the site and in game stays `text`. Another team's overrides are
+never listed. Writing the original leaves `override` in place, so the line keeps speaking the
+override; see *Original or override* to write the override itself.
 
 ## Reference text
 
 `GET /api/v1/{section}/reference` gives the English text of a section, whatever language the token
 is for. It takes the same filters, `cursor` and `limit` as the list, and its items carry `id`,
-`variant` (quests), `text`, `override` (quests), `short` (places), `name` and `group`, with no
+`variant` (quests), `text`, `override`, `short` (places), `name` and `group`, with no
 versions. Any valid token can read it: one that reads or writes text, or one that generates.
 
 ```sh
@@ -149,7 +150,7 @@ The response has a `batchId` and one result per item, in order. Each item succee
 {
   "batchId": "…",
   "results": [
-    { "id": "z:1411", "text": { "status": "updated", "version": 4, "lines": ["z:1411"] } },
+    { "id": "z:1411", "text": { "status": "updated", "layer": "original", "version": 4, "lines": ["z:1411"] } },
     { "id": "z:9", "error": { "code": "unknown_id", "message": "…" } }
   ]
 }
@@ -159,6 +160,7 @@ The response has a `batchId` and one result per item, in order. Each item succee
 |---|---|
 | `updated` | a new version was written |
 | `unchanged` | the text was already this, so no version was written; reruns are safe |
+| `removed` | an override was removed (see *Original or override*) |
 | `conflict` | `expectedVersion` or `expectedNameVersion` did not match |
 | `unknown_id` | no such item |
 | `invalid` | the message says why |
@@ -169,9 +171,59 @@ Text and names have separate version numbers. Send `expectedVersion` for text an
 both guard an existing version only: a line with no text has nothing to compare, so they do not
 protect a first translation someone saved since you read it. The overwritten text stays in history.
 
-Text can be up to 5,000 characters and a name up to 200. A request can be at most 8 MB, past which
-the proxy answers 413 with no results, so split a run of very long texts. The same item twice in one
-request is `invalid` the second time.
+Text can be up to 5,000 characters and a name up to 200. A quest line's override can be up to
+2,000 characters, and a place's, readable's or boss's up to 5,000. A request can be at most 8 MB,
+past which the proxy answers 413 with no results, so split a run of very long texts. The same item
+twice in one request is `invalid` the second time.
+
+### Original or override
+
+Every line has its original text, which every team in the language shares and which is shown on the
+site and in game, and per team an optional override: what that team's audio speaks instead. Text
+maintainers write the original; whoever holds regenerate writes their team's overrides.
+
+A `PATCH` takes a top-level `layer`, `"original"` or `"override"`, for every item in the request,
+so one run writes one layer. Without it, a token writes the original when its owner is a text
+maintainer in the language, and otherwise their team's overrides. A text maintainer who also holds
+regenerate sends `"layer": "override"` to write the override. Each text and name result says which
+layer it wrote in `layer`.
+
+```sh
+curl -X PATCH -H "Authorization: Bearer $SPOKEN_TOKEN" -H "Content-Type: application/json" \
+  -d '{"layer": "override", "items": [{"id": "z:1411", "text": "…"}]}' \
+  "https://spoken.quest/api/v1/places"
+```
+
+A layer the owner may not write refuses the whole request, before anything is written:
+
+| Status | Message |
+|---|---|
+| 403 | `this token's owner is not a text maintainer in {lang}, so it writes only its team's overrides` |
+| 403 | `this token's owner does not hold regenerate in {lang}, so it cannot write overrides` |
+| 400 | `layer must be "original" or "override"` |
+
+A `layer` inside one of `items` makes that item `invalid`: `layer goes at the top of the body, not in an item`.
+
+On the override layer:
+
+- **`"text": null` removes the override.** The result is `removed`, or `unchanged` where there was
+  none. On the original layer a null text is `invalid`.
+- **`expectedVersion` guards the original.** An override has no versions of its own. When sent, it
+  must equal the original's current version, else `conflict`:
+  `the original text is at version {current}, not {expected}`. The result's `version` is the
+  original's.
+- **An override needs original text under it.** A line with no text in the language is `invalid`:
+  `this line has no {lang} text yet`.
+- **Names and `short` have no override.** Both are original text. A `name` is `invalid` with
+  `a name is original text; send it without a layer or with "layer": "original"`, and a `short`
+  with `short is original text; send it without a layer or with "layer": "original"`. A readable's
+  spoken title keeps the original name.
+- **No `$G` in a quest override.** It is `invalid`:
+  `an override cannot split a line by the reader's gender; that changes the original text`.
+- **A quest line spoken in another voice** is listed on the site as a voice line of its own, which
+  this API does not address. Overriding the plain line is `invalid`:
+  `this line is spoken in another voice; override it on the site`.
+- `note` is not kept with an override.
 
 ## Things that behave unexpectedly
 
@@ -250,17 +302,22 @@ curl -X POST -H "Authorization: Bearer $SPOKEN_TOKEN" \
 
 `/batches` lists your recent runs in the token's language, including one whose response you never
 received. A restore needs a write token in the same language as the run. A global admin may undo
-anyone's run.
+anyone's run. Each edit is undone only in a layer your token may write now, and an override only in
+the team that wrote it: by someone who still works in that team, or by a global admin, whose undo
+writes into that team and not their own.
 
 For each thing the run wrote, it reports one of:
 
 | Result | Meaning |
 |---|---|
-| `restored` | the version before the run is live again |
-| `retired` | it was a first translation, and the line reads as untranslated again |
+| `restored` | the version before the run is live again; for an override, the override before the run, or the one it removed |
+| `retired` | it was a first translation, and the line reads as untranslated again; for an override, the run made it, and the line speaks its original again |
 | `skipped`, `edited_since` | someone changed it since, and their edit stays |
 | `skipped`, `gender_split` | the run split a quest line by `$G`, which cannot be undone here; fix it by hand |
+| `skipped`, `not_allowed` | your token may not write that layer now, or the override's team is not the one you work in |
+| `skipped`, `retired_original` | the line's original text has since been retired, so the override the run replaced has nothing to stand on; the run's override stays |
 | `skipped`, `error` | it failed; the message says why, and the rest still ran |
 
-A name's result gives its `entity` instead of a line, since it may belong to several lines. Undo
+Each result names its `field`: `text`, `name` or `override`. A name's result gives its `entity`
+instead of a line, since it may belong to several lines. Undo
 restores what was live before; it does not delete history, so every version stays on the site.

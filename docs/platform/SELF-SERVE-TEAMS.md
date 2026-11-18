@@ -1,6 +1,6 @@
 # Self-serve teams
 
-Design, 2026-11-12. Requests and approval are built (plan 2) for new and unmaintained languages, the second team for a maintained one (plan 5a), and on the site the text layer for places, readables and bosses (plan 5b). The text API's override path is left to 5b2 and the Explorer's team picker to 5c. Builds on [`TEAMS.md`](TEAMS.md) phase 1.
+Design, 2026-11-12. Requests and approval are built (plan 2) for new and unmaintained languages, the second team for a maintained one (plan 5a), on the site the text layer for places, readables and bosses (plan 5b), and the text API's override layer (plan 5b2). The Explorer's team picker is left to 5c. Builds on [`TEAMS.md`](TEAMS.md) phase 1.
 
 ## Why
 
@@ -139,7 +139,7 @@ the ten client locales.
   string type. *(My call.)*
 - **Tokens that generate.** A token gains a separate opt-in `generate` scope, beside `read` and
   `write`. Existing tokens never gain spending power. A `generate` token works while its owner
-  holds `regenerate` in its language; text reads and writes need `text`, and override writes need `regenerate`. Each person creates
+  holds `regenerate` in its language; text reads need `text` or `regenerate`, original writes need `text`, and override writes need `regenerate`. Each person creates
   their own tokens; an admin does not issue tokens for members. *(My call.)*
 
 ## Second team in a language
@@ -165,11 +165,15 @@ site. The rest of phase 2 is distribution and stays out.
   the `text` grant, whatever team the maintainer works in. *(User.)*
 - **A second team's admin** sees only their own team's members, invites and grants. Its activity
   is filed under the second team.
-- **Tokens.** Only `text` writes the original text, in any language. A second team's token reads
-  its language's original text and writes its team's overrides when its owner holds `regenerate`,
-  and never writes the original (plan 5b2). A token route opts in to second teams, and one not yet
-  converted answers 403 to a second team's token. *(User.)* Until 5b2, the text routes answer 403 to
-  the token of anyone whose team in the language is a second team, text maintainers included.
+- **Tokens.** Only `text` writes the original text, in any language. A token reads its language's
+  original text, with its owner's team's overrides, when its owner holds `text` or `regenerate`,
+  and writes that team's overrides when its owner holds `regenerate`. A token route opts in to
+  second teams, and one not opted in answers 403 to a second team's token. *(User.)*
+- **The token's layer.** A write goes to the original or to the owner's team's overrides, chosen
+  per request by a top-level `layer`. With none, a text maintainer's token writes the original, as
+  it always did, and anyone else's writes the overrides; a maintainer who holds `regenerate` sends
+  `"layer": "override"` for theirs. `"layer": "original"` without `text` is refused with 403.
+  Undoing a run restores an override in the team that wrote it. *(My call, set by the controller.)*
 - **Releases and gender splits.** A second team cannot release yet, and cannot split a line by the
   reader's gender, since that rewrites the original every team voices. A plain override is written
   into its own team's layer.

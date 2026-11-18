@@ -35,7 +35,7 @@ export async function GET(request: Request) {
         "GET /api/v1/generations/{batchId}": "One batch: counts by state, credits, cost, and up to 100 recent failures. Needs a generate token.",
         "POST /api/v1/generations/{batchId}/stop": "Cancel the batch's pending jobs. Returns {cancelled}. Needs a generate token.",
         "GET /api/v1/batches": "This owner's recent mass updates in this language.",
-        "POST /api/v1/batches/{batchId}/restore": "Undo a mass update, except lines edited since and gender splits.",
+        "POST /api/v1/batches/{batchId}/restore": "Undo a mass update, except lines edited since, gender splits, and edits to a layer the token may not write now. An override is undone in the team that wrote it.",
         "GET /api/v1/lexicon": "The language's pronunciation lexicon: entries, version, sync.",
         "GET /api/v1/lexicon/{grapheme}": "One entry, matched ignoring case.",
         "PATCH /api/v1/lexicon/{grapheme}": "Replace or add one entry: {ipa | alias, confidence, note?, expectedVersion?}. Needs configure.",

@@ -89,6 +89,8 @@ exactly this, so it stays a site-level grant.
 - Receive text reports (see *Contributions and reports*).
 - Independent of team membership: a maintainer sees the text queue whatever team they work in, and
   text reports and contributions follow the `text` grant.
+- A maintainer's API token writes the original text by default, whatever team they work in, and
+  their team's overrides with `"layer": "override"` when they also hold `regenerate`.
 - Appointed by site owners only. A team admin cannot appoint one, and `admin` does not imply this
   role: migration 0092 appointed everyone who held `admin`, so nobody lost anything, and a new team
   admin edits original text only once a site owner appoints them.
@@ -350,7 +352,7 @@ Designed now so phase 1 does not paint it into a corner; built when the first su
 - **Text layer.** Per-team overrides generalise `line_override` from quest lines to every `source`.
   The text a team voices is its override where present, else the original, and a take's staleness
   is judged against that. Built for the site as `text_override`: places, readables and bosses are
-  overridden from their explorers. The token routes follow in plan 5b2.
+  overridden from their explorers, and the text API writes them with `"layer": "override"`.
 - **Edit UI** gives text maintainers their own way to edit the original, beside the team's override.
 
 ## Left to the builder
