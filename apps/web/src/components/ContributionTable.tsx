@@ -459,8 +459,10 @@ export default function ContributionTable({
   const [bulk, setBulk] = useState<{ next: ContributionStatus; done: number; total: number } | null>(null);
   /** What the last bulk run came to, until the next one starts. */
   const [bulkOutcome, setBulkOutcome] = useState<{ summary: string; refused: { id: number; message: string }[] } | null>(null);
-  /** "Keep all" asks twice: keeping writes quest lines, and a written quests row can't be reopened after. */
-  /** The rows "Keep all" was opened for: the confirm sends exactly these, even if the view changes. */
+  /**
+   * "Keep all" asks twice: keeping writes quest lines, and a written quests row can't be reopened
+   * after. The confirm holds the rows it was opened for, so a change of view doesn't change them.
+   */
   const [confirmAll, setConfirmAll] = useState<number[] | null>(null);
 
   /**
@@ -526,6 +528,11 @@ export default function ContributionTable({
   const cleanToKeep = matching.filter((row) => row.bulk && row.verdict === "clean" && stillNew(row)).map((row) => row.id);
   const dropToReject = matching.filter((row) => row.verdict === "drop" && stillNew(row)).map((row) => row.id);
   const [confirmDrop, setConfirmDrop] = useState<number[] | null>(null);
+  // A row decided from its own buttons while a confirm is open leaves it: the confirm must not
+  // send a rejected row back as accepted, or the other way round.
+  const undecided = (ids: number[] | null) => ids?.filter((id) => resolved[id] === undefined) ?? null;
+  const keepConfirmed = undecided(confirmAll);
+  const dropConfirmed = undecided(confirmDrop);
   const [showFilters, setShowFilters] = useState(Boolean(build || stage.length > 0 || searchIn !== "any"));
 
   /**
@@ -710,21 +717,21 @@ export default function ContributionTable({
             if (members.length === 0) return null;
             const action =
               group.verdict === "clean" && cleanToKeep.length > 1 ? (
-                confirmAll ? (
+                keepConfirmed ? (
                   <>
                     <span className="text-sm">
-                      Keep all {confirmAll.length}{pages > 1 ? " on every page" : ""}? A kept line can&apos;t be reopened once it is written.
+                      Keep all {keepConfirmed.length}{pages > 1 ? " on every page" : ""}? A kept line can&apos;t be reopened once it is written.
                     </span>
                     <button
                       type="button"
                       className="bs-btn bs-btn-primary"
-                      disabled={bulk !== null}
+                      disabled={bulk !== null || keepConfirmed.length === 0}
                       onClick={() => {
                         setConfirmAll(null);
-                        void resolveMany(confirmAll, "accepted");
+                        void resolveMany(keepConfirmed, "accepted");
                       }}
                     >
-                      Keep {confirmAll.length}
+                      Keep {keepConfirmed.length}
                     </button>
                     <button type="button" className="bs-btn bs-btn-text" onClick={() => setConfirmAll(null)}>
                       Cancel
@@ -736,19 +743,19 @@ export default function ContributionTable({
                   </button>
                 )
               ) : group.verdict === "drop" && dropToReject.length > 1 ? (
-                confirmDrop ? (
+                dropConfirmed ? (
                   <>
-                    <span className="text-sm">Drop all {confirmDrop.length}{pages > 1 ? " on every page" : ""}?</span>
+                    <span className="text-sm">Drop all {dropConfirmed.length}{pages > 1 ? " on every page" : ""}?</span>
                     <button
                       type="button"
                       className="bs-btn bs-btn-danger"
-                      disabled={bulk !== null}
+                      disabled={bulk !== null || dropConfirmed.length === 0}
                       onClick={() => {
                         setConfirmDrop(null);
-                        void resolveMany(confirmDrop, "rejected", "Failed the review checks");
+                        void resolveMany(dropConfirmed, "rejected", "Failed the review checks");
                       }}
                     >
-                      Drop {confirmDrop.length}
+                      Drop {dropConfirmed.length}
                     </button>
                     <button type="button" className="bs-btn bs-btn-text" onClick={() => setConfirmDrop(null)}>
                       Cancel
