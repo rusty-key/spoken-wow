@@ -37,6 +37,13 @@ test("the job gets the signing keys and only what it needs of the site's", async
   });
 });
 
+test("the job opens team releases where the site has them open, from the same line of app.env", async () => {
+  const shared = temp();
+  writeFileSync(join(shared, "app.env"), "SPOKEN_TEAM_RELEASES=1\n");
+  writeFileSync(join(shared, "release.env"), "R2_BUCKET=spoken-packs-staging\n");
+  assert.equal((await jobEnv(join(shared, "release.env"), { PATH: "/bin", HOME: "/h" })).SPOKEN_TEAM_RELEASES, "1");
+});
+
 test("release.env can send the archive's reads through the site; the job needs no recordings token", async () => {
   const shared = temp();
   writeFileSync(join(shared, "app.env"), "SPOKEN_ARCHIVE_URL=https://a\nSPOKEN_ARCHIVE_TOKEN=t\n");
