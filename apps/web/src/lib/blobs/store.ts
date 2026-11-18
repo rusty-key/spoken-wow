@@ -79,7 +79,7 @@ async function sendWithRetries(send: () => Promise<Response>): Promise<Response>
   return send();
 }
 
-export type S3Config = {
+type S3Config = {
   /** Scheme and host, no path: `https://<account>.r2.cloudflarestorage.com`, `https://s3.eu-west-1.amazonaws.com`. */
   endpoint: string;
   /** `auto` for R2 and GCS. */

@@ -54,6 +54,8 @@ export async function systemRows<R extends QueryResultRow = QueryResultRow>(text
 
 /** Tables a test may leave rows in under the borrowed team, deleted before the team is. */
 const STAMPED = [
+  // A team's own buckets, and which objects they hold, before the team itself.
+  "archive_object", "storage_backend",
   "regeneration_pause", "regeneration_batch", "take_ack", "take", "recording", "activity", "report", "line_ignore",
   "voice_assignment", "voice", "generation_setting", "queue_dismissal",
 ];

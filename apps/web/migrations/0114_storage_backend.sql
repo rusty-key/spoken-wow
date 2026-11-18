@@ -71,4 +71,5 @@ create table "archive_object" (
 );
 
 create index "archive_object_backend_idx" on "archive_object" ("backendId");
-create index "archive_object_pending_idx" on "archive_object" ("keptAt") where "pending";
+-- The quarantine is landed a few objects per bucket at a time, oldest first.
+create index "archive_object_pending_idx" on "archive_object" ("backendId", "keptAt") where "pending";

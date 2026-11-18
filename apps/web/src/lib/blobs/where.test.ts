@@ -63,7 +63,7 @@ describe("locate", () => {
 
 describe("locate across teams", () => {
   it("prefers the reading language's own team's copy, and still reads another team's", async () => {
-    const { asSystem, ownTeam } = await import("@/lib/teams/testing");
+    const { ownTeam } = await import("@/lib/teams/testing");
     ours();
     const fr = await ownTeam("frFR");
     try {
@@ -81,8 +81,6 @@ describe("locate across teams", () => {
       expect((await locate(handed, "frFR")).backendId).toBe(english.id);
       french.restore();
     } finally {
-      await asSystem.query(`delete from "archive_object" where "teamId" = $1`, [fr.team]);
-      await asSystem.query(`delete from "storage_backend" where "teamId" = $1`, [fr.team]);
       await fr.restore();
     }
   });

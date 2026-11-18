@@ -20,6 +20,8 @@ export type Where = {
   key: string;
   /** The team bucket's id, null for ours. */
   backendId: string | null;
+  /** In our quarantine for a team's bucket: read from ours, but only until it lands. */
+  pending: boolean;
 };
 
 /** A PUT a team's bucket refused waits here in ours. Not a take's prefix, so the retry may delete it. */
@@ -101,17 +103,30 @@ export function split(key: string): { prefix: BlobPrefix; sha256: string } {
  */
 export async function locate(key: string, lang?: Lang): Promise<Where> {
   const { prefix, sha256 } = split(key);
-  // The acting team: with a second team in the language, a member's own (lib/teams/acting.ts).
-  const team = lang ? ((await freshOwners([lang])).get(lang) ?? null) : null;
-  const [found] = await query<{ backendId: string; pending: boolean }>(
-    `select "backendId", "pending" from "archive_object"
+  const rows = await query<{ backendId: string; pending: boolean; teamId: string }>(
+    `select "backendId", "pending", "teamId" from "archive_object"
       where "prefix" = $1 and "sha256" = $2 and "missingAt" is null
-      order by ("teamId" = $3) is true desc, "pending", "keptAt" desc limit 1`,
-    [prefix, sha256, team],
+      order by "pending", "keptAt" desc`,
+    [prefix, sha256],
   );
-  if (!found) return { store: archive(), key, backendId: null };
-  if (found.pending) return { store: archive(), key: quarantineKey(found.backendId, key), backendId: null };
-  return { store: await backendStore(found.backendId), key, backendId: found.backendId };
+  let found = rows[0];
+  // The team matters only between copies, which is rare: most objects have one row or none. It is
+  // the acting team, with a second team in the language a member's own (lib/teams/acting.ts).
+  if (rows.length > 1 && lang) {
+    const team = (await freshOwners([lang])).get(lang);
+    found = rows.find((row) => row.teamId === team) ?? found;
+  }
+  if (!found) return { store: archive(), key, backendId: null, pending: false };
+  if (found.pending) return { store: archive(), key: quarantineKey(found.backendId, key), backendId: null, pending: true };
+  return { store: await backendStore(found.backendId), key, backendId: found.backendId, pending: false };
+}
+
+/** The `archive_object` row of one object in one bucket, for `objectParams`' $1–$3. */
+export const OBJECT_ROW = `"prefix" = $1 and "sha256" = $2 and "backendId" = $3`;
+
+export function objectParams(key: string, backendId: string): [string, string, string] {
+  const { prefix, sha256 } = split(key);
+  return [prefix, sha256, backendId];
 }
 
 /**
@@ -120,14 +135,11 @@ export async function locate(key: string, lang?: Lang): Promise<Where> {
  */
 export async function markMissing(key: string, backendId: string | null, missing = true): Promise<void> {
   if (!backendId) return;
-  const { prefix, sha256 } = split(key);
   await query(
     missing
-      ? `update "archive_object" set "missingAt" = now()
-          where "prefix" = $1 and "sha256" = $2 and "backendId" = $3 and "missingAt" is null`
-      : `update "archive_object" set "missingAt" = null
-          where "prefix" = $1 and "sha256" = $2 and "backendId" = $3`,
-    [prefix, sha256, backendId],
+      ? `update "archive_object" set "missingAt" = now() where ${OBJECT_ROW} and "missingAt" is null`
+      : `update "archive_object" set "missingAt" = null where ${OBJECT_ROW}`,
+    objectParams(key, backendId),
   );
 }
 

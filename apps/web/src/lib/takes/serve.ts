@@ -16,7 +16,7 @@ import path from "node:path";
 
 import { servePrivate } from "@/lib/blobs/serve";
 import { isShared } from "@/lib/blobs/store";
-import { addressOf, locate, QUARANTINE, SIGNED_FOR_SEC } from "@/lib/blobs/where";
+import { addressOf, locate, SIGNED_FOR_SEC } from "@/lib/blobs/where";
 import { serveFile } from "@/lib/stream";
 
 import { BASE_LANG, langTag, type Lang } from "@/lib/lang";
@@ -55,7 +55,7 @@ export async function serveTake(
     const { url, signed } = await addressOf(where);
     // Only our own copy of a take stays where it is for good. One in a team's bucket can be moved,
     // re-addressed or deleted, and one in quarantine is deleted once it lands.
-    const lasting = where.backendId === null && !where.key.startsWith(QUARANTINE);
+    const lasting = where.backendId === null && !where.pending;
     const cached = lasting ? cacheControl : `max-age=${Math.min(300, SIGNED_FOR_SEC / 2)}`;
     return new Response(null, {
       status: 302,
