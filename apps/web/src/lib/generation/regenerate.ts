@@ -22,7 +22,7 @@ import { lineIndex } from "@/lib/quests/catalogue";
 import { baseLineId } from "@/lib/contributions/naming";
 import { readIgnores } from "@/lib/quests/ignores";
 import { overrideOf } from "@/lib/quests/override";
-import { readOverrides } from "@/lib/quests/overrides";
+import { markSpoken, readOverrides } from "@/lib/quests/overrides";
 import { commitTake } from "@/lib/takes/commit";
 import { INVALID_CHARS, isVoiceable } from "@/lib/text-gate";
 import { isModelVoice } from "@/lib/voices/voices";
@@ -114,7 +114,8 @@ export async function regenerateLine(
   // after the save. Read *before* the gate because an override is what decides whether this
   // line is voiceable at all - the corpus's own flag was computed from text nobody could edit.
   const overrides = await readOverrides(lang);
-  const source = overrideOf(overrides, file)?.text ?? line.text;
+  const override = overrideOf(overrides, file);
+  const source = override?.text ?? line.text;
 
   if (!isVoiceable(line, source)) {
     const why =
@@ -239,6 +240,7 @@ export async function regenerateLine(
       // what is missing.
       { lang, batchId: options.batchId, measure: (clip) => durationOf(clip).catch(() => null) },
     );
+    if (override) await markSpoken(lang, override.file, override.text, spokenHash(spokenText));
 
     return {
       ok: true,

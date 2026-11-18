@@ -143,6 +143,21 @@ async function spokenHashes(
   ];
 }
 
+/**
+ * Adds a take's hash to the override it spoke. The hashes a save predicts miss a take whose
+ * voice's direction changed since, and an override saved before they existed has none, so
+ * without this such a take never publishes the override it speaks. Only while the override
+ * still holds `text`: a save during generation replaced it with words this take does not say.
+ */
+export async function markSpoken(lang: Lang, file: string, text: string, hash: string): Promise<void> {
+  await queryAs(
+    lang,
+    `update "line_override" set "spokenHashes" = array_append(coalesce("spokenHashes", '{}'), $4)
+      where "lang" = $1 and "file" = $2 and "text" = $3 and not ($4 = any(coalesce("spokenHashes", '{}')))`,
+    [lang, file, text, hash],
+  );
+}
+
 /** `by` is who reverted it, for the activity log: the delete leaves nothing else behind. */
 export async function clearOverride(
   lang: Lang,

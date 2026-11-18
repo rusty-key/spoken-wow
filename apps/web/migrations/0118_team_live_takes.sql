@@ -21,8 +21,9 @@
 -- with no such take, or with no hash, is still in progress and stays private as other
 -- unfinished work does.
 --
--- line_override gains "spokenHashes": every hash a take speaking the override can carry, one per
--- resolving file and provider, since each shapes the words with its own voice's direction.
+-- line_override gains "spokenHashes": the hashes a take speaking the override carries. A save
+-- predicts one per resolving file and provider, since each shapes the words with its own voice's
+-- direction, and each take made from the override adds its own.
 --
 -- Additive: the previous release never calls either.
 
