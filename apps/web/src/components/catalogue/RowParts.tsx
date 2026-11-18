@@ -38,7 +38,7 @@ export function RowActions({
   badge?: ReactNode;
 }) {
   const [open, setOpen] = useState(false);
-  const inMenu = primary.length > 0 || regenerate ? more : [];
+  const inMenu = primary.length > 0 || regenerate || more.length > 1 ? more : [];
   const inline = inMenu.length > 0 ? primary : [...primary, ...more];
 
   return (
@@ -89,7 +89,7 @@ export function RowActions({
 
 export type StateTone = "missing" | "stale" | "current" | "skip" | "error";
 
-/** A line's audio state as a coloured dot and a word, the same colours as the status buttons. */
+/** A line's audio state as a coloured dot and a word. */
 export function StateWord({ tone, title, children }: { tone: StateTone; title?: string; children: ReactNode }) {
   return (
     <span className={cn("cat-state", `cat-state-${tone}`)} title={title}>
