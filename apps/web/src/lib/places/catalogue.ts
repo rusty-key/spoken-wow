@@ -323,14 +323,33 @@ async function overlay(lang: Lang, stamps: { stamp: string; overrides: string })
     readTextOverrides("places", lang, stamps.overrides),
   ]);
   if (overrides.size === 0) return base;
-  const rules = lang === BASE_LANG ? await loadPronunciation() : {};
+  const rules = await overrideRules(lang);
   return base.map((entry) => {
     const override = overrides.get(entry.id);
-    // A line with no text of its own has nothing for an override to stand on.
-    if (!override || entry.missing?.text) return entry;
-    const spoken = toSpokenText(override.text, rules);
-    return { ...entry, spoken, hash: textHash(spoken), override: viewOf(override, entry.full) };
+    const said = override && spokenOverride(entry, override.text, rules);
+    return said ? { ...entry, ...said, override: viewOf(override, entry.full) } : entry;
   });
+}
+
+function overrideRules(lang: Lang): Promise<Record<string, string>> {
+  return lang === BASE_LANG ? loadPronunciation() : Promise.resolve({});
+}
+
+function spokenOverride(
+  entry: CatalogueEntry,
+  text: string,
+  rules: Record<string, string>,
+): { spoken: string; hash: string } | undefined {
+  // A line with no text of its own has nothing for an override to stand on.
+  if (entry.missing?.text) return undefined;
+  const spoken = toSpokenText(text, rules);
+  return { spoken, hash: textHash(spoken) };
+}
+
+/** The hash the overlay gives a line speaking `text` as its override, null where it ignores one. */
+export async function overrideSpokenHash(lang: Lang, lineId: string, text: string): Promise<string | null> {
+  const entry = (await baseCatalogue(lang)).find((e) => e.id === lineId);
+  return (entry && spokenOverride(entry, text, await overrideRules(lang))?.hash) ?? null;
 }
 
 /**

@@ -36,8 +36,10 @@ function toOverride(row: OverrideRow): TextOverride {
 function stampSql(langParam: string, sourceParam: string): string {
   // The count is load-bearing: a delete leaves max(updatedAt) where it was. The id sum is too:
   // absorbing a minted readable moves a row to another line's id and leaves both unchanged.
+  // So is the original hash sum: keeping an override over a changed original moves only that.
   return `(select count(*)::text || ':' ||
-                  coalesce(max("updatedAt")::text || ':' || sum(hashtext("lineId"))::text, '-')
+                  coalesce(max("updatedAt")::text || ':' || sum(hashtext("lineId"))::text || ':' ||
+                           sum(hashtext(coalesce("originalHash", '')))::text, '-')
              from "text_override" where "lang" = ${langParam} and "source" = ${sourceParam})`;
 }
 
@@ -112,22 +114,29 @@ export async function writeTextOverride(args: {
   audit?: ApiAudit;
 }): Promise<{ override: TextOverride; wrote: boolean }> {
   const { source, lang, lineId, text, original, userId, audit } = args;
+  // Imported late: the catalogues read overrides through this module.
+  const { overrideSpokenHash } = await import("./spoken");
+  const said = await overrideSpokenHash(source, lang, lineId, text);
   // "before" is read in the same statement, from the snapshot the upsert started with, so
-  // the log says what this write replaced and not what a concurrent one did.
+  // the log says what this write replaced and not what a concurrent one did. Keeping the same
+  // text over a changed original is no rewrite, so it leaves who rewrote it and when.
   const { rows } = await queryAs<OverrideRow & { before: string | null }>(
     lang,
     `with "was" as (select "text" from "text_override"
                      where "lang" = $1 and "source" = $2 and "lineId" = $3)
-     insert into "text_override" ("lang", "source", "lineId", "text", "updatedBy", "originalHash")
-     values ($1, $2, $3, $4, $5, $6)
+     insert into "text_override" ("lang", "source", "lineId", "text", "updatedBy", "originalHash", "spokenHash")
+     values ($1, $2, $3, $4, $5, $6, $7)
      on conflict ("teamId", "lang", "source", "lineId") do update
         set "text" = excluded."text",
-            "updatedAt" = now(),
-            "updatedBy" = excluded."updatedBy",
-            "originalHash" = excluded."originalHash"
+            "updatedAt" = case when "text_override"."text" is distinct from excluded."text"
+                               then now() else "text_override"."updatedAt" end,
+            "updatedBy" = case when "text_override"."text" is distinct from excluded."text"
+                               then excluded."updatedBy" else "text_override"."updatedBy" end,
+            "originalHash" = excluded."originalHash",
+            "spokenHash" = excluded."spokenHash"
      returning "lineId", "text", "updatedAt", "updatedBy", "originalHash",
                (select "text" from "was") as "before"`,
-    [lang, source, lineId, text, userId, spokenHash(original)],
+    [lang, source, lineId, text, userId, spokenHash(original), said],
   );
   forgetTextOverrides(source);
   const { before, ...row } = rows[0];

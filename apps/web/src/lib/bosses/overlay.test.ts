@@ -7,6 +7,7 @@ import { asActor } from "@/lib/teams/acting";
 import { forgetTeams } from "@/lib/teams/store";
 import { addMember, asSystem, dropLang, dropTeam, newTeamIn, testUser, uniqueLang } from "@/lib/teams/testing";
 import { createFixtures, type Fixtures } from "@/lib/text-api/testing";
+import { writeTextOverride } from "@/lib/text-overrides/store";
 
 import { baseCatalogue, catalogue, loadContext, type BossEntry } from "./catalogue";
 import { search } from "./search";
@@ -21,6 +22,14 @@ let v: { id: string; cleanup: () => Promise<void> };
 const OVERRIDE = "Our own telling of this boss.";
 
 const entryOf = (entries: BossEntry[]) => entries.find((e) => e.id === fx.boss.lineId)!;
+
+async function storedHash(lineId: string): Promise<string | null> {
+  const { rows } = await asSystem.query<{ spokenHash: string | null }>(
+    `select "spokenHash" from "text_override" where "lang" = $1 and "lineId" = $2`,
+    [lang, lineId],
+  );
+  return rows[0].spokenHash;
+}
 
 async function story(): Promise<void> {
   await asSystem.query(
@@ -47,6 +56,7 @@ beforeEach(async () => {
 
 afterEach(async () => {
   await asSystem.query(`delete from "take" where "lang" = $1`, [lang]);
+  await asSystem.query(`delete from "activity" where "lang" = $1`, [lang]);
   for (const team of [a, b]) await dropTeam(team);
   await u.cleanup();
   await v.cleanup();
@@ -58,6 +68,16 @@ afterEach(async () => {
 afterAll(closeDb);
 
 describe("the bosses catalogue overlay", () => {
+  it("stores the hash it speaks an override with", async () => {
+    await story();
+    await asActor(u.id, () =>
+      writeTextOverride({ source: "bosses", lang, lineId: fx.boss.lineId, text: "Written here.", original: "The translated story.", userId: u.id }),
+    );
+    const entry = entryOf(await asActor(u.id, () => catalogue(lang)));
+    expect(entry.spoken).toBe("Written here.");
+    expect(await storedHash(fx.boss.lineId)).toBe(entry.hash);
+  });
+
   it("is the base for a team with no overrides", async () => {
     await story();
     const base = await baseCatalogue(lang);

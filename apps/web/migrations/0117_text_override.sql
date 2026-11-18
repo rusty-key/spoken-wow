@@ -14,6 +14,8 @@ create table "text_override" (
   "lineId"       text        not null,
   "text"         text        not null,
   "originalHash" text,
+  -- What the catalogue overlay hashes this text to, so a take can be matched to it exactly.
+  "spokenHash"   text,
   "updatedAt"    timestamptz not null default now(),
   "updatedBy"    text        references "user" ("id") on delete set null,
   primary key ("teamId", "lang", "source", "lineId")

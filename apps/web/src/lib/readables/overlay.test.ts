@@ -7,6 +7,7 @@ import { asActor } from "@/lib/teams/acting";
 import { forgetTeams } from "@/lib/teams/store";
 import { addMember, asSystem, dropLang, dropTeam, newTeamIn, testUser, uniqueLang } from "@/lib/teams/testing";
 import { createFixtures, type Fixtures } from "@/lib/text-api/testing";
+import { writeTextOverride } from "@/lib/text-overrides/store";
 
 import { baseCatalogue, catalogue, loadContext, type BookPage } from "./catalogue";
 import { search } from "./search";
@@ -41,6 +42,14 @@ async function translate(lineId: string, text: string): Promise<void> {
 
 const pageOf = (pages: BookPage[], id: string) => pages.find((p) => p.id === id)!;
 
+async function storedHash(lineId: string): Promise<string | null> {
+  const { rows } = await asSystem.query<{ spokenHash: string | null }>(
+    `select "spokenHash" from "text_override" where "lang" = $1 and "lineId" = $2`,
+    [lang, lineId],
+  );
+  return rows[0].spokenHash;
+}
+
 beforeEach(async () => {
   fx = await createFixtures();
   lang = await uniqueLang();
@@ -71,6 +80,7 @@ afterEach(async () => {
   await asSystem.query(`delete from "book_line" where "lineId" = $1`, [second]);
   await asSystem.query(`delete from "book_page" where "lineId" = $1`, [second]);
   await asSystem.query(`delete from "book_line" where "lang" = $1`, [lang]);
+  await asSystem.query(`delete from "activity" where "lang" = $1`, [lang]);
   for (const team of [a, b]) await dropTeam(team);
   await u.cleanup();
   await v.cleanup();
@@ -101,6 +111,16 @@ describe("the readables catalogue overlay", () => {
     expect(page.file).toBe(base.file);
     expect(page.generatable).toBe(true);
     expect(page.override?.text).toBe(OVERRIDE);
+  });
+
+  it("stores the hash it speaks an override with, a first page's title and all", async () => {
+    await asActor(u.id, () =>
+      writeTextOverride({ source: "readables", lang, lineId: fx.page.lineId, text: "Written here.", original: "Translated first page.", userId: u.id }),
+    );
+    const page = pageOf(await asActor(u.id, () => catalogue(lang)), fx.page.lineId);
+    expect(page.spoken.startsWith(TITLE)).toBe(true);
+    expect(page.spoken.endsWith("Written here.")).toBe(true);
+    expect(await storedHash(fx.page.lineId)).toBe(page.hash);
   });
 
   it("speaks the override alone on a later page", async () => {

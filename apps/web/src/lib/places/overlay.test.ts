@@ -7,6 +7,7 @@ import { asActor } from "@/lib/teams/acting";
 import { forgetTeams } from "@/lib/teams/store";
 import { addMember, asSystem, dropLang, dropTeam, newTeamIn, systemRows, testUser, uniqueLang } from "@/lib/teams/testing";
 import { createFixtures, type Fixtures } from "@/lib/text-api/testing";
+import { writeTextOverride } from "@/lib/text-overrides/store";
 
 import { baseCatalogue, catalogue, loadContext, type CatalogueEntry } from "./catalogue";
 import { search } from "./search";
@@ -30,6 +31,14 @@ async function override(team: string, inLang: string, lineId: string, text: stri
 
 const entryOf = (entries: CatalogueEntry[], id: string) => entries.find((e) => e.id === id)!;
 
+async function storedHash(lineId: string): Promise<string | null> {
+  const { rows } = await asSystem.query<{ spokenHash: string | null }>(
+    `select "spokenHash" from "text_override" where "lang" = $1 and "lineId" = $2`,
+    [lang, lineId],
+  );
+  return rows[0].spokenHash;
+}
+
 beforeEach(async () => {
   fx = await createFixtures();
   lang = await uniqueLang();
@@ -52,6 +61,7 @@ beforeEach(async () => {
 afterEach(async () => {
   await asSystem.query(`delete from "text_override" where "lineId" in ($1, $2)`, [fx.zone, fx.subzone]);
   await asSystem.query(`delete from "take" where "lang" = $1`, [lang]);
+  await asSystem.query(`delete from "activity" where "lang" = $1`, [lang]);
   for (const team of [a, b]) await dropTeam(team);
   await u.cleanup();
   await v.cleanup();
@@ -125,6 +135,15 @@ describe("the places catalogue overlay", () => {
     expect(entry.missing?.text).toBe(true);
     expect(entry.spoken).toBe("");
     expect(entry.override).toBeUndefined();
+  });
+
+  it("stores the hash it speaks an override with", async () => {
+    await asActor(u.id, () =>
+      writeTextOverride({ source: "places", lang, lineId: fx.zone, text: "Written here.", original: "Translated lore.", userId: u.id }),
+    );
+    const entry = entryOf(await asActor(u.id, () => catalogue(lang)), fx.zone);
+    expect(entry.spoken).toBe("Written here.");
+    expect(await storedHash(fx.zone)).toBe(entry.hash);
   });
 
   it("keeps a second team's override from the privileged team", async () => {

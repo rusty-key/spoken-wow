@@ -341,16 +341,23 @@ async function overlay(lang: Lang, stamps: { stamp: string; overrides: string })
   if (overrides.size === 0) return base;
   return base.map((page) => {
     const override = overrides.get(page.id);
-    // A page with no text of its own has nothing for an override to stand on.
-    if (!override || page.missing?.text) return page;
-    // An English title standing in for the language's own is shown but never said.
-    const title = page.missing?.title ? undefined : page.title;
-    return {
-      ...page,
-      ...voiced(override.text, lang, spokenTitle(page.pageNumber, title)),
-      override: viewOf(override, page.text),
-    };
+    const said = override && spokenOverride(page, override.text, lang);
+    return said ? { ...page, ...said, override: viewOf(override, page.text) } : page;
   });
+}
+
+function spokenOverride(page: BookPage, text: string, lang: Lang): ReturnType<typeof voiced> | undefined {
+  // A page with no text of its own has nothing for an override to stand on.
+  if (page.missing?.text) return undefined;
+  // An English title standing in for the language's own is shown but never said.
+  const title = page.missing?.title ? undefined : page.title;
+  return voiced(text, lang, spokenTitle(page.pageNumber, title));
+}
+
+/** The hash the overlay gives a page speaking `text` as its override, null where it ignores one. */
+export async function overrideSpokenHash(lang: Lang, lineId: string, text: string): Promise<string | null> {
+  const page = (await baseCatalogue(lang)).find((p) => p.id === lineId);
+  return (page && spokenOverride(page, text, lang)?.hash) ?? null;
 }
 
 /** `seesMadeBy`: whether the viewer works in the language. See SearchContext.madeBy. */

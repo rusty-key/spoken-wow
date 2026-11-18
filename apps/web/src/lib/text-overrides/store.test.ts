@@ -6,7 +6,14 @@ import { asActor } from "@/lib/teams/acting";
 import { forgetTeams } from "@/lib/teams/store";
 import { addMember, asSystem, dropLang, dropTeam, newTeamIn, testUser, uniqueLang } from "@/lib/teams/testing";
 
-import { clearTextOverride, readTextOverrides, stampsWithOverrides, viewOf, writeTextOverride } from "./store";
+import {
+  clearTextOverride,
+  overrideStamp,
+  readTextOverrides,
+  stampsWithOverrides,
+  viewOf,
+  writeTextOverride,
+} from "./store";
 
 let lang: Awaited<ReturnType<typeof uniqueLang>>;
 let a: string;
@@ -76,6 +83,33 @@ describe("text overrides", () => {
     expect(viewOf(undefined, "Old.")).toBeUndefined();
   });
 
+  it("keep their time and author when only the original moved under them", async () => {
+    const row = async () =>
+      (
+        await asSystem.query(
+          `select "updatedAt", "updatedBy", "originalHash" from "text_override" where "lang" = $1 and "lineId" = 'z:1'`,
+          [lang],
+        )
+      ).rows[0];
+    await write("New.");
+    const first = await row();
+    await asSystem.query(`update "text_override" set "updatedAt" = "updatedAt" - interval '1 hour', "updatedBy" = null where "lang" = $1`, [lang]);
+    const aged = await row();
+    const kept = await asActor(u.id, () =>
+      writeTextOverride({ source: "places", lang, lineId: "z:1", text: "New.", original: "Older.", userId: u.id }),
+    );
+    expect(kept.wrote).toBe(false);
+    expect(viewOf(kept.override, "Older.")?.drifted).toBe(false);
+    const after = await row();
+    expect(after.updatedAt).toEqual(aged.updatedAt);
+    expect(after.updatedBy).toBeNull();
+    expect(after.originalHash).not.toBe(first.originalHash);
+    await write("Newer.");
+    const rewritten = await row();
+    expect(rewritten.updatedAt.getTime()).toBeGreaterThan(aged.updatedAt.getTime());
+    expect(rewritten.updatedBy).toBe(u.id);
+  });
+
   it("clear once", async () => {
     await write("New.", { tokenId: "t" });
     const clear = () => asActor(u.id, () => clearTextOverride({ source: "places", lang, lineId: "z:1", by: u.id, audit: { tokenId: "t" } }));
@@ -120,6 +154,16 @@ describe("text overrides", () => {
       await read();
       await asActor(u.id, () => clearTextOverride({ source: "places", lang, lineId: "z:1", by: u.id }));
       expect((await read()).size).toBe(0);
+    });
+
+    it("stamps a kept original anew, which leaves updatedAt where it was", async () => {
+      await write("New.");
+      const stamp = () => asActor(u.id, () => overrideStamp("places", lang));
+      const before = await stamp();
+      await asActor(u.id, () =>
+        writeTextOverride({ source: "places", lang, lineId: "z:1", text: "New.", original: "Older.", userId: u.id }),
+      );
+      expect(await stamp()).not.toBe(before);
     });
 
     it("sees a delete behind the newest row, which max(updatedAt) cannot", async () => {
