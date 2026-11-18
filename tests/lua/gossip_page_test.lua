@@ -115,25 +115,19 @@ local forgetMuted
 for _, button in ipairs(buttons) do if button.text == L.OPT_FORGET_MUTED_NPCS then forgetMuted = button end end
 db.char.ignoredGossipNPCs = { [12345] = "Guard", o678 = "Strongbox" }
 Panel.panel.layout:Refresh()
-local unmutes = {}
+local list
+for _, child in ipairs(content.children) do
+    for _, row in ipairs(child.children or {}) do if row.unmute then list = child end end
+end
 local function Unmutes()
-    for i = #unmutes, 1, -1 do unmutes[i] = nil end
-    for _, child in ipairs(content.children) do
-        if child.children then
-            for _, row in ipairs(child.children) do
-                for _, part in ipairs(row.children or {}) do
-                    if part.key ~= nil and part.scripts and part.scripts.OnClick and row:IsShown() then
-                        table.insert(unmutes, part)
-                    end
-                end
-            end
-        end
-    end
-    return unmutes
+    local shown = {}
+    for _, row in ipairs(list.children) do if row:IsShown() then table.insert(shown, row.unmute) end end
+    return shown
 end
 Expect("each muted NPC has its own Unmute", #Unmutes(), 2)
-Unmutes()[1].scripts.OnClick(unmutes[1])
-Expect("...which unmutes that NPC alone", next(db.char.ignoredGossipNPCs) ~= nil and #Unmutes(), 1)
+local first = Unmutes()[1]
+first.scripts.OnClick(first)
+Expect("...which unmutes that NPC alone", #Unmutes(), 1)
 Expect("Forget Muted NPCs is a button", forgetMuted ~= nil, true)
 forgetMuted.scripts.OnClick(forgetMuted)
 Expect("...which clears this character's muted NPCs", next(db.char.ignoredGossipNPCs), nil)

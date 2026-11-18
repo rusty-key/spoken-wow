@@ -1431,10 +1431,15 @@ function Addon:CurrentGossipClip()
         unitIsObjectOrItem = Utils:IsNPCObjectOrItem() }, event
 end
 
-function Addon:SetGossipNPCMuted(guid, name, muted)
-    local key = SpeakerKey(guid)
-    -- The name, for the list on Gossip's settings page; the key alone names no one.
-    self.db.char.ignoredGossipNPCs[key] = muted and (name or true) or nil
+--- Chat lines from Gossip, under its own name.
+function Addon:GossipSay(text)
+    print("|cFF00CCFFSpoken Gossip:|r " .. text)
+end
+
+--- Mute or restore by the list's key, which the settings page holds where no GUID is at hand.
+--- The name is kept for that list; the key alone names no one.
+function Addon:SetGossipNPCMutedKey(key, name, muted)
+    self.db.char.ignoredGossipNPCs[key] = muted and (name or "NPC") or nil
     if muted then
         for _, clip in ipairs(Player:Queued()) do
             if Enums.SoundEvent:IsGossipEvent(clip.event) and clip.unitGUID and SpeakerKey(clip.unitGUID) == key then
@@ -1444,15 +1449,15 @@ function Addon:SetGossipNPCMuted(guid, name, muted)
     end
     -- Listen shows for a muted NPC and the toggle shows the mute, so an open window is redrawn.
     if DialogPlayButton then DialogPlayButton:Refresh() end
-    print("|cFF00CCFFSpoken Gossip:|r " .. format(muted and L.MUTE_NPC_DONE or L.UNMUTE_NPC_DONE, name or "NPC"))
 end
 
---- For the list on Gossip's settings page, which holds keys and no GUID.
-function Addon:UnmuteGossipNPCKey(key)
-    local name = self.db.char.ignoredGossipNPCs[key]
-    self.db.char.ignoredGossipNPCs[key] = nil
+function Addon:SetGossipNPCMuted(guid, name, muted)
+    self:SetGossipNPCMutedKey(SpeakerKey(guid), name, muted)
+end
+
+function Addon:ForgetMutedNPCs()
+    self.db.char.ignoredGossipNPCs = {}
     if DialogPlayButton then DialogPlayButton:Refresh() end
-    print("|cFF00CCFFSpoken Gossip:|r " .. format(L.UNMUTE_NPC_DONE, type(name) == "string" and name or "NPC"))
 end
 
 ---@param followsOption boolean? the page was reached by picking one of the NPC's options

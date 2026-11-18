@@ -247,7 +247,6 @@ function DialogPlayButton:Setup()
         local waves = mute:CreateTexture(nil, "OVERLAY")
         waves:SetAllPoints(mute.glyph)
         waves:SetTexture(WAVES_ICON)
-        mute.muteWaves = waves
         local slash = mute:CreateTexture(nil, "OVERLAY")
         slash:SetSize(2, 17)
         slash:SetPoint("CENTER")
@@ -257,7 +256,9 @@ function DialogPlayButton:Setup()
         mute:SetScript("OnClick", function(self)
             local clip = DialogPlayButton.muteClip
             if clip then
-                Addon:SetGossipNPCMuted(clip.unitGUID, clip.name, not self.muted)
+                local muted = not self.muted
+                Addon:SetGossipNPCMuted(clip.unitGUID, clip.name, muted)
+                Addon:GossipSay(format(muted and L.MUTE_NPC_DONE or L.UNMUTE_NPC_DONE, clip.name or "NPC"))
             end
         end)
         mute:HookScript("OnEnter", function(self)
