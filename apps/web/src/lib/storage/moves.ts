@@ -11,7 +11,7 @@ import "server-only";
 
 import { ALL_TEAMS, query, queryIn, TEAM_ROWS, withTeam, type TeamId } from "@/lib/db";
 import { dropQuarantined, recordObject } from "@/lib/blobs/keep";
-import { archive, readsBlobs, sha256Of, type BlobStore } from "@/lib/blobs/store";
+import { archive, readBounded, readsBlobs, sha256Of, type BlobStore } from "@/lib/blobs/store";
 import { backendStore, markMissing, OBJECT_ROW, objectParams, split } from "@/lib/blobs/where";
 
 import { StorageError } from "./backends";
@@ -167,6 +167,8 @@ type Outcome = "copied" | "already" | "missing";
 
 /** Larger than any clip, recording or reference: a source answering more is not trusted to be ours. */
 const MAX_OBJECT_BYTES = 100 * 1024 * 1024;
+/** How long one object's body may take to arrive from the source. */
+const READ_MS = 120_000;
 
 async function moveOne(key: string, move: MoveRow, source: BlobStore, target: BlobStore): Promise<Outcome> {
   const { prefix, sha256 } = split(key);
@@ -179,7 +181,8 @@ async function moveOne(key: string, move: MoveRow, source: BlobStore, target: Bl
     await object.body.cancel();
     throw new Error(`${key} is ${object.size} bytes in the source, more than any archive object`);
   }
-  const data = Buffer.from(await new Response(object.body).arrayBuffer());
+  // Bounded in time too: a source that trickles its body would hold up every team's upkeep.
+  const data = await readBounded(object.body, { maxBytes: MAX_OBJECT_BYTES, deadlineMs: READ_MS });
   if (sha256Of(data) !== sha256) throw new Error(`${key} does not match its hash in the source`);
   const there = await target.head(key);
   if (!there) await target.put(key, data, object.contentType);
