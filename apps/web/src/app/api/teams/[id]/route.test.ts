@@ -1,4 +1,4 @@
-/** Needs DATABASE_URL and migrations through 0116; the session is mocked. */
+/** Needs DATABASE_URL and migrations through 0120; the session is mocked. */
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 
 import { closeDb } from "@/lib/db";
@@ -34,12 +34,16 @@ const patch = (body: unknown) =>
   });
 
 const stateOf = async () =>
-  (await systemRows<{ name: string; ownStorage: boolean }>(`select "name", "ownStorage" from "team" where "id" = $1`, [team]))[0];
+  (await systemRows<{ name: string; ownStorage: boolean; official: boolean }>(
+    `select "name", "ownStorage", "official" from "team" where "id" = $1`,
+    [team],
+  ))[0];
+const slugOf = async () => (await systemRows<{ slug: string }>(`select "slug" from "team" where "id" = $1`, [team]))[0].slug;
 
 describe("PATCH /api/teams/[id]", () => {
   it("applies a name and ownStorage sent together", async () => {
     expect((await patch({ name: "Renamed", ownStorage: true })).status).toBe(200);
-    expect(await stateOf()).toEqual({ name: "Renamed", ownStorage: true });
+    expect(await stateOf()).toMatchObject({ name: "Renamed", ownStorage: true });
   });
 
   it("refuses a bad ownStorage by its own message, and changes nothing", async () => {
@@ -48,5 +52,30 @@ describe("PATCH /api/teams/[id]", () => {
     expect(res.status).toBe(400);
     expect((await res.json()).error).toBe("ownStorage is true or false.");
     expect(await stateOf()).toEqual(before);
+  });
+
+  it("sets official, and records it", async () => {
+    await asSystem.query(`update "team" set "official" = true where "id" = $1`, [team]);
+    expect((await patch({ official: false })).status).toBe(200);
+    expect((await stateOf()).official).toBe(false);
+    const logged = await systemRows<{ detail: unknown }>(
+      `select "detail" from "activity" where "kind" = 'team.official' and "subject" = $1`,
+      [slug],
+    );
+    expect(logged.map((row) => row.detail)).toEqual([{ official: false }]);
+  });
+
+  it("refuses an official that is not true or false, and changes nothing", async () => {
+    const before = await stateOf();
+    const res = await patch({ official: "no" });
+    expect(res.status).toBe(400);
+    expect((await res.json()).error).toBe("official is true or false.");
+    expect(await stateOf()).toEqual(before);
+  });
+
+  // An installed team pack's folder carries the slug: a new one would orphan it (TEAM-RELEASES.md).
+  it("never changes the slug", async () => {
+    expect((await patch({ slug: "renamed-slug" })).status).toBe(400);
+    expect(await slugOf()).toBe(slug);
   });
 });

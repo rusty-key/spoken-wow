@@ -292,6 +292,13 @@ export function describe(row: ActivityRow): { what: string; quote: string | null
           : `let ${row.subject ?? "the team"} use Spoken's archive`,
         quote: null,
       };
+    case "team.official":
+      return {
+        what: d.official
+          ? `made ${row.subject ?? "the team"} official`
+          : `made ${row.subject ?? "the team"} unofficial: its releases wait for review`,
+        quote: null,
+      };
     case "team.language_moved":
       return { what: `handed the language from ${str(d.from) ?? "?"} to ${str(d.to) ?? "?"}`, quote: null };
     case "team.second_in_language":

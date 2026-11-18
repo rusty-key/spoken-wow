@@ -75,6 +75,7 @@ async function foundNew(
         language: checked.language,
         team: { slug, name: teamName },
         adminId,
+        official: true,
       },
       actorId,
     ),

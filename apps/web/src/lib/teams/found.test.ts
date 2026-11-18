@@ -96,6 +96,7 @@ const input = (lang: string, over: Partial<FoundInput> = {}): FoundInput => ({
   language: { name: "Xq New", native: "Xq Neu" },
   team: { slug: null, name: "Japan Crew" },
   adminId: requester.id,
+  official: false,
   ...over,
 });
 

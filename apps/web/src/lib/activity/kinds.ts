@@ -156,6 +156,8 @@ export type ActivityDetail = {
   "team.deleted": { slug: string; members: { email: string; lang: Lang; capability: Capability }[] };
   /** Whether the team must keep its audio in its own bucket (docs/platform/STORAGE.md). */
   "team.own_storage": { ownStorage: boolean };
+  /** Whether the team's releases skip review and its packs go unlabelled. */
+  "team.official": { official: boolean };
   /** A language handed to another team, by team slug. */
   "team.language_moved": { from: string; to: string };
   /** A second team made beside the language's privileged team `beside`, by slug; filed under the new team. */
