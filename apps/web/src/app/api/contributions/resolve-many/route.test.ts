@@ -79,6 +79,25 @@ describe("POST /api/contributions/resolve-many", () => {
     expect(statuses.map((row) => row.status)).toEqual(["rejected", "rejected"]);
   });
 
+  it("records one reason on every row a bulk reject landed on", async () => {
+    const { rows } = await asSystem.query<{ id: number }>(
+      `insert into "contribution" ("source", "key", "raw", "dedup", "text", "ip")
+       values ('readables', '3', 'raw', $2, 'Words.', $1), ('readables', '4', 'raw', $3, 'More.', $1)
+       returning "id"`,
+      [ip, `${dedup}-reason-a`, `${dedup}-reason-b`],
+    );
+    const ids = rows.map((row) => row.id);
+    expect((await POST(post({ ids, status: "rejected", reason: "Not German" }))).status).toBe(200);
+    const reasons = async () =>
+      (await asSystem.query<{ rejectReason: string | null }>(`select "rejectReason" from "contribution" where "id" = any($1::int[])`, [ids])).rows.map(
+        (row) => row.rejectReason,
+      );
+    expect(await reasons()).toEqual(["Not German", "Not German"]);
+    // Reopening clears them.
+    expect((await POST(post({ ids, status: "new" }))).status).toBe(200);
+    expect(await reasons()).toEqual([null, null]);
+  });
+
   describe("accepting readables rows", () => {
     let base: number;
     let lineIds: string[] = [];

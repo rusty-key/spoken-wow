@@ -4,9 +4,14 @@
  * A sibling route, not a second verb on /api/contributions: that path's POST is open to the
  * whole internet and this one must never be. Whoever edits the language rather than an
  * admin, as on the reports side -- these are the people who already act on lines.
+ *
+ * Accepting may carry `text`: the reviewer's edit of what the player sent ("keep with fix"),
+ * saved on the row first and put back if the accept is refused, as the correction route does.
+ * Rejecting may carry `reason`, which the Rejected tab shows; any other status clears it.
  */
 import { mayIgnoreIn, requireCapability } from "@/lib/generation/authz";
-import { contributionLocale } from "@/lib/contributions/store";
+import { editCorrectionText } from "@/lib/contributions/correction";
+import { contributionLocale, rewriteWaitingTexts, setRejectReasons } from "@/lib/contributions/store";
 import { BASE_LANG } from "@/lib/lang";
 import { knownLang } from "@/lib/languages/catalogue";
 import { isStatus } from "@/lib/contributions/contributions";
@@ -16,7 +21,13 @@ import { bookMatchOf } from "@/lib/contributions/book-match";
 export const dynamic = "force-dynamic";
 
 export async function POST(request: Request) {
-  const body = (await request.json().catch(() => ({}))) as { id?: unknown; status?: unknown; bookMatch?: unknown };
+  const body = (await request.json().catch(() => ({}))) as {
+    id?: unknown;
+    status?: unknown;
+    bookMatch?: unknown;
+    text?: unknown;
+    reason?: unknown;
+  };
 
   const id = Number(body.id);
   if (!Number.isInteger(id) || id <= 0) {
@@ -43,8 +54,18 @@ export async function POST(request: Request) {
   // A readables row's match as the moderator saw it: accepting refuses a row that now matches
   // otherwise, as the bulk route does.
   const bookMatch = bookMatchOf(body.bookMatch);
+
+  let previous: string | null = null;
+  if (body.status === "accepted" && typeof body.text === "string") {
+    const edited = await editCorrectionText(id, body.text, session.user.id);
+    if (!edited.ok) return Response.json({ error: edited.message, kind: edited.reason }, { status: 400 });
+    previous = edited.previous;
+  }
+
   const outcome = await resolveContribution(id, body.status, session.user.id, undefined, mayIgnore, bookMatch);
   if (!outcome.ok) {
+    // A refused accept leaves the row as it was, the edit with it.
+    if (previous !== null) await rewriteWaitingTexts([{ id, text: previous }]);
     if (outcome.reason === "not-found") {
       return Response.json({ error: "unknown contribution" }, { status: 404 });
     }
@@ -54,5 +75,6 @@ export async function POST(request: Request) {
     return Response.json({ error: outcome.message, kind: outcome.reason }, { status });
   }
 
+  await setRejectReasons([id], body.status === "rejected" && typeof body.reason === "string" ? body.reason : null);
   return Response.json({ contribution: outcome.contribution });
 }

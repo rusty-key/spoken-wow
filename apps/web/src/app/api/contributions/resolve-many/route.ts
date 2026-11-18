@@ -13,9 +13,12 @@
  * will (bulkAcceptable): an ambiguous, known, correction or new-book row is left as it is and
  * answered with why, one corpus read for the lot. Each accept is held to the match checked here,
  * so a row another accept turned into a correction meanwhile is refused, not written.
+ *
+ * Rejecting may carry one `reason` for every row ("Drop all" on a group), recorded on each row the
+ * reject landed on; any other status clears the rows' reasons.
  */
 import { mayIgnoreIn, requireCapability } from "@/lib/generation/authz";
-import { readablesContributions, contributionLocales } from "@/lib/contributions/store";
+import { readablesContributions, contributionLocales, setRejectReasons } from "@/lib/contributions/store";
 import { BASE_LANG, type Lang } from "@/lib/lang";
 import { knownLang } from "@/lib/languages/catalogue";
 import { isStatus, RESOLVE_MANY_MAX, type ResolveManyResult } from "@/lib/contributions/contributions";
@@ -34,7 +37,7 @@ const SKIPPED: Record<string, string> = {
 };
 
 export async function POST(request: Request) {
-  const body = (await request.json().catch(() => ({}))) as { ids?: unknown; status?: unknown };
+  const body = (await request.json().catch(() => ({}))) as { ids?: unknown; status?: unknown; reason?: unknown };
 
   if (!isStatus(body.status)) {
     return Response.json({ error: "unknown status" }, { status: 400 });
@@ -111,5 +114,7 @@ export async function POST(request: Request) {
       results[id] = { ok: true };
     }
   }
+  const landed = ids.filter((id) => results[id]?.ok);
+  await setRejectReasons(landed, body.status === "rejected" && typeof body.reason === "string" ? body.reason : null);
   return Response.json({ results });
 }

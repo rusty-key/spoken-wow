@@ -25,7 +25,7 @@ import { DEFAULT_SORT, type ContributionSort, type SortColumn } from "./query";
 export const CONTRIBUTION_COLUMNS = `"id", "source", "key", "locale", "build", "text", "meta", "raw", "count",
                  "status", "body", "name", "email", "userId", "createdAt"::text,
                  "updatedAt"::text, "resolvedBy", "npcKind", "npcId", "npcName", "pageId",
-                 "matchLineId", "matchBookId", "matchPageNumber", "matchNewBook"`;
+                 "matchLineId", "matchBookId", "matchPageNumber", "matchNewBook", "rejectReason"`;
 const COLUMNS = CONTRIBUTION_COLUMNS;
 
 export type Contribution = {
@@ -58,6 +58,8 @@ export type Contribution = {
   matchBookId: string | null;
   matchPageNumber: number | null;
   matchNewBook: boolean;
+  /** Why a reviewer rejected the row (migration 0117); null when it is not rejected or no reason was given. */
+  rejectReason: string | null;
 };
 
 /**
@@ -456,4 +458,22 @@ export async function contributionLocales(ids: readonly number[]): Promise<Map<n
     [ids],
   );
   return new Map(rows.map((row) => [row.id, row.locale]));
+}
+
+/** The longest reason a reject may carry (migration 0117's check). */
+export const REJECT_REASON_MAX = 200;
+
+/**
+ * Record why these rows were rejected, or clear it: a reason belongs to a reject, so a row that is
+ * accepted or reopened loses the one it had. Only rows whose status matches are touched, so a
+ * reason never lands on a row a concurrent resolve has just moved elsewhere.
+ */
+export async function setRejectReasons(ids: readonly number[], reason: string | null): Promise<void> {
+  if (ids.length === 0) return;
+  const trimmed = reason?.trim().slice(0, REJECT_REASON_MAX) || null;
+  await db().query(
+    `update "contribution" set "rejectReason" = $2
+      where "id" = any($1::int[]) and ("status" = 'rejected' or $2::text is null)`,
+    [ids, trimmed],
+  );
 }
