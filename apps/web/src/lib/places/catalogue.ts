@@ -474,7 +474,11 @@ export function publicTake(row: PublicTake): Take {
 }
 
 /** `team`'s live takes, and none of its other rows: no reports, dirt, made-by or recordings. */
-export async function publicContext(source: "places" | "bosses", lang: Lang, team: TeamId): Promise<SearchContext> {
+export async function publicContext(
+  source: "places" | "bosses" | "readables",
+  lang: Lang,
+  team: TeamId,
+): Promise<SearchContext> {
   const rows = await teamLiveTakes(team, source, lang);
   return { ...EMPTY_CONTEXT, takes: new Map(rows.map((row) => [row.lineId, publicTake(row)])) };
 }

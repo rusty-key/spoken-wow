@@ -18,7 +18,7 @@ import { recordingsFor } from "@/lib/recordings/store";
 import { filtersFromParams, needsDirty, needsLevels, needsStale, withoutMadeBy } from "@/lib/search-request";
 import { PAGE_SIZE, search } from "@/lib/search";
 import { asTeam } from "@/lib/teams/acting";
-import { unknownTeam, viewedTeam, viewOnly } from "@/lib/teams/viewing";
+import { viewedOther, viewOnly } from "@/lib/teams/viewing";
 
 export const dynamic = "force-dynamic";
 
@@ -41,10 +41,8 @@ export async function GET(request: NextRequest) {
   // Whose takes play: the acting team's unless `team` names another of the language. Its
   // corpus is built as it, since a line's file depends on its voice roster; read-only, so none
   // of its private rows are read and the filters needing them are dropped.
-  const slug = params.get("team") || null;
-  const viewed = slug === null ? null : await viewedTeam(lang, slug);
-  if (slug !== null && !viewed) return unknownTeam(slug, lang);
-  const other = viewed && !viewed.own ? viewed.team : null;
+  const other = await viewedOther(params, lang);
+  if (other instanceof Response) return other;
 
   // Only the context depends on the filters, so the corpus is fetched alongside them.
   let filters, lines, seesMadeBy, recordings, broadcastStatus;

@@ -87,13 +87,24 @@ export function asHeard<
 }
 
 /**
+ * The team a request's `team` parameter names, when it is not the acting one: null without one
+ * (an empty one counts as none), and then no lookup is made; null for the acting team's own slug;
+ * a 404 for a slug naming no team of `lang`.
+ */
+export async function viewedOther(params: URLSearchParams, lang: Lang): Promise<TeamId | null | Response> {
+  const slug = params.get("team") || null;
+  if (slug === null) return null;
+  const viewed = await viewedTeam(lang, slug);
+  if (!viewed) return unknownTeam(slug, lang);
+  return viewed.own ? null : viewed.team;
+}
+
+/**
  * The live take of `file` the request's `team` parameter names: the acting team's without one,
  * as always; another team's only where it has a live take, through team_live_takes.
  */
 export async function viewedLivePath(request: Request, source: Source, file: string, lang: Lang): Promise<TakeBytes | Response> {
-  const slug = new URL(request.url).searchParams.get("team") || null;
-  if (slug === null) return livePath(source, file, lang);
-  const viewed = await viewedTeam(lang, slug);
-  if (!viewed) return unknownTeam(slug, lang);
-  return viewed.own ? livePath(source, file, lang) : teamLivePath(viewed.team, source, file, lang);
+  const other = await viewedOther(new URL(request.url).searchParams, lang);
+  if (other instanceof Response) return other;
+  return other === null ? livePath(source, file, lang) : teamLivePath(other, source, file, lang);
 }

@@ -16,7 +16,7 @@ import { recordingsFor } from "@/lib/recordings/store";
 import { filtersFromParams, needsDirty, needsLevels, needsStale, withoutMadeBy } from "@/lib/search-request";
 import { batchPlan, matchingLines } from "@/lib/search";
 import { asTeam } from "@/lib/teams/acting";
-import { unknownTeam, viewedTeam, viewOnly } from "@/lib/teams/viewing";
+import { viewedOther, viewOnly } from "@/lib/teams/viewing";
 
 export const dynamic = "force-dynamic";
 
@@ -24,10 +24,8 @@ export async function GET(request: NextRequest) {
   const { lang, denied } = await langParam(request);
   if (denied) return denied;
   // Another team's lines, as the search shows them; see /api/quests/search.
-  const slug = request.nextUrl.searchParams.get("team") || null;
-  const viewed = slug === null ? null : await viewedTeam(lang, slug);
-  if (slug !== null && !viewed) return unknownTeam(slug, lang);
-  const other = viewed && !viewed.own ? viewed.team : null;
+  const other = await viewedOther(request.nextUrl.searchParams, lang);
+  if (other instanceof Response) return other;
   // Gated like the search itself, or narrowing by author here would say whose lines are whose.
   const seesMadeBy = other ? false : await worksHere(lang);
   let filters = await filtersFromParams(request.nextUrl.searchParams, lang);

@@ -11,7 +11,7 @@ import { baseCatalogue, catalogue, isCorpusEmpty, loadContext, publicContext } f
 import { filtersFromParams, PAGE_SIZE, type LineFilters } from "@/lib/places/filters";
 import { search } from "@/lib/places/search";
 import type { TeamId } from "@/lib/teams/store";
-import { asHeard, teamLiveOverrides, unknownTeam, viewedTeam, viewOnly } from "@/lib/teams/viewing";
+import { asHeard, teamLiveOverrides, viewedOther, viewOnly } from "@/lib/teams/viewing";
 
 export const dynamic = "force-dynamic";
 
@@ -68,14 +68,13 @@ export async function GET(request: Request) {
   if (denied) return denied;
   const page = Math.max(1, Number(params.get("page")) || 1);
   // Whose takes play: the acting team's unless `team` names another of the language.
-  const slug = params.get("team") || null;
-  const viewed = slug === null ? null : await viewedTeam(lang, slug);
-  if (slug !== null && !viewed) return unknownTeam(slug, lang);
+  const other = await viewedOther(params, lang);
+  if (other instanceof Response) return other;
 
   let entries, context, filters;
   try {
-    ({ entries, context, filters } = await (viewed && !viewed.own
-      ? heard(lang, viewed.team, filtersFromParams(params))
+    ({ entries, context, filters } = await (other
+      ? heard(lang, other, filtersFromParams(params))
       : own(lang, filtersFromParams(params))));
   } catch (error) {
     if (isCorpusEmpty(error)) return corpusEmpty(error);
