@@ -138,7 +138,7 @@ try {
   const staged = published?.staged ? Object.keys(published.staged.packs) : [];
   if (staged.length > 0 && !dryRun) {
     await writeFile(stagedFile, `${JSON.stringify(published.staged, null, 2)}\n`);
-    console.log(`==> staged ${published.version ?? "(no version)"}: ${staged.join(", ")}`);
+    console.log(`==> staged${published.version ? ` ${published.version}` : ""}: ${staged.join(", ")}`);
   } else if (published?.version) console.log(`==> ${dryRun ? "would release" : "released"} ${published.version}: ${published.changed.join(", ")}`);
   else if (published) console.log("==> nothing changed: nothing was released");
   else console.log("==> done");

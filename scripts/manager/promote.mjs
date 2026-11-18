@@ -20,8 +20,8 @@ try {
   await loadEnv();
   const staged = JSON.parse(await readFile(input, "utf8"));
   const { promoted } = await promoteFromEnv({ staged });
-  const version = Object.values(staged.packs ?? {}).find((entry) => entry.version)?.version ?? "";
-  console.log(`==> promoted ${version || "(no version)"}: ${promoted.join(", ")}`);
+  const version = Object.values(staged.packs ?? {}).find((entry) => entry.version)?.version;
+  console.log(`==> promoted${version ? ` ${version}` : ""}: ${promoted.join(", ")}`);
 } catch (error) {
   console.error(errorText(error));
   process.exit(1);

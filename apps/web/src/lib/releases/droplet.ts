@@ -30,9 +30,10 @@ export function runsOnDroplet(): boolean {
 
 /**
  * Whether a team that is not official, or not the language's privileged team, may release: only
- * where SPOKEN_TEAM_RELEASES=1, set where release.env signs for the staging channel, until a site
- * owner reviews a team's release. On the droplet only: the workflow builds from a synced database,
- * whose sync gives every take to the privileged team.
+ * where SPOKEN_TEAM_RELEASES=1. Staging sets it; production sets it once a Manager and a Spoken
+ * that list a team's packs have shipped. On the droplet only: the workflow builds from a synced
+ * database, whose sync gives every take to the privileged team. A release of a team that is not
+ * official waits for a site owner's review either way.
  */
 export function teamReleasesOpen(): boolean {
   return process.env.SPOKEN_TEAM_RELEASES === "1" && runsOnDroplet();
@@ -142,10 +143,30 @@ export function currentStep(log: string): string | null {
   return last ? `${last[3]}, step ${last[1]} of ${last[2]}` : null;
 }
 
-/** What the last line of a job that exited 0 says came of it. */
-export function outcome(log: string): { state: "done"; version: string | null } | { state: "unchanged" } {
+/**
+ * What the last line of a job that exited 0 says came of it. A staged release waits for review;
+ * a promotion or delisting is done (release.mjs, promote.mjs, delist.mjs).
+ */
+export function outcome(
+  log: string,
+): { state: "done" | "awaiting_review"; version: string | null } | { state: "unchanged" } {
   if (/^==> nothing changed/m.test(log)) return { state: "unchanged" };
-  return { state: "done", version: /^==> released (\S+?):/m.exec(log)?.[1] ?? null };
+  const staged = /^==> staged(?: (\S+?))?:/m.exec(log);
+  if (staged) return { state: "awaiting_review", version: staged[1] ?? null };
+  return { state: "done", version: /^==> (?:released|promoted) (\S+?):/m.exec(log)?.[1] ?? null };
+}
+
+/** What a staged release left in its run's directory for promote.mjs; null when it left nothing. */
+export async function readStaged(id: string): Promise<unknown> {
+  const dir = runDir(id);
+  if (!dir) return null;
+  const text = await readFile(join(dir, "staged.json"), "utf8").catch(() => null);
+  if (text === null) return null;
+  try {
+    return JSON.parse(text);
+  } catch {
+    return null;
+  }
 }
 
 export function failureReason(log: string, exitCode: number): string {

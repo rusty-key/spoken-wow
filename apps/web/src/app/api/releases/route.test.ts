@@ -306,6 +306,22 @@ describe("release route", () => {
       expect(encode.encodeMissingForPack).toHaveBeenCalledWith("places", "frFR", team);
     });
 
+    it("stages a team's release that is not official, for a site owner to review", async () => {
+      vi.stubEnv("SPOKEN_TEAM_RELEASES", "1");
+      vi.stubEnv("SPOKEN_RELEASE_ENV", "/srv/spoken/shared/release.env");
+      expect((await pressAs(second.id)).status).toBe(202);
+      expect(droplet.startDropletRun.mock.calls[0][0]).toMatchObject({ teamId: team, stage: true });
+    });
+
+    it("publishes an official second team's release without review", async () => {
+      vi.stubEnv("SPOKEN_TEAM_RELEASES", "1");
+      vi.stubEnv("SPOKEN_RELEASE_ENV", "/srv/spoken/shared/release.env");
+      await asSystem.query(`update "team" set "official" = true where "id" = $1`, [team]);
+      forgetTeams();
+      expect((await pressAs(second.id)).status).toBe(202);
+      expect(droplet.startDropletRun.mock.calls[0][0]).toMatchObject({ teamId: team, stage: false });
+    });
+
     it("stays refused where team releases are open but the release would run on GitHub", async () => {
       vi.stubEnv("SPOKEN_TEAM_RELEASES", "1");
       vi.stubEnv("SPOKEN_RELEASE_ENV", "");

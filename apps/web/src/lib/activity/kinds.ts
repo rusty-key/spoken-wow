@@ -170,7 +170,8 @@ export type ActivityDetail = {
 
   // Releases.
   "release.started": { section: string };
-  "release.finished": { section: string; state: "done" | "unchanged" | "failed"; version?: string };
+  /** `awaiting_review`: a team that is not official staged it, for a site owner to review. */
+  "release.finished": { section: string; state: "done" | "unchanged" | "failed" | "awaiting_review"; version?: string };
 
   // Community packs: every language's, the subject is the pack id.
   "pack.submitted": PackSubmissionDetail;

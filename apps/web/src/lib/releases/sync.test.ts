@@ -13,8 +13,16 @@ vi.mock("./droplet", async (original) => ({ ...(await original<typeof import("./
 const encode = vi.hoisted(() => ({ encodeMissingForPack: vi.fn() }));
 vi.mock("@/lib/takes/encode", () => encode);
 
+const mail = vi.hoisted(() => ({ sent: [] as { to: string; subject: string; text: string }[] }));
+vi.mock("@/lib/email", () => ({
+  sendEmail: async (to: string, subject: string, text: string) => {
+    mail.sent.push({ to, subject, text });
+    return true;
+  },
+}));
+
 import { forgetReleaseCheck, syncActive } from "./sync";
-import { activeRun, startRun } from "./store";
+import { activeRun, lastReleasedAt, startRun } from "./store";
 
 function reply(body: unknown, status = 200): Response {
   return new Response(JSON.stringify(body), { status });
@@ -145,6 +153,69 @@ describe("syncActive", () => {
       expect(await syncActive()).toMatchObject({ id: third.id, state: "dispatching" });
       expect(await row(second.id)).toMatchObject({ state: "failed", error: "spawn setsid ENOENT" });
       expect(droplet.startDropletRun).toHaveBeenCalledTimes(2);
+    });
+
+    describe("a staged release", () => {
+      const STAGED = (rev: string) => ({
+        packs: { SpokenBossesAudio_frFR_x: { rev, baseRev: null, version: "1.0.0", manifestSha256: "m", lang: "frFR" } },
+        languages: {},
+      });
+      const stagedLog = "==> step 3/3: publish\n==> staged 1.0.0: SpokenBossesAudio_frFR_x\n";
+      let owner: Awaited<ReturnType<typeof testUser>>;
+
+      beforeEach(async () => {
+        mail.sent.length = 0;
+        owner = await testUser("release-sync-owner");
+        await asSystem.query(`update "user" set "role" = 'admin' where "id" = $1`, [owner.id]);
+      });
+
+      afterEach(async () => {
+        await owner.cleanup();
+      });
+
+      const full = async (id: string) =>
+        (await systemRows<{ state: string; version: string | null; staged: unknown }>(
+          `select "state", "version", "staged" from "release_run" where "id" = $1`, [id],
+        ))[0];
+
+      it("waits for review with what it staged, tells the site owners, and leaves the pending count alone", async () => {
+        const run = await startRun("bosses", "frFR", user.id, { stage: true });
+        job(run.id, { exit: "0", log: stagedLog, "staged.json": JSON.stringify(STAGED("r1")) });
+        expect(await syncActive()).toBeNull();
+        expect(await full(run.id)).toEqual({ state: "awaiting_review", version: "1.0.0", staged: STAGED("r1") });
+        expect((await lastReleasedAt("frFR")).has("bosses")).toBe(false);
+        expect(mail.sent.find((m) => m.to === `${owner.id}@example.invalid`)?.subject).toContain("to review");
+      });
+
+      it("fails when the job says it staged but left no staged.json", async () => {
+        const run = await startRun("bosses", "frFR", user.id, { stage: true });
+        job(run.id, { exit: "0", log: stagedLog });
+        await syncActive();
+        expect(await row(run.id)).toMatchObject({ state: "failed", error: "The release staged nothing the site could read" });
+      });
+
+      it("replaces the version waiting for the same pack only once the new one waits too", async () => {
+        const first = await startRun("bosses", "frFR", user.id, { stage: true });
+        job(first.id, { exit: "0", log: stagedLog, "staged.json": JSON.stringify(STAGED("r1")) });
+        await syncActive();
+
+        const failing = await startRun("bosses", "frFR", user.id, { stage: true });
+        job(failing.id, { exit: "1", log: "error: no\n" });
+        await syncActive();
+        expect((await row(first.id)).state).toBe("awaiting_review");
+
+        const other = await startRun("places", "frFR", user.id, { stage: true });
+        job(other.id, { exit: "0", log: stagedLog, "staged.json": JSON.stringify(STAGED("r2")) });
+        await syncActive();
+        expect((await row(first.id)).state).toBe("awaiting_review");
+
+        const second = await startRun("bosses", "frFR", user.id, { stage: true });
+        job(second.id, { exit: "0", log: stagedLog, "staged.json": JSON.stringify(STAGED("r3")) });
+        await syncActive();
+        expect((await row(first.id)).state).toBe("superseded");
+        expect((await row(second.id)).state).toBe("awaiting_review");
+        expect((await row(other.id)).state).toBe("awaiting_review");
+      });
     });
 
     it("starts a queued run when it finds nothing active", async () => {

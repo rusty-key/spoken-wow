@@ -61,7 +61,8 @@ type Row = {
 };
 
 /**
- * Every file whose live audio changed since `$3`, as `file, lineId, version, at, by, kind`.
+ * Every file whose live audio changed since `$3`, as `file, lineId, version, at, by, kind`: the
+ * acting team's takes, which its release builds from, or the privileged team's read as all teams.
  *
  * A restore counts only when it put back something other than what was live at `$3`: cutting
  * v3 and going back to v2 is an undo, and players already have v2. What was live then is the
@@ -72,7 +73,7 @@ function changed(section: ReleaseSection): string {
   return `
   select t."file", t."lineId", t."version", t."createdAt" as "at", t."createdBy" as "by", 'new' as "kind"
     from "take" t
-   where t."source" = $1 and t."lang" = $2 and t."isCurrent" and t."teamId" = team_of_lang($2)
+   where t."source" = $1 and t."lang" = $2 and t."isCurrent" and t."teamId" = coalesce(spoken_team(), team_of_lang($2))
      and ($3::timestamptz is null or t."createdAt" > $3) ${SHIPPED[section]}
   union all
   -- A file restored and regenerated since counts once, as the newer take; restored twice, once,
@@ -81,7 +82,7 @@ function changed(section: ReleaseSection): string {
     select distinct on (a."subject") a."subject", t."lineId", t."version", a."at", a."actorId", 'restored'
       from "activity" a
       join "take" t on t."source" = a."source" and t."lang" = a."lang" and t."file" = a."subject"
-                   and t."isCurrent" and t."teamId" = team_of_lang($2)
+                   and t."isCurrent" and t."teamId" = coalesce(spoken_team(), team_of_lang($2))
      where $3::timestamptz is not null and a."kind" = 'take.restored' and a."lang" = $2
        and a."source" = $1 and a."at" > $3 and t."createdAt" <= $3 ${SHIPPED[section]}
        and t."version" is distinct from coalesce(

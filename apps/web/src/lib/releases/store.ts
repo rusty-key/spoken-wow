@@ -189,17 +189,25 @@ async function recordFinish(run: ReleaseRun, state: ReleaseState, client: PoolCl
       kind: "release.finished",
       lang: run.lang,
       actorId: null,
-      detail: { section: run.section, state: state as "done" | "unchanged" | "failed", ...(run.version ? { version: run.version } : {}) },
+      detail: {
+        section: run.section,
+        state: state as "done" | "unchanged" | "failed" | "awaiting_review",
+        ...(run.version ? { version: run.version } : {}),
+      },
       team: run.teamId,
     },
     client,
   );
 }
 
-export async function updateRun(
-  id: string,
-  patch: Partial<Pick<ReleaseRun, "state" | "githubRunId" | "githubUrl" | "step" | "error" | "version" | "staged">>,
-): Promise<ReleaseRun> {
+type RunPatch = Partial<Pick<ReleaseRun, "state" | "githubRunId" | "githubUrl" | "step" | "error" | "version" | "staged">>;
+
+export async function updateRun(id: string, patch: RunPatch): Promise<ReleaseRun> {
+  return (await applyUpdate(id, patch)).run;
+}
+
+/** updateRun, saying whether this call wrote it: the first of two workers settling a run does. */
+export async function applyUpdate(id: string, patch: RunPatch): Promise<{ run: ReleaseRun; changed: boolean }> {
   return withTeam(ALL_TEAMS, async (client) => {
     const { rows: before } = await client.query<ReleaseRun>(
       `select ${COLUMNS} from "release_run" where "id" = $1 for update`,
@@ -208,7 +216,7 @@ export async function updateRun(
     if (!before[0]) throw new Error(`no release run ${id}`);
     // Each process polls on its own, so a slower one can arrive after another has settled the
     // run; its write would take the lock again, or clash with the next press's.
-    if (isSettled(before[0].state)) return before[0];
+    if (isSettled(before[0].state)) return { run: before[0], changed: false };
     const settles = patch.state && isSettled(patch.state) ? patch.state : null;
     const { rows } = await client.query<ReleaseRun>(
       `update "release_run" set
@@ -225,9 +233,18 @@ export async function updateRun(
        patch.error ?? null, patch.version ?? null, settles !== null, patch.staged ? JSON.stringify(patch.staged) : null],
     );
     const run = rows[0];
+    // At most one version of a pack waits for review: the older one goes once this one waits, and
+    // not before, so a build that fails leaves it in place.
+    if (settles === "awaiting_review") {
+      await client.query(
+        `update "release_run" set "state" = 'superseded'
+          where "state" = 'awaiting_review' and "id" <> $1 and "teamId" = $2 and "section" = $3 and "lang" = $4`,
+        [run.id, run.teamId, run.section, run.lang],
+      );
+    }
     // A promotion or delisting is recorded as the review that asked for it (review.ts).
     if (settles && run.kind === "release") await recordFinish(run, settles, client);
-    return run;
+    return { run, changed: true };
   });
 }
 

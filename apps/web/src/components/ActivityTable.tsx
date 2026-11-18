@@ -310,7 +310,15 @@ export function describe(row: ActivityRow): { what: string; quote: string | null
       return { what: `pressed Release for ${str(d.section) ?? "a section"}`, quote: null };
     case "release.finished":
       return {
-        what: `release of ${str(d.section) ?? "a section"} ${d.state === "failed" ? "failed" : d.state === "unchanged" ? "found nothing to release" : "finished"}`,
+        what: `release of ${str(d.section) ?? "a section"} ${
+          d.state === "failed"
+            ? "failed"
+            : d.state === "unchanged"
+              ? "found nothing to release"
+              : d.state === "awaiting_review"
+                ? "is waiting for a site owner's review"
+                : "finished"
+        }`,
         quote: str(d.version),
       };
     case "pack.submitted":

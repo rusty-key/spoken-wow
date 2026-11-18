@@ -52,7 +52,9 @@ export async function POST(request: Request) {
   try {
     // A run on GitHub is refused while another is active: the workflow's own concurrency group
     // queues there, and cancels what waits.
-    run = await startRun(body.section, lang, session.user.id, { bump, queue: runsOnDroplet() });
+    // A team that is not official stages, for a site owner to review; decided now, so changing
+    // `official` later changes nothing in flight.
+    run = await startRun(body.section, lang, session.user.id, { bump, stage: team ? !team.official : false, queue: runsOnDroplet() });
   } catch (error) {
     if (error instanceof ReleaseBusyError) {
       return fail(409, `A release is already running: ${error.active.section} in ${langName(error.active.lang)}.`);

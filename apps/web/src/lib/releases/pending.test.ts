@@ -3,7 +3,8 @@ import { afterAll, afterEach, beforeAll, describe, expect, it } from "vitest";
 
 import { recordActivity } from "@/lib/activity/store";
 import { closeDb } from "@/lib/db";
-import { asSystem, ownTeam } from "@/lib/teams/testing";
+import { asTeam } from "@/lib/teams/acting";
+import { asSystem, dropTeam, newTeamIn, ownTeam } from "@/lib/teams/testing";
 
 import { pendingChanges } from "./pending";
 import { RELEASE_SECTIONS } from "./sections";
@@ -51,6 +52,20 @@ describe("pendingChanges", () => {
       ["pending-test-replaced", 2, "new"],
     ]);
     expect(pending.since).toBe(CUTOFF.toISOString());
+  });
+
+  it("counts a second team's own takes for it, and the privileged team's for the privileged team", async () => {
+    const second = await newTeamIn("deDE", false, "pending-second");
+    try {
+      await take("pending-test-ours", 1, after, { team: second });
+      await take("pending-test-theirs", 1, after, { team: de.team });
+      const asSecond = await asTeam("deDE", second, () => pendingChanges("places", "deDE", CUTOFF));
+      expect(asSecond.changes.map((c) => c.file)).toEqual(["pending-test-ours"]);
+      expect((await pendingChanges("places", "deDE", CUTOFF)).changes.map((c) => c.file)).toEqual(["pending-test-theirs"]);
+    } finally {
+      await asSystem.query(`delete from "take" where "teamId" = $1`, [second]);
+      await dropTeam(second);
+    }
   });
 
   async function restored(file: string, at: string) {

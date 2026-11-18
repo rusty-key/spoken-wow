@@ -1,6 +1,6 @@
 import type { ChildProcess } from "node:child_process";
 import { EventEmitter } from "node:events";
-import { mkdirSync, mkdtempSync, realpathSync, writeFileSync } from "node:fs";
+import { mkdirSync, mkdtempSync, readFileSync, realpathSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
@@ -11,6 +11,7 @@ import { needsTeamReleases, releasePlan } from "../../../../../scripts/manager/r
 import {
   currentStep,
   failureReason,
+  jobArgs,
   outcome,
   readDropletRun,
   releasesClosedFor,
@@ -103,6 +104,16 @@ describe("startDropletRun", () => {
     expect(Object.keys(options.env).sort()).toEqual(["HOME", "NODE_ENV", "PATH", "SPOKEN_RELEASE_ENV"]);
   });
 
+  it("stages a release that asks to, and hands a promotion its entries", async () => {
+    expect(jobArgs({ ...run, stage: true })).toEqual(["bosses", "enUS", "minor", "--team=english", "--stage"]);
+    const staged = { packs: { SpokenBossesAudio_x: { rev: "r" } }, languages: {} };
+    const spawnFn = fakeSpawn(0);
+    await startDropletRun({ ...run, kind: "promote", staged }, spawnFn);
+    const [, args] = spawnFn.mock.calls[0] as unknown as [string, string[]];
+    expect(args.slice(-5)).toEqual(["bosses", "enUS", "minor", "--team=english", "--kind=promote"]);
+    expect(JSON.parse(readFileSync(join(shared, "release-runs/run-1/input.json"), "utf8"))).toEqual(staged);
+  });
+
   it("refuses when the fork could not start", async () => {
     await expect(startDropletRun(run, fakeSpawn(new Error("spawn setsid ENOENT")))).rejects.toThrow("ENOENT");
     await expect(startDropletRun(run, fakeSpawn(1))).rejects.toThrow("setsid exited 1");
@@ -116,6 +127,13 @@ describe("outcome", () => {
 
   it("tells a job that found nothing to release", () => {
     expect(outcome("==> step 3/3: publish\n==> nothing changed: nothing was released\n")).toEqual({ state: "unchanged" });
+  });
+
+  it("waits for review after a staged release, and is done after a promotion or delisting", () => {
+    expect(outcome("==> staged 1.0.3: SpokenPlacesAudio_deDE_x\n")).toEqual({ state: "awaiting_review", version: "1.0.3" });
+    expect(outcome("==> staged: SpokenPlacesAudio_deDE_x\n")).toEqual({ state: "awaiting_review", version: null });
+    expect(outcome("==> promoted 1.0.3: SpokenPlacesAudio_deDE_x\n")).toEqual({ state: "done", version: "1.0.3" });
+    expect(outcome("==> delisted SpokenPlacesAudio_deDE_x\n")).toEqual({ state: "done", version: null });
   });
 
   it("is done with no version when the log does not say", () => {
