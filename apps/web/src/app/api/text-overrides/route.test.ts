@@ -184,6 +184,7 @@ describe("/api/text-overrides", () => {
     const silent = await as(u.id, () => put("places", fx.zone, "[1-30]"));
     expect(silent.status).toBe(400);
     expect((await silent.json()).error).toBe("text has nothing to say aloud once its directions are removed");
+    expect((await as(u.id, () => put("bosses", fx.boss.lineId, "At the [[North Gate]]."))).status).toBe(400);
     expect(await rows(fx.zone)).toEqual([]);
   });
 

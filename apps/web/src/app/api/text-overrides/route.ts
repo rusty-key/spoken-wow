@@ -11,7 +11,7 @@ import { baseCatalogue as bossCatalogue } from "@/lib/bosses/catalogue";
 import { requireIn } from "@/lib/generation/authz";
 import type { Lang } from "@/lib/lang";
 import { baseCatalogue as placeCatalogue } from "@/lib/places/catalogue";
-import { toSpokenText } from "@/lib/places/tools";
+import { hasBrackets, toSpokenText } from "@/lib/places/tools";
 import { baseCatalogue as readableCatalogue } from "@/lib/readables/catalogue";
 import { MAX_TEXT } from "@/lib/text-api/apply";
 import { hasNul } from "@/lib/text-api/types";
@@ -69,9 +69,13 @@ export async function PUT(request: Request) {
   }
   if (hasNul(text)) return Response.json({ error: "text cannot hold a NUL character" }, { status: 400 });
   // Places and bosses drop bracketed directions before speaking, so text of nothing else would
-  // save and then be refused by every regeneration.
-  if (source !== "readables" && !toSpokenText(text, {})) {
-    return Response.json({ error: "text has nothing to say aloud once its directions are removed" }, { status: 400 });
+  // save and then be refused by every regeneration, and a bracket left over is read as one.
+  if (source !== "readables") {
+    const said = toSpokenText(text, {});
+    if (!said) {
+      return Response.json({ error: "text has nothing to say aloud once its directions are removed" }, { status: 400 });
+    }
+    if (hasBrackets(said)) return Response.json({ error: "text cannot keep a square bracket" }, { status: 400 });
   }
 
   const line = await lineOf(source, lang, lineId);
