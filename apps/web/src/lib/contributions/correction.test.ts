@@ -322,6 +322,18 @@ describe("acceptCorrection: a readables page", () => {
     expect(await acceptCorrection(id, ACCEPTER)).toMatchObject({ ok: true, contribution: { status: "accepted" } });
     expect(await versions()).toEqual(before);
   });
+
+  it("refuses a page's correction that lost a token, as a quest translation's is", async () => {
+    await saveBookText({ lineId: page, text: `Hola, $N, ${base}.`, note: null, editedBy: ACCEPTER, lang: "esES" });
+    const id = await readablesRow(`Hola, Pedro, ${base}.`);
+    const before = await versions();
+    expect(await acceptCorrection(id, ACCEPTER)).toMatchObject({
+      ok: false,
+      reason: "malformed",
+      message: expect.stringContaining("$N"),
+    });
+    expect(await versions()).toEqual(before);
+  });
 });
 
 // Last: it writes the English line the tests above read.
