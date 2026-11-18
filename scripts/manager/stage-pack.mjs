@@ -11,7 +11,7 @@ import { englishFolder } from "../lib/packs.mjs";
 // .toc lines naming a pack's tier and language, which its Data/Sounds.lua reads back.
 const SECTIONS = {
   places: { icon: (lang) => `pipelines/places/assets/spoken-zones-${lang}.tga`, tocPrefix: "X-SpokenPlaces" },
-  bosses: { icon: null, tocPrefix: "X-SpokenBosses" },
+  bosses: { icon: (lang) => `pipelines/bosses/assets/spoken-bosses-${lang}.tga`, tocPrefix: "X-SpokenBosses" },
   readables: { icon: (lang) => `pipelines/readables/assets/spoken-books-${lang}.tga`, tocPrefix: null },
 };
 

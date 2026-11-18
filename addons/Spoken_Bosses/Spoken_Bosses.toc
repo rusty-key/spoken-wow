@@ -17,7 +17,7 @@
 ## SavedVariables: SpokenBossesSettings
 ## SavedVariablesPerCharacter: SpokenBossesCharacter
 # Spoken is what this module runs on, and ships in the same zip.
-## IconTexture: Interface\AddOns\Spoken\icon.tga
+## IconTexture: Interface\AddOns\Spoken_Bosses\Textures\AddonIcon.tga
 ## Group: Spoken
 ## X-Part-Of: Spoken
 ## X-License: Addon code MIT. Boss names are Blizzard's, from the game's own tables.
