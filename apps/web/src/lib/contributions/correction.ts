@@ -40,7 +40,7 @@ import { BookConflict, BookMissing, saveBookText } from "@/lib/readables/text";
 import { db } from "@/lib/db";
 import { withTextTeam } from "@/lib/teams/store";
 import { BASE_LANG, isLang, type Lang } from "@/lib/lang";
-import { branchesOnPlayerGender } from "@/lib/player-words";
+import { branchesOnPlayerGender, playerTokenCounts } from "@/lib/player-words";
 import { momentLines, writeEnglishOriginal } from "@/lib/quests/moment-rewrite";
 import { OverrideError } from "@/lib/quests/override";
 import { QuestTextConflict, QuestTextMissing, saveQuestText } from "@/lib/quests/text";
@@ -109,6 +109,19 @@ export async function acceptCorrection(
       reason: "not-a-correction",
       message: "That is not a wording this moment has any more -- reload to see its wordings.",
     };
+  }
+
+  // An English quest line is written spoken, its tokens already words (correctEnglish); a
+  // translation and a book page keep theirs, so one the player's client filled in is lost here.
+  if (contribution.source === "readables" || lang !== BASE_LANG) {
+    const dropped = droppedTokens(target.text, contribution.text);
+    if (dropped.length > 0) {
+      return {
+        ok: false,
+        reason: "malformed",
+        message: `The correction has fewer ${dropped.join(", ")} than the line: the player's client filled them in for one reader. Edit it in the explorer.`,
+      };
+    }
   }
 
   try {
@@ -251,6 +264,17 @@ async function markAccepted(
     );
     return { ok: true, contribution: updated.rows[0] };
   });
+}
+
+/**
+ * The player tokens the corpus text has more of than the correction, as they are written
+ * (`$N`, `$C`, `$R`, `$G` for a gender branch). The envelope does not say which reader sent it,
+ * so a token the client resolved cannot be put back.
+ */
+function droppedTokens(corpus: string, correction: string): string[] {
+  const before = playerTokenCounts(corpus);
+  const after = playerTokenCounts(correction);
+  return (["N", "C", "R", "G"] as const).filter((token) => after[token] < before[token]).map((token) => `$${token}`);
 }
 
 /**

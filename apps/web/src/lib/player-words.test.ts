@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { branchesOnPlayerGender, playerGenderSides, speakPlayerTokens } from "./player-words";
+import { branchesOnPlayerGender, playerGenderSides, playerTokenCounts, speakPlayerTokens } from "./player-words";
 import { isVoiceable, skipReasonFor } from "./text-gate";
 
 describe("speakPlayerTokens", () => {
@@ -176,5 +176,24 @@ describe("the text gate on a translation", () => {
   it("voices a frFR line with the class plural $cs", () => {
     expect(skipReasonFor("Les $cs de Comté-du-Nord vous attendent, $n.", "frFR")).toBeNull();
     expect(skipReasonFor("Les $cs de Comté-du-Nord vous attendent, $n.", "frFR", "f")).toBeNull();
+  });
+});
+
+describe("playerTokenCounts", () => {
+  it("counts each token the client would fill in, as #548's deDE corrections lost them", () => {
+    expect(playerTokenCounts("wissen, $C, dass")).toEqual({ N: 0, C: 1, R: 0, G: 0 });
+    expect(playerTokenCounts("wissen, Krieger, dass")).toEqual({ N: 0, C: 0, R: 0, G: 0 });
+    expect(playerTokenCounts("Seid gegrüßt, $GBruder:Schwester;.")).toEqual({ N: 0, C: 0, R: 0, G: 1 });
+    expect(playerTokenCounts("Vielen Dank, $c. Geht, $n, und $r!")).toEqual({ N: 1, C: 1, R: 1, G: 0 });
+  });
+
+  it("counts a doubled $, a glued genitive and a swapped $u as the one token each", () => {
+    expect(playerTokenCounts("$$N, kommt her.")).toEqual({ N: 1, C: 0, R: 0, G: 0 });
+    expect(playerTokenCounts("die Legion $Ns")).toEqual({ N: 1, C: 0, R: 0, G: 0 });
+    expect(playerTokenCounts("Hallo, $uBürger;Bürgerin:.")).toEqual({ N: 0, C: 0, R: 0, G: 1 });
+  });
+
+  it("counts a token inside a branch as the branch alone", () => {
+    expect(playerTokenCounts("Sei $Gun $C:una $C; coraggioso.")).toEqual({ N: 0, C: 0, R: 0, G: 1 });
   });
 });

@@ -151,6 +151,18 @@ describe("acceptCorrection", () => {
     expect(rows).toEqual([{ version: 2, text: "Guten Tag, $N.", localeText: "Hallo, $N.", note: correctionNote(id) }]);
   });
 
+  it("refuses a translation's correction that lost a token, the client's one reader's word", async () => {
+    const id = await contribution("deDE", "Guten Tag, Krieger.");
+    const outcome = await acceptCorrection(id, ACCEPTER);
+    expect(outcome).toMatchObject({ ok: false, reason: "malformed", message: expect.stringContaining("$N") });
+
+    const { rows } = await asSystem.query(
+      `select "text" from "quest_line" where "lineId" = $1 and "lang" = 'deDE' and "isCurrent"`,
+      [lineId],
+    );
+    expect(rows).toEqual([{ text: "Guten Tag, $N." }]);
+  });
+
   it("splits a plain line the site wrote when the correction branches on $g", async () => {
     const id = await contribution("enUS", "Well met, $glad:lass;.", "accept", contributedQuest);
     const outcome = await acceptCorrection(id, ACCEPTER);
