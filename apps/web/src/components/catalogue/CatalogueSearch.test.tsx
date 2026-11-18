@@ -75,3 +75,23 @@ test("readables: All clears the audio state and the reports filter in one write"
   await pressAll();
   expect(onChange.mock.calls).toEqual([[cleared]]);
 });
+
+test("All is not pressed while a reports filter the viewer has no button for narrows the list", () => {
+  render(
+    <PlacesSearchBar
+      section={{ facetLabel: "Zone", facets: [], labels: { name: "Name", text: "Text", search: "Search" } } as never}
+      fields={["any"]}
+      kinds={[]}
+      filters={{ reports: "open" }}
+      canTriage={false}
+      query=""
+      inputRef={createRef()}
+      onQueryChange={() => {}}
+      onQuerySubmit={() => {}}
+      onChange={() => {}}
+      onClearAll={() => {}}
+    />,
+  );
+  expect(screen.queryByRole("button", { name: "Reported" })).toBeNull();
+  expect(screen.getByRole("button", { name: "All" }).getAttribute("aria-pressed")).toBe("false");
+});

@@ -62,7 +62,9 @@ export function CatalogueSearch({
 }) {
   const [open, setOpen] = useState(false);
   const panelId = useId();
-  const allPressed = statuses.every((status) => !status.pressed);
+  // From the pills, not the buttons: a hand-typed ?fb=open narrows the list for a viewer who has
+  // no Reported button, and All must not claim the list is unfiltered then.
+  const allPressed = !active.some((filter) => filter.key === "state" || filter.key === "reports");
   // The badge counts what the panel holds; the audio buttons show their own state.
   const inPanel = active.filter((filter) => filter.key !== "state" && filter.key !== "reports").length;
 
