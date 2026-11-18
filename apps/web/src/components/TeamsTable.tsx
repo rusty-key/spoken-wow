@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -47,6 +47,14 @@ export default function TeamsTable({ initial, takes, languages }: Props) {
   const [busy, setBusy] = useState(false);
   const [names, setNames] = useState(() => Object.fromEntries(initial.map((team) => [team.id, team.name])));
   const [ownStorage, setOwnStorage] = useState<Record<string, boolean>>({});
+  // Once the refreshed teams agree with a saved value it is theirs to show, so a later change made
+  // elsewhere comes through.
+  useEffect(() => {
+    setOwnStorage((current) => {
+      const left = Object.entries(current).filter(([id, value]) => initial.find((team) => team.id === id)?.ownStorage !== value);
+      return left.length === Object.keys(current).length ? current : Object.fromEntries(left);
+    });
+  }, [initial]);
   const [form, setForm] = useState({ slug: "", name: "", adminEmail: "", langs: [] as Lang[] });
   const [newLanguage, setNewLanguage] = useState(false);
   const [fresh, setFresh] = useState<NewLanguage>({ code: "", name: "", native: "" });

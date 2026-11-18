@@ -5,9 +5,11 @@
  */
 import { describe, expect, it, vi } from "vitest";
 
-const { mergeSamples, storeSample } = vi.hoisted(() => ({
+const { mergeSamples, storeSample, deleteSample, storageRefusalResponse } = vi.hoisted(() => ({
   mergeSamples: vi.fn(async () => ({ file: "merged.mp3" })),
   storeSample: vi.fn(async (_clone: string, file: string) => ({ file })),
+  deleteSample: vi.fn(async () => true),
+  storageRefusalResponse: vi.fn(async (): Promise<Response | null> => null),
 }));
 
 vi.mock("@/lib/voices/authz", () => ({
@@ -19,13 +21,13 @@ vi.mock("@/lib/voices/authz", () => ({
 }));
 vi.mock("@/lib/activity/store", () => ({ recordActivities: async () => {} }));
 // The storage check reads the database; this suite needs none.
-vi.mock("@/lib/blobs/keep", () => ({ storageRefusalResponse: async () => null }));
+vi.mock("@/lib/blobs/keep", () => ({ storageRefusalResponse }));
 vi.mock("@/lib/voices/seedClips", () => ({
   seedClips: async () => ["/clips/A01.ogg", "/clips/A02.ogg"],
 }));
 vi.mock("@/lib/voices/samples", () => ({
-  listSamples: async () => [],
-  deleteSample: async () => true,
+  listSamples: async () => [{ file: "old.ogg" }],
+  deleteSample,
   storeSample,
 }));
 vi.mock("@/lib/voices/merge", () => ({ DEFAULT_PAUSE_SECONDS: 1, mergeSamples }));
@@ -50,6 +52,14 @@ function seed(lang: string) {
 }
 
 describe("POST /api/voices/[voice]/samples/import", () => {
+  it("refuses before replacing anything when the team may keep no audio", async () => {
+    storageRefusalResponse.mockResolvedValueOnce(Response.json({ error: "connect a bucket", kind: "storage-required" }, { status: 409 }));
+    const response = await seed("frFR");
+    expect(response.status).toBe(409);
+    expect(deleteSample).not.toHaveBeenCalled();
+    expect(storeSample).not.toHaveBeenCalled();
+  });
+
   it("stores and merges another language's clips under its own clone", async () => {
     const response = await seed("frFR");
 

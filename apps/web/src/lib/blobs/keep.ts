@@ -121,7 +121,7 @@ export const refusalResponse = ({ kind, message }: Refusal): Response =>
  * quarantine is for takes already paid for, not uploads).
  */
 export async function storageRefusalResponse(lang: Lang): Promise<Response | null> {
-  const refused = await storageRefusal(lang);
+  const refused = await storageRefusal(lang, "nothing new can be saved");
   return refused ? refusalResponse(refused) : null;
 }
 
@@ -295,10 +295,10 @@ export async function landQuarantined(perBucket = 20): Promise<number> {
  * Why `lang`'s team may not queue paid work now, or null: it must keep its own storage and has
  * none, or its bucket is failing. Jobs already queued carry on, into the quarantine.
  */
-export async function storageRefusal(lang: Lang): Promise<Refusal | null> {
+export async function storageRefusal(lang: Lang, refused = "nothing new is queued"): Promise<Refusal | null> {
   const { own, target, refusal } = await storageOf(lang);
   if (refusal) return { kind: "storage-required", message: refusal };
   if (target?.health !== "failing") return null;
   const instead = own ? "" : ", or send new objects to Spoken's archive";
-  return { kind: "storage-failing", message: `Your team's bucket is failing, so nothing new is queued: test it on the Storage page${instead}.` };
+  return { kind: "storage-failing", message: `Your team's bucket is failing, so ${refused}: test it on the Storage page${instead}.` };
 }
