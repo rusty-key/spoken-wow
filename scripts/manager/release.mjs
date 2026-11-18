@@ -25,7 +25,7 @@ import { errorText, publishFromEnv } from "./channel.mjs";
 import { BUMPS } from "./pack-version.mjs";
 import { questsSteps } from "./quests-pack.mjs";
 import { releasePlan } from "./release-pack.mjs";
-import { releaseTeam } from "./release-team.mjs";
+import { languageNames, releaseTeam } from "./release-team.mjs";
 import { keepsCommittedFolder, stagePack } from "./stage-pack.mjs";
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "../..");
@@ -53,12 +53,12 @@ if ((!quests && !LOOKUPS[section]) || !/^[a-z]{2}[A-Z]{2}$/.test(lang ?? "") || 
 const stageOnly = flags.includes("--stage-only");
 const teamSlug = flags.find((flag) => flag.startsWith("--team="))?.slice("--team=".length) || null;
 
-/** The team and language the release builds for, read before any step runs. */
+/** The team and language the release builds for, and every language's names, read before any step runs. */
 async function readTeam() {
   const db = new pg.Client({ connectionString: process.env.LOCAL_DB || process.env.DATABASE_URL });
   await db.connect();
   try {
-    return await releaseTeam(db, lang, teamSlug);
+    return { team: await releaseTeam(db, lang, teamSlug), languages: await languageNames(db) };
   } finally {
     await db.end();
   }
@@ -109,7 +109,7 @@ try {
   await loadEnv();
   if (!process.env.DATABASE_URL) throw new Error("DATABASE_URL is not set");
   if (!process.env.SPOKEN_ARCHIVE_URL) throw new Error("SPOKEN_ARCHIVE_URL is not set");
-  const team = await readTeam();
+  const { team, languages } = await readTeam();
   const plan = releasePlan(section, lang, team);
   // Until a site owner reviews a team's release (docs/platform/TEAMS.md, *Releases*), only a
   // release that signs for the staging channel builds a pack with no page.
@@ -127,7 +127,13 @@ try {
     ...build,
     ...(stageOnly ? [] : [["publish", async () => {
       published = await publishFromEnv({
-        packs: folders,
+        // A page pack is listed with no team, as one with no label (index-v2.json).
+        packs: plan.derived
+          ? plan.derived.folders.map(({ folder, section, lang, pack }) => ({
+              folder, section, lang, pack, team: { slug: team.slug, name: team.name, official: team.official },
+            }))
+          : folders,
+        languages,
         distDir: join(ROOT, "dist"),
         cache: new Map(),
         bump,

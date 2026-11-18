@@ -20,7 +20,11 @@ export async function gc({ store, signingKey, now = new Date(), dryRun = false, 
     log("no index.json: nothing to collect");
     return { deleted: [] };
   }
-  const index = openJson(idx.body.toString("utf8"), publicKey).value;
+  // A team's pack is live in index-v2.json alone, and index.json can lag it after a failed
+  // publish, so what either lists is live.
+  const v2 = await store.get("index-v2.json");
+  const indexes = [idx, ...(v2 ? [v2] : [])].map((o) => openJson(o.body.toString("utf8"), publicKey).value);
+  const live = new Set(indexes.flatMap((index) => Object.entries(index.packs ?? {}).map(([pack, entry]) => `${pack}/${entry.rev}`)));
 
   const revsByPack = new Map();
   for (const { key } of await store.list("packs/")) {
@@ -35,7 +39,7 @@ export async function gc({ store, signingKey, now = new Date(), dryRun = false, 
     revs.sort().reverse();
     revs.forEach((rev, i) => {
       const recent = now - revTime(rev) < KEEP_DAYS * DAY;
-      (i < KEEP_REVS || recent || index.packs[pack]?.rev === rev ? keep : drop).push(`packs/${pack}/${rev}.json`);
+      (i < KEEP_REVS || recent || live.has(`${pack}/${rev}`) ? keep : drop).push(`packs/${pack}/${rev}.json`);
     });
   }
 
@@ -44,7 +48,9 @@ export async function gc({ store, signingKey, now = new Date(), dryRun = false, 
     const o = await store.get(key);
     for (const f of openJson(o.body.toString("utf8"), publicKey).value.files) referenced.add(f.sha256);
   }
-  for (const { sha256 } of Object.values(index.addons ?? {}).flat()) referenced.add(sha256);
+  for (const index of indexes) {
+    for (const { sha256 } of Object.values(index.addons ?? {}).flat()) referenced.add(sha256);
+  }
   const blobs = (await store.list("blobs/"))
     .filter(({ key, lastModified }) => !referenced.has(key.slice("blobs/".length)) && now - lastModified > BLOB_GRACE)
     .map(({ key }) => key);

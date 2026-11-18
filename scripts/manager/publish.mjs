@@ -1,19 +1,25 @@
 // One publish of the manager channel: what dist/ holds now, against what the bucket says is live.
-// Blobs, then manifests, then the index; the index write is the only one players see, and it is
-// conditional, so two publishes racing cannot both win. Spec:
+// Blobs, then manifests, then the indexes; the index writes are the only ones players see, and
+// they are conditional, so two publishes racing cannot both win. Spec:
 // docs/superpowers/specs/2026-10-18-manager-delta-packs-design.md
+//
+// TWO INDEXES. index-v2.json is the channel's record: every pack, each with its language, section,
+// quests side and team, and the names of the languages it lists (docs/platform/TEAMS.md,
+// *Releases*). index.json is written from it in the same publish with only the ids an older
+// Manager accepts (LEGACY_PACK_ID), in the shape it has always had: that Manager rejects the whole
+// index when one entry fails its check. Spoken's own zips (`addons`) are publish-addon.mjs's,
+// which writes index.json, so they are read from there and written to both.
 import { existsSync, readdirSync, statSync } from "node:fs";
 import { readFile, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 
 import { readPointer } from "../lib/clip-pointer.mjs";
 import { archiveBase, fetchRetrying } from "../lib/download.mjs";
+import { describeFolder, LEGACY_PACK_ID, PACK_ID } from "../lib/packs.mjs";
 import { buildManifest, caseDuplicate, diffFiles, hashFolder, revOf } from "./manifest.mjs";
 import { bumpVersion, tocVersion, withTocVersion } from "./pack-version.mjs";
 import { openJson, publicKeyOf, sealJson, sha256Text } from "./sign.mjs";
-
-// The pack ids the manager accepts: an index entry it rejects hides the whole channel.
-const PACK_ID = /^Spoken[A-Za-z]+(_[a-z]{2}[A-Z]{2})?$/;
+import { ConflictError } from "./store.mjs";
 
 export const IMMUTABLE = "public, max-age=31536000, immutable";
 export const INDEX_CACHE = "public, max-age=60";
@@ -72,6 +78,40 @@ export async function latestSpokenRelease(fetchImpl = fetch, token = process.env
   return versions.sort(compareVersions).at(-1);
 }
 
+const V2_FIELDS = ["lang", "section", "pack", "team"];
+
+/** What index-v2.json says of a pack beyond index.json's entry. No team is a page pack's. */
+function packFields({ folder, lang, section, pack, team }) {
+  const named = describeFolder(folder);
+  return {
+    lang: lang ?? named?.lang ?? null,
+    section: section ?? named?.section ?? null,
+    pack: pack ?? named?.pack ?? null,
+    team: team ? { slug: team.slug, name: team.name, official: team.official } : null,
+  };
+}
+
+/** index-v2.json as index.json would have been, for the first publish after it came in. */
+function seedV2(legacy) {
+  const packs = Object.fromEntries(
+    Object.entries(legacy?.packs ?? {}).map(([folder, entry]) => [folder, { ...entry, ...packFields({ folder }) }]),
+  );
+  return { ...legacy, packs, languages: {} };
+}
+
+/** index.json's packs: the ids an older Manager accepts, in its shape. */
+function legacyPacks(packs) {
+  return Object.fromEntries(
+    Object.entries(packs)
+      .filter(([folder]) => LEGACY_PACK_ID.test(folder))
+      .map(([folder, entry]) => [folder, Object.fromEntries(Object.entries(entry).filter(([key]) => !V2_FIELDS.includes(key)))]),
+  );
+}
+
+// Key order aside, so an index rewritten from the other compares equal.
+const canonical = (value) =>
+  JSON.stringify(value, (_, v) => (v && typeof v === "object" && !Array.isArray(v) ? Object.fromEntries(Object.entries(v).sort()) : v));
+
 export async function readSigned(store, key, publicKey) {
   const o = await store.get(key);
   if (!o) return null;
@@ -111,7 +151,9 @@ function nextVersion(liveVersions, stagedVersions, bump) {
 }
 
 // With `bump`, a changed pack gets a new version in its .toc, and the version alone never counts as a change.
-export async function publish({ store, packs: allPacks, distDir, signingKey, minSpoken, latestSpoken, cache, now = new Date(), dryRun = false, allowRemovals = false, onlyPresent = false, bump = null, archiveUrl, fetchImpl = fetch, log = console.log }) {
+// `packs` are { folder, section, lang, pack?, team?: { slug, name, official } }: a pack with no team
+// is a page pack. `languages` are { code, name, native }, named in index-v2.json for the packs it lists.
+export async function publish({ store, packs: allPacks, languages = [], distDir, signingKey, minSpoken, latestSpoken, cache, now = new Date(), dryRun = false, allowRemovals = false, onlyPresent = false, bump = null, archiveUrl, fetchImpl = fetch, log = console.log }) {
   const publicKey = publicKeyOf(signingKey);
   // The bucket's name is masked in CI logs; this says which channel a run signed for.
   log(`signing with ${publicKey}`);
@@ -136,8 +178,11 @@ export async function publish({ store, packs: allPacks, distDir, signingKey, min
     }
   }
 
-  const current = await readSigned(store, "index.json", publicKey);
-  const live = current?.value.packs ?? {};
+  const legacy = await readSigned(store, "index.json", publicKey);
+  const current = await readSigned(store, "index-v2.json", publicKey);
+  const record = current?.value ?? seedV2(legacy?.value);
+  const live = record.packs ?? {};
+  const addons = legacy?.value.addons ?? record.addons;
   const known = new Set();
   const changes = [];
   const archived = new Map();
@@ -204,7 +249,11 @@ export async function publish({ store, packs: allPacks, distDir, signingKey, min
   const bytes = [...blobs.values()].reduce((n, b) => n + b.size, 0);
   log(`${blobs.size} new blobs, ${bytes} bytes${dryRun ? " (dry run: nothing sent)" : ""}`);
   const result = { changed: changes.map((c) => c.folder), blobs: blobs.size, bytes, rev: null, version };
-  if (dryRun || changes.length === 0) return result;
+  // A publish that failed between the two writes left index.json behind; with nothing new, this
+  // one still brings it up to date.
+  const behind = !current || canonical(legacyPacks(live)) !== canonical(legacy?.value.packs ?? {})
+    || canonical(record.addons ?? null) !== canonical(addons ?? null);
+  if (dryRun || (changes.length === 0 && !behind)) return result;
 
   let done = 0;
   await eachLimit([...blobs], 16, async ([sha, b]) => {
@@ -222,22 +271,39 @@ export async function publish({ store, packs: allPacks, distDir, signingKey, min
   });
   log(`${done} blobs in place`);
 
-  const rev = revOf(now);
+  const rev = changes.length > 0 ? revOf(now) : null;
   const nextPacks = { ...live };
+  const given = new Map(packs.map((p) => [p.folder, p]));
   for (const c of changes) {
     const manifest = buildManifest({ packId: c.folder, rev, requires: c.requires, files: c.files });
     const sealed = sealJson(manifest, signingKey);
     // If-None-Match: a manifest is immutable and cached for a year, so a second publish within the
     // same second must fail rather than replace it.
     await store.put(`packs/${c.folder}/${rev}.json`, sealed.text, { contentType: "application/json", cacheControl: IMMUTABLE, ifNoneMatch: "*" });
-    nextPacks[c.folder] = { rev, manifestSha256: sha256Text(sealed.signed), fileCount: manifest.fileCount, totalSize: manifest.totalSize, requires: c.requires };
+    nextPacks[c.folder] = {
+      rev, manifestSha256: sha256Text(sealed.signed), fileCount: manifest.fileCount, totalSize: manifest.totalSize, requires: c.requires,
+      ...packFields(given.get(c.folder)),
+    };
   }
-  // The spread keeps Spoken's own zips, which this publish knows nothing about, listed.
-  const sealedIndex = sealJson({ ...current?.value, generatedAt: now.toISOString(), packs: nextPacks }, signingKey);
-  await store.put("index.json", sealedIndex.text, {
+  const listed = new Set(Object.values(nextPacks).map((entry) => entry.lang));
+  const named = { ...record.languages, ...Object.fromEntries(languages.map(({ code, name, native }) => [code, { code, name, native }])) };
+  const nextLanguages = Object.fromEntries(Object.entries(named).filter(([code]) => listed.has(code)));
+  const generatedAt = now.toISOString();
+  const indexOpts = (was) => ({
     contentType: "application/json", cacheControl: INDEX_CACHE,
-    ...(current ? { ifMatch: current.etag } : { ifNoneMatch: "*" }),
+    ...(was ? { ifMatch: was.etag } : { ifNoneMatch: "*" }),
   });
-  log(`index.json now at ${rev} for ${result.changed.join(", ")}`);
+  // The spread keeps whatever else each index holds; Spoken's own zips are index.json's.
+  const v2 = { ...record, generatedAt, packs: nextPacks, addons, languages: nextLanguages };
+  await store.put("index-v2.json", sealJson(v2, signingKey).text, indexOpts(current));
+  try {
+    const old = { ...legacy?.value, generatedAt, packs: legacyPacks(nextPacks), addons };
+    await store.put("index.json", sealJson(old, signingKey).text, indexOpts(legacy));
+  } catch (err) {
+    // Lost to another write, which the run-again message covers: the next publish catches index.json up.
+    if (err instanceof ConflictError) throw err;
+    throw new Error(`index.json is behind index-v2.json until the next publish rewrites it: ${err.message}`, { cause: err });
+  }
+  log(rev ? `index.json now at ${rev} for ${result.changed.join(", ")}` : "index.json brought up to date with index-v2.json");
   return { ...result, rev };
 }

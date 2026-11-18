@@ -6,7 +6,7 @@ import assert from "node:assert/strict";
 import pg from "pg";
 
 import { seedDatabase } from "../../pipelines/lib/test-db.mjs";
-import { releaseTeam } from "./release-team.mjs";
+import { languageNames, releaseTeam } from "./release-team.mjs";
 
 const seed = seedDatabase();
 const skip = seed ? false : "DATABASE_URL is not set";
@@ -58,4 +58,10 @@ test("a team that does not voice the language is refused", { skip }, async () =>
 
 test("a code with no language row is refused", { skip }, async () => {
   await assert.rejects(releaseTeam(db, "qqQQ", null), { message: "qqQQ is not a language" });
+});
+
+test("every language's names come with it, for index-v2.json", { skip }, async () => {
+  const names = await languageNames(db);
+  assert.deepEqual(names.find((row) => row.code === lang), { code: lang, name: "Xq German", native: "Xq Deutsch" });
+  assert.ok(names.some((row) => row.code === "deDE"));
 });

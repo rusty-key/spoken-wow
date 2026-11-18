@@ -5,7 +5,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 
 import {
-  actedFolder, derivedFolders, englishFolder, LEGACY_PACK_ID, PACK_ID, teamFolder,
+  actedFolder, derivedFolders, describeFolder, englishFolder, LEGACY_PACK_ID, PACK_ID, teamFolder,
   changelogSection, findPack, isLanguageHeading, managerFolders, loadPacks, metaFor, MIN_SPOKEN, packsFor,
 } from "./packs.mjs";
 
@@ -246,4 +246,15 @@ test("every folder the pages give today is unchanged and a valid id; a suffixed 
   assert.match("SpokenPlacesAudio_deDE_stimmen", PACK_ID);
   assert.doesNotMatch("SpokenPlacesAudio_deDE_stimmen", LEGACY_PACK_ID);
   assert.doesNotMatch("SpokenPlacesAudio_deDE_Stimmen", PACK_ID);
+});
+
+test("describeFolder reads a folder's section, side, language and slug back", () => {
+  assert.deepEqual(describeFolder("SpokenPlacesAudio_deDE_stimmen"), { section: "places", pack: null, lang: "deDE", slug: "stimmen" });
+  assert.deepEqual(describeFolder("SpokenQuestsAudioHorde_jaJP"), { section: "quests", pack: "horde", lang: "jaJP", slug: null });
+  assert.deepEqual(describeFolder("SpokenBossesAudio"), { section: "bosses", pack: null, lang: "enUS", slug: null });
+  assert.equal(describeFolder("SpokenPlacesAudioActed_deDE"), null);
+  assert.equal(describeFolder("SpokenQuestsAudio"), null);
+  for (const { folder, section, lang } of managerFolders()) {
+    assert.deepEqual({ ...describeFolder(folder), pack: undefined }, { section, pack: undefined, lang, slug: null });
+  }
 });

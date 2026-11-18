@@ -5,6 +5,14 @@
 // A team holding the language's plain space (its privileged team) builds the plain pack ids;
 // any other team's carry its slug (scripts/lib/packs.mjs teamFolder).
 
+/** Every language's English and native names, which index-v2.json carries for the Manager. */
+export async function languageNames(db) {
+  const { rows } = await db.query(
+    `select "code", "name", "native" from "language" where "name" is not null and "native" is not null order by "code"`,
+  );
+  return rows.map(({ code, name, native }) => ({ code, name, native }));
+}
+
 /**
  * `slug` null is the language's privileged team: a release pressed before the site named the
  * team, or `make manager-release`.

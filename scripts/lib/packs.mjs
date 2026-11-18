@@ -75,6 +75,18 @@ export function derivedFolders(section, lang, slug, packs = loadPacks()) {
   return english.map((p) => ({ folder: teamFolder(p.folder, lang, slug), section, lang }));
 }
 
+const FOLDER_PARTS = /^Spoken(Quests|Places|Readables|Bosses)Audio(Alliance|Horde|Shared|Gossip|All)?(?:_([a-z]{2}[A-Z]{2})(?:_([a-z][a-z0-9-]{1,40}))?)?$/;
+
+// What a pack folder's name says: its section, quests side, language and team slug. Null for a
+// name no rule here makes, such as an acted overlay's.
+export function describeFolder(folder) {
+  const m = FOLDER_PARTS.exec(folder);
+  if (!m) return null;
+  const [, section, side, lang, slug] = m;
+  if ((section === "Quests") !== Boolean(side)) return null;
+  return { section: section.toLowerCase(), pack: side ? side.toLowerCase() : null, lang: lang ?? BASE_LOCALE, slug: slug ?? null };
+}
+
 function englishRelease(section, pack) {
   if (section !== "quests") return `${section}-audio`;
   return pack === "all" ? "quests-audio" : `quests-audio-${pack}`;
