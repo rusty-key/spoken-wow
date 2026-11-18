@@ -46,6 +46,35 @@ export function englishFolder(section, pack) {
   return "SpokenQuestsAudio" + ALL_QUESTS_PACKS[pack];
 }
 
+// The pack ids the publisher accepts: a pack of the language's privileged team carries the
+// language alone, any other team's the language and its slug (docs/platform/TEAMS.md, *Releases*).
+export const PACK_ID = /^Spoken[A-Za-z]+(_[a-z]{2}[A-Z]{2}(_[a-z][a-z0-9-]{1,40})?)?$/;
+// The ids a Manager from before team packs accepts: an index entry it rejects hides the whole
+// channel, so index.json carries only these.
+export const LEGACY_PACK_ID = /^Spoken[A-Za-z]+(_[a-z]{2}[A-Z]{2})?$/;
+
+const LANG_CODE = /^[a-z]{2}[A-Z]{2}$/;
+// The "team"."slug" check.
+const TEAM_SLUG = /^[a-z][a-z0-9-]{1,40}$/;
+
+// A pack's folder: English's plain, any other language's with its code, and a team's that does
+// not hold the language's plain space with its slug after that. The slug is frozen once a team
+// has released: a new one would orphan every installed pack.
+export function teamFolder(englishFolder, lang, slug) {
+  if (!LANG_CODE.test(lang)) throw new Error(`'${lang}' is not a language code`);
+  if (slug !== null && !TEAM_SLUG.test(slug)) throw new Error(`'${slug}' is not a team slug`);
+  if (lang === BASE_LOCALE && slug === null) return englishFolder;
+  return `${englishFolder}_${lang}${slug === null ? "" : `_${slug}`}`;
+}
+
+// The folders of a pack with no store page, a team's or a new language's: English's Manager
+// folders for the section, each carrying the language and slug.
+export function derivedFolders(section, lang, slug, packs = loadPacks()) {
+  const english = managerFolders(packs).filter((p) => p.section === section && p.lang === BASE_LOCALE);
+  if (english.length === 0) throw new Error(`English has no ${section} folders on the Manager's channel`);
+  return english.map((p) => ({ folder: teamFolder(p.folder, lang, slug), section, lang }));
+}
+
 function englishRelease(section, pack) {
   if (section !== "quests") return `${section}-audio`;
   return pack === "all" ? "quests-audio" : `quests-audio-${pack}`;
@@ -121,7 +150,7 @@ function toPack(page, meta) {
   if (meta.inMeta !== undefined && meta.inMeta !== "false") fail(`inMeta may only be false`);
 
   const code = english ? "" : `_${lang}`;
-  const folder = englishFolder(section, pack) + code;
+  const folder = teamFolder(englishFolder(section, pack), lang, null);
   return {
     page, section, lang, pack, version, github, manager: meta.manager === "true", inMeta: meta.inMeta !== "false",
     curseforge: meta.curseforge ?? null, wago: meta.wago ?? null, release,

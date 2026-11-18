@@ -5,7 +5,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 
 import {
-  actedFolder, englishFolder,
+  actedFolder, derivedFolders, englishFolder, LEGACY_PACK_ID, PACK_ID, teamFolder,
   changelogSection, findPack, isLanguageHeading, managerFolders, loadPacks, metaFor, MIN_SPOKEN, packsFor,
 } from "./packs.mjs";
 
@@ -212,4 +212,38 @@ test("inMeta: false keeps a pack on CurseForge out of its language's meta addon,
     ["spoken", "spoken-korean-audio-quests-shared"]);
   assert.equal(findPack("quests", "koKR", "horde", loadPacks(dir)).curseforge, "1");
   assert.throws(() => loadPacks(tree([pack("horde", { inMeta: "true" })])), /inMeta may only be false/);
+});
+
+test("teamFolder suffixes English's folder with the language, then the team's slug", () => {
+  assert.equal(teamFolder("SpokenPlacesAudio", "deDE", "stimmen"), "SpokenPlacesAudio_deDE_stimmen");
+  assert.equal(teamFolder("SpokenPlacesAudio", "jaJP", null), "SpokenPlacesAudio_jaJP");
+  assert.equal(teamFolder("SpokenPlacesAudio", "enUS", null), "SpokenPlacesAudio");
+});
+
+test("teamFolder refuses a slug or a code of the wrong shape", () => {
+  assert.throws(() => teamFolder("SpokenPlacesAudio", "deDE", "Stimmen"), /slug/);
+  assert.throws(() => teamFolder("SpokenPlacesAudio", "de", null), /language/);
+  assert.throws(() => teamFolder("SpokenPlacesAudio", "deDE_x", null), /language/);
+});
+
+test("derivedFolders gives English's split quests folders for a new language", () => {
+  assert.deepEqual(derivedFolders("quests", "jaJP", null), [
+    "SpokenQuestsAudioAlliance_jaJP", "SpokenQuestsAudioHorde_jaJP",
+    "SpokenQuestsAudioShared_jaJP", "SpokenQuestsAudioGossip_jaJP",
+  ].map((folder) => ({ folder, section: "quests", lang: "jaJP" })));
+  assert.deepEqual(derivedFolders("places", "deDE", "stimmen"),
+    [{ folder: "SpokenPlacesAudio_deDE_stimmen", section: "places", lang: "deDE" }]);
+});
+
+test("every folder the pages give today is unchanged and a valid id; a suffixed one is not legacy", () => {
+  for (const pack of loadPacks()) {
+    assert.equal(pack.folder, teamFolder(englishFolder(pack.section, pack.pack), pack.lang, null));
+  }
+  for (const { folder } of managerFolders()) {
+    assert.match(folder, PACK_ID);
+    assert.match(folder, LEGACY_PACK_ID);
+  }
+  assert.match("SpokenPlacesAudio_deDE_stimmen", PACK_ID);
+  assert.doesNotMatch("SpokenPlacesAudio_deDE_stimmen", LEGACY_PACK_ID);
+  assert.doesNotMatch("SpokenPlacesAudio_deDE_Stimmen", PACK_ID);
 });
