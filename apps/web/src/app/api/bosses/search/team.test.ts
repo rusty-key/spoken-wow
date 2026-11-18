@@ -69,6 +69,6 @@ describe("GET /api/bosses/search?team=", () => {
     const raw = await response.text();
     expect(raw).not.toContain("secret-");
     const body = JSON.parse(raw) as { lines: { state: string; take: unknown }[] };
-    expect(body.lines).toEqual([expect.objectContaining({ state: "current", take: expect.objectContaining({ version: 1 }) })]);
+    expect(body.lines).toEqual([expect.objectContaining({ state: "current", take: expect.objectContaining({ version: 1, credits: null }) })]);
   });
 });
