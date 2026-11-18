@@ -41,6 +41,16 @@ export function isSupportedFlavor(flavor: Flavor): boolean {
 
 export type Section = 'quests' | 'places' | 'readables' | 'bosses'
 export type QuestsPack = 'all' | 'alliance' | 'horde' | 'shared' | 'gossip'
+export type QuestsSide = Exclude<QuestsPack, 'all'>
+
+/** The team that released a pack, as index-v2.json names it. */
+export interface ChannelTeam {
+  /** Frozen once the team has released: it is part of its packs' folders. */
+  slug: string
+  name: string
+  /** A non-official team's packs say who made them. */
+  official: boolean
+}
 
 /** What can be installed: Spoken itself, or a voice pack. A static table (shared/products.ts). */
 export interface Product {

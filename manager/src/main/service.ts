@@ -21,7 +21,7 @@ import { isChannelRelease } from '../shared/channel'
 import { channelRelease, withChannel } from './packs-catalog'
 import { PACKS_BASE_URL } from './packs-key'
 import { estimatePack } from './packs-plan'
-import { fetchIndex, fetchManifest, loadCachedIndex, loadCachedManifest, type ChannelIndex, type ChannelOptions, type ChannelPack } from './packs-remote'
+import { fetchIndex, fetchManifest, loadCachedIndex, loadCachedManifest, type ChannelIndexV2, type ChannelOptions, type ChannelPack } from './packs-remote'
 import { dropPackState, loadPackState } from './packs-state'
 import { syncPacks } from './packs-sync'
 import { loadLedger, resetInstallId, sendPending, type SendResult, type ShareLedger } from './share'
@@ -82,7 +82,7 @@ export class ManagerService {
   private refreshingCommunity: Promise<CommunityCatalog> | null = null
   community: CommunityCatalog
   /** The channel's index: the last verified one, until a refresh brings a newer one. */
-  channel: ChannelIndex | null = null
+  channel: ChannelIndexV2 | null = null
   /** Settles when the first scan is done; handlers wait for it. Never rejects. */
   ready: Promise<void> = Promise.resolve()
   sharingStatus: SharingStatus
