@@ -32,7 +32,7 @@ const UNKNOWN = "unknown contribution";
 const SKIPPED: Record<string, string> = {
   ambiguous: "Several pages could be this one -- pick it first.",
   known: "The corpus already has these words for this page.",
-  correction: "This changes words the page already has -- accept it from the Corrections tab.",
+  correction: "This changes words the page already has -- accept it from the changes to lines we already have.",
   "new-book": "A new book is accepted one row at a time, so the title is checked first.",
 };
 

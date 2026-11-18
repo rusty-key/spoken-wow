@@ -329,7 +329,7 @@ export default async function Page({
   const sort: ContributionSort = sortOf(rawSort, rawDir);
 
   // Lines the corpus already has are not this queue's: a different text is a correction, on
-  // its own tab, and the same text is nothing to triage at all (known.ts's tabOf).
+  // its own group, and the same text is nothing to triage at all (known.ts's tabOf).
   const [{ listed, states, pending }, roster] = await Promise.all([
     listedWithPending(status, lang, sort, source),
     loadRoster(lang),
@@ -457,7 +457,7 @@ export default async function Page({
         <ContributionTable
           initial={rows}
           // Every row the filters match, on any page, as just its id, status and whether a bulk
-          // accept may take it: what "Accept all" acts on.
+          // accept may take it, and its group: what "Keep all" and "Drop all" act on.
           matching={matching.map((row) => {
             const match = bookMatches.get(row.id);
             return { id: row.id, status: row.status, bulk: !match || bulkAcceptable(match), verdict: checks.get(row.id)!.verdict };

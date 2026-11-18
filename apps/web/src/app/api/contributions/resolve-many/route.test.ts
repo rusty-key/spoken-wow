@@ -196,10 +196,10 @@ describe("POST /api/contributions/resolve-many", () => {
       expect(await statusOf(known)).toBe("new");
     });
 
-    it("leaves a correction to the Corrections tab", async () => {
+    it("leaves a correction to the changes to lines we already have", async () => {
       const correction = await readablesRow("enUS", `Words won ${base}.`, { book: `Tome ${base}`, number: "1" });
       const { results } = await (await POST(post({ ids: [correction], status: "accepted" }))).json();
-      expect(results[correction]).toMatchObject({ ok: false, error: expect.stringContaining("Corrections tab") });
+      expect(results[correction]).toMatchObject({ ok: false, error: expect.stringContaining("changes to lines we already have") });
       expect(await statusOf(correction)).toBe("new");
     });
 

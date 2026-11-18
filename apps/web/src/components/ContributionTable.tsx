@@ -190,7 +190,7 @@ export default function ContributionTable({
 }: {
   /** This page's rows. */
   initial: ContributionRow[];
-  /** Every row the filters match, on any page -- what "Accept all" acts on. */
+  /** Every row the filters match, on any page, with its group -- what "Keep all" and "Drop all" act on. */
   matching: { id: number; status: ContributionStatus; bulk: boolean; verdict: Verdict }[];
   page: number;
   pages: number;
@@ -440,7 +440,7 @@ export default function ContributionTable({
   const [bulk, setBulk] = useState<{ next: ContributionStatus; done: number; total: number } | null>(null);
   /** What the last bulk run came to, until the next one starts. */
   const [bulkOutcome, setBulkOutcome] = useState<string | null>(null);
-  /** "Accept all shown" asks twice: accepting writes quest lines, and a quests row can't be reopened after. */
+  /** "Keep all" asks twice: keeping writes quest lines, and a written quests row can't be reopened after. */
   const [confirmAll, setConfirmAll] = useState(false);
 
   /**
@@ -479,7 +479,7 @@ export default function ContributionTable({
       router.refresh();
       setBulkOutcome(
         `${STATUS_LABELS[next]}: ${ids.length - refused.length} of ${ids.length}` +
-          (refused.length > 0 ? ` -- ${refused.length} refused and left selected.` : "."),
+          (refused.length > 0 ? ` -- ${refused.length} refused; each row says why.` : "."),
       );
     },
     [landed, router],
