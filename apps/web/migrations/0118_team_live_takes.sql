@@ -80,7 +80,7 @@ language sql stable security definer set search_path = public, pg_temp as $$
     from "spoken" s
    where exists (select 1 from "team_language" g where g."teamId" = p_team and g."lang" = p_lang)
    group by s."file", s."text"
-  having coalesce(bool_and(s."spokenHash" = any(s."spokenHashes")), false)
+  having bool_and(coalesce(s."spokenHash" = any(s."spokenHashes"), false))
   union all
   select o."lineId", o."text"
     from "text_override" o

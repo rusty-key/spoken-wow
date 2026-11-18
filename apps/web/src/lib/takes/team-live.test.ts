@@ -182,6 +182,17 @@ describe("team_live_overrides", () => {
     expect(await quests()).toEqual([{ key: `${stem}.mp3`, text: "words" }]);
   });
 
+  it("does not publish a quest override while one voice's take has no hash", async () => {
+    const stem = `gossip/${tag}stem`;
+    await lineOverride(`${stem}.mp3`, "words", ["human"]);
+    await take(b, lang, "quests", `${stem}.mp3`, `g:${tag}`, 1, true, "human");
+    await take(b, lang, "quests", `${stem}-dwarf-male.mp3`, `g:${tag}d`, 1, true);
+    await asSystem.query(`update "take" set "spokenHash" = null where "teamId" = $1 and "file" = $2`, [
+      b, `${stem}-dwarf-male.mp3`,
+    ]);
+    expect(await quests()).toEqual([]);
+  });
+
   it("does not count a file with its own override as a voice of a shorter one", async () => {
     const stem = `gossip/${tag}stem`;
     await lineOverride(`${stem}.mp3`, "base", ["base"]);
