@@ -412,12 +412,18 @@ do
     Expect("...which PlayStory leaves unplayed", tostring(S:PlayStory("instance", 389)) .. " " .. S:GetQueueSize(), "false 0")
     locked = false
 
+    local Named = H.CaptionStory
     Expect("PlayStory plays it", S:PlayStory("instance", 389), true)
     Expect("...the area's story", S:GetNowPlaying().key, "s:1411:valley of trials")
+    Expect("...which GetCaption names as PlayStory took it", Named(), "instance 389")
     Expect("...and IsPlayingStory says so", S:IsPlayingStory("instance", 389), true)
     Expect("...for that instance only", S:IsPlayingStory("instance", 34), false)
     Expect("StopStory stops it", tostring(S:StopStory("instance", 389)) .. " " .. S:GetQueueSize(), "true 0")
     Expect("...and a second stop finds nothing", S:StopStory("instance", 389), false)
+
+    P:PlayLore(1411, "valley of trials")
+    Expect("the area's story Places plays itself is no story PlayStory played", Named(), "none")
+    S:StopAll()
 
     local other = H.Clip()
     S:RegisterSource("other", { title = "Other", addon = "X", order = 9 }):Enqueue(other)

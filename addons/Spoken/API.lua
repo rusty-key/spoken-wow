@@ -909,7 +909,15 @@ end
 ---@return boolean
 function Spoken:PlayStory(kind, id)
     local teller, clip = Playable(kind, id)
-    return teller ~= nil and teller.source:PlayNow(clip) and true or false
+    if not teller then return false end
+    local story = { kind = kind, id = id }
+    clip.story = story
+    local playing = teller.source:PlayNow(clip) and true or false
+    -- Already waiting, the line keeps its own clip: GetCaption reads the tag from that one.
+    for _, queued in ipairs(SoundQueue:GetQueue()) do
+        if Tells(teller, { clip.key }, queued) then queued.story = story end
+    end
+    return playing
 end
 
 --- Whether the story is speaking: not waiting, held or paused.
@@ -944,25 +952,28 @@ end
 --
 -- Additive, so guard on the field: `if Spoken.GetCaption then`. The timing is the captions' own: the clip's present.timings when it
 -- brings them, an estimate otherwise, so another view marks the same word they would.
+-- An older Spoken has no `story`, so nil also means an older Spoken.
 
 local caption = {}
 
 --- The speaking clip's caption, kept current even while the captions are hidden or off:
 ---   { clip, words, totalWeight, progress, speaking, activeWord, highlight, typewriter,
----     typewriterBy, timed }
+---     typewriterBy, timed, story }
 --- words[i] = { text, start, finish, first, last, joined }: start/finish are the word's share
 --- of the recording, in units of totalWeight; first/last its bytes in the clip's text. timed is
 --- true when they come from the clip's present.timings, and totalWeight is then its length.
 --- progress is nil for a clip with no length; activeWord is set only while speaking.
 --- highlight and typewriter are the player's Highlight Words and Type Words Out (false with
---- Show Words off); typewriterBy is "letter" or "word". Read-only, and the same table on
---- every call. nil without a clip.
+--- Show Words off); typewriterBy is "letter" or "word". story is the { kind, id } PlayStory was
+--- asked for when it played this line, else nil. Read-only, and the same table on every call. nil
+--- without a clip.
 function Spoken:GetCaption()
     if not Transcript.clip or not Transcript.words then return nil end
     -- Not read from what the captions last drew: they update only while shown, and
     -- DialogueUI hides them with UIParent.
     local progress = Transcript:GetProgress()
     caption.clip, caption.words, caption.totalWeight = Transcript.clip, Transcript.words, Transcript.totalWeight
+    caption.story = Transcript.clip.story
     caption.progress = progress
     caption.speaking = Transcript:IsSpeaking(progress) and true or false
     caption.activeWord = caption.speaking and Transcript:WordAt(progress) or nil

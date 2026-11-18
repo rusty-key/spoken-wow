@@ -139,6 +139,9 @@ do
         .. tostring(Spoken:PlayStory("contract", 7)), "false true")
     Expect("...the playable part, through the teller's source", Spoken:GetNowPlaying().key .. " "
         .. tostring(Spoken:GetNowPlaying().source == tellerSource), "story:7b true")
+    SpokenEnv.Addon:Enable() -- the captions GetCaption reads
+    local story = Spoken:GetCaption().story
+    Expect("...which GetCaption names as PlayStory was asked", story.kind .. " " .. story.id, "contract 7")
     Expect("IsPlayingStory: its own story only", tostring(Spoken:IsPlayingStory("contract", 7)) .. " "
         .. tostring(Spoken:IsPlayingStory("contract", 8)), "true false")
     Spoken:Pause()

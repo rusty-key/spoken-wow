@@ -4,6 +4,9 @@ Spoken Player until 3.0.0, when it became Spoken and took its modules into one d
 
 ## Unreleased
 
+- For feature addons: `Spoken:GetCaption()` names the story `Spoken:PlayStory` played in `story`,
+  as the `{ kind, id }` it was asked for, so an addon knows the line is its own without comparing
+  text. *([Torchlite-bit](https://github.com/Torchlite-bit))*
 - **Bosses has its own icon in the AddOns list.** It showed Spoken's mark; it now shows a dragon's
   head, like Quests, Places and Readables each show their own. *([Nucabe](https://github.com/Nucabe))*
 
