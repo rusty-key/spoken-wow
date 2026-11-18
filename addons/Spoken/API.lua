@@ -760,8 +760,10 @@ end
 -- Only voiced stories count. Without the module, with its part switched off, with no voice pack
 -- that has the story, or with the story locked for this character (not found yet, and the module's
 -- Unlock setting off), HasStory is false and PlayStory does nothing.
--- Redraw a button on AUDIO_CHANGED. Additive, so API_VERSION does not move: guard on the field,
--- `if Spoken.PlayStory then`.
+-- No event covers every change to HasStory: ask it as a button shows, and again on AUDIO_CHANGED
+-- and PART_SWITCHED. A boss is met in Bosses' own ENCOUNTER_START handler, which may run after the
+-- caller's, so ask on the frame after that event. Additive, so API_VERSION does not move: guard on
+-- the field, `if Spoken.PlayStory then`.
 
 local storyTellers = {}
 
@@ -889,6 +891,7 @@ end
 --   CLIP_DROPPED       (clip, reason)      queue-limit | outranked | missing | an admit reason
 --   QUEUE_EMPTY        ()
 --   SOURCE_REGISTERED  (source)
+--   PART_SWITCHED      (key, on)           a part was switched on or off in Spoken's settings
 --   CONTRIBUTE_SETTINGS_CHANGED ()          the hide-Contribute-buttons setting was toggled
 --   REPORT_SETTINGS_CHANGED     ()          the hide-Report-buttons setting was toggled
 --   VOICE_PACKS_LOADED          ()          the quest and gossip voice packs found at login have loaded

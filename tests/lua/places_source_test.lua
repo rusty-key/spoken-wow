@@ -391,7 +391,6 @@ Expect("once it is over, the greeting gets all its attempts", counter.asked, 8)
 _G.InCinematic = nil
 _G.SpokenPlacesCharacter = nil
 
----------------------------------------------------------------- the pack this repo ships
 ---------------------------------------------------------------- a dungeon's story for another addon
 -- Spoken:PlayStory("instance", map) reaches Places through the teller it registers: the instance map
 -- names the area that tells the dungeon's story, and only a voiced, unlocked one counts.
@@ -436,6 +435,7 @@ do
     _G.SpokenDungeons = savedDungeons
 end
 
+---------------------------------------------------------------- the pack this repo ships
 -- The shipped Data/Sounds.lua, loaded for real. Everything above uses hand-built tables, so
 -- nothing until here notices if the generator writes a registry name the addon does not read
 -- -- which is exactly what a rename does, and the generator is the half that moves.

@@ -765,13 +765,14 @@ end
 SpokenPlaces.InstanceTeller = {
 	Has = function(map)
 		local mapID, key = InstanceStory(map)
-		if not mapID or not SpokenPlaces:IsVoiceEnabled() then return false end
-		if _G.Spoken.IsPartOn and not _G.Spoken:IsPartOn("places") then return false end
+		if not mapID or not SpokenPlaces:IsVoiceEnabled() or not SpokenPlaces:IsPartOn() then return false end
 		if SpokenPlaces.IsLocked and SpokenPlaces:IsLocked(mapID, key) then return false end
 		return SpokenPlaces:HasAudio(mapID, key)
 	end,
+	-- Not PlayLore, which says in chat why it refused: the player did not press this.
 	Play = function(map)
-		return SpokenPlaces:PlayLore(InstanceStory(map))
+		local item = SpokenPlaces:NewLoreSound(InstanceStory(map))
+		return item ~= nil and SpokenPlaces.source:PlayNow(item) == true
 	end,
 	IsPlaying = function(map)
 		local mapID, key = InstanceStory(map)
