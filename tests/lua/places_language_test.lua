@@ -482,6 +482,56 @@ Expect("H. a text pack without places leaves the client's lore, rather than empt
 H.ReadText(nil)
 fontHas["Fonts\\ARIALN.TTF"] = arial
 
+---------------------------------------------------------------- V. voices: a language, or a language and a team
+do
+    local SECOND = "razor hill"
+    local STIMMEN = Pack("SpokenPlacesAudio_deDE_stimmen", "deDE", {
+        [BOTH] = { file = "st-valley", len = 3 }, [SECOND] = { file = "st-razor", len = 3 } })
+    local PLAIN = Pack("SpokenPlacesAudio_deDE", "deDE", {
+        [BOTH] = { file = "de-valley", len = 3 }, [ONLY_ENGLISH] = { file = "de-senjin", len = 3 } })
+    local PLAIN64 = Pack("SpokenPlacesAudio_deDE64", "deDE", { [BOTH] = { file = "de64-valley", len = 3 } })
+    PLAIN64.bitrate = 64
+    local EN = Pack("SpokenPlacesAudio", "enUS", { [BOTH] = { file = "en-valley", len = 3 },
+        [ONLY_ENGLISH] = { file = "en-senjin", len = 3 }, [SECOND] = { file = "en-razor", len = 3 } })
+    Legacy({})
+    _G.SpokenPlacesAudioPacks = { [STIMMEN.addon] = STIMMEN, [PLAIN.addon] = PLAIN, [PLAIN64.addon] = PLAIN64,
+        [EN.addon] = EN }
+    Packs({
+        { folder = "SpokenPlacesAudio_deDE_stimmen", meta = { ["X-SpokenPlaces-Language"] = "deDE",
+            ["X-Spoken-Team"] = "stimmen", ["X-Spoken-TeamName"] = "Stimmen" } },
+        { folder = "SpokenPlacesAudio_deDE", meta = { ["X-SpokenPlaces-Language"] = "deDE" } },
+        { folder = "SpokenPlacesAudio_deDE64", meta = { ["X-SpokenPlaces-Language"] = "deDE" } },
+        { folder = "SpokenPlacesAudio", meta = { ["X-SpokenPlaces-Language"] = "enUS" } },
+    })
+    local V = H.LoadPlaces(PLACES)
+    local function File(key)
+        local _, _, pack, file = V:GetAudioClip(MAP, key)
+        return file and (pack.addon .. ":" .. file) or nil
+    end
+    Spoken:SetVoiceOrder({ "deDE_stimmen", "deDE", "enUS" })
+    Expect("V. team first: the team's pack is active", V:GetActiveAudioPack().addon, "SpokenPlacesAudio_deDE_stimmen")
+    Expect("V. ...and plays its take", File(BOTH), "SpokenPlacesAudio_deDE_stimmen:st-valley")
+    Expect("V. an area the team lacks comes from the plain pack", File(ONLY_ENGLISH), "SpokenPlacesAudio_deDE:de-senjin")
+    Expect("V. the team's pack is named for its team", V:GetAudioPackLabel(STIMMEN), "Deutsch · Stimmen")
+    Spoken:SetVoiceOrder({ "deDE" })
+    Expect("V. plain German: the plain pack", File(BOTH), "SpokenPlacesAudio_deDE:de-valley")
+    Expect("V. plain German: never the team's, even where only it has the area", File(SECOND), nil)
+    Spoken:SetVoiceOrder({ "deDE_stimmen", "enUS" })
+    Expect("V. the team's voice, then English: never the plain pack", File(ONLY_ENGLISH), "SpokenPlacesAudio:en-senjin")
+    -- /spp audio's choice from before there were voices keeps naming the plain pack.
+    V:Set("audioPack", { deDE = "SpokenPlacesAudio_deDE64" })
+    Spoken:SetVoiceOrder({ "deDE", "enUS" })
+    Expect("V. a 64 kbps pack chosen for deDE is still the plain voice's", V:GetActiveAudioPack().addon,
+        "SpokenPlacesAudio_deDE64")
+    Spoken:SetVoiceOrder({ "deDE_stimmen", "deDE" })
+    Expect("V. ...and does not take the team's place", V:GetActiveAudioPack().addon, "SpokenPlacesAudio_deDE_stimmen")
+    Expect("V. switching to the team's pack keeps the plain voice's choice",
+        V:SetActiveAudioPack("SpokenPlacesAudio_deDE_stimmen") and V:Get("audioPack").deDE, "SpokenPlacesAudio_deDE64")
+    local language = _G.SpokenEnv.Addon.db.profile.Language
+    language.Voices, language.Voice, language.Fallback = nil, nil, nil
+    V:Set("audioPack", nil)
+end
+
 Packs({ { folder = "Spoken_Places", meta = { Version = "9.9.9" } } })
 _G.UIParent.CreateFontString = realParent
 _G.GameFontHighlight, _G.QuestFont = realHighlight, realQuest

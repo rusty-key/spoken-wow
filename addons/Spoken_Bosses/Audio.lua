@@ -26,6 +26,24 @@ function Bosses:GetFallbackLanguage()
 end
 local function FallbackLanguage() return Bosses:GetFallbackLanguage() end
 
+--- The voice a pack is in: its language, or its language and team where its .toc names one
+--- ("deDE_stimmen"), as Spoken's registry read it.
+function Bosses:PackVoice(pack)
+	if Spoken and Spoken.VoiceOf and pack.addon then return Spoken:VoiceOf(pack.addon, pack.language) or pack.language end
+	return pack.language
+end
+
+--- The voices a story may be heard in, most wanted first: the player's list on Spoken's page once
+--- set, else the voice language and the fallback, each its plain voice.
+function Bosses:GetVoiceOrder()
+	local shared = Spoken and Spoken.GetVoiceOrder and Spoken:GetVoiceOrder()
+	if shared then return shared end
+	local voice, fallback = VoiceLanguage(), FallbackLanguage()
+	local order = { voice }
+	if fallback and fallback ~= voice then table.insert(order, fallback) end
+	return order
+end
+
 --- Every installed pack this build reads, best first: the voice language's, then the client's,
 --- then by bitrate, then by folder name, so two copies of one pack resolve the same way every time.
 --- `lang` narrows the list to one language.
@@ -35,6 +53,7 @@ function Bosses:GetAudioPacks(lang)
 		if type(pack) == "table" and pack.version == PACK_FORMAT then
 			pack.addon = pack.addon or name
 			pack.language = pack.language or "enUS"
+			pack.voice = Bosses:PackVoice(pack)
 			if lang == nil or pack.language == lang then table.insert(packs, pack) end
 		end
 	end
@@ -68,15 +87,16 @@ function Bosses:PackStoryText(map, key, language)
 	return nil
 end
 
---- The recording of the boss `key` of `map`: `{ path, len, times, language }`, from the voice
---- language's packs, else the fallback language's, best first; nil where none has it. With Stay
---- Silent, only the voice language's are tried.
+--- The recording of the boss `key` of `map`: `{ path, len, times, language, pack }`, `pack` the
+--- folder that has it, from the first voice's packs that has it, best first; nil where none has it.
+--- A language's plain voice never plays a team's pack, nor the other way.
 function Bosses:GetAudioClip(map, key)
-	local voice = VoiceLanguage()
-	local candidates = self:GetAudioPacks(voice)
-	local fallback = FallbackLanguage()
-	if fallback and fallback ~= voice then
-		for _, pack in ipairs(self:GetAudioPacks(fallback)) do table.insert(candidates, pack) end
+	local packs = self:GetAudioPacks()
+	local candidates = {}
+	for _, voice in ipairs(self:GetVoiceOrder()) do
+		for _, pack in ipairs(packs) do
+			if pack.voice == voice then table.insert(candidates, pack) end
+		end
 	end
 	for _, pack in ipairs(candidates) do
 		local entry = pack.bosses and pack.bosses[map] and pack.bosses[map][key]
@@ -86,6 +106,8 @@ function Bosses:GetAudioClip(map, key)
 				len = entry.len,
 				times = entry.times,
 				language = pack.language,
+				pack = pack.addon,
+				voice = pack.voice,
 			}
 		end
 	end

@@ -427,6 +427,42 @@ clip = B:ClipFor(PAGE)
 Expect("T. a Polish voice's own words beat the text pack's", clip.present.transcript, "Słowa nagrania.")
 Expect("...timed by the recording", clip.present.timings, "0 .5")
 
+---------------------------------------------------------------- V. voices: a language, or a language and a team
+-- The stimmen team's German pack beside the plain one, its team in its .toc as Spoken scans it.
+do
+    local OTHER = 17
+    stub.SetAddOns({
+        { folder = "SpokenReadablesAudio_deDE_stimmen", meta = { ["X-SpokenReadables-Language"] = "deDE",
+            ["X-Spoken-Team"] = "stimmen", ["X-Spoken-TeamName"] = "Stimmen" } },
+        { folder = "SpokenReadablesAudio_deDE", meta = { ["X-SpokenReadables-Language"] = "deDE" } },
+    })
+    local STIMMEN = { addon = "SpokenReadablesAudio_deDE_stimmen", language = "deDE", pages = {
+        [PAGE] = { file = "s15", len = 3 }, [OTHER] = { file = "s17", len = 3 } } }
+    local PLAIN = { addon = "SpokenReadablesAudio_deDE", language = "deDE", pages = {
+        [PAGE] = { file = "15", len = 2 }, [ONLY_ENGLISH] = { file = "16", len = 2 } } }
+    local ENGLISH_ONLY = { addon = "SpokenReadablesAudio", pages = { [PAGE] = { file = "e15", len = 1 },
+        [ONLY_ENGLISH] = { file = "e16", len = 1 }, [OTHER] = { file = "e17", len = 1 } } }
+    B = Install({ ENGLISH_ONLY, PLAIN, STIMMEN }, "deDE")
+    SpokenReadablesData.pages[OTHER] = { book = 1, number = 3, text = "Third." }
+    local function Path(page) local c = B:ClipFor(page); return c and c.path or nil end
+    Spoken:SetVoiceOrder({ "deDE_stimmen", "deDE", "enUS" })
+    Expect("V. team first: the team's take", Path(PAGE), [[Interface\AddOns\SpokenReadablesAudio_deDE_stimmen\Sounds\s15.mp3]])
+    Expect("V. ...in German", B:ClipFor(PAGE).language, "deDE")
+    Expect("V. ...naming the pack that played", B:ClipFor(PAGE).packFolder, "SpokenReadablesAudio_deDE_stimmen")
+    Expect("V. ...and its voice", B:ClipFor(PAGE).voice, "deDE_stimmen")
+    Expect("V. team first: its length", B:PageLength(PAGE), 3)
+    Expect("V. a page the team lacks comes from the plain pack", Path(ONLY_ENGLISH),
+        [[Interface\AddOns\SpokenReadablesAudio_deDE\Sounds\16.mp3]])
+    Spoken:SetVoiceOrder({ "deDE" })
+    Expect("V. plain German: the plain pack", Path(PAGE), [[Interface\AddOns\SpokenReadablesAudio_deDE\Sounds\15.mp3]])
+    Expect("V. plain German: never the team's, even where only it has the page", Path(OTHER), nil)
+    Expect("V. ...so there is no audio for it", B:HasAudio(OTHER), false)
+    Spoken:SetVoiceOrder({ "deDE_stimmen", "enUS" })
+    Expect("V. the team's voice then English: never the plain pack", Path(ONLY_ENGLISH),
+        [[Interface\AddOns\SpokenReadablesAudio\Sounds\e16.mp3]])
+    stub.ResetAddOns()
+end
+
 stub.SetLocale("enUS")
 if Failures() > 0 then print(string.format("\n%d failure(s)", Failures())); os.exit(1) end
 print("\nAll readables language tests passed")

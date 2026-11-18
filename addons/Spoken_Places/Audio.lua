@@ -237,6 +237,7 @@ function SpokenPlaces:GetAudioPacks(lang)
 				-- is English, which is the same default Sounds.lua applies. Filled in
 				-- here, once, so nothing that reads a pack from this list re-applies it.
 				pack.language = pack.language or "enUS"
+				pack.voice = self:PackVoice(pack)
 				if lang == nil or pack.language == lang then
 					table.insert(packs, pack)
 				end
@@ -265,6 +266,7 @@ function SpokenPlaces:GetAudioPacks(lang)
 		legacy.quality = legacy.quality or "standard"
 		legacy.bitrate = legacy.bitrate or 0
 		legacy.language = legacy.language or "enUS"
+		legacy.voice = legacy.language
 		if lang == nil or legacy.language == lang then
 			table.insert(packs, legacy)
 		end
@@ -323,35 +325,66 @@ function SpokenPlaces:GetFallbackLanguage()
 	return fallback or "enUS"
 end
 
--- The pack narration plays from: one in the voice language, else one in the fallback language,
--- else nil.
---
--- Between two packs of one language (a retired 64 kbps pack beside the current one), the one
--- /spp audio chose, kept as a folder name rather than an index: a player who uninstalls the
--- high-quality pack should fall back to whatever is left instead of pointing at whichever pack
--- happens to occupy that slot afterwards.
-function SpokenPlaces:GetActiveAudioPack()
-	local packs = self:GetAudioPacks(self:GetVoiceLanguage())
-	local fallback = self:GetFallbackLanguage()
-	if #packs == 0 and fallback then
-		packs = self:GetAudioPacks(fallback)
+-- The voice a pack is in: its language, or its language and team where its .toc names one
+-- ("deDE_stimmen"), as Spoken's registry read it.
+function SpokenPlaces:PackVoice(pack)
+	local Spoken = _G.Spoken
+	if Spoken and Spoken.VoiceOf and pack.addon then
+		return Spoken:VoiceOf(pack.addon, pack.language) or pack.language
 	end
-	if #packs == 0 then
-		return nil
-	end
+	return pack.language
+end
 
+-- The voices narration may play in, most wanted first: the player's list on Spoken's page once
+-- set, else the voice language and the fallback, each its plain voice.
+function SpokenPlaces:GetVoiceOrder()
+	local Spoken = _G.Spoken
+	local shared = Spoken and Spoken.GetVoiceOrder and Spoken:GetVoiceOrder()
+	if shared then
+		return shared
+	end
+	local voice, fallback = self:GetVoiceLanguage(), self:GetFallbackLanguage()
+	local order = { voice }
+	if fallback and fallback ~= voice then
+		table.insert(order, fallback)
+	end
+	return order
+end
+
+-- The packs in `voice`, best first. Between two packs of one voice (a retired 64 kbps pack beside
+-- the current one), the one /spp audio chose comes first, kept as a folder name rather than an
+-- index: a player who uninstalls the high-quality pack should fall back to whatever is left instead
+-- of pointing at whichever pack happens to occupy that slot afterwards. A plain voice's code is its
+-- language's, so a choice saved before there were voices keeps meaning the plain pack.
+function SpokenPlaces:GetVoicePacks(voice)
+	local packs = {}
+	for _, pack in ipairs(self:GetAudioPacks()) do
+		if pack.voice == voice then
+			table.insert(packs, pack)
+		end
+	end
 	local stored = self:Get("audioPack")
-	local preferred = type(stored) == "table" and stored[packs[1].language] or nil
+	local preferred = type(stored) == "table" and stored[voice] or nil
 	if type(preferred) == "string" then
-		for i = 1, #packs do
+		for i = 2, #packs do
 			if packs[i].addon == preferred then
-				return packs[i]
+				table.insert(packs, 1, table.remove(packs, i))
+				break
 			end
 		end
 	end
+	return packs
+end
 
-	-- No preference, or the preferred pack is gone: best available wins.
-	return packs[1]
+-- The pack narration plays from: the best one in the first voice that has a pack, else nil.
+function SpokenPlaces:GetActiveAudioPack()
+	for _, voice in ipairs(self:GetVoiceOrder()) do
+		local packs = self:GetVoicePacks(voice)
+		if #packs > 0 then
+			return packs[1]
+		end
+	end
+	return nil
 end
 
 -- Switches packs. Returns false when the name is not an installed pack, so the
@@ -364,7 +397,7 @@ function SpokenPlaces:SetActiveAudioPack(name)
 			if type(stored) ~= "table" then
 				stored = {}
 			end
-			stored[packs[i].language] = name
+			stored[packs[i].voice or packs[i].language] = name
 			self:Set("audioPack", stored)
 			self:StopLore()
 			self:NotifyAudioChanged()
@@ -389,9 +422,14 @@ function SpokenPlaces:GetAudioPackLabel(pack)
 	if self:CanRenderLanguage(language) then
 		label = self:GetLanguageName(language)
 	end
+	-- A team's pack says whose it is: "Deutsch · Stimmen".
+	local Spoken = _G.Spoken
+	if pack.voice and pack.voice ~= language and Spoken and Spoken.VoiceName then
+		label = Spoken:VoiceName(pack.voice)
+	end
 	if pack.bitrate and pack.bitrate > 0 then
 		for _, other in ipairs(self:GetAudioPacks(language)) do
-			if other ~= pack and other.language == language then
+			if other ~= pack and other.voice == pack.voice then
 				return ("%s (%d kbps)"):format(label, pack.bitrate)
 			end
 		end
@@ -441,16 +479,19 @@ function SpokenPlaces:GetAudioClip(mapID, areaKey)
 		return nil, nil
 	end
 
-	-- The active pack, then the fallback language's, entry by entry: a German pack that has not
-	-- narrated an area yet leaves it to the English one rather than to silence, the way a quest
-	-- line falls back. The entry keys are the same in every language, so any pack names the area
-	-- alike. With Stay Silent, nothing else is tried.
+	-- The active pack, then each later voice's packs, entry by entry: a German pack that has not
+	-- narrated an area yet leaves it to the next voice's (English) rather than to silence, the way
+	-- a quest line falls back. The entry keys are the same in every language, so any pack names the
+	-- area alike. Past the last voice, nothing else is tried.
 	local candidates = { active }
-	local fallback = self:GetFallbackLanguage()
-	if fallback and active.language ~= fallback then
-		for _, pack in ipairs(self:GetAudioPacks(fallback)) do
-			table.insert(candidates, pack)
+	local after = false
+	for _, voice in ipairs(self:GetVoiceOrder()) do
+		if after then
+			for _, pack in ipairs(self:GetVoicePacks(voice)) do
+				table.insert(candidates, pack)
+			end
 		end
+		after = after or voice == active.voice
 	end
 
 	for _, pack in ipairs(candidates) do

@@ -129,8 +129,11 @@ function SpokenReadables:GetFallbackLanguage()
 	return stored
 end
 
---- The languages a page may be read in, most wanted first. Never more than two.
+--- The voices a page may be read in, most wanted first: the player's list on Spoken's page once
+--- set, else this addon's own two languages, each its plain voice, never more than two.
 function SpokenReadables:LanguageOrder()
+	local shared = Spoken and Spoken.GetVoiceOrder and Spoken:GetVoiceOrder()
+	if shared then return shared end
 	local voice = self:GetVoiceLanguage()
 	local order = { voice }
 	local fallback = self:GetFallbackLanguage()
@@ -145,20 +148,31 @@ function SpokenReadables:PackLanguage(pack)
 	return self:NormalizeLanguage(pack and pack.language)
 end
 
---- The language the player's packs speak to them: the first in LanguageOrder that an
---- installed pack is recorded in, or the voice language when none is. What a report is filed
---- under when there is no clip to ask, and what a contribution says the player was hearing.
+--- The voice a pack is in: its language, or its language and team where its .toc names one
+--- ("deDE_stimmen"), as Spoken's registry read it.
+function SpokenReadables:PackVoice(pack)
+	local language = self:PackLanguage(pack)
+	if Spoken and Spoken.VoiceOf and pack and pack.addon then
+		return Spoken:VoiceOf(pack.addon, language) or language
+	end
+	return language
+end
+
+--- The language the player's packs speak to them: that of the first voice in LanguageOrder an
+--- installed pack is in, or the first voice's when none is. What a report is filed under when
+--- there is no clip to ask, and what a contribution says the player was hearing.
 function SpokenReadables:GetPackLanguage()
 	local order = self:LanguageOrder()
 	local packs = self:GetAudioPacks()
-	for _, language in ipairs(order) do
+	for _, voice in ipairs(order) do
 		for _, pack in ipairs(packs) do
-			if self:PackLanguage(pack) == language then
-				return language
+			if self:PackVoice(pack) == voice then
+				return self:PackLanguage(pack)
 			end
 		end
 	end
-	return order[1]
+	local language = Spoken and Spoken.SplitVoice and Spoken:SplitVoice(order[1])
+	return language or order[1]
 end
 
 --- The .toc Version of the installed pack recorded in `language`, or "none" when no pack

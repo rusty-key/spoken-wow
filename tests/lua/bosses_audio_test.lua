@@ -173,5 +173,41 @@ do
     SpokenBossesSettings.unlockUnfound = false
 end
 
+-- Voices: the stimmen team's German pack beside the plain one, its team in its .toc.
+do
+    stub.SetAddOns({
+        { folder = "SpokenBossesAudio_deDE_stimmen", meta = { ["X-SpokenBosses-Language"] = "deDE",
+            ["X-Spoken-Team"] = "stimmen", ["X-Spoken-TeamName"] = "Stimmen" } },
+        { folder = "SpokenBossesAudio_deDE", meta = { ["X-SpokenBosses-Language"] = "deDE" } },
+    })
+    _G.SpokenEnv.Languages:Reset()
+    local TEAM = { file = "36\\edwin-team", len = 30 }
+    local function Packs(team, plain)
+        return {
+            SpokenBossesAudio = Pack("SpokenBossesAudio", "enUS", 128),
+            SpokenBossesAudio_deDE_stimmen = Pack("SpokenBossesAudio_deDE_stimmen", "deDE", 128,
+                { [36] = { ["edwin vancleef"] = team } }),
+            SpokenBossesAudio_deDE = Pack("SpokenBossesAudio_deDE", "deDE", 128, { [36] = { ["edwin vancleef"] = plain } }),
+        }
+    end
+    local function Path(voices, team, plain)
+        Setup("deDE", nil, nil, Packs(team, plain))
+        _G.Spoken:SetVoiceOrder(voices)
+        local found = Bosses:GetAudioClip(36, "edwin vancleef")
+        return found and (found.pack .. ":" .. found.voice) or nil
+    end
+    Expect("voices: the team's first", Path({ "deDE_stimmen", "deDE", "enUS" }, TEAM, GERMAN),
+        "SpokenBossesAudio_deDE_stimmen:deDE_stimmen")
+    Expect("voices: the plain pack where the team lacks the boss", Path({ "deDE_stimmen", "deDE", "enUS" }, nil, GERMAN),
+        "SpokenBossesAudio_deDE:deDE")
+    Expect("voices: English where neither German pack has it", Path({ "deDE_stimmen", "deDE", "enUS" }, nil, nil),
+        "SpokenBossesAudio:enUS")
+    Expect("voices: plain German never plays the team's pack", Path({ "deDE" }, TEAM, nil), nil)
+    local language = _G.SpokenEnv.Addon.db.profile.Language
+    language.Voices = nil
+    stub.ResetAddOns()
+    _G.SpokenEnv.Languages:Reset()
+end
+
 stub.SetLocale("enUS")
 if Failures() > 0 then os.exit(1) end

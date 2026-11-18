@@ -624,6 +624,12 @@ function Spoken:VoiceOf(folder, lang)
     return Languages:VoiceOf(folder, lang)
 end
 
+--- A voice's name, in the game's font: its language's ("Deutsch"), and for a team's voice the team's
+--- name after it ("Deutsch · Stimmen").
+function Spoken:VoiceName(code)
+    return Options:VoiceName(code)
+end
+
 --- A voice's language and team ("deDE", "stimmen"), the team nil for a plain voice. Nil, nil for a
 --- value that is no voice.
 function Spoken:SplitVoice(code)

@@ -66,7 +66,7 @@ local METHODS = {
     -- a dungeon's or a boss's story, for another addon's Play button
     "RegisterStoryTeller", "HasStory", "PlayStory", "IsPlayingStory", "StopStory",
     -- the voices the player hears, in order, and the voice a pack is in
-    "GetLanguageChoice", "GetVoiceOrder", "SetVoiceOrder", "VoiceOf", "SplitVoice",
+    "GetLanguageChoice", "GetVoiceOrder", "SetVoiceOrder", "VoiceOf", "SplitVoice", "VoiceName",
 }
 for _, name in ipairs(METHODS) do
     Expect("Spoken:" .. name .. " exists", type(Spoken[name]), "function")
