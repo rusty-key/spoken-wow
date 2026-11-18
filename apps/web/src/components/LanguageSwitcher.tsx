@@ -13,10 +13,8 @@ import { usePendingPush } from "./usePendingPush";
 export type Offered = { code: Lang; name: string; enabled: boolean };
 
 /**
- * The languages the switch offers, asked of the API. The site header holds two switches (its row
- * and its burger) and asks once for both. The answer depends on who is signed in (an admin sees
- * languages that are off), so a new `scope` asks again; `retry` asks again after a failed request.
- * `enabled` false skips the request.
+ * Both header switches share one request. Admins can preview disabled languages, so the list
+ * belongs to the current session `scope`.
  */
 export function useOfferedLanguages(enabled = true, scope = ""): { offered: Offered[]; retry: () => void } {
   const [offered, setOffered] = useState<Offered[]>([]);
@@ -44,8 +42,11 @@ export function useOfferedLanguages(enabled = true, scope = ""): { offered: Offe
       live = false;
     };
   }, [enabled, scope, attempt]);
+  // Cleared as soon as a retry is scheduled, so reopening the menu cannot restart one in flight.
   const retry = useCallback(() => {
-    if (failed) setAttempt((n) => n + 1);
+    if (!failed) return;
+    setFailed(false);
+    setAttempt((n) => n + 1);
   }, [failed]);
   return { offered, retry };
 }

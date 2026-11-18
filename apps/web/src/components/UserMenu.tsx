@@ -107,7 +107,6 @@ export default function UserMenu() {
   const grants = useGrants();
   const [pendingPacks] = usePendingPacks();
   const lang = useLang();
-  // Asked once for both switches, the row's and the burger's, and again when the session changes.
   const { offered, retry: retryLanguages } = useOfferedLanguages(
     !isPending,
     `${session?.user.id ?? ""}:${session?.user.role ?? ""}`,
@@ -120,7 +119,8 @@ export default function UserMenu() {
   useEffect(() => {
     const narrow = window.matchMedia(NARROW);
     const onChange = () => {
-      const inMenu = Boolean(document.activeElement?.closest(".sn-pop"));
+      // The language list is portalled out of the menu, but focus there is still focus in the menu.
+      const inMenu = Boolean(document.activeElement?.closest('.sn-pop, [data-slot="select-content"]'));
       const inHeader = inMenu || Boolean(document.activeElement?.closest(".sn"));
       crossed.current = inMenu;
       setOpen(false);
@@ -129,7 +129,7 @@ export default function UserMenu() {
         requestAnimationFrame(() => {
           // A closing menu is still on screen here, so focus in one always moves.
           const now = document.activeElement as HTMLElement | null;
-          if (!inMenu && now && now !== document.body && now.checkVisibility()) return;
+          if (!inMenu && now && now !== document.body && now.getClientRects().length > 0) return;
           document.querySelector<HTMLElement>(narrow.matches ? ".sn-burger" : ".sn .bn-links a")?.focus();
         });
       }
