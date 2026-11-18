@@ -1,9 +1,10 @@
 // @vitest-environment jsdom
-import { cleanup, render, screen } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { createRef } from "react";
 import { afterEach, expect, test, vi } from "vitest";
 
+import { FilterDates } from "@/components/catalogue/CatalogueSearch";
 import QuestsSearchBar from "@/components/SearchBar";
 import { SearchBar as PlacesSearchBar } from "@/components/places/SearchBar";
 import { SearchBar as ReadablesSearchBar } from "@/components/readables/SearchBar";
@@ -94,4 +95,16 @@ test("All is not pressed while a reports filter the viewer has no button for nar
   );
   expect(screen.queryByRole("button", { name: "Reported" })).toBeNull();
   expect(screen.getByRole("button", { name: "All" }).getAttribute("aria-pressed")).toBe("false");
+});
+
+// A browser fires a change for every digit typed into a date's year, each a valid date in year
+// 2, 20, 202. Each would be a URL write, a history entry and a search.
+test("Made between writes a typed year once it has all four digits", () => {
+  const onChange = vi.fn();
+  render(<FilterDates label="Made between" after={undefined} before={undefined} onChange={onChange} />);
+  const from = screen.getByLabelText("Made between: from");
+  for (const value of ["0002-11-18", "0020-11-18", "0202-11-18", "2026-11-18"]) fireEvent.change(from, { target: { value } });
+  expect(onChange.mock.calls).toEqual([[{ generatedAfter: "2026-11-18" }]]);
+  fireEvent.change(from, { target: { value: "" } });
+  expect(onChange).toHaveBeenLastCalledWith({ generatedAfter: undefined });
 });

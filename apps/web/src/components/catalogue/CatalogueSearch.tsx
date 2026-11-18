@@ -312,22 +312,42 @@ export function FilterDates({
   return (
     <FilterField label={label}>
       <div className="cat-two">
-        <input
-          type="date"
-          className={cn("cat-select", after && "cat-set")}
-          aria-label={`${label}: from`}
-          value={after ?? ""}
-          onChange={(event) => onChange({ generatedAfter: event.target.value || undefined })}
-        />
-        <input
-          type="date"
-          className={cn("cat-select", before && "cat-set")}
-          aria-label={`${label}: to`}
-          value={before ?? ""}
-          onChange={(event) => onChange({ generatedBefore: event.target.value || undefined })}
-        />
+        <DateInput label={`${label}: from`} value={after} onCommit={(generatedAfter) => onChange({ generatedAfter })} />
+        <DateInput label={`${label}: to`} value={before} onCommit={(generatedBefore) => onChange({ generatedBefore })} />
       </div>
     </FilterField>
+  );
+}
+
+function DateInput({
+  label,
+  value,
+  onCommit,
+}: {
+  label: string;
+  value: string | undefined;
+  onCommit: (value: string | undefined) => void;
+}) {
+  // Typing a year makes the browser report year 0002, 0020, 0202 on the way to 2026; written
+  // through, each would be a history entry and a search. The draft holds them instead.
+  const [draft, setDraft] = useState(value ?? "");
+  const [shown, setShown] = useState(value);
+  if (value !== shown) {
+    setShown(value);
+    setDraft(value ?? "");
+  }
+  return (
+    <input
+      type="date"
+      className={cn("cat-select", value && "cat-set")}
+      aria-label={label}
+      value={draft}
+      onChange={(event) => {
+        const next = event.target.value;
+        setDraft(next);
+        if (next === "" || /^[1-9]\d{3}-/.test(next)) onCommit(next || undefined);
+      }}
+    />
   );
 }
 
