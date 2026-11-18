@@ -2,7 +2,8 @@
  * The Cloudflare grant waiting in the admin's cookie (docs/platform/STORAGE.md, "Connecting
  * Cloudflare"). GET lists the accounts it reaches and whether the grant can make the bucket's key.
  * POST makes the bucket; with a key, pasted or made, it saves and tests it and revokes the grant,
- * and without one it answers `needsKey`. DELETE revokes the grant unused.
+ * and without one it answers `needsKey`. A pasted key needs no grant: it may lapse while the admin
+ * makes the key. DELETE revokes the grant unused.
  */
 import { after } from "next/server";
 
@@ -20,12 +21,16 @@ import { jsonBody, withTeamAdmin, type StorageContext } from "../guard";
 
 export const dynamic = "force-dynamic";
 
-function grant(request: Request, { lang, userId }: StorageContext): { token: string; mintsKeys: boolean } {
+/** This language's waiting grant, or null. */
+function waiting(request: Request, { lang, userId }: StorageContext): { token: string; mintsKeys: boolean } | null {
   const pending = pendingOf(request, userId);
-  if (pending?.step !== "connected" || pending.lang !== lang) {
-    throw new StorageError("No Cloudflare grant is waiting, or it lapsed: connect Cloudflare again.", 409);
-  }
-  return pending;
+  return pending?.step === "connected" && pending.lang === lang ? pending : null;
+}
+
+function grant(request: Request, at: StorageContext): { token: string; mintsKeys: boolean } {
+  const found = waiting(request, at);
+  if (!found) throw new StorageError("No Cloudflare grant is waiting, or it lapsed: connect Cloudflare again.", 409);
+  return found;
 }
 
 const trimmed = (value: unknown) => (typeof value === "string" ? value.trim() : "");
@@ -36,7 +41,7 @@ export const GET = withTeamAdmin(async (request, at) => {
 });
 
 export const POST = withTeamAdmin(async (request, at) => {
-  const { token, mintsKeys } = grant(request, at);
+  const found = waiting(request, at);
   const body = await jsonBody(request);
   const accountId = trimmed(body.accountId);
   const bucket = trimmed(body.bucket);
@@ -46,9 +51,10 @@ export const POST = withTeamAdmin(async (request, at) => {
   if (Boolean(accessKeyId) !== Boolean(secretAccessKey)) throw new StorageError("Paste both the access key id and the secret access key.");
   const key = accessKeyId ? { accessKeyId, secretAccessKey } : null;
   // A refusal, or a bucket waiting for its key, keeps the grant: the admin carries on without going back to Cloudflare.
-  const done = await connectCloudflare(at.team, at.userId, token, { accountId, bucket, label, key }, { mintsKeys });
-  if ("needsKey" in done) return Response.json({ needsKey: true });
-  after(() => revoke(token));
+  const done = await connectCloudflare(at.team, at.userId, found?.token ?? null, { accountId, bucket, label, key }, { mintsKeys: found?.mintsKeys ?? false });
+  if ("needsKey" in done) return Response.json(done);
+  if (!found) return Response.json(done, { status: 201 });
+  after(() => revoke(found.token));
   return Response.json(done, { status: 201, headers: { "Set-Cookie": clearedCookie() } });
 });
 

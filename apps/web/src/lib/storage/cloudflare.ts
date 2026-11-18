@@ -36,7 +36,7 @@ const CALLBACK_PATH = "/api/storage/cloudflare/callback";
 
 /** A refusal from Cloudflare, or a step of the setup that could not go on; the storage gate answers it like any StorageError. */
 export class CloudflareError extends StorageError {
-  constructor(message: string, status: 400 | 404 = 400) {
+  constructor(message: string, status: 400 | 404 | 409 = 400) {
     super(message, status);
     this.name = "CloudflareError";
   }
@@ -127,7 +127,10 @@ export async function exchangeCode(
   };
 }
 
-/** Best effort: a token that outlives the setup lapses on its own within the hour. */
+/**
+ * Best effort: a token that outlives the setup lapses on its own within the hour, and the admin can
+ * revoke it under Connected Applications in Cloudflare. A refusal is logged, not shown.
+ */
 export async function revoke(accessToken: string, fetchImpl: Fetch = fetch): Promise<void> {
   const conf = config();
   if (!conf) return;
@@ -138,8 +141,11 @@ export async function revoke(accessToken: string, fetchImpl: Fetch = fetch): Pro
     redirect: "manual",
     signal: AbortSignal.timeout(10_000),
   })
-    .then((res) => res.body?.cancel())
-    .catch(() => {});
+    .then(async (res) => {
+      await res.body?.cancel();
+      if (!res.ok) console.warn(`storage: Cloudflare refused to revoke a setup grant: HTTP ${res.status}`);
+    })
+    .catch((error: unknown) => console.warn(`storage: revoking a Cloudflare setup grant failed: ${errorText(error)}`));
 }
 
 type Envelope<T> = { success?: boolean; result?: T; errors?: { code?: number; message?: string }[] };
@@ -192,14 +198,21 @@ const R2_BUCKET = /^[a-z0-9][a-z0-9-]{1,61}[a-z0-9]$/;
 /** What the bucket is called unless the admin says otherwise. */
 export const suggestedBucket = (lang: Lang): string => `spoken-${lang.toLowerCase()}`.replace(/[^a-z0-9-]/g, "-");
 
-/** The bucket, created unless the account has one by that name. */
+function checkNames(accountId: string, bucket: string): void {
+  if (!ACCOUNT_ID.test(accountId)) throw new CloudflareError("That is not a Cloudflare account id.");
+  if (!R2_BUCKET.test(bucket)) throw new CloudflareError("The bucket's name is 3 to 63 lowercase letters, digits and dashes, starting and ending with a letter or digit.");
+}
+
+/**
+ * The bucket, created unless the account has one by that name. Default jurisdiction only: an EU or
+ * FedRAMP bucket is connected by hand.
+ */
 export async function ensureBucket(
   token: string,
   { accountId, bucket }: { accountId: string; bucket: string },
   fetchImpl: Fetch = fetch,
 ): Promise<void> {
-  if (!ACCOUNT_ID.test(accountId)) throw new CloudflareError("That is not a Cloudflare account id.");
-  if (!R2_BUCKET.test(bucket)) throw new CloudflareError("The bucket's name is 3 to 63 lowercase letters, digits and dashes, starting and ending with a letter or digit.");
+  checkNames(accountId, bucket);
   const account = `/accounts/${accountId}`;
   const found = await api(token, "look for the bucket", `${account}/r2/buckets/${bucket}`, { missingOk: true, fetchImpl });
   if (!found) await api(token, "create the bucket", `${account}/r2/buckets`, { method: "POST", body: { name: bucket }, fetchImpl });
@@ -235,19 +248,30 @@ export async function mintKey(
 type Connected = { backend: BackendView; test: ProbeResult | null };
 
 /**
- * Makes the bucket, then saves and tests it with the pasted key, or one minted when the grant
- * allows. With neither, `needsKey`: the admin makes one for the bucket that now exists.
+ * Without a key: makes the bucket and a key for it when the grant allows, else answers `needsKey`
+ * (with Cloudflare's reason when making the key failed). With the key the admin pasted, the bucket
+ * already exists and no grant is needed. Then saves and tests it.
  */
 export async function connectCloudflare(
   team: TeamId,
   userId: string,
-  token: string,
+  token: string | null,
   { accountId, bucket, label, key }: { accountId: string; bucket: string; label: string; key: BucketKey | null },
   { mintsKeys, fetchImpl = fetch, tries = 5, pauseMs = 3_000 }: { mintsKeys: boolean; fetchImpl?: Fetch; tries?: number; pauseMs?: number },
-): Promise<Connected | { needsKey: true }> {
-  await ensureBucket(token, { accountId, bucket }, fetchImpl);
-  if (!key && !mintsKeys) return { needsKey: true };
-  const { accessKeyId, secretAccessKey } = key ?? (await mintKey(token, { accountId, bucket, keyName: `Spoken: ${label}` }, fetchImpl));
+): Promise<Connected | { needsKey: true; why?: string }> {
+  checkNames(accountId, bucket);
+  if (!key) {
+    if (!token) throw new CloudflareError("No Cloudflare grant is waiting, or it lapsed: connect Cloudflare again.", 409);
+    await ensureBucket(token, { accountId, bucket }, fetchImpl);
+    if (!mintsKeys) return { needsKey: true };
+    try {
+      key = await mintKey(token, { accountId, bucket, keyName: `Spoken: ${label}` }, fetchImpl);
+    } catch (error) {
+      if (error instanceof CloudflareError) return { needsKey: true, why: error.message };
+      throw error;
+    }
+  }
+  const { accessKeyId, secretAccessKey } = key;
   const backend = await createBackend(
     team,
     backendInput({ provider: "r2", label, endpoint: `https://${accountId}.r2.cloudflarestorage.com`, region: "auto", bucket, pathStyle: true, accessKeyId, secretAccessKey }),

@@ -115,22 +115,28 @@ developer since June 2026). `lib/storage/cloudflare.ts` and `/api/storage/cloudf
    An answer without this connection's state leaves the cookie alone, since any page can link
    there. The Storage page asks for a waiting grant on every load, so a reload does not lose it.
 3. The page lists the accounts the grant reaches and suggests `spoken-<lang>` as the bucket. POST
-   creates the bucket unless the account has one by that name.
+   creates the bucket unless the account has one by that name. Default jurisdiction only: an EU or
+   FedRAMP bucket is connected by hand.
 4. The key. `account-api-tokens.write` is optional on the consent screen (decided 2026-11-18): it
-   lets its holder create a token with any permission in the account, so the admin may decline it,
-   and the token answer's `scope` says whether they did.
+   lets its holder create account tokens with any permission the approving person holds and the
+   grant's scopes allow, so the admin may decline it, and the token answer's `scope` says whether
+   they did.
    - Granted: the site creates an account-owned API token with `Workers R2 Storage Bucket Item
      Write` on that bucket alone. Its id is the access key id and the SHA-256 of its value the
      secret.
-   - Declined: POST answers `needsKey` once the bucket exists, and the page shows how to make an
-     R2 token on Cloudflare (Object Read & Write, that bucket only) with two fields for its access
-     key id and secret. A second POST carries them.
+   - Declined, or Cloudflare refused to make the key: POST answers `needsKey` (with Cloudflare's
+     reason in `why` for a refusal) once the bucket exists, and the page shows how to make an R2
+     token on Cloudflare (Object Read & Write, that bucket only) with two fields for its access key
+     id and secret. A second POST carries them and needs no grant, since the bucket exists: the
+     fifteen minutes may run out while the admin makes the key.
 5. The bucket is saved like one entered by hand and tested. A first write the bucket refuses is
    tried again up to five times three seconds apart, while a new key reaches R2; any other failure
    stands. Once saved, nothing fails the request: a test that throws leaves the bucket untested.
-   Then the grant is revoked, after the answer, and the cookie cleared. A refusal, or
-   a bucket waiting for its key, keeps the grant, so the admin can carry on without going back to
-   Cloudflare.
+   Then the grant is revoked, after the answer, and the cookie cleared. A refusal, or a bucket
+   waiting for its key, keeps the grant, so the admin can carry on without going back to
+   Cloudflare. A revoke Cloudflare refuses is logged; the grant lapses within the hour, and the
+   admin can revoke it under Connected Applications in Cloudflare. The card's provider and mode
+   are held while a request runs, so it cannot be sent twice.
 
 The site keeps no Cloudflare grant, only the bucket's key, so nothing else of the account is
 reachable afterwards. R2 has no permission that writes without deleting, so the key can delete
@@ -144,8 +150,8 @@ bucket is a pasted key. Keeping the OAuth grant and using Cloudflare's REST API 
 a long-lived grant over all of the account's R2, with no presigned addresses.
 
 Off unless `CLOUDFLARE_OAUTH_CLIENT_ID`, `CLOUDFLARE_OAUTH_CLIENT_SECRET` and
-`CLOUDFLARE_OAUTH_SCOPES` are set, and `SPOKEN_STORAGE_KEY` is valid: it seals the cookie and the key. The client is registered in our Cloudflare account with the
-redirect URI `https://spoken.quest/api/storage/cloudflare/callback`; until its visibility is public
+`CLOUDFLARE_OAUTH_SCOPES` are set, and `SPOKEN_STORAGE_KEY` is valid: it seals the cookie and the
+key. The client is registered in our Cloudflare account with the redirect URI `https://spoken.quest/api/storage/cloudflare/callback`; until its visibility is public
 (which needs `spoken.quest` verified by a TXT record, and cannot be undone) only members of our
 account can use it. Cloudflare publishes its scopes only at `GET /client/v4/oauth/scopes`, so the
 scopes are configured rather than written here. They are `account-settings.read`,

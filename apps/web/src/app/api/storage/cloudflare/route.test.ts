@@ -37,6 +37,10 @@ let restoreArchive = () => {};
 let calls: string[] = [];
 /** What the admin granted on Cloudflare's consent screen. */
 let granted = "";
+/** The account's buckets, as the fake Cloudflare creates them. */
+let buckets = new Set<string>();
+/** Whether the account offers the bucket-scoped permission a key needs. */
+let offersKeys = true;
 const ALL = "account-settings.read workers-r2.write account-api-tokens.write";
 
 /** Cloudflare: its token endpoint, its revoke, and an account with no buckets. */
@@ -49,9 +53,14 @@ const cloudflare = (async (input: string, init?: RequestInit) => {
   if (url.pathname === "/oauth2/revoke") return new Response(null, { status: 200 });
   const path = url.pathname.replace("/client/v4", "");
   if (path === "/accounts") return ok([{ id: ACCOUNT, name: "Team account", type: "standard" }]);
-  if (method === "GET" && path.includes("/r2/buckets/")) return Response.json({ success: false, errors: [] }, { status: 404 });
-  if (method === "POST" && path.endsWith("/r2/buckets")) return ok({});
-  if (path.endsWith("/tokens/permission_groups")) return ok([{ id: "g", name: "Workers R2 Storage Bucket Item Write" }]);
+  if (method === "GET" && path.includes("/r2/buckets/")) {
+    return buckets.has(path.split("/").pop()!) ? ok({}) : Response.json({ success: false, errors: [] }, { status: 404 });
+  }
+  if (method === "POST" && path.endsWith("/r2/buckets")) {
+    buckets.add((JSON.parse(String(init?.body)) as { name: string }).name);
+    return ok({});
+  }
+  if (path.endsWith("/tokens/permission_groups")) return ok(offersKeys ? [{ id: "g", name: "Workers R2 Storage Bucket Item Write" }] : []);
   if (method === "POST" && path.endsWith("/tokens")) return ok({ id: "minted-id", value: "minted-value" });
   return Response.json({ success: false, errors: [{ message: `unexpected ${method} ${path}` }] }, { status: 400 });
 }) as typeof fetch;
@@ -96,6 +105,8 @@ beforeAll(async () => {
 beforeEach(() => {
   calls = [];
   granted = ALL;
+  buckets = new Set();
+  offersKeys = true;
   probed.probe.mockReset().mockResolvedValue(OK);
   restoreArchive = useArchiveForTests(memoryBlobs(), "r2");
 });
@@ -183,7 +194,8 @@ describe("connecting Cloudflare", () => {
     expect(first.status).toBe(200);
     expect(first.headers.get("set-cookie")).toBeNull();
     expect(await first.json()).toEqual({ needsKey: true });
-    expect(calls).toContain(`POST /client/v4/accounts/${ACCOUNT}/r2/buckets`);
+    const creates = () => calls.filter((call) => call === `POST /client/v4/accounts/${ACCOUNT}/r2/buckets`).length;
+    expect(creates()).toBe(1);
 
     expect((await post(cookie, { accessKeyId: "pasted-id" })).status).toBe(400);
 
@@ -192,7 +204,36 @@ describe("connecting Cloudflare", () => {
     expect(second.headers.get("set-cookie")).toContain("Max-Age=0");
     expect((await second.json()).backend).toMatchObject({ accessKeyId: "pasted-id", health: "ok" });
     expect(calls.some((call) => call.endsWith("/tokens") || call.endsWith("/tokens/permission_groups"))).toBe(false);
+    expect(creates()).toBe(1);
     expect(calls).toContain("POST /oauth2/revoke");
+  });
+
+  it("takes a pasted key after the grant lapsed, since the bucket already exists", async () => {
+    granted = "account-settings.read workers-r2.write";
+    expect(await (await post(await grantedCookie(), {})).json()).toEqual({ needsKey: true });
+    calls = [];
+
+    const res = await post("", { accessKeyId: "pasted-id", secretAccessKey: "pasted-secret" });
+    expect(res.status).toBe(201);
+    expect(res.headers.get("set-cookie")).toBeNull();
+    expect((await res.json()).backend).toMatchObject({ accessKeyId: "pasted-id", bucket: "spoken-frfr" });
+    expect(calls).toEqual([]);
+  });
+
+  it("asks for the key when Cloudflare will not make it, and says why", async () => {
+    offersKeys = false;
+    const cookie = await grantedCookie();
+    const res = await post(cookie, {});
+    expect(res.status).toBe(200);
+    expect(res.headers.get("set-cookie")).toBeNull();
+    expect(await res.json()).toEqual({ needsKey: true, why: 'Cloudflare offers no "Workers R2 Storage Bucket Item Write" permission to give the bucket\'s key.' });
+    expect(buckets.has("spoken-frfr")).toBe(true);
+  });
+
+  it("still needs a grant to make the bucket", async () => {
+    const res = await post("", {});
+    expect(res.status).toBe(409);
+    expect(calls).toEqual([]);
   });
 
   it("tests a new key again while it reaches R2", async () => {

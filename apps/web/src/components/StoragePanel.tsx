@@ -19,7 +19,7 @@ const HEALTH: Record<BackendView["health"], { text: string; tone: string }> = {
   failing: { text: "Failing", tone: "border-destructive/40 bg-destructive/10 text-destructive" },
 };
 
-type Answer = { backend?: BackendView; test?: ProbeResult | null; move?: MoveView; needsKey?: boolean; error?: string };
+type Answer = { backend?: BackendView; test?: ProbeResult | null; move?: MoveView; needsKey?: boolean; why?: string; error?: string };
 
 const POLL_MS = 10_000;
 
@@ -383,10 +383,13 @@ function CloudflareSetup({
   lang,
   returned,
   onConnected,
+  onBusy,
 }: {
   lang: Lang;
   returned: CloudflareReturn;
   onConnected: (backend: BackendView, test: ProbeResult | null) => void;
+  /** Told while a request runs, so the card around it holds still: a remount could send it twice. */
+  onBusy: (busy: boolean) => void;
 }) {
   /** The grant waiting in the cookie: the accounts it reaches, and whether it may make the key. */
   const [grant, setGrant] = useState<{ accounts: CloudflareAccount[]; mintsKeys: boolean } | null>(null);
@@ -396,7 +399,11 @@ function CloudflareSetup({
   const [needsKey, setNeedsKey] = useState(false);
   const [key, setKey] = useState({ accessKeyId: "", secretAccessKey: "" });
   const [error, setError] = useState<string | null>(returned.error);
-  const [working, setWorking] = useState(false);
+  const [working, setWorkingHere] = useState(false);
+  const setWorking = (busy: boolean) => {
+    setWorkingHere(busy);
+    onBusy(busy);
+  };
   const url = `/api/storage/cloudflare?lang=${lang}`;
 
   // The query said where the grant stands once; a reload must not say it again.
@@ -433,7 +440,10 @@ function CloudflareSetup({
     const answer = await call(url, { method: "POST", body: JSON.stringify(body) });
     setWorking(false);
     if (answer.error) return setError(answer.error);
-    if (answer.needsKey) return setNeedsKey(true);
+    if (answer.needsKey) {
+      if (answer.why) setError(`Spoken could not make the key (${answer.why}), so make it yourself below.`);
+      return setNeedsKey(true);
+    }
     reset();
     if (answer.backend) onConnected(answer.backend, answer.test ?? null);
   };
@@ -556,6 +566,8 @@ function NewBackend({
 }) {
   const [provider, setProvider] = useState<Provider>("r2");
   const [byHand, setByHand] = useState(false);
+  /** A Cloudflare setup is running: switching provider or mode now would unmount it mid-request. */
+  const [settingUp, setSettingUp] = useState(false);
   const [form, setForm] = useState(EMPTY);
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
@@ -588,7 +600,7 @@ function NewBackend({
         <select
           className="bg-background h-9 w-72 rounded-md border px-2"
           value={provider}
-          disabled={saving}
+          disabled={saving || settingUp}
           onChange={(e) => setProvider(e.target.value as Provider)}
         >
           {providers.map((p) => (
@@ -598,16 +610,16 @@ function NewBackend({
       </label>
       {provider === "r2" && cloudflare && (
         <div className="flex flex-wrap gap-2" role="group" aria-label="How to connect R2">
-          <Button type="button" size="sm" variant={byHand ? "outline" : "secondary"} aria-pressed={!byHand} onClick={() => setByHand(false)}>
+          <Button type="button" size="sm" variant={byHand ? "outline" : "secondary"} aria-pressed={!byHand} disabled={settingUp} onClick={() => setByHand(false)}>
             Connect with Cloudflare
           </Button>
-          <Button type="button" size="sm" variant={byHand ? "secondary" : "outline"} aria-pressed={byHand} onClick={() => setByHand(true)}>
+          <Button type="button" size="sm" variant={byHand ? "secondary" : "outline"} aria-pressed={byHand} disabled={settingUp} onClick={() => setByHand(true)}>
             Enter details by hand
           </Button>
         </div>
       )}
       {viaCloudflare ? (
-        <CloudflareSetup lang={lang} returned={cloudflare} onConnected={onConnected} />
+        <CloudflareSetup lang={lang} returned={cloudflare} onConnected={onConnected} onBusy={setSettingUp} />
       ) : (
         <form onSubmit={save} className="flex flex-col gap-3">
           {/* Held while saving: the form clears when the save returns, and would take edits with it. */}
