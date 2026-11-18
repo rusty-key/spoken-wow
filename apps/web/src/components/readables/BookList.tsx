@@ -30,8 +30,8 @@ type Props = {
   /** Narrowing to one book, from its name. */
   onSelectBook: (line: ResultLine) => void;
   bookHref: (line: ResultLine) => string;
-  /** Open the report dialog. Everyone gets this, signed in or not. */
-  onReport: (line: ResultLine) => void;
+  /** Open the report dialog; null in another team's view. */
+  onReport: ((line: ResultLine) => void) | null;
   /** An earlier take is live again. */
   onRestored: (line: ResultLine, version: number) => void;
   /** Rewrite what a page says. Editor and up. */

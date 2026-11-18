@@ -18,6 +18,8 @@ const { asTeam } = await import("@/lib/teams/acting");
 const { forgetTeams } = await import("@/lib/teams/store");
 const { asSystem, dropLang, dropTeam, newTeamIn, systemRows, uniqueLang } = await import("@/lib/teams/testing");
 const { forgetLanguages, loadLanguages } = await import("@/lib/languages/catalogue");
+const { facets } = await import("@/lib/facets");
+const { asViewed } = await import("@/lib/teams/viewing");
 const { GET } = await import("./route");
 
 let lang: Lang;
@@ -126,6 +128,26 @@ describe("GET /api/quests/search?team=", () => {
   it("marks the acting team's files without a team", async () => {
     expect((await rows(picked[1])).rows.every((row) => row.hasAudio)).toBe(true);
     expect((await rows(picked[0])).rows.every((row) => !row.hasAudio && row.override === null)).toBe(true);
+  });
+
+  it("reads the voice filter as the named team, whose roster names the voice", async () => {
+    // B alone reads orc male guards with a voice of its own.
+    await asSystem.query(`insert into "voice" ("teamId", "name", "race", "gender") values ($1, 'test-bvoice', 'orc', 'male')`, [b]);
+    await asSystem.query(
+      `insert into "voice_assignment" ("teamId", "race", "gender", "flavor", "voice") values ($1, 'orc', 'male', 'guard', 'test-bvoice')
+       on conflict ("teamId", "race", coalesce("gender", ''), coalesce("flavor", '')) do update set "voice" = excluded."voice"`,
+      [b],
+    );
+    const viewed = { team: b, slug: slugs.get(b)!, name: slugs.get(b)!, own: false };
+    expect((await asViewed(lang, viewed, () => facets(lang))).voices).toContain("test-bvoice");
+    expect((await asViewed(lang, null, () => facets(lang))).voices).not.toContain("test-bvoice");
+
+    const url = `https://example.com/api/quests/search?lang=${lang}&team=${slugs.get(b)}&voice=test-bvoice&limit=500`;
+    const response = await GET(new NextRequest(url));
+    expect(response.status).toBe(200);
+    const body = (await response.json()) as { total: number; lines: { voice: string }[] };
+    expect(body.total).toBeGreaterThan(0);
+    expect(body.lines.every((line) => line.voice === "test-bvoice")).toBe(true);
   });
 
   it("answers an unknown slug with 404", async () => {

@@ -799,7 +799,7 @@ export function Explorer<L extends ExplorerLine, F extends ExplorerFilters>({
                   setVersions((current) => ({ ...current, [l.id]: version }));
                   void refreshRows([l.id]);
                 }}
-                onReport={setReportFor}
+                onReport={own ? setReportFor : null}
                 onEditText={(l) => setEditFor(withEdits(l))}
                 onOverride={setOverriding}
                 onOverrideAnswered={(l) => void refreshRows([l.id])}

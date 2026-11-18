@@ -1,10 +1,11 @@
 // @vitest-environment jsdom
 import { cleanup, render, screen, waitFor } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, expect, test, vi } from "vitest";
 
 import { LangProvider } from "@/components/LangProvider";
 import type { Facets } from "@/lib/facets";
-import type { SearchResult } from "@/lib/search";
+import type { ResultLine, SearchResult } from "@/lib/search";
 import type { ViewedTeam } from "@/lib/teams/viewing";
 
 import Explorer from "./Explorer";
@@ -20,7 +21,40 @@ vi.mock("@/components/useCan", () => ({
 }));
 
 const facets: Facets = { races: [], genders: [], flavors: [], voices: [], flavorScopes: [] };
-const result: SearchResult = { lines: [], total: 12, npcCount: 3, offset: 0, limit: 50 };
+const line: ResultLine = {
+  lineId: "q:1:accept",
+  source: "accept",
+  questId: 1,
+  questTitle: "A Quest",
+  npcId: 2,
+  npcName: "Grunt",
+  npcType: "creature",
+  race: "orc",
+  gender: "male",
+  flavor: null,
+  voice: "orc-male-standard",
+  playerGender: null,
+  text: "Lok'tar.",
+  originalText: "Lok'tar.",
+  fileName: "1-accept",
+  generatable: true,
+  skipReason: null,
+  key: "q:1:accept|0",
+  hasAudio: true,
+  audioPath: "quests/1-accept.mp3",
+  reportsOpen: 0,
+  take: { version: 1, takes: 1 },
+  stale: false,
+  dirty: false,
+  override: "Lok'tar ogar.",
+  driftedOverride: null,
+  voiceable: true,
+  narration: false,
+  narrationRestored: false,
+  ignored: null,
+  madeBy: null,
+};
+const result: SearchResult = { lines: [line], total: 12, npcCount: 3, offset: 0, limit: 50 };
 const fetchMock = vi.fn();
 
 beforeEach(() => {
@@ -31,6 +65,8 @@ beforeEach(() => {
       : new Response("{}", { status: 404 }),
   );
   vi.stubGlobal("fetch", fetchMock);
+  vi.spyOn(HTMLMediaElement.prototype, "play").mockResolvedValue(undefined);
+  Element.prototype.scrollIntoView = () => {};
   vi.stubGlobal(
     "ResizeObserver",
     class {
@@ -56,6 +92,13 @@ function explorer(viewed: ViewedTeam | null) {
 }
 
 const urls = () => fetchMock.mock.calls.map(([url]) => String(url));
+const named = (name: RegExp) => screen.queryAllByRole("button", { name });
+const audioSrc = () => document.querySelector("audio")?.getAttribute("src") ?? null;
+
+async function playGrunt() {
+  await userEvent.setup().click(await screen.findByRole("button", { name: "Play Grunt's line" }));
+  await waitFor(() => expect(audioSrc()).not.toBeNull());
+}
 
 test("another team's view asks for its lines, and offers no batch or queue", async () => {
   explorer({ team: "t-main", slug: "main-crew", name: "Main Crew", own: false });
@@ -65,6 +108,14 @@ test("another team's view asks for its lines, and offers no batch or queue", asy
   for (const url of urls()) expect(new URL(url, "http://x").searchParams.get("team")).toBe("main-crew");
   expect(screen.queryByRole("button", { name: /Regenerate all/ })).toBeNull();
   expect(urls().some((url) => url.includes("/api/regenerate/queue"))).toBe(false);
+  // The override is what B's take speaks, with no pencil to change it, and no report.
+  expect(screen.getByText("Lok'tar ogar.")).not.toBeNull();
+  expect(named(/^Edit the spoken text/)).toHaveLength(0);
+  expect(named(/^Report/)).toHaveLength(0);
+  expect(named(/^Ignore/)).toHaveLength(0);
+
+  await playGrunt();
+  expect(new URL(audioSrc()!, "http://x").searchParams.get("team")).toBe("main-crew");
 });
 
 test("the visitor's own view offers the batch and sends no team", async () => {
@@ -74,4 +125,9 @@ test("the visitor's own view offers the batch and sends no team", async () => {
   for (const url of urls()) expect(url).not.toContain("team=");
   expect(screen.getByRole("button", { name: /Regenerate all 12/ })).not.toBeNull();
   await waitFor(() => expect(urls().some((url) => url.includes("/api/regenerate/queue"))).toBe(true));
+  expect(named(/^Edit the spoken text/)).toHaveLength(1);
+  expect(named(/^Report/)).toHaveLength(1);
+
+  await playGrunt();
+  expect(audioSrc()).not.toContain("team=");
 });

@@ -160,8 +160,8 @@ type Props = {
   onReplaceSpeaker: ((line: ResultLine) => void) | null;
   onRemoveSpeaker: ((line: ResultLine) => void) | null;
   onRegenerate: (line: ResultLine) => void;
-  /** Open the report dialog. Everyone gets this, signed in or not. */
-  onReport: (line: ResultLine) => void;
+  /** Open the report dialog. Everyone gets this, signed in or not. Null in another team's view, whose reports would land in the visitor's own team. */
+  onReport: ((line: ResultLine) => void) | null;
   onRestored: (file: string, version: number) => void;
   /**
    * Rows of one line and speaker (its player-gender wordings) share the speaker cells: the
@@ -572,7 +572,7 @@ export default function LineRow({
           {/* Outside the canRegenerate gate, deliberately: reporting is what a player who
               cannot sign in has, and /api/reports is unauthenticated for the same reason.
               Hidden only when the line has no address the report page could resolve. */}
-          {targetForLine(line) && (
+          {onReport && targetForLine(line) && (
             <Button
               variant="ghost"
               size="icon"

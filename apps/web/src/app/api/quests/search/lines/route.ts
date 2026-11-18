@@ -28,7 +28,9 @@ export async function GET(request: NextRequest) {
   if (other instanceof Response) return other;
   // Gated like the search itself, or narrowing by author here would say whose lines are whose.
   const seesMadeBy = other ? false : await worksHere(lang);
-  let filters = await filtersFromParams(request.nextUrl.searchParams, lang);
+  // Another team's roster names its voices, so its filters are read as it.
+  const read = () => filtersFromParams(request.nextUrl.searchParams, lang);
+  let filters = await (other ? asTeam(lang, other, read) : read());
   if (!seesMadeBy) filters = withoutMadeBy(filters);
   if (other) filters = viewOnly(filters);
   const [catalogue, { voiced, context }, recordings, broadcast] = await Promise.all([

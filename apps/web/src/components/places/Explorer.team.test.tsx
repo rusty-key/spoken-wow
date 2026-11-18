@@ -124,6 +124,7 @@ test("another team's view asks for its takes, and offers no write but the origin
   expect(regenerate()).toHaveLength(0);
   expect(overrideButton()).toBeNull();
   expect(pencil()).not.toBeNull();
+  expect(screen.queryByRole("button", { name: "Report Goldshire" })).toBeNull();
   expect(screen.getByText("You are listening to Main Crew. Their takes play; their work is theirs.")).not.toBeNull();
   // No queue or generation status is read for a team the visitor cannot act on.
   expect(fetchMock.mock.calls.some(([url]) => String(url).includes("/api/regenerate/queue"))).toBe(false);
@@ -144,6 +145,7 @@ for (const [name, viewed] of [
     expect(regenerate()).not.toHaveLength(0);
     expect(overrideButton()).not.toBeNull();
     expect(pencil()).not.toBeNull();
+    expect(screen.queryByRole("button", { name: "Report Goldshire" })).not.toBeNull();
     expect(screen.queryByText(/You are listening to/)).toBeNull();
 
     await playGoldshire();

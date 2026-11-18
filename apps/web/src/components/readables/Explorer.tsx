@@ -617,7 +617,7 @@ export function Explorer({ books, teams, viewed, home }: { books: BookFacet[] } 
                 onRegenerate={regenerateOne}
                 onSelectBook={(line) => updateFilters({ bookId: line.bookId })}
                 bookHref={(line) => filtersHref({ bookId: line.bookId })}
-                onReport={setReportFor}
+                onReport={own ? setReportFor : null}
                 onEditText={setEditFor}
                 onOverride={setOverriding}
                 onOverrideAnswered={(line) => void refreshRows([line.id])}

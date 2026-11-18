@@ -51,8 +51,8 @@ type Props = {
   onSelectBook: (line: ResultLine) => void;
   /** The narrowed view as a link, for a click that opens it elsewhere. */
   bookHref: (line: ResultLine) => string;
-  /** Open the report dialog. Everyone gets this, signed in or not. */
-  onReport: (line: ResultLine) => void;
+  /** Open the report dialog. Everyone gets this, signed in or not. Null in another team's view, whose reports would land in the visitor's own team. */
+  onReport: ((line: ResultLine) => void) | null;
   /** An earlier take is live again, so the row and the player can catch up. */
   onRestored: (line: ResultLine, version: number) => void;
   /** Rewrite what this page says. Editor and up. */
@@ -310,16 +310,18 @@ export function PageRow({
         {/* Outside the canRegenerate gate, deliberately: reporting is what a reader who
             cannot sign in has, and /api/reports is unauthenticated for the same reason.
             Every page has an address -- it is the page id the addon builds its link from --
-            so unlike a quests row there is no case where this is hidden. */}
-        <Button
-          variant="ghost"
-          size="icon"
-          title="Report a problem with this page"
-          aria-label={`Report page ${line.pageNumber} of ${line.title}`}
-          onClick={() => onReport(line)}
-        >
-          <FlagIcon className="size-3.5" />
-        </Button>
+            so unlike a quests row it is hidden only in another team's view. */}
+        {onReport && (
+          <Button
+            variant="ghost"
+            size="icon"
+            title="Report a problem with this page"
+            aria-label={`Report page ${line.pageNumber} of ${line.title}`}
+            onClick={() => onReport(line)}
+          >
+            <FlagIcon className="size-3.5" />
+          </Button>
+        )}
         {/* Rewriting the text is not an audio action and it is free, but it is gated the
             same way the other two sections gate theirs: the edit is what a later
             regeneration would speak. */}

@@ -5,7 +5,7 @@ import Explorer from "@/components/Explorer";
 import { facets } from "@/lib/facets";
 import { pageLang } from "@/lib/lang-server";
 import { Contained } from "@/components/Width";
-import { teamView } from "@/lib/teams/viewing";
+import { asViewed, teamView } from "@/lib/teams/viewing";
 
 export const metadata: Metadata = { title: "Quests · Spoken" };
 
@@ -23,8 +23,8 @@ export default async function Page({
   const view = await teamView(lang, typeof team === "string" ? team : null);
   // Read here rather than fetched: the filter options are derived from a corpus that is
   // committed and does not change while the server runs, so a round trip for them would buy
-  // nothing but an empty dropdown on first paint. The acting team's roster, in another team's
-  // view too: the search route checks the voice filter against that one.
+  // nothing but an empty dropdown on first paint. The viewed team's roster, whose voices its
+  // lines are filed under.
   return (
     <main className="pt-6 pb-36">
       <Contained>
@@ -37,7 +37,7 @@ export default async function Page({
       </Contained>
       {/* Outside the column: the explorer places its own search (capped) and table (wide). */}
       <Suspense>
-        <Explorer facets={await facets(lang)} {...view} />
+        <Explorer facets={await asViewed(lang, view.viewed, () => facets(lang))} {...view} />
       </Suspense>
     </main>
   );

@@ -116,14 +116,22 @@ describe("viewedTeam", () => {
 
 describe("teamView", () => {
   it("is no view at all in a single-team language, from the memo alone", async () => {
-    await secondTeamLangs();
-    const pool = db();
-    const queries = vi.spyOn(pool, "query");
-    const connects = vi.spyOn(pool, "connect");
+    const single = await uniqueLang();
+    const team = await newTeamIn(single, true, "test-view-single");
+    try {
+      await secondTeamLangs();
+      const pool = db();
+      const queries = vi.spyOn(pool, "query");
+      const connects = vi.spyOn(pool, "connect");
 
-    expect(await teamView("deDE", "anything")).toEqual({ teams: [], viewed: null, home: null });
-    expect(queries).not.toHaveBeenCalled();
-    expect(connects).not.toHaveBeenCalled();
+      expect(await teamView(single, "anything")).toEqual({ teams: [], viewed: null, home: null });
+      expect(queries).not.toHaveBeenCalled();
+      expect(connects).not.toHaveBeenCalled();
+    } finally {
+      vi.restoreAllMocks();
+      await dropTeam(team);
+      await dropLang(single);
+    }
   });
 
   it("is no view in a language nobody owns", async () => {

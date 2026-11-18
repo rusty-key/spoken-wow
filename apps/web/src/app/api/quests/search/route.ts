@@ -48,7 +48,8 @@ export async function GET(request: NextRequest) {
   let filters, lines, seesMadeBy, recordings, broadcastStatus;
   try {
     [filters, lines, seesMadeBy, recordings, broadcastStatus] = await Promise.all([
-      filtersFromParams(params, lang),
+      // Its roster names its voices, so the voice filter is read as it too.
+      other ? asTeam(lang, other, () => filtersFromParams(params, lang)) : filtersFromParams(params, lang),
       other ? asTeam(lang, other, () => corpus(lang)) : corpus(lang),
       other ? false : worksHere(lang),
       other ? undefined : recordingsFor("quests", lang),

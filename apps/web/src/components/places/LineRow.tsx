@@ -50,7 +50,8 @@ type Props<L extends ExplorerLine> = {
   onNarrowToChip: (line: L) => void;
   /** The narrowed view as a link, for a click that opens it elsewhere. */
   chipHref: (line: L) => string;
-  onReport: (line: L) => void;
+  /** Null in another team's view, whose reports would land in the visitor's own team. */
+  onReport: ((line: L) => void) | null;
   /** An earlier take is live again, so the row and the player can catch up. */
   onRestored: (line: L, version: number) => void;
   onEditText: (line: L) => void;
@@ -301,15 +302,17 @@ export function LineRow<L extends ExplorerLine>({
 
           {/* Outside the canRegenerate gate, deliberately: reporting is what a visitor who
               cannot sign in has, and /api/reports is unauthenticated for the same reason. */}
-          <Button
-            variant="ghost"
-            size="icon"
-            title="Report a problem with this line"
-            aria-label={`Report ${line.name}`}
-            onClick={() => onReport(line)}
-          >
-            <FlagIcon className="size-3.5" />
-          </Button>
+          {onReport && (
+            <Button
+              variant="ghost"
+              size="icon"
+              title="Report a problem with this line"
+              aria-label={`Report ${line.name}`}
+              onClick={() => onReport(line)}
+            >
+              <FlagIcon className="size-3.5" />
+            </Button>
+          )}
 
           {/* Rewriting the prose is not an audio action and it is free, so it has its own
               gate: a translator writes a language they may not regenerate. */}

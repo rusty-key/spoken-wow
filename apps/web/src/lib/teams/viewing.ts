@@ -11,6 +11,7 @@ import type { Source } from "@/lib/sections";
 import { livePath, teamLivePath, type TakeBytes } from "@/lib/takes/store";
 import type { OverrideView } from "@/lib/text-overrides/types";
 
+import { asTeam } from "./acting";
 import { ownerOrAll, secondTeamLangs, teamsOf, type TeamId } from "./store";
 
 export type TeamChoice = { id: TeamId; slug: string; name: string; privileged: boolean };
@@ -51,6 +52,14 @@ export async function teamView(
   const home = await viewedTeam(lang, null);
   const named = slug && slug !== home?.slug ? await viewedTeam(lang, slug) : null;
   return { teams, viewed: named ?? home, home: home?.slug ?? null };
+}
+
+/**
+ * `work` as the viewed team when it is another team's, else as the visitor: for what that
+ * team's own rows shape, such as the quests voice filter its roster names.
+ */
+export function asViewed<T>(lang: Lang, viewed: ViewedTeam | null, work: () => Promise<T>): Promise<T> {
+  return viewed && !viewed.own ? asTeam(lang, viewed.team, work) : work();
 }
 
 /** The override text `team`'s live takes speak, by line key: a quest line's file, else its line id. */

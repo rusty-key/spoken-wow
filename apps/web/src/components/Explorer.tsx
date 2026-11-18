@@ -1010,7 +1010,7 @@ export default function Explorer({ facets, teams, viewed, home }: { facets: Face
                   onAddSpeaker={canSpeakers ? (l) => setSpeakerDialog({ line: l, replace: false }) : null}
                   onReplaceSpeaker={canSpeakers ? (l) => setSpeakerDialog({ line: l, replace: true }) : null}
                   onRemoveSpeaker={canSpeakers ? (l) => void removeSpeaker(l) : null}
-                  onReport={setReporting}
+                  onReport={own ? setReporting : null}
                   onRegenerate={regenerateLine}
                   onRestored={handleRestored}
                   onNarrowToNpc={narrowToNpc}
