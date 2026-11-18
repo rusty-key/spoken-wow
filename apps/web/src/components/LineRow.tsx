@@ -544,7 +544,6 @@ export default function LineRow({
         <RowActions
           subject={`${line.npcName}'s line`}
           badge={
-            // The same chip the places and readables rows carry; ReportsBadge says why.
             <ReportsBadge source="quests" lineId={line.lineId} count={line.reportsOpen} canTriage={canTriage} />
           }
           primary={

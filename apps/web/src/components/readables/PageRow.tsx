@@ -294,18 +294,25 @@ export function PageRow({
         <RowActions
           subject={`page ${line.pageNumber} of ${line.title}`}
           badge={
-            // The same chip the quests and places rows carry; ReportsBadge says why.
             <ReportsBadge source="readables" lineId={line.id} count={line.reportsOpen} canTriage={canTriage} />
           }
           primary={[
-            // Rewriting is free and not an audio action, gated as the other two sections gate theirs.
+            // Gated although free: the edit is what a later regeneration would speak.
             ...(canEdit
               ? [{ label: "Edit", aria: `Edit the text of page ${line.pageNumber} of ${line.title}`, title: "Rewrite what this page says", onClick: () => onEditText(line) }]
               : []),
             // An override changes only what the team's take says, so it needs what regenerating
             // needs. English standing in for the language is not this language's text to override.
             ...(canRegenerate && !line.missing?.text
-              ? [{ label: "Override", aria: `Override the text of page ${line.pageNumber} of ${line.title}`, title: "Change what your team says", onClick: () => onOverride(line) }]
+              ? [
+                  {
+                    label: "Override",
+                    aria: `Override the text of page ${line.pageNumber} of ${line.title}`,
+                    title: "Change what your team says",
+                    marked: line.override !== null,
+                    onClick: () => onOverride(line),
+                  },
+                ]
               : []),
           ]}
           regenerate={
