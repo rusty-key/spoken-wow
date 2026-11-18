@@ -108,6 +108,7 @@ describe("/api/text-overrides", () => {
     expect(mine?.spoken).toBe(OVERRIDE);
     expect(mine?.override).toMatchObject({ text: OVERRIDE, drifted: false });
     const theirs = (await as(v.id, () => placeCatalogue(lang))).find((e) => e.id === fx.zone);
+    expect(theirs).toBeDefined();
     expect(theirs?.override).toBeUndefined();
   });
 
@@ -179,6 +180,10 @@ describe("/api/text-overrides", () => {
     expect(empty.status).toBe(400);
     expect((await empty.json()).error).toBe("text cannot be empty - remove the override instead");
     expect((await as(u.id, () => put("places", fx.zone, "x".repeat(5001)))).status).toBe(400);
+    expect((await as(u.id, () => put("places", fx.zone, "Our\u0000words."))).status).toBe(400);
+    const silent = await as(u.id, () => put("places", fx.zone, "[1-30]"));
+    expect(silent.status).toBe(400);
+    expect((await silent.json()).error).toBe("text has nothing to say aloud once its directions are removed");
     expect(await rows(fx.zone)).toEqual([]);
   });
 
@@ -191,6 +196,7 @@ describe("/api/text-overrides", () => {
     const second = await as(u.id, () => remove("places", fx.zone));
     expect(await second.json()).toEqual({ removed: false });
     const mine = (await as(u.id, () => placeCatalogue(lang))).find((e) => e.id === fx.zone);
+    expect(mine).toBeDefined();
     expect(mine?.override).toBeUndefined();
   });
 

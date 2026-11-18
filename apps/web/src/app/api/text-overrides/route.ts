@@ -11,8 +11,10 @@ import { baseCatalogue as bossCatalogue } from "@/lib/bosses/catalogue";
 import { requireIn } from "@/lib/generation/authz";
 import type { Lang } from "@/lib/lang";
 import { baseCatalogue as placeCatalogue } from "@/lib/places/catalogue";
+import { toSpokenText } from "@/lib/places/tools";
 import { baseCatalogue as readableCatalogue } from "@/lib/readables/catalogue";
 import { MAX_TEXT } from "@/lib/text-api/apply";
+import { hasNul } from "@/lib/text-api/types";
 import { clearTextOverride, viewOf, writeTextOverride } from "@/lib/text-overrides/store";
 import type { NarratedSource } from "@/lib/text-overrides/types";
 
@@ -20,7 +22,7 @@ export const dynamic = "force-dynamic";
 
 const SOURCES: readonly NarratedSource[] = ["places", "readables", "bosses"];
 
-/** The line, and its original text in the language: null where the language has none. */
+/** `original` is null where the language has no text for the line. */
 type Line = { original: string | null };
 
 async function lineOf(source: NarratedSource, lang: Lang, lineId: string): Promise<Line | undefined> {
@@ -65,11 +67,16 @@ export async function PUT(request: Request) {
   if (text.length > MAX_TEXT) {
     return Response.json({ error: `text is too long (${MAX_TEXT} characters)` }, { status: 400 });
   }
+  if (hasNul(text)) return Response.json({ error: "text cannot hold a NUL character" }, { status: 400 });
+  // Places and bosses drop bracketed directions before speaking, so text of nothing else would
+  // save and then be refused by every regeneration.
+  if (source !== "readables" && !toSpokenText(text, {})) {
+    return Response.json({ error: "text has nothing to say aloud once its directions are removed" }, { status: 400 });
+  }
 
   const line = await lineOf(source, lang, lineId);
   if (!line) return UNKNOWN_LINE();
   // The catalogue ignores an override on a line with no text, so it would never be voiced.
-  // Filling the line in is a contribution's.
   if (line.original === null) {
     return Response.json({ error: `this line has no ${lang} text yet` }, { status: 409 });
   }
