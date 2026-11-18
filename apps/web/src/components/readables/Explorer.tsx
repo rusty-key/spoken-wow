@@ -16,6 +16,7 @@ import { BookList } from "@/components/readables/BookList";
 import RecordingDropZone from "@/components/RecordingDropZone";
 import ReportDialog from "@/components/ReportDialog";
 import { PageTextDialog } from "@/components/readables/PageTextDialog";
+import TextOverrideDialog from "@/components/TextOverrideDialog";
 import type { RowState } from "@/components/readables/PageRow";
 import { Player } from "@/components/readables/Player";
 import { SearchBar } from "@/components/readables/SearchBar";
@@ -88,6 +89,7 @@ export function Explorer({ books }: { books: BookFacet[] }) {
   // just edited would vanish as it was saved.
   const [editFor, setEditFor] = useState<ResultLine | null>(null);
   const [rewritten, setRewritten] = useState<Record<string, string>>({});
+  const [overriding, setOverriding] = useState<ResultLine | null>(null);
   // Bumped per page after a regeneration, to bust the browser's audio cache: the filename
   // does not change, so without this the take that was replaced keeps playing.
   const [versions, setVersions] = useState<Record<string, number>>({});
@@ -266,6 +268,33 @@ export function Explorer({ books }: { books: BookFacet[] }) {
       );
     },
     [lang],
+  );
+
+  /**
+   * The row shows a saved or removed override at once, and reads stale where it had a take,
+   * since the take spoke something else. The row is then fetched again for what the server
+   * makes of it: a removal can bring an old take back to current.
+   */
+  const overridden = useCallback(
+    (lineId: string, text: string | null) => {
+      setOverriding(null);
+      setResult((current) =>
+        current && {
+          ...current,
+          lines: current.lines.map((row) =>
+            row.id === lineId
+              ? {
+                  ...row,
+                  override: text === null ? null : { text, drifted: false, updatedAt: new Date().toISOString(), updatedBy: null },
+                  state: row.state === "missing" ? "missing" : "stale",
+                }
+              : row,
+          ),
+        },
+      );
+      void refreshRows([lineId]);
+    },
+    [refreshRows],
   );
 
   //----------------------------------------------------------------------------
@@ -583,6 +612,8 @@ export function Explorer({ books }: { books: BookFacet[] }) {
                 bookHref={(line) => filtersHref({ bookId: line.bookId })}
                 onReport={setReportFor}
                 onEditText={setEditFor}
+                onOverride={setOverriding}
+                onOverrideAnswered={(line) => void refreshRows([line.id])}
                 onRename={
                   lang !== BASE_LANG && canEdit
                     ? (l) => {
@@ -635,6 +666,19 @@ export function Explorer({ books }: { books: BookFacet[] }) {
         line={editFor}
         onClose={() => setEditFor(null)}
         onSaved={(line, text) => setRewritten((current) => ({ ...current, [line.id]: text }))}
+      />
+
+      <TextOverrideDialog
+        source="readables"
+        line={
+          overriding && {
+            lineId: overriding.id,
+            original: rewritten[overriding.id] ?? overriding.text,
+            override: overriding.override?.text ?? null,
+          }
+        }
+        onSaved={overridden}
+        onCancel={() => setOverriding(null)}
       />
 
       <TranslateDialog

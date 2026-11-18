@@ -11,12 +11,14 @@ import {
   FlagIcon,
   PencilIcon,
   PlayIcon,
+  SpeechIcon,
 } from "lucide-react";
 import { useState } from "react";
 
 import RegenerateButton from "@/components/RegenerateButton";
 import ReportsBadge from "@/components/ReportsBadge";
 import TakeSelector from "@/components/TakeSelector";
+import TextOverrideDrift from "@/components/TextOverrideDrift";
 import { Button } from "@/components/ui/button";
 import { cn, endsSelection } from "@/lib/utils";
 import { canPlay, type ExplorerLine, type ExplorerSection } from "@/components/explorer/section";
@@ -52,6 +54,10 @@ type Props<L extends ExplorerLine> = {
   /** An earlier take is live again, so the row and the player can catch up. */
   onRestored: (line: L, version: number) => void;
   onEditText: (line: L) => void;
+  /** Change what the acting team's audio says for the line. */
+  onOverride: (line: L) => void;
+  /** A drifted override was kept or dropped. */
+  onOverrideAnswered: (line: L) => void;
   /** Name the line's place or boss in the page's language; null in English or without `text`. */
   onRename: ((line: L) => void) | null;
   onRegenerate: (line: L) => void;
@@ -90,6 +96,8 @@ export function LineRow<L extends ExplorerLine>({
   onReport,
   onRestored,
   onEditText,
+  onOverride,
+  onOverrideAnswered,
   onRename,
   onRegenerate,
   onClearDirty,
@@ -97,6 +105,9 @@ export function LineRow<L extends ExplorerLine>({
   const playable = canPlay(line);
   // Nothing written in this language: no text to read, voice or play, but one to write.
   const unwritten = line.text === null;
+  // English standing in for the language is not this language's text to override, and the
+  // route refuses it.
+  const overridable = !unwritten && line.translated !== false;
   const chip = section.chip(line);
   const [expanded, setExpanded] = useState(false);
 
@@ -184,9 +195,29 @@ export function LineRow<L extends ExplorerLine>({
           {unwritten ? (
             <span className="text-muted-foreground min-w-0 flex-1 italic">No story in this language yet.</span>
           ) : (
-            <span className={cn("min-w-0 flex-1 whitespace-pre-wrap", !expanded && "clamp-2")}>
-              <Untranslated missing={line.translated === false}>{line.text}</Untranslated>
-            </span>
+            <div className="min-w-0 flex-1">
+              <span className={cn("block whitespace-pre-wrap", !expanded && "clamp-2")}>
+                <Untranslated missing={line.translated === false}>{line.text}</Untranslated>
+              </span>
+              {/* Under the original rather than in its place: the original is what the page
+                  and the game still show, and the override is only what the team's take says. */}
+              {line.override && (
+                <span
+                  className={cn("mt-1 block border-l-2 border-sky-400/60 pl-2 whitespace-pre-wrap", !expanded && "clamp-2")}
+                  title="What your team's audio says"
+                >
+                  {line.override.text}
+                </span>
+              )}
+              {line.override?.drifted && canRegenerate && (
+                <TextOverrideDrift
+                  source={section.source}
+                  lineId={line.id}
+                  text={line.override.text}
+                  onAnswered={() => onOverrideAnswered(line)}
+                />
+              )}
+            </div>
           )}
           {line.translated === false ? (
             <span className="mt-0.5 shrink-0 text-xs">
@@ -291,6 +322,20 @@ export function LineRow<L extends ExplorerLine>({
               onClick={() => onEditText(line)}
             >
               <PencilIcon className="size-3.5" />
+            </Button>
+          )}
+
+          {/* Not the pencil's gate: an override changes only what the team's take says, so
+              it needs what regenerating needs. */}
+          {canRegenerate && overridable && (
+            <Button
+              variant="ghost"
+              size="icon"
+              title="Change what your team says"
+              aria-label={`Override the text of ${line.name}`}
+              onClick={() => onOverride(line)}
+            >
+              <SpeechIcon className="size-3.5" />
             </Button>
           )}
 

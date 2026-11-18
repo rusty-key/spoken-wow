@@ -1,6 +1,6 @@
 # Self-serve teams
 
-Design, 2026-11-12. Requests and approval are built (plan 2) for new and unmaintained languages; the second team for a maintained one is plan 5a, with the text layer for every source left to 5b and the Explorer's team picker to 5c. Builds on [`TEAMS.md`](TEAMS.md) phase 1.
+Design, 2026-11-12. Requests and approval are built (plan 2) for new and unmaintained languages, the second team for a maintained one (plan 5a), and on the site the text layer for places, readables and bosses (plan 5b). The text API's override path is left to 5b2 and the Explorer's team picker to 5c. Builds on [`TEAMS.md`](TEAMS.md) phase 1.
 
 ## Why
 

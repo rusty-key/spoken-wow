@@ -19,6 +19,7 @@ import RegenerationPanel from "@/components/RegenerationPanel";
 import { LineRow, type RowState } from "@/components/places/LineRow";
 import { LoreDialog } from "@/components/places/LoreDialog";
 import { Player } from "@/components/places/Player";
+import TextOverrideDialog from "@/components/TextOverrideDialog";
 import ReportDialog from "@/components/ReportDialog";
 import { SearchBar } from "@/components/places/SearchBar";
 import { Contained, Wide } from "@/components/Width";
@@ -101,6 +102,7 @@ export function Explorer<L extends ExplorerLine, F extends ExplorerFilters>({
   const [loading, setLoading] = useState(true);
   const [current, setCurrent] = useState<L | null>(null);
   const [editFor, setEditFor] = useState<L | null>(null);
+  const [overriding, setOverriding] = useState<L | null>(null);
   // Text rewritten since this page was fetched, overlaid on the fetched rows: re-running
   // the search would reorder the table under the cursor, and with ?state=stale the line
   // just edited would vanish as it was saved.
@@ -329,6 +331,33 @@ export function Explorer<L extends ExplorerLine, F extends ExplorerFilters>({
       );
     },
     [api, lang],
+  );
+
+  /**
+   * The row shows a saved or removed override at once, and reads stale where it had a take,
+   * since the take spoke something else. The row is then fetched again for what the server
+   * makes of it: a removal can bring an old take back to current.
+   */
+  const overridden = useCallback(
+    (lineId: string, text: string | null) => {
+      setOverriding(null);
+      setResult((current) =>
+        current && {
+          ...current,
+          lines: current.lines.map((row) =>
+            row.id === lineId
+              ? {
+                  ...row,
+                  override: text === null ? null : { text, drifted: false, updatedAt: new Date().toISOString(), updatedBy: null },
+                  state: row.state === "missing" ? "missing" : "stale",
+                }
+              : row,
+          ),
+        },
+      );
+      void refreshRows([lineId]);
+    },
+    [refreshRows],
   );
 
   // What the plan allows and what is left of it, for the confirmation dialog. Shared with
@@ -719,11 +748,11 @@ export function Explorer<L extends ExplorerLine, F extends ExplorerFilters>({
             {showMadeBy && <col className="w-36" />}
             {showRecordings && <col className="w-32" />}
             {/* Wide enough for what the cell actually holds: icon buttons are 32px and an
-                editor can have three side by side - report, edit, regenerate - plus the
+                editor can have four side by side - report, edit, override, regenerate - plus the
                 report count. Anything narrower and the row overflows left over the prose.
                 w-16 for everyone else, who has the report button and the count; never w-0,
                 since that button is not gated. */}
-            <col className={canRegenerate ? "w-40" : "w-16"} />
+            <col className={canRegenerate ? "w-48" : "w-16"} />
           </colgroup>
           <thead>
             <tr className="text-muted-foreground border-border border-b text-left text-xs">
@@ -762,6 +791,8 @@ export function Explorer<L extends ExplorerLine, F extends ExplorerFilters>({
                 }}
                 onReport={setReportFor}
                 onEditText={(l) => setEditFor(withEdits(l))}
+                onOverride={setOverriding}
+                onOverrideAnswered={(l) => void refreshRows([l.id])}
                 onRename={
                   lang !== BASE_LANG && canEdit && nameOf
                     ? (l) =>
@@ -802,6 +833,19 @@ export function Explorer<L extends ExplorerLine, F extends ExplorerFilters>({
         line={editFor}
         onClose={() => setEditFor(null)}
         onSaved={(line, full) => setRewritten((current) => ({ ...current, [line.id]: full }))}
+      />
+
+      <TextOverrideDialog
+        source={source}
+        line={
+          overriding && {
+            lineId: overriding.id,
+            original: withEdits(overriding).text ?? "",
+            override: overriding.override?.text ?? null,
+          }
+        }
+        onSaved={overridden}
+        onCancel={() => setOverriding(null)}
       />
 
       <TranslateDialog

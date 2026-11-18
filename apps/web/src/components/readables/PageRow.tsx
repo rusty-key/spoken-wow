@@ -5,12 +5,13 @@ import { MadeByCell } from "@/components/MadeBy";
 import { RenameButton } from "@/components/RenameButton";
 import { Untranslated, UntranslatedMark } from "@/components/Untranslated";
 import FilterLink from "@/components/FilterLink";
-import { ChevronDownIcon, Eraser, FlagIcon, PencilIcon, PlayIcon } from "lucide-react";
+import { ChevronDownIcon, Eraser, FlagIcon, PencilIcon, PlayIcon, SpeechIcon } from "lucide-react";
 import { useState } from "react";
 
 import RegenerateButton from "@/components/RegenerateButton";
 import ReportsBadge from "@/components/ReportsBadge";
 import TakeSelector from "@/components/TakeSelector";
+import TextOverrideDrift from "@/components/TextOverrideDrift";
 import { Button } from "@/components/ui/button";
 import { materialName } from "@/lib/readables/filters";
 import { shownText } from "@/lib/readables/shown";
@@ -56,6 +57,10 @@ type Props = {
   onRestored: (line: ResultLine, version: number) => void;
   /** Rewrite what this page says. Editor and up. */
   onEditText: (line: ResultLine) => void;
+  /** Change what the acting team's audio says for the page. */
+  onOverride: (line: ResultLine) => void;
+  /** A drifted override was kept or dropped. */
+  onOverrideAnswered: (line: ResultLine) => void;
   /** Name the book's owner in the page's language; null on the English site or without `text`. */
   onRename: ((line: ResultLine) => void) | null;
   /** Say this take is fine as it stands, despite a pronunciation having moved under it. */
@@ -95,6 +100,8 @@ export function PageRow({
   onReport,
   onRestored,
   onEditText,
+  onOverride,
+  onOverrideAnswered,
   onRename,
 }: Props) {
   const playable = line.state !== "missing";
@@ -189,9 +196,29 @@ export function PageRow({
             <PlayIcon className="size-3.5" />
           </button>
 
-          <span className={cn("min-w-0 flex-1 whitespace-pre-wrap", !expanded && "clamp-2")}>
-            <Untranslated missing={line.missing?.text}>{shownText(line)}</Untranslated>
-          </span>
+          <div className="min-w-0 flex-1">
+            <span className={cn("block whitespace-pre-wrap", !expanded && "clamp-2")}>
+              <Untranslated missing={line.missing?.text}>{shownText(line)}</Untranslated>
+            </span>
+            {/* Under the original rather than in its place: the original is what the page and
+                the game still show, and the override is only what the team's take says. */}
+            {line.override && (
+              <span
+                className={cn("mt-1 block border-l-2 border-sky-400/60 pl-2 whitespace-pre-wrap", !expanded && "clamp-2")}
+                title="What your team's audio says"
+              >
+                {line.override.text}
+              </span>
+            )}
+            {line.override?.drifted && canRegenerate && (
+              <TextOverrideDrift
+                source="readables"
+                lineId={line.id}
+                text={line.override.text}
+                onAnswered={() => onOverrideAnswered(line)}
+              />
+            )}
+          </div>
           {line.missing?.text ? (
             <span className="mt-0.5 shrink-0 text-xs">
               <UntranslatedMark />
@@ -305,6 +332,20 @@ export function PageRow({
             onClick={() => onEditText(line)}
           >
             <PencilIcon className="size-3.5" />
+          </Button>
+        )}
+        {/* Not the pencil's gate: an override changes only what the team's take says, so it
+            needs what regenerating needs. English standing in for the language is not this
+            language's text to override, and the route refuses it. */}
+        {canRegenerate && !line.missing?.text && (
+          <Button
+            variant="ghost"
+            size="icon"
+            title="Change what your team says"
+            aria-label={`Override the text of page ${line.pageNumber} of ${line.title}`}
+            onClick={() => onOverride(line)}
+          >
+            <SpeechIcon className="size-3.5" />
           </Button>
         )}
         {/* Only on a dirty row: a clean one keeps the single control it already had. */}

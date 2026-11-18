@@ -108,6 +108,9 @@ It reads `boss_instance`, `boss`, `boss_line` and `entity_name` and nothing else
   `entity_name`.
 - Each row shows the map, the encounter id(s) and, where there is one, the creature id with a
   Wowhead link.
+- The override control changes what the viewer's team says for a boss's story, as on `/places`
+  ([VOICE.md](VOICE.md)): it needs `regenerate` in the language, works in every language, and only
+  on a boss with a story there. The shown story and the boss's name stay the original.
 - Regenerating cuts a take with the language's narrator through `lib/generation/narrated.ts`. The
   take's line id is `boss:{map}:{key}`, the addon's clip key, and its file is `{map}/{slug}` from
   `assignFiles` in `pipelines/places/tools/voice/naming.mjs`. The take archive is

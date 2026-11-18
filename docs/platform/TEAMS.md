@@ -117,8 +117,13 @@ in every team, and the original text only under `text`.
 - The **original text** is the shared `quest_line` / `lore_line` / `book_line` / `boss_line` /
   `entity_name` text. It changes through imports (the pipelines), text maintainers and site owners.
 - `line_override` is a team's spoken text for a quest line, in any language, written with the
-  explorer's pencil by whoever holds `regenerate` there. Overrides for places, readables and bosses
-  wait for *Phase 2*.
+  explorer's pencil by whoever holds `regenerate` there.
+- `text_override` is a team's spoken text for a place's prose, a readable page or a boss story,
+  kept per line id and written by whoever holds `regenerate` in the language, from the override
+  button in the places, bosses and readables explorers. Only what the team's audio says changes:
+  the text shown on the site and in game stays the original, and so does every name. A readable's
+  spoken title keeps the original name too. *(User.)* A line with no text in the language cannot
+  be overridden; filling it in is a contribution's.
 - When the original text of a line changes, that team's takes on the line go stale and appear in
   the team's queue, as stale takes do today (`lib/generation/dirty.ts`). The team re-rolls or
   overrides.
@@ -338,8 +343,9 @@ Designed now so phase 1 does not paint it into a corner; built when the first su
 - **Reports** from the addon carry the team of the pack that played the line, so audio reports reach
   that team. A report without a team (older addons) goes to every team voicing that language.
 - **Text layer.** Per-team overrides generalise `line_override` from quest lines to every `source`.
-  The text a team voices, shows and ships is its override where present, else the original, and a
-  take's staleness is judged against that.
+  The text a team voices is its override where present, else the original, and a take's staleness
+  is judged against that. Built for the site as `text_override`: places, readables and bosses are
+  overridden from their explorers. The token routes follow in plan 5b2.
 - **Edit UI** gives text maintainers their own way to edit the original, beside the team's override.
 
 ## Left to the builder
