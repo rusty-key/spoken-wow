@@ -33,7 +33,8 @@ Made by the user on 2026-11-17.
 
 `/admin/storage?lang=xx` connects a bucket: provider (R2, S3, B2, Wasabi, GCS with HMAC keys, MinIO
 or any S3-compatible store), endpoint, region, bucket, an optional public address, and a key. The
-key needs to read, write and look up objects; it never needs to delete. Saving tests the bucket,
+key needs GetObject and PutObject (on Amazon S3 also ListBucket, without which a missing object
+answers 403 rather than 404 and the test fails); it never needs to delete. Saving tests the bucket,
 and nothing goes to it until it passed and an admin switches it on. From then on the team's new
 takes, recordings, clone clips, references and pack encodings go there. The page also moves what
 is already in our archive into the bucket, or brings a bucket's objects back.
@@ -85,7 +86,11 @@ secret, not their objects: each team enters its key again.
 
 An endpoint or public address that resolves to a private, loopback, link-local or CGNAT address is
 refused when saved and before every test (`lib/storage/host.ts`), so a team admin cannot point the
-site at the droplet's neighbours. `SPOKEN_STORAGE_ALLOW_PRIVATE=1` lifts that for a local MinIO.
+site at the droplet's neighbours; with path style off, the bucket's own host under the endpoint is
+checked too. No request to a bucket follows a redirect, and none waits more than two minutes for an
+answer. What is not caught is a name that resolves elsewhere after the check (DNS rebinding); the
+requests are signed S3 calls whose answers are shown only as a status line.
+`SPOKEN_STORAGE_ALLOW_PRIVATE=1` lifts the address check for a local MinIO.
 
 ### Testing a backend
 
@@ -104,8 +109,8 @@ The probe object is deleted afterwards when the key allows it.
 
 Public takes redirect to the backend's `publicUrl`, or without one to a presigned GET that lasts an
 hour. A take version's redirect is cached for good only when it points at our own copy, which never
-moves; one into a team's bucket or the quarantine is cached for five minutes, since a team can move,
-re-address or delete its objects. Recordings, clone clips and references
+moves; one into a team's bucket is cached for five minutes, since a team can move, re-address or
+delete its objects, and one into the quarantine not at all, since it is deleted once it lands. Recordings, clone clips and references
 keep streaming through the site; on AWS S3 that is the team's egress.
 
 ### Never paying for a take that cannot be kept
@@ -135,9 +140,10 @@ move with the reason.
 
 Every 15 minutes the upkeep looks at a sample of team-bucket objects (`lib/storage/checks.ts`),
 marks the deleted ones missing and unmarks any restored; a read that finds one gone marks it too.
-The storage page counts them. A pointer build (`scripts/audio/sounds.mjs`) leaves out a live take
-its team deleted, with a warning, rather than stopping the release; one missing from our bucket
-still stops it (decision 2).
+The storage page counts them. A quests pointer build (`scripts/audio/sounds.mjs`) leaves out a live
+take whose Ogg its team deleted (a 404), with a warning, rather than stopping the release (decision
+2). Places, Readables and Bosses stop instead, naming the deleted clips, since their lookups name
+every clip; any failure other than a 404, and a clip missing from our bucket, stops every build.
 
 ### Readers outside the site
 
@@ -146,11 +152,12 @@ for the method asked when the bucket is private. With `SPOKEN_ARCHIVE_URL` point
 script that reads the archive by hash finds team buckets too: `fetch-blobs.mjs`,
 `fetch-encodings.mjs`, the clip pointers and `publish.mjs`. Takes and encodings are anybody's; a
 recording also needs `Authorization: Bearer <SPOKEN_ARCHIVE_TOKEN>`, which `fetch-blobs.mjs` sends
-to the site alone and never on to the bucket it is redirected to.
+only to a site `/api/archive/` address over https or on the same machine, and never on to the
+bucket it is redirected to. Releases pull takes only, so they need no token.
 
 The release job on the droplet gets `SPOKEN_ARCHIVE_URL=http://127.0.0.1:3010/api/archive/` from
-`shared/release.env`, which overrides `app.env` for it and keeps the requests off nginx, and
-`SPOKEN_ARCHIVE_TOKEN` from `app.env`. The `release-packs.yaml` workflow and a developer's
+`shared/release.env`, which overrides `app.env` for it and keeps the requests off nginx. The
+`release-packs.yaml` workflow and a developer's
 `make <section>-pull-live` set `SPOKEN_ARCHIVE_URL` to `https://spoken.quest/api/archive/` instead.
 
 ## Not planned: distributing from a team's bucket

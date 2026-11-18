@@ -74,9 +74,6 @@ jobs:
       ONLY_PRESENT: ${{ inputs.manager_only && '1' || '' }}
       ALLOW_REMOVALS: ${{ inputs.allow_removals && '1' || '' }}
       SPOKEN_ARCHIVE_URL: ${{ vars.SPOKEN_ARCHIVE_URL }}
-      # Once a team keeps its own bucket, SPOKEN_ARCHIVE_URL is the site's /api/archive/, and this
-      # lets the build fetch voice actors' recordings through it (docs/platform/STORAGE.md).
-      SPOKEN_ARCHIVE_TOKEN: ${{ secrets.SPOKEN_ARCHIVE_TOKEN }}
       # A Manager pack needs no clips on the runner: the publish copies the ones the channel lacks
       # from the archive. Quests ship Oggs, and a zip needs the real files.
       SPOKEN_CLIP_POINTERS: ${{ inputs.manager_only && inputs.section != 'quests' && '1' || '' }}
