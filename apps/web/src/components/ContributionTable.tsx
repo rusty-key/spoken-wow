@@ -23,7 +23,7 @@ import { useLang } from "@/components/LangProvider";
 import { langName, localeHref, type Lang } from "@/lib/lang";
 import { CheckIcon, ChevronDownIcon, CircleAlertIcon, ClockIcon, SearchIcon, WrenchIcon, XIcon, EyeIcon } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { memo, useCallback, useMemo, useState, type ReactNode } from "react";
+import { memo, useCallback, useMemo, useRef, useState, type ReactNode } from "react";
 
 import ClientSelect from "@/components/ClientSelect";
 import { SEARCH_IN_OPTIONS, STAGE_CHIP_OPTIONS, STAGE_LABELS } from "@/components/contribution-chips";
@@ -242,7 +242,8 @@ export default function ContributionTable({
    * until the next reload.
    */
   const [resolved, setResolved] = useState<Record<number, Contribution["status"]>>({});
-  const [busy, setBusy] = useState<number | null>(null);
+  /** Rows with a resolve in flight: each stays locked until its own request answers. */
+  const [busy, setBusy] = useState<ReadonlySet<number>>(new Set());
   /** Same overlay idea as `resolved`, for "Add to explorer" succeeding on an already-accepted row. */
   const [lineCreated, setLineCreated] = useState<Set<number>>(new Set());
   /** A refused resolve, in the words the route already gives -- cleared by the next attempt. */
@@ -302,8 +303,10 @@ export default function ContributionTable({
         [contributionKey(contributionId)]: summary,
         [overrideKey(resolution.npcKind, resolution.npcId)]: summary,
       }));
+      // The waiting reasons and their counts are the server's: read them again.
+      router.refresh();
     },
-    [roster, lang],
+    [roster, lang, router],
   );
 
   /**
@@ -335,8 +338,9 @@ export default function ContributionTable({
           conflict: [],
         },
       }));
+      router.refresh();
     },
-    [roster],
+    [roster, router],
   );
 
   /**
@@ -434,11 +438,19 @@ export default function ContributionTable({
   const [edited, setEdited] = useState<Record<number, string>>({});
   const [reasons, setReasons] = useState<Record<number, string>>({});
 
+  /** A row's resolve, held to one request at a time per row. True when it landed. */
+  const inFlight = useRef(new Set<number>());
   const resolve = useCallback(
-    async (id: number, next: ContributionStatus, extra?: ResolveExtra) => {
-      setBusy(id);
-      await send(id, next, extra);
-      setBusy(null);
+    async (id: number, next: ContributionStatus, extra?: ResolveExtra): Promise<boolean> => {
+      if (inFlight.current.has(id)) return false;
+      inFlight.current.add(id);
+      setBusy(new Set(inFlight.current));
+      try {
+        return await send(id, next, extra);
+      } finally {
+        inFlight.current.delete(id);
+        setBusy(new Set(inFlight.current));
+      }
     },
     [send],
   );
@@ -446,9 +458,10 @@ export default function ContributionTable({
   /** A bulk run in flight, for its progress line and to hold every other button still meanwhile. */
   const [bulk, setBulk] = useState<{ next: ContributionStatus; done: number; total: number } | null>(null);
   /** What the last bulk run came to, until the next one starts. */
-  const [bulkOutcome, setBulkOutcome] = useState<string | null>(null);
+  const [bulkOutcome, setBulkOutcome] = useState<{ summary: string; refused: { id: number; message: string }[] } | null>(null);
   /** "Keep all" asks twice: keeping writes quest lines, and a written quests row can't be reopened after. */
-  const [confirmAll, setConfirmAll] = useState(false);
+  /** The rows "Keep all" was opened for: the confirm sends exactly these, even if the view changes. */
+  const [confirmAll, setConfirmAll] = useState<number[] | null>(null);
 
   /**
    * The rows sent to api/contributions/resolve-many, a chunk per request, resolved side by side
@@ -459,7 +472,7 @@ export default function ContributionTable({
     async (ids: number[], next: ContributionStatus, reason?: string) => {
       setBulkOutcome(null);
       setBulk({ next, done: 0, total: ids.length });
-      const refused: number[] = [];
+      const refused: { id: number; message: string }[] = [];
       for (let start = 0; start < ids.length; start += RESOLVE_MANY_MAX) {
         const chunk = ids.slice(start, start + RESOLVE_MANY_MAX);
         const response = await fetch("/api/contributions/resolve-many", {
@@ -474,9 +487,12 @@ export default function ContributionTable({
           const result = response?.ok ? body?.results?.[id] : undefined;
           if (result?.ok) {
             landed(id, next);
+            // The bulk reason replaces one this session gave the row before.
+            setReasons(({ [id]: _old, ...rest }) => (reason && next === "rejected" ? { ...rest, [id]: reason } : rest));
           } else {
-            refused.push(id);
-            setRefusals(withRefusal(id, result ? result.error : body?.error));
+            const message = typeof (result ? result.error : body?.error) === "string" ? String(result ? result.error : body?.error) : "That didn't go through -- try again.";
+            refused.push({ id, message });
+            setRefusals(withRefusal(id, message));
           }
         }
         setBulk({ next, done: Math.min(start + chunk.length, ids.length), total: ids.length });
@@ -484,10 +500,10 @@ export default function ContributionTable({
       setBulk(null);
       // Rows that left this view leave gaps on this page; the server fills them from the next.
       router.refresh();
-      setBulkOutcome(
-        `${STATUS_LABELS[next]}: ${ids.length - refused.length} of ${ids.length}` +
-          (refused.length > 0 ? ` -- ${refused.length} refused; each row says why.` : "."),
-      );
+      setBulkOutcome({
+        summary: `${STATUS_LABELS[next]}: ${ids.length - refused.length} of ${ids.length}${refused.length > 0 ? `, ${refused.length} refused:` : "."}`,
+        refused,
+      });
     },
     [landed, router],
   );
@@ -509,7 +525,7 @@ export default function ContributionTable({
   const stillNew = (row: { id: number; status: ContributionStatus }) => (resolved[row.id] ?? row.status) === "new";
   const cleanToKeep = matching.filter((row) => row.bulk && row.verdict === "clean" && stillNew(row)).map((row) => row.id);
   const dropToReject = matching.filter((row) => row.verdict === "drop" && stillNew(row)).map((row) => row.id);
-  const [confirmDrop, setConfirmDrop] = useState(false);
+  const [confirmDrop, setConfirmDrop] = useState<number[] | null>(null);
   const [showFilters, setShowFilters] = useState(Boolean(build || stage.length > 0 || searchIn !== "any"));
 
   /**
@@ -598,10 +614,23 @@ export default function ContributionTable({
             {STATUS_LABELS[bulk.next]}: {bulk.done} of {bulk.total}…
           </span>
         ) : bulkOutcome ? (
-          <span className="text-muted-foreground text-sm">{bulkOutcome}</span>
+          <span className="text-muted-foreground text-sm">{bulkOutcome.summary}</span>
         ) : null}
         <Pager page={page} pages={pages} total={matching.length} onGo={(to) => go({}, to)} />
       </div>
+      {bulkOutcome && bulkOutcome.refused.length > 0 && !bulk ? (
+        <ul className="bs-aside mb-5 flex flex-col gap-1">
+          {bulkOutcome.refused.slice(0, 10).map(({ id, message }) => (
+            <li key={id}>
+              <a href={`#contribution-${id}`} className="underline underline-offset-[3px]">
+                #{id}
+              </a>{" "}
+              <span className="text-muted-foreground">{message}</span>
+            </li>
+          ))}
+          {bulkOutcome.refused.length > 10 ? <li className="text-muted-foreground">and {bulkOutcome.refused.length - 10} more</li> : null}
+        </ul>
+      ) : null}
       {showFilters ? (
         <div className="mb-5 flex flex-wrap items-center gap-2">
           {namesSpeaker(source) ? (
@@ -684,49 +713,49 @@ export default function ContributionTable({
                 confirmAll ? (
                   <>
                     <span className="text-sm">
-                      Keep all {cleanToKeep.length}{pages > 1 ? " on every page" : ""}? A kept line can&apos;t be reopened once it is written.
+                      Keep all {confirmAll.length}{pages > 1 ? " on every page" : ""}? A kept line can&apos;t be reopened once it is written.
                     </span>
                     <button
                       type="button"
                       className="bs-btn bs-btn-primary"
                       disabled={bulk !== null}
                       onClick={() => {
-                        setConfirmAll(false);
-                        void resolveMany(cleanToKeep, "accepted");
+                        setConfirmAll(null);
+                        void resolveMany(confirmAll, "accepted");
                       }}
                     >
-                      Keep {cleanToKeep.length}
+                      Keep {confirmAll.length}
                     </button>
-                    <button type="button" className="bs-btn bs-btn-text" onClick={() => setConfirmAll(false)}>
+                    <button type="button" className="bs-btn bs-btn-text" onClick={() => setConfirmAll(null)}>
                       Cancel
                     </button>
                   </>
                 ) : (
-                  <button type="button" className="bs-btn bs-btn-primary" disabled={bulk !== null} onClick={() => setConfirmAll(true)}>
+                  <button type="button" className="bs-btn bs-btn-primary" disabled={bulk !== null} onClick={() => setConfirmAll(cleanToKeep)}>
                     Keep all {cleanToKeep.length}
                   </button>
                 )
               ) : group.verdict === "drop" && dropToReject.length > 1 ? (
                 confirmDrop ? (
                   <>
-                    <span className="text-sm">Drop all {dropToReject.length}{pages > 1 ? " on every page" : ""}?</span>
+                    <span className="text-sm">Drop all {confirmDrop.length}{pages > 1 ? " on every page" : ""}?</span>
                     <button
                       type="button"
                       className="bs-btn bs-btn-danger"
                       disabled={bulk !== null}
                       onClick={() => {
-                        setConfirmDrop(false);
-                        void resolveMany(dropToReject, "rejected", "Failed the review checks");
+                        setConfirmDrop(null);
+                        void resolveMany(confirmDrop, "rejected", "Failed the review checks");
                       }}
                     >
-                      Drop {dropToReject.length}
+                      Drop {confirmDrop.length}
                     </button>
-                    <button type="button" className="bs-btn bs-btn-text" onClick={() => setConfirmDrop(false)}>
+                    <button type="button" className="bs-btn bs-btn-text" onClick={() => setConfirmDrop(null)}>
                       Cancel
                     </button>
                   </>
                 ) : (
-                  <button type="button" className="bs-btn bs-btn-danger" disabled={bulk !== null} onClick={() => setConfirmDrop(true)}>
+                  <button type="button" className="bs-btn bs-btn-danger" disabled={bulk !== null} onClick={() => setConfirmDrop(dropToReject)}>
                     Drop all {dropToReject.length}
                   </button>
                 )
@@ -787,7 +816,7 @@ export default function ContributionTable({
         bucket={now}
         moved={status === "new" && now !== bucket}
         found={existing[row.id]}
-        busy={busy === row.id}
+        busy={busy.has(row.id)}
         npcBusy={npcBusy === row.id}
         locked={bulk !== null}
         refusal={refusals[row.id]}
@@ -809,8 +838,7 @@ export default function ContributionTable({
 
 /**
  * One line to review: who says it and where, the English line beside what was sent, what the
- * checks found, and the reviewer's answer. Redrawn only when its own props change, which is why
- * the table hands it plain values and stable callbacks.
+ * checks found, and the reviewer's answer.
  */
 const ReviewRow = memo(function ReviewRow({
   row,
@@ -861,7 +889,7 @@ const ReviewRow = memo(function ReviewRow({
   canAnswerNpc: boolean;
   roster: Roster;
   lang: Lang;
-  onResolve: (id: number, next: ContributionStatus, extra?: ResolveExtra) => Promise<void>;
+  onResolve: (id: number, next: ContributionStatus, extra?: ResolveExtra) => Promise<boolean>;
   onOverrideNpc: (id: number, npc: NpcSummary, answer: SpeakerAnswer) => Promise<void>;
   onPickConflict: (id: number, npc: NpcSummary, option: NpcConflictOption) => Promise<void>;
   onNameNpc: (id: number, answer: { npcKind: NpcRowKind; npcId: number; npcName: string }) => Promise<void>;
@@ -888,9 +916,9 @@ const ReviewRow = memo(function ReviewRow({
     setEditing(true);
     setDropping(false);
   };
-  const drop = (why: string) => {
-    setDropping(false);
-    void onResolve(row.id, "rejected", { reason: why });
+  // The picker and the draft close only once the request lands, so a refusal keeps the reviewer's work.
+  const drop = async (why: string) => {
+    if (await onResolve(row.id, "rejected", { reason: why })) setDropping(false);
   };
 
   const button = (label: string, className: string, onClick: () => void, disabled = false, title?: string) => (
@@ -904,8 +932,7 @@ const ReviewRow = memo(function ReviewRow({
     actions = (
       <>
         {button("Keep my version", "bs-btn-primary", () => {
-          setEditing(false);
-          void onResolve(row.id, "accepted", { text: draft });
+          void onResolve(row.id, "accepted", { text: draft }).then((ok) => ok && setEditing(false));
         }, !keepable || !draft.trim(), acceptHold ?? undefined)}
         {button("Cancel", "bs-btn-text", () => setEditing(false))}
       </>
@@ -928,7 +955,7 @@ const ReviewRow = memo(function ReviewRow({
         </>
       ) : check.verdict === "drop" ? (
         <>
-          {button("Drop", "bs-btn-danger", () => drop(check.findings.find((finding) => finding.tone === "drop")?.message ?? "Failed the review checks"))}
+          {button("Drop", "bs-btn-danger", () => void drop(check.findings.find((finding) => finding.tone === "drop")?.message ?? "Failed the review checks"))}
           {button("Edit text and keep", "bs-btn-text", startEdit, !keepable)}
         </>
       ) : (
@@ -1116,7 +1143,7 @@ const ReviewRow = memo(function ReviewRow({
       ) : null}
 
       {dropping ? (
-        <DropReasons reasons={lineDropReasons(langName(lang))} disabled={hold} onPick={drop} onCancel={() => setDropping(false)} />
+        <DropReasons reasons={lineDropReasons(langName(lang))} disabled={hold} onPick={(why) => void drop(why)} onCancel={() => setDropping(false)} />
       ) : null}
     </div>
   );
