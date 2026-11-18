@@ -84,9 +84,9 @@ export async function secondTeamLangs(): Promise<Set<Lang>> {
 
 /** The teams that voice `lang`, privileged first, then by name. Empty when nobody owns it. */
 export async function teamsOf(lang: Lang): Promise<TeamRef[]> {
-  const privileged = await privilegedOf(lang);
+  const { owners, seconds, teams } = await mappingFor([lang]);
+  const privileged = owners.get(lang);
   if (!privileged) return [];
-  const { seconds, teams } = await mapping();
   return [privileged, ...(seconds.get(lang) ?? [])].flatMap((id) => teams.get(id) ?? []);
 }
 
@@ -132,13 +132,22 @@ export async function actsAsSecondTeam(lang: Lang): Promise<boolean> {
   return Boolean(acting) && acting !== privileged;
 }
 
+/**
+ * The mapping, read again once (unless the memo is fresh) when any of `langs` has no team. Whole,
+ * so a caller reads every field from one read: a handover between two reads could leave the old
+ * privileged team beside the new second teams.
+ */
+async function mappingFor(langs: readonly (Lang | null)[]): Promise<Mapping> {
+  const read = await mapping();
+  const missing = langs.some((lang) => lang && !read.owners.has(lang));
+  if (!missing || !cached || Date.now() - cached.at < MISS_REFRESH_MS) return read;
+  forgetTeams();
+  return mapping();
+}
+
 /** teamLangs, read again once (unless the memo is fresh) when any of `langs` has no team. */
 export async function privilegedOwners(langs: readonly (Lang | null)[]): Promise<Map<Lang, TeamId>> {
-  const owners = await teamLangs();
-  const missing = langs.some((lang) => lang && !owners.has(lang));
-  if (!missing || !cached || Date.now() - cached.at < MISS_REFRESH_MS) return owners;
-  forgetTeams();
-  return teamLangs();
+  return (await mappingFor(langs)).owners;
 }
 
 /** Owners of `langs` for the acting person. Reads the session only when a language in `langs` has a second team. */
@@ -250,8 +259,7 @@ export async function byTeam(langs: readonly Lang[]): Promise<Map<TeamId, Lang[]
  * second team. For work that reaches all of a language's teams, whoever is acting.
  */
 export async function everyTeamOf(langs: readonly Lang[]): Promise<Map<TeamId, Lang[]>> {
-  const owners = await privilegedOwners(langs);
-  const { seconds } = await mapping();
+  const { owners, seconds } = await mappingFor(langs);
   const grouped = new Map<TeamId, Lang[]>();
   for (const lang of langs) {
     const privileged = owners.get(lang);
