@@ -40,8 +40,8 @@ type MenuLink = {
   section?: string;
 };
 
-/** Must match site-nav.css's breakpoint, where the row of links gives way to the burger. */
-const NARROW = "(max-width: 1023px)";
+/** Must match site-nav.css's breakpoint (1200px, not the front page's 1020px: this bar carries more). */
+const NARROW = "(width < 1200px)";
 
 /**
  * How a link relates to the page the reader is on: "page" when it opens that page, "section" when
@@ -227,14 +227,10 @@ export default function UserMenu() {
         </div>
         {/* Nothing until the session resolves, so a signed-in reader never sees "Sign in" flash. */}
         {isPending ? null : !session ? (
-          <div className="sn-wide sn-signin">
-            <Link className="bn-btn bn-btn-sm" href="/login">
-              Sign in
-            </Link>
-            <Link className="bn-btn bn-btn-primary bn-btn-sm" href="/register">
-              Register
-            </Link>
-          </div>
+          // One gold "Sign in", as on the front page; the login page links to Register.
+          <Link className="bn-btn bn-btn-primary bn-btn-sm sn-wide" href="/login">
+            Sign in
+          </Link>
         ) : (
           <Popover open={open} onOpenChange={setOpen}>
             <PopoverTrigger asChild>

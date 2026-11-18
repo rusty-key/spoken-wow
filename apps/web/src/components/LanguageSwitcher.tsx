@@ -88,7 +88,7 @@ export default function LanguageSwitcher({ offered: given }: { offered?: Offered
         <SelectTrigger size="sm" className="w-36" aria-label="Language">
           <SelectValue />
         </SelectTrigger>
-        <SelectContent>
+        <SelectContent position="popper" align="end" className="bn-theme bn-lang-menu">
           {offered.map((language) => (
             <SelectItem key={language.code} value={language.code}>
               {language.name}

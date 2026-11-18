@@ -15,19 +15,27 @@
   outline-offset: 2px;
 }
 
-.sn-row {
-  display: flex;
-  align-items: center;
-  gap: 24px;
-  height: 100%;
-}
-
 .sn .bn-brand {
   color: var(--text);
 }
-.sn .bn-brand img {
-  width: 36px;
-  height: 36px;
+
+.sn-brand-group {
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: 12px;
+}
+.sn-area {
+  flex: none;
+  padding: 2px 8px;
+  border-radius: 4px;
+  background: rgba(240, 194, 90, 0.12);
+  color: var(--accent);
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 16px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
 }
 
 .sn .bn-links a {
@@ -47,24 +55,6 @@
 .sn-admin svg {
   width: 14px;
   height: 14px;
-}
-
-.sn-signin {
-  display: flex;
-  gap: 8px;
-}
-
-.bn-theme [data-slot="select-trigger"] {
-  height: 40px;
-  border: 0;
-  border-radius: 4px;
-  background: var(--btn);
-  color: var(--text);
-  font-size: 14px;
-  box-shadow: none;
-}
-.bn-theme [data-slot="select-trigger"]:hover {
-  background: var(--btn-hover);
 }
 
 .sn-burger {
@@ -164,13 +154,26 @@
   padding: 4px 4px 8px;
 }
 
-/* NARROW must match UserMenu.tsx: the row of links needs about 1000px. */
-@media (max-width: 1023px) {
+/*
+ * NARROW must match UserMenu.tsx. The front page folds at 1020px; this bar also carries the
+ * Backstage tag, the language switch and Profile, and needs about 1150px, so it folds at 1200px.
+ */
+@media (width < 1200px) {
   .sn .bn-links,
   .sn-wide {
     display: none;
   }
   .sn-burger {
     display: grid;
+  }
+}
+
+/* The narrowest phones (320px) fit the wordmark, the tag and the burger only with tighter gaps. */
+@media (width < 420px) {
+  .sn.bn-nav .bn-wrap {
+    gap: 12px;
+  }
+  .sn-brand-group {
+    gap: 8px;
   }
 }

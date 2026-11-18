@@ -16,7 +16,6 @@ import UserMenu from "@/components/UserMenu";
 import { langTag, registeredExtras } from "@/lib/lang";
 import { pageLang } from "@/lib/lang-server";
 import { cn } from "@/lib/utils";
-import { Contained } from "@/components/Width";
 import { body, display } from "@/components/landing/fonts";
 
 // The whole font rather than a subset: Russian pages render in it too.
@@ -69,13 +68,18 @@ export default async function RootLayout({
             <GrantsProvider>
               <SiteHeader>
                 <header className="bn-theme bn-nav sn">
-                  <Contained className="sn-row">
-                    <Link href="/" className="bn-brand" aria-label="Spoken">
-                      <Image src="/landing/icons/spoken-192.png" alt="" width={96} height={96} priority unoptimized />
-                      <span className="bn-brand-name bn-display">Spoken</span>
-                    </Link>
+                  <div className="bn-wrap">
+                    <div className="sn-brand-group">
+                      <Link href="/" className="bn-brand" aria-label="Spoken">
+                        <Image src="/landing/icons/spoken-192.png" alt="" width={96} height={96} priority unoptimized />
+                        <span className="bn-brand-name bn-display">Spoken</span>
+                      </Link>
+                      {/* Every page past the front page is Backstage, signed in or not (the explorers
+                          are public), so the tag does not wait for the session and the row never shifts. */}
+                      <span className="sn-area">Backstage</span>
+                    </div>
                     <UserMenu />
-                  </Contained>
+                  </div>
                 </header>
               </SiteHeader>
               {children}

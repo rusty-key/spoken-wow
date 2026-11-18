@@ -49,13 +49,6 @@ html:has(.bn) {
   margin: 0;
 }
 
-.bn-wrap {
-  width: 100%;
-  max-width: var(--wrap);
-  margin: 0 auto;
-  padding: 0 24px;
-}
-
 .bn-skip {
   position: absolute;
   left: 16px;
@@ -111,12 +104,6 @@ html:has(.bn) {
 
 /* ---------- Top bar ---------- */
 
-.bn-nav .bn-wrap {
-  display: flex;
-  align-items: center;
-  gap: 32px;
-  height: 100%;
-}
 .bn-menu {
   display: none;
   position: relative;
@@ -1282,9 +1269,6 @@ html:has(.bn) {
 /* ---------- Phone ---------- */
 
 @media (max-width: 720px) {
-  .bn-wrap {
-    padding: 0 16px;
-  }
   .bn-section {
     padding: 64px 0;
   }
