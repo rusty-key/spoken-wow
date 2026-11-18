@@ -41,7 +41,7 @@ type MenuLink = {
 };
 
 /** Must match site-nav.css's breakpoint, where the row of links gives way to the burger. */
-const NARROW = "(max-width: 1023px)";
+const NARROW = "(max-width: 1199px)";
 
 /**
  * How a link relates to the page the reader is on: "page" when it opens that page, "section" when

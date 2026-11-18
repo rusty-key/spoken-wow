@@ -16,7 +16,6 @@ import UserMenu from "@/components/UserMenu";
 import { langTag, registeredExtras } from "@/lib/lang";
 import { pageLang } from "@/lib/lang-server";
 import { cn } from "@/lib/utils";
-import { Contained } from "@/components/Width";
 import { body, display } from "@/components/landing/fonts";
 
 // The whole font rather than a subset: Russian pages render in it too.
@@ -69,13 +68,15 @@ export default async function RootLayout({
             <GrantsProvider>
               <SiteHeader>
                 <header className="bn-theme bn-nav sn">
-                  <Contained className="sn-row">
+                  <div className="bn-wrap sn-row">
                     <Link href="/" className="bn-brand" aria-label="Spoken">
                       <Image src="/landing/icons/spoken-192.png" alt="" width={96} height={96} priority unoptimized />
                       <span className="bn-brand-name bn-display">Spoken</span>
                     </Link>
+                    {/* The front page's "Backstage" button leads here: this tag says you arrived. */}
+                    <span className="sn-area">Backstage</span>
                     <UserMenu />
-                  </Contained>
+                  </div>
                 </header>
               </SiteHeader>
               {children}

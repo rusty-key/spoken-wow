@@ -49,13 +49,6 @@ html:has(.bn) {
   margin: 0;
 }
 
-.bn-wrap {
-  width: 100%;
-  max-width: var(--wrap);
-  margin: 0 auto;
-  padding: 0 24px;
-}
-
 .bn-skip {
   position: absolute;
   left: 16px;

@@ -42,6 +42,13 @@
   letter-spacing: 0.02em;
 }
 
+.bn-wrap {
+  width: 100%;
+  max-width: var(--wrap);
+  margin: 0 auto;
+  padding: 0 24px;
+}
+
 /* ---------- Buttons ---------- */
 
 .bn-btn {
@@ -148,4 +155,41 @@
   align-items: center;
   gap: 12px;
   margin-left: auto;
+}
+
+/* ---------- Language menu ---------- */
+
+/* The language switch's list, on both bars. It is portalled to <body>, so it carries .bn-theme. */
+.bn-lang-menu {
+  min-width: var(--radix-select-trigger-width);
+  padding: 8px;
+  border: 0;
+  border-radius: 8px;
+  background: var(--panel);
+  color: var(--text);
+  box-shadow: 0 24px 64px rgba(0, 0, 0, 0.6);
+  scrollbar-width: thin;
+  scrollbar-color: var(--btn) transparent;
+}
+.bn-lang-menu [data-slot="select-item"] {
+  min-height: 36px;
+  padding: 8px 32px 8px 12px;
+  border-radius: 4px;
+  color: var(--text-2);
+  font-size: 14px;
+  line-height: 20px;
+  cursor: pointer;
+}
+.bn-lang-menu [data-slot="select-item"][data-highlighted] {
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--text);
+  outline: none;
+}
+.bn-lang-menu [data-slot="select-item"][data-state="checked"],
+.bn-lang-menu [data-slot="select-item"][data-state="checked"] * {
+  color: var(--accent);
+}
+.bn-lang-menu [data-slot^="select-scroll"] {
+  background: var(--panel);
+  color: var(--text-2);
 }

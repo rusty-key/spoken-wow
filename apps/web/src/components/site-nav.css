@@ -25,9 +25,21 @@
 .sn .bn-brand {
   color: var(--text);
 }
-.sn .bn-brand img {
-  width: 36px;
-  height: 36px;
+
+.sn-row .bn-brand + .sn-area {
+  margin-left: -12px;
+}
+.sn-area {
+  flex: none;
+  padding: 2px 8px;
+  border-radius: 4px;
+  background: rgba(240, 194, 90, 0.12);
+  color: var(--accent);
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 16px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
 }
 
 .sn .bn-links a {
@@ -52,19 +64,6 @@
 .sn-signin {
   display: flex;
   gap: 8px;
-}
-
-.bn-theme [data-slot="select-trigger"] {
-  height: 40px;
-  border: 0;
-  border-radius: 4px;
-  background: var(--btn);
-  color: var(--text);
-  font-size: 14px;
-  box-shadow: none;
-}
-.bn-theme [data-slot="select-trigger"]:hover {
-  background: var(--btn-hover);
 }
 
 .sn-burger {
@@ -164,8 +163,8 @@
   padding: 4px 4px 8px;
 }
 
-/* NARROW must match UserMenu.tsx: the row of links needs about 1000px. */
-@media (max-width: 1023px) {
+/* NARROW must match UserMenu.tsx: the row of links with the Backstage tag needs about 1150px. */
+@media (max-width: 1199px) {
   .sn .bn-links,
   .sn-wide {
     display: none;
