@@ -26,6 +26,8 @@ import type { Worker } from "./worker";
 import { inTransaction } from "@/lib/db";
 import { adoptEveryLang, forgetTeams } from "@/lib/teams/store";
 
+import { startStorageUpkeep } from "@/lib/storage/upkeep";
+
 import { startLeader, type Leader } from "./leader";
 import { startWorker } from "./worker";
 
@@ -53,6 +55,7 @@ export function ensureQueueRunning(): void {
 
   const leader = startLeader();
   const worker = startWorker(leader.held);
+  const upkeep = startStorageUpkeep(leader.held);
   holder[key] = { leader, worker };
 
   /**
@@ -81,6 +84,7 @@ export function ensureQueueRunning(): void {
       if (shuttingDown) return;
       shuttingDown = true;
       void (async () => {
+        upkeep.stop();
         await worker.stop().catch(() => {});
         await leader.stop().catch(() => {});
         process.exit(0);

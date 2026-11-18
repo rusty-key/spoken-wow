@@ -7,7 +7,7 @@
 
 setfenv(1, VoiceOver)
 
-if GetLocale() ~= "esES" and GetLocale() ~= "esMX" then
+if not Spoken:InterfaceIn("esES", "esMX") then
 	return
 end
 

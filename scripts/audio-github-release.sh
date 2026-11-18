@@ -208,11 +208,7 @@ release_target() {
   # A pack can reach GitHub before its CurseForge project exists (scripts/lib/packs.mjs), and
   # the notes should not send a reader to a store that does not have it.
   local elsewhere="CurseForge carries it too, and Wago's upload endpoint refuses a file this size."
-  local bundled_in
-  bundled_in="$(field "$section" "$lang" "$pack" bundledIn)"
-  if [[ -n "$bundled_in" ]]; then
-    elsewhere="CurseForge carries it inside [$bundled_in](https://www.curseforge.com/wow/addons/$bundled_in), and Wago's upload endpoint refuses a file this size."
-  elif [[ -z "$(field "$section" "$lang" "$pack" curseforge)" ]]; then
+  if [[ -z "$(field "$section" "$lang" "$pack" curseforge)" ]]; then
     elsewhere="Wago's upload endpoint refuses a file this size, and it is not on CurseForge yet."
   fi
 

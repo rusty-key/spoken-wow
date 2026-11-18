@@ -9,6 +9,7 @@
  * test may need an ElevenLabs account, and none may ever spend credits. Everything else here
  * runs against the real queue, because the exclusions that keep it honest are in the schema.
  */
+import { ownStorageRefusal } from "@/lib/blobs/keep";
 import { readApiKey } from "@/lib/api-key";
 import { POOL_MAX, withTeam } from "@/lib/db";
 
@@ -32,6 +33,7 @@ import { generationStatus } from "./status";
 import type { Lang } from "@/lib/lang";
 import type { Source } from "@/lib/sections";
 import { fishConcurrency, getWallet } from "@/lib/voices/fish";
+import { asTeam } from "@/lib/teams/acting";
 import { readGenerationSettings, type Preference } from "./preference";
 import { speakerFrom } from "./speakers/for";
 import type { Provider, Speaker } from "./speakers/speaker";
@@ -146,6 +148,8 @@ export type WorkerOptions = {
   apiKeyFor?: (userId: string, provider: Provider) => Promise<string | null>;
   /** The owner's settings for each provider, read as each job runs. */
   preferenceFor?: (userId: string) => Promise<Pick<Preference, "elevenlabs" | "fish">>;
+  /** Why the job's team may keep nothing now (lib/blobs/keep.ts), read before each job is paid for. */
+  storageRefusal?: (lang: Lang) => Promise<string | null>;
   backoffMs?: (attempts: number) => number;
   leaseMs?: number;
   /** How long to wait before looking again when the queue was empty. */
@@ -177,6 +181,7 @@ export function startWorker(isLeader: () => boolean, options: WorkerOptions = {}
   const budget = options.budget ?? currentBudget;
   const apiKeyFor = options.apiKeyFor ?? readApiKey;
   const preferenceFor = options.preferenceFor ?? readGenerationSettings;
+  const storageFor = options.storageRefusal ?? ownStorageRefusal;
   const backoff = options.backoffMs ?? backoffFor;
   const idleMs = options.idleMs ?? 2_000;
   const maxActive = options.maxActive ?? maxActiveFrom(process.env.QUEUE_MAX_ACTIVE);
@@ -258,12 +263,27 @@ export function startWorker(isLeader: () => boolean, options: WorkerOptions = {}
     return value;
   }
 
-  async function run(job: QueueJob, lane: LaneState): Promise<void> {
+  /** A job's work is its team's: settings, roster, lexicon, overrides and takes all resolve it. */
+  function run(job: QueueJob, lane: LaneState): Promise<void> {
+    return asTeam(job.lang, job.teamId, () => runJob(job, lane));
+  }
+
+  async function runJob(job: QueueJob, lane: LaneState): Promise<void> {
     // Whose credits this line is spent from. A batch is enqueued by someone who had a key at
     // the time, so reaching here without one means it was cleared or the master key changed
     // underneath it. Failed as this job only, like every failure below: see the note there.
     //
     // For the provider the job was queued with, not whichever the owner has chosen since.
+    //
+    // The storage check starts alongside: it depends on nothing here, and is read below in its turn.
+    // An error checking fails the job too: nothing is paid for that might not be kept.
+    const storage = storageFor(job.lang).then(
+      (refused) => (refused ? { kind: "bad-request" as const, message: refused } : null),
+      (error: unknown) => ({
+        kind: "upstream" as const,
+        message: `could not check the team's storage: ${error instanceof Error ? error.message : String(error)}`,
+      }),
+    );
     let apiKey: string | null;
     try {
       apiKey = await apiKeyFor(job.createdBy ?? "", job.provider);
@@ -292,6 +312,15 @@ export function startWorker(isLeader: () => boolean, options: WorkerOptions = {}
       }`;
       await withTeam(job.teamId, (client) => failJob(job.id, { kind: "upstream", message }, client)).catch((failure: unknown) =>
         console.error(`regeneration queue: job ${job.id} could not be failed`, failure),
+      );
+      return;
+    }
+    // Before the provider is paid: a team that keeps its audio only in its own bucket and has none
+    // switched on could keep nothing this job makes.
+    const refused = await storage;
+    if (refused) {
+      await withTeam(job.teamId, (client) => failJob(job.id, refused, client)).catch((error: unknown) =>
+        console.error(`regeneration queue: job ${job.id} could not be failed`, error),
       );
       return;
     }

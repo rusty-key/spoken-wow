@@ -6,7 +6,7 @@
 
 setfenv(1, SpokenEnv)
 
-if GetLocale() ~= "koKR" then
+if not Interface:In("koKR") then
 	return
 end
 
@@ -225,6 +225,13 @@ L.OPT_LANGUAGE_TITLE = "언어"
 L.OPT_VOICE_LANGUAGE = "음성 언어"
 L.OPT_LANG_AUTO_FMT = "자동 (%1$s)"
 L.OPT_FALLBACK_LANGUAGE = "음성이 없을 때"
+L.OPT_TEXT_LANGUAGE = "텍스트 언어"
+L.OPT_TEXT_LANGUAGE_SET_FMT = "UI를 다시 불러오면 텍스트가 %1$s(으)로 표시됩니다."
+L.OPT_TEXT_LANGUAGE_RELOAD = "전환하려면 /reload를 입력하세요."
+L.OPT_INTERFACE_LANGUAGE = "인터페이스 언어"
+L.OPT_INTERFACE_LANGUAGE_SET_FMT = "UI를 다시 불러오면 Spoken의 창과 설정이 %1$s(으)로 표시됩니다."
+L.OPT_RELOAD_NOW = "지금 다시 불러오기"
+L.OPT_LATER = "나중에"
 L.OPT_FALLBACK_NONE = "무음"
 
 -- Azeroth's Compendium, on Spoken's page.

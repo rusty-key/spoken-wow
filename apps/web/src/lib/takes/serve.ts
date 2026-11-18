@@ -15,7 +15,8 @@ import "server-only";
 import path from "node:path";
 
 import { servePrivate } from "@/lib/blobs/serve";
-import { archive, isShared } from "@/lib/blobs/store";
+import { isShared } from "@/lib/blobs/store";
+import { addressOf, locate, SIGNED_FOR_SEC } from "@/lib/blobs/where";
 import { serveFile } from "@/lib/stream";
 
 import { BASE_LANG, langTag, type Lang } from "@/lib/lang";
@@ -26,11 +27,15 @@ import type { TakeBytes } from "./store";
  * `immutable` for a URL naming one version, which never changes. A line's live URL names
  * whichever take is live, so it is revalidated: the ETag is the archived file's name, which
  * carries the version and a hash of the bytes, and moves exactly when the live take does.
+ *
+ * `perVisitor` for a live URL whose take depends on who asks (the acting team's, where a
+ * language has a second team): private, so no shared cache hands one team's take to another
+ * visitor, and revalidated on every use, so a site owner's switch is heard at once.
  */
 export async function serveTake(
   request: Request,
   bytes: TakeBytes,
-  { immutable, lang = BASE_LANG }: { immutable: boolean; lang?: Lang },
+  { immutable, lang = BASE_LANG, perVisitor = false }: { immutable: boolean; lang?: Lang; perVisitor?: boolean },
 ): Promise<Response> {
   // Three different 404s, because the page predicts none of them and this is where a
   // listener finds out: nothing recorded, a take whose clip was not kept, and a take whose
@@ -39,7 +44,11 @@ export async function serveTake(
   if (bytes.kind === "gone") return new Response("this take's audio was not kept", { status: 404 });
   const missing = "this take's audio is not on disk";
 
-  const cacheControl = immutable ? "max-age=31536000, immutable" : "max-age=300, must-revalidate";
+  const cacheControl = immutable
+    ? "max-age=31536000, immutable"
+    : perVisitor
+      ? "no-cache"
+      : "max-age=300, must-revalidate";
   const headers: Record<string, string> = lang === BASE_LANG ? {} : { "Content-Language": langTag(lang) };
   const file = bytes.kind === "file" ? fileOptions(bytes.path, lang, immutable) : {};
 
@@ -47,14 +56,27 @@ export async function serveTake(
 
   // The bucket answers ranges itself, Safari's bytes=0-1 probe included. The redirect is
   // cached as the bytes were: a version's for good, a live line's for five minutes, after
-  // which it may point at a newer take.
+  // which it may point at a newer take. A team's private bucket gets a signed address, so its
+  // redirect is cached for less than the signature lasts.
   if (bytes.kind === "blob") {
+    const where = await locate(bytes.key, bytes.lang ?? lang);
+    const { url, signed } = await addressOf(where);
+    // Only our own copy of a take stays where it is for good. One in a team's bucket can be moved,
+    // re-addressed or deleted, and one in quarantine is deleted once it lands.
+    // A quarantined copy is deleted once it lands, so its redirect is not kept at all.
+    const lasting = where.backendId === null && !where.pending;
+    const kept = lasting || perVisitor ? cacheControl : `max-age=${Math.min(300, SIGNED_FOR_SEC / 2)}`;
+    const cached = where.pending ? "no-store" : `${signed || perVisitor ? "private" : "public"}, ${kept}`;
     return new Response(null, {
       status: 302,
-      headers: { Location: archive().url(bytes.key), "Cache-Control": `public, ${cacheControl}` },
+      headers: { Location: url, "Cache-Control": cached },
     });
   }
-  const served = await serveFile(request, bytes.path, { cacheControl: `public, ${cacheControl}`, headers, ...file });
+  const served = await serveFile(request, bytes.path, {
+    cacheControl: `${perVisitor ? "private" : "public"}, ${cacheControl}`,
+    headers,
+    ...file,
+  });
   return served ?? new Response(missing, { status: 404 });
 }
 

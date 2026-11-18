@@ -60,7 +60,7 @@ local METHODS = {
     -- contributions
     "ShowContribution", "ShowReport", "SetContributeHost", "AreContributeButtonsHidden",
     -- a speaker's face on a feature addon's page
-    "CreateSpeakerFace",
+    "CreateSpeakerFace", "ItemIcon",
     -- Play, Skip and Report on DialogueUI's quest window and book view
     "CreateDialogueUIRow",
     -- a dungeon's or a boss's story, for another addon's Play button
@@ -255,73 +255,75 @@ do
     Spoken:UnregisterCallback(after)
     Spoken:Resume()
     Expect("...until it does", Heard(), "i 1 true")
+
+    -- A listener registered inside another's call is not called in that same Fire.
+    local added
+    local adder = Spoken:RegisterCallback("CAPTION_WORD", function()
+        if not added then added = Spoken:RegisterCallback("CAPTION_WORD", function() late[#late + 1] = "added" end) end
+    end)
+    late = {}
+    Spoken:Skip()
+    Expect("a listener added during a Fire waits for the next", table.concat(late, ","), "")
+    Spoken:UnregisterCallback(adder)
+    Spoken:UnregisterCallback(added)
+
+    -- A queue change that leaves the voice on its word keeps the word's timer.
+    src:Enqueue(Line("j"))
+    captionTimers = 0
+    src:Enqueue(H.Clip())
+    Expect("a line queued behind sets no new timer", captionTimers, 0)
     Spoken:UnregisterCallback(listener)
     Spoken:StopAll()
     E.Addon.ScheduleTimer = Schedule
+
+    -- Listening through Callbacks directly starts and stops the word timer too.
+    Heard()
+    local internal = E.Callbacks:Register("CAPTION_WORD", Listen)
+    src:Enqueue(Line("k"))
+    stub.Advance(1.5)
+    E.Callbacks:Unregister(internal)
+    Expect("Callbacks:Register starts the timer, Unregister stops it", Heard() .. " / " .. tostring(E.Transcript.wordTimer),
+        "k 1 true, k 2 true / nil")
+    Spoken:StopAll()
+end
+
+---------------------------------------------------------------- stories
+-- No teller for a kind, or no id: every answer is false.
+Expect("a kind no module tells has no story", tostring(Spoken:HasStory("contract", 1)) .. " "
+    .. tostring(Spoken:PlayStory("contract", 1)) .. " " .. tostring(Spoken:IsPlayingStory("contract", 1)) .. " "
+    .. tostring(Spoken:StopStory("contract", 1)), "false false false false")
+do
+    -- Story 7 has two parts, a locked "story:7a" and a playable "story:7b"; story 8 none playable.
+    local tellerSource = Spoken:RegisterSource("story-contract", { title = "Stories", addon = "X", order = 9 })
+    Spoken:RegisterStoryTeller("contract", {
+        source = tellerSource,
+        Keys = function(id) return { "story:" .. id .. "a", "story:" .. id .. "b" } end,
+        Clip = function(id, key)
+            if key == "story:7b" then local clip = H.Clip(); clip.key = key; return clip end
+        end,
+    })
+    Spoken:StopAll()
+    Expect("HasStory: a story with a playable part", tostring(Spoken:HasStory("contract", 7)) .. " "
+        .. tostring(Spoken:HasStory("contract", 8)) .. " " .. tostring(Spoken:HasStory("contract", nil)), "true false false")
+    Expect("PlayStory plays only a story with one", tostring(Spoken:PlayStory("contract", 8)) .. " "
+        .. tostring(Spoken:PlayStory("contract", 7)), "false true")
+    Expect("...the playable part, through the teller's source", Spoken:GetNowPlaying().key .. " "
+        .. tostring(Spoken:GetNowPlaying().source == tellerSource), "story:7b true")
+    local story = Spoken:GetCaption().story
+    Expect("...which GetCaption names as PlayStory was asked", story.kind .. " " .. story.id, "contract 7")
+    Expect("IsPlayingStory: its own story only", tostring(Spoken:IsPlayingStory("contract", 7)) .. " "
+        .. tostring(Spoken:IsPlayingStory("contract", 8)), "true false")
+    Spoken:Pause()
+    Expect("...and not while paused", Spoken:IsPlayingStory("contract", 7), false)
+    Spoken:Resume()
+    Expect("StopStory takes it out", tostring(Spoken:StopStory("contract", 7)) .. " " .. Spoken:GetQueueSize(), "true 0")
+    Expect("...and a second stop finds nothing", Spoken:StopStory("contract", 7), false)
 end
 
 Spoken:AddGate(function() return "held by the player" end)
 local held = H.Clip()
 src:Enqueue(held)
 Expect("a player-wide gate holds every source", Spoken:GetHeldReason(held), "held by the player")
-
----------------------------------------------------------------- stories
--- No teller for a kind, or no id: every answer is false and nothing is called.
-Expect("a kind no module tells has no story", tostring(Spoken:HasStory("contract", 1)) .. " "
-    .. tostring(Spoken:PlayStory("contract", 1)) .. " " .. tostring(Spoken:IsPlayingStory("contract", 1)) .. " "
-    .. tostring(Spoken:StopStory("contract", 1)), "false false false false")
-local told, asked = {}, 0
-Spoken:RegisterStoryTeller("contract", {
-    Has = function(id) return id == 7 end,
-    Play = function(id) table.insert(told, "play " .. id); return true end,
-    IsPlaying = function(id) return id == 7 end,
-    Stop = function(id) table.insert(told, "stop " .. id); return true end,
-    Of = function(clip) asked = asked + 1; return clip.tells end,
-})
-Expect("HasStory asks the kind's teller", tostring(Spoken:HasStory("contract", 7)) .. " " .. tostring(Spoken:HasStory("contract", 8)),
-    "true false")
-Expect("PlayStory plays only a story the teller has", tostring(Spoken:PlayStory("contract", 8)) .. " "
-    .. tostring(Spoken:PlayStory("contract", 7)) .. " " .. table.concat(told, ","), "false true play 7")
-Expect("IsPlayingStory and StopStory ask it too", tostring(Spoken:IsPlayingStory("contract", 7)) .. " "
-    .. tostring(Spoken:StopStory("contract", 7)) .. " " .. told[2], "true true stop 7")
-Expect("no id is no story", Spoken:HasStory("contract", nil), false)
-
--- GetCaption names the story its line tells, asking the tellers once for each line; one without Of
--- is passed over. The lines wait behind the player's gate, at the head, where the captions show them.
-Spoken:RegisterStoryTeller("older", { Has = function() return false end, Play = function() return false end,
-    IsPlaying = function() return false end, Stop = function() return false end })
-Spoken:StopAll()
-src:Enqueue(H.Clip({ tells = 7 }))
-local story = Spoken:GetCaption().story
-Expect("GetCaption names the story a line tells, as PlayStory takes it", story.kind .. " " .. story.id, "contract 7")
-Expect("...the same table read after read, the teller asked once", tostring(Spoken:GetCaption().story == story)
-    .. " " .. asked, "true 1")
-Spoken:StopAll()
-src:Enqueue(H.Clip())
-Expect("a line that tells no story has none", Spoken:GetCaption().story, nil)
-Spoken:StopAll()
-
--- A teller whose Of throws names nothing: GetCaption still answers, the others still name their
--- stories, and it is asked once a line like the rest.
-local broke = 0
-Spoken:RegisterStoryTeller("broken", { Has = function() return false end, Play = function() return false end,
-    IsPlaying = function() return false end, Stop = function() return false end,
-    Of = function() broke = broke + 1; error("a teller's bug") end })
-src:Enqueue(H.Clip({ tells = 7 }))
-local readOk, read = pcall(Spoken.GetCaption, Spoken)
-Expect("a teller that throws leaves GetCaption working and the others naming the story",
-    tostring(readOk) .. " " .. (readOk and read.story and (read.story.kind .. " " .. read.story.id) or tostring(read)),
-    "true contract 7")
-Spoken:StopAll()
-src:Enqueue(H.Clip())
-local before = broke
-readOk, read = pcall(Spoken.GetCaption, Spoken)
-local againOk = pcall(Spoken.GetCaption, Spoken)
-Expect("...a line only it was asked about has no story, no error, and it is asked once",
-    tostring(readOk) .. " " .. tostring(readOk and read.story) .. " " .. tostring(againOk) .. " " .. (broke - before),
-    "true nil true 1")
-Spoken:StopAll()
-Spoken:RegisterStoryTeller("broken", nil)
 
 ---------------------------------------------------------------- registries
 Spoken:RegisterBullet("contract-bullet", "Interface\\X", 12)

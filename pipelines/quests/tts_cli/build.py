@@ -359,6 +359,16 @@ def build_tables(corpus: dict, ignored=()) -> dict:
     }
 
 
+#: Every entry names gossip audio, directly or through GossipAliases, so only a pack holding
+#: gossip carries these. The body and sex tables stay in every pack: quest lines read them too.
+GOSSIP_TEXT_TABLES = ("npc_gossip_file_lookups", "object_gossip_file_lookups",
+                      "npc_name_gossip_file_lookups", "object_name_gossip_file_lookups")
+
+
+def carries_gossip(include) -> bool:
+    return include is None or any(stem.startswith("gossip/") for stem in include)
+
+
 #: The tables a language's Gossip pack gets a client-locale copy of: the ones keyed by the
 #: NPC's words and its id. Quest ids come from the client itself on every supported release,
 #: names are only shown, and the name-keyed gossip tables are the fallback for a speaker with
@@ -405,7 +415,8 @@ def write_lua_table(path: str, module_name: str, table_name: str, data,
     That copy is in a language's pack, but a player on an English client may install the
     pack to hear the language, and their client shows English: the English tables are the
     ones that match there, so the copy returns before it is built. With `only_on`, the table
-    itself is built only on a client in that locale.
+    itself is built only where that language is the one the words are read in: Spoken's Text
+    Language, which on Auto is the client's. A Spoken without one asks the client's.
     """
     os.makedirs(os.path.dirname(path), exist_ok=True)
     with open(path, "w", encoding="utf-8") as f:
@@ -418,8 +429,9 @@ def write_lua_table(path: str, module_name: str, table_name: str, data,
                     f"{module_name}.ClientLocaleLookups or {{}}\n")
             target = f"{module_name}.ClientLocaleLookups.{table_name}"
         if only_on:
-            f.write("if not VoiceOver.Language or "
-                    f'VoiceOver.Language:GetClientLanguage() ~= "{only_on}" then return end\n')
+            f.write("if not VoiceOver.Language or (VoiceOver.Language.GetTextLanguage "
+                    "and VoiceOver.Language:GetTextLanguage() or VoiceOver.Language:GetClientLanguage()) "
+                    f'~= "{only_on}" then return end\n')
         f.write(f"{target} = ")
         f.write(lua_value(data))
         f.write("\n")
@@ -455,10 +467,10 @@ def build_module(corpus: dict, store_dir: str, dist_dir: str = DEFAULT_DIST_DIR,
 
     `include` is a set of store-relative stems ('quests/5-accept', no extension) and makes
     this one pack of several: the store is staged once and built into a pack per side of the
-    war. None means everything in the store. The lookup tables are not narrowed with it -
-    they map text to ids and hashes rather than to files, they are the same in every pack,
-    and an entry whose audio is in a pack the player did not install simply finds no length
-    and stays quiet. See tts_cli/factions.py.
+    war. None means everything in the store. The lookup tables are not narrowed with it, except
+    GOSSIP_TEXT_TABLES - they map text to ids and hashes rather than to files, and
+    an entry whose audio is in a pack the player did not install simply finds no length and
+    stays quiet. See tts_cli/factions.py.
 
     `locale_text` is `language`'s rows from tts_cli.locale_text, and adds that language's
     gossip tables under generated/<language>/, loaded only on a client in it. Only the
@@ -497,6 +509,9 @@ def build_module(corpus: dict, store_dir: str, dist_dir: str = DEFAULT_DIST_DIR,
         shutil.copy2(os.path.join(store_dir, rel), os.path.join(sounds_dir, rel))
 
     tables = build_tables(corpus, ignored)
+    if not carries_gossip(include):
+        for name in GOSSIP_TEXT_TABLES:
+            del tables[name]
     written = []
     for filename, (table_name, data) in sorted(tables.items()):
         write_lua_table(os.path.join(generated_dir, filename + ".lua"),
@@ -527,7 +542,8 @@ def build_module(corpus: dict, store_dir: str, dist_dir: str = DEFAULT_DIST_DIR,
     written.append("word_times_table.lua")
 
     # For this pack's audio alone, or four packs of a language each repeat every line's text. Only
-    # on a client in the pack's language, the only one that shows it: megabytes of strings otherwise.
+    # where the pack's language is the one read, the only place it shows: megabytes of strings
+    # otherwise.
     words = take_text(store_dir)
     texts = {os.path.basename(stem): words[stem]
              for stem in (os.path.splitext(rel)[0] for rel in audio) if stem in words}

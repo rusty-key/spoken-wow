@@ -4,7 +4,10 @@ setfenv(1, SpokenEnv)
 -- CallbackHandler-1.0, on purpose: a library at the API boundary would force every
 -- consumer through LibStub before it could subscribe, and this is twelve lines. Every button, the frame and the
 -- queue display subscribe to AUDIO_CHANGED, so the queue never calls into its display.
-Callbacks = { handlers = {}, nextId = 0, errors = {} }
+Callbacks = { handlers = {}, nextId = 0, errors = {}, watchers = {} }
+
+-- Both build a new list rather than change it in place, so a Fire walking the old one neither
+-- skips the subscriber after one that unregistered itself nor calls one registered during it.
 
 ---@param event string
 ---@param fn function
@@ -12,13 +15,16 @@ Callbacks = { handlers = {}, nextId = 0, errors = {} }
 function Callbacks:Register(event, fn)
     self.nextId = self.nextId + 1
     local handle = { event = event, id = self.nextId, fn = fn }
-    self.handlers[event] = self.handlers[event] or {}
-    table.insert(self.handlers[event], handle)
+    local list = self.handlers[event] or {}
+    local grown = {}
+    for i, other in ipairs(list) do grown[i] = other end
+    table.insert(grown, handle)
+    self.handlers[event] = grown
+    if getn(list) == 0 and self.watchers[event] then self.watchers[event](true) end
     return handle
 end
 
--- A new list rather than a removal in place: a Fire walking the old one would skip the
--- subscriber after one that unregistered itself. One unregistered before its turn is skipped.
+--- One unregistered before its turn in a Fire is skipped.
 function Callbacks:Unregister(handle)
     local list = handle and self.handlers[handle.event]
     if not list then
@@ -33,6 +39,13 @@ function Callbacks:Unregister(handle)
         end
     end
     self.handlers[handle.event] = kept
+    if getn(kept) == 0 and getn(list) > 0 and self.watchers[handle.event] then self.watchers[handle.event](false) end
+end
+
+--- `fn(true)` when `event` gains its first subscriber and `fn(false)` when it loses its last, for
+--- work done only so the event can fire.
+function Callbacks:WatchListeners(event, fn)
+    self.watchers[event] = fn
 end
 
 --- Whether anything listens for `event`, so work done only to fire it can be skipped.

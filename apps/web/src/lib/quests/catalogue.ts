@@ -25,7 +25,7 @@
 import "server-only";
 
 import { query, queryIn } from "@/lib/db";
-import { memoByLang } from "@/lib/memo";
+import { memoByTeamLang } from "@/lib/memo";
 import { isSex } from "@/lib/npc/npc";
 import { splitBody } from "@/lib/npc/store";
 import { nameStamp, versionStamp } from "@/lib/stamp";
@@ -401,7 +401,7 @@ const indexKey = Symbol.for("spoken.quests-line-index.by-lang");
  */
 export async function corpus(lang: Lang = BASE_LANG): Promise<Corpus> {
   const stamp = await stampOf(lang);
-  return memoByLang(cacheKey, lang, stamp, async () => {
+  return memoByTeamLang(cacheKey, lang, stamp, async () => {
     const [lines, facts] = await Promise.all([build(lang), lineClientFacts()]);
     return { lines: markClients(lines, facts) };
   });
@@ -438,7 +438,7 @@ async function lineClientFacts(): Promise<LineClientFacts> {
  */
 export async function lineIndex(lang: Lang = BASE_LANG): Promise<Map<string, CorpusLine[]>> {
   const lines = (await corpus(lang)).lines;
-  return memoByLang(indexKey, lang, lines, () => {
+  return memoByTeamLang(indexKey, lang, lines, () => {
     const index = new Map<string, CorpusLine[]>();
     for (const line of lines) {
       const group = index.get(line.lineId);

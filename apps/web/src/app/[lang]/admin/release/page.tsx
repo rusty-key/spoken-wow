@@ -7,8 +7,10 @@ import { Contained } from "@/components/Width";
 import { viewerOf } from "@/lib/grants/store";
 import { langName } from "@/lib/lang";
 import { isAdmin, langsWhere } from "@/lib/permissions";
+import { SECOND_TEAM_RELEASE } from "@/lib/releases/sections";
 import { releaseView } from "@/lib/releases/view";
 import { currentSession } from "@/lib/session";
+import { actsAsSecondTeam } from "@/lib/teams/store";
 
 export const metadata: Metadata = { title: "Release · Spoken" };
 
@@ -37,7 +39,11 @@ export default async function Page({ searchParams }: { searchParams: Promise<{ l
         description={`Publish ${langName(lang)}'s sound packs to the Manager. A release marks the latest takes and rebuilds the addon files; it takes a while, since it reads production and builds the pack first.`}
       />
       <Contained className="pt-6">
-        <ReleasePanel key={lang} lang={lang} initial={await releaseView(lang)} />
+        {(await actsAsSecondTeam(lang)) ? (
+          <p className="text-muted-foreground text-sm">{SECOND_TEAM_RELEASE}</p>
+        ) : (
+          <ReleasePanel key={lang} lang={lang} initial={await releaseView(lang)} />
+        )}
       </Contained>
     </main>
   );

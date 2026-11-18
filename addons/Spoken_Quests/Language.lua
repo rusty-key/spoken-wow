@@ -121,6 +121,18 @@ function Language:IsClientLanguage(code)
     return locale ~= nil and locale.client == true
 end
 
+--- The language the words are read in: Spoken's Text Language, else the client's. The second value
+--- is true where the player chose it; on Auto the captions read as they always did.
+---@return string code
+---@return boolean chosen
+function Language:GetTextLanguage()
+    if Spoken and Spoken.TextLanguage then
+        local code, chosen = Spoken:TextLanguage()
+        if chosen then return code, true end
+    end
+    return self:GetClientLanguage(), false
+end
+
 --- The language the player wants to hear, resolved. `auto` becomes the client's locale.
 ---@return string code
 function Language:GetVoiceLanguage()

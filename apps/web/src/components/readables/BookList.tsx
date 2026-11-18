@@ -30,12 +30,14 @@ type Props = {
   /** Narrowing to one book, from its name. */
   onSelectBook: (line: ResultLine) => void;
   bookHref: (line: ResultLine) => string;
-  /** Open the report dialog. Everyone gets this, signed in or not. */
-  onReport: (line: ResultLine) => void;
+  /** Open the report dialog; null in another team's view. */
+  onReport: ((line: ResultLine) => void) | null;
   /** An earlier take is live again. */
   onRestored: (line: ResultLine, version: number) => void;
   /** Rewrite what a page says. Editor and up. */
   onEditText: (line: ResultLine) => void;
+  onOverride: (line: ResultLine) => void;
+  onOverrideAnswered: (line: ResultLine) => void;
   onRename: ((line: ResultLine) => void) | null;
   /** Say a take is fine as it stands, despite a pronunciation having moved under it. */
   onClearDirty: (line: ResultLine) => void;
@@ -83,6 +85,8 @@ export function BookList({
   onReport,
   onRestored,
   onEditText,
+  onOverride,
+  onOverrideAnswered,
   onRename,
 }: Props) {
   const groupRows = useMemo(() => bookRuns(lines), [lines]);
@@ -103,12 +107,13 @@ export function BookList({
         {showRecordings && <col className="w-32" />}
         <col className="w-16" />
         {/* Wide enough for what the cell actually holds, now that the controls sit on one
-            line: icon buttons are 32px and an editor can have three side by side -- report,
-            clear the pronunciation mark, regenerate. Anything narrower and they overflow
-            left across the character count. w-10 for everyone else, who has the report
-            button alone; never w-0, because the column still has to exist for the rowspans
-            above it to count against. */}
-        <col className={canRegenerate || canEdit ? "w-36" : "w-10"} />
+            line: icon buttons are 32px and an editor can have five side by side -- report,
+            edit, override, clear the pronunciation mark, regenerate -- plus the report count.
+            Anything narrower and they overflow left across the character count. A translator
+            has the count, report and edit, and everyone else the report button alone; never
+            w-0, because the column still has to exist for the rowspans above it to count
+            against. */}
+        <col className={canRegenerate ? "w-60" : canEdit ? "w-36" : "w-10"} />
       </colgroup>
       <thead>
         <tr className="text-muted-foreground border-border border-b text-left text-xs">
@@ -145,6 +150,8 @@ export function BookList({
             onReport={onReport}
             onRestored={onRestored}
             onEditText={onEditText}
+            onOverride={onOverride}
+            onOverrideAnswered={onOverrideAnswered}
             onRename={onRename}
           />
         ))}

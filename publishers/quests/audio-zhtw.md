@@ -3,7 +3,7 @@ release: quests-audio-zhTW
 section: quests
 lang: zhTW
 pack: all
-version: 0.0.1
+version: 0.0.2
 slug: spoken-quests-audio-zhtw
 name: Spoken Quests Audio: Chinese (Traditional)
 summary: Quest and gossip lines for Spoken Quests, voiced in Traditional Chinese. All four packs in one download. Partial: about four quests in five. Needs Spoken Quests.

@@ -287,6 +287,8 @@ function SpokenReadables:ClipFor(pageId)
 							or ((book and #book.pages > 1)
 								and format(L.OPT_PAGE_COUNT_FMT, place.number, #book.pages) or nil),
 						bullet = "book",
+						-- A text pack's language may need a font the game's lacks.
+						font = Spoken:ClipFont(shown, self),
 						material = self:PageMaterial(pageId),
 						portrait = self:PagePicture(pageId),
 						actions = ACTIONS,

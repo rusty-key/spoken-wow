@@ -312,6 +312,7 @@ local function Voiced(self, progress)
 end
 
 local function Wake()
+    Transcript.wordTimer = nil
     Transcript:WatchWords()
 end
 
@@ -322,16 +323,19 @@ function Transcript:WatchWords(quiet)
         self.wordsAgain = true
         return
     end
+    local listening = Callbacks:Has("CAPTION_WORD")
+    local clip, progress = self.clip, self:GetProgress()
+    local word = listening and Voiced(self, progress) and self:WordAt(progress) or nil
+    -- Most AUDIO_CHANGED leave the voice on the same word: its timer stands.
+    if listening and self.wordTimer and clip == self.wordClip and word == self.wordAt then return end
     if self.wordTimer then
         Addon:CancelTimer(self.wordTimer)
         self.wordTimer = nil
     end
-    if not Callbacks:Has("CAPTION_WORD") then
+    if not listening then
         self.wordClip, self.wordAt = nil, nil
         return
     end
-    local clip, progress = self.clip, self:GetProgress()
-    local word = Voiced(self, progress) and self:WordAt(progress) or nil
     local was, wasAt = self.wordClip, self.wordAt
     self.wordClip, self.wordAt = clip, word
     if word then
@@ -837,6 +841,10 @@ function Transcript:Initialize()
     Callbacks:Register("CLIP_STARTED", function(clip) self:Started(clip) end)
     -- Not inside Sync, which returns early while held: a voice stopped meanwhile is told at once.
     Callbacks:Register("AUDIO_CHANGED", function() self:Sync(); self:WatchWords() end)
+    -- The first listener starts the word timer quietly: called as it registers, it would run before
+    -- it has its handle. A later one leaves the timer be, as a quiet start could swallow a word the
+    -- others are owed. The last one gone stops it.
+    Callbacks:WatchListeners("CAPTION_WORD", function(first) self:WatchWords(first) end)
     self:RefreshConfig()
     self:Sync()
 end

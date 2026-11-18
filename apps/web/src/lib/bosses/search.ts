@@ -7,6 +7,7 @@
 import { isDirty } from "@/lib/generation/dirty";
 import { recordedMatches, type LiveRecording } from "@/lib/recordings/live";
 import { madeByFacets, madeByMatches, type MadeBy, type MadeByFacets } from "@/lib/takes/made-by";
+import type { OverrideView } from "@/lib/text-overrides/types";
 
 import type { BossEntry, SearchContext, Take } from "./catalogue";
 import { PAGE_SIZE, SHORT_LINE, type LineFilters, type State } from "./filters";
@@ -41,6 +42,8 @@ export type ResultLine = {
   nameMissing?: boolean;
   /** The English name, for a translator. Absent in English. */
   englishName?: string;
+  /** The acting team's rewrite, which `spoken` already says; null where it has none. */
+  override: OverrideView | null;
 };
 
 export type SearchResult = {
@@ -74,6 +77,7 @@ export function decorate(entry: BossEntry, context: SearchContext): ResultLine {
     name: entry.name,
     text: entry.text,
     spoken: entry.spoken,
+    override: entry.override ?? null,
     written: entry.text !== null,
     chars,
     short: entry.spoken !== null && chars < SHORT_LINE,

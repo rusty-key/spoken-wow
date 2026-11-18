@@ -152,7 +152,7 @@ do
     Expect("words alone are no story to play", tostring(S:HasStory("boss", EDWIN_FIGHT)) .. " "
         .. tostring(S:PlayStory("boss", EDWIN_FIGHT)), "false false")
     S:GetSource("bosses"):Enqueue(Bosses:StoryClip(36, "edwin vancleef"))
-    Expect("...though shown as words alone, it is named all the same", Named(), "boss " .. EDWIN_FIGHT)
+    Expect("...and the story Bosses shows itself is no story PlayStory played", Named(), "none")
     S:StopAll()
     Setup("enUS", "auto", "enUS", { SpokenBossesAudio = Pack("SpokenBossesAudio", "enUS", 128) })
     S:SetPartOn("bosses", false)
@@ -169,13 +169,10 @@ do
         S:PlayStory("boss", id)
         return Named()
     end
-    Expect("a boss of several encounters is named by the one Data/Bosses.lua files it under",
-        Told(486) .. ", " .. Told(3588), "boss 3588, boss 3588")
-    Expect("...and of two fought together, the one that plays", Told(2955), "boss 3587")
+    Expect("a boss of several encounters is named by the one PlayStory was given",
+        Told(486) .. ", " .. Told(3588) .. ", " .. Told(2955), "boss 486, boss 3588, boss 2955")
     S:StopAll()
     Expect("...and no line, no caption", Named(), "none")
-    Expect("another module's line naming the boss is not its story",
-        tostring((Bosses.EncounterTeller.Of({ source = {}, mapID = 36, bossKey = "edwin vancleef" }))), "nil")
     SpokenBossesSettings.unlockUnfound = false
 end
 

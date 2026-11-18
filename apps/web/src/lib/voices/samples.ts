@@ -17,7 +17,9 @@ import crypto from "node:crypto";
 import fs from "node:fs/promises";
 import path from "node:path";
 
-import { blobBytes, blobKey, blobOrFile, keep, readsBlobs, writesBlobs, type Stored } from "@/lib/blobs/store";
+import { keep } from "@/lib/blobs/keep";
+import { blobKey, blobOrFile, readsBlobs, writesBlobs, type Stored } from "@/lib/blobs/store";
+import { blobBytes } from "@/lib/blobs/where";
 import { queryAs, readAs } from "@/lib/teams/store";
 import { VOICE_SAMPLES_DIR } from "@/lib/paths";
 import { withLocalCopy } from "@/lib/takes/bytes";
@@ -175,7 +177,7 @@ export async function storeSample(
 export async function storeSampleAs(voice: string, file: string, data: Buffer): Promise<Sample> {
   if (!isStoredSampleName(file)) throw new Error(`unsafe sample name ${file}`);
   const dir = await voiceDir(voice);
-  const sha256 = await keep("samples", data, contentTypeOf(file), path.join(dir, file));
+  const sha256 = await keep("samples", data, contentTypeOf(file), path.join(dir, file), langOf(voice));
   if (sha256) {
     await queryAs(
       langOf(voice),
@@ -225,7 +227,7 @@ export async function readSample(voice: string, file: string): Promise<Buffer | 
   if (!isStoredSampleName(file)) return null;
   if (readsBlobs()) {
     const sha256 = await sampleSha(voice, file);
-    return sha256 ? blobBytes(blobKey("samples", sha256)) : null;
+    return sha256 ? blobBytes(blobKey("samples", sha256), langOf(voice)) : null;
   }
   return fs.readFile(await samplePath(voice, file)).catch(() => null);
 }
@@ -233,7 +235,7 @@ export async function readSample(voice: string, file: string): Promise<Buffer | 
 /** In r2 mode a clip with no row is gone, whatever the volume still holds. */
 export async function sampleClip(voice: string, file: string): Promise<Stored> {
   if (!readsBlobs()) return blobOrFile("samples", null, await samplePath(voice, file));
-  return blobOrFile("samples", await sampleSha(voice, file), null);
+  return blobOrFile("samples", await sampleSha(voice, file), null, langOf(voice));
 }
 
 /** ffmpeg reads files, so clips in the bucket are handed over as temporary copies. */

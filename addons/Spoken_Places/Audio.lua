@@ -103,6 +103,31 @@ local function Source()
 	return nil
 end
 
+--------------------------------------------------------------------------------
+-- A dungeon's story for another addon (Spoken:PlayStory("instance", map))
+--------------------------------------------------------------------------------
+
+--- The area mapID, key that tells the story of the instance map `map`, from Spoken's dungeon table,
+--- or nil where none does.
+function SpokenPlaces:InstanceStory(map)
+	local dungeons = _G.SpokenDungeons and SpokenDungeons.dungeons
+	local story = map and dungeons and dungeons[map] and dungeons[map].story
+	if story then return story[1], story[2] end
+end
+
+local function InstanceKeys(map)
+	local mapID, key = SpokenPlaces:InstanceStory(map)
+	return mapID and { "s:" .. mapID .. ":" .. key } or {}
+end
+
+-- The story's clip where it is voiced, Places is on and reads aloud, and the area is not locked.
+local function InstanceClip(map)
+	local mapID, key = SpokenPlaces:InstanceStory(map)
+	if not (SpokenPlaces:IsVoiceEnabled() and SpokenPlaces:IsPartOn()) then return nil end
+	if SpokenPlaces.IsLocked and SpokenPlaces:IsLocked(mapID, key) then return nil end
+	return SpokenPlaces:NewLoreSound(mapID, key)
+end
+
 -- Registers with the player. Runs once the world is up, after the player itself has
 -- loaded; everything here degrades to "no narration" when it has not.
 function SpokenPlaces:SetupAudio()
@@ -148,7 +173,7 @@ function SpokenPlaces:SetupAudio()
 	end)
 
 	if Spoken.RegisterStoryTeller then
-		Spoken:RegisterStoryTeller("instance", SpokenPlaces.InstanceTeller)
+		Spoken:RegisterStoryTeller("instance", { source = self.source, Keys = InstanceKeys, Clip = InstanceClip })
 	end
 
 	-- Switched off or on in Spoken's settings: the map panel follows, and so does the Compendium's
@@ -529,8 +554,7 @@ function SpokenPlaces:NewLoreSound(mapID, areaKey)
 	local words = spoken or (not voiced and self:PackLoreText(mapID, areaKey, language)) or (entry and entry.full)
 	-- Captions set a font file, which has none of the font object's fallbacks: lore in a script
 	-- the client's file cannot draw names the file that can. Otherwise the window's own is kept.
-	local font = self.FontFor and self:FontFor(GameFontNormal, language)
-	if font == GameFontNormal:GetFont() then font = nil end
+	local font = Spoken:ClipFont(language, self)
 	-- An area is headed by the zone Azeroth's Compendium lists it in: Razorfen Downs by The Barrens,
 	-- where its entrance is, and Strahnbrad by Alterac Mountains, their stories kept under Thousand
 	-- Needles and Hillsbrad Foothills.
@@ -598,7 +622,7 @@ end
 -- saying anything at all.
 function SpokenPlaces:DescribeMissingAudio()
 	if #self:GetAudioPacks() == 0 then
-		return "no voice pack installed -- get Spoken Audio: Places and Bosses to hear the lore read aloud"
+		return "no voice pack installed -- get Spoken Audio: Places to hear the lore read aloud"
 	end
 	return "no narration for this entry in the installed voice pack yet"
 end
@@ -750,48 +774,6 @@ function SpokenPlaces:PlayLore(mapID, areaKey)
 	end
 	return playing and true or false
 end
-
---------------------------------------------------------------------------------
--- A dungeon's story for another addon (Spoken:PlayStory("instance", map))
---------------------------------------------------------------------------------
-
--- The area { uiMapID, key } that tells the story of the instance map `map`, from Spoken's dungeon table.
-local function InstanceStory(map)
-	local dungeons = _G.SpokenDungeons and SpokenDungeons.dungeons
-	local story = dungeons and dungeons[map] and dungeons[map].story
-	if story then return story[1], story[2] end
-end
-
-SpokenPlaces.InstanceTeller = {
-	Has = function(map)
-		local mapID, key = InstanceStory(map)
-		if not mapID or not SpokenPlaces:IsVoiceEnabled() then return false end
-		if _G.Spoken.IsPartOn and not _G.Spoken:IsPartOn("places") then return false end
-		if SpokenPlaces.IsLocked and SpokenPlaces:IsLocked(mapID, key) then return false end
-		return SpokenPlaces:HasAudio(mapID, key)
-	end,
-	Play = function(map)
-		return SpokenPlaces:PlayLore(InstanceStory(map))
-	end,
-	IsPlaying = function(map)
-		local mapID, key = InstanceStory(map)
-		return mapID ~= nil and SpokenPlaces:IsPlayingLore(mapID, key)
-	end,
-	Stop = function(map)
-		local mapID, key = InstanceStory(map)
-		local clip = mapID and SpokenPlaces:LoreClip(mapID, key)
-		return clip ~= nil and SpokenPlaces.source:Remove(clip) == true
-	end,
-	-- An area's story played on its own, as its area autoplays it, is the same line, so it is named too.
-	Of = function(clip)
-		if not (SpokenPlaces.source and clip.source == SpokenPlaces.source and clip.areaKey) then return nil end
-		local dungeons = _G.SpokenDungeons and SpokenDungeons.dungeons
-		for map, dungeon in pairs(dungeons or {}) do
-			local story = dungeon.story
-			if story and story[1] == clip.mapID and story[2] == clip.areaKey then return map end
-		end
-	end,
-}
 
 --------------------------------------------------------------------------------
 -- Why nothing here stops playback on its own

@@ -113,6 +113,10 @@ pm2 environment. They are secrets, and that file is the only place they exist:
 | `RESEND_API_KEY` | a sending key from Resend | sends password reset emails. Unset, `/forgot-password` still says a link is on its way, sends nothing and logs an error |
 | `RESEND_FROM` | `Spoken <noreply@spoken.quest>` | the sender; its domain must be verified in Resend |
 
+Brann, the Discord bot, is the second pm2 app (`brann`). His keys are in `app.env` too, all
+prefixed `BRANN_`. `ecosystem.config.js` gives them to him alone and keeps them from the site.
+`apps/brann/README.md` lists them.
+
 **`SPOKEN_SECRET_KEY` cannot be rotated casually.** Every stored ElevenLabs credential is
 sealed under it, and AES-GCM offers no way to re-seal a credential nothing can open. Change
 it and every collaborator pastes their key again — recoverable, but they have to be told.
@@ -124,6 +128,21 @@ channel's), `SPOKEN_ARCHIVE_BUCKET`, `SPOKEN_ARCHIVE_URL` (its public address) a
 `SPOKEN_ARCHIVE_STORE`. That last one is `disk` until the bucket exists, `dual` while the
 backfill runs, and `r2` after: then takes redirect to the bucket, recordings, clone clips and
 references stream through the site, and the volume is no longer read or written.
+
+**Teams' own buckets** (`docs/platform/STORAGE.md`) need two more in `app.env` before a team
+admin can connect one on `/admin/storage`. `SPOKEN_STORAGE_KEY` (`openssl rand -base64 32`) seals
+each team's bucket key; like `SPOKEN_SECRET_KEY` it cannot be rotated casually, since changing it
+makes every team enter its key again. `SPOKEN_ARCHIVE_TOKEN` (any long random string) lets a
+developer's pull fetch voice actors' recordings through the site; releases need none. In `shared/release.env`,
+`SPOKEN_ARCHIVE_URL=http://127.0.0.1:3010/api/archive/` overrides app.env's for the release job, so
+its reads go through the site, which knows which bucket holds each clip. The
+`release-packs.yaml` workflow's `SPOKEN_ARCHIVE_URL` variable becomes
+`https://spoken.quest/api/archive/`. Whichever worker leads the queue lands quarantined objects and
+advances moves between buckets once a minute, and samples 50 team-bucket objects for ones a team
+deleted every 15 minutes. `CLOUDFLARE_OAUTH_CLIENT_ID`, `CLOUDFLARE_OAUTH_CLIENT_SECRET` and
+`CLOUDFLARE_OAUTH_SCOPES` switch on "Connect Cloudflare", which makes a team's R2 bucket and key
+for it (STORAGE.md, "Connecting Cloudflare"). It stays hidden without a valid `SPOKEN_STORAGE_KEY`
+too.
 
 Before `SPOKEN_ARCHIVE_STORE` becomes `dual`, install **`oggenc`** beside ffmpeg
 (`apt install vorbis-tools`): with the bucket in use every quests take is encoded to its
@@ -558,6 +577,31 @@ spare first. Before deploying again:
 ```bash
 psql "$PROD_DATABASE_URL" -c 'alter table line_override drop constraint line_override_team_file'
 ```
+
+### A second team in a language
+
+Migration 0113 enforces one team per person per language with a deferred trigger, and ships with
+the code that makes a second team.
+
+1. **After the deploy, read the migration's notice** in the deploy log. It lists every
+   `(userId, lang)` pair that already spans two teams. The trigger does not touch existing rows, so
+   for each pair pick the team the person leaves and delete **every** `team_member` row they hold
+   in it: one row per capability, and any one left keeps the conflict.
+
+   ```bash
+   psql "$PROD_DATABASE_URL" -c "delete from team_member where \"userId\" = '<userId>' and lang = '<lang>' and \"teamId\" = '<teamId>'"
+   ```
+
+   Then run the conflict query again; it must return no rows:
+
+   ```bash
+   psql "$PROD_DATABASE_URL" -c 'select "userId", lang from team_member group by "userId", lang having count(distinct "teamId") > 1'
+   ```
+
+2. **Rolling back past 0113 while a second team exists** gives its members the privileged team's
+   rows: the older release has no overlay, so it resolves every person to the language's privileged
+   team. Nothing guards it; the second team's own rows stay in the database and come back when the
+   release goes forward again.
 
 ### Promoting the first admin
 

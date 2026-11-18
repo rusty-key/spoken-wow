@@ -174,7 +174,7 @@ export const PACKS: readonly Pack[] = [
   {
     section: "places",
     lang: "enUS",
-    name: "Spoken Audio: Places and Bosses",
+    name: "Spoken Audio: Places",
     curseforge: "spoken-audio-places",
     release: "places-audio",
   },
@@ -240,6 +240,13 @@ export const PACKS: readonly Pack[] = [
     name: "Spoken Chinese (Traditional) Audio: Places",
     curseforge: "spoken-chinese-traditional-audio-places",
     release: "places-audio-zhTW",
+  },
+  {
+    section: "places",
+    lang: "itIT",
+    name: "Spoken Italian Audio: Places",
+    curseforge: null,
+    release: "places-audio-itIT",
   },
 
   {
@@ -312,13 +319,19 @@ export const PACKS: readonly Pack[] = [
     curseforge: "spoken-chinese-traditional-audio-readables",
     release: "readables-audio-zhTW",
   },
+  {
+    section: "readables",
+    lang: "itIT",
+    name: "Spoken Italian Audio: Readables",
+    curseforge: null,
+    release: "readables-audio-itIT",
+  },
 
-  // On CurseForge inside Spoken Audio: Places and Bosses, which carries its folder.
   {
     section: "bosses",
     lang: "enUS",
     name: "Spoken Audio: Bosses",
-    curseforge: "spoken-audio-places",
+    curseforge: "spoken-audio-bosses",
     release: "bosses-audio",
   },
   { section: "bosses", lang: "deDE", name: "Spoken German Audio: Bosses", curseforge: "spoken-german-audio-bosses", release: "bosses-audio-deDE" },
@@ -330,6 +343,7 @@ export const PACKS: readonly Pack[] = [
   { section: "bosses", lang: "koKR", name: "Spoken Korean Audio: Bosses", curseforge: "spoken-korean-audio-bosses", release: "bosses-audio-koKR" },
   { section: "bosses", lang: "zhCN", name: "Spoken Chinese (Simplified) Audio: Bosses", curseforge: "spoken-chinese-simplified-audio-bosses", release: "bosses-audio-zhCN" },
   { section: "bosses", lang: "zhTW", name: "Spoken Chinese (Traditional) Audio: Bosses", curseforge: "spoken-chinese-traditional-audio-bosses", release: "bosses-audio-zhTW" },
+  { section: "bosses", lang: "itIT", name: "Spoken Italian Audio: Bosses", curseforge: null, release: "bosses-audio-itIT" },
 ];
 
 /** The pack for a section in a language, or undefined where none has been built. */

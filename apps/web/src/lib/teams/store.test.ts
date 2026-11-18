@@ -38,7 +38,7 @@ async function ownTeamId(): Promise<string> {
 
 async function cleanup() {
   await asSystem.query(`delete from "team_language" where "lang" = $1`, [NEW_LANG]);
-  await asSystem.query(`delete from "language" where "code" = $1`, [NEW_LANG]);
+  await asSystem.query(`update "language" set "enabled" = false where "code" = $1`, [NEW_LANG]);
   await asSystem.query(`delete from "activity" where "actorId" = $1`, [USER]);
   await asSystem.query(`delete from "report" where "ip" = $1`, [IP]);
   const { rows: made } = await asSystem.query<{ id: string }>(

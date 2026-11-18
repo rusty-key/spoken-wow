@@ -404,21 +404,27 @@ local function KeptText(self, pageId, language)
 	return type(kept) == "string" and kept ~= "" and kept or nil
 end
 
---- A page's words in `language`: the words of a pack recorded in it, else the page as the client
---- showed it this session. Nil where neither has them.
-function SpokenReadables:PageTextIn(pageId, language)
-	return self:PackPageText(pageId, language) or KeptText(self, pageId, language)
+--- A page's words in `language` from a text pack (Spoken's Texts.lua), or nil.
+function SpokenReadables:TextPackPage(pageId, language)
+	return Spoken and Spoken.TextIn and Spoken:TextIn(language, "readables", "pages", pageId) or nil
 end
 
---- A page's words in this client's language, or nil. Page by page, so a readable can be in two
---- languages: the pages Spoken has this client's words for, and the rest in English. Nil on an
---- English client: Books.lua is its words.
-function SpokenReadables:ClientPageText(pageId)
-	local client = self:GetClientLanguage()
-	if client == self.BASE_LANGUAGE then
+--- A page's words in `language`: the words of a pack recorded in it, which are what its voice says,
+--- else a text pack's, else the page as the client showed it this session. Nil where none has them.
+function SpokenReadables:PageTextIn(pageId, language)
+	return self:PackPageText(pageId, language) or self:TextPackPage(pageId, language)
+		or KeptText(self, pageId, language)
+end
+
+--- A page's words in the Text Language, or nil. Page by page, so a readable can be in two
+--- languages: the pages Spoken has those words for, and the rest in English. Nil in English:
+--- Books.lua is its words.
+function SpokenReadables:TextLanguagePageText(pageId)
+	local language = self:GetTextLanguage()
+	if language == self.BASE_LANGUAGE then
 		return nil
 	end
-	return self:PageTextIn(pageId, client)
+	return self:PageTextIn(pageId, language)
 end
 
 --- A page's words in `language` as a caption shows them, and whether they are the words of an
@@ -452,30 +458,38 @@ local function CaptionIn(self, pageId, language, clipLanguage, clipText)
 end
 
 --- The words a page's caption shows, the language they are in, and whether they are the words the
---- recording says. They are in the client's language whatever the voice, as the game shows the
---- page, and in the clip's only where the client's has none. A voice no client runs in (Italian,
---- Vietnamese) comes first: its players are on another language's client. `clipText`, the playing
---- pack's own words, beats another pack's. Nil where neither has any.
+--- recording says. They are in the Text Language the player chose, whatever the voice. On Auto they
+--- are in the client's language, as the game shows the page, and in the clip's only where the
+--- client's has none; a voice no client runs in (Italian, Vietnamese) comes first, as its players
+--- are on another language's client. Each language falls to the next where it has no words for the
+--- page. `clipText`, the playing pack's own words, beats another pack's. Nil where none has any.
 function SpokenReadables:CaptionText(pageId, clipLanguage, clipText)
-	local first, second = self:GetClientLanguage(), clipLanguage
-	if not self:IsClientLanguage(clipLanguage) then
-		first, second = clipLanguage, first
+	local order = {}
+	local function Add(language)
+		for _, known in ipairs(order) do
+			if known == language then return end
+		end
+		table.insert(order, language)
 	end
-	local text, shown, recorded = CaptionIn(self, pageId, first, clipLanguage, clipText)
-	if not text and second ~= first then
-		text, shown, recorded = CaptionIn(self, pageId, second, clipLanguage, clipText)
+	local textLanguage, chosen = self:GetTextLanguage()
+	if chosen then Add(textLanguage) end
+	if not self:IsClientLanguage(clipLanguage) then Add(clipLanguage) end
+	Add(self:GetClientLanguage())
+	Add(clipLanguage)
+	for _, language in ipairs(order) do
+		local text, shown, recorded = CaptionIn(self, pageId, language, clipLanguage, clipText)
+		if text then return text, shown, recorded end
 	end
-	if not text then
-		return nil, clipLanguage, false
-	end
-	return text, shown, recorded
+	return nil, clipLanguage, false
 end
 
---- A readable's title in `language`: the one the client showed this session, else the one a pack
---- in it gives `pageId` in its index. Nil where Spoken has none: the corpus's title is English.
+--- A readable's title in `language`: the one the client showed this session, else a text pack's,
+--- else the one a pack in it gives `pageId` in its index. Nil where Spoken has none: the corpus's
+--- title is English.
 function SpokenReadables:TitleIn(book, pageId, language)
 	local kept = self.bookTitle and self.bookTitle[language] and self.bookTitle[language][book]
-	return kept or self:PackTitleOf(pageId, language)
+	local packed = Spoken and Spoken.TextIn and Spoken:TextIn(language, "readables", "titles", book)
+	return kept or packed or self:PackTitleOf(pageId, language)
 end
 
 local titles = setmetatable({}, { __mode = "k" })

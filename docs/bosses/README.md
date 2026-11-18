@@ -51,12 +51,9 @@ It wins over `Data/Stories.lua` on a client in the pack's language (`docs/spoken
 
 Another addon plays a boss's story through Spoken's `HasStory`, `PlayStory`, `IsPlayingStory` and
 `StopStory` with `"boss"` and the game's encounter id (`addons/Spoken/API.lua`), not through
-`SpokenBossesAddon`, whose methods are not frozen. `EncounterTeller` in `Story.lua` answers them: only a
+`SpokenBossesAddon`, whose methods are not frozen. `EncounterClip` in `Story.lua` builds the clip: only a
 voiced story, of a boss met or with Unlock Unfound Bosses on, and the part on. A world boss has no
-encounter id, so it cannot be asked for. Played this way a story is not marked shown. Its `Of`
-names the boss of any story Bosses shows for `Spoken:GetCaption().story`, one shown as words alone
-included, by the `id` `Data/Bosses.lua` files it under, one of the boss's `ids`. A world boss is
-named by the client's id for it there, though no fight in Forever sends that id.
+encounter id, so it cannot be asked for. Played this way a story is not marked shown.
 
 The Dungeons and Raids come from `addons/Spoken/Data/Dungeons.lua`, which every tab shares
 ([COMPENDIUM.md](../places/COMPENDIUM.md)).

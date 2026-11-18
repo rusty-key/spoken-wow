@@ -4,7 +4,7 @@ import { audioRelPath } from "./audio";
 import { npcKey } from "./corpus";
 import { spokenHash } from "./generation/spoken-hash";
 import { corpus as catalogue } from "./quests/catalogue";
-import { batchJobs, batchPlan, isGap, matchingLines, search } from "./search";
+import { batchPlan, isGap, matchingLines, search } from "./search";
 import { madeByOf } from "./takes/made-by";
 import { isModelVoice } from "./voices/voices";
 
@@ -301,13 +301,13 @@ describe("row keys", () => {
 
 describe("batch jobs", () => {
   it("drops lines the generator never voices", () => {
-    const jobs = batchJobs(matchingLines(corpus, store, { q: "dughan" }));
+    const jobs = batchPlan(matchingLines(corpus, store, { q: "dughan" })).jobs;
     expect(jobs.length).toBeGreaterThan(0);
     expect(jobs.every((job) => job.characters > 0)).toBe(true);
   });
 
   it("generates a shared file once", () => {
-    const jobs = batchJobs(corpus.lines);
+    const jobs = batchPlan(corpus.lines).jobs;
     expect(new Set(jobs.map((j) => j.audioPath)).size).toBe(jobs.length);
     expect(jobs.length).toBeLessThan(corpus.lines.filter((l) => l.generatable).length);
   });
@@ -435,7 +435,7 @@ describe("overrides", () => {
     expect(isGap(broken, store)).toBe(false);
     expect(isGap(broken, store, context.overrides)).toBe(true);
 
-    const jobs = batchJobs([broken], context.overrides);
+    const jobs = batchPlan([broken], context.overrides).jobs;
     expect(jobs).toHaveLength(1);
     expect(jobs[0].characters).toBe("Thrall grunts.".length);
   });
@@ -443,7 +443,7 @@ describe("overrides", () => {
   it("prices the text that will be sent, not the text the corpus holds", () => {
     const line = corpus.lines.find((l) => l.lineId === "q:123:complete")!;
     const context = rewrite("quests/123-complete.mp3", "short");
-    expect(batchJobs([line], context.overrides)[0].characters).toBe(5);
+    expect(batchPlan([line], context.overrides).jobs[0].characters).toBe(5);
   });
 });
 

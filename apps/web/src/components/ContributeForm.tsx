@@ -24,6 +24,7 @@ import {
   type ParseError,
   takeFragment,
 } from "@/lib/contributions/envelope";
+import { browserInstallId } from "@/lib/contributions/browser-install";
 import { sendFailureMessage } from "@/lib/contributions/send-failure";
 
 const FIELD_LABELS: Record<string, string> = {
@@ -145,6 +146,7 @@ export default function ContributeForm({ signedInAs }: { signedInAs: string | nu
         name: signedInAs ? null : data.get("name"),
         email: signedInAs ? null : data.get("email"),
         website: data.get("website"),
+        installId: browserInstallId(),
       }),
     }).catch(() => null);
 

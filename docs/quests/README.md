@@ -294,9 +294,13 @@ project: addon managers install the newest file for a project, so a second file 
 move a player from the pack they chose to whichever was uploaded last. The player needs no
 change to read them — `DataModules:PrepareSound` walks every registered module and takes the
 first whose `SoundLengthLookupByFileName` has the file, which is how upstream shipped a pack
-per expansion. Every pack carries the full lookup tables (3.5 MB); they map text to ids and
-hashes rather than to files, so an entry whose audio lives in a pack you did not install finds
-no length and stays quiet.
+per expansion. Every pack carries the lookup tables; they map text to ids and hashes rather
+than to files, so an entry whose audio lives in a pack you did not install finds no length and
+stays quiet. The four keyed by gossip text (`GOSSIP_TEXT_TABLES` in `tts_cli/build.py`, about
+4 MB) are the exception: every entry names gossip audio, so only a pack holding gossip audio
+(`carries_gossip`: Gossip and All) carries them, and the three quest packs do not make the
+client parse them at every login. The price is in Contribute: `IsChanged` reads these tables to
+tell gossip Blizzard reworded, so a player with no pack holding gossip no longer reports it.
 
 **Which side a quest is on comes first from the Compendium's race masks**
 (`addons/Spoken_Quests/Data/Compendium.lua`, `tts_cli/factions.py` `compendium_sides`): a quest

@@ -116,6 +116,17 @@ plays (`pipelines/readables/tools/lib/absorb.mjs`).
 | generate | `book_line` | mp3s and `take` rows | anyone with an ElevenLabs key |
 | export | `book_line` | `addons/Spoken_Readables/Data/Books.lua` | a maintainer, before a release |
 
+### A team's own wording
+
+On `/readables`, the override control beside a page's edit control changes what the viewer's team
+says for that page, and leaves `book_line` alone. It needs `regenerate` in the language, works in
+every language, English included, and is offered only on a page with its own text in the language.
+The override belongs to that team (`text_override`, see `docs/platform/TEAMS.md`): its takes speak
+it and are judged stale against it, while the page shown on the site and in game, and every other
+team, keep the original. A page's spoken title keeps the book's original name. The row shows the
+override under the page, and says when the original has changed since, with Keep and Drop. A minted
+page's override moves with it when the page is absorbed.
+
 ## Running it locally
 
 The databases are OrbStack containers and a native Postgres. Nothing here touches the
@@ -327,9 +338,10 @@ every book, letter, note, scroll, tablet, plaque, gravestone, exhibit and pictur
 reads, found or not, with the words of each on the right, on the spellbook's parchment, to read
 and to listen to wherever you are. Which readables exist and where they are comes from
 `Data/Places.lua` (`pipelines/readables/tools/places.mjs`); what this character has found, from
-`SpokenReadablesCharacter` (`Core.lua`); the words, from `Data/Books.lua`. On a client in another
-language, a page is in that language where a pack in it has the page's words, or where the client
-showed the page this session (`SpokenReadables:ClientPageText`), and in English otherwise. That is
+`SpokenReadablesCharacter` (`Core.lua`); the words, from `Data/Books.lua`. In a Text Language other
+than English (Spoken's setting; the client's on Auto), a page is in that language where a voice pack
+in it has the page's words, else a text pack (`docs/contributors/TEXT-PACKS.md`), or where the client
+showed the page this session (`SpokenReadables:TextLanguagePageText`), and in English otherwise. That is
 decided page by page, so one readable can be in two languages. Its title follows the same way
 (`SpokenReadables:TitleIn`). A caption is in the same words whatever the voice, English on an
 English client, and in the recording's language only where the client's has none

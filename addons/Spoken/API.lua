@@ -328,6 +328,13 @@ local PACK_PAGES = {
         frFR = "spoken-french-audio-bosses", koKR = "spoken-korean-audio-bosses", ptBR = "spoken-portuguese-audio-bosses",
         ruRU = "spoken-russian-audio-bosses", zhCN = "spoken-chinese-simplified-audio-bosses", zhTW = "spoken-chinese-traditional-audio-bosses" },
 }
+-- The packs with no CurseForge project yet, by their release tag: got from the repository's releases.
+local RELEASES = "https://github.com/rusty-key/spoken-wow/releases?q="
+local PACK_RELEASES = {
+    places = { itIT = "places-audio-itIT" },
+    readables = { itIT = "readables-audio-itIT" },
+    bosses = { itIT = "bosses-audio-itIT" },
+}
 
 --- The voice pack `module` ("quests", "places", "readables" or "bosses") has in `lang`, English's aside: the folder
 --- it installs as and the address to get it, or nil where that language has none.
@@ -338,8 +345,10 @@ function Spoken:VoicePack(module, lang)
         return packs[3].folder, packs[3].url
     end
     local page = PACK_PAGES[module] and PACK_PAGES[module][lang]
-    if not page then return nil end
-    return PACK_FOLDERS[module] .. "_" .. lang, CURSEFORGE .. page
+    if page then return PACK_FOLDERS[module] .. "_" .. lang, CURSEFORGE .. page end
+    local release = PACK_RELEASES[module] and PACK_RELEASES[module][lang]
+    if release then return PACK_FOLDERS[module] .. "_" .. lang, RELEASES .. release end
+    return nil
 end
 
 --- The four quests packs a language but English has, or nil where it has none: for each, `side`
@@ -462,6 +471,14 @@ function Spoken:QuestItemIcon(questID)
     return BagIcon(function(bag, slot) return SlotQuest(bag, slot) == questID end)
 end
 
+--- The icon of item `itemID`, with its crop. The item may no longer be in the player's bags.
+function Spoken:ItemIcon(itemID)
+    if not itemID then return nil end
+    local getInfo = (C_Item and C_Item.GetItemInfoInstant) or GetItemInfoInstant
+    local icon = getInfo and select(5, getInfo(itemID))
+    if icon then return icon, ICON_CROP end
+end
+
 --- The id and name of the bag item that starts `questID`, read from its link: an item's GUID
 --- carries no item id, so the bags are the only place a quest panel's item can be named.
 function Spoken:QuestItem(questID)
@@ -523,7 +540,8 @@ function Spoken:LanguageFace(code)
     return Options:LanguageFace(code)
 end
 
---- The language `code` as a table (`code`, `name`, `native`, `font`, `client`, `lore`, `folders`),
+--- The language `code` as a table (`code`, `name`, `native`, `font`, `client`, `lore`, `folders`,
+--- `texts`: the folders of its voice packs and of its text packs),
 --- or nil where it is neither one a client runs in nor one an installed pack declares.
 function Spoken:Language(code)
     return Languages:Get(code)
@@ -563,10 +581,97 @@ function Spoken:LanguageDraws(code, path)
     return Options:LanguageDraws(code, path)
 end
 
+--- The language this session's interface is in: the Interface Language chosen on Spoken's page, a
+--- built-in one or an interface pack's, else the client's. Fixed for the session.
+function Spoken:InterfaceLanguage()
+    return Interface:Language()
+end
+
+--- The built-in language whose locale files load: the Interface Language where a client runs in
+--- it, else the client's, under a pack's strings.
+function Spoken:InterfaceBase()
+    return Interface:Base()
+end
+
+--- A module's locale file asks this as it loads: whether the built-in language whose files load is
+--- one of these codes. `if not Spoken:InterfaceIn("esES", "esMX") then return end`.
+function Spoken:InterfaceIn(...)
+    return Interface:In(...)
+end
+
+--- For an interface pack (docs/contributors/INTERFACE-PACKS.md): the strings of `module` ("Spoken",
+--- "Quests", "Places", "Readables", "Bosses" or "Developer") in the language `code`, keyed as the
+--- module's English. Kept only where `code` is the session's Interface Language; returns whether
+--- they were.
+function Spoken:RegisterInterfaceStrings(code, module, strings)
+    return Interface:Register(code, module, strings)
+end
+
+--- A module lays the strings packs registered for it over its own table, `strings`, as its locale
+--- files finish.
+function Spoken:ApplyInterfaceStrings(module, strings)
+    Interface:Apply(module, strings)
+end
+
+--- The language the words are read in this session: the Text Language chosen on Spoken's page as it
+--- was at load, else the client's. The second value is true where the player chose it; on Auto a
+--- module keeps the order it always read its languages in, and where it is chosen, puts it first.
+function Spoken:TextLanguage()
+    return Texts:Reading()
+end
+
+--- The Text Language as stored: a code, or nil for Auto.
+function Spoken:TextLanguageChoice()
+    return Texts:Choice()
+end
+
+--- Store the Text Language: a code, or nil for Auto. It takes effect on the next load. False where
+--- `code` is not shaped like a language code.
+function Spoken:SetTextLanguage(code)
+    local ok = Texts:SetChoice(code)
+    if ok then Options:UpdateRows() end
+    return ok
+end
+
+--- For a text pack (docs/contributors/TEXT-PACKS.md): the words of `section` ("quests",
+--- "readables", "bosses" or "places") in the language `code`. Kept only where `code` is the Text
+--- Language; returns whether they were.
+function Spoken:RegisterText(code, section, data)
+    return Texts:Register(code, section, data)
+end
+
+--- A text pack's words in `code`, under `section`, `kind` and each key in turn, or nil:
+--- Spoken:TextIn("plPL", "readables", "pages", 1234).
+function Spoken:TextIn(code, section, kind, ...)
+    return Texts:Get(code, section, kind, ...)
+end
+
+--- A section's tables from the text packs in `code`, whole, or nil.
+function Spoken:TextSection(code, section)
+    return Texts:Section(code, section)
+end
+
+--- The font file to write `code` in where a page uses `fontObject`, or nil where none draws it.
+--- `cache` is a table of the caller's to keep the answers in.
+function Spoken:FontForLanguage(fontObject, code, cache)
+    return Texts:FontFor(fontObject, code, cache)
+end
+
+--- The font a clip's words in `code` are drawn in (`present.font`), or nil where the player's own
+--- draws them. `cache` as for FontForLanguage.
+function Spoken:ClipFont(code, cache)
+    return Texts:ClipFont(code, cache)
+end
+
+--- Whether this client's fonts can draw `code`. `cache` as for FontForLanguage.
+function Spoken:CanRenderLanguage(code, cache)
+    return Texts:CanRender(code, cache)
+end
+
 --- The voice language as it plays: the one chosen on Spoken's page, "auto" being the client's.
 function Spoken:VoiceLanguage()
     local voice = self:GetLanguageChoice()
-    if voice == nil or voice == "auto" then return Options:ClientLanguage() end
+    if voice == nil or voice == "auto" then return Languages:Client() end
     return voice
 end
 
@@ -753,58 +858,85 @@ end
 --------------------------------------------------------------------------------
 --
 -- Keyed by the game's own ids, so a caller needs none of the modules' keys:
---   "instance"  an instance map id (GetInstanceInfo's 8th value): the dungeon's or raid's story,
---               told by Spoken_Places
---   "boss"      a dungeon encounter id (ENCOUNTER_START's first argument): the boss's story, told
---               by Spoken_Bosses. An encounter of two bosses fought at once plays the first with one.
--- Only voiced stories count. Without the module, with its part switched off, with no voice pack
--- that has the story, or with the story locked for this character (not found yet, and the module's
--- Unlock setting off), HasStory is false and PlayStory does nothing.
--- Redraw a button on AUDIO_CHANGED. Additive, so API_VERSION does not move: guard on the field,
--- `if Spoken.PlayStory then`.
+--   "instance"  an instance map id (GetInstanceInfo's 8th value), told by Spoken_Places
+--   "boss"      an encounter id (ENCOUNTER_START's first argument), told by Spoken_Bosses; a fight
+--               of two bosses plays the first with a story
+-- Only a voiced story counts, with its module on and the story not locked for this character.
+-- No event covers every change to HasStory: ask it as a button shows and on AUDIO_CHANGED and
+-- PART_SWITCHED. Bosses meets a boss in its own ENCOUNTER_START handler, which may run after the
+-- caller's, so ask a frame later. Additive: guard on the field, `if Spoken.PlayStory then`.
 
 local storyTellers = {}
 
---- For a module: who tells the stories of `kind`. `teller` has Has(id), Play(id), IsPlaying(id)
---- and Stop(id), each answering as the method of the same name below, and may have Of(clip): the
---- id of the story `clip` tells, else nil, which GetCaption gives as `story`.
+--- For a module: who tells the stories of `kind`. `teller.source` is the module's source;
+--- `teller.Keys(id)` lists the clip keys of the story `id`, a story per boss of an encounter; and
+--- `teller.Clip(id, key)` builds the clip of one, or nil where it cannot be played now.
 function Spoken:RegisterStoryTeller(kind, teller)
     storyTellers[kind] = teller
 end
 
-local function Teller(kind, id)
-    if id == nil then return nil end
-    return storyTellers[kind]
+-- The teller of `kind` and the clip keys of its story `id`, or nil.
+local function Story(kind, id)
+    local teller = id ~= nil and storyTellers[kind]
+    if teller then return teller, teller.Keys(id) end
+end
+
+-- The first clip of the story `id` that can be played now, or nil.
+local function Playable(kind, id)
+    local teller, keys = Story(kind, id)
+    for _, key in ipairs(keys or {}) do
+        local clip = teller.Clip(id, key)
+        if clip then return teller, clip end
+    end
+end
+
+local function Tells(teller, keys, clip)
+    if not (clip and clip.source == teller.source) then return false end
+    for _, key in ipairs(keys) do
+        if clip.key == key then return true end
+    end
+    return false
 end
 
 --- Whether the story `id` of `kind` ("instance" or "boss") can be played now.
 ---@return boolean
 function Spoken:HasStory(kind, id)
-    local teller = Teller(kind, id)
-    return teller ~= nil and teller.Has(id) == true
+    return Playable(kind, id) ~= nil
 end
 
 --- Plays the story as the Compendium's Play does: at once where nothing speaks, else behind the line
 --- speaking. Returns whether it plays or waits.
 ---@return boolean
 function Spoken:PlayStory(kind, id)
-    local teller = Teller(kind, id)
-    return teller ~= nil and teller.Has(id) == true and teller.Play(id) == true
+    local teller, clip = Playable(kind, id)
+    if not teller then return false end
+    local story = { kind = kind, id = id }
+    clip.story = story
+    local playing = teller.source:PlayNow(clip) and true or false
+    -- Already waiting, the line keeps its own clip: GetCaption reads the tag from that one.
+    for _, queued in ipairs(SoundQueue:GetQueue()) do
+        if queued.source == teller.source and queued.key == clip.key then queued.story = story end
+    end
+    return playing
 end
 
 --- Whether the story is speaking: not waiting, held or paused.
 ---@return boolean
 function Spoken:IsPlayingStory(kind, id)
-    local teller = Teller(kind, id)
-    return teller ~= nil and teller.IsPlaying(id) == true
+    local teller, keys = Story(kind, id)
+    return teller ~= nil and not SoundQueue:IsPaused() and Tells(teller, keys, SoundQueue:GetNowPlaying())
 end
 
 --- Stops the story, speaking or waiting, and leaves every other line alone. Returns whether it was
 --- in the queue.
 ---@return boolean
 function Spoken:StopStory(kind, id)
-    local teller = Teller(kind, id)
-    return teller ~= nil and teller.Stop(id) == true
+    local teller, keys = Story(kind, id)
+    local stopped = false
+    for _, clip in ipairs(teller and SoundQueue:GetQueue() or {}) do
+        if Tells(teller, keys, clip) and teller.source:Remove(clip) then stopped = true end
+    end
+    return stopped
 end
 
 --- False in a battleground or arena with Read in Battlegrounds off, where a source's Enqueue
@@ -834,18 +966,6 @@ end
 
 local caption = {}
 
--- Asked of the tellers once a clip, not on every call: other views read the caption many times a second.
-local storyClip
-local function StoryOf(clip)
-    for kind, teller in pairs(storyTellers) do
-        -- A teller's bug names no story rather than breaking the caption for every view that reads it.
-        if teller.Of then
-            local ok, id = pcall(teller.Of, clip)
-            if ok and id ~= nil then return { kind = kind, id = id } end
-        end
-    end
-end
-
 --- The speaking clip's caption, kept current even while the captions are hidden or off:
 ---   { clip, words, totalWeight, progress, speaking, activeWord, highlight, typewriter,
 ---     typewriterBy, timed, story }
@@ -854,20 +974,16 @@ end
 --- true when they come from the clip's present.timings, and totalWeight is then its length.
 --- progress is nil for a clip with no length; activeWord is set only while speaking.
 --- highlight and typewriter are the player's Highlight Words and Type Words Out (false with
---- Show Words off); typewriterBy is "letter" or "word". story is { kind, id } for a line that
---- tells a dungeon's or a boss's story, voiced or shown as words alone, named as PlayStory takes
---- it, else nil: a dungeon's story is its area's, so it is named wherever that plays, and a boss
---- of several encounter ids is named by the one Spoken_Bosses files it under. Read-only, and the
---- same table on every call. nil without a clip.
+--- Show Words off); typewriterBy is "letter" or "word". story is the { kind, id } PlayStory was
+--- asked for when it played this line, else nil. Read-only, and the same table on every call. nil
+--- without a clip.
 function Spoken:GetCaption()
     if not Transcript.clip or not Transcript.words then return nil end
     -- Not read from what the captions last drew: they update only while shown, and
     -- DialogueUI hides them with UIParent.
     local progress = Transcript:GetProgress()
-    if storyClip ~= Transcript.clip then
-        storyClip, caption.story = Transcript.clip, StoryOf(Transcript.clip)
-    end
     caption.clip, caption.words, caption.totalWeight = Transcript.clip, Transcript.words, Transcript.totalWeight
+    caption.story = Transcript.clip.story
     caption.progress = progress
     caption.speaking = Transcript:IsSpeaking(progress) and true or false
     caption.activeWord = caption.speaking and Transcript:WordAt(progress) or nil
@@ -919,6 +1035,7 @@ end
 --   CLIP_DROPPED       (clip, reason)      queue-limit | outranked | missing | an admit reason
 --   QUEUE_EMPTY        ()
 --   SOURCE_REGISTERED  (source)
+--   PART_SWITCHED      (key, on)           a part was switched on or off in Spoken's settings
 --   CONTRIBUTE_SETTINGS_CHANGED ()          the hide-Contribute-buttons setting was toggled
 --   REPORT_SETTINGS_CHANGED     ()          the hide-Report-buttons setting was toggled
 --   VOICE_PACKS_LOADED          ()          the quest and gossip voice packs found at login have loaded
@@ -926,17 +1043,11 @@ end
 --   CAPTION_WORD                (clip, word, speaking)  the voice reached a word, or stopped (Captions above)
 
 function Spoken:RegisterCallback(event, fn)
-    local first = event == "CAPTION_WORD" and not Callbacks:Has(event)
-    local handle = Callbacks:Register(event, fn)
-    -- The first listener starts the word timer quietly: called now, it would run before it has its
-    -- handle. A later one leaves the timer be, as a quiet start could swallow a word the others are owed.
-    if first then Transcript:WatchWords(true) end
-    return handle
+    return Callbacks:Register(event, fn)
 end
 
 function Spoken:UnregisterCallback(handle)
     Callbacks:Unregister(handle)
-    if type(handle) == "table" and handle.event == "CAPTION_WORD" then Transcript:WatchWords() end
 end
 
 --------------------------------------------------------------------------------

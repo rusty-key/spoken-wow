@@ -6,7 +6,7 @@
 
 setfenv(1, SpokenEnv)
 
-if GetLocale() ~= "zhTW" then
+if not Interface:In("zhTW") then
 	return
 end
 
@@ -225,6 +225,13 @@ L.OPT_LANGUAGE_TITLE = "語言"
 L.OPT_VOICE_LANGUAGE = "語音語言"
 L.OPT_LANG_AUTO_FMT = "自動（%1$s）"
 L.OPT_FALLBACK_LANGUAGE = "缺少語音時"
+L.OPT_TEXT_LANGUAGE = "文字語言"
+L.OPT_TEXT_LANGUAGE_SET_FMT = "介面重新載入後，文字將以%1$s顯示。"
+L.OPT_TEXT_LANGUAGE_RELOAD = "輸入 /reload 即可切換。"
+L.OPT_INTERFACE_LANGUAGE = "介面語言"
+L.OPT_INTERFACE_LANGUAGE_SET_FMT = "介面重新載入後，Spoken 的視窗和設定將以%1$s顯示。"
+L.OPT_RELOAD_NOW = "立即重新載入"
+L.OPT_LATER = "稍後"
 L.OPT_FALLBACK_NONE = "保持靜默"
 
 -- Azeroth's Compendium, on Spoken's page.

@@ -45,6 +45,7 @@ local function Install(packs, locale)
             LookupLocale = pack.lookupLocale,
             ClientLocaleLookups = pack.clientGossip and { GossipLookupByNPCID = pack.clientGossip },
             GetSoundPath = function(_, fileName) return fileName end,
+            TextByFileName = pack.texts,
         })
     end
     return VO
@@ -461,6 +462,24 @@ local builtin = {}
 for _, locale in ipairs(VO.Language.LOCALES) do table.insert(builtin, locale.code) end
 Expect("the built-in list is the registry's", table.concat(builtin, " "),
     "enUS deDE esES esMX frFR ptBR ruRU koKR zhCN zhTW")
+
+---------------------------------------------------------------- the Text Language's voice pack, not playing
+-- Polish chosen for the words and English for the voice: the English recording plays, captioned in
+-- the Polish pack's words for the line, which beat a text pack's.
+do
+    local VO = Install({ { folder = "SpokenQuestsAudio", lines = { ["101-accept"] = 2 } },
+        { folder = "SpokenQuestsAudio_plPL", language = "plPL", lines = { ["101-accept"] = 2 },
+            texts = { ["101-accept"] = "Słowa polskiego głosu." } } })
+    _G.SpokenEnv.Addon.db.profile.Language.Voice = "enUS"
+    H.ReadText("plPL")
+    _G.Spoken:RegisterText("plPL", "quests", { lines = { ["q:101:accept"] = "Słowa pakietu tekstu." } })
+    local folder, soundData = Resolve(VO, 101)
+    Expect("Text Language Polish, voice English: the English recording plays", folder, "SpokenQuestsAudio")
+    Expect("...captioned in the Polish voice pack's words for the line, before a text pack's",
+        VO.DataModules:TextPackText(soundData), "Słowa polskiego głosu.")
+    H.ReadText(nil)
+    _G.SpokenEnv.Addon.db.profile.Language.Voice = nil
+end
 
 stub.SetLocale("enUS")
 stub.ResetAddOns()

@@ -6,11 +6,12 @@ import "server-only";
 
 import { query } from "@/lib/db";
 import { BASE_LANG, type Lang } from "@/lib/lang";
-import { catalogue, type BookPage } from "@/lib/readables/catalogue";
+import { baseCatalogue, catalogue, type BookPage } from "@/lib/readables/catalogue";
 import { ownerEntityKind, type OwnerKind } from "@/lib/readables/filters";
 import { restoreBookText, retireBookText, saveBookText } from "@/lib/readables/text";
 
 import { catalogueReads, nameVersionOf, nameVersions } from "./catalogue-page";
+import { saveNarratedOverride } from "./narrated-override";
 import type { NameTarget, SectionApi, TextItem } from "./types";
 
 function targetOf(page: Pick<BookPage, "ownerKind" | "ownerIds">): NameTarget | null {
@@ -32,6 +33,7 @@ async function itemsOf(lang: Lang, pages: BookPage[]): Promise<TextItem[]> {
     return {
       id: page.id,
       text: translated ? page.text : null,
+      override: page.override?.text ?? null,
       version: translated ? (version.get(page.id) ?? null) : null,
       name: page.missing?.title ? null : page.title,
       nameVersion: nameVersionOf(names, targetOf(page)),
@@ -40,6 +42,14 @@ async function itemsOf(lang: Lang, pages: BookPage[]): Promise<TextItem[]> {
       group: { bookId: page.bookId, pageNumber: page.pageNumber, pageCount: page.pageCount },
     };
   });
+}
+
+async function versionOf(lang: Lang, id: string): Promise<number | null> {
+  const [row] = await query<{ version: number }>(
+    `select "version" from "book_line" where "lang" = $1 and "isCurrent" and "lineId" = $2`,
+    [lang, id],
+  );
+  return row?.version ?? null;
 }
 
 export const readables: SectionApi = {
@@ -52,6 +62,12 @@ export const readables: SectionApi = {
     return { version: saved.version, lines: [id], wrote: saved.wrote };
   },
 
+  async saveOverride(args) {
+    const page = (await baseCatalogue(args.lang)).find((p) => p.id === args.id);
+    const original = page && !page.missing?.text ? page.text : null;
+    return saveNarratedOverride("readables", args, original, await versionOf(args.lang, args.id));
+  },
+
   async nameTarget(_lang, id) {
     const [row] = await query<{ ownerKind: OwnerKind | null; ownerIds: number[] | null }>(
       `select "ownerKind", "ownerIds" from "book_page" where "lineId" = $1`,
@@ -60,13 +76,7 @@ export const readables: SectionApi = {
     return row ? targetOf({ ownerKind: row.ownerKind, ownerIds: row.ownerIds ?? [] }) : null;
   },
 
-  async version(lang, id) {
-    const [row] = await query<{ version: number }>(
-      `select "version" from "book_line" where "lang" = $1 and "isCurrent" and "lineId" = $2`,
-      [lang, id],
-    );
-    return row?.version ?? null;
-  },
+  version: versionOf,
 
   restore: (lang, id, _variant, version, by) => restoreBookText(id, version, lang, by),
 

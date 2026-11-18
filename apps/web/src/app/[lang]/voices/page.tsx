@@ -42,28 +42,41 @@ export default async function Page({
   if (!session || !canViewVoices(viewer, lang)) notFound();
   const userId = session.user.id;
 
+  // The viewer's own account, since the generator resolves voices by name against the key
+  // generating: this is the roster their lines would be spoken from. The page's language's
+  // clones only -- a slot filled in English is empty in German until German clips are cloned.
+  // Started first and never awaited here: the page draws at once and the roster streams in
+  // after it, so an ElevenLabs that is slow or down costs the ElevenLabs parts of the page,
+  // not the page. Without the subscription, which VoicesTabs asks for once the page is up.
+  // A key row that will not open reads as none; /profile says which of the two it was.
+  const account = readApiKey(userId)
+    .catch(() => null)
+    .then((key) => (key ? generationRoster({ apiKey: key }, lang) : null))
+    .then((roster) => {
+      if (!roster) return null;
+      const readable = !(roster.error && roster.voiceIds.size === 0);
+      return {
+        models: readable
+          ? roster.models.map((model) => ({ id: model.id, name: model.name }))
+          : null,
+        existing: readable ? [...roster.voiceIds.keys()] : null,
+        error: roster.error,
+      };
+    });
+
   // The statuses, never the keys: sent to a client component as props.
-  const [all, elevenStatus, fishStatus, preference, elevenKey, settings, references] =
+  const [all, elevenStatus, fishStatus, preference, settings, references] =
     await Promise.all([
       slots(lang),
       apiKeyStatus(userId),
       apiKeyStatus(userId, "fish"),
       readPreference(userId, lang),
-      // A row that will not open reads as none; /profile says which of the two it was.
-      readApiKey(userId).catch(() => null),
       // The accent tags: the voices are everyone's, but how each language speaks them is its own.
       readSettings(lang),
       // Not the account's: a fish.audio reference is a row here, the same for every key.
       listReferences(lang),
     ]);
 
-  // The viewer's own account, since the generator resolves voices by name against the key
-  // generating: this is the roster their lines would be spoken from. The page's language's
-  // clones only -- a slot filled in English is empty in German until German clips are cloned.
-  // Without the subscription, which is the slow one of ElevenLabs' answers: VoicesTabs asks
-  // for the slot count once the page is up.
-  const account = elevenKey ? await generationRoster({ apiKey: elevenKey }, lang) : null;
-  const readable = account !== null && !(account.error && account.voiceIds.size === 0);
 
   // One readdir per slot, so the roster arrives with its clip counts already filled in
   // rather than each row fetching its own once expanded.
@@ -95,9 +108,7 @@ export default async function Page({
           active={preference.provider}
           keys={{ elevenlabs: elevenStatus !== null, fish: fishStatus !== null }}
           settings={{ elevenlabs: preference.elevenlabs, fish: preference.fish }}
-          elevenLabsModels={
-            readable ? account.models.map((model) => ({ id: model.id, name: model.name })) : null
-          }
+          account={account}
           fishModels={FISH_MODELS.map((model) => ({
             id: model.id,
             label: model.label,
@@ -114,8 +125,6 @@ export default async function Page({
           seedSlots={seedSlots}
           initialReferences={Object.fromEntries(references)}
           raceTags={settings.config.raceTags}
-          existing={readable ? [...account.voiceIds.keys()] : null}
-          accountError={account?.error ?? null}
           manager={canManageVoices(viewer, lang)}
           directs={can(viewer, "configure", lang)}
         />

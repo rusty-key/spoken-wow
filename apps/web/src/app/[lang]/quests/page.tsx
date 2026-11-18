@@ -5,14 +5,24 @@ import Explorer from "@/components/Explorer";
 import { facets } from "@/lib/facets";
 import { pageLang } from "@/lib/lang-server";
 import { Contained } from "@/components/Width";
+import { viewKey } from "@/lib/teams/view";
+import { asViewed, teamView } from "@/lib/teams/viewing";
 
 export const metadata: Metadata = { title: "Quests · Spoken" };
 
-export default async function Page({ params }: { params: Promise<{ lang: string }> }) {
+export default async function Page({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ lang: string }>;
+  searchParams: Promise<{ team?: string | string[] }>;
+}) {
   const lang = await pageLang(params);
-  // Read here rather than fetched: the filter options are derived from a corpus that is
-  // committed and does not change while the server runs, so a round trip for them would buy
-  // nothing but an empty dropdown on first paint.
+  // An unknown team slug falls back to the default team.
+  const { team } = await searchParams;
+  const view = await teamView(lang, typeof team === "string" ? team : null);
+  // Read here rather than fetched, so the filters are there on first paint; as the viewed team,
+  // since its roster names the voices that can match.
   return (
     <main className="pt-6 pb-36">
       <Contained>
@@ -25,7 +35,7 @@ export default async function Page({ params }: { params: Promise<{ lang: string 
       </Contained>
       {/* Outside the column: the explorer places its own search (capped) and table (wide). */}
       <Suspense>
-        <Explorer facets={await facets(lang)} />
+        <Explorer key={viewKey(view)} facets={await asViewed(lang, view.viewed, () => facets(lang))} {...view} />
       </Suspense>
     </main>
   );

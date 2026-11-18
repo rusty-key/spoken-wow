@@ -4,7 +4,7 @@ release: quests-audio-gossip-ruRU
 section: quests
 lang: ruRU
 pack: gossip
-version: 0.0.3
+version: 0.0.4
 github: false
 slug: spoken-russian-audio-gossip
 name: Spoken Russian Audio: Gossip

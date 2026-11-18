@@ -10,9 +10,8 @@ import { englishFolder } from "../lib/packs.mjs";
 // Whatever a section does differently: its English folder, its languages' badged icons, and the
 // .toc lines naming a pack's tier and language, which its Data/Sounds.lua reads back.
 const SECTIONS = {
-  // English's page is named for the CurseForge project, which also carries the bosses; this pack does not.
-  places: { englishTitle: "Spoken Audio: Places", icon: (lang) => `pipelines/places/assets/spoken-zones-${lang}.tga`, tocPrefix: "X-SpokenPlaces" },
-  bosses: { icon: null, tocPrefix: "X-SpokenBosses" },
+  places: { icon: (lang) => `pipelines/places/assets/spoken-zones-${lang}.tga`, tocPrefix: "X-SpokenPlaces" },
+  bosses: { icon: (lang) => `pipelines/bosses/assets/spoken-bosses-${lang}.tga`, tocPrefix: "X-SpokenBosses" },
   readables: { icon: (lang) => `pipelines/readables/assets/spoken-books-${lang}.tga`, tocPrefix: null },
 };
 
@@ -70,7 +69,7 @@ export async function stagePack(section, lang, { root, pack, readme }) {
   const version = pack.version ?? /^## Version:\s*(.+?)\s*$/m.exec(text)?.[1];
   if (!version) throw new Error(`no version for ${folder}`);
   if (!keepsCommittedFolder(section, lang)) {
-    await writeFile(toc, rewriteToc(text, { folder, title: (english && shape.englishTitle) || pack.name, version, lang, tocPrefix: shape.tocPrefix }));
+    await writeFile(toc, rewriteToc(text, { folder, title: pack.name, version, lang, tocPrefix: shape.tocPrefix }));
   }
   return { folder, version };
 }

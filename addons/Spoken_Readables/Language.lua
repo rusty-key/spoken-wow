@@ -78,6 +78,25 @@ function SpokenReadables:GetClientLanguage()
 	return self.BASE_LANGUAGE
 end
 
+--- The language a page's words are read in: Spoken's Text Language, else the client's, as the
+--- game shows the page. The second value is true where the player chose it, which puts it before
+--- the languages the captions tried before there was a choice.
+function SpokenReadables:GetTextLanguage()
+	if Spoken and Spoken.TextLanguage then
+		local code, chosen = Spoken:TextLanguage()
+		if chosen then return code, true end
+	end
+	return self:GetClientLanguage(), false
+end
+
+--- The font file to write `code` (the Text Language by default) in where a page uses `fontObject`,
+--- or nil where none draws it: a text pack's language may need its own.
+function SpokenReadables:FontFor(fontObject, code)
+	code = code or self:GetTextLanguage()
+	if Spoken and Spoken.FontForLanguage then return Spoken:FontForLanguage(fontObject, code, self) end
+	return fontObject and fontObject.GetFont and fontObject:GetFont() or nil
+end
+
 --- The language the player wants to hear, resolved: "auto" becomes the client's.
 function SpokenReadables:GetVoiceLanguage()
 	-- The one choice on Spoken's page for every module, once made; this addon's own until then.

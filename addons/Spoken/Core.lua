@@ -46,6 +46,7 @@ Defaults = {
         },
         -- The voice language and its fallback, for every module at once (Spoken:GetLanguageChoice).
         -- Unset, each module keeps the choice it had before there was one setting for all.
+        -- `Text`, the language the words are read in (Texts.lua), is unset for Auto.
         Language = {},
         Audio = {
             -- A string, because that is what PlaySoundFile takes.
@@ -777,6 +778,9 @@ loader:RegisterEvent("PLAYER_ENTERING_WORLD")
 loader:SetScript("OnEvent", function(_, ev, name)
     if ev == "ADDON_LOADED" and name == AddonFolder then
         Addon:InitDB()
+        -- Before the modules load, which read the words and strings as their own files run.
+        Texts:Load()
+        Interface:Load()
     elseif ev == "PLAYER_ENTERING_WORLD" then
         Addon:StopWhereNotRead()
     elseif ev == "PLAYER_LOGIN" then

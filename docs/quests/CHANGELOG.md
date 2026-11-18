@@ -8,8 +8,143 @@ carries that version. The heading says which.
 
 ## Unreleased
 
+- **The quest packs load faster after login.** Alliance, Horde and Shared no longer carry the
+  gossip tables, about 4 MB of Lua each that only the Gossip pack's lines use.
+  *([Merryfett](https://github.com/Merryfett))*
 - **Paragraph breaks show as breaks again** in subtitles and the Compendium, not as `\n\n`
   in the middle of the text. Packs built since 2026-11-13 had them.
+
+## 0.0.3 — quests-audio-alliance-koKR — 2026-11-15
+
+- **First release on CurseForge.** The Korean quests now come in four packs, like English's:
+  Alliance, Horde, Shared and Gossip. This one holds the quests only the Alliance can take.
+  Install it beside Spoken Korean Audio: Quests - Shared, which no longer carries them.
+- **Experimental**, numbered 0.0.x so it does not read as finished: expect lines to be
+  re-recorded, and report the ones that sound wrong.
+
+## 0.0.3 — quests-audio-horde-koKR — 2026-11-15
+
+- **First release on CurseForge.** The Korean quests now come in four packs, like English's:
+  Alliance, Horde, Shared and Gossip. This one holds the quests only the Horde can take.
+  Install it beside Spoken Korean Audio: Quests - Shared, which no longer carries them.
+- **Experimental**, numbered 0.0.x so it does not read as finished: expect lines to be
+  re-recorded, and report the ones that sound wrong.
+
+## 0.0.3 — quests-audio-shared-koKR — 2026-11-15
+
+- **This pack now holds only the quests both factions can take**, and is called Spoken Korean Audio:
+  Quests - Shared. The Alliance-only and Horde-only quests moved to Spoken Korean Audio: Quests - Alliance
+  and Spoken Korean Audio: Quests - Horde. Install your side's pack beside this one, or those quests go
+  silent.
+
+## 0.0.3 — quests-audio-gossip-koKR — 2026-11-15
+
+- Rebuilt beside the new Alliance and Horde packs. Install over the previous version.
+
+## 0.0.3 — quests-audio-koKR — 2026-11-15
+
+- The download now holds four folders, Alliance, Horde, Shared and Gossip, the same ones
+  CurseForge installs, in place of the single `SpokenQuestsAudio_koKR`. Remove that folder
+  after installing this one.
+
+## 0.0.4 — quests-audio-alliance-ruRU — 2026-11-15
+
+- **First release on CurseForge.** The Russian quests now come in four packs, like English's:
+  Alliance, Horde, Shared and Gossip. This one holds the quests only the Alliance can take.
+  Install it beside Spoken Russian Audio: Quests - Shared, which no longer carries them.
+- **Experimental**, numbered 0.0.x so it does not read as finished: expect lines to be
+  re-recorded, and report the ones that sound wrong.
+
+## 0.0.4 — quests-audio-horde-ruRU — 2026-11-15
+
+- **First release on CurseForge.** The Russian quests now come in four packs, like English's:
+  Alliance, Horde, Shared and Gossip. This one holds the quests only the Horde can take.
+  Install it beside Spoken Russian Audio: Quests - Shared, which no longer carries them.
+- **Experimental**, numbered 0.0.x so it does not read as finished: expect lines to be
+  re-recorded, and report the ones that sound wrong.
+
+## 0.0.4 — quests-audio-shared-ruRU — 2026-11-15
+
+- **This pack now holds only the quests both factions can take**, and is called Spoken Russian Audio:
+  Quests - Shared. The Alliance-only and Horde-only quests moved to Spoken Russian Audio: Quests - Alliance
+  and Spoken Russian Audio: Quests - Horde. Install your side's pack beside this one, or those quests go
+  silent.
+
+## 0.0.4 — quests-audio-gossip-ruRU — 2026-11-15
+
+- Rebuilt beside the new Alliance and Horde packs. Install over the previous version.
+
+## 0.0.4 — quests-audio-ruRU — 2026-11-15
+
+- The download now holds four folders, Alliance, Horde, Shared and Gossip, the same ones
+  CurseForge installs, in place of the single `SpokenQuestsAudio_ruRU`. Remove that folder
+  after installing this one.
+
+## 0.0.2 — quests-audio-alliance-zhCN — 2026-11-15
+
+- **First release on CurseForge.** The Chinese (Simplified) quests now come in four packs, like English's:
+  Alliance, Horde, Shared and Gossip. This one holds the quests only the Alliance can take.
+  Install it beside Spoken Chinese (Simplified) Audio: Quests - Shared, which no longer carries them.
+- **Experimental**, numbered 0.0.x so it does not read as finished: expect lines to be
+  re-recorded, and report the ones that sound wrong.
+
+## 0.0.2 — quests-audio-horde-zhCN — 2026-11-15
+
+- **First release on CurseForge.** The Chinese (Simplified) quests now come in four packs, like English's:
+  Alliance, Horde, Shared and Gossip. This one holds the quests only the Horde can take.
+  Install it beside Spoken Chinese (Simplified) Audio: Quests - Shared, which no longer carries them.
+- **Experimental**, numbered 0.0.x so it does not read as finished: expect lines to be
+  re-recorded, and report the ones that sound wrong.
+
+## 0.0.2 — quests-audio-shared-zhCN — 2026-11-15
+
+- **This pack now holds only the quests both factions can take**, and is called Spoken Chinese (Simplified) Audio:
+  Quests - Shared. The Alliance-only and Horde-only quests moved to Spoken Chinese (Simplified) Audio: Quests - Alliance
+  and Spoken Chinese (Simplified) Audio: Quests - Horde. Install your side's pack beside this one, or those quests go
+  silent.
+
+## 0.0.2 — quests-audio-gossip-zhCN — 2026-11-15
+
+- Rebuilt beside the new Alliance and Horde packs. Install over the previous version.
+
+## 0.0.2 — quests-audio-zhCN — 2026-11-15
+
+- The download now holds four folders, Alliance, Horde, Shared and Gossip, the same ones
+  CurseForge installs, in place of the single `SpokenQuestsAudio_zhCN`. Remove that folder
+  after installing this one.
+
+## 0.0.2 — quests-audio-alliance-zhTW — 2026-11-15
+
+- **First release on CurseForge.** The Chinese (Traditional) quests now come in four packs, like English's:
+  Alliance, Horde, Shared and Gossip. This one holds the quests only the Alliance can take.
+  Install it beside Spoken Chinese (Traditional) Audio: Quests - Shared, which no longer carries them.
+- **Experimental**, numbered 0.0.x so it does not read as finished: expect lines to be
+  re-recorded, and report the ones that sound wrong.
+
+## 0.0.2 — quests-audio-horde-zhTW — 2026-11-15
+
+- **First release on CurseForge.** The Chinese (Traditional) quests now come in four packs, like English's:
+  Alliance, Horde, Shared and Gossip. This one holds the quests only the Horde can take.
+  Install it beside Spoken Chinese (Traditional) Audio: Quests - Shared, which no longer carries them.
+- **Experimental**, numbered 0.0.x so it does not read as finished: expect lines to be
+  re-recorded, and report the ones that sound wrong.
+
+## 0.0.2 — quests-audio-shared-zhTW — 2026-11-15
+
+- **This pack now holds only the quests both factions can take**, and is called Spoken Chinese (Traditional) Audio:
+  Quests - Shared. The Alliance-only and Horde-only quests moved to Spoken Chinese (Traditional) Audio: Quests - Alliance
+  and Spoken Chinese (Traditional) Audio: Quests - Horde. Install your side's pack beside this one, or those quests go
+  silent.
+
+## 0.0.2 — quests-audio-gossip-zhTW — 2026-11-15
+
+- Rebuilt beside the new Alliance and Horde packs. Install over the previous version.
+
+## 0.0.2 — quests-audio-zhTW — 2026-11-15
+
+- The download now holds four folders, Alliance, Horde, Shared and Gossip, the same ones
+  CurseForge installs, in place of the single `SpokenQuestsAudio_zhTW`. Remove that folder
+  after installing this one.
 
 ## 2.5.0 — Spoken Quests Audio — 2026-10-31
 

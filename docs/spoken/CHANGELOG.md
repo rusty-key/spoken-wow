@@ -7,9 +7,33 @@ Spoken Player until 3.0.0, when it became Spoken and took its modules into one d
 - For feature addons: a `CAPTION_WORD` callback fires as the voice reaches a word of the line,
   and once more when it ends, is stopped or paused, so another window can follow the words without
   timing them itself. *([Torchlite-bit](https://github.com/Torchlite-bit))*
-- For feature addons: `Spoken:GetCaption()` names the dungeon's or boss's story a line tells in
-  `story`, as `{ kind, id }` with the ids `Spoken:PlayStory` takes, so an addon knows the line is
-  the story it played without comparing text. *([Torchlite-bit](https://github.com/Torchlite-bit))*
+- For feature addons: `Spoken:GetCaption()` names the story `Spoken:PlayStory` played in `story`,
+  as the `{ kind, id }` it was asked for, so an addon knows the line is its own without comparing
+  text. *([Torchlite-bit](https://github.com/Torchlite-bit))*
+- **Bosses has its own icon in the AddOns list.** It showed Spoken's mark; it now shows a dragon's
+  head, like Quests, Places and Readables each show their own. *([Nucabe](https://github.com/Nucabe))*
+
+## 3.10.0 — 2026-11-17
+
+- **Interface Language.** A new setting in the Language section of Spoken's page picks the language
+  of Spoken's own windows, menus and settings, apart from the game's: any language Spoken is
+  translated into, or one an interface pack brings, such as Polish, made by its translators
+  ([how to make one](https://github.com/rusty-key/spoken-wow/blob/master/docs/contributors/INTERFACE-PACKS.md)).
+  A string the pack has not translated yet shows in the game's language.
+  *([rusty-key](https://github.com/rusty-key))*
+- **Italian voices for places, readables and bosses are offered.** With Italian as the Voice
+  Language, those pages now link to the Italian packs on GitHub.
+  *([rusty-key](https://github.com/rusty-key))*
+- **Text Language, for everything Spoken shows.** A new setting in the Language section of Spoken's
+  page picks the language of the words in captions, subtitles and Azeroth's Compendium, apart from
+  the voice: quests, gossip, readables, bosses and places. It replaces Text Language on the Places
+  page, and a language chosen there carries over. Languages no game client runs in, such as Polish,
+  can now come as text packs: addons of words with no voice, made by their translators
+  ([how to make one](https://github.com/rusty-key/spoken-wow/blob/master/docs/contributors/TEXT-PACKS.md)).
+  *([rusty-key](https://github.com/rusty-key))*
+- **Item-started quests show their item.** The Compendium and the Small Window now show the real
+  icon of the item that starts a quest, even after the item has left your bags, rather than a
+  posted notice. *([anon1231823](https://github.com/anon1231823))*
 
 ## 3.9.0 — 2026-11-14
 
