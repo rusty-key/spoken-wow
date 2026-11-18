@@ -27,11 +27,21 @@ const TTL_MS = 60_000;
 /** How old the memo must be for a miss to read the mapping again: at most once a second. */
 const MISS_REFRESH_MS = 1_000;
 
-type Mapping = { owners: Map<Lang, TeamId>; second: Set<Lang> };
+/** A team that voices a language, as the memo keeps it. */
+export type TeamRef = { id: TeamId; slug: string; name: string };
+
+type Mapping = {
+  owners: Map<Lang, TeamId>;
+  /** Each language's second teams, by name. */
+  seconds: Map<Lang, TeamId[]>;
+  /** The languages in `seconds`, built once per read since the overlay asks on every call. */
+  second: Set<Lang>;
+  teams: Map<TeamId, TeamRef>;
+};
 
 let cached: { at: number; mapping: Promise<Mapping> } | null = null;
 
-/** Drops the memo. For a write that changes the mapping, and for tests. */
+/** Drops the memo. For a write that changes the mapping or a team's name, and for tests. */
 export function forgetTeams(): void {
   cached = null;
 }
@@ -39,16 +49,20 @@ export function forgetTeams(): void {
 function mapping(): Promise<Mapping> {
   listenInServer("spoken_team_language", forgetTeams);
   if (cached && Date.now() - cached.at < TTL_MS) return cached.mapping;
-  const read = query<{ lang: Lang; teamId: TeamId; privileged: boolean }>(
-    `select "lang", "teamId", "privileged" from "team_language"`,
+  const read = query<{ lang: Lang; teamId: TeamId; privileged: boolean; slug: string; name: string }>(
+    `select tl."lang", tl."teamId", tl."privileged", t."slug", t."name"
+       from "team_language" tl join "team" t on t."id" = tl."teamId"
+      order by t."name", t."slug"`,
   ).then((rows) => {
     const owners = new Map<Lang, TeamId>();
-    const second = new Set<Lang>();
+    const seconds = new Map<Lang, TeamId[]>();
+    const teams = new Map<TeamId, TeamRef>();
     for (const row of rows) {
+      teams.set(row.teamId, { id: row.teamId, slug: row.slug, name: row.name });
       if (row.privileged) owners.set(row.lang, row.teamId);
-      else second.add(row.lang);
+      else seconds.set(row.lang, [...(seconds.get(row.lang) ?? []), row.teamId]);
     }
-    return { owners, second };
+    return { owners, seconds, second: new Set(seconds.keys()), teams };
   });
   cached = { at: Date.now(), mapping: read };
   // A failed read must not be served for the next minute.
@@ -66,6 +80,14 @@ export async function teamLangs(): Promise<Map<Lang, TeamId>> {
 /** The languages that have a second team besides the privileged one. */
 export async function secondTeamLangs(): Promise<Set<Lang>> {
   return (await mapping()).second;
+}
+
+/** The teams that voice `lang`, privileged first, then by name. Empty when nobody owns it. */
+export async function teamsOf(lang: Lang): Promise<TeamRef[]> {
+  const privileged = await privilegedOf(lang);
+  if (!privileged) return [];
+  const { seconds, teams } = await mapping();
+  return [privileged, ...(seconds.get(lang) ?? [])].flatMap((id) => teams.get(id) ?? []);
 }
 
 /**
@@ -219,6 +241,26 @@ export async function byTeam(langs: readonly Lang[]): Promise<Map<TeamId, Lang[]
     const group = grouped.get(team);
     if (group) group.push(lang);
     else grouped.set(team, [lang]);
+  }
+  return grouped;
+}
+
+/**
+ * These languages grouped under every team that voices each: its privileged team and every
+ * second team. For work that reaches all of a language's teams, whoever is acting.
+ */
+export async function everyTeamOf(langs: readonly Lang[]): Promise<Map<TeamId, Lang[]>> {
+  const owners = await privilegedOwners(langs);
+  const { seconds } = await mapping();
+  const grouped = new Map<TeamId, Lang[]>();
+  for (const lang of langs) {
+    const privileged = owners.get(lang);
+    if (!privileged) continue;
+    for (const team of [privileged, ...(seconds.get(lang) ?? [])]) {
+      const group = grouped.get(team);
+      if (group) group.push(lang);
+      else grouped.set(team, [lang]);
+    }
   }
   return grouped;
 }

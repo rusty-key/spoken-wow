@@ -161,6 +161,8 @@ export async function renameTeam(team: TeamId, name: string, actorId: string): P
     return rows[0]?.slug;
   });
   if (!slug) throw new TeamError("No such team.");
+  // The team memo holds names; the other worker's copy keeps the old one until it expires.
+  forgetTeams();
   await recordActivity({ kind: "team.renamed", lang: null, actorId, subject: slug, detail: { name } });
 }
 
