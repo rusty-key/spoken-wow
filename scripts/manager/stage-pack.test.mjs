@@ -70,6 +70,21 @@ test("a language's pack takes its clips, lookup, icon and name from its own", as
   assert.equal(existsSync(join(root, "dist/SpokenPlacesAudio_frFR/.DS_Store")), false);
 });
 
+test("a bosses language pack wears its badged icon", async () => {
+  const root = mkdtempSync(join(tmpdir(), "stage-"));
+  tree(join(root, "addons/SpokenBossesAudio"), {
+    "SpokenBossesAudio.toc": TOC.replaceAll("X-SpokenPlaces", "X-SpokenBosses"),
+    "Textures/AddonIcon.tga": "english icon",
+    "Data/Sounds.lua": "english lookup",
+    "Sounds/1.mp3": "english clip",
+  });
+  tree(join(root, "build/bosses/deDE"), { "Sounds/1.mp3": "german clip", "Data/Sounds.lua": "german lookup" });
+  tree(root, { "pipelines/bosses/assets/spoken-bosses-deDE.tga": "german icon" });
+  const pack = { folder: "SpokenBossesAudio_deDE", name: "Spoken German Audio: Bosses", version: "1.0.0" };
+  await stagePack("bosses", "deDE", { root, pack });
+  assert.equal(files(root)("SpokenBossesAudio_deDE/Textures/AddonIcon.tga"), "german icon");
+});
+
 test("English's version is its .toc's, and a rebuild leaves nothing of the last one", async () => {
   const root = mkdtempSync(join(tmpdir(), "stage-"));
   tree(join(root, "addons/SpokenPlacesAudio"), source);

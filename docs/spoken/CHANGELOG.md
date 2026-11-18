@@ -2,6 +2,11 @@
 
 Spoken Player until 3.0.0, when it became Spoken and took its modules into one download.
 
+## Unreleased
+
+- **Bosses has its own icon in the AddOns list.** It showed Spoken's mark; it now shows a dragon's
+  head, like Quests, Places and Readables each show their own. *([Nucabe](https://github.com/Nucabe))*
+
 ## 3.10.0 — 2026-11-17
 
 - **Interface Language.** A new setting in the Language section of Spoken's page picks the language

@@ -25,7 +25,7 @@ LUA ?= $(shell command -v luajit || command -v lua5.1)
         descriptions descriptions-check descriptions-published \
         character-models dungeons bosses-extract bosses-export bosses-check bosses-sync bosses-check-synced \
         bosses-pull-live bosses-sounds bosses-lookup bosses-validate-audio bosses-package-audio \
-        bosses-full-release bosses-upload-dry bosses-upload \
+        bosses-full-release bosses-upload-dry bosses-upload bosses-icon \
         audio-release audio-release-dry \
         manager-publish manager-publish-dry manager-release manager-gc manager-gc-dry
 
@@ -313,6 +313,16 @@ bosses-upload-dry: ## Show what bosses-full-release would upload from dist/ (LOC
 bosses-upload: ## Upload the bosses pack in dist/ as bosses-full-release does, building nothing (LOCALE=xx)
 	@./scripts/places/release.sh --section=bosses --lang=$(BOSSES_LOCALE) audio
 	@./scripts/audio-github-release.sh bosses $(BOSSES_LOCALE)
+
+# The in-game addon list reads a TGA or BLP, never the PNGs in pipelines/bosses/assets/, so the
+# icon is converted and committed, as places' and readables' are. Both addons carry the same
+# icon: they install as a pair. A language's pack wears it with its badge: package-audio.sh and
+# the Manager's stage-pack.mjs copy spoken-bosses-<locale>.tga over it.
+bosses-icon: ## Rebuild both bosses addons' AddonIcon.tga and the languages' badged TGAs from pipelines/bosses/assets (needs ffmpeg)
+	@python3 pipelines/places/tools/make-icon.py pipelines/bosses/assets/spoken-bosses-512.png addons/Spoken_Bosses/Textures/AddonIcon.tga
+	@cp addons/Spoken_Bosses/Textures/AddonIcon.tga addons/SpokenBossesAudio/Textures/AddonIcon.tga
+	@echo "==> copied to addons/SpokenBossesAudio/Textures/AddonIcon.tga"
+	@for png in pipelines/bosses/assets/spoken-bosses-??[A-Z][A-Z]-512.png; do python3 pipelines/places/tools/make-icon.py "$$png" "$${png%-512.png}.tga"; done
 
 character-models: ## Print how to regenerate apps/web/src/lib/npc/character-models.json
 	@sed -n '2,10p' scripts/character-models.mjs | sed -e 's/^\/\/ //' -e 's/^\/\/$$//'
