@@ -48,6 +48,11 @@
   margin: 0 auto;
   padding: 0 24px;
 }
+@media (max-width: 720px) {
+  .bn-wrap {
+    padding: 0 16px;
+  }
+}
 
 /* ---------- Buttons ---------- */
 

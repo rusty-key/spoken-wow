@@ -1275,9 +1275,6 @@ html:has(.bn) {
 /* ---------- Phone ---------- */
 
 @media (max-width: 720px) {
-  .bn-wrap {
-    padding: 0 16px;
-  }
   .bn-section {
     padding: 64px 0;
   }

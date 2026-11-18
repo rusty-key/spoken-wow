@@ -159,12 +159,22 @@
 }
 
 /* NARROW must match UserMenu.tsx: the row of links with the Backstage tag needs about 1150px. */
-@media (max-width: 1199px) {
+@media (width < 1200px) {
   .sn .bn-links,
   .sn-wide {
     display: none;
   }
   .sn-burger {
     display: grid;
+  }
+}
+
+/* The narrowest phones (320px) fit the wordmark, the tag and the burger only with tighter gaps. */
+@media (width < 420px) {
+  .sn-row {
+    gap: 12px;
+  }
+  .sn-row .bn-brand + .sn-area {
+    margin-left: -4px;
   }
 }
