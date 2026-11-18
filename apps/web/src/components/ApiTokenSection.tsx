@@ -77,8 +77,8 @@ export default function ApiTokenSection({ langs, initial }: { langs: TokenLang[]
         in the token's language, it writes the original text; if not, it writes only your team's
         overrides. A token stops working at its expiry, when revoked, or when you hold neither the
         text grant nor the right to regenerate in its language. A generate token also queues audio,
-        which spends your own ElevenLabs or fish.audio key, and stops working when you lose the
-        right to regenerate in its language.
+        which spends your own ElevenLabs or fish.audio key, and can no longer queue audio once you
+        lose the right to regenerate in its language.
       </p>
 
       {error && (

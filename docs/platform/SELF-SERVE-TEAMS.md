@@ -173,7 +173,10 @@ site. The rest of phase 2 is distribution and stays out.
   per request by a top-level `layer`. With none, a text maintainer's token writes the original, as
   it always did, and anyone else's writes the overrides; a maintainer who holds `regenerate` sends
   `"layer": "override"` for theirs. `"layer": "original"` without `text` is refused with 403.
-  Undoing a run restores an override in the team that wrote it. *(My call, set by the controller.)*
+  Undoing a run restores an override in the team that wrote it, and only for a write token whose
+  owner holds `regenerate` now and acts as that team; otherwise the undo reports the override as
+  skipped (`not_allowed`) and leaves it live. A site owner may undo any team's override.
+  *(My call, set by the controller.)*
 - **Releases and gender splits.** A second team cannot release yet, and cannot split a line by the
   reader's gender, since that rewrites the original every team voices. A plain override is written
   into its own team's layer.

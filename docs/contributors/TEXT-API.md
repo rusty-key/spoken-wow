@@ -16,8 +16,11 @@ an expiry. What a write changes depends on what you hold (see *Original or overr
 token queue audio too; that needs regenerate, spends your own ElevenLabs or fish.audio key, and
 stops working when you lose regenerate. The token is shown once, so copy it then.
 
-A token stops working when it expires, when you revoke it, or when you lose what it needs in its
-language: text or regenerate for a read or write token, regenerate for a generate token. It covers one language. All requests send it as a header:
+A token stops working when it expires or when you revoke it. It covers one language, and each of
+its scopes follows your grants there now: reading needs text or regenerate, writing the original
+needs text, and writing overrides or queuing audio needs regenerate. Losing a grant takes away only
+what it backed: a write and generate token whose owner keeps text but loses regenerate still writes
+the original, and no longer queues audio. All requests send it as a header:
 
 ```sh
 curl -H "Authorization: Bearer $SPOKEN_TOKEN" https://spoken.quest/api/v1
@@ -131,11 +134,12 @@ language, answers 404 as an unknown id does.
 
 ## Writing
 
-Change one item:
+Change one item's original text and name, with a text maintainer's write token (an audio team
+writes overrides instead, see *Original or override*):
 
 ```sh
 curl -X PATCH -H "Authorization: Bearer $SPOKEN_TOKEN" -H "Content-Type: application/json" \
-  -d '{"text": "…", "name": "…", "note": "typo"}' \
+  -d '{"layer": "original", "text": "…", "name": "…", "note": "typo"}' \
   "https://spoken.quest/api/v1/places/z:1411"
 ```
 
@@ -143,7 +147,7 @@ Change up to 1,000 with one request:
 
 ```sh
 curl -X PATCH -H "Authorization: Bearer $SPOKEN_TOKEN" -H "Content-Type: application/json" \
-  -d '{"note": "first pass", "items": [{"id": "z:1411", "text": "…"}, {"id": "z:1412", "name": "…"}]}' \
+  -d '{"layer": "original", "note": "first pass", "items": [{"id": "z:1411", "text": "…"}, {"id": "z:1412", "name": "…"}]}' \
   "https://spoken.quest/api/v1/places"
 ```
 

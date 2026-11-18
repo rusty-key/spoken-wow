@@ -89,7 +89,7 @@ exactly this, so it stays a site-level grant.
 - Receive text reports (see *Contributions and reports*).
 - Independent of team membership: a maintainer sees the text queue whatever team they work in, and
   text reports and contributions follow the `text` grant.
-- A maintainer's API token writes the original text by default, whatever team they work in, and
+- A maintainer's write-enabled API token writes the original text by default, whatever team they work in, and
   their team's overrides with `"layer": "override"` when they also hold `regenerate`.
 - Appointed by site owners only. A team admin cannot appoint one, and `admin` does not imply this
   role: migration 0092 appointed everyone who held `admin`, so nobody lost anything, and a new team
