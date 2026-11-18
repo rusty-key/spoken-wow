@@ -35,21 +35,28 @@ const TITLES: Partial<Record<AdminTab, string>> = { teams: "Teams", packs: "Comm
  * administers, and the two differ for anybody who looks after more than one language - so the
  * language acted on is the title, and a team admin is told other languages are other teams'.
  *
- * `lang` is null for the site admin's user list, which spans every language.
+ * `lang` is null for the site admin's user list, which spans every language. `teamName` is the
+ * team acted as in `lang`, named beside it since a language can have more than one team; null
+ * when nobody owns `lang`. `secondTeams` names the team acted as in each administered language
+ * where it is a second team, so the switch tells it apart from the language's privileged team.
  *
  * `pendingPacks` is the review page's own count, fresher than the one the header was given when
  * the page first loaded; it replaces that one, so the Admin link's badge agrees with it.
  */
 export default function AdminHeader({
   lang,
+  teamName = null,
   administered,
+  secondTeams = {},
   global,
   tab,
   description,
   pendingPacks: fresh,
 }: {
   lang: Lang | null;
+  teamName?: string | null;
   administered: readonly Lang[];
+  secondTeams?: Partial<Record<Lang, string>>;
   global: boolean;
   tab: AdminTab;
   description?: React.ReactNode;
@@ -85,11 +92,26 @@ export default function AdminHeader({
               {lang ?? "every language"}
             </span>
             <h1 className="mt-2 text-2xl font-semibold tracking-tight text-balance">
-              {lang ? `${langName(lang)} team` : (TITLES[tab] ?? "Users")}
+              {!lang ? (
+                (TITLES[tab] ?? "Users")
+              ) : teamName ? (
+                <>
+                  {teamName}
+                  <span className="text-muted-foreground font-normal"> · {langName(lang)}</span>
+                </>
+              ) : (
+                `${langName(lang)} team`
+              )}
             </h1>
             {description && <p className="text-muted-foreground mt-1 max-w-[65ch] text-sm">{description}</p>}
           </div>
-          <LanguageSwitch lang={lang} administered={administered} global={global} tab={tab} />
+          <LanguageSwitch
+            lang={lang}
+            administered={administered}
+            secondTeams={secondTeams}
+            global={global}
+            tab={tab}
+          />
         </div>
         {/* Scrolls rather than wraps on a phone: five tabs and a count are wider than one. */}
         <nav aria-label="Admin" className="mt-5 flex gap-1 overflow-x-auto">
@@ -118,11 +140,13 @@ export default function AdminHeader({
 function LanguageSwitch({
   lang,
   administered,
+  secondTeams,
   global,
   tab,
 }: {
   lang: Lang | null;
   administered: readonly Lang[];
+  secondTeams: Partial<Record<Lang, string>>;
   global: boolean;
   tab: AdminTab;
 }) {
@@ -148,11 +172,14 @@ function LanguageSwitch({
             onClick={() => setOpen(false)}
             aria-current={code === lang ? "page" : undefined}
             className={cn(
-              "hover:bg-muted flex justify-between rounded px-2 py-1.5 text-sm",
+              "hover:bg-muted flex justify-between gap-2 rounded px-2 py-1.5 text-sm",
               code === lang && "text-primary-ink",
             )}
           >
-            {langName(code)}
+            <span>
+              {langName(code)}
+              {secondTeams[code] && <span className="text-muted-foreground"> ({secondTeams[code]})</span>}
+            </span>
             <span className="text-muted-foreground font-mono text-xs">{code}</span>
           </LocaleLink>
         ))}

@@ -10,7 +10,7 @@ import { isAdmin, langsWhere } from "@/lib/permissions";
 import { SECOND_TEAM_RELEASE } from "@/lib/releases/sections";
 import { releaseView } from "@/lib/releases/view";
 import { currentSession } from "@/lib/session";
-import { actsAsSecondTeam } from "@/lib/teams/store";
+import { actsAsSecondTeam, ownerName, secondTeamNames } from "@/lib/teams/store";
 
 export const metadata: Metadata = { title: "Release · Spoken" };
 
@@ -33,7 +33,9 @@ export default async function Page({ searchParams }: { searchParams: Promise<{ l
     <main className="pb-36">
       <AdminHeader
         lang={lang}
+        teamName={await ownerName(lang)}
         administered={administered}
+        secondTeams={await secondTeamNames(administered)}
         global={isAdmin(viewer.role)}
         tab="release"
         description={`Publish ${langName(lang)}'s sound packs to the Manager. A release marks the latest takes and rebuilds the addon files; it takes a while, since it reads production and builds the pack first.`}

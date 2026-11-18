@@ -10,6 +10,7 @@ import { isAdmin } from "@/lib/permissions";
 import { currentSession } from "@/lib/session";
 import { listTeams, liveTakeCounts } from "@/lib/teams/admin";
 import { listRequests } from "@/lib/teams/requests";
+import { secondTeamNames } from "@/lib/teams/store";
 
 export const metadata: Metadata = { title: "Teams · Spoken" };
 
@@ -38,6 +39,7 @@ export default async function Page() {
       <AdminHeader
         lang={null}
         administered={allLangs()}
+        secondTeams={await secondTeamNames(allLangs())}
         global
         tab="teams"
         description="A team owns its languages' takes, voices and settings, and the people who regenerate them. Handing a language over moves all of it, and is refused while one of its jobs is running."

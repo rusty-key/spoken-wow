@@ -10,6 +10,7 @@ import { langName } from "@/lib/lang";
 import { can, isAdmin, langsWhere, type Capability } from "@/lib/permissions";
 import { queuesOf, triages } from "@/lib/reports/reports";
 import { currentSession } from "@/lib/session";
+import { ownerName, secondTeamNames } from "@/lib/teams/store";
 
 export const metadata: Metadata = { title: "Dashboard · Spoken" };
 
@@ -34,7 +35,9 @@ export default async function Page({ searchParams }: { searchParams: Promise<{ l
     <main className="pb-36">
       <AdminHeader
         lang={lang}
+        teamName={await ownerName(lang)}
         administered={administered}
+        secondTeams={await secondTeamNames(administered)}
         global={isAdmin(viewer.role)}
         tab="dashboard"
         description={`What is waiting in ${langName(lang)}, and who on the team can pick it up.`}

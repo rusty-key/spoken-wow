@@ -14,6 +14,7 @@ import { isLang, langName } from "@/lib/lang";
 import { languageStates, textByTeam } from "@/lib/languages/store";
 import { isAdmin, langsWhere } from "@/lib/permissions";
 import { currentSession } from "@/lib/session";
+import { ownerName, secondTeamNames } from "@/lib/teams/store";
 import { listAllTokens } from "@/lib/tokens/store";
 import { userSortOf } from "@/lib/users/sort";
 import { listUsers } from "@/lib/users/store";
@@ -61,7 +62,9 @@ export default async function Page({
       <main className="pb-36">
         <AdminHeader
           lang={team}
+          teamName={await ownerName(team)}
           administered={administered}
+          secondTeams={await secondTeamNames(administered)}
           global={global}
           tab="team"
           description={
@@ -106,6 +109,7 @@ export default async function Page({
       <AdminHeader
         lang={null}
         administered={administered}
+        secondTeams={await secondTeamNames(administered)}
         global
         tab="team"
         description={

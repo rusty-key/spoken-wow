@@ -10,6 +10,7 @@ import { historyByPack, listAll, queueOf } from "@/lib/community/store";
 import { allLangs } from "@/lib/lang";
 import { isAdmin } from "@/lib/permissions";
 import { currentSession } from "@/lib/session";
+import { secondTeamNames } from "@/lib/teams/store";
 import { namesOf } from "@/lib/users/store";
 
 export const metadata: Metadata = { title: "Community packs · Spoken" };
@@ -34,6 +35,7 @@ export default async function Page() {
       <AdminHeader
         lang={null}
         administered={allLangs()}
+        secondTeams={await secondTeamNames(allLangs())}
         global
         tab="packs"
         pendingPacks={pending.length}

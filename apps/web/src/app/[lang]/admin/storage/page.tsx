@@ -8,7 +8,7 @@ import { viewerOf } from "@/lib/grants/store";
 import { isAdmin, langsWhere } from "@/lib/permissions";
 import { currentSession } from "@/lib/session";
 import { storageView } from "@/lib/storage/view";
-import { freshOwners } from "@/lib/teams/store";
+import { freshOwners, ownerName, secondTeamNames } from "@/lib/teams/store";
 
 export const metadata: Metadata = { title: "Storage · Spoken" };
 
@@ -34,7 +34,9 @@ export default async function Page({ searchParams }: { searchParams: Promise<{ l
     <main className="pb-36">
       <AdminHeader
         lang={lang}
+        teamName={await ownerName(lang)}
         administered={administered}
+        secondTeams={await secondTeamNames(administered)}
         global={isAdmin(viewer.role)}
         tab="storage"
         description="Where your team's audio is kept. Connect your own S3-compatible bucket (R2, S3, B2, Wasabi, GCS, MinIO) and send new takes there instead of Spoken's archive."

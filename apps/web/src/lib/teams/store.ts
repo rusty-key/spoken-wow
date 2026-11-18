@@ -173,6 +173,27 @@ export async function scopeKey(lang: Lang): Promise<string> {
   return `${await ownerOrAll(lang)}:${lang}`;
 }
 
+/** The name of the team that owns `lang` for the acting person, as ownerOf; null when nobody owns it. */
+export async function ownerName(lang: Lang): Promise<string | null> {
+  const [team, { teams }] = await Promise.all([ownerOf(lang), mappingFor([lang])]);
+  return (team && teams.get(team)?.name) ?? null;
+}
+
+/**
+ * The names of the teams the acting person works in among `langs`, for only the languages where
+ * that is a second team: the privileged team goes unnamed.
+ */
+export async function secondTeamNames(langs: readonly Lang[]): Promise<Partial<Record<Lang, string>>> {
+  const [acting, { owners, teams }] = await Promise.all([freshOwners(langs), mappingFor(langs)]);
+  return Object.fromEntries(
+    langs.flatMap((lang) => {
+      const team = acting.get(lang);
+      const name = team && team !== owners.get(lang) && teams.get(team)?.name;
+      return name ? [[lang, name]] : [];
+    }),
+  );
+}
+
 export async function teamOf(lang: Lang): Promise<TeamId> {
   const team = await ownerOf(lang);
   if (!team) throw new NoTeamError(lang);
