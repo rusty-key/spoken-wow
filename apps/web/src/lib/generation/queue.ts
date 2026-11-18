@@ -30,7 +30,7 @@ import { recordActivities, type ActivityEvent } from "@/lib/activity/store";
 import { ALL_TEAMS, queryIn, withTeam } from "@/lib/db";
 import { BASE_LANG, type Lang } from "@/lib/lang";
 import type { Source } from "@/lib/sections";
-import { asTeamOf, byTeam, queryAs, teamLangs, type TeamId } from "@/lib/teams/store";
+import { asTeamOf, byTeam, everyTeamOf, queryAs, teamLangs, type TeamId } from "@/lib/teams/store";
 import { maxActiveFrom } from "./concurrency";
 import type { QueueLine } from "./queue-line";
 import type { Provider } from "./speakers/speaker";
@@ -394,14 +394,18 @@ export async function retryJob(id: string, delayMs: number, client: Queryable): 
  *
  * `by` is who pressed Stop, for the activity log; null when the worker stopped a batch
  * itself.
+ *
+ * `everyTeam` is a site owner's Stop: it reaches every team of the languages, not only the
+ * team acting in each, and a batch by id in whichever team it belongs to.
  */
 export async function cancelPending(
   because: string,
-  scope: { batchId?: string; langs?: readonly Lang[]; by?: string | null } = {},
+  scope: { batchId?: string; langs?: readonly Lang[]; by?: string | null; everyTeam?: boolean } = {},
 ): Promise<number> {
   const batchId = scope.batchId ?? null;
   // Every language means every language some team owns: nothing is queued in any other.
-  const teams = await byTeam(scope.langs ?? [...(await teamLangs()).keys()]);
+  const langs = scope.langs ?? [...(await teamLangs()).keys()];
+  const teams = scope.everyTeam ? await everyTeamWith(langs, batchId) : await byTeam(langs);
 
   let cancelled = 0;
   const stopped: { id: string; label: string; source: Source; lang: Lang; cancelled: number }[] = [];
@@ -439,6 +443,20 @@ export async function cancelPending(
   await recordActivities(stopEvents(stopped, because, scope.by ?? null));
 
   return cancelled;
+}
+
+/** everyTeamOf(langs), cut to the batch's own team when a batch is named. */
+async function everyTeamWith(langs: readonly Lang[], batchId: string | null): Promise<Map<TeamId, Lang[]>> {
+  const teams = await everyTeamOf(langs);
+  if (!batchId) return teams;
+  // As ALL_TEAMS: the batch may belong to a team other than the one the caller acts as.
+  const [batch] = await queryIn<{ teamId: TeamId }>(
+    ALL_TEAMS,
+    `select "teamId" from "regeneration_batch" where "id" = $1`,
+    [batchId],
+  );
+  const own = batch && teams.get(batch.teamId);
+  return own ? new Map([[batch.teamId, own]]) : new Map();
 }
 
 /**
