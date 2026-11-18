@@ -16,6 +16,7 @@ const { baseCatalogue } = await import("@/lib/places/catalogue");
 const { forgetTeams } = await import("@/lib/teams/store");
 const { asSystem, dropLang, dropTeam, newTeamIn, systemRows, uniqueLang } = await import("@/lib/teams/testing");
 const { forgetLanguages, loadLanguages } = await import("@/lib/languages/catalogue");
+const { createFixtures } = await import("@/lib/text-api/testing");
 const { GET } = await import("./[...path]/route");
 
 const SHA_A = "a".repeat(64);
@@ -30,6 +31,7 @@ let slugs: Map<string, string>;
 let shared: { id: string; file: string };
 let onlyA: { id: string; file: string };
 let restore: () => void;
+let fx: Awaited<ReturnType<typeof createFixtures>>;
 
 async function take(team: string, line: { id: string; file: string }, sha: string) {
   await asSystem.query(
@@ -41,6 +43,8 @@ async function take(team: string, line: { id: string; file: string }, sha: strin
 }
 
 beforeEach(async () => {
+  restore = useArchiveForTests(memoryBlobs(), "r2");
+  fx = await createFixtures();
   lang = await uniqueLang();
   otherLang = await uniqueLang();
   await asSystem.query(`update "language" set "enabled" = true where "code" = $1`, [lang]);
@@ -53,11 +57,14 @@ beforeEach(async () => {
     [a, b, c],
   ]);
   slugs = new Map(rows.map((row) => [row.id, row.slug]));
-  [shared, onlyA] = (await baseCatalogue(lang)).slice(0, 2).map((entry) => ({ id: entry.id, file: entry.file }));
+  const entries = await baseCatalogue(lang);
+  [shared, onlyA] = [fx.zone, fx.subzone].map((id) => {
+    const entry = entries.find((e) => e.id === id)!;
+    return { id: entry.id, file: entry.file };
+  });
   await take(a, shared, SHA_A);
   await take(b, shared, SHA_B);
   await take(a, onlyA, SHA_A);
-  restore = useArchiveForTests(memoryBlobs(), "r2");
 });
 
 afterEach(async () => {
@@ -66,6 +73,7 @@ afterEach(async () => {
   for (const team of [b, a, c]) await dropTeam(team);
   await dropLang(lang);
   await dropLang(otherLang);
+  await fx.remove();
   forgetTeams();
 });
 

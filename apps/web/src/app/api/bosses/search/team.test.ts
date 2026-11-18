@@ -15,6 +15,7 @@ const { baseCatalogue } = await import("@/lib/bosses/catalogue");
 const { forgetTeams } = await import("@/lib/teams/store");
 const { asSystem, dropLang, dropTeam, newTeamIn, systemRows, uniqueLang } = await import("@/lib/teams/testing");
 const { forgetLanguages, loadLanguages } = await import("@/lib/languages/catalogue");
+const { createFixtures } = await import("@/lib/text-api/testing");
 const { GET } = await import("./route");
 
 let lang: Lang;
@@ -22,8 +23,10 @@ let a: string;
 let b: string;
 let slug: string;
 let boss: { id: string; file: string };
+let fx: Awaited<ReturnType<typeof createFixtures>>;
 
 beforeEach(async () => {
+  fx = await createFixtures();
   lang = await uniqueLang();
   await asSystem.query(`update "language" set "enabled" = true where "code" = $1`, [lang]);
   forgetLanguages();
@@ -31,7 +34,7 @@ beforeEach(async () => {
   a = await newTeamIn(lang, true, "test-pickb-a");
   b = await newTeamIn(lang, false, "test-pickb-b");
   [{ slug }] = await systemRows<{ slug: string }>(`select "slug" from "team" where "id" = $1`, [b]);
-  const [first] = await baseCatalogue(lang);
+  const first = (await baseCatalogue(lang)).find((entry) => entry.id === fx.boss.lineId)!;
   boss = { id: first.id, file: first.file };
   await asSystem.query(
     `insert into "boss_line" ("bossId", "lang", "version", "isCurrent", "origin", "text") values ($1, $2, 1, true, 'rewritten', 'A story.')`,
@@ -51,6 +54,7 @@ afterEach(async () => {
   await asSystem.query(`delete from "boss_line" where "lang" = $1`, [lang]);
   for (const team of [b, a]) await dropTeam(team);
   await dropLang(lang);
+  await fx.remove();
   forgetTeams();
 });
 
