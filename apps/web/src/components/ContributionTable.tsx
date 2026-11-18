@@ -35,7 +35,7 @@ import { Refreshing } from "@/components/Loading";
 import SendersButton from "@/components/SendersButton";
 import DropReasons from "@/components/backstage/DropReasons";
 import Panel, { type PanelTone } from "@/components/backstage/Panel";
-import { Tabs } from "@/components/backstage/Tabs";
+import { Chips, Tabs } from "@/components/backstage/Tabs";
 import TokenText from "@/components/backstage/TokenText";
 import { usePendingPush } from "@/components/usePendingPush";
 import { useLocalDates } from "@/components/useLocalDates";
@@ -60,6 +60,7 @@ import {
   type ContributionSort,
   type FilterChange,
   type StageFilter,
+  type Show,
 } from "@/lib/contributions/query";
 import type { Contribution } from "@/lib/contributions/store";
 import type { LineCheck, Verdict } from "@/lib/contributions/checks";
@@ -194,6 +195,8 @@ export default function ContributionTable({
   roster: rosterData,
   canAnswerNpc,
   corrections,
+  show,
+  shownCounts,
 }: {
   /** This page's rows. */
   initial: ContributionRow[];
@@ -227,6 +230,10 @@ export default function ContributionTable({
   canAnswerNpc: boolean;
   /** The section's corrections, as a group of their own under this view's lines. */
   corrections?: ReactNode;
+  /** New lines, corrections or both; the lines and corrections handed in are already narrowed to it. */
+  show: Show;
+  /** How many lines and corrections this tab holds, for the switch; null where a section has no corrections. */
+  shownCounts: { lines: number; corrections: number } | null;
 }) {
   const { pending, push } = usePendingPush();
   const when = useLocalDates();
@@ -543,7 +550,8 @@ export default function ContributionTable({
    * ReportTable.tsx's own `go`; the mapping itself is contributionsHref, pulled out to
    * lib/contributions/query.ts so it can be tested without rendering FilterChip or this table.
    */
-  const filters = { status, bucket, client, build, source, stage, sort, q, searchIn };
+  const filters = { status, bucket, client, build, source, stage, sort, q, searchIn, show };
+  const waitingTab = status === "new" && bucket === "blocked";
   function go(next: FilterChange, toPage = 1) {
     push(localeHref(lang, contributionsHref(filters, next, toPage)));
   }
@@ -564,8 +572,9 @@ export default function ContributionTable({
               href: localeHref(lang, contributionsHref(filters, { status: "new", bucket: "ready" })),
               count: status === "new" ? bucketCounts.ready : undefined,
             },
-            // Readables and places name no speaker, so nothing of theirs waits on an admin.
-            ...(namesSpeaker(source)
+            // Readables and places name no speaker, so nothing of theirs waits on an admin; nor
+            // does a correction.
+            ...(namesSpeaker(source) && show !== "corrections"
               ? [
                   {
                     value: "waiting",
@@ -591,6 +600,28 @@ export default function ContributionTable({
             onChange={(event) => setQuery(event.target.value)}
           />
         </label>
+        {shownCounts && !waitingTab ? (
+          <Chips
+            label="Show"
+            onGo={push}
+            active={show}
+            tabs={[
+              { value: "all", label: "All", href: localeHref(lang, contributionsHref(filters, { show: "all" })) },
+              {
+                value: "lines",
+                label: "New lines",
+                href: localeHref(lang, contributionsHref(filters, { show: "lines" })),
+                count: shownCounts.lines,
+              },
+              {
+                value: "corrections",
+                label: "Corrections",
+                href: localeHref(lang, contributionsHref(filters, { show: "corrections" })),
+                count: shownCounts.corrections,
+              },
+            ]}
+          />
+        ) : null}
         <button
           type="button"
           className="bs-btn bs-btn-text"
@@ -599,24 +630,26 @@ export default function ContributionTable({
         >
           More filters <ChevronDownIcon className={cn("size-3.5 transition-transform", showFilters && "rotate-180")} aria-hidden />
         </button>
-        <label className="bs-search h-[34px] w-auto pr-2">
-          <span className="text-sm">{status === "new" && bucket === "ready" ? "Within groups:" : "Order:"}</span>
-          <select
-            aria-label="Order"
-            value={`${sort.column}:${sort.direction}`}
-            onChange={(event) => {
-              const [column, direction] = event.target.value.split(":") as [ContributionSort["column"], ContributionSort["direction"]];
-              go({ sort: { column, direction } });
-            }}
-            className="bg-transparent text-sm text-foreground outline-none"
-          >
-            {SORT_OPTIONS.map((option) => (
-              <option key={option.value} value={option.value} className="bg-popover">
-                {option.label}
-              </option>
-            ))}
-          </select>
-        </label>
+        {show === "corrections" ? null : (
+          <label className="bs-search h-[34px] w-auto pr-2">
+            <span className="text-sm">{status === "new" && bucket === "ready" ? "Within groups:" : "Order:"}</span>
+            <select
+              aria-label="Order"
+              value={`${sort.column}:${sort.direction}`}
+              onChange={(event) => {
+                const [column, direction] = event.target.value.split(":") as [ContributionSort["column"], ContributionSort["direction"]];
+                go({ sort: { column, direction } });
+              }}
+              className="bg-transparent text-sm text-foreground outline-none"
+            >
+              {SORT_OPTIONS.map((option) => (
+                <option key={option.value} value={option.value} className="bg-popover">
+                  {option.label}
+                </option>
+              ))}
+            </select>
+          </label>
+        )}
         {pending && <Refreshing />}
         {bulk ? (
           <span className="text-muted-foreground text-sm">
@@ -625,7 +658,7 @@ export default function ContributionTable({
         ) : bulkOutcome ? (
           <span className="text-muted-foreground text-sm">{bulkOutcome.summary}</span>
         ) : null}
-        <Pager page={page} pages={pages} total={matching.length} onGo={(to) => go({}, to)} />
+        {show === "corrections" ? null : <Pager page={page} pages={pages} total={matching.length} onGo={(to) => go({}, to)} />}
       </div>
       {bulkOutcome && bulkOutcome.refused.length > 0 && !bulk ? (
         <ul className="bs-aside mb-5 flex flex-col gap-1">
@@ -808,7 +841,7 @@ export default function ContributionTable({
           <Pager page={page} pages={pages} total={matching.length} onGo={(to) => go({}, to)} />
         </div>
       ) : null}
-      {corrections && !(status === "new" && bucket === "blocked") ? <div className="mt-8">{corrections}</div> : null}
+      {corrections && !waitingTab ? <div className={rows.length > 0 ? "mt-8" : undefined}>{corrections}</div> : null}
     </>
   );
 

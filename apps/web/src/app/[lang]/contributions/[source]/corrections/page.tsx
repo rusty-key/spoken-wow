@@ -5,7 +5,8 @@ import { pageLang } from "@/lib/lang-server";
 
 /**
  * Corrections were a page of their own; they are now a group on the contributions page, in every
- * status tab. An old link opens that page with the same filters, which gates it as before.
+ * status tab. An old link opens that page showing only corrections, with the same filters, which
+ * gates it as before.
  */
 export default async function Page({
   params,
@@ -21,6 +22,6 @@ export default async function Page({
   for (const [key, value] of Object.entries(await searchParams)) {
     if (typeof value === "string") query.set(key, value);
   }
-  const rest = query.toString();
-  redirect(localeHref(lang, `/contributions/${source}${rest ? `?${rest}` : ""}#changes`));
+  query.set("show", "corrections");
+  redirect(localeHref(lang, `/contributions/${source}?${query}`));
 }

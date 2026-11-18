@@ -55,6 +55,13 @@ describe("contributionsHref", () => {
     expect(contributionsHref(filters, { build: undefined })).toBe("/contributions/quests?status=new&client=forever");
   });
 
+  it("keeps showing only lines or only corrections across another filter's change, and writes nothing for all", () => {
+    const filters = { status: "new", bucket: "ready", client: "all", source: "quests", stage: [], sort: DEFAULT_SORT, show: "corrections" } as const;
+    expect(contributionsHref(filters, { status: "rejected" })).toBe("/contributions/quests?status=rejected&client=all&show=corrections");
+    expect(contributionsHref(filters, { show: "lines" })).toBe("/contributions/quests?status=new&client=all&show=lines");
+    expect(contributionsHref(filters, { show: "all" })).toBe("/contributions/quests?status=new&client=all");
+  });
+
   it("writes the bucket only when it is not the ready rows", () => {
     expect(
       contributionsHref({ status: "new", bucket: "ready", client: "all", source: "quests", stage: [], sort: DEFAULT_SORT }, { bucket: "blocked" }),
