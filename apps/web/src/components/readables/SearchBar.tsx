@@ -135,22 +135,24 @@ export function SearchBar({
             />
           </FilterGroup>
 
-          <FilterGroup title="The take" description="How the audio was made.">
-            {madeBy && (
-              <>
-                <FilterSelect label="Model" value={filters.model} options={madeBy.models.map((value) => ({ value, label: value }))} onChange={(model) => onChange({ model })} />
-                <FilterSelect label="Made by" any="Anyone" value={filters.author} options={authors} onChange={(author) => onChange({ author })} />
-              </>
-            )}
-            {recordable && (
-              <FilterSelect
-                label="Voice actor"
-                value={filters.recorded}
-                options={RECORDED_OPTIONS}
-                onChange={(recorded) => onChange({ recorded: recorded as Recorded | undefined })}
-              />
-            )}
-          </FilterGroup>
+          {(madeBy || recordable) && (
+            <FilterGroup title="The take" description="How the audio was made.">
+              {madeBy && (
+                <>
+                  <FilterSelect label="Model" value={filters.model} options={madeBy.models.map((value) => ({ value, label: value }))} onChange={(model) => onChange({ model })} />
+                  <FilterSelect label="Made by" any="Anyone" value={filters.author} options={authors} onChange={(author) => onChange({ author })} />
+                </>
+              )}
+              {recordable && (
+                <FilterSelect
+                  label="Voice actor"
+                  value={filters.recorded}
+                  options={RECORDED_OPTIONS}
+                  onChange={(recorded) => onChange({ recorded: recorded as Recorded | undefined })}
+                />
+              )}
+            </FilterGroup>
+          )}
 
           <FilterGroup title="Marked pages" description="Pages whose audio may need another look.">
             {/* Not a value of "audio": a page can be up to date and carry this at once. */}

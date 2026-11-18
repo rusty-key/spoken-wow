@@ -108,3 +108,22 @@ test("Made between writes a typed year once it has all four digits", () => {
   fireEvent.change(from, { target: { value: "" } });
   expect(onChange).toHaveBeenLastCalledWith({ generatedAfter: undefined });
 });
+
+test("readables: a viewer with no take filters gets no empty take group", async () => {
+  render(
+    <ReadablesSearchBar
+      books={[]}
+      filters={{}}
+      query=""
+      inputRef={createRef()}
+      onQueryChange={() => {}}
+      onQuerySubmit={() => {}}
+      onChange={() => {}}
+      onClearAll={() => {}}
+      canTriage={false}
+    />,
+  );
+  await userEvent.setup().click(screen.getByRole("button", { name: /Filters/ }));
+  expect(screen.queryByRole("group", { name: "The take" })).toBeNull();
+  expect(screen.queryByRole("group", { name: "The book" })).not.toBeNull();
+});
