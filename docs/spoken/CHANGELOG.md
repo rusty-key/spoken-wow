@@ -9,10 +9,10 @@ Spoken Player until 3.0.0, when it became Spoken and took its modules into one d
   text. *([Torchlite-bit](https://github.com/Torchlite-bit))*
 - **Bosses has its own icon in the AddOns list.** It showed Spoken's mark; it now shows a dragon's
   head, like Quests, Places and Readables each show their own. *([Nucabe](https://github.com/Nucabe))*
-- **Mute one NPC's greetings.** While an NPC's greeting plays, a speaker button in Spoken's window
-  mutes that NPC's automatic greetings for this character and drops its greetings already waiting
-  in the queue. Gossip settings lists the muted NPCs, each with Unmute. The NPC window's Listen
-  button still plays a muted NPC's line.
+- **Mute one NPC's greetings.** A speaker button on an NPC's gossip or greeting window mutes that
+  NPC's automatic greetings for this character and drops its greetings already waiting in the
+  queue. Gossip settings lists the muted NPCs, each with Unmute. The window's Listen button still
+  plays a muted NPC's line.
   *([anon1231823](https://github.com/anon1231823))*
 
 ## 3.10.0 — 2026-11-17

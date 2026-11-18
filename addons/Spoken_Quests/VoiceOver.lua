@@ -1415,6 +1415,22 @@ function Addon:CanIgnoreNPC(clip)
     return clip.unitGUID ~= nil and Enums.SoundEvent:IsGossipEvent(clip.event) and DataModules:HasGossipFor(clip)
 end
 
+--- A clip-shaped record stands in when nothing has been queued for the NPC yet.
+function Addon:CurrentGossipClip()
+    local event = GetVisibleDialogueEvent()
+    local speech = SPEECH_EVENTS[event]
+    local guid = speech and Utils:GetNPCGUID()
+    if not guid then
+        return nil
+    end
+    if currentGossipSoundData and currentGossipSoundData.unitGUID == guid
+        and Enums.SoundEvent:IsGossipEvent(currentGossipSoundData.event) then
+        return currentGossipSoundData, event
+    end
+    return { event = speech.sound, unitGUID = guid, name = Utils:GetNPCName(),
+        unitIsObjectOrItem = Utils:IsNPCObjectOrItem() }, event
+end
+
 function Addon:SetGossipNPCMuted(guid, name, muted)
     local key = SpeakerKey(guid)
     -- The name, for the list on Gossip's settings page; the key alone names no one.
@@ -1426,7 +1442,7 @@ function Addon:SetGossipNPCMuted(guid, name, muted)
             end
         end
     end
-    -- Listen shows for a muted NPC, so an open window gains or loses it.
+    -- Listen shows for a muted NPC and the toggle shows the mute, so an open window is redrawn.
     if DialogPlayButton then DialogPlayButton:Refresh() end
     print("|cFF00CCFFSpoken Gossip:|r " .. format(muted and L.MUTE_NPC_DONE or L.UNMUTE_NPC_DONE, name or "NPC"))
 end

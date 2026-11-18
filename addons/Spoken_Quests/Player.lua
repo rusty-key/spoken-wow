@@ -231,52 +231,7 @@ local REPORT = {
     end,
 }
 
--- Beside the greeting while it plays, when the player is hearing the line they tire of. A muted
--- NPC no longer plays on its own, so unmuting is on Gossip's settings page; its Listen button
--- plays the line, and this then offers Unmute.
-local SPEAKER_ICON = [[Interface\COMMON\VOICECHAT-SPEAKER]]
-local WAVES_ICON = [[Interface\COMMON\VOICECHAT-ON]]
-local MUTE_NPC = {
-    id = "muteNPC",
-    label = L.OPT_MUTE_NPC,
-    visible = function(clip) return clip ~= nil and Addon:CanIgnoreNPC(clip) end,
-    create = function(parent)
-        local button = Spoken:CreateRoundButton(parent, "icon", nil, SPEAKER_ICON)
-        button.showsIcon = true
-        -- Untrimmed: RoundPicture crops a portrait's edges, and the speaker's waves are there.
-        button.glyph:SetTexCoord(0, 1, 0, 1)
-        local waves = button:CreateTexture(nil, "OVERLAY")
-        waves:SetAllPoints(button.glyph)
-        waves:SetTexture(WAVES_ICON)
-        local slash = button:CreateTexture(nil, "OVERLAY")
-        slash:SetSize(2, 17)
-        slash:SetPoint("CENTER")
-        slash:SetColorTexture(1, 0.1, 0.1, 0.95)
-        slash:SetRotation(math.rad(-45))
-        button.muteSlash = slash
-        button:SetScript("OnClick", function(self)
-            local clip = self.clip
-            if clip then
-                Addon:SetGossipNPCMuted(clip.unitGUID, clip.name, not self.muted)
-                Spoken:RefreshPlayer()
-            end
-        end)
-        button:HookScript("OnEnter", function(self)
-            GameTooltip:SetOwner(self, "ANCHOR_LEFT")
-            GameTooltip:SetText(self.muted and L.OPT_UNMUTE_NPC or L.OPT_MUTE_NPC)
-            GameTooltip:Show()
-        end)
-        button:HookScript("OnLeave", GameTooltip_Hide)
-        return button
-    end,
-    onClipChanged = function(clip, button)
-        button.clip = clip
-        button.muted = clip ~= nil and Addon:IsGossipNPCIgnored(clip.unitGUID)
-        button.muteSlash:SetShown(button.muted)
-    end,
-}
-
-local ACTIONS = { REPORT, STOP_GOSSIP, MUTE_NPC }
+local ACTIONS = { REPORT, STOP_GOSSIP }
 
 --- Turn a prepared SoundData into a clip, in place.
 function Player:Prepare(soundData)
@@ -582,7 +537,6 @@ function Player:Setup()
     -- declares the same id, so one setting covers whichever is speaking.
     if Spoken.RegisterOptionalAction then
         Spoken:RegisterOptionalAction("report", L.OPT_REPORT)
-        Spoken:RegisterOptionalAction("muteNPC", L.OPT_MUTE_NPC)
     end
 
     Spoken:RegisterBullet("quest-accept",   TEXTURES .. "SoundQueueBulletAccept", 14)
