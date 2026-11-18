@@ -52,7 +52,7 @@ async function failure(response: Response, what: string): Promise<Error> {
  * ElevenLabs was degraded, both pages hung until nginx answered 504. Ten seconds is far beyond
  * a healthy answer, and past it the pages show the account as unreadable instead.
  */
-export const ACCOUNT_READ_TIMEOUT_MS = 10_000;
+const ACCOUNT_READ_TIMEOUT_MS = 10_000;
 
 /** GET an account endpoint and parse its JSON, failing after the timeout rather than waiting. */
 async function readAccount(

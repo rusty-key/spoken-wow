@@ -5,7 +5,7 @@ import type { Metadata } from "next";
 import { headers } from "next/headers";
 import { notFound } from "next/navigation";
 
-import LexiconEditor, { type CacheRead } from "@/components/LexiconEditor";
+import LexiconEditor from "@/components/LexiconEditor";
 import { readApiKey } from "@/lib/api-key";
 import { auth } from "@/lib/auth";
 import { readLexicon } from "@/lib/generation/dictionary";
@@ -35,6 +35,10 @@ export default async function Page({ params }: { params: Promise<{ lang: string 
   // be spoken in, and with no key there are none - every button then simply says it costs
   // money, which is true and harmless.
   const apiKey = await readApiKey(session.user.id).catch(() => null);
+  // Started before anything else is awaited, and not awaited here: the editor draws at once
+  // and the cache markers stream in after it. English only: the preview sentences are
+  // English's (see the preview route). No key, no account, and every marker stays off.
+  const roster = english && apiKey ? generationRoster({ apiKey }, lang) : null;
 
   const [lexicon, preference] = await Promise.all([
     readLexicon(lang),
@@ -49,17 +53,14 @@ export default async function Page({ params }: { params: Promise<{ lang: string 
   // once on the server beats 268 round trips, and it is what lets each button say up front
   // whether pressing it costs money.
   //
-  // English only: the preview sentences are English's (see the preview route).
-  //
-  // Not awaited: it needs the account's voices, and the editor is no reason to wait on
-  // ElevenLabs. The page draws at once and this streams in after it, or its error does.
-  // The roster, not generationStatus: the subscription is the slow answer and is not needed.
-  const cached: Promise<CacheRead> = english
-    ? generationRoster(apiKey ? { apiKey } : {}, lang).then(async (roster) => ({
-        cache: await previewCache(lexicon.entries, voicePicker(roster.voiceIds), config),
-        error: apiKey ? roster.error : null,
-      }))
-    : Promise.resolve({ cache: {}, error: null });
+  // The corpus loads while ElevenLabs answers: only the voice picked for each line needs it.
+  const cached =
+    roster &&
+    previewCache(
+      lexicon.entries,
+      roster.then((read) => voicePicker(read.voiceIds)),
+      config,
+    ).then(async (cache) => ({ cache, error: (await roster).error }));
 
   return (
     <main className="pt-6 pb-36">

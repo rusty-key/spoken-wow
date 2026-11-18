@@ -24,6 +24,7 @@ import {
   type Settings,
 } from "./GeneratorSettings";
 import PopulateDialog from "./PopulateDialog";
+import { useSettled } from "@/components/useSettled";
 
 /** Where each provider's key is set, on /profile. */
 const KEY_ANCHOR: Record<Provider, string> = {
@@ -32,7 +33,7 @@ const KEY_ANCHOR: Record<Provider, string> = {
 };
 
 /** The viewer's ElevenLabs account as the page needs it, once ElevenLabs has answered. */
-export type AccountView = {
+type AccountView = {
   /** Null when the account could not be read. */
   models: ElevenLabsModelOption[] | null;
   /** Voice names in the account, or null when it could not be read. */
@@ -49,9 +50,9 @@ type Props = {
   settings: Settings;
   /**
    * The account, still being read when the page arrives: ElevenLabs is not allowed to hold
-   * the page back. Null when there is no key to read it with.
+   * the page back. Resolves to null when there is no key to read it with.
    */
-  account: Promise<AccountView> | null;
+  account: Promise<AccountView | null>;
   fishModels: FishModelOption[];
   slots: VoiceSlot[];
   initialSamples: Record<string, Sample[]>;
@@ -72,6 +73,18 @@ type Props = {
  * batch. The tab is kept in the URL without a navigation: the page reads the ElevenLabs
  * account on every render, and flipping a tab is no reason to ask it again.
  */
+/** What the ElevenLabs settings say under the model picker about where its options stand. */
+function modelsNote(
+  hasKey: boolean,
+  reading: boolean,
+  account: AccountView | null | undefined,
+): string | null {
+  if (!hasKey) return "The models your account offers appear once an ElevenLabs key is stored.";
+  if (reading) return "Reading the models your account offers…";
+  if (account?.models) return null;
+  return "Your account's models could not be read, so only the saved one is offered.";
+}
+
 export default function VoicesTabs(props: Props) {
   const lang = useLang();
   const [tab, setTab] = useState(props.initialTab);
@@ -83,36 +96,20 @@ export default function VoicesTabs(props: Props) {
   const [populating, setPopulating] = useState(false);
   const [samples, setSamples] = useState(props.initialSamples);
   const [references, setReferences] = useState(props.initialReferences);
-  // Undefined while ElevenLabs is still answering.
-  const [account, setAccount] = useState<AccountView | undefined>(undefined);
+  const settled = useSettled(props.account);
+  const account: AccountView | null | undefined =
+    settled &&
+    ("value" in settled ? settled.value : { models: null, existing: null, error: settled.error });
+  const reading = props.keys.elevenlabs && settled === undefined;
   // Held as state so a voice flips to "in your account" without a reload; the server value
   // is the account, read fresh on every page view. Null until it is read, and if it cannot be.
   const [present, setPresent] = useState<Set<string> | null>(null);
-
+  // Merged, not replaced: a voice cloned while the read was in flight is in the account
+  // whether or not the read saw it.
+  const existing = account?.existing;
   useEffect(() => {
-    if (!props.account) return;
-    let cancelled = false;
-    props.account
-      .then((view) => {
-        if (cancelled) return;
-        setAccount(view);
-        // Merged, not replaced: a voice cloned while the read was in flight is in the account
-        // whether or not the read saw it.
-        if (view.existing) {
-          const existing = view.existing;
-          setPresent((current) => new Set([...existing, ...(current ?? [])]));
-        }
-      })
-      .catch((error: unknown) => {
-        if (cancelled) return;
-        const message = error instanceof Error ? error.message : String(error);
-        setAccount({ models: null, existing: null, error: message });
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [props.account]);
-  const reading = props.account !== null && account === undefined;
+    if (existing) setPresent((current) => new Set([...existing, ...(current ?? [])]));
+  }, [existing]);
   // Counted up as the dialog fills slots, so its "free" never promises room already spent.
   // Null until /api/voices/subscription answers: ElevenLabs takes a second or more to say,
   // and nothing else on the page should wait for it.
@@ -279,16 +276,7 @@ export default function VoicesTabs(props: Props) {
                 key={JSON.stringify(settings.elevenlabs)}
                 saved={settings.elevenlabs}
                 models={account?.models ?? null}
-                modelsNote={
-                  reading
-                    ? "Reading the models your account offers…"
-                    : !props.keys.elevenlabs
-                      ? "The models your account offers appear once an ElevenLabs key is stored."
-                      : account?.models
-                        ? null
-                        : "Your account's models could not be read, so only the saved one is " +
-                          "offered."
-                }
+                modelsNote={modelsNote(props.keys.elevenlabs, reading, account)}
                 onSave={(elevenlabs) => save({ elevenlabs })}
               />
             ) : (
