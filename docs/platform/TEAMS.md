@@ -123,12 +123,15 @@ in every team, and the original text only under `text`.
   button in the places, bosses and readables explorers. Only what the team's audio says changes:
   the text shown on the site and in game stays the original, and so does every name. A readable's
   spoken title keeps the original name too. *(User.)* A line with no text in the language cannot
-  be overridden; filling it in is a contribution's.
-- When the original text of a line changes, that team's takes on the line go stale and appear in
-  the team's queue, as stale takes do today (`lib/generation/dirty.ts`). The team re-rolls or
-  overrides.
-- If the team had already overridden the line, the override is flagged **"original changed since
-  your override"**, and the team keeps or drops it. Keeping saves the same text again, which marks
+  be overridden; its text is written first, with the explorer's pencil by whoever holds `text`
+  there, or through contributions in the sections that take them.
+- A take is stale when the text the team speaks for the line changes: its override where it has
+  one, else the original. So a change to the original makes the takes of a line the team has not
+  overridden stale, and they appear in the team's queue (`lib/generation/dirty.ts`). The team
+  re-rolls or overrides.
+- If the team had already overridden the line, its takes still speak the override and stay
+  current, and the override is flagged **"original changed since your override"**: the team keeps
+  or drops it, and dropping it makes the takes stale. Keeping saves the same text again, which marks
   the new original as seen. An override saved before this flag existed stays quiet until saved again.
 
 In the quests explorer the pencil writes an override. In the places, readables and bosses explorers
@@ -139,10 +142,10 @@ team shares. That is deliberate for now, so a split needs `text` in
 the language beside `regenerate`, and a second team's save is refused: only the language's text
 maintainers split a line.
 
-The original otherwise changes through imports and accepted corrections, in English too, so a text
-maintainer works in contributions. Editing the original directly, and a translator's way to fill in
-a line with no text, come later. Until then a `wrong_text` report that carries no replacement text
-can be answered from the site but not fixed.
+The original otherwise changes through imports and accepted corrections, in English too. For quest
+lines a text maintainer works in contributions, so a `wrong_text` report on one that carries no
+replacement text can be answered from the site but not fixed. In the places, readables and bosses
+explorers the pencil edits the original directly, a line with no text yet included.
 
 ## Contributions and reports
 
