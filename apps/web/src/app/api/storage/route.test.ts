@@ -30,6 +30,8 @@ const BUCKET = {
   publicUrl: "https://203.0.113.9/audio",
   accessKeyId: "AKIAEXAMPLE",
   secretAccessKey: "very-secret",
+  // Addressed by path: the endpoint is an address, so a bucket host under it would not resolve.
+  pathStyle: true,
 };
 
 const json = (body: unknown) => ({ method: "POST", body: JSON.stringify(body) });
@@ -40,6 +42,8 @@ const OK = { ok: true, conditionalPut: true, steps: [{ name: "Write an object", 
 
 beforeAll(async () => {
   vi.stubEnv("SPOKEN_STORAGE_KEY", Buffer.alloc(32, 3).toString("base64"));
+  // The private-address refusal is tested here, so a developer's MinIO switch must not lift it.
+  vi.stubEnv("SPOKEN_STORAGE_ALLOW_PRIVATE", "0");
   user = await testUser("test-storage-route");
   who.id = user.id;
   fr = await ownTeam("frFR");
@@ -78,7 +82,7 @@ describe("storage routes", () => {
     const res = await make("frFR");
     expect(res.status).toBe(201);
     const { backend } = await res.json();
-    expect(backend).toMatchObject({ bucket: "team-audio", pathStyle: false, publicUrl: "https://203.0.113.9/audio/", health: "unchecked", writing: false });
+    expect(backend).toMatchObject({ bucket: "team-audio", pathStyle: true, publicUrl: "https://203.0.113.9/audio/", health: "unchecked", writing: false });
     expect(JSON.stringify(backend)).not.toContain("very-secret");
     const [row] = (await asSystem.query(`select "secretSealed", "teamId" from "storage_backend" where "id" = $1`, [backend.id])).rows;
     expect(row.secretSealed).toMatch(/^v1:/);
@@ -92,6 +96,13 @@ describe("storage routes", () => {
   it("addresses a dotted bucket by path, which the provider's certificate covers", async () => {
     const { backend } = await (await make("frFR", { ...BUCKET, bucket: "audio.example.org" })).json();
     expect(backend.pathStyle).toBe(true);
+  });
+
+  it("checks the bucket's own host when it is addressed as one", async () => {
+    // The endpoint itself passes (BUCKET is saved by path above); `team-audio.198.51.100.7` does not.
+    const res = await make("frFR", { ...BUCKET, pathStyle: false });
+    expect(res.status).toBe(400);
+    expect((await res.json()).error).toContain("team-audio.198.51.100.7");
   });
 
   it("refuses a bucket on a private address", async () => {
@@ -144,8 +155,10 @@ describe("storage routes", () => {
 
     const retired = await (await act("frFR", backend.id, "retire")).json();
     expect(retired.backend.retiredAt).not.toBeNull();
-    await act("frFR", backend.id, "test");
-    expect((await act("frFR", backend.id, "write")).status).toBe(409);
+    expect((await (await act("frFR", backend.id, "test")).json()).backend.health).toBe("ok");
+    const write = await act("frFR", backend.id, "write");
+    expect(write.status).toBe(409);
+    expect((await write.json()).error).toContain("retired");
 
     await asSystem.query(`delete from "archive_object" where "backendId" = $1`, [backend.id]);
     expect((await del()).status).toBe(204);

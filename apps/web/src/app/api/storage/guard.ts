@@ -4,6 +4,7 @@
  * NoTeamError answers with its message; anything else rethrows.
  */
 import { bodyOf, objectOf } from "@/lib/api-body";
+import { SealError } from "@/lib/blobs/seal";
 import { requireCapability } from "@/lib/generation/authz";
 import type { Lang } from "@/lib/lang";
 import { langParam } from "@/lib/lang-server";
@@ -19,6 +20,7 @@ type Params = { params: Promise<{ id: string }> };
 function refusal(error: unknown): Response {
   if (error instanceof StorageError) return Response.json({ error: error.message }, { status: error.status });
   if (error instanceof NoTeamError) return Response.json({ error: `${error.lang} has no team.` }, { status: 400 });
+  if (error instanceof SealError) return Response.json({ error: error.message }, { status: 400 });
   throw error;
 }
 

@@ -20,7 +20,8 @@ const HEALTH: Record<BackendView["health"], { text: string; tone: string }> = {
 type Answer = { backend?: BackendView; test?: ProbeResult | null; error?: string };
 
 async function call(url: string, init: RequestInit): Promise<Answer> {
-  const res = await fetch(url, { ...init, headers: { "content-type": "application/json" } });
+  const res = await fetch(url, { ...init, headers: { "content-type": "application/json" } }).catch(() => null);
+  if (!res) return { error: "No answer from the site: reload to see whether it took effect before trying again." };
   if (res.status === 204) return {};
   const answer = (await res.json().catch(() => ({ error: `HTTP ${res.status}` }))) as Answer;
   return res.ok ? answer : { error: answer.error ?? `HTTP ${res.status}` };
@@ -32,7 +33,8 @@ export default function StoragePanel({ lang, initial }: { lang: Lang; initial: S
   const [tests, setTests] = useState<Record<string, ProbeResult>>({});
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState<{ id: string; action: string } | null>(null);
-  const writing = view.backends.find((backend) => backend.writing) ?? null;
+  // While our archive is still the volume, no team bucket takes anything, whatever it is set to.
+  const writing = view.archiveIsBucket ? (view.backends.find((backend) => backend.writing) ?? null) : null;
 
   const replace = (backend: BackendView) =>
     setView((current) => {
@@ -42,18 +44,23 @@ export default function StoragePanel({ lang, initial }: { lang: Lang; initial: S
       return { ...current, backends: backend.writing ? backends.map((b) => (b.id === backend.id ? b : { ...b, writing: false })) : backends };
     });
 
-  const act = async (id: string, init: RequestInit, label: string) => {
+  /** True when the server took the change. */
+  const act = async (id: string, init: RequestInit, label: string): Promise<boolean> => {
     setBusy({ id, action: label });
     setError(null);
     const answer = await call(`/api/storage/${id}?lang=${lang}`, init);
     setBusy(null);
-    if (answer.error) return setError(answer.error);
+    if (answer.error) {
+      setError(answer.error);
+      return false;
+    }
     if (init.method === "DELETE") {
       setView((current) => ({ ...current, backends: current.backends.filter((b) => b.id !== id) }));
-      return;
+      return true;
     }
     if (answer.backend) replace(answer.backend);
     if (answer.test) setTests((current) => ({ ...current, [id]: answer.test! }));
+    return true;
   };
 
   const post = (id: string, action: string) => act(id, { method: "POST", body: JSON.stringify({ action }) }, action);
@@ -66,8 +73,8 @@ export default function StoragePanel({ lang, initial }: { lang: Lang; initial: S
           <span className="font-medium">{writing ? `${writing.label} (${writing.bucket})` : "Spoken's archive"}</span>.
         </p>
         <p className="text-muted-foreground mt-2">
-          Your bucket is yours: Spoken never deletes from it, and what you delete there is gone, so that line reads as
-          unvoiced. We recommend versioning or an object lock, and a key that can read and write but not delete. What
+          Your bucket is yours: Spoken never deletes your audio from it (only its own test object under probe/), and
+          what you delete there is gone, so that line reads as unvoiced. We recommend versioning or an object lock, and a key that can read and write but not delete. What
           is already in Spoken&apos;s archive stays there.
         </p>
         {!view.archiveIsBucket && (
@@ -83,11 +90,12 @@ export default function StoragePanel({ lang, initial }: { lang: Lang; initial: S
           key={backend.id}
           backend={backend}
           test={tests[backend.id]}
-          busy={busy?.id === backend.id ? busy.action : null}
+          // Every card waits while any change is in flight, so two never cross on the active bucket.
+          busy={busy ? (busy.id === backend.id ? busy.action : "other") : null}
           canWrite={view.archiveIsBucket}
           onAction={(action) => void post(backend.id, action)}
           onRemove={() => void act(backend.id, { method: "DELETE" }, "remove")}
-          onRekey={(fields) => void act(backend.id, { method: "PATCH", body: JSON.stringify(fields) }, "rekey")}
+          onRekey={(fields) => act(backend.id, { method: "PATCH", body: JSON.stringify(fields) }, "rekey")}
         />
       ))}
 
@@ -120,7 +128,7 @@ function BackendCard({
   canWrite: boolean;
   onAction: (action: "test" | "write" | "stop" | "retire") => void;
   onRemove: () => void;
-  onRekey: (fields: { accessKeyId: string; secretAccessKey: string }) => void;
+  onRekey: (fields: { accessKeyId: string; secretAccessKey: string }) => Promise<boolean>;
 }) {
   const date = useLocalDates();
   const [rekeying, setRekeying] = useState(false);
@@ -204,14 +212,17 @@ function BackendCard({
           className="flex flex-wrap items-center gap-2"
           onSubmit={(event) => {
             event.preventDefault();
-            onRekey(key);
-            setRekeying(false);
-            setKey({ accessKeyId: "", secretAccessKey: "" });
+            // Kept on a refusal, so the admin can correct it rather than type it again.
+            void onRekey({ accessKeyId: key.accessKeyId.trim(), secretAccessKey: key.secretAccessKey }).then((saved) => {
+              if (!saved) return;
+              setRekeying(false);
+              setKey({ accessKeyId: "", secretAccessKey: "" });
+            });
           }}
         >
           <Input className="w-56" placeholder="Access key id" aria-label="Access key id" value={key.accessKeyId} onChange={(e) => setKey({ ...key, accessKeyId: e.target.value })} />
           <Input className="w-72" type="password" autoComplete="off" placeholder="Secret access key" aria-label="Secret access key" value={key.secretAccessKey} onChange={(e) => setKey({ ...key, secretAccessKey: e.target.value })} />
-          <Button size="sm" type="submit" disabled={!key.accessKeyId || !key.secretAccessKey}>Save and test</Button>
+          <Button size="sm" type="submit" disabled={!key.accessKeyId.trim() || !key.secretAccessKey}>Save and test</Button>
           <Button size="sm" type="button" variant="ghost" onClick={() => setRekeying(false)}>Cancel</Button>
         </form>
       )}
@@ -275,7 +286,8 @@ function NewBackend({
         <Input placeholder="Name (optional)" aria-label="Name" {...field("label")} />
       </div>
       <p className="text-muted-foreground">
-        The key needs to read, write and look up objects. Without a public address the site hands listeners signed
+        The key needs to read and write objects (GetObject and PutObject; on Amazon S3 also ListBucket, without
+        which a missing object answers 403 rather than 404). Without a public address the site hands listeners signed
         addresses that expire. Saving tests the bucket; nothing goes to it until you switch it on.
       </p>
       {error && <p className="text-destructive">{error}</p>}

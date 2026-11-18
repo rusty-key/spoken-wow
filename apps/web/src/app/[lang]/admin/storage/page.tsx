@@ -14,16 +14,18 @@ export const metadata: Metadata = { title: "Storage · Spoken" };
 
 export const dynamic = "force-dynamic";
 
-/** A team's own buckets. The language, from `?lang=` as on the release page, names the team. */
+/** A team's own buckets. The language in `?lang=` names the acting team; only languages with one are offered. */
 export default async function Page({ searchParams }: { searchParams: Promise<{ lang?: string }> }) {
   const session = await currentSession();
   const viewer = await viewerOf(session);
-  const administered = langsWhere(viewer, "admin");
-  if (!session || !viewer || administered.length === 0) notFound();
+  if (!session || !viewer) notFound();
+  const all = langsWhere(viewer, "admin");
+  const owners = await freshOwners(all);
+  const administered = all.filter((code) => owners.has(code));
+  if (administered.length === 0) notFound();
 
   const { lang: asked } = await searchParams;
   const lang = administered.find((code) => code === asked) ?? administered[0];
-  if (!(await freshOwners([lang])).has(lang)) notFound();
 
   return (
     <main className="pb-36">

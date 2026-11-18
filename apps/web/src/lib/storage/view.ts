@@ -1,6 +1,7 @@
 /** What the storage page shows. */
 import "server-only";
 
+import { canSeal } from "@/lib/blobs/seal";
 import { readsBlobs } from "@/lib/blobs/store";
 import { query } from "@/lib/db";
 import type { Lang } from "@/lib/lang";
@@ -30,6 +31,6 @@ export async function storageView(lang: Lang): Promise<StorageView> {
     backends,
     providers: (Object.keys(PROVIDERS) as Provider[]).map((id) => ({ id, ...PROVIDERS[id] })),
     archiveIsBucket: readsBlobs(),
-    canSeal: Boolean(process.env.SPOKEN_STORAGE_KEY),
+    canSeal: canSeal(),
   };
 }

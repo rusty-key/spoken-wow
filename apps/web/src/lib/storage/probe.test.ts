@@ -31,7 +31,28 @@ describe("probe", () => {
         if (!store.objects.has(key)) await store.put(key, data, type);
       },
     };
-    expect((await probe(kept, { fetchImpl: browser(store) })).conditionalPut).toBe(true);
+    expect(await probe(kept, { fetchImpl: browser(store) })).toMatchObject({ ok: true, conditionalPut: true });
+  });
+
+  it("fails a bucket that answers with bytes neither write sent", async () => {
+    const store = memoryBlobs({ publicUrl: "https://team.test/" });
+    const garbling: BlobStore = {
+      ...store,
+      put: async (key, data, type) => store.put(key, Buffer.concat([data.subarray(0, 1000), Buffer.alloc(24)]), type),
+    };
+    const result = await probe(garbling, { fetchImpl: browser(store) });
+    expect(result.steps.find((s) => !s.ok)).toMatchObject({ name: "Never replace an object", detail: "the bucket answered with bytes neither write sent" });
+    expect(result.conditionalPut).toBeNull();
+  });
+
+  it("follows no redirect from the address a browser would use", async () => {
+    const store = memoryBlobs({ publicUrl: "https://team.test/" });
+    const redirecting = (async (_url: string, init?: RequestInit) => {
+      expect(init?.redirect).toBe("manual");
+      return new Response(null, { status: 302, headers: { location: "http://127.0.0.1/" } });
+    }) as typeof fetch;
+    const result = await probe(store, { fetchImpl: redirecting });
+    expect(result.steps.find((s) => !s.ok)).toMatchObject({ name: "Let a browser fetch it", detail: "HTTP 302 from the public address" });
   });
 
   it("fails a bucket a browser cannot fetch from, and says which step", async () => {

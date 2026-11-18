@@ -1,6 +1,6 @@
 /**
- * One of a team's buckets: PATCH its name, public address or key, POST an action, DELETE an empty
- * one. Each answers with the bucket as it now is, and a test's steps when one ran.
+ * One of a team's buckets. PATCH (its name, public address or key) and POST (an action) answer with
+ * the bucket as it now is, and a test's steps when one ran; DELETE removes an empty one, with 204.
  */
 import {
   backendChange,
@@ -10,6 +10,7 @@ import {
   retireBackend,
   setWriting,
   StorageError,
+  stopWriting,
   testBackend,
 } from "@/lib/storage/backends";
 
@@ -33,7 +34,7 @@ export const POST = withTeamAdmin(async (request, { team, id }) => {
   let test = null;
   if (action === "test") test = await testBackend(team, id);
   if (action === "write") await setWriting(team, id);
-  if (action === "stop" && (await backendView(team, id)).writing) await setWriting(team, null);
+  if (action === "stop") await stopWriting(team, id);
   if (action === "retire") await retireBackend(team, id);
   return Response.json({ backend: await backendView(team, id), test });
 }, "id");

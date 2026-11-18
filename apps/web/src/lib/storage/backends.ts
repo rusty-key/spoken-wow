@@ -28,7 +28,7 @@ export const PROVIDERS = {
 
 export type Provider = keyof typeof PROVIDERS;
 
-const isProvider = (value: unknown): value is Provider => typeof value === "string" && value in PROVIDERS;
+const isProvider = (value: unknown): value is Provider => typeof value === "string" && Object.hasOwn(PROVIDERS, value);
 
 export type BackendView = {
   id: string;
@@ -109,6 +109,7 @@ function publicUrlOf(value: unknown): string | null {
   }
   if (url.protocol !== "https:") throw new StorageError("The public address must be https.");
   if (url.search || url.hash) throw new StorageError("The public address has no query or fragment.");
+  if (url.username || url.password) throw new StorageError("The public address carries no user or password.");
   return url.toString().endsWith("/") ? url.toString() : `${url.toString()}/`;
 }
 
@@ -134,12 +135,19 @@ export function backendInput(body: Record<string, unknown>): BackendInput {
   };
 }
 
+/** The host requests really go to: with path style off, the bucket's own name under the endpoint. */
+const bucketHost = (endpoint: string, bucket: string, pathStyle: boolean): string | null =>
+  pathStyle ? null : `https://${bucket}.${new URL(endpoint).host}`;
+
 async function reachable(...urls: (string | null)[]): Promise<void> {
-  try {
-    for (const url of urls) if (url) await assertPublicHost(url);
-  } catch (error) {
-    if (error instanceof PrivateHostError) throw new StorageError(error.message);
-    throw new StorageError(`${error instanceof Error ? error.message : error}: the address does not resolve.`);
+  for (const url of urls) {
+    if (!url) continue;
+    try {
+      await assertPublicHost(url);
+    } catch (error) {
+      if (error instanceof PrivateHostError) throw new StorageError(error.message);
+      throw new StorageError(`${url} does not resolve: ${errorText(error)}`);
+    }
   }
 }
 
@@ -197,7 +205,7 @@ async function rowOf(team: TeamId, id: string): Promise<Row> {
 
 /** Saved unchecked: nothing goes to it until a test passes and an admin switches it on. */
 export async function createBackend(team: TeamId, input: BackendInput, userId: string): Promise<BackendView> {
-  await reachable(input.endpoint, input.publicUrl);
+  await reachable(input.endpoint, bucketHost(input.endpoint, input.bucket, input.pathStyle), input.publicUrl);
   const id = randomUUID();
   await withTeam(team, (client) =>
     client.query(
@@ -243,7 +251,9 @@ export async function changeBackend(team: TeamId, id: string, change: BackendCha
          "label" = coalesce($2, "label"),
          "publicUrl" = case when $3 then $4 else "publicUrl" end,
          "accessKeyId" = coalesce($5, "accessKeyId"),
-         "secretSealed" = coalesce($6, "secretSealed")
+         "secretSealed" = coalesce($6, "secretSealed"),
+         -- A new key or address is untested until the test below says otherwise.
+         "health" = case when $5::text is not null or $3 then 'unchecked' else "health" end
        where "id" = $1 and ${TEAM_ROWS}`,
       [id, change.label ?? null, "publicUrl" in change, change.publicUrl ?? null, change.accessKeyId ?? null,
         change.secretAccessKey ? seal(change.secretAccessKey, id) : null],
@@ -259,18 +269,22 @@ export async function testBackend(team: TeamId, id: string): Promise<ProbeResult
   const row = await rowOf(team, id);
   let result: ProbeResult;
   try {
-    await reachable(row.endpoint, row.publicUrl);
-    result = await probe(storeOfRow(row));
+    await reachable(row.endpoint, bucketHost(row.endpoint, row.bucket, row.pathStyle), row.publicUrl);
+    // With If-None-Match, so a provider that ignores it shows, whatever was recorded before.
+    result = await probe(storeOfRow({ ...row, conditionalPut: true }));
   } catch (error) {
-    result = { ok: false, conditionalPut: row.conditionalPut, steps: [{ name: "Reach the bucket", ok: false, detail: errorText(error) }] };
+    result = { ok: false, conditionalPut: null, steps: [{ name: "Reach the bucket", ok: false, detail: errorText(error) }] };
   }
   const failed = result.steps.find((step) => !step.ok);
+  // Only for the key and address tested: a change saved meanwhile has a test of its own coming.
   await withTeam(team, (client) =>
     client.query(
       `update "storage_backend"
           set "health" = $2, "checkedAt" = now(), "lastError" = $3, "conditionalPut" = $4
-        where "id" = $1 and ${TEAM_ROWS}`,
-      [id, result.ok ? "ok" : "failing", failed ? `${failed.name}: ${failed.detail ?? "failed"}` : null, result.conditionalPut],
+        where "id" = $1 and ${TEAM_ROWS}
+          and "accessKeyId" = $5 and "secretSealed" = $6 and "publicUrl" is not distinct from $7`,
+      [id, result.ok ? "ok" : "failing", failed ? `${failed.name}: ${failed.detail ?? "failed"}` : null,
+        result.conditionalPut ?? row.conditionalPut, row.accessKeyId, row.secretSealed, row.publicUrl],
     ),
   );
   forgetBackends();
@@ -291,8 +305,24 @@ export async function setWriting(team: TeamId, id: string | null): Promise<void>
   }
   await withTeam(team, async (client) => {
     await client.query(`update "storage_backend" set "writing" = false where "writing" and "id" is distinct from $1 and ${TEAM_ROWS}`, [id]);
-    if (id !== null) await client.query(`update "storage_backend" set "writing" = true where "id" = $1 and ${TEAM_ROWS}`, [id]);
+    if (id === null) return;
+    // Checked again here: a test that failed or a retire since the checks above wins.
+    const { rowCount } = await client.query(
+      `update "storage_backend" set "writing" = true
+        where "id" = $1 and "health" = 'ok' and "retiredAt" is null and ${TEAM_ROWS}`,
+      [id],
+    );
+    if (!rowCount) throw new StorageError("The bucket failed a test or was retired meanwhile: test it again.", 409);
   });
+  forgetBackends();
+}
+
+/** Stops sending new objects to `id`, if it is still the one they go to. Ours takes them again. */
+export async function stopWriting(team: TeamId, id: string): Promise<void> {
+  await rowOf(team, id);
+  await withTeam(team, (client) =>
+    client.query(`update "storage_backend" set "writing" = false where "id" = $1 and "writing" and ${TEAM_ROWS}`, [id]),
+  );
   forgetBackends();
 }
 

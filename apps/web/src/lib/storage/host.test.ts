@@ -1,7 +1,9 @@
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { assertPublicHost } from "./host";
 
+// A developer's MinIO switch must not lift what these test; the one test of the switch sets it.
+beforeEach(() => vi.stubEnv("SPOKEN_STORAGE_ALLOW_PRIVATE", "0"));
 afterEach(() => vi.unstubAllEnvs());
 
 const resolving = (address: string) => (async () => [{ address, family: address.includes(":") ? 6 : 4 }]) as never;

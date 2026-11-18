@@ -27,6 +27,16 @@ function sealingKey(): Buffer {
   return key;
 }
 
+/** Whether SPOKEN_STORAGE_KEY is set and the right size, so a secret can be saved. */
+export function canSeal(): boolean {
+  try {
+    sealingKey();
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 export function seal(secret: string, boundTo: string): string {
   const iv = randomBytes(12);
   const cipher = createCipheriv("aes-256-gcm", sealingKey(), iv);

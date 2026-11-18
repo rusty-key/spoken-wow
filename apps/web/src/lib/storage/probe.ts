@@ -17,10 +17,27 @@ type ProbeStep = { name: string; ok: boolean; detail?: string };
 export type ProbeResult = {
   ok: boolean;
   steps: ProbeStep[];
-  /** Whether the bucket kept the first bytes when a second PUT under the key asked it not to replace them. */
-  conditionalPut: boolean;
+  /** Whether the bucket kept the first bytes when a second PUT under the key asked it not to replace them; null when the test could not tell. */
+  conditionalPut: boolean | null;
 };
 
+
+/** The body, or null when it holds more than `limit` bytes: a bucket's answer is not trusted to be small. */
+async function readAtMost(body: ReadableStream<Uint8Array>, limit: number): Promise<Buffer | null> {
+  const reader = body.getReader();
+  const chunks: Uint8Array[] = [];
+  let size = 0;
+  for (;;) {
+    const { done, value } = await reader.read();
+    if (done) return Buffer.concat(chunks);
+    size += value.byteLength;
+    if (size > limit) {
+      await reader.cancel();
+      return null;
+    }
+    chunks.push(value);
+  }
+}
 
 export async function probe(
   store: BlobStore,
@@ -29,9 +46,11 @@ export async function probe(
   const steps: ProbeStep[] = [];
   const key = `probe/${randomBytes(16).toString("hex")}`;
   const first = randomBytes(1024);
-  let conditionalPut = true;
+  const second = randomBytes(1024);
+  // Null until a readback settles it: an inconclusive test must not change what was recorded.
+  let conditionalPut: boolean | null = null;
   // What the bucket holds under the key: the second bytes, when it let them replace the first.
-  let held = first;
+  let held: Buffer = first;
 
   const step = async (name: string, check: () => Promise<string | void>): Promise<boolean> => {
     try {
@@ -47,10 +66,11 @@ export async function probe(
   const wrote = await step("Write an object", () => store.put(key, first, "application/octet-stream"));
   if (wrote) {
     await step("Never replace an object", async () => {
-      await store.put(key, randomBytes(1024), "application/octet-stream");
+      await store.put(key, second, "application/octet-stream");
       const kept = await store.get(key);
-      const bytes = kept?.body ? Buffer.from(await new Response(kept.body).arrayBuffer()) : null;
+      const bytes = kept?.body ? await readAtMost(kept.body, first.byteLength) : null;
       if (!bytes) return "the object was gone after a second write";
+      if (!bytes.equals(first) && !bytes.equals(second)) return "the bucket answered with bytes neither write sent";
       // Not a failure: the store looks before it writes from now on.
       conditionalPut = bytes.equals(first);
       held = bytes;
@@ -62,21 +82,25 @@ export async function probe(
     await step("Read part of it", async () => {
       const part = await store.get(key, { start: 2, end: 5 });
       if (!part?.body) return "nothing came back";
-      const bytes = Buffer.from(await new Response(part.body).arrayBuffer());
+      const bytes = await readAtMost(part.body, 4);
+      if (!bytes) return "more bytes came back than the range asked";
       if (part.size !== first.byteLength) return `the whole size came back as ${part.size}`;
       if (!bytes.equals(held.subarray(2, 6))) return "the bytes came back wrong: the bucket may ignore Range";
     });
     await step("Let a browser fetch it", async () => {
       const url = store.url(key) ?? (await store.presign(key, { method: "GET", expiresSec: 60 }));
-      const res = await fetchImpl(url, { redirect: "follow" });
+      // No redirect is followed: it could lead the site to a host nothing checked.
+      const res = await fetchImpl(url, { redirect: "manual" });
       if (!res.ok) return `HTTP ${res.status} from ${store.url(key) ? "the public address" : "a signed address"}`;
-      if (!Buffer.from(await res.arrayBuffer()).equals(held)) return "the address answered with other bytes";
+      const bytes = res.body ? await readAtMost(res.body, held.byteLength) : null;
+      if (!bytes?.equals(held)) return "the address answered with other bytes";
     });
   }
   await step("Say when an object is not there", async () => {
     if ((await store.get(`${key}-absent`)) !== null) return "a key never written answered with an object";
   });
-  if (wrote) await store.delete(key).catch(() => {});
+  // Tried even when the first write seemed to fail: it may have landed all the same.
+  await store.delete(key).catch(() => {});
 
   return { ok: steps.every((s) => s.ok), steps, conditionalPut };
 }
