@@ -1,6 +1,7 @@
 /**
  * The API describing itself, so a maintainer can hand an agent one URL and a token.
  */
+import { MAX_OVERRIDE_LENGTH } from "@/lib/quests/override";
 import { MAX_ITEMS, MAX_NAME, MAX_TEXT } from "@/lib/text-api/apply";
 import { withToken } from "@/lib/text-api/guard";
 import { sections } from "@/lib/text-api/index";
@@ -11,7 +12,7 @@ export const dynamic = "force-dynamic";
 export async function GET(request: Request) {
   return withToken(request, { need: "any" }, async (context) =>
     Response.json({
-      token: { lang: context.lang, access: context.access, generate: context.generate },
+      token: { lang: context.lang, access: context.access, generate: context.generate, layers: context.layers },
       sections: Object.fromEntries(
         Object.entries(sections).map(([name, api]) => [name, { filters: Object.keys(api.filters) }]),
       ),
@@ -19,6 +20,7 @@ export async function GET(request: Request) {
         pageSize: PAGE_SIZE,
         itemsPerUpdate: MAX_ITEMS,
         textLength: MAX_TEXT,
+        questOverrideLength: MAX_OVERRIDE_LENGTH,
         nameLength: MAX_NAME,
         itemsPerGeneration: MAX_ITEMS,
         // nginx enforces this one (nginx-spoken-api.conf), so it cannot be imported.

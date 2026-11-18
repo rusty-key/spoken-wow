@@ -223,21 +223,25 @@ export const quests: SectionApi = {
 
   async saveOverride({ lang, id, variant, text, by, expectedVersion, audit }) {
     const line = await lineOf(lang, id, variant);
-    if (!line || line.text === null) throw untranslated(lang);
-    checkOriginalVersion(line.version, expectedVersion);
+    if (!line) throw untranslated(lang);
     // The file the Explorer's rewrite writes: named by the language's row, else by English's, so
     // the site and the API edit one override.
     const file = audioRelPath(line);
     const done = (wrote: boolean, removed: boolean) => ({ version: line.version, lines: [id], wrote, removed });
-    // A split rewrites the moment's original lines, which every team voices.
-    if (text !== null && branchesOnPlayerGender(text)) throw new Refused(GENDER_SPLIT);
-    // The site's whitelist: where the line's speakers all moved to another voice, the corpus lists
-    // only that voice's line and file, and an override on this file would never be spoken or shown.
-    if (!(await fileIndex(lang)).has(file)) throw new Refused(VOICE_LINE);
+    // Where the line's speakers all moved to another voice, the corpus lists only that voice's line
+    // and file, and an override on this file would never be spoken or shown.
+    const unlisted = async () => !(await fileIndex(lang)).has(file);
+    // Taking an override back needs no original under it, so one over a retired line can still go.
     if (text === null) {
+      if (!(await readOverrides(lang)).has(file) && (await unlisted())) throw new Refused(VOICE_LINE);
       const removed = await clearOverride(lang, file, by, audit);
       return done(removed, removed);
     }
+    if (line.text === null) throw untranslated(lang);
+    checkOriginalVersion(line.version, expectedVersion);
+    // A split rewrites the moment's original lines, which every team voices.
+    if (branchesOnPlayerGender(text)) throw new Refused(GENDER_SPLIT);
+    if (await unlisted()) throw new Refused(VOICE_LINE);
     let draft;
     try {
       draft = validateOverride({ file, lineId: line.lineId, text }, lang);

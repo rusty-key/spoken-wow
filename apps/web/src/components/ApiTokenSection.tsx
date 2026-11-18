@@ -38,11 +38,12 @@ export default function ApiTokenSection({ langs, initial }: { langs: TokenLang[]
   const [copied, setCopied] = useState(false);
   const chosen = langs.find((entry) => entry.lang === lang) ?? langs[0];
 
-  // Switching language drops generate where the owner cannot regenerate.
   function chooseLang(code: Lang) {
     const next = langs.find((entry) => entry.lang === code) ?? langs[0];
     setLang(code);
     if (!next.generate) setGenerate(false);
+    // With generate gone, "No text" would leave nothing to create.
+    if (!next.generate && access === "none") setAccess("read");
   }
 
   const create = () =>

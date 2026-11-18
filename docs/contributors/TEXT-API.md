@@ -23,7 +23,8 @@ language: text or regenerate for a read or write token, regenerate for a generat
 curl -H "Authorization: Bearer $SPOKEN_TOKEN" https://spoken.quest/api/v1
 ```
 
-That first URL describes the API and your token. Pointing an agent at it is usually enough.
+That first URL describes the API and your token, including the layers it may write
+(`token.layers`, see *Original or override*). Pointing an agent at it is usually enough.
 
 ## Reading
 
@@ -52,6 +53,7 @@ An item:
 {
   "id": "s:1411:razor-hill",
   "text": "…",
+  "override": null,
   "short": "…",
   "version": 3,
   "name": "…",
@@ -70,16 +72,17 @@ places only. `variant` is on quest lines only, because a few line ids name two d
 single-item URL takes `?variant=`, default 0, and refuses a `variant` in its body.
 
 `override` is your team's override: when it is not null, it is what your team's audio speaks in
-place of `text`. The text shown on the site and in game stays `text`. Another team's overrides are
-never listed. Writing the original leaves `override` in place, so the line keeps speaking the
-override; see *Original or override* to write the override itself.
+place of `text`. The text shown on the site and in game stays `text`. A list or item gives only your
+team's overrides; *Reference text* gives the English team's. Writing the original leaves `override`
+in place, so the line keeps speaking the override; see *Original or override* to write the override
+itself.
 
 ## Reference text
 
 `GET /api/v1/{section}/reference` gives the English text of a section, whatever language the token
 is for. It takes the same filters, `cursor` and `limit` as the list, and its items carry `id`,
-`variant` (quests), `text`, `override`, `short` (places), `name` and `group`, with no
-versions. Any valid token can read it: one that reads or writes text, or one that generates.
+`variant` (quests), `text`, `override` (the English team's), `short` (places), `name` and `group`,
+with no versions. Any valid token can read it: one that reads or writes text, or one that generates.
 
 ```sh
 curl -H "Authorization: Bearer $SPOKEN_TOKEN" "https://spoken.quest/api/v1/places/reference?zone=1411"
@@ -172,7 +175,7 @@ both guard an existing version only: a line with no text has nothing to compare,
 protect a first translation someone saved since you read it. The overwritten text stays in history.
 
 Text can be up to 5,000 characters and a name up to 200. A quest line's override can be up to
-2,000 characters, and a place's, readable's or boss's up to 5,000. A request can be at most 8 MB,
+2,000 characters (`limits.questOverrideLength`), and a place's, readable's or boss's up to 5,000. A request can be at most 8 MB,
 past which the proxy answers 413 with no results, so split a run of very long texts. The same item
 twice in one request is `invalid` the second time.
 
@@ -207,7 +210,8 @@ A `layer` inside one of `items` makes that item `invalid`: `layer goes at the to
 On the override layer:
 
 - **`"text": null` removes the override.** The result is `removed`, or `unchanged` where there was
-  none. On the original layer a null text is `invalid`.
+  none. A removal needs no original under it, so it works on a line whose original has since been
+  retired, and it checks no `expectedVersion`. On the original layer a null text is `invalid`.
 - **`expectedVersion` guards the original.** An override has no versions of its own. When sent, it
   must equal the original's current version, else `conflict`:
   `the original text is at version {current}, not {expected}`. The result's `version` is the
@@ -315,7 +319,7 @@ For each thing the run wrote, it reports one of:
 | `skipped`, `edited_since` | someone changed it since, and their edit stays |
 | `skipped`, `gender_split` | the run split a quest line by `$G`, which cannot be undone here; fix it by hand |
 | `skipped`, `not_allowed` | your token may not write that layer now, or the override's team is not the one you work in |
-| `skipped`, `retired_original` | the line's original text has since been retired, so the override the run replaced has nothing to stand on; the run's override stays |
+| `skipped`, `retired_original` | the line's original text has since been retired, so the override the run replaced or removed has nothing to stand on and is not put back; whatever the run left stays |
 | `skipped`, `error` | it failed; the message says why, and the rest still ran |
 
 Each result names its `field`: `text`, `name` or `override`. A name's result gives its `entity`

@@ -227,6 +227,32 @@ describe("a second team's member", () => {
     expect(rows).toEqual([]);
   });
 
+  it.each([
+    ["readables", "book_line"],
+    ["quests", "quest_line"],
+  ] as const)("removes a %s override whose original has since been retired", async (section, table) => {
+    const [, listed] = [...(await fileIndex(lang))].find(([, line]) => /^q:\d+:complete$/.test(line.lineId))!;
+    const lineId = section === "quests" ? listed.lineId : f.page.lineId;
+    if (section === "quests") await saveQuestText({ lang, lineId, variant: 0, text: "Gut gemacht.", editedBy: m.id });
+    expect((await first(ctxU, section, { id: lineId, text: "Unser Wort." })).text).toMatchObject({ status: "updated" });
+    const retire = (current: boolean) =>
+      asSystem.query(`update "${table}" set "isCurrent" = $1 where "lang" = $2 and "lineId" = $3`, [current, lang, lineId]);
+    await retire(false);
+    try {
+      expect((await first(ctxU, section, { id: lineId, text: null })).text).toMatchObject({
+        status: "removed",
+        layer: "override",
+      });
+    } finally {
+      await retire(true);
+    }
+    const left =
+      section === "quests"
+        ? (await asSystem.query(`select 1 from "line_override" where "lang" = $1 and "lineId" = $2`, [lang, lineId])).rows
+        : await overrideTeams(section, lineId);
+    expect(left).toEqual([]);
+  });
+
   it("reads its team's override in each section, which the privileged team does not see", async () => {
     await first(ctxU, "readables", { id: f.page.lineId, text: "Unsere Seite." });
     const asU = await asActor(u.id, () => sections.readables.one(lang, f.page.lineId, 0));

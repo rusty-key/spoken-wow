@@ -18,12 +18,13 @@ export async function saveNarratedOverride(
   original: string | null,
   version: number | null,
 ): ReturnType<SectionApi["saveOverride"]> {
-  if (original === null) throw untranslated(lang);
-  checkOriginalVersion(version, expectedVersion);
+  // Taking an override back needs no original under it, so one over a retired line can still go.
   if (text === null) {
     const removed = await clearTextOverride({ source, lang, lineId: id, by, audit });
     return { version, lines: [id], wrote: removed, removed };
   }
+  if (original === null) throw untranslated(lang);
+  checkOriginalVersion(version, expectedVersion);
   const { wrote } = await writeTextOverride({ source, lang, lineId: id, text: text.trim(), original, userId: by, audit });
   return { version, lines: [id], wrote, removed: false };
 }

@@ -77,8 +77,7 @@ export const places: SectionApi = {
     const { lang, id } = args;
     const entry = (await baseCatalogue(lang)).find((e) => e.id === id);
     const original = entry && !entry.missing?.text ? entry.full : null;
-    const version = (await textVersions(lang, [id])).get(id)?.version ?? null;
-    return saveNarratedOverride("places", args, original, version);
+    return saveNarratedOverride("places", args, original, await places.version(lang, id, 0));
   },
 
   async nameTarget(_lang, id) {
