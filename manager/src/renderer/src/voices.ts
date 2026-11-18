@@ -1,8 +1,7 @@
 // Who made a language's voice packs, and which of them the Voice Packs page shows and Install All installs.
-import type { Product } from '@shared/types'
+import { ALL_AUTHORS, PAGE_AUTHOR, type Product } from '@shared/types'
 
-/** The author of page packs, which index-v2.json gives no team. Not a slug, so no team can take it. */
-export const PAGE_AUTHOR = ''
+export { ALL_AUTHORS, PAGE_AUTHOR }
 
 export interface Author {
   /** The team's slug, or PAGE_AUTHOR. */
@@ -31,6 +30,11 @@ export function authorsOf(products: readonly Product[]): Authors {
   const list = [...new Set(products.map(keyOf))].map((key) => named.get(key) ?? { key, name: '', official: true })
   list.sort((a, b) => Number(b.official) - Number(a.official) || a.name.localeCompare(b.name))
   return { list, keyOf }
+}
+
+/** The saved choice, or All when it names no author the language has now. */
+export function chosenAuthor(saved: string | undefined, authors: Authors): string {
+  return authors.list.length > 1 && saved !== undefined && authors.list.some((a) => a.key === saved) ? saved : ALL_AUTHORS
 }
 
 /** A section's rows, one group per author in the authors' order. */

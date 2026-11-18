@@ -222,6 +222,8 @@ export interface Settings {
   keepDownloads: boolean
   /** The language chosen on the Voice Packs page. */
   voiceLanguage: string
+  /** The Author filter's choice per voice language: a team's slug, PAGE_AUTHOR, or ALL_AUTHORS. */
+  voiceAuthors: Record<string, string>
   /** The game last looked at. */
   lastGameId: string
   /** Sending what Spoken collects to the site: 'unset' until the player answers the first-start question. */
@@ -253,8 +255,27 @@ export const DEFAULT_SETTINGS: Settings = {
   downloadsPath: '',
   keepDownloads: false,
   voiceLanguage: 'enUS',
+  voiceAuthors: {},
   lastGameId: '',
   sharing: 'unset'
+}
+
+/** The Author filter's choice that shows every author. */
+export const ALL_AUTHORS = 'all'
+/** The author of page packs, which the channel gives no team. Not a slug, so no team can take it. */
+export const PAGE_AUTHOR = ''
+
+const VOICE_LANG = /^[a-z]{2}[A-Z]{2}$/
+const AUTHOR = /^(all|[a-z][a-z0-9-]{1,40})?$/
+
+/** The Author choices that are a language's and an author's; null when `v` is not a record at all. */
+export function cleanVoiceAuthors(v: unknown): Record<string, string> | null {
+  if (typeof v !== 'object' || v === null || Array.isArray(v)) return null
+  const out: Record<string, string> = {}
+  for (const [lang, author] of Object.entries(v)) {
+    if (VOICE_LANG.test(lang) && typeof author === 'string' && AUTHOR.test(author)) out[lang] = author
+  }
+  return out
 }
 
 /** The settings that take only some values of their type; anything else is dropped on load. */

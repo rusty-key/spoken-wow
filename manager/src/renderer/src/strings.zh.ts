@@ -141,6 +141,8 @@ export const S_ZH: Dict = {
     splitHint: '或只装其中一部分',
     by: (name: string) => `由 ${name} 制作`,
     pageAuthor: '官方',
+    author: '作者',
+    allAuthors: '全部',
     notInstalled: '未安装',
     installedVersion: (v: string) => `已安装 ${v}`,
     badge: { installed: '已安装', update: '有可用更新', linked: '已关联', ahead: '比发布版更新', unknown: '手动安装' },

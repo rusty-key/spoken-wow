@@ -9,7 +9,7 @@ import { PackRow } from '../components/PackRow'
 import { formatBytes, formatDate } from '../format'
 import { jobKey, useGame, useStore } from '../store'
 import { S } from '../strings'
-import { authorsOf, groupByAuthor, type Author } from '../voices'
+import { ALL_AUTHORS, authorsOf, chosenAuthor, groupByAuthor, type Author } from '../voices'
 
 const SECTIONS: Section[] = ['quests', 'places', 'readables', 'bosses']
 
@@ -30,6 +30,12 @@ export function VoicePacksPage(): ReactNode {
 
   const inLang = voices.filter((p) => p.lang === chosen)
   const authors = authorsOf(inLang.filter(released))
+  const author = chosenAuthor(state.settings.voiceAuthors[chosen], authors)
+  const byAuthor = (p: Product): boolean => author === ALL_AUTHORS || authors.keyOf(p) === author
+  const chooseAuthor = (key: string): void => {
+    setConfirmAll(false)
+    void actions.setSettings({ voiceAuthors: { ...state.settings.voiceAuthors, [chosen]: key } })
+  }
   const statusFor = (p: Product): ProductStatus | undefined => statusOf(state, game.id, p.id)
 
   // Everything of the language that is not installed: the one "All quests" bundle instead of its
@@ -101,6 +107,23 @@ export function VoicePacksPage(): ReactNode {
               ))}
             </div>
           </div>
+          {authors.list.length > 1 && (
+            <div className="filter-group">
+              <span className="field-label" id="voice-author">
+                {S.voices.author}
+              </span>
+              <div className="pills" role="group" aria-labelledby="voice-author">
+                <button type="button" className="pill" aria-pressed={author === ALL_AUTHORS} onClick={() => chooseAuthor(ALL_AUTHORS)}>
+                  {S.voices.allAuthors}
+                </button>
+                {authors.list.map((a) => (
+                  <button key={a.key} type="button" className="pill" aria-pressed={author === a.key} onClick={() => chooseAuthor(a.key)}>
+                    {authorName(a)}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
 
           {voices.length === 0 || inLang.length === 0 || !inLang.some(released) ? (
             <p className="card pad muted">
@@ -112,7 +135,7 @@ export function VoicePacksPage(): ReactNode {
                 const all = inLang.filter((p) => p.section === section)
                 const some = all.filter(released)
                 // With nothing released, the section still shows its first product, as not released.
-                const groups = some.length > 0 ? groupByAuthor(some, authors) : all.slice(0, 1).map((p) => ({ author: null, rows: [p] }))
+                const groups = some.length > 0 ? groupByAuthor(some.filter(byAuthor), authors) : all.slice(0, 1).map((p) => ({ author: null, rows: [p] }))
                 if (groups.length === 0) return null
                 const meta = S.voices.sections[section]
                 return (

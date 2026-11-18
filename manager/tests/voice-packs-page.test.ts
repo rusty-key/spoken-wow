@@ -97,6 +97,38 @@ describe('Voice Packs: every language, and who made each pack', () => {
   })
 })
 
+describe('Voice Packs: the Author filter', () => {
+  const authorPills = (html: string): string | null => {
+    const at = html.indexOf('id="voice-author"')
+    return at < 0 ? null : html.slice(at, html.indexOf('</div>', html.indexOf('class="pills"', at)))
+  }
+
+  it('shows for a language with two teams, All first, official before the rest, and not for one with one', () => {
+    const pills = authorPills(draw(stateFor(LISTING, { voiceLanguage: 'deDE' })))!
+    expect(pills).toContain('>Author<')
+    expect([...pills.matchAll(/aria-pressed="(\w+)">([^<]+)</g)].map((m) => [m[2], m[1]])).toEqual([['All', 'true'], ['Official', 'false'], ['Stimmen', 'false']])
+    expect(authorPills(draw(stateFor(LISTING, { voiceLanguage: 'frFR' })))).toBeNull()
+    expect(authorPills(draw(stateFor(LISTING, { voiceLanguage: 'jaJP' })))).toBeNull()
+  })
+
+  it("shows only the chosen team's rows", () => {
+    const html = draw(stateFor(LISTING, { voiceLanguage: 'deDE', voiceAuthors: { deDE: 'stimmen' } }))
+    expect(authorPills(html)).toContain('aria-pressed="true">Stimmen<')
+    const places = section(html, 'Places')
+    expect(places).toContain('by Stimmen')
+    expect(places).not.toContain('<li class="row-label">')
+    expect(places.split('Not Installed').length - 1).toBe(1)
+    expect(html).not.toContain('>Readables</h2>')
+  })
+
+  it('reads a saved team with no packs left as All', () => {
+    const html = draw(stateFor(LISTING, { voiceLanguage: 'deDE', voiceAuthors: { deDE: 'gone' } }))
+    expect(authorPills(html)).toContain('aria-pressed="true">All<')
+    expect(section(html, 'Places')).toContain('<li class="row-label">Stimmen</li>')
+    expect(html).toContain('>Readables</h2>')
+  })
+})
+
 describe('authorsOf', () => {
   const product = (id: string, team: ChannelTeam | null | undefined): Product => ({ id, kind: 'voices', title: '', description: '', section: 'places', lang: 'deDE', tagPrefix: id, folders: [id], assetPattern: '', team })
 
