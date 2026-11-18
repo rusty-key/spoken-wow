@@ -20,11 +20,17 @@ export type Acting = { teams: TeamChoice[]; team: TeamChoice };
 export async function actingIn(lang: Lang): Promise<Acting | null> {
   const slug = (await currentChoice())[lang];
   if (!slug) return null;
-  // Empty for a language with one team, from the memo alone.
-  const teams = await teamsVoicing(lang);
-  const team = teams.find((candidate) => candidate.slug === slug);
-  if (!team || !isAdmin((await currentSession())?.user.role)) return null;
-  return { teams, team };
+  // Without the banner rather than without the page: a kept entry must not make an English page
+  // depend on a database that is down.
+  try {
+    // Empty for a language with one team, from the memo alone.
+    const teams = await teamsVoicing(lang);
+    const team = teams.find((candidate) => candidate.slug === slug);
+    if (!team || !isAdmin((await currentSession())?.user.role)) return null;
+    return { teams, team };
+  } catch {
+    return null;
+  }
 }
 
 /** On every page of the language, which team the site owner works as, with the picker to change it. */

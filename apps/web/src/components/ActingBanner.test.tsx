@@ -119,6 +119,12 @@ describe("ActingBanner", () => {
     expect(connects).not.toHaveBeenCalled();
   });
 
+  it("shows no banner, rather than failing the page, when the teams cannot be read", async () => {
+    choose({ [lang]: slugs.b });
+    vi.spyOn(db(), "query").mockRejectedValue(new Error("database is down"));
+    expect(await banner(lang)).toBeNull();
+  });
+
   it("in a single-team language reads only the memo, and no session", async () => {
     choose({ [single]: slugs.c });
     await secondTeamLangs();
