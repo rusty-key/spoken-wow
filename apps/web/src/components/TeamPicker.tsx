@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { createContext, useContext, useId, useState } from "react";
 
@@ -50,9 +51,18 @@ export default function TeamPicker({
   const [error, setError] = useState<string | null>(null);
   const bannerShows = useContext(BannerPicker);
   if (teams.length < 2 || viewed === null) return null;
+  const homeTeam = teams.find((team) => team.slug === home);
   const note = !viewed.own && (
     <p className="text-muted-foreground">
       {`You are listening to ${viewed.name}. Their takes play; their work is theirs.`}
+      {homeTeam && (
+        <>
+          {" "}
+          <Link href={pickedHref(pathname, params, homeTeam.slug, home)} scroll={false} className="underline">
+            {`Back to ${homeTeam.name}`}
+          </Link>
+        </>
+      )}
     </p>
   );
   if (bannerShows) return note ? <div className={cn("text-sm", className)}>{note}</div> : null;

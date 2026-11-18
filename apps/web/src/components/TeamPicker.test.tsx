@@ -75,7 +75,19 @@ test("a visitor's pick navigates to the view, saving nothing", async () => {
 
 test("another team's view says whose takes play", () => {
   picker({ viewed: { ...mainOwn, own: false }, home: second.slug });
-  expect(screen.getByText("You are listening to Main Crew. Their takes play; their work is theirs.")).not.toBeNull();
+  expect(screen.getByText(/^You are listening to Main Crew\. Their takes play; their work is theirs\./)).not.toBeNull();
+});
+
+test("another team's view links back to the visitor's own, dropping only the team", () => {
+  navigation.params = new URLSearchParams("q=town&team=second-crew&page=2");
+  picker({ viewed: { ...secondOwn, own: false }, home: main.slug });
+  const back = screen.getByRole("link", { name: "Back to Main Crew" });
+  expect(back.getAttribute("href")).toBe("/deDE/places?q=town&page=2");
+});
+
+test("their own view has no way back, since it is where they are", () => {
+  picker({ viewed: mainOwn, home: main.slug });
+  expect(screen.queryByRole("link", { name: /Back to/ })).toBeNull();
 });
 
 test("a site owner's pick is saved first, then shown as their own view", async () => {
@@ -133,5 +145,6 @@ test("below the site owner's banner another team's view still says whose takes p
     </LangProvider>,
   );
   expect(screen.queryByLabelText("Team")).toBeNull();
-  expect(screen.getByText("You are listening to Main Crew. Their takes play; their work is theirs.")).not.toBeNull();
+  expect(screen.getByText(/^You are listening to Main Crew\. Their takes play; their work is theirs\./)).not.toBeNull();
+  expect(screen.getByRole("link", { name: "Back to Second Crew" }).getAttribute("href")).toBe("/deDE/places?q=town");
 });

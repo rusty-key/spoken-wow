@@ -189,7 +189,7 @@ site. The rest of phase 2 is distribution and stays out.
   on a line with a live take that speaks it. Each line reads voiced or
   missing, with no stale, dirty, made-by, report or recording marks, and the regenerate,
   override, ignore, record, report and clear-mark controls are hidden. The pencil that writes the
-  original stays, since the original is shared. A note says whose takes play.
+  original stays, since the original is shared. A note says whose takes play, with a link back to the visitor's own view.
 - **A site owner acts inside a team through the picker.** Their pick is kept per language in the
   `spoken_team` cookie, read only for a site owner, and every read and write in that language
   goes to the picked team until they pick again. An entry is kept only where it changes who they

@@ -35,7 +35,7 @@
 - Nothing spends TTS credits. A test that queues cancels its jobs in `afterEach` (`cancelPending`) and deletes the batch.
 - Known failures to ignore when running wider suites: `admin.test` handOver, the three `search` tests, `missing-audio`, `voices/slots`.
 - Every per-team query goes through `withTeam` / `queryAs` / `readAs`. The only cross-team read added is `team_live_takes`, called through `query` (it needs no team set).
-- Exact copy: unknown team `` `no team ${slug} voices ${lang}` `` (404); picker label "Team"; viewing note `` `You are listening to ${name}. Their takes play; their work is theirs.` ``; site owner banner `` `Working as ${name}` ``.
+- Exact copy: unknown team `` `no team ${slug} voices ${lang}` `` (404); picker label "Team"; viewing note `` `You are listening to ${name}. Their takes play; their work is theirs.` `` with a link `` `Back to ${home}` `` that drops `team` from the address; site owner banner `` `Working as ${name}` ``.
 - Browser checks run on `spoken_dev` in the Paseo tab already open, never a new tab.
 - Site changes add no changelog notes (AGENTS.md).
 
