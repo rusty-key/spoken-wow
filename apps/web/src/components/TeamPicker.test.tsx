@@ -78,11 +78,18 @@ test("another team's view says whose takes play", () => {
   expect(screen.getByText(/^You are listening to Main Crew\. Their takes play; their work is theirs\./)).not.toBeNull();
 });
 
-test("another team's view links back to the visitor's own, dropping only the team", () => {
+test("another team's view links back to the visitor's own, dropping the team and the page", () => {
   navigation.params = new URLSearchParams("q=town&team=second-crew&page=2");
   picker({ viewed: { ...secondOwn, own: false }, home: main.slug });
   const back = screen.getByRole("link", { name: "Back to Main Crew" });
-  expect(back.getAttribute("href")).toBe("/deDE/places?q=town&page=2");
+  expect(back.getAttribute("href")).toBe("/deDE/places?q=town");
+});
+
+test("a pick starts the other team's view on its first page", async () => {
+  navigation.params = new URLSearchParams("q=town&page=3");
+  picker();
+  await userEvent.setup().selectOptions(screen.getByLabelText("Team"), "second-crew");
+  expect(navigation.push).toHaveBeenCalledWith("/deDE/places?q=town&team=second-crew", { scroll: false });
 });
 
 test("their own view has no way back, since it is where they are", () => {
@@ -120,6 +127,28 @@ test("a refused save navigates nowhere and says why", async () => {
   await userEvent.setup().selectOptions(screen.getByLabelText("Team"), "second-crew");
   expect(await screen.findByText("not allowed")).not.toBeNull();
   expect(navigation.push).not.toHaveBeenCalled();
+});
+
+test("a save that cannot connect says so and navigates nowhere", async () => {
+  navigation.role = "admin";
+  fetchMock.mockRejectedValue(new TypeError("Failed to fetch"));
+  picker();
+  await userEvent.setup().selectOptions(screen.getByLabelText("Team"), "second-crew");
+  expect(await screen.findByText("Could not switch teams.")).not.toBeNull();
+  expect(navigation.push).not.toHaveBeenCalled();
+});
+
+test("a save that lands after the visitor moved on refreshes where they are", async () => {
+  navigation.role = "admin";
+  let answer!: (response: Response) => void;
+  fetchMock.mockReturnValue(new Promise<Response>((resolve) => (answer = resolve)));
+  picker();
+  await userEvent.setup().selectOptions(screen.getByLabelText("Team"), "second-crew");
+  window.history.pushState(null, "", "/deDE/bosses");
+  answer(Response.json({ team: second.slug, home: second.slug }));
+  await waitFor(() => expect(navigation.refresh).toHaveBeenCalled());
+  expect(navigation.push).not.toHaveBeenCalled();
+  window.history.pushState(null, "", "/");
 });
 
 test("below the site owner's banner the explorer's picker hides, so one select shows", () => {

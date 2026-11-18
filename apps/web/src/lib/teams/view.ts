@@ -14,6 +14,15 @@ export function isOwn(viewed: ViewedTeam | null): boolean {
   return viewed === null || viewed.own;
 }
 
+/**
+ * An explorer's React key: a new view starts from a fresh explorer. The router keeps the old
+ * one's state across the switch, so its rows, selection and late refreshes would otherwise
+ * carry one team's lines into the other's view.
+ */
+export function viewKey({ viewed }: TeamView): string {
+  return viewed === null ? "own" : `${viewed.team}:${viewed.own}`;
+}
+
 /** The slug a request names while the view is another team's, else null: a string, so it serves as a hook dependency. */
 export function otherTeam(viewed: ViewedTeam | null): string | null {
   return viewed === null || viewed.own ? null : viewed.slug;
@@ -34,9 +43,13 @@ export function keepTeam(next: URLSearchParams, current: URLSearchParams): URLSe
   return next;
 }
 
-/** The address with `slug` picked, every other parameter kept; the default team is named by leaving `team` out. */
+/**
+ * The address with `slug` picked, every filter kept; the default team is named by leaving `team`
+ * out. The page number goes: the other team's matches may not reach it.
+ */
 export function pickedHref(pathname: string, current: URLSearchParams, slug: string, home: string | null): string {
   const next = new URLSearchParams(current.toString());
+  next.delete("page");
   if (slug === home) next.delete("team");
   else next.set("team", slug);
   const query = next.toString();

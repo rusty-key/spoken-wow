@@ -73,17 +73,24 @@ export default function TeamPicker({
       router.push(pickedHref(pathname, params, slug, home), { scroll: false });
       return;
     }
+    const from = window.location.pathname + window.location.search;
     const response = await fetch("/api/teams/acting", {
       method: "POST",
       headers: { "content-type": "application/json" },
       body: JSON.stringify({ lang, team: slug }),
-    });
-    const body = (await response.json().catch(() => ({}))) as { home?: string | null; error?: string };
-    if (!response.ok) {
-      setError(body.error ?? "Could not switch teams.");
+    }).catch(() => null);
+    const body = (await response?.json().catch(() => ({}))) as { home?: string | null; error?: string } | undefined;
+    if (!response?.ok) {
+      setError(body?.error ?? "Could not switch teams.");
       return;
     }
-    router.push(pickedHref(pathname, params, slug, body.home ?? null), { scroll: false });
+    // Moved on while the save was in flight: the new page takes the saved team, and pushing the
+    // address the pick began on would undo that move.
+    if (window.location.pathname + window.location.search !== from) {
+      router.refresh();
+      return;
+    }
+    router.push(pickedHref(pathname, params, slug, body?.home ?? null), { scroll: false });
     router.refresh();
   }
 
