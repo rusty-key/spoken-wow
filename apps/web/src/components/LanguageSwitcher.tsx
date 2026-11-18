@@ -1,7 +1,7 @@
 "use client";
 
 import { usePathname } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 
 import { Refreshing } from "@/components/Loading";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -10,7 +10,46 @@ import { localeHref, stripLang, type Lang } from "@/lib/lang";
 import { useLang } from "./LangProvider";
 import { usePendingPush } from "./usePendingPush";
 
-type Offered = { code: Lang; name: string; enabled: boolean };
+export type Offered = { code: Lang; name: string; enabled: boolean };
+
+/**
+ * Both header switches share one request. Admins can preview disabled languages, so the list
+ * belongs to the current session `scope`.
+ */
+export function useOfferedLanguages(enabled = true, scope = ""): { offered: Offered[]; retry: () => void } {
+  const [offered, setOffered] = useState<Offered[]>([]);
+  const [failed, setFailed] = useState(false);
+  const [attempt, setAttempt] = useState(0);
+  useEffect(() => {
+    if (!enabled) return;
+    let live = true;
+    // A list answered for another session must not be offered to this one, not even for a moment.
+    setOffered([]);
+    fetch("/api/languages")
+      .then((response) => {
+        if (!response.ok) throw new Error(String(response.status));
+        return response.json();
+      })
+      .then((body: { languages: Offered[] }) => {
+        if (!live) return;
+        setOffered(body.languages);
+        setFailed(false);
+      })
+      .catch(() => {
+        if (live) setFailed(true);
+      });
+    return () => {
+      live = false;
+    };
+  }, [enabled, scope, attempt]);
+  // Cleared as soon as a retry is scheduled, so reopening the menu cannot restart one in flight.
+  const retry = useCallback(() => {
+    if (!failed) return;
+    setFailed(false);
+    setAttempt((n) => n + 1);
+  }, [failed]);
+  return { offered, retry };
+}
 
 /**
  * The site's one language switch.
@@ -23,7 +62,7 @@ type Offered = { code: Lang; name: string; enabled: boolean };
  * reads the session there: the layout would otherwise put a query in front of every English
  * page. Renders nothing while only one language is on, which is the site as it stands.
  */
-export default function LanguageSwitcher() {
+export default function LanguageSwitcher({ offered: given }: { offered?: Offered[] } = {}) {
   const lang = useLang();
   const pathname = usePathname();
   const { pending, push } = usePendingPush();
@@ -31,20 +70,8 @@ export default function LanguageSwitcher() {
   // language, and without this it snapped back to the old one for as long as the new page
   // took to render, which read as a switch that had refused.
   const [chosen, setChosen] = useState<string>(lang);
-  const [offered, setOffered] = useState<Offered[]>([]);
-
-  useEffect(() => {
-    let live = true;
-    fetch("/api/languages")
-      .then((response) => (response.ok ? response.json() : { languages: [] }))
-      .then((body: { languages: Offered[] }) => {
-        if (live) setOffered(body.languages);
-      })
-      .catch(() => {});
-    return () => {
-      live = false;
-    };
-  }, []);
+  const { offered: own } = useOfferedLanguages(given === undefined);
+  const offered = given ?? own;
 
   if (offered.length < 2) return null;
 
