@@ -8,7 +8,7 @@ import "server-only";
 import { randomUUID } from "node:crypto";
 
 import { query, TEAM_ROWS, withTeam, type TeamId } from "@/lib/db";
-import { seal } from "@/lib/blobs/seal";
+import { seal, unseal } from "@/lib/blobs/seal";
 import { readsBlobs } from "@/lib/blobs/store";
 import { BACKEND_COLUMNS, forgetBackends, storeOfRow, type BackendRow } from "@/lib/blobs/where";
 
@@ -108,7 +108,8 @@ function publicUrlOf(value: unknown): string | null {
     throw new StorageError("The public address is not an address.");
   }
   if (url.protocol !== "https:") throw new StorageError("The public address must be https.");
-  if (url.search || url.hash) throw new StorageError("The public address has no query or fragment.");
+  // An empty `?` or `#` leaves search and hash empty, but stays in the address.
+  if (url.search || url.hash || raw.includes("?") || raw.includes("#")) throw new StorageError("The public address has no query or fragment.");
   if (url.username || url.password) throw new StorageError("The public address carries no user or password.");
   return url.toString().endsWith("/") ? url.toString() : `${url.toString()}/`;
 }
@@ -242,9 +243,24 @@ export function backendChange(body: Record<string, unknown>): BackendChange {
  * A new key or address is tested at once, since objects may be going to the bucket: a failing
  * test marks it failing.
  */
+/**
+ * A new key or address is tested before it is saved, and saved only when it passes: a typo must not
+ * replace the key every read of the bucket depends on. Answers the test, or null when only the
+ * name changed.
+ */
 export async function changeBackend(team: TeamId, id: string, change: BackendChange): Promise<ProbeResult | null> {
-  await rowOf(team, id);
-  if (change.publicUrl) await reachable(change.publicUrl);
+  const row = await rowOf(team, id);
+  const tested = change.accessKeyId !== undefined || "publicUrl" in change;
+  let result: ProbeResult | null = null;
+  if (tested) {
+    const candidate = {
+      ...row,
+      accessKeyId: change.accessKeyId ?? row.accessKeyId,
+      publicUrl: "publicUrl" in change ? (change.publicUrl ?? null) : row.publicUrl,
+    };
+    result = await probeRow(candidate, change.secretAccessKey ?? unseal(row.secretSealed, row.id));
+    if (!result.ok) return result;
+  }
   await withTeam(team, (client) =>
     client.query(
       `update "storage_backend" set
@@ -252,43 +268,51 @@ export async function changeBackend(team: TeamId, id: string, change: BackendCha
          "publicUrl" = case when $3 then $4 else "publicUrl" end,
          "accessKeyId" = coalesce($5, "accessKeyId"),
          "secretSealed" = coalesce($6, "secretSealed"),
-         -- A new key or address is untested until the test below says otherwise.
-         "health" = case when $5::text is not null or $3 then 'unchecked' else "health" end
+         "health" = case when $7 then 'ok' else "health" end,
+         "checkedAt" = case when $7 then now() else "checkedAt" end,
+         "lastError" = case when $7 then null else "lastError" end,
+         "conditionalPut" = coalesce($8, "conditionalPut")
        where "id" = $1 and ${TEAM_ROWS}`,
       [id, change.label ?? null, "publicUrl" in change, change.publicUrl ?? null, change.accessKeyId ?? null,
-        change.secretAccessKey ? seal(change.secretAccessKey, id) : null],
-    ),
-  );
-  forgetBackends();
-  const tested = change.accessKeyId !== undefined || "publicUrl" in change;
-  return tested ? testBackend(team, id) : null;
-}
-
-/** Runs the probe and records what it found. A retired bucket is tested too: it still serves what it holds. */
-export async function testBackend(team: TeamId, id: string): Promise<ProbeResult> {
-  const row = await rowOf(team, id);
-  let result: ProbeResult;
-  try {
-    await reachable(row.endpoint, bucketHost(row.endpoint, row.bucket, row.pathStyle), row.publicUrl);
-    // With If-None-Match, so a provider that ignores it shows, whatever was recorded before.
-    result = await probe(storeOfRow({ ...row, conditionalPut: true }));
-  } catch (error) {
-    result = { ok: false, conditionalPut: null, steps: [{ name: "Reach the bucket", ok: false, detail: errorText(error) }] };
-  }
-  const failed = result.steps.find((step) => !step.ok);
-  // Only for the key and address tested: a change saved meanwhile has a test of its own coming.
-  await withTeam(team, (client) =>
-    client.query(
-      `update "storage_backend"
-          set "health" = $2, "checkedAt" = now(), "lastError" = $3, "conditionalPut" = $4
-        where "id" = $1 and ${TEAM_ROWS}
-          and "accessKeyId" = $5 and "secretSealed" = $6 and "publicUrl" is not distinct from $7`,
-      [id, result.ok ? "ok" : "failing", failed ? `${failed.name}: ${failed.detail ?? "failed"}` : null,
-        result.conditionalPut ?? row.conditionalPut, row.accessKeyId, row.secretSealed, row.publicUrl],
+        change.secretAccessKey ? seal(change.secretAccessKey, id) : null, tested, result?.conditionalPut ?? null],
     ),
   );
   forgetBackends();
   return result;
+}
+
+/** The probe of a configuration, its hosts checked first; a failure to reach it is a failed step. */
+async function probeRow(row: BackendRow, secret: string): Promise<ProbeResult> {
+  try {
+    await reachable(row.endpoint, bucketHost(row.endpoint, row.bucket, row.pathStyle), row.publicUrl);
+    // With If-None-Match, so a provider that ignores it shows, whatever was recorded before.
+    return await probe(storeOfRow({ ...row, conditionalPut: true }, secret));
+  } catch (error) {
+    return { ok: false, conditionalPut: null, steps: [{ name: "Reach the bucket", ok: false, detail: errorText(error) }] };
+  }
+}
+
+/**
+ * Runs the probe and records what it found. A retired bucket is tested too: it still serves what it
+ * holds. Null when the key or address changed while it ran: its result is about neither.
+ */
+export async function testBackend(team: TeamId, id: string): Promise<ProbeResult | null> {
+  const row = await rowOf(team, id);
+  const result = await probeRow(row, unseal(row.secretSealed, row.id));
+  const failed = result.steps.find((step) => !step.ok);
+  // Only for the key and address tested: a change saved meanwhile was tested on its own.
+  const { rowCount } = await withTeam(team, (client) =>
+    client.query(
+      `update "storage_backend"
+          set "health" = $2, "checkedAt" = now(), "lastError" = $3, "conditionalPut" = coalesce($4, "conditionalPut")
+        where "id" = $1 and ${TEAM_ROWS}
+          and "accessKeyId" = $5 and "secretSealed" = $6 and "publicUrl" is not distinct from $7`,
+      [id, result.ok ? "ok" : "failing", failed ? `${failed.name}: ${failed.detail ?? "failed"}` : null,
+        result.conditionalPut, row.accessKeyId, row.secretSealed, row.publicUrl],
+    ),
+  );
+  forgetBackends();
+  return rowCount ? result : null;
 }
 
 /**
@@ -313,6 +337,10 @@ export async function setWriting(team: TeamId, id: string | null): Promise<void>
       [id],
     );
     if (!rowCount) throw new StorageError("The bucket failed a test or was retired meanwhile: test it again.", 409);
+  }).catch((error: unknown) => {
+    // Another admin's switch-on that committed first holds the one-per-team index: a conflict, not an error.
+    if ((error as { code?: string }).code === "23505") throw new StorageError("Another bucket was switched on meanwhile: reload and try again.", 409);
+    throw error;
   });
   forgetBackends();
 }

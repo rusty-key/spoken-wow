@@ -1,7 +1,7 @@
 /**
  * The storage routes' one gate (docs/platform/STORAGE.md): whoever administers `?lang=` administers
- * its team's buckets. With an [id], one that is not a uuid is no such thing. A StorageError or a
- * NoTeamError answers with its message; anything else rethrows.
+ * its team's buckets. With an [id], one that is not a uuid is no such thing. A StorageError, a
+ * NoTeamError or a SealError answers with its message; anything else rethrows.
  */
 import { bodyOf, objectOf } from "@/lib/api-body";
 import { SealError } from "@/lib/blobs/seal";

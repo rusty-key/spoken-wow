@@ -1,4 +1,3 @@
-/** What the storage page shows. */
 import "server-only";
 
 import { canSeal } from "@/lib/blobs/seal";

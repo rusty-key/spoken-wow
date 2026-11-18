@@ -24,7 +24,8 @@ async function call(url: string, init: RequestInit): Promise<Answer> {
   if (!res) return { error: "No answer from the site: reload to see whether it took effect before trying again." };
   if (res.status === 204) return {};
   const answer = (await res.json().catch(() => ({ error: `HTTP ${res.status}` }))) as Answer;
-  return res.ok ? answer : { error: answer.error ?? `HTTP ${res.status}` };
+  // A refusal may still carry the bucket and a test's steps, which say why.
+  return res.ok ? answer : { ...answer, error: answer.error ?? `HTTP ${res.status}` };
 }
 
 /** A team's own buckets: connect one, test it, send new objects to it, retire it. */
@@ -50,6 +51,11 @@ export default function StoragePanel({ lang, initial }: { lang: Lang; initial: S
     setError(null);
     const answer = await call(`/api/storage/${id}?lang=${lang}`, init);
     setBusy(null);
+    if (answer.test) setTests((current) => ({ ...current, [id]: answer.test! }));
+    else if (label === "test" || label === "rekey") {
+      // No test, or one about a configuration since replaced: older steps would mislead.
+      setTests(({ [id]: _stale, ...rest }) => rest);
+    }
     if (answer.error) {
       setError(answer.error);
       return false;
@@ -59,7 +65,6 @@ export default function StoragePanel({ lang, initial }: { lang: Lang; initial: S
       return true;
     }
     if (answer.backend) replace(answer.backend);
-    if (answer.test) setTests((current) => ({ ...current, [id]: answer.test! }));
     return true;
   };
 
@@ -267,6 +272,8 @@ function NewBackend({
 
   return (
     <form onSubmit={save} className="bg-card flex flex-col gap-3 rounded-lg border p-4 text-sm">
+      {/* Held while saving: the form clears when the save returns, and would take edits with it. */}
+      <fieldset disabled={saving} className="contents">
       <h2 className="font-medium">Connect a bucket</h2>
       <label className="flex flex-col gap-1">
         <span className="text-muted-foreground">Provider</span>
@@ -290,6 +297,7 @@ function NewBackend({
         which a missing object answers 403 rather than 404). Without a public address the site hands listeners signed
         addresses that expire. Saving tests the bucket; nothing goes to it until you switch it on.
       </p>
+      </fieldset>
       {error && <p className="text-destructive">{error}</p>}
       <div>
         <Button type="submit" size="sm" disabled={saving}>{saving ? "Saving…" : "Save and test"}</Button>

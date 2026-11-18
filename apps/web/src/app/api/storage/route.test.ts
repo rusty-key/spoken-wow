@@ -94,7 +94,8 @@ describe("storage routes", () => {
   });
 
   it("addresses a dotted bucket by path, which the provider's certificate covers", async () => {
-    const { backend } = await (await make("frFR", { ...BUCKET, bucket: "audio.example.org" })).json();
+    // Asked for host style: only the forcing makes it path style.
+    const { backend } = await (await make("frFR", { ...BUCKET, bucket: "audio.example.org", pathStyle: false })).json();
     expect(backend.pathStyle).toBe(true);
   });
 
@@ -174,6 +175,19 @@ describe("storage routes", () => {
     expect(answer.backend).toMatchObject({ accessKeyId: "NEW", health: "ok" });
     expect(answer.test.ok).toBe(true);
     expect(probed.probe).toHaveBeenCalledOnce();
+  });
+
+  it("keeps the working key when a new one fails its test", async () => {
+    const { backend } = await (await make("frFR")).json();
+    probed.probe.mockResolvedValueOnce({ ok: false, conditionalPut: null, steps: [{ name: "Write an object", ok: false, detail: "HTTP 403" }] });
+    const res = await PATCH(
+      new Request(`http://x/api/storage/${backend.id}?lang=frFR`, { method: "PATCH", body: JSON.stringify({ accessKeyId: "TYPO", secretAccessKey: "s2" }) }),
+      { params: Promise.resolve({ id: backend.id }) },
+    );
+    expect(res.status).toBe(409);
+    const answer = await res.json();
+    expect(answer.test.steps[0].detail).toBe("HTTP 403");
+    expect(answer.backend.accessKeyId).toBe(BUCKET.accessKeyId);
   });
 
   it("finds no other team's bucket", async () => {

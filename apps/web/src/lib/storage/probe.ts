@@ -8,7 +8,7 @@ import "server-only";
 
 import { randomBytes } from "node:crypto";
 
-import type { BlobStore } from "@/lib/blobs/store";
+import { BodyLimitError, readBounded, type BlobStore } from "@/lib/blobs/store";
 
 import { errorText } from "./error-text";
 
@@ -22,20 +22,16 @@ export type ProbeResult = {
 };
 
 
-/** The body, or null when it holds more than `limit` bytes: a bucket's answer is not trusted to be small. */
+/** How long a test waits for any one body or the browser fetch: the test is a request an admin waits on. */
+const READ_MS = 30_000;
+
+/** The body, or null when it holds more than `limit` bytes; a body that does not finish in time throws. */
 async function readAtMost(body: ReadableStream<Uint8Array>, limit: number): Promise<Buffer | null> {
-  const reader = body.getReader();
-  const chunks: Uint8Array[] = [];
-  let size = 0;
-  for (;;) {
-    const { done, value } = await reader.read();
-    if (done) return Buffer.concat(chunks);
-    size += value.byteLength;
-    if (size > limit) {
-      await reader.cancel();
-      return null;
-    }
-    chunks.push(value);
+  try {
+    return await readBounded(body, { maxBytes: limit, deadlineMs: READ_MS });
+  } catch (error) {
+    if (error instanceof BodyLimitError && error.message.startsWith("more than")) return null;
+    throw error;
   }
 }
 
@@ -90,14 +86,20 @@ export async function probe(
     await step("Let a browser fetch it", async () => {
       const url = store.url(key) ?? (await store.presign(key, { method: "GET", expiresSec: 60 }));
       // No redirect is followed: it could lead the site to a host nothing checked.
-      const res = await fetchImpl(url, { redirect: "manual" });
-      if (!res.ok) return `HTTP ${res.status} from ${store.url(key) ? "the public address" : "a signed address"}`;
+      const res = await fetchImpl(url, { redirect: "manual", signal: AbortSignal.timeout(READ_MS) });
+      if (!res.ok) {
+        await res.body?.cancel();
+        return `HTTP ${res.status} from ${store.url(key) ? "the public address" : "a signed address"}`;
+      }
       const bytes = res.body ? await readAtMost(res.body, held.byteLength) : null;
       if (!bytes?.equals(held)) return "the address answered with other bytes";
     });
   }
   await step("Say when an object is not there", async () => {
-    if ((await store.get(`${key}-absent`)) !== null) return "a key never written answered with an object";
+    const absent = await store.get(`${key}-absent`);
+    if (absent === null) return;
+    await absent.body?.cancel();
+    return "a key never written answered with an object";
   });
   // Tried even when the first write seemed to fail: it may have landed all the same.
   await store.delete(key).catch(() => {});

@@ -20,6 +20,13 @@ export const dynamic = "force-dynamic";
 
 export const PATCH = withTeamAdmin(async (request, { team, id }) => {
   const test = await changeBackend(team, id, backendChange(await jsonBody(request)));
+  // A new key or address that failed its test was not saved: the bucket keeps the old one.
+  if (test && !test.ok) {
+    return Response.json(
+      { error: "The new key or address failed its test, so the bucket keeps the old one.", backend: await backendView(team, id), test },
+      { status: 409 },
+    );
+  }
   return Response.json({ backend: await backendView(team, id), test });
 }, "id");
 
