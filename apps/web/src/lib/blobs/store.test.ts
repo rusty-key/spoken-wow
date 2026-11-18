@@ -172,6 +172,16 @@ describe("any S3-compatible bucket", () => {
     expect(signed.searchParams.get("X-Amz-Credential")).toContain("/eu-west-1/s3/");
   });
 
+  it("follows no redirect: a bucket's 3xx is a failure", async () => {
+    const asked: (RequestRedirect | undefined)[] = [];
+    vi.stubGlobal("fetch", async (_url: string, init: RequestInit) => {
+      asked.push(init.redirect);
+      return new Response(null, { status: 307, headers: { location: "http://169.254.169.254/" } });
+    });
+    await expect(s3Blobs(S3).get("takes/x")).rejects.toThrow("HTTP 307");
+    expect(asked).toEqual(["manual"]);
+  });
+
   it("looks before it writes where the provider ignores If-None-Match", async () => {
     const methods: string[] = [];
     vi.stubGlobal("fetch", async (_url: string, init: RequestInit) => {

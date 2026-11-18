@@ -22,6 +22,13 @@ describe("sealing a storage secret", () => {
     expect(() => seal("s3cret", "a")).toThrow("32 bytes");
   });
 
+  it("refuses a shortened tag", () => {
+    vi.stubEnv("SPOKEN_STORAGE_KEY", KEY);
+    const [version, iv, tag, body] = seal("s3cret", "a").split(":");
+    const short = Buffer.from(tag, "base64").subarray(0, 4).toString("base64");
+    expect(() => unseal([version, iv, short, body].join(":"), "a")).toThrow();
+  });
+
   it("does not open under another key", () => {
     vi.stubEnv("SPOKEN_STORAGE_KEY", KEY);
     const sealed = seal("s3cret", "a");

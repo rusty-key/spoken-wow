@@ -152,10 +152,16 @@ export async function readLocated(
   range?: RangeRequest,
   lang?: Lang,
 ): Promise<{ where: Where; object: BlobRead } | null> {
+  let relocated = false;
   for (;;) {
     const where = await locate(key, lang);
     const object = await where.store.get(where.key, range);
     if (object) return { where, object };
+    // A quarantined copy is deleted once it lands: look once more, where it landed.
+    if (where.pending && !relocated) {
+      relocated = true;
+      continue;
+    }
     if (!where.backendId) return null;
     await markMissing(key, where.backendId);
   }

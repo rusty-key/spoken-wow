@@ -48,9 +48,21 @@ export async function serveBlob(
       await object.body?.cancel();
       const exact = await where.store.get(where.key, range ? { start: range.start, end: range.end } : undefined);
       if (!exact?.body) throw new Error(`${key} vanished from the archive mid-request`);
+      // A bucket that ignores Range sends the whole object where the answer promised a part.
+      if (!same(range, exact.range)) {
+        await exact.body.cancel();
+        throw new Error(`${key}: the bucket answered other bytes than the range asked`);
+      }
       return exact.body;
     },
-    { etag, cacheControl: scoped, contentType: contentType ?? object.contentType, headers, revalidate: false },
+    {
+      etag,
+      cacheControl: scoped,
+      // A team's bucket says what its objects are; on our origin only audio is served as such.
+      contentType: contentType ?? (object.contentType.startsWith("audio/") ? object.contentType : "application/octet-stream"),
+      headers: { ...headers, "X-Content-Type-Options": "nosniff" },
+      revalidate: false,
+    },
   );
   if (response.status === 416) await object.body?.cancel();
   return response;

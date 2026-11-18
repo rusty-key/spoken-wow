@@ -95,6 +95,9 @@ type S3Config = {
   conditionalPut: boolean;
 };
 
+/** How long a bucket has to answer a request, its upload included. */
+const ANSWER_MS = 120_000;
+
 /** Any bucket that speaks S3's API with SigV4: R2, AWS S3, B2, Wasabi, GCS's interoperability keys, MinIO. */
 export function s3Blobs(env: S3Config): BlobStore {
   let client: import("aws4fetch").AwsClient | undefined;
@@ -114,7 +117,23 @@ export function s3Blobs(env: S3Config): BlobStore {
     // Fetch the bytes themselves, not the signed Request: Next's fetch sends a Request's body
     // as a chunked stream, and R2 refuses a PUT without a Content-Length.
     const request = await (await awsClient()).sign(input, init);
-    return fetch(request.url, { method: request.method, headers: request.headers, body: init?.body });
+    // A bucket that does not answer within ANSWER_MS is down: nothing waits on it for good. The
+    // limit is on the answer, not the body, so a long stream to a slow listener is not cut. A
+    // redirect is never followed, since it could send the request to a host the endpoint check
+    // never saw (lib/storage/host.ts); a 3xx fails as any other answer that is not ok.
+    const abort = new AbortController();
+    const timer = setTimeout(() => abort.abort(new Error(`${env.bucket} did not answer within ${ANSWER_MS / 1000}s`)), ANSWER_MS);
+    try {
+      return await fetch(request.url, {
+        method: request.method,
+        headers: request.headers,
+        body: init?.body,
+        redirect: "manual",
+        signal: abort.signal,
+      });
+    } finally {
+      clearTimeout(timer);
+    }
   };
   const endpoint = new URL(env.endpoint);
   const base = env.pathStyle

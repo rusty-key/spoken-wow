@@ -222,6 +222,8 @@ async function encodeFromArchive(source: Source, sha256: string, take?: EncodedT
   try {
     const master = await blobBytes(blobKey("takes", sha256), take?.lang);
     if (!master) throw new Error("its audio is not in the archive's bucket: regenerate the line");
+    // A team's bucket answers for what it holds: the encoding is kept under the master's hash.
+    if (sha256Of(master) !== sha256) throw new Error("the archive's copy does not match its hash: regenerate the line");
     await withLocalCopy(master, "mp3", (file) => encodeForPack(source, sha256, file, take));
   } catch (error) {
     await failed(source, sha256, take, error);

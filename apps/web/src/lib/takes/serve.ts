@@ -55,11 +55,12 @@ export async function serveTake(
     const { url, signed } = await addressOf(where);
     // Only our own copy of a take stays where it is for good. One in a team's bucket can be moved,
     // re-addressed or deleted, and one in quarantine is deleted once it lands.
+    // A quarantined copy is deleted once it lands, so its redirect is not kept at all.
     const lasting = where.backendId === null && !where.pending;
-    const cached = lasting ? cacheControl : `max-age=${Math.min(300, SIGNED_FOR_SEC / 2)}`;
+    const cached = where.pending ? "no-store" : `${signed ? "private" : "public"}, ${lasting ? cacheControl : `max-age=${Math.min(300, SIGNED_FOR_SEC / 2)}`}`;
     return new Response(null, {
       status: 302,
-      headers: { Location: url, "Cache-Control": `${signed ? "private" : "public"}, ${cached}` },
+      headers: { Location: url, "Cache-Control": cached },
     });
   }
   const served = await serveFile(request, bytes.path, { cacheControl: `public, ${cacheControl}`, headers, ...file });

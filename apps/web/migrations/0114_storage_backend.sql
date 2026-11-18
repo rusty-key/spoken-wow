@@ -35,7 +35,9 @@ create table "storage_backend" (
   "createdBy"      text        references "user" ("id") on delete set null,
   "createdAt"      timestamptz not null default now(),
   "retiredAt"      timestamptz,
-  check (not ("writing" and "retiredAt" is not null))
+  check (not ("writing" and "retiredAt" is not null)),
+  -- So an archive_object row can name a bucket and its team only as a pair.
+  unique ("id", "teamId")
 );
 
 create unique index "storage_backend_one_writing" on "storage_backend" ("teamId") where "writing";
@@ -61,13 +63,15 @@ create trigger "storage_backend_notify"
 create table "archive_object" (
   "prefix"    text        not null check ("prefix" in ('takes', 'recordings', 'encodings', 'samples', 'references')),
   "sha256"    text        not null check ("sha256" ~ '^[0-9a-f]{64}$'),
-  "backendId" uuid        not null references "storage_backend" ("id"),
+  "backendId" uuid        not null,
   "teamId"    uuid        not null references "team" ("id"),
   "pending"   boolean     not null default false,
   -- When a read or a check last found the object gone from the team's bucket.
   "missingAt" timestamptz,
   "keptAt"    timestamptz not null default now(),
-  primary key ("prefix", "sha256", "backendId")
+  primary key ("prefix", "sha256", "backendId"),
+  -- The row's team is its bucket's: locate() prefers a reader's team by it.
+  foreign key ("backendId", "teamId") references "storage_backend" ("id", "teamId")
 );
 
 create index "archive_object_backend_idx" on "archive_object" ("backendId");
