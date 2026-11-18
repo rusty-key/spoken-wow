@@ -143,6 +143,7 @@ export const S_ZH: Dict = {
     pageAuthor: '官方',
     author: '作者',
     allAuthors: '全部',
+    whichTeam: '安装哪个团队的语音包？',
     notInstalled: '未安装',
     installedVersion: (v: string) => `已安装 ${v}`,
     badge: { installed: '已安装', update: '有可用更新', linked: '已关联', ahead: '比发布版更新', unknown: '手动安装' },

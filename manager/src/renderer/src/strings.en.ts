@@ -146,6 +146,7 @@ export const S_EN = {
     pageAuthor: 'Official',
     author: 'Author',
     allAuthors: 'All',
+    whichTeam: "Which team's packs?",
     notInstalled: 'Not Installed',
     installedVersion: (v: string) => `Installed ${v}`,
     badge: { installed: 'Installed', update: 'Update Available', linked: 'Linked', ahead: 'Newer Than Release', unknown: 'Installed by Hand' },

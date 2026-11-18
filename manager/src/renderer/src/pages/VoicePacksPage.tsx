@@ -9,14 +9,20 @@ import { PackRow } from '../components/PackRow'
 import { formatBytes, formatDate } from '../format'
 import { jobKey, useGame, useStore } from '../store'
 import { S } from '../strings'
-import { ALL_AUTHORS, authorsOf, chosenAuthor, groupByAuthor, type Author } from '../voices'
+import { ALL_AUTHORS, authorsOf, chosenAuthor, groupByAuthor, installAllHasWork, installAllPlan, type Author, type InstallAllPlan } from '../voices'
 
 const SECTIONS: Section[] = ['quests', 'places', 'readables', 'bosses']
 
 export function VoicePacksPage(): ReactNode {
   const { state, actions } = useStore()
   const game = useGame()
-  const [confirmAll, setConfirmAll] = useState(false)
+  const [confirmAll, setConfirm] = useState(false)
+  // The team picked in Install All's question, when the language has several and none official.
+  const [picked, setPicked] = useState<string | null>(null)
+  const setConfirmAll = (open: boolean): void => {
+    setConfirm(open)
+    setPicked(null)
+  }
   const pre = state.settings.includePrereleases
 
   const voices = useMemo(() => state.products.filter((p) => p.kind === 'voices'), [state.products])
@@ -38,15 +44,15 @@ export function VoicePacksPage(): ReactNode {
   }
   const statusFor = (p: Product): ProductStatus | undefined => statusOf(state, game.id, p.id)
 
-  // Everything of the language that is not installed: the one "All quests" bundle instead of its
-  // four split packs.
-  const todo = inLang.filter((p) => {
-    if (!released(p)) return false
-    if (p.section === 'quests' && p.pack !== 'all') return false
+  const needed = (p: Product): boolean => {
     const s = statusFor(p)
     if (s?.state === 'linked' || jobBusy(state.jobs[jobKey(game.id, p.id)])) return false
     return (s?.state ?? 'not-installed') === 'not-installed'
-  })
+  }
+  const releasedInLang = inLang.filter(released)
+  const plan = installAllPlan(releasedInLang, authors, picked ?? author, needed)
+  const todo = plan.kind === 'install' ? plan.products : []
+  const anything = installAllHasWork(plan, releasedInLang, authors, needed)
   const totalBytes = todo.reduce((sum, p) => sum + (latestOf(state, game.id, p.id)?.assetSize ?? 0), 0)
   const lang = languages.find((l) => l.code === chosen)?.name ?? languageName(chosen)
   const installAll = (): void => {
@@ -64,20 +70,10 @@ export function VoicePacksPage(): ReactNode {
         <div className="rail-bottom">
           {showInstallAll &&
             (confirmAll ? (
-              <div className="confirm" role="alertdialog" aria-label={S.voices.installAll(lang)}>
-                <p>{S.voices.confirmAll(todo.length, `~${formatBytes(totalBytes)}`, lang)}</p>
-                <div className="confirm-actions">
-                  <button type="button" className="btn btn-primary" onClick={installAll}>
-                    {S.voices.confirmInstall}
-                  </button>
-                  <button type="button" className="btn" onClick={() => setConfirmAll(false)}>
-                    {S.common.cancel}
-                  </button>
-                </div>
-              </div>
+              <InstallAllConfirm plan={plan} lang={lang} size={`~${formatBytes(totalBytes)}`} onPick={setPicked} onInstall={installAll} onCancel={() => setConfirmAll(false)} />
             ) : (
-              <button type="button" className="btn btn-primary btn-play btn-wrap" disabled={todo.length === 0 || !game.writable} onClick={() => setConfirmAll(true)}>
-                {todo.length === 0 ? S.voices.allInstalled(lang) : S.voices.installAll(lang)}
+              <button type="button" className="btn btn-primary btn-play btn-wrap" disabled={!anything || !game.writable} onClick={() => setConfirmAll(true)}>
+                {anything ? S.voices.installAll(lang) : S.voices.allInstalled(lang)}
               </button>
             ))}
         </div>
@@ -156,6 +152,47 @@ export function VoicePacksPage(): ReactNode {
           )}
         </div>
       </section>
+    </div>
+  )
+}
+
+interface ConfirmProps {
+  plan: InstallAllPlan
+  lang: string
+  size: string
+  onPick: (author: string) => void
+  onInstall: () => void
+  onCancel: () => void
+}
+
+/** Install All's confirmation; with several teams and none official, first the question whose packs. */
+export function InstallAllConfirm({ plan, lang, size, onPick, onInstall, onCancel }: ConfirmProps): ReactNode {
+  return (
+    <div className="confirm" role="alertdialog" aria-label={S.voices.installAll(lang)}>
+      {plan.kind === 'ask' ? (
+        <>
+          <p id="which-team">{S.voices.whichTeam}</p>
+          <div className="pills" role="group" aria-labelledby="which-team">
+            {plan.authors.map((a) => (
+              <button key={a.key} type="button" className="pill" onClick={() => onPick(a.key)}>
+                {authorName(a)}
+              </button>
+            ))}
+          </div>
+        </>
+      ) : (
+        <p>{S.voices.confirmAll(plan.products.length, size, lang)}</p>
+      )}
+      <div className="confirm-actions">
+        {plan.kind === 'install' && (
+          <button type="button" className="btn btn-primary" disabled={plan.products.length === 0} onClick={onInstall}>
+            {S.voices.confirmInstall}
+          </button>
+        )}
+        <button type="button" className="btn" onClick={onCancel}>
+          {S.common.cancel}
+        </button>
+      </div>
     </div>
   )
 }

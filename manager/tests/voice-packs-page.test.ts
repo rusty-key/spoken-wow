@@ -4,10 +4,10 @@ import { renderToStaticMarkup } from 'react-dom/server'
 import { afterEach, describe, expect, it } from 'vitest'
 import { languagesFor, productsFor, type ChannelListing } from '../src/shared/products'
 import { DEFAULT_SETTINGS, type ChannelTeam, type GameInstall, type Product, type QuestsSide, type ReleaseInfo, type Section, type Settings } from '../src/shared/types'
-import { VoicePacksPage } from '../src/renderer/src/pages/VoicePacksPage'
+import { InstallAllConfirm, VoicePacksPage } from '../src/renderer/src/pages/VoicePacksPage'
 import { initial, StoreContext, type Actions, type State } from '../src/renderer/src/store'
 import { setUiLanguage } from '../src/renderer/src/strings'
-import { authorsOf, groupByAuthor } from '../src/renderer/src/voices'
+import { ALL_AUTHORS, authorsOf, groupByAuthor, installAllPlan, type InstallAllPlan } from '../src/renderer/src/voices'
 
 const STIMMEN: ChannelTeam = { slug: 'stimmen', name: 'Stimmen', official: false }
 const KLANG: ChannelTeam = { slug: 'klang', name: 'Klang', official: false }
@@ -143,5 +143,70 @@ describe('authorsOf', () => {
     const authors = authorsOf([product('a', null), product('b', official), product('c', STIMMEN)])
     expect(authors.list.map((a) => a.key)).toEqual(['deutsch', 'stimmen'])
     expect(groupByAuthor([product('a', null), product('b', official)], authors).map((g) => g.rows.map((p) => p.id))).toEqual([['a', 'b']])
+  })
+})
+
+describe('Install All with several teams', () => {
+  const sides = (lang: string, suffix: string, team: ChannelTeam | null) =>
+    Object.fromEntries((['alliance', 'horde', 'shared', 'gossip'] as QuestsSide[]).map((s) => [`SpokenQuestsAudio${s[0]!.toUpperCase()}${s.slice(1)}_${lang}${suffix}`, at(lang, 'quests', s, team)]))
+  /** deDE: page packs and Stimmen's, each with all four quests sides; plPL: Klang's and Stimmen's, no official team. */
+  const TEAMS: ChannelListing = {
+    packs: {
+      ...sides('deDE', '', null),
+      ...sides('deDE', '_stimmen', STIMMEN),
+      SpokenPlacesAudio_deDE: at('deDE', 'places', null, null),
+      SpokenPlacesAudio_deDE_stimmen: at('deDE', 'places', null, STIMMEN),
+      SpokenReadablesAudio_deDE_stimmen: at('deDE', 'readables', null, STIMMEN),
+      SpokenPlacesAudio_plPL: at('plPL', 'places', null, KLANG),
+      SpokenPlacesAudio_plPL_stimmen: at('plPL', 'places', null, STIMMEN),
+      SpokenReadablesAudio_plPL_stimmen: at('plPL', 'readables', null, STIMMEN)
+    },
+    languages: {}
+  }
+
+  function planFor(lang: string, choice: string = ALL_AUTHORS, installed: string[] = []): InstallAllPlan {
+    const released = productsFor(TEAMS).filter((p) => p.kind === 'voices' && p.lang === lang && p.folders!.every((f) => TEAMS.packs[f]))
+    return installAllPlan(released, authorsOf(released), choice, (p) => !installed.includes(p.id))
+  }
+  const ids = (plan: InstallAllPlan): string[] => (plan.kind === 'install' ? plan.products.map((p) => p.id) : [])
+  /** No section twice: two teams' packs of one section would play over each other. */
+  function oneTeamPerSection(plan: InstallAllPlan): void {
+    const sections = plan.kind === 'install' ? plan.products.map((p) => p.section) : []
+    expect(new Set(sections).size).toBe(sections.length)
+  }
+
+  it("with All, installs the official packs only, not a team's beside them", () => {
+    const plan = planFor('deDE')
+    expect(ids(plan)).toEqual(['quests-audio-deDE', 'places-audio-deDE'])
+    oneTeamPerSection(plan)
+  })
+
+  it('with All and no official team, asks whose packs and installs nothing until one is picked', () => {
+    const plan = planFor('plPL')
+    expect(plan).toMatchObject({ kind: 'ask', authors: [{ key: 'klang' }, { key: 'stimmen' }] })
+    const html = renderToStaticMarkup(createElement(InstallAllConfirm, { plan, lang: 'Polski', size: '~1 MB', onPick: () => undefined, onInstall: () => undefined, onCancel: () => undefined }))
+    expect(html).toContain("Which team&#x27;s packs?")
+    expect(html).toContain('>Klang</button>')
+    expect(html).toContain('>Stimmen</button>')
+    expect(html).not.toContain('>Install</button>')
+    expect(ids(planFor('plPL', 'stimmen'))).toEqual(['places-audio-plPL-stimmen', 'readables-audio-plPL-stimmen'])
+    expect(ids(planFor('plPL', 'klang'))).toEqual(['places-audio-plPL'])
+  })
+
+  it("with an author chosen, installs that author's packs, the quests bundle in place of its sides", () => {
+    const plan = planFor('deDE', 'stimmen')
+    expect(ids(plan)).toEqual(['quests-audio-deDE-stimmen', 'places-audio-deDE-stimmen', 'readables-audio-deDE-stimmen'])
+    oneTeamPerSection(plan)
+    expect(ids(planFor('deDE', 'stimmen', ['places-audio-deDE-stimmen']))).toEqual(['quests-audio-deDE-stimmen', 'readables-audio-deDE-stimmen'])
+  })
+
+  it('never installs two packs of one section in one press', () => {
+    for (const lang of ['deDE', 'plPL']) for (const choice of [ALL_AUTHORS, '', 'stimmen', 'klang']) oneTeamPerSection(planFor(lang, choice))
+  })
+
+  it('asks in Chinese too', () => {
+    setUiLanguage('zhCN')
+    const html = renderToStaticMarkup(createElement(InstallAllConfirm, { plan: planFor('plPL'), lang: 'Polski', size: '~1 MB', onPick: () => undefined, onInstall: () => undefined, onCancel: () => undefined }))
+    expect(html).toContain('安装哪个团队的语音包？')
   })
 })
