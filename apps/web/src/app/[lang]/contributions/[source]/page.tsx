@@ -348,18 +348,19 @@ export default async function Page({
 
   const build = buildFilterOf(rawBuild);
   // Lines the corpus has, sent back with other words: a group of their own on the same page.
-  const corrections =
-    source === "quests" || source === "readables"
-      ? (await correctionRowsFor({ listed, states, source, client, stage, q, searchIn })).filter((row) =>
-          matchesBuild(row.client, build),
-        )
-      : [];
+  const anyBuildCorrections =
+    source === "quests" || source === "readables" ? await correctionRowsFor({ listed, states, source, client, stage, q, searchIn }) : [];
+  const corrections = anyBuildCorrections.filter((row) => matchesBuild(row.client, build));
   const anyBuild = contributions
     .filter((row) => matchesClient(clientOf(row.build).family, client))
     .filter((row) => matchesStage(questFor(row), stage))
     .filter((row) => matchesSearch({ text: row.text, npc: npcs[row.id], quest: questFor(row) }, q, searchIn));
   // Read before the build narrows the rows, or picking one would empty the dropdown of the others.
-  const builds = buildOptions(anyBuild.map((row) => clientOf(row.build)));
+  // From whatever the switch shows, so a build only corrections came from can still be picked.
+  const builds = buildOptions([
+    ...(show === "corrections" ? [] : anyBuild.map((row) => clientOf(row.build))),
+    ...(show === "lines" ? [] : anyBuildCorrections.map((row) => row.client)),
+  ]);
   const filtered = anyBuild.filter((row) => matchesBuild(clientOf(row.build), build));
 
   // Counted after the other filters, so each tab's count matches what it shows.
