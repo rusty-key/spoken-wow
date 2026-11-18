@@ -153,4 +153,42 @@ describe("team_live_overrides", () => {
     const rows = await query(`select * from team_live_overrides($1, $2, 'quests')`, [b, lang]);
     expect(rows).toEqual([{ key: line, text: "their words" }]);
   });
+
+  async function lineOverride(file: string, text: string, updatedAt: string) {
+    await asSystem.query(
+      `insert into "line_override" ("teamId", "lang", "file", "lineId", "text", "updatedAt")
+       values ($1, $2, $3, $4, $5, $6)`,
+      [b, lang, file, `g:${file}`, text, updatedAt],
+    );
+  }
+
+  it("leaves a quest override with no take, or only an older one, private", async () => {
+    await lineOverride(`gossip/${tag}untaken.mp3`, "untaken", "2026-01-01T00:00:00Z");
+    await lineOverride(`gossip/${tag}newer.mp3`, "newer", "2026-01-03T00:00:00Z");
+    await take(b, lang, "quests", `gossip/${tag}newer.mp3`, `g:${tag}`, 1, true, "2026-01-02T00:00:00Z");
+    await lineOverride(`gossip/${tag}voiced.mp3`, "voiced", "2026-01-03T00:00:00Z");
+    await take(b, lang, "quests", `gossip/${tag}voiced-orc.mp3`, `g:${tag}v`, 1, true, "2026-01-02T00:00:00Z");
+
+    expect(await query(`select * from team_live_overrides($1, $2, 'quests')`, [b, lang])).toEqual([]);
+  });
+
+  it("does not count a file with its own override as a voice of a shorter one", async () => {
+    const stem = `gossip/${tag}stem`;
+    await lineOverride(`${stem}.mp3`, "base", "2026-01-01T00:00:00Z");
+    await lineOverride(`${stem}-w1.mp3`, "own", "2026-01-01T00:00:00Z");
+    await take(b, lang, "quests", `${stem}-w1.mp3`, `g:${tag}w`, 1, true, "2026-01-02T00:00:00Z");
+
+    const rows = await query(`select * from team_live_overrides($1, $2, 'quests')`, [b, lang]);
+    expect(rows).toEqual([{ key: `${stem}-w1.mp3`, text: "own" }]);
+  });
+
+  it("gives a voice file the shortest stem's override", async () => {
+    const stem = `gossip/${tag}stem`;
+    await lineOverride(`${stem}.mp3`, "short", "2026-01-01T00:00:00Z");
+    await lineOverride(`${stem}-a.mp3`, "long", "2026-01-01T00:00:00Z");
+    await take(b, lang, "quests", `${stem}-a-b.mp3`, `g:${tag}ab`, 1, true, "2026-01-02T00:00:00Z");
+
+    const rows = await query(`select * from team_live_overrides($1, $2, 'quests')`, [b, lang]);
+    expect(rows).toEqual([{ key: `${stem}.mp3`, text: "short" }]);
+  });
 });

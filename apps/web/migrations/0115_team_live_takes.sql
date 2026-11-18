@@ -16,11 +16,14 @@
 -- team_live_overrides returns an override's key and text, only for a line with a live take made
 -- at or after the override's last save: that take speaks those words. An override with no such
 -- take is still in progress, and stays private as other unfinished work does. A quest override
--- is keyed by its line's file and spoken by its voice files (`{stem}-{voice}.mp3`) too.
+-- is keyed by its line's file and spoken by its voice files (`{stem}-{voice}.mp3`) too; a take
+-- speaks the one override the site resolves for its file. `createdAt >= updatedAt` trusts the
+-- take's insert time: a take committed after an override saved during its generation still
+-- counts as speaking it.
 --
 -- Additive: the previous release never calls either.
 
-create function "team_live_takes"(p_team uuid, p_lang text, p_source text, p_file text default null)
+create or replace function "team_live_takes"(p_team uuid, p_lang text, p_source text, p_file text default null)
 returns table (
   "lineId"      text,
   "file"        text,
@@ -33,7 +36,7 @@ returns table (
   "archiveFile" text,
   "sha256"      text
 )
-language sql stable security definer set search_path = public as $$
+language sql stable security definer set search_path = public, pg_temp as $$
   select t."lineId", t."file", t."version", t."spokenHash", t."characters", t."durationSec", t."bytes",
          t."createdAt", t."archiveFile", t."sha256"
     from "take" t
@@ -42,28 +45,41 @@ language sql stable security definer set search_path = public as $$
      and exists (select 1 from "team_language" l where l."teamId" = p_team and l."lang" = p_lang)
 $$;
 
-create function "team_live_overrides"(p_team uuid, p_lang text, p_source text)
+create or replace function "team_live_overrides"(p_team uuid, p_lang text, p_source text)
 returns table ("key" text, "text" text)
-language sql stable security definer set search_path = public as $$
-  select o."file", o."text"
-    from "line_override" o
-   where p_source = 'quests' and o."teamId" = p_team and o."lang" = p_lang
-     and exists (select 1 from "team_language" l where l."teamId" = p_team and l."lang" = p_lang)
-     and exists (
-       select 1 from "take" t
-        where t."teamId" = p_team and t."lang" = p_lang and t."source" = 'quests' and t."isCurrent"
-          and t."createdAt" >= o."updatedAt"
-          and (t."file" = o."file"
-               or (right(t."file", 4) = '.mp3'
-                   and left(t."file", length(o."file") - 3) = left(o."file", length(o."file") - 4) || '-'
-                   and substr(t."file", length(o."file") - 2, length(t."file") - length(o."file") - 1)
-                       ~ '^[a-z0-9]+(-[a-z0-9]+)*$'))
-     )
+language sql stable security definer set search_path = public, pg_temp as $$
+  with "live" as (
+    select t."file", t."createdAt"
+      from "take" t
+     where p_source = 'quests' and t."teamId" = p_team and t."lang" = p_lang and t."source" = 'quests'
+       and t."isCurrent"
+  ),
+  "own" as (
+    select o."file", o."text", o."updatedAt"
+      from "line_override" o
+     where p_source = 'quests' and o."teamId" = p_team and o."lang" = p_lang
+  ),
+  -- Each live take's override, as the site resolves a file's text: its own file's, else the
+  -- shortest stem whose rest is a voice's name.
+  "spoken" as (
+    select distinct on (l."file") o."file", o."text", o."updatedAt", l."createdAt"
+      from "live" l
+      join "own" o
+        on o."file" = l."file"
+        or (length(o."file") > 4 and right(o."file", 4) = '.mp3'
+            and left(l."file", length(o."file") - 3) = left(o."file", length(o."file") - 4) || '-'
+            and substr(l."file", length(o."file") - 2) ~ '^[a-z0-9]+(-[a-z0-9]+)*\.mp3$')
+     order by l."file", o."file" = l."file" desc, length(o."file")
+  )
+  select distinct s."file", s."text"
+    from "spoken" s
+   where s."createdAt" >= s."updatedAt"
+     and exists (select 1 from "team_language" g where g."teamId" = p_team and g."lang" = p_lang)
   union all
   select o."lineId", o."text"
     from "text_override" o
    where p_source <> 'quests' and o."teamId" = p_team and o."lang" = p_lang and o."source" = p_source
-     and exists (select 1 from "team_language" l where l."teamId" = p_team and l."lang" = p_lang)
+     and exists (select 1 from "team_language" g where g."teamId" = p_team and g."lang" = p_lang)
      and exists (
        select 1 from "take" t
         where t."teamId" = p_team and t."lang" = p_lang and t."source" = p_source and t."isCurrent"
