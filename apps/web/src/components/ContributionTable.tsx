@@ -898,19 +898,19 @@ const ReviewRow = memo(function ReviewRow({
         dropAsked
       ) : check.verdict === "fix" ? (
         <>
-          {check.fix ? keep("Keep with fix", "bs-btn-primary", { text: check.fix.text }) : button("Edit", "bs-btn-primary", startEdit)}
-          {check.fix ? button("Edit", "bs-btn-text", startEdit) : keep("Keep as sent", "bs-btn-text")}
+          {check.fix ? keep("Keep with fix", "bs-btn-primary", { text: check.fix.text }) : button("Edit text", "bs-btn-primary", startEdit)}
+          {check.fix ? button("Edit text", "bs-btn-text", startEdit) : keep("Keep as sent", "bs-btn-text")}
           {dropAsked}
         </>
       ) : check.verdict === "drop" ? (
         <>
           {button("Drop", "bs-btn-danger", () => drop(check.findings.find((finding) => finding.tone === "drop")?.message ?? "Failed the review checks"))}
-          {button("Edit and keep", "bs-btn-text", startEdit, !keepable)}
+          {button("Edit text and keep", "bs-btn-text", startEdit, !keepable)}
         </>
       ) : (
         <>
           {keep("Keep", "")}
-          {button("Edit", "bs-btn-text", startEdit, !keepable)}
+          {button("Edit text", "bs-btn-text", startEdit, !keepable)}
           {dropAsked}
         </>
       );
