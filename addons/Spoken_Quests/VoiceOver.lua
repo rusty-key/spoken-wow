@@ -371,6 +371,8 @@ function Addon:WhyHeld(event)
         return L.OPT_PROGRESS_OFF_TIP
     elseif event and self:PartOfPage(event) == "gossip" and self:IsNever() then
         return L.OPT_NEVER_TIP
+    elseif event and self:PartOfPage(event) == "gossip" and self:IsGossipNPCIgnored(Utils:GetNPCGUID()) then
+        return L.OPT_MUTED_TIP
     end
 end
 
@@ -1405,7 +1407,7 @@ end
 
 --- Keyed by creature ID, so one choice covers every spawn.
 function Addon:IsGossipNPCIgnored(guid)
-    return guid ~= nil and self.db.char.ignoredGossipNPCs[SpeakerKey(guid)] == true
+    return guid ~= nil and self.db.char.ignoredGossipNPCs[SpeakerKey(guid)] ~= nil
 end
 
 --- Only an NPC a pack voices, so the toggle never sits on a window Spoken has nothing to read for.
@@ -1413,25 +1415,10 @@ function Addon:CanIgnoreNPC(clip)
     return clip.unitGUID ~= nil and Enums.SoundEvent:IsGossipEvent(clip.event) and DataModules:HasGossipFor(clip)
 end
 
---- A clip-shaped record stands in when nothing has been queued for the NPC yet.
-function Addon:CurrentGossipClip()
-    local event = GetVisibleDialogueEvent()
-    local speech = SPEECH_EVENTS[event]
-    local guid = speech and Utils:GetNPCGUID()
-    if not guid then
-        return nil
-    end
-    if currentGossipSoundData and currentGossipSoundData.unitGUID == guid
-        and Enums.SoundEvent:IsGossipEvent(currentGossipSoundData.event) then
-        return currentGossipSoundData, event
-    end
-    return { event = speech.sound, unitGUID = guid, name = Utils:GetNPCName(),
-        unitIsObjectOrItem = Utils:IsNPCObjectOrItem() }, event
-end
-
 function Addon:SetGossipNPCMuted(guid, name, muted)
     local key = SpeakerKey(guid)
-    self.db.char.ignoredGossipNPCs[key] = muted or nil
+    -- The name, for the list on Gossip's settings page; the key alone names no one.
+    self.db.char.ignoredGossipNPCs[key] = muted and (name or true) or nil
     if muted then
         for _, clip in ipairs(Player:Queued()) do
             if Enums.SoundEvent:IsGossipEvent(clip.event) and clip.unitGUID and SpeakerKey(clip.unitGUID) == key then
@@ -1439,7 +1426,17 @@ function Addon:SetGossipNPCMuted(guid, name, muted)
             end
         end
     end
+    -- Listen shows for a muted NPC, so an open window gains or loses it.
+    if DialogPlayButton then DialogPlayButton:Refresh() end
     print("|cFF00CCFFSpoken Gossip:|r " .. format(muted and L.MUTE_NPC_DONE or L.UNMUTE_NPC_DONE, name or "NPC"))
+end
+
+--- For the list on Gossip's settings page, which holds keys and no GUID.
+function Addon:UnmuteGossipNPCKey(key)
+    local name = self.db.char.ignoredGossipNPCs[key]
+    self.db.char.ignoredGossipNPCs[key] = nil
+    if DialogPlayButton then DialogPlayButton:Refresh() end
+    print("|cFF00CCFFSpoken Gossip:|r " .. format(L.UNMUTE_NPC_DONE, type(name) == "string" and name or "NPC"))
 end
 
 ---@param followsOption boolean? the page was reached by picking one of the NPC's options

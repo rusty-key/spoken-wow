@@ -49,8 +49,8 @@ for _, child in ipairs(content.children) do
         boxes[child.text.text] = child
     end
 end
-Expect("the sections are When to Read and Reading History", table.concat(headings, "|"),
-    W.MODULE_WHEN .. "|" .. W.MODULE_HISTORY)
+Expect("the sections are When to Read, Reading History and Muted NPCs", table.concat(headings, "|"),
+    W.MODULE_WHEN .. "|" .. W.MODULE_HISTORY .. "|" .. L.OPT_MUTED_NPCS)
 -- Voice packs, the test line and Report a Problem are on the Quests page and Spoken's, for every part.
 Expect("no voice pack rows and no test line on this page", #buttons, 2)
 
@@ -110,9 +110,30 @@ Expect("...and live with a greeting read once", forget.layoutReason, nil)
 forget.scripts.OnClick(forget)
 Expect("...which clears this character's greetings heard", next(db.char.hasSeenGossipForNPC), nil)
 
+---------------------------------------------------------------- muted NPCs
 local forgetMuted
 for _, button in ipairs(buttons) do if button.text == L.OPT_FORGET_MUTED_NPCS then forgetMuted = button end end
-db.char.ignoredGossipNPCs = { [12345] = true }
+db.char.ignoredGossipNPCs = { [12345] = "Guard", o678 = "Strongbox" }
+Panel.panel.layout:Refresh()
+local unmutes = {}
+local function Unmutes()
+    for i = #unmutes, 1, -1 do unmutes[i] = nil end
+    for _, child in ipairs(content.children) do
+        if child.children then
+            for _, row in ipairs(child.children) do
+                for _, part in ipairs(row.children or {}) do
+                    if part.key ~= nil and part.scripts and part.scripts.OnClick and row:IsShown() then
+                        table.insert(unmutes, part)
+                    end
+                end
+            end
+        end
+    end
+    return unmutes
+end
+Expect("each muted NPC has its own Unmute", #Unmutes(), 2)
+Unmutes()[1].scripts.OnClick(unmutes[1])
+Expect("...which unmutes that NPC alone", next(db.char.ignoredGossipNPCs) ~= nil and #Unmutes(), 1)
 Expect("Forget Muted NPCs is a button", forgetMuted ~= nil, true)
 forgetMuted.scripts.OnClick(forgetMuted)
 Expect("...which clears this character's muted NPCs", next(db.char.ignoredGossipNPCs), nil)
