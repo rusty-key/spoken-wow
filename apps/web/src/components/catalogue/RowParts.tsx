@@ -38,9 +38,10 @@ export function RowActions({
   badge?: ReactNode;
 }) {
   const [open, setOpen] = useState(false);
-  // The picked item runs once the popover has closed, with focus put back on More by hand: the
-  // popover hands it to the page instead, so a dialog the item opens would return focus to the
-  // page top when it closes. Run straight away, the dialog also lost its focus to that hand-back.
+  // A picked item runs once the popover has closed, with focus put back on More by hand: the
+  // popover hands focus to the page, and a dialog opened before that loses it and returns focus
+  // to the page top when it closes. Other closes keep the popover's own handling, which leaves
+  // focus where a click outside put it.
   const picked = useRef<RowAction | null>(null);
   const trigger = useRef<HTMLButtonElement>(null);
   const inMenu = primary.length > 0 || regenerate || more.length > 1 ? more : [];
@@ -73,11 +74,12 @@ export function RowActions({
             align="end"
             className="cat-menu w-auto min-w-48 p-1"
             onCloseAutoFocus={(event) => {
+              const action = picked.current;
+              if (!action) return;
+              picked.current = null;
               event.preventDefault();
               trigger.current?.focus();
-              const action = picked.current;
-              picked.current = null;
-              if (action) setTimeout(action.onClick, 0);
+              setTimeout(action.onClick, 0);
             }}
           >
             {inMenu.map((action) => (

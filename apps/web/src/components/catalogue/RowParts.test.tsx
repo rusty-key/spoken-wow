@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
-import { cleanup, render, screen } from "@testing-library/react";
-import { afterEach, expect, test } from "vitest";
+import { cleanup, render, screen, waitFor } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
+import { afterEach, expect, test, vi } from "vitest";
 
 import { RowActions, type RowAction } from "@/components/catalogue/RowParts";
 
@@ -22,4 +23,32 @@ test("two rare actions go behind More even without edit actions", () => {
   expect(screen.queryByRole("button", { name: "Report Goldshire" })).toBeNull();
   expect(screen.queryByRole("button", { name: "Ignore Goldshire" })).toBeNull();
   expect(screen.queryByRole("button", { name: "More actions for Goldshire" })).not.toBeNull();
+});
+
+test("a picked More item runs once the menu has closed", async () => {
+  const onClick = vi.fn();
+  const user = userEvent.setup();
+  render(<RowActions subject="Goldshire" primary={[]} more={[{ ...report, onClick }, ignore]} />);
+  await user.click(screen.getByRole("button", { name: "More actions for Goldshire" }));
+  await user.click(screen.getByRole("button", { name: "Report Goldshire" }));
+  await waitFor(() => expect(onClick).toHaveBeenCalledOnce());
+  expect(screen.queryByRole("button", { name: "Ignore Goldshire" })).toBeNull();
+});
+
+// Closing the menu by clicking elsewhere must leave focus where that click put it: pulling it
+// back to More swallowed what was typed into the search field next.
+test("clicking elsewhere to close More leaves focus there", async () => {
+  const user = userEvent.setup();
+  render(
+    <>
+      <input aria-label="Search" />
+      <RowActions subject="Goldshire" primary={[]} more={[report, ignore]} />
+    </>,
+  );
+  await user.click(screen.getByRole("button", { name: "More actions for Goldshire" }));
+  expect(screen.queryByRole("button", { name: "Report Goldshire" })).not.toBeNull();
+  await user.click(screen.getByRole("textbox", { name: "Search" }));
+  await waitFor(() => expect(screen.queryByRole("button", { name: "Report Goldshire" })).toBeNull());
+  await new Promise((resolve) => setTimeout(resolve, 20));
+  expect(document.activeElement).toBe(screen.getByRole("textbox", { name: "Search" }));
 });
