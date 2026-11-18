@@ -28,15 +28,14 @@ import { INVALID_CHARS, isVoiceable } from "@/lib/text-gate";
 import { isModelVoice } from "@/lib/voices/voices";
 
 import { speakPlayerTokens } from "@/lib/player-words";
-import { sentText } from "./files";
+import { shapedText } from "./files";
 import { canonicalNpcId, seedFor } from "./seed";
 import { spokenHash } from "./spoken-hash";
 import { currentConfig } from "./settings";
-import { directionFor, NARRATOR_VOICE, segments, type Segment } from "./narration";
+import { NARRATOR_VOICE, segments, type Segment } from "./narration";
 import type { Speaker } from "./speakers/speaker";
 import { BUSY, withTakeLock } from "./lock";
 import { busy, failure, type Failure } from "./errors";
-import { SHAPE } from "./speakers/shape";
 import { timesFor } from "./word-times";
 
 export type RegenerateSuccess = {
@@ -163,11 +162,7 @@ export async function regenerateLine(
     //
     // The committed pronunciation rules are English's spellings of English words; another
     // language is spoken with its own lexicon, which the speaker applies, and nothing else.
-    const spokenText = SHAPE[speaker.provider](
-      sentText(source, lang, line.playerGender),
-      directionFor(line.voice, config.raceTags),
-      config.raceTags,
-    );
+    const spokenText = shapedText(source, lang, line, speaker.provider, config.raceTags);
     // Lowest npcId in the group, so a file shared by many NPCs regenerates the same way
     // whichever row the button was pressed on. See canonicalNpcId.
     const seed = seedFor(canonicalNpcId(group), speaker.seedStrategy);

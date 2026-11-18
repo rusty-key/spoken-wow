@@ -7,7 +7,7 @@ import { afterAll, afterEach, beforeEach, describe, expect, it, vi } from "vites
 
 import type { CorpusLine } from "@/lib/corpus";
 
-const originals = vi.hoisted(() => new Map<string, { text: string }>());
+const originals = vi.hoisted(() => new Map<string, { text: string; voice: string; playerGender: null }>());
 
 vi.mock("@/lib/audio", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@/lib/audio")>()),
@@ -24,7 +24,7 @@ let file: string;
 
 beforeEach(() => {
   file = `quests/test-drift-${Math.random().toString(36).slice(2, 10)}.mp3`;
-  originals.set(file, { text: "Text A." });
+  originals.set(file, { text: "Text A.", voice: "human-male", playerGender: null });
 });
 
 afterEach(async () => {
@@ -45,16 +45,16 @@ describe("hasDrifted, over what writeOverride stored", () => {
 
   it("names an override once the original under it changes", async () => {
     await writeOverride("enUS", file, "q:1:accept", "Mine.", null);
-    originals.set(file, { text: "Text B." });
+    originals.set(file, { text: "Text B.", voice: "human-male", playerGender: null });
     expect(await drifted()).toBe(true);
   });
 
   it("clears when the override is saved again, until the original changes again", async () => {
     await writeOverride("enUS", file, "q:1:accept", "Mine.", null);
-    originals.set(file, { text: "Text B." });
+    originals.set(file, { text: "Text B.", voice: "human-male", playerGender: null });
     await writeOverride("enUS", file, "q:1:accept", "Mine.", null);
     expect(await drifted()).toBe(false);
-    originals.set(file, { text: "Text C." });
+    originals.set(file, { text: "Text C.", voice: "human-male", playerGender: null });
     expect(await drifted()).toBe(true);
   });
 
@@ -63,7 +63,7 @@ describe("hasDrifted, over what writeOverride stored", () => {
       `insert into "line_override" ("teamId", "file", "lineId", "text") values (team_of_lang('enUS'), $1, 'q:1:accept', 'Old.')`,
       [file],
     );
-    originals.set(file, { text: "Text B." });
+    originals.set(file, { text: "Text B.", voice: "human-male", playerGender: null });
     expect(await drifted()).toBe(false);
   });
 });

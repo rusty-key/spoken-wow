@@ -62,7 +62,13 @@ beforeAll(async () => {
     `insert into "user" ("id", "name", "email", "emailVerified") values ($1, 'Test Override', $2, false)`,
     [USER, `${USER}@example.invalid`],
   );
-  const line = (text: string, skipReason: string | null = null) => ({ lineId: LINE, text, skipReason });
+  const line = (text: string, skipReason: string | null = null) => ({
+    lineId: LINE,
+    text,
+    skipReason,
+    voice: "human-male",
+    playerGender: null,
+  });
   lines.set("enUS", new Map([[FILE, line("Well met.")]]));
   lines.set(
     "deDE",

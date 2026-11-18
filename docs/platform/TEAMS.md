@@ -208,8 +208,8 @@ takes. Everything else is private to the team: take history, recordings not yet 
 clones, settings, lexicon, overrides in progress, queue, activity, audio reports and issues. Writes
 are always scoped to the team being worked in.
 
-A team's override is public on a line it has a live take of, made since the override's last save,
-so the text shown with another team's takes is what they say. Otherwise it stays private. *(User.)*
+A team's override is public on a line with a live take that speaks it, so the text shown with
+another team's takes is what they say. Otherwise it stays private. *(User.)*
 
 In phase 1 there is one team per language, so the explorer shows what it shows today.
 
@@ -234,8 +234,9 @@ In phase 1 there is one team per language, so the explorer shows what it shows t
     version, spoken hash, characters, duration, bytes and date, plus the archive location the
     server needs to serve the audio, which never reaches a browser. No credits, cost, model, voice,
     provider, author, settings or take count, which would reveal the team's history.
-  - `team_live_overrides` returns a team's override text, keyed by line, only on lines it has a
-    live take of made since the override's last save. No author, date or original hash.
+  - `team_live_overrides` returns a team's override text, keyed by line, only on lines with a
+    live take that speaks it, judged by spoken hash; on a quest line, every voice's take must.
+    No author, date or original hash.
 - Migrations and the pipelines keep the owner role. Pipelines mostly touch shared data, with these
   exceptions *(my calls)*:
   - `pipelines/quests/tts_cli/corpus_db.py` seeds `voice` / `voice_assignment` rows when a new

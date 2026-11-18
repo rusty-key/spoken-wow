@@ -182,8 +182,8 @@ describe("another team's live takes", () => {
       [b, lang, `places/${tag}.mp3`, `p:${tag}`],
     );
     await asSystem.query(
-      `insert into "text_override" ("teamId", "lang", "source", "lineId", "text", "updatedAt")
-       values ($1, $2, 'places', $3, 'Their words', '2026-01-01T00:00:00Z')`,
+      `insert into "text_override" ("teamId", "lang", "source", "lineId", "text", "spokenHash")
+       values ($1, $2, 'places', $3, 'Their words', 'hash')`,
       [b, lang, `p:${tag}`],
     );
   });

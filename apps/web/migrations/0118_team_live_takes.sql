@@ -13,15 +13,20 @@
 -- provider, settings, author and older versions, which would reveal how the team works and
 -- what it spent.
 --
--- team_live_overrides returns an override's key and text, only for a line with a live take made
--- at or after the override's last save: that take speaks those words. An override with no such
--- take is still in progress, and stays private as other unfinished work does. A quest override
--- is keyed by its line's file and spoken by its voice files (`{stem}-{voice}.mp3`) too; a take
--- speaks the one override the site resolves for its file. `createdAt >= updatedAt` trusts the
--- take's insert time: a take committed after an override saved during its generation still
--- counts as speaking it.
+-- team_live_overrides returns an override's key and text, only for a line whose live takes
+-- speak it: a place, readable or boss take whose spoken hash is the override's, or, for a quest
+-- override, every live take that resolves to it (its own file and its voice files,
+-- `{stem}-{voice}.mp3`, as the site resolves them) carrying one of the override's hashes. A hash
+-- rather than a time, because a time cannot say which words a take was made from. An override
+-- with no such take, or with no hash, is still in progress and stays private as other
+-- unfinished work does.
+--
+-- line_override gains "spokenHashes": every hash a take speaking the override can carry, one per
+-- resolving file and provider, since each shapes the words with its own voice's direction.
 --
 -- Additive: the previous release never calls either.
+
+alter table "line_override" add column if not exists "spokenHashes" text[];
 
 create or replace function "team_live_takes"(p_team uuid, p_lang text, p_source text, p_file text default null)
 returns table (
@@ -49,20 +54,20 @@ create or replace function "team_live_overrides"(p_team uuid, p_lang text, p_sou
 returns table ("key" text, "text" text)
 language sql stable security definer set search_path = public, pg_temp as $$
   with "live" as (
-    select t."file", t."createdAt"
+    select t."file", t."spokenHash"
       from "take" t
      where p_source = 'quests' and t."teamId" = p_team and t."lang" = p_lang and t."source" = 'quests'
        and t."isCurrent"
   ),
   "own" as (
-    select o."file", o."text", o."updatedAt"
+    select o."file", o."text", o."spokenHashes"
       from "line_override" o
      where p_source = 'quests' and o."teamId" = p_team and o."lang" = p_lang
   ),
   -- Each live take's override, as the site resolves a file's text: its own file's, else the
   -- shortest stem whose rest is a voice's name.
   "spoken" as (
-    select distinct on (l."file") o."file", o."text", o."updatedAt", l."createdAt"
+    select distinct on (l."file") o."file", o."text", o."spokenHashes", l."spokenHash"
       from "live" l
       join "own" o
         on o."file" = l."file"
@@ -71,10 +76,11 @@ language sql stable security definer set search_path = public, pg_temp as $$
             and substr(l."file", length(o."file") - 2) ~ '^[a-z0-9]+(-[a-z0-9]+)*\.mp3$')
      order by l."file", o."file" = l."file" desc, length(o."file")
   )
-  select distinct s."file", s."text"
+  select s."file", s."text"
     from "spoken" s
-   where s."createdAt" >= s."updatedAt"
-     and exists (select 1 from "team_language" g where g."teamId" = p_team and g."lang" = p_lang)
+   where exists (select 1 from "team_language" g where g."teamId" = p_team and g."lang" = p_lang)
+   group by s."file", s."text"
+  having coalesce(bool_and(s."spokenHash" = any(s."spokenHashes")), false)
   union all
   select o."lineId", o."text"
     from "text_override" o
@@ -83,7 +89,7 @@ language sql stable security definer set search_path = public, pg_temp as $$
      and exists (
        select 1 from "take" t
         where t."teamId" = p_team and t."lang" = p_lang and t."source" = p_source and t."isCurrent"
-          and t."lineId" = o."lineId" and t."createdAt" >= o."updatedAt"
+          and t."lineId" = o."lineId" and t."spokenHash" = o."spokenHash"
      )
 $$;
 

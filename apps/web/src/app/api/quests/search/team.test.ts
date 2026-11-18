@@ -7,6 +7,7 @@
 import { NextRequest } from "next/server";
 import { afterAll, afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
+import type { CorpusLine } from "@/lib/corpus";
 import type { Lang } from "@/lib/lang";
 
 vi.mock("@/lib/session", () => ({ currentSession: async () => null }));
@@ -20,6 +21,9 @@ const { asSystem, dropLang, dropTeam, newTeamIn, systemRows, uniqueLang } = awai
 const { forgetLanguages, loadLanguages } = await import("@/lib/languages/catalogue");
 const { facets } = await import("@/lib/facets");
 const { asViewed } = await import("@/lib/teams/viewing");
+const { shapedText } = await import("@/lib/generation/files");
+const { currentConfig } = await import("@/lib/generation/settings");
+const { spokenHash } = await import("@/lib/generation/spoken-hash");
 const { GET } = await import("./route");
 
 let lang: Lang;
@@ -27,23 +31,28 @@ let a: string;
 let b: string;
 let slugs: Map<string, string>;
 /** Three lines of three different files, as team B's corpus names them. */
-let picked: { lineId: string; file: string }[];
+let picked: { lineId: string; file: string; line: CorpusLine }[];
 
-async function take(team: string, line: { lineId: string; file: string }) {
+async function take(team: string, line: { lineId: string; file: string }, said: string | null = null) {
   await asSystem.query(
     `insert into "take" ("teamId", "source", "lang", "file", "lineId", "version", "isCurrent", "origin", "bytes",
-                         "createdAt", "credits", "voice", "modelId", "archiveFile", "sha256")
-     values ($1, 'quests', $2, $3, $4, 1, true, 'generated', 100, '2026-01-02T00:00:00Z', 42, 'secret-voice',
-             'secret-model', 'secret-archive.mp3', 'secret-sha')`,
-    [team, lang, line.file, line.lineId],
+                         "credits", "voice", "modelId", "spokenHash", "archiveFile", "sha256")
+     values ($1, 'quests', $2, $3, $4, 1, true, 'generated', 100, 42, 'secret-voice', 'secret-model', $5,
+             'secret-archive.mp3', 'secret-sha')`,
+    [team, lang, line.file, line.lineId, said],
   );
 }
 
-async function override(team: string, line: { lineId: string; file: string }, text: string) {
+/** What an ElevenLabs take of `line` speaking `text` carries, as regenerating hashes it. */
+async function hashOf(line: CorpusLine, text: string): Promise<string> {
+  return spokenHash(shapedText(text, lang, line, "elevenlabs", (await currentConfig(lang)).raceTags));
+}
+
+async function override(team: string, line: { lineId: string; file: string; line: CorpusLine }, text: string) {
   await asSystem.query(
-    `insert into "line_override" ("teamId", "lang", "file", "lineId", "text", "updatedAt")
-     values ($1, $2, $3, $4, $5, '2026-01-01T00:00:00Z')`,
-    [team, lang, line.file, line.lineId, text],
+    `insert into "line_override" ("teamId", "lang", "file", "lineId", "text", "spokenHashes")
+     values ($1, $2, $3, $4, $5, $6)`,
+    [team, lang, line.file, line.lineId, text, [await hashOf(line.line, text)]],
   );
 }
 
@@ -62,10 +71,12 @@ beforeEach(async () => {
   // Lines whose id names one file alone, so a search by id answers for that file.
   const lines = (await asTeam(lang, b, () => corpus(lang))).lines;
   const filesOf = new Map<string, Set<string>>();
+  const lineOf = new Map<string, CorpusLine>();
   for (const line of lines) {
     const files = filesOf.get(line.lineId) ?? new Set();
     files.add(audioRelPath(line));
     filesOf.set(line.lineId, files);
+    lineOf.set(audioRelPath(line), line);
   }
   picked = [];
   const used = new Set<string>();
@@ -73,11 +84,11 @@ beforeEach(async () => {
     const [file] = files;
     if (files.size !== 1 || used.has(file)) continue;
     used.add(file);
-    picked.push({ lineId, file });
+    picked.push({ lineId, file, line: lineOf.get(file)! });
     if (picked.length === 3) break;
   }
 
-  await take(b, picked[0]);
+  await take(b, picked[0], await hashOf(picked[0].line, "B's words, spoken"));
   await override(b, picked[0], "B's words, spoken");
   await take(a, picked[1]);
   await override(b, picked[2], "B's words, unfinished");

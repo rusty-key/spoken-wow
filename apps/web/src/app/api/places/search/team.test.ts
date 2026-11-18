@@ -15,6 +15,7 @@ const { baseCatalogue } = await import("@/lib/places/catalogue");
 const { forgetTeams } = await import("@/lib/teams/store");
 const { asSystem, dropLang, dropTeam, newTeamIn, systemRows, uniqueLang } = await import("@/lib/teams/testing");
 const { forgetLanguages, loadLanguages } = await import("@/lib/languages/catalogue");
+const { createFixtures } = await import("@/lib/text-api/testing");
 const { GET } = await import("./route");
 
 let lang: Lang;
@@ -24,26 +25,35 @@ let b: string;
 let c: string;
 let slugs: Map<string, string>;
 let lines: { id: string; file: string }[];
+let fx: Awaited<ReturnType<typeof createFixtures>>;
 
-async function take(team: string, line: { id: string; file: string }, createdAt: string) {
+async function take(team: string, line: { id: string; file: string }, spokenHash: string) {
   await asSystem.query(
     `insert into "take" ("teamId", "source", "lang", "file", "lineId", "version", "isCurrent", "origin", "bytes",
-                         "createdAt", "credits", "costUsd", "voice", "modelId", "spokenHash", "archiveFile", "sha256")
-     values ($1, 'places', $2, $3, $4, 1, true, 'generated', 100, $5, 42, 0.5, 'secret-voice', 'secret-model',
-             'secret-hash', 'secret-archive.mp3', 'secret-sha')`,
-    [team, lang, line.file, line.id, createdAt],
+                         "credits", "costUsd", "voice", "modelId", "spokenHash", "archiveFile", "sha256")
+     values ($1, 'places', $2, $3, $4, 1, true, 'generated', 100, 42, 0.5, 'secret-voice', 'secret-model',
+             $5, 'secret-archive.mp3', 'secret-sha')`,
+    [team, lang, line.file, line.id, spokenHash],
   );
 }
 
-async function override(team: string, line: { id: string }, text: string, updatedAt: string) {
+async function override(team: string, line: { id: string }, text: string, spokenHash: string) {
   await asSystem.query(
-    `insert into "text_override" ("teamId", "lang", "source", "lineId", "text", "updatedAt")
+    `insert into "text_override" ("teamId", "lang", "source", "lineId", "text", "spokenHash")
      values ($1, $2, 'places', $3, $4, $5)`,
-    [team, lang, line.id, text, updatedAt],
+    [team, lang, line.id, text, spokenHash],
   );
 }
 
 beforeEach(async () => {
+  fx = await createFixtures();
+  // A third line under the fixtures' map, which their cleanup removes with the rest.
+  await asSystem.query(
+    `insert into "lore_line"
+       ("lineId", "lang", "version", "isCurrent", "origin", "mapID", "kind", "key", "name", "full", "short")
+     values ($1, 'enUS', 1, true, 'scraped', $2, 'subzone', 'test-key-2', 'Test Dell', 'English lore.', 'English.')`,
+    [`s:${fx.map}:test-key-2`, fx.map],
+  );
   lang = await uniqueLang();
   otherLang = await uniqueLang();
   // Switched on, so an anonymous visitor may see it.
@@ -57,12 +67,17 @@ beforeEach(async () => {
     [a, b, c],
   ]);
   slugs = new Map(rows.map((row) => [row.id, row.slug]));
-  lines = (await baseCatalogue(lang)).slice(0, 3).map((entry) => ({ id: entry.id, file: entry.file }));
+  const entries = await baseCatalogue(lang);
+  lines = [fx.zone, fx.subzone, `s:${fx.map}:test-key-2`].map((id) => {
+    const entry = entries.find((e) => e.id === id)!;
+    return { id: entry.id, file: entry.file };
+  });
 
-  await take(a, lines[0], "2026-01-02T00:00:00Z");
-  await override(b, lines[1], "B's words for line 2", "2026-01-01T00:00:00Z");
-  await take(b, lines[1], "2026-01-02T00:00:00Z");
-  await override(b, lines[2], "B's unfinished words for line 3", "2026-01-01T00:00:00Z");
+  await take(a, lines[0], "secret-hash");
+  await override(b, lines[1], "B's words for line 2", "secret-spoken");
+  await take(b, lines[1], "secret-spoken");
+  await override(b, lines[2], "B's unfinished words for line 3", "secret-unspoken");
+  await take(b, lines[2], "secret-hash");
 });
 
 afterEach(async () => {
@@ -72,6 +87,7 @@ afterEach(async () => {
   for (const team of [b, a, c]) await dropTeam(team);
   await dropLang(lang);
   await dropLang(otherLang);
+  await fx.remove();
   forgetTeams();
 });
 

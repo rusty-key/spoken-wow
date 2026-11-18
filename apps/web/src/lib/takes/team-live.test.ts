@@ -30,14 +30,14 @@ async function take(
   lineId: string,
   version: number,
   isCurrent: boolean,
-  createdAt = "2026-01-02T00:00:00Z",
+  spokenHash = "hash",
 ) {
   await asSystem.query(
     `insert into "take" ("teamId", "source", "lang", "file", "lineId", "version", "isCurrent", "origin", "bytes",
                          "createdAt", "credits", "costUsd", "voice", "modelId", "spokenHash", "archiveFile", "sha256")
-     values ($1, $2, $3, $4, $5, $6, $7, 'generated', 100, $8, 42, 0.5, 'secret-voice', 'secret-model', 'hash',
-             'archive/x', 'abc')`,
-    [team, source, l, file, lineId, version, isCurrent, createdAt],
+     values ($1, $2, $3, $4, $5, $6, $7, 'generated', 100, '2026-01-02T00:00:00Z', 42, 0.5, 'secret-voice',
+             'secret-model', $8, 'archive/x', 'abc')`,
+    [team, source, l, file, lineId, version, isCurrent, spokenHash],
   );
 }
 
@@ -105,20 +105,32 @@ describe("team_live_takes", () => {
 });
 
 describe("team_live_overrides", () => {
-  async function textOverride(lineId: string, updatedAt: string) {
+  async function textOverride(lineId: string, spokenHash: string | null) {
     await asSystem.query(
-      `insert into "text_override" ("teamId", "lang", "source", "lineId", "text", "updatedAt")
+      `insert into "text_override" ("teamId", "lang", "source", "lineId", "text", "spokenHash")
        values ($1, $2, 'places', $3, $4, $5)`,
-      [b, lang, lineId, `words of ${lineId}`, updatedAt],
+      [b, lang, lineId, `words of ${lineId}`, spokenHash],
     );
   }
 
-  it("returns only overrides a live take was made from", async () => {
-    await textOverride(`p:${tag}-spoken`, "2026-01-01T00:00:00Z");
-    await take(b, lang, "places", `places/${tag}-spoken.mp3`, `p:${tag}-spoken`, 1, true, "2026-01-02T00:00:00Z");
-    await textOverride(`p:${tag}-untaken`, "2026-01-01T00:00:00Z");
-    await textOverride(`p:${tag}-newer`, "2026-01-03T00:00:00Z");
-    await take(b, lang, "places", `places/${tag}-newer.mp3`, `p:${tag}-newer`, 1, true, "2026-01-02T00:00:00Z");
+  async function lineOverride(file: string, text: string, spokenHashes: string[] | null) {
+    await asSystem.query(
+      `insert into "line_override" ("teamId", "lang", "file", "lineId", "text", "spokenHashes")
+       values ($1, $2, $3, $4, $5, $6)`,
+      [b, lang, file, `g:${file}`, text, spokenHashes],
+    );
+  }
+
+  const quests = () => query(`select * from team_live_overrides($1, $2, 'quests')`, [b, lang]);
+
+  it("returns only overrides a live take speaks, by hash", async () => {
+    await textOverride(`p:${tag}-spoken`, "new");
+    await take(b, lang, "places", `places/${tag}-spoken.mp3`, `p:${tag}-spoken`, 1, true, "new");
+    await textOverride(`p:${tag}-untaken`, "new");
+    await textOverride(`p:${tag}-old`, "new");
+    await take(b, lang, "places", `places/${tag}-old.mp3`, `p:${tag}-old`, 1, true, "old");
+    await textOverride(`p:${tag}-unhashed`, null);
+    await take(b, lang, "places", `places/${tag}-unhashed.mp3`, `p:${tag}-unhashed`, 1, true);
 
     const rows = await query(`select * from team_live_overrides($1, $2, 'places')`, [b, lang]);
     expect(rows).toEqual([{ key: `p:${tag}-spoken`, text: `words of p:${tag}-spoken` }]);
@@ -126,8 +138,8 @@ describe("team_live_overrides", () => {
 
   it("answers nothing for a language the team does not voice", async () => {
     await asSystem.query(
-      `insert into "text_override" ("teamId", "lang", "source", "lineId", "text", "updatedAt")
-       values ($1, $2, 'places', $3, 'x', '2026-01-01T00:00:00Z')`,
+      `insert into "text_override" ("teamId", "lang", "source", "lineId", "text", "spokenHash")
+       values ($1, $2, 'places', $3, 'x', 'hash')`,
       [b, otherLang, `p:${tag}`],
     );
     await take(b, otherLang, "places", `places/${tag}.mp3`, `p:${tag}`, 1, true);
@@ -136,59 +148,55 @@ describe("team_live_overrides", () => {
 
   it("returns a quest line's override whose live take is a voice file of it", async () => {
     const line = `gossip/${tag}line.mp3`;
-    await asSystem.query(
-      `insert into "line_override" ("teamId", "lang", "file", "lineId", "text", "updatedAt")
-       values ($1, $2, $3, $4, 'their words', '2026-01-01T00:00:00Z')`,
-      [b, lang, line, `g:${tag}`],
-    );
-    await take(b, lang, "quests", `gossip/${tag}line-orc-male.mp3`, `g:${tag}`, 1, true);
+    await lineOverride(line, "their words", ["new"]);
+    await take(b, lang, "quests", `gossip/${tag}line-orc-male.mp3`, `g:${tag}`, 1, true, "new");
     // Another team's take of the same line speaks none of B's words.
-    await asSystem.query(
-      `insert into "line_override" ("teamId", "lang", "file", "lineId", "text", "updatedAt")
-       values ($1, $2, $3, $4, 'unspoken', '2026-01-01T00:00:00Z')`,
-      [b, lang, `gossip/${tag}other.mp3`, `g:${tag}o`],
-    );
-    await take(a, lang, "quests", `gossip/${tag}other.mp3`, `g:${tag}o`, 1, true);
+    await lineOverride(`gossip/${tag}other.mp3`, "unspoken", ["new"]);
+    await take(a, lang, "quests", `gossip/${tag}other.mp3`, `g:${tag}o`, 1, true, "new");
 
-    const rows = await query(`select * from team_live_overrides($1, $2, 'quests')`, [b, lang]);
-    expect(rows).toEqual([{ key: line, text: "their words" }]);
+    expect(await quests()).toEqual([{ key: line, text: "their words" }]);
   });
 
-  async function lineOverride(file: string, text: string, updatedAt: string) {
-    await asSystem.query(
-      `insert into "line_override" ("teamId", "lang", "file", "lineId", "text", "updatedAt")
-       values ($1, $2, $3, $4, $5, $6)`,
-      [b, lang, file, `g:${file}`, text, updatedAt],
-    );
-  }
+  it("leaves a quest override with no take, a take of other words, or no hash, private", async () => {
+    await lineOverride(`gossip/${tag}untaken.mp3`, "untaken", ["new"]);
+    await lineOverride(`gossip/${tag}old.mp3`, "old", ["new"]);
+    await take(b, lang, "quests", `gossip/${tag}old.mp3`, `g:${tag}`, 1, true, "old");
+    await lineOverride(`gossip/${tag}voiced.mp3`, "voiced", ["new"]);
+    await take(b, lang, "quests", `gossip/${tag}voiced-orc.mp3`, `g:${tag}v`, 1, true, "old");
+    await lineOverride(`gossip/${tag}unhashed.mp3`, "unhashed", null);
+    await take(b, lang, "quests", `gossip/${tag}unhashed.mp3`, `g:${tag}u`, 1, true);
 
-  it("leaves a quest override with no take, or only an older one, private", async () => {
-    await lineOverride(`gossip/${tag}untaken.mp3`, "untaken", "2026-01-01T00:00:00Z");
-    await lineOverride(`gossip/${tag}newer.mp3`, "newer", "2026-01-03T00:00:00Z");
-    await take(b, lang, "quests", `gossip/${tag}newer.mp3`, `g:${tag}`, 1, true, "2026-01-02T00:00:00Z");
-    await lineOverride(`gossip/${tag}voiced.mp3`, "voiced", "2026-01-03T00:00:00Z");
-    await take(b, lang, "quests", `gossip/${tag}voiced-orc.mp3`, `g:${tag}v`, 1, true, "2026-01-02T00:00:00Z");
+    expect(await quests()).toEqual([]);
+  });
 
-    expect(await query(`select * from team_live_overrides($1, $2, 'quests')`, [b, lang])).toEqual([]);
+  it("publishes a quest override only once every voice speaks it", async () => {
+    const stem = `gossip/${tag}stem`;
+    await lineOverride(`${stem}.mp3`, "words", ["human", "dwarf"]);
+    await take(b, lang, "quests", `${stem}.mp3`, `g:${tag}`, 1, true, "human");
+    await take(b, lang, "quests", `${stem}-dwarf-male.mp3`, `g:${tag}d`, 1, true, "old");
+    expect(await quests()).toEqual([]);
+
+    await asSystem.query(`update "take" set "spokenHash" = 'dwarf' where "teamId" = $1 and "file" = $2`, [
+      b, `${stem}-dwarf-male.mp3`,
+    ]);
+    expect(await quests()).toEqual([{ key: `${stem}.mp3`, text: "words" }]);
   });
 
   it("does not count a file with its own override as a voice of a shorter one", async () => {
     const stem = `gossip/${tag}stem`;
-    await lineOverride(`${stem}.mp3`, "base", "2026-01-01T00:00:00Z");
-    await lineOverride(`${stem}-w1.mp3`, "own", "2026-01-01T00:00:00Z");
-    await take(b, lang, "quests", `${stem}-w1.mp3`, `g:${tag}w`, 1, true, "2026-01-02T00:00:00Z");
+    await lineOverride(`${stem}.mp3`, "base", ["base"]);
+    await lineOverride(`${stem}-w1.mp3`, "own", ["own"]);
+    await take(b, lang, "quests", `${stem}-w1.mp3`, `g:${tag}w`, 1, true, "own");
 
-    const rows = await query(`select * from team_live_overrides($1, $2, 'quests')`, [b, lang]);
-    expect(rows).toEqual([{ key: `${stem}-w1.mp3`, text: "own" }]);
+    expect(await quests()).toEqual([{ key: `${stem}-w1.mp3`, text: "own" }]);
   });
 
   it("gives a voice file the shortest stem's override", async () => {
     const stem = `gossip/${tag}stem`;
-    await lineOverride(`${stem}.mp3`, "short", "2026-01-01T00:00:00Z");
-    await lineOverride(`${stem}-a.mp3`, "long", "2026-01-01T00:00:00Z");
-    await take(b, lang, "quests", `${stem}-a-b.mp3`, `g:${tag}ab`, 1, true, "2026-01-02T00:00:00Z");
+    await lineOverride(`${stem}.mp3`, "short", ["short"]);
+    await lineOverride(`${stem}-a.mp3`, "long", ["short"]);
+    await take(b, lang, "quests", `${stem}-a-b.mp3`, `g:${tag}ab`, 1, true, "short");
 
-    const rows = await query(`select * from team_live_overrides($1, $2, 'quests')`, [b, lang]);
-    expect(rows).toEqual([{ key: `${stem}.mp3`, text: "short" }]);
+    expect(await quests()).toEqual([{ key: `${stem}.mp3`, text: "short" }]);
   });
 });

@@ -186,7 +186,7 @@ site. The rest of phase 2 is distribution and stays out.
   none, the explorer plays the team the visitor works in, else the main team, so existing links
   play what they always did. A single-team language shows no picker.
 - **Another team's view is read-only.** It plays that team's live takes and shows its override
-  on a line it has a live take of, made since the override's last save. Each line reads voiced or
+  on a line with a live take that speaks it. Each line reads voiced or
   missing, with no stale, dirty, made-by, report or recording marks, and the regenerate,
   override, ignore, record, report and clear-mark controls are hidden. The pencil that writes the
   original stays, since the original is shared. A note says whose takes play.
@@ -215,4 +215,3 @@ site. The rest of phase 2 is distribution and stays out.
 - The CLI `apps/web/scripts/seed-voice-sources.mts` knows only the built-in languages; it does not load the registry.
 - The queue panel's counts, failures and cursor still cut at the latest dismissal mark of any team, so one team's dismissal clears another's counts.
 - A member of a second team who also regenerates in another language dismisses into the team of the first of their languages, so their own team's finished lines can stay on the panel.
-- On a line with several voices, one voice's take made after an override publishes that override for every voice of the line.
