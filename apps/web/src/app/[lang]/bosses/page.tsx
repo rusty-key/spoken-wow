@@ -5,6 +5,7 @@ import { Suspense } from "react";
 import { BossesExplorer } from "@/components/bosses/BossesExplorer";
 import { instanceFacets } from "@/lib/bosses/catalogue";
 import { Contained } from "@/components/Width";
+import { viewKey } from "@/lib/teams/view";
 import { teamView } from "@/lib/teams/viewing";
 
 export const metadata: Metadata = { title: "Bosses · Spoken" };
@@ -43,8 +44,7 @@ export default async function Page({
     );
   }
 
-  // Whose takes the explorer plays, picked by `?team=`; a slug naming no team of the
-  // language plays the default's.
+  // An unknown team slug falls back to the default team.
   const { team } = await searchParams;
   const view = await teamView(lang, typeof team === "string" ? team : null);
 
@@ -59,7 +59,7 @@ export default async function Page({
       </Contained>
       {/* Suspense is required: Explorer calls useSearchParams(). */}
       <Suspense>
-        <BossesExplorer instances={instances} {...view} />
+        <BossesExplorer key={viewKey(view)} instances={instances} {...view} />
       </Suspense>
     </main>
   );

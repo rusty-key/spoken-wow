@@ -5,6 +5,7 @@ import { Suspense } from "react";
 import { Explorer } from "@/components/readables/Explorer";
 import { bookFacets, isCorpusEmpty } from "@/lib/readables/catalogue";
 import { Contained } from "@/components/Width";
+import { viewKey } from "@/lib/teams/view";
 import { teamView } from "@/lib/teams/viewing";
 
 export const metadata: Metadata = { title: "Readables · Spoken" };
@@ -50,8 +51,7 @@ export default async function Page({
     );
   }
 
-  // Whose takes the explorer plays, picked by `?team=`; a slug naming no team of the
-  // language plays the default's.
+  // An unknown team slug falls back to the default team.
   const { team } = await searchParams;
   const view = await teamView(lang, typeof team === "string" ? team : null);
 
@@ -69,7 +69,7 @@ export default async function Page({
       {/* Suspense is required: Explorer calls useSearchParams(). */}
       {/* Outside the column: the explorer places its own search (capped) and table (wide). */}
       <Suspense>
-        <Explorer books={books} {...view} />
+        <Explorer key={viewKey(view)} books={books} {...view} />
       </Suspense>
     </main>
   );
