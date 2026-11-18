@@ -19,6 +19,7 @@ import OverrideDialog from "./OverrideDialog";
 import RegenerateDialog, { type PendingBatch } from "./RegenerateDialog";
 import RegenerationPanel from "./RegenerationPanel";
 import SearchBar from "./SearchBar";
+import TeamPicker from "./TeamPicker";
 import { Contained, Wide } from "./Width";
 import { Loading, Refreshing } from "@/components/Loading";
 import { Button } from "@/components/ui/button";
@@ -52,6 +53,7 @@ import type { Filter, LineFilters, ResultLine, SearchResult } from "@/lib/search
 import { fetchRows, patchRows } from "@/lib/row-refresh";
 import { type Pending, receive, target, write } from "@/lib/url-echo";
 import { triages } from "@/lib/reports/reports";
+import { forTeam, isOwn, keepTeam, otherTeam, type TeamView } from "@/lib/teams/view";
 
 /** What a line's Regenerate button is doing, keyed by lineId. */
 export type LineState =
@@ -129,7 +131,7 @@ function questNarrowing(line: ResultLine) {
   return { q: String(line.questId), filter: "quest", type: undefined };
 }
 
-export default function Explorer({ facets }: { facets: Facets }) {
+export default function Explorer({ facets, teams, viewed, home }: { facets: Facets } & TeamView) {
   const router = useRouter();
   const lang = useLang();
   const params = useSearchParams();
@@ -138,14 +140,19 @@ export default function Explorer({ facets }: { facets: Facets }) {
 
   // Read once here and drilled down, rather than a hook per row: a page renders fifty
   // LineRows and the answer is the same for all of them.
+  //
+  // Team-specific writes target the acting team, so another team's view hides them. Names
+  // and speakers are shared.
   const may = useCan();
-  const showRegenerate = may("regenerate");
+  const own = isOwn(viewed);
+  const team = otherTeam(viewed);
+  const showRegenerate = own && may("regenerate");
   const canName = may("text");
-  const canTriage = triages(may);
+  const canTriage = own && triages(may);
   // Ignoring hides a line from everyone and takes it out of the module, which is the reach
   // the generation settings have rather than the reach a rewrite has. Same gate as the API.
   const canConfigure = canConfigureGeneration(session?.user.role);
-  const canIgnore = may("ignore");
+  const canIgnore = own && may("ignore");
   // Who speaks a line holds in every language, as an NPC's answer does: admins only, as the API.
   const canSpeakers = isAdmin(session?.user.role);
 
@@ -365,8 +372,9 @@ export default function Explorer({ facets }: { facets: Facets }) {
   const clearAll = useCallback(() => {
     setQuery("");
     pending.current = write(pending.current, "");
-    router[historyMode(false)](pathname, { scroll: false });
-  }, [historyMode, pathname, router]);
+    const kept = keepTeam(new URLSearchParams(), params).toString();
+    router[historyMode(false)](kept ? `${pathname}?${kept}` : pathname, { scroll: false });
+  }, [historyMode, params, pathname, router]);
 
   // Held in a ref so the debounce below restarts on keystrokes only. `updateUrl` changes
   // identity on every param change, and letting that reset the timer would let a filter
@@ -395,10 +403,10 @@ export default function Explorer({ facets }: { facets: Facets }) {
     if (page > 1) search.set("page", String(page));
 
     setLoading(true);
-    fetch(withLang(lang, `/api/quests/search?${search}`), { signal: controller.signal })
-      .then((r) => r.json())
-      .then((data: SearchResult) => {
-        setResult(data);
+    fetch(withLang(lang, forTeam(`/api/quests/search?${search}`, team)), { signal: controller.signal })
+      .then(async (r) => {
+        // An error body is no result: a team renamed since the page loaded answers 404.
+        setResult(r.ok ? ((await r.json()) as SearchResult) : null);
         setLoading(false);
       })
       .catch((error) => {
@@ -406,7 +414,7 @@ export default function Explorer({ facets }: { facets: Facets }) {
       });
 
     return () => controller.abort();
-  }, [filterQuery, page, refreshKey, lang]);
+  }, [filterQuery, page, refreshKey, lang, team]);
 
   useEffect(() => {
     if (!showRegenerate) return;
@@ -461,7 +469,7 @@ export default function Explorer({ facets }: { facets: Facets }) {
         (id) => {
           const search = new URLSearchParams({ line: id });
           if (ignored.has(id)) search.set("ignored", "1");
-          return withLang(lang, `/api/quests/search?${search}`);
+          return withLang(lang, forTeam(`/api/quests/search?${search}`, team));
         },
         rows.map((row) => row.lineId),
       );
@@ -469,7 +477,7 @@ export default function Explorer({ facets }: { facets: Facets }) {
         current && { ...current, lines: patchRows(current.lines, fresh, (row) => row.lineId, (row) => row.key) },
       );
     },
-    [lang],
+    [lang, team],
   );
 
   /**
@@ -856,11 +864,17 @@ export default function Explorer({ facets }: { facets: Facets }) {
 
   // The search sends facets only to somebody working in the language; see MadeBy.tsx.
   const showMadeBy = result?.madeBy !== undefined;
-  const showRecordings = result?.recordable === true;
+  const showRecordings = own && result?.recordable === true;
 
   return (
     <>
       <Contained>
+        <TeamPicker
+          teams={teams}
+          viewed={viewed}
+          home={home}
+        />
+
         <SearchBar
           ref={searchInput}
           query={query}
@@ -994,7 +1008,7 @@ export default function Explorer({ facets }: { facets: Facets }) {
                   onAddSpeaker={canSpeakers ? (l) => setSpeakerDialog({ line: l, replace: false }) : null}
                   onReplaceSpeaker={canSpeakers ? (l) => setSpeakerDialog({ line: l, replace: true }) : null}
                   onRemoveSpeaker={canSpeakers ? (l) => void removeSpeaker(l) : null}
-                  onReport={setReporting}
+                  onReport={own ? setReporting : null}
                   onRegenerate={regenerateLine}
                   onRestored={handleRestored}
                   onNarrowToNpc={narrowToNpc}
@@ -1089,6 +1103,7 @@ export default function Explorer({ facets }: { facets: Facets }) {
 
         <Player
           ref={audio}
+          team={team}
           line={current}
           version={current ? (versions[current.audioPath] ?? current.take?.version) : undefined}
         />

@@ -19,8 +19,10 @@ import RegenerationPanel from "@/components/RegenerationPanel";
 import { LineRow, type RowState } from "@/components/places/LineRow";
 import { LoreDialog } from "@/components/places/LoreDialog";
 import { Player } from "@/components/places/Player";
+import TextOverrideDialog from "@/components/TextOverrideDialog";
 import ReportDialog from "@/components/ReportDialog";
 import { SearchBar } from "@/components/places/SearchBar";
+import TeamPicker from "@/components/TeamPicker";
 import { Contained, Wide } from "@/components/Width";
 import { totals as estimateTotals, LIST_RATE } from "@/lib/generation/billing";
 import {
@@ -43,8 +45,10 @@ import {
 import { PAGE_SIZE } from "@/lib/places/filters";
 import { useClearDirty } from "@/lib/generation/use-clear-dirty";
 import { fetchRows, patchRows } from "@/lib/row-refresh";
+import { withTextOverride } from "@/lib/text-overrides/rows";
 import * as echo from "@/lib/url-echo";
 import { triages } from "@/lib/reports/reports";
+import { forTeam, isOwn, keepTeam, otherTeam, type TeamView } from "@/lib/teams/view";
 
 // Long enough to hold a whole typed word: the timer restarts on every keystroke, so this
 // is the pause after the last one, not a rate limit. Anyone who wants results before it
@@ -55,9 +59,12 @@ type Batch = PendingBatch & { lineIds: string[] };
 
 export function Explorer<L extends ExplorerLine, F extends ExplorerFilters>({
   section,
+  teams,
+  viewed,
+  home,
 }: {
   section: ExplorerSection<L, F>;
-}) {
+} & TeamView) {
   const { source, api, nameOf } = section;
   const lang = useLang();
   const pathname = usePathname();
@@ -76,10 +83,15 @@ export function Explorer<L extends ExplorerLine, F extends ExplorerFilters>({
   // In the page's language: a translator may write this language's lore without being able
   // to regenerate it, so editing and regenerating are asked separately. Triage goes with
   // editing -- reading a report and fixing the text it is about are one job.
+  //
+  // Team-specific writes target the acting team, so another team's view hides them. The
+  // original text is shared, so its pencil stays.
   const may = useCan();
-  const canRegenerate = may("regenerate");
+  const own = isOwn(viewed);
+  const team = otherTeam(viewed);
+  const canRegenerate = own && may("regenerate");
   const canEdit = may("text");
-  const canTriage = triages(may);
+  const canTriage = own && triages(may);
   // A line's name in this language, written as its own version in entity_name, and the line
   // to refresh once it is saved: a boss is named by its id, not by its line's.
   const [naming, setNaming] = useState<{ subject: TranslateSubject; lineId: string } | null>(null);
@@ -101,6 +113,7 @@ export function Explorer<L extends ExplorerLine, F extends ExplorerFilters>({
   const [loading, setLoading] = useState(true);
   const [current, setCurrent] = useState<L | null>(null);
   const [editFor, setEditFor] = useState<L | null>(null);
+  const [overriding, setOverriding] = useState<L | null>(null);
   // Text rewritten since this page was fetched, overlaid on the fetched rows: re-running
   // the search would reorder the table under the cursor, and with ?state=stale the line
   // just edited would vanish as it was saved.
@@ -214,16 +227,16 @@ export function Explorer<L extends ExplorerLine, F extends ExplorerFilters>({
   const merge = useCallback((next: Partial<ExplorerFilters>) => ({ ...filters, ...next }) as F, [filters]);
 
   const updateFilters = useCallback(
-    (next: Partial<ExplorerFilters>) => writeQuery(toParams(merge(next))),
-    [merge, toParams, writeQuery],
+    (next: Partial<ExplorerFilters>) => writeQuery(keepTeam(toParams(merge(next)), params)),
+    [merge, params, toParams, writeQuery],
   );
 
   const filtersHref = useCallback(
     (next: Partial<ExplorerFilters>) => {
-      const query = toParams(merge(next)).toString();
+      const query = keepTeam(toParams(merge(next)), params).toString();
       return query ? `${pathname}?${query}` : pathname;
     },
-    [merge, pathname, toParams],
+    [merge, params, pathname, toParams],
   );
 
   //----------------------------------------------------------------------------
@@ -247,10 +260,10 @@ export function Explorer<L extends ExplorerLine, F extends ExplorerFilters>({
     const search = new URLSearchParams(filterQuery);
     if (page > 1) search.set("page", String(page));
 
-    fetch(withLang(lang, `${api}/search?${search}`), { signal: controller.signal })
-      .then((response) => response.json())
-      .then((data: ExplorerResult<L>) => {
-        setResult(data);
+    fetch(withLang(lang, forTeam(`${api}/search?${search}`, team)), { signal: controller.signal })
+      .then(async (response) => {
+        // An error body is no result: a team renamed since the page loaded answers 404.
+        setResult(response.ok ? ((await response.json()) as ExplorerResult<L>) : null);
         setLoading(false);
       })
       .catch((err) => {
@@ -258,7 +271,7 @@ export function Explorer<L extends ExplorerLine, F extends ExplorerFilters>({
       });
 
     return () => controller.abort();
-  }, [api, filterQuery, page, lang]);
+  }, [api, filterQuery, page, lang, team]);
 
   //----------------------------------------------------------------------------
   // Pronunciation marks
@@ -308,11 +321,12 @@ export function Explorer<L extends ExplorerLine, F extends ExplorerFilters>({
   const refetch = useCallback(() => {
     const search = new URLSearchParams(filterQueryRef.current);
     if (pageRef.current > 1) search.set("page", String(pageRef.current));
-    fetch(withLang(lang, `${api}/search?${search}`))
-      .then((response) => response.json())
-      .then((data: ExplorerResult<L>) => setResult(data))
+    fetch(withLang(lang, forTeam(`${api}/search?${search}`, team)))
+      .then(async (response) => {
+        if (response.ok) setResult((await response.json()) as ExplorerResult<L>);
+      })
       .catch(() => {});
-  }, [api, lang]);
+  }, [api, lang, team]);
 
   /**
    * Fetch these rows again by id and swap them in where they sit, so a row the change moved
@@ -321,14 +335,30 @@ export function Explorer<L extends ExplorerLine, F extends ExplorerFilters>({
   const refreshRows = useCallback(
     async (ids: string[]) => {
       const fresh = await fetchRows<L>(
-        (id) => withLang(lang, `${api}/search?${new URLSearchParams({ line: id })}`),
+        (id) => withLang(lang, forTeam(`${api}/search?${new URLSearchParams({ line: id })}`, team)),
         ids,
       );
       setResult((current) =>
         current && { ...current, lines: patchRows(current.lines, fresh, (row) => row.id, (row) => row.id) },
       );
     },
-    [api, lang],
+    [api, lang, team],
+  );
+
+  // Laid over the row at once, then fetched again for the server's view of it.
+  const overridden = useCallback(
+    (lineId: string, text: string | null) => {
+      setOverriding(null);
+      setResult((current) => current && { ...current, lines: withTextOverride(current.lines, lineId, text) });
+      // A finished regeneration's version would hide that the new words make its take stale.
+      setRowStates((current) => {
+        if (current[lineId]?.phase !== "done") return current;
+        const { [lineId]: _done, ...rest } = current;
+        return rest;
+      });
+      void refreshRows([lineId]);
+    },
+    [refreshRows],
   );
 
   // What the plan allows and what is left of it, for the confirmation dialog. Shared with
@@ -611,11 +641,17 @@ export function Explorer<L extends ExplorerLine, F extends ExplorerFilters>({
   const pages = result ? Math.max(1, Math.ceil(result.total / PAGE_SIZE)) : 1;
   // The search sends facets only to somebody working in the language; see MadeBy.tsx.
   const showMadeBy = result?.madeBy !== undefined;
-  const showRecordings = result?.recordable === true;
+  const showRecordings = own && result?.recordable === true;
 
   return (
     <div className="pb-24">
       <Contained>
+        <TeamPicker
+          teams={teams}
+          viewed={viewed}
+          home={home}
+        />
+
         <SearchBar
           section={section}
           fields={section.filters.fields}
@@ -630,7 +666,7 @@ export function Explorer<L extends ExplorerLine, F extends ExplorerFilters>({
           onQueryChange={setQuery}
           onQuerySubmit={submitQuery}
           onChange={updateFilters}
-          onClearAll={() => writeQuery(new URLSearchParams())}
+          onClearAll={() => writeQuery(keepTeam(new URLSearchParams(), params))}
         />
 
         {showRecordings && <RecordingDropZone source={source} onUploaded={refetch} />}
@@ -719,11 +755,12 @@ export function Explorer<L extends ExplorerLine, F extends ExplorerFilters>({
             {showMadeBy && <col className="w-36" />}
             {showRecordings && <col className="w-32" />}
             {/* Wide enough for what the cell actually holds: icon buttons are 32px and an
-                editor can have three side by side - report, edit, regenerate - plus the
-                report count. Anything narrower and the row overflows left over the prose.
+                editor can have five side by side - report, edit, override, clear the
+                pronunciation mark, regenerate - plus the report count. Anything narrower and
+                the row overflows left over the prose.
                 w-16 for everyone else, who has the report button and the count; never w-0,
                 since that button is not gated. */}
-            <col className={canRegenerate ? "w-40" : "w-16"} />
+            <col className={canRegenerate ? "w-60" : "w-16"} />
           </colgroup>
           <thead>
             <tr className="text-muted-foreground border-border border-b text-left text-xs">
@@ -760,8 +797,10 @@ export function Explorer<L extends ExplorerLine, F extends ExplorerFilters>({
                   setVersions((current) => ({ ...current, [l.id]: version }));
                   void refreshRows([l.id]);
                 }}
-                onReport={setReportFor}
+                onReport={own ? setReportFor : null}
                 onEditText={(l) => setEditFor(withEdits(l))}
+                onOverride={setOverriding}
+                onOverrideAnswered={(l) => void refreshRows([l.id])}
                 onRename={
                   lang !== BASE_LANG && canEdit && nameOf
                     ? (l) =>
@@ -804,6 +843,19 @@ export function Explorer<L extends ExplorerLine, F extends ExplorerFilters>({
         onSaved={(line, full) => setRewritten((current) => ({ ...current, [line.id]: full }))}
       />
 
+      <TextOverrideDialog
+        source={source}
+        line={
+          overriding && {
+            lineId: overriding.id,
+            original: withEdits(overriding).text ?? "",
+            override: overriding.override?.text ?? null,
+          }
+        }
+        onSaved={overridden}
+        onCancel={() => setOverriding(null)}
+      />
+
       <TranslateDialog
         subject={naming?.subject ?? null}
         onClose={() => setNaming(null)}
@@ -836,6 +888,7 @@ export function Explorer<L extends ExplorerLine, F extends ExplorerFilters>({
         />
         <Player
           section={section}
+          team={team}
           line={current}
           version={current ? (versions[current.id] ?? current.take?.version) : undefined}
           audioRef={audio}

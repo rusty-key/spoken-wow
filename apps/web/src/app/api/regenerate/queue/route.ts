@@ -23,6 +23,7 @@ import { planCatalogue, planQuestsByFilters, queuePlan, type Plan } from "@/lib/
 import { snapshot } from "@/lib/generation/queue";
 import { ensureQueueRunning } from "@/lib/generation/boot";
 import { isAdmin } from "@/lib/permissions";
+import { freshOwners, secondTeamLangs } from "@/lib/teams/store";
 
 export const dynamic = "force-dynamic";
 
@@ -105,12 +106,19 @@ export async function GET(request: NextRequest) {
     );
   }
 
+  // In a language with a second team, the finished lines and pauses are the acting team's (a
+  // site owner's chosen one). A single-team language is not named, so its rows pass whole.
+  const second = await secondTeamLangs();
+  const owners = second.size ? await freshOwners([...second]) : null;
+  const teams = owners && new Map([...owners].filter(([lang]) => second.has(lang)));
+
   // A global admin watches every line; anybody else sees only their own being said or
   // failing, while still seeing whose queues are ahead of theirs.
   return NextResponse.json(
     await snapshot(rawSince, {
       viewerId: session.user.id,
       linesOf: isAdmin(session.user.role) ? undefined : session.user.id,
+      ...(teams && { teams }),
     }),
   );
 }

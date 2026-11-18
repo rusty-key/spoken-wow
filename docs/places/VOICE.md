@@ -140,6 +140,14 @@ is stale. It plays a take, edits a line, translates one and generates one. Editi
 need a role, and a take is cut with the signed-in editor's own key for the voice service. Deployment, the
 roles and the droplet are in `deploy/web/README.md`.
 
+Beside the edit control, the override control changes what the viewer's team says for a line,
+without touching its text. It needs `regenerate` in the language, works in every language, English
+included, and is offered only where the language has its own text for the line. The override is
+kept for that team alone (`text_override`, see `docs/platform/TEAMS.md`): its takes speak it and are
+judged stale against it, while the text shown on the site and in game, the place's name and every
+other team keep the original. The row shows the override under the original, and says when the
+original has changed since, with Keep and Drop.
+
 A line's page, `/places/r/<mapID>/<slug>`, is where the addon's Report button sends a player. The
 slug is the key with spaces as hyphens, and `zone` for a zone. `validate.mjs` fails when the
 addon's slug and `slugFor` in `naming.mjs` disagree.

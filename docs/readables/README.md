@@ -116,6 +116,17 @@ plays (`pipelines/readables/tools/lib/absorb.mjs`).
 | generate | `book_line` | mp3s and `take` rows | anyone with an ElevenLabs key |
 | export | `book_line` | `addons/Spoken_Readables/Data/Books.lua` | a maintainer, before a release |
 
+### A team's own wording
+
+On `/readables`, the override control beside a page's edit control changes what the viewer's team
+says for that page, and leaves `book_line` alone. It needs `regenerate` in the language, works in
+every language, English included, and is offered only on a page with its own text in the language.
+The override belongs to that team (`text_override`, see `docs/platform/TEAMS.md`): its takes speak
+it and are judged stale against it, while the page shown on the site and in game, and every other
+team, keep the original. A page's spoken title keeps the book's original name. The row shows the
+override under the page, and says when the original has changed since, with Keep and Drop. A minted
+page's override moves with it when the page is absorbed.
+
 ## Running it locally
 
 The databases are OrbStack containers and a native Postgres. Nothing here touches the

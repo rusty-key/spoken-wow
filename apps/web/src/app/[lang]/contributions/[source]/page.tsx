@@ -7,7 +7,7 @@ import { notFound, redirect } from "next/navigation";
 import ContributionTable, { type ContributionRow } from "@/components/ContributionTable";
 import ContributionsTabs from "@/components/ContributionsTabs";
 import { auth } from "@/lib/auth";
-import { bookFacets, catalogue } from "@/lib/readables/catalogue";
+import { baseCatalogue, bookFacets } from "@/lib/readables/catalogue";
 import { pageKeyOf } from "@/lib/readables/tools";
 import {
   bookCandidates,
@@ -86,7 +86,7 @@ async function existingTextFor(
         const match = bookMatches.get(row.id);
         const lineId = match && "lineId" in match ? match.lineId : null;
         const page = lineId
-          ? (await catalogue(isLang(row.locale) ? row.locale : BASE_LANG)).find((p) => p.id === lineId)
+          ? (await baseCatalogue(isLang(row.locale) ? row.locale : BASE_LANG)).find((p) => p.id === lineId)
           : undefined;
         if (page && !page.missing?.text && page.text) found[row.id] = page.text;
         return;

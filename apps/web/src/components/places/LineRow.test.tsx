@@ -1,0 +1,110 @@
+// @vitest-environment jsdom
+import { cleanup, render, screen } from "@testing-library/react";
+import { afterEach, expect, test, vi } from "vitest";
+
+import { LangProvider } from "@/components/LangProvider";
+import type { ResultLine } from "@/lib/places/search";
+
+import { LineRow } from "./LineRow";
+
+vi.mock("@/lib/auth-client", () => ({ useSession: () => ({ data: null }) }));
+
+afterEach(cleanup);
+
+const goldshire: ResultLine = {
+  id: "s:1429:goldshire",
+  kind: "subzone",
+  mapID: 1429,
+  zoneName: "Elwynn",
+  name: "Goldshire",
+  text: "A town at a crossroads.",
+  spoken: "A town at a crossroads.",
+  chars: 23,
+  short: true,
+  file: "s-1429-goldshire",
+  state: "current",
+  take: null,
+  reportsOpen: 0,
+  dirty: false,
+  madeBy: null,
+  override: null,
+};
+
+function row(line: ResultLine, may: { canRegenerate: boolean; canEdit: boolean }) {
+  const noop = () => {};
+  render(
+    <LangProvider lang="deDE">
+      <table>
+        <tbody>
+          <LineRow
+            section={{ source: "places", facetLabel: "Zone", chip: (l) => l.zoneName }}
+            line={line}
+            current={false}
+            showMadeBy={false}
+            showRecordings={false}
+            onRecordingChanged={noop}
+            {...may}
+            canTriage={false}
+            onPlay={noop}
+            onNarrowToChip={noop}
+            chipHref={() => "#"}
+            onReport={noop}
+            onRestored={noop}
+            onEditText={noop}
+            onOverride={noop}
+            onOverrideAnswered={noop}
+            onRename={null}
+            onRegenerate={noop}
+            onClearDirty={noop}
+          />
+        </tbody>
+      </table>
+    </LangProvider>,
+  );
+}
+
+const overrideButton = () => screen.queryByRole("button", { name: "Override the text of Goldshire" });
+const pencil = () => screen.queryByRole("button", { name: "Edit the text of Goldshire" });
+
+test("regenerate alone offers the override and not the pencil", () => {
+  row(goldshire, { canRegenerate: true, canEdit: false });
+  expect(overrideButton()).not.toBeNull();
+  expect(overrideButton()?.getAttribute("title")).toBe("Change what your team says");
+  expect(pencil()).toBeNull();
+});
+
+test("text alone offers the pencil and not the override", () => {
+  row(goldshire, { canRegenerate: false, canEdit: true });
+  expect(pencil()).not.toBeNull();
+  expect(overrideButton()).toBeNull();
+});
+
+test("a line with no text of its own in the language has nothing to override", () => {
+  row({ ...goldshire, translated: false }, { canRegenerate: true, canEdit: true });
+  expect(overrideButton()).toBeNull();
+});
+
+test("an override shows as the spoken line, and its drift is marked", () => {
+  row(
+    {
+      ...goldshire,
+      spoken: "Goldshire, at the crossroads.",
+      override: { text: "Goldshire, at the crossroads.", drifted: true, updatedAt: "2026-11-17T00:00:00Z", updatedBy: null },
+    },
+    { canRegenerate: true, canEdit: false },
+  );
+  expect(screen.getByText("Goldshire, at the crossroads.")).not.toBeNull();
+  expect(screen.getByText("A town at a crossroads.")).not.toBeNull();
+  expect(screen.getByText("The original changed since your override.")).not.toBeNull();
+  expect(screen.getByRole("button", { name: "Keep" })).not.toBeNull();
+  expect(screen.getByRole("button", { name: "Drop" })).not.toBeNull();
+});
+
+test("a current override carries no drift mark", () => {
+  row(
+    { ...goldshire, override: { text: "Goldshire.", drifted: false, updatedAt: "2026-11-17T00:00:00Z", updatedBy: null } },
+    { canRegenerate: true, canEdit: false },
+  );
+  expect(screen.getByText("Goldshire.")).not.toBeNull();
+  expect(screen.queryByText("The original changed since your override.")).toBeNull();
+});

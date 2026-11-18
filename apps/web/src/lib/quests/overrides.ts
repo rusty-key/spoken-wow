@@ -8,8 +8,13 @@
  * A file has the same name in every language, so an override is its language's, and is read and
  * written as that language's team.
  */
+import { auditDetail, type ApiAudit } from "../activity/kinds";
 import { recordActivity } from "../activity/store";
 import { fileIndex } from "../audio";
+import type { CorpusLine } from "../corpus";
+import { shapedText } from "../generation/files";
+import { PROVIDERS } from "../generation/providers";
+import { currentConfig } from "../generation/settings";
 import { spokenHash } from "../generation/spoken-hash";
 import type { Lang } from "../lang";
 import { memoByTeamLang } from "../memo";
@@ -77,24 +82,28 @@ export async function writeOverride(
   text: string,
   // Nullable to match the column, which is SET NULL: who rewrote a line outlives the account.
   userId: string | null,
-): Promise<LineOverride> {
-  const original = (await fileIndex(lang)).get(file);
+  audit?: ApiAudit,
+): Promise<{ override: LineOverride; before: string | null }> {
+  const index = await fileIndex(lang);
+  const original = index.get(file);
+  const said = await spokenHashes(lang, file, text, index);
   // "before" is read in the same statement, from the snapshot the upsert started with, so
   // the log says what this write replaced and not what a concurrent one did.
   const { rows } = await queryAs<OverrideRow & { before: string | null }>(
     lang,
     `with "was" as (select "text" from "line_override" where "file" = $1 and "lang" = $6)
-     insert into "line_override" ("file", "lineId", "text", "updatedBy", "originalHash", "lang")
-     values ($1, $2, $3, $4, $5, $6)
+     insert into "line_override" ("file", "lineId", "text", "updatedBy", "originalHash", "lang", "spokenHashes")
+     values ($1, $2, $3, $4, $5, $6, $7)
      on conflict ("teamId", "lang", "file") do update
         set "text" = excluded."text",
             "lineId" = excluded."lineId",
             "updatedAt" = now(),
             "updatedBy" = excluded."updatedBy",
-            "originalHash" = excluded."originalHash"
+            "originalHash" = excluded."originalHash",
+            "spokenHashes" = excluded."spokenHashes"
      returning "file", "lineId", "text", "updatedAt", "updatedBy", "originalHash",
                (select "text" from "was") as "before"`,
-    [file, lineId, text, userId, original ? spokenHash(original.text) : null, lang],
+    [file, lineId, text, userId, original ? spokenHash(original.text) : null, lang, said],
   );
   forgetOverrides();
   const { before, ...row } = rows[0];
@@ -107,14 +116,55 @@ export async function writeOverride(
       source: "quests",
       subject: file,
       lineId,
-      detail: { text, before },
+      detail: { text, before, ...auditDetail(audit, null) },
     });
   }
-  return toOverride(row);
+  return { override: toOverride(row), before };
+}
+
+/**
+ * Every hash a take speaking `text` as this override can carry: one per file that resolves to it
+ * (its own and its voices') and per provider, since each shapes the words with its own voice's
+ * direction. Null for a file no line names, which no take can speak.
+ */
+async function spokenHashes(
+  lang: Lang,
+  file: string,
+  text: string,
+  index: Map<string, CorpusLine>,
+): Promise<string[] | null> {
+  const own = new Map([[file, { file } as LineOverride]]);
+  const stem = file.replace(/\.mp3$/, "");
+  const lines = [...index].filter(([f]) => f.startsWith(stem) && overrideOf(own, f)).map(([, line]) => line);
+  if (lines.length === 0) return null;
+  const { raceTags } = await currentConfig(lang);
+  return [
+    ...new Set(lines.flatMap((line) => PROVIDERS.map((p) => spokenHash(shapedText(text, lang, line, p, raceTags))))),
+  ];
+}
+
+/**
+ * Adds a take's hash to the override it spoke. The hashes a save predicts miss a take whose
+ * voice's direction changed since, and an override saved before they existed has none, so
+ * without this such a take never publishes the override it speaks. Only while the override
+ * still holds `text`: a save during generation replaced it with words this take does not say.
+ */
+export async function markSpoken(lang: Lang, file: string, text: string, hash: string): Promise<void> {
+  await queryAs(
+    lang,
+    `update "line_override" set "spokenHashes" = array_append(coalesce("spokenHashes", '{}'), $4)
+      where "lang" = $1 and "file" = $2 and "text" = $3 and not ($4 = any(coalesce("spokenHashes", '{}')))`,
+    [lang, file, text, hash],
+  );
 }
 
 /** `by` is who reverted it, for the activity log: the delete leaves nothing else behind. */
-export async function clearOverride(lang: Lang, file: string, by: string | null): Promise<boolean> {
+export async function clearOverride(
+  lang: Lang,
+  file: string,
+  by: string | null,
+  audit?: ApiAudit,
+): Promise<boolean> {
   const { rows } = await queryAs<{ lineId: string; text: string }>(
     lang,
     `delete from "line_override" where "file" = $1 and "lang" = $2 returning "lineId", "text"`,
@@ -129,7 +179,7 @@ export async function clearOverride(lang: Lang, file: string, by: string | null)
       source: "quests",
       subject: file,
       lineId: rows[0].lineId,
-      detail: { before: rows[0].text },
+      detail: { before: rows[0].text, ...auditDetail(audit, null) },
     });
   }
   return rows.length > 0;

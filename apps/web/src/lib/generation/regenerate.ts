@@ -22,21 +22,20 @@ import { lineIndex } from "@/lib/quests/catalogue";
 import { baseLineId } from "@/lib/contributions/naming";
 import { readIgnores } from "@/lib/quests/ignores";
 import { overrideOf } from "@/lib/quests/override";
-import { readOverrides } from "@/lib/quests/overrides";
+import { markSpoken, readOverrides } from "@/lib/quests/overrides";
 import { commitTake } from "@/lib/takes/commit";
 import { INVALID_CHARS, isVoiceable } from "@/lib/text-gate";
 import { isModelVoice } from "@/lib/voices/voices";
 
 import { speakPlayerTokens } from "@/lib/player-words";
-import { sentText } from "./files";
+import { shapedText } from "./files";
 import { canonicalNpcId, seedFor } from "./seed";
 import { spokenHash } from "./spoken-hash";
 import { currentConfig } from "./settings";
-import { directionFor, NARRATOR_VOICE, segments, type Segment } from "./narration";
+import { NARRATOR_VOICE, segments, type Segment } from "./narration";
 import type { Speaker } from "./speakers/speaker";
 import { BUSY, withTakeLock } from "./lock";
 import { busy, failure, type Failure } from "./errors";
-import { SHAPE } from "./speakers/shape";
 import { timesFor } from "./word-times";
 
 export type RegenerateSuccess = {
@@ -115,7 +114,8 @@ export async function regenerateLine(
   // after the save. Read *before* the gate because an override is what decides whether this
   // line is voiceable at all - the corpus's own flag was computed from text nobody could edit.
   const overrides = await readOverrides(lang);
-  const source = overrideOf(overrides, file)?.text ?? line.text;
+  const override = overrideOf(overrides, file);
+  const source = override?.text ?? line.text;
 
   if (!isVoiceable(line, source)) {
     const why =
@@ -163,11 +163,7 @@ export async function regenerateLine(
     //
     // The committed pronunciation rules are English's spellings of English words; another
     // language is spoken with its own lexicon, which the speaker applies, and nothing else.
-    const spokenText = SHAPE[speaker.provider](
-      sentText(source, lang, line.playerGender),
-      directionFor(line.voice, config.raceTags),
-      config.raceTags,
-    );
+    const spokenText = shapedText(source, lang, line, speaker.provider, config.raceTags);
     // Lowest npcId in the group, so a file shared by many NPCs regenerates the same way
     // whichever row the button was pressed on. See canonicalNpcId.
     const seed = seedFor(canonicalNpcId(group), speaker.seedStrategy);
@@ -244,6 +240,7 @@ export async function regenerateLine(
       // what is missing.
       { lang, batchId: options.batchId, measure: (clip) => durationOf(clip).catch(() => null) },
     );
+    if (override) await markSpoken(lang, override.file, override.text, spokenHash(spokenText));
 
     return {
       ok: true,

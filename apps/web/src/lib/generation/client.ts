@@ -209,6 +209,8 @@ export type QueueSnapshot = {
    * server omits it.
    */
   paused?: { lang: Lang; pausedAt: string; by: string | null }[];
+  /** Whether any team has paused anything. Optional because an older server omits it. */
+  pausedAnywhere?: boolean;
   /**
    * Each owner's queue in drain order. Mirrors QueueSnapshot["queues"] in queue.ts.
    *

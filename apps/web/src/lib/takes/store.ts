@@ -20,8 +20,9 @@ import path from "node:path";
 
 import { recordActivity } from "@/lib/activity/store";
 import { blobOrFile, type Stored } from "@/lib/blobs/store";
+import { query } from "@/lib/db";
 import { BASE_LANG, type Lang } from "@/lib/lang";
-import { asTeamOf, readAs } from "@/lib/teams/store";
+import { asTeamOf, readAs, type TeamId } from "@/lib/teams/store";
 
 import { historyDirOf } from "./adapters";
 import type { Source } from "@/lib/sections";
@@ -257,6 +258,39 @@ export async function livePath(source: Source, file: string, lang: Lang = BASE_L
       where "source" = $1 and "file" = $2 and "lang" = $3 and "isCurrent"`,
     [source, file, lang],
   );
+  return located(source, file, lang, rows[0]);
+}
+
+/** What anybody may know of another team's live take: what plays and when, nothing of its cost or making. */
+export type PublicTake = {
+  lineId: string;
+  file: string;
+  version: number;
+  spokenHash: string | null;
+  characters: number | null;
+  durationSec: number | null;
+  bytes: number;
+  createdAt: Date;
+};
+
+/**
+ * `team`'s live takes in a section, readable whoever is acting. The function also answers where
+ * each take is kept, which stays on the server: only teamLivePath reads it.
+ */
+export async function teamLiveTakes(team: TeamId, source: Source, lang: Lang): Promise<PublicTake[]> {
+  return query<PublicTake>(
+    `select "lineId", "file", "version", "spokenHash", "characters", "durationSec"::float8 as "durationSec",
+            "bytes"::float8 as "bytes", "createdAt"
+       from team_live_takes($1, $2, $3)`,
+    [team, lang, source],
+  );
+}
+
+/** The bytes of `team`'s live take of one file, whoever is acting: another team's audio is public. */
+export async function teamLivePath(team: TeamId, source: Source, file: string, lang: Lang): Promise<TakeBytes> {
+  const rows = await query<Located>(`select "archiveFile", "sha256" from team_live_takes($1, $2, $3, $4)`, [
+    team, lang, source, file,
+  ]);
   return located(source, file, lang, rows[0]);
 }
 

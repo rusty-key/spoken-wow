@@ -13,6 +13,7 @@
 import { isDirty } from "@/lib/generation/dirty";
 import { recordedMatches, type LiveRecording } from "@/lib/recordings/live";
 import { madeByFacets, madeByMatches, type MadeBy, type MadeByFacets } from "@/lib/takes/made-by";
+import type { OverrideView } from "@/lib/text-overrides/types";
 
 import type { BookPage, SearchContext, Take } from "./catalogue";
 import { PAGE_SIZE, type Field, type PageFilters, type OwnerKind, type State } from "./filters";
@@ -55,6 +56,8 @@ export type ResultLine = {
   madeBy: MadeBy | null;
   /** The live voice-actor recording, or null. Absent for anybody who does not record here. */
   recording?: LiveRecording | null;
+  /** The acting team's rewrite, which `spoken` already says; null where it has none. */
+  override: OverrideView | null;
 };
 
 export type SearchResult = {
@@ -98,6 +101,7 @@ export function decorate(page: BookPage, context: SearchContext): ResultLine {
     material: page.material,
     text: page.text,
     spoken: page.spoken,
+    override: page.override ?? null,
     chars: page.spoken.length,
     file: page.file,
     generatable: page.generatable,

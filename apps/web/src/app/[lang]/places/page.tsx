@@ -5,6 +5,8 @@ import { Suspense } from "react";
 import { PlacesExplorer } from "@/components/places/PlacesExplorer";
 import { isCorpusEmpty, zoneFacets } from "@/lib/places/catalogue";
 import { Contained } from "@/components/Width";
+import { viewKey } from "@/lib/teams/view";
+import { teamView } from "@/lib/teams/viewing";
 
 export const metadata: Metadata = { title: "Places · Spoken" };
 
@@ -19,7 +21,13 @@ export const metadata: Metadata = { title: "Places · Spoken" };
  */
 export const dynamic = "force-dynamic";
 
-export default async function Page({ params }: { params: Promise<{ lang: string }> }) {
+export default async function Page({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ lang: string }>;
+  searchParams: Promise<{ team?: string | string[] }>;
+}) {
   const lang = await pageLang(params);
   let zones;
   try {
@@ -43,6 +51,10 @@ export default async function Page({ params }: { params: Promise<{ lang: string 
     );
   }
 
+  // An unknown team slug falls back to the default team.
+  const { team } = await searchParams;
+  const view = await teamView(lang, typeof team === "string" ? team : null);
+
   return (
     <main className="pt-6 pb-36">
       <Contained>
@@ -56,7 +68,7 @@ export default async function Page({ params }: { params: Promise<{ lang: string 
       {/* Suspense is required: Explorer calls useSearchParams(). */}
       {/* Outside the column: the explorer places its own search (capped) and table (wide). */}
       <Suspense>
-        <PlacesExplorer zones={zones} />
+        <PlacesExplorer key={viewKey(view)} zones={zones} {...view} />
       </Suspense>
     </main>
   );

@@ -98,7 +98,7 @@ describe("GET /api/v1/[section]", () => {
   it("returns exactly the item's fields, no audio or hash", async () => {
     const body = (await (await listOf("bosses", `?instance=${f.map}`)).json()) as { items: Record<string, unknown>[] };
     expect(Object.keys(body.items[0]).sort()).toEqual(
-      ["englishName", "englishText", "group", "id", "name", "nameVersion", "text", "version"].sort(),
+      ["englishName", "englishText", "group", "id", "name", "nameVersion", "override", "text", "version"].sort(),
     );
   });
 });

@@ -11,7 +11,7 @@ import { createToken } from "@/lib/tokens/store";
 /** Tests elsewhere already wipe this language, so nothing real is at stake in it. */
 export const LANG = "koKR";
 
-export type Fixtures = {
+export type NarratedFixtures = {
   user: string;
   map: number;
   zone: string;
@@ -19,9 +19,12 @@ export type Fixtures = {
   boss: { lineId: string; id: number; map: number };
   page: { lineId: string; bookId: string; ownerId: number };
   ownerlessPage: { lineId: string; bookId: string };
+  remove(): Promise<void>;
+};
+
+export type Fixtures = NarratedFixtures & {
   quest: { lineId: string; variant: number; questId: number };
   gossip: { lineId: string; variant: number };
-  remove(): Promise<void>;
 };
 
 /** A day-long token for `userId` in `lang`, labelled "agent". */
@@ -61,7 +64,8 @@ async function seedPage(lineId: string, bookId: string, owner: number | null): P
   );
 }
 
-export async function createFixtures(): Promise<Fixtures> {
+/** The place, boss and readable rows alone, for a suite that needs no quest corpus. */
+export async function createNarratedFixtures(): Promise<NarratedFixtures> {
   const { id: user, cleanup: removeUser } = await testUser("test-api");
 
   const map = -randomInt();
@@ -114,20 +118,6 @@ export async function createFixtures(): Promise<Fixtures> {
   const ownerlessPage = { lineId: `b:${randomInt()}`, bookId: `test-${random()}` };
   await seedPage(ownerlessPage.lineId, ownerlessPage.bookId, null);
 
-  const untranslated = async (source: string, questId: string) => {
-    const { rows } = await asSystem.query<{ lineId: string; variant: number; questId: number }>(
-      `select "lineId", "variant", "questId" from "quest_line" e
-        where "lang" = 'enUS' and "isCurrent" and "source" = $2 and "questId" is ${questId}
-          and "lineId" !~ ':[mf]$'
-          and not exists (select 1 from "quest_line" k
-                           where k."lineId" in (e."lineId", e."lineId" || ':m', e."lineId" || ':f') and k."lang" = $1)
-        order by "lineId" limit 1`,
-      [LANG, source],
-    );
-    if (!rows[0]) throw new Error(`createFixtures needs an English ${source} line ${LANG} has not translated`);
-    return rows[0];
-  };
-
   return {
     user,
     map,
@@ -136,8 +126,6 @@ export async function createFixtures(): Promise<Fixtures> {
     boss: { lineId: bossLineId(map, bossKey), id: bossId, map },
     page,
     ownerlessPage,
-    quest: await untranslated("accept", "not null"),
-    gossip: await untranslated("gossip", "null"),
     async remove() {
       await asSystem.query(`delete from "activity" where "actorId" = $1`, [user]);
       await asSystem.query(`delete from "lore_line" where "mapID" = $1`, [map]);
@@ -156,4 +144,28 @@ export async function createFixtures(): Promise<Fixtures> {
       await removeUser();
     },
   };
+}
+
+/**
+ * Every section's rows. The quest lines are looked up before anything is inserted, so a database
+ * without the quest corpus fails here with nothing left behind.
+ */
+export async function createFixtures(): Promise<Fixtures> {
+  const untranslated = async (source: string, questId: string) => {
+    const { rows } = await asSystem.query<{ lineId: string; variant: number; questId: number }>(
+      `select "lineId", "variant", "questId" from "quest_line" e
+        where "lang" = 'enUS' and "isCurrent" and "source" = $2 and "questId" is ${questId}
+          and "lineId" !~ ':[mf]$'
+          and not exists (select 1 from "quest_line" k
+                           where k."lineId" in (e."lineId", e."lineId" || ':m', e."lineId" || ':f') and k."lang" = $1)
+        order by "lineId" limit 1`,
+      [LANG, source],
+    );
+    if (!rows[0]) throw new Error(`createFixtures needs an English ${source} line ${LANG} has not translated`);
+    return rows[0];
+  };
+
+  const quest = await untranslated("accept", "not null");
+  const gossip = await untranslated("gossip", "null");
+  return { ...(await createNarratedFixtures()), quest, gossip };
 }

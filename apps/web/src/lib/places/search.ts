@@ -14,6 +14,7 @@
 import { isDirty } from "@/lib/generation/dirty";
 import { recordedMatches, type LiveRecording } from "@/lib/recordings/live";
 import { madeByFacets, madeByMatches, type MadeBy, type MadeByFacets } from "@/lib/takes/made-by";
+import type { OverrideView } from "@/lib/text-overrides/types";
 
 import type { CatalogueEntry, SearchContext, Take } from "./catalogue";
 import { PAGE_SIZE, SHORT_LINE, type LineFilters, type State } from "./filters";
@@ -59,6 +60,8 @@ export type ResultLine = {
   madeBy: MadeBy | null;
   /** The live voice-actor recording, or null. Absent for anybody who does not record here. */
   recording?: LiveRecording | null;
+  /** The acting team's rewrite, which `spoken` already says; null where it has none. */
+  override: OverrideView | null;
 };
 
 export type SearchResult = {
@@ -97,6 +100,7 @@ export function decorate(entry: CatalogueEntry, context: SearchContext): ResultL
     name: entry.name || entry.key || entry.zoneName,
     text: entry.full,
     spoken: entry.spoken,
+    override: entry.override ?? null,
     chars: entry.spoken.length,
     short: entry.spoken.length < SHORT_LINE,
     file: entry.file,

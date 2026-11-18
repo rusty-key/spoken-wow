@@ -50,7 +50,7 @@ describe("GET /api/v1", () => {
 
   it("states the token's language and access, and every section with its filters", async () => {
     expect(await (await get(token)).json()).toMatchObject({
-      token: { lang: "koKR", access: "read" },
+      token: { lang: "koKR", access: "read", layers: { original: false, override: false } },
       sections: {
         places: { filters: ["zone"] },
         bosses: { filters: ["instance"] },
@@ -70,7 +70,7 @@ describe("GET /api/v1", () => {
 
   it("states the limits", async () => {
     expect(await (await get(token)).json()).toMatchObject({
-      limits: { pageSize: 500, itemsPerUpdate: 1000, textLength: 5000, nameLength: 200, itemsPerGeneration: 1000, requestBytes: 8_388_608 },
+      limits: { pageSize: 500, itemsPerUpdate: 1000, textLength: 5000, questOverrideLength: 2000, nameLength: 200, itemsPerGeneration: 1000, requestBytes: 8_388_608 },
     });
   });
 
@@ -88,9 +88,11 @@ describe("GET /api/v1", () => {
       label: "both",
       expiresAt: new Date(Date.now() + 86_400_000),
     });
+    owner.grants = [{ lang: "koKR", capability: "text" }];
+    expect(await (await get(both)).json()).toMatchObject({ token: { access: "read", generate: false } });
     owner.grants = [{ lang: "koKR", capability: "regenerate" }];
     try {
-      expect(await (await get(both)).json()).toMatchObject({ token: { access: "none", generate: true } });
+      expect(await (await get(both)).json()).toMatchObject({ token: { access: "read", generate: true } });
     } finally {
       owner.grants = [{ lang: "koKR", capability: "text" }];
     }
