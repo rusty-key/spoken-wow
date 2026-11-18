@@ -11,6 +11,7 @@ const mocks = vi.hoisted(() => ({
   requireApiKey: vi.fn(),
   observedRate: vi.fn(),
   observedFishRate: vi.fn(),
+  storageRefusal: vi.fn(async (): Promise<{ kind: string; message: string } | null> => null),
 }));
 
 const catalogues = vi.hoisted(() => ({
@@ -52,6 +53,10 @@ vi.mock("./queue", () => ({ createBatch: mocks.createBatch, enqueue: mocks.enque
 vi.mock("@/lib/activity/store", () => ({ recordActivity: mocks.recordActivity }));
 vi.mock("./authz", () => ({ requireApiKey: mocks.requireApiKey }));
 vi.mock("./boot", () => ({ queueWorker: () => null }));
+vi.mock("@/lib/blobs/keep", () => ({
+  storageRefusal: mocks.storageRefusal,
+  refusalResponse: ({ kind, message }: { kind: string; message: string }) => Response.json({ error: message, kind }, { status: 409 }),
+}));
 vi.mock("./calibration", () => ({ observedRate: mocks.observedRate, observedFishRate: mocks.observedFishRate }));
 import { audioRelPath } from "@/lib/audio";
 import type { CorpusLine } from "@/lib/corpus";
@@ -121,6 +126,23 @@ describe("queuePlan", () => {
     expect(result).toBeInstanceOf(Response);
     expect((result as Response).status).toBe(428);
     expect(mocks.requireApiKey).toHaveBeenCalledWith("u", "fish");
+    expect(mocks.createBatch).not.toHaveBeenCalled();
+  });
+
+  it("refuses a team whose bucket is failing, before any batch exists", async () => {
+    mocks.storageRefusal.mockResolvedValueOnce({ kind: "storage-failing", message: "Your team's bucket is failing" });
+    const result = (await queuePlan({ ...base, plan: plan([job("a", 10)]) })) as Response;
+    expect(result.status).toBe(409);
+    expect(await result.json()).toEqual({ error: "Your team's bucket is failing", kind: "storage-failing" });
+    expect(mocks.storageRefusal).toHaveBeenCalledWith("deDE");
+    expect(mocks.createBatch).not.toHaveBeenCalled();
+  });
+
+  it("refuses a team that must keep its own storage and has none, before any batch exists", async () => {
+    mocks.storageRefusal.mockResolvedValueOnce({ kind: "storage-required", message: "connect a bucket" });
+    const result = (await queuePlan({ ...base, plan: plan([job("a", 10)]) })) as Response;
+    expect(result.status).toBe(409);
+    expect(await result.json()).toEqual({ error: "connect a bucket", kind: "storage-required" });
     expect(mocks.createBatch).not.toHaveBeenCalled();
   });
 

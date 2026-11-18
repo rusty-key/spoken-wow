@@ -15,7 +15,8 @@ import "server-only";
 import path from "node:path";
 
 import { servePrivate } from "@/lib/blobs/serve";
-import { archive, isShared } from "@/lib/blobs/store";
+import { isShared } from "@/lib/blobs/store";
+import { addressOf, locate, SIGNED_FOR_SEC } from "@/lib/blobs/where";
 import { serveFile } from "@/lib/stream";
 
 import { BASE_LANG, langTag, type Lang } from "@/lib/lang";
@@ -47,11 +48,19 @@ export async function serveTake(
 
   // The bucket answers ranges itself, Safari's bytes=0-1 probe included. The redirect is
   // cached as the bytes were: a version's for good, a live line's for five minutes, after
-  // which it may point at a newer take.
+  // which it may point at a newer take. A team's private bucket gets a signed address, so its
+  // redirect is cached for less than the signature lasts.
   if (bytes.kind === "blob") {
+    const where = await locate(bytes.key, bytes.lang ?? lang);
+    const { url, signed } = await addressOf(where);
+    // Only our own copy of a take stays where it is for good. One in a team's bucket can be moved,
+    // re-addressed or deleted, and one in quarantine is deleted once it lands.
+    // A quarantined copy is deleted once it lands, so its redirect is not kept at all.
+    const lasting = where.backendId === null && !where.pending;
+    const cached = where.pending ? "no-store" : `${signed ? "private" : "public"}, ${lasting ? cacheControl : `max-age=${Math.min(300, SIGNED_FOR_SEC / 2)}`}`;
     return new Response(null, {
       status: 302,
-      headers: { Location: archive().url(bytes.key), "Cache-Control": `public, ${cacheControl}` },
+      headers: { Location: url, "Cache-Control": cached },
     });
   }
   const served = await serveFile(request, bytes.path, { cacheControl: `public, ${cacheControl}`, headers, ...file });

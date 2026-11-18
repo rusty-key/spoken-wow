@@ -19,6 +19,8 @@ const KEEP_RUNS = 30;
 
 // All app.env gives the job. The site's own secrets have no business in a process that signs
 // packs, and SPOKEN_PLACES_MANIFEST there would have the build overwrite the site's manifest.
+// release.env is read last and wins: once a team keeps its own bucket, it sets SPOKEN_ARCHIVE_URL
+// to the site's /api/archive/, which knows which bucket holds each object (docs/platform/STORAGE.md).
 const FROM_APP_ENV = ["DATABASE_URL", "R2_ACCOUNT_ID", "SPOKEN_ARCHIVE_URL"];
 
 export async function jobEnv(releaseEnvPath, base = process.env) {

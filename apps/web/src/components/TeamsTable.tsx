@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -46,6 +46,15 @@ export default function TeamsTable({ initial, takes, languages }: Props) {
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [names, setNames] = useState(() => Object.fromEntries(initial.map((team) => [team.id, team.name])));
+  const [ownStorage, setOwnStorage] = useState<Record<string, boolean>>({});
+  // Once the refreshed teams agree with a saved value it is theirs to show, so a later change made
+  // elsewhere comes through.
+  useEffect(() => {
+    setOwnStorage((current) => {
+      const left = Object.entries(current).filter(([id, value]) => initial.find((team) => team.id === id)?.ownStorage !== value);
+      return left.length === Object.keys(current).length ? current : Object.fromEntries(left);
+    });
+  }, [initial]);
   const [form, setForm] = useState({ slug: "", name: "", adminEmail: "", langs: [] as Lang[] });
   const [newLanguage, setNewLanguage] = useState(false);
   const [fresh, setFresh] = useState<NewLanguage>({ code: "", name: "", native: "" });
@@ -111,7 +120,10 @@ export default function TeamsTable({ initial, takes, languages }: Props) {
             <th className="py-2 pr-3 font-normal">Slug</th>
             <th className="py-2 pr-3 font-normal">Name</th>
             <th className="py-2 pr-3 font-normal">Languages</th>
-            <th className="py-2 font-normal">Members</th>
+            <th className="py-2 pr-3 font-normal">Members</th>
+            <th className="py-2 font-normal" title="New audio goes only to its own bucket; what is already in Spoken's archive stays">
+              Own storage
+            </th>
           </tr>
         </thead>
         <tbody>
@@ -166,7 +178,7 @@ export default function TeamsTable({ initial, takes, languages }: Props) {
                   {team.langs.length === 0 && team.alsoIn.length === 0 && <li className="text-muted-foreground text-xs">none</li>}
                 </ul>
               </td>
-              <td className="py-2">
+              <td className="py-2 pr-3">
                 <ul className="flex flex-col gap-1">
                   {people(team).map((person) => (
                     <li key={person.email}>
@@ -178,6 +190,21 @@ export default function TeamsTable({ initial, takes, languages }: Props) {
                     </li>
                   ))}
                 </ul>
+              </td>
+              <td className="py-2">
+                <input
+                  type="checkbox"
+                  aria-label={`${team.slug}'s new audio goes only to its own bucket`}
+                  checked={ownStorage[team.id] ?? team.ownStorage}
+                  disabled={busy}
+                  onChange={(event) => {
+                    const next = event.target.checked;
+                    // Kept until the refreshed page agrees, as the name drafts are.
+                    void run(() => send(`/api/teams/${team.id}`, "PATCH", { ownStorage: next })).then((ok) => {
+                      if (ok) setOwnStorage((current) => ({ ...current, [team.id]: next }));
+                    });
+                  }}
+                />
               </td>
             </tr>
           ))}

@@ -129,6 +129,18 @@ channel's), `SPOKEN_ARCHIVE_BUCKET`, `SPOKEN_ARCHIVE_URL` (its public address) a
 backfill runs, and `r2` after: then takes redirect to the bucket, recordings, clone clips and
 references stream through the site, and the volume is no longer read or written.
 
+**Teams' own buckets** (`docs/platform/STORAGE.md`) need two more in `app.env` before a team
+admin can connect one on `/admin/storage`. `SPOKEN_STORAGE_KEY` (`openssl rand -base64 32`) seals
+each team's bucket key; like `SPOKEN_SECRET_KEY` it cannot be rotated casually, since changing it
+makes every team enter its key again. `SPOKEN_ARCHIVE_TOKEN` (any long random string) lets a
+developer's pull fetch voice actors' recordings through the site; releases need none. In `shared/release.env`,
+`SPOKEN_ARCHIVE_URL=http://127.0.0.1:3010/api/archive/` overrides app.env's for the release job, so
+its reads go through the site, which knows which bucket holds each clip. The
+`release-packs.yaml` workflow's `SPOKEN_ARCHIVE_URL` variable becomes
+`https://spoken.quest/api/archive/`. Whichever worker leads the queue lands quarantined objects and
+advances moves between buckets once a minute, and samples 50 team-bucket objects for ones a team
+deleted every 15 minutes.
+
 Before `SPOKEN_ARCHIVE_STORE` becomes `dual`, install **`oggenc`** beside ffmpeg
 (`apt install vorbis-tools`): with the bucket in use every quests take is encoded to its
 pack's Ogg when it is committed (`apps/web/src/lib/takes/encode.ts`). Without it the take

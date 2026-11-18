@@ -264,5 +264,5 @@ type Located = { archiveFile: string | null; sha256: string | null };
 
 function located(source: Source, file: string, lang: Lang, take: Located | undefined): TakeBytes {
   if (!take) return { kind: "none" };
-  return blobOrFile("takes", take.sha256, take.archiveFile && path.join(historyDirOf(source, file, lang), take.archiveFile));
+  return blobOrFile("takes", take.sha256, take.archiveFile && path.join(historyDirOf(source, file, lang), take.archiveFile), lang);
 }

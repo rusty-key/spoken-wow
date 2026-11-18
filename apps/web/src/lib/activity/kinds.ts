@@ -151,6 +151,8 @@ export type ActivityDetail = {
   "language.added": { name: string };
   "team.created": { slug: string };
   "team.renamed": { name: string };
+  /** Whether the team must keep its audio in its own bucket (docs/platform/STORAGE.md). */
+  "team.own_storage": { ownStorage: boolean };
   /** A language handed to another team, by team slug. */
   "team.language_moved": { from: string; to: string };
   /** A second team made beside the language's privileged team `beside`, by slug; filed under the new team. */

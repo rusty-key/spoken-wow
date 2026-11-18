@@ -131,14 +131,21 @@ export async function foundTeam(client: PoolClient, input: FoundInput, actorId: 
   if (input.lang === BASE_LANG) throw new TeamError("English is one team; no other team can take it.");
   if (input.team.slug !== null) checkSlug(input.team.slug);
   await client.query(`select 1 from "language" where "code" = $1 for update`, [input.lang]);
-  switch (await languageBranch(input.lang, client)) {
-    case "new-language":
-      return foundLanguage(client, input, actorId);
-    case "hand-over":
-      return takeOverLanguage(client, input, actorId);
-    case "second-team":
-      return addSecondTeam(client, input, actorId);
-  }
+  const founded = await (async () => {
+    switch (await languageBranch(input.lang, client)) {
+      case "new-language":
+        return foundLanguage(client, input, actorId);
+      case "hand-over":
+        return takeOverLanguage(client, input, actorId);
+      case "second-team":
+        return addSecondTeam(client, input, actorId);
+    }
+  })();
+  // A team a person founds keeps its new audio in its own bucket (docs/platform/STORAGE.md); a site
+  // admin can lift that on /admin/teams. After every branch, since a hand-over can claim the team
+  // adopt_lang made, which has the default false.
+  await client.query(`update "team" set "ownStorage" = true where "id" = $1`, [founded.teamId]);
+  return founded;
 }
 
 /** A new code: the language, switched on, and the team addLanguage made for it, renamed as asked. */

@@ -12,12 +12,13 @@ import { Contained } from "@/components/Width";
 import { allLangs, langName, type Lang } from "@/lib/lang";
 import { cn } from "@/lib/utils";
 
-export type AdminTab = "dashboard" | "team" | "release" | "teams" | "packs";
+export type AdminTab = "dashboard" | "team" | "release" | "storage" | "teams" | "packs";
 
 const PATHS: Record<AdminTab, string> = {
   dashboard: "/admin/dashboard",
   team: "/admin",
   release: "/admin/release",
+  storage: "/admin/storage",
   teams: "/admin/teams",
   packs: "/admin/packs",
 };
@@ -64,6 +65,7 @@ export default function AdminHeader({
     { tab: "dashboard", label: "Dashboard" },
     { tab: "team", label: global && !lang ? "Users" : "Team" },
     { tab: "release", label: "Release" },
+    { tab: "storage", label: "Storage" },
     ...(global
       ? [
           { tab: "teams" as const, label: "Teams" },

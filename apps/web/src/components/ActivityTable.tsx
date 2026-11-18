@@ -279,6 +279,14 @@ export function describe(row: ActivityRow): { what: string; quote: string | null
       return { what: `created the team ${str(d.slug) ?? ""}`.trim(), quote: null };
     case "team.renamed":
       return { what: "renamed the team", quote: str(d.name) };
+    case "team.own_storage":
+      return {
+        // The event names no language, so the team is named here.
+        what: d.ownStorage
+          ? `required ${row.subject ?? "the team"} to keep its new audio in its own bucket`
+          : `let ${row.subject ?? "the team"} use Spoken's archive`,
+        quote: null,
+      };
     case "team.language_moved":
       return { what: `handed the language from ${str(d.from) ?? "?"} to ${str(d.to) ?? "?"}`, quote: null };
     case "team.second_in_language":
