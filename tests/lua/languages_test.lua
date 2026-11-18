@@ -73,6 +73,52 @@ env = Install({
 Expect("the first pack's name wins", env.Languages:Get("plPL").name, "Polish")
 Expect("both packs are listed", #env.Languages:Get("plPL").folders, 2)
 
+-- A pack's voice is its language, and its team where its .toc names one.
+local STIMMEN = { ["X-SpokenPlaces-Language"] = "deDE", ["X-Spoken-Team"] = "stimmen", ["X-Spoken-TeamName"] = "Stimmen" }
+local function VoiceCodes(env)
+    local codes = {}
+    for _, voice in ipairs(env.Languages:Voices()) do codes[#codes + 1] = voice.code end
+    return table.concat(codes, ",")
+end
+env = Install({
+    Pack("SpokenPlacesAudio_deDE_stimmen", STIMMEN),
+    Pack("SpokenPlacesAudio_deDE", { ["X-SpokenPlaces-Language"] = "deDE" }),
+    Pack("SpokenPlacesAudio_deDE_alpha", { ["X-SpokenPlaces-Language"] = "deDE", ["X-Spoken-Team"] = "alpha",
+        ["X-Spoken-TeamName"] = "Zeta" }),
+    Pack("SpokenPlacesAudio", { ["X-SpokenPlaces-Language"] = "enUS" }),
+})
+local de = env.Languages:Get("deDE")
+Expect("team: folders still lists every pack of the language", #de.folders, 3)
+Expect("team: the plain pack is the language's voice", table.concat(de.voices.deDE.folders, ","), "SpokenPlacesAudio_deDE")
+Expect("team: the team's pack is its own voice", table.concat(de.voices.deDE_stimmen.folders, ","),
+    "SpokenPlacesAudio_deDE_stimmen")
+Expect("team: the voice keeps its team", de.voices.deDE_stimmen.team, "stimmen")
+Expect("team: ...and the team's name", de.voices.deDE_stimmen.teamName, "Stimmen")
+Expect("team: a plain voice has no team", de.voices.deDE.team, nil)
+Expect("team: plain voices in Installed order, each followed by its teams by name", VoiceCodes(env),
+    "enUS,deDE,deDE_stimmen,deDE_alpha")
+Expect("team: VoiceOf a team's folder", env.Languages:VoiceOf("SpokenPlacesAudio_deDE_stimmen"), "deDE_stimmen")
+Expect("team: VoiceOf a plain folder", env.Languages:VoiceOf("SpokenPlacesAudio_deDE"), "deDE")
+Expect("team: VoiceOf a folder no scan saw is its language's plain voice",
+    env.Languages:VoiceOf("SpokenReadablesAudio_frFR", "frFR"), "frFR")
+Expect("team: Spoken answers it too", Spoken:VoiceOf("SpokenPlacesAudio_deDE_stimmen", "deDE"), "deDE_stimmen")
+env = Install({ Pack("SpokenPlacesAudio_deDE_bad", { ["X-SpokenPlaces-Language"] = "deDE", ["X-Spoken-Team"] = "Stimmen!" }) })
+Expect("team: a malformed team makes the pack plain", VoiceCodes(env), "deDE")
+env = Install({ Pack("SpokenPlacesAudio_deDE_stimmen", STIMMEN) })
+Expect("team: a language with only a team's pack lists only that voice", VoiceCodes(env), "deDE_stimmen")
+local lang, team = env.Languages:SplitVoice("deDE_stimmen")
+Expect("SplitVoice: language", lang, "deDE")
+Expect("SplitVoice: team", team, "stimmen")
+lang, team = env.Languages:SplitVoice("deDE")
+Expect("SplitVoice: a plain voice's language", lang, "deDE")
+Expect("SplitVoice: ...and no team", team, nil)
+Expect("IsVoice: a language", env.Languages:IsVoice("deDE"), true)
+Expect("IsVoice: a language and team", env.Languages:IsVoice("deDE_stimmen"), true)
+Expect("IsVoice: a team too short", env.Languages:IsVoice("deDE_s"), false)
+Expect("IsVoice: an upper case team", env.Languages:IsVoice("deDE_Stimmen"), false)
+Expect("IsVoice: auto is no voice", env.Languages:IsVoice("auto"), false)
+Expect("IsVoice: nil", env.Languages:IsVoice(nil), false)
+
 env = Install({ Pack("SpokenCommunity_ivrit", HEBREW, { loadable = false, reason = "DISABLED" }) })
 Expect("a switched-off pack does not count", env.Languages:Get("heIL"), nil)
 Expect("a switched-off pack lists nothing", #env.Languages:Installed(), 0)

@@ -567,7 +567,21 @@ end
 --- For a pack that cannot say so in its .toc: declare the language `code` for the addon `folder`.
 --- `meta` is `{ name, native, font, lore }`, `font` a full path.
 function Spoken:DeclareLanguage(code, folder, meta)
+    -- The .toc first: a folder declared here before the scan reads it would lose its team.
+    Languages:Get(code)
     Languages:Declare(code, folder, meta)
+end
+
+--- The voice the installed pack `folder` is in, for its language `lang`: "deDE" for a language's
+--- plain pack, "deDE_stimmen" for the stimmen team's. A folder no .toc declared is `lang`'s.
+function Spoken:VoiceOf(folder, lang)
+    return Languages:VoiceOf(folder, lang)
+end
+
+--- A voice's language and team ("deDE", "stimmen"), the team nil for a plain voice. Nil, nil for a
+--- value that is no voice.
+function Spoken:SplitVoice(code)
+    return Languages:SplitVoice(code)
 end
 
 --- Whether `value` is shaped like a language code, such as "deDE".

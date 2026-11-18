@@ -58,14 +58,16 @@ local QUESTS_KEYS = { "X-SpokenQuests-DataModule-Version", "X-VoiceOver-DataModu
 
 -- Built from BUILTIN and what the packs declare; nil until first asked for, so that every pack is
 -- in the AddOns list by then.
-local byCode, scanned
+-- `voiceOf` maps a voice pack's folder to the voice it is in each language it declares.
+local byCode, scanned, voiceOf
 
 local function Reset()
-    byCode, scanned = {}, false
+    byCode, scanned, voiceOf = {}, false, {}
     for _, builtin in ipairs(Languages.BUILTIN) do
         byCode[builtin.code] = {
             code = builtin.code, name = builtin.name, native = builtin.native, script = builtin.script,
             sample = builtin.sample, client = true, builtin = true, lore = false, folders = {}, texts = {}, interfaces = {},
+            voices = {},
         }
     end
 end
@@ -76,6 +78,30 @@ function Languages:IsCode(value)
     return type(value) == "string" and value:find("^%l%l%u%u$") ~= nil
 end
 
+--- Whether a value is shaped like a team's slug, as the site makes them (^[a-z][a-z0-9-]{1,40}$).
+local function IsTeam(value)
+    return type(value) == "string" and #value >= 2 and #value <= 41 and value:find("^[a-z][a-z0-9%-]+$") ~= nil
+end
+
+--- A voice's language and its team: "deDE_stimmen" is "deDE", "stimmen"; "deDE" is "deDE", nil.
+function Languages:SplitVoice(code)
+    if type(code) ~= "string" then return nil, nil end
+    local lang, team = code:match("^(%l%l%u%u)_(.+)$")
+    if lang and IsTeam(team) then return lang, team end
+    if self:IsCode(code) then return code, nil end
+    return nil, nil
+end
+
+--- Whether a value is a voice: a language's code, or a language's and a team's ("deDE_stimmen").
+function Languages:IsVoice(code)
+    return (self:SplitVoice(code)) ~= nil
+end
+
+--- The voice of the language `lang` that a pack of `team` (nil for none) is in.
+local function VoiceCode(lang, team)
+    return team and (lang .. "_" .. team) or lang
+end
+
 --- Whether the player switched the addon off in the AddOns list for this character.
 local function SwitchedOff(i, getInfo)
     local _, _, _, loadable, reason = getInfo(i)
@@ -83,7 +109,7 @@ local function SwitchedOff(i, getInfo)
 end
 
 --- A pack declares its language. `meta` is what its .toc says of it: `name`, `native`, `font` (a
---- full path) and `lore`. The built-in entry's names stand and, for any other, the first pack to
+--- full path), `lore`, and for a team's pack `team` (its slug) and `teamName`, which make its voice. The built-in entry's names stand and, for any other, the first pack to
 --- declare one is kept, so two packs of one language never fight over what it is called. A courtesy
 --- name (see COURTESY) is read only where no pack gave one.
 --- A code that is not shaped like one is English: a mistyped key must not mint a language.
@@ -95,8 +121,8 @@ function Languages:Declare(code, folder, meta, list)
     if code == "enGB" then code = "enUS" end
     local entry = byCode[code]
     if not entry then
-        entry = setmetatable({ code = code, client = false, builtin = false, lore = false, folders = {}, texts = {}, interfaces = {} },
-            { __index = COURTESY[code] })
+        entry = setmetatable({ code = code, client = false, builtin = false, lore = false, folders = {}, texts = {}, interfaces = {},
+            voices = {} }, { __index = COURTESY[code] })
         byCode[code] = entry
     end
     local folders = entry[list or "folders"]
@@ -104,6 +130,20 @@ function Languages:Declare(code, folder, meta, list)
         if known == folder then return end
     end
     table.insert(folders, folder)
+    if not list then
+        local team = meta and IsTeam(meta.team) and meta.team or nil
+        local voice = VoiceCode(code, team)
+        local known = entry.voices[voice]
+        if not known then
+            known = { code = voice, lang = code, team = team, folders = {} }
+            entry.voices[voice] = known
+        end
+        -- The first pack to name its team names it, as for a language.
+        known.teamName = known.teamName or (team and meta.teamName) or nil
+        table.insert(known.folders, folder)
+        voiceOf[folder] = voiceOf[folder] or { first = voice }
+        voiceOf[folder][code] = voice
+    end
     if meta then
         entry.name = rawget(entry, "name") or meta.name
         entry.native = rawget(entry, "native") or meta.native
@@ -153,6 +193,10 @@ function Languages:Scan()
                 name = Value(getMeta, i, "X-Spoken-LanguageName"),
                 native = Value(getMeta, i, "X-Spoken-LanguageNative"),
                 font = font and ("Interface\\AddOns\\" .. folder .. "\\" .. font:gsub("/", "\\")),
+                -- A team's pack beside the language's plain one: a voice of its own. A malformed
+                -- slug is no team, and its pack is the plain voice's.
+                team = Value(getMeta, i, "X-Spoken-Team"),
+                teamName = Value(getMeta, i, "X-Spoken-TeamName"),
             }
             for list, code in pairs(words) do self:Declare(code, folder, meta, list) end
             if isPack then
@@ -190,6 +234,34 @@ function Languages:Installed()
     table.sort(rest, function(a, b) return a.code < b.code end)
     for _, entry in ipairs(rest) do table.insert(list, entry) end
     return list
+end
+
+--- Every voice an installed pack is in, each `{ code, lang, team, teamName, folders }`: the
+--- languages' plain voices in Installed order, each followed by its teams' by team name.
+function Languages:Voices()
+    local list = {}
+    for _, entry in ipairs(self:Installed()) do
+        local teams = {}
+        for code, voice in pairs(entry.voices) do
+            if code == entry.code then table.insert(list, voice) else table.insert(teams, voice) end
+        end
+        table.sort(teams, function(a, b)
+            local na, nb = a.teamName or a.team, b.teamName or b.team
+            if na ~= nb then return na < nb end
+            return a.code < b.code
+        end)
+        for _, voice in ipairs(teams) do table.insert(list, voice) end
+    end
+    return list
+end
+
+--- The voice an installed pack `folder` is in: in `lang` where given, else in the first language it
+--- declared. A folder no pack declared is `lang`'s plain voice.
+function Languages:VoiceOf(folder, lang)
+    if not scanned then self:Scan() end
+    local voices = voiceOf[folder]
+    if voices and lang then return voices[lang] or lang end
+    return voices and voices.first or lang
 end
 
 --- The client's language as a built-in one: English where it is none (enGB). What Auto reads.
