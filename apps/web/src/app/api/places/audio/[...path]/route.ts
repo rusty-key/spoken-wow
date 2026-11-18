@@ -9,8 +9,7 @@
  */
 import { langParam } from "@/lib/lang-server";
 import { isAddressable } from "@/lib/places/audio";
-import { serveTake } from "@/lib/takes/serve";
-import { viewedLivePath } from "@/lib/teams/viewing";
+import { serveViewed } from "@/lib/teams/viewing";
 
 export const dynamic = "force-dynamic";
 
@@ -19,7 +18,5 @@ export async function GET(request: Request, context: { params: Promise<{ path: s
   if (!(await isAddressable(rel))) return new Response("bad audio path", { status: 400 });
   const { lang, denied } = await langParam(request);
   if (denied) return denied;
-  const bytes = await viewedLivePath(request, "places", rel.slice(0, -".mp3".length), lang);
-  if (bytes instanceof Response) return bytes;
-  return serveTake(request, bytes, { immutable: false, lang });
+  return serveViewed(request, "places", rel.slice(0, -".mp3".length), lang);
 }

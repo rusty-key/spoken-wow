@@ -10,8 +10,7 @@ import { NextRequest } from "next/server";
 
 import { langParam } from "@/lib/lang-server";
 import { isSafeAudioPath } from "@/lib/range";
-import { serveTake } from "@/lib/takes/serve";
-import { viewedLivePath } from "@/lib/teams/viewing";
+import { serveViewed } from "@/lib/teams/viewing";
 
 export const dynamic = "force-dynamic";
 
@@ -20,7 +19,5 @@ export async function GET(request: NextRequest, context: { params: Promise<{ pat
   if (!isSafeAudioPath(file)) return new Response("bad audio path", { status: 400 });
   const { lang, denied } = await langParam(request);
   if (denied) return denied;
-  const bytes = await viewedLivePath(request, "quests", file, lang);
-  if (bytes instanceof Response) return bytes;
-  return serveTake(request, bytes, { immutable: false, lang });
+  return serveViewed(request, "quests", file, lang);
 }

@@ -8,8 +8,7 @@
  */
 import { isAddressable } from "@/lib/readables/audio";
 import { langParam } from "@/lib/lang-server";
-import { serveTake } from "@/lib/takes/serve";
-import { viewedLivePath } from "@/lib/teams/viewing";
+import { serveViewed } from "@/lib/teams/viewing";
 
 export const dynamic = "force-dynamic";
 
@@ -23,7 +22,5 @@ export async function GET(request: Request, context: { params: Promise<{ path: s
   ]);
   if (denied) return denied;
   if (!addressable) return new Response("bad audio path", { status: 400 });
-  const bytes = await viewedLivePath(request, "readables", rel.slice(0, -".mp3".length), lang);
-  if (bytes instanceof Response) return bytes;
-  return serveTake(request, bytes, { immutable: false, lang });
+  return serveViewed(request, "readables", rel.slice(0, -".mp3".length), lang);
 }

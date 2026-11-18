@@ -99,6 +99,11 @@ describe("GET /api/places/audio?team=", () => {
     expect(response.headers.get("location")).toBe(`https://archive.test/takes/${SHA_A}`);
   });
 
+  it("keeps the acting team's take out of shared caches and revalidates it, but not a named team's", async () => {
+    expect((await get(shared)).headers.get("cache-control")).toBe("private, no-cache");
+    expect((await get(shared, slugs.get(b))).headers.get("cache-control")).toBe("public, max-age=300, must-revalidate");
+  });
+
   it("is a bare 404 for a file the named team has no live take of", async () => {
     const response = await get(onlyA, slugs.get(b));
     expect(response.status).toBe(404);

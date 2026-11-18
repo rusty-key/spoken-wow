@@ -8,7 +8,8 @@ import "server-only";
 import { ALL_TEAMS, query } from "@/lib/db";
 import type { Lang } from "@/lib/lang";
 import type { Source } from "@/lib/sections";
-import { livePath, teamLivePath, type TakeBytes } from "@/lib/takes/store";
+import { serveTake } from "@/lib/takes/serve";
+import { livePath, teamLivePath } from "@/lib/takes/store";
 import type { OverrideView } from "@/lib/text-overrides/types";
 
 import { asTeam } from "./acting";
@@ -130,8 +131,10 @@ export async function viewedOther(params: URLSearchParams, lang: Lang): Promise<
  * The live take of `file` the request's `team` parameter names: the acting team's without one,
  * as always; another team's only where it has a live take, through team_live_takes.
  */
-export async function viewedLivePath(request: Request, source: Source, file: string, lang: Lang): Promise<TakeBytes | Response> {
+export async function serveViewed(request: Request, source: Source, file: string, lang: Lang): Promise<Response> {
   const other = await viewedOther(new URL(request.url).searchParams, lang);
   if (other instanceof Response) return other;
-  return other === null ? livePath(source, file, lang) : teamLivePath(other, source, file, lang);
+  if (other !== null) return serveTake(request, await teamLivePath(other, source, file, lang), { immutable: false, lang });
+  const perVisitor = (await secondTeamLangs()).has(lang);
+  return serveTake(request, await livePath(source, file, lang), { immutable: false, lang, perVisitor });
 }
