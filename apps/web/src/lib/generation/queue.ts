@@ -635,7 +635,12 @@ export async function dismissThrough(jobId: string, userId: string | null, lang:
 
 export async function snapshot(
   since: string | null,
-  options: { viewerId?: string | null; maxActive?: number; linesOf?: string } = {},
+  options: {
+    viewerId?: string | null;
+    maxActive?: number;
+    linesOf?: string;
+    teams?: ReadonlyMap<Lang, TeamId>;
+  } = {},
 ): Promise<QueueSnapshot> {
   const maxActive = options.maxActive ?? maxActiveFrom(process.env.QUEUE_MAX_ACTIVE);
   const viewerId = options.viewerId ?? null;
@@ -643,6 +648,9 @@ export async function snapshot(
   // counts and the per-person queues stay whole either way, so a waiting batch still says
   // what it is waiting behind - only what is being said, and why it failed, is private.
   const linesOf = options.linesOf ?? null;
+  // The team whose finished lines and pauses to list, per language; a language not named keeps
+  // every team's. A second team's finished lines are its own work, as its pauses are.
+  const teams = JSON.stringify(Object.fromEntries(options.teams ?? []));
   // Live work first, then whatever finished recently: the two halves of what the panel is
   // for. Never just the age, for the reason WINDOW records.
   //
@@ -690,6 +698,7 @@ export async function snapshot(
          select "id"::text as "id", "source", "lang", "lineId", "file", "version" from "regeneration_job"
           where "state" = 'done' and "version" is not null
             and "id" > greatest(coalesce($1::bigint, 0), (select through from dismissal))
+            and (not ($3::jsonb ? "lang") or "teamId" = ($3::jsonb ->> "lang")::uuid)
           order by "id" limit ${FINISHED_PAGE}
        ),
        terminal as (
@@ -717,6 +726,7 @@ export async function snapshot(
        pauses as (
          select p."lang", p."pausedAt", u."name" as by from "regeneration_pause" p
            left join "user" u on u."id" = p."pausedBy"
+          where not ($3::jsonb ? p."lang") or p."teamId" = ($3::jsonb ->> p."lang")::uuid
        ),
        shown as (
          select max("id")::text as max from "regeneration_job"
@@ -733,7 +743,7 @@ export async function snapshot(
          (select max from terminal) as cursor,
          (select max from shown) as through
        from job_counts jc`,
-      [since, linesOf],
+      [since, linesOf, teams],
     ),
     queryIn<{ stoppedBecause: string | null; cancelled: string }>(
       ALL_TEAMS,
