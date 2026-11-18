@@ -6,7 +6,7 @@
 // Type-only, so viewing.ts's server-only guard never reaches the bundle.
 import type { TeamChoice, ViewedTeam } from "./viewing";
 
-/** What an explorer page hands its explorer, from viewing.ts's teamView. */
+/** What an explorer page hands its explorer: the teams to pick between, the one playing, the default's slug. */
 export type TeamView = { teams: TeamChoice[]; viewed: ViewedTeam | null; home: string | null };
 
 /** No view (one team in the language, or none) is the visitor's own. */

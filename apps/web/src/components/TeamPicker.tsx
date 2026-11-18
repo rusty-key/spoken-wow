@@ -34,6 +34,7 @@ export default function TeamPicker({
   home,
   className = "mb-3",
 }: {
+  /** Privileged first, as teamsVoicing lists them. */
   teams: TeamChoice[];
   viewed: ViewedTeam | null;
   /** The default team's slug, named by leaving `team` out of the address. */
@@ -55,7 +56,6 @@ export default function TeamPicker({
     </p>
   );
   if (bannerShows) return note ? <div className={cn("text-sm", className)}>{note}</div> : null;
-  const ordered = [...teams].sort((a, b) => Number(b.privileged) - Number(a.privileged));
 
   async function pick(slug: string) {
     setError(null);
@@ -89,7 +89,7 @@ export default function TeamPicker({
           value={viewed.slug}
           onChange={(event) => void pick(event.target.value)}
         >
-          {ordered.map((team) => (
+          {teams.map((team) => (
             <option key={team.id} value={team.slug}>
               {team.privileged ? `${team.name} (main)` : team.name}
             </option>

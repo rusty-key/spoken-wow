@@ -14,7 +14,7 @@ import type { ResultLine } from "@/lib/readables/search";
  */
 type Props = {
   line: ResultLine | null;
-  /** Another team whose take plays, from otherTeam; null for the visitor's own. */
+  /** The slug of another team whose take plays, sent as `team`; null for the visitor's own. */
   team?: string | null;
   /** Take version, used only to bust the browser cache after a regeneration. */
   version?: number;

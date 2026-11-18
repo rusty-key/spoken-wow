@@ -25,7 +25,7 @@ function downloadName(line: ResultLine): string {
 
 type Props = {
   line: ResultLine | null;
-  /** Another team whose take plays, from otherTeam; null for the visitor's own. */
+  /** The slug of another team whose take plays, sent as `team`; null for the visitor's own. */
   team?: string | null;
   /**
    * The live take: the one regenerated in this session, else the one the search reported.

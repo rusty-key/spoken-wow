@@ -31,12 +31,12 @@ import { speakPlayerTokens } from "@/lib/player-words";
 import { madeByOf, type MadeBy } from "@/lib/takes/made-by";
 import { liveTakes } from "@/lib/takes/store";
 import { readAs } from "@/lib/teams/store";
-
-export { publicContext } from "@/lib/places/catalogue";
 import { readTextOverrides, stampsWithOverrides, viewOf } from "@/lib/text-overrides/store";
 import type { OverrideView } from "@/lib/text-overrides/types";
 
 import { BASE_LANG, type Lang } from "@/lib/lang";
+
+export { publicContext } from "@/lib/places/catalogue";
 
 /** One voiceable page of one book. */
 export type BookPage = {

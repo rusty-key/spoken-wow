@@ -23,7 +23,8 @@ export const dynamic = "force-dynamic";
 export async function GET(request: NextRequest) {
   const { lang, denied } = await langParam(request);
   if (denied) return denied;
-  // Another team's lines, as the search shows them; see /api/quests/search.
+  // Another team's lines are matched as its search page shows them, from its corpus and live
+  // takes alone, so the count here agrees with that page and none of its private rows are read.
   const other = await viewedOther(request.nextUrl.searchParams, lang);
   if (other instanceof Response) return other;
   // Gated like the search itself, or narrowing by author here would say whose lines are whose.

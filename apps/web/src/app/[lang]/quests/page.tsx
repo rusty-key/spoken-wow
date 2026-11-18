@@ -21,10 +21,9 @@ export default async function Page({
   // language plays the default's.
   const { team } = await searchParams;
   const view = await teamView(lang, typeof team === "string" ? team : null);
-  // Read here rather than fetched: the filter options are derived from a corpus that is
-  // committed and does not change while the server runs, so a round trip for them would buy
-  // nothing but an empty dropdown on first paint. The viewed team's roster, whose voices its
-  // lines are filed under.
+  // Read here rather than fetched: a round trip for the filter options would buy nothing but
+  // an empty dropdown on first paint. They are read as the viewed team, since its roster names
+  // the voices its lines are filed under.
   return (
     <main className="pt-6 pb-36">
       <Contained>

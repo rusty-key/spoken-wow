@@ -13,6 +13,7 @@ import type { OverrideView } from "@/lib/text-overrides/types";
 
 import { asTeam } from "./acting";
 import { ownerOrAll, secondTeamLangs, teamsOf, type TeamId } from "./store";
+import type { TeamView } from "./view";
 
 export type TeamChoice = { id: TeamId; slug: string; name: string; privileged: boolean };
 
@@ -46,7 +47,7 @@ export async function viewedTeam(lang: Lang, slug: string | null): Promise<Viewe
 export async function teamView(
   lang: Lang,
   slug: string | null,
-): Promise<{ teams: TeamChoice[]; viewed: ViewedTeam | null; home: string | null }> {
+): Promise<TeamView> {
   const teams = await teamsVoicing(lang);
   if (teams.length === 0) return { teams, viewed: null, home: null };
   const home = await viewedTeam(lang, null);

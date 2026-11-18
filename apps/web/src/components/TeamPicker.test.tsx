@@ -55,8 +55,8 @@ test("one team renders nothing", () => {
   expect(container.innerHTML).toBe("");
 });
 
-test("two teams render a select labelled Team, the main team first and marked", () => {
-  picker({ teams: [second, main], viewed: secondOwn, home: second.slug });
+test("two teams render a select labelled Team, in the order given, the main team marked", () => {
+  picker({ teams: [main, second], viewed: secondOwn, home: second.slug });
   const select = screen.getByLabelText("Team") as HTMLSelectElement;
   expect([...select.options].map((option) => [option.value, option.textContent])).toEqual([
     ["main-crew", "Main Crew (main)"],

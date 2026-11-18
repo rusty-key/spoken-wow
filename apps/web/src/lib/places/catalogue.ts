@@ -457,7 +457,7 @@ export async function sectionContext(
 }
 
 /** Another team's live take as a row shows it: what plays and when, nothing of its making. */
-export function publicTake(row: PublicTake): Take {
+function publicTake(row: PublicTake): Take {
   return {
     version: row.version,
     file: row.file,

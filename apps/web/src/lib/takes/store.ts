@@ -286,7 +286,7 @@ export async function teamLiveTakes(team: TeamId, source: Source, lang: Lang): P
   );
 }
 
-/** The bytes of `team`'s live take of one file, as livePath finds the acting team's. */
+/** The bytes of `team`'s live take of one file, whoever is acting: another team's audio is public. */
 export async function teamLivePath(team: TeamId, source: Source, file: string, lang: Lang): Promise<TakeBytes> {
   const rows = await query<Located>(`select "archiveFile", "sha256" from team_live_takes($1, $2, $3, $4)`, [
     team, lang, source, file,
