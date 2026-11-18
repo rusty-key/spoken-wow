@@ -17,7 +17,9 @@ export function useSettled<T>(promise: Promise<T> | null): Settled<T> | undefine
   useEffect(() => {
     if (!promise) return;
     let cancelled = false;
-    promise.then(
+    // Adopted into a native promise first: one streamed from a server component is React's own
+    // thenable, whose `then` returns nothing, so anything chained onto it throws.
+    Promise.resolve(promise).then(
       (value) => !cancelled && setSettled({ value }),
       (error: unknown) =>
         !cancelled && setSettled({ error: error instanceof Error ? error.message : String(error) }),
