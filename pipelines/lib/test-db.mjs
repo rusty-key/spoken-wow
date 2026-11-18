@@ -13,6 +13,7 @@ export function seedDatabase(url = process.env.DATABASE_URL) {
   if (!url) return null;
   const langs = [];
   const teams = [];
+  const undo = [];
 
   /** The rows of one statement, each a list of its columns as text. */
   function sql(text) {
@@ -26,6 +27,11 @@ export function seedDatabase(url = process.env.DATABASE_URL) {
     url,
     sql,
     lit,
+
+    /** A statement the cleanup runs first, for rows a test seeded itself. */
+    onCleanup(text) {
+      undo.push(text);
+    },
 
     /** A language row of a code nobody has; `client` false, as a language Spoken does not build in. */
     language({ name = "Xq", native = "Xq", client = false } = {}) {
@@ -59,7 +65,8 @@ export function seedDatabase(url = process.env.DATABASE_URL) {
                    ${lit(sha256)}, ${lit(archiveFile)}, ${lit(shownText)}, 1.5)`);
     },
 
-    async cleanup() {
+    cleanup() {
+      for (const text of undo.reverse()) sql(text);
       const ids = `array[${teams.map(lit).join(", ") || "null"}]::uuid[]`;
       const codes = `array[${langs.map(lit).join(", ") || "null"}]::text[]`;
       for (const table of ["take", "team_member", "voice_assignment", "voice", "generation_setting", "queue_dismissal", "activity"]) {

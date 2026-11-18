@@ -18,6 +18,7 @@ import { execFile } from "node:child_process";
 import { join } from "node:path";
 import { promisify } from "node:util";
 
+import { releaseTeamId, releaseTeamSql } from "../../../lib/release-team.mjs";
 import { BASE_LOCALE, CODES } from "../lib/locales.mjs";
 import { ROOT } from "../lib/loredata.mjs";
 import * as db from "./db.mjs";
@@ -28,8 +29,11 @@ const execFileAsync = promisify(execFile);
 // SPOKEN_PLACES_LANG names another (make passes it as LOCALE=esMX). One per process, because
 // everything downstream -- the manifest, Sounds/, the lookup beside it -- is one language's,
 // and a run that mixed two would build a pack whose table names another language's files.
+//
+// A release (SPOKEN_RELEASE_TEAM set) may build a language only the site's `language` table
+// knows: the release read its row before any step ran.
 export const LANG = process.env.SPOKEN_PLACES_LANG || BASE_LOCALE;
-if (!CODES.includes(LANG)) {
+if (!CODES.includes(LANG) && !(releaseTeamId() && /^[a-z]{2}[A-Z]{2}$/.test(LANG))) {
   throw new Error(`SPOKEN_PLACES_LANG=${LANG} is not a language (expected one of ${CODES.join(", ")})`);
 }
 
@@ -127,7 +131,8 @@ async function loadFromDatabase() {
     `select "lineId", ${TAKE_COLUMNS.map(selectAs).join(", ")}, ${selectAs("generatedAt")}, "wordTimes", "shownText"
        from "take"
       where "source" = '${SOURCE}' and "isCurrent" and "lang" = '${LANG}'
-        and "teamId" = team_of_lang('${LANG}')`,
+        -- the release's team, else the privileged team, so a build outside a release reads what it always did
+        and "teamId" = ${releaseTeamSql(`'${LANG}'`)}`,
   );
 
   const manifest = {};
