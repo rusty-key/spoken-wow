@@ -34,11 +34,17 @@ async function markFailing(backendId: string, error: unknown): Promise<void> {
 
 /**
  * Records that `backendId`, `team`'s bucket, holds the object, or that it waits in quarantine for
- * it. A copy already in the bucket stays the one read. Returns whether the row was waiting before,
- * so a write that lands directly can remove the quarantined copy nothing would land any more.
+ * it. A copy already in the bucket stays the one read. Returns whether the row was waiting before
+ * and is now, so a quarantined copy nothing will land any more can be removed.
  */
-async function record(prefix: BlobPrefix, sha256: string, backendId: string, team: TeamId, pending: boolean): Promise<boolean> {
-  const [row] = await query<{ was: boolean | null }>(
+async function record(
+  prefix: BlobPrefix,
+  sha256: string,
+  backendId: string,
+  team: TeamId,
+  pending: boolean,
+): Promise<{ was: boolean; now: boolean }> {
+  const [row] = await query<{ was: boolean | null; now: boolean }>(
     `with "before" as (
        select "pending" from "archive_object" where ${OBJECT_ROW}
      )
@@ -47,10 +53,10 @@ async function record(prefix: BlobPrefix, sha256: string, backendId: string, tea
         set "pending" = $5 and ("archive_object"."pending" or "archive_object"."missingAt" is not null),
             "missingAt" = null,
             "keptAt" = now()
-     returning (select "pending" from "before") as "was"`,
+     returning (select "pending" from "before") as "was", "pending" as "now"`,
     [prefix, sha256, backendId, team, pending],
   );
-  return row?.was ?? false;
+  return { was: row?.was ?? false, now: row?.now ?? pending };
 }
 
 /** Whether `backendId` is known to hold a landed, present copy of the object. */
@@ -71,20 +77,28 @@ export async function putArchived(prefix: BlobPrefix, sha256: string, data: Buff
   const team = await teamOf(lang);
   const target = archiveMode() === "r2" ? await writingBackend(team) : null;
   if (!target) return archive().put(key, data, contentType);
+  let refusal: unknown = null;
   if (target.health !== "failing") {
+    // Only the bucket's own refusal counts: an error recording it afterwards is ours, and throws.
     try {
       await (await backendStore(target.id)).put(key, data, contentType);
-      if (await record(prefix, sha256, target.id, team, false)) await dropQuarantined(target.id, key);
-      return;
     } catch (error) {
+      refusal = error;
       console.error(`storage: the team bucket ${target.id} refused ${key}, quarantined:`, error);
-      await markFailing(target.id, error);
+    }
+    if (!refusal) {
+      if ((await record(prefix, sha256, target.id, team, false)).was) await dropQuarantined(target.id, key);
+      return;
     }
   }
   // These same bytes already in the bucket need no copy of ours.
-  if (await holds(prefix, sha256, target.id)) return;
-  await archive().put(quarantineKey(target.id, key), data, contentType);
-  await record(prefix, sha256, target.id, team, true);
+  if (!(await holds(prefix, sha256, target.id))) {
+    await archive().put(quarantineKey(target.id, key), data, contentType);
+    // A direct write of these bytes may have landed meanwhile: then nothing would land this copy.
+    if (!(await record(prefix, sha256, target.id, team, true)).now) await dropQuarantined(target.id, key);
+  }
+  // After the bytes are safe: marking the bucket failing must not cost the paid-for take.
+  if (refusal) await markFailing(target.id, refusal).catch((error) => console.error(`storage: could not mark ${target.id} failing:`, error));
 }
 
 /**
@@ -166,6 +180,8 @@ export async function landQuarantined(perBucket = 20): Promise<number> {
       await (await backendStore(row.backendId)).put(key, data, held.contentType);
     } catch (error) {
       refused.add(row.backendId);
+      // To the back of its bucket's queue, so one key the bucket keeps refusing heads no round.
+      await requeue(row.prefix, row.sha256, row.backendId);
       await markFailing(row.backendId, error);
       continue;
     }

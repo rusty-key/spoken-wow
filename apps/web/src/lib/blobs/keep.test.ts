@@ -30,7 +30,7 @@ afterAll(async () => {
   await closeDb();
 });
 
-const ours = (mode: "dual" | "r2", options?: Parameters<typeof memoryBlobs>[0]) => {
+const ours = (mode: "disk" | "dual" | "r2", options?: Parameters<typeof memoryBlobs>[0]) => {
   const store = memoryBlobs(options);
   restores.push(useArchiveForTests(store, mode));
   return store;
@@ -50,9 +50,12 @@ const rowOf = async (sha256: string, backendId: string) =>
 
 describe("keep", () => {
   it("writes the volume and not the bucket in disk mode", async () => {
+    // Pinned: vitest leaves SPOKEN_ARCHIVE_STORE alone when the shell already exports one.
+    const house = ours("disk");
     const file = path.join(dir, "disk.mp3");
     expect(await keep("takes", data, "audio/mpeg", file, "enUS")).toBeNull();
     expect(fs.readFileSync(file).equals(data)).toBe(true);
+    expect(house.objects.size).toBe(0);
   });
 
   it("writes both in dual mode", async () => {

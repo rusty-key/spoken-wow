@@ -400,7 +400,9 @@ export function Explorer({ books }: { books: BookFacet[] }) {
       // response does not carry, and inventing one would be a guess dressed as an answer.
       setQueueNote("Could not queue the batch.");
     } else if ("error" in queued) {
-      setKeyRequired(queued.error);
+      // The key dialog only for a missing key; a refusal about the team's storage is a note.
+      if (queued.noKey) setKeyRequired(queued.error);
+      else setQueueNote(queued.error);
     } else if (queued.skipped > 0) {
       setQueueNote(`${queued.skipped.toLocaleString()} already queued`);
     }

@@ -27,7 +27,7 @@ export function startStorageUpkeep(isLeader: () => boolean, tasks: UpkeepTask[] 
       busy = false;
     }
   };
-  const timer = setInterval(() => void round(), EVERY_MS);
+  const timer = setInterval(() => void round().catch((error) => console.error("storage: an upkeep round failed:", error)), EVERY_MS);
   timer.unref();
   return { stop: () => clearInterval(timer) };
 }
