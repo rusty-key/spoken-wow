@@ -1,10 +1,10 @@
 import type { Metadata } from "next";
 import "../globals.css";
+import "@/components/site-nav.css";
 import localFont from "next/font/local";
 import Image from "next/image";
 import Script from "next/script";
 import { Suspense } from "react";
-import LanguageSwitcher from "@/components/LanguageSwitcher";
 import { GrantsProvider } from "@/components/GrantsProvider";
 import { LangProvider } from "@/components/LangProvider";
 import { LanguagesProvider } from "@/components/LanguagesProvider";
@@ -16,6 +16,7 @@ import { langTag, registeredExtras } from "@/lib/lang";
 import { pageLang } from "@/lib/lang-server";
 import { cn } from "@/lib/utils";
 import { Contained } from "@/components/Width";
+import { body, display } from "@/components/landing/fonts";
 
 // The whole font rather than a subset: Russian pages render in it too.
 const geist = localFont({ src: "../../fonts/geist-sans.woff2", weight: "100 900", variable: "--font-sans" });
@@ -55,7 +56,7 @@ export default async function RootLayout({
   return (
     // Dark-only for now: this is a tool for listening to game dialog, and the light
     // palette is untested. The shadcn tokens make flipping it a one-line change.
-    <html lang={langTag(lang)} className={cn("dark font-sans", geist.variable)}>
+    <html lang={langTag(lang)} className={cn("dark font-sans", geist.variable, display.variable, body.variable)}>
       <body>
         {/* Suspense because it reads the search params, which would otherwise hold the
             whole page to client rendering. */}
@@ -66,27 +67,14 @@ export default async function RootLayout({
           <LangProvider lang={lang}>
             <GrantsProvider>
               <SiteHeader>
-                <header className="border-b">
-                  <Contained className="flex h-12 items-center justify-between gap-3">
-                    <Link href="/" aria-label="Spoken">
-                      {/* Intrinsic 1024x187; height is what the header constrains, so the
-                        width below is that ratio and only exists to stop the reflow. */}
-                      <Image
-                        src="/logo.png"
-                        alt="Spoken"
-                        width={142}
-                        height={26}
-                        priority
-                        className="h-[26px] w-auto"
-                      />
+                {/* Drawn like the front page's top bar (site-nav.css), in the front page's fonts. */}
+                <header className="sn">
+                  <Contained className="sn-row">
+                    <Link href="/" className="sn-brand" aria-label="Spoken">
+                      <Image src="/landing/icons/spoken-192.png" alt="" width={96} height={96} priority unoptimized />
+                      <span>Spoken</span>
                     </Link>
-                    <div className="flex items-center gap-1">
-                      {/* On a phone the switch lives in UserMenu's burger, with the links. */}
-                      <div className="hidden md:block">
-                        <LanguageSwitcher />
-                      </div>
-                      <UserMenu />
-                    </div>
+                    <UserMenu />
                   </Contained>
                 </header>
               </SiteHeader>

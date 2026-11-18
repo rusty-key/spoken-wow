@@ -5,16 +5,15 @@ import { useGrants, usePendingPacks } from "@/components/GrantsProvider";
 import { useLang } from "@/components/LangProvider";
 import { useCan } from "@/components/useCan";
 import { Menu, ShieldCheck } from "lucide-react";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { useState } from "react";
 
 import LanguageSwitcher from "@/components/LanguageSwitcher";
 import PendingCount, { packsWaiting } from "@/components/PendingCount";
 
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { signOut, useSession } from "@/lib/auth-client";
+import { stripLang } from "@/lib/lang";
 import { isAdmin, langsWhere, roleLabel } from "@/lib/permissions";
 import { triages } from "@/lib/reports/reports";
 import { cn } from "@/lib/utils";
@@ -39,23 +38,37 @@ type MenuLink = {
   count?: { value: number; title: string };
 };
 
-/** A column of links for the burger, or a row for the header. */
-function Links({ links, column, onPick }: { links: MenuLink[]; column?: boolean; onPick?: () => void }) {
+/** Whether a link opens the page the reader is on, or a page under it. */
+function current(href: string, path: string): boolean {
+  const target = href.split("?")[0];
+  return path === target || path.startsWith(`${target}/`);
+}
+
+/** A column of links for a menu, or a row for the header. */
+function Links({
+  links,
+  column,
+  path,
+  onPick,
+}: {
+  links: MenuLink[];
+  column?: boolean;
+  path: string;
+  onPick?: () => void;
+}) {
   return links.map((link) => (
-    <Button
+    <Link
       key={link.href}
-      asChild
-      variant="ghost"
-      size="sm"
-      className={cn(column && "justify-start", link.admin && "text-primary-ink hover:text-primary-ink")}
+      href={link.href}
+      onClick={onPick}
+      aria-current={current(link.href, path) ? "page" : undefined}
+      className={cn(column ? "sn-item" : "sn-link", link.admin && "sn-link-admin")}
     >
-      <Link href={link.href} onClick={onPick}>
-        {/* Gold and a shield, so the way into the admin pages does not read as one more section. */}
-        {link.admin && <ShieldCheck aria-hidden />}
-        {link.label}
-        {link.count && <PendingCount {...link.count} />}
-      </Link>
-    </Button>
+      {/* Gold and a shield, so the way into the admin pages does not read as one more section. */}
+      {link.admin && <ShieldCheck aria-hidden />}
+      {link.label}
+      {link.count && <PendingCount {...link.count} />}
+    </Link>
   ));
 }
 
@@ -69,6 +82,7 @@ function Links({ links, column, onPick }: { links: MenuLink[]; column?: boolean;
  */
 export default function UserMenu() {
   const router = useRouter();
+  const path = stripLang(usePathname()).path;
   const { data: session, isPending } = useSession();
   // Controlled, so choosing a link closes the menu: a Radix popover stays open across a
   // client-side navigation otherwise, hanging over the page it just opened.
@@ -80,10 +94,6 @@ export default function UserMenu() {
   const grants = useGrants();
   const [pendingPacks] = usePendingPacks();
   const lang = useLang();
-
-  // Rendering nothing until the session resolves avoids a "Sign in" flash for a user who
-  // is in fact signed in.
-  if (isPending) return null;
 
   const role = session?.user.role;
   // Everything only a signed-in person can reach, in one menu rather than a header row that
@@ -144,81 +154,84 @@ export default function UserMenu() {
   }
 
   const account = session ? (
-    <div className="flex items-center justify-between gap-2 px-2 py-1.5">
-      <span className="text-muted-foreground truncate text-xs">{session.user.email}</span>
-      <Badge variant="outline" className="uppercase">
-        {roleLabel(role)}
-      </Badge>
+    <div className="sn-account">
+      <span>{session.user.email}</span>
+      <span className="sn-role">{roleLabel(role)}</span>
     </div>
   ) : null;
 
+  const signIn: MenuLink[] = [
+    { href: "/login", label: "Sign in" },
+    { href: "/register", label: "Register" },
+  ];
+
   return (
     <>
-      {/* A phone has no room for a row of links: everything, the language switch included,
-          folds into one menu below md. */}
-      <Popover open={burger} onOpenChange={setBurger}>
-        <PopoverTrigger asChild>
-          <Button variant="ghost" size="icon" className="md:hidden" aria-label="Menu">
-            <Menu />
-          </Button>
-        </PopoverTrigger>
-        <PopoverContent align="end" className="flex w-64 flex-col gap-0.5 p-1.5 md:hidden">
-          <div className="px-1 py-1">
-            <LanguageSwitcher />
+      <nav className="sn-links" aria-label="Sections">
+        <Links links={SECTIONS} path={path} />
+        <Links links={admin} path={path} />
+      </nav>
+      <div className="sn-end">
+        {/* On a narrow screen the switch lives in the burger, with the links. */}
+        <div className="sn-wide">
+          <LanguageSwitcher />
+        </div>
+        {/* Nothing until the session resolves, so a signed-in reader never sees "Sign in" flash. */}
+        {isPending ? null : !session ? (
+          <div className="sn-wide sn-signin">
+            <Link className="sn-btn" href="/login">
+              Sign in
+            </Link>
+            <Link className="sn-btn sn-btn-primary" href="/register">
+              Register
+            </Link>
           </div>
-          <Links links={SECTIONS} column onPick={() => setBurger(false)} />
-          <div className="bg-border my-1 h-px" />
-          {session ? (
-            <>
-              {account}
-              <Links links={[...admin, ...links]} column onPick={() => setBurger(false)} />
-              <Button variant="ghost" size="sm" className="justify-start" onClick={signOutAndRefresh}>
-                Sign out
-              </Button>
-            </>
-          ) : (
-            <Links
-              links={[
-                { href: "/login", label: "Sign in" },
-                { href: "/register", label: "Register" },
-              ]}
-              column
-              onPick={() => setBurger(false)}
-            />
-          )}
-        </PopoverContent>
-      </Popover>
-
-      {!session ? (
-        <nav className="hidden items-center gap-1 md:flex">
-          <Links links={SECTIONS} />
-          <Button asChild variant="ghost" size="sm">
-            <Link href="/login">Sign in</Link>
-          </Button>
-          <Button asChild variant="outline" size="sm">
-            <Link href="/register">Register</Link>
-          </Button>
-        </nav>
-      ) : (
-        <nav className="hidden items-center gap-1 md:flex">
-          <Links links={SECTIONS} />
-          <Links links={admin} />
+        ) : (
           <Popover open={open} onOpenChange={setOpen}>
             <PopoverTrigger asChild>
-              <Button variant="outline" size="sm" className="ml-1">
+              <button type="button" className="sn-btn sn-wide">
                 Profile
-              </Button>
+              </button>
             </PopoverTrigger>
-            <PopoverContent className="flex w-56 flex-col gap-0.5 p-1.5">
+            <PopoverContent align="end" className="sn-pop">
               {account}
-              <Links links={links} column onPick={() => setOpen(false)} />
-              <Button variant="ghost" size="sm" className="justify-start" onClick={signOutAndRefresh}>
+              <Links links={links} column path={path} onPick={() => setOpen(false)} />
+              <div className="sn-rule" />
+              <button type="button" className="sn-item" onClick={signOutAndRefresh}>
                 Sign out
-              </Button>
+              </button>
             </PopoverContent>
           </Popover>
-        </nav>
-      )}
+        )}
+
+        {/* Below the width the row of links needs, everything folds into one menu. */}
+        <Popover open={burger} onOpenChange={setBurger}>
+          <PopoverTrigger asChild>
+            <button type="button" className="sn-burger" aria-label="Menu">
+              <Menu size={20} aria-hidden />
+            </button>
+          </PopoverTrigger>
+          <PopoverContent align="end" className="sn-pop">
+            <div className="sn-pop-lang">
+              <LanguageSwitcher />
+            </div>
+            <Links links={SECTIONS} column path={path} onPick={() => setBurger(false)} />
+            <div className="sn-rule" />
+            {isPending ? null : session ? (
+              <>
+                {account}
+                <Links links={[...admin, ...links]} column path={path} onPick={() => setBurger(false)} />
+                <div className="sn-rule" />
+                <button type="button" className="sn-item" onClick={signOutAndRefresh}>
+                  Sign out
+                </button>
+              </>
+            ) : (
+              <Links links={signIn} column path={path} onPick={() => setBurger(false)} />
+            )}
+          </PopoverContent>
+        </Popover>
+      </div>
     </>
   );
 }
