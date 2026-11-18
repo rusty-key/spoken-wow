@@ -67,14 +67,14 @@ describe("teamsVoicing", () => {
 
   it("answers a single-team language from the memo alone", async () => {
     await secondTeamLangs();
-    await privilegedOf("deDE");
+    await privilegedOf(otherLang);
     const pool = db();
     const queries = vi.spyOn(pool, "query");
     const connects = vi.spyOn(pool, "connect");
 
-    expect(await teamsVoicing("deDE")).toEqual([]);
-    const viewed = await viewedTeam("deDE", null);
-    expect(viewed).toMatchObject({ team: await privilegedOf("deDE"), own: true });
+    expect(await teamsVoicing(otherLang)).toEqual([]);
+    const viewed = await viewedTeam(otherLang, null);
+    expect(viewed).toMatchObject({ team: await privilegedOf(otherLang), own: true });
     expect(viewed?.slug).toBeTruthy();
 
     expect(queries).not.toHaveBeenCalled();
@@ -84,13 +84,13 @@ describe("teamsVoicing", () => {
 
 describe("viewedTeam in a single-team language", () => {
   it("takes the privileged team's own slug, from the memo alone", async () => {
-    const privileged = (await privilegedOf("deDE"))!;
+    const privileged = (await privilegedOf(otherLang))!;
     const [row] = await systemRows<{ slug: string }>(`select "slug" from "team" where "id" = $1`, [privileged]);
     const pool = db();
     const queries = vi.spyOn(pool, "query");
     const connects = vi.spyOn(pool, "connect");
 
-    expect(await viewedTeam("deDE", row.slug)).toMatchObject({ team: privileged, slug: row.slug, own: true });
+    expect(await viewedTeam(otherLang, row.slug)).toMatchObject({ team: privileged, slug: row.slug, own: true });
     expect(queries).not.toHaveBeenCalled();
     expect(connects).not.toHaveBeenCalled();
   });
