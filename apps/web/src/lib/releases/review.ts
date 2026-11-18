@@ -13,11 +13,15 @@ import { recordActivity } from "@/lib/activity/store";
 import { ALL_TEAMS, withTeam } from "@/lib/db";
 import { BASE_LANG, type Lang } from "@/lib/lang";
 
+import { asTeam } from "@/lib/teams/acting";
+import { namesOf } from "@/lib/users/store";
+
 import { runsOnDroplet } from "./droplet";
 import { begin, failureOf } from "./launch";
 import { tellPresser } from "./notify";
-import { isReleaseSection, type ReleaseSection } from "./sections";
-import { COLUMNS, insertRun, runById, type ReleaseRun } from "./store";
+import { pendingChanges } from "./pending";
+import { isReleaseSection, type LiveTeamPack, type ReleaseSection, type WaitingVersion } from "./sections";
+import { COLUMNS, insertRun, lastReleasedAt, runById, type ReleaseRun } from "./store";
 
 export class ReviewError extends Error {
   constructor(
@@ -153,4 +157,87 @@ export async function delistPack(teamId: string, lang: Lang, section: string, ac
     return run;
   });
   return started(run);
+}
+
+const WAITING = `from "release_run" r join "team" t on t."id" = r."teamId"
+                 where r."kind" = 'release' and r."state" = 'awaiting_review'`;
+
+/** How many versions wait for a site owner, for the header's badge. */
+export async function waitingCount(): Promise<number> {
+  return withTeam(ALL_TEAMS, async (client) => {
+    const { rows } = await client.query<{ count: string }>(`select count(*) as "count" ${WAITING}`);
+    return Number(rows[0].count);
+  });
+}
+
+/**
+ * Every version waiting for review, oldest first, each with what it changes for players as its
+ * team's own release page counts it: the team's live takes since its last approved release.
+ */
+export async function waitingReviews(): Promise<WaitingVersion[]> {
+  const rows = await withTeam(ALL_TEAMS, async (client) => {
+    const { rows } = await client.query<{
+      id: string; teamId: string; slug: string; name: string; lang: Lang; section: ReleaseSection; version: string | null;
+      requestedBy: string | null; createdAt: Date; error: string | null; approving: boolean;
+    }>(
+      `select r."id", r."teamId", t."slug", t."name", r."lang", r."section", r."version", r."requestedBy",
+              r."createdAt", r."error",
+              exists (select 1 from "release_run" p
+                       where p."promotes" = r."id" and p."state" in ('queued', 'dispatching', 'running')) as "approving"
+         ${WAITING} order by r."createdAt"`,
+    );
+    return rows;
+  });
+  const names = await namesOf(rows.map((row) => row.requestedBy));
+  // One after another: each count holds a connection while it runs.
+  const waiting: WaitingVersion[] = [];
+  for (const row of rows) {
+    const pending = await asTeam(row.lang, row.teamId, async () =>
+      pendingChanges(row.section, row.lang, (await lastReleasedAt(row.lang)).get(row.section) ?? null),
+    );
+    waiting.push({
+      id: row.id,
+      team: { id: row.teamId, slug: row.slug, name: row.name },
+      lang: row.lang,
+      section: row.section,
+      version: row.version,
+      by: row.requestedBy ? (names.get(row.requestedBy) ?? null) : null,
+      pressedAt: row.createdAt.toISOString(),
+      error: row.error,
+      approving: row.approving,
+      pending,
+    });
+  }
+  return waiting;
+}
+
+/**
+ * The packs of teams that are not official which players have: each team's newest approved
+ * version per section and language, unless a site owner delisted it since.
+ */
+export async function liveTeamPacks(): Promise<LiveTeamPack[]> {
+  return withTeam(ALL_TEAMS, async (client) => {
+    const { rows } = await client.query<{
+      teamId: string; slug: string; name: string; lang: Lang; section: ReleaseSection; version: string | null; at: Date;
+    }>(
+      `select * from (
+         select distinct on (r."teamId", r."lang", r."section")
+                r."teamId", t."slug", t."name", r."lang", r."section", r."version", coalesce(r."finishedAt", r."createdAt") as "at"
+           from "release_run" r join "team" t on t."id" = r."teamId"
+          where r."kind" = 'release' and r."state" = 'done' and not t."official"
+          order by r."teamId", r."lang", r."section", r."createdAt" desc
+       ) live
+       where not exists (select 1 from "release_run" d
+                          where d."kind" = 'delist' and d."state" = 'done' and d."teamId" = live."teamId"
+                            and d."lang" = live."lang" and d."section" = live."section" and d."createdAt" > live."at")
+       order by live."lang", live."section", live."name"`,
+    );
+    return rows.map((row) => ({
+      team: { id: row.teamId, slug: row.slug, name: row.name },
+      lang: row.lang,
+      section: row.section,
+      version: row.version,
+      releasedAt: row.at.toISOString(),
+    }));
+  });
 }

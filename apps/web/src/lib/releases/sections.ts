@@ -121,6 +121,37 @@ export type PendingView = {
   changes: PendingChange[];
 };
 
+/** A team, as the review page names it. */
+export type ReviewTeam = { id: string; slug: string; name: string };
+
+/** A team's staged version waiting for a site owner, with what it changes as the team counts it. */
+export type WaitingVersion = {
+  id: string;
+  team: ReviewTeam;
+  lang: Lang;
+  section: ReleaseSection;
+  version: string | null;
+  /** Who pressed Release, by name. */
+  by: string | null;
+  /** ISO: when it was pressed. */
+  pressedAt: string;
+  /** Why the last approval did not list it. */
+  error: string | null;
+  /** Approved, and its promotion has not finished. */
+  approving: boolean;
+  pending: PendingView;
+};
+
+/** A team's pack that is on the channel: its newest approved version in a section and language. */
+export type LiveTeamPack = {
+  team: ReviewTeam;
+  lang: Lang;
+  section: ReleaseSection;
+  version: string | null;
+  /** ISO: when players got it. */
+  releasedAt: string;
+};
+
 export type ReleaseView = {
   active: RunView | null;
   recent: RunView[];

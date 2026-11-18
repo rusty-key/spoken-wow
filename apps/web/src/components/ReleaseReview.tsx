@@ -15,6 +15,7 @@ import {
   type PendingView,
   type ReleaseBump,
   type ReleaseSection,
+  type ReviewTeam,
 } from "@/lib/releases/sections";
 import { SOURCE_LABELS } from "@/lib/reports/reports";
 import { cn } from "@/lib/utils";
@@ -45,8 +46,21 @@ export function bumped(from: string | null | undefined, bump: ReleaseBump): stri
 type Filter = { kind: "all" | "new" | "restored"; person?: string | null; q: string };
 
 /**
+ * A team's version as a site owner reviews it: the lines come with it, each plays the team's live
+ * take, and `actions` (approve, reject) replace the release button.
+ */
+type AsReviewed = { team: ReviewTeam; actions: React.ReactNode };
+
+/** Where `team`'s live take of `file` plays, as the explorer plays another team's. */
+export function teamTakeUrl(section: ReleaseSection, lang: Lang, file: string, slug: string): string {
+  const path = section === "quests" ? file : `${file}.mp3`;
+  return withLang(lang, `/api/${section}/audio/${path}?${new URLSearchParams({ team: slug })}`);
+}
+
+/**
  * The step before a release: what goes out, who made it, every line to read and hear, and the
- * version it goes out as. Closing it releases nothing.
+ * version it goes out as. Closing it releases nothing. With `reviewed`, the same view of a team's
+ * staged version for a site owner.
  */
 export default function ReleaseReview({
   open,
@@ -57,6 +71,7 @@ export default function ReleaseReview({
   version,
   bumpable,
   onRelease,
+  reviewed,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -71,6 +86,7 @@ export default function ReleaseReview({
   version: string | null | undefined;
   bumpable: boolean;
   onRelease: (bump: ReleaseBump) => void;
+  reviewed?: AsReviewed;
 }) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -81,6 +97,7 @@ export default function ReleaseReview({
           pending={pending}
           version={version}
           bumpable={bumpable}
+          reviewed={reviewed}
           onCancel={() => onOpenChange(false)}
           onRelease={(bump) => {
             onOpenChange(false);
@@ -98,6 +115,7 @@ function Review({
   pending: counted,
   version,
   bumpable,
+  reviewed,
   onCancel,
   onRelease,
 }: {
@@ -106,14 +124,17 @@ function Review({
   pending: PendingView;
   version: string | null | undefined;
   bumpable: boolean;
+  reviewed?: AsReviewed;
   onCancel: () => void;
   onRelease: (bump: ReleaseBump) => void;
 }) {
   const date = useLocalDates();
-  // The page's checks carry the counts alone; the lines themselves are asked for here, once.
-  const [loaded, setLoaded] = useState<PendingView | null>(null);
+  // The page's checks carry the counts alone; the lines themselves are asked for here, once. A
+  // reviewed version brings its lines with it.
+  const [loaded, setLoaded] = useState<PendingView | null>(reviewed ? counted : null);
   const [failed, setFailed] = useState(false);
   useEffect(() => {
+    if (reviewed) return;
     let live = true;
     fetch(`/api/releases?${new URLSearchParams({ lang, section })}`, { cache: "no-store" })
       .then((response) => (response.ok ? (response.json() as Promise<{ pending: PendingView }>) : null))
@@ -122,7 +143,7 @@ function Review({
     return () => {
       live = false;
     };
-  }, [lang, section]);
+  }, [lang, section, reviewed]);
   const pending = loaded ?? counted;
   const [bump, setBump] = useState<ReleaseBump>("patch");
   const [filter, setFilter] = useState<Filter>({ kind: "all", q: "" });
@@ -164,7 +185,10 @@ function Review({
       setPlaying(null);
       return;
     }
-    element.src = withLang(lang, `/api/takes/audio?${new URLSearchParams({ source: section, file: change.file, version: String(change.version) })}`);
+    // Another team's take plays as its live one: its history is the team's own.
+    element.src = reviewed
+      ? teamTakeUrl(section, lang, change.file, reviewed.team.slug)
+      : withLang(lang, `/api/takes/audio?${new URLSearchParams({ source: section, file: change.file, version: String(change.version) })}`);
     void element.play().catch(() => setPlaying(null));
     setPlaying(key);
   }
@@ -180,15 +204,17 @@ function Review({
       <audio ref={audio} onEnded={() => setPlaying(null)} className="hidden" />
       <header className="pt-4 pr-12 pb-3 pl-5">
         <DialogTitle className="text-lg">
-          Release {name} in {langName(lang)}
+          {reviewed ? `${reviewed.team.name}: ${name} in ${langName(lang)}` : `Release ${name} in ${langName(lang)}`}
         </DialogTitle>
         <DialogDescription className="mt-1.5">
           {pending.since ? (
-            <>Audio that went live since the last release started, on {date(pending.since)}. </>
+            <>Audio that went live since the {reviewed ? "team's last approved" : "last"} release started, on {date(pending.since)}. </>
           ) : (
-            <>Nothing was released from here yet, so this sends every live line. </>
+            <>Nothing was released from {reviewed ? "this team" : "here"} yet, so this sends every live line. </>
           )}
-          Players get it on their next Manager refresh.
+          {reviewed
+            ? "Each line plays the team's live take. Players get it once you approve it."
+            : "Players get it on their next Manager refresh."}
         </DialogDescription>
         {pending.count > 0 && (
           <div className="mt-3 grid gap-2 sm:grid-cols-3">
@@ -338,49 +364,53 @@ function Review({
         )}
       </div>
 
-      <footer className="bg-muted/30 border-t">
-        <div className="flex flex-wrap items-center gap-x-3 gap-y-2 px-5 py-3">
-          <span
-            className="text-muted-foreground flex-1 text-sm"
-            title={next ? "From the last release made here; the release bumps what players have, which may be newer." : undefined}
-          >
-            Version{" "}
-            <span className="text-foreground font-mono">
-              {next ? `about ${version} → ${next}` : bumpable ? "set by the pack's first release" : "chosen by the release workflow"}
+      {reviewed ? (
+        <footer className="bg-muted/30 border-t px-5 py-3">{reviewed.actions}</footer>
+      ) : (
+        <footer className="bg-muted/30 border-t">
+          <div className="flex flex-wrap items-center gap-x-3 gap-y-2 px-5 py-3">
+            <span
+              className="text-muted-foreground flex-1 text-sm"
+              title={next ? "From the last release made here; the release bumps what players have, which may be newer." : undefined}
+            >
+              Version{" "}
+              <span className="text-foreground font-mono">
+                {next ? `about ${version} → ${next}` : bumpable ? "set by the pack's first release" : "chosen by the release workflow"}
+              </span>
             </span>
-          </span>
-          {bumpable && (
-            <div role="group" aria-label="Version bump" className="flex overflow-hidden rounded-md border text-sm">
-              {RELEASE_BUMPS.map((option) => (
-                <button
-                  key={option}
-                  type="button"
-                  aria-pressed={bump === option}
-                  onClick={() => setBump(option)}
-                  className={cn(
-                    "px-3 py-1 capitalize",
-                    bump === option ? "bg-muted text-foreground" : "text-muted-foreground hover:text-foreground",
-                  )}
-                >
-                  {option}
-                </button>
-              ))}
-            </div>
-          )}
-          <Button variant="ghost" onClick={onCancel}>
-            Cancel
-          </Button>
-          <Button onClick={() => onRelease(bump)}>
-            {pending.count + pending.textChanges > 0
-              ? `Release ${lines(pending.count + pending.textChanges)}`
-              : "Release anyway"}
-          </Button>
-        </div>
-        <p className="text-muted-foreground px-5 pb-2.5 text-xs">
-          Counted from the live takes. The release compares the built pack with what players have, so its own numbers
-          can differ slightly.
-        </p>
-      </footer>
+            {bumpable && (
+              <div role="group" aria-label="Version bump" className="flex overflow-hidden rounded-md border text-sm">
+                {RELEASE_BUMPS.map((option) => (
+                  <button
+                    key={option}
+                    type="button"
+                    aria-pressed={bump === option}
+                    onClick={() => setBump(option)}
+                    className={cn(
+                      "px-3 py-1 capitalize",
+                      bump === option ? "bg-muted text-foreground" : "text-muted-foreground hover:text-foreground",
+                    )}
+                  >
+                    {option}
+                  </button>
+                ))}
+              </div>
+            )}
+            <Button variant="ghost" onClick={onCancel}>
+              Cancel
+            </Button>
+            <Button onClick={() => onRelease(bump)}>
+              {pending.count + pending.textChanges > 0
+                ? `Release ${lines(pending.count + pending.textChanges)}`
+                : "Release anyway"}
+            </Button>
+          </div>
+          <p className="text-muted-foreground px-5 pb-2.5 text-xs">
+            Counted from the live takes. The release compares the built pack with what players have, so its own numbers
+            can differ slightly.
+          </p>
+        </footer>
+      )}
     </DialogContent>
   );
 }

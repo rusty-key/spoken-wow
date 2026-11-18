@@ -26,7 +26,7 @@ vi.mock("@/lib/email", () => ({
 
 import { derivedFolders } from "../../../../../scripts/lib/packs.mjs";
 
-import { approve, delistPack, reject, ReviewError, teamFolders } from "./review";
+import { approve, delistPack, liveTeamPacks, reject, ReviewError, teamFolders, waitingCount, waitingReviews } from "./review";
 import { RELEASE_SECTIONS } from "./sections";
 import { lastReleasedAt, startRun } from "./store";
 import { forgetReleaseCheck, syncActive } from "./sync";
@@ -166,6 +166,46 @@ describe("reject", () => {
     expect(presserMail()).toEqual([expect.objectContaining({ text: expect.stringContaining("Half the takes clip at the end.") })]);
     const activity = await systemRows<{ kind: string; teamId: string }>(`select "kind", "teamId" from "activity" where "kind" = 'release.rejected'`);
     expect(activity).toEqual([{ kind: "release.rejected", teamId: second }]);
+  });
+});
+
+describe("the review page's lists", () => {
+  const take = (team: string, file: string) =>
+    asSystem.query(
+      `insert into "take" ("source", "lang", "file", "lineId", "version", "isCurrent", "origin", "bytes", "teamId")
+       values ('places', 'frFR', $1, $2, 1, true, 'generated', 1, $3)`,
+      [file, `z:${file}`, team],
+    );
+
+  afterEach(async () => {
+    await asSystem.query(`delete from "take" where "file" like 'review-test-%'`);
+  });
+
+  it("lists a waiting version with what it changes as its team counts it, not as the privileged team", async () => {
+    await take(second, "review-test-ours-1");
+    await take(second, "review-test-ours-2");
+    await take(fr.team, "review-test-theirs");
+    const id = await waiting();
+    const waits = await waitingReviews();
+    expect(waits).toHaveLength(1);
+    expect(await waitingCount()).toBe(1);
+    expect(waits[0]).toMatchObject({ id, team: { id: second, slug }, lang: "frFR", section: "places", version: "1.0.0", approving: false });
+    expect(waits[0].pending.changes.map((c) => c.file).sort()).toEqual(["review-test-ours-1", "review-test-ours-2"]);
+    expect(waits[0].pending.count).toBe(2);
+  });
+
+  it("lists a team's pack once approved, and not once delisted", async () => {
+    const id = await waiting();
+    exits((await approve(id, owner.id)).id, 0, "==> promoted 1.0.0: SpokenPlacesAudio_frFR_second\n");
+    await syncActive();
+    expect(await waitingCount()).toBe(0);
+    expect(await liveTeamPacks()).toEqual([
+      expect.objectContaining({ team: expect.objectContaining({ id: second }), lang: "frFR", section: "places", version: "1.0.0" }),
+    ]);
+    const delist = await delistPack(second, "frFR", "places", owner.id);
+    exits(delist.id, 0, "==> delisted SpokenPlacesAudio_frFR_second\n");
+    await syncActive();
+    expect(await liveTeamPacks()).toEqual([]);
   });
 });
 
