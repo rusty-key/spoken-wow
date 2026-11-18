@@ -6,7 +6,7 @@ import "server-only";
 
 import { query } from "@/lib/db";
 import { BASE_LANG, type Lang } from "@/lib/lang";
-import { catalogue, type BookPage } from "@/lib/readables/catalogue";
+import { baseCatalogue, catalogue, type BookPage } from "@/lib/readables/catalogue";
 import { ownerEntityKind, type OwnerKind } from "@/lib/readables/filters";
 import { restoreBookText, retireBookText, saveBookText } from "@/lib/readables/text";
 
@@ -63,7 +63,7 @@ export const readables: SectionApi = {
   },
 
   async saveOverride(args) {
-    const page = (await catalogue(args.lang)).find((p) => p.id === args.id);
+    const page = (await baseCatalogue(args.lang)).find((p) => p.id === args.id);
     const original = page && !page.missing?.text ? page.text : null;
     return saveNarratedOverride("readables", args, original, await versionOf(args.lang, args.id));
   },

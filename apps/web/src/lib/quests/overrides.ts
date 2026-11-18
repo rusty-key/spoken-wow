@@ -79,7 +79,7 @@ export async function writeOverride(
   // Nullable to match the column, which is SET NULL: who rewrote a line outlives the account.
   userId: string | null,
   audit?: ApiAudit,
-): Promise<LineOverride> {
+): Promise<{ override: LineOverride; before: string | null }> {
   const original = (await fileIndex(lang)).get(file);
   // "before" is read in the same statement, from the snapshot the upsert started with, so
   // the log says what this write replaced and not what a concurrent one did.
@@ -112,7 +112,7 @@ export async function writeOverride(
       detail: { text, before, ...auditDetail(audit, null) },
     });
   }
-  return toOverride(row);
+  return { override: toOverride(row), before };
 }
 
 /** `by` is who reverted it, for the activity log: the delete leaves nothing else behind. */

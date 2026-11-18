@@ -59,7 +59,7 @@ export const bosses: SectionApi = {
   },
 
   async saveOverride(args) {
-    const entry = (await catalogue(args.lang)).find((e) => e.id === args.id);
+    const entry = (await baseCatalogue(args.lang)).find((e) => e.id === args.id);
     return saveNarratedOverride("bosses", args, entry?.text ?? null, await versionOf(args.lang, args.id));
   },
 

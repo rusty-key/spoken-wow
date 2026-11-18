@@ -209,6 +209,24 @@ describe("a second team's member", () => {
     });
   });
 
+  it("is refused a quest line the site lists only in another voice, writing nothing", async () => {
+    const { lineId, variant } = f.quest;
+    // The fixture's line: its speakers all read in a voice the team's roster names otherwise.
+    expect([...(await fileIndex(lang)).values()].some((line) => line.lineId === lineId)).toBe(false);
+    for (const text of ["Seid gegrüßt.", null]) {
+      expect((await first(ctxU, "quests", { id: lineId, variant, text })).text).toEqual({
+        status: "error",
+        code: "invalid",
+        message: "this line is spoken in another voice; override it on the site",
+      });
+    }
+    const { rows } = await asSystem.query(`select 1 from "line_override" where "lang" = $1 and "lineId" = $2`, [
+      lang,
+      lineId,
+    ]);
+    expect(rows).toEqual([]);
+  });
+
   it("reads its team's override in each section, which the privileged team does not see", async () => {
     await first(ctxU, "readables", { id: f.page.lineId, text: "Unsere Seite." });
     const asU = await asActor(u.id, () => sections.readables.one(lang, f.page.lineId, 0));

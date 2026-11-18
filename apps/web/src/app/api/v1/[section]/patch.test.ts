@@ -375,6 +375,14 @@ describe("the override layer", () => {
     expect((await query(`select 1 from "api_batch" where "lang" = $1`, [lang])).length).toBe(batches);
   });
 
+  it("refuses a layer inside an item, writing nothing for it", async () => {
+    const token = await tokenOf(m, lang);
+    const response = await many("bosses", { items: [{ id: f.boss.lineId, layer: "override", text: "Nein." }] }, token);
+    const { results } = (await response.json()) as { results: { error?: { code: string; message: string } }[] };
+    expect(results[0].error).toEqual({ code: "invalid", message: "layer goes at the top of the body, not in an item" });
+    expect(await story(lang)).toBe("Der Boss spricht.");
+  });
+
   it("400 on a layer that is neither", async () => {
     const response = await one("bosses", f.boss.lineId, { layer: "both", text: "Nein." }, await tokenOf(m, lang));
     expect(response.status).toBe(400);

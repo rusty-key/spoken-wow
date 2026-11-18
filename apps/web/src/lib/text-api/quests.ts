@@ -7,7 +7,7 @@
 import { LEVEL_PARAM } from "@/lib/line-fields";
 import "server-only";
 
-import { audioRelPath } from "@/lib/audio";
+import { audioRelPath, fileIndex } from "@/lib/audio";
 import { momentOf, momentSql, answersQuestMomentSql } from "@/lib/contributions/naming";
 import { query } from "@/lib/db";
 import { BASE_LANG, type Lang } from "@/lib/lang";
@@ -148,6 +148,7 @@ async function lineOf(lang: Lang, id: string, variant: number): Promise<Row | nu
 }
 
 const GENDER_SPLIT = "an override cannot split a line by the reader's gender; that changes the original text";
+const VOICE_LINE = "this line is spoken in another voice; override it on the site";
 
 export const quests: SectionApi = {
   filters: {
@@ -228,12 +229,15 @@ export const quests: SectionApi = {
     // the site and the API edit one override.
     const file = audioRelPath(line);
     const done = (wrote: boolean, removed: boolean) => ({ version: line.version, lines: [id], wrote, removed });
+    // A split rewrites the moment's original lines, which every team voices.
+    if (text !== null && branchesOnPlayerGender(text)) throw new Refused(GENDER_SPLIT);
+    // The site's whitelist: where the line's speakers all moved to another voice, the corpus lists
+    // only that voice's line and file, and an override on this file would never be spoken or shown.
+    if (!(await fileIndex(lang)).has(file)) throw new Refused(VOICE_LINE);
     if (text === null) {
       const removed = await clearOverride(lang, file, by, audit);
       return done(removed, removed);
     }
-    // A split rewrites the moment's original lines, which every team voices.
-    if (branchesOnPlayerGender(text)) throw new Refused(GENDER_SPLIT);
     let draft;
     try {
       draft = validateOverride({ file, lineId: line.lineId, text }, lang);
@@ -241,8 +245,7 @@ export const quests: SectionApi = {
       if (error instanceof OverrideError) throw new Refused(error.message);
       throw error;
     }
-    const before = overrideOf(await readOverrides(lang), file)?.text;
-    await writeOverride(lang, file, draft.lineId, draft.text, by, audit);
+    const { before } = await writeOverride(lang, file, draft.lineId, draft.text, by, audit);
     return done(before !== draft.text, false);
   },
 

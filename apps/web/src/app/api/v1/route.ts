@@ -46,6 +46,7 @@ export async function GET(request: Request) {
         "Writes go live at once. Edited lines read as stale until someone regenerates them. Text routes make no audio: only generate does, on the token owner's key, and a line that is already done and asked for again is paid for again.",
         "A null text is an item with no translation yet. englishText is what to translate from.",
         "Every item's override, when not null, is what the token owner's team speaks in place of its text. Writes go to the original text when the owner is a text maintainer, else to the team's overrides; send \"layer\": \"override\" to write the override as a text maintainer. Each text result names its layer.",
+        "A quest line heard in another voice than its file was made in is listed on the site as a voice line of its own; that line's override is made on the site only.",
         "Text containing $G splits a quest line into :m and :f. Plain text to either side of an untranslated split is refused: send one text with a $G branch.",
         "A readable page's name is its owner's, shared by every page and item with that owner. A quest's name is shared by all its lines. Gossip lines and pages with no owner have no name to write.",
         "Places: sending text without short regenerates short.",

@@ -82,6 +82,8 @@ function shapeError(section: Source, input: ItemInput): string | null {
   if (!optionalVersion(input.expectedVersion)) return "expectedVersion must be a whole number";
   if (!optionalVersion(input.expectedNameVersion)) return "expectedNameVersion must be a whole number";
   if (input.short !== undefined && section !== "places") return "only places have short";
+  // One run writes one layer, so a layer here would read as applying to this item alone.
+  if ("layer" in input) return "layer goes at the top of the body, not in an item";
   if (input.variant !== undefined) {
     if (section !== "quests") return "only quest lines have variant";
     if (!isVariant(input.variant)) return BAD_VARIANT;

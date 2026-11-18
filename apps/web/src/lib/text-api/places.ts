@@ -2,7 +2,7 @@ import "server-only";
 
 import { query } from "@/lib/db";
 import { BASE_LANG, type Lang } from "@/lib/lang";
-import { catalogue, type CatalogueEntry } from "@/lib/places/catalogue";
+import { baseCatalogue, catalogue, type CatalogueEntry } from "@/lib/places/catalogue";
 import { restoreLore, retireLore, saveLore } from "@/lib/places/lore";
 
 import { catalogueReads, nameVersionOf, nameVersions } from "./catalogue-page";
@@ -75,8 +75,8 @@ export const places: SectionApi = {
 
   async saveOverride(args) {
     const { lang, id } = args;
-    const entry = (await catalogue(lang)).find((e) => e.id === id);
-    const original = entry && (lang === BASE_LANG || !entry.missing?.text) ? entry.full : null;
+    const entry = (await baseCatalogue(lang)).find((e) => e.id === id);
+    const original = entry && !entry.missing?.text ? entry.full : null;
     const version = (await textVersions(lang, [id])).get(id)?.version ?? null;
     return saveNarratedOverride("places", args, original, version);
   },
