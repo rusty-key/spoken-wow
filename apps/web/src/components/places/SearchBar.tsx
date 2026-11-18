@@ -1,60 +1,52 @@
 "use client";
 
-import DateChip from "@/components/DateChip";
-import { MadeByChips } from "@/components/MadeBy";
-import RecordedChip from "@/components/RecordedChip";
+import {
+  CatalogueSearch,
+  FilterDates,
+  FilterGroup,
+  FilterSegments,
+  FilterSelect,
+  FilterToggle,
+  ScopeSelect,
+  type ActiveFilter,
+  type Option,
+} from "@/components/catalogue/CatalogueSearch";
 import type { MadeByFacets } from "@/lib/takes/made-by";
-import FilterChip, { type ChipOption } from "@/components/FilterChip";
-import { Button } from "@/components/ui/button";
-import { Checkbox } from "@/components/ui/checkbox";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { AUDIO_STATE_OPTIONS } from "@/lib/audio-state";
+import { AUDIO_STATE_LABELS } from "@/lib/audio-state";
+import { RECORDED_OPTIONS, type Recorded } from "@/lib/recordings/live";
 import type { ExplorerFilters, ExplorerSection } from "@/components/explorer/section";
 
 /**
- * The same controls the quests explorer uses, on this section's fields.
- *
- * They were plain <select>s and bare checkboxes until the merge, for the honest reason that
- * the zones site had no component library to borrow from. It does now, and two explorers in
- * one app that filter differently read as two apps.
+ * The places and bosses search: one bar, configured by the section. Every filter is a param in the
+ * URL, so a link to a filtered view is a link to the same view.
  */
-
 type Props = {
   section: Pick<ExplorerSection, "facetLabel" | "facets" | "labels">;
-  /** The section's own search fields, "any" first, and its kinds where it has any. */
   fields: readonly string[];
   kinds: readonly string[];
   filters: ExplorerFilters;
-  /** How many filters are in force, by the section's own count. */
   active: number;
-  /**
-   * Editor and up. Gates the "reported" control only, not the filter behind it: a
-   * hand-typed ?fb=open still works for anyone, which is fine because the open counts
-   * travel with the search results anyway. Drawing the control for a guest would be
-   * offering a worklist to somebody with no work to do.
-   */
-  /** Triager and up: only they can read the report bodies the filter points at. */
   canTriage: boolean;
-  /** The model and author chips' options; present only for somebody working in the language. */
   madeBy?: MadeByFacets;
-  /** The viewer records here, so the search answers whether each line is recorded. */
   recordable?: boolean;
   query: string;
   inputRef: React.RefObject<HTMLInputElement | null>;
   onQueryChange: (value: string) => void;
-  /** Enter, meaning "search now" rather than waiting out the debounce. */
   onQuerySubmit: () => void;
   onChange: (next: Partial<ExplorerFilters>) => void;
   onClearAll: () => void;
 };
+
+const labelOf = (options: readonly Option[], value: string) =>
+  options.find((option) => option.value === value)?.label ?? value;
+
+const capital = (word: string) => word.charAt(0).toUpperCase() + word.slice(1);
 
 export function SearchBar({
   section,
   fields,
   kinds,
   filters,
-  active,
   canTriage,
   madeBy,
   recordable,
@@ -65,127 +57,113 @@ export function SearchBar({
   onChange,
   onClearAll,
 }: Props) {
-  /** Where the free-text query is matched. "any" is the idle state, so it is not an option. */
-  const fieldOptions: ChipOption[] = fields
-    .filter((field) => field !== "any")
-    .map((field) => ({ value: field, label: `${field} only` }));
-  const kindOptions: ChipOption[] = kinds.map((kind) => ({ value: kind, label: `${kind}s only` }));
+  const fieldName = (field: string) =>
+    field === "any" ? "Anywhere" : field === "name" ? section.labels.name : field === "text" ? section.labels.text : capital(field);
+  const fieldOptions: Option[] = fields.map((field) => ({ value: field, label: fieldName(field) }));
+  const kindOptions: Option[] = kinds.map((kind) => ({ value: kind, label: `${capital(kind)}s` }));
+  const facetOptions: Option[] = section.facets.map((facet) => ({ value: String(facet.value), label: facet.label }));
+  const authors: Option[] = madeBy?.authors.map(({ id, name }) => ({ value: id, label: name })) ?? [];
+
+  const setState = (state: ExplorerFilters["state"]) => onChange({ state: filters.state === state ? undefined : state });
+  const statuses = [
+    { key: "missing", label: "Missing audio", tone: "missing" as const, pressed: filters.state === "missing", onPress: () => setState("missing") },
+    { key: "stale", label: "Outdated", tone: "stale" as const, pressed: filters.state === "stale", onPress: () => setState("stale") },
+    { key: "current", label: "Up to date", tone: "current" as const, pressed: filters.state === "current", onPress: () => setState("current") },
+    // Triagers only: the count on a row is public, but a list of complaints is a worklist.
+    ...(canTriage
+      ? [
+          {
+            key: "reported",
+            label: "Reported",
+            tone: "reported" as const,
+            pressed: filters.reports === "open",
+            onPress: () => onChange({ reports: filters.reports === "open" ? undefined : "open" }),
+          },
+        ]
+      : []),
+  ];
+
+  const active: ActiveFilter[] = [];
+  const add = (key: string, label: string, value: string | undefined, clear: Partial<ExplorerFilters>) => {
+    if (value) active.push({ key, label, value, onRemove: () => onChange(clear) });
+  };
+  add("state", "Audio", filters.state && AUDIO_STATE_LABELS[filters.state], { state: undefined });
+  add("reports", "Reported", filters.reports === "open" ? "open reports" : undefined, { reports: undefined });
+  add("mapID", section.facetLabel, filters.mapID === undefined ? undefined : labelOf(facetOptions, String(filters.mapID)), { mapID: undefined });
+  add("kind", "Kind", filters.kind && labelOf(kindOptions, filters.kind), { kind: undefined });
+  add("model", "Model", filters.model, { model: undefined });
+  add("author", "Made by", filters.author && labelOf(authors, filters.author), { author: undefined });
+  add("recorded", "Voice actor", filters.recorded && labelOf(RECORDED_OPTIONS, filters.recorded), { recorded: undefined });
+  if (filters.generatedAfter || filters.generatedBefore) {
+    add("generated", "Made", `${filters.generatedAfter ?? "…"} to ${filters.generatedBefore ?? "today"}`, {
+      generatedAfter: undefined,
+      generatedBefore: undefined,
+    });
+  }
+  add("dirty", "Pronunciation", filters.dirty ? "moved" : undefined, { dirty: undefined });
+  add("short", "Length", filters.short ? "short only" : undefined, { short: undefined });
 
   return (
-    <div className="bg-background sticky top-0 z-10 flex flex-wrap items-center gap-2 border-b py-3">
-      <Input
-        ref={inputRef}
-        type="search"
-        value={query}
-        placeholder={section.labels.search}
-        aria-label="Search"
-        autoFocus
-        className="min-w-0 flex-1 basis-64"
-        onChange={(event) => onQueryChange(event.target.value)}
-        onKeyDown={(event) => {
-          if (event.key !== "Enter") return;
-          // Nothing here is inside a <form>, so this is not a submit being prevented:
-          // it stops the browser's own "search" behaviour on a type=search input.
-          event.preventDefault();
-          onQuerySubmit();
-        }}
-      />
-      <FilterChip
-        label="search in"
-        value={filters.field === "any" ? undefined : filters.field}
-        options={fieldOptions}
-        onChange={(field) => onChange({ field: (field ?? "any") as ExplorerFilters["field"] })}
-      />
-
-      <div className="flex w-full flex-wrap items-center gap-2">
-        <FilterChip
-          label={section.facetLabel.toLowerCase()}
-          value={filters.mapID === undefined ? undefined : String(filters.mapID)}
-          options={section.facets.map((facet) => ({ value: String(facet.value), label: facet.label }))}
-          onChange={(mapID) => onChange({ mapID: mapID === undefined ? undefined : Number(mapID) })}
+    <CatalogueSearch
+      inputRef={inputRef}
+      query={query}
+      placeholder={section.labels.search}
+      onQueryChange={onQueryChange}
+      onQuerySubmit={onQuerySubmit}
+      scope={
+        <ScopeSelect
+          value={filters.field ?? "any"}
+          options={fieldOptions}
+          onChange={(field) => onChange({ field: field as ExplorerFilters["field"] })}
         />
-        {kindOptions.length > 0 && (
-          <FilterChip
-            label="kind"
-            value={filters.kind}
-            options={kindOptions}
-            onChange={(kind) => onChange({ kind: kind as ExplorerFilters["kind"] })}
-          />
-        )}
-        <FilterChip
-          label="audio"
-          value={filters.state}
-          options={AUDIO_STATE_OPTIONS}
-          onChange={(state) => onChange({ state: state as ExplorerFilters["state"] })}
-        />
-        {/* Read as one range: "generated after X" and "generated before Y". */}
-        <DateChip
-          label="generated after"
-          value={filters.generatedAfter}
-          onChange={(generatedAfter) => onChange({ generatedAfter })}
-        />
-        <DateChip
-          label="generated before"
-          value={filters.generatedBefore}
-          onChange={(generatedBefore) => onChange({ generatedBefore })}
-        />
-        {madeBy && (
-          <MadeByChips
-            facets={madeBy}
-            model={filters.model}
-            author={filters.author}
-            onChange={onChange}
-          />
-        )}
-        {recordable && <RecordedChip value={filters.recorded} onChange={(recorded) => onChange({ recorded })} />}
-
-        {/* A checkbox rather than a value of `state`, because a line can be current and
-            carry this at once: as a state it would hide whichever answer came second. */}
-        <div className="flex items-center gap-2 whitespace-nowrap">
-          <Checkbox
-            id="dirty-only"
-            checked={filters.dirty ?? false}
-            onCheckedChange={(value) => onChange({ dirty: value === true || undefined })}
-          />
-          <Label htmlFor="dirty-only" className="text-muted-foreground text-sm">
-            pronunciation moved
-          </Label>
-        </div>
-
-        <div className="flex items-center gap-2 whitespace-nowrap">
-          <Checkbox
-            id="short-only"
-            checked={filters.short ?? false}
-            onCheckedChange={(value) => onChange({ short: value === true || undefined })}
-          />
-          <Label htmlFor="short-only" className="text-muted-foreground text-sm">
-            short only
-          </Label>
-        </div>
-
-        {canTriage && (
-          <div className="flex items-center gap-2 whitespace-nowrap">
-            <Checkbox
-              id="reported-only"
-              checked={filters.reports === "open"}
-              onCheckedChange={(value) =>
-                onChange({ reports: value === true ? "open" : undefined })
-              }
+      }
+      statuses={statuses}
+      active={active}
+      onClearAll={onClearAll}
+      groups={
+        <>
+          <FilterGroup title="Where" description={`Which ${section.facetLabel.toLowerCase()} the line belongs to.`}>
+            <FilterSelect
+              label={section.facetLabel}
+              value={filters.mapID === undefined ? undefined : String(filters.mapID)}
+              options={facetOptions}
+              onChange={(mapID) => onChange({ mapID: mapID === undefined ? undefined : Number(mapID) })}
             />
-            <Label htmlFor="reported-only" className="text-muted-foreground text-sm">
-              reported only
-            </Label>
-          </div>
-        )}
+            {kindOptions.length > 0 && (
+              <FilterSegments
+                label="Kind"
+                value={filters.kind}
+                options={kindOptions}
+                onChange={(kind) => onChange({ kind: kind as ExplorerFilters["kind"] })}
+              />
+            )}
+          </FilterGroup>
 
-        {/* Only when there is something to clear: a button that does nothing on most
-            visits is one more thing to read past every time. */}
-        {active > 0 && (
-          <Button size="sm" variant="ghost" className="ml-auto" onClick={onClearAll}>
-            Clear {active === 1 ? "filter" : `all ${active} filters`}
-          </Button>
-        )}
-      </div>
-    </div>
+          <FilterGroup title="The take" description="How the audio was made.">
+            {madeBy && (
+              <>
+                <FilterSelect label="Model" value={filters.model} options={madeBy.models.map((value) => ({ value, label: value }))} onChange={(model) => onChange({ model })} />
+                <FilterSelect label="Made by" any="Anyone" value={filters.author} options={authors} onChange={(author) => onChange({ author })} />
+              </>
+            )}
+            {recordable && (
+              <FilterSelect
+                label="Voice actor"
+                value={filters.recorded}
+                options={RECORDED_OPTIONS}
+                onChange={(recorded) => onChange({ recorded: recorded as Recorded | undefined })}
+              />
+            )}
+            <FilterDates label="Made between" after={filters.generatedAfter} before={filters.generatedBefore} onChange={onChange} />
+          </FilterGroup>
+
+          <FilterGroup title="Marked lines" description="Lines whose audio may need another look.">
+            {/* Not a value of "audio": a line can be up to date and carry this at once. */}
+            <FilterToggle label="Pronunciation moved" checked={filters.dirty ?? false} onChange={(dirty) => onChange({ dirty: dirty || undefined })} />
+            <FilterToggle label="Short lines only" checked={filters.short ?? false} onChange={(short) => onChange({ short: short || undefined })} />
+          </FilterGroup>
+        </>
+      }
+    />
   );
 }

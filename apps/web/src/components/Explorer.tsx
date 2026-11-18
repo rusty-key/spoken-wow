@@ -20,7 +20,7 @@ import RegenerateDialog, { type PendingBatch } from "./RegenerateDialog";
 import RegenerationPanel from "./RegenerationPanel";
 import SearchBar from "./SearchBar";
 import TeamPicker from "./TeamPicker";
-import { Contained, Wide } from "./Width";
+import { Wide } from "./Width";
 import { Loading, Refreshing } from "@/components/Loading";
 import { Button } from "@/components/ui/button";
 import { audioStateFromParams } from "@/lib/audio-state";
@@ -868,7 +868,7 @@ export default function Explorer({ facets, teams, viewed, home }: { facets: Face
 
   return (
     <>
-      <Contained>
+      <div className="bn-wrap">
         <TeamPicker
           teams={teams}
           viewed={viewed}
@@ -935,7 +935,7 @@ export default function Explorer({ facets, teams, viewed, home }: { facets: Face
           pageCount={pageCount}
           onPage={(next) => updateUrl({ page: next })}
         />
-      </Contained>
+      </div>
 
       <Wide>
         {/* Fixed layout, because the point of the columns is that they line up down the page:
@@ -1028,7 +1028,7 @@ export default function Explorer({ facets, teams, viewed, home }: { facets: Face
         )}
       </Wide>
 
-      <Contained>
+      <div className="bn-wrap">
         <Pagination
           page={page}
           pageCount={pageCount}
@@ -1039,7 +1039,7 @@ export default function Explorer({ facets, teams, viewed, home }: { facets: Face
           <Key>/</Key> search · <Key>space</Key> play/pause · <Key>j</Key> <Key>k</Key> next
           and previous line on this page
         </p>
-      </Contained>
+      </div>
 
       <OverrideDialog
         line={editing}

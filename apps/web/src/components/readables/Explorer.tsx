@@ -21,7 +21,7 @@ import type { RowState } from "@/components/readables/PageRow";
 import { Player } from "@/components/readables/Player";
 import { SearchBar } from "@/components/readables/SearchBar";
 import TeamPicker from "@/components/TeamPicker";
-import { Contained, Wide } from "@/components/Width";
+import { Wide } from "@/components/Width";
 import { Loading, Refreshing } from "@/components/Loading";
 import { Button } from "@/components/ui/button";
 import type { BookFacet } from "@/lib/readables/catalogue";
@@ -517,7 +517,7 @@ export function Explorer({ books, teams, viewed, home }: { books: BookFacet[] } 
 
   return (
     <>
-      <Contained>
+      <div className="bn-wrap">
         <TeamPicker
           teams={teams}
           viewed={viewed}
@@ -573,7 +573,7 @@ export function Explorer({ books, teams, viewed, home }: { books: BookFacet[] } 
             </Button>
           )}
         </div>
-      </Contained>
+      </div>
 
       <Wide>
         {loading && !result ? (
@@ -650,9 +650,9 @@ export function Explorer({ books, teams, viewed, home }: { books: BookFacet[] } 
         )}
       </Wide>
 
-      <Contained>
+      <div className="bn-wrap">
         <Pagination page={page} pageCount={pageCount} onPage={(next) => updateUrl({ page: next })} />
-      </Contained>
+      </div>
 
       <div className="fixed inset-x-0 bottom-0 z-20">
         <RegenerationPanel

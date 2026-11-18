@@ -1,0 +1,347 @@
+"use client";
+
+import { SearchIcon, SlidersHorizontalIcon, XIcon } from "lucide-react";
+import { useId, useState, type ReactNode, type RefObject } from "react";
+
+import { cn } from "@/lib/utils";
+
+export type StatusOption = {
+  key: string;
+  label: string;
+  /** The dot's colour: the same state colours the rows use. */
+  tone?: "missing" | "stale" | "current" | "reported" | "neutral";
+  pressed: boolean;
+  onPress: () => void;
+};
+
+export type ActiveFilter = {
+  key: string;
+  label: string;
+  value: string;
+  onRemove: () => void;
+};
+
+/**
+ * The search block every audio page opens with: one search field, the audio states as one-click
+ * buttons, every other filter behind one Filters button in named groups, and the filters in force
+ * as a row of removable pills.
+ *
+ * The panel opens inline rather than over the list, so the list it narrows stays readable under it
+ * and nothing needs a focus trap.
+ */
+export function CatalogueSearch({
+  inputRef,
+  query,
+  placeholder,
+  onQueryChange,
+  onQuerySubmit,
+  scope,
+  statuses,
+  groups,
+  active,
+  onClearAll,
+}: {
+  inputRef?: RefObject<HTMLInputElement | null>;
+  query: string;
+  placeholder: string;
+  onQueryChange: (value: string) => void;
+  /** Places and readables search on Enter; quests search as you type and leave this out. */
+  onQuerySubmit?: () => void;
+  /** Where the query is matched, as a small select inside the field. */
+  scope?: ReactNode;
+  statuses: StatusOption[];
+  /** The panel's groups, in reading order. */
+  groups: ReactNode;
+  active: ActiveFilter[];
+  onClearAll: () => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const panelId = useId();
+  const allPressed = statuses.every((status) => !status.pressed);
+  // The badge counts what the panel holds; the audio buttons show their own state.
+  const inPanel = active.filter((filter) => filter.key !== "state" && filter.key !== "reports").length;
+
+  return (
+    <div className="cat-search">
+      <div className="cat-q">
+        <SearchIcon aria-hidden="true" />
+        <input
+          ref={inputRef}
+          type="search"
+          value={query}
+          placeholder={placeholder}
+          aria-label="Search"
+          autoFocus
+          onChange={(event) => onQueryChange(event.target.value)}
+          onKeyDown={(event) => {
+            if (event.key !== "Enter" || !onQuerySubmit) return;
+            event.preventDefault();
+            onQuerySubmit();
+          }}
+        />
+        {scope}
+      </div>
+
+      <div className="cat-row" role="group" aria-label="Audio">
+        <button
+          type="button"
+          className="bs-chip"
+          aria-pressed={allPressed}
+          onClick={() => statuses.forEach((status) => status.pressed && status.onPress())}
+        >
+          All
+        </button>
+        {statuses.map((status) => (
+          <button
+            key={status.key}
+            type="button"
+            className="bs-chip"
+            aria-pressed={status.pressed}
+            onClick={status.onPress}
+          >
+            {status.tone ? <i className={cn("cat-dot", `cat-dot-${status.tone}`)} aria-hidden="true" /> : null}
+            {status.label}
+          </button>
+        ))}
+        <span className="cat-sep" aria-hidden="true" />
+        <button
+          type="button"
+          className="bs-chip cat-filters"
+          aria-expanded={open}
+          aria-controls={panelId}
+          onClick={() => setOpen((was) => !was)}
+        >
+          <SlidersHorizontalIcon aria-hidden="true" />
+          Filters
+          {inPanel > 0 ? <span className="cat-badge">{inPanel}</span> : null}
+        </button>
+      </div>
+
+      <div id={panelId} hidden={!open} className="cat-panel">
+        <div className="cat-groups">{groups}</div>
+        <div className="cat-panel-foot">
+          <span>The list updates as you change a filter, and the link keeps them.</span>
+          <button type="button" className="bs-btn bs-btn-text" onClick={onClearAll}>
+            Clear filters
+          </button>
+          <button type="button" className="bs-btn bs-btn-primary" onClick={() => setOpen(false)}>
+            Done
+          </button>
+        </div>
+      </div>
+
+      {active.length > 0 ? (
+        <div className="cat-active" aria-label="Filters in force">
+          {active.map((filter) => (
+            <span key={filter.key} className="cat-pill">
+              <b>{filter.label}</b> {filter.value}
+              <button type="button" aria-label={`Remove ${filter.label} filter`} onClick={filter.onRemove}>
+                <XIcon aria-hidden="true" />
+              </button>
+            </span>
+          ))}
+          <button type="button" className="cat-clear" onClick={onClearAll}>
+            Clear filters
+          </button>
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
+export function FilterGroup({ title, description, children }: { title: string; description?: string; children: ReactNode }) {
+  return (
+    <fieldset className="cat-group">
+      <legend>{title}</legend>
+      {description ? <p className="cat-group-desc">{description}</p> : null}
+      <div className="cat-group-body">{children}</div>
+    </fieldset>
+  );
+}
+
+export function FilterField({ label, children }: { label: string; children: ReactNode }) {
+  return (
+    <div className="cat-field">
+      <span className="cat-field-label">{label}</span>
+      {children}
+    </div>
+  );
+}
+
+export type Option = { value: string; label: string };
+
+/**
+ * A closed list as a native select: fast to render with a thousand books in it, keyboard-searchable
+ * by first letter, and the platform's own picker on a phone.
+ */
+export function FilterSelect({
+  label,
+  value,
+  options,
+  onChange,
+  any = "Any",
+}: {
+  label: string;
+  value: string | undefined;
+  options: readonly Option[];
+  onChange: (value: string | undefined) => void;
+  any?: string;
+}) {
+  const known = value === undefined || options.some((option) => option.value === value);
+  return (
+    <FilterField label={label}>
+      <select
+        className={cn("cat-select", value !== undefined && "cat-set")}
+        aria-label={label}
+        value={value ?? ""}
+        onChange={(event) => onChange(event.target.value === "" ? undefined : event.target.value)}
+      >
+        <option value="">{any}</option>
+        {/* A deep-linked value missing from the list stays selected rather than silently dropped. */}
+        {!known && value !== undefined ? <option value={value}>{value}</option> : null}
+        {options.map((option) => (
+          <option key={option.value} value={option.value}>
+            {option.label}
+          </option>
+        ))}
+      </select>
+    </FilterField>
+  );
+}
+
+/** Two to four choices as one row of buttons, the first meaning "no filter". */
+export function FilterSegments({
+  label,
+  value,
+  options,
+  onChange,
+  any = "Any",
+}: {
+  label: string;
+  value: string | undefined;
+  options: readonly Option[];
+  onChange: (value: string | undefined) => void;
+  any?: string;
+}) {
+  const all: { value: string | undefined; label: string }[] = [{ value: undefined, label: any }, ...options];
+  return (
+    <FilterField label={label}>
+      <div className="cat-seg" role="radiogroup" aria-label={label}>
+        {all.map((option) => (
+          <button
+            key={option.value ?? ""}
+            type="button"
+            role="radio"
+            aria-checked={value === option.value}
+            onClick={() => onChange(option.value)}
+          >
+            {option.label}
+          </button>
+        ))}
+      </div>
+    </FilterField>
+  );
+}
+
+export function FilterChecks({
+  options,
+  values,
+  onChange,
+}: {
+  options: readonly Option[];
+  values: readonly string[] | undefined;
+  onChange: (values: string[] | undefined) => void;
+}) {
+  const picked = new Set(values ?? []);
+  return (
+    <div className="cat-checks">
+      {options.map((option) => (
+        <label key={option.value} className="cat-check">
+          <input
+            type="checkbox"
+            checked={picked.has(option.value)}
+            onChange={(event) => {
+              const next = options
+                .map((each) => each.value)
+                .filter((each) => (each === option.value ? event.target.checked : picked.has(each)));
+              onChange(next.length > 0 ? next : undefined);
+            }}
+          />
+          {option.label}
+        </label>
+      ))}
+    </div>
+  );
+}
+
+export function FilterToggle({
+  label,
+  checked,
+  onChange,
+}: {
+  label: string;
+  checked: boolean;
+  onChange: (checked: boolean) => void;
+}) {
+  return (
+    <label className="cat-check">
+      <input type="checkbox" checked={checked} onChange={(event) => onChange(event.target.checked)} />
+      {label}
+    </label>
+  );
+}
+
+/** "Made between": the two ends of the generated-on range, as YYYY-MM-DD days. */
+export function FilterDates({
+  label,
+  after,
+  before,
+  onChange,
+}: {
+  label: string;
+  after: string | undefined;
+  before: string | undefined;
+  onChange: (next: { generatedAfter?: string; generatedBefore?: string }) => void;
+}) {
+  return (
+    <FilterField label={label}>
+      <div className="cat-two">
+        <input
+          type="date"
+          className={cn("cat-select", after && "cat-set")}
+          aria-label={`${label}: from`}
+          value={after ?? ""}
+          onChange={(event) => onChange({ generatedAfter: event.target.value || undefined })}
+        />
+        <input
+          type="date"
+          className={cn("cat-select", before && "cat-set")}
+          aria-label={`${label}: to`}
+          value={before ?? ""}
+          onChange={(event) => onChange({ generatedBefore: event.target.value || undefined })}
+        />
+      </div>
+    </FilterField>
+  );
+}
+
+/** A small select inside the search field saying where the query is matched. */
+export function ScopeSelect({
+  value,
+  options,
+  onChange,
+}: {
+  value: string;
+  options: readonly Option[];
+  onChange: (value: string) => void;
+}) {
+  return (
+    <select className="cat-scope" aria-label="Search in" value={value} onChange={(event) => onChange(event.target.value)}>
+      {options.map((option) => (
+        <option key={option.value} value={option.value}>
+          {option.label}
+        </option>
+      ))}
+    </select>
+  );
+}

@@ -4,7 +4,7 @@ import { Suspense } from "react";
 
 import { Explorer } from "@/components/readables/Explorer";
 import { bookFacets, isCorpusEmpty } from "@/lib/readables/catalogue";
-import { Contained } from "@/components/Width";
+import AudioPage, { AudioPageEmpty } from "@/components/catalogue/AudioPage";
 import { viewKey } from "@/lib/teams/view";
 import { teamView } from "@/lib/teams/viewing";
 
@@ -37,17 +37,14 @@ export default async function Page({
     // that the import has not been run.
     if (!isCorpusEmpty(error)) throw error;
     return (
-      <main className="pt-6 pb-36">
-        <Contained>
-          <h1 className="text-xl font-semibold">Readables</h1>
-          <p className="text-muted-foreground mt-2 max-w-xl text-sm">
+      <AudioPage lang={lang} section="readables">
+        <AudioPageEmpty>
             The readables corpus has not been loaded into this database yet, so there is nothing to
             show. It is extracted from the vmangos world database with{" "}
             <code className="text-foreground">make readables-extract</code> and imported with{" "}
             <code className="text-foreground">make readables-import</code>.
-          </p>
-        </Contained>
-      </main>
+          </AudioPageEmpty>
+      </AudioPage>
     );
   }
 
@@ -56,21 +53,12 @@ export default async function Page({
   const view = await teamView(lang, typeof team === "string" ? team : null);
 
   return (
-    <main className="pt-6 pb-36">
-      <Contained>
-        <h1 className="text-xl font-semibold">Readables</h1>
-        <p className="text-muted-foreground mt-1 mb-5 text-sm">
-          Every book, letter, note and plaque the game will show you, page by page. Like quest
-          dialogue and unlike zone lore, these are Blizzard&rsquo;s words: extracted from the
-          world database rather than written here, and corrected only where a narrator would
-          stumble over them.
-        </p>
-      </Contained>
+    <AudioPage lang={lang} section="readables" team={typeof team === "string" ? team : undefined}>
       {/* Suspense is required: Explorer calls useSearchParams(). */}
       {/* Outside the column: the explorer places its own search (capped) and table (wide). */}
       <Suspense>
         <Explorer key={viewKey(view)} books={books} {...view} />
       </Suspense>
-    </main>
+    </AudioPage>
   );
 }

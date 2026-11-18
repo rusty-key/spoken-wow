@@ -547,3 +547,312 @@ body:has(main.bs) {
   text-align: right;
   font-variant-numeric: tabular-nums;
 }
+
+/* ---------- Catalogue search: the audio pages' search, status buttons and filter panel ---------- */
+
+.cat-search {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 16px 0 12px;
+}
+.cat-q {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  height: 48px;
+  padding: 0 8px 0 14px;
+  border-radius: 10px;
+  background: var(--bs-field);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.12);
+  color: var(--muted-foreground);
+}
+.cat-q:focus-within {
+  box-shadow:
+    inset 0 0 0 1px rgba(240, 194, 90, 0.55),
+    0 0 0 4px rgba(240, 194, 90, 0.08);
+}
+.cat-q > svg {
+  flex: none;
+  width: 18px;
+  height: 18px;
+}
+.cat-q input {
+  flex: 1;
+  min-width: 0;
+  height: 100%;
+  border: 0;
+  background: none;
+  color: var(--foreground);
+  font: inherit;
+  font-size: 16px;
+  outline: none;
+}
+.cat-q input::placeholder {
+  color: var(--muted-foreground);
+}
+.cat-scope {
+  height: 32px;
+  padding: 0 8px;
+  border: 0;
+  border-radius: 6px;
+  background: var(--bs-panel);
+  box-shadow: inset 0 0 0 1px var(--bs-line);
+  color: var(--bs-text-2);
+  font: inherit;
+  font-size: 13px;
+}
+
+.cat-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+.cat-row .bs-chip {
+  border: 0;
+  font: inherit;
+  font-size: 13px;
+  cursor: pointer;
+}
+.cat-row .bs-chip[aria-pressed="true"] {
+  background: var(--foreground);
+  box-shadow: none;
+  color: #101216;
+  font-weight: 500;
+}
+.cat-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+}
+.cat-dot-missing {
+  background: var(--bs-red);
+}
+.cat-dot-stale {
+  background: var(--bs-gold);
+}
+.cat-dot-current {
+  background: var(--bs-green);
+}
+.cat-dot-reported {
+  background: var(--bs-blue);
+}
+.cat-dot-neutral {
+  background: var(--muted-foreground);
+}
+.cat-sep {
+  width: 1px;
+  height: 20px;
+  margin: 0 2px;
+  background: rgba(255, 255, 255, 0.12);
+}
+.cat-filters svg {
+  width: 15px;
+  height: 15px;
+}
+.cat-row .cat-filters[aria-expanded="true"] {
+  background: var(--secondary);
+  box-shadow: inset 0 0 0 1px rgba(240, 194, 90, 0.55);
+  color: var(--foreground);
+}
+.cat-badge {
+  display: inline-grid;
+  place-items: center;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  border-radius: 9px;
+  background: var(--bs-gold);
+  color: #16171d;
+  font-size: 11px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.cat-panel {
+  padding: 18px 20px 14px;
+  border-radius: 10px;
+  background: var(--bs-panel);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.1);
+}
+.cat-groups {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 20px 28px;
+}
+.cat-group {
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+.cat-group legend {
+  padding: 0;
+  font-size: 13px;
+  font-weight: 600;
+}
+.cat-group-desc {
+  margin: 2px 0 0;
+  color: var(--muted-foreground);
+  font-size: 12px;
+  line-height: 16px;
+}
+.cat-group-body {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-top: 12px;
+}
+.cat-field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.cat-field-label {
+  color: var(--muted-foreground);
+  font-size: 12px;
+  font-weight: 500;
+}
+.cat-select {
+  width: 100%;
+  height: 32px;
+  padding: 0 8px;
+  border: 0;
+  border-radius: 6px;
+  background: var(--bs-field);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.12);
+  color: var(--bs-text-2);
+  font: inherit;
+  font-size: 13px;
+  color-scheme: dark;
+}
+.cat-select.cat-set {
+  box-shadow: inset 0 0 0 1px rgba(240, 194, 90, 0.55);
+  color: var(--foreground);
+}
+.cat-two {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
+}
+.cat-two .cat-select {
+  min-width: 0;
+}
+.cat-seg {
+  display: flex;
+  overflow: hidden;
+  border-radius: 6px;
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.12);
+}
+.cat-seg button {
+  flex: 1;
+  min-width: 0;
+  height: 30px;
+  padding: 0 6px;
+  border: 0;
+  background: none;
+  color: var(--bs-text-2);
+  font: inherit;
+  font-size: 12.5px;
+  white-space: nowrap;
+  cursor: pointer;
+}
+.cat-seg button:hover {
+  color: var(--foreground);
+}
+.cat-seg button[aria-checked="true"] {
+  background: var(--secondary);
+  color: var(--foreground);
+  font-weight: 500;
+}
+.cat-checks {
+  display: flex;
+  flex-direction: column;
+}
+.cat-check {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  min-height: 28px;
+  color: #e4e5e8;
+  font-size: 13px;
+  cursor: pointer;
+}
+.cat-check input {
+  width: 15px;
+  height: 15px;
+  margin: 0;
+  accent-color: var(--bs-gold);
+}
+.cat-panel-foot {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 10px;
+  margin-top: 16px;
+  padding-top: 12px;
+  box-shadow: inset 0 1px 0 var(--bs-line);
+}
+.cat-panel-foot span {
+  margin-right: auto;
+  color: var(--muted-foreground);
+  font-size: 12.5px;
+}
+
+.cat-active {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+.cat-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 28px;
+  padding: 0 4px 0 10px;
+  border-radius: 6px;
+  background: rgba(240, 194, 90, 0.12);
+  font-size: 12.5px;
+}
+.cat-pill b {
+  color: var(--bs-gold);
+  font-weight: 500;
+}
+.cat-pill button {
+  display: grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  border: 0;
+  border-radius: 4px;
+  background: none;
+  color: var(--muted-foreground);
+  cursor: pointer;
+}
+.cat-pill button:hover {
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--foreground);
+}
+.cat-pill svg {
+  width: 13px;
+  height: 13px;
+}
+.cat-clear {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--bs-text-2);
+  font: inherit;
+  font-size: 12.5px;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  cursor: pointer;
+}
+/* LevelBound is a fixed-width input elsewhere; in the panel the pair fills its column. */
+.cat-two input {
+  width: 100%;
+  height: 32px;
+}
