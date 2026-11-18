@@ -69,12 +69,15 @@ export default async function RootLayout({
               <SiteHeader>
                 <header className="bn-theme bn-nav sn">
                   <div className="bn-wrap">
-                    <Link href="/" className="bn-brand" aria-label="Spoken">
-                      <Image src="/landing/icons/spoken-192.png" alt="" width={96} height={96} priority unoptimized />
-                      <span className="bn-brand-name bn-display">Spoken</span>
-                    </Link>
-                    {/* The front page's "Backstage" button leads here: this tag says you arrived. */}
-                    <span className="sn-area">Backstage</span>
+                    <div className="sn-brand-group">
+                      <Link href="/" className="bn-brand" aria-label="Spoken">
+                        <Image src="/landing/icons/spoken-192.png" alt="" width={96} height={96} priority unoptimized />
+                        <span className="bn-brand-name bn-display">Spoken</span>
+                      </Link>
+                      {/* Every page past the front page is Backstage, signed in or not (the explorers
+                          are public), so the tag does not wait for the session and the row never shifts. */}
+                      <span className="sn-area">Backstage</span>
+                    </div>
                     <UserMenu />
                   </div>
                 </header>

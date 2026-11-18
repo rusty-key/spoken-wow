@@ -40,7 +40,7 @@ type MenuLink = {
   section?: string;
 };
 
-/** Must match site-nav.css's breakpoint, where the row of links gives way to the burger. */
+/** Must match site-nav.css's breakpoint (1200px, not the front page's 1020px: this bar carries more). */
 const NARROW = "(width < 1200px)";
 
 /**

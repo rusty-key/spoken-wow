@@ -19,8 +19,11 @@
   color: var(--text);
 }
 
-.sn .bn-brand + .sn-area {
-  margin-left: -20px;
+.sn-brand-group {
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: 12px;
 }
 .sn-area {
   flex: none;
@@ -151,7 +154,10 @@
   padding: 4px 4px 8px;
 }
 
-/* NARROW must match UserMenu.tsx: the row of links with the Backstage tag needs about 1150px. */
+/*
+ * NARROW must match UserMenu.tsx. The front page folds at 1020px; this bar also carries the
+ * Backstage tag, the language switch and Profile, and needs about 1150px, so it folds at 1200px.
+ */
 @media (width < 1200px) {
   .sn .bn-links,
   .sn-wide {
@@ -167,7 +173,7 @@
   .sn.bn-nav .bn-wrap {
     gap: 12px;
   }
-  .sn.bn-nav .bn-brand + .sn-area {
-    margin-left: -4px;
+  .sn-brand-group {
+    gap: 8px;
   }
 }
