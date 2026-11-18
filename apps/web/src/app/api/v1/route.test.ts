@@ -50,7 +50,7 @@ describe("GET /api/v1", () => {
 
   it("states the token's language and access, and every section with its filters", async () => {
     expect(await (await get(token)).json()).toMatchObject({
-      token: { lang: "koKR", access: "read", layers: { original: true, override: false } },
+      token: { lang: "koKR", access: "read", layers: { original: false, override: false } },
       sections: {
         places: { filters: ["zone"] },
         bosses: { filters: ["instance"] },

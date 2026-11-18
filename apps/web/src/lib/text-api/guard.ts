@@ -25,7 +25,7 @@ export type TokenContext = {
   lang: Lang;
   access: TokenAccess;
   generate: boolean;
-  /** The layers this token may write; both false when it has no text access. */
+  /** The layers this token may write; both false when it cannot write text. */
   layers: Record<Layer, boolean>;
 };
 
@@ -192,7 +192,7 @@ async function checkToken(
       // What the grants back, not what the token stores: `any` lets one scope through alone.
       access: textOk ? token.access : "none",
       generate: generateOk,
-      layers: textOk ? backed.layers : { original: false, override: false },
+      layers: textOk && token.access === "write" ? backed.layers : { original: false, override: false },
     },
     denied: null,
     teams: owner.teams,

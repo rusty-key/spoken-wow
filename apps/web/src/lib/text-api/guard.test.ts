@@ -121,12 +121,12 @@ describe("requireToken", () => {
     expect((await requireToken(request(`Bearer ${token}`))).denied?.status).toBe(403);
   });
 
-  it("lets a read token read when its owner holds only regenerate, as an override writer", async () => {
+  it("lets a read token read when its owner holds only regenerate, as an override writer, and write no layer", async () => {
     const { token } = await make("read");
     viewer.grants = [{ lang: "deDE", capability: "regenerate" }];
     const { context, denied } = await requireToken(request(`Bearer ${token}`), { need: "read" });
     expect(denied).toBeNull();
-    expect(context?.layers).toEqual({ original: false, override: true });
+    expect(context?.layers).toEqual({ original: false, override: false });
   });
 
   it("403 when the owner holds neither text nor regenerate", async () => {
