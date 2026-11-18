@@ -106,7 +106,8 @@ export default function RegenerationPanel({
   const pauses = snapshot.paused ?? [];
   // Paused rather than regenerating once the pause has taken hold: nothing left in flight.
   // Until then the jobs it let finish are still running, and the spinner says so.
-  const paused = active && pauses.length > 0 && running === 0;
+  // From the whole queue: a pause in another team's language holds work the counts include.
+  const paused = active && (snapshot.pausedAnywhere ?? pauses.length > 0) && running === 0;
 
   return (
     <div className="bg-card/95 border-t backdrop-blur">

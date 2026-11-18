@@ -116,10 +116,15 @@ export type QueueSnapshot = {
    */
   latestBatch: { cancelled: number; stoppedBecause: string | null } | null;
   /**
-   * The languages paused now, whoever paused them. Global like the counts: a queue that has
-   * stopped moving should say why, even to someone who cannot resume it.
+   * The languages paused now, whoever paused them: a queue that has stopped moving should say
+   * why, even to someone who cannot resume it. In a language narrowed to one team, that team's.
    */
   paused: { lang: Lang; pausedAt: string; by: string | null }[];
+  /**
+   * Whether any team has paused any language. Global like the counts, which a pause narrowed
+   * away still holds still, so the panel does not read paused work as regenerating.
+   */
+  pausedAnywhere: boolean;
   /**
    * Each owner's queue, in the order they drain: the first QUEUE_MAX_ACTIVE are active, the
    * rest wait. Ranked exactly as activeLanes ranks them, so the panel says what the worker does.
@@ -616,6 +621,7 @@ type JobAggregateRow = {
     rank: number | null;
   }[];
   paused: { lang: Lang; pausedAt: string; by: string | null }[];
+  pausedAnywhere: boolean;
   finished: { id: string; source: Source; lang: Lang; lineId: string; file: string; version: number }[];
   cursor: string | null;
   through: string | null;
@@ -655,6 +661,10 @@ export async function dismissThrough(jobId: string, userId: string | null, lang:
             "dismissedBy" = excluded."dismissedBy"`,
     [jobId, userId],
   );
+}
+
+function highest(ids: (string | null)[]): string {
+  return ids.reduce<string>((top, id) => (id !== null && BigInt(id) > BigInt(top) ? id : top), "0");
 }
 
 export async function snapshot(
@@ -724,8 +734,9 @@ export async function snapshot(
           where "state" = 'done' and "version" is not null
             and (not ($3::jsonb ? "lang")
                  or ("teamId" = ($3::jsonb ->> "lang")::uuid
-                     -- A team's own mark is 0 until it first dismisses, so the window bounds it.
-                     and "queuedAt" > now() - interval '${WINDOW}'))
+                     -- A team's own mark is 0 until it first dismisses, so the window bounds it,
+                     -- from when the job finished: one held by a long pause is still news.
+                     and coalesce("finishedAt", "queuedAt") > now() - interval '${WINDOW}'))
             and "id" > greatest(
                   coalesce($1::bigint, 0),
                   case when $3::jsonb ? "lang"
@@ -773,6 +784,7 @@ export async function snapshot(
          coalesce((select json_agg(r order by r.rank nulls last, r.name) from ranked_queues r), '[]')
            as queues,
          coalesce((select json_agg(p order by p."lang") from pauses p), '[]') as paused,
+         exists (select 1 from "regeneration_pause") as "pausedAnywhere",
          (select max from terminal) as cursor,
          (select max from shown) as through
        from job_counts jc`,
@@ -810,6 +822,7 @@ export async function snapshot(
         }
       : null,
     paused: row.paused,
+    pausedAnywhere: row.pausedAnywhere,
     queues: row.queues.map((queue) => ({
       owner: queue.owner,
       name: queue.name,
@@ -824,9 +837,13 @@ export async function snapshot(
     // cursor never sticks behind a job that failed rather than finished. But a full page
     // means there are more done jobs than fit, and taking the global maximum then would skip
     // every one after it - lines the page would never learn had been regenerated. A full page
-    // therefore ends at its own last row, and the next poll picks up from there.
+    // therefore ends at its own last row, and the next poll picks up from there. A short page
+    // still passes its own rows: a team's mark can trail the global one, which bounds `terminal`,
+    // and the next poll would hand them over again.
     cursor:
-      finished.length === FINISHED_PAGE ? finished[finished.length - 1].id : (row.cursor ?? since ?? "0"),
+      finished.length === FINISHED_PAGE
+        ? finished[finished.length - 1].id
+        : highest([row.cursor, finished.at(-1)?.id ?? null, since]),
     through: row.through,
   };
 }

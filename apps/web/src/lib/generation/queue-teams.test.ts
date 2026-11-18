@@ -140,6 +140,35 @@ describe("snapshot with teams", () => {
     expect(finishedOf(await snapshot(since, { teams: new Map([[lang, a]]) }))).toEqual([`g:${tag}-a`, `g:${tag}-s`]);
   });
 
+  it("lists a narrowed language's line queued before the window that finished inside it", async () => {
+    await doneJob(a, lang, "held");
+    await asSystem.query(
+      `update "regeneration_job" set "queuedAt" = now() - interval '2 days', "finishedAt" = now() where "id" = $1`,
+      [ids.held],
+    );
+    expect(finishedOf(await snapshot(since, { teams: new Map([[lang, a]]) }))).toEqual([
+      `g:${tag}-a`, `g:${tag}-s`, `g:${tag}-held`,
+    ]);
+  });
+
+  it("moves the cursor past a narrowed line the global mark already passed, so it comes once", async () => {
+    await asSystem.query(`insert into "queue_dismissal" ("teamId", "throughJobId") values ($1, $2)`, [b, ids.s]);
+    try {
+      const first = await snapshot(since, { teams: new Map([[lang, a]]) });
+      expect(finishedOf(first)).toEqual([`g:${tag}-a`]);
+      expect(finishedOf(await snapshot(first.cursor, { teams: new Map([[lang, a]]) }))).toEqual([]);
+    } finally {
+      await asSystem.query(`delete from "queue_dismissal" where "teamId" = $1`, [b]);
+    }
+  });
+
+  it("says something is paused when the only pause is another team's", async () => {
+    await asSystem.query(`delete from "regeneration_pause" where "teamId" = $1`, [a]);
+    const seen = await snapshot(since, { teams: new Map([[lang, a]]) });
+    expect(pausedOf(seen)).toEqual([]);
+    expect(seen.pausedAnywhere).toBe(true);
+  });
+
   it("hides a narrowed language's finished lines only behind their own team's dismissal", async () => {
     // Briefly the latest mark of all, which the panel cuts every other language at.
     await asSystem.query(`insert into "queue_dismissal" ("teamId", "throughJobId") values ($1, $2)`, [b, ids.b]);
