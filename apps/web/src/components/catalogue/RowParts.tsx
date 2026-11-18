@@ -1,7 +1,7 @@
 "use client";
 
 import { MoreHorizontalIcon } from "lucide-react";
-import { useState, type ReactNode } from "react";
+import { useRef, useState, type ReactNode } from "react";
 
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
@@ -38,6 +38,11 @@ export function RowActions({
   badge?: ReactNode;
 }) {
   const [open, setOpen] = useState(false);
+  // The picked item runs once the popover has closed, with focus put back on More by hand: the
+  // popover hands it to the page instead, so a dialog the item opens would return focus to the
+  // page top when it closes. Run straight away, the dialog also lost its focus to that hand-back.
+  const picked = useRef<RowAction | null>(null);
+  const trigger = useRef<HTMLButtonElement>(null);
   const inMenu = primary.length > 0 || regenerate || more.length > 1 ? more : [];
   const inline = inMenu.length > 0 ? primary : [...primary, ...more];
 
@@ -60,11 +65,21 @@ export function RowActions({
       {inMenu.length > 0 && (
         <Popover open={open} onOpenChange={setOpen}>
           <PopoverTrigger asChild>
-            <button type="button" className="bs-btn bs-btn-text cat-act cat-more" aria-label={`More actions for ${subject}`} title="More actions">
+            <button ref={trigger} type="button" className="bs-btn bs-btn-text cat-act cat-more" aria-label={`More actions for ${subject}`} title="More actions">
               <MoreHorizontalIcon aria-hidden="true" />
             </button>
           </PopoverTrigger>
-          <PopoverContent align="end" className="cat-menu w-auto min-w-48 p-1">
+          <PopoverContent
+            align="end"
+            className="cat-menu w-auto min-w-48 p-1"
+            onCloseAutoFocus={(event) => {
+              event.preventDefault();
+              trigger.current?.focus();
+              const action = picked.current;
+              picked.current = null;
+              if (action) setTimeout(action.onClick, 0);
+            }}
+          >
             {inMenu.map((action) => (
               <button
                 key={action.aria}
@@ -73,8 +88,8 @@ export function RowActions({
                 aria-label={action.aria}
                 title={action.title}
                 onClick={() => {
+                  picked.current = action;
                   setOpen(false);
-                  action.onClick();
                 }}
               >
                 {action.label}

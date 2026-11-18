@@ -110,7 +110,7 @@ export function BookList({
             anything narrower overflows across the character count. A translator has Edit, More
             and the count, and everyone else "Report a problem"; never w-0, because the column
             still has to exist for the rowspans above it to count against. */}
-        <col className={canRegenerate ? "w-64" : canEdit ? "w-36" : "w-40"} />
+        <col className={canRegenerate ? "w-72" : canEdit ? "w-36" : "w-40"} />
       </colgroup>
       <thead>
         <tr className="text-muted-foreground border-border border-b text-left text-xs">

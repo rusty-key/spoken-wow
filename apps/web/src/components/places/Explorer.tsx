@@ -756,7 +756,7 @@ export function Explorer<L extends ExplorerLine, F extends ExplorerFilters>({
             {/* Wide enough for Edit, Override, Regenerate, More and the report count side by side;
                 anything narrower pushes them over the prose. Everyone else has the "Report a
                 problem" button and the count; never w-0, since that is not gated. */}
-            <col className={canRegenerate ? "w-64" : "w-40"} />
+            <col className={canRegenerate ? "w-72" : "w-40"} />
           </colgroup>
           <thead>
             <tr className="text-muted-foreground border-border border-b text-left text-xs">

@@ -963,7 +963,7 @@ export default function Explorer({ facets, teams, viewed, home }: { facets: Face
               {/* Wide enough for Edit, Regenerate, More and the report count side by side;
                   anything narrower pushes them over the line text. Everyone else has the
                   "Report a problem" button and the count; never w-0, since that is not gated. */}
-              <col className={showRegenerate ? "w-56" : "w-40"} />
+              <col className={showRegenerate ? "w-64" : "w-40"} />
             </colgroup>
             <thead>
               <tr className="text-muted-foreground border-border border-b text-left text-xs">
