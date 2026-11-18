@@ -304,6 +304,46 @@ Only quests ship Ogg Vorbis
 MP3: readables and bosses pack the files as they are, and Places copies them for its full tier and
 transcodes only its 64 kbps tier, to MP3 as well.
 
+### Team releases
+
+Every team admin can press Release; a press builds the packs of the team it was made in, read from
+that team's live takes alone. The run carries the team (`release_run.teamId`), the droplet job
+passes its slug to `release.mjs --team`, and every builder query that picked the privileged team
+(`team_of_lang`) takes the release's team instead (`pipelines/lib/release-team.mjs`,
+`SPOKEN_RELEASE_TEAM`). A build outside a release reads the privileged team's, as before.
+
+- **Official.** `team.official` (migration 0120) is set on every team made before it, on a team a
+  site owner creates or founds with a new language, and on the team of a language a site owner adds.
+  An approved request makes a team that is not official. Only a site owner changes it, on
+  `/admin/teams`. Official decides whether a release waits for review and whether the Manager names
+  the team on its packs; it does not change pack ids.
+- **Pack ids.** The language's privileged team builds the plain ids (`SpokenPlacesAudio_jaJP`),
+  official or not. Any other team's folders carry its slug after the language
+  (`SpokenPlacesAudio_deDE_stimmen`, `scripts/lib/packs.mjs` `teamFolder`). A team's slug never
+  changes: `PATCH /api/teams/[id]` takes no slug, since a new one would orphan every installed pack.
+- **Page packs stay as they were.** A privileged team whose language has a store page with
+  `manager: true` for the section builds that page's pack, with the same folders, title, version,
+  icon and `.toc` (`scripts/manager/release.golden.json` pins them).
+- **Derived packs** are every other release (`scripts/manager/release-pack.mjs`): English's Manager
+  folders for the section, each with the suffix. Their first version is `1.0.0`, later ones bump from
+  the channel. The title names the language and, with a slug, the team (`Spoken German Audio: Places
+  (Stimmen)`). The `.toc` carries `X-Spoken-Team` and `X-Spoken-TeamName` for a suffixed pack, and
+  `X-Spoken-LanguageName` and `X-Spoken-LanguageNative` for a language Spoken does not build in. A
+  language with no badged icon wears English's mark; a page pack missing its badge is still an error.
+  The language comes from the `language` table, not `pipelines/lib/locales.mjs`.
+- **Two indexes.** `index-v2.json` is the channel's record: every pack, each with `lang`, `section`,
+  `pack` (the quests side, else null) and `team` (`{ slug, name, official }`, null for a page pack),
+  and a `languages` map (`code`, `name`, `native`) for the languages it lists. `index.json` is written
+  from it in the same publish with only the ids older Managers accept, in the shape they read, so
+  they never see a team's pack. The first publish seeds `index-v2.json` from `index.json`. Spoken's
+  own zips are `publish-addon.mjs`'s, which writes `index.json`; each pack publish copies them to
+  both. A publish that fails between the two writes leaves `index.json` behind, and the next one
+  catches it up.
+- **Gated until review exists.** A press by a team that is not official, or not privileged, gets 409
+  unless the site sets `SPOKEN_TEAM_RELEASES=1` and releases on the droplet (`deploy/web/README.md`,
+  *Team releases, on staging only*); `release.mjs` refuses a derived pack without it. Set it only
+  where `release.env` signs for the staging channel. Review replaces the gate.
+
 **Today's release workflow** *(my call)*: `release-packs.yaml` stays the only Manager publisher, and
 the site starts it instead of publishing itself, so two publishers never race for one pack's revs.
 Manual dispatches still work, including the CurseForge and GitHub upload. A manual dispatch and a

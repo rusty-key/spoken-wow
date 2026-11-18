@@ -667,6 +667,24 @@ language's activity log with its error.
 A job that stops beating for 3 minutes, from a reboot or an out-of-memory kill, fails on the page's
 next look and frees the lock.
 
+### Team releases, on staging only
+
+A press by a team that is not official, or that is not its language's privileged team, builds that
+team's packs (`docs/platform/TEAMS.md`, *Team releases*). Until a site owner can review such a
+release before players get it, it is refused with a 409 everywhere except on a site that sets, in
+`app.env`:
+
+```
+SPOKEN_TEAM_RELEASES=1
+```
+
+Set it **only on a site whose `shared/release.env` signs for the staging channel**: its packs are
+live for every Manager pointed at that channel the moment the job ends. The site reads it for the
+press, and the job takes it from `app.env` too, so `release.mjs` refuses such a pack anywhere it is
+unset. It works on the droplet only (`SPOKEN_RELEASE_ENV` set): the workflow's synced database gives
+every take to the privileged team, so it cannot build another team's pack. Restart as above after
+changing it. Official privileged teams release as before, with or without it.
+
 ### On GitHub Actions
 
 1. Create a **fine-grained** GitHub token for this repository only, with the repository
