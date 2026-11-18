@@ -2,7 +2,7 @@
 
 import { useLang } from "@/components/LangProvider";
 import { withLang, type Lang } from "@/lib/lang";
-import { Check, Pencil, RefreshCw, Search, Trash2, Undo2 } from "lucide-react";
+import { Check, Loader2, Pencil, RefreshCw, Search, Trash2, Undo2 } from "lucide-react";
 import { useSearchParams } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
 
@@ -32,6 +32,9 @@ const MODE_LABELS: Record<PreviewMode, string> = {
 };
 
 const EMPTY_CACHE: CacheState = { word: false, sentence: false };
+
+/** Which previews exist, and why the account's voices could not be read if they could not. */
+export type CacheRead = { cache: Record<string, CacheState>; error: string | null };
 
 /**
  * What every field in an open row shares.
@@ -214,7 +217,7 @@ function usePreview(onCached: (grapheme: string, mode: PreviewMode) => void) {
 export default function LexiconEditor(props: {
   initial: EffectiveLexicon;
   modelId: string;
-  initialCache: Record<string, CacheState>;
+  initialCache: Promise<CacheRead>;
 }) {
   // A shell, because useToast has to find a provider above the component that calls it and
   // the editor itself is what raises the toasts.
@@ -233,8 +236,11 @@ function Editor({
   initial: EffectiveLexicon;
   /** The model generation actually uses, which decides whether any of this takes effect. */
   modelId: string;
-  /** Which previews already exist, resolved on the server. See previewCache. */
-  initialCache: Record<string, CacheState>;
+  /**
+   * Which previews already exist, resolved on the server (see previewCache) and streamed in
+   * after the page, since it waits on the ElevenLabs account.
+   */
+  initialCache: Promise<CacheRead>;
 }) {
   const lang = useLang();
   const [saved, setSaved] = useState<Saved>(initial);
@@ -258,7 +264,40 @@ function Editor({
   const [error, setError] = useState<string | null>(null);
   // Seeded from the server and kept up to date as previews are rendered, so a re-roll button
   // lights up the moment the take it would replace exists.
-  const [cache, setCache] = useState(initialCache);
+  const [cache, setCache] = useState<Record<string, CacheState>>({});
+  // Undefined while the account is being read, then the read's error or null.
+  const [cacheError, setCacheError] = useState<string | null | undefined>(undefined);
+  useEffect(() => {
+    let cancelled = false;
+    initialCache
+      .then(
+        (read) => ({ cache: read.cache, error: read.error }),
+        (error: unknown) => ({
+          cache: {},
+          error: error instanceof Error ? error.message : String(error),
+        }),
+      )
+      .then((read) => {
+        if (cancelled) return;
+        // Merged under what is already known: a preview rendered while the read was in
+        // flight exists whatever the read found.
+        setCache((current) => {
+          const next = { ...read.cache };
+          for (const [grapheme, state] of Object.entries(current)) {
+            const found = next[grapheme] ?? EMPTY_CACHE;
+            next[grapheme] = {
+              word: found.word || state.word,
+              sentence: found.sentence || state.sentence,
+            };
+          }
+          return next;
+        });
+        setCacheError(read.error);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [initialCache]);
   const preview = usePreview((grapheme, mode) =>
     setCache((current) => ({
       ...current,
@@ -436,6 +475,20 @@ function Editor({
         busy={busy}
         onRetry={() => void send("POST")}
       />
+
+      {cacheError === undefined ? (
+        <p className="text-muted-foreground flex items-center gap-1.5 text-xs">
+          <Loader2 className="size-3 animate-spin" aria-hidden />
+          Reading your ElevenLabs account to see which previews are already rendered…
+        </p>
+      ) : (
+        cacheError && (
+          <p role="alert" className="text-destructive text-xs">
+            Could not read your ElevenLabs account, so no preview is marked as already
+            rendered: {cacheError}
+          </p>
+        )
+      )}
 
       <div className="flex flex-wrap items-center gap-2">
         <Input

@@ -5,12 +5,12 @@ import type { Metadata } from "next";
 import { headers } from "next/headers";
 import { notFound } from "next/navigation";
 
-import LexiconEditor from "@/components/LexiconEditor";
+import LexiconEditor, { type CacheRead } from "@/components/LexiconEditor";
 import { readApiKey } from "@/lib/api-key";
 import { auth } from "@/lib/auth";
 import { readLexicon } from "@/lib/generation/dictionary";
 import { previewCache, voicePicker } from "@/lib/generation/preview";
-import { generationStatus } from "@/lib/generation/status";
+import { generationRoster } from "@/lib/generation/status";
 import { can } from "@/lib/permissions";
 import { readGenerationSettings, speakingConfig } from "@/lib/generation/preference";
 import { Contained, Wide } from "@/components/Width";
@@ -36,10 +36,9 @@ export default async function Page({ params }: { params: Promise<{ lang: string 
   // money, which is true and harmless.
   const apiKey = await readApiKey(session.user.id).catch(() => null);
 
-  const [lexicon, preference, status] = await Promise.all([
+  const [lexicon, preference] = await Promise.all([
     readLexicon(lang),
     readGenerationSettings(session.user.id),
-    generationStatus(apiKey ? { apiKey } : {}, lang),
   ]);
   // This editor's own ElevenLabs settings, which are what a preview is spoken with and what
   // decides whether a phoneme rule is honoured.
@@ -51,9 +50,16 @@ export default async function Page({ params }: { params: Promise<{ lang: string 
   // whether pressing it costs money.
   //
   // English only: the preview sentences are English's (see the preview route).
-  const cached = english
-    ? await previewCache(lexicon.entries, voicePicker(status.voiceIds), config)
-    : {};
+  //
+  // Not awaited: it needs the account's voices, and the editor is no reason to wait on
+  // ElevenLabs. The page draws at once and this streams in after it, or its error does.
+  // The roster, not generationStatus: the subscription is the slow answer and is not needed.
+  const cached: Promise<CacheRead> = english
+    ? generationRoster(apiKey ? { apiKey } : {}, lang).then(async (roster) => ({
+        cache: await previewCache(lexicon.entries, voicePicker(roster.voiceIds), config),
+        error: apiKey ? roster.error : null,
+      }))
+    : Promise.resolve({ cache: {}, error: null });
 
   return (
     <main className="pt-6 pb-36">

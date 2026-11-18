@@ -3,7 +3,7 @@ import { pageLang } from "@/lib/lang-server";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 
-import VoicesTabs from "@/components/voices/VoicesTabs";
+import VoicesTabs, { type AccountView } from "@/components/voices/VoicesTabs";
 import { apiKeyStatus, readApiKey } from "@/lib/api-key";
 import { readPreference } from "@/lib/generation/preference";
 import { isProvider } from "@/lib/generation/providers";
@@ -60,10 +60,21 @@ export default async function Page({
   // The viewer's own account, since the generator resolves voices by name against the key
   // generating: this is the roster their lines would be spoken from. The page's language's
   // clones only -- a slot filled in English is empty in German until German clips are cloned.
-  // Without the subscription, which is the slow one of ElevenLabs' answers: VoicesTabs asks
-  // for the slot count once the page is up.
-  const account = elevenKey ? await generationRoster({ apiKey: elevenKey }, lang) : null;
-  const readable = account !== null && !(account.error && account.voiceIds.size === 0);
+  // Not awaited: the page draws at once and the roster streams in after it, so an ElevenLabs
+  // that is slow or down costs the ElevenLabs parts of the page, not the page. Without the
+  // subscription, which VoicesTabs asks for once the page is up.
+  const account: Promise<AccountView> | null = elevenKey
+    ? generationRoster({ apiKey: elevenKey }, lang).then((roster) => {
+        const readable = !(roster.error && roster.voiceIds.size === 0);
+        return {
+          models: readable
+            ? roster.models.map((model) => ({ id: model.id, name: model.name }))
+            : null,
+          existing: readable ? [...roster.voiceIds.keys()] : null,
+          error: roster.error,
+        };
+      })
+    : null;
 
   // One readdir per slot, so the roster arrives with its clip counts already filled in
   // rather than each row fetching its own once expanded.
@@ -95,9 +106,7 @@ export default async function Page({
           active={preference.provider}
           keys={{ elevenlabs: elevenStatus !== null, fish: fishStatus !== null }}
           settings={{ elevenlabs: preference.elevenlabs, fish: preference.fish }}
-          elevenLabsModels={
-            readable ? account.models.map((model) => ({ id: model.id, name: model.name })) : null
-          }
+          account={account}
           fishModels={FISH_MODELS.map((model) => ({
             id: model.id,
             label: model.label,
@@ -114,8 +123,6 @@ export default async function Page({
           seedSlots={seedSlots}
           initialReferences={Object.fromEntries(references)}
           raceTags={settings.config.raceTags}
-          existing={readable ? [...account.voiceIds.keys()] : null}
-          accountError={account?.error ?? null}
           manager={canManageVoices(viewer, lang)}
           directs={can(viewer, "configure", lang)}
         />
