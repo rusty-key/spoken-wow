@@ -113,19 +113,24 @@ beforeAll(async () => {
 }, 30_000);
 
 afterAll(async () => {
-  for (const table of ["line_override", "quest_line", "lore_line", "boss_line", "book_line", "api_batch", "api_token"]) {
-    await asSystem.query(`delete from "${table}" where "lang" = $1`, [lang]);
+  try {
+    if (lang) {
+      for (const table of ["line_override", "quest_line", "lore_line", "boss_line", "book_line", "api_batch", "api_token"]) {
+        await asSystem.query(`delete from "${table}" where "lang" = $1`, [lang]);
+      }
+      await asSystem.query(`delete from "activity" where "lang" = $1`, [lang]);
+      await asSystem.query(`delete from "quest_line_speaker" where "lang" = $1`, [lang]);
+    }
+    await asSystem.query(`delete from "npc" where "npcKind" = 'creature' and "npcId" = any($1)`, [npcIds]);
+    for (const team of [a, b]) if (team) await dropTeam(team);
+    await u?.cleanup();
+    await m?.cleanup();
+    if (lang) await dropLang(lang);
+    forgetTeams();
+    await f?.remove();
+  } finally {
+    await closeDb();
   }
-  await asSystem.query(`delete from "activity" where "lang" = $1`, [lang]);
-  await asSystem.query(`delete from "quest_line_speaker" where "lang" = $1`, [lang]);
-  await asSystem.query(`delete from "npc" where "npcKind" = 'creature' and "npcId" = any($1)`, [npcIds]);
-  for (const team of [a, b]) await dropTeam(team);
-  await u.cleanup();
-  await m.cleanup();
-  await dropLang(lang);
-  forgetTeams();
-  await f.remove();
-  await closeDb();
 });
 
 function run(ctx: TokenContext, section: Source, items: unknown[], layer: Layer) {
@@ -292,9 +297,10 @@ describe("a second team's member", () => {
   });
 
   it("reads its team's override in each section, which the privileged team does not see", async () => {
-    await first(ctxU, "readables", { id: f.page.lineId, text: "Unsere Seite." });
+    const written = await first(ctxU, "readables", { id: f.page.lineId, text: "Nur unsere Seite." });
+    expect(written.text).toMatchObject({ status: "updated", layer: "override" });
     const asU = await asActor(u.id, () => sections.readables.one(lang, f.page.lineId, 0));
-    expect(asU).toMatchObject({ text: "Eine Seite.", override: "Unsere Seite." });
+    expect(asU).toMatchObject({ text: "Eine Seite.", override: "Nur unsere Seite." });
     expect(await asActor(m.id, () => sections.readables.one(lang, f.page.lineId, 0))).toMatchObject({
       text: "Eine Seite.",
       override: null,

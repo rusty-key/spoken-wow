@@ -70,6 +70,14 @@ const restore = (auth: string, batchId: string) =>
     params: Promise.resolve({ batchId }),
   });
 
+async function currentLore(lineId: string): Promise<string | null> {
+  const { rows } = await asSystem.query<{ full: string }>(
+    `select "full" from "lore_line" where "lineId" = $1 and "lang" = $2 and "isCurrent"`,
+    [lineId, LANG],
+  );
+  return rows[0]?.full ?? null;
+}
+
 const list = (auth: string) => GET(new Request("https://example.com/api/v1/batches", authed(auth)));
 
 describe("GET /api/v1/batches", () => {
@@ -110,12 +118,14 @@ describe("POST /api/v1/batches/[batchId]/restore", () => {
   it("skips the original edits of an owner who has since lost text", async () => {
     const mine = await token(f.user);
     const batchId = await runBatch(mine.token, [{ id: f.zone, text: "남음." }]);
+    expect(await currentLore(f.zone)).toBe("남음.");
     lostText.add(f.user);
     const response = await restore(mine.token, batchId);
     expect(response.status).toBe(200);
     expect(await response.json()).toEqual({
       results: [{ id: f.zone, field: "text", status: "skipped", reason: "not_allowed" }],
     });
+    expect(await currentLore(f.zone)).toBe("남음.");
   });
 
   it("survives its token being revoked: a new token restores it", async () => {
