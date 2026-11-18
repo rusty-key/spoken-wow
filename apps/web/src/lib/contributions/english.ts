@@ -11,6 +11,7 @@ import "server-only";
 import { db } from "@/lib/db";
 import { BASE_LANG, clientLang } from "@/lib/lang";
 
+import { readable } from "./compare";
 import { momentNamed, momentTexts } from "./known";
 import type { Contribution } from "./store";
 
@@ -34,7 +35,12 @@ export async function englishFor(rows: readonly Contribution[]): Promise<Map<num
   const greetings = translated.filter((row) => momentNamed(row) === null && row.text?.trim());
   if (greetings.length > 0) {
     const { rows: matched } = await db().query<{ id: number; text: string }>(
-      `select distinct on (m."id") m."id", coalesce(nullif(e."text", ''), e."text1") as "text"
+      // The English form at the same place as the one the greeting matched: `text` and `text1` are
+      // the male and female wordings, so a `text1` match was sent from the female one.
+      `select distinct on (m."id") m."id",
+              case when gossip_norm(m."text") = any(gossip_readings(b."text"))
+                   then coalesce(nullif(e."text", ''), e."text1")
+                   else coalesce(nullif(e."text1", ''), e."text") end as "text"
          from unnest($1::int[], $2::text[], $3::text[]) as m ("id", "lang", "text")
          join "broadcast_text" b
            on b."lang" = m."lang"
@@ -46,6 +52,6 @@ export async function englishFor(rows: readonly Contribution[]): Promise<Map<num
     for (const row of matched) if (row.text) found.set(row.id, row.text);
   }
   // English templates break lines with `$B`: shown, and checked, as the line breaks they are.
-  for (const [id, text] of found) found.set(id, text.replace(/\$[Bb](?![a-z])/g, "\n"));
+  for (const [id, text] of found) found.set(id, readable(text));
   return found;
 }
