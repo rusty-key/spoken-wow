@@ -190,11 +190,13 @@ export function matching(lines: ResultLine[], filters: LineFilters = {}): Result
 }
 
 // Deterministic and total, because paging a list whose order can shift drops and
-// repeats rows between pages. Zone line first within a zone, then subzones by name.
+// repeats rows between pages. Zone line first within a zone, then subzones by name. Map
+// after name keeps two zones of one name apart, each under its own heading.
 function order(lines: ResultLine[]): ResultLine[] {
   return [...lines].sort(
     (a, b) =>
       a.zoneName.localeCompare(b.zoneName) ||
+      a.mapID - b.mapID ||
       Number(a.kind === "subzone") - Number(b.kind === "subzone") ||
       a.name.localeCompare(b.name) ||
       a.id.localeCompare(b.id),

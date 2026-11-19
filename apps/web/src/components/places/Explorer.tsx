@@ -768,7 +768,10 @@ export function Explorer<L extends ExplorerLine, F extends ExplorerFilters>({
             <tbody>
             {result?.lines.map((line, index) => (
               <Fragment key={line.id}>
-                {section.chip(line) !== (index > 0 ? section.chip(result.lines[index - 1]) : undefined) && (
+                {/* By map as well: two zones may share a name, and the heading narrows to one map. */}
+                {(index === 0 ||
+                  line.mapID !== result.lines[index - 1].mapID ||
+                  section.chip(line) !== section.chip(result.lines[index - 1])) && (
                   <GroupHeader
                     section={section}
                     line={line}

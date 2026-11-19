@@ -6,7 +6,7 @@ import { afterEach, expect, test, vi } from "vitest";
 import { LangProvider } from "@/components/LangProvider";
 import type { ResultLine } from "@/lib/places/search";
 
-import { LineRow } from "./LineRow";
+import { LineRow, type RowState } from "./LineRow";
 
 vi.mock("@/lib/auth-client", () => ({ useSession: () => ({ data: null }) }));
 
@@ -31,7 +31,7 @@ const goldshire: ResultLine = {
   override: null,
 };
 
-function row(line: ResultLine, may: { canRegenerate: boolean; canEdit: boolean }) {
+function row(line: ResultLine, may: { canRegenerate: boolean; canEdit: boolean }, state?: RowState) {
   const noop = () => {};
   render(
     <LangProvider lang="deDE">
@@ -45,6 +45,7 @@ function row(line: ResultLine, may: { canRegenerate: boolean; canEdit: boolean }
             showRecordings={false}
             onRecordingChanged={noop}
             {...may}
+            state={state}
             canTriage={false}
             onPlay={noop}
             onReport={noop}
@@ -126,4 +127,10 @@ test("a line with no audio offers Generate on the row, and current audio keeps i
   expect(screen.queryByRole("button", { name: /^(Generate|Regenerate) Goldshire/ })).toBeNull();
   await openMore();
   expect(screen.queryByRole("button", { name: "Regenerate Goldshire" })).not.toBeNull();
+});
+
+// A second request while one runs would be refused by the file lock and paint an error over it.
+test("Generate waits while the line is already generating", () => {
+  row({ ...goldshire, state: "missing" }, { canRegenerate: true, canEdit: true }, { phase: "busy" });
+  expect(screen.getByRole("button", { name: "Generate Goldshire" })).toHaveProperty("disabled", true);
 });

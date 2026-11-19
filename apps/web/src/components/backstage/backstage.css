@@ -994,8 +994,9 @@ body:has(main.bs) {
 
 /* ---------- Catalogue list: the panel the audio pages' tables sit in ---------- */
 
+/* Scrolls rather than clips: the fixed columns outgrow a phone, and the actions sit last. */
 .cat-list {
-  overflow: hidden;
+  overflow-x: auto;
   margin-top: 4px;
   border-radius: 8px;
   background: var(--bs-panel);

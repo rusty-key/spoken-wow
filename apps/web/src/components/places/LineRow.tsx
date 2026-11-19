@@ -133,6 +133,7 @@ export function LineRow<L extends ExplorerLine>({
   const generate: RowAction = {
     label: line.state === "missing" ? "Generate" : "Regenerate",
     aria: `${line.state === "missing" ? "Generate" : "Regenerate"} ${line.name}`,
+    disabled: state?.phase === "busy" ? "Generating already" : undefined,
     emphasis: needsTake,
     onClick: () => onRegenerate(line),
   };

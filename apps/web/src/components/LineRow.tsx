@@ -8,6 +8,7 @@ import { Untranslated, UntranslatedMark } from "@/components/Untranslated";
 import FilterLink from "@/components/FilterLink";
 import { useLang } from "@/components/LangProvider";
 import { langName, localeHref } from "@/lib/lang";
+import { SOURCE_LABELS } from "@/lib/line-fields";
 import { RowActions, StateWord, type RowAction } from "@/components/catalogue/RowParts";
 import { ChevronDownIcon, MessageSquareIcon, MessageSquareQuoteIcon, PlayIcon } from "lucide-react";
 import { useState } from "react";
@@ -79,7 +80,7 @@ function SourceMark({ source }: { source: string }) {
 
   if (source === "chatter") {
     return (
-      <span title={CHATTER_LABEL} aria-label="NPC chat" className="mt-1 flex w-3.5 shrink-0 justify-center">
+      <span title={CHATTER_LABEL} aria-label={SOURCE_LABELS.chatter} className="mt-1 flex w-3.5 shrink-0 justify-center">
         <MessageSquareQuoteIcon className="size-3.5 text-zinc-400" />
       </span>
     );
@@ -156,7 +157,10 @@ type Props = {
   onClearDirty: (line: ResultLine) => void;
 };
 
-/** A line's kind in words, under its quest, where the old table drew a glyph only. */
+/**
+ * A line's kind under its quest title, where the old table drew a glyph only. Lower case and
+ * shorter than the filter labels, since the quest is already named right above it.
+ */
 const SOURCE_WORDS: Record<string, string> = {
   accept: "accept",
   progress: "progress",
@@ -275,7 +279,7 @@ export default function LineRow({
   const generate: RowAction = {
     label: missing ? "Generate" : "Regenerate",
     aria: `${missing ? "Generate" : "Regenerate"} ${subject}`,
-    disabled: blocked ?? undefined,
+    disabled: blocked ?? (state?.phase === "busy" ? "Generating already" : undefined),
     emphasis: needsTake,
     onClick: () => onRegenerate(line),
   };
@@ -419,7 +423,7 @@ export default function LineRow({
         ) : (
           // Gossip and chat have no quest: the BroadcastText ids they speak stand in its place.
           <>
-            <span className="cat-two-top">{line.source === "chatter" ? "NPC chat" : "Gossip"}</span>
+            <span className="cat-two-top">{SOURCE_LABELS[line.source === "chatter" ? "chatter" : "gossip"]}</span>
             <span className="cat-two-sub">
               {line.broadcast?.length
                 ? line.broadcast.map(({ id, matchedBy }, index) => (

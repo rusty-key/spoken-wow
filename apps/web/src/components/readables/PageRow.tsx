@@ -128,7 +128,11 @@ export function PageRow({
   const generate: RowAction = {
     label: line.state === "missing" ? "Generate" : "Regenerate",
     aria: `${line.state === "missing" ? "Generate" : "Regenerate"} page ${line.pageNumber} of ${line.title}`,
-    disabled: line.generatable ? undefined : `This page cannot be voiced: ${line.skipReason}`,
+    disabled: !line.generatable
+      ? `This page cannot be voiced: ${line.skipReason}`
+      : state?.phase === "busy"
+        ? "Generating already"
+        : undefined,
     emphasis: needsTake,
     onClick: () => onRegenerate(line),
   };
