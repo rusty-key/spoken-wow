@@ -682,7 +682,7 @@ next look and frees the lock.
 
 ### Team releases
 
-A press by a team that is not official, or that is not its language's privileged team, builds that
+A press by a team that is not official, or whose packs in the language carry its slug, builds that
 team's packs (`docs/platform/TEAMS.md`, *Team releases*). It is refused with a 409 except on a site
 that sets, in `app.env`:
 
@@ -694,9 +694,9 @@ Staging sets it. **Production sets it only once a Manager that reads `index-v2.j
 that orders a language's voices have been released**: before that no player can install a team's
 pack, and a suffixed pack requires a Spoken that is not out. The site reads it for the press, and the
 job takes it from `app.env` too, so `release.mjs` refuses such a pack anywhere it is unset. It works
-on the droplet only (`SPOKEN_RELEASE_ENV` set): the workflow's synced database gives every take to
-the privileged team, so it cannot build another team's pack. Restart as above after changing it.
-Official privileged teams release as before, with or without it.
+on the droplet only (`SPOKEN_RELEASE_ENV` set): the workflow builds from a synced database, which can
+give a team's takes to another, so it cannot build a team's own pack. Restart as above after changing
+it. An official team with plain packs releases as before, with or without it.
 
 **Review.** A release of a team that is not official uploads its packs and lists them nowhere: it
 ends *Waiting for review*, and every site owner gets an email. Review it on `/admin/team-releases`

@@ -89,8 +89,8 @@ language has `plain`, else `slug`. One team per language at most has `plain`.
 - A rejected contribution's lines are ignored for the whole language: a `line_ignore` row with the
   language and no team, which every team of the language honours and anyone who may ignore there
   may lift. A team's own ignore stays that team's.
-- `privileged` and `team_of_lang()` remain for older releases and scripts, and follow `packName`:
-  the privileged team is the one with plain packs.
+- `privileged` and `team_of_lang()` remain for older releases, and follow `packName`: the
+  privileged team is the one with plain packs. No script reads them.
 - The site picks no team by rank. A request works as the person's team in the language; in a
   language with one team, as that team, whoever asks. In a language with several, somebody who works
   in none of them has no team there: their writes refuse, and the explorer shows them a team
@@ -339,9 +339,10 @@ language. Section `bosses` is Manager-only in the workflow: it has no CurseForge
 upload target there. English places also builds the bosses pack that its zip carries, so an
 English places release publishes `SpokenBossesAudio` too.
 
-In phase 1 every team is the **privileged** team of its languages: its packs keep today's ids and
-folders (`SpokenQuestsAudioHorde_deDE`, `SpokenPlacesAudio_frFR`, …), with no team code. Older Managers
-see no change.
+A team's pack name in each language (`team_language.packName`) decides its folders. Every team that
+had the language before teams were equal has `plain` packs, with today's ids and folders
+(`SpokenQuestsAudioHorde_deDE`, `SpokenPlacesAudio_frFR`, …) and no team code. Older Managers see no
+change.
 
 Every section publishes from the droplet, whose copy of the signing key sits in
 `shared/release.env`, as PLAN.md decided.
@@ -354,20 +355,23 @@ transcodes only its 64 kbps tier, to MP3 as well.
 
 Every team admin can press Release; a press builds the packs of the team it was made in, read from
 that team's live takes alone. The run carries the team (`release_run.teamId`), the droplet job
-passes its slug to `release.mjs --team`, and every builder query that picked the privileged team
-(`team_of_lang`) takes the release's team instead (`pipelines/lib/release-team.mjs`,
-`SPOKEN_RELEASE_TEAM`). A build outside a release reads the privileged team's, as before.
+passes its slug to `release.mjs --team`, and every builder query takes the release's team
+(`pipelines/lib/release-team.mjs`, `SPOKEN_RELEASE_TEAM`). A build outside a release reads the team
+with the language's `plain` packs, and a language with none reads no team. `release.mjs` without
+`--team` (`make manager-release TEAM=`) builds for the language's only team and refuses a language
+with several. The scripts run by hand that read one team's rows (`acted.mjs`, `fetch-encodings.mjs`,
+`push-sources.sh`) take `--team` or `TEAM=` and default to the team with `plain` packs.
 
 - **Official.** `team.official` (migration 0120) is set on every team made before it, on a team a
   site owner creates or founds with a new language, and on the team of a language a site owner adds.
   An approved request makes a team that is not official. Only a site owner changes it, on
   `/admin/teams`. Official decides whether a release waits for review and whether the Manager names
   the team on its packs; it does not change pack ids.
-- **Pack ids.** The language's privileged team builds the plain ids (`SpokenPlacesAudio_jaJP`),
-  official or not. Any other team's folders carry its slug after the language
-  (`SpokenPlacesAudio_deDE_stimmen`, `scripts/lib/packs.mjs` `teamFolder`). A team's slug never
+- **Pack ids.** A team with `plain` packs in the language builds the plain ids
+  (`SpokenPlacesAudio_jaJP`), official or not. A team with `slug` packs carries its slug after the
+  language (`SpokenPlacesAudio_deDE_stimmen`, `scripts/lib/packs.mjs` `teamFolder`). A team's slug never
   changes: `PATCH /api/teams/[id]` takes no slug, since a new one would orphan every installed pack.
-- **Page packs stay as they were.** A privileged team whose language has a store page with
+- **Page packs stay as they were.** A team with `plain` packs whose language has a store page with
   `manager: true` for the section builds that page's pack, with the same folders, title, version,
   icon and `.toc` (`scripts/manager/release.golden.json` pins them).
 - **Derived packs** are every other release (`scripts/manager/release-pack.mjs`): English's Manager
@@ -417,9 +421,9 @@ passes its slug to `release.mjs --team`, and every builder query that picked the
   team's pack can have, and removes them from both indexes, and its files stay. The team's release page says
   "Delisted by a site owner."; its next approved release lists the pack again. An official team's
   packs are not delisted here.
-- **Opened per site.** A press by a team that is not official, or not privileged, gets 409 unless the
-  site sets `SPOKEN_TEAM_RELEASES=1` and releases on the droplet (`deploy/web/README.md`, *Team
-  releases*); `release.mjs` refuses a derived pack without it. Staging sets it. Production sets it
+- **Opened per site.** A press by a team that is not official, or whose packs carry its slug, gets
+  409 unless the site sets `SPOKEN_TEAM_RELEASES=1` and releases on the droplet (`deploy/web/README.md`,
+  *Team releases*); `release.mjs` refuses a derived pack without it. Staging sets it. Production sets it
   only once a Manager that reads `index-v2.json` and a Spoken that orders a language's voices have
   shipped, since no player could install such a pack before.
 
