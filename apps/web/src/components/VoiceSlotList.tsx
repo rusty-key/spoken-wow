@@ -673,14 +673,14 @@ function usePlayer(tab: Provider) {
   const audio = useRef<HTMLAudioElement | null>(null);
   // Which request is current, so a play() an older one lost does not clear the newer one.
   const request = useRef(0);
-  const [state, setState] = useState<{ tab: Provider; src: string } | null>(null);
-  // Kept with its tab: switching provider hides the row that could stop it.
-  const playing = state?.tab === tab ? state.src : null;
+  const [playing, setPlaying] = useState<string | null>(null);
 
+  // Stopped on a provider switch, which hides the row that could stop it.
   useEffect(
     () => () => {
       request.current++;
       audio.current?.pause();
+      setPlaying(null);
     },
     [tab],
   );
@@ -688,20 +688,20 @@ function usePlayer(tab: Provider) {
   function toggle(src: string) {
     if (!audio.current) {
       audio.current = new Audio();
-      audio.current.onended = () => setState(null);
-      audio.current.onerror = () => setState(null);
+      audio.current.onended = () => setPlaying(null);
+      audio.current.onerror = () => setPlaying(null);
     }
     const mine = ++request.current;
     if (playing === src) {
       audio.current.pause();
-      setState(null);
+      setPlaying(null);
       return;
     }
     audio.current.src = src;
     void audio.current.play().catch(() => {
-      if (request.current === mine) setState(null);
+      if (request.current === mine) setPlaying(null);
     });
-    setState({ tab, src });
+    setPlaying(src);
   }
 
   return { playing, toggle };
