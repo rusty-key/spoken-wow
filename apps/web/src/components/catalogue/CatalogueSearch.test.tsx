@@ -127,3 +127,33 @@ test("readables: a viewer with no take filters gets no empty take group", async 
   expect(screen.queryByRole("group", { name: "The take" })).toBeNull();
   expect(screen.queryByRole("group", { name: "The book" })).not.toBeNull();
 });
+
+test("Made between drops a half-typed year when the field loses focus", () => {
+  const onChange = vi.fn();
+  render(<FilterDates label="Made between" after={undefined} before={undefined} onChange={onChange} />);
+  const from = screen.getByLabelText("Made between: from") as HTMLInputElement;
+  fireEvent.change(from, { target: { value: "0002-01-01" } });
+  fireEvent.blur(from);
+  expect(from.value).toBe("");
+  expect(onChange).not.toHaveBeenCalled();
+});
+
+test("Done closes the filter panel and puts focus back on Filters", async () => {
+  const user = userEvent.setup();
+  render(
+    <QuestsSearchBar
+      query=""
+      filters={{}}
+      facets={{ races: [], genders: [], flavors: [], voices: [], flavorScopes: [] }}
+      onQuery={() => {}}
+      onFilters={() => {}}
+      onClearAll={() => {}}
+      canTriage={false}
+    />,
+  );
+  const filters = screen.getByRole("button", { name: /^Filters/ });
+  await user.click(filters);
+  await user.click(screen.getByRole("button", { name: "Done" }));
+  expect(filters.getAttribute("aria-expanded")).toBe("false");
+  expect(document.activeElement).toBe(filters);
+});

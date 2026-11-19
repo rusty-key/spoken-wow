@@ -1,7 +1,7 @@
 "use client";
 
 import { SearchIcon, SlidersHorizontalIcon, XIcon } from "lucide-react";
-import { useId, useState, type ReactNode, type Ref } from "react";
+import { useId, useRef, useState, type ReactNode, type Ref } from "react";
 
 import { cn } from "@/lib/utils";
 
@@ -61,6 +61,8 @@ export function CatalogueSearch({
   onClearAll: () => void;
 }) {
   const [open, setOpen] = useState(false);
+  // Done hides itself with the panel, so focus would fall to the page without this.
+  const toggle = useRef<HTMLButtonElement>(null);
   const panelId = useId();
   // From the pills, not the buttons: a hand-typed ?fb=open narrows the list for a viewer who has
   // no Reported button, and All must not claim the list is unfiltered then.
@@ -113,6 +115,7 @@ export function CatalogueSearch({
         <span className="cat-sep" aria-hidden="true" />
         <button
           type="button"
+          ref={toggle}
           className="bs-chip cat-filters"
           aria-expanded={open}
           aria-controls={panelId}
@@ -131,7 +134,14 @@ export function CatalogueSearch({
           <button type="button" className="bs-btn bs-btn-text" onClick={onClearAll}>
             Clear filters
           </button>
-          <button type="button" className="bs-btn bs-btn-primary" onClick={() => setOpen(false)}>
+          <button
+            type="button"
+            className="bs-btn bs-btn-primary"
+            onClick={() => {
+              setOpen(false);
+              toggle.current?.focus();
+            }}
+          >
             Done
           </button>
         </div>
@@ -347,6 +357,8 @@ function DateInput({
         setDraft(next);
         if (next === "" || /^[1-9]\d{3}-/.test(next)) onCommit(next || undefined);
       }}
+      // A half-typed year was never written, so leaving the field shows what filters the list.
+      onBlur={() => setDraft(value ?? "")}
     />
   );
 }
