@@ -142,3 +142,17 @@ test("a team the search no longer knows leaves no rows, rather than breaking the
   await waitFor(() => expect(screen.getByLabelText("Team")).not.toBeNull());
   expect(screen.queryByText(/lines across/)).toBeNull();
 });
+
+// An untranslated line can be neither edited nor voiced here, so the row says where its text comes from.
+test("a line with no text in the language says it waits for that text, and offers no edit", async () => {
+  const waiting = { ...line, missing: { ...line.missing, text: true }, hasAudio: false, voiceable: false };
+  fetchMock.mockImplementation(async (url: string) =>
+    url.startsWith("/api/quests/search")
+      ? new Response(JSON.stringify({ ...result, lines: [waiting] }), { status: 200 })
+      : new Response("{}", { status: 404 }),
+  );
+  explorer(null);
+  const hint = await screen.findByRole("link", { name: "Waiting for German text" });
+  expect(hint.getAttribute("href")).toBe("/deDE/contributions/quests");
+  expect(named(/^Edit the spoken text/)).toHaveLength(0);
+});

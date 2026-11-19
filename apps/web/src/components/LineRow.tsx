@@ -7,7 +7,7 @@ import { RenameButton } from "@/components/RenameButton";
 import { Untranslated, UntranslatedMark } from "@/components/Untranslated";
 import FilterLink from "@/components/FilterLink";
 import { useLang } from "@/components/LangProvider";
-import { localeHref } from "@/lib/lang";
+import { langName, localeHref } from "@/lib/lang";
 import { RowActions, StateWord, type RowAction } from "@/components/catalogue/RowParts";
 import { ChevronDownIcon, MessageSquareIcon, MessageSquareQuoteIcon, PlayIcon } from "lucide-react";
 import { useState } from "react";
@@ -493,6 +493,17 @@ export default function LineRow({
       )}
 
       <td className="cat-cell-actions">
+        {/* No text in this language, so nothing here can be edited or voiced: the text comes from
+            players' game clients and is accepted on the review page. Saying so beats an empty cell. */}
+        {line.missing?.text && (
+          <a
+            href={localeHref(lang, "/contributions/quests")}
+            className="cat-hint"
+            title="Players send this line's text from their game. Once it is accepted on the review page, it can be voiced."
+          >
+            Waiting for {langName(lang)} text
+          </a>
+        )}
         <RowActions
           subject={subject}
           badge={<ReportsBadge source="quests" lineId={line.lineId} count={line.reportsOpen} canTriage={canTriage} />}
