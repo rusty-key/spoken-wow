@@ -3,13 +3,14 @@
  *
  * A global admin sees and changes every grant. Somebody who is `admin` in a language sees and
  * changes their own team's grants there, and hands out its team capabilities into that team. An
- * admin of the privileged team also sees its text maintainers, and appoints them when the team
- * does (`textByTeam`).
+ * admin of any team of the language also sees its text maintainers, and appoints them when the
+ * language lets its teams (`textByTeam`).
  * lib/permissions.ts `canGrant` is the rule; this only applies it.
  */
 import { headers } from "next/headers";
 
 import { auth } from "@/lib/auth";
+import { ALL_TEAMS } from "@/lib/db";
 import { addGrants, OtherTeamError, refusedGrant, removeGrant, userByEmail, viewerOf } from "@/lib/grants/store";
 import { listingFor, notAllowed } from "@/lib/invites/listing";
 import {
@@ -24,7 +25,7 @@ import {
 import { knownLang } from "@/lib/languages/catalogue";
 import { isAdmin, isCapability, removesOwnAdmin, type Viewer } from "@/lib/permissions";
 import { teamIn } from "@/lib/teams/acting";
-import { privilegedOf, teamOrPrivileged } from "@/lib/teams/store";
+import { ownerOrAll } from "@/lib/teams/store";
 
 export const dynamic = "force-dynamic";
 
@@ -67,9 +68,9 @@ export async function PUT(request: Request) {
   // a translator gives somebody when asking to be let in.
   const user = await userByEmail(address);
   if (user) {
-    // A site owner's grant lands in the target person's team, else the privileged team, whatever
-    // team the site owner is in.
-    const team = isAdmin(who.viewer.role) ? await teamOrPrivileged(user.id, lang) : undefined;
+    // A site owner's grant lands in the target person's team, else the team the site owner acts
+    // in, which addGrants picks.
+    const team = isAdmin(who.viewer.role) ? ((await teamIn(user.id, lang)) ?? undefined) : undefined;
     try {
       await addGrants(user.id, lang, capabilities, who.userId, {
         team,
@@ -83,10 +84,10 @@ export async function PUT(request: Request) {
   }
 
   // Nobody has registered as it: invite the address instead, into the inviter's team. A site
-  // owner's invite, or one from somebody in no team of the language, joins the team with plain
-  // packs, whatever team they are in.
+  // owner's joins the team they act in: the language's one team, else the one they picked.
   const inviterTeam = isAdmin(who.viewer.role) ? null : await teamIn(who.userId, lang);
-  const team = inviterTeam ?? (await privilegedOf(lang));
+  const acting = inviterTeam ?? (await ownerOrAll(lang));
+  const team = acting === ALL_TEAMS ? null : acting;
   if (!team) return Response.json({ error: `${lang} has no team to invite into` }, { status: 409 });
   try {
     await createInvite({

@@ -6,9 +6,9 @@ import "server-only";
 
 import { listGrants, listTeamGrants, type GrantRow } from "@/lib/grants/store";
 import type { Lang } from "@/lib/lang";
-import { adminsPrivileged, isAdmin, langsWhere, type Viewer } from "@/lib/permissions";
+import { can, isAdmin, langsWhere, type Viewer } from "@/lib/permissions";
 import { memberTeams } from "@/lib/teams/acting";
-import { orPrivileged, type TeamId } from "@/lib/teams/store";
+import { onlyTeamOf, type TeamId } from "@/lib/teams/store";
 
 import { listInvites, type InviteRow } from "./store";
 
@@ -23,7 +23,7 @@ export async function viewerTeams(viewer: Viewer, userId: string): Promise<Teams
 
 /**
  * The grants in `langs` that the viewer sees: all of them for a site owner. Anyone else sees, in
- * each, their own team's rows, and the `text` rows where they are an admin of the privileged team.
+ * each, their own team's rows, and the `text` rows where they are an admin of a team.
  */
 export async function visibleGrants(viewer: Viewer, teams: Teams, langs: readonly string[]): Promise<GrantRow[]> {
   if (isAdmin(viewer.role)) return listGrants([...langs]);
@@ -32,19 +32,20 @@ export async function visibleGrants(viewer: Viewer, teams: Teams, langs: readonl
     const team = teams.get(lang);
     if (team) own.set(lang, team);
   }
-  const textLangs = langs.filter((lang) => adminsPrivileged(viewer, lang));
+  const textLangs = langs.filter((lang) => can(viewer, "admin", lang as Lang));
   return listTeamGrants(own, textLangs);
 }
 
 /**
  * The open invites in `langs` that the viewer sees: all of them for a site owner, and for anyone
- * else, in each, the ones that join their own team there (the plain team when they are in none).
+ * else, in each, the ones that join their own team there, or the language's one team when they
+ * are in none.
  */
 export async function visibleInvites(viewer: Viewer, teams: Teams, langs: readonly string[]): Promise<InviteRow[]> {
   if (isAdmin(viewer.role)) return listInvites([...langs]);
   const byTeam = new Map<TeamId, string[]>();
   for (const lang of langs) {
-    const team = await orPrivileged(teams.get(lang), lang as Lang);
+    const team = teams.get(lang) ?? (await onlyTeamOf(lang as Lang));
     if (team) byTeam.set(team, [...(byTeam.get(team) ?? []), lang]);
   }
   const lists = await Promise.all([...byTeam].map(([team, inTeam]) => listInvites(inTeam, team)));

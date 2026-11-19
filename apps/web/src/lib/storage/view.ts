@@ -33,7 +33,7 @@ export async function storageView(lang: Lang): Promise<StorageView> {
   const moves = await listMoves(team);
   const [[about], langs, backends, ownStorage] = await Promise.all([
     query<{ id: string; name: string }>(`select "id", "name" from "team" where "id" = $1`, [team]),
-    query<{ lang: Lang }>(`select "lang" from "team_language" where "teamId" = $1 and "privileged" order by "lang"`, [team]),
+    query<{ lang: Lang }>(`select "lang" from "team_language" where "teamId" = $1 order by "lang"`, [team]),
     listBackends(team),
     keepsOwnStorage(team),
   ]);

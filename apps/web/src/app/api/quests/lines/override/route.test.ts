@@ -150,13 +150,13 @@ describe("/api/quests/lines/override", () => {
     expect(rewritten).toEqual([{ lang: "deDE", text: "Gut gemacht, $GBursche:Mädel;." }]);
   });
 
-  describe("for a second team's member", () => {
+  describe("for a member of a team without plain packs", () => {
     let team: string;
 
     beforeEach(async () => {
       const [row] = await systemRows<{ id: string }>(`select new_team('override-second', 'override-second') as "id"`);
       team = row.id;
-      await asSystem.query(`insert into "team_language" ("teamId", "lang", "privileged") values ($1, 'deDE', false)`, [team]);
+      await asSystem.query(`insert into "team_language" ("teamId", "lang", "packName") values ($1, 'deDE', 'slug')`, [team]);
       await asSystem.query(
         `insert into "team_member" ("teamId", "userId", "lang", "capability") values ($1, $2, 'deDE', 'regenerate')`,
         [team, USER],
@@ -171,12 +171,19 @@ describe("/api/quests/lines/override", () => {
       forgetTeams();
     });
 
-    it("refuses a gender split and leaves the line alone", async () => {
+    it("splits a line by the reader's gender with text, as any team's member does", async () => {
+      viewer.grants = [
+        { lang: "deDE", capability: "regenerate" },
+        { lang: "deDE", capability: "text" },
+      ];
       const response = await asActor(USER, () => put("deDE", "Well met, $Glad:lass;."));
-      expect(response.status).toBe(409);
-      expect((await response.json()).error).toBe(
-        "A second team cannot split a line by the reader's gender: that changes the original text every team voices. Ask the language's text maintainers.",
-      );
+      expect(response.status).toBe(200);
+      expect(rewritten).toEqual([{ lang: "deDE", text: "Well met, $Glad:lass;." }]);
+    });
+
+    it("refuses a gender split without text, and leaves the line alone", async () => {
+      const response = await asActor(USER, () => put("deDE", "Well met, $Glad:lass;."));
+      expect(response.status).toBe(403);
       const { rows } = await asSystem.query(`select 1 from "line_override" where "file" = $1`, [FILE]);
       expect(rows).toEqual([]);
       expect(rewritten).toEqual([]);

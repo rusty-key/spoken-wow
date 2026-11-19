@@ -8,7 +8,7 @@ import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } 
 import { closeDb } from "@/lib/db";
 import { forgetLanguages, loadLanguages } from "@/lib/languages/catalogue";
 import type { Viewer } from "@/lib/permissions";
-import { forgetTeams, teamLangs } from "@/lib/teams/store";
+import { forgetTeams, sharedLangs } from "@/lib/teams/store";
 import { addMember, asSystem, dropLang, dropTeam, newTeamIn, plainTeam, systemRows, testUser, uniqueLang } from "@/lib/teams/testing";
 
 const who = vi.hoisted(() => ({ viewer: { role: null, grants: [] } as Viewer, id: "" }));
@@ -221,7 +221,7 @@ describe("/api/grants", () => {
   });
 });
 
-describe("/api/grants in a language with a second team", () => {
+describe("/api/grants in a language with two teams", () => {
   let lang: string;
   let teamA: string;
   let teamB: string;
@@ -248,7 +248,7 @@ describe("/api/grants in a language with a second team", () => {
     await addMember(teamB, w.id, lang, "admin");
     await addMember(teamA, v.id, lang, "regenerate");
     who.id = w.id;
-    who.viewer = { role: null, grants: [{ lang, capability: "admin", privileged: false }] };
+    who.viewer = { role: null, grants: [{ lang, capability: "admin" }] };
   });
 
   afterEach(async () => {
@@ -262,7 +262,7 @@ describe("/api/grants in a language with a second team", () => {
     for (const user of [w, v, fresh]) await user.cleanup();
   });
 
-  it("lists none of the privileged team's rows to the second team's admin", async () => {
+  it("lists none of the other team's rows to a team's admin", async () => {
     const response = await GET();
     expect(response.status).toBe(200);
     const { grants } = (await response.json()) as { grants: { userId: string }[] };
@@ -289,25 +289,12 @@ describe("/api/grants in a language with a second team", () => {
     ]);
   });
 
-  it("refuses the second team's admin text, even where the team appoints it", async () => {
-    expect((await putFor(`${fresh.id}@example.invalid`, ["text"])).status).toBe(403);
+  it("lets the admin of a team without plain packs appoint text where the language's teams do", async () => {
+    expect((await putFor(`${fresh.id}@example.invalid`, ["text"])).status).toBe(200);
+    expect(await systemRows(`select "lang" from "language_grant" where "userId" = $1`, [fresh.id])).toEqual([{ lang }]);
   });
 
-  it("refuses text to a second team's admin while the cached mapping does not know the team yet", async () => {
-    await asSystem.query(`delete from "team_member" where "teamId" = $1`, [teamB]);
-    await asSystem.query(`delete from "team_language" where "teamId" = $1`, [teamB]);
-    forgetTeams();
-    await teamLangs();
-    await asSystem.query(`insert into "team_language" ("teamId", "lang", "privileged") values ($1, $2, false)`, [
-      teamB, lang,
-    ]);
-    await addMember(teamB, w.id, lang, "admin");
-    who.viewer = { role: null, grants: await grantsOf(w.id) };
-    expect((await putFor(`${fresh.id}@example.invalid`, ["text"])).status).toBe(403);
-    expect(await systemRows(`select 1 from "language_grant" where "userId" = $1`, [fresh.id])).toEqual([]);
-  });
-
-  it("puts a site owner's grant to a second team's member in their own team", async () => {
+  it("puts a site owner's grant to a member of a team in that team", async () => {
     who.id = granter.id;
     who.viewer = { role: "admin", grants: [] };
     expect((await putFor(`${w.id}@example.invalid`, ["record"])).status).toBe(200);
@@ -321,7 +308,7 @@ describe("/api/grants in a language with a second team", () => {
     ]);
   });
 
-  it("files a site owner's removal of a second team's row under that team", async () => {
+  it("files a site owner's removal of a team's row under that team", async () => {
     who.id = granter.id;
     who.viewer = { role: "admin", grants: [] };
     const params = new URLSearchParams({ userId: w.id, lang, capability: "admin" });
@@ -332,7 +319,7 @@ describe("/api/grants in a language with a second team", () => {
     ).toEqual([{ teamId: teamB }]);
   });
 
-  it("puts a site owner's grant to somebody new in the privileged team", async () => {
+  it("puts a site owner's grant to somebody new in the first team, which they act in with no choice", async () => {
     who.id = granter.id;
     who.viewer = { role: "admin", grants: [] };
     expect((await putFor(`${fresh.id}@example.invalid`, ["edit"])).status).toBe(200);
@@ -356,11 +343,11 @@ describe("/api/grants in a language with a second team", () => {
     expect(await invited(w, toB)).toEqual([{ joinTeamId: teamB }]);
   });
 
-  it("puts a grant to somebody new in the privileged team when the site owner is a member of the second", async () => {
+  it("puts a grant to somebody new in the team the site owner is a member of", async () => {
     who.viewer = { role: "admin", grants: [] };
     expect((await putFor(`${fresh.id}@example.invalid`, ["edit"])).status).toBe(200);
     expect(await systemRows(`select "teamId" from "team_member" where "userId" = $1`, [fresh.id])).toEqual([
-      { teamId: teamA },
+      { teamId: teamB },
     ]);
   });
 });

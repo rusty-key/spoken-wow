@@ -9,7 +9,7 @@ import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from
 import { closeDb, db } from "@/lib/db";
 import type { Lang } from "@/lib/lang";
 import { canGrant } from "@/lib/permissions";
-import { forgetTeams, teamLangs } from "@/lib/teams/store";
+import { forgetTeams, sharedLangs } from "@/lib/teams/store";
 import { addMember, asSystem, dropLang, dropTeam, newTeamIn, systemRows, testUser, uniqueLang } from "@/lib/teams/testing";
 
 import { addGrants, grantsOf, listGrants, listTeamGrants, OtherTeamError, removeGrant } from "./store";
@@ -99,7 +99,7 @@ describe("two tables", () => {
 });
 
 describe("removeGrant", () => {
-  it("revokes an audio grant filed under a team that does not own the language, as grantsOf reads it", async () => {
+  it("revokes an audio grant filed under a team that does not voice the language, as grantsOf reads it", async () => {
     const { rows } = await asSystem.query<{ id: string }>(
       `select "id" from "team" where "id" is distinct from team_of_lang('esMX') order by "slug" limit 1`,
     );
@@ -108,7 +108,7 @@ describe("removeGrant", () => {
       [rows[0].id, GRANTEE],
     );
     expect((await grantsOf(GRANTEE)).filter((g) => g.lang === "esMX")).toEqual([
-      { lang: "esMX", capability: "configure", privileged: false },
+      { lang: "esMX", capability: "configure" },
     ]);
 
     await removeGrant(GRANTEE, "esMX", "configure", GRANTER);
@@ -139,7 +139,7 @@ describe("removeGrant", () => {
   });
 });
 
-describe("a second team", () => {
+describe("a language with two teams", () => {
   let lang: Lang;
   let teamA: string;
   let teamB: string;
@@ -227,37 +227,9 @@ describe("a second team", () => {
     ]);
   });
 
-  it("marks a grant in the second team as not privileged", async () => {
-    expect((await grantsOf(w.id)).filter((grant) => grant.lang === lang)).toEqual([
-      { lang, capability: "admin", privileged: false },
-    ]);
+  it("reads a grant in either team alike", async () => {
+    expect((await grantsOf(w.id)).filter((grant) => grant.lang === lang)).toEqual([{ lang, capability: "admin" }]);
     expect((await grantsOf(v.id)).filter((grant) => grant.lang === lang)).toEqual([{ lang, capability: "regenerate" }]);
   });
 });
 
-describe("a second team the cached mapping does not know yet", () => {
-  it("counts its admin as not privileged, so they cannot appoint text", async () => {
-    const lang = await uniqueLang({ textByTeam: true });
-    const admin = await testUser("test-grants-stale");
-    const privileged = await newTeamIn(lang, true, "grants-stale-a");
-    await teamLangs();
-    const [{ id: second }] = await systemRows<{ id: string }>(`select new_team($1, $1) as "id"`, [
-      `grants-stale-b-${admin.id}`,
-    ]);
-    try {
-      await asSystem.query(`insert into "team_language" ("teamId", "lang", "privileged") values ($1, $2, false)`, [
-        second, lang,
-      ]);
-      await addMember(second, admin.id, lang, "admin");
-      const grants = await grantsOf(admin.id);
-      expect(grants).toEqual([{ lang, capability: "admin", privileged: false }]);
-      expect(canGrant({ role: null, grants }, "text", lang, true)).toBe(false);
-    } finally {
-      await dropTeam(second);
-      await dropTeam(privileged);
-      await dropLang(lang);
-      forgetTeams();
-      await admin.cleanup();
-    }
-  });
-});
