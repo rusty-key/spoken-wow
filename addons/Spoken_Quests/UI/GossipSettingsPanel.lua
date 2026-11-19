@@ -111,7 +111,7 @@ function GossipSettingsPanel:Setup()
                 row:SetHeight(MUTED_ROW)
                 -- TOPRIGHT, not RIGHT: RIGHT would also pin the row's middle to the list's, which
                 -- with its top and height set leaves the client no rect to draw.
-                row:SetPoint("TOPLEFT", list, "TOPLEFT", 0, -(i - 1) * MUTED_ROW)
+                row:SetPoint("TOPLEFT", list, "TOPLEFT", SpokenLayout.LABEL_X, -(i - 1) * MUTED_ROW)
                 row:SetPoint("TOPRIGHT", list, "TOPRIGHT", 0, -(i - 1) * MUTED_ROW)
                 row.label = row:CreateFontString(nil, "ARTWORK", "GameFontHighlight")
                 row.label:SetPoint("LEFT", row, "LEFT", 0, 0)
