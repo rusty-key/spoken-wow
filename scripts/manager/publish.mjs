@@ -185,7 +185,11 @@ export async function publish({ store, packs: allPacks, languages = [], distDir,
   const archived = new Map();
   const liveVersions = [];
   const stagedVersions = [];
-  for (const { folder, section } of packs) {
+  // Packs whose files are as live but whose team or language index-v2.json says otherwise: their
+  // entries are rewritten at the rev they have, with no manifest.
+  const retagged = {};
+  for (const given of packs) {
+    const { folder, section } = given;
     const requires = { Spoken: `>=${minSpoken[section]}` };
     let before = [];
     const entry = live[folder];
@@ -214,7 +218,13 @@ export async function publish({ store, packs: allPacks, languages = [], distDir,
     if (dup) throw new Error(`${folder} lists ${dup} twice, differing only in case`);
     const diff = diffFiles(before, files);
     if (diff.same && entry?.requires.Spoken === requires.Spoken) {
-      log(`${folder}: unchanged`);
+      const fields = packFields(given);
+      if (V2_FIELDS.some((key) => canonical(entry[key] ?? null) !== canonical(fields[key]))) {
+        retagged[folder] = { ...entry, ...fields };
+        log(`${folder}: unchanged files, new metadata`);
+      } else {
+        log(`${folder}: unchanged`);
+      }
       continue;
     }
     log(`${folder}: +${diff.added} ~${diff.changed} -${diff.removed}`);
@@ -250,7 +260,11 @@ export async function publish({ store, packs: allPacks, languages = [], distDir,
   // one still brings it up to date.
   const behind = !current || canonical(legacyPacks(live)) !== canonical(legacy?.value.packs ?? {})
     || canonical(record.addons ?? null) !== canonical(addons ?? null);
-  if (dryRun || (changes.length === 0 && !behind)) return result;
+  const named = Object.fromEntries(languages.map(({ code, name, native }) => [code, { code, name, native }]));
+  // Files unchanged, but a team renamed or made official, or a language renamed.
+  const relabelled = Object.keys(retagged).length > 0
+    || canonical(listedLanguages({ ...live, ...retagged }, record, named)) !== canonical(record.languages ?? {});
+  if (dryRun || (changes.length === 0 && !behind && !relabelled)) return result;
 
   let done = 0;
   await eachLimit([...blobs], 16, async ([sha, b]) => {
@@ -269,7 +283,7 @@ export async function publish({ store, packs: allPacks, languages = [], distDir,
   log(`${done} blobs in place`);
 
   const rev = changes.length > 0 ? revOf(now) : null;
-  const entries = {};
+  const entries = { ...retagged };
   const given = new Map(packs.map((p) => [p.folder, p]));
   for (const c of changes) {
     const manifest = buildManifest({ packId: c.folder, rev, requires: c.requires, files: c.files });
@@ -282,9 +296,8 @@ export async function publish({ store, packs: allPacks, languages = [], distDir,
       ...packFields(given.get(c.folder)),
     };
   }
-  const named = Object.fromEntries(languages.map(({ code, name, native }) => [code, { code, name, native }]));
   await writeIndexes({ store, signingKey, now, read: { legacy, current, record, addons }, packs: { ...live, ...entries }, languages: named });
-  log(rev ? `index.json now at ${rev} for ${result.changed.join(", ")}` : "index.json brought up to date with index-v2.json");
+  log(rev ? `index.json now at ${rev} for ${result.changed.join(", ")}` : "the indexes brought up to date");
   return { ...result, rev };
 }
 
@@ -298,15 +311,20 @@ export async function readIndexes(store, publicKey) {
   return { legacy, current, record, addons: legacy?.value.addons ?? record.addons };
 }
 
+/** index-v2.json's languages: the record's, with `languages` over them, kept while a pack lists them. */
+function listedLanguages(packs, record, languages) {
+  const listed = new Set(Object.values(packs).map((entry) => entry.lang));
+  const named = { ...record.languages, ...languages };
+  return Object.fromEntries(Object.entries(named).filter(([code]) => listed.has(code)));
+}
+
 /**
  * index-v2.json with `packs`, then index.json from it; each write conditional on what was read, so
  * two writers racing cannot both win. The languages named are those `languages` adds to the
  * record's, kept only while a pack lists them.
  */
 export async function writeIndexes({ store, signingKey, now, read: { legacy, current, record, addons }, packs, languages = {} }) {
-  const listed = new Set(Object.values(packs).map((entry) => entry.lang));
-  const named = { ...record.languages, ...languages };
-  const nextLanguages = Object.fromEntries(Object.entries(named).filter(([code]) => listed.has(code)));
+  const nextLanguages = listedLanguages(packs, record, languages);
   const generatedAt = now.toISOString();
   const indexOpts = (was) => ({
     contentType: "application/json", cacheControl: INDEX_CACHE,

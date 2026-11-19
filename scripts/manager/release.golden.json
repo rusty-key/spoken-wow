@@ -1268,7 +1268,7 @@
       }
     ],
     "version": "2.1.1",
-    "toc": "## Interface: 11509, 20506, 16001\n## Title: |cffb48cffSpoken|r German Audio: Readables\n## Notes: Narrated books, letters, notes and plaques for Spoken Readables.|n|nKeep it enabled: it loads with the game, and Spoken Readables plays from it.\n## Version: 2.1.1\n## Author: rusty\n## IconTexture: Interface\\AddOns\\SpokenReadablesAudio_deDE\\Textures\\AddonIcon.tga\n## Group: Spoken\n## X-Part-Of: Spoken\n## X-Child-Of: Spoken_Readables\n## X-SpokenReadables-Language: enUS\n## X-License: Audio generated with ElevenLabs from book text extracted from the game.\n\nData/Sounds.lua\n"
+    "toc": "## Interface: 11509, 20506, 16001\n## Title: |cffb48cffSpoken|r German Audio: Readables\n## Notes: Narrated books, letters, notes and plaques for Spoken Readables.|n|nKeep it enabled: it loads with the game, and Spoken Readables plays from it.\n## Version: 2.1.1\n## Author: rusty\n## IconTexture: Interface\\AddOns\\SpokenReadablesAudio_deDE\\Textures\\AddonIcon.tga\n## Group: Spoken\n## X-Part-Of: Spoken\n## X-Child-Of: Spoken_Readables\n## X-SpokenReadables-Language: deDE\n## X-License: Audio generated with ElevenLabs from book text extracted from the game.\n\nData/Sounds.lua\n"
   },
   {
     "section": "readables",
@@ -1281,7 +1281,7 @@
       }
     ],
     "version": "2.0.1",
-    "toc": "## Interface: 11509, 20506, 16001\n## Title: |cffb48cffSpoken|r Spanish (EU) Audio: Readables\n## Notes: Narrated books, letters, notes and plaques for Spoken Readables.|n|nKeep it enabled: it loads with the game, and Spoken Readables plays from it.\n## Version: 2.0.1\n## Author: rusty\n## IconTexture: Interface\\AddOns\\SpokenReadablesAudio_esES\\Textures\\AddonIcon.tga\n## Group: Spoken\n## X-Part-Of: Spoken\n## X-Child-Of: Spoken_Readables\n## X-SpokenReadables-Language: enUS\n## X-License: Audio generated with ElevenLabs from book text extracted from the game.\n\nData/Sounds.lua\n"
+    "toc": "## Interface: 11509, 20506, 16001\n## Title: |cffb48cffSpoken|r Spanish (EU) Audio: Readables\n## Notes: Narrated books, letters, notes and plaques for Spoken Readables.|n|nKeep it enabled: it loads with the game, and Spoken Readables plays from it.\n## Version: 2.0.1\n## Author: rusty\n## IconTexture: Interface\\AddOns\\SpokenReadablesAudio_esES\\Textures\\AddonIcon.tga\n## Group: Spoken\n## X-Part-Of: Spoken\n## X-Child-Of: Spoken_Readables\n## X-SpokenReadables-Language: esES\n## X-License: Audio generated with ElevenLabs from book text extracted from the game.\n\nData/Sounds.lua\n"
   },
   {
     "section": "readables",
@@ -1294,7 +1294,7 @@
       }
     ],
     "version": "2.0.2",
-    "toc": "## Interface: 11509, 20506, 16001\n## Title: |cffb48cffSpoken|r Spanish (AL) Audio: Readables\n## Notes: Narrated books, letters, notes and plaques for Spoken Readables.|n|nKeep it enabled: it loads with the game, and Spoken Readables plays from it.\n## Version: 2.0.2\n## Author: rusty\n## IconTexture: Interface\\AddOns\\SpokenReadablesAudio_esMX\\Textures\\AddonIcon.tga\n## Group: Spoken\n## X-Part-Of: Spoken\n## X-Child-Of: Spoken_Readables\n## X-SpokenReadables-Language: enUS\n## X-License: Audio generated with ElevenLabs from book text extracted from the game.\n\nData/Sounds.lua\n"
+    "toc": "## Interface: 11509, 20506, 16001\n## Title: |cffb48cffSpoken|r Spanish (AL) Audio: Readables\n## Notes: Narrated books, letters, notes and plaques for Spoken Readables.|n|nKeep it enabled: it loads with the game, and Spoken Readables plays from it.\n## Version: 2.0.2\n## Author: rusty\n## IconTexture: Interface\\AddOns\\SpokenReadablesAudio_esMX\\Textures\\AddonIcon.tga\n## Group: Spoken\n## X-Part-Of: Spoken\n## X-Child-Of: Spoken_Readables\n## X-SpokenReadables-Language: esMX\n## X-License: Audio generated with ElevenLabs from book text extracted from the game.\n\nData/Sounds.lua\n"
   },
   {
     "section": "readables",
@@ -1307,7 +1307,7 @@
       }
     ],
     "version": "2.0.0",
-    "toc": "## Interface: 11509, 20506, 16001\n## Title: |cffb48cffSpoken|r French Audio: Readables\n## Notes: Narrated books, letters, notes and plaques for Spoken Readables.|n|nKeep it enabled: it loads with the game, and Spoken Readables plays from it.\n## Version: 2.0.0\n## Author: rusty\n## IconTexture: Interface\\AddOns\\SpokenReadablesAudio_frFR\\Textures\\AddonIcon.tga\n## Group: Spoken\n## X-Part-Of: Spoken\n## X-Child-Of: Spoken_Readables\n## X-SpokenReadables-Language: enUS\n## X-License: Audio generated with ElevenLabs from book text extracted from the game.\n\nData/Sounds.lua\n"
+    "toc": "## Interface: 11509, 20506, 16001\n## Title: |cffb48cffSpoken|r French Audio: Readables\n## Notes: Narrated books, letters, notes and plaques for Spoken Readables.|n|nKeep it enabled: it loads with the game, and Spoken Readables plays from it.\n## Version: 2.0.0\n## Author: rusty\n## IconTexture: Interface\\AddOns\\SpokenReadablesAudio_frFR\\Textures\\AddonIcon.tga\n## Group: Spoken\n## X-Part-Of: Spoken\n## X-Child-Of: Spoken_Readables\n## X-SpokenReadables-Language: frFR\n## X-License: Audio generated with ElevenLabs from book text extracted from the game.\n\nData/Sounds.lua\n"
   },
   {
     "section": "readables",
@@ -1320,7 +1320,7 @@
       }
     ],
     "version": "0.0.1",
-    "toc": "## Interface: 11509, 20506, 16001\n## Title: |cffb48cffSpoken|r Italian Audio: Readables\n## Notes: Narrated books, letters, notes and plaques for Spoken Readables.|n|nKeep it enabled: it loads with the game, and Spoken Readables plays from it.\n## Version: 0.0.1\n## Author: rusty\n## IconTexture: Interface\\AddOns\\SpokenReadablesAudio_itIT\\Textures\\AddonIcon.tga\n## Group: Spoken\n## X-Part-Of: Spoken\n## X-Child-Of: Spoken_Readables\n## X-SpokenReadables-Language: enUS\n## X-License: Audio generated with ElevenLabs from book text extracted from the game.\n\nData/Sounds.lua\n"
+    "toc": "## Interface: 11509, 20506, 16001\n## Title: |cffb48cffSpoken|r Italian Audio: Readables\n## Notes: Narrated books, letters, notes and plaques for Spoken Readables.|n|nKeep it enabled: it loads with the game, and Spoken Readables plays from it.\n## Version: 0.0.1\n## Author: rusty\n## IconTexture: Interface\\AddOns\\SpokenReadablesAudio_itIT\\Textures\\AddonIcon.tga\n## Group: Spoken\n## X-Part-Of: Spoken\n## X-Child-Of: Spoken_Readables\n## X-SpokenReadables-Language: itIT\n## X-License: Audio generated with ElevenLabs from book text extracted from the game.\n\nData/Sounds.lua\n"
   },
   {
     "section": "readables",
@@ -1333,7 +1333,7 @@
       }
     ],
     "version": "2.0.0",
-    "toc": "## Interface: 11509, 20506, 16001\n## Title: |cffb48cffSpoken|r Korean Audio: Readables\n## Notes: Narrated books, letters, notes and plaques for Spoken Readables.|n|nKeep it enabled: it loads with the game, and Spoken Readables plays from it.\n## Version: 2.0.0\n## Author: rusty\n## IconTexture: Interface\\AddOns\\SpokenReadablesAudio_koKR\\Textures\\AddonIcon.tga\n## Group: Spoken\n## X-Part-Of: Spoken\n## X-Child-Of: Spoken_Readables\n## X-SpokenReadables-Language: enUS\n## X-License: Audio generated with ElevenLabs from book text extracted from the game.\n\nData/Sounds.lua\n"
+    "toc": "## Interface: 11509, 20506, 16001\n## Title: |cffb48cffSpoken|r Korean Audio: Readables\n## Notes: Narrated books, letters, notes and plaques for Spoken Readables.|n|nKeep it enabled: it loads with the game, and Spoken Readables plays from it.\n## Version: 2.0.0\n## Author: rusty\n## IconTexture: Interface\\AddOns\\SpokenReadablesAudio_koKR\\Textures\\AddonIcon.tga\n## Group: Spoken\n## X-Part-Of: Spoken\n## X-Child-Of: Spoken_Readables\n## X-SpokenReadables-Language: koKR\n## X-License: Audio generated with ElevenLabs from book text extracted from the game.\n\nData/Sounds.lua\n"
   },
   {
     "section": "readables",
@@ -1346,7 +1346,7 @@
       }
     ],
     "version": "2.0.0",
-    "toc": "## Interface: 11509, 20506, 16001\n## Title: |cffb48cffSpoken|r Portuguese Audio: Readables\n## Notes: Narrated books, letters, notes and plaques for Spoken Readables.|n|nKeep it enabled: it loads with the game, and Spoken Readables plays from it.\n## Version: 2.0.0\n## Author: rusty\n## IconTexture: Interface\\AddOns\\SpokenReadablesAudio_ptBR\\Textures\\AddonIcon.tga\n## Group: Spoken\n## X-Part-Of: Spoken\n## X-Child-Of: Spoken_Readables\n## X-SpokenReadables-Language: enUS\n## X-License: Audio generated with ElevenLabs from book text extracted from the game.\n\nData/Sounds.lua\n"
+    "toc": "## Interface: 11509, 20506, 16001\n## Title: |cffb48cffSpoken|r Portuguese Audio: Readables\n## Notes: Narrated books, letters, notes and plaques for Spoken Readables.|n|nKeep it enabled: it loads with the game, and Spoken Readables plays from it.\n## Version: 2.0.0\n## Author: rusty\n## IconTexture: Interface\\AddOns\\SpokenReadablesAudio_ptBR\\Textures\\AddonIcon.tga\n## Group: Spoken\n## X-Part-Of: Spoken\n## X-Child-Of: Spoken_Readables\n## X-SpokenReadables-Language: ptBR\n## X-License: Audio generated with ElevenLabs from book text extracted from the game.\n\nData/Sounds.lua\n"
   },
   {
     "section": "readables",
@@ -1359,7 +1359,7 @@
       }
     ],
     "version": "2.0.0",
-    "toc": "## Interface: 11509, 20506, 16001\n## Title: |cffb48cffSpoken|r Russian Audio: Readables\n## Notes: Narrated books, letters, notes and plaques for Spoken Readables.|n|nKeep it enabled: it loads with the game, and Spoken Readables plays from it.\n## Version: 2.0.0\n## Author: rusty\n## IconTexture: Interface\\AddOns\\SpokenReadablesAudio_ruRU\\Textures\\AddonIcon.tga\n## Group: Spoken\n## X-Part-Of: Spoken\n## X-Child-Of: Spoken_Readables\n## X-SpokenReadables-Language: enUS\n## X-License: Audio generated with ElevenLabs from book text extracted from the game.\n\nData/Sounds.lua\n"
+    "toc": "## Interface: 11509, 20506, 16001\n## Title: |cffb48cffSpoken|r Russian Audio: Readables\n## Notes: Narrated books, letters, notes and plaques for Spoken Readables.|n|nKeep it enabled: it loads with the game, and Spoken Readables plays from it.\n## Version: 2.0.0\n## Author: rusty\n## IconTexture: Interface\\AddOns\\SpokenReadablesAudio_ruRU\\Textures\\AddonIcon.tga\n## Group: Spoken\n## X-Part-Of: Spoken\n## X-Child-Of: Spoken_Readables\n## X-SpokenReadables-Language: ruRU\n## X-License: Audio generated with ElevenLabs from book text extracted from the game.\n\nData/Sounds.lua\n"
   },
   {
     "section": "readables",
@@ -1372,7 +1372,7 @@
       }
     ],
     "version": "2.0.0",
-    "toc": "## Interface: 11509, 20506, 16001\n## Title: |cffb48cffSpoken|r Chinese (Simplified) Audio: Readables\n## Notes: Narrated books, letters, notes and plaques for Spoken Readables.|n|nKeep it enabled: it loads with the game, and Spoken Readables plays from it.\n## Version: 2.0.0\n## Author: rusty\n## IconTexture: Interface\\AddOns\\SpokenReadablesAudio_zhCN\\Textures\\AddonIcon.tga\n## Group: Spoken\n## X-Part-Of: Spoken\n## X-Child-Of: Spoken_Readables\n## X-SpokenReadables-Language: enUS\n## X-License: Audio generated with ElevenLabs from book text extracted from the game.\n\nData/Sounds.lua\n"
+    "toc": "## Interface: 11509, 20506, 16001\n## Title: |cffb48cffSpoken|r Chinese (Simplified) Audio: Readables\n## Notes: Narrated books, letters, notes and plaques for Spoken Readables.|n|nKeep it enabled: it loads with the game, and Spoken Readables plays from it.\n## Version: 2.0.0\n## Author: rusty\n## IconTexture: Interface\\AddOns\\SpokenReadablesAudio_zhCN\\Textures\\AddonIcon.tga\n## Group: Spoken\n## X-Part-Of: Spoken\n## X-Child-Of: Spoken_Readables\n## X-SpokenReadables-Language: zhCN\n## X-License: Audio generated with ElevenLabs from book text extracted from the game.\n\nData/Sounds.lua\n"
   },
   {
     "section": "readables",
@@ -1385,7 +1385,7 @@
       }
     ],
     "version": "2.0.0",
-    "toc": "## Interface: 11509, 20506, 16001\n## Title: |cffb48cffSpoken|r Chinese (Traditional) Audio: Readables\n## Notes: Narrated books, letters, notes and plaques for Spoken Readables.|n|nKeep it enabled: it loads with the game, and Spoken Readables plays from it.\n## Version: 2.0.0\n## Author: rusty\n## IconTexture: Interface\\AddOns\\SpokenReadablesAudio_zhTW\\Textures\\AddonIcon.tga\n## Group: Spoken\n## X-Part-Of: Spoken\n## X-Child-Of: Spoken_Readables\n## X-SpokenReadables-Language: enUS\n## X-License: Audio generated with ElevenLabs from book text extracted from the game.\n\nData/Sounds.lua\n"
+    "toc": "## Interface: 11509, 20506, 16001\n## Title: |cffb48cffSpoken|r Chinese (Traditional) Audio: Readables\n## Notes: Narrated books, letters, notes and plaques for Spoken Readables.|n|nKeep it enabled: it loads with the game, and Spoken Readables plays from it.\n## Version: 2.0.0\n## Author: rusty\n## IconTexture: Interface\\AddOns\\SpokenReadablesAudio_zhTW\\Textures\\AddonIcon.tga\n## Group: Spoken\n## X-Part-Of: Spoken\n## X-Child-Of: Spoken_Readables\n## X-SpokenReadables-Language: zhTW\n## X-License: Audio generated with ElevenLabs from book text extracted from the game.\n\nData/Sounds.lua\n"
   },
   {
     "section": "readables",

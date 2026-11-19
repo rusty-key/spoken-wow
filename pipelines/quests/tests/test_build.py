@@ -4,7 +4,7 @@ import subprocess
 
 import pytest
 
-from tts_cli.build import (MODULE_LUA, build_tables, escape_lua_string, module_toc,
+from tts_cli.build import (module_lua, build_tables, escape_lua_string, module_toc,
                            prune_quest_id_table, quest_search_text, write_lua_table)
 
 CORPUS = {
@@ -126,7 +126,7 @@ def test_followup_lookup_honours_ignores():
 
 
 def test_module_resolves_followup_sounds_only_where_the_player_knows_the_event():
-    lua = MODULE_LUA.format(module="Mod", extension=".ogg")
+    lua = module_lua("Mod", ".ogg")
     assert ("elseif Enums.SoundEvent.QuestFollowup and event == Enums.SoundEvent.QuestFollowup "
             "then\n        return format([[generated\\sounds\\followup\\%s.ogg]], fileName)") in lua
 

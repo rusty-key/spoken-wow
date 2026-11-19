@@ -9,7 +9,7 @@ import { englishFolder } from "../lib/packs.mjs";
 
 // Whatever a section does differently: its English folder, its languages' badged icons, and the
 // .toc lines naming a pack's tier and language, which its Data/Sounds.lua reads back. Readables
-// names its language in its .toc only (`languageKey`), which a plan's `tocLanguage` sets.
+// names its language in its .toc only (`languageKey`), as scripts/readables/package-audio.sh does.
 const SECTIONS = {
   places: { icon: (lang) => `pipelines/places/assets/spoken-zones-${lang}.tga`, tocPrefix: "X-SpokenPlaces" },
   bosses: { icon: (lang) => `pipelines/bosses/assets/spoken-bosses-${lang}.tga`, tocPrefix: "X-SpokenBosses" },
@@ -110,7 +110,7 @@ export async function stagePack(section, lang, { root, plan, readme = null }) {
   if (!keepsCommittedFolder(section, folder)) {
     await writeFile(toc, rewriteToc(text, {
       folder, title, version, lang, tocPrefix: shape.tocPrefix,
-      languageKey: plan.tocLanguage ? shape.languageKey ?? null : null, extra: tocExtra(plan.toc),
+      languageKey: shape.languageKey ?? null, extra: tocExtra(plan.toc),
     }));
   }
   return { folder, version };

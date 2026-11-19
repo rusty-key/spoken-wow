@@ -372,6 +372,8 @@ test("a first publish onto a channel with only index.json seeds index-v2.json fr
   const store = await legacyChannel();
   const before = index(store).packs.SpokenPlacesAudio_deDE;
   const d = distOf({ SpokenPlacesAudio_frFR: { "SpokenPlacesAudio_frFR.toc": "toc", "s/1.ogg": "un" } });
+  // The fixture's own publish wrote both indexes; the order checked is this publish's.
+  store.log.length = 0;
   await run(store, d, { packs: [{ folder: "SpokenPlacesAudio_frFR", section: "places", lang: "frFR" }], now: later });
   const v2 = indexV2(store);
   assert.deepEqual(v2.packs.SpokenPlacesAudio_deDE, { ...before, lang: "deDE", section: "places", pack: null, team: null });
@@ -433,6 +435,33 @@ test("a second publish reads its live rev from index-v2.json", async () => {
   const out = await run(store, d, { packs: packsOf, now: later });
   assert.equal(out.rev, null);
   assert.equal(store.log.filter(([op]) => op === "put").length, 0);
+});
+
+test("a pack whose files are unchanged takes its new team and language names, at its rev", async () => {
+  const store = memoryStore();
+  const folder = "SpokenPlacesAudio_deDE_stimmen";
+  const d = distOf({ [folder]: { [`${folder}.toc`]: "toc", "s/1.ogg": "eins" } });
+  const first = await run(store, d, {
+    packs: [{ folder, section: "places", lang: "deDE", team: stimmen }],
+    languages: [{ code: "deDE", name: "German", native: "Deutsch" }],
+  });
+  const legacyBefore = index(store).packs;
+  store.log.length = 0;
+  const renamed = { ...stimmen, name: "Stimmen Azeroths", official: true };
+  const out = await run(store, d, {
+    packs: [{ folder, section: "places", lang: "deDE", team: renamed }],
+    languages: [{ code: "deDE", name: "German (Germany)", native: "Deutsch" }],
+    now: later,
+  });
+  assert.equal(out.rev, null);
+  assert.deepEqual(out.changed, []);
+  const entry = indexV2(store).packs[folder];
+  assert.equal(entry.rev, first.rev);
+  assert.deepEqual(entry.team, renamed);
+  assert.equal(indexV2(store).languages.deDE.name, "German (Germany)");
+  assert.deepEqual(index(store).packs, legacyBefore);
+  // Nothing but the indexes: no blob, no manifest.
+  assert.deepEqual(store.log.filter(([op]) => op === "put").map(([, k]) => k), ["index-v2.json", "index.json"]);
 });
 
 test("a publish that finds index.json behind index-v2.json brings it up to date", async () => {

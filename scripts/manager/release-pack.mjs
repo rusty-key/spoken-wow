@@ -22,8 +22,6 @@ import { keepsCommittedFolder } from "./stage-pack.mjs";
  * - `readmePage`: the store page whose body is the README, or null to keep the folder's own.
  * - `badgeOptional`: with no badge drawn for its language the pack wears English's mark, where a
  *   page pack's missing badge is an error.
- * - `tocLanguage`: the .toc names the language in the section's own key (readables), as nothing
- *   else tells the addon a derived pack's language.
  */
 export function releasePlan(section, lang, team, packs = loadPacks()) {
   const pages = managerFolders(packs).filter((p) => p.section === section && p.lang === lang);
@@ -49,7 +47,7 @@ export function needsTeamReleases(plan) {
 }
 
 function pagePlan(section, lang, team, pages, packs) {
-  const plan = { toc: {}, badgeOptional: false, tocLanguage: false };
+  const plan = { toc: {}, badgeOptional: false };
   if (section === "quests") {
     const own = packsFor("quests", lang, packs);
     const folders = pages.map(({ folder }) => {
@@ -83,5 +81,5 @@ function derivedPlan(section, lang, team, packs) {
     ...(team.language.client ? {} : { languageName: team.language.name, languageNative: team.language.native }),
   };
   // English's README, which the folder already holds, stays.
-  return { folders, toc, readmePage: null, badgeOptional: true, tocLanguage: true };
+  return { folders, toc, readmePage: null, badgeOptional: true };
 }

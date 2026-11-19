@@ -43,7 +43,6 @@ function planOf({ folder, title, version, toc = null, team = null }) {
     toc: toc ?? {},
     readmePage: null,
     badgeOptional: toc !== null,
-    tocLanguage: toc !== null,
   };
 }
 
@@ -160,6 +159,28 @@ test("a new language's pack names its language and wears English's mark when it 
   // The language the addon files the pack under.
   assert.match(toc, /^## X-SpokenReadables-Language: jaJP$/m);
   assert.equal(read("SpokenReadablesAudio_jaJP/Textures/AddonIcon.tga"), "english icon");
+});
+
+// The readables packager (scripts/readables/package-audio.sh) sets it too: the addon files a pack
+// whose .toc says enUS under English, so a German page pack would read as English's.
+test("a language's readables page pack names its language, and English's keeps its .toc", async () => {
+  const root = mkdtempSync(join(tmpdir(), "stage-"));
+  const committed = "## Title: Spoken Audio: Readables\n## Version: 2.3.0\n## IconTexture: x\n## X-SpokenReadables-Language: enUS\n";
+  tree(join(root, "addons/SpokenReadablesAudio"), {
+    "SpokenReadablesAudio.toc": committed,
+    "Textures/AddonIcon.tga": "english icon",
+    "Data/Sounds.lua": "english lookup",
+    "Sounds/1.mp3": "english clip",
+  });
+  tree(join(root, "build/readables/deDE"), { "Sounds/1.mp3": "german clip", "Data/Sounds.lua": "german lookup" });
+  tree(root, { "pipelines/readables/assets/spoken-books-deDE.tga": "german icon" });
+  const german = planOf({ folder: "SpokenReadablesAudio_deDE", title: "Spoken German Audio: Readables", version: "2.1.1" });
+  await stagePack("readables", "deDE", { root, plan: german, readme: null });
+  const read = files(root);
+  assert.match(read("SpokenReadablesAudio_deDE/SpokenReadablesAudio_deDE.toc"), /^## X-SpokenReadables-Language: deDE$/m);
+  const english = planOf({ folder: "SpokenReadablesAudio", title: "Spoken Audio: Readables", version: null });
+  await stagePack("readables", "enUS", { root, plan: english, readme: null });
+  assert.equal(read("SpokenReadablesAudio/SpokenReadablesAudio.toc"), committed);
 });
 
 test("a page pack missing its badge is still an error", async () => {

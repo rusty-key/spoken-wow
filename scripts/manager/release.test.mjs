@@ -83,7 +83,6 @@ test("a second team's pack is derived from English's folders, with the team's sl
     toc: { team: "stimmen", teamName: "Stimmen" },
     readmePage: null,
     badgeOptional: true,
-    tocLanguage: true,
   });
 });
 

@@ -52,7 +52,6 @@ const derived = (lang, toc) => ({
   toc,
   readmePage: null,
   badgeOptional: true,
-  tocLanguage: true,
 });
 
 test("a derived pack builds from its own titles and keys, wearing English's mark without a badge", () => {

@@ -15,9 +15,9 @@ export function seedDatabase(url = process.env.DATABASE_URL) {
   const teams = [];
   const undo = [];
 
-  /** The rows of one statement, each a list of its columns as text. */
+  /** The rows of one statement, each a list of its columns as text: `-q`, or psql adds its status line, `INSERT 0 0`, as a row. */
   function sql(text) {
-    return execFileSync("psql", [url, "-tA", "-F", "\t", "-v", "ON_ERROR_STOP=1", "-c", text], { encoding: "utf8" })
+    return execFileSync("psql", [url, "-qtA", "-F", "\t", "-v", "ON_ERROR_STOP=1", "-c", text], { encoding: "utf8" })
       .split("\n")
       .filter(Boolean)
       .map((row) => row.split("\t"));
