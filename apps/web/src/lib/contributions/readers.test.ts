@@ -10,7 +10,7 @@ import { closeDb, db } from "@/lib/db";
 
 import type { Submission } from "./contributions";
 import { intakeStates } from "./intake";
-import { readerKey, readersOf } from "./readers";
+import { readersOf } from "./readers";
 
 const quest = 2_000_000_000 - Math.floor(Math.random() * 1_000_000);
 const lineId = `q:${quest}:accept`;
@@ -33,7 +33,7 @@ function copy(event: string, text: string, readerSex?: string): Submission {
 }
 
 async function readBy(id: string): Promise<string[]> {
-  return (await readersOf([{ lineId: id, variant: 0, lang: "enUS" }])).get(readerKey("enUS", id, 0)) ?? [];
+  return (await readersOf([{ lineId: id, variant: 0, lang: "enUS" }]))("enUS", id, 0);
 }
 
 beforeAll(async () => {

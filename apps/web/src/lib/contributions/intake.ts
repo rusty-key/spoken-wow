@@ -51,10 +51,6 @@ export async function intakeStates(submissions: readonly Submission[]): Promise<
   return states;
 }
 
-/** Which submissions say what the corpus already says: intakeStates, as a yes or no each. */
-export async function knownSubmissions(submissions: readonly Submission[]): Promise<boolean[]> {
-  return (await intakeStates(submissions)).map((state) => state.kind === "known");
-}
 
 export async function storeSubmission(submission: Submission, identity: Identity): Promise<void> {
   await createContribution({ ...submission, ...identity });

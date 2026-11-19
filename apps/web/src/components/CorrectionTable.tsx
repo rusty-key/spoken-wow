@@ -12,9 +12,9 @@ import { STAGE_LABELS } from "@/components/contribution-chips";
 import SendersButton from "@/components/SendersButton";
 import { useLocalDates } from "@/components/useLocalDates";
 import type { ClientSummary } from "@/lib/contributions/client";
-import { genderSplit, hasClassSlot, readerSplit, wordDiff, type DiffPart } from "@/lib/contributions/compare";
+import { genderSplit, hasClassSlot, readerSide, wordDiff, type DiffPart } from "@/lib/contributions/compare";
 import type { ContributionStatus } from "@/lib/contributions/contributions";
-import type { ReaderGender } from "@/lib/contributions/readers";
+import { GENDER_NAMES, otherGender, type ReaderGender } from "@/lib/contributions/gender";
 import type { QuestStage } from "@/lib/contributions/query";
 import { langName, localeHref } from "@/lib/lang";
 import { cn } from "@/lib/utils";
@@ -65,15 +65,14 @@ export type CorrectionRow = {
 };
 
 /**
- * What an accept sends beside the id: the wording it fixes, or that it is another wording, and
- * the moderator's edit of the player's text where there is one.
+ * What an accept sends beside the id: the wording it fixes, and the player gender the player's
+ * text is for where it splits that wording instead; or that it is another wording. With the
+ * moderator's edit of the player's text where there is one.
  */
-type Accept = ({ lineId: string; variant: number } | { as: "wording" }) & { text?: string };
+type Accept = ({ lineId: string; variant: number; split?: ReaderGender } | { as: "wording" }) & { text?: string };
 type Extra = Accept | { reason: string };
 
 export type CorrectionSource = "quests" | "readables";
-
-const GENDER_NAMES: Record<ReaderGender, string> = { m: "male", f: "female" };
 
 /** How many corrections render at first, and how many more each "Show more" adds. */
 const CORRECTIONS_SHOWN = 25;
@@ -202,17 +201,16 @@ export default function CorrectionTable({
     const { lineId, variant } = row.wordings[chosenOf(row)];
     return { lineId, variant, ...editOf(row) };
   };
-  /** The moment as one template for both genders, where it is one plain quest line: accepting it splits the moment. */
-  const splitOf = (row: CorrectionRow, wording: CorrectionWording, after: string): string | null =>
-    source === "quests" && !wording.split ? readerSplit(wording.before, after, row.readerGender, wording.readBy) : null;
   /**
-   * Keeping both as one template per gender, theirs on either side, for a moderator who knows
-   * better than the evidence; null where our line is not one plain quest line.
+   * The template a split by gender writes, theirs on either side, for the buttons and their
+   * previews; null where our line is not one plain quest line the two texts can split. The server
+   * builds its own from the line as it then stands.
    */
-  const forcedSplitsOf = (wording: CorrectionWording, after: string): Record<ReaderGender, string | null> | null =>
-    source === "quests" && !wording.split && !/\$[gGuU]/.test(wording.before)
-      ? { f: genderSplit(wording.before, after, "f"), m: genderSplit(wording.before, after, "m") }
-      : null;
+  const splitsOf = (wording: CorrectionWording, after: string): Record<ReaderGender, string> | null => {
+    if (source !== "quests" || wording.split) return null;
+    const f = genderSplit(wording.before, after, "f");
+    return f ? { f, m: genderSplit(wording.before, after, "m")! } : null;
+  };
   return (
     <div className="bs-rows">
       {initial.slice(0, limit).map((row) => {
@@ -226,10 +224,13 @@ export default function CorrectionTable({
         const classWord = classWordOf(row);
         const hold = busy.has(row.id);
         const dropping = droppingId === row.id && current === "new";
-        const split = current === "new" ? splitOf(row, wording, after) : null;
-        const forced = current === "new" ? forcedSplitsOf(wording, after) : null;
-        const keeping = keepingId === row.id && forced !== null;
+        const splits = current === "new" ? splitsOf(wording, after) : null;
+        // Offered outright where the evidence says which side theirs is.
+        const side = splits && readerSide(row.readerGender, wording.readBy);
+        const chooser = keepingId === row.id ? splits : null;
         const keepAsWording = () => void resolve(row.id, "accepted", { as: "wording", ...editOf(row) });
+        const splitAs = (theirsFor: ReaderGender) =>
+          void resolve(row.id, "accepted", { lineId: wording.lineId, variant: wording.variant, split: theirsFor, ...editOf(row) });
         return (
           <div key={row.id} id={`contribution-${row.id}`} className="bs-review-row" data-moved={current !== row.status ? "" : undefined}>
             <div className="bs-who">
@@ -324,13 +325,13 @@ export default function CorrectionTable({
                   >
                     Replace ours
                   </button>
-                  {split ? (
+                  {splits && side ? (
                     <button
                       type="button"
                       className="bs-btn"
                       disabled={hold}
-                      title={`Ours for ${GENDER_NAMES[row.readerGender === "f" ? "m" : "f"]} players, theirs for ${GENDER_NAMES[row.readerGender ?? "m"]} ones:\n${split}`}
-                      onClick={() => void resolve(row.id, "accepted", { lineId: wording.lineId, variant: wording.variant, text: split })}
+                      title={`Ours for ${GENDER_NAMES[otherGender(side)]} players, theirs for ${GENDER_NAMES[side]} ones:\n${splits[side]}`}
+                      onClick={() => splitAs(side)}
                     >
                       Split by gender
                     </button>
@@ -341,13 +342,13 @@ export default function CorrectionTable({
                       className="bs-btn"
                       disabled={hold}
                       title={
-                        forced
+                        splits
                           ? "Keep our text and add the player's beside it: as another wording, or one for each player gender"
                           : "Keep our text and add the player's as another wording of this moment"
                       }
-                      onClick={() => (forced ? setKeepingId(keeping ? null : row.id) : keepAsWording())}
+                      onClick={() => (splits ? setKeepingId(chooser ? null : row.id) : keepAsWording())}
                     >
-                      {forced ? "Keep both…" : "Keep both"}
+                      {splits ? "Keep both…" : "Keep both"}
                     </button>
                   ) : null}
                   <button
@@ -393,8 +394,8 @@ export default function CorrectionTable({
                 <p className="bs-text">{row.body}</p>
               </div>
             ) : null}
-            {keeping && forced ? (
-              <div className="bs-reasons">
+            {chooser ? (
+              <div className="bs-reasons bs-choices">
                 <p>Keep both how? A split plays ours to one gender and theirs to the other.</p>
                 <button type="button" className="bs-reason" disabled={hold} onClick={keepAsWording}>
                   As another wording
@@ -404,12 +405,9 @@ export default function CorrectionTable({
                     key={side}
                     type="button"
                     className="bs-reason"
-                    disabled={hold || !forced[side]}
-                    title={forced[side] ?? "The two texts differ in nothing a gender branch can hold"}
-                    onClick={() => {
-                      const text = forced[side];
-                      if (text) void resolve(row.id, "accepted", { lineId: wording.lineId, variant: wording.variant, text });
-                    }}
+                    disabled={hold}
+                    title={chooser[side]}
+                    onClick={() => splitAs(side)}
                   >
                     Theirs for {GENDER_NAMES[side]} players{row.readerGender === side ? " · the reader's gender" : ""}
                   </button>

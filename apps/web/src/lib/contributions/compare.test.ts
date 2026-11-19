@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { genderSplit, genderTemplate, readable, readerSplit, restoreClassWords, sameLine, wordDiff } from "./compare";
+import { genderSplit, genderTemplate, readable, readerSide, restoreClassWords, sameLine, wordDiff } from "./compare";
 
 describe("sameLine", () => {
   it("ignores the corpus's $B breaks and spacing", () => {
@@ -180,21 +180,17 @@ describe("genderTemplate", () => {
   });
 });
 
-describe("readerSplit", () => {
-  it("puts the reader's words on the reader's side, and ours on the other gender's, who saw them", () => {
-    expect(readerSplit("Hail, lad.", "Hail, lass.", "f", ["m"])).toBe("Hail, $Glad:lass;.");
-    expect(readerSplit("Hail, lass.", "Hail, lad.", "m", ["f"])).toBe("Hail, $Glad:lass;.");
+describe("readerSide", () => {
+  it("is the reader's gender where only the other has seen our text", () => {
+    expect(readerSide("f", ["m"])).toBe("f");
+    expect(readerSide("m", ["f"])).toBe("m");
   });
 
-  it("offers nothing where the reader's gender has seen ours too, or no one has", () => {
-    expect(readerSplit("Kill six.", "Kill seven.", "f", ["f"])).toBe(null);
-    expect(readerSplit("Kill six.", "Kill seven.", "f", ["f", "m"])).toBe(null);
-    expect(readerSplit("Hail, lad.", "Hail, lass.", "f", [])).toBe(null);
-  });
-
-  it("offers nothing without the reader's gender, or over a line that already branches", () => {
-    expect(readerSplit("Hail, lad.", "Hail, lass.", null, ["m"])).toBe(null);
-    expect(readerSplit("Hail, $glad:lass;.", "Hail, friend.", "f", ["m"])).toBe(null);
+  it("is nothing where the reader's gender has seen ours too, or no one has, or the reader is unknown", () => {
+    expect(readerSide("f", ["f"])).toBe(null);
+    expect(readerSide("f", ["f", "m"])).toBe(null);
+    expect(readerSide("f", [])).toBe(null);
+    expect(readerSide(null, ["m"])).toBe(null);
   });
 });
 

@@ -408,10 +408,12 @@ intake drops as already on file records that gender on the line it matched
 only the other gender has seen, a correction from the reader's gender is the other side of a `$G`
 the line lost, and the corrections tab offers **Split by gender**: ours for the gender that saw
 it, theirs for the reader's, each run of words they differ in written as a `$G` branch, in any
-language (`compare.ts` `readerSplit`). Accepting it writes that template as the correction, which
-splits the moment as below. A line both genders have seen, or none yet, is not offered it. A
-moderator who knows better can still split any plain line from **Keep both…**: theirs for female
-players or for male players, ours for the other (`genderSplit`), whatever the evidence says. Otherwise a moderator splits it by writing the `$G` back in the explorer: the plain line stops being
+language (`compare.ts` `readerSide`, `genderSplit`). A line both genders have seen, or none yet,
+is not offered it. A moderator who knows better can still split any plain line from **Keep
+both…**: theirs for female players or for male players, ours for the other, whatever the evidence
+says. Either sends only the side (`split`); the server builds the template from the line as it
+then stands and writes it as the correction, which splits the moment as below, and the row keeps
+what the player's client showed. Otherwise a moderator splits it by writing the `$G` back in the explorer: the plain line stops being
 current and `:m` and `:f` take its place, both holding the template. English splits the same way,
 except that each side holds its own reader's words. On a moment already split, a rewrite holding a
 `$G` overrides both sides and an accepted correction writes both (`apps/web/src/lib/quests/moment-rewrite.ts`). The site decides the shape: `extract` leaves out a dump

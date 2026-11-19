@@ -26,7 +26,7 @@ import {
   CONTRIBUTION_WINDOW_MS,
   CONTRIBUTIONS_PER_HOUR,
   type Identity,
-  knownSubmissions,
+  intakeStates,
   storeSubmission,
 } from "@/lib/contributions/intake";
 import { countRecentContributions, recordContributionHit } from "@/lib/contributions/store";
@@ -173,8 +173,8 @@ async function contributeMissing(
     keepClassWords([sent]),
   ]);
   if (recent >= CONTRIBUTIONS_PER_HOUR) return;
-  const [known] = await knownSubmissions([submission]);
-  if (!known) {
+  const [state] = await intakeStates([submission]);
+  if (state?.kind !== "known") {
     await storeSubmission(submission, { ...identity, body: complaint });
   }
   await recordContributionHit(identity.ip);

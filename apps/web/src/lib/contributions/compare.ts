@@ -24,6 +24,8 @@
  * Node-free, so the corrections tab's client component can split a line the same way.
  */
 
+import { otherGender, type ReaderGender } from "./gender";
+
 export type Token = { kind: "word" | "mark" | "slot"; value: string };
 
 /** The most words a `$N`/`$C`/`$R` slot stands for. */
@@ -149,6 +151,17 @@ export function hasClassSlot(text: string): boolean {
   return tokensOf(text).some((token) => token.value === "$C" || token.value === "$CS");
 }
 
+/**
+ * Two texts as words and the spacing between them (words at the even indices), and each of
+ * `x`'s words' index in `y`'s along their longest common sequence, or -1.
+ */
+function wordPairs(x: string, y: string): { a: string[]; b: string[]; pair: Int32Array } {
+  const a = x.split(/(\s+)/);
+  const b = y.split(/(\s+)/);
+  const words = (pieces: string[]) => pieces.filter((_, index) => index % 2 === 0);
+  return { a, b, pair: lcsPairs(words(a), words(b)) };
+}
+
 /** A run of one side's text, and whether the other side lacks it. */
 export type DiffPart = { text: string; changed: boolean };
 
@@ -158,13 +171,8 @@ export type DiffPart = { text: string; changed: boolean };
  * kept as each side has it and never marked, and letter case is not a change.
  */
 export function wordDiff(before: string, after: string): { before: DiffPart[]; after: DiffPart[] } {
-  const a = before.split(/(\s+)/);
-  const b = after.split(/(\s+)/);
   // Case-blind, as sameLine is: `$n` against `$N` is not a difference worth marking.
-  const pair = lcsPairs(
-    a.filter((_, index) => index % 2 === 0),
-    b.filter((_, index) => index % 2 === 0),
-  );
+  const { a, b, pair } = wordPairs(before, after);
   const keptA = new Set<number>();
   const keptB = new Set<number>();
   for (const [i, j] of pair.entries()) {
@@ -212,11 +220,9 @@ function sharedEdges(x: string, y: string): [string, string] {
  * holds a `:`, `;` or `$`, which a branch cannot.
  */
 export function genderTemplate(male: string, female: string): string | null {
-  const a = male.split(/(\s+)/);
-  const b = female.split(/(\s+)/);
-  const wordsA = a.filter((_, index) => index % 2 === 0);
-  const wordsB = b.filter((_, index) => index % 2 === 0);
-  const pair = lcsPairs(wordsA, wordsB);
+  const { a, b, pair } = wordPairs(male, female);
+  const wordsA = (a.length + 1) / 2;
+  const wordsB = (b.length + 1) / 2;
   /** Words [from, to) of a side, with the spacing between them. */
   const run = (pieces: string[], from: number, to: number) => (to > from ? pieces.slice(from * 2, to * 2 - 1).join("") : "");
 
@@ -224,22 +230,22 @@ export function genderTemplate(male: string, female: string): string | null {
   let branches = 0;
   let i = 0;
   let j = 0;
-  while (i < wordsA.length || j < wordsB.length) {
-    if (i < wordsA.length && pair[i] === j) {
+  while (i < wordsA || j < wordsB) {
+    if (i < wordsA && pair[i] === j) {
       out += a[i * 2] + (a[i * 2 + 1] ?? "");
       i++;
       j++;
       continue;
     }
     let nextI = i;
-    while (nextI < wordsA.length && pair[nextI] === -1) nextI++;
-    const nextJ = nextI < wordsA.length ? pair[nextI] : wordsB.length;
+    while (nextI < wordsA && pair[nextI] === -1) nextI++;
+    const nextJ = nextI < wordsA ? pair[nextI] : wordsB;
     let ours = run(a, i, nextI);
     let theirs = run(b, j, nextJ);
     // The spacing after the run: inside the branch where a side has no words, so that side reads
     // one space rather than two; and at the end of the text, the spacing before it instead.
     const after = (nextI > i ? a[nextI * 2 - 1] : b[nextJ * 2 - 1]) ?? "";
-    let outside = after;
+    const outside = ours && theirs ? after : "";
     if (!ours || !theirs) {
       if (after) {
         ours = ours && ours + after;
@@ -250,7 +256,6 @@ export function genderTemplate(male: string, female: string): string | null {
         ours = ours && before + ours;
         theirs = theirs && before + theirs;
       }
-      outside = "";
     }
     const [lead, tail] = sharedEdges(ours, theirs);
     const inner = (side: string) => side.slice(lead.length, side.length - tail.length);
@@ -264,29 +269,19 @@ export function genderTemplate(male: string, female: string): string | null {
 }
 
 /**
- * A plain corpus line and a player's text as one template, ours for the other gender and theirs
- * for the reader's: the player's client took one side of a `$G` the corpus line lost. Only where
- * our text has been shown to the other gender and never to the reader's (`readBy`); a text both
- * have seen branches on nothing, and theirs is a change to it. Null otherwise, where ours already
- * branches, or where genderTemplate makes none.
+ * The side a correction's text is of a `$G` our line lost, where the evidence says so: our text
+ * has been shown to the other gender and never to the reader's (`readBy`). A text both have seen
+ * branches on nothing, and theirs is a change to it. Null otherwise.
  */
-export function readerSplit(
-  ours: string,
-  theirs: string,
-  reader: "m" | "f" | null,
-  readBy: readonly ("m" | "f")[],
-): string | null {
-  const other = reader === "f" ? "m" : "f";
-  if (!reader || readBy.includes(reader) || !readBy.includes(other)) return null;
-  return genderSplit(ours, theirs, reader);
+export function readerSide(reader: ReaderGender | null, readBy: readonly ReaderGender[]): ReaderGender | null {
+  return reader && !readBy.includes(reader) && readBy.includes(otherGender(reader)) ? reader : null;
 }
 
 /**
  * A plain corpus line and a player's text as one template, theirs for `theirsFor` and ours for the
- * other gender, whatever either has been seen by: a moderator's call. Null where ours already
- * branches, or genderTemplate makes none.
+ * other gender. Null where ours already branches, or genderTemplate makes none.
  */
-export function genderSplit(ours: string, theirs: string, theirsFor: "m" | "f"): string | null {
+export function genderSplit(ours: string, theirs: string, theirsFor: ReaderGender): string | null {
   if (/\$[gGuU]/.test(ours)) return null;
   return theirsFor === "f" ? genderTemplate(ours, theirs) : genderTemplate(theirs, ours);
 }

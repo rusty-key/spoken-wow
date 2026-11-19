@@ -18,7 +18,7 @@ import { readable } from "./compare";
 import { tabOf, type LineState } from "./known";
 import { momentOf } from "./naming";
 import { matchesSearch, matchesStage, type ClientFilter, type StageFilter } from "./query";
-import { readerGenderOf, readerKey, readersOf } from "./readers";
+import { readerGenderOf, readersOf } from "./readers";
 import { observationMeta, type Contribution } from "./store";
 import { questFor } from "./triage";
 import type { Filter } from "@/lib/search";
@@ -49,7 +49,7 @@ export async function correctionRowsFor({
     classWordMarks(candidates.map(({ row }) => row)),
     source === "quests"
       ? readersOf(candidates.flatMap(({ row, state }) => state.wordings.map((line) => ({ ...line, lang: row.locale }))))
-      : new Map(),
+      : () => [],
   ]);
 
   return candidates.flatMap(({ row, state }) => {
@@ -64,7 +64,7 @@ export async function correctionRowsFor({
       editHref: explorerHref(source, line.lineId),
       before: readable(line.text),
       split: momentOf(line.lineId) !== line.lineId,
-      readBy: readers.get(readerKey(row.locale, line.lineId, line.variant)) ?? [],
+      readBy: readers(row.locale, line.lineId, line.variant),
     }));
     const corpusText = wordings.map((line) => line.before).join("\n");
     // Readables have no NPC or quest, so a number there is text to find, not an id.

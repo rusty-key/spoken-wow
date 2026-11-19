@@ -7,10 +7,12 @@
  *
  * `as: "wording"` keeps the corpus text and adds the player's as another wording of the
  * moment (acceptAsWording). Otherwise `lineId` and `variant`, where given, name the wording the
- * correction fixes; without them it is the closest one. `text`, where given, is the moderator's
- * edit of the player's text, saved on the row before it is accepted.
+ * correction fixes; without them it is the closest one. `split`, "m" or "f", keeps both
+ * instead, the player's text for that player gender and ours for the other. `text`, where given,
+ * is the moderator's edit of the player's text, saved on the row before it is accepted.
  */
 import { acceptAsWording, acceptCorrection, editCorrectionText } from "@/lib/contributions/correction";
+import { isReaderGender } from "@/lib/contributions/gender";
 import { contributionLocale, rewriteWaitingTexts } from "@/lib/contributions/store";
 import { requireCapability } from "@/lib/generation/authz";
 import { BASE_LANG } from "@/lib/lang";
@@ -24,6 +26,7 @@ export async function POST(request: Request) {
     as?: unknown;
     lineId?: unknown;
     variant?: unknown;
+    split?: unknown;
     text?: unknown;
   };
 
@@ -55,7 +58,7 @@ export async function POST(request: Request) {
   const outcome =
     body.as === "wording"
       ? await acceptAsWording(id, session.user.id)
-      : await acceptCorrection(id, session.user.id, pick);
+      : await acceptCorrection(id, session.user.id, pick, undefined, isReaderGender(body.split) ? body.split : undefined);
   if (!outcome.ok) {
     // A refused accept leaves the row as it was, the edit with it.
     if (previous !== null) await rewriteWaitingTexts([{ id, text: previous }]);
