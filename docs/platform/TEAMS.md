@@ -91,6 +91,14 @@ language has `plain`, else `slug`. One team per language at most has `plain`.
   may lift. A team's own ignore stays that team's.
 - `privileged` and `team_of_lang()` remain for older releases and scripts, and follow `packName`:
   the privileged team is the one with plain packs.
+- The site picks no team by rank. A request works as the person's team in the language; in a
+  language with one team, as that team, whoever asks. In a language with several, somebody who works
+  in none of them has no team there: their writes refuse, and the explorer shows them a team
+  read-only (*Who sees what*).
+- A grant or an invite lands in the granter's team; a site owner's in the person's own team, else
+  the team the site owner acts in.
+- Where a language lets its teams appoint text maintainers (`textByTeam`), an admin of any of its
+  teams may. *(My call.)*
 
 ### Site owners
 
@@ -98,7 +106,8 @@ Today's global `admin`. Above all teams: create teams and set their languages an
 appoint text maintainers, act inside any team with full rights without being a member *(my call)*,
 and delist a team's packs. A site owner acts inside a team by picking it in the explorer's team
 picker; the choice is kept per language in a cookie and lasts until they pick again. While it holds,
-every page of the language says "Working as {team}".
+every page of the language says "Working as {team}". With no pick, a site owner acts in their own
+team in the language, else the first the picker lists.
 
 ### Text maintainers
 
@@ -163,8 +172,7 @@ the pencil writes the original and the speech button writes the override. The on
 quests is text that branches on the reader's gender on a plain line, in any language: one file
 cannot say both, so saving splits the line into `:m` and `:f`, which changes the original every
 team shares. That is deliberate for now, so a split needs `text` in
-the language beside `regenerate`, and a second team's save is refused: only the language's text
-maintainers split a line.
+the language beside `regenerate`, whatever team its holder works in.
 
 The original otherwise changes through imports and accepted corrections, in English too. For quest
 lines a text maintainer works in contributions, so a `wrong_text` report on one that carries no
@@ -196,6 +204,11 @@ Reports are routed by their existing category (`report_category_check`, migratio
   team members are the same people, the two queues show as one page, today's triage page. Routing
   happens underneath and is only visible when the groups differ.
 - Reports that predate teams go to the language's team. *(My call.)*
+- A report that names no team (an older addon, the plain pack, the site's forms) goes to the
+  reporter's team, else the team with plain packs. In a language with several teams and none with
+  plain packs, an audio report is filed once per team, and a text report once.
+- An act is logged under the team its actor works in, unless it names its own team; by somebody in
+  no team of the language, under none.
 
 ## What is per team and what is shared
 
@@ -231,7 +244,10 @@ are always scoped to the team being worked in.
 A team's override is public on a line with a live take that speaks it, so the text shown with
 another team's takes is what they say. Otherwise it stays private. *(User.)*
 
-In phase 1 there is one team per language, so the explorer shows what it shows today.
+A language with one team shows no picker, so the explorer shows what it shows today. With several,
+every team is in the picker, none marked. Without `?team=` it plays the team the visitor works in,
+else the one with plain packs, else the first by name; a visitor in none of them hears that team
+read-only.
 
 ## Isolation with row-level security
 
@@ -243,9 +259,9 @@ In phase 1 there is one team per language, so the explorer shows what it shows t
   with `set_config(..., true)` (transaction-local). Requests do not run in a transaction today, and
   a pooled connection must never carry one team's setting into another's request. `lib/db.ts`
   (`db()`, `query()`, `inTransaction`) is where this lives.
-- The team for a request: the person's team in the language, else the language's privileged team.
-  One person works in one team per language, so members need no switcher. A site owner's pick in
-  the team picker overrides both (see *Site owners*).
+- The team for a request: the person's team in the language, else, where the language has one
+  team, that team. One person works in one team per language, so members need no switcher. A site
+  owner's pick in the team picker overrides both (see *Site owners*).
 - The queue worker sets the team from the job it runs. Jobs, batches and pauses carry the team.
 - The public cross-team read of live takes and their text goes through two security-definer
   functions, not by loosening the per-team policies. Both answer nothing for a team that does not
@@ -428,22 +444,22 @@ run and cancels it for a newer one, so a press waiting behind a manual build can
 - 0091 copied the audio capabilities into `team_member`, in the team that owns the language. 0092
   gave every `edit` holder the team's `edit` as well, appointed every team admin a text maintainer,
   and deleted the audio rows from `language_grant`.
-- A handover (`move_team_lang`) moves every row of a language to the new team in one transaction,
-  and refuses while a job in the language runs.
+- A handover (`move_team_lang`) moved every row of a language to the new team in one transaction,
+  and refused while a job in the language ran. The site no longer hands a language over: a team
+  joins a language beside its others, and leaves it by being removed from it or deleted.
 - Every existing per-team row moves to the team owning its language. Takes stay live; packs keep
   their names. Non-English edits made before the migration are already in the original text and
   stay there; `line_override` rows move into the English team's layer.
-- A handover gives the receiving team a copy of the old team's roster and settings if it has none.
-  A second team in the same language starts as any new team does: it inherits the original text and
-  never the other team's takes or text overrides, and starts from English's roster and settings as a
-  new language does, or from a copy of the privileged team's settings, as the site owner chooses at
-  approval. *(User.)*
+- A team joining a language starts as any new team does: it inherits the original text and never
+  another team's takes or text overrides, and starts from English's roster and settings as a new
+  language does, or, where the language has a team, from a copy of the first one's settings, as the
+  site owner chooses at approval. *(User.)*
 
-## Phase 2: a second team in one language
+## Phase 2: several teams in one language
 
 Designed now so phase 1 does not paint it into a corner; built when the first such team arrives.
 
-- **Pack ids.** The privileged team keeps the bare ids. Another team's packs carry its slug, for
+- **Pack ids.** The team with plain packs keeps the bare ids. Another team's packs carry its slug, for
   example `SpokenQuestsAudio_deDE_<team>`, and their `.toc` carries `X-Spoken-Team`. The index entry
   carries the team. Pack folder names are not on the frozen list in [`AGENTS.md`](../../AGENTS.md);
   line ids are, and they do not change.
@@ -472,7 +488,8 @@ Designed now so phase 1 does not paint it into a corner; built when the first su
 - **Reports** from the addon carry the team of the pack that played the line (`packTeam`, the team's
   slug), and the site files them with that team when it voices the report's language
   (`apps/web/src/lib/reports/store.ts`). Built. A report without a team came from a plain pack,
-  since an older addon can play no other, and is filed with the language's privileged team.
+  since an older addon can play no other, and is filed with the team with plain packs (*Contributions
+  and reports*).
 - **Text layer.** Per-team overrides generalise `line_override` from quest lines to every `source`.
   The text a team voices is its override where present, else the original, and a take's staleness
   is judged against that. Built for the site as `text_override`: places, readables and bosses are

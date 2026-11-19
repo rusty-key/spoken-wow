@@ -580,7 +580,7 @@ spare first. Before deploying again:
 psql "$PROD_DATABASE_URL" -c 'alter table line_override drop constraint line_override_team_file'
 ```
 
-### A second team in a language
+### Several teams in a language
 
 Migration 0113 enforces one team per person per language with a deferred trigger, and ships with
 the code that makes a second team.
@@ -600,9 +600,15 @@ the code that makes a second team.
    psql "$PROD_DATABASE_URL" -c 'select "userId", lang from team_member group by "userId", lang having count(distinct "teamId") > 1'
    ```
 
-2. **Rolling back past 0113 while a second team exists** gives its members the privileged team's
-   rows: the older release has no overlay, so it resolves every person to the language's privileged
-   team. Nothing guards it; the second team's own rows stay in the database and come back when the
+2. **Rolling back past 0113 while a language has several teams** gives the members of all but its
+   team with plain packs that team's rows: the older release has no overlay, so it resolves every
+   person to the language's privileged team, which 0123 keeps as the one with plain packs. Nothing
+   guards it; each team's own rows stay in the database and come back when the release goes
+   forward again.
+3. **Rolling back to a release before the equal teams** brings back the privileged team: a
+   visitor or worker in no team of a language with several acts as the one with plain packs again,
+   and a language none of whose teams has plain packs shows none of them, since that release finds
+   a language's teams through its privileged one. Nothing is lost; it all comes back when the
    release goes forward again.
 
 ### Promoting the first admin
