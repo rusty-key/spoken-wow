@@ -19,7 +19,7 @@ import { recordActivity } from "@/lib/activity/store";
 import { inTransaction, query } from "@/lib/db";
 import { BASE_LANG, BUILTIN, allLangs, derivedTags, isLang, type Lang } from "@/lib/lang";
 import { loadLanguages } from "@/lib/languages/catalogue";
-import { adoptEveryLang, adoptLang, forgetTeams } from "@/lib/teams/store";
+import { foundLangTeam } from "@/lib/teams/store";
 
 export type LanguageState = { code: Lang; enabled: boolean };
 
@@ -56,13 +56,7 @@ export async function textByTeam(lang: string): Promise<boolean> {
 export async function setEnabled(lang: string, enabled: boolean, userId: string): Promise<void> {
   if (!isLang(lang)) throw new Error(`${lang} is not a language this site knows`);
   if (lang === BASE_LANG) throw new Error("English cannot be switched off");
-  // One transaction, so a language is never enabled without a team for its work to land on.
-  const was = await inTransaction(async (client) => {
-    const previous = await setEnabledOn(client, lang, enabled, userId);
-    await adoptEveryLang(client);
-    return previous;
-  });
-  forgetTeams();
+  const was = await inTransaction((client) => setEnabledOn(client, lang, enabled, userId));
   if (was === enabled) return;
   await recordActivity({ kind: "language.toggled", lang, actorId: userId, detail: { enabled } });
 }
@@ -125,7 +119,7 @@ export async function addLanguage(client: ClientBase, input: NewLanguage, userId
     [input.code, input.name, input.native, input.bcp47, input.provider, userId],
   );
   if (!rowCount) throw new LanguageExistsError(input.code);
-  await adoptLang(client, input.code);
+  const team = await foundLangTeam(client, input.code);
   // A site owner added it, so its team is official; a request's approval sets its own afterwards.
-  await client.query(`update "team" set "official" = true where "id" = team_of_lang($1)`, [input.code]);
+  await client.query(`update "team" set "official" = true where "id" = $1`, [team]);
 }

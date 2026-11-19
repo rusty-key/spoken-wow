@@ -15,7 +15,7 @@ import {
   renameTeam,
   TeamError,
 } from "./admin";
-import { adoptLang, forgetTeams, teamOf } from "./store";
+import { forgetTeams, foundLangTeam, teamOf } from "./store";
 import { addMember, asSystem, dropLang, dropTeam, newTeamIn, runningJob, systemRows, testUser, uniqueLang, unowned } from "./testing";
 
 let tag: string;
@@ -246,11 +246,11 @@ describe("liveTakeCounts", () => {
   });
 });
 
-describe("adoptLang", () => {
-  // As setEnabled and the queue's boot call it: the app role's own transaction, no team set.
+describe("foundLangTeam", () => {
+  // As addLanguage calls it: the app role's own transaction, no team set.
   // A code no migration made a team for, so the cleanup deletes only what this made.
-  it("gives an unowned language a team slugged by its code, with English's roster", async () => {
-    await inTransaction((client) => adoptLang(client, "zzZZ"));
+  it("gives a language a team slugged by its code, with English's roster and plain packs", async () => {
+    await inTransaction((client) => foundLangTeam(client, "zzZZ"));
     const rows = await systemRows<{ id: string; slug: string; voices: number; english: number }>(
       `select t."id", t."slug",
               (select count(*)::int from "voice" v where v."teamId" = t."id") as "voices",
@@ -265,7 +265,7 @@ describe("adoptLang", () => {
 
   it("makes a team of its own when the code's slug is taken, rather than joining that team", async () => {
     const squatter = await newTeam("zzzz");
-    await inTransaction((client) => adoptLang(client, "zzZZ"));
+    await inTransaction((client) => foundLangTeam(client, "zzZZ"));
     const rows = await systemRows<{ id: string; slug: string }>(
       `select t."id", t."slug" from "team" t where t."id" = team_of_lang('zzZZ')`,
     );
@@ -276,7 +276,7 @@ describe("adoptLang", () => {
 
   it("leaves the caller's transaction acting as the team it acted as", async () => {
     const team = await withTeam(was, async (client) => {
-      await adoptLang(client, "zzZZ");
+      await foundLangTeam(client, "zzZZ");
       return (await client.query<{ team: string }>(`select current_setting('spoken.team', true) as "team"`)).rows[0].team;
     });
     made.push((await systemRows<{ id: string }>(`select team_of_lang('zzZZ') as "id"`))[0].id);

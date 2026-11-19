@@ -58,3 +58,36 @@ create trigger "team_language_pack_name_frozen"
 create or replace function "team_of_lang"(text) returns uuid language sql stable as $$
   select "teamId" from "team_language" where "lang" = $1 and "packName" = 'plain'
 $$;
+
+-- A NEW LANGUAGE'S TEAM: named by its code, with English's roster, its packs plain. Only adding a
+-- language and handing one over that has no team make one: a language gets no team for being
+-- known.
+--
+-- It acts as every team until it returns, as adopt_lang did (0091): copy_team_roster is security
+-- invoker and would not see English's roster as the caller.
+create function "found_lang_team"(p_lang text) returns uuid
+language plpgsql as $$
+declare
+  v_team   uuid;
+  v_caller text := current_setting('spoken.team', true);
+begin
+  perform set_config('spoken.team', '*', true);
+  v_team := new_team(free_team_slug(lower(p_lang)), p_lang);
+  perform copy_team_roster((select "id" from "team" where "slug" = 'english'), v_team);
+  insert into "team_language" ("teamId", "lang", "packName") values (v_team, p_lang, 'plain');
+  perform pg_notify('spoken_team_language', p_lang);
+  perform set_config('spoken.team', coalesce(v_caller, ''), true);
+  return v_team;
+end
+$$;
+
+-- Only English is still given a team at boot: with none, the site could write nothing in it. A
+-- previous release calls this for every language and now gets a team for English alone.
+create or replace function "adopt_lang"(p_lang text) returns void
+language plpgsql as $$
+begin
+  if p_lang = 'enUS' and team_of_lang(p_lang) is null then
+    perform found_lang_team(p_lang);
+  end if;
+end
+$$;

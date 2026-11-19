@@ -25,7 +25,7 @@ import type { Capability } from "@/lib/permissions";
 
 import { teamIn } from "./acting";
 import { checkSlug, moveLang, TeamError } from "./admin";
-import { adoptLang, forgetTeams, type TeamId } from "./store";
+import { forgetTeams, foundLangTeam, type TeamId } from "./store";
 
 export type Branch = "new-language" | "hand-over" | "second-team";
 
@@ -145,7 +145,7 @@ export async function foundTeam(client: PoolClient, input: FoundInput, actorId: 
   })();
   // A team a person founds keeps its new audio in its own bucket (docs/platform/STORAGE.md); a site
   // admin can lift that on /admin/teams. After every branch, since a hand-over can claim the team
-  // adopt_lang made, which has the default false.
+  // found_lang_team made, which has the default false.
   await client.query(`update "team" set "ownStorage" = true, "official" = $2 where "id" = $1`, [
     founded.teamId,
     input.official,
@@ -178,7 +178,7 @@ async function foundLanguage(client: PoolClient, input: FoundInput, actorId: str
 
 /**
  * A known language nobody looks after: a new team, which the language moves to with its rows. A
- * language with a row but no team yet gets adopt_lang's team, with english's roster, renamed.
+ * language with a row but no team yet gets found_lang_team's team, with english's roster, renamed.
  */
 async function takeOverLanguage(client: PoolClient, input: FoundInput, actorId: string): Promise<Founded> {
   const { rows } = await client.query<{ team: TeamId | null }>(`select team_of_lang($1) as "team"`, [input.lang]);
@@ -186,7 +186,7 @@ async function takeOverLanguage(client: PoolClient, input: FoundInput, actorId: 
   let moved = 0;
   let from: string | null = null;
   if (rows[0].team === null) {
-    await adoptLang(client, input.lang);
+    await foundLangTeam(client, input.lang);
     team = await renameAdopted(client, input);
   } else {
     team = await newTeam(client, input);
@@ -205,7 +205,7 @@ async function takeOverLanguage(client: PoolClient, input: FoundInput, actorId: 
   };
 }
 
-/** adopt_lang's team, slugged by the code, renamed as asked; a name that falls back to the code keeps its slug. */
+/** found_lang_team's team, slugged by the code, renamed as asked; a name that falls back to the code keeps its slug. */
 async function renameAdopted(client: PoolClient, input: FoundInput): Promise<{ id: TeamId; slug: string }> {
   const base = slugFor(input.team.name, input.lang);
   const [team] = await named(

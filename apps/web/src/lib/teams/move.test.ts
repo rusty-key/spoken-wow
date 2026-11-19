@@ -209,7 +209,7 @@ describe("move_team_lang", () => {
   });
 });
 
-describe("adopt_lang", () => {
+describe("adopt_lang and found_lang_team", () => {
   // A code no fixture or suite uses, so it is unowned and its team is new.
   const LANG = "qaQA";
 
@@ -221,13 +221,19 @@ describe("adopt_lang", () => {
 
   afterEach(drop);
 
-  it("gives an unowned language a team of its own with English's roster", async () => {
+  it("adopt_lang gives no language but English a team", async () => {
+    await drop();
+    await db().query(`select adopt_lang($1)`, [LANG]);
+    expect(await teamOfLang(LANG)).toBeNull();
+  });
+
+  it("found_lang_team gives a language a team of its own with English's roster", async () => {
     await drop();
     const english = (await systemRows<{ id: string }>(`select "id" from "team" where "slug" = 'english'`))[0].id;
     const unseed = await baseRows(english);
     try {
       // As the app calls it: its own role, acting as no team.
-      await db().query(`select adopt_lang($1)`, [LANG]);
+      await db().query(`select found_lang_team($1)`, [LANG]);
     } finally {
       await unseed();
     }
@@ -244,14 +250,14 @@ describe("adopt_lang", () => {
     expect(await hasRow("queue_dismissal", team!)).toBe(true);
   });
 
-  it("leaves the caller acting as the team it was, whether it adopts or finds a team", async () => {
+  it("leaves the caller acting as the team it was", async () => {
     const caller = randomUUID();
     const client = await db().connect();
     try {
       await client.query("begin");
       await client.query(`select set_config('spoken.team', $1, true)`, [caller]);
-      for (const _ of ["adopts", "finds"]) {
-        await client.query(`select adopt_lang($1)`, [LANG]);
+      for (const call of ["found_lang_team", "adopt_lang"]) {
+        await client.query(`select ${call}($1)`, [LANG]);
         const { rows } = await client.query(`select current_setting('spoken.team') as "team"`);
         expect(rows[0].team).toBe(caller);
       }

@@ -8,7 +8,7 @@ import "server-only";
 import type { ClientBase, PoolClient, QueryResult, QueryResultRow } from "pg";
 
 import { ALL_TEAMS, query, queryIn, type TeamId, withTeam } from "@/lib/db";
-import { BASE_LANG, allLangs, type Lang } from "@/lib/lang";
+import { BASE_LANG, type Lang } from "@/lib/lang";
 
 import { actingTeams, teamIn } from "./acting";
 import { listenInServer } from "./listen";
@@ -314,17 +314,16 @@ export async function everyTeamOf(langs: readonly Lang[]): Promise<Map<TeamId, L
 }
 
 /**
- * On the caller's client, so it shares the transaction that switches the language on; the caller
- * calls forgetTeams once that commits. The transaction need not act as any team.
+ * A team for `lang`, which has no plain team: slugged by its code, with English's roster and plain
+ * packs. On the caller's client, in its transaction; the caller calls forgetTeams once that
+ * commits. The transaction need not act as any team.
  */
-export async function adoptLang(client: ClientBase, lang: string): Promise<void> {
-  await client.query(`select adopt_lang($1)`, [lang]);
+export async function foundLangTeam(client: ClientBase, lang: string): Promise<TeamId> {
+  const { rows } = await client.query<{ id: TeamId }>(`select found_lang_team($1) as "id"`, [lang]);
+  return rows[0].id;
 }
 
-/**
- * Gives every known language with no team a team of its own, so no write refuses one: a
- * player's report in it, its activity, the queue's dismissal.
- */
-export async function adoptEveryLang(client: ClientBase): Promise<void> {
-  for (const lang of allLangs()) await adoptLang(client, lang);
+/** Gives English a team when it has none, as on an empty database. No other language gets one for being known. */
+export async function adoptEnglish(client: ClientBase): Promise<void> {
+  await client.query(`select adopt_lang($1)`, [BASE_LANG]);
 }

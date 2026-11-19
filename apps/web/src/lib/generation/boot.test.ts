@@ -28,7 +28,7 @@ vi.mock("@/lib/storage/upkeep", () => ({
   },
 }));
 vi.mock("@/lib/releases/sync", () => ({ syncActive: async () => void calls.push("release sync") }));
-vi.mock("@/lib/teams/store", () => ({ adoptEveryLang: async () => {}, forgetTeams: () => {} }));
+vi.mock("@/lib/teams/store", () => ({ adoptEnglish: async () => {}, forgetTeams: () => {} }));
 vi.mock("@/lib/db", () => ({ inTransaction: async () => {} }));
 vi.mock("@/lib/languages/catalogue", () => ({ loadLanguages: async () => {} }));
 vi.mock("@/lib/shutdown", () => ({ onShutdown: (stop: () => Promise<unknown>) => stops.push(stop) }));

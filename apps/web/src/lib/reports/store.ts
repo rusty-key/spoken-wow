@@ -50,7 +50,6 @@ const REPORT_SCOPE = (team: number) => `("queue" = 'text' or "teamId" = $${team}
 /** The acting team REPORT_SCOPE cuts by; null in a language nobody owns, which has no reports. */
 async function scopeTeam(lang: Lang): Promise<TeamId | null> {
   const team = await ownerOrAll(lang);
-  // Never in practice: adoptEveryLang gives every language a team.
   return team === ALL_TEAMS ? null : team;
 }
 
