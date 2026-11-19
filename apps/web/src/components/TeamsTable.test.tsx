@@ -59,6 +59,7 @@ const team = (langs: Lang[], alsoIn: Lang[] = []) => ({
   slug: "spare",
   name: "Spare",
   ownStorage: true,
+  official: true,
   langs,
   alsoIn,
   members: [],
