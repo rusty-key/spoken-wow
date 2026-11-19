@@ -42,7 +42,8 @@ async function failure(team: string, sql: string, params: unknown[] = []): Promi
 }
 
 describe("team contract", () => {
-  it.each(TABLES)("leaves no %s row without a team but a site-wide one", async (table) => {
+  // A language's own ignore has no team either.
+  it.each(TABLES.filter((t) => t !== "line_ignore"))("leaves no %s row without a team but a site-wide one", async (table) => {
     const siteWide = SITE_WIDE.includes(table) ? ` and "lang" is not null` : "";
     const { rows } = await asSystem.query(
       `select count(*)::int as "n" from "${table}" where "teamId" is null${siteWide}`,
@@ -132,7 +133,7 @@ describe("team contract", () => {
     expect(error).toMatchObject({ code: "23505" });
   });
 
-  it("refuses a site-wide ignore with a team, and a language's without one", async () => {
+  it("refuses a site-wide ignore with a team, and takes a language's without one", async () => {
     const english = (await asSystem.query(ENGLISH)).rows[0].id;
     expect(await failure(
       ALL_TEAMS,
@@ -142,6 +143,6 @@ describe("team contract", () => {
     expect(await failure(
       ALL_TEAMS,
       `insert into "line_ignore" ("lineId", "lang", "reason", "teamId") values ('contract-test', 'deDE', 'x', null)`,
-    )).toMatchObject({ code: "23514" });
+    )).toBeNull();
   });
 });

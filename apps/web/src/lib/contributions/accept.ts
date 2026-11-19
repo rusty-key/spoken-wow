@@ -740,13 +740,15 @@ async function nameIfUnnamed(
 /**
  * Ignore every line a quests contribution wrote, in its language, or in every language for an
  * English row. A line it only added a speaker to is ignored whole, whoever else speaks it.
- * The ignores are `owner`'s, the language's privileged team, whichever team the rejecter works in.
+ * The ignores are the language's, which every team of it honours, whichever team the rejecter
+ * works in; their activity is filed under `owner`. The client acts as `acting` again after.
  */
 async function ignoreWrittenLines(
   client: PoolClient,
   contribution: Contribution,
   userId: string,
   owner: TeamId | undefined,
+  acting: TeamId | typeof ALL_TEAMS,
 ): Promise<void> {
   const { rows } = await client.query<{ lineId: string }>(
     `select "lineId" from "quest_line_speaker" where "contributionId" = $1
@@ -755,11 +757,14 @@ async function ignoreWrittenLines(
     [contribution.id, noteFor(contribution.id)],
   );
   const lang = contribution.locale === BASE_LANG || !isLang(contribution.locale) ? null : contribution.locale;
+  // Only ALL_TEAMS writes a row with no team.
+  await actAs(client, ALL_TEAMS);
   await asTeam(lang, owner, async () => {
     for (const { lineId } of rows) {
-      await writeIgnore(lineId, `Rejected ${noteFor(contribution.id)}`, userId, lang, client);
+      await writeIgnore(lineId, `Rejected ${noteFor(contribution.id)}`, userId, lang, client, true);
     }
   });
+  await actAs(client, acting);
 }
 
 /**
@@ -1066,7 +1071,7 @@ export async function resolveContribution(
     let ignored = false;
     if (written && status !== "accepted") {
       if (status === "rejected" && contribution.source === "quests" && mayIgnore) {
-        await ignoreWrittenLines(client, contribution, userId, lang ? owners.get(lang) : undefined);
+        await ignoreWrittenLines(client, contribution, userId, lang ? owners.get(lang) : undefined, team);
         ignored = true;
       } else {
         await client.query("rollback");

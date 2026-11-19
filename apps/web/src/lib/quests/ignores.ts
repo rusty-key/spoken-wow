@@ -12,8 +12,9 @@
  * count-and-timestamp stamp, because there are tens of these rather than thousands and pm2
  * runs two workers that must not disagree about what is hidden.
  *
- * An ignore in one language is that language's team's; one in every language belongs to no
- * team, and its "teamId" is written null rather than left to whichever team the write ran as.
+ * An ignore in one language is that language's team's, or the language's own, which every team
+ * of it honours; one in every language belongs to no team. Those with no team have "teamId"
+ * written null rather than left to whichever team the write ran as.
  */
 import type { PoolClient } from "pg";
 
@@ -102,20 +103,22 @@ export async function writeIgnore(
   userId: string | null,
   // Null ignores the line in every language, which is what every ignore used to mean.
   lang: Lang | null = null,
-  // A caller's transaction, which then forgets the memo itself once it commits.
+  // A caller's transaction, acting as ALL_TEAMS for an ignore with no team, which then forgets
+  // the memo itself once it commits.
   client?: PoolClient,
+  // The language's ignore rather than the acting team's: every team of the language honours it.
+  wholeLanguage = false,
 ): Promise<LineIgnore> {
   const trimmed = reason.trim();
   if (!trimmed) throw new Error("an ignore needs a reason: a decision nobody can revisit is a bug");
   // Ignoring one voice of a line ignores the line, as the pack build reads it.
   lineId = baseLineId(lineId);
   // Named, not defaulted, so a caller's transaction (a contribution's reject) files it right.
-  const team = lang === null ? null : await teamOf(lang);
+  const team = lang === null || wholeLanguage ? null : await teamOf(lang);
 
-  // A site-wide ignore has no team, and nulls never conflict in the team's key: it has a key
-  // of its own.
+  // An ignore with no team has a key of its own: nulls never conflict in the team's key.
   const target = team === null
-    ? `("lineId") where "teamId" is null`
+    ? `("lineId", (coalesce("lang", ''))) where "teamId" is null`
     : `("teamId", "lineId", (coalesce("lang", '')))`;
   const write = async (on: Pick<PoolClient, "query">) =>
     (await on.query<IgnoreRow>(
@@ -143,19 +146,24 @@ export async function writeIgnore(
   return toIgnore(rows[0]);
 }
 
-/** `by` is who lifted it, for the activity log: the delete leaves nothing else behind. */
+/**
+ * Lifts the acting team's ignore and the language's own, which whoever may ignore in the language
+ * may lift. `by` is who lifted it, for the activity log: the delete leaves nothing else behind.
+ */
 export async function clearIgnore(
   lineId: string,
   lang: Lang | null,
   by: string | null,
 ): Promise<boolean> {
   lineId = baseLineId(lineId);
-  const team = lang === null ? ALL_TEAMS : await teamOf(lang);
-  const { rowCount } = await withTeam(team, (client) =>
-    client.query(`delete from "line_ignore" where "lineId" = $1 and "lang" is not distinct from $2`, [
-      lineId,
-      lang,
-    ]),
+  const team = lang === null ? null : await teamOf(lang);
+  // As ALL_TEAMS, since only it may delete a row with no team; the team is named instead.
+  const { rowCount } = await withTeam(ALL_TEAMS, (client) =>
+    client.query(
+      `delete from "line_ignore"
+        where "lineId" = $1 and "lang" is not distinct from $2 and ("teamId" is null or "teamId" = $3)`,
+      [lineId, lang, team],
+    ),
   );
   forgetIgnores();
   const removed = (rowCount ?? 0) > 0;

@@ -1,5 +1,5 @@
--- A language's teams are equal (docs/platform/TEAMS.md). Additive but for the line_ignore check,
--- replaced whole as 0097 replaced release_run's state check.
+-- A language's teams are equal (docs/platform/TEAMS.md). Additive but for line_ignore's team check
+-- and its key for rows with no team, each replaced whole as 0097 replaced release_run's state check.
 --
 -- What made a team the language's "privileged" one now only names its packs: "packName" is
 -- 'plain' (<Pack>_<lang>) or 'slug' (<Pack>_<lang>_<slug>), set when the team joins the language
@@ -58,6 +58,18 @@ create trigger "team_language_pack_name_frozen"
 create or replace function "team_of_lang"(text) returns uuid language sql stable as $$
   select "teamId" from "team_language" where "lang" = $1 and "packName" = 'plain'
 $$;
+
+-- A LANGUAGE'S OWN IGNORES. An ignore with a language and no team is the language's: every team of
+-- it honours it, and row-level security already lets every team read a row with no team (0090).
+-- A rejected contribution's lines are ignored so, rather than under the privileged team.
+alter table "line_ignore" drop constraint "line_ignore_team_check";
+alter table "line_ignore" add constraint "line_ignore_team_check" check ("teamId" is null or "lang" is not null);
+
+-- One ignore with no team per line and language. The key it replaces allowed one per line, so a
+-- language's ignore and the every-language one could not both exist. A previous release's
+-- every-language ignore names that key in its conflict clause and fails until it rolls forward.
+create unique index "line_ignore_teamless_idx" on "line_ignore" ("lineId", (coalesce("lang", ''))) where "teamId" is null;
+drop index "line_ignore_site_wide_idx";
 
 -- A NEW LANGUAGE'S TEAM: named by its code, with English's roster, its packs plain. Only adding a
 -- language and handing one over that has no team make one: a language gets no team for being

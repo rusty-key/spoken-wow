@@ -82,7 +82,7 @@ describe("a text maintainer who works in a second team", () => {
     expect(acts).toEqual([{ teamId: teamA }]);
   });
 
-  it("files a contribution's rejection, and the ignore it leaves, under the privileged team", async () => {
+  it("files a contribution's rejection under the privileged team, and leaves the language's ignore", async () => {
     const dedup = `text-team-${tag}`;
     await createContribution({
       source: "quests", key: lineId, locale: lang, build: "1.12.1/5875", text: "Hello.", meta: {},
@@ -96,7 +96,7 @@ describe("a text maintainer who works in a second team", () => {
     expect(outcome).toMatchObject({ ok: true });
 
     const ignores = await systemRows(`select "teamId", "lang" from "line_ignore" where "lineId" = $1`, [lineId]);
-    expect(ignores).toEqual([{ teamId: teamA, lang }]);
+    expect(ignores).toEqual([{ teamId: null, lang }]);
     const acts = await systemRows(
       `select "kind", "teamId" from "activity" where "lang" = $1 and "kind" in ('contribution.resolved', 'ignore.set')
         order by "kind"`,
