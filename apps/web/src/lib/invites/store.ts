@@ -408,6 +408,8 @@ export async function acceptInvite(
   const state = stateOf(row);
   if (state !== "pending") return { ok: false, reason: state };
   if (normalEmail(user.email) !== invite.email) return { ok: false, reason: "wrong-email", email: invite.email };
+  // Before the inviter's grants, which a team being deleted no longer gives (SPTD1, migration 0124).
+  await query(`select team_check_not_deleting($1)`, [invite.teamId]);
 
   const { lang, capabilities } = invite;
   const inviterName = invite.invitedByName;

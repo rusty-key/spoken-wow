@@ -19,12 +19,16 @@ import { isLang, langName, type Lang } from "@/lib/lang";
 import { textByTeam } from "@/lib/languages/store";
 import { canGrant, isCapability, type Capability, type Grant, type Viewer } from "@/lib/permissions";
 
-/** On the caller's client when given. */
+/**
+ * A team being deleted is left out: its members may do nothing in it while its packs come off
+ * the channel. On the caller's client when given.
+ */
 export async function grantsOf(userId: string, client?: Pick<ClientBase, "query">): Promise<Grant[]> {
   const { rows } = await (client ?? db()).query<{ lang: string; capability: string }>(
     `select "lang", 'text' as "capability" from "language_grant" where "userId" = $1
      union all
-     select "lang", "capability" from "team_member" where "userId" = $1
+     select m."lang", m."capability" from "team_member" m join "team" t on t."id" = m."teamId"
+      where m."userId" = $1 and t."deletingAt" is null
      order by "lang", "capability"`,
     [userId],
   );
@@ -36,7 +40,8 @@ export async function grantsInTeam(userId: string, lang: Lang, team: TeamId | nu
   const rows = await query<{ capability: string }>(
     `select 'text' as "capability" from "language_grant" where "userId" = $1 and "lang" = $2
      union all
-     select "capability" from "team_member" where "userId" = $1 and "lang" = $2 and "teamId" = $3`,
+     select m."capability" from "team_member" m join "team" t on t."id" = m."teamId"
+      where m."userId" = $1 and m."lang" = $2 and m."teamId" = $3 and t."deletingAt" is null`,
     [userId, lang, team],
   );
   return rows.flatMap(({ capability }) => (isCapability(capability) ? [{ lang, capability }] : []));

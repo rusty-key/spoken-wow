@@ -332,6 +332,16 @@ describe("/api/grants in a language with two teams", () => {
     ]);
   });
 
+  it("sends no invite into a team being deleted, saying why", async () => {
+    await asSystem.query(`update "team" set "deletingAt" = now() where "id" = $1`, [teamB]);
+    const to = `deleting-${fresh.id}@example.invalid`;
+    const response = await putFor(to, ["edit"]);
+    expect(response.status).toBe(409);
+    expect((await response.json()).error).toMatch(/^grants-route-b-.+ is being deleted; it can make nothing more\.$/);
+    expect(await systemRows(`select 1 from "invite" where "email" = $1`, [to])).toHaveLength(0);
+    expect(sent.filter((mail) => mail.to === to)).toHaveLength(0);
+  });
+
   it("stores each team's own for its invite", async () => {
     const invited = async (inviter: { id: string }, to: string) => {
       who.id = inviter.id;

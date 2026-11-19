@@ -11,6 +11,7 @@ import { INVITE_COOKIE } from "@/lib/invites/cookie";
 import { langName, type Lang } from "@/lib/lang";
 import { capabilityLabel } from "@/lib/permissions";
 import { acceptInvite } from "@/lib/invites/store";
+import { deletingRefusal } from "@/lib/teams/deleting";
 
 export const dynamic = "force-dynamic";
 
@@ -34,7 +35,14 @@ export async function POST(request: Request) {
   const token = (await cookies()).get(INVITE_COOKIE)?.value;
   if (!token) return Response.json({ error: "This invite link is not valid any more.", reason: "unknown" }, { status: 404 });
 
-  const outcome = await acceptInvite(token, session.user, id);
+  let outcome;
+  try {
+    outcome = await acceptInvite(token, session.user, id);
+  } catch (error) {
+    const deleting = deletingRefusal(error);
+    if (deleting) return Response.json({ error: deleting, reason: "team-deleting" }, { status: 409 });
+    throw error;
+  }
   // The cookie stays: the token is spent now, and the refreshed /invite needs it to say "You're in".
   if (outcome.ok) return Response.json({ lang: outcome.lang, capabilities: outcome.capabilities });
 
