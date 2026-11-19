@@ -23,7 +23,7 @@ import type { MadeByFacets } from "@/lib/takes/made-by";
 import type { Facets } from "@/lib/facets";
 import { AUDIO_STATE_LABELS } from "@/lib/audio-state";
 import { RECORDED_OPTIONS, type Recorded } from "@/lib/recordings/live";
-import { NPC_TYPES, SOURCES, type Source } from "@/lib/line-fields";
+import { NPC_TYPE_LABELS, NPC_TYPES, SOURCE_LABELS, SOURCES, type Source } from "@/lib/line-fields";
 import type { Filter, LineFilters } from "@/lib/search";
 
 type Props = {
@@ -45,23 +45,9 @@ type Props = {
 const plain = (values: readonly string[]): Option[] =>
   values.map((value) => ({ value, label: capital(value) }));
 
-// The corpus says "accept" and "followup"; a person reads the kind of line.
-const SOURCE_NAMES: Record<Source, string> = {
-  accept: "Quest accept",
-  progress: "Quest progress",
-  complete: "Quest complete",
-  gossip: "Gossip",
-  followup: "Follow-up",
-  chatter: "NPC chat",
-};
-const SOURCE_OPTIONS: Option[] = SOURCES.map((value) => ({ value, label: SOURCE_NAMES[value] }));
+const SOURCE_OPTIONS: Option[] = SOURCES.map((value) => ({ value, label: SOURCE_LABELS[value] }));
 
-const NPC_TYPE_NAMES: Record<(typeof NPC_TYPES)[number], string> = {
-  creature: "NPC",
-  gameobject: "Object",
-  item: "Item",
-};
-const NPC_TYPE_OPTIONS: Option[] = NPC_TYPES.map((value) => ({ value, label: NPC_TYPE_NAMES[value] }));
+const NPC_TYPE_OPTIONS: Option[] = NPC_TYPES.map((value) => ({ value, label: NPC_TYPE_LABELS[value] }));
 
 const SCOPE_OPTIONS: Option[] = [
   { value: "any", label: "Anywhere" },
@@ -146,8 +132,8 @@ const SearchBar = forwardRef<HTMLInputElement, Props>(function SearchBar(
   };
   add("state", "Audio", filters.state && AUDIO_STATE_LABELS[filters.state], { state: undefined });
   add("reports", "Reported", filters.reports === "open" ? "open reports" : undefined, { reports: undefined });
-  add("source", "Line", filters.source?.map((value) => SOURCE_NAMES[value]).join(", "), { source: undefined });
-  add("npcType", "Spoken by", filters.npcType && NPC_TYPE_NAMES[filters.npcType], { npcType: undefined });
+  add("source", "Line", filters.source?.map((value) => SOURCE_LABELS[value]).join(", "), { source: undefined });
+  add("npcType", "Spoken by", filters.npcType && NPC_TYPE_LABELS[filters.npcType], { npcType: undefined });
   if (filters.minLevel !== undefined || filters.maxLevel !== undefined) {
     add("level", "Level", `${filters.minLevel ?? "…"}–${filters.maxLevel ?? "…"}`, { minLevel: undefined, maxLevel: undefined });
   }
