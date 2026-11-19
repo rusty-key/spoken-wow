@@ -145,10 +145,7 @@ local function Widget(kind, name)
     function w:UnregisterAllEvents() self.events = {} end
     function w:SetScript(script, fn) self.scripts[script] = fn end
     function w:GetScript(script) return self.scripts[script] end
-    function w:IsObjectType(objectType)
-        local frameType = self.frameType or self.kind
-        return frameType == objectType or (objectType == "Button" and frameType == "CheckButton")
-    end
+    -- Only OnClick is modelled per type; every other script reads as supported.
     function w:HasScript(script)
         if script == "OnClick" then
             local frameType = self.frameType or self.kind
@@ -162,6 +159,10 @@ local function Widget(kind, name)
     function w:SetAttribute(key, value) self.attributes = self.attributes or {}; self.attributes[key] = value end
     function w:GetAttribute(key) return self.attributes and self.attributes[key] end
     function w:HookScript(script, fn)
+        -- The client raises here too: "script type not supported by this object".
+        if not self:HasScript(script) then
+            error(("%s:HookScript(): Cannot assign script handler for '%s'"):format(self:GetObjectType(), script), 2)
+        end
         self.hooks[script] = self.hooks[script] or {}
         table.insert(self.hooks[script], fn)
     end

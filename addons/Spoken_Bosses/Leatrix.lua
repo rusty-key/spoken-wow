@@ -106,11 +106,14 @@ local ScanSoon
 local ShowLeatrixPreview
 local HookDungeonMenuButton
 
-local function SupportsScript(frame, script)
-	if not frame or type(frame.HookScript) ~= "function" then return false end
-	if type(frame.HasScript) ~= "function" then return true end
+-- Scan walks every frame under the world map, other addons' included, and the client raises
+-- when a frame is hooked for a script its type lacks (only Buttons take OnClick).
+local function SafeHook(frame, script, fn)
+	if not frame or type(frame.HookScript) ~= "function" or type(frame.HasScript) ~= "function" then
+		return
+	end
 	local ok, supported = pcall(frame.HasScript, frame, script)
-	return ok and supported == true
+	if ok and supported then frame:HookScript(script, fn) end
 end
 
 local function IsDungeonOverlay(frame)
@@ -129,11 +132,11 @@ local function ClearLeatrixDungeonStory()
 end
 
 local function Watch(frame)
-	if watched[frame] or not frame.HookScript then return end
+	if watched[frame] then return end
 	watched[frame] = true
-	frame:HookScript("OnShow", ScanSoon)
+	SafeHook(frame, "OnShow", ScanSoon)
 	if IsDungeonOverlay(frame) then
-		frame:HookScript("OnHide", ClearLeatrixDungeonStory)
+		SafeHook(frame, "OnHide", ClearLeatrixDungeonStory)
 	end
 end
 
@@ -144,10 +147,10 @@ end
 
 HookDungeonMenuButton = function(button)
 	local text = button and button.Text
-	if menuHooked[button] or not button or not button.HookScript or not text or type(text) == "function" then return end
+	if menuHooked[button] or not button or not text or type(text) == "function" then return end
 	if type(text.GetText) ~= "function" or not DungeonInstanceByName(text:GetText()) then return end
 	menuHooked[button] = true
-	button:HookScript("OnClick", function(self)
+	SafeHook(button, "OnClick", function(self)
 		local instanceID = DungeonInstanceByName(self.Text and self.Text:GetText())
 		if instanceID then
 			-- Wait for Leatrix's own click handler to change its private preview state.
@@ -156,20 +159,14 @@ HookDungeonMenuButton = function(button)
 	end)
 end
 
-local function IsButton(frame)
-	if not frame or type(frame.IsObjectType) ~= "function" then return false end
-	local ok, button = pcall(frame.IsObjectType, frame, "Button")
-	return ok and button == true
-end
-
 local function HookPin(pin)
-	if hooked[pin] or not IsButton(pin) or not SupportsScript(pin, "OnClick") then return end
+	if hooked[pin] then return end
 	local row = RowOf(pin)
 	-- Leatrix reuses the same frame pool for map levels, bosses and entrances. Hooking only the
 	-- first row misses an entrance when that frame was born as a level pin.
 	if type(row) ~= "table" then return end
 	hooked[pin] = true
-	pin:HookScript("OnClick", function(self, button)
+	SafeHook(pin, "OnClick", function(self, button)
 		if button ~= "LeftButton" then return end
 		local current = RowOf(self)
 		if type(current) == "table" and current[1] == "boss" then
