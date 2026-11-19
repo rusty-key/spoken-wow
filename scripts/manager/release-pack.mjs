@@ -34,8 +34,6 @@ export function releasePlan(section, lang, team, packs = loadPacks()) {
 /**
  * The team index-v2.json lists a pack under, which the Manager labels it with: none for an
  * official team holding the language's plain space, page or not, whose packs are Spoken's own.
- * A non-official team's pack would otherwise publish unlabelled, and an official privileged
- * team's page-less pack would be refused by the gate below while the site lets it press.
  */
 function listedTeam(team) {
   return team.official && team.privileged ? null : { slug: team.slug, name: team.name, official: team.official };
