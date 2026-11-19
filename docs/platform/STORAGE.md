@@ -240,8 +240,10 @@ recording also needs `Authorization: Bearer <SPOKEN_ARCHIVE_TOKEN>`, which `fetc
 only to a site `/api/archive/` address over https or on the same machine, and never on to the
 bucket it is redirected to. Releases pull takes only, so they need no token.
 
-The release job on the droplet gets `SPOKEN_ARCHIVE_URL=http://127.0.0.1:3010/api/archive/` from
-`shared/release.env`, which overrides `app.env` for it and keeps the requests off nginx. The
+The release job on the droplet gets `SPOKEN_ARCHIVE_URL=http://127.0.0.1:<PORT>/api/archive/`, the
+site's own `PORT`, from `shared/release.env`, which overrides `app.env` for it and keeps the requests
+off nginx. A bucket's own address cannot serve a team's takes, so `sounds.mjs` refuses a release
+holding any when the variable is not a site's `/api/archive/` route. The
 `release-packs.yaml` workflow and a developer's
 `make <section>-pull-live` set `SPOKEN_ARCHIVE_URL` to `https://spoken.quest/api/archive/` instead.
 

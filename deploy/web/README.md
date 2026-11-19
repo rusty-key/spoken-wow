@@ -134,8 +134,10 @@ admin can connect one on `/admin/storage`. `SPOKEN_STORAGE_KEY` (`openssl rand -
 each team's bucket key; like `SPOKEN_SECRET_KEY` it cannot be rotated casually, since changing it
 makes every team enter its key again. `SPOKEN_ARCHIVE_TOKEN` (any long random string) lets a
 developer's pull fetch voice actors' recordings through the site; releases need none. In `shared/release.env`,
-`SPOKEN_ARCHIVE_URL=http://127.0.0.1:3010/api/archive/` overrides app.env's for the release job, so
-its reads go through the site, which knows which bucket holds each clip. The
+`SPOKEN_ARCHIVE_URL=http://127.0.0.1:<PORT>/api/archive/`, with the site's `PORT` from `app.env`,
+overrides app.env's for the release job, so its reads go through the site, which knows which bucket
+holds each clip. Without it the job reads our bucket's own address, and a team's release stops on
+its first take: `sounds.mjs` refuses, naming the variable. The
 `release-packs.yaml` workflow's `SPOKEN_ARCHIVE_URL` variable becomes
 `https://spoken.quest/api/archive/`. Whichever worker leads the queue lands quarantined objects and
 advances moves between buckets once a minute, and samples 50 team-bucket objects for ones a team
@@ -653,7 +655,11 @@ language's activity log with its error.
    R2_ACCESS_KEY_ID=<a token scoped to the packs bucket alone>
    R2_SECRET_ACCESS_KEY=<its secret>
    R2_BUCKET=spoken-packs
+   SPOKEN_ARCHIVE_URL=http://127.0.0.1:<PORT>/api/archive/
    ```
+
+   `<PORT>` is the site's, from `app.env`. The job reads takes through the site, which finds each in
+   whichever bucket keeps it, a team's own included.
 
    It stays out of `app.env` because pm2 merges that file into every site worker, and the Manager
    trusts whatever this key signs. A new key makes every installed Manager reject the channel.

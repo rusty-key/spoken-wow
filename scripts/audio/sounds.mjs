@@ -160,6 +160,15 @@ const relevant =
     : section === "bosses" ? bossesShipped()
     : () => true;
 const live = takes.filter((take) => relevant(take.stem));
+
+// Whether an archive address is a site's archive route rather than a bucket's own address.
+function throughSite(url) {
+  try {
+    return /\/api\/archive\/?$/.test(new URL(url).pathname);
+  } catch {
+    return false;
+  }
+}
 const unnamed = takes.length - live.length;
 
 if (list) {
@@ -249,6 +258,17 @@ async function writeEncodingPointers(pointed) {
 if (process.env.SPOKEN_CLIP_POINTERS) {
   if (!process.env.SPOKEN_ARCHIVE_URL) {
     console.error("SPOKEN_CLIP_POINTERS needs SPOKEN_ARCHIVE_URL");
+    process.exit(1);
+  }
+  // A take kept in its team's own bucket is reached only through a site's /api/archive/, which
+  // finds each object wherever it is kept. Our bucket's own address answers 404 for it, which reads
+  // as the team's deletion: Places, Readables and Bosses would stop on it, and quests ship it silent.
+  const teamKept = live.filter((take) => take.teamTake || take.teamEncoding);
+  if (teamKept.length && !throughSite(process.env.SPOKEN_ARCHIVE_URL)) {
+    console.error(
+      `error: ${teamKept.length} live takes are kept in their team's own bucket, e.g. ${teamKept[0].file}, which only a ` +
+        `site's archive route reaches: set SPOKEN_ARCHIVE_URL to <site>/api/archive/, not ${process.env.SPOKEN_ARCHIVE_URL}`,
+    );
     process.exit(1);
   }
   const unhashed = live.filter((take) => take.archived && !take.sha256);
