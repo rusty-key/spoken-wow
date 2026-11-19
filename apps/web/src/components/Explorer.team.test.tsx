@@ -156,3 +156,18 @@ test("a line with no text in the language says it waits for that text, and offer
   expect(hint.getAttribute("href")).toBe("/deDE/contributions/quests");
   expect(named(/^Edit the spoken text/)).toHaveLength(0);
 });
+
+test("a speaker added by hand to one line is marked on that row, not on the speaker's heading", async () => {
+  const added: ResultLine = { ...line, lineId: "q:1:complete", source: "complete", key: "q:1:complete|0", audioPath: "quests/1-complete.mp3", added: true };
+  fetchMock.mockImplementation(async (url: string) =>
+    url.startsWith("/api/quests/search")
+      ? new Response(JSON.stringify({ ...result, lines: [line, added] }), { status: 200 })
+      : new Response("{}", { status: 404 }),
+  );
+  explorer(null);
+
+  const mark = await screen.findByText("speaker added by hand");
+  expect(screen.getAllByText("speaker added by hand")).toHaveLength(1);
+  expect(mark.closest("tr")?.textContent).toContain("complete");
+  expect(document.querySelector("tr.cat-group")?.textContent).not.toContain("added");
+});

@@ -158,8 +158,8 @@ type Props = {
 };
 
 /**
- * A line's kind under its quest title, where the old table drew a glyph only. Lower case and
- * shorter than the filter labels, since the quest is already named right above it.
+ * A line's kind under its quest title. Lower case and shorter than the filter labels, since the
+ * quest is already named right above it.
  */
 const SOURCE_WORDS: Record<string, string> = {
   accept: "accept",
@@ -171,8 +171,8 @@ const SOURCE_WORDS: Record<string, string> = {
 };
 
 /**
- * The heading over one NPC's lines: who speaks, in which voice, and the ways to that NPC. The
- * results come sorted by speaker, so this replaces a name and three id lines repeated per row.
+ * The heading over one NPC's lines: who speaks, in which voice, and the ways to that NPC. Relies
+ * on the results coming sorted by speaker, so each NPC's lines sit together under one heading.
  */
 export function SpeakerHeader({
   line,
@@ -216,7 +216,6 @@ export function SpeakerHeader({
               </a>
             </>
           )}
-          {line.added && <span title="Added by hand, not from the game data"> · added</span>}
         </span>
       </th>
     </tr>
@@ -452,6 +451,12 @@ export default function LineRow({
               ))}
             </span>
           </>
+        )}
+        {/* Per line, not on the speaker heading: an admin attaches a speaker to one line. */}
+        {line.added && (
+          <span className="cat-two-sub" title="Added by hand, not from the game data">
+            speaker added by hand
+          </span>
         )}
       </td>
 

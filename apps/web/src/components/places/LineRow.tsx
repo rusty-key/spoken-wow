@@ -70,8 +70,8 @@ const STATE_LABEL = {
 } as const;
 
 /**
- * The heading over one zone's or instance's lines, which the results come grouped by: it replaces
- * a first column that repeated the same name down the page, and narrows to it on a click.
+ * The heading over one zone's or instance's lines, which the results come grouped by. A click
+ * narrows the list to it.
  */
 export function GroupHeader<L extends ExplorerLine>({
   section,

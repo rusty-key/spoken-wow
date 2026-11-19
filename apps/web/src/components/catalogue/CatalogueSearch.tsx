@@ -149,7 +149,7 @@ export function CatalogueSearch({
       </div>
 
       <div id={panelId} hidden={!open} className="cat-panel">
-        <div className="cat-groups">{groups}</div>
+        <div className="cat-fieldsets">{groups}</div>
         <div className="cat-panel-foot">
           <span>The list updates as you change a filter, and the link keeps them.</span>
           <button type="button" className="bs-btn bs-btn-text" onClick={onClearAll}>
@@ -189,10 +189,10 @@ export function CatalogueSearch({
 
 export function FilterGroup({ title, description, children }: { title: string; description?: string; children: ReactNode }) {
   return (
-    <fieldset className="cat-group">
+    <fieldset className="cat-fieldset">
       <legend>{title}</legend>
-      {description ? <p className="cat-group-desc">{description}</p> : null}
-      <div className="cat-group-body">{children}</div>
+      {description ? <p className="cat-fieldset-desc">{description}</p> : null}
+      <div className="cat-fieldset-body">{children}</div>
     </fieldset>
   );
 }
