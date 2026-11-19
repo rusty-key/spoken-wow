@@ -13,7 +13,7 @@ local L = VO.L
 local GAP = 4
 -- Where UI/DialogPlayButton.lua and UI/ContributeButton.lua put theirs: under the close button,
 -- in the strip below the title bar, with the quest log details' inset from the right.
-local STRIP_OFFSET, CORNER_INSET, INSET = 12, 32, 11
+local STRIP_OFFSET, CORNER_INSET, INSET = 8, 32, 11
 -- The round button is 24 tall where those are 20: up by half the difference to share their middle.
 local LIFT = 2
 

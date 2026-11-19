@@ -60,6 +60,7 @@ L.OPT_GREETING = "Saludo"
 L.OPT_AUTOPLAY_OFF_TIP = "«Leer automáticamente» está desactivado en la página Misiones de la configuración de Spoken."
 L.OPT_PROGRESS_OFF_TIP = "«Leer el progreso de misiones» está desactivado en la página Misiones de la configuración de Spoken."
 L.OPT_NEVER_TIP = "«Leer saludos» está en «Nunca» en la página Charlas de la configuración de Spoken."
+L.OPT_MUTED_TIP = "Has silenciado a este PNJ. Quita el silencio en «PNJ silenciados», en la página «Charlas» de los ajustes de Spoken."
 L.OPT_CONTRIBUTE = "Contribuir"
 L.OPT_REPORT = "Informar"
 L.OPT_REPORT_COPY = "Spoken Quests|n|nCopia esta dirección y ábrela en tu navegador."
@@ -117,6 +118,15 @@ L.OPT_CMD_CHATTER_DESC = "Repite lo que dice un PNJ en voz alta, como si acabara
 
 -- Reading history
 L.OPT_FORGET_GREETINGS_DONE = "Se ha borrado la lista de saludos oídos de este personaje."
+L.OPT_MUTE_NPC = "Silenciar las charlas de este PNJ"
+L.OPT_UNMUTE_NPC = "Activar sonido"
+L.OPT_UNMUTE_NPC_GOSSIP = "Dejar de silenciar las charlas de este PNJ"
+L.MUTE_NPC_DONE = "Los saludos automáticos de %s están ahora silenciados."
+L.UNMUTE_NPC_DONE = "Los saludos automáticos de %s ya no están silenciados."
+L.OPT_MUTED_NPCS = "PNJ silenciados"
+L.OPT_NO_MUTED_NPCS = "Ningún PNJ está silenciado. Silencia uno con el altavoz de su ventana de diálogo."
+L.OPT_FORGET_MUTED_NPCS = "Olvidar PNJ silenciados"
+L.OPT_FORGET_MUTED_NPCS_DONE = "Se ha borrado la lista de PNJ silenciados de este personaje."
 L.OPT_FORGET_GREETINGS = "Olvidar saludos oídos"
 
 -- Voice packs

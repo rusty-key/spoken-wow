@@ -742,6 +742,8 @@ local function NewButton(parent, label)
     return button
 end
 Layout.NewButton = NewButton
+-- Where a row's label or button starts, for a page that draws a row of its own (Custom).
+Layout.LABEL_X = LABEL_X
 
 --- A setting's name: the game's gold, GameFontNormal, or GameFontNormalSmall for an option
 --- under another (SettingsListElementMixin).

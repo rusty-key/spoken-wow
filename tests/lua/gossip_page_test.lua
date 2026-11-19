@@ -49,10 +49,10 @@ for _, child in ipairs(content.children) do
         boxes[child.text.text] = child
     end
 end
-Expect("the sections are When to Read and Reading History", table.concat(headings, "|"),
-    W.MODULE_WHEN .. "|" .. W.MODULE_HISTORY)
+Expect("the sections are When to Read, Reading History and Muted NPCs", table.concat(headings, "|"),
+    W.MODULE_WHEN .. "|" .. W.MODULE_HISTORY .. "|" .. L.OPT_MUTED_NPCS)
 -- Voice packs, the test line and Report a Problem are on the Quests page and Spoken's, for every part.
-Expect("no voice pack rows and no test line on this page", #buttons, 1)
+Expect("no voice pack rows and no test line on this page", #buttons, 2)
 
 ---------------------------------------------------------------- the part's own switch
 local switch = boxes[W.MODULE_SWITCH]
@@ -109,6 +109,28 @@ stub.PickDropdown(greetings, "Once per Greeting"); Panel.panel.layout:Refresh()
 Expect("...and live with a greeting read once", forget.layoutReason, nil)
 forget.scripts.OnClick(forget)
 Expect("...which clears this character's greetings heard", next(db.char.hasSeenGossipForNPC), nil)
+
+---------------------------------------------------------------- muted NPCs
+local forgetMuted
+for _, button in ipairs(buttons) do if button.text == L.OPT_FORGET_MUTED_NPCS then forgetMuted = button end end
+db.char.ignoredGossipNPCs = { [12345] = "Guard", o678 = "Strongbox" }
+Panel.panel.layout:Refresh()
+local list
+for _, child in ipairs(content.children) do
+    for _, row in ipairs(child.children or {}) do if row.unmute then list = child end end
+end
+local function Unmutes()
+    local shown = {}
+    for _, row in ipairs(list.children) do if row:IsShown() then table.insert(shown, row.unmute) end end
+    return shown
+end
+Expect("each muted NPC has its own Unmute", #Unmutes(), 2)
+local first = Unmutes()[1]
+first.scripts.OnClick(first)
+Expect("...which unmutes that NPC alone", #Unmutes(), 1)
+Expect("Forget Muted NPCs is a button", forgetMuted ~= nil, true)
+forgetMuted.scripts.OnClick(forgetMuted)
+Expect("...which clears this character's muted NPCs", next(db.char.ignoredGossipNPCs), nil)
 
 ---------------------------------------------------------------- the packs that hold gossip
 Expect("the part lists the packs that hold gossip, not Alliance's", table.concat(Spoken:GetSource("gossip").packs(), "|"),
