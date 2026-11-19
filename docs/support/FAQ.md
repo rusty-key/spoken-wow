@@ -154,9 +154,13 @@ Yes. The Place Story panel sits beside Leatrix Maps' map frame, and its dungeon 
 
 ## Which languages are there?
 
-Voice packs exist in English, German, Spanish (Spain and Latin America), French, Portuguese (Brazil), Russian, Korean and both Chinese scripts; Italian is made by the community. Spoken speaks your client's language by default. To hear another, install that language's packs and pick it under **Voice Language** on Spoken's settings page; **If a Voice Is Missing** decides what plays for a line that language has no recording of. Language packs install beside the English ones rather than replacing them.
+Voice packs exist in English, German, Spanish (Spain and Latin America), French, Portuguese (Brazil), Russian, Korean and both Chinese scripts; Italian is made by the community. Spoken speaks your client's language by default. To hear another, install that language's packs and add it under **Voices, in Order** on Spoken's settings page, moving it to the top. A line plays in the first voice in that list that has it, so the voices after the first decide what plays for a line it has no recording of; past the last, Spoken stays silent. Language packs install beside the English ones rather than replacing them.
 
-No game client runs in Italian or Polish, so Spoken never picks them by itself: install the pack (the Spoken Manager lists community packs on its **Community** page), then choose the language under **Voice Language**.
+No game client runs in Italian or Polish, so Spoken never picks them by itself: install the pack (the Spoken Manager lists community packs on its **Community** page), then add the language under **Voices, in Order**.
+
+## Can I hear another team's voices for my language?
+
+Yes, where a language has packs from more than one team. Install them from the Spoken Manager's **Voice Packs** page, where each team's packs say who made them. Each team's pack is a voice of its own under **Voices, in Order**, named "Deutsch · {team}", beside the language's own "Deutsch". Put the one you want first; the voices after it fill in the lines it has not recorded.
 
 ## A line has the wrong voice, a mispronounced name or wrong text
 

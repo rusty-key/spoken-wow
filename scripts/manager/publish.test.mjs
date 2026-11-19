@@ -7,7 +7,8 @@ import assert from "node:assert/strict";
 import { pointerText } from "../lib/clip-pointer.mjs";
 import { generateKeys, openJson, sealJson, sha256Text } from "./sign.mjs";
 import { ConflictError, memoryStore } from "./store.mjs";
-import { delist, IMMUTABLE, INDEX_CACHE, latestSpokenRelease, promote, publish } from "./publish.mjs";
+import { MIN_SPOKEN_TEAM } from "../lib/packs.mjs";
+import { delist, IMMUTABLE, INDEX_CACHE, latestSpokenRelease, minSpokenFor, promote, publish } from "./publish.mjs";
 
 const keys = generateKeys();
 const minSpoken = { quests: "3.0.0", places: "3.0.0", readables: "3.0.0" };
@@ -30,7 +31,7 @@ function writeFolder(dir, files, folder = "SpokenPlacesAudio_deDE") {
   }
 }
 const run = (store, distDir, extra = {}) => publish({
-  store, packs, distDir, signingKey: keys.privateKey, minSpoken, latestSpoken: "3.0.0",
+  store, packs, distDir, signingKey: keys.privateKey, minSpoken, minSpokenTeam: "3.0.0", latestSpoken: "3.0.0",
   cache: new Map(), log: quiet, now: new Date("2026-10-18T14:22:33Z"), ...extra,
 });
 const index = (store) => openJson(store.objects.get("index.json").body.toString(), keys.publicKey).value;
@@ -153,6 +154,24 @@ test("a reserved Windows device name in a file path is refused", async () => {
 test("a pack that needs an unreleased Spoken is refused", async () => {
   await assert.rejects(run(memoryStore(), dist({ "SpokenPlacesAudio_deDE.toc": "t" }), { minSpoken: { ...minSpoken, places: "3.1.0" } }),
     /needs Spoken 3.1.0, but the latest release is 3.0.0/);
+});
+
+test("a team's pack needs the first Spoken that plays team voices", () => {
+  assert.equal(minSpokenFor("SpokenPlacesAudio_deDE_stimmen", "places", minSpoken, "3.12.0"), "3.12.0");
+  assert.equal(minSpokenFor("SpokenQuestsAudioHorde_deDE_die-stimmen", "quests", minSpoken, "3.12.0"), "3.12.0");
+  // ...or its section's, where that is later.
+  assert.equal(minSpokenFor("SpokenPlacesAudio_deDE_stimmen", "places", { ...minSpoken, places: "4.0.0" }, "3.12.0"), "4.0.0");
+  assert.throws(() => minSpokenFor("SpokenPlacesAudio_deDE_stimmen", "places", minSpoken, undefined), /team's pack/);
+});
+
+test("a language's plain pack, and English's, keep their section's", () => {
+  assert.equal(minSpokenFor("SpokenPlacesAudio_deDE", "places", minSpoken, "3.12.0"), "3.0.0");
+  assert.equal(minSpokenFor("SpokenPlacesAudio", "places", minSpoken, "3.12.0"), "3.0.0");
+  assert.equal(minSpokenFor("SpokenQuestsAudioHorde_deDE", "quests", minSpoken, undefined), "3.0.0");
+});
+
+test("the Spoken that plays team voices is named, if not yet released", () => {
+  assert.match(MIN_SPOKEN_TEAM, /^\d+\.\d+\.\d+$/);
 });
 
 test("a publish that loses the race to the index fails", async () => {

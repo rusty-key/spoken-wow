@@ -481,6 +481,46 @@ do
     _G.SpokenEnv.Addon.db.profile.Language.Voice = nil
 end
 
+---------------------------------------------------------------- voices: a language, or a language and a team
+-- The stimmen team's German pack beside the plain one. The plain pack's priority must not put it
+-- before the team's where the player's list puts the team's first.
+do
+    local STIMMEN = { ["X-Spoken-Team"] = "stimmen", ["X-Spoken-TeamName"] = "Stimmen" }
+    local VO = Install({
+        { folder = "SpokenQuestsAudio", lines = { ["1-accept"] = 1, ["2-accept"] = 1, ["3-accept"] = 1 } },
+        { folder = "SpokenQuestsAudioShared_deDE", language = "deDE", priority = 10,
+            lines = { ["1-accept"] = 2, ["4-accept"] = 2 } },
+        { folder = "SpokenQuestsAudioShared_deDE_stimmen", language = "deDE", meta = STIMMEN,
+            lines = { ["1-accept"] = 3, ["2-accept"] = 3 } },
+    })
+    local spoken = _G.Spoken
+    Expect("team: the pack knows its voice", VO.DataModules:GetPresentModule("SpokenQuestsAudioShared_deDE_stimmen").Voice,
+        "deDE_stimmen")
+    Expect("team: ...and its team", VO.DataModules:GetPresentModule("SpokenQuestsAudioShared_deDE_stimmen").Team, "stimmen")
+    Expect("team: a plain pack has none", VO.DataModules:GetPresentModule("SpokenQuestsAudioShared_deDE").Team, nil)
+
+    spoken:SetVoiceOrder({ "deDE_stimmen", "deDE", "enUS" })
+    local folder, sound = Resolve(VO, 1)
+    Expect("team first: the team's take", folder, "SpokenQuestsAudioShared_deDE_stimmen")
+    Expect("...in its language", sound.language, "deDE")
+    Expect("team first: a line the team lacks comes from the plain pack", Resolve(VO, 4), "SpokenQuestsAudioShared_deDE")
+    Expect("team first: a line neither German pack has is English", Resolve(VO, 3), "SpokenQuestsAudio")
+
+    spoken:SetVoiceOrder({ "deDE" })
+    Expect("plain German: the plain pack's take", Resolve(VO, 1), "SpokenQuestsAudioShared_deDE")
+    Expect("plain German: never the team's, even where only it has the line", Resolve(VO, 2), nil)
+    spoken:SetVoiceOrder({ "deDE_stimmen" })
+    Expect("the team's voice alone: never the plain pack", Resolve(VO, 4), nil)
+    Expect("the pack language is the voice's", VO.DataModules:GetPackLanguage(), "deDE")
+
+    -- No list: the module's own two languages, each a plain voice.
+    local language = _G.SpokenEnv.Addon.db.profile.Language
+    language.Voices, language.Voice, language.Fallback = nil, "deDE", nil
+    Expect("no list: German is the plain pack", Resolve(VO, 1), "SpokenQuestsAudioShared_deDE")
+    Expect("no list: ...and English fills in, the team's pack never", Resolve(VO, 2), "SpokenQuestsAudio")
+    language.Voice = nil
+end
+
 stub.SetLocale("enUS")
 stub.ResetAddOns()
 if Failures() > 0 then print(string.format("\n%d failure(s)", Failures())); os.exit(1) end

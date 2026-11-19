@@ -65,6 +65,8 @@ local METHODS = {
     "CreateDialogueUIRow",
     -- a dungeon's or a boss's story, for another addon's Play button
     "RegisterStoryTeller", "HasStory", "PlayStory", "IsPlayingStory", "StopStory",
+    -- the voices the player hears, in order, and the voice a pack is in
+    "GetLanguageChoice", "GetVoiceOrder", "SetVoiceOrder", "VoiceOf", "SplitVoice", "VoiceName",
 }
 for _, name in ipairs(METHODS) do
     Expect("Spoken:" .. name .. " exists", type(Spoken[name]), "function")
@@ -251,6 +253,33 @@ do
     face:SetSpeaker({ creatureID = 197 })
     other:SetSpeaker({ creatureID = 197 })
     Expect("two faces of one creature each draw it", Drawn() .. " " .. tostring(other.still:IsShown()), "still 3258 true")
+end
+
+---------------------------------------------------------------- the voice list
+do
+    local language = SpokenEnv.Addon.db.profile.Language
+    local function Order() local list = Spoken:GetVoiceOrder(); return list and table.concat(list, ",") or nil end
+    Expect("no list yet: no order, and each module keeps its own", Order(), nil)
+    Expect("a list is stored", Spoken:SetVoiceOrder({ "deDE_stimmen", "deDE", "enUS" }), true)
+    Expect("...and read back", Order(), "deDE_stimmen,deDE,enUS")
+    Expect("...keeping the old voice language as the first entry's language", language.Voice, "deDE")
+    Expect("...and the fallback as the second's", language.Fallback, "deDE")
+    Expect("...so GetLanguageChoice still answers in languages", select(2, Spoken:GetLanguageChoice()), "deDE")
+    Spoken:SetVoiceOrder({ "deDE_stimmen" })
+    Expect("one entry: the fallback is Stay Silent", language.Fallback, "none")
+    Expect("an empty list is refused", Spoken:SetVoiceOrder({}), false)
+    Expect("a repeated voice is refused", Spoken:SetVoiceOrder({ "deDE", "deDE" }), false)
+    Expect("a value that is no voice is refused", Spoken:SetVoiceOrder({ "deDE", "Stimmen!" }), false)
+    Expect("...and the list stays as it was", Order(), "deDE_stimmen")
+    Spoken:SetVoiceOrder({ "auto", "frFR", "enUS" })
+    Expect("Auto is kept as Auto in the old voice language", language.Voice, "auto")
+    stub.SetLocale("frFR")
+    Expect("Auto resolves to the client's language, and a later repeat of it is dropped", Order(), "frFR,enUS")
+    stub.SetLocale("enUS")
+    Expect("the stored list keeps Auto", table.concat(language.Voices, ","), "auto,frFR,enUS")
+    Spoken:SetVoiceOrder({ "deDE", "auto" })
+    Expect("Auto second is the client's language as the old fallback", language.Fallback, "enUS")
+    language.Voices, language.Voice, language.Fallback = nil, nil, nil
 end
 
 if Failures() > 0 then print(string.format("\n%d failure(s)", Failures())); os.exit(1) end

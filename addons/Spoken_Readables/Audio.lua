@@ -166,6 +166,7 @@ function SpokenReadables:BuildAudioPacks()
 				if Spoken and Spoken.DeclareLanguage then
 					Spoken:DeclareLanguage(self:PackLanguage(pack), pack.addon)
 				end
+				pack.voice = self:PackVoice(pack)
 				table.insert(packs, pack)
 			end
 		end
@@ -196,7 +197,7 @@ local ACTIONS = {
 			if not clip then
 				return
 			end
-			SpokenReadables:ShowReport(clip.pageId)
+			SpokenReadables:ShowReport(clip.pageId, clip)
 		end,
 	},
 }
@@ -209,9 +210,9 @@ end
 
 --- The clip for a page, as the player's queue wants it, or nil when no pack carries it.
 ---
---- Language before pack order: a pack in the voice language answers before any other, and a
---- page it lacks falls back to the fallback language's packs -- page by page, so a partial
---- translation still reads what it has.
+--- Voice before pack order: a pack in the first voice answers before any other, and a page it
+--- lacks falls to the next voice's packs -- page by page, so a partial translation still reads
+--- what it has. A language's plain voice never reads from a team's pack, nor the other way.
 -- Letters and digits only, for asking whether a page opens with its own title.
 local function Bare(text)
 	return (string.gsub(string.lower(text or ""), "[%s%p]", ""))
@@ -244,10 +245,11 @@ function SpokenReadables:ClipFor(pageId)
 	local place = (self:Data() and self:Data().pages[pageId]) or { book = bookId, number = number }
 
 	local packs = self:GetAudioPacks()
-	for _, language in ipairs(self:LanguageOrder()) do
+	for _, voice in ipairs(self:LanguageOrder()) do
 		for _, pack in ipairs(packs) do
-			local entry = self:PackLanguage(pack) == language and pack.pages[pageId]
+			local entry = pack.voice == voice and pack.pages[pageId]
 			if entry then
+				local language = self:PackLanguage(pack)
 				local book = self:BookOf(pageId)
 				local oneLine = self:OneLine()
 				-- `shown` is the language the words are in, and the title is in it too.
@@ -275,6 +277,10 @@ function SpokenReadables:ClipFor(pageId)
 					-- What the report is filed under: a fallback page is an English take even
 					-- under a German selection, and its report is about that.
 					language = language,
+					-- The pack that played and its voice, which a report names: a team's pack is
+					-- that team's to hear about.
+					packFolder = pack.addon,
+					voice = voice,
 					present = {
 						-- One line: what it is over its name, as a speaker over a quest's title,
 						-- whatever page of it this is. A line per page: the book over its page,
@@ -306,9 +312,9 @@ end
 --- recorded none.
 function SpokenReadables:PageLength(pageId)
 	local packs = self:GetAudioPacks()
-	for _, language in ipairs(self:LanguageOrder()) do
+	for _, voice in ipairs(self:LanguageOrder()) do
 		for _, pack in ipairs(packs) do
-			local entry = self:PackLanguage(pack) == language and pack.pages[pageId]
+			local entry = pack.voice == voice and pack.pages[pageId]
 			if entry then
 				return (entry.len and entry.len > 0) and entry.len or nil
 			end
@@ -333,9 +339,9 @@ function SpokenReadables:HasAudio(pageId)
 		return false
 	end
 	local packs = self:GetAudioPacks()
-	for _, language in ipairs(self:LanguageOrder()) do
+	for _, voice in ipairs(self:LanguageOrder()) do
 		for _, pack in ipairs(packs) do
-			if self:PackLanguage(pack) == language and pack.pages[pageId] then
+			if pack.voice == voice and pack.pages[pageId] then
 				return true
 			end
 		end

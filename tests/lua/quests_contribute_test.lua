@@ -143,6 +143,13 @@ do
     Expect("...and with no pack holding it, the report names no folder",
         VoiceOver.Contribute:ReportContext(nil):match("\npackFolder=") == nil, true)
     stub.HidePanels()
+    Expect("a plain pack's clip names no team", closed:match("\npackTeam=") == nil, true)
+    local stimmen = { METADATA = { AddonName = "SpokenQuestsAudioHorde_deDE_stimmen", ContentVersion = "1.0.0",
+        Team = "stimmen" } }
+    played.module = stimmen
+    Expect("a team's pack's clip names its team beside its folder",
+        VoiceOver.Contribute:ReportContext(played)
+            :match("\npackFolder=SpokenQuestsAudioHorde_deDE_stimmen\npackFolderVersion=1%.0%.0\npackTeam=stimmen\n") ~= nil, true)
 end
 
 ---------------------------------------------------------------- who is reading

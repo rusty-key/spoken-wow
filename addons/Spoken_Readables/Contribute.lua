@@ -94,12 +94,18 @@ end
 ---
 --- `id`, the corpus page, not `page`: that field is a contribution's client checksum. The text
 --- is the open page's when it is the one reported, else the copy the reader kept of it.
-function SpokenReadables:ReportContext(pageId)
+---
+--- The pack the page plays from, and its team, which the site files the report with: `clip`'s
+--- where a played clip is reported, else the one ClipFor would play now.
+function SpokenReadables:ReportContext(pageId, clip)
 	if type(pageId) ~= "number" or self:IsMail() or not CoreIsCurrent() then
 		return nil
 	end
 	local fields = BaseFields(self)
 	fields[#fields + 1] = { "id", pageId }
+	if Spoken.Contribute.PackFields then
+		Spoken.Contribute:PackFields(fields, clip or self:ClipFor(pageId))
+	end
 	local text
 	local open = ItemTextGetText and NotSecret(ItemTextGetText())
 	if type(open) == "string" and open ~= "" and self:PageOnScreen() == pageId then
@@ -123,14 +129,14 @@ end
 ---
 --- Filed under the voice language, not the language the page played in: a page missing from a
 --- German pack plays the English fallback, and "no German" belongs beside the German page.
-function SpokenReadables:ShowReport(pageId)
+function SpokenReadables:ShowReport(pageId, clip)
 	local url = self:ReportURL(pageId, self:GetVoiceLanguage())
 	if not url then
 		return
 	end
 	if _G.Spoken and Spoken.ShowReport then
 		Spoken:ShowReport(url, function()
-			return self:ReportContext(pageId)
+			return self:ReportContext(pageId, clip)
 		end)
 		return
 	end

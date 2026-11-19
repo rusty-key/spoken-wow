@@ -19,6 +19,14 @@ Spoken Player until 3.0.0, when it became Spoken and took its modules into one d
   queue. Gossip settings lists the muted NPCs, each with Unmute. The window's Listen button still
   plays a muted NPC's line.
   *([anon1231823](https://github.com/anon1231823))*
+- **Voices, in order.** Voice Language and If a Voice Is Missing are now one list in the Language
+  section of Spoken's page: as many voices as you like, moved up and down, removed, and added with
+  Add a Voice. A line plays in the first voice that has it, and past the last Spoken stays silent.
+  Your choice carries over as the first two voices. *([rusty-key](https://github.com/rusty-key))*
+- **Voice packs from other teams.** Where a language has packs from more than one team, each
+  team's is a voice of its own in that list, named for its team, so you choose whose German you
+  hear first and whose fills in. A report on a line names the team whose pack played it, so it
+  reaches them. *([rusty-key](https://github.com/rusty-key))*
 
 ## 3.10.0 — 2026-11-17
 

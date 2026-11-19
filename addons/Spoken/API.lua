@@ -514,6 +514,78 @@ function Spoken:GetLanguageChoice()
     return language.Voice, language.Fallback
 end
 
+-- GetVoiceOrder's answer, asked for every line played, and the stored list it was read from: kept
+-- until that list or the profile changes (Addon:ForgetVoiceOrder).
+local voiceOrder
+
+--- Drop GetVoiceOrder's kept answer, for whatever writes the player's voices or swaps the profile.
+function Addon:ForgetVoiceOrder()
+    voiceOrder = nil
+end
+
+--- The voices the player hears every module in, most wanted first: voice codes ("deDE",
+--- "deDE_stimmen"), "auto" resolved to the client's language and a voice listed twice once. A line
+--- plays in the first voice whose pack has it, and past the last stays silent. Nil while the player
+--- has set no list, and each module then keeps its own two settings. One table, kept between
+--- calls: read it, never change it.
+function Spoken:GetVoiceOrder()
+    local language = Addon.db and Addon.db.profile.Language
+    local stored = language and language.Voices
+    if voiceOrder and voiceOrder.stored == stored then return voiceOrder.list end
+    local list
+    if type(stored) == "table" then
+        local seen = {}
+        list = {}
+        for _, code in ipairs(stored) do
+            if code == "auto" then code = Languages:Client() end
+            if Languages:IsVoice(code) and not seen[code] then
+                seen[code] = true
+                table.insert(list, code)
+            end
+        end
+        if #list == 0 then list = nil end
+    end
+    voiceOrder = { stored = stored, list = list }
+    return list
+end
+
+--- The voices a module plays in: the player's list (GetVoiceOrder) once set, else the module's own
+--- `voice` and `fallback` (nil for Stay Silent), each a plain voice, the fallback only where it is
+--- another. Read it, never change it.
+function Spoken:VoiceOrder(voice, fallback)
+    local shared = self:GetVoiceOrder()
+    if shared then return shared end
+    if fallback and fallback ~= voice then return { voice, fallback } end
+    return { voice }
+end
+
+--- Store the player's voices: an array of "auto" or voice codes, at least one, none twice. False,
+--- and nothing stored, for any other. The old voice language and fallback follow the first two
+--- entries' languages ("none" with one entry), so a Spoken from before the list still hears the
+--- same languages, from their plain packs, rather than a code it cannot read.
+function Spoken:SetVoiceOrder(list)
+    local language = Addon.db and Addon.db.profile.Language
+    if not language or type(list) ~= "table" or #list == 0 then return false end
+    local copy, seen = {}, {}
+    for i, code in ipairs(list) do
+        if (code ~= "auto" and not Languages:IsVoice(code)) or seen[code] then return false end
+        seen[code] = true
+        copy[i] = code
+    end
+    language.Voices = copy
+    Addon:ForgetVoiceOrder()
+    language.Voice = copy[1] == "auto" and "auto" or (Languages:SplitVoice(copy[1]))
+    if copy[2] == nil then
+        language.Fallback = "none"
+    elseif copy[2] == "auto" then
+        language.Fallback = Languages:Client()
+    else
+        language.Fallback = (Languages:SplitVoice(copy[2]))
+    end
+    Options:UpdateRows()
+    return true
+end
+
 --- Spoken's words in the player's language, for what every module's settings page shares and
 --- names the same way: MODULE_SWITCH, MODULE_WHEN, PART_VOICE, MODULE_TEST_LINE, TEST_LINE_TEXT, MODULE_HISTORY,
 --- MODULE_DOWNLOAD, MODULE_INSTALLED, MODULE_NOT_LOADED, MODULE_NO_PACK, MODULE_RESET,
@@ -567,7 +639,27 @@ end
 --- For a pack that cannot say so in its .toc: declare the language `code` for the addon `folder`.
 --- `meta` is `{ name, native, font, lore }`, `font` a full path.
 function Spoken:DeclareLanguage(code, folder, meta)
+    -- The .toc first: a folder declared here before the scan reads it would lose its team.
+    Languages:Get(code)
     Languages:Declare(code, folder, meta)
+end
+
+--- The voice the installed pack `folder` is in, for its language `lang`: "deDE" for a language's
+--- plain pack, "deDE_stimmen" for the stimmen team's. A folder no .toc declared is `lang`'s.
+function Spoken:VoiceOf(folder, lang)
+    return Languages:VoiceOf(folder, lang)
+end
+
+--- A voice's name, in the game's font: its language's ("Deutsch"), and for a team's voice the team's
+--- name after it ("Deutsch · Stimmen").
+function Spoken:VoiceName(code)
+    return Options:VoiceName(code)
+end
+
+--- A voice's language and team ("deDE", "stimmen"), the team nil for a plain voice. Nil, nil for a
+--- value that is no voice.
+function Spoken:SplitVoice(code)
+    return Languages:SplitVoice(code)
 end
 
 --- Whether `value` is shaped like a language code, such as "deDE".
@@ -675,10 +767,30 @@ function Spoken:VoiceLanguage()
     return voice
 end
 
+--- Whether `module` has a pack in `voice` to be heard from: for a language's plain voice one to get
+--- (VoicePack) or English's own, for a team's one installed.
+local function HasPack(self, module, voice)
+    local lang, team = Languages:SplitVoice(voice)
+    if not team then return lang == "enUS" or self:VoicePack(module, lang) ~= nil end
+    local own = Languages:Voice(voice)
+    local prefix = "^" .. (PACK_FOLDERS[module] or "")
+    for _, folder in ipairs(own and own.folders or {}) do
+        if folder:find(prefix) then return true end
+    end
+    return false
+end
+
 --- What a module's page says under its voice packs when nothing can be heard: no pack in the voice
 --- language exists for `module` ("quests", "places", "readables" or "bosses"), and If a Voice Is Missing is Stay
 --- Silent. Nil otherwise.
 function Spoken:SilentNote(module)
+    local order = self:GetVoiceOrder()
+    if order then
+        for _, voice in ipairs(order) do
+            if HasPack(self, module, voice) then return nil end
+        end
+        return format(L.MODULE_NO_VOICE_FMT, Options:VoiceName(order[1]))
+    end
     local voice = self:VoiceLanguage()
     local _, fallback = self:GetLanguageChoice()
     if voice == "enUS" or fallback ~= "none" or self:VoicePack(module, voice) then return nil end

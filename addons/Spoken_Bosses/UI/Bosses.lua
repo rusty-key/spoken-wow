@@ -202,10 +202,10 @@ end
 
 -- The story in the Text Language the player chose: a voice pack's words in it, which are what its
 -- voice says, else a text pack's, else Data/Stories.lua's own. Nil where none has it. The second
--- value is true for a text pack's, which no recording says.
+-- value is true for a text pack's, which no recording says, the third for a voice pack's.
 local function ChosenStory(map, key, language)
 	local voiced = Bosses.PackStoryText and Bosses:PackStoryText(map, key, language)
-	if voiced then return voiced end
+	if voiced then return voiced, nil, true end
 	local packed = Spoken:TextIn(language, "bosses", "stories", map, key)
 	if packed then return packed, true end
 	local stories = _G.SpokenBossStories
@@ -215,17 +215,18 @@ local function ChosenStory(map, key, language)
 end
 
 -- A pack's words win only on a boss core already has, but for the Text Language the player chose,
--- whose words may be the only ones. The third value is true where they are a text pack's.
+-- whose words may be the only ones. The third value is true where they are a text pack's, the
+-- fourth where they are a voice pack's.
 local function Story(map, key)
 	local chosen = ChosenLanguage()
-	local words, unsaid
-	if chosen then words, unsaid = ChosenStory(map, key, chosen) end
-	if words then return words, chosen, unsaid end
+	local words, unsaid, voiced
+	if chosen then words, unsaid, voiced = ChosenStory(map, key, chosen) end
+	if words then return words, chosen, unsaid, voiced end
 	local text, language = CoreStory(map, key)
 	if not text then return nil end
 	local locale = GetLocale and GetLocale()
 	local packed = locale and Bosses:PackStoryText(map, key, locale)
-	if packed then return packed, locale end
+	if packed then return packed, locale, nil, true end
 	return text, language
 end
 
@@ -422,7 +423,7 @@ local NARRATOR_REPORT = {
 	label = REPORT_LABEL,
 	anchor = "topright",
 	tooltip = function(tooltip) tooltip:SetText(REPORT_LABEL) end,
-	onClick = function(clip) Bosses:ShowReport(clip.mapID, clip.bossKey, clip.language) end,
+	onClick = function(clip) Bosses:ShowReport(clip.mapID, clip.bossKey, clip.language, clip) end,
 }
 
 local function Boss(map, key)
@@ -453,7 +454,7 @@ local SECTION_ICON = { objectOrItem = true, icon = Bosses.ICON, bullet = "boss" 
 --- The story of the boss `key` of `map` as a line for Spoken's narrator: voiced where an installed
 --- pack has it (Audio.lua), else words alone; nil where it has none.
 function Bosses:StoryClip(map, key)
-	local story, language, unsaid = Story(map, key)
+	local story, language, unsaid, voiced = Story(map, key)
 	if not story then return nil end
 	local boss = Boss(map, key)
 	if not boss then return nil end
@@ -480,9 +481,16 @@ function Bosses:StoryClip(map, key)
 	clip.language = recording and recording.language or language
 	if recording then
 		clip.path, clip.length = recording.path, recording.len or clip.length
+		-- The pack it plays from and its voice, which a report names.
+		clip.packFolder, clip.voice = recording.packFolder, recording.voice
 		-- Timed to the recording's own words, so not under a story in another language, nor under a
 		-- text pack's words in its language.
-		if language == recording.language and not unsaid then clip.present.timings = recording.times end
+		if language == recording.language and not unsaid then
+			clip.present.timings = recording.times
+			-- A voice pack's words are the playing pack's own: another pack of the language, the
+			-- best of it, may say it otherwise.
+			if voiced and recording.text then clip.present.transcript = recording.text end
+		end
 	else
 		clip.textOnly = true
 	end

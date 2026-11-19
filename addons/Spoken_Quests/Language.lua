@@ -20,7 +20,8 @@ setfenv(1, VoiceOver)
 --   voice language    What the player chose to hear. "auto" means follow the client.
 --
 -- The resolution order for one line is: the selected language, then the fallback
--- language, then silence. Not "any pack that has the line" -- a player who asked for
+-- language, then silence; or, once the player has ordered voices on Spoken's page, each voice
+-- in that list, then silence (a voice being a language, or a language and a team). Not "any pack that has the line" -- a player who asked for
 -- Portuguese and hears an English clip because that is what happened to be installed
 -- has been given a bug, not a feature, and the fallback setting is where that choice
 -- is made explicitly.
@@ -167,15 +168,35 @@ function Language:GetFallbackLanguage()
     return stored
 end
 
---- The languages a line may be answered in, most wanted first. One entry when the
---- fallback is off or is the selected language itself; never more than two.
----@return string[] codes
-function Language:ResolutionOrder()
-    local selected = self:GetVoiceLanguage()
-    local order = { selected }
-    local fallback = self:GetFallbackLanguage()
-    if fallback and fallback ~= selected then
-        table.insert(order, fallback)
+--- The voice a pack is in: its language ("deDE"), or its language and its team where its .toc
+--- names one ("deDE_stimmen"), as Spoken's registry read it. Without Spoken, its language.
+---@param folder string
+---@param language string The pack's language, normalized
+---@return string voice
+function Language:VoiceOf(folder, language)
+    if Spoken and Spoken.VoiceOf then return Spoken:VoiceOf(folder, language) end
+    return language
+end
+
+--- A voice's language and team ("deDE", "stimmen"); a plain voice's team is nil.
+---@param voice string
+---@return string language
+---@return string|nil team
+function Language:SplitVoice(voice)
+    if Spoken and Spoken.SplitVoice then
+        local language, team = Spoken:SplitVoice(voice)
+        if language then return language, team end
     end
-    return order
+    return voice, nil
+end
+
+--- The voices a line may be answered in, most wanted first: the player's list on Spoken's page
+--- once set, else this addon's own two languages, each its plain voice. Then one entry when the
+--- fallback is off or is the selected language itself; never more than two.
+---@return string[] voices
+function Language:ResolutionOrder()
+    local selected, fallback = self:GetVoiceLanguage(), self:GetFallbackLanguage()
+    if Spoken and Spoken.VoiceOrder then return Spoken:VoiceOrder(selected, fallback) end
+    if fallback and fallback ~= selected then return { selected, fallback } end
+    return { selected }
 end

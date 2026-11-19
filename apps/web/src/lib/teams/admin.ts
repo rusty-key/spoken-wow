@@ -11,6 +11,7 @@ import type { Lang } from "@/lib/lang";
 import type { Capability } from "@/lib/permissions";
 
 import { membersOf } from "./members";
+import { isSlug } from "./slug";
 import { forgetTeams, type TeamId } from "./store";
 
 export type TeamSummary = {
@@ -43,11 +44,8 @@ export class TeamError extends Error {
   }
 }
 
-/** The same shape the "team"."slug" check enforces. */
-const SLUG = /^[a-z][a-z0-9-]{1,40}$/;
-
 export function checkSlug(slug: string): void {
-  if (!SLUG.test(slug)) throw new TeamError("A team's slug is lowercase letters, digits and dashes, starting with a letter.");
+  if (!isSlug(slug)) throw new TeamError("A team's slug is lowercase letters, digits and dashes, starting with a letter.");
 }
 
 export async function listTeams(only?: TeamId): Promise<TeamSummary[]> {

@@ -49,6 +49,8 @@ local LOAD_ALL_MODULES = true
 ---@field Title string Module's title (TOC ##Title or addon name if missing)
 ---@field Maps number[] Map IDs in which the module should load (TOC ##X-SpokenQuests-DataModule-Maps or ##X-VoiceOver-DataModule-Maps)
 ---@field Language string The language the pack was recorded in (TOC ##X-SpokenQuests-Language; absent means enUS)
+---@field Voice string The voice the pack is in: its Language, or for a team's pack its Language and team ("deDE_stimmen")
+---@field Team? string The slug of the team whose pack this is (TOC ##X-Spoken-Team); nil for a language's plain pack
 
 ---@class DataModule
 ---@field METADATA DataModuleMetadata
@@ -249,22 +251,22 @@ function DataModules:GetPackLabel(module)
     return (string.gsub(title, "VoiceOver Data %- ", ""))
 end
 
---- The language the player's packs speak to them: the first language in the resolution
---- order that an installed pack is recorded in. With none installed, the chosen language.
+--- The language the player's packs speak to them: the language of the first voice in the
+--- resolution order that an installed pack is in. With none installed, the chosen language.
 ---
 --- What a report is filed under when there is no clip to ask, and what a contribution says
 --- the player was listening to.
 ---@return string code
 function DataModules:GetPackLanguage()
     local order = Language:ResolutionOrder()
-    for _, language in ipairs(order) do
+    for _, voice in ipairs(order) do
         for _, module in self:GetPresentModules() do
-            if module.Language == language then
-                return language
+            if (module.Voice or module.Language) == voice then
+                return module.Language
             end
         end
     end
-    return order[1]
+    return (Language:SplitVoice(order[1]))
 end
 
 --- The newest .toc Version among the installed packs recorded in `language`, or "none" when
@@ -303,6 +305,8 @@ function DataModules:EnumerateAddons(loadModules)
                     end
                 end
             end
+            local language = Language:Normalize(GetAddOnMetadata(i, LANGUAGE_KEY))
+            local voice = Language:VoiceOf(name, language)
             ---@type DataModuleMetadata
             local module =
             {
@@ -313,7 +317,9 @@ function DataModules:EnumerateAddons(loadModules)
                 ContentVersion = GetAddOnMetadata(name, "Version"),
                 Title = GetAddOnMetadata(name, "Title") or name,
                 Maps = maps,
-                Language = Language:Normalize(GetAddOnMetadata(i, LANGUAGE_KEY)),
+                Language = language,
+                Voice = voice,
+                Team = select(2, Language:SplitVoice(voice)),
             }
             self.presentModules[name] = module
             table.insert(self.presentModulesOrdered, module)
@@ -1111,21 +1117,22 @@ end
 ---@param instead string|nil
 ---@return boolean found
 function DataModules:ResolveSoundFile(soundData, instead)
-    -- Language before priority. A pack that holds the line in the language the player
-    -- asked for answers it even if a higher-priority pack holds the same line in another
-    -- language; only when no pack in the selected language has it does the fallback
-    -- language get a turn, and the packs within each language keep their own priority
-    -- order. With only English packs installed -- every install that exists today -- the
-    -- English pass is the only one that finds anything, so the result is what it always was.
+    -- Voice before priority. A pack that holds the line in the voice the player asked for
+    -- answers it even if a higher-priority pack holds the same line in another voice; only
+    -- when no pack in the first voice has it does the next voice get a turn, and the packs
+    -- within each voice keep their own priority order. A voice is a language and its team, so
+    -- a language's plain voice never plays a team's pack, nor a team's voice the plain pack.
+    -- With only English packs installed -- every install that exists today -- the English
+    -- pass is the only one that finds anything, so the result is what it always was.
     --
     -- Gossip falls back like any other line. Its file is named for a hash of the English
     -- text in every language a pack is built in, so the fallback pack holds the same name.
     --
     -- A gossip line may be one moment with lines recorded under other names (GossipAliases:
     -- the same BroadcastText id and voice, minted before anything tied them). Those are asked
-    -- after the line's own name, within each language, so a take in the chosen language under
-    -- a sibling's name beats the fallback language under the line's own.
-    local languages = Language:ResolutionOrder()
+    -- after the line's own name, within each voice, so a take in the chosen voice under a
+    -- sibling's name beats the next voice under the line's own.
+    local voices = Language:ResolutionOrder()
 
     local candidates = {}
     for _, name in ipairs({ soundData.fileName, instead }) do
@@ -1137,12 +1144,13 @@ function DataModules:ResolveSoundFile(soundData, instead)
             end
         end
     end
-    for _, language in ipairs(languages) do
+    for _, voice in ipairs(voices) do
         for _, wantedFileName in ipairs(candidates) do
             local playerGenderedFileName = DataModules:AddPlayerGenderToFilename(wantedFileName)
             for _, module in self:GetModules() do
                 local data = module.SoundLengthLookupByFileName
-                if data and module.METADATA.Language == language then
+                if data and (module.METADATA.Voice or module.METADATA.Language) == voice then
+                    local language = module.METADATA.Language
                     local fileName = wantedFileName
                     local length = data[playerGenderedFileName]
                     if length then

@@ -813,7 +813,7 @@ Expect("voice only is still one of the ways to show lines", _G.SpokenEnv.Options
 Expect("...and a narrator card of its own, a sound's bars rising and falling", labels["Voice Only"], true)
 Expect("...and there is no separate switch to hide the window", labels["Hide Window"], nil)
 Expect("the channel is chosen here", labels["Volume Follows"], true)
-Expect("...and the voice language, once for every module", labels["Voice Language"], true)
+Expect("...and the voices, once for every module", labels["Voices, in Order"], true)
 Expect("...and so is silencing the game's own dialogue",
     labels["Silence NPC Voices"], true)
 

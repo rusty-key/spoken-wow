@@ -25,6 +25,17 @@ import { bumpVersion, tocVersion, withTocVersion } from "./pack-version.mjs";
 import { openJson, publicKeyOf, sealJson, sha256Text } from "./sign.mjs";
 import { ConflictError } from "./store.mjs";
 
+/**
+ * The oldest Spoken a pack needs: its section's, and for a team's pack the first that keeps it apart
+ * from the plain one (`minSpokenTeam`), whichever is later. A team's pack with no such Spoken named
+ * cannot be published.
+ */
+export function minSpokenFor(folder, section, minSpoken, minSpokenTeam) {
+  if (LEGACY_PACK_ID.test(folder)) return minSpoken[section];
+  if (!minSpokenTeam) throw new Error(`${folder} is a team's pack, and no Spoken that plays one is named`);
+  return compareVersions(minSpokenTeam, minSpoken[section]) > 0 ? minSpokenTeam : minSpoken[section];
+}
+
 export const IMMUTABLE = "public, max-age=31536000, immutable";
 export const INDEX_CACHE = "public, max-age=60";
 
@@ -165,7 +176,7 @@ function nextVersion(liveVersions, stagedVersions, bump) {
 // is a page pack. `languages` are { code, name, native }, named in index-v2.json for the packs it lists.
 // With `stage`, it uploads the blobs and manifests and writes no index: it returns `staged`, the
 // entries promote() lists once a site owner approves them (docs/platform/TEAMS.md, *Releases*).
-export async function publish({ store, packs: allPacks, languages = [], distDir, signingKey, minSpoken, latestSpoken, cache, now = new Date(), dryRun = false, allowRemovals = false, onlyPresent = false, bump = null, stage = false, archiveUrl, fetchImpl = fetch, log = console.log }) {
+export async function publish({ store, packs: allPacks, languages = [], distDir, signingKey, minSpoken, minSpokenTeam, latestSpoken, cache, now = new Date(), dryRun = false, allowRemovals = false, onlyPresent = false, bump = null, stage = false, archiveUrl, fetchImpl = fetch, log = console.log }) {
   const publicKey = publicKeyOf(signingKey);
   // The bucket's name is masked in CI logs; this says which channel a run signed for.
   log(`signing with ${publicKey}`);
@@ -175,6 +186,7 @@ export async function publish({ store, packs: allPacks, languages = [], distDir,
   if (onlyPresent && packs.length === 0) throw new Error("nothing in dist/ to publish: build a pack first");
 
   // Every folder and every requirement is checked before anything is read from or sent to R2.
+  const needsSpoken = new Map();
   for (const { folder, section } of packs) {
     const build = `${section}-package-audio`;
     if (!PACK_ID.test(folder)) throw new Error(`${folder} is not a pack id the manager accepts`);
@@ -185,8 +197,10 @@ export async function publish({ store, packs: allPacks, languages = [], distDir,
     const tocMs = statSync(toc).mtimeMs;
     const newer = readdirSync(distDir).some((n) => n.startsWith(`${folder}-`) && n.endsWith(".zip") && statSync(join(distDir, n)).mtimeMs > tocMs);
     if (newer) throw new Error(`dist/${folder} is older than its zip: rebuild it (make ${build})`);
-    if (compareVersions(minSpoken[section], latestSpoken) > 0) {
-      throw new Error(`${folder} needs Spoken ${minSpoken[section]}, but the latest release is ${latestSpoken}`);
+    const needs = minSpokenFor(folder, section, minSpoken, minSpokenTeam);
+    needsSpoken.set(folder, needs);
+    if (compareVersions(needs, latestSpoken) > 0) {
+      throw new Error(`${folder} needs Spoken ${needs}, but the latest release is ${latestSpoken}`);
     }
   }
 
@@ -202,7 +216,7 @@ export async function publish({ store, packs: allPacks, languages = [], distDir,
   const retagged = {};
   for (const given of packs) {
     const { folder, section } = given;
-    const requires = { Spoken: `>=${minSpoken[section]}` };
+    const requires = { Spoken: `>=${needsSpoken.get(folder)}` };
     let before = [];
     const entry = live[folder];
     if (entry) {

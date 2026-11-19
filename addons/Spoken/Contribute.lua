@@ -13,7 +13,8 @@ setfenv(1, SpokenEnv)
 -- corpus that simply has nothing.
 
 local VERSION = 1
-local SOURCES = { quests = true, places = true, readables = true }
+-- Bosses send a report's context only: the site takes no bosses contributions.
+local SOURCES = { quests = true, places = true, readables = true, bosses = true }
 
 local MODULUS = 2147483647
 local FACTOR = 31
@@ -164,6 +165,16 @@ local function Fence(text)
     end
 
     return table.concat(lines, "\n")
+end
+
+--- Add to a report's `fields` the pack `clip` plays from, its `packFolder`, and the team whose pack
+--- it is, which its `voice` names ("deDE_stimmen"): the site files the report with that team.
+--- Nothing for no clip, or a clip with no pack.
+function Contribute:PackFields(fields, clip)
+    if not (clip and clip.packFolder) then return end
+    fields[#fields + 1] = { "packFolder", clip.packFolder }
+    local _, team = Languages:SplitVoice(clip.voice)
+    if team then fields[#fields + 1] = { "packTeam", team } end
 end
 
 ---@param source string  "quests" | "places" | "readables"
