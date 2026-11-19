@@ -119,6 +119,12 @@ nativeLdb.OnClick(nativeCompartment, "RightButton")
 Expect("a native compartment click waits for its parent menu", stub.openNativeMenu, nil)
 stub.Advance(0.06)
 Expect("...then opens the native menu on the real button", stub.nativeMenuAnchor and stub.nativeMenuAnchor[2], nativeButton)
+stub.ResetDropDowns()
+nativeButton:Hide()
+nativeLdb.OnClick(nativeCompartment, "RightButton")
+stub.Advance(0.06)
+Expect("a hidden minimap button still positions the native menu", stub.nativeMenuAnchor and stub.nativeMenuAnchor[2], nativeButton)
+Expect("...while UIParent keeps ownership visible", stub.nativeMenuOwner, _G.UIParent)
 
 ---------------------------------------------------------------- ...and nothing where there is no frame
 Clean()

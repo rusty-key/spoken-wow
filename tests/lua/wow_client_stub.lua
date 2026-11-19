@@ -166,7 +166,11 @@ local function Widget(kind, name)
         self.hooks[script] = self.hooks[script] or {}
         table.insert(self.hooks[script], fn)
     end
-    function w:IsVisible() if self.name then return world.panels[self.name] and true or false end return self.shown end
+    function w:IsVisible()
+        if self.name == "UIParent" then return true end
+        if self.name then return world.panels[self.name] and true or false end
+        return self.shown
+    end
     function w:IsShown() return self:IsVisible() end
     function w:Show()
         self.shown = true

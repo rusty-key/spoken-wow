@@ -157,6 +157,13 @@ local function _AddNativeEntries(parent, entries, anchor)
     end
 end
 
+local function _NativeMenuOwner(anchor)
+    if anchor and anchor.IsVisible and anchor:IsVisible() then
+        return anchor
+    end
+    return UIParent
+end
+
 local function ToggleNativeMenu(anchor)
     if nativeMenuOpen and Menu.GetManager():IsAnyMenuOpen() then
         HideMenu()
@@ -175,7 +182,7 @@ local function ToggleNativeMenu(anchor)
             nativeMenuOpen = false
         end)
         Menu.PopulateDescription(generator, anchor, root)
-        Menu.GetManager():OpenMenu(anchor, root, CreateAnchor("TOPRIGHT", anchor, "BOTTOMLEFT"))
+        Menu.GetManager():OpenMenu(_NativeMenuOwner(anchor), root, CreateAnchor("TOPRIGHT", anchor, "BOTTOMLEFT"))
     end
     nativeMenuOpen = true
 end
