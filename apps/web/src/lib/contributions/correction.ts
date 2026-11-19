@@ -40,7 +40,7 @@ import { BookConflict, BookMissing, saveBookText } from "@/lib/readables/text";
 import { db } from "@/lib/db";
 import { withTextTeam } from "@/lib/teams/store";
 import { BASE_LANG, isLang, type Lang } from "@/lib/lang";
-import { branchesOnPlayerGender } from "@/lib/player-words";
+import { branchesOnPlayerGender, playerTokenCounts } from "@/lib/player-words";
 import { momentLines, writeEnglishOriginal } from "@/lib/quests/moment-rewrite";
 import { OverrideError } from "@/lib/quests/override";
 import { QuestTextConflict, QuestTextMissing, saveQuestText } from "@/lib/quests/text";
@@ -50,7 +50,7 @@ import { genderSplit, readable } from "./compare";
 import type { ReaderGender } from "./gender";
 import { MAX_BYTES } from "./envelope";
 import { lineStates, type CorpusText, type LineState } from "./known";
-import { momentOf } from "./naming";
+import { baseLineId, momentOf } from "./naming";
 import { CONTRIBUTION_COLUMNS, rewriteWaitingTexts, type Contribution } from "./store";
 import { correctionNote } from "./notes";
 import { spokenFromTemplate } from "./tokens";
@@ -130,6 +130,15 @@ export async function acceptCorrection(
       };
     }
     text = template;
+  }
+
+  const dropped = await droppedTokens(contribution.source, lang, target, text);
+  if (dropped.length > 0) {
+    return {
+      ok: false,
+      reason: "malformed",
+      message: `The correction has fewer ${dropped.join(", ")} than the line it replaces. Put them back in the explorer before accepting it.`,
+    };
   }
 
   try {
@@ -272,6 +281,44 @@ async function markAccepted(
     );
     return { ok: true, contribution: updated.rows[0] };
   });
+}
+
+type ReadLine = { text: string; playerGender: ReaderGender | null };
+
+/**
+ * The player tokens (`$N`, `$C`, `$R`, `$G`) `text` has fewer of than a line it replaces, on the
+ * sides that line's readers take. The client fills each in for its own reader, so a text without
+ * them would greet every player as that one. English quest lines store spoken text, not the
+ * template: correctEnglish checks those.
+ */
+async function droppedTokens(source: string, lang: Lang, target: CorpusText, text: string): Promise<string[]> {
+  if (source === "quests" && lang === BASE_LANG) return [];
+  const replaced: ReadLine[] =
+    source === "quests" ? await questLinesReplaced(lang, target, text) : [{ text: target.text, playerGender: null }];
+  const after = playerTokenCounts(text, lang);
+  const dropped = new Set<string>();
+  for (const line of replaced) {
+    const before = playerTokenCounts(line.text, lang);
+    const sides = line.playerGender ? [line.playerGender] : (["m", "f"] as const);
+    for (const token of ["N", "C", "R"] as const) {
+      if (sides.some((side) => after[side][token] < before[side][token])) dropped.add(`$${token}`);
+    }
+    // A side line's branch is only ever read one way, so losing it there loses nothing.
+    if (!line.playerGender && after.G < before.G) dropped.add("$G");
+  }
+  return [...dropped];
+}
+
+/**
+ * The lines saveQuestText overwrites with `text`, as stored: every line of the moment, except a
+ * side of a split moment edited alone by a text without `$G`. Stored rather than the game's print
+ * `target` carries, since a translator's token in the stored text is what the write would lose.
+ */
+async function questLinesReplaced(lang: Lang, target: CorpusText, text: string): Promise<ReadLine[]> {
+  const rows = await momentLines(lang, target.lineId, target.variant);
+  const own = rows.find((row) => row.lineId === baseLineId(target.lineId));
+  if (own?.playerGender && !branchesOnPlayerGender(text)) return [own];
+  return rows.length > 0 ? rows : [{ text: target.text, playerGender: null }];
 }
 
 /**

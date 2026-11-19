@@ -27,7 +27,9 @@ const splitQuest = quest - 2;
 const extractedQuest = quest - 3;
 // A plain line a correction splits by gender, edited after the corrections tab loaded it.
 const genderedQuest = quest - 4;
-const quests = [quest, contributedQuest, splitQuest, extractedQuest, genderedQuest];
+// A deDE moment split by player gender whose sides differ: only :m names the reader.
+const twoSidedQuest = quest - 5;
+const quests = [quest, contributedQuest, splitQuest, extractedQuest, genderedQuest, twoSidedQuest];
 const moments = quests.map((q) => `q:${q}:accept`);
 const linesOf = (q: number) => [`q:${q}:accept`, `q:${q}:accept:m`, `q:${q}:accept:f`];
 
@@ -78,6 +80,16 @@ beforeAll(async () => {
      values ($1 || ':m', 0, 'enUS', 1, true, 'extracted', 'accept', 'm', 'm-' || $2, 'Hail, lad.', 'Hail, $glad:lass;.', null),
             ($1 || ':f', 0, 'enUS', 1, true, 'extracted', 'accept', 'f', 'f-' || $2, 'Hail, lass.', 'Hail, $glad:lass;.', null)`,
     [moments[2], `${splitQuest}-accept`],
+  );
+  await asSystem.query(
+    `insert into "quest_line"
+       ("lineId", "variant", "lang", "version", "isCurrent", "origin", "source", "playerGender", "fileName",
+        "text", "originalText", "localeText")
+     values ($1 || ':m', 0, 'enUS', 1, true, 'extracted', 'accept', 'm', 'm-' || $2, 'Welcome, hero.', 'Welcome, $ghero:heroine;.', null),
+            ($1 || ':f', 0, 'enUS', 1, true, 'extracted', 'accept', 'f', 'f-' || $2, 'Welcome, heroine.', 'Welcome, $ghero:heroine;.', null),
+            ($1 || ':m', 0, 'deDE', 1, true, 'extracted', 'accept', 'm', 'm-' || $2, 'Seid willkommen, $gHeld:Heldin;, $N.', 'Welcome, $ghero:heroine;.', null),
+            ($1 || ':f', 0, 'deDE', 1, true, 'extracted', 'accept', 'f', 'f-' || $2, 'Seid willkommen, $gHeld:Heldin;.', 'Welcome, $ghero:heroine;.', null)`,
+    [`q:${twoSidedQuest}:accept`, `${twoSidedQuest}-accept`],
   );
   // Every quest row carries its quest id, which is what known.ts finds a moment's lines by.
   await asSystem.query(
@@ -152,6 +164,75 @@ describe("acceptCorrection", () => {
       [lineId],
     );
     expect(rows).toEqual([{ version: 2, text: "Guten Tag, $N.", localeText: "Hallo, $N.", note: correctionNote(id) }]);
+  });
+
+  it("refuses a translation's correction that lost a token, the client's one reader's word", async () => {
+    const id = await contribution("deDE", "Guten Tag, Krieger.");
+    const outcome = await acceptCorrection(id, ACCEPTER);
+    expect(outcome).toMatchObject({ ok: false, reason: "malformed", message: expect.stringContaining("$N") });
+
+    const { rows } = await asSystem.query(
+      `select "text" from "quest_line" where "lineId" = $1 and "lang" = 'deDE' and "isCurrent"`,
+      [lineId],
+    );
+    expect(rows).toEqual([{ text: "Guten Tag, $N." }]);
+  });
+
+  it("refuses a correction that keeps the game's tokens but drops one the stored line has", async () => {
+    const current = `"lineId" = $1 and "lang" = 'deDE' and "isCurrent"`;
+    await asSystem.query(`update "quest_line" set "text" = 'Guten Tag, $N, $C.' where ${current}`, [lineId]);
+    try {
+      // As many tokens as the game's print ("Hallo, $N."), one fewer than the text it would replace.
+      const id = await contribution("deDE", "Hallo du, $N.");
+      expect(await acceptCorrection(id, ACCEPTER)).toMatchObject({
+        ok: false,
+        reason: "malformed",
+        message: expect.stringContaining("$C"),
+      });
+    } finally {
+      await asSystem.query(`update "quest_line" set "text" = 'Guten Tag, $N.' where ${current}`, [lineId]);
+    }
+  });
+
+  it("refuses a $g correction that would drop a token from the side it was not compared with", async () => {
+    // Closest to the :f wording, which has no $N; the save would also rewrite :m, which has one.
+    const id = await contribution("deDE", "Willkommen, $gHeld:Heldin;.", "accept", twoSidedQuest);
+    expect(await acceptCorrection(id, ACCEPTER)).toMatchObject({
+      ok: false,
+      reason: "malformed",
+      message: expect.stringContaining("$N"),
+    });
+
+    const { rows } = await asSystem.query(
+      `select "lineId", "version" from "quest_line"
+        where "lineId" like $1 and "lang" = 'deDE' and "isCurrent" order by "lineId"`,
+      [`q:${twoSidedQuest}:accept:%`],
+    );
+    expect(rows).toEqual([
+      { lineId: `q:${twoSidedQuest}:accept:f`, version: 1 },
+      { lineId: `q:${twoSidedQuest}:accept:m`, version: 1 },
+    ]);
+  });
+
+  it("accepts a correction without $g to one side, whose own branch no reader takes the other way", async () => {
+    const id = await contribution("deDE", "Sei willkommen, Heldin.", "accept", twoSidedQuest);
+    expect(await acceptCorrection(id, ACCEPTER)).toMatchObject({ ok: true });
+
+    const { rows } = await asSystem.query(
+      `select "lineId", "text" from "quest_line"
+        where "lineId" like $1 and "lang" = 'deDE' and "isCurrent" order by "lineId"`,
+      [`q:${twoSidedQuest}:accept:%`],
+    );
+    expect(rows).toEqual([
+      { lineId: `q:${twoSidedQuest}:accept:f`, text: "Sei willkommen, Heldin." },
+      { lineId: `q:${twoSidedQuest}:accept:m`, text: "Seid willkommen, $gHeld:Heldin;, $N." },
+    ]);
+  });
+
+  it("accepts a $g correction that keeps each side's tokens for the readers of that side", async () => {
+    // :m's female side has a $N no female reader hears, since they read :f.
+    const id = await contribution("deDE", "Willkommen, $gHeld, $N:Heldin;.", "accept", twoSidedQuest);
+    expect(await acceptCorrection(id, ACCEPTER)).toMatchObject({ ok: true });
   });
 
   it("splits a plain line the site wrote when the correction branches on $g", async () => {
@@ -335,6 +416,18 @@ describe("acceptCorrection: a readables page", () => {
     await saveBookText({ lineId: page, text, note: correctionNote(id), editedBy: ACCEPTER, lang: "esES" });
     const before = await versions();
     expect(await acceptCorrection(id, ACCEPTER)).toMatchObject({ ok: true, contribution: { status: "accepted" } });
+    expect(await versions()).toEqual(before);
+  });
+
+  it("refuses a page's correction that lost a token, as a quest translation's is", async () => {
+    await saveBookText({ lineId: page, text: `Hola, $N, ${base}.`, note: null, editedBy: ACCEPTER, lang: "esES" });
+    const id = await readablesRow(`Hola, Pedro, ${base}.`);
+    const before = await versions();
+    expect(await acceptCorrection(id, ACCEPTER)).toMatchObject({
+      ok: false,
+      reason: "malformed",
+      message: expect.stringContaining("$N"),
+    });
     expect(await versions()).toEqual(before);
   });
 });

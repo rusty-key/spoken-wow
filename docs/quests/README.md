@@ -424,6 +424,15 @@ except that each side holds its own reader's words. On a moment already split, a
 line the site split and gives its speakers to both sides (`split_here` in
 `tts_cli/corpus_db.py`).
 
+Accepting a translation's correction refuses one with fewer player tokens than a line it would
+overwrite (`correction.ts` `droppedTokens`): a `$N`, `$C` or `$R` the client filled in and intake
+did not put back, or a `$G` the client resolved. It compares the text that would be written, a
+split's template included, with each overwritten line's stored text, on the side that line's
+readers take: a `:m` line on its male side only, a plain line on both. Losing a branch counts
+only on a plain line, since a side line's branch is read one way. Tokens are counted as
+`speakPlayerTokens` replaces them (`playerTokenCounts`), so a form the language does not speak is
+not one. Book pages get the same check. The moderator puts the token back in the explorer.
+
 The forms of one moment are linked by its id without the suffix. Each takes the moment's
 speakers, and the explorer shows a language its own lines, or English's while it has none. An
 import that would reshape a moment retires the lines of the old shape, unless somebody edited
