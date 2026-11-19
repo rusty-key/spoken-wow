@@ -109,10 +109,10 @@ function GossipSettingsPanel:Setup()
             if not row then
                 row = CreateFrame("Frame", nil, list)
                 row:SetHeight(MUTED_ROW)
-                -- TOPRIGHT, not RIGHT: RIGHT would also pin the row's middle to the list's, which
-                -- with its top and height set leaves the client no rect to draw.
-                row:SetPoint("TOPLEFT", list, "TOPLEFT", SpokenLayout.LABEL_X, -(i - 1) * MUTED_ROW)
-                row:SetPoint("TOPRIGHT", list, "TOPRIGHT", 0, -(i - 1) * MUTED_ROW)
+                -- TOPRIGHT, not RIGHT: RIGHT with a top and a height leaves no rect to draw.
+                local y = -(i - 1) * MUTED_ROW
+                row:SetPoint("TOPLEFT", list, "TOPLEFT", SpokenLayout.LABEL_X, y)
+                row:SetPoint("TOPRIGHT", list, "TOPRIGHT", 0, y)
                 row.label = row:CreateFontString(nil, "ARTWORK", "GameFontHighlight")
                 row.label:SetPoint("LEFT", row, "LEFT", 0, 0)
                 row.unmute = SpokenLayout.NewButton(row, L.OPT_UNMUTE_NPC)
@@ -131,7 +131,6 @@ function GossipSettingsPanel:Setup()
         end
         for i = #muted + 1, #rows do rows[i]:Hide() end
         list.count = #muted
-        list:SetHeight(math.max(1, #muted) * MUTED_ROW)
     end
     layout:Custom(list, MUTED_ROW, function(width) list:SetWidth(width - 40) end)
     list.layoutRow.measure = function() return math.max(1, list.count or 0) * MUTED_ROW end
