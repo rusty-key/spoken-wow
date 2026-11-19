@@ -2,7 +2,7 @@
 
 Spoken Player until 3.0.0, when it became Spoken and took its modules into one download.
 
-## Unreleased
+## 3.10.1 — 2026-11-19
 
 - **A line or page you contribute goes as your game showed it.** Your character's name, class,
   race and sex go beside it, and the site turns them back into the game's placeholders before
