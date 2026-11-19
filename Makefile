@@ -364,8 +364,8 @@ manager-publish-dry: ## Show what the manager channel would get from dist/ (ONLY
 manager-publish: ## Publish dist/'s manager packs to the manager channel (ONLY_PRESENT=1: only what is built)
 	@node scripts/manager/cli.mjs publish $(if $(ONLY_PRESENT),--present) $(if $(ALLOW_REMOVALS),--allow-removals)
 
-manager-release: ## One section and language onto the manager channel, with no clips here (SECTION=, LOCALE=, DRY_RUN=1)
-	@node scripts/manager/release.mjs $(SECTION) $(or $(LOCALE),enUS) $(if $(DRY_RUN),--dry-run) $(if $(ALLOW_REMOVALS),--allow-removals)
+manager-release: ## One section and language onto the manager channel, with no clips here (SECTION=, LOCALE=, TEAM=, DRY_RUN=1)
+	@node scripts/manager/release.mjs $(SECTION) $(or $(LOCALE),enUS) $(if $(TEAM),--team=$(TEAM)) $(if $(DRY_RUN),--dry-run) $(if $(ALLOW_REMOVALS),--allow-removals)
 
 manager-gc-dry: ## Show what manager-gc would delete
 	@node scripts/manager/cli.mjs gc --dry-run

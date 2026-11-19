@@ -47,13 +47,13 @@ export function seedDatabase(url = process.env.DATABASE_URL) {
       }
     },
 
-    /** A team voicing `lang`, its privileged team or a second one. */
-    team(lang, { privileged = true, official = true, name = null } = {}) {
+    /** A team voicing `lang`, its packs plain (`_<lang>`) or carrying its slug. */
+    team(lang, { packName = "plain", official = true, name = null } = {}) {
       const slug = `test-${randomUUID().slice(0, 8)}`;
       const [[id]] = sql(`insert into "team" ("slug", "name", "official")
                           values (${lit(slug)}, ${lit(name ?? slug)}, ${official}) returning "id"`);
       teams.push(id);
-      sql(`insert into "team_language" ("teamId", "lang", "privileged") values (${lit(id)}, ${lit(lang)}, ${privileged})`);
+      sql(`insert into "team_language" ("teamId", "lang", "packName") values (${lit(id)}, ${lit(lang)}, ${lit(packName)})`);
       return { id, slug, name: name ?? slug };
     },
 

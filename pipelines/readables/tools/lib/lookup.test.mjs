@@ -145,8 +145,8 @@ test("a release's lookup lists its own team's live take of a page, and a build o
   try {
     const { sql, lit } = seed;
     const lang = seed.language();
-    const a = seed.team(lang, { privileged: true });
-    const b = seed.team(lang, { privileged: false });
+    const a = seed.team(lang);
+    const b = seed.team(lang, { packName: "slug" });
     const page = 900_000_000 + randomInt(1e8);
     const lineId = `b:${page}`;
     seed.onCleanup(`delete from "entity_name" where "lang" = ${lit(lang)}`);

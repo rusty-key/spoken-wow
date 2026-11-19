@@ -171,15 +171,16 @@ async function overlay({ langs: teams, shared }: Mapping, langs: readonly (Lang 
 
 /**
  * The team the acting person works on `lang` in, as teamOf picks it, with what decides whether its
- * release builds plain packs (privileged) and skips review (official). Null when it has none.
+ * release builds plain packs (packName) and skips review (official). Null when it has none.
+ * A team outside the language reads as `slug`, so its release is never taken for plain packs.
  */
 export async function actingTeamRow(
   lang: Lang,
-): Promise<{ id: TeamId; slug: string; official: boolean; privileged: boolean } | null> {
+): Promise<{ id: TeamId; slug: string; official: boolean; packName: "plain" | "slug" } | null> {
   const team = await ownerOf(lang);
   if (!team) return null;
-  const rows = await query<{ id: TeamId; slug: string; official: boolean; privileged: boolean }>(
-    `select t."id", t."slug", t."official", coalesce(tl."privileged", false) as "privileged"
+  const rows = await query<{ id: TeamId; slug: string; official: boolean; packName: "plain" | "slug" }>(
+    `select t."id", t."slug", t."official", coalesce(tl."packName", 'slug') as "packName"
        from "team" t left join "team_language" tl on tl."teamId" = t."id" and tl."lang" = $2
       where t."id" = $1`,
     [team, lang],

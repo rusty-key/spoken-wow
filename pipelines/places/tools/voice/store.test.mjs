@@ -19,8 +19,8 @@ let b;
 before(() => {
   if (!seed) return;
   lang = seed.language();
-  a = seed.team(lang, { privileged: true });
-  b = seed.team(lang, { privileged: false });
+  a = seed.team(lang);
+  b = seed.team(lang, { packName: "slug" });
   seed.take({ team: a.id, source: "places", lang, file: "z-1", lineId: "z:1", sha256: "a".repeat(64), shownText: "A" });
   seed.take({ team: b.id, source: "places", lang, file: "z-1", lineId: "z:1", sha256: "b".repeat(64), shownText: "B" });
 });

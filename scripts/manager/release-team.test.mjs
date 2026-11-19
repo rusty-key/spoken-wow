@@ -13,6 +13,7 @@ const skip = seed ? false : "DATABASE_URL is not set";
 const db = seed && new pg.Pool({ connectionString: seed.url, max: 1 });
 let lang;
 let other;
+let only;
 let first;
 let second;
 let elsewhere;
@@ -21,9 +22,11 @@ before(async () => {
   if (!seed) return;
   lang = await seed.language({ name: "Xq German", native: "Xq Deutsch" });
   other = await seed.language();
-  first = await seed.team(lang, { privileged: true, official: true });
-  second = await seed.team(lang, { privileged: false, official: false, name: "Stimmen" });
-  elsewhere = await seed.team(other, { privileged: true });
+  only = await seed.language();
+  first = await seed.team(lang, { packName: "plain", official: true });
+  second = await seed.team(lang, { packName: "slug", official: false, name: "Stimmen" });
+  elsewhere = await seed.team(other, { packName: "plain" });
+  await seed.team(only, { packName: "slug", official: false });
 });
 
 after(async () => {
@@ -31,24 +34,34 @@ after(async () => {
   await db?.end();
 });
 
-test("the language's privileged team builds plain packs", { skip }, async () => {
+test("a team with plain packs builds them", { skip }, async () => {
   const team = await releaseTeam(db, lang, first.slug);
   assert.deepEqual(team, {
-    id: first.id, slug: first.slug, name: first.name, official: true, privileged: true,
+    id: first.id, slug: first.slug, name: first.name, official: true, packName: "plain",
     language: { code: lang, name: "Xq German", native: "Xq Deutsch", client: false },
   });
 });
 
-test("a second team does not", { skip }, async () => {
+test("a team whose packs carry its slug builds those", { skip }, async () => {
   const team = await releaseTeam(db, lang, second.slug);
   assert.equal(team.id, second.id);
   assert.equal(team.name, "Stimmen");
   assert.equal(team.official, false);
-  assert.equal(team.privileged, false);
+  assert.equal(team.packName, "slug");
 });
 
-test("no slug is the privileged team, as a release from before teams had", { skip }, async () => {
-  assert.equal((await releaseTeam(db, lang, null)).id, first.id);
+test("no slug is the language's only team, whatever its packs are named", { skip }, async () => {
+  assert.equal((await releaseTeam(db, other, null)).id, elsewhere.id);
+  assert.equal((await releaseTeam(db, only, null)).packName, "slug");
+});
+
+test("no slug in a language with several teams is refused, not given a main team", { skip }, async () => {
+  await assert.rejects(releaseTeam(db, lang, null), { message: `${lang} has several teams: name one with --team` });
+});
+
+test("a language with no team is refused", { skip }, async () => {
+  const empty = await seed.language();
+  await assert.rejects(releaseTeam(db, empty, null), { message: `${empty} has no team` });
 });
 
 test("a team that does not voice the language is refused", { skip }, async () => {
@@ -65,7 +78,7 @@ test("every language's names come with it, for index-v2.json", { skip }, async (
   assert.ok(names.some((row) => row.code === "deDE"));
 });
 
-test("a delisting takes every folder the team's pack can have: plain for the privileged team, else with its slug", { skip }, async () => {
+test("a delisting takes every folder the team's pack can have: plain or with its slug, as its pack name says", { skip }, async () => {
   const sides = ["Alliance", "Horde", "Shared", "Gossip"];
   assert.deepEqual(await teamPackFolders(db, "quests", lang, second.slug), sides.map((side) => `SpokenQuestsAudio${side}_${lang}_${second.slug}`));
   assert.deepEqual(await teamPackFolders(db, "places", lang, first.slug), [`SpokenPlacesAudio_${lang}`]);

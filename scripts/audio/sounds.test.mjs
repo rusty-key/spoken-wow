@@ -31,8 +31,8 @@ before(() => {
   if (!seed) return;
   const { sql, lit } = seed;
   lang = seed.language();
-  a = seed.team(lang, { privileged: true });
-  b = seed.team(lang, { privileged: false });
+  a = seed.team(lang);
+  b = seed.team(lang, { packName: "slug" });
   seed.onCleanup(`delete from "entity_name" where "lang" = ${lit(lang)}`);
   seed.onCleanup(`delete from "quest_line" where "lang" = ${lit(lang)}`);
 
