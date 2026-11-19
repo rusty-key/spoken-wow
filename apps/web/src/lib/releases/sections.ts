@@ -9,8 +9,13 @@ export function isReleaseSection(value: unknown): value is ReleaseSection {
   return typeof value === "string" && (RELEASE_SECTIONS as readonly string[]).includes(value);
 }
 
-/** What a second team is told when it asks to release. */
-export const SECOND_TEAM_RELEASE = "Releases for a second team are not built yet; its takes stay on the site.";
+/**
+ * What a team that is not official, or not the language's privileged team, is told when it asks to
+ * release where team releases are closed (SPOKEN_TEAM_RELEASES): on production until the Manager and
+ * Spoken that list a team's packs have shipped (docs/platform/TEAMS.md, *Releases*).
+ */
+export const TEAM_RELEASES_CLOSED =
+  "Releases for your team are not open on this site yet; your takes stay on the site.";
 
 export const RELEASE_BUMPS = ["patch", "minor", "major"] as const;
 

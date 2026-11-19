@@ -126,4 +126,6 @@ export async function addLanguage(client: ClientBase, input: NewLanguage, userId
   );
   if (!rowCount) throw new LanguageExistsError(input.code);
   await adoptLang(client, input.code);
+  // A site owner added it, so its team is official; a request's approval sets its own afterwards.
+  await client.query(`update "team" set "official" = true where "id" = team_of_lang($1)`, [input.code]);
 }

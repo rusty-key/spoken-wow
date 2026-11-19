@@ -49,13 +49,16 @@ export default function TeamsTable({ initial, takes, languages }: Props) {
   const [busy, setBusy] = useState(false);
   const [names, setNames] = useState(() => Object.fromEntries(initial.map((team) => [team.id, team.name])));
   const [ownStorage, setOwnStorage] = useState<Record<string, boolean>>({});
+  const [official, setOfficial] = useState<Record<string, boolean>>({});
   // Once the refreshed teams agree with a saved value it is theirs to show, so a later change made
   // elsewhere comes through.
   useEffect(() => {
-    setOwnStorage((current) => {
-      const left = Object.entries(current).filter(([id, value]) => initial.find((team) => team.id === id)?.ownStorage !== value);
+    const settle = (key: "ownStorage" | "official") => (current: Record<string, boolean>) => {
+      const left = Object.entries(current).filter(([id, value]) => initial.find((team) => team.id === id)?.[key] !== value);
       return left.length === Object.keys(current).length ? current : Object.fromEntries(left);
-    });
+    };
+    setOwnStorage(settle("ownStorage"));
+    setOfficial(settle("official"));
   }, [initial]);
   const [form, setForm] = useState({ slug: "", name: "", adminEmail: "", langs: [] as Lang[] });
   const [newLanguage, setNewLanguage] = useState(false);
@@ -141,8 +144,11 @@ export default function TeamsTable({ initial, takes, languages }: Props) {
             <th className="py-2 pr-3 font-normal">Name</th>
             <th className="py-2 pr-3 font-normal">Languages</th>
             <th className="py-2 pr-3 font-normal">Members</th>
-            <th className="py-2 font-normal" title="New audio goes only to its own bucket; what is already in Spoken's archive stays">
+            <th className="py-2 pr-3 font-normal" title="New audio goes only to its own bucket; what is already in Spoken's archive stays">
               Own storage
+            </th>
+            <th className="py-2 pr-3 font-normal" title="Its releases need no review, and its packs carry no team name in the Manager">
+              Official
             </th>
             <th className="py-2 font-normal">
               <span className="sr-only">Delete</span>
@@ -214,7 +220,7 @@ export default function TeamsTable({ initial, takes, languages }: Props) {
                   ))}
                 </ul>
               </td>
-              <td className="py-2">
+              <td className="py-2 pr-3">
                 <input
                   type="checkbox"
                   aria-label={`${team.slug}'s new audio goes only to its own bucket`}
@@ -225,6 +231,20 @@ export default function TeamsTable({ initial, takes, languages }: Props) {
                     // Kept until the refreshed page agrees, as the name drafts are.
                     void run(() => send(`/api/teams/${team.id}`, "PATCH", { ownStorage: next })).then((ok) => {
                       if (ok) setOwnStorage((current) => ({ ...current, [team.id]: next }));
+                    });
+                  }}
+                />
+              </td>
+              <td className="py-2 pr-3">
+                <input
+                  type="checkbox"
+                  aria-label={`${team.slug} is official`}
+                  checked={official[team.id] ?? team.official}
+                  disabled={busy}
+                  onChange={(event) => {
+                    const next = event.target.checked;
+                    void run(() => send(`/api/teams/${team.id}`, "PATCH", { official: next })).then((ok) => {
+                      if (ok) setOfficial((current) => ({ ...current, [team.id]: next }));
                     });
                   }}
                 />

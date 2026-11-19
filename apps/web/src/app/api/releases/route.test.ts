@@ -1,4 +1,4 @@
-/** Needs DATABASE_URL and migrations through 0095; the session and GitHub are mocked. */
+/** Needs DATABASE_URL and migrations through 0120; the session and GitHub are mocked. */
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { closeDb } from "@/lib/db";
@@ -101,7 +101,7 @@ describe("release route", () => {
     expect(run).toMatchObject({ section: "quests", lang: "frFR", state: "dispatching" });
     expect(github.dispatchRelease.mock.calls[0][0]).toMatchObject({ id: run.id, section: "quests", lang: "frFR" });
     // A take whose encoding failed at commit would stop the release it is about to start.
-    expect(encode.encodeMissingForPack).toHaveBeenCalledWith("quests", "frFR");
+    expect(encode.encodeMissingForPack).toHaveBeenCalledWith("quests", "frFR", fr.team);
     expect(encode.encodeMissingForPack.mock.invocationCallOrder[0]).toBeLessThan(
       github.dispatchRelease.mock.invocationCallOrder[0],
     );
@@ -226,32 +226,77 @@ describe("release route", () => {
     }
   });
 
-  it("answers 409 to a second team's admin and writes no run, while the privileged admin still dispatches", async () => {
-    const team = await newTeamIn("frFR", false, "release-second");
-    const second = await testUser("test-release-second");
-    const before = who.id;
-    try {
-      await makeAdminFor(second.id, "frFR", team);
-      who.id = second.id;
-      const refused = await asActor(second.id, () => press("frFR", { section: "quests" }));
-      expect(refused.status).toBe(409);
-      expect((await refused.json()).error).toBe(
-        "Releases for a second team are not built yet; its takes stay on the site.",
-      );
-      const { rows } = await asSystem.query(`select 1 from "release_run" where "lang" = 'frFR' and "requestedBy" = $1`, [
-        second.id,
-      ]);
-      expect(rows).toEqual([]);
-      expect(github.dispatchRelease).not.toHaveBeenCalled();
+  describe("a team that is not official, or not the language's privileged team", () => {
+    const CLOSED = "Releases for your team are not open on this site yet; your takes stay on the site.";
+    let team = "";
+    let second: Awaited<ReturnType<typeof testUser>>;
+    let before = "";
 
+    beforeEach(async () => {
+      team = await newTeamIn("frFR", false, "release-second");
+      second = await testUser("test-release-second");
+      await makeAdminFor(second.id, "frFR", team);
+      before = who.id;
+    });
+
+    afterEach(async () => {
       who.id = before;
-      expect((await press("frFR", { section: "quests" })).status).toBe(202);
-      expect(github.dispatchRelease).toHaveBeenCalledTimes(1);
-    } finally {
-      who.id = before;
+      vi.unstubAllEnvs();
+      await asSystem.query(`update "team" set "official" = true where "id" = $1`, [fr.team]);
+      await asSystem.query(`delete from "release_run" where "teamId" = $1`, [team]);
+      await asSystem.query(`delete from "activity" where "teamId" = $1`, [team]);
       await dropTeam(team);
       await second.cleanup();
       forgetTeams();
-    }
+    });
+
+    const pressAs = (userId: string) => {
+      who.id = userId;
+      return asActor(userId, () => press("frFR", { section: "places" }));
+    };
+    const runsOf = async (teamId: string) =>
+      (await asSystem.query(`select "id" from "release_run" where "teamId" = $1`, [teamId])).rows;
+
+    it("is refused with no run while team releases are closed, and the privileged admin still dispatches", async () => {
+      const refused = await pressAs(second.id);
+      expect(refused.status).toBe(409);
+      expect((await refused.json()).error).toBe(CLOSED);
+      expect(await runsOf(team)).toEqual([]);
+      expect(github.dispatchRelease).not.toHaveBeenCalled();
+
+      who.id = before;
+      expect((await press("frFR", { section: "places" })).status).toBe(202);
+      expect(github.dispatchRelease).toHaveBeenCalledTimes(1);
+    });
+
+    it("refuses a privileged team a request made, which is not official", async () => {
+      await asSystem.query(`update "team" set "official" = false where "id" = $1`, [fr.team]);
+      const refused = await press("frFR", { section: "places" });
+      expect(refused.status).toBe(409);
+      expect((await refused.json()).error).toBe(CLOSED);
+      expect(await runsOf(fr.team)).toEqual([]);
+    });
+
+    it("presses under its own team where team releases are open, naming the team to the job", async () => {
+      vi.stubEnv("SPOKEN_TEAM_RELEASES", "1");
+      vi.stubEnv("SPOKEN_RELEASE_ENV", "/srv/spoken/shared/release.env");
+      const response = await pressAs(second.id);
+      expect(response.status).toBe(202);
+      expect(await runsOf(team)).toHaveLength(1);
+      const [{ slug }] = (await asSystem.query(`select "slug" from "team" where "id" = $1`, [team])).rows;
+      expect(droplet.startDropletRun).toHaveBeenCalledTimes(1);
+      expect(droplet.startDropletRun.mock.calls[0][0]).toMatchObject({ teamId: team, teamSlug: slug, section: "places" });
+      // Its own takes, which the pack it builds sends, and not the privileged team's.
+      expect(encode.encodeMissingForPack).toHaveBeenCalledWith("places", "frFR", team);
+    });
+
+    it("stays refused where team releases are open but the release would run on GitHub", async () => {
+      vi.stubEnv("SPOKEN_TEAM_RELEASES", "1");
+      vi.stubEnv("SPOKEN_RELEASE_ENV", "");
+      const refused = await pressAs(second.id);
+      expect(refused.status).toBe(409);
+      expect((await refused.json()).error).toBe(CLOSED);
+      expect(await runsOf(team)).toEqual([]);
+    });
   });
 });

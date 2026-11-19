@@ -54,6 +54,30 @@ If your game is somewhere else, press "Add Game Folder" and choose it. You can c
 folder, one of its `_forever_`, `_classic_era_` or `_anniversary_` folders, or the
 `Interface/AddOns` folder.
 
+## Voice packs
+
+The Voice Packs page lists every language that has a release, today's twelve first and then any
+other language the channel carries, named in its own words (日本語). Its packs come from the
+channel's signed `index-v2.json`, which also names the team that made each pack. A pack by a team
+that is not official says so in its row ("by Stimmen"); an official pack has no label. A manager
+whose channel has no `index-v2.json` reads `index.json`, as it did before team packs.
+
+A language with packs from more than one team shows an Author row under Voice Language: All, then
+each team, official teams first. The choice is kept per language. Inside each section every team's
+packs are their own group, headed by the team's name when there is more than one. Packs of one
+section from several teams install side by side, each in its own folder, and removing one leaves
+the others alone.
+
+A pack installed earlier that the channel no longer lists stays on the page, under its team's slug,
+with Remove only.
+
+Install All installs the chosen author's packs. With All chosen and more than one team, it installs
+the official packs; where the language has none, it asks which team's packs to install and
+downloads nothing until one is picked. One press never installs two teams' packs of one section.
+
+A team's pack needs a Spoken that knows team packs (`requires.Spoken` in the index); installing one
+updates Spoken first when the installed one is older.
+
 ## Run it from source
 
 You need Node 22 and npm. Work in this folder (`manager/`):
@@ -61,6 +85,7 @@ You need Node 22 and npm. Work in this folder (`manager/`):
     npm ci
     npm run dev          # the app, with live reload
     npm run dev:web      # only the window in a browser, with made-up data, for design work
+                         # (add ?teams=1 to the address for teams' packs: German, Japanese, Polish)
     npm test             # unit tests
     npm run typecheck
 

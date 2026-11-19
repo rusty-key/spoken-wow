@@ -42,6 +42,7 @@ import { packTimes } from "../../pipelines/lib/word-times.mjs";
 import { archiveOf, ENCODING_PROFILE, sourceOf } from "../lib/archives.mjs";
 import { pointerText, writePointers } from "../lib/clip-pointer.mjs";
 import { archiveBase, eachParallel, fetchRetrying } from "../lib/download.mjs";
+import { releaseTeamSql } from "../../pipelines/lib/release-team.mjs";
 import { CURRENT_TEXT_SQL, NAMED_QUESTS_SQL, currentTextFor, namedBy } from "./relevant.mjs";
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "../..");
@@ -112,7 +113,8 @@ const listing = psql(`select t."file", coalesce(t."archiveFile", ''),
                         left join "take_encoding" e
                           on e."source" = t."source" and e."sha256" = t."sha256" and e."profile" = :'profile'
                        where t."source" = :'source' and t."lang" = :'lang' and t."isCurrent"
-                         and t."teamId" = team_of_lang(:'lang')
+                         -- the release's team, else the privileged team, so a build outside a release reads what it always did
+                         and t."teamId" = ${releaseTeamSql(`:'lang'`)}
                        order by t."file"`);
 
 // A live take's archive path: its bucket object, or the take's own directory (its file without
@@ -142,7 +144,8 @@ function bossesShipped() {
   const files = new Set(psql(`select t."file" from "take" t
                                 join "boss" b on t."lineId" = 'boss:' || b."map" || ':' || b."key"
                                where t."source" = :'source' and t."lang" = :'lang' and t."isCurrent"
-                                 and t."teamId" = team_of_lang(:'lang')
+                                 -- the release's team, else the privileged team, so a build outside a release reads what it always did
+                                 and t."teamId" = ${releaseTeamSql(`:'lang'`)}
                                  and not b."retired"`));
   return (stem) => files.has(stem);
 }

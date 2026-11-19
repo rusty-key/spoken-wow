@@ -17,7 +17,7 @@ import { recordActivity } from "@/lib/activity/store";
 import { archive, blobKey, sha256Of } from "@/lib/blobs/store";
 import { putArchived } from "@/lib/blobs/keep";
 import { blobBytes } from "@/lib/blobs/where";
-import { ALL_TEAMS, query, queryIn } from "@/lib/db";
+import { ALL_TEAMS, query, queryIn, type TeamId } from "@/lib/db";
 import type { Lang } from "@/lib/lang";
 import type { Source } from "@/lib/sections";
 
@@ -240,9 +240,10 @@ async function encodeFromArchive(source: Source, sha256: string, take?: EncodedT
 }
 
 /**
- * Every live take of a language with no usable encoding, encoded before a release, which stops on
- * any such take. Encoding at commit is best effort, and only a release would otherwise find a
- * failure.
+ * Every live take of `team`'s in a language with no usable encoding, encoded before that team's
+ * release, which stops on any such take. Encoding at commit is best effort, and only a release
+ * would otherwise find a failure. The releasing team's, not the language's privileged team's: a
+ * second team's pack sends its own takes.
  *
  * This runs inside the request that starts the release, and nginx gives that request 60 seconds
  * before the page reports a failure for a release that is in fact starting. So it waits at most
@@ -250,7 +251,7 @@ async function encodeFromArchive(source: Source, sha256: string, take?: EncodedT
  * finishes. Newest first, since those are the takes the release is about to send, and a take that
  * failed in the past day last, so a take that will never encode does not spend every press's time.
  */
-export async function encodeMissingForPack(source: Source, lang: Lang, budgetMs = 30_000): Promise<void> {
+export async function encodeMissingForPack(source: Source, lang: Lang, team: TeamId, budgetMs = 30_000): Promise<void> {
   const profile = profileFor(source);
   if (!profile) return;
   const until = Date.now() + budgetMs;
@@ -262,7 +263,7 @@ export async function encodeMissingForPack(source: Source, lang: Lang, budgetMs 
          left join "take_encoding" e
            on e."source" = t."source" and e."sha256" = t."sha256" and e."profile" = $3
         where t."source" = $1 and t."lang" = $2 and t."isCurrent" and t."sha256" is not null
-          and t."teamId" = team_of_lang($2)
+          and t."teamId" = $5
           and coalesce(e."durationSec", 0) <= 0
         order by t."sha256", t."createdAt" desc
      ) live
@@ -271,7 +272,7 @@ export async function encodeMissingForPack(source: Source, lang: Lang, budgetMs 
                          and a."subject" = live."file" and a."detail"->>'version' = live."version"::text),
               "createdAt" desc
      limit 500`,
-    [source, lang, profile, FAILED],
+    [source, lang, profile, FAILED, team],
   );
   for (const { sha256, ...take } of missing) {
     const left = until - Date.now();

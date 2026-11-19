@@ -98,8 +98,11 @@ describe("release runs", () => {
     expect(released.get("quests")?.getTime()).toBe(done.createdAt.getTime());
   });
 
-  it("keeps a run to its own language's team", async () => {
-    await startRun("quests", "frFR", user.id);
+  it("keeps a run to its own language's team, and names it by slug for the job", async () => {
+    const run = await startRun("quests", "frFR", user.id);
+    const [{ slug }] = await systemRows<{ slug: string }>(`select "slug" from "team" where "id" = $1`, [fr.team]);
+    expect(run.teamSlug).toBe(slug);
+    expect((await updateRun(run.id, { step: "lookup" })).teamSlug).toBe(slug);
     expect(await recentRuns("deDE", 10)).toEqual([]);
     expect(await recentRuns("frFR", 10)).toHaveLength(1);
   });

@@ -28,6 +28,26 @@ export function runsOnDroplet(): boolean {
   return Boolean(process.env.SPOKEN_RELEASE_ENV);
 }
 
+/**
+ * Whether a team that is not official, or not the language's privileged team, may release: only
+ * where SPOKEN_TEAM_RELEASES=1, set where release.env signs for the staging channel, until a site
+ * owner reviews a team's release. On the droplet only: the workflow builds from a synced database,
+ * whose sync gives every take to the privileged team.
+ */
+export function teamReleasesOpen(): boolean {
+  return process.env.SPOKEN_TEAM_RELEASES === "1" && runsOnDroplet();
+}
+
+/**
+ * Whether the acting team (actingTeamRow) is refused a release here: one that is not both official
+ * and the language's privileged team, where team releases are not open. No team is not refused.
+ * The job refuses the same teams, whose packs it lists under the team
+ * (scripts/manager/release-pack.mjs needsTeamReleases), so a press accepted here is one it builds.
+ */
+export function releasesClosedFor(team: { official: boolean; privileged: boolean } | null): boolean {
+  return team !== null && !(team.official && team.privileged) && !teamReleasesOpen();
+}
+
 function runDir(id: string): string | null {
   const env = process.env.SPOKEN_RELEASE_ENV;
   return env ? join(dirname(env), "release-runs", id) : null;
@@ -36,7 +56,7 @@ function runDir(id: string): string | null {
 type Spawn = (command: string, args: string[], options: SpawnOptions) => ChildProcess;
 
 export async function startDropletRun(
-  run: { id: string; section: string; lang: string },
+  run: { id: string; section: string; lang: string; teamSlug: string },
   bump: ReleaseBump,
   spawnFn: Spawn = spawn,
 ): Promise<void> {
@@ -54,7 +74,11 @@ export async function startDropletRun(
       const child = spawnFn(
         "setsid",
         // The site keeps the machine's one CPU.
-        ["--fork", "nice", "-n", "10", process.execPath, join(tools, "scripts/manager/release-job.mjs"), dir, run.section, run.lang, bump],
+        // The team last, as a flag: the job builds that team's packs (scripts/manager/release-team.mjs).
+        [
+          "--fork", "nice", "-n", "10", process.execPath, join(tools, "scripts/manager/release-job.mjs"),
+          dir, run.section, run.lang, bump, `--team=${run.teamSlug}`,
+        ],
         {
           cwd: tools,
           env: { NODE_ENV: process.env.NODE_ENV, PATH: process.env.PATH, HOME: process.env.HOME, SPOKEN_RELEASE_ENV: process.env.SPOKEN_RELEASE_ENV },

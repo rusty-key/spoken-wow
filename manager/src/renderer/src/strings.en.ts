@@ -141,6 +141,12 @@ export const S_EN = {
     } satisfies Record<Section, { title: string; text: string }>,
     packNames: { all: 'All Quests', alliance: 'Alliance', horde: 'Horde', shared: 'Shared', gossip: 'Gossip' },
     splitHint: 'Or Only Part of It',
+    by: (name: string) => `by ${name}`,
+    // Page packs: index-v2.json names no team for them.
+    pageAuthor: 'Official',
+    author: 'Author',
+    allAuthors: 'All',
+    whichTeam: "Which team's packs?",
     notInstalled: 'Not Installed',
     installedVersion: (v: string) => `Installed ${v}`,
     badge: { installed: 'Installed', update: 'Update Available', linked: 'Linked', ahead: 'Newer Than Release', unknown: 'Installed by Hand' },

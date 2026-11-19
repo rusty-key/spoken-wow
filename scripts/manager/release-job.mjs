@@ -2,7 +2,7 @@
 // What the site starts for a Release press on the droplet: release.mjs in a scratch copy of this
 // tree, reporting through files in the run's directory, which every site worker can read.
 //
-//   node release-tools/scripts/manager/release-job.mjs <run dir> <section> <lang> <bump>
+//   node release-tools/scripts/manager/release-job.mjs <run dir> <section> <lang> <bump> [--team=<slug>]
 //
 // log holds the output, heartbeat's mtime says the job is alive, and exit holds the exit code.
 import { spawn } from "node:child_process";
@@ -21,7 +21,9 @@ const KEEP_RUNS = 30;
 // packs, and SPOKEN_PLACES_MANIFEST there would have the build overwrite the site's manifest.
 // release.env is read last and wins: once a team keeps its own bucket, it sets SPOKEN_ARCHIVE_URL
 // to the site's /api/archive/, which knows which bucket holds each object (docs/platform/STORAGE.md).
-const FROM_APP_ENV = ["DATABASE_URL", "R2_ACCOUNT_ID", "SPOKEN_ARCHIVE_URL"];
+// SPOKEN_TEAM_RELEASES is the site's gate on a team's press, so the job's gate (release.mjs) is the
+// same line.
+const FROM_APP_ENV = ["DATABASE_URL", "R2_ACCOUNT_ID", "SPOKEN_ARCHIVE_URL", "SPOKEN_TEAM_RELEASES"];
 
 export async function jobEnv(releaseEnvPath, base = process.env) {
   const app = parseEnv(await readFile(join(dirname(releaseEnvPath), "app.env"), "utf8"));
@@ -47,7 +49,7 @@ function runRelease(script, args, { cwd, env, log }) {
   });
 }
 
-export async function runJob({ runDir, section, lang, bump = "patch", env, tools = TOOLS, beatMs = BEAT_MS }) {
+export async function runJob({ runDir, section, lang, bump = "patch", team = null, env, tools = TOOLS, beatMs = BEAT_MS }) {
   const log = join(runDir, "log");
   const heartbeat = join(runDir, "heartbeat");
   const work = join(runDir, "work");
@@ -60,7 +62,8 @@ export async function runJob({ runDir, section, lang, bump = "patch", env, tools
     // A copy, so a run starts from nothing the last one left, and a deploy pruning this release
     // cannot pull the files from under it.
     await cp(tools, work, { recursive: true, verbatimSymlinks: true });
-    code = await runRelease(join(work, "scripts/manager/release.mjs"), [section, lang, `--bump=${bump}`], { cwd: work, env, log });
+    const args = [section, lang, `--bump=${bump}`, ...(team ? [`--team=${team}`] : [])];
+    code = await runRelease(join(work, "scripts/manager/release.mjs"), args, { cwd: work, env, log });
   } catch (error) {
     await writeFile(log, `error: ${error.message}\n`, { flag: "a" });
   } finally {
@@ -75,8 +78,9 @@ export async function runJob({ runDir, section, lang, bump = "patch", env, tools
 
 // Real paths: through a symlink the two would differ, and the job would exit 0 having done nothing.
 if (realpathSync(process.argv[1]) === fileURLToPath(import.meta.url)) {
-  const [runDir, section, lang, bump] = process.argv.slice(2);
-  const code = await runJob({ runDir, section, lang, bump, env: await jobEnv(process.env.SPOKEN_RELEASE_ENV) });
+  const [runDir, section, lang, bump, ...flags] = process.argv.slice(2);
+  const team = flags.find((flag) => flag.startsWith("--team="))?.slice("--team=".length) ?? null;
+  const code = await runJob({ runDir, section, lang, bump, team, env: await jobEnv(process.env.SPOKEN_RELEASE_ENV) });
   await pruneRuns(dirname(runDir)).catch((error) => console.error(`pruning old runs: ${error.message}`));
   process.exit(code);
 }

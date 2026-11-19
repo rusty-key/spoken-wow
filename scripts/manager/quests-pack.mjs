@@ -6,7 +6,7 @@ import { mkdir, readFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
 
 import { BASE_LOCALE, isClientLocale } from "../../pipelines/lib/locales.mjs";
-import { packsFor } from "../lib/packs.mjs";
+import { tocExtra } from "./stage-pack.mjs";
 
 // The changelog lists its newest section first.
 export function englishVersion(changelog) {
@@ -15,33 +15,40 @@ export function englishVersion(changelog) {
   return version;
 }
 
-/** Each folder with the arguments of its `cli-main.py build`, past its store and dist. */
-export function buildArgs(lang, folders, { version, localeText }) {
-  const packs = packsFor("quests", lang);
-  return folders.map((folder) => {
-    const pack = packs.find((p) => p.folder === folder);
-    if (!pack) throw new Error(`${folder} has no quests page for ${lang}`);
-    const common = ["--module", folder, "--pack", pack.pack];
-    if (lang === BASE_LOCALE) return { folder, args: [...common, "--version", version] };
-    return {
-      folder,
-      args: [
-        ...common,
-        "--version", pack.version,
-        "--module-title", pack.name,
-        "--language", lang,
-        ...(localeText && pack.pack === "gossip" ? ["--locale-text", localeText] : []),
-      ],
-    };
-  });
+/**
+ * Each of the plan's folders (release-pack.mjs) with the arguments of its `cli-main.py build`, past
+ * its store and dist. `changelogVersion` is English's, for a folder the plan gives no version;
+ * `badge` says whether the language has a badged icon, without which a plan whose badge is
+ * optional wears English's mark.
+ */
+export function buildArgs(lang, plan, { changelogVersion = null, localeText = null, badge = true }) {
+  const extra = tocExtra(plan.toc).flatMap(([key, value]) => ["--toc-extra", `${key}=${value}`]);
+  return plan.folders.map(({ folder, pack, title, version }) => ({
+    folder,
+    args: [
+      "--module", folder,
+      "--pack", pack,
+      "--version", version ?? changelogVersion,
+      // With no title the build keeps English's .toc, which names no language.
+      ...(title === null ? [] : ["--module-title", title, "--language", lang]),
+      ...(plan.badgeOptional && !badge ? ["--icon-language", BASE_LOCALE] : []),
+      ...extra,
+      // The gossip text is --language's.
+      ...(title !== null && localeText && pack === "gossip" ? ["--locale-text", localeText] : []),
+    ],
+  }));
 }
 
-export async function questsSteps(lang, { root, folders, run }) {
+/** `plan` is releasePlan's (release-pack.mjs). */
+export async function questsSteps(lang, { root, plan, run }) {
   const quests = join(root, "pipelines/quests");
   const english = lang === BASE_LOCALE;
   const store = english ? join(quests, "audio") : join(root, "build/quests", lang, "audio");
   const localeText = !english && isClientLocale(lang) ? join(root, "build/quests", lang, "locale-text.json.gz") : null;
-  const version = english ? englishVersion(await readFile(join(root, "docs/quests/CHANGELOG.md"), "utf8")) : null;
+  const version = plan.folders.some((p) => p.version === null)
+    ? englishVersion(await readFile(join(root, "docs/quests/CHANGELOG.md"), "utf8"))
+    : null;
+  const badge = existsSync(join(quests, "assets/icon", `spoken-quests-${lang}.tga`));
   const venv = join(quests, ".venv/bin/python");
   const env = {
     DATABASE_URL: process.env.LOCAL_DB || process.env.DATABASE_URL,
@@ -58,7 +65,7 @@ export async function questsSteps(lang, { root, folders, run }) {
           python(["export-locale-text", "--lang", lang, "--out", localeText]);
         }]]
       : []),
-    ...buildArgs(lang, folders, { version, localeText }).map(({ folder, args }) => [
+    ...buildArgs(lang, plan, { changelogVersion: version, localeText, badge }).map(({ folder, args }) => [
       `build ${folder}`,
       () => python(["build", "--store", store, "--dist", join(root, "dist"), ...args]),
     ]),

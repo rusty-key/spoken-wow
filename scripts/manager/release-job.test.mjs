@@ -37,6 +37,13 @@ test("the job gets the signing keys and only what it needs of the site's", async
   });
 });
 
+test("the job opens team releases where the site has them open, from the same line of app.env", async () => {
+  const shared = temp();
+  writeFileSync(join(shared, "app.env"), "SPOKEN_TEAM_RELEASES=1\n");
+  writeFileSync(join(shared, "release.env"), "R2_BUCKET=spoken-packs-staging\n");
+  assert.equal((await jobEnv(join(shared, "release.env"), { PATH: "/bin", HOME: "/h" })).SPOKEN_TEAM_RELEASES, "1");
+});
+
 test("release.env can send the archive's reads through the site; the job needs no recordings token", async () => {
   const shared = temp();
   writeFileSync(join(shared, "app.env"), "SPOKEN_ARCHIVE_URL=https://a\nSPOKEN_ARCHIVE_TOKEN=t\n");
@@ -56,6 +63,20 @@ test("a run logs its output, records its code, and leaves no scratch copy", asyn
   assert.match(log, /to stderr/);
   assert.equal(readFileSync(join(runDir, "exit"), "utf8"), "0");
   assert.equal(existsSync(join(runDir, "work")), false);
+});
+
+test("the job forwards the team the release is for", async () => {
+  const tools = fakeTools(`console.log("args: " + process.argv.slice(2).join(" "));`);
+  const runDir = runDirectory();
+  assert.equal(await runJob({ runDir, section: "places", lang: "deDE", bump: "minor", team: "stimmen", env: { PATH: process.env.PATH }, tools }), 0);
+  assert.match(readFileSync(join(runDir, "log"), "utf8"), /^args: places deDE --bump=minor --team=stimmen$/m);
+});
+
+test("a run with no team, as one started before teams released, names none", async () => {
+  const tools = fakeTools(`console.log("args: " + process.argv.slice(2).join(" "));`);
+  const runDir = runDirectory();
+  assert.equal(await runJob({ runDir, section: "places", lang: "deDE", env: { PATH: process.env.PATH }, tools }), 0);
+  assert.match(readFileSync(join(runDir, "log"), "utf8"), /^args: places deDE --bump=patch$/m);
 });
 
 test("a failing release is recorded, not thrown", async () => {

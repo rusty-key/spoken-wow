@@ -9,7 +9,7 @@ import { PlainError } from '../src/main/errors'
 import { languageFolders } from '../src/shared/products'
 import { savePackState } from '../src/main/packs-state'
 import { ManagerService } from '../src/main/service'
-import { channelFixture, channelKeys, seal, serveChannel, type ChannelFixture, type ChannelKeys } from './channel-helpers'
+import { channelFixture, channelKeys, serveChannel, type ChannelFixture, type ChannelKeys } from './channel-helpers'
 import { makeGame, tmpDir, write, type TestServer } from './helpers'
 
 const SITE = 'https://site.test'
@@ -96,7 +96,7 @@ async function setup(o: Options = {}) {
     secretBox: box
   })
   svc.games = [game]
-  svc.channel = { generatedAt: '2026-11-01T00:00:00.000Z', packs: {} }
+  svc.channel = { generatedAt: '2026-11-01T00:00:00.000Z', packs: {}, languages: {} }
   // These tests set the index by hand; 'the channel behind rows and a run' below goes through the real fetch.
   svc.refreshChannel = async () => {
     site.channelRefreshes++
@@ -108,7 +108,7 @@ async function setup(o: Options = {}) {
     write(path.join(game.addOnsPath, folder, `${folder}.toc`), `## Title: ${title}\n## Version: ${version}\n`)
     write(path.join(game.addOnsPath, folder, 'sounds', 'a.ogg'), 'clip')
     savePackState(game, { packId: folder, rev, files: {} })
-    svc.channel!.packs[folder] = { rev, manifestSha256: 'x', fileCount: 1, totalSize: 1, requires: { Spoken: '>=3.0.0' } }
+    svc.channel!.packs[folder] = { rev, manifestSha256: 'x', fileCount: 1, totalSize: 1, requires: { Spoken: '>=3.0.0' }, lang: 'deDE', section: 'places', pack: null, team: null }
   }
 
   const jobs = (): JobProgress[] => events.filter((e) => e.channel === CHANNELS.jobProgress).map((e) => e.payload as JobProgress)
@@ -1056,8 +1056,7 @@ describe('the channel behind rows and a run', () => {
 
   /** What the server hands out from now on: one pack at `rev`, signed. */
   function publishRev(fx: { objects: ChannelFixture['objects'] }, keys: ChannelKeys, rev: string, generatedAt: string): void {
-    const next = channelFixture(keys, [{ packId: PLACES, rev, files: { [`${PLACES}.toc`]: 'toc' } }])
-    next.objects.set('/index.json', Buffer.from(seal({ ...next.index, generatedAt }, keys).text))
+    const next = channelFixture(keys, [{ packId: PLACES, rev, files: { [`${PLACES}.toc`]: 'toc' } }], { generatedAt })
     fx.objects = next.objects
   }
 
@@ -1068,7 +1067,7 @@ describe('the channel behind rows and a run', () => {
     let refuse = false
     let indexAsked = 0
     const s = await serveChannel(fx, (req, res) => {
-      if (req.url === '/index.json') indexAsked++
+      if (req.url === '/index-v2.json') indexAsked++
       if (!refuse) return false
       res.writeHead(500)
       res.end()
