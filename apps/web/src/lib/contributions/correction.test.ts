@@ -178,6 +178,22 @@ describe("acceptCorrection", () => {
     expect(rows).toEqual([{ text: "Guten Tag, $N." }]);
   });
 
+  it("refuses a correction that keeps the game's tokens but drops one the stored line has", async () => {
+    const current = `"lineId" = $1 and "lang" = 'deDE' and "isCurrent"`;
+    await asSystem.query(`update "quest_line" set "text" = 'Guten Tag, $N, $C.' where ${current}`, [lineId]);
+    try {
+      // As many tokens as the game's print ("Hallo, $N."), one fewer than the text it would replace.
+      const id = await contribution("deDE", "Hallo du, $N.");
+      expect(await acceptCorrection(id, ACCEPTER)).toMatchObject({
+        ok: false,
+        reason: "malformed",
+        message: expect.stringContaining("$C"),
+      });
+    } finally {
+      await asSystem.query(`update "quest_line" set "text" = 'Guten Tag, $N.' where ${current}`, [lineId]);
+    }
+  });
+
   it("refuses a $g correction that would drop a token from the side it was not compared with", async () => {
     // Closest to the :f wording, which has no $N; the save would also rewrite :m, which has one.
     const id = await contribution("deDE", "Willkommen, $gHeld:Heldin;.", "accept", twoSidedQuest);
@@ -196,6 +212,27 @@ describe("acceptCorrection", () => {
       { lineId: `q:${twoSidedQuest}:accept:f`, version: 1 },
       { lineId: `q:${twoSidedQuest}:accept:m`, version: 1 },
     ]);
+  });
+
+  it("accepts a correction without $g to one side, whose own branch no reader takes the other way", async () => {
+    const id = await contribution("deDE", "Sei willkommen, Heldin.", "accept", twoSidedQuest);
+    expect(await acceptCorrection(id, ACCEPTER)).toMatchObject({ ok: true });
+
+    const { rows } = await asSystem.query(
+      `select "lineId", "text" from "quest_line"
+        where "lineId" like $1 and "lang" = 'deDE' and "isCurrent" order by "lineId"`,
+      [`q:${twoSidedQuest}:accept:%`],
+    );
+    expect(rows).toEqual([
+      { lineId: `q:${twoSidedQuest}:accept:f`, text: "Sei willkommen, Heldin." },
+      { lineId: `q:${twoSidedQuest}:accept:m`, text: "Seid willkommen, $gHeld:Heldin;, $N." },
+    ]);
+  });
+
+  it("accepts a $g correction that keeps each side's tokens for the readers of that side", async () => {
+    // :m's female side has a $N no female reader hears, since they read :f.
+    const id = await contribution("deDE", "Willkommen, $gHeld, $N:Heldin;.", "accept", twoSidedQuest);
+    expect(await acceptCorrection(id, ACCEPTER)).toMatchObject({ ok: true });
   });
 
   it("splits a plain line the site wrote when the correction branches on $g", async () => {
