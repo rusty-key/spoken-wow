@@ -79,7 +79,8 @@ export async function readIgnores(lang: Lang = BASE_LANG): Promise<Map<string, L
   // every-language ignores still hide its lines.
   const reader = await ownerOrAll(lang);
   const current = await stamp(reader);
-  const hit = memo.get(lang);
+  const slot = `${reader}:${lang}`;
+  const hit = memo.get(slot);
   if (hit?.stamp === current) return hit.map;
 
   const rows = await queryIn<IgnoreRow>(
@@ -90,7 +91,7 @@ export async function readIgnores(lang: Lang = BASE_LANG): Promise<Map<string, L
     [lang],
   );
   const map = new Map(rows.map((r) => [r.lineId, toIgnore(r)]));
-  memo.set(lang, { stamp: current, map });
+  memo.set(slot, { stamp: current, map });
   return map;
 }
 

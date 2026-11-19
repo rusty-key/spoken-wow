@@ -71,7 +71,7 @@ const PARTS: Part[] = [
     icon: "/landing/icons/game-bosses.png",
     summary: "A boss's story shows in the narrator when you target it or when it dies.",
     facts: [
-      "Voiced when Spoken Audio: Places and Bosses is installed, words only without it",
+      "Voiced when Spoken Audio: Bosses is installed, words only without it",
       "Shown once for each boss on each character",
       "Pick target or kill under Show a Boss's Story",
     ],
@@ -107,7 +107,7 @@ export default function Showcase() {
           {voices ? (
             <VoicePlayer key={part.id} voices={voices} label={part.title.toLowerCase()} />
           ) : (
-            <VoicePlaceholder icon={part.icon} name={part.title} text="Boss stories are voiced by the Spoken Audio: Places and Bosses pack. Without it they show as words in the narrator." />
+            <VoicePlaceholder icon={part.icon} name={part.title} text="Boss stories are voiced by the Spoken Audio: Bosses pack. Without it they show as words in the narrator." />
           )}
         </div>
         <div className="bn-stage-body" aria-live="polite">

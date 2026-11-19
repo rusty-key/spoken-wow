@@ -4,7 +4,7 @@ release: quests-audio-alliance-koKR
 section: quests
 lang: koKR
 pack: alliance
-version: 0.0.2
+version: 0.0.3
 github: false
 slug: spoken-korean-audio-quests-alliance
 name: Spoken Korean Audio: Quests - Alliance

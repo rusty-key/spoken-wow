@@ -10,7 +10,7 @@ import { readApiKey } from "@/lib/api-key";
 import { auth } from "@/lib/auth";
 import { readLexicon } from "@/lib/generation/dictionary";
 import { previewCache, voicePicker } from "@/lib/generation/preview";
-import { generationStatus } from "@/lib/generation/status";
+import { generationRoster } from "@/lib/generation/status";
 import { can } from "@/lib/permissions";
 import { readGenerationSettings, speakingConfig } from "@/lib/generation/preference";
 import { Contained, Wide } from "@/components/Width";
@@ -35,11 +35,14 @@ export default async function Page({ params }: { params: Promise<{ lang: string 
   // be spoken in, and with no key there are none - every button then simply says it costs
   // money, which is true and harmless.
   const apiKey = await readApiKey(session.user.id).catch(() => null);
+  // Started before anything else is awaited, and not awaited here: the editor draws at once
+  // and the cache markers stream in after it. English only: the preview sentences are
+  // English's (see the preview route). No key, no account, and every marker stays off.
+  const roster = english && apiKey ? generationRoster({ apiKey }, lang) : null;
 
-  const [lexicon, preference, status] = await Promise.all([
+  const [lexicon, preference] = await Promise.all([
     readLexicon(lang),
     readGenerationSettings(session.user.id),
-    generationStatus(apiKey ? { apiKey } : {}, lang),
   ]);
   // This editor's own ElevenLabs settings, which are what a preview is spoken with and what
   // decides whether a phoneme rule is honoured.
@@ -50,10 +53,14 @@ export default async function Page({ params }: { params: Promise<{ lang: string 
   // once on the server beats 268 round trips, and it is what lets each button say up front
   // whether pressing it costs money.
   //
-  // English only: the preview sentences are English's (see the preview route).
-  const cached = english
-    ? await previewCache(lexicon.entries, voicePicker(status.voiceIds), config)
-    : {};
+  // The corpus loads while ElevenLabs answers: only the voice picked for each line needs it.
+  const cached =
+    roster &&
+    previewCache(
+      lexicon.entries,
+      roster.then((read) => voicePicker(read.voiceIds)),
+      config,
+    ).then(async (cache) => ({ cache, error: (await roster).error }));
 
   return (
     <main className="pt-6 pb-36">

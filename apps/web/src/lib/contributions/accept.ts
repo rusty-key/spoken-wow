@@ -40,7 +40,7 @@ import {
   type NpcRowKind,
   type NpcResolution,
 } from "@/lib/npc/store";
-import { BASE_LANG, CODES, isLang, type Lang } from "@/lib/lang";
+import { BASE_LANG, allLangs, isLang, type Lang } from "@/lib/lang";
 import type { CorpusLine } from "@/lib/corpus";
 import { isGeneratable, mintBookId, mintPageId } from "@/lib/readables/tools";
 import { branchesOnPlayerGender, speakPlayerTokens } from "@/lib/player-words";
@@ -58,7 +58,8 @@ import {
 } from "@/lib/quests/speakers";
 import type { Roster } from "@/lib/voices/roster";
 import { loadRoster } from "@/lib/voices/roster-store";
-import { freshOwners } from "@/lib/teams/store";
+import { asTeam } from "@/lib/teams/acting";
+import { privilegedOwners, type TeamId } from "@/lib/teams/store";
 
 import { loadBookCorpus, matchBook, sameMatch, type BookCorpus, type BookMatchResult } from "./book-match";
 import { sameLine } from "./compare";
@@ -79,7 +80,8 @@ import {
 import { gossipIdentity, recordBroadcast, resolveGossip, type GossipPlan } from "./gossip";
 import { noVoice } from "./speaker";
 import { noteFor, pageNotes } from "./notes";
-import { CONTRIBUTION_COLUMNS, observationMeta, type Contribution } from "./store";
+import { CONTRIBUTION_COLUMNS, observationMeta, REJECT_REASON_MAX, type Contribution } from "./store";
+import { MAX_BYTES } from "./envelope";
 import { spokenFromTemplate } from "./tokens";
 import { idOnlyResolution } from "./triage";
 
@@ -737,8 +739,14 @@ async function nameIfUnnamed(
 /**
  * Ignore every line a quests contribution wrote, in its language, or in every language for an
  * English row. A line it only added a speaker to is ignored whole, whoever else speaks it.
+ * The ignores are `owner`'s, the language's privileged team, whichever team the rejecter works in.
  */
-async function ignoreWrittenLines(client: PoolClient, contribution: Contribution, userId: string): Promise<void> {
+async function ignoreWrittenLines(
+  client: PoolClient,
+  contribution: Contribution,
+  userId: string,
+  owner: TeamId | undefined,
+): Promise<void> {
   const { rows } = await client.query<{ lineId: string }>(
     `select "lineId" from "quest_line_speaker" where "contributionId" = $1
      union
@@ -746,9 +754,11 @@ async function ignoreWrittenLines(client: PoolClient, contribution: Contribution
     [contribution.id, noteFor(contribution.id)],
   );
   const lang = contribution.locale === BASE_LANG || !isLang(contribution.locale) ? null : contribution.locale;
-  for (const { lineId } of rows) {
-    await writeIgnore(lineId, `Rejected ${noteFor(contribution.id)}`, userId, lang, client);
-  }
+  await asTeam(lang, owner, async () => {
+    for (const { lineId } of rows) {
+      await writeIgnore(lineId, `Rejected ${noteFor(contribution.id)}`, userId, lang, client);
+    }
+  });
 }
 
 /**
@@ -958,11 +968,27 @@ export async function resolveContribution(
   // every language), which rejecting a written quests row does.
   mayIgnore = false,
   bookMatch?: BookMatchResult,
+  // The reviewer's edit of the sent text on an accept, and the reason given on a reject. Both are
+  // written under the row's lock and in this transaction, so a refused or failed resolve leaves
+  // neither behind and two reviewers can't interleave. `onlyNew` refuses a row decided since the
+  // caller saw it waiting, so a batch can't undo another reviewer's (or the same one's) decision.
+  { text, reason, onlyNew = false }: { text?: string; reason?: string | null; onlyNew?: boolean } = {},
 ): Promise<ResolveOutcome> {
+  let edited: string | null = null;
+  if (status === "accepted" && text !== undefined) {
+    edited = normaliseText(text);
+    if (!edited) return { ok: false, reason: "malformed", message: "The text is empty." };
+    if (new TextEncoder().encode(edited).length > MAX_BYTES) {
+      return { ok: false, reason: "malformed", message: "The text is longer than any line the addon sends." };
+    }
+  }
+  const rejectReason = status === "rejected" ? reason?.trim().slice(0, REJECT_REASON_MAX) || null : null;
   // Read before the client is held: a refresh of the memo needs a connection of its own. Every
   // language, since the contribution's is not known yet: one the other worker has just given a
-  // team would otherwise be logged under none.
-  const owners = await freshOwners(CODES);
+  // team would otherwise be logged under none. The privileged teams, whoever is acting: a
+  // contribution is original text, so its resolution and the ignores a rejection leaves are
+  // that team's, even for a text maintainer who works in a second team.
+  const owners = await privilegedOwners(allLangs());
   const client = await db().connect();
   // Set only on the path below where rollback itself throws -- that is the one case that
   // releases the client itself (with the error, so node-postgres destroys rather than recycles
@@ -995,7 +1021,38 @@ export async function resolveContribution(
     // ignores a rejection leaves. An English row's are on every language: system work.
     const lang = isLang(contribution.locale) ? contribution.locale : null;
     const siteWide = status === "rejected" && mayIgnore && (lang === null || lang === BASE_LANG);
-    await actAs(client, (!siteWide && lang && owners.get(lang)) || ALL_TEAMS);
+    const team = (!siteWide && lang && owners.get(lang)) || ALL_TEAMS;
+    await actAs(client, team);
+
+    if (onlyNew && contribution.status !== "new" && contribution.status !== status) {
+      await client.query("rollback");
+      return { ok: false, reason: "changed", message: "Someone decided this line meanwhile; reload to see it." };
+    }
+
+    // An edit only lands on a row still waiting; a row decided meanwhile keeps its text, and a
+    // keep that would claim the edit is refused rather than reported as done.
+    if (edited !== null && edited !== contribution.text) {
+      if (contribution.status !== "new") {
+        await client.query("rollback");
+        return { ok: false, reason: "changed", message: "Someone decided this line meanwhile; reload to see it." };
+      }
+      await client.query(`update "contribution" set "text" = $2, "updatedAt" = now() where "id" = $1`, [id, edited]);
+      contribution.text = edited;
+      if (isLang(contribution.locale)) {
+        await recordActivity(
+          {
+            team,
+            kind: "contribution.edited",
+            lang: contribution.locale,
+            source: contribution.source,
+            subject: String(id),
+            actorId: userId,
+            detail: { field: "text" },
+          },
+          client,
+        );
+      }
+    }
 
     const written =
       contribution.source === "readables"
@@ -1008,7 +1065,7 @@ export async function resolveContribution(
     let ignored = false;
     if (written && status !== "accepted") {
       if (status === "rejected" && contribution.source === "quests" && mayIgnore) {
-        await ignoreWrittenLines(client, contribution, userId);
+        await ignoreWrittenLines(client, contribution, userId, lang ? owners.get(lang) : undefined);
         ignored = true;
       } else {
         await client.query("rollback");
@@ -1041,16 +1098,17 @@ export async function resolveContribution(
 
     const updated = await client.query<Contribution>(
       `update "contribution"
-          set "status" = $2, "resolvedBy" = $3, "updatedAt" = now()
+          set "status" = $2, "resolvedBy" = $3, "updatedAt" = now(), "rejectReason" = $4
         where "id" = $1
         returning ${COLUMNS}`,
-      [id, status, userId],
+      [id, status, userId, rejectReason],
     );
     // In the transaction, so a resolve that rolls back is never logged. A row sent from a
     // client in a language the site does not have is logged under every language rather
     // than dropped: somebody still resolved it.
     await recordActivity(
       {
+        team: (lang && owners.get(lang)) || ALL_TEAMS,
         kind: "contribution.resolved",
         lang: isLang(contribution.locale) ? contribution.locale : null,
         source: contribution.source,
@@ -1193,6 +1251,9 @@ export async function resolveContributions(
   // resolveContribution's mayIgnore, per row.
   mayIgnore: (id: number) => boolean = () => false,
   bookMatches?: ReadonlyMap<number, BookMatchResult>,
+  // One reason for every row a bulk reject lands on.
+  reason?: string | null,
+  // A keep or drop for many rows lands only on rows still waiting; reopening many takes any row.
 ): Promise<Map<number, ResolveOutcome | Error>> {
   const corpusLines = status === "accepted" ? (await corpus()).lines : undefined;
   const outcomes = new Map<number, ResolveOutcome | Error>();
@@ -1201,7 +1262,10 @@ export async function resolveContributions(
     while (next < ids.length) {
       const id = ids[next++];
       try {
-        outcomes.set(id, await resolveContribution(id, status, userId, corpusLines, mayIgnore(id), bookMatches?.get(id)));
+        outcomes.set(id, await resolveContribution(id, status, userId, corpusLines, mayIgnore(id), bookMatches?.get(id), {
+          reason,
+          onlyNew: status !== "new",
+        }));
       } catch (error) {
         outcomes.set(id, error instanceof Error ? error : new Error(String(error)));
       }

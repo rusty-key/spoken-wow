@@ -46,6 +46,48 @@ export function englishFolder(section, pack) {
   return "SpokenQuestsAudio" + ALL_QUESTS_PACKS[pack];
 }
 
+// The pack ids the publisher accepts: a pack of the language's privileged team carries the
+// language alone, any other team's the language and its slug (docs/platform/TEAMS.md, *Releases*).
+export const PACK_ID = /^Spoken[A-Za-z]+(_[a-z]{2}[A-Z]{2}(_[a-z][a-z0-9-]{1,40})?)?$/;
+// The ids a Manager from before team packs accepts: an index entry it rejects hides the whole
+// channel, so index.json carries only these.
+export const LEGACY_PACK_ID = /^Spoken[A-Za-z]+(_[a-z]{2}[A-Z]{2})?$/;
+
+const LANG_CODE = /^[a-z]{2}[A-Z]{2}$/;
+// The "team"."slug" check.
+const TEAM_SLUG = /^[a-z][a-z0-9-]{1,40}$/;
+
+// A pack's folder: English's plain, any other language's with its code, and a team's that does
+// not hold the language's plain space with its slug after that. The slug is frozen once a team
+// has released: a new one would orphan every installed pack.
+export function teamFolder(englishFolder, lang, slug) {
+  if (!LANG_CODE.test(lang)) throw new Error(`'${lang}' is not a language code`);
+  if (slug !== null && !TEAM_SLUG.test(slug)) throw new Error(`'${slug}' is not a team slug`);
+  if (lang === BASE_LOCALE && slug === null) return englishFolder;
+  return `${englishFolder}_${lang}${slug === null ? "" : `_${slug}`}`;
+}
+
+// The folders of a pack with no store page, a team's or a new language's: English's Manager
+// folders for the section, each carrying the language and slug, and naming the English folder
+// (`english`) it is derived from.
+export function derivedFolders(section, lang, slug, packs = loadPacks()) {
+  const english = managerFolders(packs).filter((p) => p.section === section && p.lang === BASE_LOCALE);
+  if (english.length === 0) throw new Error(`English has no ${section} folders on the Manager's channel`);
+  return english.map((p) => ({ folder: teamFolder(p.folder, lang, slug), section, lang, english: p.folder }));
+}
+
+const FOLDER_PARTS = /^Spoken(Quests|Places|Readables|Bosses)Audio(Alliance|Horde|Shared|Gossip|All)?(?:_([a-z]{2}[A-Z]{2})(?:_([a-z][a-z0-9-]{1,40}))?)?$/;
+
+// What a pack folder's name says: its section, quests side, language and team slug. Null for a
+// name no rule here makes, such as an acted overlay's.
+export function describeFolder(folder) {
+  const m = FOLDER_PARTS.exec(folder);
+  if (!m) return null;
+  const [, section, side, lang, slug] = m;
+  if ((section === "Quests") !== Boolean(side)) return null;
+  return { section: section.toLowerCase(), pack: side ? side.toLowerCase() : null, lang: lang ?? BASE_LOCALE, slug: slug ?? null };
+}
+
 function englishRelease(section, pack) {
   if (section !== "quests") return `${section}-audio`;
   return pack === "all" ? "quests-audio" : `quests-audio-${pack}`;
@@ -106,14 +148,6 @@ function toPack(page, meta) {
   // No `curseforge` until the project exists: a pack can go out on GitHub before it has one.
   for (const key of ["slug", "name"]) if (!meta[key]) fail(`missing '${key}'`);
 
-  // `bundledIn: <slug>` is a pack with no CurseForge project of its own, whose folder ships in the
-  // zip of the pack with that slug (the bosses inside Spoken Audio: Places and Bosses), so a
-  // player sent to CurseForge for it is sent there. loadPacks checks the slug names a pack on
-  // CurseForge.
-  if (meta.bundledIn !== undefined && meta.curseforge !== undefined) {
-    fail(`a pack is on CurseForge either as its own project or bundledIn another's, not both`);
-  }
-
   // `github: false` keeps a pack off GitHub: English's four split packs, since the single `all`
   // pack is what GitHub offers. Everything else goes there, where the ceiling is 2 GB a file.
   if (meta.github !== undefined && meta.github !== "false") fail(`github may only be false`);
@@ -123,11 +157,16 @@ function toPack(page, meta) {
   // time, so a language goes there only once its packs have been checked against it.
   if (meta.manager !== undefined && meta.manager !== "true") fail(`manager may only be true`);
 
+  // `inMeta: false` keeps a pack out of its language's meta addon (metaFor) while its CurseForge
+  // project awaits approval: a required dependency CurseForge cannot resolve fails the upload or
+  // leaves the one-click install short. Remove the line once the project is public.
+  if (meta.inMeta !== undefined && meta.inMeta !== "false") fail(`inMeta may only be false`);
+
   const code = english ? "" : `_${lang}`;
-  const folder = englishFolder(section, pack) + code;
+  const folder = teamFolder(englishFolder(section, pack), lang, null);
   return {
-    page, section, lang, pack, version, github, manager: meta.manager === "true",
-    curseforge: meta.curseforge ?? null, bundledIn: meta.bundledIn ?? null, wago: meta.wago ?? null, release,
+    page, section, lang, pack, version, github, manager: meta.manager === "true", inMeta: meta.inMeta !== "false",
+    curseforge: meta.curseforge ?? null, wago: meta.wago ?? null, release,
     bundles: section === "quests" && pack === "all" ? Object.values(QUESTS_PACKS).map((suffix) => `SpokenQuestsAudio${suffix}${code}`) : null,
     slug: meta.slug, name: meta.name, folder,
     zip: english ? null : `${folder}-${version}.zip`,
@@ -148,12 +187,6 @@ export function loadPacks(dir = PUBLISHERS_DIR) {
     if (seen.has(key)) throw new Error(`two pages for one pack (${key}): publishers/${seen.get(key)} and publishers/${p.page}`);
     seen.set(key, p.page);
   }
-  for (const p of packs.filter((p) => p.bundledIn !== null)) {
-    const home = packs.find((h) => h.slug === p.bundledIn);
-    if (!home || home.curseforge === null || home.lang !== p.lang) {
-      throw new Error(`publishers/${p.page}: bundledIn ${p.bundledIn} is not an ${p.lang} pack on CurseForge`);
-    }
-  }
   return packs;
 }
 
@@ -172,6 +205,12 @@ export function findPack(section, lang, pack, packs = loadPacks()) {
 // section's lookup format changes; scripts/manager/ refuses to publish past the latest release.
 // Bosses: 3.6.0 has no boss audio, so the pack waits on the release after it.
 export const MIN_SPOKEN = { quests: "3.0.0", places: "3.0.0", readables: "3.0.0", bosses: "3.7.0" };
+
+// The oldest Spoken that keeps a team's pack (<Pack>_<lang>_<slug>) apart from its language's plain
+// one, as a voice of its own: an older one loads both as one language, and they fight over priority.
+// PLACEHOLDER: the Spoken release that ships team voices sets this to its own version. Until then
+// it is past any release, so scripts/manager/ refuses to publish a team's pack.
+export const MIN_SPOKEN_TEAM = "9999.0.0";
 
 // The folders the manager channel carries, each once: a bundle's folders, else the pack's own.
 export function managerFolders(packs = loadPacks()) {
@@ -199,8 +238,8 @@ export function audioFamily(lang, dir = PUBLISHERS_DIR) {
 // counterpart of Spoken: English (scripts/spoken/package-meta.sh). Not a pack -- the page has
 // no `section` -- but its dependencies are the packs, so they are read off the registry here
 // rather than listed a second time: every pack of the language that is on CurseForge, quests,
-// places, readables and bosses alike. A language without a project for one simply has none to
-// name.
+// places, readables and bosses alike, less any marked `inMeta: false`. A language without a
+// project for one simply has none to name.
 export function metaFor(lang, packs = loadPacks(), dir = PUBLISHERS_DIR) {
   if (lang === BASE_LOCALE) throw new Error(`English's meta addon is spoken-all itself, not a language's`);
   const page = join("spoken", `all-${lang.toLowerCase()}.md`);
@@ -211,7 +250,7 @@ export function metaFor(lang, packs = loadPacks(), dir = PUBLISHERS_DIR) {
   if (meta.lang !== lang) fail(`lang should be ${lang}, not ${meta.lang}`);
   if (!/^\d+\.\d+\.\d+$/.test(meta.version ?? "")) fail(`needs version: x.y.z`);
   const order = (p) => SECTIONS.indexOf(p.section) * 10 + ["alliance", "horde", "shared", "gossip"].indexOf(p.pack);
-  const shipped = packsFor(null, lang, packs).filter((p) => p.curseforge !== null).sort((a, b) => order(a) - order(b));
+  const shipped = packsFor(null, lang, packs).filter((p) => p.curseforge !== null && p.inMeta).sort((a, b) => order(a) - order(b));
   if (!shipped.some((p) => p.section === "quests")) fail(`${lang} has no quests pack on CurseForge to depend on`);
   return {
     page, lang, version: meta.version, slug: meta.slug, name: meta.name,

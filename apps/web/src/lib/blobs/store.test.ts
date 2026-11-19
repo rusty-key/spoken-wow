@@ -1,57 +1,14 @@
-import fs from "node:fs";
-import os from "node:os";
-import path from "node:path";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
-import { afterAll, afterEach, describe, expect, it, vi } from "vitest";
-
-import { keep, memoryBlobs, r2Blobs, sha256Of, useArchiveForTests } from "./store";
+import { BodyLimitError, memoryBlobs, r2Blobs, readBounded, s3Blobs } from "./store";
 
 vi.mock("node:timers/promises", () => ({ setTimeout: async () => {} }));
 
 const R2 = { accountId: "a", accessKeyId: "k", secretAccessKey: "s", bucket: "b", publicUrl: "https://p/" };
-const dir =fs.mkdtempSync(path.join(os.tmpdir(), "blobs-keep-"));
-const data = Buffer.from("kept bytes");
-const sha = sha256Of(data);
 
-let restore: () => void = () => {};
 afterEach(() => {
-  restore();
   vi.restoreAllMocks();
   vi.unstubAllGlobals();
-});
-afterAll(() => fs.rmSync(dir, { recursive: true, force: true }));
-
-describe("keep", () => {
-  it("writes the volume and not the bucket in disk mode", async () => {
-    const file = path.join(dir, "disk.mp3");
-    expect(await keep("takes", data, "audio/mpeg", file)).toBeNull();
-    expect(fs.readFileSync(file).equals(data)).toBe(true);
-  });
-
-  it("writes both in dual mode", async () => {
-    const bucket = memoryBlobs();
-    restore = useArchiveForTests(bucket, "dual");
-    const file = path.join(dir, "dual.mp3");
-    expect(await keep("takes", data, "audio/mpeg", file)).toBe(sha);
-    expect(bucket.objects.get(`takes/${sha}`)?.data.equals(data)).toBe(true);
-    expect(fs.existsSync(file)).toBe(true);
-  });
-
-  it("keeps the volume copy and reports no bucket when the PUT fails in dual mode", async () => {
-    restore = useArchiveForTests(memoryBlobs({ refusePut: true }), "dual");
-    const logged = vi.spyOn(console, "error").mockImplementation(() => {});
-    const file = path.join(dir, "dual-refused.mp3");
-    expect(await keep("takes", data, "audio/mpeg", file)).toBeNull();
-    expect(fs.existsSync(file)).toBe(true);
-    expect(logged).toHaveBeenCalledOnce();
-  });
-
-  it("throws when the PUT fails in r2 mode, where the bucket is the only copy", async () => {
-    restore = useArchiveForTests(memoryBlobs({ refusePut: true }), "r2");
-    const file = path.join(dir, "r2-refused.mp3");
-    await expect(keep("takes", data, "audio/mpeg", file)).rejects.toThrow("HTTP 503");
-    expect(fs.existsSync(file)).toBe(false);
-  });
 });
 
 describe("writing to R2", () => {
@@ -133,5 +90,88 @@ describe("reading a range", () => {
     expect(asked).toEqual(["bytes=0-1"]);
     expect(part).toMatchObject({ size: 4096, contentType: "audio/mpeg", range: { start: 0, end: 1 } });
     expect(await text(part!.body)).toBe("01");
+  });
+});
+
+describe("any S3-compatible bucket", () => {
+  const S3 = {
+    endpoint: "https://s3.eu-west-1.amazonaws.com",
+    region: "eu-west-1",
+    bucket: "team-audio",
+    accessKeyId: "k",
+    secretAccessKey: "s",
+    publicUrl: null,
+    pathStyle: false,
+    conditionalPut: true,
+  };
+
+  it("addresses the bucket as a host when not path-style", async () => {
+    const urls: string[] = [];
+    vi.stubGlobal("fetch", async (url: string) => {
+      urls.push(url);
+      return new Response(null, { status: 404 });
+    });
+    expect(await s3Blobs(S3).head("takes/x")).toBeNull();
+    expect(await s3Blobs({ ...S3, pathStyle: true }).get("takes/x")).toBeNull();
+    expect(urls).toEqual([
+      "https://team-audio.s3.eu-west-1.amazonaws.com/takes/x",
+      "https://s3.eu-west-1.amazonaws.com/team-audio/takes/x",
+    ]);
+  });
+
+  it("has no public address when private, and signs one that expires", async () => {
+    const bucket = s3Blobs(S3);
+    expect(bucket.url("takes/x")).toBeNull();
+    const signed = new URL(await bucket.presign("takes/x", { method: "GET", expiresSec: 600 }));
+    expect(signed.host).toBe("team-audio.s3.eu-west-1.amazonaws.com");
+    expect(signed.searchParams.get("X-Amz-Expires")).toBe("600");
+    expect(signed.searchParams.get("X-Amz-Signature")).toMatch(/^[0-9a-f]{64}$/);
+    expect(signed.searchParams.get("X-Amz-Credential")).toContain("/eu-west-1/s3/");
+  });
+
+  it("follows no redirect: a bucket's 3xx is a failure", async () => {
+    const asked: (RequestRedirect | undefined)[] = [];
+    vi.stubGlobal("fetch", async (_url: string, init: RequestInit) => {
+      asked.push(init.redirect);
+      return new Response(null, { status: 307, headers: { location: "http://169.254.169.254/" } });
+    });
+    await expect(s3Blobs(S3).get("takes/x")).rejects.toThrow("HTTP 307");
+    expect(asked).toEqual(["manual"]);
+  });
+
+  it("looks before it writes where the provider ignores If-None-Match", async () => {
+    const methods: string[] = [];
+    vi.stubGlobal("fetch", async (_url: string, init: RequestInit) => {
+      methods.push(init.method ?? "GET");
+      return init.method === "HEAD"
+        ? new Response(null, { status: 200, headers: { "content-length": "4" } })
+        : new Response(null, { status: 200 });
+    });
+    await s3Blobs({ ...S3, conditionalPut: false }).put("takes/x", Buffer.from("same"), "audio/mpeg");
+    expect(methods).toEqual(["HEAD"]);
+  });
+});
+
+describe("readBounded", () => {
+  const trickle = (chunks: number, everyMs: number) =>
+    new ReadableStream<Uint8Array>({
+      async pull(controller) {
+        if (chunks-- <= 0) return controller.close();
+        await new Promise((resolve) => setTimeout(resolve, everyMs));
+        controller.enqueue(new Uint8Array(4));
+      },
+    });
+
+  it("reads a body within its limits", async () => {
+    expect((await readBounded(trickle(3, 0), { maxBytes: 100, deadlineMs: 1_000 })).byteLength).toBe(12);
+  });
+
+  it("refuses a body past its size, or keeps its start when truncating", async () => {
+    await expect(readBounded(trickle(10, 0), { maxBytes: 10, deadlineMs: 1_000 })).rejects.toBeInstanceOf(BodyLimitError);
+    expect((await readBounded(trickle(10, 0), { maxBytes: 10, deadlineMs: 1_000, truncate: true })).byteLength).toBe(10);
+  });
+
+  it("gives up on a body that trickles past its deadline", async () => {
+    await expect(readBounded(trickle(100, 20), { maxBytes: 10_000, deadlineMs: 50 })).rejects.toThrow("no whole answer");
   });
 });

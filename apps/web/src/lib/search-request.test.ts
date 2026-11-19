@@ -32,7 +32,7 @@ describe("filtersFromParams", () => {
   });
 
   it("reads the follow-up source by its value, not by the label the dropdown shows", async () => {
-    // SOURCE_LABELS spells it "follow-up" for people; the URL carries the corpus value, and a
+    // SOURCE_LABELS spells it "Follow-up" for people; the URL carries the corpus value, and a
     // hyphenated one would fall outside SOURCES and silently unfilter the search.
     expect((await filtersFromParams(new URLSearchParams("source=followup"), "enUS")).source).toEqual([
       "followup",

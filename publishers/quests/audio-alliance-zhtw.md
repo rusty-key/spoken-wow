@@ -4,7 +4,7 @@ release: quests-audio-alliance-zhTW
 section: quests
 lang: zhTW
 pack: alliance
-version: 0.0.1
+version: 0.0.2
 github: false
 slug: spoken-chinese-traditional-audio-quests-alliance
 name: Spoken Chinese (Traditional) Audio: Quests - Alliance

@@ -179,7 +179,7 @@ describe("with clips in the bucket", () => {
       expect(bucket.objects.get(`samples/${sha}`)?.contentType).toBe("audio/mpeg");
       expect((await listSamples(clone)).map((s) => [s.file, s.bytes])).toEqual([[stored.file, 9]]);
       expect((await readSample(clone, stored.file))?.toString()).toBe("guten tag");
-      expect(await sampleClip(clone, stored.file)).toEqual({ kind: "blob", key: `samples/${sha}` });
+      expect(await sampleClip(clone, stored.file)).toMatchObject({ kind: "blob", key: `samples/${sha}` });
       expect(await fs.readdir(dir)).toEqual([]);
 
       expect(await deleteSample(clone, stored.file)).toBe(true);

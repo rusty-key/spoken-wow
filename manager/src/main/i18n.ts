@@ -99,6 +99,7 @@ const EN = {
   'contributor.saveRepo': 'Save your GitHub repository under Stores first.',
   'contributor.channelCheck': 'Could not check the voice pack channel, so nothing was published. Try again.',
   'contributor.stepZip': 'zipping',
+  'contributor.zipRunning': '{folder} is being zipped already.',
   'contributor.stepUpload': 'uploading',
 
   'share.reachSite': 'The site could not be reached ({why}).',
@@ -114,7 +115,7 @@ const EN = {
   'upload.cfToken': 'CurseForge did not accept that token.',
   'upload.cfVersions': "CurseForge's list of game versions could not be read.",
   'upload.cfDuplicate': 'CurseForge has {count} game versions named {name}. Change the game versions under Stores.',
-  'upload.cfTooBig': "{folder} is over CurseForge's upload limit (HTTP 413).",
+  'upload.cfTooBig': "{folder} is over the 500 MB CurseForge takes through its API (HTTP 413). Press Zip on its row and upload the zip on CurseForge's site, which takes up to 1 GB.",
   'upload.repoShape': 'The GitHub repository must look like owner/repo.',
   'upload.ghToken': 'GitHub did not accept that token.',
   'upload.ghNoRepo': 'GitHub shows no repository {repo} to that token.',
@@ -220,6 +221,7 @@ const ZH: Record<MessageKey, string> = {
   'contributor.saveRepo': '请先在“商店”中保存你的 GitHub 仓库。',
   'contributor.channelCheck': '无法检查语音包频道，因此没有发布任何内容。请重试。',
   'contributor.stepZip': '正在压缩',
+  'contributor.zipRunning': '{folder} 正在压缩中。',
   'contributor.stepUpload': '正在上传',
 
   'share.reachSite': '无法连接网站（{why}）。',
@@ -235,7 +237,7 @@ const ZH: Record<MessageKey, string> = {
   'upload.cfToken': 'CurseForge 不接受该令牌。',
   'upload.cfVersions': '无法读取 CurseForge 的游戏版本列表。',
   'upload.cfDuplicate': 'CurseForge 上有 {count} 个名为 {name} 的游戏版本。请在“商店”中更改游戏版本。',
-  'upload.cfTooBig': '{folder} 超出了 CurseForge 的上传上限（HTTP 413）。',
+  'upload.cfTooBig': '{folder} 超出了 CurseForge API 的 500 MB 上限（HTTP 413）。请在该行点击“压缩”，然后在 CurseForge 网站上传该 zip，网站上限为 1 GB。',
   'upload.repoShape': 'GitHub 仓库应形如 owner/repo。',
   'upload.ghToken': 'GitHub 不接受该令牌。',
   'upload.ghNoRepo': '该令牌看不到仓库 {repo}。',

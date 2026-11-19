@@ -4,12 +4,15 @@
 // A boss with no story in the language has no hash, so with a take it is stale and without one
 // it is missing; either way there is nothing to voice until somebody writes it.
 
+import { byState, type StateCounts } from "@/lib/audio-state";
 import { isDirty } from "@/lib/generation/dirty";
 import { recordedMatches, type LiveRecording } from "@/lib/recordings/live";
 import { madeByFacets, madeByMatches, type MadeBy, type MadeByFacets } from "@/lib/takes/made-by";
+import type { OverrideView } from "@/lib/text-overrides/types";
 
 import type { BossEntry, SearchContext, Take } from "./catalogue";
-import { PAGE_SIZE, SHORT_LINE, type LineFilters, type State } from "./filters";
+import { PAGE_SIZE } from "@/lib/page-size";
+import { SHORT_LINE, type LineFilters, type State } from "./filters";
 
 export type ResultLine = {
   /** boss:{map}:{key}. */
@@ -41,13 +44,16 @@ export type ResultLine = {
   nameMissing?: boolean;
   /** The English name, for a translator. Absent in English. */
   englishName?: string;
+  /** The acting team's rewrite, which `spoken` already says; null where it has none. */
+  override: OverrideView | null;
 };
 
 export type SearchResult = {
   lines: ResultLine[];
   total: number;
   totalChars: number;
-  counts: Record<State, number>;
+  /** For the audio buttons; see StateCounts. */
+  counts: StateCounts;
   dirty: number;
   offset: number;
   limit: number;
@@ -74,6 +80,7 @@ export function decorate(entry: BossEntry, context: SearchContext): ResultLine {
     name: entry.name,
     text: entry.text,
     spoken: entry.spoken,
+    override: entry.override ?? null,
     written: entry.text !== null,
     chars,
     short: entry.spoken !== null && chars < SHORT_LINE,
@@ -151,16 +158,17 @@ export function search(
   offset = 0,
   limit = PAGE_SIZE,
 ): SearchResult {
-  const matched = matching(
-    entries.map((entry) => decorate(entry, context)),
-    filters,
+  const { counts, matched } = byState(
+    matching(
+      entries.map((entry) => decorate(entry, context)),
+      { ...filters, state: undefined },
+    ),
+    filters.state,
   );
 
-  const counts: Record<State, number> = { missing: 0, stale: 0, current: 0 };
   let totalChars = 0;
   let dirty = 0;
   for (const line of matched) {
-    counts[line.state]++;
     if (line.dirty) dirty++;
     totalChars += line.chars;
   }

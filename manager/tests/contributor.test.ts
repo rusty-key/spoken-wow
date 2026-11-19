@@ -9,7 +9,7 @@ import { PlainError } from '../src/main/errors'
 import { languageFolders } from '../src/shared/products'
 import { savePackState } from '../src/main/packs-state'
 import { ManagerService } from '../src/main/service'
-import { channelFixture, channelKeys, seal, serveChannel, type ChannelFixture, type ChannelKeys } from './channel-helpers'
+import { channelFixture, channelKeys, serveChannel, type ChannelFixture, type ChannelKeys } from './channel-helpers'
 import { makeGame, tmpDir, write, type TestServer } from './helpers'
 
 const SITE = 'https://site.test'
@@ -96,7 +96,7 @@ async function setup(o: Options = {}) {
     secretBox: box
   })
   svc.games = [game]
-  svc.channel = { generatedAt: '2026-11-01T00:00:00.000Z', packs: {} }
+  svc.channel = { generatedAt: '2026-11-01T00:00:00.000Z', packs: {}, languages: {} }
   // These tests set the index by hand; 'the channel behind rows and a run' below goes through the real fetch.
   svc.refreshChannel = async () => {
     site.channelRefreshes++
@@ -108,7 +108,7 @@ async function setup(o: Options = {}) {
     write(path.join(game.addOnsPath, folder, `${folder}.toc`), `## Title: ${title}\n## Version: ${version}\n`)
     write(path.join(game.addOnsPath, folder, 'sounds', 'a.ogg'), 'clip')
     savePackState(game, { packId: folder, rev, files: {} })
-    svc.channel!.packs[folder] = { rev, manifestSha256: 'x', fileCount: 1, totalSize: 1, requires: { Spoken: '>=3.0.0' } }
+    svc.channel!.packs[folder] = { rev, manifestSha256: 'x', fileCount: 1, totalSize: 1, requires: { Spoken: '>=3.0.0' }, lang: 'deDE', section: 'places', pack: null, team: null }
   }
 
   const jobs = (): JobProgress[] => events.filter((e) => e.channel === CHANNELS.jobProgress).map((e) => e.payload as JobProgress)
@@ -1056,8 +1056,7 @@ describe('the channel behind rows and a run', () => {
 
   /** What the server hands out from now on: one pack at `rev`, signed. */
   function publishRev(fx: { objects: ChannelFixture['objects'] }, keys: ChannelKeys, rev: string, generatedAt: string): void {
-    const next = channelFixture(keys, [{ packId: PLACES, rev, files: { [`${PLACES}.toc`]: 'toc' } }])
-    next.objects.set('/index.json', Buffer.from(seal({ ...next.index, generatedAt }, keys).text))
+    const next = channelFixture(keys, [{ packId: PLACES, rev, files: { [`${PLACES}.toc`]: 'toc' } }], { generatedAt })
     fx.objects = next.objects
   }
 
@@ -1068,7 +1067,7 @@ describe('the channel behind rows and a run', () => {
     let refuse = false
     let indexAsked = 0
     const s = await serveChannel(fx, (req, res) => {
-      if (req.url === '/index.json') indexAsked++
+      if (req.url === '/index-v2.json') indexAsked++
       if (!refuse) return false
       res.writeHead(500)
       res.end()
@@ -1203,5 +1202,53 @@ describe('cleanup', () => {
     write(path.join(h.dir, 'contributor-tmp', 'abc.zip'), 'partial')
     await h.svc.init()
     expect(fs.existsSync(path.join(h.dir, 'contributor-tmp'))).toBe(false)
+  })
+})
+
+describe('zip for an upload by hand', () => {
+  it('zips a pack under the data folder with the upload page, sends nothing to CurseForge and keeps one zip per pack', async () => {
+    const h = await signedIn()
+    h.install(PLACES, '1.2.0')
+    configureCf(h, { [PLACES]: '1700375' })
+    const first = await h.svc.contributor.zipForUpload(h.game.id, 'deDE', PLACES)
+    expect(first).toMatchObject({
+      version: '1.2.0',
+      name: `${PLACES}-1.2.0.zip`,
+      path: path.join(h.dir, 'contributor-zips', PLACES, `${PLACES}-1.2.0.zip`),
+      uploadUrl: 'https://authors.curseforge.com/#/projects/1700375/files'
+    })
+    expect(first.bytes).toBe(fs.statSync(first.path).size)
+    expect(h.calls.some((c) => c.url.includes('curseforge.com/api'))).toBe(false)
+
+    h.install(READABLES, '1.0.0')
+    h.store.saveConfig({ projects: { [PLACES]: '1700375', [READABLES]: '200' } })
+    await h.svc.contributor.zipForUpload(h.game.id, 'deDE', READABLES)
+    h.install(PLACES, '1.3.0')
+    await h.svc.contributor.zipForUpload(h.game.id, 'deDE', PLACES)
+    expect(fs.readdirSync(path.join(h.dir, 'contributor-zips', PLACES))).toEqual([`${PLACES}-1.3.0.zip`])
+    expect(fs.readdirSync(path.join(h.dir, 'contributor-zips', READABLES))).toEqual([`${READABLES}-1.0.0.zip`])
+  })
+
+  it('refuses what a release would refuse, and a language the account does not administer', async () => {
+    const h = await signedIn()
+    h.install(PLACES)
+    h.install(BOSSES)
+    configureCf(h, { [BOSSES]: '300' })
+    await expect(h.svc.contributor.zipForUpload(h.game.id, 'deDE', PLACES)).rejects.toThrow(/project id/)
+    await expect(h.svc.contributor.zipForUpload(h.game.id, 'deDE', READABLES)).rejects.toThrow(/not installed/)
+    h.svc.channel!.packs[BOSSES]!.rev = 'r9'
+    await expect(h.svc.contributor.zipForUpload(h.game.id, 'deDE', BOSSES)).rejects.toThrow(/Update/)
+    await expect(h.svc.contributor.zipForUpload(h.game.id, 'frFR', languageFolders('frFR')[0]!)).rejects.toThrow(/frFR/)
+    await expect(h.svc.contributor.zipForUpload(h.game.id, 'deDE', '../../evil')).rejects.toThrow(/not one of/)
+    expect(fs.existsSync(path.join(h.dir, 'contributor-zips'))).toBe(false)
+  })
+
+  it('a second zip of the same pack while one runs is refused', async () => {
+    const h = await signedIn()
+    h.install(PLACES)
+    configureCf(h, { [PLACES]: '100' })
+    const both = await Promise.allSettled([h.svc.contributor.zipForUpload(h.game.id, 'deDE', PLACES), h.svc.contributor.zipForUpload(h.game.id, 'deDE', PLACES)])
+    expect(both.map((r) => r.status).sort()).toEqual(['fulfilled', 'rejected'])
+    expect(String((both.find((r) => r.status === 'rejected') as PromiseRejectedResult).reason)).toMatch(/being zipped/)
   })
 })

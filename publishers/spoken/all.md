@@ -21,9 +21,9 @@ license: MIT
 | Module | Voices | Its audio |
 | --- | --- | --- |
 | Spoken Quests | quest dialogue, and what NPCs say when you talk to them | [Spoken Quests Audio: All](https://www.curseforge.com/wow/addons/spoken-audio-quests-all) |
-| Spoken Places | zone and subzone lore | [Spoken Audio: Places and Bosses](https://www.curseforge.com/wow/addons/spoken-audio-places) |
+| Spoken Places | zone and subzone lore | [Spoken Audio: Places](https://www.curseforge.com/wow/addons/spoken-audio-places) |
 | Spoken Readables | books, letters, notes and plaques | [Spoken Audio: Readables](https://www.curseforge.com/wow/addons/spoken-audio-readables) |
-| Spoken Bosses | the story of each dungeon and raid boss | [Spoken Audio: Places and Bosses](https://www.curseforge.com/wow/addons/spoken-audio-places) |
+| Spoken Bosses | the story of each dungeon and raid boss | [Spoken Audio: Bosses](https://www.curseforge.com/wow/addons/spoken-audio-bosses) |
 
 ## Language
 

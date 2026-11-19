@@ -11,7 +11,7 @@
 import { createAccessControl } from "better-auth/plugins/access";
 import { adminAc, defaultStatements } from "better-auth/plugins/admin/access";
 
-import { CODES, type Lang } from "@/lib/lang";
+import { allLangs, type Lang } from "@/lib/lang";
 
 const statement = {
   ...defaultStatements,
@@ -128,7 +128,11 @@ export function isCapability(value: unknown): value is Capability {
   return typeof value === "string" && (CAPABILITIES as readonly string[]).includes(value);
 }
 
-export type Grant = { lang: string; capability: Capability };
+/**
+ * `privileged` is false for a grant in a language's second team, and absent for `text` and for
+ * a grant in the privileged team.
+ */
+export type Grant = { lang: string; capability: Capability; privileged?: boolean };
 
 /** Who is asking: their global role, and whatever they hold in particular languages. */
 export type Viewer = { role: string | null | undefined; grants: readonly Grant[] };
@@ -155,7 +159,7 @@ export function can(viewer: Viewer | null, capability: Capability, lang: Lang): 
  * for somebody signed out.
  */
 export function langsWhere(viewer: Viewer | null, capability: Capability): Lang[] {
-  return CODES.filter((lang) => can(viewer, capability, lang));
+  return allLangs().filter((lang) => can(viewer, capability, lang));
 }
 
 /**
@@ -164,7 +168,7 @@ export function langsWhere(viewer: Viewer | null, capability: Capability): Lang[
  * every such action is paid for with the caller's own.
  */
 export function spendsCredits(viewer: Viewer | null): boolean {
-  return CODES.some((lang) => can(viewer, "regenerate", lang) || can(viewer, "configure", lang));
+  return allLangs().some((lang) => can(viewer, "regenerate", lang) || can(viewer, "configure", lang));
 }
 
 /**
@@ -185,11 +189,23 @@ export function canManageVoices(viewer: Viewer | null, lang: Lang): boolean {
   return can(viewer, "admin", lang);
 }
 
-/** Whether somebody may hand out or take away `capability` in `lang`. */
-export function canGrant(viewer: Viewer | null, capability: Capability, lang: Lang): boolean {
+/**
+ * Whether somebody may hand out or take away `capability` in `lang`.
+ *
+ * `textByTeam` is the language's flag that its privileged team's admins appoint text
+ * maintainers, as a site admin does elsewhere. A second team's admin never does: the original
+ * text is what every team in the language voices.
+ */
+export function canGrant(viewer: Viewer | null, capability: Capability, lang: Lang, textByTeam: boolean): boolean {
   if (!viewer) return false;
   if (viewer.role === "admin") return true;
-  return capability !== "text" && can(viewer, "admin", lang);
+  if (capability !== "text") return can(viewer, "admin", lang);
+  return textByTeam && adminsPrivileged(viewer, lang);
+}
+
+/** Whether `viewer` is an admin of `lang`'s privileged team, as opposed to a second team's. */
+export function adminsPrivileged(viewer: Viewer, lang: string): boolean {
+  return viewer.grants.some((grant) => grant.lang === lang && grant.capability === "admin" && grant.privileged !== false);
 }
 
 /**

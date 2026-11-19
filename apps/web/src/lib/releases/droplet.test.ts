@@ -1,12 +1,23 @@
 import type { ChildProcess } from "node:child_process";
 import { EventEmitter } from "node:events";
-import { mkdirSync, mkdtempSync, realpathSync, writeFileSync } from "node:fs";
+import { mkdirSync, mkdtempSync, readFileSync, realpathSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import { currentStep, failureReason, outcome, readDropletRun, runsOnDroplet, startDropletRun } from "./droplet";
+import { needsTeamReleases, releasePlan } from "../../../../../scripts/manager/release-pack.mjs";
+
+import {
+  currentStep,
+  failureReason,
+  jobOf,
+  outcome,
+  readDropletRun,
+  releasesClosedFor,
+  runsOnDroplet,
+  startDropletRun,
+} from "./droplet";
 
 let shared: string;
 
@@ -35,8 +46,45 @@ describe("runsOnDroplet", () => {
   });
 });
 
+describe("releasesClosedFor", () => {
+  const privileged = { official: true, privileged: true };
+  const second = { official: false, privileged: false };
+
+  it("refuses any team but the official privileged one until team releases open", () => {
+    vi.stubEnv("SPOKEN_TEAM_RELEASES", "");
+    expect(releasesClosedFor(privileged)).toBe(false);
+    expect(releasesClosedFor(null)).toBe(false);
+    expect(releasesClosedFor(second)).toBe(true);
+    expect(releasesClosedFor({ official: true, privileged: false })).toBe(true);
+    expect(releasesClosedFor({ official: false, privileged: true })).toBe(true);
+  });
+
+  it("refuses nobody where they are open", () => {
+    vi.stubEnv("SPOKEN_TEAM_RELEASES", "1");
+    expect(releasesClosedFor(second)).toBe(false);
+  });
+
+  // The job refuses a plan that lists a team where team releases are closed (release.mjs), so a
+  // press the site accepts and the job then refuses is a run that fails after the lock is taken.
+  it.each([
+    ["an official privileged team in a language with no Manager page", "viVN", { official: true, privileged: true }],
+    ["an official privileged team on a page", "deDE", { official: true, privileged: true }],
+    ["a privileged team that is not official, on a page", "deDE", { official: false, privileged: true }],
+    ["a privileged team that is not official, with no page", "viVN", { official: false, privileged: true }],
+    ["an official second team", "deDE", { official: true, privileged: false }],
+    ["a second team that is not official", "viVN", { official: false, privileged: false }],
+  ])("refuses %s exactly when the job would", (_, lang, flags) => {
+    vi.stubEnv("SPOKEN_TEAM_RELEASES", "");
+    const team = {
+      id: "0b7e6a3c-1d2f-4a5b-8c9d-0e1f2a3b4c5d", slug: "stimmen", name: "Stimmen", ...flags,
+      language: { code: lang, name: "X", native: "X", client: lang === "deDE" },
+    };
+    expect(releasesClosedFor(team)).toBe(needsTeamReleases(releasePlan("places", lang, team)));
+  });
+});
+
 describe("startDropletRun", () => {
-  const run = { id: "run-1", section: "bosses", lang: "enUS" };
+  const run = { id: "run-1", kind: "release" as const, section: "bosses", lang: "enUS", teamSlug: "english", bump: "minor" as const, stage: false, staged: null };
 
   beforeEach(() => {
     mkdirSync(join(shared, "release-tools"));
@@ -46,18 +94,28 @@ describe("startDropletRun", () => {
 
   it("forks the job away and hands it none of the site's secrets", async () => {
     const spawnFn = fakeSpawn(0);
-    await startDropletRun(run, "minor", spawnFn);
+    await startDropletRun(run, spawnFn);
     const [command, args, options] = spawnFn.mock.calls[0] as unknown as [string, string[], { env: Record<string, string> }];
     expect(command).toBe("setsid");
     expect(args[0]).toBe("--fork");
     expect(args).toContain(join(realpathSync(shared), "release-tools/scripts/manager/release-job.mjs"));
-    expect(args.slice(-4)).toEqual([join(shared, "release-runs/run-1"), "bosses", "enUS", "minor"]);
+    expect(args.at(-1)).toBe(join(shared, "release-runs/run-1"));
+    expect(JSON.parse(readFileSync(join(shared, "release-runs/run-1/job.json"), "utf8"))).toEqual({
+      kind: "release", section: "bosses", lang: "enUS", bump: "minor", team: "english", stage: false, input: null,
+    });
     expect(Object.keys(options.env).sort()).toEqual(["HOME", "NODE_ENV", "PATH", "SPOKEN_RELEASE_ENV"]);
   });
 
+  it("stages a release that asks to, and hands a promotion its entries", async () => {
+    expect(jobOf({ ...run, stage: true })).toMatchObject({ kind: "release", stage: true, input: null });
+    const staged = { version: "1.0.0", packs: { SpokenBossesAudio_x: { rev: "r" } }, languages: {} };
+    await startDropletRun({ ...run, kind: "promote", staged }, fakeSpawn(0));
+    expect(JSON.parse(readFileSync(join(shared, "release-runs/run-1/job.json"), "utf8"))).toMatchObject({ kind: "promote", input: staged });
+  });
+
   it("refuses when the fork could not start", async () => {
-    await expect(startDropletRun(run, "patch", fakeSpawn(new Error("spawn setsid ENOENT")))).rejects.toThrow("ENOENT");
-    await expect(startDropletRun(run, "patch", fakeSpawn(1))).rejects.toThrow("setsid exited 1");
+    await expect(startDropletRun(run, fakeSpawn(new Error("spawn setsid ENOENT")))).rejects.toThrow("ENOENT");
+    await expect(startDropletRun(run, fakeSpawn(1))).rejects.toThrow("setsid exited 1");
   });
 });
 
@@ -68,6 +126,13 @@ describe("outcome", () => {
 
   it("tells a job that found nothing to release", () => {
     expect(outcome("==> step 3/3: publish\n==> nothing changed: nothing was released\n")).toEqual({ state: "unchanged" });
+  });
+
+  it("waits for review after a staged release, and is done after a promotion or delisting", () => {
+    expect(outcome("==> staged 1.0.3: SpokenPlacesAudio_deDE_x\n")).toEqual({ state: "awaiting_review", version: "1.0.3" });
+    expect(outcome("==> staged: SpokenPlacesAudio_deDE_x\n")).toEqual({ state: "awaiting_review", version: null });
+    expect(outcome("==> promoted 1.0.3: SpokenPlacesAudio_deDE_x\n")).toEqual({ state: "done", version: "1.0.3" });
+    expect(outcome("==> delisted SpokenPlacesAudio_deDE_x\n")).toEqual({ state: "done", version: null });
   });
 
   it("is done with no version when the log does not say", () => {

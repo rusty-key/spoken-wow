@@ -36,6 +36,7 @@ describe('a settings change redraws the window in the new language', () => {
       catalog: { fetchedAt: null, offline: false, releases: {} },
       community: { fetchedAt: null, offline: false, packs: [] },
       products: [],
+      languages: [],
       appVersion: '0.0.0',
       platform: 'win32' as const,
       dataPath: ''

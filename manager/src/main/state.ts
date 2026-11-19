@@ -3,7 +3,7 @@
 import fs from 'node:fs'
 import path from 'node:path'
 import { currentProductId } from '../shared/products'
-import { DEFAULT_SETTINGS, SETTING_CHOICES, type Settings } from '../shared/types'
+import { cleanVoiceAuthors, DEFAULT_SETTINGS, SETTING_CHOICES, type Settings } from '../shared/types'
 
 // ---------------------------------------------------------------- files
 
@@ -46,6 +46,11 @@ export function sanitizeSettings(raw: unknown, base: Settings = DEFAULT_SETTINGS
   for (const key of Object.keys(DEFAULT_SETTINGS) as (keyof Settings)[]) {
     const v = r[key]
     if (v === undefined) continue
+    if (key === 'voiceAuthors') {
+      const authors = cleanVoiceAuthors(v)
+      if (authors) out.voiceAuthors = authors
+      continue
+    }
     const want = typeof DEFAULT_SETTINGS[key]
     if (typeof v !== want) continue
     if (typeof v === 'string' && v.length > 2000) continue

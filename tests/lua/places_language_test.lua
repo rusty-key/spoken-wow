@@ -15,17 +15,21 @@ stub.LoadSpoken(SPOKEN)
 
 -- What a player had saved before the settings moved into Spoken's profile. Each load below is a
 -- first run, so the move is forgotten and the profile starts without Places' table.
+-- A `language` in `settings` is the one picked on the Places page before it was Spoken's Text
+-- Language, which it moves to as Places loads.
 local function Legacy(settings)
     local db = _G.SpokenEnv.Addon.db
     db.profile.Modules, db.global.ModulesLegacy = nil, nil
+    db.profile.Language.Text = nil
     _G.SpokenPlacesSettings = settings
 end
+local function TextLanguage() return _G.SpokenEnv.Addon.db.profile.Language.Text end
 stub.SetAddOns({ { folder = "Spoken_Places", meta = { Version = "9.9.9" } } })
 
 local MAP, BOTH, ONLY_ENGLISH = 1411, "valley of trials", "sen'jin village"
 
 -- The voice is Spoken's Voice Language and If a Voice Is Missing, as for every module; the text's
--- language is the Places page's own.
+-- language is Spoken's Text Language.
 local function Voice(code, fallback)
     local language = _G.SpokenEnv.Addon.db.profile.Language
     language.Voice, language.Fallback = code, fallback
@@ -405,35 +409,15 @@ Packs({ Hebrew(HEBREW_FOLDER, "X-SpokenPlaces-Language", { ["X-SpokenPlaces-Lore
 Z = OnEnglish({})
 Expect("H. a pack's lore language is offered after the built-in ones",
     Codes(Z:GetSelectableLanguages()), "enUS deDE esES esMX frFR ptBR ruRU zhCN zhTW heIL")
-Expect("H. ...named in its own words only where the lore menu wears the pack's font",
-    Z:GetLanguageName("heIL", true), "עברית")
-Expect("H. ...but anywhere else, in the game's font, in English", Z:GetLanguageName("heIL"), "Hebrew")
+Expect("H. ...named, in the game's font, in English", Z:GetLanguageName("heIL"), "Hebrew")
 Expect("H. ...which is also the label of its audio pack",
     Z:GetAudioPackLabel({ language = "heIL", addon = "SpokenPlacesAudio_heIL" }), "Hebrew")
 Expect("H. Spoken gives the face the menu draws it in", Spoken:LanguageFace("heIL"), HEBREW_FONT)
 Expect("H. ...but Auto still reads the client's", Z:GetLanguage(), "enUS")
--- The lore menu names a pack's language in the pack's font: Layout:Dropdown's last argument.
+-- Spoken's Text Language row lists it, named in the pack's font (Spoken:LanguageFace, above).
 do
-    local layoutEnv = _G.SpokenEnv
-    local realNew, fontOf = layoutEnv.SpokenLayout.New, nil
-    layoutEnv.SpokenLayout.New = function(...)
-        local layout = realNew(...)
-        local realDropdown = layout.Dropdown
-        layout.Dropdown = function(self, label, tip, values, read, write, apply, describe, face)
-            if label == Z.L.OPT_LANGUAGE then fontOf = face end
-            return realDropdown(self, label, tip, values, read, write, apply, describe, face)
-        end
-        return layout
-    end
-    -- Before the page, as the .toc loads it: the page reads its wait choices and the current wait from it.
-    assert(loadfile(PLACES .. "Autoplay.lua"))("Spoken_Places", Z)
-    assert(loadfile(PLACES .. "UI/Options.lua"))("Spoken_Places", Z)
-    Z:SetupOptions()
-    layoutEnv.SpokenLayout.New = realNew
-    Expect("H. the lore menu asks for a face per entry", type(fontOf), "function")
-    Expect("H. ...a pack's language is drawn in its pack's font", fontOf and fontOf({ code = "heIL" }), HEBREW_FONT)
-    Expect("H. ...a built-in one in the game's", fontOf and fontOf({ code = "deDE" }), nil)
-    Expect("H. ...and Auto, which is a sentinel and no language, in the game's", fontOf and fontOf({}), nil)
+    local listed = " " .. table.concat(_G.SpokenEnv.Texts:Choices(), " ") .. " "
+    Expect("H. Spoken's Text Language offers the pack's lore language", listed:find(" heIL ", 1, true) ~= nil, true)
 end
 Z = OnEnglish({ language = "heIL" })
 Expect("H. picked, its lore is what loads", Z.language, "heIL")
@@ -442,9 +426,9 @@ local hebrewZones = { [MAP] = { name = "דורוטאר", full = "סיפור." } 
 Z:RegisterLoreData("heIL", "zones", hebrewZones)
 Expect("H. the pack's tables, handed over after Places loaded, are the lore read",
     tostring(Z.Zones == hebrewZones), "true")
-SpokenPlacesSettings.language = nil
+_G.SpokenEnv.Addon.db.profile.Language.Text = nil
 SlashCmdList["SPOKENPLACES"]("lang heil")
-Expect("H. /spp lang finds it in whatever case it is typed", SpokenPlacesSettings.language, "heIL")
+Expect("H. /spp lang finds it in whatever case it is typed", TextLanguage(), "heIL")
 stub.SetLocale("heIL")
 Expect("H. a client claiming the language still reads English on Auto", Z:GetAutoLanguage(), "enUS")
 stub.SetLocale("enUS")
@@ -455,7 +439,7 @@ Expect("H. a quests pack brings no lore, so its language is not offered",
     tostring(Z:IsLanguageSelectable("heIL")) .. " " .. Codes(Z:GetSelectableLanguages()),
     "false enUS deDE esES esMX frFR ptBR ruRU zhCN zhTW")
 Expect("H. ...and a stored pick of it reads the client's", Z.language, "enUS")
-Expect("H. ...without rewriting it", SpokenPlacesSettings.language, "heIL")
+Expect("H. ...without rewriting it", TextLanguage(), "heIL")
 Z:SetLanguagePreview(true)
 Expect("H. ...not even in preview, which would show empty pages", Z:IsLanguageSelectable("heIL"), false)
 Z:SetLanguagePreview(false)
@@ -470,6 +454,89 @@ Packs({ Hebrew(HEBREW_FOLDER, "X-SpokenPlaces-Language",
 Z = OnEnglish({ language = "heIL" })
 Expect("H. a lore pack whose font cannot load is not offered", Z:IsLanguageSelectable("heIL"), false)
 Expect("H. ...and its lore does not load", Z.language, "enUS")
+-- A text pack (Spoken's Texts.lua) brings Polish places: read where Polish is the Text Language.
+local latin = {}
+for byte = 32, 126 do latin[byte] = true end
+local arial = fontHas["Fonts\\ARIALN.TTF"]
+fontHas["Fonts\\ARIALN.TTF"] = latin
+Packs({ { folder = "WoWPoPolsku_Spoken", meta = H.TextPackMeta("plPL") } })
+Legacy({})
+H.ReadText("plPL")
+Spoken:RegisterText("plPL", "places", { zones = { [MAP] = { name = "Durotar", full = "Opowieść o Durotarze." } } })
+_G.SpokenPlacesAudioPacks = {}
+Z = H.LoadPlaces(PLACES, { Languages = shipped.Languages })
+Expect("H. a text pack's places are offered", Z:IsLanguageSelectable("plPL"), true)
+Z:RegisterLoreData("plPL", "zones", { [MAP] = { name = "Durotar", full = "Bundled." }, [1412] = { name = "Mulgore", full = "Kept." } })
+Expect("H. ...and win over the language's own file that loads after them, place by place",
+    Z.Zones[MAP].full .. "|" .. Z.Zones[1412].full, "Opowieść o Durotarze.|Kept.")
+H.ReadText("plPL")
+Spoken:RegisterText("plPL", "places", { zones = { [MAP] = { name = "Durotar", full = "Opowieść o Durotarze." } } })
+Expect("H. ...and read where Polish is the Text Language", tostring(Z.language) .. " "
+    .. tostring(Z.Zones and Z.Zones[MAP] and Z.Zones[MAP].full), "plPL Opowieść o Durotarze.")
+Packs({ { folder = "WoWPoPolsku_Spoken", meta = H.TextPackMeta("plPL") } })
+Legacy({})
+H.ReadText("plPL")
+Spoken:RegisterText("plPL", "readables", { pages = { [1] = "Strona." } })
+Z = H.LoadPlaces(PLACES, { Languages = shipped.Languages })
+Expect("H. a text pack without places leaves the client's lore, rather than empty pages", Z.language, "enUS")
+H.ReadText(nil)
+fontHas["Fonts\\ARIALN.TTF"] = arial
+
+---------------------------------------------------------------- V. voices: a language, or a language and a team
+do
+    local SECOND = "razor hill"
+    local STIMMEN = Pack("SpokenPlacesAudio_deDE_stimmen", "deDE", {
+        [BOTH] = { file = "st-valley", len = 3 }, [SECOND] = { file = "st-razor", len = 3 } })
+    local PLAIN = Pack("SpokenPlacesAudio_deDE", "deDE", {
+        [BOTH] = { file = "de-valley", len = 3 }, [ONLY_ENGLISH] = { file = "de-senjin", len = 3 } })
+    local PLAIN64 = Pack("SpokenPlacesAudio_deDE64", "deDE", { [BOTH] = { file = "de64-valley", len = 3 } })
+    PLAIN64.bitrate = 64
+    local EN = Pack("SpokenPlacesAudio", "enUS", { [BOTH] = { file = "en-valley", len = 3 },
+        [ONLY_ENGLISH] = { file = "en-senjin", len = 3 }, [SECOND] = { file = "en-razor", len = 3 } })
+    Legacy({})
+    _G.SpokenPlacesAudioPacks = { [STIMMEN.addon] = STIMMEN, [PLAIN.addon] = PLAIN, [PLAIN64.addon] = PLAIN64,
+        [EN.addon] = EN }
+    Packs({
+        { folder = "SpokenPlacesAudio_deDE_stimmen", meta = { ["X-SpokenPlaces-Language"] = "deDE",
+            ["X-Spoken-Team"] = "stimmen", ["X-Spoken-TeamName"] = "Stimmen" } },
+        { folder = "SpokenPlacesAudio_deDE", meta = { ["X-SpokenPlaces-Language"] = "deDE" } },
+        { folder = "SpokenPlacesAudio_deDE64", meta = { ["X-SpokenPlaces-Language"] = "deDE" } },
+        { folder = "SpokenPlacesAudio", meta = { ["X-SpokenPlaces-Language"] = "enUS" } },
+    })
+    local V = H.LoadPlaces(PLACES)
+    local function File(key)
+        local _, _, pack, file = V:GetAudioClip(MAP, key)
+        return file and (pack.addon .. ":" .. file) or nil
+    end
+    Spoken:SetVoiceOrder({ "deDE_stimmen", "deDE", "enUS" })
+    Expect("V. team first: the team's pack is active", V:GetActiveAudioPack().addon, "SpokenPlacesAudio_deDE_stimmen")
+    Expect("V. ...and plays its take", File(BOTH), "SpokenPlacesAudio_deDE_stimmen:st-valley")
+    Expect("V. an area the team lacks comes from the plain pack", File(ONLY_ENGLISH), "SpokenPlacesAudio_deDE:de-senjin")
+    Expect("V. the team's pack is named for its team", V:GetAudioPackLabel(STIMMEN), "Deutsch · Stimmen")
+    Spoken:SetVoiceOrder({ "deDE" })
+    Expect("V. plain German: the plain pack", File(BOTH), "SpokenPlacesAudio_deDE:de-valley")
+    Expect("V. plain German: never the team's, even where only it has the area", File(SECOND), nil)
+    Spoken:SetVoiceOrder({ "deDE_stimmen", "enUS" })
+    Expect("V. the team's voice, then English: never the plain pack", File(ONLY_ENGLISH), "SpokenPlacesAudio:en-senjin")
+    -- /spp audio's choice from before there were voices keeps naming the plain pack.
+    V:Set("audioPack", { deDE = "SpokenPlacesAudio_deDE64" })
+    Spoken:SetVoiceOrder({ "deDE", "enUS" })
+    Expect("V. a 64 kbps pack chosen for deDE is still the plain voice's", V:GetActiveAudioPack().addon,
+        "SpokenPlacesAudio_deDE64")
+    Expect("V. an area the chosen 64 kbps pack lacks comes from the voice's other pack, not English",
+        File(ONLY_ENGLISH), "SpokenPlacesAudio_deDE:de-senjin")
+    Spoken:SetVoiceOrder({ "deDE" })
+    Expect("V. ...and with no voice after it, rather than silence", File(ONLY_ENGLISH),
+        "SpokenPlacesAudio_deDE:de-senjin")
+    Spoken:SetVoiceOrder({ "deDE_stimmen", "deDE" })
+    Expect("V. ...and does not take the team's place", V:GetActiveAudioPack().addon, "SpokenPlacesAudio_deDE_stimmen")
+    Expect("V. switching to the team's pack keeps the plain voice's choice",
+        V:SetActiveAudioPack("SpokenPlacesAudio_deDE_stimmen") and V:Get("audioPack").deDE, "SpokenPlacesAudio_deDE64")
+    local language = _G.SpokenEnv.Addon.db.profile.Language
+    language.Voices, language.Voice, language.Fallback = nil, nil, nil
+    V:Set("audioPack", nil)
+end
+
 Packs({ { folder = "Spoken_Places", meta = { Version = "9.9.9" } } })
 _G.UIParent.CreateFontString = realParent
 _G.GameFontHighlight, _G.QuestFont = realHighlight, realQuest

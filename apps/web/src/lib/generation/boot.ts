@@ -26,6 +26,9 @@ import type { Worker } from "./worker";
 import { inTransaction } from "@/lib/db";
 import { adoptEveryLang, forgetTeams } from "@/lib/teams/store";
 
+import { onShutdown } from "@/lib/shutdown";
+import { startStorageUpkeep } from "@/lib/storage/upkeep";
+
 import { startLeader, type Leader } from "./leader";
 import { startWorker } from "./worker";
 
@@ -53,10 +56,11 @@ export function ensureQueueRunning(): void {
 
   const leader = startLeader();
   const worker = startWorker(leader.held);
+  const upkeep = startStorageUpkeep(leader.held);
   holder[key] = { leader, worker };
 
   /**
-   * Stand down cleanly.
+   * Stand down cleanly (lib/shutdown.ts, which waits for every stop registered).
    *
    * The in-flight requests are awaited rather than abandoned - they are already at
    * ElevenLabs and will be billed - and the lock is released only afterwards, so during a
@@ -75,16 +79,9 @@ export function ensureQueueRunning(): void {
    * ElevenLabs call, so without it every reload SIGKILLs mid-generation and the handover
    * degrades to lease reclaim.
    */
-  let shuttingDown = false;
-  for (const signal of ["SIGINT", "SIGTERM"] as const) {
-    process.on(signal, () => {
-      if (shuttingDown) return;
-      shuttingDown = true;
-      void (async () => {
-        await worker.stop().catch(() => {});
-        await leader.stop().catch(() => {});
-        process.exit(0);
-      })();
-    });
-  }
+  onShutdown(async () => {
+    void upkeep.stop();
+    await worker.stop().catch(() => {});
+    await leader.stop().catch(() => {});
+  });
 }

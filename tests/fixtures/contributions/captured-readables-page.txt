@@ -7,9 +7,12 @@ packVersion=none
 page=927515100
 book=Ledger of Nothing
 number=2
+shown=1
+reader=Tester
+readerSex=2
 text<<
 A page no corpus has ever held.
 
 Written for this test alone.
 >>
-sum=1094747948
+sum=1362255491

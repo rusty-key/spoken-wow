@@ -77,6 +77,7 @@ export const toSpokenText = normaliseModule.toSpokenText as (
   text: string,
   rules: Record<string, string>,
 ) => string;
+export const hasBrackets = normaliseModule.hasBrackets as (text: string) => boolean;
 export const loadPronunciation = normaliseModule.loadPronunciation as () => Promise<
   Record<string, string>
 >;

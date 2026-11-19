@@ -76,7 +76,7 @@ for (const file of files) {
   for (const raw of envelopes) {
     tally.envelopes += 1;
     const parsed = parseEnvelope(raw);
-    const submission = parsed.ok && parsed.value.source === "quests" ? submissionFrom(parsed.value, raw, null) : null;
+    const submission = parsed.ok && parsed.value.source === "quests" ? submissionFrom(parsed.value, null) : null;
     if (!submission) tally.refused += 1;
     else if (!submission.meta.npc) tally.noNpc += 1;
     else naming.set(submission.dedup, submission);
