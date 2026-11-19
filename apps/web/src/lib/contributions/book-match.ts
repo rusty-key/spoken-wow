@@ -220,6 +220,8 @@ export function matchBook(row: BookMatchInput, corpus: BookCorpus): BookMatchRes
   const pageNumber = row.matchPageNumber ?? pageNumberOf(row.meta);
   const title = row.meta.book?.trim() ?? "";
   const said = row.text ? normal(row.text) : "";
+  // A letter copy's title is the item's, the same on every letter, so it tells no page apart.
+  const telling = namesOneBook("item", Number(row.meta.item)) ? title : "";
 
   if (row.matchLineId) {
     const page = corpus.pages.find((p) => p.lineId === row.matchLineId);
@@ -247,9 +249,9 @@ export function matchBook(row: BookMatchInput, corpus: BookCorpus): BookMatchRes
       // Otherwise the contributor's title, in its language and then in any, and its page number
       // may tell the copies apart.
       const named = (p: BookCorpusPage, lang?: string) =>
-        [...p.titles].some(([l, ts]) => (lang === undefined || l === lang) && ts.some((t) => t.trim() === title));
-      let narrowed = title ? same.filter((p) => named(p, row.locale)) : [];
-      if (title && narrowed.length === 0) narrowed = same.filter((p) => named(p));
+        [...p.titles].some(([l, ts]) => (lang === undefined || l === lang) && ts.some((t) => t.trim() === telling));
+      let narrowed = telling ? same.filter((p) => named(p, row.locale)) : [];
+      if (telling && narrowed.length === 0) narrowed = same.filter((p) => named(p));
       if (narrowed.length === 1) return onPage(narrowed[0], said, row, corpus, "text");
       if (narrowed.length > 1) {
         const numbered = narrowed.filter((p) => p.pageNumber === pageNumber);
@@ -261,9 +263,9 @@ export function matchBook(row: BookMatchInput, corpus: BookCorpus): BookMatchRes
     }
   }
 
-  // 3. The title and page number, in this language. A letter copy's title is the item's.
-  if (title && namesOneBook("item", Number(row.meta.item))) {
-    const found = corpus.byTitle.get(`${row.locale}\u0000${title}`);
+  // 3. The title and page number, in this language.
+  if (telling) {
+    const found = corpus.byTitle.get(`${row.locale}\u0000${telling}`);
     if (found && found.size === 1) return inBook(corpus, [...found][0], pageNumber, said, row, "title");
     if (found && found.size > 1) return { kind: "ambiguous", candidates: [...found].sort() };
   }

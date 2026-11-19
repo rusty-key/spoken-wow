@@ -126,6 +126,15 @@ describe("matchBook", () => {
         .toEqual({ kind: "new-book", title: "Schlichter Brief", pageNumber: 1, via: "none" });
     });
 
+    it("is not told apart from pages with the same words by the letter's title", () => {
+      const twins = indexCorpus([
+        page("b:x", "x", 1, { enUS: "Lok'tar, $N!" }, { deDE: "Schlichter Brief" }, ["item", 8383]),
+        page("b:y", "y", 1, { enUS: "Lok'tar, $N!" }, { enUS: "Orders" }),
+      ]);
+      expect(matchBook(row({ locale: "deDE", text: "Lok'tar, $N!", meta: { item: "8383", book: "Schlichter Brief", number: "1" } }), twins))
+        .toEqual({ kind: "ambiguous", candidates: ["b:x", "b:y"] });
+    });
+
     it("is still matched by its words", () => {
       expect(matchBook(row({ locale: "deDE", text: "Hallo nochmal, $N", meta: { item: "8383", book: "Schlichter Brief", number: "1" } }), letters))
         .toMatchObject({ kind: "known", lineId: "b:nsfk", via: "text" });
