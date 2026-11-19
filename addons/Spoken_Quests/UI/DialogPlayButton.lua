@@ -22,7 +22,7 @@ local BUTTON_WIDTH = 60
 -- Room the button's end caps take either side of its label.
 local LABEL_PADDING = 24
 local GAP = 2
-local STRIP_OFFSET = 12
+local STRIP_OFFSET = 8
 local CORNER_INSET = 32
 local MUTE_SIZE = 24
 local SPEAKER_ICON = [[Interface\COMMON\VOICECHAT-SPEAKER]]
