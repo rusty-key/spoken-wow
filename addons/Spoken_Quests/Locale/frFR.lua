@@ -119,8 +119,9 @@ L.OPT_LISTEN = "Écouter"
 
 -- Reading history
 L.OPT_FORGET_GREETINGS_DONE = "La liste des salutations entendues par ce personnage est effacée."
-L.OPT_MUTE_NPC = "Rendre le PNJ muet"
+L.OPT_MUTE_NPC = "Couper les discussions de ce PNJ"
 L.OPT_UNMUTE_NPC = "Réactiver le son"
+L.OPT_UNMUTE_NPC_GOSSIP = "Rétablir les discussions de ce PNJ"
 L.MUTE_NPC_DONE = "Les salutations automatiques de %s sont maintenant muettes."
 L.UNMUTE_NPC_DONE = "Les salutations automatiques de %s ne sont plus muettes."
 L.OPT_MUTED_NPCS = "PNJ muets"
