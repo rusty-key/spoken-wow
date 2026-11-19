@@ -14,6 +14,8 @@ export type RowAction = {
   onClick: () => void;
   /** Gold when the line already carries what this action set: a rewrite, an ignore. */
   marked?: boolean;
+  /** Why the action cannot run now, shown in place of running it. */
+  disabled?: string;
 };
 
 /**
@@ -25,14 +27,12 @@ export type RowAction = {
 export function RowActions({
   subject,
   primary,
-  regenerate,
   more,
   badge,
 }: {
   /** The line, as the action names say it, so the More button is not the same name on every row. */
   subject: string;
   primary: RowAction[];
-  regenerate?: ReactNode;
   more: RowAction[];
   /** The open-reports chip, which stays in sight. */
   badge?: ReactNode;
@@ -44,7 +44,7 @@ export function RowActions({
   // focus where a click outside put it.
   const picked = useRef<RowAction | null>(null);
   const trigger = useRef<HTMLButtonElement>(null);
-  const inMenu = primary.length > 0 || regenerate || more.length > 1 ? more : [];
+  const inMenu = primary.length > 0 || more.length > 1 ? more : [];
   const inline = inMenu.length > 0 ? primary : [...primary, ...more];
 
   return (
@@ -56,13 +56,13 @@ export function RowActions({
           type="button"
           className={cn("bs-btn bs-btn-text cat-act", action.marked && "cat-marked")}
           aria-label={action.aria}
-          title={action.title}
+          title={action.disabled ?? action.title}
+          disabled={action.disabled !== undefined}
           onClick={action.onClick}
         >
           {action.label}
         </button>
       ))}
-      {regenerate}
       {inMenu.length > 0 && (
         <Popover open={open} onOpenChange={setOpen}>
           <PopoverTrigger asChild>
@@ -89,7 +89,8 @@ export function RowActions({
                 type="button"
                 className={cn("cat-menu-item", action.marked && "cat-marked")}
                 aria-label={action.aria}
-                title={action.title}
+                title={action.disabled ?? action.title}
+                disabled={action.disabled !== undefined}
                 onClick={() => {
                   picked.current = action;
                   setOpen(false);

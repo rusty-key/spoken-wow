@@ -48,7 +48,7 @@ export default function AudioPage({
   const suffix = team ? `?team=${encodeURIComponent(team)}` : "";
   return (
     <main className="bs pb-36">
-      <div className="bn-wrap">
+      <div className="bs-wide">
         <div className="bs-head">
           <div className="min-w-0">
             <h1 className="bs-title">{langName(lang)} audio</h1>
@@ -73,7 +73,7 @@ export default function AudioPage({
 /** What a section says while its tables are empty, inside the same frame. */
 export function AudioPageEmpty({ children }: { children: ReactNode }) {
   return (
-    <div className="bn-wrap">
+    <div className="bs-wide">
       <p className="bs-lede mt-6 max-w-xl">{children}</p>
     </div>
   );

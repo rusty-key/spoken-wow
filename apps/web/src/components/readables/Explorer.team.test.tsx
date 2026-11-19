@@ -111,10 +111,11 @@ test("the visitor's own view keeps every control and sends no team", async () =>
   await screen.findByRole("button", { name: "Play page 1 of Ein Brief" });
 
   for (const [url] of fetchMock.mock.calls) expect(String(url)).not.toContain("team=");
-  expect(named(/^Override/)).toHaveLength(1);
-  expect(named(/regenerate/i)).not.toHaveLength(0);
-  // Report sits behind the row's More menu once the row has edit actions.
+  // Regenerate, Override and Report sit behind the row's More menu once the row has Edit.
   expect(named(/^Report /)).toHaveLength(0);
+  expect(named(/^Override/)).toHaveLength(0);
   await userEvent.setup().click(screen.getAllByRole("button", { name: /^More actions for / })[0]);
+  expect(named(/^Override/)).toHaveLength(1);
+  expect(named(/^Regenerate page/)).toHaveLength(1);
   expect(named(/^Report /)).toHaveLength(1);
 });

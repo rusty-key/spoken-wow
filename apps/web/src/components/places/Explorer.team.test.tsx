@@ -144,12 +144,13 @@ for (const [name, viewed] of [
     await screen.findByText("A town at a crossroads.");
 
     for (const url of searches()) expect(url).not.toContain("team=");
+    expect(pencil()).not.toBeNull();
+    // Regenerate, Override and Report sit behind the row's More menu once the row has Edit.
+    expect(screen.queryByRole("button", { name: "Report a problem with Goldshire" })).toBeNull();
+    expect(overrideButton()).toBeNull();
+    await userEvent.setup().click(screen.getByRole("button", { name: "More actions for Goldshire" }));
     expect(regenerate()).not.toHaveLength(0);
     expect(overrideButton()).not.toBeNull();
-    expect(pencil()).not.toBeNull();
-    // Report sits behind the row's More menu once the row has edit actions.
-    expect(screen.queryByRole("button", { name: "Report a problem with Goldshire" })).toBeNull();
-    await userEvent.setup().click(screen.getByRole("button", { name: "More actions for Goldshire" }));
     expect(screen.queryByRole("button", { name: "Report a problem with Goldshire" })).not.toBeNull();
     expect(screen.queryByText(/You are listening to/)).toBeNull();
 

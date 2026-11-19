@@ -517,7 +517,7 @@ export function Explorer({ books, teams, viewed, home }: { books: BookFacet[] } 
 
   return (
     <>
-      <div className="bn-wrap">
+      <div className="bs-wide">
         <TeamPicker
           teams={teams}
           viewed={viewed}
@@ -650,7 +650,7 @@ export function Explorer({ books, teams, viewed, home }: { books: BookFacet[] } 
         )}
       </Wide>
 
-      <div className="bn-wrap">
+      <div className="bs-wide">
         <Pagination page={page} pageCount={pageCount} onPage={(next) => updateUrl({ page: next })} />
       </div>
 

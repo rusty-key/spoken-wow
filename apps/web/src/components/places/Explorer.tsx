@@ -6,7 +6,7 @@ import { useHistoryMode } from "@/components/useHistoryMode";
 import { useLang } from "@/components/LangProvider";
 import { BASE_LANG, withLang } from "@/lib/lang";
 import { usePathname, useSearchParams } from "next/navigation";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import ApiKeyRequiredDialog from "@/components/ApiKeyRequiredDialog";
 import FilterLink from "@/components/FilterLink";
@@ -16,14 +16,13 @@ import { Loading, Refreshing } from "@/components/Loading";
 import { Button } from "@/components/ui/button";
 import RegenerateDialog, { type PendingBatch } from "@/components/RegenerateDialog";
 import RegenerationPanel from "@/components/RegenerationPanel";
-import { LineRow, type RowState } from "@/components/places/LineRow";
+import { GroupHeader, LineRow, type RowState } from "@/components/places/LineRow";
 import { LoreDialog } from "@/components/places/LoreDialog";
 import { Player } from "@/components/places/Player";
 import TextOverrideDialog from "@/components/TextOverrideDialog";
 import ReportDialog from "@/components/ReportDialog";
 import { SearchBar } from "@/components/places/SearchBar";
 import TeamPicker from "@/components/TeamPicker";
-import { Wide } from "@/components/Width";
 import { totals as estimateTotals, LIST_RATE } from "@/lib/generation/billing";
 import {
   fetchGenerationStatus,
@@ -645,7 +644,7 @@ export function Explorer<L extends ExplorerLine, F extends ExplorerFilters>({
 
   return (
     <div className="pb-24">
-      <div className="bn-wrap">
+      <div className="bs-wide">
         <TeamPicker
           teams={teams}
           viewed={viewed}
@@ -733,46 +732,53 @@ export function Explorer<L extends ExplorerLine, F extends ExplorerFilters>({
         <Pagination page={page} pageCount={pages} onPage={(next) => updateUrl({ page: next })} />
       </div>
 
-      <Wide>
-        {/* Fixed layout, because the point of the columns is that they line up down the
-            page: left to auto sizing, one long subzone name would widen its column for
-            every row. The lore column takes whatever the named ones leave. */}
+      <div className="bs-wide">
         {loading && !result && <Loading />}
 
-        <table
-          aria-busy={loading}
-          hidden={!result}
-          className={`cat-table w-full table-fixed border-collapse text-sm transition-opacity ${loading ? "opacity-60" : ""}`}
-        >
-          <colgroup>
-            <col className="w-40" />
-            <col className="w-44" />
-            <col />
-            {/* Audio: the state word, or the take selector, both of which are short. */}
-            <col className="w-28" />
-            {/* Made by: "fish:2.1-pro-free" over a name. Only when the search sent it. */}
-            {showMadeBy && <col className="w-32" />}
-            {showRecordings && <col className="w-28" />}
-            {/* Wide enough for Edit, Override, Regenerate, More and the report count side by side;
-                anything narrower pushes them over the prose. Everyone else has the "Report a
-                problem" button and the count; never w-0, since that is not gated. */}
-            <col className={canRegenerate ? "w-72" : "w-40"} />
-          </colgroup>
-          <thead>
-            <tr className="text-muted-foreground border-border border-b text-left text-xs">
-              <th className="px-2 pb-1 font-medium">{section.facetLabel}</th>
-              <th className="px-2 pb-1 font-medium">{section.labels.name}</th>
-              <th className="px-2 pb-1 font-medium">{section.labels.text}</th>
-              <th className="px-2 pb-1 font-medium">Audio</th>
-              {showMadeBy && <th className="px-2 pb-1 font-medium">Made by</th>}
-              {showRecordings && <th className="px-2 pb-1 font-medium">Voice actor</th>}
-              <th className="sr-only">Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            {result?.lines.map((line) => (
+        <div className="cat-list" hidden={!result || result.total === 0}>
+          {/* Fixed layout, so the columns line up down the page: left to auto sizing, one long
+              subzone name would widen its column for every row. */}
+          <table
+            aria-busy={loading}
+            className={`cat-table w-full table-fixed border-collapse text-sm transition-opacity ${loading ? "opacity-60" : ""}`}
+          >
+            <colgroup>
+              <col className="w-12" />
+              <col />
+              <col className="w-64" />
+              <col className="w-36" />
+              {showMadeBy && <col className="w-36" />}
+              {showRecordings && <col className="w-28" />}
+              <col className="w-32" />
+            </colgroup>
+            <thead>
+              <tr>
+                <th>
+                  <span className="sr-only">Play</span>
+                </th>
+                <th>{section.labels.text}</th>
+                <th>{section.labels.name}</th>
+                <th>Audio</th>
+                {showMadeBy && <th>Made by</th>}
+                {showRecordings && <th>Voice actor</th>}
+                <th>
+                  <span className="sr-only">Actions</span>
+                </th>
+              </tr>
+            </thead>
+            <tbody>
+            {result?.lines.map((line, index) => (
+              <Fragment key={line.id}>
+                {section.chip(line) !== (index > 0 ? section.chip(result.lines[index - 1]) : undefined) && (
+                  <GroupHeader
+                    section={section}
+                    line={line}
+                    columns={5 + (showMadeBy ? 1 : 0) + (showRecordings ? 1 : 0)}
+                    onNarrow={(l) => updateFilters({ mapID: l.mapID })}
+                    href={(l) => filtersHref({ mapID: l.mapID })}
+                  />
+                )}
               <LineRow
-                key={line.id}
                 section={section}
                 line={withEdits(line)}
                 current={line.id === current?.id}
@@ -783,8 +789,6 @@ export function Explorer<L extends ExplorerLine, F extends ExplorerFilters>({
                 canEdit={canEdit}
                 canTriage={canTriage}
                 onPlay={play}
-                onNarrowToChip={(l) => updateFilters({ mapID: l.mapID })}
-                chipHref={(l) => filtersHref({ mapID: l.mapID })}
                 state={rowStates[line.id]}
                 onClearDirty={(l) => clearDirty([l.file])}
                 onRestored={(l, version) => {
@@ -814,16 +818,16 @@ export function Explorer<L extends ExplorerLine, F extends ExplorerFilters>({
                 }
                 onRegenerate={regenerateOne}
               />
+              </Fragment>
             ))}
-          </tbody>
-        </table>
+            </tbody>
+          </table>
+        </div>
 
-        {result && result.total === 0 && !loading && (
-          <p className="text-muted-foreground py-8 text-center">Nothing matches these filters.</p>
-        )}
-      </Wide>
+        {result && result.total === 0 && !loading && <p className="cat-empty">Nothing matches these filters.</p>}
+      </div>
 
-      <div className="bn-wrap">
+      <div className="bs-wide">
         <Pagination page={page} pageCount={pages} onPage={(next) => updateUrl({ page: next })} />
 
         <p className="text-muted-foreground mt-6 flex flex-wrap items-center gap-1.5 text-xs">

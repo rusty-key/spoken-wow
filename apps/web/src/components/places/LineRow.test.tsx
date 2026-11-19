@@ -1,5 +1,6 @@
 // @vitest-environment jsdom
 import { cleanup, render, screen } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { afterEach, expect, test, vi } from "vitest";
 
 import { LangProvider } from "@/components/LangProvider";
@@ -37,7 +38,7 @@ function row(line: ResultLine, may: { canRegenerate: boolean; canEdit: boolean }
       <table>
         <tbody>
           <LineRow
-            section={{ source: "places", facetLabel: "Zone", chip: (l) => l.zoneName }}
+            section={{ source: "places", facetLabel: "Zone" }}
             line={line}
             current={false}
             showMadeBy={false}
@@ -46,8 +47,6 @@ function row(line: ResultLine, may: { canRegenerate: boolean; canEdit: boolean }
             {...may}
             canTriage={false}
             onPlay={noop}
-            onNarrowToChip={noop}
-            chipHref={() => "#"}
             onReport={noop}
             onRestored={noop}
             onEditText={noop}
@@ -66,21 +65,30 @@ function row(line: ResultLine, may: { canRegenerate: boolean; canEdit: boolean }
 const overrideButton = () => screen.queryByRole("button", { name: "Override the text of Goldshire" });
 const pencil = () => screen.queryByRole("button", { name: "Edit the text of Goldshire" });
 
-test("regenerate alone offers the override and not the pencil", () => {
+// Override lives behind the row's More menu, with Regenerate and Report.
+async function openMore() {
+  const more = screen.queryByRole("button", { name: "More actions for Goldshire" });
+  if (more) await userEvent.setup().click(more);
+}
+
+test("regenerate alone offers the override and not the pencil", async () => {
   row(goldshire, { canRegenerate: true, canEdit: false });
+  await openMore();
   expect(overrideButton()).not.toBeNull();
   expect(overrideButton()?.getAttribute("title")).toBe("Change what your team says");
   expect(pencil()).toBeNull();
 });
 
-test("text alone offers the pencil and not the override", () => {
+test("text alone offers the pencil and not the override", async () => {
   row(goldshire, { canRegenerate: false, canEdit: true });
+  await openMore();
   expect(pencil()).not.toBeNull();
   expect(overrideButton()).toBeNull();
 });
 
-test("a line with no text of its own in the language has nothing to override", () => {
+test("a line with no text of its own in the language has nothing to override", async () => {
   row({ ...goldshire, translated: false }, { canRegenerate: true, canEdit: true });
+  await openMore();
   expect(overrideButton()).toBeNull();
 });
 

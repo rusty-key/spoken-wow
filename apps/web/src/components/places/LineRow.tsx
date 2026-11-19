@@ -10,7 +10,6 @@ import { ChevronDownIcon, PlayIcon } from "lucide-react";
 import { RowActions, StateWord, type RowAction } from "@/components/catalogue/RowParts";
 import { useState } from "react";
 
-import RegenerateButton from "@/components/RegenerateButton";
 import ReportsBadge from "@/components/ReportsBadge";
 import TakeSelector from "@/components/TakeSelector";
 import TextOverrideDrift from "@/components/TextOverrideDrift";
@@ -23,7 +22,7 @@ export type RowState =
   | { phase: "error"; message: string };
 
 type Props<L extends ExplorerLine> = {
-  section: Pick<ExplorerSection<L>, "source" | "facetLabel" | "chip" | "ownLine" | "detail">;
+  section: Pick<ExplorerSection<L>, "source" | "facetLabel" | "ownLine" | "detail">;
   line: L;
   current: boolean;
   /** Whether to draw the "Made by" cell: the search sent it, so the viewer works here. */
@@ -40,10 +39,6 @@ type Props<L extends ExplorerLine> = {
   canTriage: boolean;
   state?: RowState;
   onPlay: (line: L) => void;
-  /** Narrow the list to the line's chip: its zone or instance. */
-  onNarrowToChip: (line: L) => void;
-  /** The narrowed view as a link, for a click that opens it elsewhere. */
-  chipHref: (line: L) => string;
   /** Null in another team's view, whose reports would land in the visitor's own team. */
   onReport: ((line: L) => void) | null;
   /** An earlier take is live again, so the row and the player can catch up. */
@@ -74,6 +69,37 @@ const STATE_LABEL = {
   current: "",
 } as const;
 
+/**
+ * The heading over one zone's or instance's lines, which the results come grouped by: it replaces
+ * a first column that repeated the same name down the page, and narrows to it on a click.
+ */
+export function GroupHeader<L extends ExplorerLine>({
+  section,
+  line,
+  columns,
+  onNarrow,
+  href,
+}: {
+  section: Pick<ExplorerSection<L>, "chip">;
+  line: L;
+  columns: number;
+  onNarrow: (line: L) => void;
+  href: (line: L) => string;
+}) {
+  const chip = section.chip(line);
+  return (
+    <tr className="cat-group">
+      <th colSpan={columns} scope="colgroup">
+        {chip === null ? null : (
+          <FilterLink href={href(line)} onApply={() => onNarrow(line)} className="cat-group-name" title={`Show only ${chip}`}>
+            <Untranslated missing={line.zoneNameMissing}>{chip}</Untranslated>
+          </FilterLink>
+        )}
+      </th>
+    </tr>
+  );
+}
+
 export function LineRow<L extends ExplorerLine>({
   section,
   line,
@@ -86,8 +112,6 @@ export function LineRow<L extends ExplorerLine>({
   canTriage,
   state,
   onPlay,
-  onNarrowToChip,
-  chipHref,
   onReport,
   onRestored,
   onEditText,
@@ -103,7 +127,6 @@ export function LineRow<L extends ExplorerLine>({
   // English standing in for the language is not this language's text to override, and the
   // route refuses it.
   const overridable = !unwritten && line.translated !== false;
-  const chip = section.chip(line);
   const [expanded, setExpanded] = useState(false);
 
   /**
@@ -125,73 +148,40 @@ export function LineRow<L extends ExplorerLine>({
     <tr
       data-line-key={line.id}
       onClick={toggleFromRow}
-      className={cn(
-        "border-border/60 border-b align-top transition-colors",
-        "hover:bg-muted/60",
-        current && "cat-current",
-      )}
+      className={cn("cat-tr", current && "cat-current")}
     >
-      {/* Narrowing is a sibling of the play button below, never nested inside it: a
-          <button> within a <button> is invalid HTML and the inner click never fires. */}
-      <td className="px-2 py-2">
-        {chip !== null && (
-          <FilterLink
-            href={chipHref(line)}
-            onApply={() => onNarrowToChip(line)}
-            className="hover:text-foreground block max-w-full truncate text-left underline-offset-2 hover:underline"
-            title={`Show only ${chip}`}
+      <td className="cat-cell-play">
+        {/* Play is its own control: text inside a <button> cannot reliably be selected and copied. */}
+        {!unwritten && (
+          <button
+            aria-current={current}
+            disabled={!playable}
+            onClick={() => onPlay(line)}
+            title={playable ? `${line.file}.mp3` : undefined}
+            aria-label={`Play ${line.name}`}
+            className="cat-play"
           >
-            <Untranslated missing={line.zoneNameMissing}>{chip}</Untranslated>
-          </FilterLink>
+            <PlayIcon />
+          </button>
         )}
       </td>
 
-      <td className="px-2 py-2">
-        {section.ownLine?.(line) ? (
-          <span className="text-muted-foreground italic">{section.facetLabel.toLowerCase()} line</span>
-        ) : (
-          <span className="block truncate">
-            <Untranslated missing={line.nameMissing}>{line.name}</Untranslated>
-          </span>
-        )}
-        {onRename && <RenameButton label={`Name ${line.name}`} onClick={() => onRename(line)} />}
-        {section.detail && (
-          <span className="text-muted-foreground block text-xs">{section.detail(line)}</span>
-        )}
-      </td>
-
-      {/* The prose is plain markup rather than the label of a button, which is what makes it
-          selectable: text inside a <button> cannot reliably be dragged over and copied. That
-          is why playing needs a control of its own. */}
-      <td className="p-0">
-        <div className="flex w-full min-w-0 items-start gap-2 px-2 py-2">
-          {!unwritten && (
-            <button
-              aria-current={current}
-              disabled={!playable}
-              onClick={() => onPlay(line)}
-              title={playable ? `${line.file}.mp3` : undefined}
-              aria-label={`Play ${line.name}`}
-              className="cat-play"
-            >
-              <PlayIcon />
-            </button>
-          )}
-
+      <td>
+        <div className="cat-line">
           {/* An untranslated line shows the English in its place, marked as such, so the
               reader still sees what the line is about and that it is waiting to be written. */}
           {unwritten ? (
             <span className="text-muted-foreground min-w-0 flex-1 italic">No story in this language yet.</span>
           ) : (
             <div className="min-w-0 flex-1">
-              <span className={cn("block whitespace-pre-wrap", !expanded && "clamp-2")}>
+              <span className={cn("block whitespace-pre-wrap", !expanded && "line-clamp-1")}>
                 <Untranslated missing={line.translated === false}>{line.text}</Untranslated>
               </span>
               {/* Under the original rather than in its place: the original is what the page
                   and the game still show, and the override is only what the team's take says. */}
               {line.override && (
                 <span
-                  className={cn("mt-1 block border-l-2 border-sky-400/60 pl-2 whitespace-pre-wrap", !expanded && "clamp-2")}
+                  className={cn("cat-override", !expanded && "line-clamp-1")}
                   title="What your team's audio says"
                 >
                   {line.override.text}
@@ -208,38 +198,45 @@ export function LineRow<L extends ExplorerLine>({
             </div>
           )}
           {line.translated === false ? (
-            <span className="mt-0.5 shrink-0 text-xs">
+            <span className="cat-tags">
               <UntranslatedMark />
             </span>
           ) : null}
-
-          {/* A row click is a mouse gesture and reaches no keyboard, so the same toggle needs
-              a real control. It doubles as the only thing on screen saying rows expand. */}
+          {/* A row click reaches no keyboard, so expanding needs a real control too. */}
           <button
             aria-expanded={expanded}
             aria-label={expanded ? "Collapse this line" : "Show the whole line"}
             title={expanded ? "Collapse" : "Show the whole line"}
             onClick={() => setExpanded((open) => !open)}
-            className={cn(
-              "text-muted-foreground hover:text-foreground mt-px shrink-0 cursor-pointer rounded-sm p-0.5",
-              "focus-visible:ring-ring/50 focus-visible:ring-[3px] focus-visible:outline-none",
-            )}
+            className="cat-expand"
           >
-            <ChevronDownIcon
-              className={cn("size-3.5 transition-transform", expanded && "rotate-180")}
-            />
+            <ChevronDownIcon className={cn("size-3.5 transition-transform", expanded && "rotate-180")} />
           </button>
         </div>
+      </td>
+
+      <td>
+        <span className="cat-two-top">
+          {section.ownLine?.(line) ? (
+            <span className="text-muted-foreground italic">{section.facetLabel.toLowerCase()} line</span>
+          ) : (
+            <Untranslated missing={line.nameMissing}>{line.name}</Untranslated>
+          )}
+          {onRename && <RenameButton label={`Name ${line.name}`} onClick={() => onRename(line)} />}
+        </span>
+        {section.detail && <span className="cat-two-sub">{section.detail(line)}</span>}
       </td>
 
       {/* Audio, in a column of its own rather than floated into the prose, the way the
           readables table has always had it: the point of a column is that it lines up down the
           page, and "which of these has no clip yet" is the question this screen is most
           often asked. It holds what the clip's state is, and which take that clip is. */}
-      <td className="px-2 py-2 text-xs whitespace-nowrap">
+      <td className="whitespace-nowrap">
         {/* The regeneration outcome replaces the state: once a line has just been made,
             "no audio" is stale and confusing rather than merely redundant. */}
-        {state?.phase === "error" ? (
+        {state?.phase === "busy" ? (
+          <StateWord tone="skip">Generating…</StateWord>
+        ) : state?.phase === "error" ? (
           <StateWord tone="error">{state.message}</StateWord>
         ) : state?.phase === "done" ? (
           <StateWord tone="current">v{state.version}</StateWord>
@@ -276,7 +273,7 @@ export function LineRow<L extends ExplorerLine>({
         />
       )}
 
-      <td className="py-1.5 pr-1 pl-2">
+      <td className="cat-cell-actions">
         <RowActions
           subject={line.name}
           badge={
@@ -288,6 +285,11 @@ export function LineRow<L extends ExplorerLine>({
             // translator writes a language they may not regenerate.
             ...(canEdit
               ? [{ label: "Edit", aria: `Edit the text of ${line.name}`, title: "Rewrite this line's text", onClick: () => onEditText(line) }]
+              : []),
+          ]}
+          more={[
+            ...(canRegenerate && !unwritten
+              ? [{ label: "Regenerate", aria: `Regenerate ${line.name}`, onClick: () => onRegenerate(line) }]
               : []),
             // An override changes only what the team's take says, so it needs what regenerating needs.
             ...(canRegenerate && overridable
@@ -301,13 +303,6 @@ export function LineRow<L extends ExplorerLine>({
                   },
                 ]
               : []),
-          ]}
-          regenerate={
-            canRegenerate && !unwritten ? (
-              <RegenerateButton withLabel busy={state?.phase === "busy"} blocked={null} onClick={() => onRegenerate(line)} />
-            ) : undefined
-          }
-          more={[
             // Outside the edit gates: reporting is what a visitor who cannot sign in has.
             ...(onReport ? [{ label: "Report a problem", aria: `Report a problem with ${line.name}`, onClick: () => onReport(line) }] : []),
             // Only on a dirty row: a clean one would be offering to clear nothing.
