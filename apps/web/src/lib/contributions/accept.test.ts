@@ -20,7 +20,7 @@ import { isGap, matchingLines, NO_CONTEXT } from "@/lib/search";
 
 import { acceptCorrection } from "./correction";
 import { lineIsInExplorer, momentHasSpeaker, resolveContribution, resolveContributions } from "./accept";
-import { LETTER_COPY_ITEM } from "./book-match";
+import { LETTER_COPY_ITEM } from "@readables-tools/lib/owners.mjs";
 import {
   broadcastGossipStem,
   gossipFileName,

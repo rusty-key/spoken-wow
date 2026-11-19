@@ -10,6 +10,7 @@
  * Computed against the corpus as it stands, never stored: once a new book's first page is
  * accepted, its other pages find it by title.
  */
+import { namesOneBook } from "@readables-tools/lib/owners.mjs";
 import { normaliseText } from "@readables-tools/lib/text.mjs";
 
 import type { PoolClient } from "pg";
@@ -46,15 +47,6 @@ export type BookCorpus = {
   /** `${kind}:${id}` -> bookIds */
   byOwner: Map<string, Set<string>>;
 };
-
-/**
- * The Plain Letter a letter becomes when it is taken out of the mailbox. Every copy is this one
- * item with its own words, so neither the item nor its name tells one letter from another.
- */
-export const LETTER_COPY_ITEM = 8383;
-
-/** Whether an owner names one book, as every owner but the letter copy does. */
-export const namesOneBook = (kind: "object" | "item", id: number) => !(kind === "item" && id === LETTER_COPY_ITEM);
 
 export type BookMatchInput = {
   locale: string;

@@ -61,7 +61,8 @@ import { loadRoster } from "@/lib/voices/roster-store";
 import { asTeam } from "@/lib/teams/acting";
 import { privilegedOwners, type TeamId } from "@/lib/teams/store";
 
-import { loadBookCorpus, matchBook, namesOneBook, sameMatch, type BookCorpus, type BookMatchResult } from "./book-match";
+import { namesOneBook } from "@readables-tools/lib/owners.mjs";
+import { loadBookCorpus, matchBook, sameMatch, type BookCorpus, type BookMatchResult } from "./book-match";
 import { sameLine } from "./compare";
 import type { ContributionStatus } from "./contributions";
 import { momentTexts } from "./known";
