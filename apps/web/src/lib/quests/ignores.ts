@@ -101,13 +101,19 @@ export async function writeIgnore(
   reason: string,
   // Nullable to match the column, which is SET NULL: who decided outlives the account.
   userId: string | null,
-  // Null ignores the line in every language, which is what every ignore used to mean.
-  lang: Lang | null = null,
-  // A caller's transaction, acting as ALL_TEAMS for an ignore with no team, which then forgets
-  // the memo itself once it commits.
-  client?: PoolClient,
-  // The language's ignore rather than the acting team's: every team of the language honours it.
-  wholeLanguage = false,
+  {
+    lang = null,
+    client,
+    wholeLanguage = false,
+  }: {
+    // Null ignores the line in every language, which is what every ignore used to mean.
+    lang?: Lang | null;
+    // A caller's transaction, acting as ALL_TEAMS for an ignore with no team, which then forgets
+    // the memo itself once it commits.
+    client?: PoolClient;
+    // The language's ignore rather than the acting team's: every team of the language honours it.
+    wholeLanguage?: boolean;
+  } = {},
 ): Promise<LineIgnore> {
   const trimmed = reason.trim();
   if (!trimmed) throw new Error("an ignore needs a reason: a decision nobody can revisit is a bug");

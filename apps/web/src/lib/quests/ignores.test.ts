@@ -83,7 +83,7 @@ describe("an ignore's team", () => {
   it("is the language's for one language's ignore, which that language reads with the global ones", async () => {
     const german = await ownTeam("deDE");
     try {
-      await writeIgnore(LINE, "german only", null, "deDE");
+      await writeIgnore(LINE, "german only", null, { lang: "deDE" });
       expect(await teamOfRow("deDE")).toEqual([{ teamId: german.team }]);
       expect((await readIgnores("deDE")).get(LINE)?.lang).toBe("deDE");
       expect((await readIgnores("enUS")).has(LINE)).toBe(false);
@@ -117,7 +117,7 @@ describe("a language's own ignore", () => {
   });
 
   it("hides the line for every team of the language, and only there", async () => {
-    await as(first, () => writeIgnore(LINE, "rejected", null, lang, undefined, true));
+    await as(first, () => writeIgnore(LINE, "rejected", null, { lang, wholeLanguage: true }));
     expect(
       await systemRows(`select "lang", "teamId" from "line_ignore" where "lineId" = $1`, [LINE]),
     ).toEqual([{ lang, teamId: null }]);
@@ -128,21 +128,21 @@ describe("a language's own ignore", () => {
 
   it("stands beside a team's own ignore of the line and the every-language one", async () => {
     await writeIgnore(LINE, "everywhere", null);
-    await as(first, () => writeIgnore(LINE, "the language's", null, lang, undefined, true));
-    await as(first, () => writeIgnore(LINE, "the first team's", null, lang));
+    await as(first, () => writeIgnore(LINE, "the language's", null, { lang, wholeLanguage: true }));
+    await as(first, () => writeIgnore(LINE, "the first team's", null, { lang }));
     expect(await systemRows(`select count(*)::int as "n" from "line_ignore" where "lineId" = $1`, [LINE])).toEqual([
       { n: 3 },
     ]);
   });
 
   it("leaves a team's own ignore to that team", async () => {
-    await as(first, () => writeIgnore(LINE, "the first team's", null, lang));
+    await as(first, () => writeIgnore(LINE, "the first team's", null, { lang }));
     expect((await as(first, () => readIgnores(lang))).has(LINE)).toBe(true);
     expect((await as(second, () => readIgnores(lang))).has(LINE)).toBe(false);
   });
 
   it("is lifted by either team", async () => {
-    await as(first, () => writeIgnore(LINE, "rejected", null, lang, undefined, true));
+    await as(first, () => writeIgnore(LINE, "rejected", null, { lang, wholeLanguage: true }));
     expect(await as(second, () => clearIgnore(LINE, lang, null))).toBe(true);
     expect((await as(first, () => readIgnores(lang))).has(LINE)).toBe(false);
   });

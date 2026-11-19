@@ -761,7 +761,7 @@ async function ignoreWrittenLines(
   await actAs(client, ALL_TEAMS);
   await asTeam(lang, owner, async () => {
     for (const { lineId } of rows) {
-      await writeIgnore(lineId, `Rejected ${noteFor(contribution.id)}`, userId, lang, client, true);
+      await writeIgnore(lineId, `Rejected ${noteFor(contribution.id)}`, userId, { lang, client, wholeLanguage: true });
     }
   });
   await actAs(client, acting);

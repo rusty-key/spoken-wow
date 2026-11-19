@@ -1,5 +1,4 @@
--- A language's teams are equal (docs/platform/TEAMS.md). Additive but for line_ignore's team check
--- and its key for rows with no team, each replaced whole as 0097 replaced release_run's state check.
+-- A language's teams are equal (docs/platform/TEAMS.md).
 --
 -- What made a team the language's "privileged" one now only names its packs: "packName" is
 -- 'plain' (<Pack>_<lang>) or 'slug' (<Pack>_<lang>_<slug>), set when the team joins the language
@@ -12,10 +11,7 @@ alter table "team_language" alter column "packName" set not null;
 create unique index "team_language_plain_idx" on "team_language" ("lang") where "packName" = 'plain';
 
 -- An insert that names no pack name gets plain packs when the team's slug is the language's code
--- and no team of the language has them. "privileged" is no longer anybody's input but a previous
--- release's, which asks for the main team with privileged = true: that is a request for plain
--- packs, and the unique index refuses it as it did. So it defaults to false, and is then made to
--- follow "packName", so a rolled-back release still finds the team it calls privileged.
+-- and no team of the language has them. "privileged" only mirrors "packName", for a previous release.
 alter table "team_language" alter column "privileged" set default false;
 
 create function "team_language_pack_name"() returns trigger
@@ -53,8 +49,7 @@ create trigger "team_language_pack_name_frozen"
   before update on "team_language"
   for each row execute function "team_language_pack_name_frozen"();
 
--- Kept for a rolled-back release and the scripts that still call it: the team whose packs carry
--- no slug, not a main team.
+-- The team with plain packs in the language.
 create or replace function "team_of_lang"(text) returns uuid language sql stable as $$
   select "teamId" from "team_language" where "lang" = $1 and "packName" = 'plain'
 $$;
@@ -71,9 +66,8 @@ alter table "line_ignore" add constraint "line_ignore_team_check" check ("teamId
 create unique index "line_ignore_teamless_idx" on "line_ignore" ("lineId", (coalesce("lang", ''))) where "teamId" is null;
 drop index "line_ignore_site_wide_idx";
 
--- A NEW LANGUAGE'S TEAM: named by its code, with English's roster, its packs plain. Only adding a
--- language and handing one over that has no team make one: a language gets no team for being
--- known.
+-- A NEW LANGUAGE'S TEAM: gives a language with no team its first team, named by its code, with
+-- English's roster, its packs plain.
 --
 -- It acts as every team until it returns, as adopt_lang did (0091): copy_team_roster is security
 -- invoker and would not see English's roster as the caller.
@@ -125,8 +119,7 @@ begin
 end
 $$;
 
--- A hand-over takes the language's open invites with it: they used to follow it by naming no
--- team. Otherwise as 0117.
+-- A hand-over takes the language's open invites with it.
 create or replace function "move_team_lang"(p_lang text, p_team uuid) returns integer
 language plpgsql security invoker as $$
 declare
