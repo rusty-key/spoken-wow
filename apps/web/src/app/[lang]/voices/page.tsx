@@ -17,7 +17,8 @@ import { seedClips } from "@/lib/voices/seedClips";
 import { listReferences } from "@/lib/voices/references";
 import { listSamples, type Sample } from "@/lib/voices/samples";
 import { slots } from "@/lib/voices/slots";
-import { Contained } from "@/components/Width";
+import BackstagePage from "@/components/backstage/BackstagePage";
+import { langName } from "@/lib/lang";
 
 export const metadata: Metadata = { title: "Voices · Spoken" };
 
@@ -100,35 +101,35 @@ export default async function Page({
   const { tab } = await searchParams;
 
   return (
-    <main className="pt-6 pb-36">
-      <Contained>
-        <h1 className="mb-4 text-xl font-semibold">Voices</h1>
-        <VoicesTabs
-          initialTab={isProvider(tab) ? tab : preference.provider}
-          active={preference.provider}
-          keys={{ elevenlabs: elevenStatus !== null, fish: fishStatus !== null }}
-          settings={{ elevenlabs: preference.elevenlabs, fish: preference.fish }}
-          account={account}
-          fishModels={FISH_MODELS.map((model) => ({
-            id: model.id,
-            label: model.label,
-            preview: model.preview,
-            price:
-              model.usdPerMillionBytes === null
-                ? "price not published"
-                : model.usdPerMillionBytes === 0
-                  ? "free"
-                  : `$${model.usdPerMillionBytes} per million bytes`,
-          }))}
-          slots={all}
-          initialSamples={samples}
-          seedSlots={seedSlots}
-          initialReferences={Object.fromEntries(references)}
-          raceTags={settings.config.raceTags}
-          manager={canManageVoices(viewer, lang)}
-          directs={can(viewer, "configure", lang)}
-        />
-      </Contained>
-    </main>
+    <BackstagePage
+      title={`${langName(lang)} voices`}
+      description="The voices this language's lines are spoken with, grouped by race. Open one to hear its clips."
+    >
+      <VoicesTabs
+        initialTab={isProvider(tab) ? tab : preference.provider}
+        active={preference.provider}
+        keys={{ elevenlabs: elevenStatus !== null, fish: fishStatus !== null }}
+        settings={{ elevenlabs: preference.elevenlabs, fish: preference.fish }}
+        account={account}
+        fishModels={FISH_MODELS.map((model) => ({
+          id: model.id,
+          label: model.label,
+          preview: model.preview,
+          price:
+            model.usdPerMillionBytes === null
+              ? "price not published"
+              : model.usdPerMillionBytes === 0
+                ? "free"
+                : `$${model.usdPerMillionBytes} per million bytes`,
+        }))}
+        slots={all}
+        initialSamples={samples}
+        seedSlots={seedSlots}
+        initialReferences={Object.fromEntries(references)}
+        raceTags={settings.config.raceTags}
+        manager={canManageVoices(viewer, lang)}
+        directs={can(viewer, "configure", lang)}
+      />
+    </BackstagePage>
   );
 }

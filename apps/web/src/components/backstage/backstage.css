@@ -1158,3 +1158,432 @@ body:has(main.bs) {
 .cat-cell-actions .cat-hint:hover {
   color: var(--foreground);
 }
+
+/* ---------- Voices: the roster on /voices ---------- */
+
+.vo-sm {
+  min-height: 28px;
+  padding: 0 10px;
+  font-size: 12.5px;
+}
+.vo-sm svg,
+.vo-editbar svg {
+  width: 14px;
+  height: 14px;
+}
+.vo-outline {
+  background: none;
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.14);
+}
+.vo-outline:hover {
+  background: rgba(255, 255, 255, 0.05);
+}
+.vo-tabbar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  box-shadow: inset 0 -2px 0 rgba(255, 255, 255, 0.1);
+}
+.vo-tabbar .bs-tabs {
+  flex: 1;
+  box-shadow: none;
+}
+.vo-tabbar .bs-tab {
+  border: 0;
+  background: none;
+  cursor: pointer;
+}
+.vo-active-mark {
+  width: 14px;
+  height: 14px;
+  color: var(--bs-green);
+}
+
+.vo-gen {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px 14px;
+  padding: 14px 0 4px;
+}
+.vo-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 28px;
+  padding: 0 10px;
+  border-radius: 999px;
+  background: rgba(95, 207, 79, 0.12);
+  color: var(--bs-green-text);
+  font-size: 12.5px;
+  font-weight: 500;
+}
+.vo-pill svg {
+  width: 14px;
+  height: 14px;
+}
+.vo-summary {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 2px 6px;
+  color: var(--bs-text-2);
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+}
+.vo-summary b {
+  color: var(--foreground);
+  font-weight: 500;
+}
+.vo-summary i {
+  color: #5c5e66;
+  font-style: normal;
+}
+.vo-gen-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-left: auto;
+}
+.vo-note {
+  margin: 0;
+  color: var(--muted-foreground);
+  font-size: 12.5px;
+  line-height: 18px;
+}
+.vo-link {
+  color: var(--foreground);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+.vo-alert {
+  margin: 10px 0 0;
+  padding: 8px 12px;
+  border-radius: 8px;
+  background: rgba(240, 96, 93, 0.1);
+  box-shadow: inset 0 0 0 1px rgba(240, 96, 93, 0.35);
+  color: var(--bs-red-text);
+  font-size: 13px;
+}
+.vo-settings {
+  margin-top: 12px;
+  padding: 18px 20px;
+  border-radius: 10px;
+  background: var(--bs-panel);
+  box-shadow: inset 0 0 0 1px var(--bs-line);
+}
+.vo-settings select {
+  border: 0;
+  background: var(--bs-field);
+  box-shadow: inset 0 0 0 1px var(--input);
+  color: var(--foreground);
+}
+
+.vo-editbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
+  margin-top: 14px;
+  padding: 10px 14px;
+  border-radius: 8px;
+  background: rgba(240, 194, 90, 0.1);
+  color: var(--bs-gold);
+  font-size: 13px;
+}
+.vo-editbar-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-left: auto;
+}
+.vo-editbar .vo-outline {
+  color: var(--foreground);
+}
+.vo-warn {
+  color: var(--bs-gold);
+  font-size: 12.5px;
+  line-height: 18px;
+}
+.vo-bad {
+  color: var(--bs-red-text);
+}
+
+.vo-q {
+  height: 42px;
+}
+.vo-q input {
+  font-size: 14.5px;
+}
+.vo-q-count {
+  padding-right: 6px;
+  color: var(--bs-text-2);
+  font-size: 13px;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+.vo-dot {
+  flex: none;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: currentColor;
+}
+
+/* Status colours, shared by the chips' dots and the rows' states. */
+.vo-tone-good {
+  color: var(--bs-green-text);
+}
+.vo-tone-fix {
+  color: var(--bs-gold);
+}
+.vo-tone-bad {
+  color: var(--bs-red-text);
+}
+.vo-tone-info {
+  color: var(--bs-blue);
+}
+.vo-tone-quiet {
+  color: var(--muted-foreground);
+}
+
+.vo-table {
+  width: 100%;
+  min-width: 860px;
+  table-layout: fixed;
+  border-collapse: collapse;
+}
+.vo-col-play {
+  width: 52px;
+}
+.vo-col-speaks {
+  width: 180px;
+}
+.vo-col-status {
+  width: 200px;
+}
+.vo-col-dir {
+  width: 26%;
+}
+.vo-col-chev {
+  width: 44px;
+}
+.vo-tr {
+  cursor: pointer;
+}
+.vo-tr td {
+  height: 48px;
+}
+.vo-solo {
+  background: #16171c;
+}
+.vo-name {
+  display: block;
+  overflow: hidden;
+  max-width: 100%;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--foreground);
+  font: inherit;
+  font-size: 14px;
+  font-weight: 500;
+  text-align: left;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  cursor: pointer;
+}
+.vo-faint {
+  color: #73757e;
+  font-weight: 400;
+}
+.vo-speaks {
+  color: var(--bs-text-2);
+  font-size: 12.5px;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+.vo-state {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12.5px;
+  white-space: nowrap;
+}
+.vo-state i {
+  flex: none;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: currentColor;
+}
+.vo-state svg {
+  width: 13px;
+  height: 13px;
+}
+.vo-dir {
+  display: block;
+  overflow: hidden;
+  font-size: 12.5px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.vo-chev {
+  display: block;
+  width: 16px;
+  height: 16px;
+  margin-left: auto;
+  color: var(--muted-foreground);
+  transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.vo-chev-open {
+  color: var(--bs-gold);
+  transform: rotate(180deg);
+}
+
+.vo-group {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  min-height: 34px;
+}
+.vo-accent {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  max-width: 50%;
+  margin-left: auto;
+  color: var(--bs-text-2);
+  font-size: 12.5px;
+}
+.vo-accent-label {
+  color: var(--muted-foreground);
+}
+.vo-accent-text {
+  overflow: hidden;
+  font-family: ui-monospace, "Cascadia Mono", Consolas, monospace;
+  font-size: 12px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.vo-accent .vo-input {
+  width: 300px;
+  height: 28px;
+}
+.vo-icon-btn {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  border: 0;
+  border-radius: 6px;
+  background: none;
+  color: var(--muted-foreground);
+  cursor: pointer;
+}
+.vo-icon-btn:hover {
+  background: rgba(255, 255, 255, 0.06);
+  color: var(--foreground);
+}
+.vo-icon-btn svg {
+  width: 13px;
+  height: 13px;
+}
+
+.vo-open-row > td {
+  padding: 0 !important;
+}
+.vo-panel {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 300px;
+  gap: 32px;
+  padding: 16px 20px 18px 64px;
+  background: rgba(240, 194, 90, 0.035);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05);
+  cursor: default;
+}
+@media (max-width: 900px) {
+  .vo-panel {
+    grid-template-columns: minmax(0, 1fr);
+    padding-left: 20px;
+  }
+}
+.vo-panel audio {
+  height: 32px;
+  color-scheme: dark;
+}
+.vo-clips {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin: 0 0 14px;
+  padding: 0;
+  list-style: none;
+}
+.vo-clips li {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.vo-clips audio {
+  flex: 1;
+  max-width: 420px;
+}
+.vo-clip-name {
+  overflow: hidden;
+  min-width: 0;
+  color: var(--bs-text-2);
+  font-size: 12.5px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.vo-reference {
+  width: 100%;
+  max-width: 460px;
+  margin-bottom: 8px;
+}
+.vo-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 10px;
+  margin-top: 4px;
+}
+.vo-actions .vo-state {
+  margin-right: 6px;
+}
+.vo-side {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.vo-field {
+  display: flex;
+  flex-direction: column;
+}
+.vo-input {
+  width: 100%;
+  height: 32px;
+  padding: 0 10px;
+  border: 0;
+  border-radius: 6px;
+  background: var(--bs-field);
+  box-shadow: inset 0 0 0 1px var(--input);
+  color: var(--foreground);
+  font-family: ui-monospace, "Cascadia Mono", Consolas, monospace;
+  font-size: 12px;
+}
+.vo-input::placeholder {
+  color: #73757e;
+}
+.vo-input:focus-visible {
+  outline: none;
+  box-shadow: inset 0 0 0 1px rgba(240, 194, 90, 0.6);
+}
+.vo-mono {
+  font-family: ui-monospace, "Cascadia Mono", Consolas, monospace;
+  font-size: 12px;
+}
