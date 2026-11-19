@@ -359,15 +359,13 @@ export class ContributorService {
     })
   }
 
-  /** The folder zips made for an upload by hand go to. */
   get zipsPath(): string {
     return path.join(this.deps.dataPath, CONTRIBUTOR_ZIPS)
   }
 
   /**
-   * Zips one pack as a CurseForge upload would send it, for an upload by hand on CurseForge's site: its
-   * API refuses files over 500 MB, the site takes up to 1 GB. The same checks as an upload apply, so a
-   * zip by hand never holds what a release would refuse to send. Older zips of the folder are removed.
+   * Zips one pack as an upload would send it, for CurseForge's site, which takes up to 1 GB where the
+   * API stops at 500 MB. A release's checks apply, so a zip never holds what a release would refuse.
    */
   async zipForUpload(gameId: string, lang: string, folder: string): Promise<ManualZip> {
     await this.requireAdmin(lang)
