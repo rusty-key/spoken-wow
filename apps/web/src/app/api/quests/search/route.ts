@@ -16,7 +16,8 @@ import { dirtyQuestFiles } from "@/lib/quests/dirtiness";
 import { staleFiles } from "@/lib/quests/staleness";
 import { recordingsFor } from "@/lib/recordings/store";
 import { filtersFromParams, needsDirty, needsLevels, withoutMadeBy } from "@/lib/search-request";
-import { PAGE_SIZE, search } from "@/lib/search";
+import { PAGE_SIZE } from "@/lib/page-size";
+import { search } from "@/lib/search";
 import { asTeam } from "@/lib/teams/acting";
 import { viewedOther, viewOnly } from "@/lib/teams/viewing";
 

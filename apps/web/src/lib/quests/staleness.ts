@@ -58,7 +58,16 @@ export async function staleFiles(
           where "source" = 'quests' and "lang" = $1 and "isCurrent"`,
         [lang],
       );
+  return staleAmong(rows, lang, known, index);
+}
 
+/** staleFiles over take rows the caller already holds, such as the search context's live takes. */
+export async function staleAmong(
+  rows: readonly Row[],
+  lang: Lang = BASE_LANG,
+  known?: Map<string, LineOverride>,
+  index?: Map<string, CorpusLine>,
+): Promise<Set<string>> {
   // What would be sent now: the language's overrides, and English's file rules, which another
   // language goes without, speaking with its own lexicon.
   const overrides = known ?? (await readOverrides(lang));

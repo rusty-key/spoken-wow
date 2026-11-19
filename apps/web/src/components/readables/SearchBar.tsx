@@ -69,24 +69,18 @@ export function SearchBar({
   const authors: Option[] = madeBy?.authors.map(({ id, name }) => ({ value: id, label: name })) ?? [];
   const voiceable = filters.voiceable === undefined ? undefined : filters.voiceable ? "yes" : "no";
 
-  const setState = (state: PageFilters["state"]) => onChange({ state: filters.state === state ? undefined : state });
-  const statuses = [
-    { key: "missing", label: "Missing", tone: "missing" as const, count: counts?.missing, pressed: filters.state === "missing", onPress: () => setState("missing") },
-    { key: "stale", label: "Outdated", tone: "stale" as const, count: counts?.stale, pressed: filters.state === "stale", onPress: () => setState("stale") },
-    { key: "current", label: "Up to date", tone: "current" as const, count: counts?.current, pressed: filters.state === "current", onPress: () => setState("current") },
-    // Triagers only: the count on a row is public, but a list of complaints is a worklist.
-    ...(canTriage
-      ? [
-          {
-            key: "reported",
-            label: "Reported",
-            tone: "reported" as const,
-            pressed: filters.reports === "open",
-            onPress: () => onChange({ reports: filters.reports === "open" ? undefined : "open" }),
-          },
-        ]
-      : []),
-  ];
+  // Triagers only: the count on a row is public, but a list of complaints is a worklist.
+  const statuses = canTriage
+    ? [
+        {
+          key: "reported",
+          label: "Reported",
+          tone: "reported" as const,
+          pressed: filters.reports === "open",
+          onPress: () => onChange({ reports: filters.reports === "open" ? undefined : "open" }),
+        },
+      ]
+    : [];
 
   const active: ActiveFilter[] = [];
   const add = (key: string, label: string, value: string | undefined, clear: Partial<PageFilters>) => {
@@ -117,7 +111,7 @@ export function SearchBar({
         />
       }
       statuses={statuses}
-      allCount={counts?.all}
+      audio={{ state: filters.state, counts, onState: (state) => onChange({ state }) }}
       onShowAll={() => onChange({ state: undefined, reports: undefined })}
       active={active}
       onClearAll={onClearAll}

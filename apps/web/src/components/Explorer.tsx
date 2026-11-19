@@ -883,9 +883,7 @@ export default function Explorer({ facets, teams, viewed, home }: { facets: Face
         )}
 
         <div className="flex flex-wrap items-center gap-x-3 gap-y-1 pt-3 pb-1">
-          <div className="text-muted-foreground flex items-center gap-2 text-sm">
-            {loading && result && <Refreshing />}
-          </div>
+          {loading && result && <Refreshing />}
           {/* This page's marks, which is what the row-level question was asked for. The
               corpus-wide count is what the "pronunciation moved" filter is for. */}
           {showRegenerate && marked > 0 && (

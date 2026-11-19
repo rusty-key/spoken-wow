@@ -10,14 +10,15 @@
 // regeneration pass picks up. If these two ever disagree, the explorer is lying about what
 // needs regenerating.
 
-import { stateCounts, type StateCounts } from "@/lib/audio-state";
+import { byState, type StateCounts } from "@/lib/audio-state";
 import { isDirty } from "@/lib/generation/dirty";
 import { recordedMatches, type LiveRecording } from "@/lib/recordings/live";
 import { madeByFacets, madeByMatches, type MadeBy, type MadeByFacets } from "@/lib/takes/made-by";
 import type { OverrideView } from "@/lib/text-overrides/types";
 
 import type { BookPage, SearchContext, Take } from "./catalogue";
-import { PAGE_SIZE, type Field, type PageFilters, type OwnerKind, type State } from "./filters";
+import { PAGE_SIZE } from "@/lib/page-size";
+import { type Field, type PageFilters, type OwnerKind, type State } from "./filters";
 
 export type ResultLine = {
   /** 'b:1381'. Unique by construction: one page is one line. */
@@ -183,9 +184,8 @@ export function search(
   limit = PAGE_SIZE,
 ): SearchResult {
   const all = pages.map((page) => decorate(page, context));
-  const unstated = matching(all, { ...filters, state: undefined });
-  const counts = stateCounts(unstated);
-  const matched = order(filters.state ? unstated.filter((line) => line.state === filters.state) : unstated);
+  const { counts, matched: unordered } = byState(matching(all, { ...filters, state: undefined }), filters.state);
+  const matched = order(unordered);
 
   let totalChars = 0;
   let dirty = 0;

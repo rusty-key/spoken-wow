@@ -41,7 +41,7 @@ import {
   type ExplorerResult,
   type ExplorerSection,
 } from "@/components/explorer/section";
-import { PAGE_SIZE } from "@/lib/places/filters";
+import { PAGE_SIZE } from "@/lib/page-size";
 import { useClearDirty } from "@/lib/generation/use-clear-dirty";
 import { fetchRows, patchRows } from "@/lib/row-refresh";
 import { withTextOverride } from "@/lib/text-overrides/rows";
@@ -684,9 +684,7 @@ export function Explorer<L extends ExplorerLine, F extends ExplorerFilters>({
         )}
 
         <div className="flex flex-wrap items-center gap-x-3 gap-y-1 pt-3 pb-1">
-          <div className="text-muted-foreground flex items-center gap-2 text-sm">
-            {loading && result && <Refreshing />}
-          </div>
+          {loading && result && <Refreshing />}
           {/* Its own count, beside the states rather than among them: a line can be current
               and carry this at once. The button only for someone who could act on it. */}
           {result && result.dirty > 0 && (

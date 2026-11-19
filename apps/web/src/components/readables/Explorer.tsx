@@ -1,5 +1,6 @@
 "use client";
 
+import { PAGE_SIZE } from "@/lib/page-size";
 import { BatchGenerate } from "@/components/catalogue/RowParts";
 import { TranslateDialog, type TranslateSubject } from "@/components/TranslateDialog";
 import { useCan } from "@/components/useCan";
@@ -31,7 +32,6 @@ import {
   filterParams,
   filtersFromParams,
   ownerEntityKind,
-  PAGE_SIZE,
   type PageFilters,
 } from "@/lib/readables/filters";
 import type { ResultLine, SearchResult } from "@/lib/readables/search";

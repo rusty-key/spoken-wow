@@ -104,26 +104,18 @@ const SearchBar = forwardRef<HTMLInputElement, Props>(function SearchBar(
     return flavorsUnder(race, gender).includes(filters.flavor) ? filters.flavor : undefined;
   }
 
-  const setState = (state: LineFilters["state"]) =>
-    onFilters({ state: filters.state === state ? undefined : state });
-
-  const statuses = [
-    { key: "missing", label: "Missing", tone: "missing" as const, count: counts?.missing, pressed: filters.state === "missing", onPress: () => setState("missing") },
-    { key: "stale", label: "Outdated", tone: "stale" as const, count: counts?.stale, pressed: filters.state === "stale", onPress: () => setState("stale") },
-    { key: "current", label: "Up to date", tone: "current" as const, count: counts?.current, pressed: filters.state === "current", onPress: () => setState("current") },
-    // Triagers only: the count on a row is public, but a list of complaints is a worklist.
-    ...(canTriage
-      ? [
-          {
-            key: "reported",
-            label: "Reported",
-            tone: "reported" as const,
-            pressed: filters.reports === "open",
-            onPress: () => onFilters({ reports: filters.reports === "open" ? undefined : "open" }),
-          },
-        ]
-      : []),
-  ];
+  // Triagers only: the count on a row is public, but a list of complaints is a worklist.
+  const statuses = canTriage
+    ? [
+        {
+          key: "reported",
+          label: "Reported",
+          tone: "reported" as const,
+          pressed: filters.reports === "open",
+          onPress: () => onFilters({ reports: filters.reports === "open" ? undefined : "open" }),
+        },
+      ]
+    : [];
 
   const authors: Option[] = madeBy?.authors.map(({ id, name }) => ({ value: id, label: name })) ?? [];
   const genderOptions = plain(facets.genders);
@@ -174,7 +166,7 @@ const SearchBar = forwardRef<HTMLInputElement, Props>(function SearchBar(
         />
       }
       statuses={statuses}
-      allCount={counts?.all}
+      audio={{ state: filters.state, counts, onState: (state) => onFilters({ state }) }}
       onShowAll={() => onFilters({ state: undefined, reports: undefined })}
       active={active}
       onClearAll={onClearAll}

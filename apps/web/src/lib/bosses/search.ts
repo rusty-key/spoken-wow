@@ -4,14 +4,15 @@
 // A boss with no story in the language has no hash, so with a take it is stale and without one
 // it is missing; either way there is nothing to voice until somebody writes it.
 
-import { stateCounts, type StateCounts } from "@/lib/audio-state";
+import { byState, type StateCounts } from "@/lib/audio-state";
 import { isDirty } from "@/lib/generation/dirty";
 import { recordedMatches, type LiveRecording } from "@/lib/recordings/live";
 import { madeByFacets, madeByMatches, type MadeBy, type MadeByFacets } from "@/lib/takes/made-by";
 import type { OverrideView } from "@/lib/text-overrides/types";
 
 import type { BossEntry, SearchContext, Take } from "./catalogue";
-import { PAGE_SIZE, SHORT_LINE, type LineFilters, type State } from "./filters";
+import { PAGE_SIZE } from "@/lib/page-size";
+import { SHORT_LINE, type LineFilters, type State } from "./filters";
 
 export type ResultLine = {
   /** boss:{map}:{key}. */
@@ -157,12 +158,13 @@ export function search(
   offset = 0,
   limit = PAGE_SIZE,
 ): SearchResult {
-  const unstated = matching(
-    entries.map((entry) => decorate(entry, context)),
-    { ...filters, state: undefined },
+  const { counts, matched } = byState(
+    matching(
+      entries.map((entry) => decorate(entry, context)),
+      { ...filters, state: undefined },
+    ),
+    filters.state,
   );
-  const counts = stateCounts(unstated);
-  const matched = filters.state ? unstated.filter((line) => line.state === filters.state) : unstated;
 
   let totalChars = 0;
   let dirty = 0;

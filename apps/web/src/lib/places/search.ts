@@ -11,14 +11,15 @@
 // sha1 of the SPOKEN text. If these two ever disagree, the explorer is lying about what
 // needs regenerating.
 
-import { stateCounts, type StateCounts } from "@/lib/audio-state";
+import { byState, type StateCounts } from "@/lib/audio-state";
 import { isDirty } from "@/lib/generation/dirty";
 import { recordedMatches, type LiveRecording } from "@/lib/recordings/live";
 import { madeByFacets, madeByMatches, type MadeBy, type MadeByFacets } from "@/lib/takes/made-by";
 import type { OverrideView } from "@/lib/text-overrides/types";
 
 import type { CatalogueEntry, SearchContext, Take } from "./catalogue";
-import { PAGE_SIZE, SHORT_LINE, type LineFilters, type State } from "./filters";
+import { PAGE_SIZE } from "@/lib/page-size";
+import { SHORT_LINE, type LineFilters, type State } from "./filters";
 
 export type ResultLine = {
   /** 'z:1411' | 's:1411:razor hill'. Unique by construction -- naming.mjs guarantees
@@ -213,9 +214,8 @@ export function search(
   limit = PAGE_SIZE,
 ): SearchResult {
   const all = entries.map((entry) => decorate(entry, context));
-  const unstated = matching(all, { ...filters, state: undefined });
-  const counts = stateCounts(unstated);
-  const matched = order(filters.state ? unstated.filter((line) => line.state === filters.state) : unstated);
+  const { counts, matched: unordered } = byState(matching(all, { ...filters, state: undefined }), filters.state);
+  const matched = order(unordered);
 
   let totalChars = 0;
   let dirty = 0;

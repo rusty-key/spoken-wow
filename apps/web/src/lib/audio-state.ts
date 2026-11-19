@@ -28,11 +28,17 @@ export const AUDIO_STATE_LABELS: Record<AudioState, string> = {
  */
 export type StateCounts = Record<AudioState, number> & { all: number };
 
-/** StateCounts over lines that each know their state, as the places and readables lines do. */
-export function stateCounts(lines: readonly { state: AudioState }[]): StateCounts {
-  const counts: StateCounts = { all: lines.length, missing: 0, stale: 0, current: 0 };
-  for (const line of lines) counts[line.state]++;
-  return counts;
+/**
+ * Lines matched under every filter but the state, split into the buttons' counts and the lines
+ * the pressed state shows. For lines that each know their state, as places, bosses and readables do.
+ */
+export function byState<T extends { state: AudioState }>(
+  unstated: T[],
+  state: AudioState | undefined,
+): { counts: StateCounts; matched: T[] } {
+  const counts: StateCounts = { all: unstated.length, missing: 0, stale: 0, current: 0 };
+  for (const line of unstated) counts[line.state]++;
+  return { counts, matched: state ? unstated.filter((line) => line.state === state) : unstated };
 }
 
 /**

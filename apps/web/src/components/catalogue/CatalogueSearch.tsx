@@ -3,15 +3,16 @@
 import { SearchIcon, SlidersHorizontalIcon, XIcon } from "lucide-react";
 import { useId, useRef, useState, type ReactNode, type Ref } from "react";
 
+import { AUDIO_STATES, type AudioState, type StateCounts } from "@/lib/audio-state";
 import { cn } from "@/lib/utils";
+
+const AUDIO_BUTTONS: Record<AudioState, string> = { missing: "Missing", stale: "Outdated", current: "Up to date" };
 
 export type StatusOption = {
   key: string;
   label: string;
   /** The dot's colour: the same state colours the rows use. */
   tone?: "missing" | "stale" | "current" | "reported" | "neutral";
-  /** Lines in this state under every other filter; absent until the first answer arrives. */
-  count?: number;
   pressed: boolean;
   onPress: () => void;
 };
@@ -38,8 +39,8 @@ export function CatalogueSearch({
   onQueryChange,
   onQuerySubmit,
   scope,
-  statuses,
-  allCount,
+  audio,
+  statuses = [],
   onShowAll,
   groups,
   active,
@@ -53,8 +54,10 @@ export function CatalogueSearch({
   onQuerySubmit?: () => void;
   /** Where the query is matched, as a small select inside the field. */
   scope?: ReactNode;
-  statuses: StatusOption[];
-  allCount?: number;
+  /** The audio state buttons, each with its count. Pressing the pressed one clears it. */
+  audio: { state?: AudioState; counts?: StateCounts; onState: (state: AudioState | undefined) => void };
+  /** Buttons after the audio states, such as Reported. */
+  statuses?: StatusOption[];
   /**
    * "All" as one write: pressing each status off in turn would fire several URL writes in one
    * tick, each built from the same params, and the last would put the others back.
@@ -103,8 +106,21 @@ export function CatalogueSearch({
           onClick={onShowAll}
         >
           All
-          <Count value={allCount} />
+          <Count value={audio.counts?.all} />
         </button>
+        {AUDIO_STATES.map((state) => (
+          <button
+            key={state}
+            type="button"
+            className="bs-chip"
+            aria-pressed={audio.state === state}
+            onClick={() => audio.onState(audio.state === state ? undefined : state)}
+          >
+            <i className={cn("cat-dot", `cat-dot-${state}`)} aria-hidden="true" />
+            {AUDIO_BUTTONS[state]}
+            <Count value={audio.counts?.[state]} />
+          </button>
+        ))}
         {statuses.map((status) => (
           <button
             key={status.key}
@@ -115,7 +131,6 @@ export function CatalogueSearch({
           >
             {status.tone ? <i className={cn("cat-dot", `cat-dot-${status.tone}`)} aria-hidden="true" /> : null}
             {status.label}
-            <Count value={status.count} />
           </button>
         ))}
         <span className="cat-sep" aria-hidden="true" />

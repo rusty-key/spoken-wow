@@ -22,7 +22,7 @@ import type { CorpusLine } from "../corpus";
 import { madeByOf } from "../takes/made-by";
 import { liveTakes, teamLiveTakes } from "../takes/store";
 import { dirtyQuestFiles } from "./dirtiness";
-import { staleFiles } from "./staleness";
+import { staleAmong } from "./staleness";
 import type { SearchContext } from "../search";
 import { NO_CONTEXT } from "../search";
 import { readAs, type TeamId } from "../teams/store";
@@ -90,14 +90,15 @@ export async function searchContext(
 
   try {
     // All per language: a take is compared with its own language's text and lexicon.
-    const [overrides, ignores, reports, stale, dirt, questLevelsByQuest] = await Promise.all([
+    const [overrides, ignores, reports, dirt, questLevelsByQuest] = await Promise.all([
       readOverrides(lang),
       readIgnores(lang),
       openReports(lang),
-      outdated ? staleFiles(undefined, lang, undefined, index) : null,
       dirty ? dirtyQuestFiles(undefined, lang, undefined, index) : null,
       levels ? questLevels() : null,
     ]);
+    // From the live takes and overrides just read, rather than a second query for both.
+    const stale = outdated ? await staleAmong(live, lang, overrides, index) : null;
     return {
       voiced,
       context: {
