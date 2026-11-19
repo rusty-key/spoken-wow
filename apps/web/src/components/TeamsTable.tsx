@@ -12,6 +12,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import DeleteTeamDialog from "@/components/DeleteTeamDialog";
 import NewLanguageFields, { type NewLanguage } from "@/components/NewLanguageFields";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -37,10 +38,21 @@ function people(team: TeamSummary): Person[] {
   return [...byUser.values()];
 }
 
-type Confirm = { title: string; description: string; label: string; destructive?: boolean; action: () => ReturnType<typeof send> };
+type Confirm = { title: string; description: string; label: string; action: () => ReturnType<typeof send> };
+
+/** Where a deletion is: its delistings, or why it stopped. */
+function deletingStep(deleting: NonNullable<TeamSummary["deleting"]>): string {
+  if (deleting.error) return `Deletion stopped: ${deleting.error}`;
+  if (deleting.delists === 0) return "Being deleted";
+  return `Being deleted: taking its packs off the channel, ${deleting.delisted} of ${deleting.delists} done`;
+}
+
+// How often the page reads again while a team is being deleted.
+const DELETING_POLL_MS = 10_000;
 
 export default function TeamsTable({ initial, languages }: Props) {
   const router = useRouter();
+  const nameOf = (lang: Lang) => languages.find((language) => language.code === lang)?.name ?? lang;
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [names, setNames] = useState(() => Object.fromEntries(initial.map((team) => [team.id, team.name])));
@@ -56,6 +68,13 @@ export default function TeamsTable({ initial, languages }: Props) {
   const [newLanguage, setNewLanguage] = useState(false);
   const [fresh, setFresh] = useState<NewLanguage>({ code: "", name: "", native: "" });
   const [confirming, setConfirming] = useState<Confirm | null>(null);
+  const [deleting, setDeleting] = useState<TeamSummary | null>(null);
+  const underway = initial.some((team) => team.deleting && !team.deleting.error);
+  useEffect(() => {
+    if (!underway) return;
+    const timer = setInterval(() => router.refresh(), DELETING_POLL_MS);
+    return () => clearInterval(timer);
+  }, [underway, router]);
 
   async function run(action: () => ReturnType<typeof send>): Promise<boolean> {
     setBusy(true);
@@ -91,14 +110,6 @@ export default function TeamsTable({ initial, languages }: Props) {
       action: () => send(`/api/teams/${team.id}/languages`, "PUT", { lang }),
     });
 
-  const remove = (team: TeamSummary) =>
-    setConfirming({
-      title: `Delete ${team.name}?`,
-      description: `Its voices, settings, lexicon, members and invites go with it. A team with takes, recordings or other work of its own is refused.`,
-      label: "Delete team",
-      destructive: true,
-      action: () => send(`/api/teams/${team.id}`, "DELETE"),
-    });
 
   async function create(event: React.FormEvent) {
     event.preventDefault();
@@ -233,15 +244,35 @@ export default function TeamsTable({ initial, languages }: Props) {
                 />
               </td>
               <td className="py-2 pl-3 text-right">
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  aria-label={`Delete ${team.slug}`}
-                  disabled={busy}
-                  onClick={() => remove(team)}
-                >
-                  Delete
-                </Button>
+                {team.deleting ? (
+                  <div className="flex flex-col items-end gap-1">
+                    <span className={team.deleting.error ? "text-destructive text-xs" : "text-muted-foreground text-xs"}>
+                      {deletingStep(team.deleting)}
+                    </span>
+                    {team.deleting.error && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        aria-label={`Retry deleting ${team.slug}`}
+                        disabled={busy}
+                        onClick={() => void run(() => send(`/api/teams/${team.id}/deletion`, "POST"))}
+                      >
+                        Retry
+                      </Button>
+                    )}
+                  </div>
+                ) : (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    aria-label={`Delete ${team.slug}`}
+                    title={team.langs.includes(BASE_LANG) ? "English's team cannot be deleted" : undefined}
+                    disabled={busy || team.langs.includes(BASE_LANG)}
+                    onClick={() => setDeleting(team)}
+                  >
+                    Delete
+                  </Button>
+                )}
               </td>
             </tr>
           ))}
@@ -295,6 +326,17 @@ export default function TeamsTable({ initial, languages }: Props) {
         </Button>
       </form>
 
+      <DeleteTeamDialog
+        team={deleting}
+        nameOf={nameOf}
+        onClose={() => setDeleting(null)}
+        onSent={(refused) => {
+          setDeleting(null);
+          setError(refused);
+          router.refresh();
+        }}
+      />
+
       <Dialog open={confirming !== null} onOpenChange={(open) => !open && setConfirming(null)}>
         {confirming && (
           <DialogContent>
@@ -306,7 +348,7 @@ export default function TeamsTable({ initial, languages }: Props) {
               <Button variant="ghost" onClick={() => setConfirming(null)}>
                 Cancel
               </Button>
-              <Button variant={confirming.destructive ? "destructive" : "default"} onClick={confirm}>
+              <Button onClick={confirm}>
                 {confirming.label}
               </Button>
             </DialogFooter>
