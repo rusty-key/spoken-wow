@@ -149,6 +149,7 @@ describe('external links of a release', () => {
   it('allows CurseForge and GitHub over https, nothing look-alike', () => {
     expect(isAllowedExternalUrl('https://www.curseforge.com/wow/addons/spoken-places')).toBe(true)
     expect(isAllowedExternalUrl('https://curseforge.com/projects/1700375')).toBe(true)
+    expect(isAllowedExternalUrl('https://authors.curseforge.com/#/projects/1700375/files')).toBe(true)
     expect(isAllowedExternalUrl('https://github.com/someone/packs/releases/tag/X/v1')).toBe(true)
     expect(isAllowedExternalUrl('http://www.curseforge.com/x')).toBe(false)
     expect(isAllowedExternalUrl('https://curseforge.com.evil.com/x')).toBe(false)

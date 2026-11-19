@@ -418,6 +418,18 @@ export type RowState =
 /** Why a run left a folder out: the row's state, or a store that turned out to hold the file when the upload began. */
 export type SkipReason = Exclude<RowState, 'unreleased'> | 'already-there'
 
+/** A pack zipped for an upload by hand, on CurseForge's site, when the API refuses its size. */
+export interface ManualZip {
+  folder: string
+  version: string
+  /** The zip's full path, under the data folder. */
+  path: string
+  name: string
+  bytes: number
+  /** The project's Files page in CurseForge's author console, where a file is uploaded by hand. */
+  uploadUrl: string
+}
+
 export interface ReleaseRow {
   folder: string
   version?: string

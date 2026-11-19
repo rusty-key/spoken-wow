@@ -2522,6 +2522,19 @@ svg.is-spinning {
   font-size: 12px;
 }
 
+.contrib-zip {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 12px;
+  margin-top: 4px;
+}
+
+.contrib-zip-actions {
+  display: flex;
+  gap: 12px;
+}
+
 .contrib-result {
   margin-top: 14px;
 }

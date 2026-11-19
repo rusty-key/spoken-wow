@@ -5,7 +5,7 @@ import { LANGUAGES } from '../shared/products'
 import type { Settings, StoreId } from '../shared/types'
 import { cleanVoiceAuthors, DEFAULT_SETTINGS } from '../shared/types'
 import { languageFolders } from '../shared/products'
-import { isAllowedExternalUrl, openableDirectory } from './external'
+import { isAllowedExternalUrl, openableDirectory, revealableZip } from './external'
 import type { ManagerService } from './service'
 import { isOurPage, type AppPage } from './trust'
 import { log, logsDir } from './state'
@@ -172,6 +172,15 @@ export function registerIpc(service: ManagerService, page: AppPage, updater: () 
   handle(CHANNELS.contributorPublish, (_e, gameId, lang, store, only) => {
     const language = contributorLang(lang)
     return service.contributor.publish(id(gameId, 'game id'), language, contributorStore(store), contributorOnly(language, only))
+  })
+  handle(CHANNELS.contributorZip, (_e, gameId, lang, folder) => {
+    const language = contributorLang(lang)
+    const only = contributorOnly(language, folder)
+    if (!only) throw new Error('Invalid pack')
+    return service.contributor.zipForUpload(id(gameId, 'game id'), language, only)
+  })
+  handle(CHANNELS.contributorRevealZip, async (_e, p) => {
+    shell.showItemInFolder(await revealableZip(p, service.contributor.zipsPath))
   })
 
   handle(CHANNELS.pickFolder, async (event) => {

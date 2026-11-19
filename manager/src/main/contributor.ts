@@ -3,13 +3,13 @@
 import { randomUUID } from 'node:crypto'
 import fs from 'node:fs'
 import path from 'node:path'
-import type { ContributorConfig, ContributorView, GameInstall, JobProgress, PublishResult, ReleaseRow, StoreId } from '../shared/types'
+import type { ContributorConfig, ContributorView, GameInstall, JobProgress, ManualZip, PublishResult, ReleaseRow, StoreId } from '../shared/types'
 import { compareVersions } from '../shared/version'
 import { languageFolders } from '../shared/products'
 import { cfPublicVersions, deriveRow, ghHasAsset } from './contributor-status'
-import { CONTRIBUTOR_TMP } from './cleanup'
+import { CONTRIBUTOR_TMP, CONTRIBUTOR_ZIPS } from './cleanup'
 import { ContributorStore, type SecretBox, type UploadRecord } from './contributor-store'
-import { cfProjectLink, checkCfToken, checkGhRepo, resolveGameVersions, uploadCurseForge, uploadGitHub, zipFolder, type UploadProgress } from './contributor-upload'
+import { cfProjectLink, cfUploadPage, checkCfToken, checkGhRepo, resolveGameVersions, uploadCurseForge, uploadGitHub, zipFolder, zipName, type UploadProgress } from './contributor-upload'
 import { CancelledError, isAbortError, plainMessage, PlainError, throwIfAborted, withTimeout } from './errors'
 import { isLinked } from './guard'
 import type { JobManager, JobSpec } from './jobs'
@@ -105,6 +105,8 @@ export class ContributorService {
    * dropping it unseen, and runs on two games would go in parallel and could send a folder twice.
    */
   private readonly publishing = new Set<StoreId>()
+  /** Folders being zipped for an upload by hand; a second zip of one would race the first for its file. */
+  private readonly zipping = new Set<string>()
 
   constructor(private readonly deps: ContributorDeps) {
     this.store = new ContributorStore(deps.dataPath, deps.box)
@@ -359,6 +361,49 @@ export class ContributorService {
       onDropped: () => this.publishing.delete(store),
       run: (ctx) => this.runJob(game, lang, only ? [only] : folders, store, only !== undefined, ctx)
     })
+  }
+
+  /** The folder zips made for an upload by hand go to. */
+  get zipsPath(): string {
+    return path.join(this.deps.dataPath, CONTRIBUTOR_ZIPS)
+  }
+
+  /**
+   * Zips one pack as a CurseForge upload would send it, for an upload by hand on CurseForge's site: its
+   * API refuses files over 500 MB, the site takes up to 1 GB. The same checks as an upload apply, so a
+   * zip by hand never holds what a release would refuse to send. Older zips of the folder are removed.
+   */
+  async zipForUpload(gameId: string, lang: string, folder: string): Promise<ManualZip> {
+    await this.requireAdmin(lang)
+    if (!languageFolders(lang).includes(folder)) throw new PlainError(t('contributor.notOneOf', { folder, lang }))
+    if (this.zipping.has(folder)) throw new PlainError(t('contributor.zipRunning', { folder }))
+    this.zipping.add(folder)
+    try {
+      await this.deps.refreshChannel({ maxAgeMs: ROWS_CHANNEL_MAX_AGE_MS }).catch(() => undefined)
+      const pack = (await this.inspect(this.deps.game(gameId), [folder]))[0]!
+      const config = this.store.config()
+      const refused = this.refusal(pack, 'curseforge', config)
+      if (refused) throw new PlainError(refused)
+      const version = pack.version!
+      const dir = this.zipsPath
+      await fs.promises.mkdir(dir, { recursive: true })
+      const name = zipName(folder, version)
+      const dest = path.join(dir, name)
+      const part = `${dest}.part`
+      await zipFolder(this.deps.game(gameId).addOnsPath, folder, part, new AbortController().signal)
+      // Each pack is near a gigabyte, so only its newest zip is kept; a .part a quit left behind goes too.
+      for (const old of await fs.promises.readdir(dir)) {
+        if (old !== path.basename(part) && old.startsWith(`${folder}-`) && /^\d/.test(old.slice(folder.length + 1))) {
+          await fs.promises.rm(path.join(dir, old), { force: true }).catch(() => undefined)
+        }
+      }
+      await fs.promises.rename(part, dest)
+      const bytes = (await fs.promises.stat(dest)).size
+      log(`Zipped ${folder} ${version} for an upload by hand: ${bytes} bytes.`)
+      return { folder, version, path: dest, name, bytes, uploadUrl: cfUploadPage(config.projects[folder]!) }
+    } finally {
+      this.zipping.delete(folder)
+    }
   }
 
   private async runJob(game: GameInstall, lang: string, folders: string[], store: StoreId, again: boolean, ctx: JobContext): Promise<void> {

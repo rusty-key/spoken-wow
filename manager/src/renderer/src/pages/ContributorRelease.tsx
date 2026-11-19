@@ -1,12 +1,12 @@
 import { useEffect, useState, type ReactNode } from 'react'
 import { languageName } from '@shared/products'
-import type { ContributorView, JobProgress, PublishResult, ReleaseRow, RowState, StoreId } from '@shared/types'
+import type { ContributorView, JobProgress, ManualZip, PublishResult, ReleaseRow, RowState, StoreId } from '@shared/types'
 import { storeConfigured } from '@shared/types'
 import { api, errorText } from '../api'
 import { jobBusy } from '../catalog'
 import { IconExternal, IconRefresh } from '../components/Icons'
 import { ProgressTrack } from '../components/JobBar'
-import { STORES, liveRunText, publishJobFor, releasableCount, resultLines, rowHint, rowUploadLabel, runPercent, skipReasonText, storeName } from '../contributor'
+import { STORES, canZip, liveRunText, publishJobFor, releasableCount, resultLines, rowHint, rowUploadLabel, runPercent, skipReasonText, storeName } from '../contributor'
 import { formatBytes, formatSpeed } from '../format'
 import { jobKey, useGame, useStore } from '../store'
 import { S } from '../strings'
@@ -103,7 +103,7 @@ function StoreRelease({ store, gameId, lang, view, onDismiss }: { store: StoreId
       ) : (
         <ul className="list card contrib-rows">
           {rows.map((r) => (
-            <RowItem key={r.folder} row={r} store={store} storeBusy={busy} onUpload={() => void publish(r.folder)} />
+            <RowItem key={r.folder} row={r} store={store} storeBusy={busy} gameId={gameId} lang={lang} onUpload={() => void publish(r.folder)} />
           ))}
         </ul>
       )}
@@ -151,8 +151,26 @@ function RunLine({ job, onDismiss }: { job: JobProgress; onDismiss: () => void }
   )
 }
 
-function RowItem({ row, store, storeBusy, onUpload }: { row: ReleaseRow; store: StoreId; storeBusy: boolean; onUpload: () => void }): ReactNode {
+function RowItem({ row, store, storeBusy, gameId, lang, onUpload }: { row: ReleaseRow; store: StoreId; storeBusy: boolean; gameId: string; lang: string; onUpload: () => void }): ReactNode {
   const uploadLabel = rowUploadLabel(row)
+  const [zipping, setZipping] = useState(false)
+  const [zip, setZip] = useState<ManualZip | null>(null)
+  const [zipError, setZipError] = useState('')
+  const makeZip = async (): Promise<void> => {
+    setZipping(true)
+    setZipError('')
+    setZip(null)
+    try {
+      setZip(await api().contributorZip(gameId, lang, row.folder))
+    } catch (e) {
+      setZipError(errorText(e))
+    } finally {
+      setZipping(false)
+    }
+  }
+  const zipHere = store === 'curseforge' && canZip(row)
+  // A zip of an older version is not what the row now offers.
+  const shownZip = zip && zip.version === row.version ? zip : null
   return (
     <li className="contrib-row">
       <div className="contrib-row-main">
@@ -166,6 +184,11 @@ function RowItem({ row, store, storeBusy, onUpload }: { row: ReleaseRow; store: 
             <IconExternal size={14} />
           </button>
         )}
+        {zipHere && (
+          <button type="button" className="btn btn-sm" disabled={zipping} title={S.contributor.zipTitle} aria-label={`${S.contributor.zip} ${row.folder}`} onClick={() => void makeZip()}>
+            {zipping ? `${S.contributor.zipping}…` : S.contributor.zip}
+          </button>
+        )}
         {uploadLabel && (
           <button type="button" className="btn btn-sm" disabled={storeBusy} aria-label={`${uploadLabel} ${row.folder}`} onClick={onUpload}>
             {uploadLabel}
@@ -173,6 +196,24 @@ function RowItem({ row, store, storeBusy, onUpload }: { row: ReleaseRow; store: 
         )}
       </div>
       <span className="muted contrib-hint">{rowHint(row.state, store)}</span>
+      {shownZip && (
+        <div className="contrib-zip" role="status">
+          <span className="contrib-hint">{S.contributor.zipReady(shownZip.name, formatBytes(shownZip.bytes))}</span>
+          <span className="contrib-zip-actions">
+            <button type="button" className="link" onClick={() => void api().contributorRevealZip(shownZip.path).catch((e) => setZipError(errorText(e)))}>
+              {S.contributor.showZip}
+            </button>
+            <button type="button" className="link" onClick={() => void api().openExternal(shownZip.uploadUrl).catch((e) => setZipError(errorText(e)))}>
+              {S.contributor.openUploadPage}
+            </button>
+          </span>
+        </div>
+      )}
+      {zipError && (
+        <p className="text-error contrib-hint" role="alert">
+          {zipError}
+        </p>
+      )}
     </li>
   )
 }

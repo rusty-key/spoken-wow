@@ -21,6 +21,11 @@ export function rowUploadLabel(row: ReleaseRow): string | null {
   return row.state === 'awaiting' || row.state === 'unchecked' ? S.contributor.uploadAgain : null
 }
 
+/** A pack a release could send, so it can be zipped for an upload by hand too. */
+export function canZip(row: ReleaseRow): boolean {
+  return row.version !== undefined && (row.state === 'unreleased' || row.state === 'awaiting' || row.state === 'unchecked' || row.state === 'live')
+}
+
 /** A cleared project id goes as `''`: the saved ids are merged with these, and only that removes one. */
 export function storeFormInput(store: StoreId, form: { token: string; removeToken: boolean; projects: Record<string, string>; repo: string; versions: string }): StoreInput {
   // Trimmed here: only Remove Token may send an empty one, which forgets the saved token.
