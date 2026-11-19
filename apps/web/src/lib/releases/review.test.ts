@@ -252,6 +252,67 @@ describe("the review page's lists", () => {
     expect((await waitingLines(id))?.changes.map((c) => c.file)).toEqual(["review-test-while-queued"]);
   });
 
+  describe("from the takes its build recorded", () => {
+    const recorded = (versions: Record<string, number>) =>
+      JSON.stringify(Object.fromEntries(Object.entries(versions).map(([file, version]) => [file, { version, sha256: `${file}-v${version}` }])));
+    const record = (id: string, versions: Record<string, number>) =>
+      asSystem.query(`update "release_run" set "takes" = $2 where "id" = $1`, [id, recorded(versions)]);
+    const listed = async (id: string) => {
+      const playersHave = await systemRows<{ id: string }>(
+        `insert into "release_run" ("teamId", "section", "lang", "state", "createdAt", "startedAt", "finishedAt")
+         values ($1, 'places', 'frFR', 'done', now() - interval '3 hours', now() - interval '3 hours', now() - interval '3 hours') returning "id"`,
+        [second],
+      );
+      return playersHave[0].id;
+    };
+
+    beforeEach(async () => {
+      await take(second, "review-test-kept");
+      await take(second, "review-test-recut", { current: false });
+      await take(second, "review-test-recut", { version: 2 });
+      await take(second, "review-test-new");
+      await take(second, "review-test-since", { current: false });
+      await take(second, "review-test-since", { version: 2, ago: "10 minutes" });
+      // Live before the build, which left it out: no line names it any more.
+      await take(second, "review-test-unnamed");
+    });
+
+    it("counts and lists the lines whose take players do not have, at the version built, marking one recut since", async () => {
+      await record(await listed(""), { "review-test-kept": 1, "review-test-recut": 1 });
+      const id = await waiting();
+      await record(id, { "review-test-kept": 1, "review-test-recut": 2, "review-test-new": 1, "review-test-since": 1 });
+      expect((await waitingReviews())[0].pending.count).toBe(3);
+      const lines = await waitingLines(id);
+      expect(lines?.changes.map((c) => [c.file, c.version, c.kind, c.current ?? null]).sort()).toEqual([
+        ["review-test-new", 1, "new", null],
+        ["review-test-recut", 2, "new", null],
+        ["review-test-since", 1, "new", 2],
+      ]);
+    });
+
+    it("counts every line it holds when players have none of the team's pack", async () => {
+      const id = await waiting();
+      await record(id, { "review-test-kept": 1, "review-test-new": 1 });
+      expect((await waitingLines(id))?.changes.map((c) => c.file).sort()).toEqual(["review-test-kept", "review-test-new"]);
+    });
+
+    it("counts a version put back as such", async () => {
+      await record(await listed(""), { "review-test-recut": 2 });
+      const id = await waiting();
+      await record(id, { "review-test-recut": 1 });
+      expect((await waitingLines(id))?.changes).toEqual([expect.objectContaining({ file: "review-test-recut", version: 1, kind: "restored" })]);
+    });
+
+    it("counts from the takes live when the build started where the release players have recorded none", async () => {
+      await listed("");
+      const id = await waiting();
+      await record(id, { "review-test-new": 1 });
+      expect((await waitingLines(id))?.changes.map((c) => c.file).sort()).toEqual([
+        "review-test-kept", "review-test-new", "review-test-recut", "review-test-since", "review-test-unnamed",
+      ]);
+    });
+  });
+
   it("shows an approved version as being listed", async () => {
     await startRun("bosses", "frFR", presser.id);
     const id = await waiting();

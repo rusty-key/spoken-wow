@@ -4,15 +4,21 @@
  */
 import "server-only";
 
-import { currentStep, failureReason, outcome, readDropletRun, readStaged, type DropletRun } from "./droplet";
+import { currentStep, failureReason, outcome, readDropletRun, readStaged, runsOnDroplet, type DropletRun } from "./droplet";
 import { tellOwnersOfReview, tellPresser } from "./notify";
 import { GithubNotConfiguredError, findRun, type GithubRun } from "./github";
 import { startNext } from "./launch";
-import { activeOrQueued, applyUpdate, runById, updateRun, type ReleaseRun } from "./store";
+import {
+  activeOrQueued, applyUpdate, runById, updateRun, type ReleaseRun, type SelectedTakes, type StagedRelease,
+} from "./store";
 
 // Twelve missed heartbeats. A reboot or an out-of-memory kill leaves no exit file, and nobody
 // could press Release until someone noticed.
 const JOB_LOST_AFTER_MS = 3 * 60_000;
+// Past launchRun's encoding budget (takes/encode.ts encodeMissingForPack) and the spawn after it,
+// which makes the run's directory. A reload between claiming a queued run and spawning its job
+// leaves it dispatching with none, and the queue behind it would wait out GIVE_UP_AFTER_MS.
+const NEVER_STARTED_AFTER_MS = 2 * 60_000;
 const CHECK_EVERY_MS = 15_000;
 const GIVE_UP_AFTER_MS = 15 * 60_000;
 // Past the workflow's 240-minute timeout with another run queued ahead of it. An expired token
@@ -52,12 +58,15 @@ async function settle(run: ReleaseRun, job: DropletRun & { exitCode: number }): 
     if (promoted?.state === "done") await tellPresser(promoted, "approved");
     return;
   }
-  const staged = (await readStaged(run.id)) as ReleaseRun["staged"];
-  if (!staged || !("packs" in staged) || Object.keys(staged.packs).length === 0) {
+  const read = (await readStaged(run.id)) as (StagedRelease & { takes?: SelectedTakes }) | null;
+  if (!read || !("packs" in read) || Object.keys(read.packs).length === 0) {
     await updateRun(run.id, { state: "failed", error: "The release staged nothing the site could read" });
     return;
   }
-  const { run: settled, changed } = await applyUpdate(run.id, { ...result, staged });
+  // What it was built from goes beside it, for the review: the promotion lists `staged` alone.
+  const { takes, ...staged } = read;
+  const selected = takes && typeof takes === "object" && !Array.isArray(takes) ? takes : null;
+  const { run: settled, changed } = await applyUpdate(run.id, { ...result, staged, takes: selected });
   if (changed) await tellOwnersOfReview(settled);
 }
 
@@ -93,6 +102,11 @@ export async function syncActive(fetchFn: typeof fetch = fetch, now: number = Da
 async function syncRun(run: ReleaseRun, fetchFn: typeof fetch, now: number): Promise<ReleaseRun | null> {
   const job = await readDropletRun(run.id);
   if (job) return settleFromJob(run, job, now);
+  // A young one may still be a run GitHub was given before this machine ran the jobs.
+  if (runsOnDroplet() && run.state === "dispatching" && now - (run.startedAt ?? run.createdAt).getTime() > NEVER_STARTED_AFTER_MS) {
+    await updateRun(run.id, { state: "failed", error: "Its job never started: the site restarted before it could" });
+    return null;
+  }
   if (checked && checked.runId === run.id && now - checked.at < CHECK_EVERY_MS) return run;
   checked = { runId: run.id, at: now };
 

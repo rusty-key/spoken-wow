@@ -188,6 +188,16 @@ describe("syncActive", () => {
         expect(mail.sent.find((m) => m.to === `${owner.id}@example.invalid`)?.subject).toContain("to review");
       });
 
+      it("keeps the takes it was built from beside what it staged, for the review", async () => {
+        const run = await startRun("bosses", "frFR", user.id, { stage: true });
+        const takes = { "boss-1": { version: 3, sha256: "a".repeat(64) } };
+        job(run.id, { exit: "0", log: stagedLog, "staged.json": JSON.stringify({ ...STAGED("r1"), takes }) });
+        await syncActive();
+        expect(await full(run.id)).toMatchObject({ state: "awaiting_review", staged: STAGED("r1") });
+        const [kept] = await systemRows<{ takes: unknown }>(`select "takes" from "release_run" where "id" = $1`, [run.id]);
+        expect(kept.takes).toEqual(takes);
+      });
+
       it("fails when the job says it staged but left no staged.json", async () => {
         const run = await startRun("bosses", "frFR", user.id, { stage: true });
         job(run.id, { exit: "0", log: stagedLog });
@@ -224,6 +234,16 @@ describe("syncActive", () => {
       const second = await startRun("places", "deDE", user.id);
       await asSystem.query(`update "release_run" set "state" = 'failed' where "id" = $1`, [first.id]);
       expect(await syncActive()).toMatchObject({ id: second.id, state: "dispatching" });
+    });
+
+    it("fails a run whose job never started, once past the encoding's budget, and starts the next", async () => {
+      const lost = await startRun("bosses", "frFR", user.id);
+      const next = await startRun("places", "deDE", user.id);
+      expect(await syncActive(github(null))).toMatchObject({ id: lost.id, state: "dispatching" });
+      await age(lost.id, 3);
+      forgetReleaseCheck();
+      expect(await syncActive(github(null))).toMatchObject({ id: next.id, state: "dispatching" });
+      expect(await row(lost.id)).toMatchObject({ state: "failed", error: "Its job never started: the site restarted before it could" });
     });
 
     it("leaves a run with no job directory to GitHub", async () => {

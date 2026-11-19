@@ -30,6 +30,10 @@
 // SPOKEN_CLIP_POINTERS=1 writes pointers instead (scripts/lib/clip-pointer.mjs), for a Manager
 // pack built without its clips on this machine. A quests pointer names the take's encoding, the Ogg
 // its pack ships, and durations.json carries what the build would otherwise read from the clips.
+//
+// SPOKEN_SELECTED_TAKES=<file> writes there, once the folder is made, the takes it holds, as
+// { <take file>: { version, sha256 } }: what a staged release built from, which its review plays
+// (scripts/manager/release.mjs --stage).
 import { execFileSync } from "node:child_process";
 import { constants, existsSync, readdirSync } from "node:fs";
 import { copyFile, mkdir, rm, writeFile } from "node:fs/promises";
@@ -108,7 +112,8 @@ const listing = psql(`select t."file", coalesce(t."archiveFile", ''),
                              coalesce(array_to_json(t."wordTimes")::text, ''), coalesce(t."sha256", ''),
                              coalesce(e."encodedSha256", ''), coalesce(e."bytes"::text, ''), coalesce(e."durationSec"::text, ''),
                              coalesce(to_json(t."shownText")::text, ''),
-                             ${inTeamBucket("takes", `t."sha256"`)}, ${inTeamBucket("encodings", `e."encodedSha256"`)}
+                             ${inTeamBucket("takes", `t."sha256"`)}, ${inTeamBucket("encodings", `e."encodedSha256"`)},
+                             t."version"
                         from "take" t
                         left join "take_encoding" e
                           on e."source" = t."source" and e."sha256" = t."sha256" and e."profile" = :'profile'
@@ -120,12 +125,12 @@ const listing = psql(`select t."file", coalesce(t."archiveFile", ''),
 // A live take's archive path: its bucket object, or the take's own directory (its file without
 // the extension) holding the archive file. Blank when the take's clip was never kept.
 const takes = listing.map((row) => {
-  const [file, name, times, sha256, encodedSha256, bytes, durationSec, shownText, teamTake, teamEncoding] = row.split("\t");
+  const [file, name, times, sha256, encodedSha256, bytes, durationSec, shownText, teamTake, teamEncoding, version] = row.split("\t");
   const stem = file.replace(/\.mp3$/, "");
   return {
     file, stem, sha256, archived: sourceOf("takes", sha256, name ? join(prefix, stem, name) : ""), times,
     encodedSha256, bytes, durationSec, shownText: shownText ? JSON.parse(shownText) : null,
-    teamTake: teamTake === "true", teamEncoding: teamEncoding === "true",
+    teamTake: teamTake === "true", teamEncoding: teamEncoding === "true", version: Number(version),
   };
 });
 
@@ -197,7 +202,15 @@ async function writeTakeText() {
   await writeFile(join(paths.out, "take-text.json"), `${JSON.stringify(texts)}\n`);
 }
 
-/** Writes the quests pointers and returns how many live takes were left out. */
+/** The takes the folder holds, for a staged release's review; nothing without SPOKEN_SELECTED_TAKES. */
+async function writeSelection(held) {
+  const file = process.env.SPOKEN_SELECTED_TAKES;
+  if (!file) return;
+  const selected = Object.fromEntries(held.map((take) => [take.file, { version: take.version, sha256: take.sha256 || null }]));
+  await writeFile(file, `${JSON.stringify(selected)}\n`);
+}
+
+/** Writes the quests pointers and returns the live takes left out, by file. */
 async function writeEncodingPointers(pointed) {
   // Encoding one here instead would make players download it again: oggenc's bytes differ every run.
   const lacking = pointed.filter((take) => !take.encodedSha256 || !take.durationSec);
@@ -230,7 +243,7 @@ async function writeEncodingPointers(pointed) {
   });
   const durations = Object.fromEntries(pointed.filter((take) => !gone.has(take.file)).map(({ stem, durationSec }) => [stem, Number(durationSec)]));
   await writeFile(join(paths.out, "durations.json"), `${JSON.stringify(durations)}\n`);
-  return gone.size;
+  return gone;
 }
 
 if (process.env.SPOKEN_CLIP_POINTERS) {
@@ -246,13 +259,13 @@ if (process.env.SPOKEN_CLIP_POINTERS) {
   const pointed = live.filter((take) => take.sha256);
   await Promise.all([...new Set(pointed.map(({ stem }) => dirname(join(paths.out, stem))))].map((dir) => mkdir(dir, { recursive: true })));
   let absent = [];
-  let leftOut = 0;
+  let leftOut = new Set();
   if (section === "quests") {
     leftOut = await writeEncodingPointers(pointed);
     await writeWordTimes();
     await writeTakeText();
   } else absent = await writePointers(pointed.map(({ stem, sha256 }) => ({ sha256, target: join(paths.out, `${stem}.mp3`) })), process.env.SPOKEN_ARCHIVE_URL);
-  console.log(`${section}: ${pointed.length - absent.length - leftOut} pointers in ${paths.out.slice(ROOT.length + 1)}`);
+  console.log(`${section}: ${pointed.length - absent.length - leftOut.size} pointers in ${paths.out.slice(ROOT.length + 1)}`);
   if (unnamed) console.log(`  ${unnamed} live takes left out: no current line names their file, no lore their place, or their boss is retired`);
   if (live.length > pointed.length) console.log(`  ${live.length - pointed.length} live takes had their clip discarded before the archive kept every take; shipped silent`);
   // Every Places, Readables and Bosses clip is named by its lookup, which a missing file fails, so a
@@ -266,6 +279,7 @@ if (process.env.SPOKEN_CLIP_POINTERS) {
     for (const { target, reason } of absent.slice(0, 5)) console.error(`    ${target}: ${reason}`);
     process.exit(1);
   }
+  await writeSelection(pointed.filter((take) => !leftOut.has(take.file)));
   process.exit(0);
 }
 
@@ -312,3 +326,4 @@ if (missing.length) {
   console.error(`  Fetch them with:  make ${section}-pull-live${lang === BASE_LANG ? "" : ` LOCALE=${lang}`}`);
   process.exit(1);
 }
+await writeSelection(live.filter((take) => take.archived));

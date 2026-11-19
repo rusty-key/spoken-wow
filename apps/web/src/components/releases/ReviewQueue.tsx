@@ -176,7 +176,8 @@ function QueueItem({ version }: { version: WaitingVersion }) {
           Open in the explorer
         </LocaleLink>
       </div>
-      <div className="mt-4">{actions}</div>
+      {/* One form at a time: the dialog's carries the same ids, which the card's would take. */}
+      {!open && <div className="mt-4">{actions}</div>}
       <ReleaseReview
         open={open}
         onOpenChange={setOpen}

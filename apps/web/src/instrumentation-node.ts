@@ -1,6 +1,5 @@
 import { loadLanguages } from "@/lib/languages/catalogue";
-import { ensureLeading } from "@/lib/generation/boot";
-import { runsOnDroplet } from "@/lib/releases/droplet";
+import { ensureReleaseTick } from "@/lib/releases/tick";
 
 /** The Node half of instrumentation.ts. */
 export async function loadLanguagesAtBoot(): Promise<void> {
@@ -14,11 +13,8 @@ export async function loadLanguagesAtBoot(): Promise<void> {
   }
 }
 
-/**
- * On the droplet, the release queue moves on without a release page open: the leading process
- * ticks it (lib/releases/tick.ts, started by lib/generation/boot.ts).
- */
+/** On the droplet, the release queue moves on without a release page open (lib/releases/tick.ts). */
 export function startReleaseTickAtBoot(): void {
   if (process.env.NEXT_PHASE === "phase-production-build") return;
-  if (runsOnDroplet()) ensureLeading();
+  ensureReleaseTick();
 }

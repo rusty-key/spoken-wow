@@ -10,14 +10,15 @@
 //
 // --stage publishes without listing: blobs and manifests go up, no index changes, and what a
 // site owner's approval would list goes to <file> (dist/staged.json without one) for
-// `cli.mjs promote`. The site stages every release of a team that is not official.
+// `cli.mjs promote`, with the takes the pack was built from (`takes`), which the site's review
+// plays. The site stages every release of a team that is not official.
 //
 // DATABASE_URL names the database; a checkout's LOCAL_DB wins over it. The team and every step
 // read that one database, so the takes a step looks up are the team's. The channel's keys come as
 // for cli.mjs. Each step prints `==> step n/m`, then its own progress, and the last line says what
 // came of it: `==> released <version>`, `==> staged <version>` or `==> nothing changed`.
 import { spawnSync } from "node:child_process";
-import { readFile, writeFile } from "node:fs/promises";
+import { mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -31,7 +32,7 @@ import { BUMPS } from "./pack-version.mjs";
 import { questsSteps } from "./quests-pack.mjs";
 import { needsTeamReleases, releasePlan } from "./release-pack.mjs";
 import { languageNames, releaseTeam } from "./release-team.mjs";
-import { stagePack } from "./stage-pack.mjs";
+import { stagePack, stagedWithTakes } from "./stage-pack.mjs";
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "../..");
 
@@ -59,6 +60,8 @@ const stageOnly = flags.includes("--stage-only");
 const stageFlag = flags.find((flag) => flag === "--stage" || flag.startsWith("--stage="));
 const stagedFile = stageFlag ? stageFlag.slice("--stage=".length) || join(ROOT, "dist", "staged.json") : null;
 const teamSlug = flags.find((flag) => flag.startsWith("--team="))?.slice("--team=".length) || null;
+// What the clip pointers were made from, for a staged release's review.
+const selectionFile = join(ROOT, "dist", "selected-takes.json");
 
 /** The team and language the release builds for, and every language's names, read before any step runs. */
 async function readTeam() {
@@ -77,8 +80,8 @@ function run(command, args, { cwd, env, label }) {
   if (status !== 0) throw new Error(`${label} exited ${status}`);
 }
 
-function runNode(script, args = []) {
-  const env = { SPOKEN_CLIP_POINTERS: "1", SPOKEN_PLACES_LANG: lang };
+function runNode(script, args = [], extra = {}) {
+  const env = { SPOKEN_CLIP_POINTERS: "1", SPOKEN_PLACES_LANG: lang, ...extra };
   run(process.execPath, [join(ROOT, script), ...args], { cwd: ROOT, env, label: script });
 }
 
@@ -119,7 +122,11 @@ try {
   const dryRun = flags.includes("--dry-run");
   let published = null;
   const steps = [
-    ["clip pointers", () => runNode("scripts/audio/sounds.mjs", [`--lang=${lang}`, section])],
+    ["clip pointers", async () => {
+      await rm(selectionFile, { force: true });
+      await mkdir(dirname(selectionFile), { recursive: true });
+      runNode("scripts/audio/sounds.mjs", [`--lang=${lang}`, section], { SPOKEN_SELECTED_TAKES: selectionFile });
+    }],
     ...build,
     ...(stageOnly ? [] : [["publish", async () => {
       published = await publishFromEnv({
@@ -140,7 +147,7 @@ try {
   }
   const staged = published?.staged ? Object.keys(published.staged.packs) : [];
   if (staged.length > 0 && !dryRun) {
-    await writeFile(stagedFile, `${JSON.stringify(published.staged, null, 2)}\n`);
+    await writeFile(stagedFile, `${JSON.stringify(await stagedWithTakes(published.staged, selectionFile), null, 2)}\n`);
     console.log(`==> staged${published.version ? ` ${published.version}` : ""}: ${staged.join(", ")}`);
   } else if (published?.version) console.log(`==> ${dryRun ? "would release" : "released"} ${published.version}: ${published.changed.join(", ")}`);
   else if (published) console.log("==> nothing changed: nothing was released");

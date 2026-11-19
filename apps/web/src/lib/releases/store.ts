@@ -28,6 +28,9 @@ export type StagedRelease = {
   languages: Record<string, unknown>;
 };
 
+/** The takes a staged release's pack was built from, by file (scripts/audio/sounds.mjs SPOKEN_SELECTED_TAKES). */
+export type SelectedTakes = Record<string, { version: number; sha256: string | null }>;
+
 export type ReleaseRun = {
   id: string;
   kind: ReleaseKind;
@@ -277,7 +280,10 @@ const SETTLE: Record<ReleaseKind, (client: PoolClient, run: ReleaseRun, state: R
   delist: async () => {},
 };
 
-type RunPatch = Partial<Pick<ReleaseRun, "state" | "githubRunId" | "githubUrl" | "step" | "error" | "version" | "staged">>;
+type RunPatch = Partial<Pick<ReleaseRun, "state" | "githubRunId" | "githubUrl" | "step" | "error" | "version" | "staged">> & {
+  /** Kept in its own column, out of COLUMNS: a quests pack's runs to thousands of lines. */
+  takes?: SelectedTakes | null;
+};
 
 export async function updateRun(id: string, patch: RunPatch): Promise<ReleaseRun> {
   return (await applyUpdate(id, patch)).run;
@@ -304,10 +310,12 @@ export async function applyUpdate(id: string, patch: RunPatch): Promise<{ run: R
          "error" = coalesce($6, "error"),
          "version" = coalesce($7, "version"),
          "staged" = coalesce($9, "staged"),
+         "takes" = coalesce($10, "takes"),
          "finishedAt" = case when $8 then coalesce("finishedAt", now()) else "finishedAt" end
        where "id" = $1 returning ${COLUMNS}`,
       [id, patch.state ?? null, patch.githubRunId ?? null, patch.githubUrl ?? null, patch.step ?? null,
-       patch.error ?? null, patch.version ?? null, settles !== null, patch.staged ? JSON.stringify(patch.staged) : null],
+       patch.error ?? null, patch.version ?? null, settles !== null, patch.staged ? JSON.stringify(patch.staged) : null,
+       patch.takes ? JSON.stringify(patch.takes) : null],
     );
     const run = rows[0];
     // The older version goes once this one waits, and not before, so a build that fails leaves it

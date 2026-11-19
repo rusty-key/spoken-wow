@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { cleanup, render, screen } from "@testing-library/react";
+import { cleanup, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, expect, test, vi } from "vitest";
 
@@ -92,4 +92,31 @@ test("asks for a version's lines only when Read and listen opens it", async () =
   await user.click(screen.getByRole("button", { name: "Read and listen" }));
   expect(fetchMock.mock.calls[0][0]).toBe(`/api/releases/${version.id}/review`);
   expect(await screen.findByText("“Hallo”")).toBeTruthy();
+});
+
+test("the open review's reason box is the one its label names", async () => {
+  const user = userEvent.setup();
+  show([version]);
+  await user.click(screen.getByRole("button", { name: "Reject…" }));
+  await user.click(screen.getByRole("button", { name: "Read and listen" }));
+  const dialog = await screen.findByRole("dialog");
+  const box = within(dialog).getByLabelText("Why it is not approved");
+  expect(dialog.contains(box)).toBe(true);
+  expect(document.getElementById(box.getAttribute("aria-describedby") ?? "")?.closest("[role=dialog]")).toBe(dialog);
+});
+
+test("plays the version a line was built with, and marks one the team recut since", async () => {
+  const user = userEvent.setup();
+  const play = vi.spyOn(HTMLMediaElement.prototype, "play").mockResolvedValue(undefined);
+  const line = { file: "z:1", lineId: "z:1", version: 2, current: 3, at: "2026-11-02T10:00:00Z", byId: "u1", by: "Ana", kind: "new", title: "Elwynn", text: "Hallo" };
+  fetchMock.mockResolvedValue(new Response(JSON.stringify({ pending: { ...version.pending, changes: [line] } }), { status: 200 }));
+  show([version]);
+  await user.click(screen.getByRole("button", { name: "Read and listen" }));
+  expect(await screen.findByText(/v3 live now/)).toBeTruthy();
+  await user.click(screen.getByRole("button", { name: "Play Elwynn" }));
+  expect(play).toHaveBeenCalled();
+  const src = new URL((document.querySelector("audio") as HTMLAudioElement).src);
+  expect(src.pathname).toBe(`/api/releases/${version.id}/take`);
+  expect(Object.fromEntries(src.searchParams)).toEqual({ file: "z:1", version: "2" });
+  play.mockRestore();
 });
