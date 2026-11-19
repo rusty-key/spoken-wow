@@ -171,6 +171,9 @@ local function ToggleNativeMenu(anchor)
         MenuUtil.CreateContextMenu(UIParent, generator)
     else
         local root = MenuUtil.CreateRootMenuDescription(MenuVariants.GetDefaultContextMenuMixin())
+        root:AddMenuReleasedCallback(function()
+            nativeMenuOpen = false
+        end)
         Menu.PopulateDescription(generator, anchor, root)
         Menu.GetManager():OpenMenu(anchor, root, CreateAnchor("TOPRIGHT", anchor, "BOTTOMLEFT"))
     end

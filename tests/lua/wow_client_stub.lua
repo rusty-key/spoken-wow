@@ -912,7 +912,7 @@ local nativeMenuManager = { open = false }
 local nativeMenuAPI = {}
 
 local function NativeDescription(kind, text, callback)
-    local description = {kind = kind, text = text, callback = callback, children = {}}
+    local description = {kind = kind, text = text, callback = callback, children = {}, releaseCallbacks = {}}
     function description:CreateButton(childText, childCallback)
         local child = NativeDescription("button", childText, childCallback)
         table.insert(self.children, child)
@@ -924,14 +924,21 @@ local function NativeDescription(kind, text, callback)
     function description:CreateDivider()
         table.insert(self.children, NativeDescription("divider"))
     end
+    function description:AddMenuReleasedCallback(released)
+        table.insert(self.releaseCallbacks, released)
+    end
     return description
 end
 
 function nativeMenuManager:CloseMenus()
     self.open = false
+    if M.openNativeMenu then
+        for _, released in ipairs(M.openNativeMenu.releaseCallbacks or {}) do released() end
+    end
     M.openNativeMenu = nil
     M.nativeMenuEntries = {}
     M.nativeMenuAnchor = nil
+    M.nativeMenuOwner = nil
 end
 function nativeMenuManager:IsAnyMenuOpen()
     return self.open
@@ -942,6 +949,11 @@ function nativeMenuManager:OpenMenu(owner, root, anchor)
     M.nativeMenuEntries = root.children
     M.nativeMenuAnchor = anchor
     M.nativeMenuOwner = owner
+end
+
+function M.OpenOtherNativeMenu()
+    nativeMenuManager:CloseMenus()
+    nativeMenuManager:OpenMenu(nil, nativeMenuAPI.CreateRootMenuDescription())
 end
 
 function nativeMenuAPI.CreateRootMenuDescription()

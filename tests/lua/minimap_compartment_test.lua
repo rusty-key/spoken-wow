@@ -103,6 +103,14 @@ for _, entry in ipairs(stub.nativeMenuEntries) do
 end
 Expect("...with the same grouped entries", table.concat(nativeShown, "|"),
     "Stop or Replay|Skip Line|Stop All|Settings|---|[Quests]|Quest settings")
+local tooltip = _G.GameTooltip
+tooltip:SetText("stale")
+tooltip:Show()
+stub.OpenOtherNativeMenu()
+nativeLdb.OnTooltipShow(tooltip)
+Expect("a replacement native menu releases Spoken's ownership", tooltip:IsShown(), true)
+nativeLdb.OnClick(nativeButton, "RightButton")
+Expect("the Spoken menu can reopen after the replacement", stub.openNativeMenu ~= nil, true)
 nativeLdb.OnClick(nativeButton, "RightButton")
 Expect("clicking the minimap button again closes the native menu", stub.openNativeMenu, nil)
 
