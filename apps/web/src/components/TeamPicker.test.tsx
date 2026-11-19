@@ -38,8 +38,8 @@ afterEach(() => {
   vi.unstubAllGlobals();
 });
 
-const main = { id: "t-main", slug: "main-crew", name: "Main Crew", privileged: true };
-const second = { id: "t-second", slug: "second-crew", name: "Second Crew", privileged: false };
+const main = { id: "t-main", slug: "main-crew", name: "Main Crew" };
+const second = { id: "t-second", slug: "second-crew", name: "Second Crew" };
 const mainOwn = { team: main.id, slug: main.slug, name: main.name, own: true };
 const secondOwn = { team: second.id, slug: second.slug, name: second.name, own: true };
 
@@ -55,11 +55,11 @@ test("one team renders nothing", () => {
   expect(container.innerHTML).toBe("");
 });
 
-test("two teams render a select labelled Team, in the order given, the main team marked", () => {
+test("two teams render a select labelled Team, in the order given, neither marked", () => {
   picker({ teams: [main, second], viewed: secondOwn, home: second.slug });
   const select = screen.getByLabelText("Team") as HTMLSelectElement;
   expect([...select.options].map((option) => [option.value, option.textContent])).toEqual([
-    ["main-crew", "Main Crew (main)"],
+    ["main-crew", "Main Crew"],
     ["second-crew", "Second Crew"],
   ]);
   expect(select.value).toBe("second-crew");
@@ -90,6 +90,12 @@ test("a pick starts the other team's view on its first page", async () => {
   picker();
   await userEvent.setup().selectOptions(screen.getByLabelText("Team"), "second-crew");
   expect(navigation.push).toHaveBeenCalledWith("/deDE/places?q=town&team=second-crew", { scroll: false });
+});
+
+test("a visitor in neither team, on the first, has no way back, since there is nowhere to go back to", () => {
+  picker({ viewed: { ...mainOwn, own: false }, home: main.slug });
+  expect(screen.getByText(/^You are listening to Main Crew\./)).not.toBeNull();
+  expect(screen.queryByRole("link", { name: /Back to/ })).toBeNull();
 });
 
 test("their own view has no way back, since it is where they are", () => {

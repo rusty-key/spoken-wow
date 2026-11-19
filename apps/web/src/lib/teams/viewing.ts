@@ -14,28 +14,31 @@ import type { LineOverride } from "@/lib/quests/override";
 import type { OverrideView } from "@/lib/text-overrides/types";
 
 import { asTeam } from "./acting";
-import { ownerOrAll, secondTeamLangs, teamsOf, type TeamId } from "./store";
+import { ownerOrAll, sharedLangs, teamsOf, type TeamId } from "./store";
 import type { TeamView } from "./view";
 
-export type TeamChoice = { id: TeamId; slug: string; name: string; privileged: boolean };
+export type TeamChoice = { id: TeamId; slug: string; name: string };
 
-/** The teams a visitor may pick between: none where the language has one team, so no picker shows. */
+/** The teams a visitor may pick between, as teamsOf lists them: none where the language has one team, so no picker shows. */
 export async function teamsVoicing(lang: Lang): Promise<TeamChoice[]> {
-  if (!(await secondTeamLangs()).has(lang)) return [];
-  return (await teamsOf(lang)).map((team, index) => ({ ...team, privileged: index === 0 }));
+  if (!(await sharedLangs()).has(lang)) return [];
+  return teamsOf(lang);
 }
 
 export type ViewedTeam = { team: TeamId; slug: string; name: string; own: boolean };
 
 /**
- * The team whose takes play: the one `slug` names, else the acting team, else the privileged
- * team. Null for a slug naming no team of `lang`, or for a language nobody owns. `own` is
- * whether the view is the visitor's acting team, the one their work goes to.
+ * The team whose takes play: the one `slug` names, else the acting team, else the first as
+ * teamsOf lists them (the one with plain packs, else the first by name). Null for a slug naming no
+ * team of `lang`, or for a language no team voices. `own` is whether the view is the visitor's
+ * acting team, the one their work goes to.
  */
 export async function viewedTeam(lang: Lang, slug: string | null): Promise<ViewedTeam | null> {
+  const teams = await teamsOf(lang);
+  if (teams.length === 0) return null;
   const acting = await ownerOrAll(lang);
-  if (acting === ALL_TEAMS) return null;
-  const found = (await teamsOf(lang)).find((team) => (slug === null ? team.id === acting : team.slug === slug));
+  const found =
+    slug === null ? (teams.find((team) => team.id === acting) ?? teams[0]) : teams.find((team) => team.slug === slug);
   return found ? { team: found.id, slug: found.slug, name: found.name, own: found.id === acting } : null;
 }
 
@@ -173,6 +176,6 @@ export async function serveViewed(request: Request, source: Source, file: string
   const other = await viewedOther(new URL(request.url).searchParams, lang);
   if (other instanceof Response) return other;
   if (other !== null) return serveTake(request, await teamLivePath(other, source, file, lang), { immutable: false, lang });
-  const perVisitor = (await secondTeamLangs()).has(lang);
+  const perVisitor = (await sharedLangs()).has(lang);
   return serveTake(request, await livePath(source, file, lang), { immutable: false, lang, perVisitor });
 }

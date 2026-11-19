@@ -79,8 +79,8 @@ beforeEach(() => {
 afterEach(cleanup);
 
 const teams = [
-  { id: "t-main", slug: "main-crew", name: "Main Crew", privileged: true },
-  { id: "t-second", slug: "second-crew", name: "Second Crew", privileged: false },
+  { id: "t-main", slug: "main-crew", name: "Main Crew" },
+  { id: "t-second", slug: "second-crew", name: "Second Crew" },
 ];
 
 function explorer(viewed: ViewedTeam | null) {

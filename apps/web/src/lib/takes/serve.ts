@@ -29,7 +29,7 @@ import type { TakeBytes } from "./store";
  * carries the version and a hash of the bytes, and moves exactly when the live take does.
  *
  * `perVisitor` for a live URL whose take depends on who asks (the acting team's, where a
- * language has a second team): private, so no shared cache hands one team's take to another
+ * language has several teams): private, so no shared cache hands one team's take to another
  * visitor, and revalidated on every use, so a site owner's switch is heard at once.
  */
 export async function serveTake(
