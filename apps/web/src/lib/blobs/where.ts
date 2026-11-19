@@ -111,7 +111,7 @@ export async function locate(key: string, lang?: Lang): Promise<Where> {
   );
   let found = rows[0];
   // The team matters only between copies, which is rare: most objects have one row or none. It is
-  // the acting team, with a second team in the language a member's own (lib/teams/acting.ts).
+  // the acting team, where the language has several a member's own (lib/teams/acting.ts).
   if (rows.length > 1 && lang) {
     const team = (await freshOwners([lang])).get(lang);
     found = rows.find((row) => row.teamId === team) ?? found;

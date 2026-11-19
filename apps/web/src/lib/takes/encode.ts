@@ -242,8 +242,7 @@ async function encodeFromArchive(source: Source, sha256: string, take?: EncodedT
 /**
  * Every live take of `team`'s in a language with no usable encoding, encoded before that team's
  * release, which stops on any such take. Encoding at commit is best effort, and only a release
- * would otherwise find a failure. The releasing team's, not the language's privileged team's: a
- * second team's pack sends its own takes.
+ * would otherwise find a failure. The releasing team's: each team's pack sends its own takes.
  *
  * This runs inside the request that starts the release, and nginx gives that request 60 seconds
  * before the page reports a failure for a release that is in fact starting. So it waits at most

@@ -32,7 +32,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "through is required" }, { status: 400 });
   }
 
-  // Every team the caller works in across their languages: a language with a second team cuts
+  // Every team the caller works in across their languages: a language with several teams cuts
   // its finished lines at its own team's mark.
   for (const own of (await byTeam(langs)).values()) await dismissThrough(through, session.user.id, own[0]);
   return NextResponse.json({ ok: true });

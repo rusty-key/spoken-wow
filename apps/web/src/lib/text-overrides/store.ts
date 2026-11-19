@@ -2,7 +2,7 @@
  * The spoken text a team has rewritten by hand for a place, readable or boss line.
  *
  * Keyed by line id within a source, in the acting team's language. Every read and write is the
- * acting team's, so a second team's rewrite is invisible to the privileged one.
+ * acting team's, so one team's rewrite is invisible to the language's other teams.
  */
 import { auditDetail, type ApiAudit } from "../activity/kinds";
 import { recordActivity } from "../activity/store";

@@ -684,7 +684,7 @@ export async function snapshot(
   // what it is waiting behind - only what is being said, and why it failed, is private.
   const linesOf = options.linesOf ?? null;
   // The team whose finished lines and pauses to list, per language; a language not named keeps
-  // every team's. A second team's finished lines are its own work, as its pauses are, and only
+  // every team's. A team's finished lines are its own work, as its pauses are, and only
   // its own dismissal hides them. Both "teamId" columns are not null, so the match is exact.
   const teams = JSON.stringify(Object.fromEntries(options.teams ?? []));
   // Live work first, then whatever finished recently: the two halves of what the panel is

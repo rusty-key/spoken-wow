@@ -21,8 +21,8 @@ export async function DELETE(_request: Request, context: { params: Promise<{ id:
 }
 
 /**
- * A site admin approves, saying what a second team starts from, or rejects. An id that is not a
- * uuid is no such request, not no such team.
+ * A site admin approves, saying what a team joining a language with a team starts from, or
+ * rejects. An id that is not a uuid is no such request, not no such team.
  */
 export async function PATCH(request: Request, context: { params: Promise<{ id: string }> }) {
   return withAdmin(async (request, actorId) => {

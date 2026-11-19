@@ -26,7 +26,7 @@ async function fillBasics(user: ReturnType<typeof userEvent.setup>) {
 
 test("the new-language toggle sends newLanguage and no langs", async () => {
   const user = userEvent.setup();
-  render(<TeamsTable initial={[]} takes={{}} languages={languages} />);
+  render(<TeamsTable initial={[]} languages={languages} />);
   await fillBasics(user);
   await user.click(screen.getByLabelText("New language…"));
   expect((screen.getByLabelText("Languages") as HTMLSelectElement).disabled).toBe(true);
@@ -43,7 +43,7 @@ test("the new-language toggle sends newLanguage and no langs", async () => {
 
 test("with the toggle off, the chosen languages are sent and no newLanguage", async () => {
   const user = userEvent.setup();
-  render(<TeamsTable initial={[]} takes={{}} languages={languages} />);
+  render(<TeamsTable initial={[]} languages={languages} />);
   await fillBasics(user);
   await user.selectOptions(screen.getByLabelText("Languages"), "deDE");
   await user.click(screen.getByRole("button", { name: "Create team" }));
@@ -54,27 +54,28 @@ test("with the toggle off, the chosen languages are sent and no newLanguage", as
   expect(body).not.toHaveProperty("newLanguage");
 });
 
-const team = (langs: Lang[], alsoIn: Lang[] = []) => ({
+const team = (langs: Lang[]) => ({
   id: "00000000-0000-0000-0000-000000000001",
   slug: "spare",
   name: "Spare",
   ownStorage: true,
   official: true,
   langs,
-  alsoIn,
   members: [],
 });
 
-test("a team holding a language cannot be deleted", () => {
-  render(<TeamsTable initial={[team(["deDE" as Lang])]} takes={{}} languages={languages} />);
+test("a language's only team cannot be deleted, and one of two can", () => {
+  const { rerender } = render(<TeamsTable initial={[team(["deDE" as Lang])]} languages={languages} />);
   expect((screen.getByRole("button", { name: "Delete spare" }) as HTMLButtonElement).disabled).toBe(true);
+  const other = { ...team(["deDE" as Lang]), id: "00000000-0000-0000-0000-000000000002", slug: "other" };
+  rerender(<TeamsTable initial={[team(["deDE" as Lang]), other]} languages={languages} />);
+  expect((screen.getByRole("button", { name: "Delete spare" }) as HTMLButtonElement).disabled).toBe(false);
 });
 
 test("deleting asks first, then sends DELETE for the team", async () => {
   const user = userEvent.setup();
-  render(<TeamsTable initial={[team([], ["deDE" as Lang])]} takes={{}} languages={languages} />);
+  render(<TeamsTable initial={[team([])]} languages={languages} />);
   await user.click(screen.getByRole("button", { name: "Delete spare" }));
-  expect(screen.getByText(/stops being a second team in deDE/)).toBeTruthy();
   expect(fetchMock).not.toHaveBeenCalled();
   await user.click(screen.getByRole("button", { name: "Delete team" }));
 
@@ -86,7 +87,7 @@ test("deleting asks first, then sends DELETE for the team", async () => {
 
 test("a saved checkbox shows what the refresh after the save read, even when another owner changed it back", async () => {
   const user = userEvent.setup();
-  const { rerender } = render(<TeamsTable initial={[team([])]} takes={{}} languages={languages} />);
+  const { rerender } = render(<TeamsTable initial={[team([])]} languages={languages} />);
   const official = () => screen.getByLabelText("spare is official") as HTMLInputElement;
   const ownStorage = () => screen.getByLabelText("spare's new audio goes only to its own bucket") as HTMLInputElement;
 
@@ -98,7 +99,15 @@ test("a saved checkbox shows what the refresh after the save read, even when ano
   expect(ownStorage().checked).toBe(false);
 
   // Before the refresh read the team, another owner saved both back to true.
-  rerender(<TeamsTable initial={[team([])]} takes={{}} languages={languages} />);
+  rerender(<TeamsTable initial={[team([])]} languages={languages} />);
   expect(official().checked).toBe(true);
   expect(ownStorage().checked).toBe(true);
+});
+
+test("a team's languages are listed alike, with no way to move one", () => {
+  render(<TeamsTable initial={[team(["deDE" as Lang, "frFR" as Lang])]} languages={languages} />);
+  expect(screen.getByText("deDE")).toBeTruthy();
+  expect(screen.getByText("frFR")).toBeTruthy();
+  expect(screen.queryByText(/second team/)).toBeNull();
+  expect(screen.queryByLabelText(/Move .* to/)).toBeNull();
 });

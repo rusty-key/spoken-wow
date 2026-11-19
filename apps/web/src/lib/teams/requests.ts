@@ -164,7 +164,7 @@ async function lockPending(client: PoolClient, id: string): Promise<Row> {
   return row;
 }
 
-/** `options.settings` is what a second team starts from; the other branches ignore it. */
+/** `options.settings` is what a team joining a language with a team starts from; otherwise ignored. */
 export async function approveRequest(
   id: string,
   actorId: string,

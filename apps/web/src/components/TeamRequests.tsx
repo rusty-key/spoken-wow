@@ -18,7 +18,7 @@ function age(createdAt: string): string {
 
 type Props = {
   initial: TeamRequest[];
-  /** By request id: the name of the privileged team a second-team request would sit beside. */
+  /** By request id: the name of the team a request's new team could start from, where its language has one. */
   besides?: Partial<Record<string, string>>;
 };
 
@@ -46,7 +46,7 @@ export default function TeamRequests({ initial, besides = {} }: Props) {
       "PATCH",
       decision === "reject"
         ? { decision, ...(reason ? { reason } : {}) }
-        : request.branch === "second-team"
+        : besides[request.id]
           ? { decision, settings: copies[request.id] ? "copy" : "fresh" }
           : { decision },
     );
@@ -77,7 +77,7 @@ export default function TeamRequests({ initial, besides = {} }: Props) {
             </div>
             {request.note && <p className="text-muted-foreground">{request.note}</p>}
             {request.branch && <p>{branchText(request.branch, nameOf(request))}</p>}
-            {request.branch === "second-team" && (
+            {besides[request.id] && (
               <label className="flex items-center gap-2">
                 <input
                   type="checkbox"
@@ -88,7 +88,7 @@ export default function TeamRequests({ initial, besides = {} }: Props) {
                     setCopies((was) => ({ ...was, [request.id]: checked }));
                   }}
                 />
-                Start from {besides[request.id] ?? "the existing team"}&apos;s voices and settings
+                Start from {besides[request.id]}&apos;s voices and settings
               </label>
             )}
             <div className="flex flex-wrap items-center gap-2">

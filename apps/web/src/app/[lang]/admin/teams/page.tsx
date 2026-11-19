@@ -5,11 +5,12 @@ import AdminHeader from "@/components/AdminHeader";
 import TeamRequests from "@/components/TeamRequests";
 import TeamsTable from "@/components/TeamsTable";
 import { Wide } from "@/components/Width";
-import { allLangs, languageOptions } from "@/lib/lang";
+import { allLangs, languageOptions, type Lang } from "@/lib/lang";
 import { isAdmin } from "@/lib/permissions";
 import { currentSession } from "@/lib/session";
-import { listTeams, liveTakeCounts } from "@/lib/teams/admin";
+import { listTeams } from "@/lib/teams/admin";
 import { listRequests } from "@/lib/teams/requests";
+import { teamsOf } from "@/lib/teams/store";
 
 export const metadata: Metadata = { title: "Teams · Spoken" };
 
@@ -20,18 +21,18 @@ export default async function Page() {
   const session = await currentSession();
   if (!session || !isAdmin(session.user.role)) notFound();
 
-  const [teams, live, requests] = await Promise.all([
-    listTeams(),
-    liveTakeCounts(),
-    listRequests({ state: "pending" }),
-  ]);
-  const privileged = new Map(teams.flatMap((team) => team.langs.map((lang) => [lang as string, team.name] as const)));
+  const [teams, requests] = await Promise.all([listTeams(), listRequests({ state: "pending" })]);
+  // The team a request's new team would start from, where its language has one.
   const besides = Object.fromEntries(
-    requests.flatMap((request) =>
-      request.branch === "second-team" && privileged.has(request.lang) ? [[request.id, privileged.get(request.lang)!]] : [],
-    ),
+    (
+      await Promise.all(
+        requests.map(async (request) => {
+          const first = request.branch === "add-team" ? (await teamsOf(request.lang as Lang))[0] : undefined;
+          return first ? [[request.id, first.name] as const] : [];
+        }),
+      )
+    ).flat(),
   );
-  const counts = teams.flatMap((team) => team.langs).map((lang) => [lang, live.get(lang) ?? 0] as const);
 
   return (
     <main className="pb-36">
@@ -40,15 +41,11 @@ export default async function Page() {
         administered={allLangs()}
         global
         tab="teams"
-        description="A team owns its languages' takes, voices and settings, and the people who regenerate them. Handing a language over moves all of it, and is refused while one of its jobs is running."
+        description="A team keeps its own takes, voices and settings in each language it voices, and the people who regenerate them. A language's teams are equal."
       />
       <Wide>
         <TeamRequests initial={requests} besides={besides} />
-        <TeamsTable
-          initial={teams}
-          takes={Object.fromEntries(counts)}
-          languages={languageOptions()}
-        />
+        <TeamsTable initial={teams} languages={languageOptions()} />
       </Wide>
     </main>
   );

@@ -85,7 +85,7 @@ export async function setEnabledOn(
   return rows[0].was;
 }
 
-/** Lets the admins of the language's privileged team appoint its text maintainers. */
+/** Lets the admins of the language's teams appoint its text maintainers. */
 export async function giveTextToTeam(client: ClientBase, lang: string): Promise<void> {
   await client.query(`update "language" set "textByTeam" = true where "code" = $1`, [lang]);
 }

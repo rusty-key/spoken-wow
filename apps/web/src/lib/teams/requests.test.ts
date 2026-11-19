@@ -209,19 +209,22 @@ describe("approveRequest", () => {
     await expect(approveRequest(request.id, admin.id)).rejects.toSatisfy(refused(409, "already withdrawn"));
   });
 
-  it("makes a second team beside a maintained language, starting from its settings", async () => {
+  it("adds a team beside a maintained language's, starting from its settings", async () => {
     const { lang } = await maintained();
     const request = await createRequest(requester.id, { lang, language: null, teamName: "Second", note: null });
-    expect(request.branch).toBe("second-team");
+    expect(request.branch).toBe("add-team");
     const approved = await approveRequest(request.id, admin.id, { settings: "copy" });
     expect(approved.state).toBe("approved");
     const [second] = await systemRows<{ teamId: string }>(
-      `select "teamId" from "team_language" where "lang" = $1 and not "privileged"`,
+      `select "teamId" from "team_language" where "lang" = $1 and "packName" = 'slug'`,
       [lang],
     );
     expect(approved.approvedTeamId).toBe(second.teamId);
-    const { rows } = await listActivity({ lang, global: true, actorId: admin.id });
-    expect(rows.find((row) => row.kind === "request.approved")?.detail).toMatchObject({ branch: "second-team" });
+    const rows = await systemRows<{ detail: unknown }>(
+      `select "detail" from "activity" where "kind" = 'request.approved' and "actorId" = $1`,
+      [admin.id],
+    );
+    expect(rows).toEqual([{ detail: expect.objectContaining({ branch: "add-team" }) }]);
   });
 
   it("refuses a requester who joined the language's team after asking, and leaves the request pending", async () => {
@@ -237,7 +240,7 @@ describe("approveRequest", () => {
     expect(await systemRows(`select "state" from "team_request" where "id" = $1`, [request.id])).toEqual([
       { state: "pending" },
     ]);
-    expect(await systemRows(`select 1 from "team_language" where "lang" = $1 and not "privileged"`, [lang])).toEqual([]);
+    expect(await systemRows(`select 1 from "team_language" where "lang" = $1 and "packName" = 'slug'`, [lang])).toEqual([]);
   });
 });
 

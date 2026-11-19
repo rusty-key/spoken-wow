@@ -22,8 +22,6 @@ import type { TeamSummary } from "@/lib/teams/admin";
 
 type Props = {
   initial: TeamSummary[];
-  /** Live takes per language held, for the confirm. */
-  takes: Partial<Record<Lang, number>>;
   languages: { code: Lang; name: string }[];
 };
 
@@ -41,9 +39,10 @@ function people(team: TeamSummary): Person[] {
 
 type Confirm = { title: string; description: string; label: string; destructive?: boolean; action: () => ReturnType<typeof send> };
 
-const liveTakes = (count: number) => `${count} live take${count === 1 ? "" : "s"}`;
-
-export default function TeamsTable({ initial, takes, languages }: Props) {
+export default function TeamsTable({ initial, languages }: Props) {
+  // A language's last team cannot be deleted: the language would have none.
+  const alone = (team: TeamSummary) =>
+    team.langs.filter((lang) => !initial.some((other) => other.id !== team.id && other.langs.includes(lang)));
   const router = useRouter();
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -87,20 +86,18 @@ export default function TeamsTable({ initial, takes, languages }: Props) {
     void run(confirming.action);
   }
 
-  const handOver = (lang: Lang, target: TeamSummary) =>
+  const join = (lang: Lang, team: TeamSummary) =>
     setConfirming({
-      title: `Hand ${lang} to ${target.name}?`,
-      description: `${liveTakes(takes[lang] ?? 0)} move with it, along with its voices, settings and members.`,
-      label: "Hand over",
-      action: () => send(`/api/teams/${target.id}/languages`, "PUT", { lang }),
+      title: `Add ${team.name} to ${lang}?`,
+      description: `It voices ${lang} beside any team there, from English's voices, with nothing of theirs. A language with no team is switched on.`,
+      label: "Add",
+      action: () => send(`/api/teams/${team.id}/languages`, "PUT", { lang }),
     });
 
   const remove = (team: TeamSummary) =>
     setConfirming({
       title: `Delete ${team.name}?`,
-      description: `Its voices, settings, lexicon, members and invites go with it${
-        team.alsoIn.length ? `, and it stops being a second team in ${team.alsoIn.join(", ")}` : ""
-      }. A team with takes, recordings or other work of its own is refused.`,
+      description: `Its voices, settings, lexicon, members and invites go with it. A team with takes, recordings or other work of its own is refused.`,
       label: "Delete team",
       destructive: true,
       action: () => send(`/api/teams/${team.id}`, "DELETE"),
@@ -168,39 +165,33 @@ export default function TeamsTable({ initial, takes, languages }: Props) {
               <td className="py-2 pr-3">
                 <ul className="flex flex-col gap-1">
                   {team.langs.map((lang) => (
-                    <li key={lang} className="flex items-center gap-2">
-                      <span className="w-12 font-mono text-xs">{lang}</span>
-                      {lang !== BASE_LANG && (
-                        <Select
-                          value=""
-                          disabled={busy}
-                          onValueChange={(id) => {
-                            const target = initial.find((other) => other.id === id);
-                            if (target) handOver(lang, target);
-                          }}
-                        >
-                          <SelectTrigger size="sm" className="text-xs" aria-label={`Move ${lang} to`}>
-                            <SelectValue placeholder="Move to…" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {initial
-                              .filter((other) => other.id !== team.id)
-                              .map((other) => (
-                                <SelectItem key={other.id} value={other.id}>
-                                  {other.name}
-                                </SelectItem>
-                              ))}
-                          </SelectContent>
-                        </Select>
-                      )}
+                    <li key={lang} className="font-mono text-xs">
+                      {lang}
                     </li>
                   ))}
-                  {team.alsoIn.map((lang) => (
-                    <li key={`${lang}-second`} className="font-mono text-xs">
-                      {lang} (second team)
+                  {team.langs.length === 0 && <li className="text-muted-foreground text-xs">none</li>}
+                  {!team.langs.includes(BASE_LANG) && (
+                    <li>
+                      <Select
+                        value=""
+                        disabled={busy}
+                        onValueChange={(lang) => join(lang as Lang, team)}
+                      >
+                        <SelectTrigger size="sm" className="text-xs" aria-label={`Add ${team.slug} to a language`}>
+                          <SelectValue placeholder="Add to…" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {languages
+                            .filter((language) => language.code !== BASE_LANG && !team.langs.includes(language.code))
+                            .map((language) => (
+                              <SelectItem key={language.code} value={language.code}>
+                                {language.name} ({language.code})
+                              </SelectItem>
+                            ))}
+                        </SelectContent>
+                      </Select>
                     </li>
-                  ))}
-                  {team.langs.length === 0 && team.alsoIn.length === 0 && <li className="text-muted-foreground text-xs">none</li>}
+                  )}
                 </ul>
               </td>
               <td className="py-2 pr-3">
@@ -249,8 +240,8 @@ export default function TeamsTable({ initial, takes, languages }: Props) {
                   variant="ghost"
                   size="sm"
                   aria-label={`Delete ${team.slug}`}
-                  title={team.langs.length ? "Hand its languages to another team first" : undefined}
-                  disabled={busy || team.langs.length > 0}
+                  title={alone(team).length ? `The only team of ${alone(team).join(", ")}` : undefined}
+                  disabled={busy || alone(team).length > 0}
                   onClick={() => remove(team)}
                 >
                   Delete

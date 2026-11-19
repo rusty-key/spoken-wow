@@ -303,7 +303,12 @@ export function describe(row: ActivityRow): { what: string; quote: string | null
       return { what: `handed the language from ${str(d.from) ?? "?"} to ${str(d.to) ?? "?"}`, quote: null };
     case "team.second_in_language":
       return {
-        what: `made the team ${str(d.slug) ?? "?"} a second team beside ${str(d.beside) ?? "?"}${d.settings === "copy" ? ", starting from its voices and settings" : ""}`,
+        what: `added the team ${str(d.slug) ?? "?"} beside ${str(d.beside) ?? "?"}${d.settings === "copy" ? ", starting from its voices and settings" : ""}`,
+        quote: null,
+      };
+    case "team.joined_language":
+      return {
+        what: `added the team ${str(d.slug) ?? "?"} to the language${str(d.from) ? `, starting from ${str(d.from)}'s voices and settings` : ""}`,
         quote: null,
       };
     case "release.started":

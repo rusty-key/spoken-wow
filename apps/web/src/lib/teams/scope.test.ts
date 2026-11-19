@@ -12,7 +12,7 @@ import { asSystem } from "@/lib/teams/testing";
 
 afterAll(closeDb);
 
-/** Tables with a `lang` column, whose team is that language's privileged one. */
+/** Tables with a `lang` column, whose team is one that voices that language. */
 const BY_LANG = [
   "take",
   "recording",
@@ -66,8 +66,13 @@ async function wrong(table: string, expected: string, where = "true"): Promise<n
 }
 
 describe("team scope", () => {
-  it.each(BY_LANG)("gives %s the privileged team of its lang", async (table) => {
-    expect(await wrong(table, `select team_of_lang(t."lang")`, `t."lang" is not null`)).toBe(0);
+  it.each(BY_LANG)("gives %s a team that voices its lang", async (table) => {
+    const { rows } = await asSystem.query(
+      `select count(*)::int as "n" from "${table}" t
+        where t."lang" is not null and t."teamId" is not null
+          and not exists (select 1 from "team_language" tl where tl."teamId" = t."teamId" and tl."lang" = t."lang")`,
+    );
+    expect(rows[0].n).toBe(0);
   });
 
   it.each(["line_ignore", "activity"])("leaves site-wide %s rows without a team", async (table) => {
