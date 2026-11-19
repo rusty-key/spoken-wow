@@ -1,8 +1,9 @@
 // The team whose live takes a build reads. A release names it in SPOKEN_RELEASE_TEAM
-// (scripts/manager/release.mjs), so a second team's pack is built from its own takes and never
-// from the privileged team's; a build outside a release reads the privileged team's, as it always
-// did. Each builder's query is a string handed to psql or pg, so the id is inlined: checked
-// here to be a uuid, so the text inlined is never anything else.
+// (scripts/manager/release.mjs), so a team's pack is built from its own takes and never from
+// another's; a build outside a release reads the team with the language's plain packs, and a
+// language with none reads no team. Each builder's query is a string handed to psql or pg, so the
+// id is inlined: checked here to be a uuid, so the text inlined is never anything else.
+import { execFileSync } from "node:child_process";
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
@@ -14,8 +15,28 @@ export function releaseTeamId(env = process.env) {
   return team.toLowerCase();
 }
 
+/** SQL for the team whose packs in `langExpr` carry no slug: null when no team's do. */
+export function plainTeamSql(langExpr) {
+  return `(select "teamId" from "team_language" where "lang" = ${langExpr} and "packName" = 'plain')`;
+}
+
 /** SQL for the team whose takes a build of `langExpr`'s pack reads. */
 export function releaseTeamSql(langExpr, env = process.env) {
   const team = releaseTeamId(env);
-  return team ? `'${team}'::uuid` : `team_of_lang(${langExpr})`;
+  return team ? `'${team}'::uuid` : plainTeamSql(langExpr);
+}
+
+/**
+ * The id of the team a script run by hand reads in `lang`: the one `slug` names (its --team), else
+ * the one with plain packs. Throws rather than read nothing when there is none.
+ */
+export function scriptTeamId(database, lang, slug = null) {
+  const id = execFileSync("psql", [database, "-tAX", "-v", "ON_ERROR_STOP=1", "-v", `lang=${lang}`, "-v", `slug=${slug ?? ""}`, "-f", "-"], {
+    input: `select tl."teamId" from "team_language" tl join "team" t on t."id" = tl."teamId"
+             where tl."lang" = :'lang'
+               and case when :'slug' = '' then tl."packName" = 'plain' else t."slug" = :'slug' end`,
+    encoding: "utf8",
+  }).trim();
+  if (id) return id;
+  throw new Error(slug ? `no team ${slug} voices ${lang}` : `${lang} has no team with plain packs: name one with --team`);
 }

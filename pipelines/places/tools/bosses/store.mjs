@@ -224,7 +224,7 @@ export async function readLiveTakes(lang) {
        left join "boss" b on t."lineId" = 'boss:' || b."map" || ':' || b."key"
        left join "boss_line" l on l."bossId" = b."id" and l."lang" = t."lang" and l."isCurrent"
       where t."source" = 'bosses' and t."lang" = $1 and t."isCurrent"
-        -- the release's team, else the privileged team, so a build outside a release reads what it always did
+        -- the release's team, else the one with plain packs, so a build outside a release reads what it always did
         and t."teamId" = ${releaseTeamSql("$1")}`,
     [lang],
   );

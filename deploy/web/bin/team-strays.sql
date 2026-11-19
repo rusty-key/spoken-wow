@@ -6,8 +6,9 @@
 --
 --   psql "$PROD_DATABASE_URL" -f deploy/web/bin/team-strays.sql
 --
--- One line per table, with how many rows stray there, then the total. A language with no team
--- at all is left alone: there is nowhere to send its rows.
+-- One line per table, with how many rows stray there, then the total. A stray goes to the team
+-- with its language's plain packs, which a move hands the language to; a language with none is
+-- left alone, since nothing says which of its teams the row was for.
 --
 -- REPAIR with `-v repair=on`, only after reading the counts and with the queue paused. Issue
 -- lines go last, after their issues. A row whose new team already holds its key aborts the
@@ -36,6 +37,7 @@ declare
   ];
   v_count integer := cardinality(v_tables) + 1;
   v_lang  text;
+  v_plain text;
   v_where text;
   v_n     integer;
   v_total integer := 0;
@@ -46,10 +48,13 @@ begin
     v_i := v_i + 1;
     -- A sample's language is in its clone's name, 'voice@lang'.
     v_lang := case t when 'voice_sample' then 'split_part(r."clone", ''@'', 2)' else 'r."lang"' end;
-    -- team_of_lang is null for a language with no team, which the comparison leaves out.
-    v_where := format('r."teamId" = $1 and team_of_lang(%s) <> $1', v_lang);
+    -- Null for a language with no plain packs, which the comparison leaves out.
+    v_plain := format('(select "teamId" from "team_language" where "lang" = %s and "packName" = ''plain'')', v_lang);
+    v_where := format('r."teamId" = $1 and %s <> $1
+                       and not exists (select 1 from "team_language" where "lang" = %s and "teamId" = $1)',
+                      v_plain, v_lang);
     if v_repair then
-      execute format('update %I r set "teamId" = team_of_lang(%s) where %s', t, v_lang, v_where) using v_english;
+      execute format('update %I r set "teamId" = %s where %s', t, v_plain, v_where) using v_english;
       get diagnostics v_n = row_count;
     else
       execute format('select count(*) from %I r where %s', t, v_where) into v_n using v_english;
