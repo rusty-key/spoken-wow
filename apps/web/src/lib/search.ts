@@ -25,6 +25,9 @@ import { hasDrifted } from "./quests/override-drift";
 import type { LineBroadcast } from "./broadcast/store";
 import type { BroadcastStatus } from "./broadcast/status";
 import type { AudioState, StateCounts } from "./audio-state";
+import { PAGE_SIZE } from "./page-size";
+
+export { PAGE_SIZE };
 import { isVoiceable, unvoicedReason, type UnvoicedReason } from "./text-gate";
 import { madeByFacets, madeByMatches, type MadeBy, type MadeByFacets } from "./takes/made-by";
 import { recordedMatches, type LiveRecording, type Recorded } from "./recordings/live";
@@ -268,7 +271,6 @@ export type SearchResult = {
   recordable?: true;
 };
 
-export const PAGE_SIZE = 50;
 
 /**
  * One unit of work in a batch regeneration.

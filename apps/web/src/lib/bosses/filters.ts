@@ -33,7 +33,7 @@ export type LineFilters = {
   recorded?: Recorded;
 };
 
-export const PAGE_SIZE = 100;
+export { PAGE_SIZE } from "@/lib/page-size";
 
 export function filterParams(filters: LineFilters): URLSearchParams {
   const params = new URLSearchParams();

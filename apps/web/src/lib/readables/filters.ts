@@ -63,7 +63,7 @@ export type PageFilters = {
   recorded?: Recorded;
 };
 
-export const PAGE_SIZE = 100;
+export { PAGE_SIZE } from "@/lib/page-size";
 
 // item_template.page_material, as the client draws it. 0 is what the extract records for
 // GameObject books, whose material comes from the display rather than from the template,

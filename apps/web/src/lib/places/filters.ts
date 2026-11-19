@@ -59,7 +59,7 @@ export type LineFilters = {
 // same lines in the CLI's listing.
 export const SHORT_LINE = 250;
 
-export const PAGE_SIZE = 100;
+export { PAGE_SIZE } from "@/lib/page-size";
 
 // Short keys, because the whole filter set rides in the URL and a shared link should
 // stay readable.

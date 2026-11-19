@@ -705,8 +705,8 @@ export function Explorer<L extends ExplorerLine, F extends ExplorerFilters>({
           )}
         </div>
 
-        {/* Above the table as well as below it: 43 pages of lore is a lot of scrolling to
-            reach a control that is one line away at the top. */}
+        {/* Above the table as well as below it: a long list is a lot of scrolling to reach a
+            control that is one line away at the top. */}
         <Pagination page={page} pageCount={pages} onPage={(next) => updateUrl({ page: next })} />
       </div>
 
