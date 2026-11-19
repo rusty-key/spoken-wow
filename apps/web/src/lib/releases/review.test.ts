@@ -25,7 +25,7 @@ vi.mock("@/lib/email", () => ({
 }));
 
 import { approve, delistPack, liveTeamPacks, reject, ReviewError, waitingCount, waitingLines, waitingReviews } from "./review";
-import { lastReleasedAt, startRun } from "./store";
+import { cancelQueued, lastReleasedAt, startRun, updateRun } from "./store";
 import { forgetReleaseCheck, syncActive } from "./sync";
 
 const STAGED = {
@@ -104,7 +104,7 @@ describe("approve", () => {
     const id = await waiting();
     const promote = await approve(id, owner.id);
     expect(promote).toMatchObject({ kind: "promote", promotes: id, staged: STAGED, teamId: second, section: "places", lang: "frFR" });
-    expect(await row(id)).toMatchObject({ state: "awaiting_review", reviewedBy: owner.id });
+    expect(await row(id)).toMatchObject({ state: "approved", reviewedBy: owner.id });
     expect(droplet.startDropletRun).toHaveBeenCalledTimes(1);
     expect(droplet.startDropletRun.mock.calls[0][0]).toMatchObject({ id: promote.id, kind: "promote", teamSlug: slug });
     expect(encode.encodeMissingForPack).not.toHaveBeenCalled();
@@ -125,6 +125,40 @@ describe("approve", () => {
     await startRun("bosses", "frFR", presser.id);
     const promote = await approve(await waiting(), owner.id);
     expect(promote.state).toBe("queued");
+  });
+
+  it("settles a release whose job finished before queueing the promotion, so it starts at once", async () => {
+    const running = await startRun("bosses", "frFR", presser.id);
+    exits(running.id, 0, "==> released 1.0.1: SpokenBossesAudio_frFR\n");
+    const promote = await approve(await waiting(), owner.id);
+    expect((await row(running.id)).state).toBe("done");
+    expect(promote.state).toBe("dispatching");
+  });
+
+  it("puts the version back to wait when its queued promotion is cancelled", async () => {
+    await startRun("bosses", "frFR", presser.id);
+    const id = await waiting();
+    const promote = await approve(id, owner.id);
+    await cancelQueued(promote.id);
+    expect(await row(id)).toMatchObject({ state: "awaiting_review", error: "Approving failed: Cancelled" });
+    await approve(id, owner.id);
+    expect((await row(id)).state).toBe("approved");
+  });
+
+  it("is not replaced by a newer version while it is being listed, and gives way to it if listing fails", async () => {
+    await startRun("bosses", "frFR", presser.id);
+    const id = await waiting();
+    const promote = await approve(id, owner.id);
+    const [{ id: newer }] = await systemRows<{ id: string }>(
+      `insert into "release_run" ("teamId", "section", "lang", "state", "requestedBy", "stage")
+       values ($1, 'places', 'frFR', 'queued', $2, true) returning "id"`,
+      [second, presser.id],
+    );
+    await updateRun(newer, { state: "awaiting_review", version: "1.0.1", staged: STAGED });
+    expect((await row(id)).state).toBe("approved");
+    await cancelQueued(promote.id);
+    expect((await row(id)).state).toBe("superseded");
+    expect((await row(newer)).state).toBe("awaiting_review");
   });
 
   it("leaves the version waiting, with the reason, when the promotion fails", async () => {
@@ -151,6 +185,14 @@ describe("approve", () => {
 });
 
 describe("reject", () => {
+  it("refuses a version already approved, which is being listed", async () => {
+    await startRun("bosses", "frFR", presser.id);
+    const id = await waiting();
+    await approve(id, owner.id);
+    await expect(reject(id, owner.id, "Too late")).rejects.toMatchObject({ status: 409 });
+    expect((await row(id)).state).toBe("approved");
+  });
+
   it("needs a reason", async () => {
     const id = await waiting();
     await expect(reject(id, owner.id, "  ")).rejects.toMatchObject({ status: 400 });
@@ -168,11 +210,12 @@ describe("reject", () => {
 });
 
 describe("the review page's lists", () => {
-  const take = (team: string, file: string) =>
+  /** A take cut `ago` before now: before the waiting version was pressed, by default. */
+  const take = (team: string, file: string, { version = 1, current = true, ago = "2 hours" } = {}) =>
     asSystem.query(
-      `insert into "take" ("source", "lang", "file", "lineId", "version", "isCurrent", "origin", "bytes", "teamId")
-       values ('places', 'frFR', $1, $2, 1, true, 'generated', 1, $3)`,
-      [file, `z:${file}`, team],
+      `insert into "take" ("source", "lang", "file", "lineId", "version", "isCurrent", "origin", "bytes", "teamId", "createdAt")
+       values ('places', 'frFR', $1, $2, $3, $4, 'generated', 1, $5, now() - $6::interval)`,
+      [file, `z:${file}`, version, current, team, ago],
     );
 
   afterEach(async () => {
@@ -191,6 +234,22 @@ describe("the review page's lists", () => {
     expect(waits[0].pending).toMatchObject({ count: 2, changes: [], people: [{ id: null, count: 2 }] });
     // The lines come when the dialog opens.
     expect((await waitingLines(id))?.changes.map((c) => c.file).sort()).toEqual(["review-test-ours-1", "review-test-ours-2"]);
+  });
+
+  it("counts what the version was built from: the takes live when it was pressed, not those cut since", async () => {
+    await take(second, "review-test-recut", { current: false });
+    await take(second, "review-test-recut", { version: 2, ago: "10 minutes" });
+    await take(second, "review-test-later", { ago: "10 minutes" });
+    const id = await waiting();
+    expect((await waitingReviews())[0].pending.count).toBe(1);
+    expect((await waitingLines(id))?.changes.map((c) => [c.file, c.version])).toEqual([["review-test-recut", 1]]);
+  });
+
+  it("shows an approved version as being listed", async () => {
+    await startRun("bosses", "frFR", presser.id);
+    const id = await waiting();
+    await approve(id, owner.id);
+    expect(await waitingReviews()).toEqual([expect.objectContaining({ id, approving: true })]);
   });
 
   it("counts a waiting version from its team's last release that brought players up to date", async () => {
@@ -219,6 +278,16 @@ describe("the review page's lists", () => {
     const delist = await delistPack(second, "frFR", "places", owner.id);
     exits(delist.id, 0, "==> delisted SpokenPlacesAudio_frFR_second\n");
     await syncActive();
+    expect(await liveTeamPacks()).toEqual([]);
+  });
+
+  it("does not list a pack whose delisting was pressed while its listing ran, and took it off after", async () => {
+    await asSystem.query(
+      `insert into "release_run" ("teamId", "section", "lang", "state", "kind", "createdAt", "finishedAt")
+       values ($1, 'places', 'frFR', 'done', 'release', now() - interval '2 hours', now() - interval '1 hour'),
+              ($1, 'places', 'frFR', 'done', 'delist', now() - interval '90 minutes', now() - interval '30 minutes')`,
+      [second],
+    );
     expect(await liveTeamPacks()).toEqual([]);
   });
 });

@@ -14,6 +14,7 @@ import {
   latestPackVersions,
   packReleases,
   recentRuns,
+  runById,
   startRun,
   updateRun,
 } from "./store";
@@ -84,6 +85,13 @@ describe("release runs", () => {
     expect(await cancelQueued(second.id)).toBeNull();
     await updateRun(first.id, { state: "done" });
     expect(await claimNext()).toBeNull();
+  });
+
+  it("finds a run by its id, and nothing for an id that is not a uuid, rather than failing the query", async () => {
+    const run = await startRun("quests", "frFR", user.id);
+    expect((await runById(run.id))?.id).toBe(run.id);
+    expect(await runById("-".repeat(36))).toBeNull();
+    expect(await runById("not-a-run")).toBeNull();
   });
 
   it("reads a run from before kinds as a release", async () => {

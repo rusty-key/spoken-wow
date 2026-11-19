@@ -285,7 +285,9 @@ Oggs rather than the takes.
 **One release at a time, site-wide.** The partial unique index `release_run_one_active` allows one
 `dispatching` or `running` row across all teams. On the droplet a press while another runs is
 **queued** (migration 0121): it waits as `queued`, with the bump it asked for, and whenever a run
-settles the oldest queued one starts (`lib/releases/launch.ts` `startNext`). A queued run whose job
+settles the oldest queued one starts (`lib/releases/launch.ts` `startNext`). On the droplet a tick
+in every server process (`lib/releases/tick.ts`, started from `instrumentation.ts`) settles a finished
+job and starts the next every 15 seconds, so the queue moves with no release page open. A queued run whose job
 cannot start ends `failed`, and the next one starts, so the queue never stalls. Whoever pressed it, or
 a site owner, can cancel a queued run (`DELETE /api/releases/<id>`). A run dispatched to GitHub
 Actions still gets a 409 while another is active, since the workflow's own `concurrency` group queues
@@ -350,13 +352,16 @@ passes its slug to `release.mjs --team`, and every builder query that picked the
   (`packs/<folder>/<rev>.json`) but writes neither index, and leaves what it staged in the run's
   directory (`staged.json`). The site stores that on the row and settles it `awaiting_review`, and
   emails the site owners. They review it on `/admin/team-releases`: team, language, section, version,
-  who pressed it, and the lines it changes as the team's own release page counts them, each playing
-  the team's live take, with a link to the explorer on `?team=<slug>`. **Approve** queues a `promote`
-  run (`scripts/manager/cli.mjs promote`), which writes the staged entries into both indexes; its
-  success makes the staged run `done`, so `done` keeps meaning "players have it", and the team's
-  pending counts drop only then. Promotion refuses a pack whose live rev moved since it was staged
-  (each entry records the rev it was staged over), and one whose manifest is missing. A failed
-  promotion leaves the version waiting, with the reason. **Reject** needs a reason, settles the run
+  who pressed it, and the lines it changes as the team's own release page counted them when it was
+  pressed (the takes live then), each playing the team's live take, since the audio routes serve
+  another team only its live ones, with a link to the explorer on `?team=<slug>`. **Approve** makes
+  the staged run `approved` and queues a `promote` run (`scripts/manager/cli.mjs promote`), which
+  writes the staged entries into both indexes; its success makes the staged run `done`, so `done`
+  keeps meaning "players have it", and the team's pending counts drop only then. An `approved`
+  version can be neither rejected nor superseded. Promotion refuses a pack whose live rev moved since it was staged
+  (each entry records the rev it was staged over), and one whose manifest is missing. A failed or
+  cancelled promotion puts the version back to `awaiting_review`, with the reason, or `superseded`
+  when a newer version of the pack came to wait meanwhile. **Reject** needs a reason, settles the run
   `rejected`, and the team sees "Not approved: <reason>" and gets it by email. Staged blobs and
   manifests are public by address and listed nowhere; nothing deletes them. A team admin cannot
   approve their own version: the review routes are a site owner's.

@@ -5,11 +5,12 @@
 -- a team's pack: all three write the channel's indexes, so all three take the one-active lock.
 -- A press while another run is active waits as `queued`, outside that lock; settling a run starts
 -- the oldest queued one. A staged release ends `awaiting_review`, with what it staged (`staged`);
--- approval inserts a `promote` run naming it (`promotes`), and its success makes the staged run
--- `done`. A rejected one ends `rejected`, and one replaced by a newer staged version of the same
--- section, language and team ends `superseded`.
+-- approval makes it `approved` and inserts a `promote` run naming it (`promotes`), whose success
+-- makes the staged run `done`, and whose failure puts it back to `awaiting_review`. A rejected one
+-- ends `rejected`, and one replaced by a newer staged version of the same section, language and
+-- team ends `superseded`.
 --
--- Code from before this reads the four new states as not active, which they are not.
+-- Code from before this reads the five new states as not active, which they are not.
 
 alter table "release_run" add column if not exists "kind" text not null default 'release';
 alter table "release_run" drop constraint if exists "release_run_kind_check";
@@ -28,6 +29,6 @@ alter table "release_run" add column if not exists "reviewNote" text;
 
 alter table "release_run" drop constraint "release_run_state_check";
 alter table "release_run" add constraint "release_run_state_check"
-  check ("state" in ('queued', 'dispatching', 'running', 'awaiting_review', 'done', 'unchanged', 'failed', 'rejected', 'superseded'));
+  check ("state" in ('queued', 'dispatching', 'running', 'awaiting_review', 'approved', 'done', 'unchanged', 'failed', 'rejected', 'superseded'));
 
 create index if not exists "release_run_queued_idx" on "release_run" ("createdAt") where "state" = 'queued';

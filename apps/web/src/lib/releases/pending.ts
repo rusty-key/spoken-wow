@@ -61,8 +61,24 @@ type Row = {
 };
 
 /**
+ * Whether the take `t` was the live one at `$4`, or is live now when `$4` is null: the version the
+ * file's last cut or restore up to `$4` made live, or, for a file older than the activity log, its
+ * newest version from then.
+ */
+const LIVE_AT = `($4::timestamptz is null and t."isCurrent"
+  or $4::timestamptz is not null and t."createdAt" <= $4 and t."version" is not distinct from coalesce(
+    (select (e."detail"->>'version')::int from "activity" e
+      where e."lang" = $2 and e."source" = $1 and e."subject" = t."file"
+        and e."kind" in ('take.generated', 'take.restored') and e."at" <= $4
+      order by e."at" desc limit 1),
+    (select max(o."version") from "take" o
+      where o."source" = t."source" and o."lang" = t."lang" and o."file" = t."file"
+        and o."teamId" = t."teamId" and o."createdAt" <= $4)))`;
+
+/**
  * Every file whose live audio changed since `$3`, as `file, lineId, version, at, by, kind`: the
  * acting team's takes, which its release builds from, or the privileged team's read as all teams.
+ * With `$4`, as it stood then: what a release that started at `$4` built from.
  *
  * A restore counts only when it put back something other than what was live at `$3`: cutting
  * v3 and going back to v2 is an undo, and players already have v2. What was live then is the
@@ -73,7 +89,7 @@ function changed(section: ReleaseSection): string {
   return `
   select t."file", t."lineId", t."version", t."createdAt" as "at", t."createdBy" as "by", 'new' as "kind"
     from "take" t
-   where t."source" = $1 and t."lang" = $2 and t."isCurrent" and t."teamId" = coalesce(spoken_team(), team_of_lang($2))
+   where t."source" = $1 and t."lang" = $2 and ${LIVE_AT} and t."teamId" = coalesce(spoken_team(), team_of_lang($2))
      and ($3::timestamptz is null or t."createdAt" > $3) ${SHIPPED[section]}
   union all
   -- A file restored and regenerated since counts once, as the newer take; restored twice, once,
@@ -82,9 +98,10 @@ function changed(section: ReleaseSection): string {
     select distinct on (a."subject") a."subject", t."lineId", t."version", a."at", a."actorId", 'restored'
       from "activity" a
       join "take" t on t."source" = a."source" and t."lang" = a."lang" and t."file" = a."subject"
-                   and t."isCurrent" and t."teamId" = coalesce(spoken_team(), team_of_lang($2))
+                   and ${LIVE_AT} and t."teamId" = coalesce(spoken_team(), team_of_lang($2))
      where $3::timestamptz is not null and a."kind" = 'take.restored' and a."lang" = $2
-       and a."source" = $1 and a."at" > $3 and t."createdAt" <= $3 ${SHIPPED[section]}
+       and a."source" = $1 and a."at" > $3 and ($4::timestamptz is null or a."at" <= $4)
+       and t."createdAt" <= $3 ${SHIPPED[section]}
        and t."version" is distinct from coalesce(
          (select (e."detail"->>'version')::int from "activity" e
            where e."lang" = $2 and e."source" = $1 and e."subject" = t."file"
@@ -120,13 +137,14 @@ const SHIPPED_NAMES: Record<ReleaseSection, readonly string[]> = {
 /**
  * With `list` false, the counts alone: the release page asks for those on every check, and the
  * list with its text lookups only when a review opens. `people` (with the list by default) names
- * who made them, as the review page shows without the list.
+ * who made them, as the review page shows without the list. With `until`, the changes up to then
+ * and the takes live then: a staged version, which built from what was live when it started.
  */
 export async function pendingChanges(
   section: ReleaseSection,
   lang: Lang,
   since: Date | null,
-  { list = true, people: withPeople = list }: { list?: boolean; people?: boolean } = {},
+  { list = true, people: withPeople = list, until = null }: { list?: boolean; people?: boolean; until?: Date | null } = {},
 ): Promise<PendingView> {
   const CHANGED = changed(section);
   // One after another: a page asks for every section at once, and each query here holds a
@@ -135,7 +153,7 @@ export async function pendingChanges(
     lang,
     `select "by", count(*) as "count", count(*) filter (where "kind" = 'restored') as "restored"
        from (${CHANGED}) c group by "by" order by count(*) desc`,
-    [section, lang, since],
+    [section, lang, since, until],
   );
   const rows = list
     ? await readAs<Row>(
@@ -144,7 +162,7 @@ export async function pendingChanges(
            from (select * from (${CHANGED}) changed order by "at" desc limit ${LISTED}) c
            left join lateral (${TEXT[section]}) x on true
           order by c."at" desc`,
-        [section, lang, since],
+        [section, lang, since, until],
       )
     : [];
   // Everybody in the list, restores included, so a person's chip counts the rows it filters to.
@@ -154,7 +172,7 @@ export async function pendingChanges(
     ? await readAs<{ count: string }>(
         lang,
         `select count(distinct coalesce(a."lineId", a."subject")) as "count" from "activity" a
-          where a."at" > $3
+          where a."at" > $3 and ($6::timestamptz is null or a."at" <= $6)
             and ((a."lang" = $1 and a."source" = $2 and a."kind" = any($4::text[]))
                  -- An ignore in every language has no language of its own, and the build applies it.
                  or (a."lang" is null and a."source" = $2 and a."kind" in ('ignore.set', 'ignore.cleared'))
@@ -162,8 +180,9 @@ export async function pendingChanges(
                      and split_part(a."subject", ':', 1) = any($5::text[])))
             and not exists (select 1 from "take" t
                              where t."source" = $2 and t."lang" = $1 and t."isCurrent"
-                               and t."lineId" = coalesce(a."lineId", a."subject") and t."createdAt" > $3)`,
-        [lang, section, since, TEXT_KINDS, SHIPPED_NAMES[section]],
+                               and t."lineId" = coalesce(a."lineId", a."subject") and t."createdAt" > $3
+                               and ($6::timestamptz is null or t."createdAt" <= $6))`,
+        [lang, section, since, TEXT_KINDS, SHIPPED_NAMES[section], until],
       )
     : [{ count: "0" }];
   const names = await namesOf([...rows.map((row) => row.by), ...people.map((row) => row.by)]);

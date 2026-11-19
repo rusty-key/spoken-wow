@@ -704,7 +704,8 @@ workflow, as before.
 ### The queue
 
 On the droplet, a press while another release runs waits its turn (*Waiting for … to finish* on
-the team's release page) and starts by itself when the run ahead of it ends; promotions and
+the team's release page) and starts by itself within 15 seconds of the run ahead of it ending,
+whether or not anyone has a release page open; promotions and
 delistings wait in the same queue, so two runs never write the indexes at once. Whoever pressed a
 queued run, or a site owner, can cancel it from the release page. A run whose job fails to start is
 marked failed and the next one starts. A press on GitHub Actions is still refused while another

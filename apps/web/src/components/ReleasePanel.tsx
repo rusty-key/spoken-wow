@@ -31,6 +31,7 @@ const SHOWN: Record<RunView["state"], string> = {
   dispatching: "Starting",
   running: "Running",
   awaiting_review: "Waiting for review",
+  approved: "Being listed",
   done: "Done",
   unchanged: "Nothing changed",
   failed: "Failed",
@@ -40,8 +41,9 @@ const SHOWN: Record<RunView["state"], string> = {
 
 /** What came of a settled run. */
 export function outcomeText(run: RunView): string {
-  if (run.kind === "delist") return "Delisted by a site owner.";
+  if (run.kind === "delist") return run.state === "done" ? "Delisted by a site owner." : "A site owner's delisting did not go through.";
   if (run.state === "awaiting_review") return "Waiting for a site owner to review it.";
+  if (run.state === "approved") return "Approved by a site owner; being listed.";
   if (run.state === "rejected") return `Not approved: ${run.reviewNote ?? ""}`;
   if (run.state === "superseded") return "Replaced by a newer version before it was reviewed.";
   if (run.state === "done") return run.version ? `Released ${run.version}.` : "Released.";
@@ -57,14 +59,23 @@ function RunLink({ run, children }: { run: RunView; children: React.ReactNode })
   );
 }
 
-const ownRun = (view: ReleaseView, lang: Lang) => (view.active?.own && view.active.lang === lang ? view.active : null);
+/**
+ * The team's active run in `lang`, which its section's card shows as releasing: its release, or the
+ * listing of its approved version. A site owner's delisting is not the team's to watch there.
+ */
+export const ownRun = (view: ReleaseView, lang: Lang) =>
+  view.active?.own && view.active.lang === lang && view.active.kind !== "delist" ? view.active : null;
 
 const lastSettled = (view: ReleaseView, section: ReleaseSection) =>
   view.recent.find((run) => run.section === section && isSettled(run.state));
 
-/** The team's run of `section` in `lang` waiting for another to end. */
-const queuedRun = (view: ReleaseView, lang: Lang, section: ReleaseSection) =>
-  view.recent.find((run) => run.section === section && run.lang === lang && run.state === "queued") ?? null;
+/**
+ * The team's release of `section` in `lang` waiting for another to end. Not a site owner's queued
+ * promotion or delisting: the team may neither cancel it nor be kept from pressing by it.
+ */
+export const queuedRun = (view: ReleaseView, lang: Lang, section: ReleaseSection) =>
+  view.recent.find((run) => run.section === section && run.lang === lang && run.state === "queued" && run.kind === "release") ??
+  null;
 
 // A shell, because useToast has to find a provider above the component that calls it.
 export default function ReleasePanel(props: { lang: Lang; initial: ReleaseView }) {
@@ -202,7 +213,12 @@ function Panel({ lang, initial }: { lang: Lang; initial: ReleaseView }) {
         <div className="border-primary/35 bg-primary/10 mb-5 flex items-center gap-3 rounded-lg border px-4 py-3 text-sm">
           <span aria-hidden className="bg-primary size-2 shrink-0 animate-pulse rounded-full motion-reduce:animate-none" />
           <p>
-            {elsewhere.own ? (
+            {elsewhere.own && elsewhere.kind === "delist" ? (
+              <>
+                <span className="font-medium capitalize">{elsewhere.section}</span> in {langName(elsewhere.lang)} is being
+                delisted by a site owner.
+              </>
+            ) : elsewhere.own ? (
               <RunLink run={elsewhere}>
                 <span className="font-medium capitalize">{elsewhere.section}</span> in {langName(elsewhere.lang)}:{" "}
                 {elsewhere.step ?? SHOWN[elsewhere.state]}
@@ -380,7 +396,7 @@ function SectionCard({
                     ? "bg-emerald-400"
                     : last.state === "failed" || last.state === "rejected"
                       ? "bg-destructive"
-                      : last.state === "awaiting_review"
+                      : last.state === "awaiting_review" || last.state === "approved"
                         ? "bg-primary"
                         : "bg-muted-foreground",
                 )}

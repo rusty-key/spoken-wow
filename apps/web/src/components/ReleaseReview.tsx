@@ -185,7 +185,8 @@ function Review({
       setPlaying(null);
       return;
     }
-    // Another team's take plays as its live one: its history is the team's own.
+    // Another team's take plays as its live one: its history is the team's own, and the audio
+    // routes serve another team only its live takes (serveViewed), not the version staged.
     element.src = reviewed
       ? teamTakeUrl(section, lang, change.file, reviewed.team.slug)
       : withLang(lang, `/api/takes/audio?${new URLSearchParams({ source: section, file: change.file, version: String(change.version) })}`);
@@ -213,7 +214,7 @@ function Review({
             <>Nothing was released from {reviewed ? "this team" : "here"} yet, so this sends every live line. </>
           )}
           {reviewed
-            ? "Each line plays the team's live take. Players get it once you approve it."
+            ? "The lines this version was built with. Each plays the team's live take, which is newer where the team has recut the line since. Players get this version once you approve it."
             : "Players get it on their next Manager refresh."}
         </DialogDescription>
         {pending.count > 0 && (

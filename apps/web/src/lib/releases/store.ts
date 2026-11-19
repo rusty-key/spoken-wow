@@ -11,6 +11,7 @@ import { ALL_TEAMS, withTeam } from "@/lib/db";
 import { recordActivity } from "@/lib/activity/store";
 import type { Lang } from "@/lib/lang";
 import { readAs, teamOf } from "@/lib/teams/store";
+import { isUuid } from "@/lib/uuid";
 
 import type { PackRelease, PackVersions } from "@/lib/reports/context";
 
@@ -68,10 +69,6 @@ export const COLUMNS = `"id", "kind", "teamId", (select t."slug" from "team" t w
                  "githubRunId"::float8 as "githubRunId", "githubUrl",
                  "step", "error", "version", "requestedBy", "createdAt", "finishedAt"`;
 const ACTIVE = `"state" in ('dispatching', 'running')`;
-
-/** Whether the staged run whose id is the SQL `run` has a promotion that has not finished. */
-export const promoting = (run: string) =>
-  `exists (select 1 from "release_run" p where p."promotes" = ${run} and p."state" in ('queued', 'dispatching', 'running'))`;
 const UNIQUE_VIOLATION = "23505";
 
 const isUniqueViolation = (error: unknown) => (error as { code?: string }).code === UNIQUE_VIOLATION;
@@ -85,7 +82,7 @@ export async function activeRun(): Promise<ReleaseRun | null> {
 
 /** Any team's run, for a caller that checks who may see it. */
 export async function runById(id: string): Promise<ReleaseRun | null> {
-  if (!/^[0-9a-f-]{36}$/i.test(id)) return null;
+  if (!isUuid(id)) return null;
   return withTeam(ALL_TEAMS, async (client) => {
     const { rows } = await client.query<ReleaseRun>(`select ${COLUMNS} from "release_run" where "id" = $1`, [id]);
     return rows[0] ?? null;
@@ -207,21 +204,40 @@ async function recordFinish(run: ReleaseRun, state: ReleaseState, client: PoolCl
 }
 
 /**
- * The staged run a promotion lists: `done` once it is listed, since `done` is what players have,
- * and still waiting, with the reason, when listing it failed.
+ * Serialises, until the commit, what decides which version of a team's pack waits for review: a
+ * failed promotion putting its version back, and a newer version settling to wait. Each then sees
+ * the other's commit, so two versions of one pack never both wait.
+ */
+async function lockPack(client: PoolClient, run: Pick<ReleaseRun, "teamId" | "section" | "lang">): Promise<void> {
+  await client.query(`select pg_advisory_xact_lock(hashtext('release_run_pack:' || $1 || ':' || $2 || ':' || $3))`, [
+    run.teamId, run.section, run.lang,
+  ]);
+}
+
+/**
+ * The staged run a promotion lists: `done` once it is listed, since `done` is what players have.
+ * When listing it failed or was cancelled, it waits for review again with the reason, unless a
+ * newer version of the same pack came to wait meanwhile, which replaces it.
  */
 async function settlePromoted(client: PoolClient, promote: ReleaseRun, state: ReleaseState): Promise<void> {
   if (state === "done") {
     const { rows } = await client.query<ReleaseRun>(
       `update "release_run" set "state" = 'done', "error" = null, "finishedAt" = now()
-        where "id" = $1 and "state" = 'awaiting_review' returning ${COLUMNS}`,
+        where "id" = $1 and "state" = 'approved' returning ${COLUMNS}`,
       [promote.promotes],
     );
     if (rows[0]) await recordFinish(rows[0], "done", client);
     return;
   }
+  await lockPack(client, promote);
   await client.query(
-    `update "release_run" set "error" = $2 where "id" = $1 and "state" = 'awaiting_review'`,
+    `update "release_run" r set
+       "state" = case when exists (select 1 from "release_run" n
+                                    where n."state" = 'awaiting_review' and n."id" <> r."id" and n."teamId" = r."teamId"
+                                      and n."section" = r."section" and n."lang" = r."lang" and n."createdAt" > r."createdAt")
+                      then 'superseded' else 'awaiting_review' end,
+       "error" = $2
+     where r."id" = $1 and r."state" = 'approved'`,
     [promote.promotes, `Approving failed: ${promote.error ?? "the promotion did not finish"}`],
   );
 }
@@ -273,13 +289,14 @@ export async function applyUpdate(id: string, patch: RunPatch): Promise<{ run: R
     );
     const run = rows[0];
     // At most one version of a pack waits for review: the older one goes once this one waits, and
-    // not before, so a build that fails leaves it in place. One approved and being listed is let
-    // finish; listing this one after it is then refused, as staged over an older rev.
+    // not before, so a build that fails leaves it in place. One `approved` and being listed is let
+    // finish (settlePromoted replaces it if that fails); listing this one after it is then
+    // refused, as staged over an older rev. approve() holds the row's lock, so this sees its state.
     if (settles === "awaiting_review") {
+      await lockPack(client, run);
       await client.query(
         `update "release_run" r set "state" = 'superseded'
-          where r."state" = 'awaiting_review' and r."id" <> $1 and r."teamId" = $2 and r."section" = $3 and r."lang" = $4
-            and not ${promoting(`r."id"`)}`,
+          where r."state" = 'awaiting_review' and r."id" <> $1 and r."teamId" = $2 and r."section" = $3 and r."lang" = $4`,
         [run.id, run.teamId, run.section, run.lang],
       );
     }

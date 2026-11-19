@@ -1,7 +1,8 @@
 /**
  * A site owner's review of a team's staged release, and delisting a team's pack
- * (docs/platform/TEAMS.md, *Releases*). Approving queues a `promote` run, which lists what the
- * release staged; its success makes the staged run `done` (store.ts). Rejecting settles it
+ * (docs/platform/TEAMS.md, *Releases*). Approving makes the staged run `approved` and queues a
+ * `promote` run, which lists what the release staged; its success makes the staged run `done`,
+ * and its failure puts it back to wait (store.ts). Rejecting settles it
  * `rejected` with the reason. Delisting queues a `delist` run, which resolves the team's folders
  * and takes them out of both indexes. Each records activity under the run's team, and emails after the commit.
  */
@@ -21,7 +22,8 @@ import { begin, failureOf } from "./launch";
 import { tellPresser } from "./notify";
 import { pendingChanges } from "./pending";
 import { isReleaseSection, type LiveTeamPack, type PendingView, type ReleaseSection, type WaitingVersion } from "./sections";
-import { COLUMNS, insertRun, promoting, runById, type ReleaseRun } from "./store";
+import { COLUMNS, insertRun, runById, type ReleaseRun } from "./store";
+import { syncActive } from "./sync";
 
 export class ReviewError extends Error {
   constructor(
@@ -43,19 +45,24 @@ async function waitingRun(client: PoolClient, runId: string): Promise<ReleaseRun
   const run = rows[0];
   if (!run) throw none;
   if (run.state === "superseded") throw new ReviewError("A newer version of this pack replaced it; review that one.", 409);
+  if (run.state === "approved") throw new ReviewError("It is approved already, and being listed.", 409);
   if (run.state !== "awaiting_review") throw new ReviewError("It is not waiting for review.", 409);
   return run;
 }
 
-/** Approves a staged version: its promotion waits its turn like any run, and lists it once it runs. */
+/**
+ * Approves a staged version: it is `approved` at once, so nothing rejects or replaces it while its
+ * promotion waits its turn like any run and lists it once it runs.
+ */
 export async function approve(runId: string, actorId: string): Promise<ReleaseRun> {
   if (!runsOnDroplet()) throw new ReviewError("Only the site that signs the channel can list a release.", 409);
+  // A finished run nobody settled yet would otherwise keep the promotion queued behind it.
+  await syncActive();
   const promote = await withTeam(ALL_TEAMS, async (client) => {
     const run = await waitingRun(client, runId);
-    const { rowCount: pending } = await client.query(`select 1 where ${promoting("$1::uuid")}`, [run.id]);
-    if (pending) throw new ReviewError("It is approved already, and being listed.", 409);
     await client.query(
-      `update "release_run" set "reviewedBy" = $2, "reviewedAt" = now(), "reviewNote" = null, "error" = null where "id" = $1`,
+      `update "release_run" set "state" = 'approved', "reviewedBy" = $2, "reviewedAt" = now(), "reviewNote" = null, "error" = null
+        where "id" = $1`,
       [run.id, actorId],
     );
     const promote = await insertRun(client, {
@@ -116,6 +123,7 @@ export async function delistPack(teamId: string, lang: Lang, section: string, ac
   if (!isReleaseSection(section)) throw new ReviewError("No such section.", 400);
   if (!isUuid(teamId)) throw new ReviewError("No such team.", 404);
   if (!runsOnDroplet()) throw new ReviewError("Only the site that signs the channel can delist a pack.", 409);
+  await syncActive();
   const run = await withTeam(ALL_TEAMS, async (client) => {
     const { rows } = await client.query<{ official: boolean }>(`select "official" from "team" where "id" = $1`, [teamId]);
     const team = rows[0];
@@ -132,9 +140,9 @@ export async function delistPack(teamId: string, lang: Lang, section: string, ac
 }
 
 const WAITING = `from "release_run" r join "team" t on t."id" = r."teamId"
-                 where r."kind" = 'release' and r."state" = 'awaiting_review'`;
+                 where r."kind" = 'release' and r."state" in ('awaiting_review', 'approved')`;
 
-/** How many versions wait for a site owner, for the header's badge. */
+/** How many versions wait for a site owner, approved ones still being listed among them, for the header's badge. */
 export async function waitingCount(): Promise<number> {
   return withTeam(ALL_TEAMS, async (client) => {
     const { rows } = await client.query<{ count: string }>(`select count(*) as "count" ${WAITING}`);
@@ -155,21 +163,28 @@ type WaitingRow = {
   requestedBy: string | null; createdAt: Date; error: string | null; approving: boolean; since: Date | null;
 };
 
-/** What a waiting version changes for players, as its team counts it, read as that team. */
-function changesOf(row: Pick<WaitingRow, "teamId" | "lang" | "section" | "since">, list: boolean): Promise<PendingView> {
-  return asTeam(row.lang, row.teamId, () => pendingChanges(row.section, row.lang, row.since, { list, people: true }));
+/**
+ * What a waiting version changes for players, as its team counts it, read as that team: up to
+ * when it was pressed, with the takes live then, which its build read. Takes cut since wait for
+ * the team's next release.
+ */
+function changesOf(row: Pick<WaitingRow, "teamId" | "lang" | "section" | "since" | "createdAt">, list: boolean): Promise<PendingView> {
+  return asTeam(row.lang, row.teamId, () =>
+    pendingChanges(row.section, row.lang, row.since, { list, people: true, until: row.createdAt }),
+  );
 }
 
 /**
  * Every version waiting for review, oldest first, each with what it changes for players as its
- * team's own release page counts it: the team's live takes since its last approved release. The
+ * team's own release page counted it when it was pressed: the team's takes live then, since its
+ * last approved release. The
  * counts and people only; the dialog asks for the lines (waitingLines).
  */
 export async function waitingReviews(): Promise<WaitingVersion[]> {
   const rows = await withTeam(ALL_TEAMS, async (client) => {
     const { rows } = await client.query<WaitingRow>(
       `select r."id", r."teamId", t."slug", t."name", r."lang", r."section", r."version", r."requestedBy",
-              r."createdAt", r."error", ${promoting(`r."id"`)} as "approving", ${SINCE} as "since"
+              r."createdAt", r."error", r."state" = 'approved' as "approving", ${SINCE} as "since"
          ${WAITING} order by r."createdAt"`,
     );
     return rows;
@@ -198,8 +213,8 @@ export async function waitingReviews(): Promise<WaitingVersion[]> {
 export async function waitingLines(runId: string): Promise<PendingView | null> {
   if (!isUuid(runId)) return null;
   const row = await withTeam(ALL_TEAMS, async (client) => {
-    const { rows } = await client.query<Pick<WaitingRow, "teamId" | "lang" | "section" | "since">>(
-      `select r."teamId", r."lang", r."section", ${SINCE} as "since" ${WAITING} and r."id" = $1`,
+    const { rows } = await client.query<Pick<WaitingRow, "teamId" | "lang" | "section" | "since" | "createdAt">>(
+      `select r."teamId", r."lang", r."section", r."createdAt", ${SINCE} as "since" ${WAITING} and r."id" = $1`,
       [runId],
     );
     return rows[0];
@@ -225,7 +240,9 @@ export async function liveTeamPacks(): Promise<LiveTeamPack[]> {
        ) live
        where not exists (select 1 from "release_run" d
                           where d."kind" = 'delist' and d."state" = 'done' and d."teamId" = live."teamId"
-                            and d."lang" = live."lang" and d."section" = live."section" and d."createdAt" > live."at")
+                            and d."lang" = live."lang" and d."section" = live."section"
+                            -- When it took the pack off: a delisting pressed while the listing ran waits behind it.
+                            and coalesce(d."finishedAt", d."createdAt") > live."at")
        order by live."lang", live."section", live."name"`,
     );
     return rows.map((row) => ({

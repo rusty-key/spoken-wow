@@ -9,6 +9,7 @@ import { Contained } from "@/components/Width";
 import { allLangs } from "@/lib/lang";
 import { isAdmin } from "@/lib/permissions";
 import { liveTeamPacks, waitingReviews } from "@/lib/releases/review";
+import { syncActive } from "@/lib/releases/sync";
 import { currentSession } from "@/lib/session";
 
 export const metadata: Metadata = { title: "Team releases · Spoken" };
@@ -20,6 +21,8 @@ export default async function Page() {
   const session = await currentSession();
   if (!session || !isAdmin(session.user.role)) notFound();
 
+  // A promotion or delisting that finished shows as such, not as still being listed.
+  await syncActive();
   const [waiting, live] = await Promise.all([waitingReviews(), liveTeamPacks()]);
 
   return (

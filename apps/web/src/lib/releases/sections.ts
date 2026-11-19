@@ -27,14 +27,16 @@ export function isReleaseBump(value: unknown): value is ReleaseBump {
 
 /**
  * A run waits `queued` while another is active, then runs. A staged release (a team that is not
- * official) ends `awaiting_review`, then `done` once a site owner approves it and its promotion
- * runs, `rejected`, or `superseded` by a newer staged version of the same pack.
+ * official) ends `awaiting_review`; a site owner's approval makes it `approved` while its
+ * promotion waits and runs, then `done`, or back to `awaiting_review` if listing it failed. It
+ * may instead end `rejected`, or `superseded` by a newer staged version of the same pack.
  */
 export type ReleaseState =
   | "queued"
   | "dispatching"
   | "running"
   | "awaiting_review"
+  | "approved"
   | "done"
   | "unchanged"
   | "failed"
@@ -49,7 +51,7 @@ export function isActive(state: ReleaseState): boolean {
   return state === "dispatching" || state === "running";
 }
 
-/** Whether its job is over: nothing the job reports changes it, though a review still may (awaiting_review). */
+/** Whether its job is over: nothing the job reports changes it, though a review still may (awaiting_review, approved). */
 export function isSettled(state: ReleaseState): boolean {
   return !isActive(state) && state !== "queued";
 }
