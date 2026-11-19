@@ -725,6 +725,43 @@ runs. If the queue looks stuck, check for a `dispatching` or `running` row in `r
 directory (`shared/release-runs/<id>/`) has no recent heartbeat: the site fails it after three
 minutes without one, the next time anybody opens a release page.
 
+### Deleting a team
+
+A site owner deletes a team from its row on `/admin/teams`: the dialog lists what goes, and Delete
+works once the team's slug is typed (`docs/platform/TEAMS.md`, *Deleting a team*). English's team
+cannot be deleted, nor a team with a release queued, running or being listed.
+
+A team with packs on the channel is delisted first, one `delist` run per pack in the release
+queue, so deleting it works on the droplet only. Its row says *Being deleted* with how many are
+done. The rows go when the last one ends; until then the team makes nothing, and its members can
+do nothing in it. A team with no pack on the channel goes at once.
+
+If a delisting fails, the row says *Deletion stopped* with the reason, and nothing has been
+deleted. Fix the cause (the log is on the run, under `shared/release-runs/<id>/`) and press
+**Retry**, which queues every delisting again; one with nothing left to take off ends at once.
+Cancelling a queued delisting from the release page stops the deletion the same way.
+
+Nothing in any bucket is deleted: the team's `archive_object` rows go, and the objects stay. A
+language left with no team is switched off; adding a team to it switches it back on. Its text
+reports move to another team of the language, or wait on its text queue with no team; its open
+voice reports are closed as *not an issue*, since their takes go with it.
+
+Migration 0124 is additive. A rollback past it leaves a team being deleted unable to make
+anything, and an older release never finishes the deletion. Once the site goes forward again,
+let the row offer Retry by naming why it stopped:
+
+```bash
+psql "$PROD_DATABASE_URL" -c "update team set \"deleteError\" = 'Interrupted by a rollback' where slug = '<slug>' and \"deletingAt\" is not null"
+```
+
+Before a rollback past 0124, close the open text reports a deletion left with no team (their
+language had no other team), or give each a team by hand: the older code expects every report to
+have one.
+
+```bash
+psql "$PROD_DATABASE_URL" -c "update report set status = 'not_an_issue', \"resolvedAt\" = now() where \"teamId\" is null and status = 'open'"
+```
+
 ### On GitHub Actions
 
 1. Create a **fine-grained** GitHub token for this repository only, with the repository

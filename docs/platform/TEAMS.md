@@ -104,7 +104,7 @@ language has `plain`, else `slug`. One team per language at most has `plain`.
 
 Today's global `admin`. Above all teams: create teams and set their languages and first admin,
 appoint text maintainers, act inside any team with full rights without being a member *(my call)*,
-and delist a team's packs. A site owner acts inside a team by picking it in the explorer's team
+delist a team's packs and delete a team (*Deleting a team*). A site owner acts inside a team by picking it in the explorer's team
 picker; the choice is kept per language in a cookie and lasts until they pick again. While it holds,
 every page of the language says "Working as {team}". With no pick, a site owner acts in their own
 team in the language, else the first the picker lists.
@@ -434,6 +434,41 @@ press cannot overwrite each other on the index, because only one run builds at a
 write is conditional. They can cost each other a run: GitHub's `concurrency` group keeps one pending
 run and cancels it for a newer one, so a press waiting behind a manual build can end `cancelled`.
 
+## Deleting a team
+
+A site owner can delete any team but English's from its row on `/admin/teams`
+(`lib/teams/delete.ts`). The dialog lists what goes: its packs on the channel, takes and recordings,
+voices and clones, pending generation, overrides, releases, the text reports that move and the
+open voice reports that close, its bucket, its members, and
+each language it leaves with no team. Typing the team's slug enables Delete. A team with a release
+queued, running or being listed is refused until it ends.
+
+Deleting is a job, because delisting goes through the release queue:
+
+1. The team is marked `deletingAt` (migration 0124). From then it makes nothing: no take,
+   recording, generation, member, language or release goes in under it (a trigger refuses each),
+   and its members' audio capabilities are not read. Its pending generation is cancelled and a
+   version of it waiting for review is rejected.
+2. A `delist` run is queued for each pack it has on the channel: each its releases listed and no
+   delisting has taken off since, and every section of a language where its packs are plain, since
+   `make manager-release` published those before the site ran releases. Only the droplet can run
+   them, so a team with any is refused elsewhere.
+3. When the last of them settles, the settle hook (`releases/store.ts`) deletes its rows in the
+   same transaction. Nothing is deleted while one is still to run. A failed delisting stops the
+   deletion with the reason, and the row offers a Retry, which queues them all again.
+
+Its rows go in one transaction. Its text reports move to another team of their language, the one
+with plain packs first, else wait on the language's text queue with no team. Its voice reports are
+about takes that go with it: an open one is closed (`not_an_issue`, resolved by whoever deleted the
+team), and all of them keep no team. The dialog and the `team.deleted` row count the closed ones,
+since a report has no note to say why it closed. Every other table with a
+`teamId` loses the team's rows (`DELETED`; a test checks it lists every such table), the team's
+members, languages and invites cascade, and a request it was approved from forgets it. Its audio
+capabilities are its memberships, so they go; `text` is the language's and stays. Archive objects
+stay in their bucket; only their rows go. A language left with no team is switched off, as before
+its first team, keeping its text and settings; a team joining it switches it back on. A
+`team.deleted` row in the site log names the team, its languages and members, and counts what went.
+
 ## Migration
 
 - One team per group of people, from `language_grant`: people who maintain several languages
@@ -520,6 +555,6 @@ team-owned publishing; clients per team; several English teams; team-owned stora
 releases for teams; quotas and abuse limits; review before a take or release goes live; terms of
 service; publishing community packs (`SpokenCommunity_*`).
 
-A team admin's own page for their team (a site admin can delete an empty team: `SELF-SERVE-TEAMS.md`). Removing `line_issue` and `line_flag`,
+A team admin's own page for their team. Removing `line_issue` and `line_flag`,
 which have no readers. The English override route requiring `regenerate` rather than the team's
 `edit`.
