@@ -153,6 +153,7 @@ function RunLine({ job, onDismiss }: { job: JobProgress; onDismiss: () => void }
 
 function RowItem({ row, store, storeBusy, gameId, lang, onUpload }: { row: ReleaseRow; store: StoreId; storeBusy: boolean; gameId: string; lang: string; onUpload: () => void }): ReactNode {
   const uploadLabel = rowUploadLabel(row)
+  const { state } = useStore()
   const [zipping, setZipping] = useState(false)
   const [zip, setZip] = useState<ManualZip | null>(null)
   const [zipError, setZipError] = useState('')
@@ -201,7 +202,7 @@ function RowItem({ row, store, storeBusy, gameId, lang, onUpload }: { row: Relea
           <span className="contrib-hint">{S.contributor.zipReady(shownZip.name, formatBytes(shownZip.bytes))}</span>
           <span className="contrib-zip-actions">
             <button type="button" className="link" onClick={() => void api().contributorRevealZip(shownZip.path).catch((e) => setZipError(errorText(e)))}>
-              {S.contributor.showZip}
+              {S.common.showIn(state.platform)}
             </button>
             <button type="button" className="link" onClick={() => void api().openExternal(shownZip.uploadUrl).catch((e) => setZipError(errorText(e)))}>
               {S.contributor.openUploadPage}

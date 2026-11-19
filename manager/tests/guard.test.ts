@@ -300,15 +300,15 @@ describe('what the window may open', () => {
     }
   })
 
-  it('shows only a .zip file directly inside the zips folder', async () => {
+  it('shows only a .zip file under the zips folder', async () => {
     const dir = tmpDir()
-    const zip = path.join(dir, 'SpokenPlacesAudio_deDE-1.2.0.zip')
+    const zip = path.join(dir, 'SpokenPlacesAudio_deDE', 'SpokenPlacesAudio_deDE-1.2.0.zip')
     write(zip, 'zip')
     write(path.join(dir, 'notes.txt'), 'x')
-    write(path.join(dir, 'sub', 'a.zip'), 'zip')
+    write(path.join(path.dirname(dir), 'outside.zip'), 'zip')
     fs.mkdirSync(path.join(dir, 'folder.zip'))
     expect(await revealableZip(zip, dir)).toBe(zip)
-    for (const bad of [path.join(dir, 'notes.txt'), path.join(dir, 'sub', 'a.zip'), path.join(dir, 'folder.zip'), path.join(dir, '..', 'x.zip'), 'relative.zip', '', 42]) {
+    for (const bad of [path.join(dir, 'notes.txt'), path.join(dir, 'folder.zip'), path.join(dir, '..', 'outside.zip'), 'relative.zip', '', 42]) {
       await expect(revealableZip(bad, dir)).rejects.toThrow()
     }
     await expect(revealableZip(path.join(dir, 'gone.zip'), dir)).rejects.toThrow(/gone/)

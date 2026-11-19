@@ -1212,10 +1212,9 @@ describe('zip for an upload by hand', () => {
     configureCf(h, { [PLACES]: '1700375' })
     const first = await h.svc.contributor.zipForUpload(h.game.id, 'deDE', PLACES)
     expect(first).toMatchObject({
-      folder: PLACES,
       version: '1.2.0',
       name: `${PLACES}-1.2.0.zip`,
-      path: path.join(h.dir, 'contributor-zips', `${PLACES}-1.2.0.zip`),
+      path: path.join(h.dir, 'contributor-zips', PLACES, `${PLACES}-1.2.0.zip`),
       uploadUrl: 'https://authors.curseforge.com/#/projects/1700375/files'
     })
     expect(first.bytes).toBe(fs.statSync(first.path).size)
@@ -1226,7 +1225,8 @@ describe('zip for an upload by hand', () => {
     await h.svc.contributor.zipForUpload(h.game.id, 'deDE', READABLES)
     h.install(PLACES, '1.3.0')
     await h.svc.contributor.zipForUpload(h.game.id, 'deDE', PLACES)
-    expect(fs.readdirSync(path.join(h.dir, 'contributor-zips')).sort()).toEqual([`${PLACES}-1.3.0.zip`, `${READABLES}-1.0.0.zip`])
+    expect(fs.readdirSync(path.join(h.dir, 'contributor-zips', PLACES))).toEqual([`${PLACES}-1.3.0.zip`])
+    expect(fs.readdirSync(path.join(h.dir, 'contributor-zips', READABLES))).toEqual([`${READABLES}-1.0.0.zip`])
   })
 
   it('refuses what a release would refuse, and a language the account does not administer', async () => {
@@ -1240,7 +1240,7 @@ describe('zip for an upload by hand', () => {
     await expect(h.svc.contributor.zipForUpload(h.game.id, 'deDE', BOSSES)).rejects.toThrow(/Update/)
     await expect(h.svc.contributor.zipForUpload(h.game.id, 'frFR', languageFolders('frFR')[0]!)).rejects.toThrow(/frFR/)
     await expect(h.svc.contributor.zipForUpload(h.game.id, 'deDE', '../../evil')).rejects.toThrow(/not one of/)
-    expect(fs.existsSync(path.join(h.dir, 'contributor-zips')) ? fs.readdirSync(path.join(h.dir, 'contributor-zips')) : []).toEqual([])
+    expect(fs.existsSync(path.join(h.dir, 'contributor-zips'))).toBe(false)
   })
 
   it('a second zip of the same pack while one runs is refused', async () => {

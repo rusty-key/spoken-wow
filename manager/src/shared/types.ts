@@ -420,7 +420,6 @@ export type SkipReason = Exclude<RowState, 'unreleased'> | 'already-there'
 
 /** A pack zipped for an upload by hand, on CurseForge's site, when the API refuses its size. */
 export interface ManualZip {
-  folder: string
   version: string
   /** The zip's full path, under the data folder. */
   path: string

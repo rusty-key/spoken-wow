@@ -1,5 +1,5 @@
 import type { StoreInput } from '@shared/api'
-import type { ContributorView, JobProgress, PublishResult, ReleaseRow, SkipReason, StoreId } from '@shared/types'
+import type { ContributorView, JobProgress, PublishResult, ReleaseRow, RowState, SkipReason, StoreId } from '@shared/types'
 import { storeConfigured } from '@shared/types'
 import { jobBusy } from './catalog'
 import { S } from './strings'
@@ -23,8 +23,10 @@ export function rowUploadLabel(row: ReleaseRow): string | null {
 
 /** A pack a release could send, so it can be zipped for an upload by hand too. */
 export function canZip(row: ReleaseRow): boolean {
-  return row.version !== undefined && (row.state === 'unreleased' || row.state === 'awaiting' || row.state === 'unchecked' || row.state === 'live')
+  return !REFUSED.includes(row.state)
 }
+
+const REFUSED: RowState[] = ['not-installed', 'update-first', 'linked', 'no-project']
 
 /** A cleared project id goes as `''`: the saved ids are merged with these, and only that removes one. */
 export function storeFormInput(store: StoreId, form: { token: string; removeToken: boolean; projects: Record<string, string>; repo: string; versions: string }): StoreInput {

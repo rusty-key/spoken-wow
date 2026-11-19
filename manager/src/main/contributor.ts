@@ -344,11 +344,7 @@ export class ContributorService {
     await this.requireAdmin(lang)
     const game = this.deps.game(gameId)
     const folders = languageFolders(lang)
-    if (only !== undefined) {
-      if (!folders.includes(only)) throw new PlainError(t('contributor.notOneOf', { folder: only, lang }))
-      const refused = this.refusal((await this.inspect(game, [only]))[0]!, store, this.store.config())
-      if (refused) throw new PlainError(refused)
-    }
+    if (only !== undefined) await this.sendable(game, lang, only, store)
     // After the awaits above, with none before enqueue, so two calls at once cannot both pass.
     if (this.publishing.has(store)) {
       throw new PlainError(t('contributor.releaseRunning', { store: STORE_NAMES[store] }))
@@ -375,35 +371,35 @@ export class ContributorService {
    */
   async zipForUpload(gameId: string, lang: string, folder: string): Promise<ManualZip> {
     await this.requireAdmin(lang)
-    if (!languageFolders(lang).includes(folder)) throw new PlainError(t('contributor.notOneOf', { folder, lang }))
     if (this.zipping.has(folder)) throw new PlainError(t('contributor.zipRunning', { folder }))
     this.zipping.add(folder)
     try {
       await this.deps.refreshChannel({ maxAgeMs: ROWS_CHANNEL_MAX_AGE_MS }).catch(() => undefined)
-      const pack = (await this.inspect(this.deps.game(gameId), [folder]))[0]!
-      const config = this.store.config()
-      const refused = this.refusal(pack, 'curseforge', config)
-      if (refused) throw new PlainError(refused)
-      const version = pack.version!
-      const dir = this.zipsPath
+      const game = this.deps.game(gameId)
+      const version = (await this.sendable(game, lang, folder, 'curseforge')).version!
+      // One folder per pack, emptied first: each zip is near a gigabyte, so only the newest is kept.
+      const dir = path.join(this.zipsPath, folder)
+      await fs.promises.rm(dir, { recursive: true, force: true })
       await fs.promises.mkdir(dir, { recursive: true })
-      const name = zipName(folder, version)
-      const dest = path.join(dir, name)
+      const dest = path.join(dir, zipName(folder, version))
       const part = `${dest}.part`
-      await zipFolder(this.deps.game(gameId).addOnsPath, folder, part, new AbortController().signal)
-      // Each pack is near a gigabyte, so only its newest zip is kept; a .part a quit left behind goes too.
-      for (const old of await fs.promises.readdir(dir)) {
-        if (old !== path.basename(part) && old.startsWith(`${folder}-`) && /^\d/.test(old.slice(folder.length + 1))) {
-          await fs.promises.rm(path.join(dir, old), { force: true }).catch(() => undefined)
-        }
-      }
+      await zipFolder(game.addOnsPath, folder, part, new AbortController().signal)
       await fs.promises.rename(part, dest)
       const bytes = (await fs.promises.stat(dest)).size
       log(`Zipped ${folder} ${version} for an upload by hand: ${bytes} bytes.`)
-      return { folder, version, path: dest, name, bytes, uploadUrl: cfUploadPage(config.projects[folder]!) }
+      return { version, path: dest, name: path.basename(dest), bytes, uploadUrl: cfUploadPage(this.store.config().projects[folder]!) }
     } finally {
       this.zipping.delete(folder)
     }
+  }
+
+  /** The installed pack, when it is one of the language's and a release would send it to `store`. */
+  private async sendable(game: GameInstall, lang: string, folder: string, store: StoreId): Promise<Pack> {
+    if (!languageFolders(lang).includes(folder)) throw new PlainError(t('contributor.notOneOf', { folder, lang }))
+    const pack = (await this.inspect(game, [folder]))[0]!
+    const refused = this.refusal(pack, store, this.store.config())
+    if (refused) throw new PlainError(refused)
+    return pack
   }
 
   private async runJob(game: GameInstall, lang: string, folders: string[], store: StoreId, again: boolean, ctx: JobContext): Promise<void> {

@@ -312,7 +312,6 @@ export const S_EN = {
     zipping: 'Zipping',
     zipTitle: "CurseForge's API takes files up to 500 MB. Zip a bigger pack here and upload it on CurseForge's site, which takes up to 1 GB.",
     zipReady: (name: string, size: string) => `${name} (${size}) is ready. Upload it on the project's Files page with the same game versions as under Stores.`,
-    showZip: 'Show in Folder',
     openUploadPage: 'Open Upload Page',
     nothingToRelease: 'Nothing is unreleased on this store.',
     sentOf: (speed: string, sent: string, total: string) => `${speed} · ${sent} of ${total}`,

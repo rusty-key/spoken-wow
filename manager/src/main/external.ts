@@ -51,13 +51,12 @@ export async function openableDirectory(value: unknown, roots: readonly string[]
 }
 
 /**
- * A zip to show in Explorer or Finder: a regular `.zip` file directly inside `dir`. Showing selects the
- * file without opening it, and nothing else on the disk can be asked for.
+ * A zip to show in Explorer or Finder: a regular `.zip` file under `dir`. Showing selects the file
+ * without opening it, and nothing outside `dir` can be asked for.
  */
 export async function revealableZip(value: unknown, dir: string): Promise<string> {
-  if (typeof value !== 'string' || !path.isAbsolute(value) || value.includes('\0') || value.length > 2048) throw new Error('That file cannot be shown from here')
-  const target = path.resolve(value)
-  if (path.dirname(target) !== path.resolve(dir) || !target.toLowerCase().endsWith('.zip')) throw new Error('That file cannot be shown from here')
+  if (!isAllowedOpenPath(value, [dir]) || !(value as string).toLowerCase().endsWith('.zip')) throw new Error('That file cannot be shown from here')
+  const target = path.resolve(value as string)
   let st: fs.Stats
   try {
     st = await fs.promises.lstat(target)

@@ -633,7 +633,7 @@ export function createMockApi(): ManagerApi {
       await sleep(1500)
       const version = contributorRows(_lang).find((r) => r.folder === folder)?.version ?? '1.0.0'
       const name = `${folder}-${version}.zip`
-      return { folder, version, name, path: `/mock/contributor-zips/${name}`, bytes: 734 * 1024 * 1024, uploadUrl: 'https://authors.curseforge.com/#/projects/1700375/files' }
+      return { version, name, path: `/mock/contributor-zips/${folder}/${name}`, bytes: 734 * 1024 * 1024, uploadUrl: 'https://authors.curseforge.com/#/projects/1700375/files' }
     },
     async contributorRevealZip(path) {
       console.info('[mock] contributorRevealZip', path)

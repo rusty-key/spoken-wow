@@ -305,7 +305,6 @@ export const S_ZH: Dict = {
     zipping: '正在压缩',
     zipTitle: 'CurseForge 的 API 只接受不超过 500 MB 的文件。更大的语音包可以在这里压缩，再到 CurseForge 网站上传，网站上限为 1 GB。',
     zipReady: (name: string, size: string) => `${name}（${size}）已就绪。请在项目的 Files 页面上传，游戏版本与“商店”中的一致。`,
-    showZip: '在文件夹中显示',
     openUploadPage: '打开上传页面',
     nothingToRelease: '此商店上没有未发布的项。',
     sentOf: (speed: string, sent: string, total: string) => `${speed} · ${sent} / ${total}`,

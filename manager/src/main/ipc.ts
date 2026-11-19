@@ -173,12 +173,9 @@ export function registerIpc(service: ManagerService, page: AppPage, updater: () 
     const language = contributorLang(lang)
     return service.contributor.publish(id(gameId, 'game id'), language, contributorStore(store), contributorOnly(language, only))
   })
-  handle(CHANNELS.contributorZip, (_e, gameId, lang, folder) => {
-    const language = contributorLang(lang)
-    const only = contributorOnly(language, folder)
-    if (!only) throw new Error('Invalid pack')
-    return service.contributor.zipForUpload(id(gameId, 'game id'), language, only)
-  })
+  handle(CHANNELS.contributorZip, (_e, gameId, lang, folder) =>
+    service.contributor.zipForUpload(id(gameId, 'game id'), contributorLang(lang), id(folder, 'pack'))
+  )
   handle(CHANNELS.contributorRevealZip, async (_e, p) => {
     shell.showItemInFolder(await revealableZip(p, service.contributor.zipsPath))
   })
