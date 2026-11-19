@@ -17,6 +17,7 @@ import { Button } from "@/components/ui/button";
 import RegenerateDialog, { type PendingBatch } from "@/components/RegenerateDialog";
 import RegenerationPanel from "@/components/RegenerationPanel";
 import { GroupHeader, LineRow, type RowState } from "@/components/places/LineRow";
+import { BatchGenerate } from "@/components/catalogue/RowParts";
 import { LoreDialog } from "@/components/places/LoreDialog";
 import { Player } from "@/components/places/Player";
 import TextOverrideDialog from "@/components/TextOverrideDialog";
@@ -721,9 +722,7 @@ export function Explorer<L extends ExplorerLine, F extends ExplorerFilters>({
           )}
 
           {canRegenerate && result && result.total > 0 && (
-            <Button size="xs" variant="secondary" className="ml-auto" onClick={askToRegenerateAll}>
-              Regenerate all {result.total.toLocaleString()}
-            </Button>
+            <BatchGenerate total={result.total} state={filters.state} noun={["line", "lines"]} onClick={askToRegenerateAll} />
           )}
         </div>
 
@@ -749,7 +748,7 @@ export function Explorer<L extends ExplorerLine, F extends ExplorerFilters>({
               <col className="w-36" />
               {showMadeBy && <col className="w-36" />}
               {showRecordings && <col className="w-28" />}
-              <col className="w-32" />
+              <col className="w-48" />
             </colgroup>
             <thead>
               <tr>

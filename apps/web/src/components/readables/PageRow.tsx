@@ -123,6 +123,15 @@ export function PageRow({
 }: Props) {
   const playable = line.state !== "missing";
   const [expanded, setExpanded] = useState(false);
+  // Missing or outdated audio makes generating the row's task: a gold button, not a menu item.
+  const needsTake = canRegenerate && line.generatable && (line.state === "missing" || line.state === "stale");
+  const generate: RowAction = {
+    label: line.state === "missing" ? "Generate" : "Regenerate",
+    aria: `${line.state === "missing" ? "Generate" : "Regenerate"} page ${line.pageNumber} of ${line.title}`,
+    disabled: line.generatable ? undefined : `This page cannot be voiced: ${line.skipReason}`,
+    emphasis: needsTake,
+    onClick: () => onRegenerate(line),
+  };
 
   /**
    * Clicking the row shows the whole page, but only when the click meant that.
@@ -267,18 +276,10 @@ export function PageRow({
             ...(canEdit
               ? [{ label: "Edit", aria: `Edit the text of page ${line.pageNumber} of ${line.title}`, title: "Rewrite what this page says", onClick: () => onEditText(line) }]
               : []),
+            ...(needsTake ? [generate] : []),
           ]}
           more={[
-            ...(canRegenerate
-              ? [
-                  {
-                    label: "Regenerate",
-                    aria: `Regenerate page ${line.pageNumber} of ${line.title}`,
-                    disabled: line.generatable ? undefined : `This page cannot be voiced: ${line.skipReason}`,
-                    onClick: () => onRegenerate(line),
-                  },
-                ]
-              : []),
+            ...(canRegenerate && !needsTake ? [generate] : []),
             // An override changes only what the team's take says, so it needs what regenerating
             // needs. English standing in for the language is not this language's text to override.
             ...(canRegenerate && !line.missing?.text

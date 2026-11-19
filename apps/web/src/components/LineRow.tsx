@@ -269,10 +269,18 @@ export default function LineRow({
     setExpanded((open) => !open);
   }
 
+  // Missing or outdated audio makes generating the row's task, so it leaves the menu for a gold
+  // button; on current audio it stays in the menu, where remaking a fine take is a deliberate act.
+  const needsTake = canRegenerate && (missing?.kind === "gap" || (!missing && stale));
+  const generate: RowAction = {
+    label: missing ? "Generate" : "Regenerate",
+    aria: `${missing ? "Generate" : "Regenerate"} ${subject}`,
+    disabled: blocked ?? undefined,
+    emphasis: needsTake,
+    onClick: () => onRegenerate(line),
+  };
   const more: RowAction[] = [
-    ...(canRegenerate
-      ? [{ label: "Regenerate", aria: `Regenerate ${subject}`, disabled: blocked ?? undefined, onClick: () => onRegenerate(line) }]
-      : []),
+    ...(canRegenerate && !needsTake ? [generate] : []),
     // Outside the canRegenerate gate: reporting is what a player who cannot sign in has.
     // Hidden only when the line has no address the report page could resolve.
     ...(onReport && targetForLine(line)
@@ -488,8 +496,8 @@ export default function LineRow({
         <RowActions
           subject={subject}
           badge={<ReportsBadge source="quests" lineId={line.lineId} count={line.reportsOpen} canTriage={canTriage} />}
-          primary={
-            canRegenerate && !line.missing?.text
+          primary={[
+            ...(canRegenerate && !line.missing?.text
               ? [
                   {
                     label: "Edit",
@@ -499,8 +507,9 @@ export default function LineRow({
                     onClick: () => onEditText(line),
                   },
                 ]
-              : []
-          }
+              : []),
+            ...(needsTake ? [generate] : []),
+          ]}
           more={more}
         />
       </td>

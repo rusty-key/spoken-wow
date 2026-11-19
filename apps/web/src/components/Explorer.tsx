@@ -9,6 +9,7 @@ import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from "rea
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 
 import LineRow, { newSpeaker, SpeakerHeader } from "./LineRow";
+import { BatchGenerate } from "@/components/catalogue/RowParts";
 import Key from "./Key";
 import Pagination from "./Pagination";
 import Player from "./Player";
@@ -900,14 +901,7 @@ export default function Explorer({ facets, teams, viewed, home }: { facets: Face
             </span>
           )}
           {showRegenerate && result && result.total > 0 && (
-            <Button
-              size="xs"
-              variant="secondary"
-              className="ml-auto"
-              onClick={() => void requestBatch()}
-            >
-              Regenerate all {result.total.toLocaleString()}
-            </Button>
+            <BatchGenerate total={result.total} state={filters.state} noun={["line", "lines"]} onClick={() => void requestBatch()} />
           )}
         </div>
 
@@ -936,7 +930,7 @@ export default function Explorer({ facets, teams, viewed, home }: { facets: Face
                 <col className="w-36" />
                 {showMadeBy && <col className="w-36" />}
                 {showRecordings && <col className="w-28" />}
-                <col className="w-32" />
+                <col className="w-48" />
               </colgroup>
               <thead>
                 <tr>

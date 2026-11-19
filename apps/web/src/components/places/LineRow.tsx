@@ -128,6 +128,14 @@ export function LineRow<L extends ExplorerLine>({
   // route refuses it.
   const overridable = !unwritten && line.translated !== false;
   const [expanded, setExpanded] = useState(false);
+  // Missing or outdated audio makes generating the row's task: a gold button, not a menu item.
+  const needsTake = canRegenerate && !unwritten && (line.state === "missing" || line.state === "stale");
+  const generate: RowAction = {
+    label: line.state === "missing" ? "Generate" : "Regenerate",
+    aria: `${line.state === "missing" ? "Generate" : "Regenerate"} ${line.name}`,
+    emphasis: needsTake,
+    onClick: () => onRegenerate(line),
+  };
 
   /**
    * Clicking the row shows the whole line, but only when the click meant that.
@@ -286,11 +294,10 @@ export function LineRow<L extends ExplorerLine>({
             ...(canEdit
               ? [{ label: "Edit", aria: `Edit the text of ${line.name}`, title: "Rewrite this line's text", onClick: () => onEditText(line) }]
               : []),
+            ...(needsTake ? [generate] : []),
           ]}
           more={[
-            ...(canRegenerate && !unwritten
-              ? [{ label: "Regenerate", aria: `Regenerate ${line.name}`, onClick: () => onRegenerate(line) }]
-              : []),
+            ...(canRegenerate && !unwritten && !needsTake ? [generate] : []),
             // An override changes only what the team's take says, so it needs what regenerating needs.
             ...(canRegenerate && overridable
               ? [

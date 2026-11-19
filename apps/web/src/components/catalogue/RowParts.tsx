@@ -16,6 +16,8 @@ export type RowAction = {
   marked?: boolean;
   /** Why the action cannot run now, shown in place of running it. */
   disabled?: string;
+  /** The one thing this row needs: drawn as the gold button. */
+  emphasis?: boolean;
 };
 
 /**
@@ -54,7 +56,7 @@ export function RowActions({
         <button
           key={action.aria}
           type="button"
-          className={cn("bs-btn bs-btn-text cat-act", action.marked && "cat-marked")}
+          className={cn("bs-btn cat-act", action.emphasis ? "bs-btn-primary" : "bs-btn-text", action.marked && "cat-marked")}
           aria-label={action.aria}
           title={action.disabled ?? action.title}
           disabled={action.disabled !== undefined}
@@ -103,6 +105,38 @@ export function RowActions({
         </Popover>
       )}
     </span>
+  );
+}
+
+/**
+ * Regenerating everything the search matches. Gold and worded as the task when the list is
+ * narrowed to missing or outdated audio, since then generating them is why the list is open;
+ * a quiet button otherwise, where it would remake audio that is fine.
+ */
+export function BatchGenerate({
+  total,
+  state,
+  noun,
+  onClick,
+}: {
+  total: number;
+  state: "missing" | "stale" | "current" | undefined;
+  noun: [string, string];
+  onClick: () => void;
+}) {
+  const count = total.toLocaleString();
+  const what = total === 1 ? noun[0] : noun[1];
+  if (state === "missing" || state === "stale") {
+    return (
+      <button type="button" className="bs-btn bs-btn-primary ml-auto" onClick={onClick}>
+        {state === "missing" ? `Generate audio for ${count} ${what}` : `Regenerate ${count} outdated ${what}`}
+      </button>
+    );
+  }
+  return (
+    <button type="button" className="bs-btn ml-auto" onClick={onClick}>
+      Regenerate all {count} {what}
+    </button>
   );
 }
 

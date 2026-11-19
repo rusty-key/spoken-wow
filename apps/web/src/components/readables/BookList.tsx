@@ -102,7 +102,7 @@ export function BookList({
           <col className="w-36" />
           {showMadeBy && <col className="w-36" />}
           {showRecordings && <col className="w-28" />}
-          <col className="w-32" />
+          <col className="w-48" />
         </colgroup>
         <thead>
           <tr>

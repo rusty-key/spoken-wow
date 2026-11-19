@@ -116,3 +116,14 @@ test("a current override carries no drift mark", () => {
   expect(screen.getByText("Goldshire.")).not.toBeNull();
   expect(screen.queryByText("The original changed since your override.")).toBeNull();
 });
+
+// Missing or outdated audio makes generating the row's task, so it is a button, not a menu item.
+test("a line with no audio offers Generate on the row, and current audio keeps it in More", async () => {
+  row({ ...goldshire, state: "missing" }, { canRegenerate: true, canEdit: true });
+  expect(screen.queryByRole("button", { name: "Generate Goldshire" })).not.toBeNull();
+  cleanup();
+  row({ ...goldshire, state: "current" }, { canRegenerate: true, canEdit: true });
+  expect(screen.queryByRole("button", { name: /^(Generate|Regenerate) Goldshire/ })).toBeNull();
+  await openMore();
+  expect(screen.queryByRole("button", { name: "Regenerate Goldshire" })).not.toBeNull();
+});

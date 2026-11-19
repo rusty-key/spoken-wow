@@ -3,7 +3,7 @@ import { cleanup, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, expect, test, vi } from "vitest";
 
-import { RowActions, type RowAction } from "@/components/catalogue/RowParts";
+import { BatchGenerate, RowActions, type RowAction } from "@/components/catalogue/RowParts";
 
 afterEach(cleanup);
 
@@ -57,4 +57,13 @@ test("the More menu is named for its line", async () => {
   render(<RowActions subject="Goldshire" primary={[]} more={[report, ignore]} />);
   await userEvent.setup().click(screen.getByRole("button", { name: "More actions for Goldshire" }));
   expect(screen.getByRole("dialog", { name: "More actions for Goldshire" })).not.toBeNull();
+});
+
+test("the batch button names the task when the list shows missing or outdated audio", () => {
+  const { rerender } = render(<BatchGenerate total={10} state="missing" noun={["line", "lines"]} onClick={() => {}} />);
+  expect(screen.getByRole("button").textContent).toBe("Generate audio for 10 lines");
+  rerender(<BatchGenerate total={1} state="stale" noun={["line", "lines"]} onClick={() => {}} />);
+  expect(screen.getByRole("button").textContent).toBe("Regenerate 1 outdated line");
+  rerender(<BatchGenerate total={10} state={undefined} noun={["page", "pages"]} onClick={() => {}} />);
+  expect(screen.getByRole("button").textContent).toBe("Regenerate all 10 pages");
 });

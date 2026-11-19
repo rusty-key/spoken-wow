@@ -1,5 +1,6 @@
 "use client";
 
+import { BatchGenerate } from "@/components/catalogue/RowParts";
 import { TranslateDialog, type TranslateSubject } from "@/components/TranslateDialog";
 import { useCan } from "@/components/useCan";
 import { useHistoryMode } from "@/components/useHistoryMode";
@@ -568,9 +569,7 @@ export function Explorer({ books, teams, viewed, home }: { books: BookFacet[] } 
             </Button>
           )}
           {canRegenerate && result && result.total > 0 && (
-            <Button size="sm" variant="secondary" onClick={askToRegenerateAll}>
-              Regenerate these
-            </Button>
+            <BatchGenerate total={result.total} state={filters.state} noun={["page", "pages"]} onClick={askToRegenerateAll} />
           )}
         </div>
       </div>
