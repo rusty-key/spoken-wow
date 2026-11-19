@@ -1,5 +1,6 @@
 // @vitest-environment jsdom
 import { cleanup, render, screen } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { afterEach, expect, test, vi } from "vitest";
 
 import { LangProvider } from "@/components/LangProvider";
@@ -50,17 +51,13 @@ function row(line: ResultLine, may: { canRegenerate: boolean; canEdit: boolean }
             onRecordingChanged={noop}
             {...may}
             canTriage={false}
-            groupRows={1}
             onPlay={noop}
             onRegenerate={noop}
-            onSelectBook={noop}
-            bookHref={() => "#"}
             onReport={noop}
             onRestored={noop}
             onEditText={noop}
             onOverride={noop}
             onOverrideAnswered={noop}
-            onRename={null}
             onClearDirty={noop}
           />
         </tbody>
@@ -70,22 +67,31 @@ function row(line: ResultLine, may: { canRegenerate: boolean; canEdit: boolean }
 }
 
 const overrideButton = () => screen.queryByRole("button", { name: "Override the text of page 1 of Ein Brief" });
+
+// Override lives behind the row's More menu, with Regenerate and Report.
+async function openMore() {
+  const more = screen.queryByRole("button", { name: "More actions for page 1 of Ein Brief" });
+  if (more) await userEvent.setup().click(more);
+}
 const pencil = () => screen.queryByRole("button", { name: "Edit the text of page 1 of Ein Brief" });
 
-test("regenerate alone offers the override and not the pencil", () => {
+test("regenerate alone offers the override and not the pencil", async () => {
   row(page, { canRegenerate: true, canEdit: false });
+  await openMore();
   expect(overrideButton()?.getAttribute("title")).toBe("Change what your team says");
   expect(pencil()).toBeNull();
 });
 
-test("text alone offers the pencil and not the override", () => {
+test("text alone offers the pencil and not the override", async () => {
   row(page, { canRegenerate: false, canEdit: true });
+  await openMore();
   expect(pencil()).not.toBeNull();
   expect(overrideButton()).toBeNull();
 });
 
-test("a page with no text of its own in the language has nothing to override", () => {
+test("a page with no text of its own in the language has nothing to override", async () => {
   row({ ...page, missing: { text: true, title: false } }, { canRegenerate: true, canEdit: true });
+  await openMore();
   expect(overrideButton()).toBeNull();
 });
 

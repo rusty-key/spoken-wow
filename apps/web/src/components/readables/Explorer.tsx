@@ -1,5 +1,7 @@
 "use client";
 
+import { PAGE_SIZE } from "@/lib/page-size";
+import { BatchGenerate } from "@/components/catalogue/RowParts";
 import { TranslateDialog, type TranslateSubject } from "@/components/TranslateDialog";
 import { useCan } from "@/components/useCan";
 import { useHistoryMode } from "@/components/useHistoryMode";
@@ -21,7 +23,7 @@ import type { RowState } from "@/components/readables/PageRow";
 import { Player } from "@/components/readables/Player";
 import { SearchBar } from "@/components/readables/SearchBar";
 import TeamPicker from "@/components/TeamPicker";
-import { Contained, Wide } from "@/components/Width";
+import { Wide } from "@/components/Width";
 import { Loading, Refreshing } from "@/components/Loading";
 import { Button } from "@/components/ui/button";
 import type { BookFacet } from "@/lib/readables/catalogue";
@@ -30,7 +32,6 @@ import {
   filterParams,
   filtersFromParams,
   ownerEntityKind,
-  PAGE_SIZE,
   type PageFilters,
 } from "@/lib/readables/filters";
 import type { ResultLine, SearchResult } from "@/lib/readables/search";
@@ -517,7 +518,7 @@ export function Explorer({ books, teams, viewed, home }: { books: BookFacet[] } 
 
   return (
     <>
-      <Contained>
+      <div className="bs-wide">
         <TeamPicker
           teams={teams}
           viewed={viewed}
@@ -536,6 +537,7 @@ export function Explorer({ books, teams, viewed, home }: { books: BookFacet[] } 
           canTriage={canTriage}
           madeBy={result?.madeBy}
           recordable={showRecordings}
+          counts={result?.counts}
         />
 
         {showRecordings && <RecordingDropZone source="readables" onUploaded={refetch} />}
@@ -553,14 +555,11 @@ export function Explorer({ books, teams, viewed, home }: { books: BookFacet[] } 
           </div>
         )}
 
-        <div className="text-muted-foreground mb-2 flex items-center gap-3 text-xs">
-          {loading && result && <Refreshing />}
-          <span>
-            {result ? result.total.toLocaleString() : "…"} pages
-            {result && ` · ${result.counts.missing.toLocaleString()} without audio`}
-            {result && result.counts.stale > 0 && ` · ${result.counts.stale.toLocaleString()} outdated`}
-            {result && result.dirty > 0 && ` · ${result.dirty.toLocaleString()} pronunciation`}
-          </span>
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-1 pt-3 pb-1">
+          <div className="text-muted-foreground flex items-center gap-2 text-sm">
+            {result && result.dirty > 0 && `${result.dirty.toLocaleString()} pronunciation`}
+            {loading && result && <Refreshing />}
+          </div>
           {/* Beside the counts, and only for someone who could act on it. */}
           {canRegenerate && result && result.dirty > 0 && (
             <Button size="sm" variant="ghost" onClick={clearAllDirty}>
@@ -568,12 +567,12 @@ export function Explorer({ books, teams, viewed, home }: { books: BookFacet[] } 
             </Button>
           )}
           {canRegenerate && result && result.total > 0 && (
-            <Button size="sm" variant="secondary" onClick={askToRegenerateAll}>
-              Regenerate these
-            </Button>
+            <BatchGenerate total={result.total} state={filters.state} noun={["page", "pages"]} onClick={askToRegenerateAll} />
           )}
         </div>
-      </Contained>
+
+        <Pagination page={page} pageCount={pageCount} onPage={(next) => updateUrl({ page: next })} />
+      </div>
 
       <Wide>
         {loading && !result ? (
@@ -650,9 +649,9 @@ export function Explorer({ books, teams, viewed, home }: { books: BookFacet[] } 
         )}
       </Wide>
 
-      <Contained>
+      <div className="bs-wide">
         <Pagination page={page} pageCount={pageCount} onPage={(next) => updateUrl({ page: next })} />
-      </Contained>
+      </div>
 
       <div className="fixed inset-x-0 bottom-0 z-20">
         <RegenerationPanel

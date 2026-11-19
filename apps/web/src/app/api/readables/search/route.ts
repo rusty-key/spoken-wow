@@ -8,7 +8,8 @@ import { baseCatalogue, catalogue, isCorpusEmpty, loadContext, publicContext } f
 import type { Lang } from "@/lib/lang";
 import { langParam, worksHere } from "@/lib/lang-server";
 import { recordingsFor } from "@/lib/recordings/store";
-import { filtersFromParams, PAGE_SIZE, type PageFilters } from "@/lib/readables/filters";
+import { PAGE_SIZE } from "@/lib/page-size";
+import { filtersFromParams, type PageFilters } from "@/lib/readables/filters";
 import { search } from "@/lib/readables/search";
 import type { TeamId } from "@/lib/teams/store";
 import { asHeard, asPublished, teamLiveOverrides, viewedOther, viewOnly } from "@/lib/teams/viewing";

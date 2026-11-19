@@ -5,10 +5,11 @@ import { isTypingTarget } from "@/lib/keyboard";
 import { useLang } from "@/components/LangProvider";
 import { BASE_LANG, withLang } from "@/lib/lang";
 import { clientFilterOf, DEFAULT_CLIENT_FILTER } from "@/lib/contributions/client";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 
-import LineRow from "./LineRow";
+import LineRow, { newSpeaker, SpeakerHeader } from "./LineRow";
+import { BatchGenerate } from "@/components/catalogue/RowParts";
 import Key from "./Key";
 import Pagination from "./Pagination";
 import Player from "./Player";
@@ -20,7 +21,6 @@ import RegenerateDialog, { type PendingBatch } from "./RegenerateDialog";
 import RegenerationPanel from "./RegenerationPanel";
 import SearchBar from "./SearchBar";
 import TeamPicker from "./TeamPicker";
-import { Contained, Wide } from "./Width";
 import { Loading, Refreshing } from "@/components/Loading";
 import { Button } from "@/components/ui/button";
 import { audioStateFromParams } from "@/lib/audio-state";
@@ -63,10 +63,6 @@ export type LineState =
 
 const DEBOUNCE_MS = 200;
 
-function plural(count: number, noun: string): string {
-  return `${count.toLocaleString()} ${noun}${count === 1 ? "" : "s"}`;
-}
-
 /** Everything that narrows the corpus, as the query string the two search endpoints read. */
 function filterParams(filters: LineFilters): URLSearchParams {
   const params = new URLSearchParams();
@@ -98,23 +94,6 @@ function filterParams(filters: LineFilters): URLSearchParams {
   return params;
 }
 
-/**
- * How many rows each row's speaker cells span: adjacent rows of one line and speaker are its
- * player-gender wordings, and say the same thing in every column but the text.
- */
-function speakerSpans(lines: ResultLine[]): number[] {
-  // A $g line's two rows are <id>:m and <id>:f.
-  const key = (line: ResultLine) =>
-    `${line.playerGender ? line.lineId.replace(/:[mf]$/, "") : line.lineId}|${line.npcType}|${line.npcId}|${line.voice}`;
-  const spans = lines.map(() => 1);
-  for (let start = 0; start < lines.length; ) {
-    let end = start + 1;
-    while (end < lines.length && key(lines[end]) === key(lines[start])) spans[end++] = 0;
-    spans[start] = end - start;
-    start = end;
-  }
-  return spans;
-}
 
 /**
  * The URL change that narrows to one NPC.
@@ -854,7 +833,6 @@ export default function Explorer({ facets, teams, viewed, home }: { facets: Face
   }, [current]);
 
   const pageCount = result ? Math.max(1, Math.ceil(result.total / result.limit)) : 1;
-  const groupSpans = speakerSpans(result?.lines ?? []);
   // This page's marks, minus what has been cleared without a refetch since.
   const marked = new Set(
     (result?.lines ?? [])
@@ -868,7 +846,7 @@ export default function Explorer({ facets, teams, viewed, home }: { facets: Face
 
   return (
     <>
-      <Contained>
+      <div className="bs-wide">
         <TeamPicker
           teams={teams}
           viewed={viewed}
@@ -886,6 +864,7 @@ export default function Explorer({ facets, teams, viewed, home }: { facets: Face
           canTriage={showRegenerate}
           madeBy={result?.madeBy}
           recordable={showRecordings}
+          counts={result?.counts}
         />
 
         {showRecordings && <RecordingDropZone source="quests" onUploaded={refetch} />}
@@ -904,10 +883,7 @@ export default function Explorer({ facets, teams, viewed, home }: { facets: Face
         )}
 
         <div className="flex flex-wrap items-center gap-x-3 gap-y-1 pt-3 pb-1">
-          <div className="text-muted-foreground flex items-center gap-2 text-sm">
-            {result && `${plural(result.total, "line")} across ${plural(result.npcCount, "NPC")}`}
-            {loading && result && <Refreshing />}
-          </div>
+          {loading && result && <Refreshing />}
           {/* This page's marks, which is what the row-level question was asked for. The
               corpus-wide count is what the "pronunciation moved" filter is for. */}
           {showRegenerate && marked > 0 && (
@@ -919,14 +895,7 @@ export default function Explorer({ facets, teams, viewed, home }: { facets: Face
             </span>
           )}
           {showRegenerate && result && result.total > 0 && (
-            <Button
-              size="xs"
-              variant="secondary"
-              className="ml-auto"
-              onClick={() => void requestBatch()}
-            >
-              Regenerate all {result.total.toLocaleString()}
-            </Button>
+            <BatchGenerate total={result.total} state={filters.state} noun={["line", "lines"]} onClick={() => void requestBatch()} />
           )}
         </div>
 
@@ -935,100 +904,98 @@ export default function Explorer({ facets, teams, viewed, home }: { facets: Face
           pageCount={pageCount}
           onPage={(next) => updateUrl({ page: next })}
         />
-      </Contained>
+      </div>
 
-      <Wide>
-        {/* Fixed layout, because the point of the columns is that they line up down the page:
-            left to auto sizing, one long quest title would widen its column for every row. The
-            text column takes whatever the named columns leave. */}
+      <div className="bs-wide">
         {loading && !result && <Loading />}
 
         {result && result.lines.length > 0 && (
-          <table
-            aria-busy={loading}
-            className={`w-full table-fixed border-collapse text-sm transition-opacity ${loading ? "opacity-60" : ""}`}
-          >
-            <colgroup>
-              <col className="w-52" />
-              <col className="w-48" />
-              <col className="w-32" />
-              {/* The line text takes whatever the named columns leave, which is what anyone
-                  here to read came for. */}
-              <col />
-              {/* Audio: a state word, or the take selector. Both are short. */}
-              <col className="w-28" />
-              {/* Made by: "fish:2.1-pro-free" over a name. Only when the search sent it. */}
-              {showMadeBy && <col className="w-36" />}
-              {/* Voice actor: play, the version, upload; the credit under them. */}
-              {showRecordings && <col className="w-32" />}
-              {/* Wide enough for what the cell actually holds, which the old w-20 was not:
-                  icon buttons are 32px, and a collaborator can have four side by side --
-                  report, edit, ignore, regenerate -- plus the report count. Anything narrower
-                  pushes them left over the line text. w-16 for everyone else, who has the
-                  report button and the count; never w-0, since that button is not gated. */}
-              <col className={showRegenerate ? "w-40" : "w-16"} />
-            </colgroup>
-            <thead>
-              <tr className="text-muted-foreground border-border border-b text-left text-xs">
-                <th className="px-2 pb-1 font-medium">NPC / object</th>
-                <th className="px-2 pb-1 font-medium">Quest / broadcast</th>
-                <th className="px-2 pb-1 font-medium">Race / gender / flavor</th>
-                <th className="px-2 pb-1 font-medium">Line</th>
-                <th className="px-2 pb-1 font-medium">Audio</th>
-                {showMadeBy && <th className="px-2 pb-1 font-medium">Made by</th>}
-                {showRecordings && <th className="px-2 pb-1 font-medium">Voice actor</th>}
-                <th className="sr-only">Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {result.lines.map((line, index) => (
-                <LineRow
-                  key={line.key}
-                  line={line}
-                  current={line.key === current?.key}
-                  showMadeBy={showMadeBy}
-                  showRecordings={showRecordings}
-                  onRecordingChanged={(l) => void refreshRows((row) => row.audioPath === l.audioPath)}
-                  canRegenerate={showRegenerate}
-                  canTriage={canTriage}
-                  onOverrideAnswered={(l) =>
-                    void refreshRows((row) => row.driftedOverride?.file === l.driftedOverride?.file)
-                  }
-                  state={lineStates[line.lineId]}
-                  blocked={blockedReason(line)}
-                  takes={line.take?.takes ?? 0}
-                  version={versions[line.audioPath] ?? line.take?.version ?? null}
-                  stale={line.stale}
-                  dirty={line.dirty && !cleared.has(line.audioPath)}
-                  onClearDirty={(l) => clearDirty([l.audioPath])}
-                  onPlay={play}
-                  onEditText={setEditing}
-                  onRename={lang !== BASE_LANG && canName ? rename : null}
-                  onIgnore={canIgnore ? setIgnoring : null}
-                  onAddSpeaker={canSpeakers ? (l) => setSpeakerDialog({ line: l, replace: false }) : null}
-                  onReplaceSpeaker={canSpeakers ? (l) => setSpeakerDialog({ line: l, replace: true }) : null}
-                  onRemoveSpeaker={canSpeakers ? (l) => void removeSpeaker(l) : null}
-                  onReport={own ? setReporting : null}
-                  onRegenerate={regenerateLine}
-                  onRestored={handleRestored}
-                  onNarrowToNpc={narrowToNpc}
-                  npcHref={npcHref}
-                  showNpcPage={isAdmin(session?.user.role)}
-                  groupSpan={groupSpans[index]}
-                  onNarrowToQuest={narrowToQuest}
-                  questHref={questHref}
-                />
-              ))}
-            </tbody>
-          </table>
+          <div className="cat-list">
+            {/* Fixed layout, so the columns line up down the page: left to auto sizing, one long
+                quest title would widen its column for every row. */}
+            <table
+              aria-busy={loading}
+              className={`cat-table w-full table-fixed border-collapse text-sm transition-opacity ${loading ? "opacity-60" : ""}`}
+            >
+              <colgroup>
+                <col className="w-12" />
+                <col />
+                <col className="w-56" />
+                <col className="w-36" />
+                {showMadeBy && <col className="w-36" />}
+                {showRecordings && <col className="w-28" />}
+                <col className="w-48" />
+              </colgroup>
+              <thead>
+                <tr>
+                  <th>
+                    <span className="sr-only">Play</span>
+                  </th>
+                  <th>Line</th>
+                  <th>Quest</th>
+                  <th>Audio</th>
+                  {showMadeBy && <th>Made by</th>}
+                  {showRecordings && <th>Voice actor</th>}
+                  <th>
+                    <span className="sr-only">Actions</span>
+                  </th>
+                </tr>
+              </thead>
+              <tbody>
+                {result.lines.map((line, index) => (
+                  <Fragment key={line.key}>
+                    {newSpeaker(line, result.lines[index - 1]) && (
+                      <SpeakerHeader
+                        line={line}
+                        columns={5 + (showMadeBy ? 1 : 0) + (showRecordings ? 1 : 0)}
+                        onRename={lang !== BASE_LANG && canName ? rename : null}
+                        showNpcPage={isAdmin(session?.user.role)}
+                        onNarrowToNpc={narrowToNpc}
+                        npcHref={npcHref}
+                      />
+                    )}
+                    <LineRow
+                      line={line}
+                      current={line.key === current?.key}
+                      showMadeBy={showMadeBy}
+                      showRecordings={showRecordings}
+                      onRecordingChanged={(l) => void refreshRows((row) => row.audioPath === l.audioPath)}
+                      canRegenerate={showRegenerate}
+                      canTriage={canTriage}
+                      onOverrideAnswered={(l) =>
+                        void refreshRows((row) => row.driftedOverride?.file === l.driftedOverride?.file)
+                      }
+                      state={lineStates[line.lineId]}
+                      blocked={blockedReason(line)}
+                      takes={line.take?.takes ?? 0}
+                      version={versions[line.audioPath] ?? line.take?.version ?? null}
+                      stale={line.stale}
+                      dirty={line.dirty && !cleared.has(line.audioPath)}
+                      onClearDirty={(l) => clearDirty([l.audioPath])}
+                      onPlay={play}
+                      onEditText={setEditing}
+                      onRename={lang !== BASE_LANG && canName ? rename : null}
+                      onIgnore={canIgnore ? setIgnoring : null}
+                      onAddSpeaker={canSpeakers ? (l) => setSpeakerDialog({ line: l, replace: false }) : null}
+                      onReplaceSpeaker={canSpeakers ? (l) => setSpeakerDialog({ line: l, replace: true }) : null}
+                      onRemoveSpeaker={canSpeakers ? (l) => void removeSpeaker(l) : null}
+                      onReport={own ? setReporting : null}
+                      onRegenerate={regenerateLine}
+                      onRestored={handleRestored}
+                      onNarrowToQuest={narrowToQuest}
+                      questHref={questHref}
+                    />
+                  </Fragment>
+                ))}
+              </tbody>
+            </table>
+          </div>
         )}
 
-        {result && result.lines.length === 0 && (
-          <div className="text-muted-foreground py-2 text-sm">No matches.</div>
-        )}
-      </Wide>
+        {result && result.lines.length === 0 && <p className="cat-empty">No lines match this search.</p>}
+      </div>
 
-      <Contained>
+      <div className="bs-wide">
         <Pagination
           page={page}
           pageCount={pageCount}
@@ -1039,7 +1006,7 @@ export default function Explorer({ facets, teams, viewed, home }: { facets: Face
           <Key>/</Key> search · <Key>space</Key> play/pause · <Key>j</Key> <Key>k</Key> next
           and previous line on this page
         </p>
-      </Contained>
+      </div>
 
       <OverrideDialog
         line={editing}

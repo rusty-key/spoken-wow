@@ -54,7 +54,7 @@ const line: ResultLine = {
   ignored: null,
   madeBy: null,
 };
-const result: SearchResult = { lines: [line], total: 12, npcCount: 3, offset: 0, limit: 50 };
+const result: SearchResult = { lines: [line], total: 12, counts: { all: 12, missing: 0, stale: 0, current: 12 }, offset: 0, limit: 50 };
 const fetchMock = vi.fn();
 
 beforeEach(() => {
@@ -102,7 +102,7 @@ async function playGrunt() {
 
 test("another team's view asks for its lines, and offers no batch or queue", async () => {
   explorer({ team: "t-main", slug: "main-crew", name: "Main Crew", own: false });
-  await screen.findByText("12 lines across 3 NPCs");
+  await screen.findByRole("button", { name: "All 12" });
 
   expect(urls().filter((url) => url.startsWith("/api/quests/search"))).not.toHaveLength(0);
   for (const url of urls()) expect(new URL(url, "http://x").searchParams.get("team")).toBe("main-crew");
@@ -110,8 +110,8 @@ test("another team's view asks for its lines, and offers no batch or queue", asy
   expect(urls().some((url) => url.includes("/api/regenerate/queue"))).toBe(false);
   expect(screen.getByText("Lok'tar ogar.")).not.toBeNull();
   expect(named(/^Edit the spoken text/)).toHaveLength(0);
-  expect(named(/^Report/)).toHaveLength(0);
-  expect(named(/^Ignore/)).toHaveLength(0);
+  expect(named(/^Report /)).toHaveLength(0);
+  expect(named(/^Never voice this line/)).toHaveLength(0);
 
   await playGrunt();
   expect(new URL(audioSrc()!, "http://x").searchParams.get("team")).toBe("main-crew");
@@ -119,13 +119,17 @@ test("another team's view asks for its lines, and offers no batch or queue", asy
 
 test("the visitor's own view offers the batch and sends no team", async () => {
   explorer(null);
-  await screen.findByText("12 lines across 3 NPCs");
+  await screen.findByRole("button", { name: "All 12" });
 
   for (const url of urls()) expect(url).not.toContain("team=");
   expect(screen.getByRole("button", { name: /Regenerate all 12/ })).not.toBeNull();
   await waitFor(() => expect(urls().some((url) => url.includes("/api/regenerate/queue"))).toBe(true));
   expect(named(/^Edit the spoken text/)).toHaveLength(1);
-  expect(named(/^Report/)).toHaveLength(1);
+  // Report and Ignore sit behind the row's More menu once the row has edit actions.
+  expect(named(/^Report /)).toHaveLength(0);
+  await userEvent.setup().click(screen.getAllByRole("button", { name: /^More actions for / })[0]);
+  expect(named(/^Report /)).toHaveLength(1);
+  expect(named(/^Never voice this line/)).toHaveLength(1);
 
   await playGrunt();
   expect(audioSrc()).not.toContain("team=");
@@ -136,5 +140,34 @@ test("a team the search no longer knows leaves no rows, rather than breaking the
   explorer({ team: "t-main", slug: "main-crew", name: "Main Crew", own: false });
   await waitFor(() => expect(fetchMock).toHaveBeenCalled());
   await waitFor(() => expect(screen.getByLabelText("Team")).not.toBeNull());
-  expect(screen.queryByText(/lines across/)).toBeNull();
+  expect(screen.queryByRole("button", { name: /^All \d/ })).toBeNull();
+});
+
+// An untranslated line can be neither edited nor voiced here, so the row says where its text comes from.
+test("a line with no text in the language says it waits for that text, and offers no edit", async () => {
+  const waiting = { ...line, missing: { ...line.missing, text: true }, hasAudio: false, voiceable: false };
+  fetchMock.mockImplementation(async (url: string) =>
+    url.startsWith("/api/quests/search")
+      ? new Response(JSON.stringify({ ...result, lines: [waiting] }), { status: 200 })
+      : new Response("{}", { status: 404 }),
+  );
+  explorer(null);
+  const hint = await screen.findByRole("link", { name: "Waiting for German text" });
+  expect(hint.getAttribute("href")).toBe("/deDE/contributions/quests");
+  expect(named(/^Edit the spoken text/)).toHaveLength(0);
+});
+
+test("a speaker added by hand to one line is marked on that row, not on the speaker's heading", async () => {
+  const added: ResultLine = { ...line, lineId: "q:1:complete", source: "complete", key: "q:1:complete|0", audioPath: "quests/1-complete.mp3", added: true };
+  fetchMock.mockImplementation(async (url: string) =>
+    url.startsWith("/api/quests/search")
+      ? new Response(JSON.stringify({ ...result, lines: [line, added] }), { status: 200 })
+      : new Response("{}", { status: 404 }),
+  );
+  explorer(null);
+
+  const mark = await screen.findByText("speaker added by hand");
+  expect(screen.getAllByText("speaker added by hand")).toHaveLength(1);
+  expect(mark.closest("tr")?.textContent).toContain("complete");
+  expect(document.querySelector("tr.cat-group")?.textContent).not.toContain("added");
 });

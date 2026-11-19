@@ -4,7 +4,7 @@ import { Suspense } from "react";
 
 import { PlacesExplorer } from "@/components/places/PlacesExplorer";
 import { isCorpusEmpty, zoneFacets } from "@/lib/places/catalogue";
-import { Contained } from "@/components/Width";
+import AudioPage, { AudioPageEmpty } from "@/components/catalogue/AudioPage";
 import { viewKey } from "@/lib/teams/view";
 import { teamView } from "@/lib/teams/viewing";
 
@@ -29,6 +29,9 @@ export default async function Page({
   searchParams: Promise<{ team?: string | string[] }>;
 }) {
   const lang = await pageLang(params);
+  // Read before the empty-state return too, so its section tabs keep the team being viewed.
+  const { team } = await searchParams;
+  const viewedTeam = typeof team === "string" ? team : undefined;
   let zones;
   try {
     zones = await zoneFacets(lang);
@@ -38,38 +41,26 @@ export default async function Page({
     // somebody that the import has not been run.
     if (!isCorpusEmpty(error)) throw error;
     return (
-      <main className="pt-6 pb-36">
-        <Contained>
-          <h1 className="text-xl font-semibold">Places</h1>
-          <p className="text-muted-foreground mt-2 max-w-xl text-sm">
+      <AudioPage lang={lang} section="places" team={viewedTeam}>
+        <AudioPageEmpty>
             The lore corpus has not been loaded into this database yet, so there is nothing to
             show. It is seeded from the committed Lua with{" "}
             <code className="text-foreground">make places-lore-import</code>.
-          </p>
-        </Contained>
-      </main>
+          </AudioPageEmpty>
+      </AudioPage>
     );
   }
 
   // An unknown team slug falls back to the default team.
-  const { team } = await searchParams;
-  const view = await teamView(lang, typeof team === "string" ? team : null);
+  const view = await teamView(lang, viewedTeam ?? null);
 
   return (
-    <main className="pt-6 pb-36">
-      <Contained>
-        <h1 className="text-xl font-semibold">Places</h1>
-        <p className="text-muted-foreground mt-1 mb-5 text-sm">
-          The prose the addon reads when you walk into a place, for every zone and subzone.
-          Unlike quest dialogue, these words are written rather than extracted: scraped from
-          warcraft.wiki.gg, sometimes rewritten, and correctable here.
-        </p>
-      </Contained>
+    <AudioPage lang={lang} section="places" team={viewedTeam}>
       {/* Suspense is required: Explorer calls useSearchParams(). */}
       {/* Outside the column: the explorer places its own search (capped) and table (wide). */}
       <Suspense>
         <PlacesExplorer key={viewKey(view)} zones={zones} {...view} />
       </Suspense>
-    </main>
+    </AudioPage>
   );
 }

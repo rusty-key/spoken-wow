@@ -1,11 +1,12 @@
 // @vitest-environment jsdom
 import { cleanup, render, screen } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { afterEach, expect, test, vi } from "vitest";
 
 import { LangProvider } from "@/components/LangProvider";
 import type { ResultLine } from "@/lib/places/search";
 
-import { LineRow } from "./LineRow";
+import { LineRow, type RowState } from "./LineRow";
 
 vi.mock("@/lib/auth-client", () => ({ useSession: () => ({ data: null }) }));
 
@@ -30,24 +31,23 @@ const goldshire: ResultLine = {
   override: null,
 };
 
-function row(line: ResultLine, may: { canRegenerate: boolean; canEdit: boolean }) {
+function row(line: ResultLine, may: { canRegenerate: boolean; canEdit: boolean }, state?: RowState) {
   const noop = () => {};
   render(
     <LangProvider lang="deDE">
       <table>
         <tbody>
           <LineRow
-            section={{ source: "places", facetLabel: "Zone", chip: (l) => l.zoneName }}
+            section={{ source: "places", facetLabel: "Zone" }}
             line={line}
             current={false}
             showMadeBy={false}
             showRecordings={false}
             onRecordingChanged={noop}
             {...may}
+            state={state}
             canTriage={false}
             onPlay={noop}
-            onNarrowToChip={noop}
-            chipHref={() => "#"}
             onReport={noop}
             onRestored={noop}
             onEditText={noop}
@@ -66,21 +66,30 @@ function row(line: ResultLine, may: { canRegenerate: boolean; canEdit: boolean }
 const overrideButton = () => screen.queryByRole("button", { name: "Override the text of Goldshire" });
 const pencil = () => screen.queryByRole("button", { name: "Edit the text of Goldshire" });
 
-test("regenerate alone offers the override and not the pencil", () => {
+// Override lives behind the row's More menu, with Regenerate and Report.
+async function openMore() {
+  const more = screen.queryByRole("button", { name: "More actions for Goldshire" });
+  if (more) await userEvent.setup().click(more);
+}
+
+test("regenerate alone offers the override and not the pencil", async () => {
   row(goldshire, { canRegenerate: true, canEdit: false });
+  await openMore();
   expect(overrideButton()).not.toBeNull();
   expect(overrideButton()?.getAttribute("title")).toBe("Change what your team says");
   expect(pencil()).toBeNull();
 });
 
-test("text alone offers the pencil and not the override", () => {
+test("text alone offers the pencil and not the override", async () => {
   row(goldshire, { canRegenerate: false, canEdit: true });
+  await openMore();
   expect(pencil()).not.toBeNull();
   expect(overrideButton()).toBeNull();
 });
 
-test("a line with no text of its own in the language has nothing to override", () => {
+test("a line with no text of its own in the language has nothing to override", async () => {
   row({ ...goldshire, translated: false }, { canRegenerate: true, canEdit: true });
+  await openMore();
   expect(overrideButton()).toBeNull();
 });
 
@@ -107,4 +116,21 @@ test("a current override carries no drift mark", () => {
   );
   expect(screen.getByText("Goldshire.")).not.toBeNull();
   expect(screen.queryByText("The original changed since your override.")).toBeNull();
+});
+
+// Missing or outdated audio makes generating the row's task, so it is a button, not a menu item.
+test("a line with no audio offers Generate on the row, and current audio keeps it in More", async () => {
+  row({ ...goldshire, state: "missing" }, { canRegenerate: true, canEdit: true });
+  expect(screen.queryByRole("button", { name: "Generate Goldshire" })).not.toBeNull();
+  cleanup();
+  row({ ...goldshire, state: "current" }, { canRegenerate: true, canEdit: true });
+  expect(screen.queryByRole("button", { name: /^(Generate|Regenerate) Goldshire/ })).toBeNull();
+  await openMore();
+  expect(screen.queryByRole("button", { name: "Regenerate Goldshire" })).not.toBeNull();
+});
+
+// A second request while one runs would be refused by the file lock and paint an error over it.
+test("Generate waits while the line is already generating", () => {
+  row({ ...goldshire, state: "missing" }, { canRegenerate: true, canEdit: true }, { phase: "busy" });
+  expect(screen.getByRole("button", { name: "Generate Goldshire" })).toHaveProperty("disabled", true);
 });

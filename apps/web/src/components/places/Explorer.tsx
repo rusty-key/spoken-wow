@@ -6,24 +6,23 @@ import { useHistoryMode } from "@/components/useHistoryMode";
 import { useLang } from "@/components/LangProvider";
 import { BASE_LANG, withLang } from "@/lib/lang";
 import { usePathname, useSearchParams } from "next/navigation";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import ApiKeyRequiredDialog from "@/components/ApiKeyRequiredDialog";
-import FilterLink from "@/components/FilterLink";
 import Key from "@/components/Key";
 import Pagination from "@/components/Pagination";
 import { Loading, Refreshing } from "@/components/Loading";
 import { Button } from "@/components/ui/button";
 import RegenerateDialog, { type PendingBatch } from "@/components/RegenerateDialog";
 import RegenerationPanel from "@/components/RegenerationPanel";
-import { LineRow, type RowState } from "@/components/places/LineRow";
+import { GroupHeader, LineRow, type RowState } from "@/components/places/LineRow";
+import { BatchGenerate } from "@/components/catalogue/RowParts";
 import { LoreDialog } from "@/components/places/LoreDialog";
 import { Player } from "@/components/places/Player";
 import TextOverrideDialog from "@/components/TextOverrideDialog";
 import ReportDialog from "@/components/ReportDialog";
 import { SearchBar } from "@/components/places/SearchBar";
 import TeamPicker from "@/components/TeamPicker";
-import { Contained, Wide } from "@/components/Width";
 import { totals as estimateTotals, LIST_RATE } from "@/lib/generation/billing";
 import {
   fetchGenerationStatus,
@@ -42,7 +41,7 @@ import {
   type ExplorerResult,
   type ExplorerSection,
 } from "@/components/explorer/section";
-import { PAGE_SIZE } from "@/lib/places/filters";
+import { PAGE_SIZE } from "@/lib/page-size";
 import { useClearDirty } from "@/lib/generation/use-clear-dirty";
 import { fetchRows, patchRows } from "@/lib/row-refresh";
 import { withTextOverride } from "@/lib/text-overrides/rows";
@@ -645,7 +644,7 @@ export function Explorer<L extends ExplorerLine, F extends ExplorerFilters>({
 
   return (
     <div className="pb-24">
-      <Contained>
+      <div className="bs-wide">
         <TeamPicker
           teams={teams}
           viewed={viewed}
@@ -657,10 +656,10 @@ export function Explorer<L extends ExplorerLine, F extends ExplorerFilters>({
           fields={section.filters.fields}
           kinds={section.filters.kinds}
           filters={filters}
-          active={section.filters.activeCount(filters)}
           canTriage={canTriage}
           madeBy={result?.madeBy}
           recordable={showRecordings}
+          counts={result?.counts}
           query={query}
           inputRef={searchInput}
           onQueryChange={setQuery}
@@ -685,30 +684,7 @@ export function Explorer<L extends ExplorerLine, F extends ExplorerFilters>({
         )}
 
         <div className="flex flex-wrap items-center gap-x-3 gap-y-1 pt-3 pb-1">
-          <div className="text-muted-foreground flex items-center gap-2 text-sm">
-            {result && `${result.total.toLocaleString()} ${result.total === 1 ? "line" : "lines"}`}
-            {loading && result && <Refreshing />}
-          </div>
-          {result && result.counts.missing > 0 && (
-            <FilterLink
-              href={filtersHref({ state: "missing" })}
-              onApply={() => updateFilters({ state: "missing" })}
-              className="text-destructive text-sm underline-offset-2 hover:underline"
-              title="Show only lines without audio"
-            >
-              {result.counts.missing} missing
-            </FilterLink>
-          )}
-          {result && result.counts.stale > 0 && (
-            <FilterLink
-              href={filtersHref({ state: "stale" })}
-              onApply={() => updateFilters({ state: "stale" })}
-              className="text-sm text-amber-300 underline-offset-2 hover:underline"
-              title="Show only lines whose audio is older than their text"
-            >
-              {result.counts.stale} outdated
-            </FilterLink>
-          )}
+          {loading && result && <Refreshing />}
           {/* Its own count, beside the states rather than among them: a line can be current
               and carry this at once. The button only for someone who could act on it. */}
           {result && result.dirty > 0 && (
@@ -723,60 +699,65 @@ export function Explorer<L extends ExplorerLine, F extends ExplorerFilters>({
           )}
 
           {canRegenerate && result && result.total > 0 && (
-            <Button size="xs" variant="secondary" className="ml-auto" onClick={askToRegenerateAll}>
-              Regenerate all {result.total.toLocaleString()}
-            </Button>
+            <BatchGenerate total={result.total} state={filters.state} noun={["line", "lines"]} onClick={askToRegenerateAll} />
           )}
         </div>
 
-        {/* Above the table as well as below it: 43 pages of lore is a lot of scrolling to
-            reach a control that is one line away at the top. */}
+        {/* Above the table as well as below it: a long list is a lot of scrolling to reach a
+            control that is one line away at the top. */}
         <Pagination page={page} pageCount={pages} onPage={(next) => updateUrl({ page: next })} />
-      </Contained>
+      </div>
 
-      <Wide>
-        {/* Fixed layout, because the point of the columns is that they line up down the
-            page: left to auto sizing, one long subzone name would widen its column for
-            every row. The lore column takes whatever the named ones leave. */}
+      <div className="bs-wide">
         {loading && !result && <Loading />}
 
-        <table
-          aria-busy={loading}
-          hidden={!result}
-          className={`w-full table-fixed border-collapse text-sm transition-opacity ${loading ? "opacity-60" : ""}`}
-        >
-          <colgroup>
-            <col className="w-40" />
-            <col className="w-44" />
-            <col />
-            {/* Audio: the state word, or the take selector, both of which are short. */}
-            <col className="w-28" />
-            {/* Made by: "fish:2.1-pro-free" over a name. Only when the search sent it. */}
-            {showMadeBy && <col className="w-36" />}
-            {showRecordings && <col className="w-32" />}
-            {/* Wide enough for what the cell actually holds: icon buttons are 32px and an
-                editor can have five side by side - report, edit, override, clear the
-                pronunciation mark, regenerate - plus the report count. Anything narrower and
-                the row overflows left over the prose.
-                w-16 for everyone else, who has the report button and the count; never w-0,
-                since that button is not gated. */}
-            <col className={canRegenerate ? "w-60" : "w-16"} />
-          </colgroup>
-          <thead>
-            <tr className="text-muted-foreground border-border border-b text-left text-xs">
-              <th className="px-2 pb-1 font-medium">{section.facetLabel}</th>
-              <th className="px-2 pb-1 font-medium">{section.labels.name}</th>
-              <th className="px-2 pb-1 font-medium">{section.labels.text}</th>
-              <th className="px-2 pb-1 font-medium">Audio</th>
-              {showMadeBy && <th className="px-2 pb-1 font-medium">Made by</th>}
-              {showRecordings && <th className="px-2 pb-1 font-medium">Voice actor</th>}
-              <th className="sr-only">Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            {result?.lines.map((line) => (
+        <div className="cat-list" hidden={!result || result.total === 0}>
+          {/* Fixed layout, so the columns line up down the page: left to auto sizing, one long
+              subzone name would widen its column for every row. */}
+          <table
+            aria-busy={loading}
+            className={`cat-table w-full table-fixed border-collapse text-sm transition-opacity ${loading ? "opacity-60" : ""}`}
+          >
+            <colgroup>
+              <col className="w-12" />
+              <col />
+              <col className="w-64" />
+              <col className="w-36" />
+              {showMadeBy && <col className="w-36" />}
+              {showRecordings && <col className="w-28" />}
+              <col className="w-48" />
+            </colgroup>
+            <thead>
+              <tr>
+                <th>
+                  <span className="sr-only">Play</span>
+                </th>
+                <th>{section.labels.text}</th>
+                <th>{section.labels.name}</th>
+                <th>Audio</th>
+                {showMadeBy && <th>Made by</th>}
+                {showRecordings && <th>Voice actor</th>}
+                <th>
+                  <span className="sr-only">Actions</span>
+                </th>
+              </tr>
+            </thead>
+            <tbody>
+            {result?.lines.map((line, index) => (
+              <Fragment key={line.id}>
+                {/* By map as well: two zones may share a name, and the heading narrows to one map. */}
+                {(index === 0 ||
+                  line.mapID !== result.lines[index - 1].mapID ||
+                  section.chip(line) !== section.chip(result.lines[index - 1])) && (
+                  <GroupHeader
+                    section={section}
+                    line={line}
+                    columns={5 + (showMadeBy ? 1 : 0) + (showRecordings ? 1 : 0)}
+                    onNarrow={(l) => updateFilters({ mapID: l.mapID })}
+                    href={(l) => filtersHref({ mapID: l.mapID })}
+                  />
+                )}
               <LineRow
-                key={line.id}
                 section={section}
                 line={withEdits(line)}
                 current={line.id === current?.id}
@@ -787,8 +768,6 @@ export function Explorer<L extends ExplorerLine, F extends ExplorerFilters>({
                 canEdit={canEdit}
                 canTriage={canTriage}
                 onPlay={play}
-                onNarrowToChip={(l) => updateFilters({ mapID: l.mapID })}
-                chipHref={(l) => filtersHref({ mapID: l.mapID })}
                 state={rowStates[line.id]}
                 onClearDirty={(l) => clearDirty([l.file])}
                 onRestored={(l, version) => {
@@ -818,23 +797,23 @@ export function Explorer<L extends ExplorerLine, F extends ExplorerFilters>({
                 }
                 onRegenerate={regenerateOne}
               />
+              </Fragment>
             ))}
-          </tbody>
-        </table>
+            </tbody>
+          </table>
+        </div>
 
-        {result && result.total === 0 && !loading && (
-          <p className="text-muted-foreground py-8 text-center">Nothing matches these filters.</p>
-        )}
-      </Wide>
+        {result && result.total === 0 && !loading && <p className="cat-empty">Nothing matches these filters.</p>}
+      </div>
 
-      <Contained>
+      <div className="bs-wide">
         <Pagination page={page} pageCount={pages} onPage={(next) => updateUrl({ page: next })} />
 
         <p className="text-muted-foreground mt-6 flex flex-wrap items-center gap-1.5 text-xs">
           <Key>/</Key> search · <Key>space</Key> play/pause · <Key>j</Key> <Key>k</Key> next and
           previous line on this page
         </p>
-      </Contained>
+      </div>
 
       <LoreDialog
         section={section}

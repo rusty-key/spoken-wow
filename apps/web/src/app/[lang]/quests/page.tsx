@@ -4,7 +4,7 @@ import { Suspense } from "react";
 import Explorer from "@/components/Explorer";
 import { facets } from "@/lib/facets";
 import { pageLang } from "@/lib/lang-server";
-import { Contained } from "@/components/Width";
+import AudioPage from "@/components/catalogue/AudioPage";
 import { viewKey } from "@/lib/teams/view";
 import { asViewed, teamView } from "@/lib/teams/viewing";
 
@@ -24,19 +24,11 @@ export default async function Page({
   // Read here rather than fetched, so the filters are there on first paint; as the viewed team,
   // since its roster names the voices that can match.
   return (
-    <main className="pt-6 pb-36">
-      <Contained>
-        <h1 className="text-xl font-semibold">Quest dialogue</h1>
-        <p className="text-muted-foreground mt-1 mb-5 text-sm">
-          Browse and play every quest and gossip voiceline, and what NPCs say after a quest, or
-          search by NPC, quest, or what the line says. Read-only: nothing here writes to the
-          corpus, the audio store, or your game install.
-        </p>
-      </Contained>
-      {/* Outside the column: the explorer places its own search (capped) and table (wide). */}
+    <AudioPage lang={lang} section="quests" team={typeof team === "string" ? team : undefined}>
+      {/* The explorer places its own search (in the column) and table (full width). */}
       <Suspense>
         <Explorer key={viewKey(view)} facets={await asViewed(lang, view.viewed, () => facets(lang))} {...view} />
       </Suspense>
-    </main>
+    </AudioPage>
   );
 }

@@ -10,13 +10,15 @@
 // regeneration pass picks up. If these two ever disagree, the explorer is lying about what
 // needs regenerating.
 
+import { byState, type StateCounts } from "@/lib/audio-state";
 import { isDirty } from "@/lib/generation/dirty";
 import { recordedMatches, type LiveRecording } from "@/lib/recordings/live";
 import { madeByFacets, madeByMatches, type MadeBy, type MadeByFacets } from "@/lib/takes/made-by";
 import type { OverrideView } from "@/lib/text-overrides/types";
 
 import type { BookPage, SearchContext, Take } from "./catalogue";
-import { PAGE_SIZE, type Field, type PageFilters, type OwnerKind, type State } from "./filters";
+import { PAGE_SIZE } from "@/lib/page-size";
+import { type Field, type PageFilters, type OwnerKind, type State } from "./filters";
 
 export type ResultLine = {
   /** 'b:1381'. Unique by construction: one page is one line. */
@@ -66,7 +68,8 @@ export type SearchResult = {
   total: number;
   /** What the current filter selects, for the header and the regenerate quote. */
   totalChars: number;
-  counts: Record<State, number>;
+  /** For the audio buttons; see StateCounts. */
+  counts: StateCounts;
   /** How many of the matched pages are dirty. Not a fourth state; see ResultLine.dirty. */
   dirty: number;
   offset: number;
@@ -181,13 +184,12 @@ export function search(
   limit = PAGE_SIZE,
 ): SearchResult {
   const all = pages.map((page) => decorate(page, context));
-  const matched = order(matching(all, filters));
+  const { counts, matched: unordered } = byState(matching(all, { ...filters, state: undefined }), filters.state);
+  const matched = order(unordered);
 
-  const counts: Record<State, number> = { missing: 0, stale: 0, current: 0 };
   let totalChars = 0;
   let dirty = 0;
   for (const line of matched) {
-    counts[line.state]++;
     if (line.dirty) dirty++;
     totalChars += line.chars;
   }

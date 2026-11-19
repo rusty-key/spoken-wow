@@ -557,3 +557,604 @@ body:has(main.bs) {
   text-align: right;
   font-variant-numeric: tabular-nums;
 }
+
+/* ---------- Catalogue search: the audio pages' search, status buttons and filter panel ---------- */
+
+.cat-search {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 16px 0 12px;
+}
+.cat-q {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  height: 48px;
+  padding: 0 8px 0 14px;
+  border-radius: 10px;
+  background: var(--bs-field);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.12);
+  color: var(--muted-foreground);
+}
+.cat-q:focus-within {
+  box-shadow:
+    inset 0 0 0 1px rgba(240, 194, 90, 0.55),
+    0 0 0 4px rgba(240, 194, 90, 0.08);
+}
+.cat-q > svg {
+  flex: none;
+  width: 18px;
+  height: 18px;
+}
+.cat-q input {
+  flex: 1;
+  min-width: 0;
+  height: 100%;
+  border: 0;
+  background: none;
+  color: var(--foreground);
+  font: inherit;
+  font-size: 16px;
+}
+/* The field's own ring, .cat-q:focus-within, shows focus; .bs :focus-visible would draw a second one inside it. */
+.cat-q input:focus-visible {
+  outline: none;
+}
+.cat-q input::placeholder {
+  color: var(--muted-foreground);
+}
+.cat-scope {
+  height: 32px;
+  padding: 0 8px;
+  border: 0;
+  border-radius: 6px;
+  background: var(--bs-panel);
+  box-shadow: inset 0 0 0 1px var(--bs-line);
+  color: var(--bs-text-2);
+  font: inherit;
+  font-size: 13px;
+}
+
+.cat-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+.cat-row .bs-chip {
+  border: 0;
+  font: inherit;
+  font-size: 13px;
+  cursor: pointer;
+}
+.cat-row .bs-chip[aria-pressed="true"] {
+  background: var(--foreground);
+  box-shadow: none;
+  color: #101216;
+  font-weight: 500;
+}
+.cat-count {
+  opacity: 0.65;
+  font-variant-numeric: tabular-nums;
+  font-weight: 400;
+}
+.cat-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+}
+.cat-dot-missing {
+  background: var(--bs-red);
+}
+.cat-dot-stale {
+  background: var(--bs-gold);
+}
+.cat-dot-current {
+  background: var(--bs-green);
+}
+.cat-dot-reported {
+  background: var(--bs-blue);
+}
+.cat-dot-neutral {
+  background: var(--muted-foreground);
+}
+.cat-sep {
+  width: 1px;
+  height: 20px;
+  margin: 0 2px;
+  background: rgba(255, 255, 255, 0.12);
+}
+.cat-filters svg {
+  width: 15px;
+  height: 15px;
+}
+.cat-row .cat-filters[aria-expanded="true"] {
+  background: var(--secondary);
+  box-shadow: inset 0 0 0 1px rgba(240, 194, 90, 0.55);
+  color: var(--foreground);
+}
+.cat-badge {
+  display: inline-grid;
+  place-items: center;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  border-radius: 9px;
+  background: var(--bs-gold);
+  color: #16171d;
+  font-size: 11px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.cat-panel {
+  padding: 18px 20px 14px;
+  border-radius: 10px;
+  background: var(--bs-panel);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.1);
+}
+.cat-fieldsets {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 20px 28px;
+}
+.cat-fieldset {
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+.cat-fieldset legend {
+  padding: 0;
+  font-size: 13px;
+  font-weight: 600;
+}
+.cat-fieldset-desc {
+  margin: 2px 0 0;
+  color: var(--muted-foreground);
+  font-size: 12px;
+  line-height: 16px;
+}
+.cat-fieldset-body {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-top: 12px;
+}
+.cat-field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.cat-field-label {
+  color: var(--muted-foreground);
+  font-size: 12px;
+  font-weight: 500;
+}
+.cat-select {
+  width: 100%;
+  height: 32px;
+  padding: 0 8px;
+  border: 0;
+  border-radius: 6px;
+  background: var(--bs-field);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.12);
+  color: var(--bs-text-2);
+  font: inherit;
+  font-size: 13px;
+  color-scheme: dark;
+}
+.cat-select.cat-set {
+  box-shadow: inset 0 0 0 1px rgba(240, 194, 90, 0.55);
+  color: var(--foreground);
+}
+.cat-two {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
+}
+.cat-two .cat-select {
+  min-width: 0;
+}
+.cat-seg {
+  display: flex;
+  overflow: hidden;
+  border-radius: 6px;
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.12);
+}
+.cat-seg button {
+  flex: 1;
+  min-width: 0;
+  height: 30px;
+  padding: 0 6px;
+  border: 0;
+  background: none;
+  color: var(--bs-text-2);
+  font: inherit;
+  font-size: 12.5px;
+  white-space: nowrap;
+  cursor: pointer;
+}
+.cat-seg button:hover {
+  color: var(--foreground);
+}
+.cat-seg button[aria-pressed="true"] {
+  background: var(--secondary);
+  color: var(--foreground);
+  font-weight: 500;
+}
+.cat-checks {
+  display: flex;
+  flex-direction: column;
+}
+.cat-check {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  min-height: 28px;
+  color: #e4e5e8;
+  font-size: 13px;
+  cursor: pointer;
+}
+.cat-check input {
+  width: 15px;
+  height: 15px;
+  margin: 0;
+  accent-color: var(--bs-gold);
+}
+.cat-panel-foot {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 10px;
+  margin-top: 16px;
+  padding-top: 12px;
+  box-shadow: inset 0 1px 0 var(--bs-line);
+}
+.cat-panel-foot span {
+  margin-right: auto;
+  color: var(--muted-foreground);
+  font-size: 12.5px;
+}
+
+.cat-active {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+.cat-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 28px;
+  padding: 0 4px 0 10px;
+  border-radius: 6px;
+  background: rgba(240, 194, 90, 0.12);
+  font-size: 12.5px;
+}
+.cat-pill b {
+  color: var(--bs-gold);
+  font-weight: 500;
+}
+.cat-pill button {
+  display: grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  border: 0;
+  border-radius: 4px;
+  background: none;
+  color: var(--muted-foreground);
+  cursor: pointer;
+}
+.cat-pill button:hover {
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--foreground);
+}
+.cat-pill svg {
+  width: 13px;
+  height: 13px;
+}
+.cat-clear {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--bs-text-2);
+  font: inherit;
+  font-size: 12.5px;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  cursor: pointer;
+}
+/* LevelBound is a fixed-width input elsewhere; in the panel the pair fills its column. */
+.cat-two input {
+  width: 100%;
+  height: 32px;
+}
+
+/* ---------- Catalogue rows: the audio pages' tables ---------- */
+
+.cat-table thead tr {
+  box-shadow: inset 0 -1px 0 var(--bs-line);
+}
+.cat-table th {
+  padding-top: 4px;
+  padding-bottom: 8px;
+  color: var(--muted-foreground);
+  font-size: 12px;
+  font-weight: 500;
+}
+.cat-table tbody tr {
+  border-color: rgba(255, 255, 255, 0.05);
+}
+.cat-table tbody tr:hover {
+  background: rgba(255, 255, 255, 0.025);
+}
+.cat-table tbody tr.cat-current {
+  background: rgba(240, 194, 90, 0.06);
+}
+.cat-play {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  margin-top: -4px;
+  border: 0;
+  border-radius: 50%;
+  background: none;
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.16);
+  color: var(--bs-text-2);
+  cursor: pointer;
+}
+.cat-play svg {
+  width: 12px;
+  height: 12px;
+  margin-left: 2px;
+}
+.cat-play:hover:not(:disabled) {
+  color: var(--foreground);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.35);
+}
+.cat-play:disabled {
+  opacity: 0.3;
+  cursor: default;
+}
+.cat-play[aria-current="true"] {
+  background: var(--bs-gold);
+  box-shadow: none;
+  color: #16171d;
+}
+
+.cat-state {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12.5px;
+  white-space: nowrap;
+}
+.cat-state i {
+  flex: none;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: currentColor;
+}
+.cat-state-missing {
+  color: var(--bs-red-text);
+}
+.cat-state-stale {
+  color: var(--bs-gold);
+}
+.cat-state-current {
+  color: var(--bs-green-text);
+}
+.cat-state-skip {
+  color: var(--muted-foreground);
+}
+.cat-state-error {
+  color: var(--bs-red-text);
+  white-space: normal;
+}
+
+.cat-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 2px;
+  white-space: nowrap;
+}
+.cat-act {
+  min-height: 28px;
+  padding: 0 8px;
+  font-size: 12.5px;
+}
+.cat-more svg {
+  width: 16px;
+  height: 16px;
+}
+.cat-marked {
+  color: var(--bs-gold);
+}
+.cat-menu {
+  border: 0;
+  background: #222329;
+  box-shadow:
+    inset 0 0 0 1px rgba(255, 255, 255, 0.1),
+    0 12px 32px rgba(0, 0, 0, 0.5);
+  color: #f4f5f7;
+}
+.cat-menu-item {
+  display: flex;
+  width: 100%;
+  align-items: center;
+  min-height: 32px;
+  padding: 0 10px;
+  border: 0;
+  border-radius: 6px;
+  background: none;
+  color: inherit;
+  font: inherit;
+  font-size: 13px;
+  text-align: left;
+  cursor: pointer;
+}
+.cat-menu-item:hover,
+.cat-menu-item:focus-visible {
+  background: rgba(255, 255, 255, 0.06);
+}
+.cat-menu-item.cat-marked {
+  color: #f0c25a;
+}
+
+/* ---------- Catalogue list: the panel the audio pages' tables sit in ---------- */
+
+/* Scrolls rather than clips: the fixed columns outgrow a phone, and the actions sit last. */
+.cat-list {
+  overflow-x: auto;
+  margin-top: 4px;
+  border-radius: 8px;
+  background: var(--bs-panel);
+  box-shadow: inset 0 0 0 1px var(--bs-line);
+}
+.cat-list .cat-table thead tr {
+  background: var(--bs-panel-head);
+}
+.cat-list .cat-table th {
+  height: 36px;
+  padding: 0 12px;
+  text-align: left;
+  vertical-align: middle;
+}
+.cat-list .cat-table td {
+  padding: 10px 12px;
+  vertical-align: middle;
+}
+.cat-list .cat-table tbody tr {
+  border: 0;
+}
+.cat-tr {
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05);
+  cursor: default;
+}
+.cat-cell-play {
+  padding-right: 0 !important;
+}
+.cat-cell-play .cat-play {
+  margin-top: 0;
+}
+.cat-line {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  font-size: 14px;
+  line-height: 20px;
+}
+.cat-pg {
+  flex: none;
+  width: 12px;
+  color: var(--muted-foreground);
+  font-size: 12px;
+  text-align: center;
+}
+.cat-tags {
+  display: flex;
+  flex: none;
+  gap: 8px;
+  color: var(--muted-foreground);
+  font-size: 12px;
+}
+.cat-expand {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  border: 0;
+  border-radius: 4px;
+  background: none;
+  color: var(--muted-foreground);
+  cursor: pointer;
+}
+.cat-expand:hover {
+  color: var(--foreground);
+}
+.cat-two-top {
+  display: block;
+  overflow: hidden;
+  max-width: 100%;
+  font-size: 13.5px;
+  line-height: 18px;
+  text-align: left;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.cat-two-sub {
+  display: block;
+  overflow: hidden;
+  color: var(--muted-foreground);
+  font-size: 12px;
+  line-height: 17px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.cat-group th {
+  height: 34px;
+  padding: 0 12px !important;
+  background: #16171c;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06);
+  color: var(--muted-foreground);
+  font-size: 12px;
+  font-weight: 400;
+  text-align: left;
+}
+.cat-group-name {
+  margin-right: 8px;
+  color: var(--foreground);
+  font-size: 13px;
+  font-weight: 600;
+}
+.cat-group-name:hover {
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+.cat-group-meta {
+  margin-left: 8px;
+}
+.cat-cell-actions {
+  padding-left: 0 !important;
+}
+.cat-empty {
+  padding: 24px 0;
+  color: var(--muted-foreground);
+  font-size: 14px;
+}
+.cat-menu-item:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+.cat-override {
+  display: block;
+  margin-top: 4px;
+  padding-left: 8px;
+  box-shadow: inset 1px 0 0 rgba(140, 184, 245, 0.6);
+  color: var(--bs-text-2);
+  white-space: pre-wrap;
+}
+.cat-cell-actions .cat-hint {
+  float: left;
+  margin-top: 5px;
+  color: var(--muted-foreground);
+  font-size: 12.5px;
+  text-decoration: underline;
+  text-decoration-color: rgba(255, 255, 255, 0.25);
+  text-underline-offset: 3px;
+}
+.cat-cell-actions .cat-hint:hover {
+  color: var(--foreground);
+}

@@ -47,7 +47,7 @@ const result: SearchResult = {
   lines: [page],
   total: 1,
   totalChars: 14,
-  counts: { current: 1, stale: 0, missing: 0 },
+  counts: { all: 1, current: 1, stale: 0, missing: 0 },
   dirty: 0,
   offset: 0,
   limit: 50,
@@ -102,7 +102,7 @@ test("another team's view asks for its pages and plays its takes, with no write 
   expect(new URL(audioSrc()!, "http://x").searchParams.get("team")).toBe("main-crew");
   expect(named(/^Override/)).toHaveLength(0);
   expect(named(/regenerate/i)).toHaveLength(0);
-  expect(named(/^Report/)).toHaveLength(0);
+  expect(named(/^Report /)).toHaveLength(0);
   expect(named(/^Edit the text/)).toHaveLength(1);
 });
 
@@ -111,7 +111,11 @@ test("the visitor's own view keeps every control and sends no team", async () =>
   await screen.findByRole("button", { name: "Play page 1 of Ein Brief" });
 
   for (const [url] of fetchMock.mock.calls) expect(String(url)).not.toContain("team=");
+  // Regenerate, Override and Report sit behind the row's More menu once the row has Edit.
+  expect(named(/^Report /)).toHaveLength(0);
+  expect(named(/^Override/)).toHaveLength(0);
+  await userEvent.setup().click(screen.getAllByRole("button", { name: /^More actions for / })[0]);
   expect(named(/^Override/)).toHaveLength(1);
-  expect(named(/regenerate/i)).not.toHaveLength(0);
-  expect(named(/^Report/)).toHaveLength(1);
+  expect(named(/^Regenerate page/)).toHaveLength(1);
+  expect(named(/^Report /)).toHaveLength(1);
 });
