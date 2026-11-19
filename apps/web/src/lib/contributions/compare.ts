@@ -213,11 +213,15 @@ function sharedEdges(x: string, y: string): [string, string] {
   return [x.slice(0, lead), tail ? x.slice(-tail) : ""];
 }
 
+/** What a branch side cannot hold and still read back as one (player-words.mjs FIELD). */
+const UNBRANCHABLE = /[:;$\n.!?…。！？]/;
+
 /**
  * One template for a line two readers were shown differently: the words `male` and `female` share
  * as they are, and each run where they differ as a `$Gmale:female;` branch, whatever the
- * language. Null where they differ in nothing but spacing and case, or where a differing run
- * holds a `:`, `;` or `$`, which a branch cannot.
+ * language. Null where they differ in nothing but spacing and case, and wherever a branch could
+ * not be read back (player-words.mjs's BRANCH): a side with no words, or a run holding a `:`, `;`,
+ * `$`, line break or sentence end.
  */
 export function genderTemplate(male: string, female: string): string | null {
   const { a, b, pair } = wordPairs(male, female);
@@ -240,27 +244,13 @@ export function genderTemplate(male: string, female: string): string | null {
     let nextI = i;
     while (nextI < wordsA && pair[nextI] === -1) nextI++;
     const nextJ = nextI < wordsA ? pair[nextI] : wordsB;
-    let ours = run(a, i, nextI);
-    let theirs = run(b, j, nextJ);
-    // The spacing after the run: inside the branch where a side has no words, so that side reads
-    // one space rather than two; and at the end of the text, the spacing before it instead.
+    const ours = run(a, i, nextI);
+    const theirs = run(b, j, nextJ);
     const after = (nextI > i ? a[nextI * 2 - 1] : b[nextJ * 2 - 1]) ?? "";
-    const outside = ours && theirs ? after : "";
-    if (!ours || !theirs) {
-      if (after) {
-        ours = ours && ours + after;
-        theirs = theirs && theirs + after;
-      } else {
-        const before = out.match(/\s*$/)![0];
-        out = out.slice(0, out.length - before.length);
-        ours = ours && before + ours;
-        theirs = theirs && before + theirs;
-      }
-    }
     const [lead, tail] = sharedEdges(ours, theirs);
     const inner = (side: string) => side.slice(lead.length, side.length - tail.length);
-    if (/[:;$]/.test(inner(ours) + inner(theirs))) return null;
-    out += `${lead}$G${inner(ours)}:${inner(theirs)};${tail}${outside}`;
+    if (!inner(ours).trim() || !inner(theirs).trim() || UNBRANCHABLE.test(inner(ours) + inner(theirs))) return null;
+    out += `${lead}$G${inner(ours)}:${inner(theirs)};${tail}${after}`;
     branches++;
     i = nextI;
     j = nextJ;

@@ -155,9 +155,8 @@ describe("genderTemplate", () => {
     for (const [m, f] of [
       [male, female],
       ["Bonjour, aventurier.\n\nTu es prêt ?", "Bonjour, aventurière.\n\nTu es prête ?"],
-      ["Thank you, sir, truly.", "Thank you, truly."],
-      ["Thank you, my lad", "Thank you"],
       ["Hail, brother and friend.", "Hail, dear sister and friend."],
+      ["You are a brave hero.", "You are a wise hero."],
     ]) {
       const template = genderTemplate(m, f)!;
       expect(template.replace(/\$G([^:;]*):([^;]*);/g, "$1")).toBe(m);
@@ -177,6 +176,15 @@ describe("genderTemplate", () => {
 
   it("is nothing where a differing run holds what a branch cannot", () => {
     expect(genderTemplate("Go: now.", "Go; now.")).toBe(null);
+  });
+
+  it("is nothing where one side only adds words, which leaves the other side of the branch empty", () => {
+    expect(genderTemplate("You are a brave hero.", "You are a hero.")).toBe(null);
+    expect(genderTemplate("Thank you, sir, truly.", "Thank you, truly.")).toBe(null);
+  });
+
+  it("is nothing where a differing run crosses a sentence's end", () => {
+    expect(genderTemplate("Hail, lad. Come here.", "Hail, lass. Go there.")).toBe(null);
   });
 });
 

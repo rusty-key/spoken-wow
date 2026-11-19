@@ -404,12 +404,16 @@ A player's client has already picked one side of any `$G`, so a contribution is 
 An addon that sends the text as shown also says the reader's gender (`readerSex`). Every copy
 intake drops as already on file records that gender on the line it matched
 (`quest_line.readerGenders`, on the current version, so new text starts with none;
-`lib/contributions/readers.ts`). Most lines gather both. Where our line is one plain line that
-only the other gender has seen, a correction from the reader's gender is the other side of a `$G`
-the line lost, and the corrections tab offers **Split by gender**: ours for the gender that saw
-it, theirs for the reader's, each run of words they differ in written as a `$G` branch, in any
-language (`compare.ts` `readerSide`, `genderSplit`). A line both genders have seen, or none yet,
-is not offered it. A moderator who knows better can still split any plain line from **Keep
+`lib/contributions/readers.ts`). Recording is best-effort: if the write fails, intake logs it and
+takes the upload anyway, so a matching copy does not always count. Most lines gather both. Where
+our line is one plain line that only the other gender has seen, a correction from the reader's
+gender may be the other side of a `$G` the line lost, or may be a plain fix the other gender
+never got to send. The corrections tab offers **Split by gender** for the moderator to weigh
+against Replace ours: ours for the gender that saw it, theirs for the reader's, each run of words
+they differ in written as a `$G` branch, in any language (`compare.ts` `readerSide`,
+`genderSplit`). It is not offered on a line both genders have seen or none has yet, nor where
+one text only adds words to the other or a differing run crosses a sentence's end, which a
+branch cannot hold. A moderator who knows better can still split any plain line from **Keep
 both…**: theirs for female players or for male players, ours for the other, whatever the evidence
 says. Either sends only the side (`split`); the server builds the template from the line as it
 then stands and writes it as the correction, which splits the moment as below, and the row keeps
