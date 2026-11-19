@@ -144,7 +144,7 @@ export default function FishReference({
   }
 
   return (
-    <section className="border-t px-9 py-3 text-sm">
+    <section className="text-sm">
       <h3 className="mb-1 font-medium">fish.audio reference</h3>
       <p className="text-muted-foreground mb-3 text-xs">
         fish.audio speaks this voice from {MIN_SECONDS}-{MAX_SECONDS} seconds of one clip and a
