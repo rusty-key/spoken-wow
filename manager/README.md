@@ -68,6 +68,9 @@ packs are their own group, headed by the team's name when there is more than one
 section from several teams install side by side, each in its own folder, and removing one leaves
 the others alone.
 
+A pack installed earlier that the channel no longer lists stays on the page, under its team's slug,
+with Remove only.
+
 Install All installs the chosen author's packs. With All chosen and more than one team, it installs
 the official packs; where the language has none, it asks which team's packs to install and
 downloads nothing until one is picked. One press never installs two teams' packs of one section.

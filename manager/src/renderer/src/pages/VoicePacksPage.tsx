@@ -1,7 +1,7 @@
 import { useMemo, useState, type ReactNode } from 'react'
 import { SECTIONS, type Product, type ProductStatus } from '@shared/types'
 import { isChannelRelease } from '@shared/channel'
-import { BASE_LANGUAGE, LANGUAGES, languageName } from '@shared/products'
+import { BASE_LANGUAGE, LANGUAGES, installedVoiceProduct, languageName } from '@shared/products'
 import { jobBusy, latestOf, releasesFor, statusOf } from '../catalog'
 import { RailTop } from '../components/Brand'
 import { NoGame } from '../components/EmptyGames'
@@ -26,14 +26,28 @@ export function VoicePacksPage(): ReactNode {
   const voices = useMemo(() => state.products.filter((p) => p.kind === 'voices'), [state.products])
   const releasedVoices = useMemo(() => voices.filter((p) => releasesFor(state.catalog, p.id, pre).length > 0), [voices, state.catalog, pre])
   const withRelease = useMemo(() => new Set(releasedVoices.map((p) => p.lang)), [releasedVoices])
+  const gameStatuses = game ? state.statuses[game.id] : undefined
+  // Installed packs with no release, a delisted team's among them: shown so they can be removed.
+  const shelved = useMemo(() => {
+    const released = new Set(releasedVoices.map((p) => p.id))
+    return (gameStatuses ?? [])
+      .filter((st) => st.state !== 'not-installed' && !released.has(st.productId))
+      .map((st) => voices.find((p) => p.id === st.productId) ?? installedVoiceProduct(st.productId))
+      .filter((p): p is Product => p?.kind === 'voices')
+  }, [gameStatuses, releasedVoices, voices])
   const chosen = state.settings.voiceLanguage || BASE_LANGUAGE
   const languages = state.languages.length > 0 ? state.languages : LANGUAGES
-  const chips = languages.filter((l) => withRelease.has(l.code) || l.code === chosen)
+  const shelvedLangs = new Set(shelved.map((p) => p.lang))
+  const chips = [...languages, ...[...shelvedLangs].filter((c) => !languages.some((l) => l.code === c)).map((code) => ({ code: code!, name: code! }))].filter(
+    (l) => withRelease.has(l.code) || shelvedLangs.has(l.code) || l.code === chosen
+  )
 
   if (!game) return <NoGame />
 
   const inLang = voices.filter((p) => p.lang === chosen)
   const releasedInLang = releasedVoices.filter((p) => p.lang === chosen)
+  const shown = [...releasedInLang, ...shelved.filter((p) => p.lang === chosen)]
+  const shownAuthors = authorsOf(shown)
   const authors = authorsOf(releasedInLang)
   const author = chosenAuthor(state.settings.voiceAuthors[chosen], authors)
   const byAuthor = (p: Product): boolean => author === ALL_AUTHORS || authors.keyOf(p) === author
@@ -119,7 +133,7 @@ export function VoicePacksPage(): ReactNode {
             </div>
           )}
 
-          {releasedInLang.length === 0 ? (
+          {shown.length === 0 ? (
             <p className="card pad muted">
               {S.common.notReleased}. {S.voices.nothingReleased}
             </p>
@@ -127,9 +141,9 @@ export function VoicePacksPage(): ReactNode {
             <div className="sections">
               {SECTIONS.map((section) => {
                 const all = inLang.filter((p) => p.section === section)
-                const some = releasedInLang.filter((p) => p.section === section)
+                const some = shown.filter((p) => p.section === section)
                 // With nothing released, the section still shows its first product, as not released.
-                const groups = some.length > 0 ? groupByAuthor(some.filter(byAuthor), authors) : all.slice(0, 1).map((p) => ({ author: null, rows: [p] }))
+                const groups = some.length > 0 ? groupByAuthor(some.filter(byAuthor), shownAuthors) : all.slice(0, 1).map((p) => ({ author: null, rows: [p] }))
                 if (groups.length === 0) return null
                 const meta = S.voices.sections[section]
                 return (

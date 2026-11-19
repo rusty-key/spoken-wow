@@ -4,13 +4,13 @@ vi.mock('electron', () => ({ BrowserWindow: {}, dialog: {}, shell: {}, ipcMain: 
 
 import { settingsPatch } from '../src/main/ipc'
 import { sanitizeSettings } from '../src/main/state'
-import { DEFAULT_SETTINGS } from '../src/shared/types'
+import { ALL_AUTHORS, DEFAULT_SETTINGS } from '../src/shared/types'
 
-const BAD: unknown[] = [null, 7, 'deDE', ['stimmen'], { deDE: 3 }, { deDE: 'Stimmen!' }, { deDE: { slug: 'stimmen' } }, { xx: 'all' }]
+const BAD: unknown[] = [null, 7, 'deDE', ['stimmen'], { deDE: 3 }, { deDE: 'Stimmen!' }, { deDE: '**' }, { deDE: { slug: 'stimmen' } }, { xx: 'all' }]
 
 describe('the Author choice per language', () => {
   it('keeps a team slug or All for each language', () => {
-    expect(sanitizeSettings({ voiceAuthors: { deDE: 'stimmen', jaJP: 'all' } }).voiceAuthors).toEqual({ deDE: 'stimmen', jaJP: 'all' })
+    expect(sanitizeSettings({ voiceAuthors: { deDE: 'stimmen', jaJP: ALL_AUTHORS, frFR: 'all' } }).voiceAuthors).toEqual({ deDE: 'stimmen', jaJP: ALL_AUTHORS, frFR: 'all' })
     expect(DEFAULT_SETTINGS.voiceAuthors).toEqual({})
   })
 
@@ -25,7 +25,7 @@ describe('the Author choice per language', () => {
   })
 
   it('is refused from the window when any of it is bad', () => {
-    expect(settingsPatch({ voiceAuthors: { deDE: 'stimmen', jaJP: 'all' } })).toEqual({ voiceAuthors: { deDE: 'stimmen', jaJP: 'all' } })
+    expect(settingsPatch({ voiceAuthors: { deDE: 'stimmen', jaJP: ALL_AUTHORS } })).toEqual({ voiceAuthors: { deDE: 'stimmen', jaJP: ALL_AUTHORS } })
     for (const v of BAD) expect(() => settingsPatch({ voiceAuthors: v }), JSON.stringify(v)).toThrow('Invalid setting voiceAuthors')
   })
 })

@@ -3,7 +3,7 @@
 import path from 'node:path'
 import { CHANNELS, type AddGameResult, type ClearDownloadsResult, type InstallOptions } from '../shared/api'
 import { isSupportedFlavor, type Catalog, type CatalogUpdate, type CommunityCatalog, type GameInstall, type JobProgress, type Product, type ProductStatus, type ReleaseInfo, type Settings, type SharingChoice, type SharingStatus, type Snapshot } from '../shared/types'
-import { languagesFor, productById, productsFor } from '../shared/products'
+import { installedVoiceProduct, languagesFor, productById, productsFor } from '../shared/products'
 import { compareVersions } from '../shared/version'
 import { buildCatalog, latestFor, loadCatalog, saveCatalog } from './catalog'
 import { COMMUNITY_PREFIX, communityProduct, communityRelease, fetchCommunity, isCommunityProductId, loadCommunity, saveCommunity } from './community'
@@ -313,7 +313,8 @@ export class ManagerService {
   private async fetchChannel(signal?: AbortSignal): Promise<void> {
     const ch = await fetchIndex(this.opts.dataPath, this.channelOptions(signal), this.channel)
     if (ch.offline || !ch.index) throw new PlainError(t('service.channelUnreadable'))
-    const changed = ch.index.generatedAt !== this.channel?.generatedAt
+    // A fetch that changed nothing gives back the index in use. index.json read as v2 can change with the same generatedAt.
+    const changed = ch.index !== this.channel
     this.channel = ch.index
     this.channelFetchedAt = Date.now()
     if (!changed) return
@@ -452,17 +453,22 @@ export class ManagerService {
     return this.allProducts().find((p) => p.id === productId)
   }
 
+  /** A pack installed earlier that its list no longer carries, so it can still be seen and removed. */
+  private delistedProduct(productId: string): Product | null {
+    if (isCommunityProductId(productId)) return communityProduct({ id: productId.slice(COMMUNITY_PREFIX.length) })
+    return installedVoiceProduct(productId)
+  }
+
   // ---------------------------------------------------------------- statuses
 
   async statuses(gameId: string): Promise<ProductStatus[]> {
     const game = this.requireGame(gameId)
     const state = loadState(this.opts.dataPath)
     const products = this.allProducts()
-    // A pack installed earlier and since removed from the registry still shows, so it can be removed.
+    // A pack installed earlier and since removed from the registry or the channel still shows, so it can be removed.
     for (const id of Object.keys(state.installs[gameId] ?? {})) {
-      if (isCommunityProductId(id) && !products.some((p) => p.id === id)) {
-        products.push(communityProduct({ id: id.slice(COMMUNITY_PREFIX.length) }))
-      }
+      const delisted = products.some((p) => p.id === id) ? null : this.delistedProduct(id)
+      if (delisted) products.push(delisted)
     }
     const out = await computeStatuses(game, this.effectiveCatalog(), this.settings, state, products)
     const spoken = out.find((s) => s.productId === 'spoken')?.installedVersion
@@ -573,11 +579,8 @@ export class ManagerService {
 
   uninstall(gameId: string, productId: string): string {
     const game = this.requireGame(gameId)
-    let product = this.findProduct(productId)
-    // A community pack that left the registry can still be removed.
-    if (!product && isCommunityProductId(productId)) product = communityProduct({ id: productId.slice(COMMUNITY_PREFIX.length) })
-    if (!product) throw new Error('Unknown product')
-    const target = product
+    const target = this.findProduct(productId) ?? this.delistedProduct(productId)
+    if (!target) throw new Error('Unknown product')
     const refused = isSupportedFlavor(game.flavor) ? null : notSupportedMessage(game.flavorFolder)
     return this.jobs.enqueue({
       gameId,

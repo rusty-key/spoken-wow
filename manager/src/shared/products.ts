@@ -1,7 +1,7 @@
 // What the manager can install, as a table. The names follow scripts/lib/packs.mjs in the repo:
 // a release tag is `<product id>/v<version>`, English's folders are the plain names and a
 // language's are those plus `_<lang>`. Which of these have a release is the catalog's business.
-import { PAGE_AUTHOR, QUESTS_SIDES, type ChannelTeam, type PackAuthor, type Product, type QuestsPack, type QuestsSide, type Section, type VoiceLanguage } from './types'
+import { PAGE_AUTHOR, QUESTS_SIDES, TEAM_SLUG, type ChannelTeam, type PackAuthor, type Product, type QuestsPack, type QuestsSide, type Section, type VoiceLanguage } from './types'
 
 export const BASE_LANGUAGE = 'enUS'
 
@@ -125,7 +125,7 @@ function voiceProduct(section: Section, lang: string, pack: QuestsPack, folders:
   }
 }
 
-/** The page packs' author until the channel says whose they are. */
+/** The author of the packs the channel lists with no team: the language's official team's, in its plain folders. */
 export const PAGE_PACKS: PackAuthor = { key: PAGE_AUTHOR, name: null, official: true }
 
 /** A pack of the table: a page pack, with what it was released as before. */
@@ -185,6 +185,27 @@ export function currentProductId(id: string): string {
   return PRODUCTS.find((p) => p.legacy?.id === id)?.id ?? id
 }
 
+const VOICE_ID = new RegExp(`^(quests|places|readables|bosses)-audio(?:-(alliance|horde|shared|gossip))?(?:-([a-z]{2}[A-Z]{2})(?:-(${TEAM_SLUG.source.slice(1, -1)}))?)?$`)
+
+/**
+ * The voice pack a product id names, with the folders the id gives, for a pack installed earlier that the channel no
+ * longer lists, so it can still be seen and removed. Its team's name is gone with the listing: the slug stands in.
+ * Null for an id that is no voice pack's.
+ */
+export function installedVoiceProduct(id: string): Product | null {
+  const m = VOICE_ID.exec(id)
+  if (!m) return null
+  const section = m[1] as Section
+  const side = (m[2] ?? null) as QuestsSide | null
+  const lang = m[3] ?? BASE_LANGUAGE
+  const slug = m[4] ?? null
+  const pack: QuestsPack = side ?? 'all'
+  if (productIdOf(section, lang, pack, slug) !== id) return null
+  const folders = section === 'quests' && !side ? QUESTS_SIDES.map((s) => packFolder('quests', lang, s, slug)) : [packFolder(section, lang, side, slug)]
+  const author: PackAuthor = slug ? { key: slug, name: slug, official: false } : PAGE_PACKS
+  return { ...voiceProduct(section, lang, pack, folders, slug), author }
+}
+
 /** What products and languages are read from in the channel's index-v2.json. */
 export interface ChannelListing {
   packs: Record<string, { lang: string; section: Section; pack: QuestsSide | null; team: ChannelTeam | null }>
@@ -241,24 +262,9 @@ export function productsFor(index: ChannelListing | null): Product[] {
   return withAuthors(out)
 }
 
-const teamAuthor = (team: ChannelTeam): PackAuthor => ({ key: team.slug, name: team.name, official: team.official })
-
-/**
- * Each voice product's author. A page pack has no team, but its language's privileged team made it: with one named
- * official team in the language, page packs are that team's, so one team is not two authors.
- */
+/** Each voice product's author: its team, or for a pack the channel lists with no team, the page packs'. */
 function withAuthors(products: Product[]): Product[] {
-  const official = new Map<string, Map<string, ChannelTeam>>()
-  for (const p of products) {
-    if (!p.team?.official) continue
-    const teams = official.get(p.lang!) ?? new Map<string, ChannelTeam>()
-    official.set(p.lang!, teams.set(p.team.slug, p.team))
-  }
-  const page = (lang: string): PackAuthor => {
-    const teams = [...(official.get(lang)?.values() ?? [])]
-    return teams.length === 1 ? teamAuthor(teams[0]!) : PAGE_PACKS
-  }
-  return products.map((p) => (p.kind === 'voices' ? { ...p, author: p.team ? teamAuthor(p.team) : page(p.lang!) } : p))
+  return products.map((p) => (p.kind === 'voices' ? { ...p, author: p.team ? { key: p.team.slug, name: p.team.name, official: p.team.official } : PAGE_PACKS } : p))
 }
 
 /**

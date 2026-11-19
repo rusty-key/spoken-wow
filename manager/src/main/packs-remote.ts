@@ -73,7 +73,8 @@ export interface ChannelOptions {
 
 const SHA = /^[0-9a-f]{64}$/
 const REV = /^\d{8}T\d{6}Z$/
-// As scripts/lib/packs.mjs PACK_ID: a team other than the language's privileged one carries its slug.
+// A pack's folder: Spoken and its name, then a language code but for English's, then the slug of a team other than
+// the language's privileged one.
 const PACK_ID = /^Spoken[A-Za-z]+(_[a-z]{2}[A-Z]{2}(_[a-z][a-z0-9-]{1,40})?)?$/
 const NAME_MAX = 200
 const REQUIRES = /^>=\d+\.\d+\.\d+$/

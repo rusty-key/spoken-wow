@@ -50,7 +50,7 @@ export const QUESTS_SIDES: readonly QuestsSide[] = ['alliance', 'horde', 'shared
 
 /** A language code as the game and a pack's .toc write it: `deDE`. */
 export const LANG_CODE = /^[a-z]{2}[A-Z]{2}$/
-/** A team's slug, as scripts/lib/packs.mjs takes it. */
+/** A team's slug. */
 export const TEAM_SLUG = /^[a-z][a-z0-9-]{1,40}$/
 
 /** The team that released a pack, as index-v2.json names it. */
@@ -88,15 +88,18 @@ export interface Product {
    * folder is still this product's, and installing the new one moves it to the backup.
    */
   legacy?: { id: string; tagPrefix: string; folders: string[]; assetPattern: string }
-  /** Who released a voice pack, as the channel says; null for a page pack, absent when the channel does not carry it. */
+  /**
+   * Who released a voice pack, as the channel says: null for the language's official team's pack in its plain folders,
+   * absent when the channel does not carry it.
+   */
   team?: ChannelTeam | null
   /** Who made a voice pack, as the Voice Packs page groups and names it (shared/products.ts resolves it). */
   author?: PackAuthor
 }
 
 /**
- * A voice pack's author. A page pack's is its language's one official team when the channel names exactly one;
- * otherwise PAGE_AUTHOR, with no name, which the window gives.
+ * A voice pack's author: its team, or PAGE_AUTHOR, with no name, which the window gives, for a pack the channel lists
+ * with no team (the language's official team holding its plain folders).
  */
 export interface PackAuthor {
   /** The team's slug, or PAGE_AUTHOR. */
@@ -283,13 +286,13 @@ export const DEFAULT_SETTINGS: Settings = {
   sharing: 'unset'
 }
 
-/** The Author filter's choice that shows every author. */
-export const ALL_AUTHORS = 'all'
+/** The Author filter's choice that shows every author. Not a slug, so no team can take it. */
+export const ALL_AUTHORS = '*'
 /** The author of page packs, which the channel gives no team. Not a slug, so no team can take it. */
 export const PAGE_AUTHOR = ''
 
 // ALL_AUTHORS, a team's slug, or PAGE_AUTHOR.
-const AUTHOR = new RegExp(`^(all|${TEAM_SLUG.source.slice(1, -1)})?$`)
+const AUTHOR = new RegExp(`^(\\*|${TEAM_SLUG.source.slice(1, -1)})?$`)
 
 /** The Author choices that are a language's and an author's; null when `v` is not a record at all. */
 export function cleanVoiceAuthors(v: unknown): Record<string, string> | null {

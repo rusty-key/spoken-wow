@@ -2,8 +2,8 @@
 import { createElement } from 'react'
 import { renderToStaticMarkup } from 'react-dom/server'
 import { afterEach, describe, expect, it } from 'vitest'
-import { languagesFor, productsFor, type ChannelListing } from '../src/shared/products'
-import { DEFAULT_SETTINGS, type ChannelTeam, type GameInstall, type Product, type QuestsSide, type ReleaseInfo, type Section, type Settings } from '../src/shared/types'
+import { installedVoiceProduct, languagesFor, productsFor, type ChannelListing } from '../src/shared/products'
+import { DEFAULT_SETTINGS, type ChannelTeam, type GameInstall, type Product, type ProductStatus, type QuestsSide, type ReleaseInfo, type Section, type Settings } from '../src/shared/types'
 import { InstallAllConfirm, VoicePacksPage } from '../src/renderer/src/pages/VoicePacksPage'
 import { initial, StoreContext, type Actions, type State } from '../src/renderer/src/store'
 import { setUiLanguage } from '../src/renderer/src/strings'
@@ -97,6 +97,33 @@ describe('Voice Packs: every language, and who made each pack', () => {
   })
 })
 
+describe('Voice Packs: an installed pack the channel no longer lists', () => {
+  const installed = (productId: string, folder: string): ProductStatus => ({ gameId: GAME.id, productId, state: 'unknown', installedVersion: '1.0.0', installedFolders: [folder] })
+
+  it('shows it, with Remove and nothing to install, update or repair', () => {
+    const state = { ...stateFor(LISTING, { voiceLanguage: 'plPL' }), statuses: { [GAME.id]: [installed('places-audio-plPL-klang', 'SpokenPlacesAudio_plPL_klang')] } }
+    const html = draw(state)
+    expect(html).toContain('>Polski</button>')
+    const places = section(html, 'Places')
+    expect(places).toContain('by klang')
+    expect(places).toContain('>Remove</button>')
+    for (const label of ['>Install</button>', '>Update</button>', '>Repair</button>']) expect(places).not.toContain(label)
+  })
+
+  it('shows it beside the released packs of its language', () => {
+    const state = { ...stateFor(LISTING, { voiceLanguage: 'deDE' }), statuses: { [GAME.id]: [installed('places-audio-deDE-klang', 'SpokenPlacesAudio_deDE_klang')] } }
+    const places = section(draw(state), 'Places')
+    expect(places).toContain('by Stimmen')
+    expect(places).toContain('by klang')
+  })
+
+  it('rebuilds its folders from its id, and nothing from an id that is no pack', () => {
+    expect(installedVoiceProduct('quests-audio-deDE-stimmen')?.folders).toEqual(['SpokenQuestsAudioAlliance_deDE_stimmen', 'SpokenQuestsAudioHorde_deDE_stimmen', 'SpokenQuestsAudioShared_deDE_stimmen', 'SpokenQuestsAudioGossip_deDE_stimmen'])
+    expect(installedVoiceProduct('quests-audio-gossip-jaJP')?.folders).toEqual(['SpokenQuestsAudioGossip_jaJP'])
+    for (const id of ['spoken', 'places-audio-enUS', 'places-audio-alliance-deDE', 'places-audio-deDE-../x', 'places-audio-deDE-Stimmen']) expect(installedVoiceProduct(id), id).toBeNull()
+  })
+})
+
 describe('Voice Packs: the Author filter', () => {
   const authorPills = (html: string): string | null => {
     const at = html.indexOf('id="voice-author"')
@@ -121,6 +148,16 @@ describe('Voice Packs: the Author filter', () => {
     expect(html).not.toContain('>Readables</h2>')
   })
 
+  it("shows a team whose slug is 'all' as that team, not as All", () => {
+    const ALLTEAM: ChannelTeam = { slug: 'all', name: 'Alle', official: false }
+    const listing: ChannelListing = { ...LISTING, packs: { ...LISTING.packs, SpokenPlacesAudio_deDE_all: at('deDE', 'places', null, ALLTEAM) } }
+    const html = draw(stateFor(listing, { voiceLanguage: 'deDE', voiceAuthors: { deDE: 'all' } }))
+    expect(authorPills(html)).toContain('aria-pressed="true">Alle<')
+    expect(authorPills(html)).toContain('aria-pressed="false">All<')
+    expect(section(html, 'Places')).toContain('by Alle')
+    expect(section(html, 'Places')).not.toContain('by Stimmen')
+  })
+
   it('reads a saved team with no packs left as All', () => {
     const html = draw(stateFor(LISTING, { voiceLanguage: 'deDE', voiceAuthors: { deDE: 'gone' } }))
     expect(authorPills(html)).toContain('aria-pressed="true">All<')
@@ -141,25 +178,26 @@ describe('authorsOf', () => {
     expect(list.map((a) => a.key)).toEqual(['zeta', 'klang', 'stimmen'])
   })
 
-  it("counts page packs as the language's one official team", () => {
-    const official = { slug: 'deutsch', name: 'Deutsch', official: true }
+  it("keeps page packs their own author beside an official second team", () => {
+    const official = { ...STIMMEN, official: true }
+    const sides = (suffix: string, team: ChannelTeam | null) =>
+      Object.fromEntries((['alliance', 'horde', 'shared', 'gossip'] as QuestsSide[]).map((s) => [`SpokenQuestsAudio${s[0]!.toUpperCase()}${s.slice(1)}_deDE${suffix}`, at('deDE', 'quests', s, team)]))
     const listing: ChannelListing = {
-      packs: {
-        SpokenPlacesAudio_deDE: at('deDE', 'places', null, null),
-        SpokenReadablesAudio_deDE_deutsch: at('deDE', 'readables', null, official),
-        SpokenPlacesAudio_deDE_stimmen: at('deDE', 'places', null, STIMMEN)
-      },
+      packs: { ...sides('', null), ...sides('_stimmen', official), SpokenPlacesAudio_deDE_stimmen: at('deDE', 'places', null, official) },
       languages: {}
     }
-    const products = productsFor(listing).filter((p) => p.kind === 'voices' && p.folders!.every((f) => listing.packs[f]))
+    const products = productsFor(listing).filter((p) => p.kind === 'voices' && p.lang === 'deDE' && p.folders!.every((f) => listing.packs[f]))
     const authors = authorsOf(products)
-    expect(authors.list.map((a) => a.key)).toEqual(['deutsch', 'stimmen'])
-    const page = products.filter((p) => p.team !== STIMMEN)
-    expect(groupByAuthor(page, authors).map((g) => g.rows.map((p) => p.id))).toEqual([['places-audio-deDE', 'readables-audio-deDE-deutsch']])
+    expect(authors.list.map((a) => a.key)).toEqual(['', 'stimmen'])
+    expect(draw(stateFor(listing, { voiceLanguage: 'deDE' }))).toContain('id="voice-author"')
+    const plan = installAllPlan(products, authors, ALL_AUTHORS, () => true)
+    const ids = plan.kind === 'install' ? plan.products.map((p) => p.id) : []
+    expect(ids.filter((id) => id.startsWith('quests-audio'))).toEqual(['quests-audio-deDE'])
+    expect(ids).toEqual(['quests-audio-deDE', 'places-audio-deDE-stimmen'])
   })
 
-  it('gives page packs no name when the language has no official team, or two', () => {
-    const two = { ...LISTING, packs: { ...LISTING.packs, SpokenReadablesAudio_deDE_aa: at('deDE', 'readables', null, { slug: 'aa', name: 'A', official: true }), SpokenBossesAudio_deDE_bb: at('deDE', 'bosses', null, { slug: 'bb', name: 'B', official: true }) } }
+  it('gives page packs no name, whatever official teams the language has', () => {
+    const two = { ...LISTING, packs: { ...LISTING.packs, SpokenReadablesAudio_deDE_aa: at('deDE', 'readables', null, { slug: 'aa', name: 'A', official: true }) } }
     for (const listing of [LISTING, two]) expect(productsFor(listing).find((p) => p.id === 'places-audio-deDE')?.author).toEqual({ key: '', name: null, official: true })
   })
 })
