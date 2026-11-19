@@ -217,9 +217,9 @@ export class ManagerService {
         ...(this.opts.fetchImpl ? { fetchImpl: this.opts.fetchImpl } : {}),
         ...(this.opts.apiBase ? { apiBase: this.opts.apiBase } : {})
       }),
-      fetchIndex(this.opts.dataPath, this.channelOptions(), this.channel)
+      fetchIndex(this.opts.dataPath, this.channelOptions(), () => this.channel)
     ])
-    if (ch.index) this.channel = ch.index
+    if (ch.index) this.takeChannel(ch.index)
     if (!ch.offline) this.channelFetchedAt = Date.now()
     // When the request failed and nothing was cached, keep what the catalog already held.
     const keepOld = res.offline && res.releases.length === 0
@@ -314,16 +314,26 @@ export class ManagerService {
   }
 
   private async fetchChannel(signal?: AbortSignal): Promise<void> {
-    const ch = await fetchIndex(this.opts.dataPath, this.channelOptions(signal), this.channel)
+    const ch = await fetchIndex(this.opts.dataPath, this.channelOptions(signal), () => this.channel)
     if (ch.offline || !ch.index) throw new PlainError(t('service.channelUnreadable'))
     // A fetch that changed nothing gives back the index in use. index.json read as v2 can change with the same generatedAt.
-    const changed = ch.index !== this.channel
-    this.channel = ch.index
+    const changed = this.takeChannel(ch.index)
     this.channelFetchedAt = Date.now()
     if (!changed) return
     // A row saying "update first" needs the update it points at to be on offer.
     this.catalogChanged(this.effectiveCatalog())
     void this.warmManifests().catch((err) => log('Manifests of the channel:', err))
+  }
+
+  /**
+   * Puts a fetched index in use unless the one in use is newer: the catalog's refresh and the channel's can overlap, and
+   * the one that started first may finish last. Whether the index in use changed.
+   */
+  private takeChannel(index: ChannelIndexV2): boolean {
+    if (index === this.channel) return false
+    if (this.channel && Date.parse(index.generatedAt) < Date.parse(this.channel.generatedAt)) return false
+    this.channel = index
+    return true
   }
 
   // ---------------------------------------------------------------- community

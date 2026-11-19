@@ -4,6 +4,7 @@ import { afterEach, describe, expect, it } from 'vitest'
 import { CHANNELS } from '../src/shared/api'
 import type { CatalogUpdate, JobProgress, Product } from '../src/shared/types'
 import { ManagerService } from '../src/main/service'
+import { loadCachedIndex } from '../src/main/packs-remote'
 import { loadPackState, savePackState } from '../src/main/packs-state'
 import { channelFixture, channelKeys, serveChannel, type PackSpec } from './channel-helpers'
 import { makeGame, serveBuffer, sha256, startServer, tmpDir, toc, write, yazlZip, type TestServer } from './helpers'
@@ -239,6 +240,53 @@ describe('the channel through the service', () => {
     const last = updates().at(-1)?.payload as CatalogUpdate
     expect(last.products.some((p) => p.id === 'places-audio-deDE-stimmen')).toBe(true)
     expect(last.catalog.releases['places-audio-deDE-stimmen']?.[0]?.tag).toBe('channel/20261019T000000Z')
+  })
+
+  it.each([
+    ['gets an older index', '/index-v2.json'],
+    ['gets no answer', '/index-v2.json'],
+    ['has its index and still waits for GitHub', 'api.github.com']
+  ])('keeps the newer channel a refresh of it brought while a catalog refresh was out and %s', async (late, held) => {
+    const fx = channelFixture(keys, [spec])
+    const s = await serveChannel(fx)
+    server = s
+    const older = channelFixture(keys, [spec], { generatedAt: '2026-10-19T00:00:00.000Z' }).objects
+    // The catalog refresh's request for `held` waits until the channel refresh is in.
+    let hold = false
+    let release: () => void = () => undefined
+    let requested: () => void = () => undefined
+    const asked = new Promise<void>((resolve) => (requested = resolve))
+    const fetchImpl = (async (url: string, init?: RequestInit) => {
+      if (hold && String(url).includes(held)) {
+        hold = false
+        await new Promise<void>((resolve) => {
+          release = resolve
+          requested()
+        })
+        if (late === 'gets no answer') throw new Error('connection reset')
+        if (late === 'gets an older index') return new Response(older.get('/index-v2.json')!.toString('utf8'), { status: 200 })
+      }
+      return githubFetch()(url, init)
+    }) as unknown as typeof fetch
+    const dataPath = tmpDir()
+    const svc = new ManagerService({
+      dataPath, appVersion: '0.1.0', send: () => undefined, fetchImpl, autoPaths: [], isRunning: async () => false,
+      packsBaseUrl: s.base, packsPublicKey: keys.publicKey, backoffMs: 1
+    })
+    await svc.refreshChannel()
+    hold = true
+    fx.objects = older
+    const catalog = svc.refreshCatalog(true)
+    await asked
+    // Without GitHub's answer the catalog refresh has its index already: Oct 19, newer than the Oct 18 in use.
+    if (held === 'api.github.com') await expect.poll(() => loadCachedIndex(dataPath, keys.publicKey)?.generatedAt).toBe('2026-10-19T00:00:00.000Z')
+    fx.objects = channelFixture(keys, [spec], { generatedAt: '2026-10-20T00:00:00.000Z' }).objects
+    await svc.refreshChannel()
+    expect(svc.channel?.generatedAt).toBe('2026-10-20T00:00:00.000Z')
+    release()
+    await catalog
+    expect(svc.channel?.generatedAt).toBe('2026-10-20T00:00:00.000Z')
+    expect(loadCachedIndex(dataPath, keys.publicKey)?.generatedAt).toBe('2026-10-20T00:00:00.000Z')
   })
 
   it("keeps its products when a refresh finds the channel unchanged", async () => {

@@ -267,6 +267,20 @@ describe('Install All with several teams', () => {
     expect(ids(planFor('deDE', 'stimmen', ['places-audio-deDE-stimmen']))).toEqual(['quests-audio-deDE-stimmen', 'readables-audio-deDE-stimmen'])
   })
 
+  it("finishes an author's partly installed quests with the sides it lacks, not the bundle", () => {
+    // A bundle with some of its sides installed is neither installed nor missing, so it is not needed itself.
+    const partly = ['quests-audio-alliance-deDE-stimmen', 'quests-audio-deDE-stimmen']
+    expect(ids(planFor('deDE', 'stimmen', partly))).toEqual([
+      'quests-audio-horde-deDE-stimmen', 'quests-audio-shared-deDE-stimmen', 'quests-audio-gossip-deDE-stimmen',
+      'places-audio-deDE-stimmen', 'readables-audio-deDE-stimmen'
+    ])
+    expect(ids(planFor('deDE', ALL_AUTHORS, ['quests-audio-gossip-deDE', 'quests-audio-deDE']))).toEqual([
+      'quests-audio-alliance-deDE', 'quests-audio-horde-deDE', 'quests-audio-shared-deDE', 'places-audio-deDE'
+    ])
+    const all = ['quests-audio-deDE-stimmen', ...['alliance', 'horde', 'shared', 'gossip'].map((s) => `quests-audio-${s}-deDE-stimmen`)]
+    expect(ids(planFor('deDE', 'stimmen', all))).toEqual(['places-audio-deDE-stimmen', 'readables-audio-deDE-stimmen'])
+  })
+
   it('never installs two packs of one section in one press', () => {
     for (const lang of ['deDE', 'plPL']) for (const choice of [ALL_AUTHORS, '', 'stimmen', 'klang']) oneTeamPerSection(planFor(lang, choice))
   })
