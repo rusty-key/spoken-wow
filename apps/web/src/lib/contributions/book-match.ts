@@ -47,6 +47,15 @@ export type BookCorpus = {
   byOwner: Map<string, Set<string>>;
 };
 
+/**
+ * The Plain Letter a letter becomes when it is taken out of the mailbox. Every copy is this one
+ * item with its own words, so neither the item nor its name tells one letter from another.
+ */
+export const LETTER_COPY_ITEM = 8383;
+
+/** Whether an owner names one book, as every owner but the letter copy does. */
+export const namesOneBook = (kind: "object" | "item", id: number) => !(kind === "item" && id === LETTER_COPY_ITEM);
+
 export type BookMatchInput = {
   locale: string;
   text: string | null;
@@ -146,7 +155,8 @@ export function indexCorpus(pages: BookCorpusPage[]): BookCorpus {
       for (const title of titles) addTo(byTitle, `${lang}\u0000${title.trim()}`, page.bookId);
     }
     byPlace.set(`${page.bookId}\u0000${page.pageNumber}`, page);
-    if (page.ownerKind) for (const id of page.ownerIds) addTo(byOwner, `${page.ownerKind}:${id}`, page.bookId);
+    const kind = page.ownerKind;
+    if (kind) for (const id of page.ownerIds) if (namesOneBook(kind, id)) addTo(byOwner, `${kind}:${id}`, page.bookId);
   }
   const byText = new Map([...byTextSets].map(([said, set]) => [said, [...set]]));
   return { pages, byText, normalised, byTitle, byPlace, byOwner };
@@ -259,8 +269,8 @@ export function matchBook(row: BookMatchInput, corpus: BookCorpus): BookMatchRes
     }
   }
 
-  // 3. The title and page number, in this language.
-  if (title) {
+  // 3. The title and page number, in this language. A letter copy's title is the item's.
+  if (title && namesOneBook("item", Number(row.meta.item))) {
     const found = corpus.byTitle.get(`${row.locale}\u0000${title}`);
     if (found && found.size === 1) return inBook(corpus, [...found][0], pageNumber, said, row, "title");
     if (found && found.size > 1) return { kind: "ambiguous", candidates: [...found].sort() };

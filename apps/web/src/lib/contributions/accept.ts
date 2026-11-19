@@ -61,7 +61,7 @@ import { loadRoster } from "@/lib/voices/roster-store";
 import { asTeam } from "@/lib/teams/acting";
 import { privilegedOwners, type TeamId } from "@/lib/teams/store";
 
-import { loadBookCorpus, matchBook, sameMatch, type BookCorpus, type BookMatchResult } from "./book-match";
+import { loadBookCorpus, matchBook, namesOneBook, sameMatch, type BookCorpus, type BookMatchResult } from "./book-match";
 import { sameLine } from "./compare";
 import type { ContributionStatus } from "./contributions";
 import { momentTexts } from "./known";
@@ -936,7 +936,7 @@ async function addOwner(
   for (const kind of ["item", "object"] as const) {
     const id = Number(meta[kind]);
     if (!Number.isInteger(id) || id <= 0 || id > 2_147_483_647) continue;
-    if (corpus.byOwner.has(`${kind}:${id}`)) continue;
+    if (!namesOneBook(kind, id) || corpus.byOwner.has(`${kind}:${id}`)) continue;
     const { rows } = await client.query<{ first: boolean }>(
       `update "book_page" p set "ownerKind" = coalesce(p."ownerKind", $2),
               "ownerIds" = array_append(coalesce(p."ownerIds", '{}'), $3::int)
