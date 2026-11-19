@@ -79,6 +79,18 @@ function swapWords(text: string, swaps: readonly Swap[]): string {
   return out + text.slice(kept);
 }
 
+/**
+ * Longer than any name, class or race the game has: the envelope is a public paste, and a field of
+ * thousands of words would be thousands of swaps tried at every letter of the text.
+ */
+const READER_MAX = 64;
+
+/** A reader fact `fields` holds, or nothing for one too long to be what the game says. */
+function readerFact(fields: Record<string, string>, key: string): string | undefined {
+  const value = fields[key];
+  return value && value.length <= READER_MAX ? value : undefined;
+}
+
 /** The name whole and by any one part ("Valaas Dawnsight" is greeted "Valaas"), as written and in capitals. */
 function nameWords(name: string | undefined): string[] {
   if (!name) return [];
@@ -107,14 +119,17 @@ function swapsOf(fields: Record<string, string>, tokens: boolean): Swap[] {
     const lowered = word.toLowerCase();
     if (lowered !== word) swaps.push({ word: lowered, token: swapped ? lower : lowered });
   };
-  for (const word of nameWords(fields[NAME])) swaps.push({ word, token: "$N" });
+  for (const word of nameWords(readerFact(fields, NAME))) swaps.push({ word, token: "$N" });
   // A locale that names a class by gender ("Kriegerin") may write the other form.
   const classSwapped = tokens && !isClassQuest(fields);
-  for (const name of [fields.readerClass, fields.readerClassMale, fields.readerClassFemale]) {
-    addCased(name, "$C", "$c", classSwapped);
+  for (const key of ["readerClass", "readerClassMale", "readerClassFemale"]) {
+    addCased(readerFact(fields, key), "$C", "$c", classSwapped);
   }
-  addCased(fields.readerRace, "$R", "$r", tokens);
-  return swaps.sort((a, b) => b.word.length - a.word.length);
+  addCased(readerFact(fields, "readerRace"), "$R", "$r", tokens);
+  // Each word once, the first swap given for it kept: a name part said twice is one swap.
+  const seen = new Set<string>();
+  const unique = swaps.filter(({ word }) => !seen.has(word) && Boolean(seen.add(word)));
+  return unique.sort((a, b) => b.word.length - a.word.length);
 }
 
 /**

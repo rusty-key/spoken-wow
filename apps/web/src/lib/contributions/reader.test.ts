@@ -95,3 +95,20 @@ describe("nameless", () => {
     expect(detemplated(nameless(envelope))).toBe(detemplated(envelope));
   });
 });
+
+describe("a reader no game would send", () => {
+  it("takes no time over a name of thousands of words, and keeps the name out all the same", () => {
+    const words = `${"a ".repeat(16000)}`.trim();
+    const envelope = shown("ba".repeat(16000), { reader: words });
+    const started = performance.now();
+    const kept = nameless(envelope);
+    detemplated(envelope);
+    expect(performance.now() - started).toBeLessThan(500);
+    expect(kept.fields.reader).toBeUndefined();
+  });
+
+  it("swaps nothing from a class or race too long to be one", () => {
+    const envelope = shown("A warrior, Tester.", { readerClass: `Warrior${" x".repeat(40)}` });
+    expect(detemplated(envelope)).toBe("A warrior, $N.");
+  });
+});
