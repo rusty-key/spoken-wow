@@ -385,6 +385,11 @@ svg.is-spinning {
   animation: spin 0.9s linear infinite;
 }
 
+/* The refresh icon's arrows run anticlockwise, so it turns the way they point. */
+.icon-btn.is-spinning svg {
+  animation-direction: reverse;
+}
+
 @keyframes spin {
   to {
     transform: rotate(360deg);
