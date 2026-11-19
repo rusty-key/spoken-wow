@@ -188,7 +188,7 @@ describe('uploadCurseForge', () => {
   })
   it("says a 413 is over CurseForge's upload limit", async () => {
     const { fetchImpl } = fake(() => ({ status: 413, text: 'big' }))
-    await expect(uploadCurseForge(cfArgs(fetchImpl))).rejects.toThrow(/over CurseForge's upload limit/)
+    await expect(uploadCurseForge(cfArgs(fetchImpl))).rejects.toThrow(/over the 500 MB CurseForge takes through its API.*Press Zip/)
   })
 })
 

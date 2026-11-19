@@ -629,6 +629,15 @@ export function createMockApi(): ManagerApi {
       await sleep(200)
       return contributorRows(lang)
     },
+    async contributorZip(_gameId, _lang, folder) {
+      await sleep(1500)
+      const version = contributorRows(_lang).find((r) => r.folder === folder)?.version ?? '1.0.0'
+      const name = `${folder}-${version}.zip`
+      return { version, name, path: `/mock/contributor-zips/${folder}/${name}`, bytes: 734 * 1024 * 1024, uploadUrl: 'https://authors.curseforge.com/#/projects/1700375/files' }
+    },
+    async contributorRevealZip(path) {
+      console.info('[mock] contributorRevealZip', path)
+    },
     async contributorPublish(gameId, lang, store, only) {
       const jobId = `job-${++seq}`
       const folders = only ? [only] : contributorRows(lang).filter((r) => r.state === 'unreleased').map((r) => r.folder)

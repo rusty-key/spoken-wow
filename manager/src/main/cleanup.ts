@@ -11,6 +11,8 @@ const STALE_PART_MS = 7 * 24 * 60 * 60 * 1000
 
 /** Under the data folder: where a publish run zips each pack. */
 export const CONTRIBUTOR_TMP = 'contributor-tmp'
+/** Under the data folder: zips made for an upload by hand, kept until the same pack is zipped again. */
+export const CONTRIBUTOR_ZIPS = 'contributor-zips'
 
 /**
  * Run at start, with no job running and after interrupted swaps were undone: empties each game's
