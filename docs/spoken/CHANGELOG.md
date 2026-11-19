@@ -9,6 +9,9 @@ Spoken Player until 3.0.0, when it became Spoken and took its modules into one d
   audio is unaffected and continues after its window closes; with the option off, quest behavior
   remains as before. *([anon1231823](https://github.com/anon1231823))*
   New profiles have the option enabled by default; existing saved choices are kept.
+- **No more Lua error on the world map with Leatrix Maps.** Spoken Bosses no longer tries to
+  make other addons' map frames clickable while it looks for Leatrix's dungeon pins and menu.
+  *([anon1231823](https://github.com/anon1231823))*
 
 ## 3.10.1 — 2026-11-19
 
