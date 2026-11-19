@@ -8,7 +8,9 @@ import { closeDb } from "@/lib/db";
 import type { Lang } from "@/lib/lang";
 
 import { actingTeams, asActor, asTeams, memberTeams, teamIn } from "./acting";
-import { actsAsSecondTeam, byTeam, forgetTeams, ownerOrAll, privilegedOf, queryAs, readAs, teamOf } from "./store";
+import { ALL_TEAMS } from "@/lib/db";
+
+import { byTeam, forgetTeams, NoTeamError, ownerOrAll, plainTeamOf, queryAs, readAs, teamOf } from "./store";
 import { addMember, asSystem, dropTeam, newTeamIn, randomLang, systemRows, testUser } from "./testing";
 
 let lang: Lang;
@@ -62,20 +64,30 @@ describe("actingTeams", () => {
 });
 
 describe("the owner a person works as", () => {
-  it("is the privileged team outside any scope, and the person's own team inside one", async () => {
-    expect(await ownerOrAll(lang)).toBe(teamA);
+  it("is no team outside any scope, and the person's own team inside one", async () => {
+    expect(await ownerOrAll(lang)).toBe(ALL_TEAMS);
+    await expect(teamOf(lang)).rejects.toBeInstanceOf(NoTeamError);
+    expect(await readAs(lang, `select 1 as "one"`)).toEqual([]);
     expect(await asActor(u.id, () => ownerOrAll(lang))).toBe(teamB);
     expect(await asActor(v.id, () => ownerOrAll(lang))).toBe(teamA);
   });
 
-  it("keeps privilegedOf on the privileged team and says when the owner differs", async () => {
-    expect(await asActor(u.id, () => privilegedOf(lang))).toBe(teamA);
-    expect(await asActor(u.id, () => actsAsSecondTeam(lang))).toBe(true);
-    expect(await asActor(v.id, () => actsAsSecondTeam(lang))).toBe(false);
-    expect(await actsAsSecondTeam(lang)).toBe(false);
+  it("is a language's one team, whoever is acting", async () => {
+    const single = randomLang();
+    const team = await newTeamIn(single, false, "acting-single");
+    try {
+      expect(await ownerOrAll(single)).toBe(team);
+      expect(await asActor(u.id, () => ownerOrAll(single))).toBe(team);
+    } finally {
+      await dropTeam(team);
+    }
   });
 
-  it("writes a second team member's take under their team, which the privileged team cannot read", async () => {
+  it("keeps plainTeamOf on the team with plain packs, whoever is acting", async () => {
+    expect(await asActor(u.id, () => plainTeamOf(lang))).toBe(teamA);
+  });
+
+  it("writes a member's take under their team, which another team of the language cannot read", async () => {
     const file = `acting-${tag}.mp3`;
     await asActor(u.id, () =>
       queryAs(
@@ -90,7 +102,7 @@ describe("the owner a person works as", () => {
     expect(seen).toEqual([]);
   });
 
-  it("files a second team member's activity under their team", async () => {
+  it("files a member's activity under their team", async () => {
     const subject = `acting-${tag}`;
     await asActor(u.id, () =>
       recordActivity({ kind: "ignore.set", lang, actorId: u.id, subject, detail: {} }),
@@ -100,7 +112,7 @@ describe("the owner a person works as", () => {
     ]);
   });
 
-  it("groups the language under the person's team and others under their privileged team", async () => {
+  it("groups the language under the person's team and others under their one team", async () => {
     const grouped = await asActor(u.id, () => byTeam([lang, "deDE"]));
     const german = await teamOf("deDE");
     expect(grouped.get(teamB)).toEqual([lang]);

@@ -7,7 +7,7 @@ import { asSystem, dropTeam, testUser } from "@/lib/teams/testing";
 import { setEnabled } from "@/lib/languages/store";
 import { createReport } from "@/lib/reports/store";
 
-import { adoptEnglish, byTeam, forgetTeams, NoTeamError, readAs, teamLangs, teamOf } from "./store";
+import { adoptEnglish, byTeam, forgetTeams, NoTeamError, readAs, sharedLangs, teamOf } from "./store";
 
 // A code nobody has a team for once cleanup has run; vitest.teams.ts gives it one again after.
 const NEW_LANG = "deDE";
@@ -153,7 +153,7 @@ describe("a language switched on by the other worker", () => {
   });
 
   it("has its activity stamped with its team without waiting for the memo to expire", async () => {
-    await teamLangs();
+    await sharedLangs();
     await enableElsewhere();
     vi.advanceTimersByTime(2_000);
     await recordActivity({ kind: "language.toggled", lang: NEW_LANG, actorId: USER, detail: { enabled: true } });

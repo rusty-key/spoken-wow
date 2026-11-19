@@ -30,7 +30,7 @@ import { recordActivities, type ActivityEvent } from "@/lib/activity/store";
 import { ALL_TEAMS, queryIn, withTeam } from "@/lib/db";
 import { BASE_LANG, type Lang } from "@/lib/lang";
 import type { Source } from "@/lib/sections";
-import { asTeamOf, byTeam, everyTeamOf, queryAs, teamLangs, type TeamId } from "@/lib/teams/store";
+import { asTeamOf, byTeam, everyTeamOf, queryAs, teamedLangs, type TeamId } from "@/lib/teams/store";
 import { maxActiveFrom } from "./concurrency";
 import type { QueueLine } from "./queue-line";
 import type { Provider } from "./speakers/speaker";
@@ -408,9 +408,10 @@ export async function cancelPending(
   scope: { batchId?: string; langs?: readonly Lang[]; by?: string | null; everyTeam?: boolean } = {},
 ): Promise<number> {
   const batchId = scope.batchId ?? null;
-  // Every language means every language some team owns: nothing is queued in any other.
-  const langs = scope.langs ?? [...(await teamLangs()).keys()];
-  const teams = scope.everyTeam ? await everyTeamWith(langs, batchId) : await byTeam(langs);
+  // Every language means every language some team voices: nothing is queued in any other. The
+  // worker's own Stop acts as no team, so it reaches every team of them.
+  const langs = scope.langs ?? (await teamedLangs());
+  const teams = scope.everyTeam || !scope.langs ? await everyTeamWith(langs, batchId) : await byTeam(langs);
 
   let cancelled = 0;
   const stopped: StoppedBatch[] = [];

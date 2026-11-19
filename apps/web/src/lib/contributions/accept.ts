@@ -59,7 +59,7 @@ import {
 import type { Roster } from "@/lib/voices/roster";
 import { loadRoster } from "@/lib/voices/roster-store";
 import { asTeam } from "@/lib/teams/acting";
-import { privilegedOwners, type TeamId } from "@/lib/teams/store";
+import { freshOwners, type TeamId } from "@/lib/teams/store";
 
 import { namesOneBook } from "@readables-tools/lib/owners.mjs";
 import { loadBookCorpus, matchBook, sameMatch, type BookCorpus, type BookMatchResult } from "./book-match";
@@ -991,10 +991,9 @@ export async function resolveContribution(
   const rejectReason = status === "rejected" ? reason?.trim().slice(0, REJECT_REASON_MAX) || null : null;
   // Read before the client is held: a refresh of the memo needs a connection of its own. Every
   // language, since the contribution's is not known yet: one the other worker has just given a
-  // team would otherwise be logged under none. The privileged teams, whoever is acting: a
-  // contribution is original text, so its resolution and the ignores a rejection leaves are
-  // that team's, even for a text maintainer who works in a second team.
-  const owners = await privilegedOwners(allLangs());
+  // team would otherwise be logged under none. The resolution is filed under the resolver's team;
+  // the ignores a rejection leaves are the language's, whichever team that is.
+  const owners = await freshOwners(allLangs());
   const client = await db().connect();
   // Set only on the path below where rollback itself throws -- that is the one case that
   // releases the client itself (with the error, so node-postgres destroys rather than recycles

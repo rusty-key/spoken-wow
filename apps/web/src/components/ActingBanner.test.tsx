@@ -9,7 +9,7 @@ import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vites
 
 import { closeDb, db } from "@/lib/db";
 import type { Lang } from "@/lib/lang";
-import { forgetTeams, secondTeamLangs, type TeamId } from "@/lib/teams/store";
+import { forgetTeams, sharedLangs, type TeamId } from "@/lib/teams/store";
 import { dropLang, dropTeam, newTeamIn, systemRows, testUser, uniqueLang } from "@/lib/teams/testing";
 
 const mocks = vi.hoisted(() => ({
@@ -107,7 +107,7 @@ describe("ActingBanner", () => {
   });
 
   it("reads nothing but the cookie without an entry for the language", async () => {
-    await secondTeamLangs();
+    await sharedLangs();
     const pool = db();
     const queries = vi.spyOn(pool, "query");
     const connects = vi.spyOn(pool, "connect");
@@ -127,7 +127,7 @@ describe("ActingBanner", () => {
 
   it("in a single-team language reads only the memo, and no session", async () => {
     choose({ [single]: slugs.c });
-    await secondTeamLangs();
+    await sharedLangs();
     const pool = db();
     const queries = vi.spyOn(pool, "query");
     const connects = vi.spyOn(pool, "connect");
