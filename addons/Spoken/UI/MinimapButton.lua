@@ -79,10 +79,15 @@ end
 -- Where it is missing, the player draws its own list of buttons and supplies those four
 -- behaviours by hand.
 local dropDown
+local nativeMenuOpen = false
 local menuCatcher
 local iconTooltip
 
 local function HideMenu()
+    if nativeMenuOpen and Menu and Menu.GetManager then
+        Menu.GetManager():CloseMenus()
+        nativeMenuOpen = false
+    end
     if menuFrame then
         menuFrame:Hide()
     end
@@ -95,6 +100,12 @@ end
 --- remembered: a Blizzard menu closes on a click elsewhere without telling anyone, and a
 --- flag left set would suppress the tooltip for the rest of the session.
 local function MenuIsOpen()
+    if nativeMenuOpen and Menu and Menu.GetManager then
+        if Menu.GetManager():IsAnyMenuOpen() then
+            return true
+        end
+        nativeMenuOpen = false
+    end
     if menuFrame and menuFrame:IsShown() then
         return true
     end
@@ -106,13 +117,68 @@ local function MenuIsOpen()
     return false
 end
 
---- Whether the client has a context menu of its own worth opening.
-local function HasMenuAPI()
+--- Whether the client has the native context-menu API.
+local function HasNativeMenuAPI()
+    return MenuUtil and MenuUtil.CreateContextMenu and MenuUtil.CreateRootMenuDescription
+        and Menu and Menu.GetManager and Menu.PopulateDescription
+        and MenuVariants and MenuVariants.GetDefaultContextMenuMixin and CreateAnchor
+        and true or false
+end
+
+--- Whether the client has the legacy context-menu API.
+local function HasLegacyMenuAPI()
     return UIDropDownMenu_Initialize and UIDropDownMenu_AddButton and UIDropDownMenu_CreateInfo
         and ToggleDropDownMenu and true or false
 end
 
---- The client's own menu. Entries are grouped under each source's title, which a plain
+local function _MenuLabel(entry)
+    if entry.icon then
+        return "|T" .. entry.icon .. ":16|t " .. entry.text
+    end
+    return entry.text
+end
+
+local function _AddNativeEntries(parent, entries, anchor)
+    local lastGroup, shownAny = nil, false
+    for _, entry in ipairs(entries) do
+        if entry.sourceTitle and entry.sourceTitle ~= lastGroup then
+            if lastGroup ~= nil or shownAny then
+                parent:CreateDivider()
+            end
+            lastGroup = entry.sourceTitle
+            parent:CreateTitle(entry.sourceTitle)
+        end
+
+        parent:CreateButton(_MenuLabel(entry), function()
+            if entry.onClick then entry.onClick(anchor) end
+            return MenuResponse.CloseAll
+        end)
+        shownAny = true
+    end
+end
+
+local function ToggleNativeMenu(anchor)
+    if nativeMenuOpen and Menu.GetManager():IsAnyMenuOpen() then
+        HideMenu()
+        return
+    end
+
+    local function generator(_, root)
+        _AddNativeEntries(root, Minimap:BuildMenu(), anchor)
+    end
+
+    if not anchor then
+        MenuUtil.CreateContextMenu(UIParent, generator)
+    else
+        local root = MenuUtil.CreateRootMenuDescription(MenuVariants.GetDefaultContextMenuMixin())
+        Menu.PopulateDescription(generator, anchor, root)
+        Menu.GetManager():OpenMenu(anchor, root, CreateAnchor("TOPRIGHT", anchor, "BOTTOMLEFT"))
+    end
+    nativeMenuOpen = true
+end
+
+--- The client's own menu. Native MenuUtil is preferred, with UIDropDownMenu retained as a
+--- compatibility fallback. Entries are grouped under each source's title, which a plain
 --- list could only show as a gap.
 local function ToggleClientMenu(anchor)
     if not dropDown then
@@ -244,7 +310,11 @@ local function ToggleMenu(anchor)
     if iconTooltip then
         iconTooltip:Hide()
     end
-    if HasMenuAPI() then
+    if HasNativeMenuAPI() then
+        ToggleNativeMenu(anchor)
+        return
+    end
+    if HasLegacyMenuAPI() then
         ToggleClientMenu(anchor)
         return
     end

@@ -12,6 +12,7 @@ local Expect, Failures = H.Expecter(print)
 
 local function Clean()
     stub.SetClient("16001"); stub.ResetSound(); stub.ResetTimers()
+    stub.SetNativeMenuAPI(false)
     _G.SpokenSettings = nil
     _G.AddonCompartmentFrame = nil
     stub.dbIcons = {}
@@ -82,6 +83,34 @@ ldb.OnClick(compartmentMenu, "MiddleButton")
 Expect("a compartment command waits too", env.Addon.db.char.IsPaused, pausedBefore)
 stub.Advance(0.06)
 Expect("...then runs after the close", env.Addon.db.char.IsPaused, not pausedBefore)
+
+---------------------------------------------------------------- the native MenuUtil menu
+Clean()
+env = stub.LoadSpoken(SPOKEN)
+env.Addon:Enable()
+stub.SetNativeMenuAPI(true)
+env.Sources:Register("quests", { title = "Quests", addon = "Spoken_Quests", order = 1 })
+local nativeButton = stub.dbIcons.Spoken.button
+env.Minimap:AddEntry("quests", { id = "opts", text = "Quest settings", order = 1, onClick = function() end })
+local nativeLdb = stub.ldbObjects.Spoken
+nativeLdb.OnClick(nativeButton, "RightButton")
+Expect("the native menu opens", stub.openNativeMenu ~= nil, true)
+Expect("...anchored to the minimap button", stub.nativeMenuAnchor and stub.nativeMenuAnchor[2], nativeButton)
+local nativeShown = {}
+for _, entry in ipairs(stub.nativeMenuEntries) do
+    table.insert(nativeShown, entry.kind == "divider" and "---"
+        or (entry.kind == "title" and "[" .. entry.text .. "]" or entry.text))
+end
+Expect("...with the same grouped entries", table.concat(nativeShown, "|"),
+    "Stop or Replay|Skip Line|Stop All|Settings|---|[Quests]|Quest settings")
+nativeLdb.OnClick(nativeButton, "RightButton")
+Expect("clicking the minimap button again closes the native menu", stub.openNativeMenu, nil)
+
+local nativeCompartment = stub.Frame("NativeSpokenCompartmentMenu")
+nativeLdb.OnClick(nativeCompartment, "RightButton")
+Expect("a native compartment click waits for its parent menu", stub.openNativeMenu, nil)
+stub.Advance(0.06)
+Expect("...then opens the native menu on the real button", stub.nativeMenuAnchor and stub.nativeMenuAnchor[2], nativeButton)
 
 ---------------------------------------------------------------- ...and nothing where there is no frame
 Clean()
