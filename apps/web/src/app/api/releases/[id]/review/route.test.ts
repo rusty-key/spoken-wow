@@ -98,12 +98,13 @@ describe("reviewing a team's release", () => {
     expect((await response.json()).run).toMatchObject({ kind: "promote", state: "dispatching" });
   });
 
-  it("is 400 for a rejection without a reason, or no action", async () => {
+  it("is 400 for a rejection without a reason, no action, or a null body", async () => {
     const id = await waiting();
     as(owner, "admin");
     expect((await review(id, { action: "reject" })).status).toBe(400);
     expect((await review(id, { action: "reject", note: " " })).status).toBe(400);
     expect((await review(id, {})).status).toBe(400);
+    expect((await review(id, null)).status).toBe(400);
     expect(await stateOf(id)).toBe("awaiting_review");
     expect((await review(id, { action: "reject", note: "Too quiet." })).status).toBe(200);
     expect(await stateOf(id)).toBe("rejected");

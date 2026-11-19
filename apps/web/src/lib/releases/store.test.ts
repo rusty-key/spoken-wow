@@ -1,6 +1,6 @@
 import { afterAll, afterEach, beforeAll, describe, expect, it } from "vitest";
 
-import { closeDb, db } from "@/lib/db";
+import { ALL_TEAMS, closeDb, db, withTeam } from "@/lib/db";
 import { forgetTeams } from "@/lib/teams/store";
 import { asSystem, ownTeam, unowned, systemRows, testUser } from "@/lib/teams/testing";
 
@@ -79,6 +79,32 @@ describe("release runs", () => {
     // A queued run builds from when it leaves the queue, not from its press.
     expect(claimed!.startedAt!.getTime()).toBeGreaterThan(second.createdAt.getTime());
     expect(await claimNext()).toBeNull();
+    expect((await activeRun())?.id).toBe(second.id);
+  });
+
+  it("starts the oldest queued run though another claimer holds it, waiting rather than passing over it, and only once", async () => {
+    const first = await startRun("quests", "frFR", user.id);
+    const second = await startRun("places", "deDE", user.id);
+    await startRun("bosses", "frFR", user.id);
+    await updateRun(first.id, { state: "done" });
+    let release!: () => void;
+    const released = new Promise<void>((resolve) => (release = resolve));
+    let locked!: () => void;
+    const holding = new Promise<void>((resolve) => (locked = resolve));
+    // Another claimer that has the oldest row locked and settles without starting it.
+    const holder = withTeam(ALL_TEAMS, async (client) => {
+      await client.query(`select 1 from "release_run" where "id" = $1 for update`, [second.id]);
+      locked();
+      await released;
+    });
+    await holding;
+    // Two workers asking at once: one starts it, and the other, having waited, starts nothing.
+    const claims = Promise.all([claimNext(), claimNext()]);
+    await new Promise((resolve) => setTimeout(resolve, 200));
+    release();
+    await holder;
+    const [a, b] = await claims;
+    expect([a, b].filter((run) => run !== null)).toEqual([expect.objectContaining({ id: second.id, state: "dispatching" })]);
     expect((await activeRun())?.id).toBe(second.id);
   });
 

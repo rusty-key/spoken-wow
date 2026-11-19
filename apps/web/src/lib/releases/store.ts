@@ -168,7 +168,8 @@ export async function startRun(
 
 /**
  * The oldest queued run, now `dispatching`, when nothing is active; null otherwise. Two workers
- * asking at once start one: the skipped lock and the one-active index stop the second.
+ * asking at once start one: the second waits on the row's lock, then finds it no longer queued,
+ * and the one-active index stops any second start. Never a younger run past a locked oldest one.
  */
 export async function claimNext(): Promise<ReleaseRun | null> {
   try {
@@ -178,7 +179,7 @@ export async function claimNext(): Promise<ReleaseRun | null> {
       const { rows } = await client.query<ReleaseRun>(
         `update "release_run" set "state" = 'dispatching', "startedAt" = now()
           where "id" = (select "id" from "release_run" where "state" = 'queued'
-                         order by "createdAt", "id" limit 1 for update skip locked)
+                         order by "createdAt", "id" limit 1 for update)
           returning ${COLUMNS}`,
       );
       return rows[0] ?? null;

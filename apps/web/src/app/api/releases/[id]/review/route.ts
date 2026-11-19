@@ -24,7 +24,9 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
   const { session, denied } = await requireAdminSession();
   if (denied) return denied;
   const { id } = await context.params;
-  const body = (await request.json().catch(() => ({}))) as { action?: unknown; note?: unknown };
+  const parsed: unknown = await request.json().catch(() => ({}));
+  if (typeof parsed !== "object" || parsed === null) return fail(400, 'action is "approve" or "reject"');
+  const body = parsed as { action?: unknown; note?: unknown };
   try {
     if (body.action === "approve") {
       const run = await approve(id, session.user.id);

@@ -70,8 +70,9 @@ describe("delisting a team's pack", () => {
     expect(droplet.startDropletRun).toHaveBeenCalledTimes(1);
   });
 
-  it("is 400 for a bad section, and 409 for an official team's pack", async () => {
+  it("is 400 for a bad section or a null body, and 409 for an official team's pack", async () => {
     who.role = "admin";
+    expect((await delist(null)).status).toBe(400);
     expect((await delist({ team: second, lang: "frFR", section: "voices" })).status).toBe(400);
     expect((await delist({ team: fr.team, lang: "frFR", section: "places" })).status).toBe(409);
   });

@@ -13,7 +13,6 @@
 -- Code from before this reads the five new states as not active, which they are not.
 
 alter table "release_run" add column if not exists "kind" text not null default 'release';
-alter table "release_run" drop constraint if exists "release_run_kind_check";
 alter table "release_run" add constraint "release_run_kind_check" check ("kind" in ('release', 'promote', 'delist'));
 
 -- The bump a queued press asked for, which it needs when it starts.
@@ -30,6 +29,7 @@ alter table "release_run" add column if not exists "reviewNote" text;
 -- started before this, whose press and start were one moment.
 alter table "release_run" add column if not exists "startedAt" timestamptz;
 
+-- Replaced whole to widen it, as 0097_release_outcome.sql did.
 alter table "release_run" drop constraint "release_run_state_check";
 alter table "release_run" add constraint "release_run_state_check"
   check ("state" in ('queued', 'dispatching', 'running', 'awaiting_review', 'approved', 'done', 'unchanged', 'failed', 'rejected', 'superseded'));

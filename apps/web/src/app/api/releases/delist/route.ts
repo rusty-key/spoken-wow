@@ -13,7 +13,8 @@ const fail = (status: number, error: string) => Response.json({ error }, { statu
 export async function POST(request: Request) {
   const { session, denied } = await requireAdminSession();
   if (denied) return denied;
-  const body = (await request.json().catch(() => ({}))) as { team?: unknown; lang?: unknown; section?: unknown };
+  const parsed: unknown = await request.json().catch(() => ({}));
+  const body = (typeof parsed === "object" && parsed !== null ? parsed : {}) as { team?: unknown; lang?: unknown; section?: unknown };
   if (typeof body.team !== "string" || typeof body.section !== "string" || !isLang(body.lang)) {
     return fail(400, "team, lang and section are required");
   }

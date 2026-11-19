@@ -560,6 +560,37 @@ test("promoting lists what was staged in index-v2.json, and in index.json only a
   assert.ok(index(store).packs.SpokenPlacesAudio_deDE);
 });
 
+// A store whose next index.json write fails, as a dropped connection between the two index writes would.
+function dropNextIndexJson(store) {
+  const put = store.put;
+  let dropped = false;
+  store.put = async (key, ...rest) => {
+    if (key === "index.json" && !dropped) {
+      dropped = true;
+      throw new Error("network down");
+    }
+    return put(key, ...rest);
+  };
+  return store;
+}
+
+test("promoting again after index.json failed to write lists the pack there too", async () => {
+  const store = await legacyChannel();
+  const jaFolder = "SpokenReadablesAudio_jaJP";
+  const ja = await run(store, distOf({ [jaFolder]: { [`${jaFolder}.toc`]: toc("1.0.0"), "1.ogg": "ichi" } }), {
+    packs: [{ folder: jaFolder, section: "readables", lang: "jaJP", team: { slug: "nihongo", name: "Nihongo", official: false } }],
+    languages: [{ code: "jaJP", name: "Japanese", native: "日本語" }],
+    stage: true, bump: "patch", now: later,
+  });
+  dropNextIndexJson(store);
+  await assert.rejects(promoting(store, ja.staged), /index\.json is behind index-v2\.json.*network down/);
+  assert.equal(indexV2(store).packs[jaFolder].rev, ja.staged.packs[jaFolder].rev);
+  assert.equal(index(store).packs[jaFolder], undefined);
+  const out = await promoting(store, ja.staged, { now: new Date("2026-10-21T00:00:00Z") });
+  assert.deepEqual(out.promoted, [jaFolder]);
+  assert.equal(index(store).packs[jaFolder].rev, ja.staged.packs[jaFolder].rev);
+});
+
 test("promoting a pack whose live rev moved since it was staged is refused, and writes nothing", async () => {
   const store = memoryStore();
   const first = await stage(store, { "s/1.ogg": "eins" });
@@ -608,4 +639,17 @@ test("delisting a folder no index lists writes nothing, and says so", async () =
   assert.deepEqual(out.delisted, []);
   assert.deepEqual(indexBytes(store), before);
   assert.ok(said.some((line) => line.includes(`${stimmenFolder} is not listed`)));
+});
+
+test("delisting again after index.json failed to write takes the pack out of it too", async () => {
+  const store = await legacyChannel();
+  const delisting = (now) => delist({ store, signingKey: keys.privateKey, folders: ["SpokenPlacesAudio_deDE"], log: quiet, now });
+  dropNextIndexJson(store);
+  await assert.rejects(delisting(new Date("2026-10-21T00:00:00Z")), /index\.json is behind index-v2\.json.*network down/);
+  assert.equal(indexV2(store).packs.SpokenPlacesAudio_deDE, undefined);
+  assert.ok(index(store).packs.SpokenPlacesAudio_deDE);
+  const out = await delisting(new Date("2026-10-22T00:00:00Z"));
+  assert.deepEqual(out.delisted, []);
+  assert.equal(index(store).packs.SpokenPlacesAudio_deDE, undefined);
+  assert.deepEqual(index(store).addons, SPOKEN);
 });

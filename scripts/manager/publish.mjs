@@ -374,8 +374,8 @@ export async function writeIndexes({ store, signingKey, now, read: { legacy, cur
 
 /**
  * Lists a staged release, as publish({ stage: true }) returned it, in both indexes. Refuses a pack
- * whose live rev is not the one it was staged over, since listing it would undo a newer version,
- * and one whose manifest is not on the channel as staged. Nothing is written unless every pack passes.
+ * whose live rev is neither the one it was staged over nor its own, since listing it would undo a
+ * newer version, and one whose manifest is not on the channel as staged. Nothing is written unless every pack passes.
  */
 export async function promote({ store, signingKey, staged, now = new Date(), log = console.log }) {
   const { publicKey, read } = await openChannel(store, signingKey, log);
@@ -383,7 +383,9 @@ export async function promote({ store, signingKey, staged, now = new Date(), log
   const entries = {};
   for (const [folder, { baseRev = null, ...entry }] of Object.entries(staged.packs ?? {})) {
     if (!PACK_ID.test(folder)) throw new Error(`${folder} is not a pack id the manager accepts`);
-    if ((live[folder]?.rev ?? null) !== baseRev) {
+    // Live at the staged rev already: a promotion whose index.json write failed, run again to finish it.
+    const liveRev = live[folder]?.rev ?? null;
+    if (liveRev !== baseRev && liveRev !== entry.rev) {
       throw new Error(`${folder} changed on the channel since it was staged: ask ${entry.team?.name ?? entry.team?.slug ?? "its team"} to release again`);
     }
     if (!(await readEntryManifest(store, folder, entry, publicKey))) {
@@ -414,6 +416,8 @@ export async function delist({ store, signingKey, folders, now = new Date(), log
     delete packs[folder];
     delisted.push(folder);
   }
-  if (delisted.length > 0) await writeIndexes({ store, signingKey, now, read, packs });
+  // With nothing to take out, index.json may still list what an earlier delisting failed to write.
+  const behind = canonical(legacyPacks(packs)) !== canonical(read.legacy?.value.packs ?? {});
+  if (delisted.length > 0 || behind) await writeIndexes({ store, signingKey, now, read, packs });
   return { delisted };
 }
