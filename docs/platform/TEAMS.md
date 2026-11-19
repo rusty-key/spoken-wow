@@ -21,9 +21,9 @@ The first teams are today's language maintainers, and they should not notice the
 
 ## Phases
 
-**Phase 1, built now, invisible.** Every language, English included, has exactly one team. The
-data model, isolation, roles, report routing and the Release button all exist, but every screen,
-pack and player experience looks as it does today. Phase 1 is everything in this document except
+**Phase 1, built now, invisible.** Every language, English included, has one team, equal to any it
+gains later. The data model, isolation, roles, report routing and the Release button all exist, but
+every screen, pack and player experience looks as it does today. Phase 1 is everything in this document except
 the section *Phase 2*.
 
 **Phase 2, designed now, built when a second team in one language arrives.** Team-specific pack
@@ -71,6 +71,26 @@ picker, and reports that carry the pack's team. See *Phase 2* below.
   `X-*-DataModule-Priority`; once two teams share a language, only the player's choice decides.
 
 ## Roles
+
+### A language's teams
+
+A language's teams are equal: none is its main team. What used to make one team "privileged" now
+only names its packs. `team_language."packName"` (migration 0123) is `plain` (`<Pack>_<lang>`) or
+`slug` (`<Pack>_<lang>_<slug>`), set when the team joins the language and never changed, so no pack a
+player has is renamed. Every team privileged before 0123 kept `plain`; every other kept `slug`. A
+team joining later gets `plain` when its slug is the language code lowercased and no team of the
+language has `plain`, else `slug`. One team per language at most has `plain`.
+
+- A language gets a team when a site owner adds it or an approved request founds one
+  (`found_lang_team`), not for being known or switched on. English alone is still given one at
+  boot. A language may have no team.
+- An invite names the team it joins. One stored before 0123 with no team, which meant the
+  privileged team, had the plain team written in.
+- A rejected contribution's lines are ignored for the whole language: a `line_ignore` row with the
+  language and no team, which every team of the language honours and anyone who may ignore there
+  may lift. A team's own ignore stays that team's.
+- `privileged` and `team_of_lang()` remain for older releases and scripts, and follow `packName`:
+  the privileged team is the one with plain packs.
 
 ### Site owners
 
@@ -402,8 +422,9 @@ run and cancels it for a newer one, so a press waiting behind a manual build can
 - Every language the English team holds but `enUS` gets a team of its own (migration 0091,
   slug the lowercased code), with every row of the language, a copy of English's roster, base
   generation settings and dismissal mark, and the site owner as its admin. In `spoken_dev` these
-  are deDE, itIT, koKR, ptBR, ruRU, viVN, zhCN and zhTW. A language switched on later gets a new
-  team with no members and the same copy of English's roster and settings (`adopt_lang`). There is no shared bucket for unmaintained languages.
+  are deDE, itIT, koKR, ptBR, ruRU, viVN, zhCN and zhTW. A language a site owner adds later gets a
+  new team with no members and the same copy of English's roster and settings (`found_lang_team`).
+  There is no shared bucket for unmaintained languages.
 - 0091 copied the audio capabilities into `team_member`, in the team that owns the language. 0092
   gave every `edit` holder the team's `edit` as well, appointed every team admin a text maintainer,
   and deleted the audio rows from `language_grant`.

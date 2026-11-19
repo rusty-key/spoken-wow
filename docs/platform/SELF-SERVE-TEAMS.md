@@ -154,8 +154,11 @@ the ten client locales.
 A request for a maintained language brings in the part of TEAMS.md *Phase 2* that lives on the
 site. The rest of phase 2 is distribution and stays out.
 
-- The second team is a non-privileged `team_language` row. Its takes, voices, clones, settings,
-  lexicon, ignores, queue and activity are its own, isolated by the existing row-level security.
+- The second team is a `team_language` row like the first: a language's teams are equal. Its
+  pack name, fixed when it joins, is its slug (`packName`, TEAMS.md *A language's teams*). Its
+  takes, voices, clones, settings, lexicon, ignores, queue and activity are its own, isolated by the
+  existing row-level security. A rejected contribution's ignore is the language's, and holds for
+  every team.
 - **Text layer.** The team cannot edit the original. Per-team overrides generalise `line_override`
   from quest lines to every source. The text a team voices is its override where present, else the
   original, and a take's staleness is judged against that; the text shown stays the original. The
