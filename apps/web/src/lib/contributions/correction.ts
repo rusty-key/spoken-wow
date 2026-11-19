@@ -257,8 +257,8 @@ async function markAccepted(
  * An English correction, written to every line the moment has.
  *
  * A template without `$G` for a moment split by player gender is refused: the client resolves
- * `$G` before sending, so the text is one side's words. Only a newer addon's `readerSex` says
- * which, and nothing reads it here.
+ * `$G` before sending, so the text is one side's words. A newer addon's `readerSex` says which,
+ * which the corrections tab uses to split a plain line (readers.ts), not a split one.
  */
 async function correctEnglish(
   moment: string,

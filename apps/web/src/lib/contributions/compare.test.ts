@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { readable, restoreClassWords, sameLine, wordDiff } from "./compare";
+import { genderSplit, genderTemplate, readable, readerSplit, restoreClassWords, sameLine, wordDiff } from "./compare";
 
 describe("sameLine", () => {
   it("ignores the corpus's $B breaks and spacing", () => {
@@ -140,5 +140,71 @@ describe("restoreClassWords", () => {
 
   it("leaves a slot where the corpus has more than a class's words", () => {
     expect(restoreClassWords("Go see the $c now.", "Go see the old man by the river now.")).toBe("Go see the $c now.");
+  });
+});
+
+describe("genderTemplate", () => {
+  const male = "'Ey boss-mon, ya need help from ol' Tan'jani?";
+  const female = "'Ey boss-lady, ya need help from ol' Tan'jani?";
+
+  it("branches the words two readers were shown differently, and keeps the rest as it is", () => {
+    expect(genderTemplate(male, female)).toBe("'Ey $Gboss-mon:boss-lady;, ya need help from ol' Tan'jani?");
+  });
+
+  it("reads back as each reader was shown it", () => {
+    for (const [m, f] of [
+      [male, female],
+      ["Bonjour, aventurier.\n\nTu es prêt ?", "Bonjour, aventurière.\n\nTu es prête ?"],
+      ["Thank you, sir, truly.", "Thank you, truly."],
+      ["Thank you, my lad", "Thank you"],
+      ["Hail, brother and friend.", "Hail, dear sister and friend."],
+    ]) {
+      const template = genderTemplate(m, f)!;
+      expect(template.replace(/\$G([^:;]*):([^;]*);/g, "$1")).toBe(m);
+      expect(template.replace(/\$G([^:;]*):([^;]*);/g, "$2")).toBe(f);
+    }
+  });
+
+  it("branches each run apart", () => {
+    expect(genderTemplate("Bonjour, aventurier. Tu es prêt ?", "Bonjour, aventurière. Tu es prête ?")).toBe(
+      "Bonjour, $Gaventurier:aventurière;. Tu es $Gprêt:prête; ?",
+    );
+  });
+
+  it("is nothing where the texts differ only in spacing or case", () => {
+    expect(genderTemplate("Hail, friend.", "hail,  friend.")).toBe(null);
+  });
+
+  it("is nothing where a differing run holds what a branch cannot", () => {
+    expect(genderTemplate("Go: now.", "Go; now.")).toBe(null);
+  });
+});
+
+describe("readerSplit", () => {
+  it("puts the reader's words on the reader's side, and ours on the other gender's, who saw them", () => {
+    expect(readerSplit("Hail, lad.", "Hail, lass.", "f", ["m"])).toBe("Hail, $Glad:lass;.");
+    expect(readerSplit("Hail, lass.", "Hail, lad.", "m", ["f"])).toBe("Hail, $Glad:lass;.");
+  });
+
+  it("offers nothing where the reader's gender has seen ours too, or no one has", () => {
+    expect(readerSplit("Kill six.", "Kill seven.", "f", ["f"])).toBe(null);
+    expect(readerSplit("Kill six.", "Kill seven.", "f", ["f", "m"])).toBe(null);
+    expect(readerSplit("Hail, lad.", "Hail, lass.", "f", [])).toBe(null);
+  });
+
+  it("offers nothing without the reader's gender, or over a line that already branches", () => {
+    expect(readerSplit("Hail, lad.", "Hail, lass.", null, ["m"])).toBe(null);
+    expect(readerSplit("Hail, $glad:lass;.", "Hail, friend.", "f", ["m"])).toBe(null);
+  });
+});
+
+describe("genderSplit", () => {
+  it("puts theirs on the side the moderator picks, whoever saw either", () => {
+    expect(genderSplit("Kill six.", "Kill seven.", "f")).toBe("Kill $Gsix:seven;.");
+    expect(genderSplit("Kill six.", "Kill seven.", "m")).toBe("Kill $Gseven:six;.");
+  });
+
+  it("offers nothing over a line that already branches", () => {
+    expect(genderSplit("Hail, $glad:lass;.", "Hail, friend.", "f")).toBe(null);
   });
 });

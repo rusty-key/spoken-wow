@@ -190,6 +190,107 @@ export function wordDiff(before: string, after: string): { before: DiffPart[]; a
   return { before: parts(a, keptA), after: parts(b, keptB) };
 }
 
+/** Leading and trailing marks two branch sides share ("boss-mon," and "boss-lady," end in ","). */
+const SHARED_EDGE = /^([^\p{L}\p{N}]*)[\s\S]*?([^\p{L}\p{N}]*)$/u;
+
+function sharedEdges(x: string, y: string): [string, string] {
+  const [, xLead, xTail] = x.match(SHARED_EDGE)!;
+  const [, yLead, yTail] = y.match(SHARED_EDGE)!;
+  let lead = 0;
+  while (lead < xLead.length && lead < yLead.length && xLead[lead] === yLead[lead]) lead++;
+  let tail = 0;
+  while (tail < xTail.length && tail < yTail.length && xTail.at(-1 - tail) === yTail.at(-1 - tail)) tail++;
+  // Never all of a side: a branch keeps a word on each side it has one.
+  if (lead + tail >= Math.min(x.length, y.length)) return ["", ""];
+  return [x.slice(0, lead), tail ? x.slice(-tail) : ""];
+}
+
+/**
+ * One template for a line two readers were shown differently: the words `male` and `female` share
+ * as they are, and each run where they differ as a `$Gmale:female;` branch, whatever the
+ * language. Null where they differ in nothing but spacing and case, or where a differing run
+ * holds a `:`, `;` or `$`, which a branch cannot.
+ */
+export function genderTemplate(male: string, female: string): string | null {
+  const a = male.split(/(\s+)/);
+  const b = female.split(/(\s+)/);
+  const wordsA = a.filter((_, index) => index % 2 === 0);
+  const wordsB = b.filter((_, index) => index % 2 === 0);
+  const pair = lcsPairs(wordsA, wordsB);
+  /** Words [from, to) of a side, with the spacing between them. */
+  const run = (pieces: string[], from: number, to: number) => (to > from ? pieces.slice(from * 2, to * 2 - 1).join("") : "");
+
+  let out = "";
+  let branches = 0;
+  let i = 0;
+  let j = 0;
+  while (i < wordsA.length || j < wordsB.length) {
+    if (i < wordsA.length && pair[i] === j) {
+      out += a[i * 2] + (a[i * 2 + 1] ?? "");
+      i++;
+      j++;
+      continue;
+    }
+    let nextI = i;
+    while (nextI < wordsA.length && pair[nextI] === -1) nextI++;
+    const nextJ = nextI < wordsA.length ? pair[nextI] : wordsB.length;
+    let ours = run(a, i, nextI);
+    let theirs = run(b, j, nextJ);
+    // The spacing after the run: inside the branch where a side has no words, so that side reads
+    // one space rather than two; and at the end of the text, the spacing before it instead.
+    const after = (nextI > i ? a[nextI * 2 - 1] : b[nextJ * 2 - 1]) ?? "";
+    let outside = after;
+    if (!ours || !theirs) {
+      if (after) {
+        ours = ours && ours + after;
+        theirs = theirs && theirs + after;
+      } else {
+        const before = out.match(/\s*$/)![0];
+        out = out.slice(0, out.length - before.length);
+        ours = ours && before + ours;
+        theirs = theirs && before + theirs;
+      }
+      outside = "";
+    }
+    const [lead, tail] = sharedEdges(ours, theirs);
+    const inner = (side: string) => side.slice(lead.length, side.length - tail.length);
+    if (/[:;$]/.test(inner(ours) + inner(theirs))) return null;
+    out += `${lead}$G${inner(ours)}:${inner(theirs)};${tail}${outside}`;
+    branches++;
+    i = nextI;
+    j = nextJ;
+  }
+  return branches ? out : null;
+}
+
+/**
+ * A plain corpus line and a player's text as one template, ours for the other gender and theirs
+ * for the reader's: the player's client took one side of a `$G` the corpus line lost. Only where
+ * our text has been shown to the other gender and never to the reader's (`readBy`); a text both
+ * have seen branches on nothing, and theirs is a change to it. Null otherwise, where ours already
+ * branches, or where genderTemplate makes none.
+ */
+export function readerSplit(
+  ours: string,
+  theirs: string,
+  reader: "m" | "f" | null,
+  readBy: readonly ("m" | "f")[],
+): string | null {
+  const other = reader === "f" ? "m" : "f";
+  if (!reader || readBy.includes(reader) || !readBy.includes(other)) return null;
+  return genderSplit(ours, theirs, reader);
+}
+
+/**
+ * A plain corpus line and a player's text as one template, theirs for `theirsFor` and ours for the
+ * other gender, whatever either has been seen by: a moderator's call. Null where ours already
+ * branches, or genderTemplate makes none.
+ */
+export function genderSplit(ours: string, theirs: string, theirsFor: "m" | "f"): string | null {
+  if (/\$[gGuU]/.test(ours)) return null;
+  return theirsFor === "f" ? genderTemplate(ours, theirs) : genderTemplate(theirs, ours);
+}
+
 /**
  * `contributed` with each `$c`/`$C` put back as the word the corpus line has in its place, for a
  * quest whose class word is the quest's own (class-words.ts). The addon turns the reader's

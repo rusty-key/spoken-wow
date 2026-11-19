@@ -5,7 +5,8 @@
  *
  * Server-side only: it writes.
  */
-import { lineStates } from "@/lib/contributions/known";
+import { lineStates, type LineState } from "@/lib/contributions/known";
+import { recordReaders } from "@/lib/contributions/readers";
 import { createContribution } from "@/lib/contributions/store";
 import type { Submission } from "@/lib/contributions/contributions";
 import { isLang, type Lang } from "@/lib/lang";
@@ -34,12 +35,25 @@ export function stringOrNull(value: unknown, max: number): string | null {
 }
 
 /**
- * Which submissions say what the corpus already says, in the order given: those are dropped
- * rather than stored (known.ts). The addon gathers every line a player sees, so this is most of
- * what a gathered file holds, and a row for each would bury the lines that are missing.
+ * What the corpus holds for each submission (known.ts), in the order given, with the reader's
+ * gender recorded on each line a copy says the same as (readers.ts). The addon gathers every line
+ * a player sees, so most of a gathered file is known: dropped rather than stored, and a row for
+ * each would bury the lines that are missing.
  */
+export async function intakeStates(submissions: readonly Submission[]): Promise<LineState[]> {
+  const states = await lineStates(submissions);
+  try {
+    await recordReaders(submissions, states);
+  } catch (error) {
+    // What the player sent is what matters; a confirmation is only evidence for later.
+    console.error("recording the readers of known lines failed", error);
+  }
+  return states;
+}
+
+/** Which submissions say what the corpus already says: intakeStates, as a yes or no each. */
 export async function knownSubmissions(submissions: readonly Submission[]): Promise<boolean[]> {
-  return (await lineStates(submissions)).map((state) => state.kind === "known");
+  return (await intakeStates(submissions)).map((state) => state.kind === "known");
 }
 
 export async function storeSubmission(submission: Submission, identity: Identity): Promise<void> {
