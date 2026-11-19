@@ -77,6 +77,21 @@ afterEach(async () => {
 afterAll(closeDb);
 
 describe("move_team_lang", () => {
+  it("takes the language's open invites to the new team and its plain packs with it", async () => {
+    const [invite] = await systemRows<{ id: string }>(
+      `insert into "invite" ("email", "lang", "capabilities", "tokenHash", "invitedBy", "expiresAt", "joinTeamId")
+       values ($1, 'deDE', '{edit}', $2, $3, now() + interval '1 day', $4) returning "id"`,
+      [`move-${tag}@example.invalid`, `hash-move-${tag}`, user.id, source.team],
+    );
+    await move("deDE", target);
+    expect(await systemRows(`select "joinTeamId" from "invite" where "id" = $1`, [invite.id])).toEqual([
+      { joinTeamId: target },
+    ]);
+    expect(
+      await systemRows(`select "packName" from "team_language" where "teamId" = $1 and "lang" = 'deDE'`, [target]),
+    ).toEqual([{ packName: "plain" }]);
+  });
+
   it("moves the language's overrides and leaves a same-named file's in another language", async () => {
     const file = `quests/${tag}-move.mp3`;
     const insert = `insert into "line_override" ("teamId", "lang", "file", "lineId", "text") values ($1, $2, $3, 'q:1:accept', 'x')`;

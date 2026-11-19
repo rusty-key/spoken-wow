@@ -8,7 +8,7 @@ import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vites
 import { closeDb } from "@/lib/db";
 import { createInvite, lookupInvite } from "@/lib/invites/store";
 import type { Viewer } from "@/lib/permissions";
-import { asSystem, testUser } from "@/lib/teams/testing";
+import { asSystem, plainTeam, testUser } from "@/lib/teams/testing";
 
 const who = vi.hoisted(() => ({ viewer: { role: null, grants: [] } as Viewer, id: "" }));
 const sent = vi.hoisted(() => [] as { to: string; args: { url: string } }[]);
@@ -53,7 +53,7 @@ beforeAll(async () => {
     capabilities: ["edit"],
     invitedBy: inviter.id,
     limited: false,
-    team: null,
+    team: await plainTeam("deDE"),
   });
   id = made.invite.id;
   firstToken = made.token;

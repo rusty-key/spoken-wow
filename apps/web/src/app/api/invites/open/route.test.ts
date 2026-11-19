@@ -5,7 +5,7 @@ import { afterAll, beforeAll, expect, test } from "vitest";
 
 import { closeDb } from "@/lib/db";
 import { createInvite } from "@/lib/invites/store";
-import { asSystem, testUser } from "@/lib/teams/testing";
+import { asSystem, plainTeam, testUser } from "@/lib/teams/testing";
 
 import { GET } from "./route";
 
@@ -20,7 +20,7 @@ beforeAll(async () => {
     capabilities: ["edit"],
     invitedBy: inviter.id,
     limited: false,
-    team: null,
+    team: await plainTeam("deDE"),
   }));
 });
 

@@ -140,12 +140,22 @@ describe("copy_team_settings", () => {
 });
 
 describe("invite.joinTeamId", () => {
-  it("reads back null when an invite names no team", async () => {
+  it("names the plain team when an invite is written with none, as a previous release writes it", async () => {
     const [row] = await systemRows<{ joinTeamId: string | null }>(
       `insert into "invite" ("email", "lang", "capabilities", "tokenHash", "invitedBy", "expiresAt")
        values ($1, $2, array['text'], $3, $4, now() + interval '1 day') returning "joinTeamId"`,
       [`${tag}@example.invalid`, lang, `hash-${tag}`, user.id],
     );
-    expect(row.joinTeamId).toBeNull();
+    expect(row.joinTeamId).toBe(teamA);
+  });
+
+  it("refuses an invite with no team in a language with no plain team", async () => {
+    await expect(
+      asSystem.query(
+        `insert into "invite" ("email", "lang", "capabilities", "tokenHash", "invitedBy", "expiresAt")
+         values ($1, 'qbQB', array['text'], $2, $3, now() + interval '1 day')`,
+        [`none-${tag}@example.invalid`, `hash-none-${tag}`, user.id],
+      ),
+    ).rejects.toMatchObject({ code: "23514" });
   });
 });

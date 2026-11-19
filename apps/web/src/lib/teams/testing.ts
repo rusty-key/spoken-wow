@@ -217,6 +217,12 @@ export async function newTeamIn(lang: string, plain: boolean, name = "test"): Pr
   return row.id;
 }
 
+/** The team with plain packs in `lang`. */
+export async function plainTeam(lang: string): Promise<TeamId> {
+  const [row] = await systemRows<{ team: TeamId }>(`select team_of_lang($1) as "team"`, [lang]);
+  return row.team;
+}
+
 /** A person's capability in a team's language. */
 export async function addMember(team: TeamId, userId: string, lang: string, capability: string): Promise<void> {
   await asSystem.query(`insert into "team_member" ("teamId", "userId", "lang", "capability") values ($1, $2, $3, $4)`, [

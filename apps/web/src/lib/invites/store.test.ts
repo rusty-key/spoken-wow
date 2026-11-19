@@ -9,7 +9,17 @@ import { closeDb, withTeam } from "@/lib/db";
 import type { Lang } from "@/lib/lang";
 import { teamIn } from "@/lib/teams/acting";
 import { forgetTeams } from "@/lib/teams/store";
-import { addMember, asSystem, dropLang, dropTeam, newTeamIn, systemRows, testUser, uniqueLang } from "@/lib/teams/testing";
+import {
+  addMember,
+  asSystem,
+  dropLang,
+  dropTeam,
+  newTeamIn,
+  plainTeam,
+  systemRows,
+  testUser,
+  uniqueLang,
+} from "@/lib/teams/testing";
 
 import { manageableInvite } from "./manage";
 
@@ -34,12 +44,14 @@ vi.mock("@/lib/auth", () => ({
 }));
 
 let inviter: Awaited<ReturnType<typeof testUser>>;
+let german: string;
 const email = () => `invitee-${inviter.id}@example.com`;
 const sends = async () => true;
 const sha = (token: string) => createHash("sha256").update(token).digest("hex");
 
 beforeAll(async () => {
   inviter = await testUser("test-invites");
+  german = await plainTeam("deDE");
 });
 
 afterAll(async () => {
@@ -55,7 +67,7 @@ const args = (over: Partial<Parameters<typeof createInvite>[0]> = {}) => ({
   capabilities: ["edit", "regenerate"] as ("edit" | "regenerate")[],
   invitedBy: inviter.id,
   limited: false,
-  team: null,
+  team: german,
   ...over,
 });
 
@@ -175,7 +187,7 @@ describe("an invite in a second team", () => {
 
   it("joins the inviter's team, is listed and logged there, and is no business of the other team", async () => {
     const { invite } = await createInvite(
-      args({ email: `b-${email()}`, lang, invitedBy: adminB!.id, team: await teamIn(adminB!.id, lang) }),
+      args({ email: `b-${email()}`, lang, invitedBy: adminB!.id, team: (await teamIn(adminB!.id, lang))! }),
     );
     expect(invite.teamId).toBe(teamB);
     expect(await systemRows(`select "joinTeamId" from "invite" where "id" = $1`, [invite.id])).toEqual([
@@ -206,11 +218,11 @@ describe("an invite in a second team", () => {
 
   it("tells another team's admin the address is invited to another team, not to resend or revoke", async () => {
     const to = `taken-${email()}`;
-    await createInvite(args({ email: to, lang, invitedBy: adminA!.id }));
+    await createInvite(args({ email: to, lang, invitedBy: adminA!.id, team: teamA! }));
     await expect(createInvite(args({ email: to, lang, invitedBy: adminB!.id, team: teamB! }))).rejects.toThrow(
       "That address is already invited to another team in this language.",
     );
-    await expect(createInvite(args({ email: to, lang, invitedBy: adminA!.id }))).rejects.toThrow(
+    await expect(createInvite(args({ email: to, lang, invitedBy: adminA!.id, team: teamA! }))).rejects.toThrow(
       "That address is already invited; resend or revoke the invite.",
     );
   });
@@ -230,14 +242,16 @@ describe("an invite in a second team", () => {
     ).toEqual([{ teamId: teamB }]);
   });
 
-  it("joins the privileged team when it names none, as before", async () => {
-    const { invite } = await createInvite(args({ email: `a-${email()}`, lang, invitedBy: adminA!.id }));
-    expect(invite.teamId).toBeNull();
-    expect((await listInvites([lang], teamA)).map((row) => row.id)).toEqual([invite.id]);
+  it("joins the plain team when a previous release writes it with no team", async () => {
+    const [{ id }] = await systemRows<{ id: string }>(
+      `insert into "invite" ("email", "lang", "capabilities", "tokenHash", "invitedBy", "expiresAt")
+       values ($1, $2, '{edit}', $3, $4, now() + interval '1 day') returning "id"`,
+      [`a-${email()}`, lang, sha(`old-${email()}`), adminA!.id],
+    );
+    expect(await systemRows(`select "joinTeamId" from "invite" where "id" = $1`, [id])).toEqual([{ joinTeamId: teamA }]);
+    expect((await listInvites([lang], teamA)).map((row) => row.id)).toEqual([id]);
     expect(await listInvites([lang], teamB)).toEqual([]);
-    expect(await systemRows(`select "teamId" from "activity" where "subject" = $1`, [invite.id])).toEqual([
-      { teamId: teamA },
-    ]);
+    const invite = { id };
     session.id = adminB!.id;
     expect(((await manageableInvite(invite.id)) as Response).status).toBe(404);
     session.id = adminA!.id;

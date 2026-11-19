@@ -9,9 +9,10 @@ import { closeDb } from "@/lib/db";
 import { grantsOf, viewerById } from "@/lib/grants/store";
 import type { Lang } from "@/lib/lang";
 import type { Capability } from "@/lib/permissions";
+import { hashSecret, mintSecret } from "@/lib/secret-token";
 import { asActor } from "@/lib/teams/acting";
 import { forgetTeams } from "@/lib/teams/store";
-import { addMember, asSystem, dropLang, dropTeam, newTeamIn, systemRows, testUser, uniqueLang } from "@/lib/teams/testing";
+import { addMember, asSystem, dropLang, dropTeam, newTeamIn, plainTeam, systemRows, testUser, uniqueLang } from "@/lib/teams/testing";
 
 import { acceptInvite, createInvite, lookupInvite, revokeInvite } from "./store";
 
@@ -48,7 +49,7 @@ async function setup(accountCase: (s: string) => string = (s) => s) {
     capabilities: ["edit", "regenerate"],
     invitedBy: inviter.id,
     limited: false,
-    team: null,
+    team: await plainTeam("deDE"),
   });
   return { invitee, invite, token, user: { id: invitee.id, email: accountCase(address) } };
 }
@@ -183,10 +184,10 @@ describe("acceptInvite in a language with a second team", () => {
     return one;
   }
 
-  /** An invite from an admin of `team` (null: the privileged team's admin, naming no team). */
-  async function invite(team: string | null, capabilities: Capability[] = ["edit", "regenerate"]) {
+  /** An invite from an admin of `team`. */
+  async function invite(team: string, capabilities: Capability[] = ["edit", "regenerate"]) {
     const admin = await user("test-accept-admin");
-    await addMember(team ?? teamA!, admin.id, lang, "admin");
+    await addMember(team, admin.id, lang, "admin");
     // Only a site owner appoints text where the team does not.
     if (capabilities.includes("text")) await asSystem.query(`update "user" set "role" = 'admin' where "id" = $1`, [admin.id]);
     const invitee = await user("test-accept-invitee");
@@ -250,7 +251,7 @@ describe("acceptInvite in a language with a second team", () => {
   });
 
   it("accepts a text-only invite for somebody in the second team, logged under the team they act as", async () => {
-    const { invite: sent, token, user } = await invite(null, ["text"]);
+    const { invite: sent, token, user } = await invite(teamA!, ["text"]);
     await addMember(teamB!, user.id, lang, "record");
     expect(await asActor(user.id, () => acceptInvite(token, user))).toEqual({ ok: true, lang, capabilities: ["text"] });
     expect((await grantsOf(user.id)).filter((grant) => grant.lang === lang)).toContainEqual({ lang, capability: "text" });
@@ -259,8 +260,23 @@ describe("acceptInvite in a language with a second team", () => {
     ).toEqual([{ teamId: teamB }]);
   });
 
-  it("puts an invite that names no team in the privileged team", async () => {
-    const { invite: sent, token, user } = await invite(null);
+  it("puts an invite a previous release wrote with no team in the plain team", async () => {
+    const admin = await user("test-accept-admin");
+    await addMember(teamA!, admin.id, lang, "admin");
+    const invitee = await user("test-accept-invitee");
+    const address = `${invitee.id}@example.invalid`;
+    const token = mintSecret();
+    await asSystem.query(
+      `insert into "invite" ("email", "lang", "capabilities", "tokenHash", "invitedBy", "expiresAt")
+       values ($1, $2, '{edit}', $3, $4, now() + interval '1 day')`,
+      [address, lang, hashSecret(token), admin.id],
+    );
+    expect((await acceptInvite(token, { id: invitee.id, email: address })).ok).toBe(true);
+    expect(await teamsOf(invitee.id)).toEqual([teamA]);
+  });
+
+  it("puts an invite of the plain team in the plain team", async () => {
+    const { invite: sent, token, user } = await invite(teamA!);
     expect((await acceptInvite(token, user)).ok).toBe(true);
     expect(await teamsOf(user.id)).toEqual([teamA]);
     expect(

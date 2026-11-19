@@ -38,8 +38,7 @@ export async function visibleGrants(viewer: Viewer, teams: Teams, langs: readonl
 
 /**
  * The open invites in `langs` that the viewer sees: all of them for a site owner, and for anyone
- * else, in each, the ones that join their own team there (the privileged team when they are in
- * none).
+ * else, in each, the ones that join their own team there (the plain team when they are in none).
  */
 export async function visibleInvites(viewer: Viewer, teams: Teams, langs: readonly string[]): Promise<InviteRow[]> {
   if (isAdmin(viewer.role)) return listInvites([...langs]);

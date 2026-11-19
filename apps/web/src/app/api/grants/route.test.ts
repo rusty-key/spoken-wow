@@ -9,7 +9,7 @@ import { closeDb } from "@/lib/db";
 import { forgetLanguages, loadLanguages } from "@/lib/languages/catalogue";
 import type { Viewer } from "@/lib/permissions";
 import { forgetTeams, teamLangs } from "@/lib/teams/store";
-import { addMember, asSystem, dropLang, dropTeam, newTeamIn, systemRows, testUser, uniqueLang } from "@/lib/teams/testing";
+import { addMember, asSystem, dropLang, dropTeam, newTeamIn, plainTeam, systemRows, testUser, uniqueLang } from "@/lib/teams/testing";
 
 const who = vi.hoisted(() => ({ viewer: { role: null, grants: [] } as Viewer, id: "" }));
 
@@ -189,7 +189,7 @@ describe("/api/grants", () => {
         capabilities: ["edit"],
         invitedBy: granter.id,
         limited: false,
-        team: null,
+        team: await plainTeam("deDE"),
       });
       expect((await putTo(email(), ["edit"])).status).toBe(200);
       expect(await openInvite(invite.id)).toBeNull();
@@ -207,7 +207,7 @@ describe("/api/grants", () => {
         capabilities: ["edit", "regenerate"],
         invitedBy: granter.id,
         limited: false,
-        team: null,
+        team: await plainTeam("deDE"),
       });
       expect((await putTo(email(), ["edit"])).status).toBe(200);
       expect(await openInvite(invite.id)).not.toBeNull();
@@ -341,7 +341,7 @@ describe("/api/grants in a language with a second team", () => {
     ]);
   });
 
-  it("stores no team for the privileged team's invite, which follows the language, and the second team's own for theirs", async () => {
+  it("stores each team's own for its invite", async () => {
     const invited = async (inviter: { id: string }, to: string) => {
       who.id = inviter.id;
       who.viewer = { role: null, grants: [{ lang, capability: "admin" }] };
@@ -352,7 +352,7 @@ describe("/api/grants in a language with a second team", () => {
     await addMember(teamA, v.id, lang, "admin");
     const toA = `a-${fresh.id}@example.invalid`;
     const toB = `b-${fresh.id}@example.invalid`;
-    expect(await invited(v, toA)).toEqual([{ joinTeamId: null }]);
+    expect(await invited(v, toA)).toEqual([{ joinTeamId: teamA }]);
     expect(await invited(w, toB)).toEqual([{ joinTeamId: teamB }]);
   });
 

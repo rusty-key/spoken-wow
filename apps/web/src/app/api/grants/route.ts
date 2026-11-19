@@ -83,17 +83,18 @@ export async function PUT(request: Request) {
   }
 
   // Nobody has registered as it: invite the address instead, into the inviter's team. A site
-  // owner's invite joins the privileged team, whatever team they are in. Null also stands for
-  // the privileged team when a team admin of it invites, so the invite follows the language
-  // through a hand-over, which move_team_lang does not do for a stored team id.
+  // owner's invite, or one from somebody in no team of the language, joins the team with plain
+  // packs, whatever team they are in.
   const inviterTeam = isAdmin(who.viewer.role) ? null : await teamIn(who.userId, lang);
+  const team = inviterTeam ?? (await privilegedOf(lang));
+  if (!team) return Response.json({ error: `${lang} has no team to invite into` }, { status: 409 });
   try {
     await createInvite({
       email: address,
       lang,
       capabilities,
       invitedBy: who.userId,
-      team: inviterTeam && inviterTeam !== (await privilegedOf(lang)) ? inviterTeam : null,
+      team,
       limited: !isAdmin(who.viewer.role),
       deliver: emailInvite,
     });

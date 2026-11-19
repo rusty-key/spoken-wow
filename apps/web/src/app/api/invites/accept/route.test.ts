@@ -7,7 +7,7 @@ import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 
 import { closeDb } from "@/lib/db";
 import { createInvite } from "@/lib/invites/store";
-import { asSystem, testUser } from "@/lib/teams/testing";
+import { asSystem, plainTeam, testUser } from "@/lib/teams/testing";
 
 const session = vi.hoisted(() => ({ current: null as null | { user: { id: string; email: string; role: null } } }));
 
@@ -60,7 +60,7 @@ beforeAll(async () => {
     capabilities: ["edit"],
     invitedBy: inviter.id,
     limited: false,
-    team: null,
+    team: await plainTeam("deDE"),
   }));
   inviteId = invite.id;
 });
