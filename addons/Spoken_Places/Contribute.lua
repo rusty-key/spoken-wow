@@ -91,8 +91,9 @@ function SpokenPlaces:ShowContribution(mapID, subzone)
 end
 
 --- What a report carries beside its address: this client, and the place by name as it shows it.
---- With the `clip` that played, the pack it played from, which may be a later voice's rather than
---- the active one, and that pack's team: the site files the report with them.
+--- The pack the `clip` played from, or with no clip (the lore page's Report) the one that would play
+--- now, which may be a later voice's rather than the active one, and that pack's team: the site
+--- files the report with them.
 ---
 --- `key`, not `subzone`: a subzone field is what a contribution is keyed on, and a report is
 --- about lore that exists. The lore itself is ours, so it is not sent back.
@@ -104,7 +105,7 @@ function SpokenPlaces:ReportContext(mapID, areaKey, clip)
     if areaKey then
         fields[#fields + 1] = { "key", areaKey }
     end
-    local pack = clip and clip.pack
+    local pack = (clip and clip.pack) or select(3, self:GetAudioClip(mapID, areaKey))
     if pack and Spoken.Contribute.PackFields then
         Spoken.Contribute:PackFields(fields, pack.addon, pack.voice)
     end

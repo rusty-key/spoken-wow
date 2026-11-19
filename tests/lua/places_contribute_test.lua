@@ -104,7 +104,16 @@ do
     Expect("a team's pack names its team",
         Z:ReportContext(1537, "a nook", stimmen):match("\npackFolder=SpokenPlacesAudio_deDE_stimmen\npackTeam=stimmen\n") ~= nil,
         true)
-    Expect("a report with no clip names no pack", Z:ReportContext(1537, "a nook"):match("\npackFolder=") == nil, true)
+    Expect("a report with no clip and nothing to play names no pack",
+        Z:ReportContext(1537, "a nook"):match("\npackFolder=") == nil, true)
+    -- The lore page's Report has no clip: it names the pack that would play now, a team's when
+    -- the team's voice comes first.
+    local getClip = Z.GetAudioClip
+    Z.GetAudioClip = function() return "path", 3, stimmen.pack end
+    Expect("a report with no clip names the pack the story would play from, and its team",
+        Z:ReportContext(1537, "a nook"):match("\npackFolder=SpokenPlacesAudio_deDE_stimmen\npackTeam=stimmen\n") ~= nil,
+        true)
+    Z.GetAudioClip = getClip
     Z.GetActiveAudioPack = active
 end
 

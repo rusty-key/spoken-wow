@@ -225,9 +225,11 @@ function Addon:InitDB()
     end
     MoveKeys(self.db.global.ModulesLegacy, RENAMED_MODULES)
     -- Another profile chosen, copied over this one or reset, from Spoken's page or anywhere
-    -- else: its settings apply now rather than at the next reload.
+    -- else: its settings apply now rather than at the next reload. A profile last played before
+    -- the list of voices gets one now, as at login, so it plays in the order its page shows.
     if self.db.RegisterCallback then
         local function Apply()
+            Addon:BuildVoiceList()
             Addon:ForgetVoiceOrder()
             Addon:RebindModules()
             Addon:ApplyProfile()

@@ -763,6 +763,17 @@ do
     Expect("...and the addons' Report and Contribute buttons, told to ask again",
         heard.REPORT_SETTINGS_CHANGED .. "," .. heard.CONTRIBUTE_SETTINGS_CHANGED, "1,1")
     for _, handle in pairs(handles) do _G.Spoken:UnregisterCallback(handle) end
+    -- A profile last played before the list of voices gets one when switched to, not at the next
+    -- login: what plays is the order the page shows.
+    local language = env.Addon.db.profile.Language
+    language.Voice, language.Fallback, language.Voices = "deDE", nil, nil
+    _G.Spoken:GetVoiceOrder()
+    registered.OnProfileChanged("OnProfileChanged", env.Addon.db, "Other")
+    Expect("...and a profile with no list of voices gets one from its voice language",
+        language.Voices and table.concat(language.Voices, ","), "deDE,enUS")
+    Expect("...which plays in the order the page shows", table.concat(_G.Spoken:GetVoiceOrder() or {}, ","),
+        table.concat(Options:VoiceList(), ","))
+    language.Voice, language.Fallback, language.Voices = nil, nil, nil
     for _, restore in ipairs(undo) do restore() end
     env.Addon.db = keep
     Options:UpdateRows()
