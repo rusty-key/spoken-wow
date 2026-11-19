@@ -4,6 +4,10 @@ Spoken Player until 3.0.0, when it became Spoken and took its modules into one d
 
 ## Unreleased
 
+- **A line or page you contribute goes as your game showed it.** Your character's name, class,
+  race and sex go beside it, and the site turns them back into the game's placeholders before
+  anything is kept. Your name is never stored. The site can now improve that step without an
+  addon update. *([rusty-key](https://github.com/rusty-key))*
 - For feature addons: `Spoken:GetCaption()` names the story `Spoken:PlayStory` played in `story`,
   as the `{ kind, id }` it was asked for, so an addon knows the line is its own without comparing
   text. *([Torchlite-bit](https://github.com/Torchlite-bit))*

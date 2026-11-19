@@ -19,11 +19,12 @@ local ADDON_NAME, SpokenReadables = ...
 -- A value the game hands over as a secret, in an instance or in combat, reads as nil.
 local NotSecret = Spoken and Spoken.NotSecret or function(value) return value end
 
---- Whether the Spoken folder beside this addon has what Detemplate calls. An older one does not,
+--- Whether the Spoken folder beside this addon has what contributing calls. An older one does not,
 --- and a player on it has no contribute button rather than an error.
 local function CoreIsCurrent()
 	local contribute = _G.Spoken and Spoken.Contribute
-	return contribute and contribute.NameWords and contribute.ReplaceWord and true or false
+	return contribute and contribute.NameWords and contribute.ReplaceWord and contribute.ReaderFields
+		and contribute.Detemplate and true or false
 end
 
 --- The item whose text is open, if the opener logic could identify it.
@@ -63,49 +64,6 @@ local function BaseFields(self)
 	return fields
 end
 
---- The page with this character's name, class and race put back as the game's tokens, as
---- Spoken_Quests/Contribute.lua's Detemplate does for quest text. The client writes them into
---- a page, and a page sent as it was shown would carry the player's name to the site. $G
---- cannot be undone: the other side of the branch is not on screen.
-function SpokenReadables:Detemplate(text)
-	local swaps = {}
-	local function add(word, token)
-		if type(word) == "string" and word ~= "" then
-			swaps[#swaps + 1] = { word, token }
-		end
-	end
-	local function addCased(word, upper, lower)
-		add(word, upper)
-		if type(word) == "string" and string.lower(word) ~= word then
-			add(string.lower(word), lower)
-		end
-	end
-
-	-- Whole or by one part of it, as written or in capitals: a page greets its reader "GRIMBALOR,".
-	-- Sorted with the class and race below.
-	for _, word in ipairs(Spoken.Contribute:NameWords(UnitName and UnitName("player"))) do
-		add(word, "$N")
-	end
-	if UnitClass then
-		local localized, classFile = UnitClass("player")
-		addCased(localized, "$C", "$c")
-		-- A locale that names a class by gender may write the other form.
-		for _, names in ipairs({ _G.LOCALIZED_CLASS_NAMES_MALE or {}, _G.LOCALIZED_CLASS_NAMES_FEMALE or {} }) do
-			addCased(classFile and names[classFile], "$C", "$c")
-		end
-	end
-	if UnitRace then
-		addCased((UnitRace("player")), "$R", "$r")
-	end
-
-	-- Longest first, so "Night Elf" goes as one race before a shorter word inside it.
-	table.sort(swaps, function(a, b) return string.len(a[1]) > string.len(b[1]) end)
-	for _, pair in ipairs(swaps) do
-		text = Spoken.Contribute:ReplaceWord(text, pair[1], pair[2])
-	end
-	return text
-end
-
 --- The envelope for the page on screen, or nil when there is nothing to send.
 function SpokenReadables:CaptureContribution()
 	if not CoreIsCurrent() or self:IsMail() then
@@ -116,16 +74,16 @@ function SpokenReadables:CaptureContribution()
 	if type(text) ~= "string" or text == "" then
 		return nil
 	end
-	text = self:Detemplate(text)
 
 	-- Once: the page field and Gather's key are the same checksum, and it is a pass over the
-	-- whole page each time. Taken with the tokens back, so every character's copy of a page
-	-- is one page.
-	local sum = self:ChecksumOf(text)
+	-- whole page each time.
+	-- Taken with the reader's tokens back, so every character's copy of a page is one page.
+	local sum = self:ChecksumOf(Spoken.Contribute:Detemplate(text))
 	local fields = BaseFields(self)
 	fields[#fields + 1] = { "page", sum }
 	fields[#fields + 1] = { "book", (ItemTextGetItem and NotSecret(ItemTextGetItem())) or "" }
 	fields[#fields + 1] = { "number", (ItemTextGetPage and NotSecret(ItemTextGetPage())) or 1 }
+	Spoken.Contribute:ReaderFields(fields)
 
 	-- The second value is what Gather keys the page on: its checksum, the same id the site
 	-- files it under, so reading a page twice keeps it once.
@@ -152,7 +110,12 @@ function SpokenReadables:ReportContext(pageId)
 		local kept = self.pageText and self.pageText[self:GetClientLanguage()]
 		text = kept and kept[pageId]
 	end
-	return Spoken.Contribute:Envelope("readables", fields, type(text) == "string" and self:Detemplate(text) or text)
+	if type(text) ~= "string" or text == "" then
+		text = nil
+	else
+		Spoken.Contribute:ReaderFields(fields)
+	end
+	return Spoken.Contribute:Envelope("readables", fields, text)
 end
 
 --- The report address for a page, with its context in the fragment. The bare address in the

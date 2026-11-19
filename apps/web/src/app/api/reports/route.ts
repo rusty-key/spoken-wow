@@ -144,7 +144,7 @@ export async function POST(request: Request) {
 
   // The report is filed by now: a failure here must not answer 500 and invite a second one.
   if (envelope && validated.value.category === "missing") {
-    await contributeMissing(envelope, body.context as string, validated.value.body, identity).catch((error) =>
+    await contributeMissing(envelope, validated.value.body, identity).catch((error) =>
       console.error("filing a missing report as a contribution failed", error),
     );
   }
@@ -162,12 +162,11 @@ export async function POST(request: Request) {
  */
 async function contributeMissing(
   envelope: Envelope,
-  raw: string,
   complaint: string,
   identity: Omit<Identity, "body"> & { ip: string },
 ): Promise<void> {
   if (envelope.source === "places") return;
-  const sent = submissionFrom(envelope, raw);
+  const sent = submissionFrom(envelope);
   if (!sent) return;
   const [recent, [submission]] = await Promise.all([
     countRecentContributions(identity.ip, CONTRIBUTION_WINDOW_MS),

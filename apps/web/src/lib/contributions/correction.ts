@@ -257,8 +257,8 @@ async function markAccepted(
  * An English correction, written to every line the moment has.
  *
  * A template without `$G` for a moment split by player gender is refused: the client resolves
- * `$G` before sending (Contribute.lua's Detemplate does not restore it) and the envelope does
- * not say which reader sent it, so the text is one side's words with no telling which.
+ * `$G` before sending, so the text is one side's words. Only a newer addon's `readerSex` says
+ * which, and nothing reads it here.
  */
 async function correctEnglish(
   moment: string,

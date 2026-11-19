@@ -6,6 +6,7 @@
  * triage rows render it there.
  */
 import { parseEnvelope, type Envelope } from "@/lib/contributions/envelope";
+import { nameless } from "@/lib/contributions/reader";
 import type { Source } from "@/lib/sections";
 
 export type ReportContext = { fields: Record<string, string>; text: string | null };
@@ -21,11 +22,14 @@ export function contextFrom(raw: unknown, source: Source): ReportContext | null 
   return envelope && { fields: envelope.fields, text: envelope.text };
 }
 
-/** The parsed envelope behind contextFrom, for a caller that needs more of it than the context. */
+/**
+ * The parsed envelope behind contextFrom, for a caller that needs more of it than the context.
+ * Without the reader's name, which a report does not keep.
+ */
 export function envelopeFor(raw: unknown, source: Source): Envelope | null {
   if (typeof raw !== "string" || !raw) return null;
   const parsed = parseEnvelope(raw);
-  return parsed.ok && parsed.value.source === source ? parsed.value : null;
+  return parsed.ok && parsed.value.source === source ? nameless(parsed.value) : null;
 }
 
 /**

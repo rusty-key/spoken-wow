@@ -1,0 +1,20 @@
+!SPOKEN1 readables
+addon=Spoken_Readables/
+build=1.60.1/70338
+locale=enUS
+pack=enUS
+packVersion=none
+page=1631488587
+book=Ledger of Nothing
+number=3
+shown=1
+reader=Valaas Dawnsight
+readerClass=Warrior
+readerRace=Night Elf
+readerSex=2
+text<<
+Greetings, Valaas. Valaas Dawnsight, a Warrior of the Night Elf people, reads Valaaswood.
+
+Written for this test alone.
+>>
+sum=214874271

@@ -43,6 +43,10 @@ const FIELD_LABELS: Record<string, string> = {
   addon: "Addon",
   x: "x",
   y: "y",
+  // The site takes the name back out of the text and does not keep it (lib/contributions/reader.ts).
+  reader: "Your character (not kept)",
+  readerClass: "Your class",
+  readerRace: "Your race",
 };
 
 const MESSAGES: Record<ParseError, string> = {

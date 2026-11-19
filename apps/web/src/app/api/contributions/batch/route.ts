@@ -109,7 +109,7 @@ export async function POST(request: Request) {
       refuse("describe");
       continue;
     }
-    const submission = submissionFrom(parsed.value, raw, null);
+    const submission = submissionFrom(parsed.value, null);
     if (!submission) {
       refuse("incomplete");
       continue;

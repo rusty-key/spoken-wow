@@ -6,7 +6,7 @@
  * the player's name, `$Gman:woman;` for a word that follows the player's gender), and a
  * contribution is what one player's client displayed, with the paragraph breaks as real
  * newlines, one branch of every `$G` already picked, and the player's name, class and race put
- * back as `$N`, `$C` and `$R` by the addon (addons/Spoken_Quests/Contribute.lua, Detemplate).
+ * back as `$N`, `$C` and `$R` (reader.ts).
  *
  * That last step guesses, and guesses both ways. A paladin reading "the paladins of the
  * alliance" sends "$C" where the corpus has the plain word, and a client that missed the name

@@ -1,8 +1,9 @@
 !SPOKEN1 quests
 addon=SpokenQuests/9.9.9
-build=1.15.9/69109
+build=1.60.1/70338
 locale=enUS
 pack=enUS
+packVersion=none
 quest=9123
 event=accept
 npc=12345 Deathguard Linnea
@@ -10,8 +11,11 @@ kind=creature
 sex=2
 creature=Humanoid
 title=A Rough Start
+shown=1
+reader=Tester
+readerSex=2
 text<<
 Kill six of them.
 Then come back.
 >>
-sum=496382089
+sum=562686756

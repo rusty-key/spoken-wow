@@ -69,7 +69,7 @@ export async function POST(request: Request) {
     return Response.json({ error: "describe" }, { status: 400 });
   }
 
-  const sent = submissionFrom(parsed.value, raw, description);
+  const sent = submissionFrom(parsed.value, description);
   if (!sent) {
     return Response.json({ error: "incomplete" }, { status: 400 });
   }
