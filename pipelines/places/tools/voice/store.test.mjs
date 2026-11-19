@@ -37,7 +37,7 @@ function manifest(env) {
   return JSON.parse(out);
 }
 
-test("a release reads its own team's live take of a line, not the privileged team's", { skip }, () => {
+test("a release reads its own team's live take of a line, not the plain team's", { skip }, () => {
   assert.equal(manifest({ SPOKEN_RELEASE_TEAM: b.id })["z:1"].shownText, "B");
   assert.equal(manifest({ SPOKEN_RELEASE_TEAM: a.id })["z:1"].shownText, "A");
 });

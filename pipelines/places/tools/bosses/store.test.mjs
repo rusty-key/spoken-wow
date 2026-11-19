@@ -31,7 +31,7 @@ after(async () => {
   seed?.cleanup();
 });
 
-test("a release reads its own team's live boss takes; a build outside one, the privileged team's", { skip }, async () => {
+test("a release reads its own team's live boss takes; a build outside one, the plain team's", { skip }, async () => {
   process.env.SPOKEN_RELEASE_TEAM = b.id;
   assert.deepEqual((await readLiveTakes(lang)).map((take) => [take.lineId, take.text]), [[lineId, "B"]]);
   delete process.env.SPOKEN_RELEASE_TEAM;

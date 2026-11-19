@@ -222,7 +222,7 @@ describe("the review page's lists", () => {
     await asSystem.query(`delete from "take" where "file" like 'review-test-%'`);
   });
 
-  it("lists a waiting version with what it changes as its team counts it, not as the privileged team", async () => {
+  it("lists a waiting version with what it changes as its team counts it, not as the plain team", async () => {
     await take(second, "review-test-ours-1");
     await take(second, "review-test-ours-2");
     await take(fr.team, "review-test-theirs");

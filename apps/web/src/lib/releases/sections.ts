@@ -10,7 +10,7 @@ export function isReleaseSection(value: unknown): value is ReleaseSection {
 }
 
 /**
- * What a team that is not official, or not the language's privileged team, is told when it asks to
+ * What a team that is not official, or whose packs carry its slug, is told when it asks to
  * release where team releases are closed (SPOKEN_TEAM_RELEASES): on production until the Manager and
  * Spoken that list a team's packs have shipped (docs/platform/TEAMS.md, *Releases*).
  */
