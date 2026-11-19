@@ -62,7 +62,7 @@ export async function POST(request: Request) {
 
   try {
     // After startRun, which holds the lock, so a second press cannot encode the same takes.
-    await encodeMissingForPack(run.section, run.lang);
+    await encodeMissingForPack(run.section, run.lang, run.teamId);
     await (runsOnDroplet() ? startDropletRun(run, bump) : dispatchRelease(run));
   } catch (error) {
     const reason = error instanceof Error ? error.message : "the release could not be started";

@@ -17,7 +17,7 @@ import { keepsCommittedFolder } from "./stage-pack.mjs";
  *
  * - `folders`: `{ folder, section, lang, pack, title, version, team }` each. `title` null keeps
  *   the build's own (English's quests packs); `version` null is English's, from its changelog
- *   (quests) or its .toc; `team` null is a page pack's, listed with no team (index-v2.json).
+ *   (quests) or its .toc; `team` is the one index-v2.json lists the pack under (listedTeam).
  * - `toc`: the .toc keys a derived pack adds (stage-pack.mjs tocExtra); empty for a page pack.
  * - `readmePage`: the store page whose body is the README, or null to keep the folder's own.
  * - `badgeOptional`: with no badge drawn for its language the pack wears English's mark, where a
@@ -27,11 +27,30 @@ import { keepsCommittedFolder } from "./stage-pack.mjs";
  */
 export function releasePlan(section, lang, team, packs = loadPacks()) {
   const pages = managerFolders(packs).filter((p) => p.section === section && p.lang === lang);
-  if (team.privileged && pages.length > 0) return pagePlan(section, lang, pages, packs);
+  if (team.privileged && pages.length > 0) return pagePlan(section, lang, team, pages, packs);
   return derivedPlan(section, lang, team, packs);
 }
 
-function pagePlan(section, lang, pages, packs) {
+/**
+ * The team index-v2.json lists a pack under, which the Manager labels it with: none for an
+ * official team holding the language's plain space, page or not, whose packs are Spoken's own.
+ * A non-official team's pack would otherwise publish unlabelled, and an official privileged
+ * team's page-less pack would be refused by the gate below while the site lets it press.
+ */
+function listedTeam(team) {
+  return team.official && team.privileged ? null : { slug: team.slug, name: team.name, official: team.official };
+}
+
+/**
+ * Whether the plan needs team releases open (SPOKEN_TEAM_RELEASES=1): it lists a team. The same
+ * teams the site refuses where they are closed (apps/web/src/lib/releases/droplet.ts
+ * releasesClosedFor), so a press the site accepts is one the job builds.
+ */
+export function needsTeamReleases(plan) {
+  return plan.folders.some((p) => p.team !== null);
+}
+
+function pagePlan(section, lang, team, pages, packs) {
   const plan = { toc: {}, badgeOptional: false, tocLanguage: false };
   if (section === "quests") {
     const own = packsFor("quests", lang, packs);
@@ -39,21 +58,21 @@ function pagePlan(section, lang, pages, packs) {
       const page = own.find((p) => p.folder === folder);
       if (!page) throw new Error(`${folder} has no quests page for ${lang}`);
       const title = lang === BASE_LOCALE ? null : page.name;
-      return { folder, section, lang, pack: page.pack, title, version: page.version, team: null };
+      return { folder, section, lang, pack: page.pack, title, version: page.version, team: listedTeam(team) };
     });
     return { ...plan, folders, readmePage: null };
   }
   const page = findPack(section, lang, null, packs);
   const folders = pages
     .filter((p) => p.folder === page.folder)
-    .map(({ folder }) => ({ folder, section, lang, pack: page.pack, title: page.name, version: page.version, team: null }));
+    .map(({ folder }) => ({ folder, section, lang, pack: page.pack, title: page.name, version: page.version, team: listedTeam(team) }));
   return { ...plan, folders, readmePage: keepsCommittedFolder(section, page.folder) ? null : page.page };
 }
 
 function derivedPlan(section, lang, team, packs) {
   const slug = team.privileged ? null : team.slug;
   const english = packsFor(section, BASE_LOCALE, packs);
-  const listed = { slug: team.slug, name: team.name, official: team.official };
+  const listed = listedTeam(team);
   const folders = derivedFolders(section, lang, slug, packs).map(({ folder, english: englishFolder }) => {
     const page = english.find((p) => p.folder === englishFolder);
     if (!page) throw new Error(`${englishFolder} has no English page to name a derived pack after`);

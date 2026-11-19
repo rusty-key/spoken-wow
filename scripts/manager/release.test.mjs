@@ -9,7 +9,7 @@ import assert from "node:assert/strict";
 import { seedDatabase } from "../../pipelines/lib/test-db.mjs";
 import { englishFolder, loadPacks } from "../lib/packs.mjs";
 import { buildArgs } from "./quests-pack.mjs";
-import { releasePlan } from "./release-pack.mjs";
+import { needsTeamReleases, releasePlan } from "./release-pack.mjs";
 import { stagePack } from "./stage-pack.mjs";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
@@ -97,7 +97,30 @@ test("a new language's own team builds plain folders, which name the language", 
     ["SpokenQuestsAudioGossip_jaJP", "gossip", "Spoken Japanese Audio: Gossip"],
   ]);
   assert.deepEqual(plan.toc, { languageName: "Japanese", languageNative: "日本語" });
-  assert.ok(plan.folders.every((p) => p.version === "1.0.0" && p.team.slug === "x"));
+  // Official and holding the plain space: listed with no team, so no label and no gate.
+  assert.ok(plan.folders.every((p) => p.version === "1.0.0" && p.team === null));
+  assert.equal(needsTeamReleases(plan), false);
+});
+
+test("a page pack of a privileged team that is not official lists its team, which the gate holds", () => {
+  const team = { ...privileged("deDE"), slug: "stimmen", name: "Stimmen", official: false };
+  for (const section of ["places", "quests"]) {
+    const plan = releasePlan(section, "deDE", team);
+    const plain = releasePlan(section, "deDE", privileged("deDE"));
+    assert.deepEqual(plan.folders.map(({ team, ...rest }) => rest), plain.folders.map(({ team, ...rest }) => rest), section);
+    assert.ok(plan.folders.every((p) => p.team?.slug === "stimmen" && p.team.official === false), section);
+    assert.equal(needsTeamReleases(plan), true, section);
+  }
+  assert.equal(needsTeamReleases(releasePlan("places", "deDE", privileged("deDE"))), false);
+});
+
+test("an official second team's pack still lists its team, for its suffixed folder", () => {
+  const team = { ...privileged("deDE"), slug: "stimmen", name: "Stimmen", privileged: false };
+  const plan = releasePlan("places", "deDE", team);
+  assert.deepEqual(plan.folders.map((p) => [p.folder, p.team]), [
+    ["SpokenPlacesAudio_deDE_stimmen", { slug: "stimmen", name: "Stimmen", official: true }],
+  ]);
+  assert.equal(needsTeamReleases(plan), true);
 });
 
 // Needs DATABASE_URL naming a migrated test database (spoken_ci_pin), as an owner that bypasses

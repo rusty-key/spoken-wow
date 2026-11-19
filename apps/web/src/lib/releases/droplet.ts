@@ -41,6 +41,8 @@ export function teamReleasesOpen(): boolean {
 /**
  * Whether the acting team (actingTeamRow) is refused a release here: one that is not both official
  * and the language's privileged team, where team releases are not open. No team is not refused.
+ * The job refuses the same teams, whose packs it lists under the team
+ * (scripts/manager/release-pack.mjs needsTeamReleases), so a press accepted here is one it builds.
  */
 export function releasesClosedFor(team: { official: boolean; privileged: boolean } | null): boolean {
   return team !== null && !(team.official && team.privileged) && !teamReleasesOpen();

@@ -1,7 +1,7 @@
 import { bad, bodyOf, objectOf } from "@/lib/api-body";
 import { BASE_LANG, isLang } from "@/lib/lang";
 import { loadLanguages } from "@/lib/languages/catalogue";
-import { checkNewLanguage, describedName, LANG_CODE } from "@/lib/languages/validate";
+import { checkNewLanguage, describedName, LANG_CODE, NAME_RULE } from "@/lib/languages/validate";
 import { isAdmin } from "@/lib/permissions";
 import { currentSession } from "@/lib/session";
 import { createRequest, listRequests, type RequestState } from "@/lib/teams/requests";
@@ -33,7 +33,7 @@ export async function POST(request: Request) {
   if (typeof lang !== "string" || !LANG_CODE.test(lang)) return bad("A language code is two lowercase letters and two capitals.");
   if (lang === BASE_LANG) return bad("English is one team; it cannot be requested.");
   const team = describedName(teamName);
-  if (!team) return bad("A team needs a name of 1 to 60 characters.");
+  if (!team) return bad(`A team needs a name of ${NAME_RULE}.`);
   if (note !== undefined && note !== null && (typeof note !== "string" || note.length > MAX_NOTE)) {
     return bad(`A note is at most ${MAX_NOTE} characters.`);
   }

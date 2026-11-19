@@ -3,7 +3,7 @@ import { objectOf } from "@/lib/api-body";
 import { BASE_LANG, isLang, type Lang } from "@/lib/lang";
 import { ALL_TEAMS, withTeam } from "@/lib/db";
 import { loadLanguages } from "@/lib/languages/catalogue";
-import { checkNewLanguage, describedName } from "@/lib/languages/validate";
+import { checkNewLanguage, describedName, NAME_RULE } from "@/lib/languages/validate";
 import { checkSlug, createTeamWithLangs, listTeams, resolveAdmin, TeamError } from "@/lib/teams/admin";
 import { afterFounded, foundTeam } from "@/lib/teams/found";
 
@@ -54,7 +54,7 @@ async function foundNew(
   if (typeof slug !== "string" || typeof name !== "string") return bad("expected { slug, name, newLanguage, adminEmail? }");
   checkSlug(slug);
   const teamName = describedName(name);
-  if (!teamName) return bad("A team needs a name of 1 to 60 characters.");
+  if (!teamName) return bad(`A team needs a name of ${NAME_RULE}.`);
   const email = adminEmailOf(adminEmail);
   if (email === undefined) return bad("adminEmail is an email address.");
   const given = objectOf(newLanguage);

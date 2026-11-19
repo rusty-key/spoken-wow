@@ -101,7 +101,7 @@ describe("release route", () => {
     expect(run).toMatchObject({ section: "quests", lang: "frFR", state: "dispatching" });
     expect(github.dispatchRelease.mock.calls[0][0]).toMatchObject({ id: run.id, section: "quests", lang: "frFR" });
     // A take whose encoding failed at commit would stop the release it is about to start.
-    expect(encode.encodeMissingForPack).toHaveBeenCalledWith("quests", "frFR");
+    expect(encode.encodeMissingForPack).toHaveBeenCalledWith("quests", "frFR", fr.team);
     expect(encode.encodeMissingForPack.mock.invocationCallOrder[0]).toBeLessThan(
       github.dispatchRelease.mock.invocationCallOrder[0],
     );
@@ -286,6 +286,8 @@ describe("release route", () => {
       const [{ slug }] = (await asSystem.query(`select "slug" from "team" where "id" = $1`, [team])).rows;
       expect(droplet.startDropletRun).toHaveBeenCalledTimes(1);
       expect(droplet.startDropletRun.mock.calls[0][0]).toMatchObject({ teamId: team, teamSlug: slug, section: "places" });
+      // Its own takes, which the pack it builds sends, and not the privileged team's.
+      expect(encode.encodeMissingForPack).toHaveBeenCalledWith("places", "frFR", team);
     });
 
     it("stays refused where team releases are open but the release would run on GitHub", async () => {

@@ -24,7 +24,7 @@ import { PUBLISHERS_DIR } from "../lib/packs.mjs";
 import { errorText, publishFromEnv } from "./channel.mjs";
 import { BUMPS } from "./pack-version.mjs";
 import { questsSteps } from "./quests-pack.mjs";
-import { releasePlan } from "./release-pack.mjs";
+import { needsTeamReleases, releasePlan } from "./release-pack.mjs";
 import { languageNames, releaseTeam } from "./release-team.mjs";
 import { stagePack } from "./stage-pack.mjs";
 
@@ -98,8 +98,8 @@ try {
   const { team, languages } = await readTeam();
   const plan = releasePlan(section, lang, team);
   // Only where the site has opened team releases (docs/platform/TEAMS.md, *Releases*) does a
-  // release build a pack with no page.
-  if (plan.folders.some((p) => p.team) && process.env.SPOKEN_TEAM_RELEASES !== "1") {
+  // release build a pack the Manager labels with its team.
+  if (needsTeamReleases(plan) && process.env.SPOKEN_TEAM_RELEASES !== "1") {
     throw new Error("team releases are not open here: set SPOKEN_TEAM_RELEASES=1 in app.env to open them");
   }
   // Every step this runs inherits it, so each reads this team's live takes.

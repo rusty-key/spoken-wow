@@ -4,11 +4,21 @@ import { LANG_SHAPE } from "@/lib/lang";
 export const LANG_CODE = new RegExp(`^${LANG_SHAPE}$`);
 const MAX_NAME = 60;
 
-/** A name trimmed, or null when it is empty, over 60 characters or not text. */
+/**
+ * A team's or language's name lands in a pack's .toc, one `## key: value` line each, where a line
+ * break would end it and forge the next key, and in its title, where WoW reads `|` as an escape
+ * (`|c`, `|T`).
+ */
+const NOT_IN_NAME = /[\p{Cc}\p{Zl}\p{Zp}|]/u;
+
+/** What describedName accepts, for the message that refuses a name. */
+export const NAME_RULE = `1 to ${MAX_NAME} characters on one line, without |`;
+
+/** A name trimmed, or null when it is empty, over 60 characters, not one line, holds `|` or is not text. */
 export function describedName(value: unknown): string | null {
   if (typeof value !== "string") return null;
   const text = value.trim();
-  return text && text.length <= MAX_NAME ? text : null;
+  return text && text.length <= MAX_NAME && !NOT_IN_NAME.test(text) ? text : null;
 }
 
 /** The page sections, baked in by next.config.ts: the standalone bundle cannot read src/app/[lang]. */
@@ -28,7 +38,7 @@ export function checkNewLanguage(
   const english = describedName(name);
   const own = describedName(native);
   if (!english || !own) {
-    return { error: "A new language needs an English name and a native name, each 1 to 60 characters." };
+    return { error: `A new language needs an English name and a native name, each ${NAME_RULE}.` };
   }
   return { language: { name: english, native: own } };
 }

@@ -73,6 +73,23 @@ describe("PATCH /api/teams/[id]", () => {
     expect(await stateOf()).toEqual(before);
   });
 
+  // The name is a line of every team pack's .toc and part of its title.
+  it.each(["Two\nLines", "Tab\tbed", "Pipe|cffff0000Red", " ", "x".repeat(61)])(
+    "refuses the name %j by its rule, and changes nothing",
+    async (name) => {
+      const before = await stateOf();
+      const res = await patch({ name, ownStorage: !before.ownStorage });
+      expect(res.status).toBe(400);
+      expect((await res.json()).error).toBe("A team needs a name of 1 to 60 characters on one line, without |.");
+      expect(await stateOf()).toEqual(before);
+    },
+  );
+
+  it("keeps a name trimmed", async () => {
+    expect((await patch({ name: "  Spaced  " })).status).toBe(200);
+    expect((await stateOf()).name).toBe("Spaced");
+  });
+
   // An installed team pack's folder carries the slug: a new one would orphan it (TEAM-RELEASES.md).
   it("never changes the slug", async () => {
     expect((await patch({ slug: "renamed-slug" })).status).toBe(400);

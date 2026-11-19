@@ -1,3 +1,4 @@
+import { describedName, NAME_RULE } from "@/lib/languages/validate";
 import { deleteTeam, renameTeam, setOfficial, setOwnStorage } from "@/lib/teams/admin";
 
 import { bad, bodyOf, withAdmin } from "../guard";
@@ -14,10 +15,11 @@ export const PATCH = withAdmin(async (request, actorId, team) => {
   if (name === undefined && ownStorage === undefined && official === undefined) {
     return bad("Send a name, ownStorage or official.");
   }
-  if (name !== undefined && (typeof name !== "string" || !name.trim())) return bad("A team needs a name.");
+  const renamed = name === undefined ? null : describedName(name);
+  if (name !== undefined && !renamed) return bad(`A team needs a name of ${NAME_RULE}.`);
   if (ownStorage !== undefined && typeof ownStorage !== "boolean") return bad("ownStorage is true or false.");
   if (official !== undefined && typeof official !== "boolean") return bad("official is true or false.");
-  if (typeof name === "string") await renameTeam(team, name.trim(), actorId);
+  if (renamed) await renameTeam(team, renamed, actorId);
   if (typeof ownStorage === "boolean") await setOwnStorage(team, ownStorage, actorId);
   if (typeof official === "boolean") await setOfficial(team, official, actorId);
   return Response.json({ ok: true });

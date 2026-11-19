@@ -6,6 +6,8 @@ import { join } from "node:path";
 
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
+import { needsTeamReleases, releasePlan } from "../../../../../scripts/manager/release-pack.mjs";
+
 import {
   currentStep,
   failureReason,
@@ -59,6 +61,24 @@ describe("releasesClosedFor", () => {
   it("refuses nobody where they are open", () => {
     vi.stubEnv("SPOKEN_TEAM_RELEASES", "1");
     expect(releasesClosedFor(second)).toBe(false);
+  });
+
+  // The job refuses a plan that lists a team where team releases are closed (release.mjs), so a
+  // press the site accepts and the job then refuses is a run that fails after the lock is taken.
+  it.each([
+    ["an official privileged team in a language with no Manager page", "viVN", { official: true, privileged: true }],
+    ["an official privileged team on a page", "deDE", { official: true, privileged: true }],
+    ["a privileged team that is not official, on a page", "deDE", { official: false, privileged: true }],
+    ["a privileged team that is not official, with no page", "viVN", { official: false, privileged: true }],
+    ["an official second team", "deDE", { official: true, privileged: false }],
+    ["a second team that is not official", "viVN", { official: false, privileged: false }],
+  ])("refuses %s exactly when the job would", (_, lang, flags) => {
+    vi.stubEnv("SPOKEN_TEAM_RELEASES", "");
+    const team = {
+      id: "0b7e6a3c-1d2f-4a5b-8c9d-0e1f2a3b4c5d", slug: "stimmen", name: "Stimmen", ...flags,
+      language: { code: lang, name: "X", native: "X", client: lang === "deDE" },
+    };
+    expect(releasesClosedFor(team)).toBe(needsTeamReleases(releasePlan("places", lang, team)));
   });
 });
 

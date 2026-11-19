@@ -4,6 +4,10 @@
  * A team a site owner makes is official; one a request makes is not, whichever branch approval
  * takes (TEAM-RELEASES.md, *Official teams*).
  */
+import { readFileSync } from "node:fs";
+import path from "node:path";
+
+import { Client } from "pg";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("@/lib/email", () => ({ sendEmail: () => {} }));
@@ -119,5 +123,43 @@ describe("official", () => {
 
   it("is not set on a second team a request makes beside a maintained language", async () => {
     expect(await officialOf(await approved(await known(true), null))).toBe(false);
+  });
+});
+
+describe("migration 0120", () => {
+  // Run in a transaction that rolls back, so the suite's database keeps the column it has.
+  it("leaves a team an approved request made unofficial and marks every other one official", async () => {
+    const sql = readFileSync(path.resolve(__dirname, "../../../migrations/0120_team_official.sql"), "utf8");
+    const client = new Client({ connectionString: process.env.DATABASE_URL, options: "-c spoken.team=*" });
+    await client.connect();
+    try {
+      await client.query("begin");
+      const made = async (slug: string) =>
+        (await client.query<{ id: string }>(
+          `insert into "team" ("slug", "name", "official") values ($1, $1, false) returning "id"`,
+          [`${slug}-${code().toLowerCase()}`],
+        )).rows[0].id;
+      const owners = await made("mig-owner");
+      const requested = await made("mig-request");
+      const rejected = await made("mig-rejected");
+      await client.query(`update "team" set "official" = true where "id" = $1`, [requested]);
+      for (const [team, state] of [[requested, "approved"], [rejected, "rejected"]]) {
+        await client.query(
+          `insert into "team_request" ("userId", "lang", "teamName", "state", "approvedTeamId")
+           values ($1, $2, 'Xq', $3, $4)`,
+          [requester.id, code(), state, team],
+        );
+      }
+      await client.query(sql);
+      const { rows } = await client.query<{ id: string; official: boolean }>(
+        `select "id", "official" from "team" where "id" = any($1::uuid[])`,
+        [[owners, requested, rejected]],
+      );
+      const official = Object.fromEntries(rows.map((row) => [row.id, row.official]));
+      expect(official).toEqual({ [owners]: true, [requested]: false, [rejected]: true });
+    } finally {
+      await client.query("rollback");
+      await client.end();
+    }
   });
 });
