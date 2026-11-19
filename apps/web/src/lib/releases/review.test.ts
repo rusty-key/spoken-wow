@@ -122,13 +122,13 @@ describe("approve", () => {
   });
 
   it("waits its turn behind a running release", async () => {
-    await startRun("bosses", "frFR", presser.id);
+    await asTeam("frFR", fr.team, () => startRun("bosses", "frFR", presser.id));
     const promote = await approve(await waiting(), owner.id);
     expect(promote.state).toBe("queued");
   });
 
   it("settles a release whose job finished before queueing the promotion, so it starts at once", async () => {
-    const running = await startRun("bosses", "frFR", presser.id);
+    const running = await asTeam("frFR", fr.team, () => startRun("bosses", "frFR", presser.id));
     exits(running.id, 0, "==> released 1.0.1: SpokenBossesAudio_frFR\n");
     const promote = await approve(await waiting(), owner.id);
     expect((await row(running.id)).state).toBe("done");
@@ -136,7 +136,7 @@ describe("approve", () => {
   });
 
   it("puts the version back to wait when its queued promotion is cancelled", async () => {
-    await startRun("bosses", "frFR", presser.id);
+    await asTeam("frFR", fr.team, () => startRun("bosses", "frFR", presser.id));
     const id = await waiting();
     const promote = await approve(id, owner.id);
     await cancelQueued(promote.id);
@@ -146,7 +146,7 @@ describe("approve", () => {
   });
 
   it("is not replaced by a newer version while it is being listed, and gives way to it if listing fails", async () => {
-    await startRun("bosses", "frFR", presser.id);
+    await asTeam("frFR", fr.team, () => startRun("bosses", "frFR", presser.id));
     const id = await waiting();
     const promote = await approve(id, owner.id);
     const [{ id: newer }] = await systemRows<{ id: string }>(
@@ -186,7 +186,7 @@ describe("approve", () => {
 
 describe("reject", () => {
   it("refuses a version already approved, which is being listed", async () => {
-    await startRun("bosses", "frFR", presser.id);
+    await asTeam("frFR", fr.team, () => startRun("bosses", "frFR", presser.id));
     const id = await waiting();
     await approve(id, owner.id);
     await expect(reject(id, owner.id, "Too late")).rejects.toMatchObject({ status: 409 });
@@ -314,7 +314,7 @@ describe("the review page's lists", () => {
   });
 
   it("shows an approved version as being listed", async () => {
-    await startRun("bosses", "frFR", presser.id);
+    await asTeam("frFR", fr.team, () => startRun("bosses", "frFR", presser.id));
     const id = await waiting();
     await approve(id, owner.id);
     expect(await waitingReviews()).toEqual([expect.objectContaining({ id, approving: true })]);

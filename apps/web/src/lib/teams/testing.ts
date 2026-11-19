@@ -165,6 +165,8 @@ export async function dropTeam(team: TeamId): Promise<void> {
     await asSystem.query(`delete from "${table}" where "teamId" = $1`, [team]);
   }
   await asSystem.query(`delete from "team" where "id" = $1`, [team]);
+  // A language it shared is one team's again: the memo would still have the caller in no team there.
+  forgetTeams();
 }
 
 const CAPITALS = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";

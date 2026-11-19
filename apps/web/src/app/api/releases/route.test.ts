@@ -280,14 +280,13 @@ describe("release route", () => {
       expect(await runsOf(team)).toEqual([]);
       expect(github.dispatchRelease).not.toHaveBeenCalled();
 
-      who.id = before;
-      expect((await press("frFR", { section: "places" })).status).toBe(202);
+      expect((await pressAs(before)).status).toBe(202);
       expect(github.dispatchRelease).toHaveBeenCalledTimes(1);
     });
 
     it("refuses a privileged team a request made, which is not official", async () => {
       await asSystem.query(`update "team" set "official" = false where "id" = $1`, [fr.team]);
-      const refused = await press("frFR", { section: "places" });
+      const refused = await pressAs(before);
       expect(refused.status).toBe(409);
       expect((await refused.json()).error).toBe(CLOSED);
       expect(await runsOf(fr.team)).toEqual([]);

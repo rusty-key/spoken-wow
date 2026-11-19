@@ -3,6 +3,7 @@ import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from "vitest
 
 import { closeDb } from "@/lib/db";
 import { startRun } from "@/lib/releases/store";
+import { asTeam } from "@/lib/teams/acting";
 import { forgetTeams } from "@/lib/teams/store";
 import { asSystem, dropTeam, newTeamIn, ownTeam, systemRows, testUser } from "@/lib/teams/testing";
 
@@ -69,7 +70,8 @@ afterAll(async () => {
 describe("cancelling a queued release", () => {
   async function queued() {
     const active = await startRun("quests", "deDE", presser.id);
-    const run = await startRun("places", "frFR", presser.id);
+    // As the presser's team: frFR has two, and the call runs in no request.
+    const run = await asTeam("frFR", fr.team, () => startRun("places", "frFR", presser.id));
     expect(run.state).toBe("queued");
     return { active, run };
   }

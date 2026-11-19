@@ -213,8 +213,8 @@ const WORK: Record<string, string> = {
 };
 
 /**
- * Deletes a team that is no language's only team and has made nothing. Any row of work under it (a take,
- * a recording, a bucket) refuses the delete, since work is never deleted.
+ * Deletes a team that is no language's only team and has made nothing. Any row of work under it
+ * (a take, a recording, a bucket) refuses the delete, since work is never deleted.
  */
 export async function deleteTeam(team: TeamId, actorId: string): Promise<void> {
   await withTeam(ALL_TEAMS, async (client) => {

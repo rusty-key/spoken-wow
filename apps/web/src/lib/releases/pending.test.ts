@@ -54,14 +54,16 @@ describe("pendingChanges", () => {
     expect(pending.since).toBe(CUTOFF.toISOString());
   });
 
-  it("counts a second team's own takes for it, and the privileged team's for the privileged team", async () => {
+  it("counts each team's own takes for it, and none for somebody in neither team", async () => {
     const second = await newTeamIn("deDE", false, "pending-second");
     try {
       await take("pending-test-ours", 1, after, { team: second });
       await take("pending-test-theirs", 1, after, { team: de.team });
       const asSecond = await asTeam("deDE", second, () => pendingChanges("places", "deDE", CUTOFF));
       expect(asSecond.changes.map((c) => c.file)).toEqual(["pending-test-ours"]);
-      expect((await pendingChanges("places", "deDE", CUTOFF)).changes.map((c) => c.file)).toEqual(["pending-test-theirs"]);
+      const asPlain = await asTeam("deDE", de.team, () => pendingChanges("places", "deDE", CUTOFF));
+      expect(asPlain.changes.map((c) => c.file)).toEqual(["pending-test-theirs"]);
+      expect((await pendingChanges("places", "deDE", CUTOFF)).changes).toEqual([]);
     } finally {
       await asSystem.query(`delete from "take" where "teamId" = $1`, [second]);
       await dropTeam(second);
