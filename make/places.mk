@@ -324,17 +324,10 @@ release-audio: ## Upload the sound pack (LOCALE=xx for a language's)
 # CurseForge only -- Wago answers 413 to a file this size (scripts/lib/wago.sh) -- and to
 # GitHub, which is where a Wago player gets it.
 #
-# English's CurseForge zip carries the bosses pack too (Spoken Audio: Places and Bosses), so an
-# English run syncs, pulls and builds it first: packaging refuses a missing or stale bosses build.
-# Its GitHub upload is Places alone, and the bosses' GitHub release is bosses-full-release.
-full-release: require-droplet ## Sync, pull live takes, build and upload the sound pack (LOCALE=xx for a language's; English's CurseForge zip carries the bosses')
+# The bosses' pack is its own release, to its own projects: bosses-full-release.
+full-release: require-droplet ## Sync, pull live takes, build and upload the sound pack (LOCALE=xx for a language's)
 	@$(MAKE) --no-print-directory -f make/places.mk sync
 	@$(MAKE) --no-print-directory -f make/places.mk pull-live LOCALE=$(LOCALE)
-	@if [ "$(or $(LOCALE),enUS)" = enUS ]; then \
-	  $(MAKE) --no-print-directory bosses-sync && \
-	  $(MAKE) --no-print-directory bosses-pull-live && \
-	  $(MAKE) --no-print-directory bosses-package-audio; \
-	fi
 	@$(MAKE) --no-print-directory -f make/places.mk package-audio LOCALE=$(LOCALE)
 	@$(MAKE) --no-print-directory -f make/places.mk upload-dry LOCALE=$(LOCALE)
 	@printf 'Upload the places pack to CurseForge and GitHub? [y/N] '; \

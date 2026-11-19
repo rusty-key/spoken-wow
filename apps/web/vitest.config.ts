@@ -40,9 +40,11 @@ function localEnv(): Record<string, string> {
 }
 
 export default defineConfig({
+  // Component tests (.tsx) use the automatic JSX runtime, as Next does.
+  esbuild: { jsx: "automatic" },
   test: {
     environment: "node",
-    include: ["src/**/*.test.ts"],
+    include: ["src/**/*.test.ts", "src/**/*.test.tsx"],
     env: localEnv(),
     /**
      * One test file at a time.

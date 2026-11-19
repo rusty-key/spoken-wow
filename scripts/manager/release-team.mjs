@@ -1,0 +1,53 @@
+// The team a release builds for, and the language it builds in, read from the database: the
+// builders take a language from its `language` row, not from pipelines/lib/locales.mjs, so a
+// language only the site knows can ship (docs/platform/TEAMS.md, *Releases*).
+//
+// A team holding the language's plain space (its privileged team) builds the plain pack ids;
+// any other team's carry its slug (scripts/lib/packs.mjs teamFolder).
+import { derivedFolders, loadPacks } from "../lib/packs.mjs";
+
+/** Every language's English and native names, which index-v2.json carries for the Manager. */
+export async function languageNames(db) {
+  const { rows } = await db.query(
+    `select "code", "name", "native" from "language" where "name" is not null and "native" is not null order by "code"`,
+  );
+  return rows.map(({ code, name, native }) => ({ code, name, native }));
+}
+
+/**
+ * `slug` null is the language's privileged team: a release pressed before the site named the
+ * team, or `make manager-release`.
+ */
+export async function releaseTeam(db, lang, slug = null) {
+  const { rows: languages } = await db.query(
+    `select "code", "name", "native", "client" from "language" where "code" = $1`,
+    [lang],
+  );
+  if (languages.length === 0) throw new Error(`${lang} is not a language`);
+  const { rows } = await db.query(
+    `select t."id", t."slug", t."name", t."official", tl."privileged"
+       from "team" t join "team_language" tl on tl."teamId" = t."id"
+      where tl."lang" = $1 and (case when $2::text is null then tl."privileged" else t."slug" = $2 end)`,
+    [lang, slug],
+  );
+  if (rows.length === 0) throw new Error(slug === null ? `${lang} has no team` : `no team ${slug} voices ${lang}`);
+  const [team] = rows;
+  const [language] = languages;
+  return {
+    id: team.id,
+    slug: team.slug,
+    name: team.name,
+    official: team.official,
+    privileged: team.privileged,
+    language: { code: language.code, name: language.name, native: language.native, client: language.client },
+  };
+}
+
+/**
+ * Every folder the pack of the team `slug` in `section` and `lang` can have, as its releases build
+ * them: what a delisting takes off the channel (`cli.mjs delist`).
+ */
+export async function teamPackFolders(db, section, lang, slug, packs = loadPacks()) {
+  const team = await releaseTeam(db, lang, slug);
+  return derivedFolders(section, lang, team.privileged ? null : team.slug, packs).map((p) => p.folder);
+}

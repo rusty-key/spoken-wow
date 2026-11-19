@@ -8,12 +8,60 @@ from the player whose changelog is CHANGELOG.md beside this one.
 - **Each meta addon is now called Spoken: <Language>**, so Spoken: German, Spoken: French and
   Spoken: English, in the AddOns list and on CurseForge.
   *([rusty-key](https://github.com/rusty-key))*
+- **Spoken: English installs Spoken Audio: Bosses**, the boss stories' own CurseForge project,
+  now that Spoken Audio: Places no longer carries them.
+  *([rusty-key](https://github.com/rusty-key))*
+
+## 1.2.0 — spoken-all-koKR — 2026-11-16
+
+- Installs the Korean quest dialogue as three packs, Alliance, Horde and the quests both
+  sides share, now that the faction packs have CurseForge projects. 7 sound packs in all.
+
+## 1.2.0 — spoken-all-ruRU — 2026-11-16
+
+- Installs the Russian quest dialogue as three packs, Alliance, Horde and the quests both
+  sides share, now that the faction packs have CurseForge projects. 7 sound packs in all.
+
+## 1.2.0 — spoken-all-zhCN — 2026-11-16
+
+- Installs the Chinese (Simplified) quest dialogue as three packs, Alliance, Horde and the quests both
+  sides share, now that the faction packs have CurseForge projects. 7 sound packs in all.
+
+## 1.2.0 — spoken-all-zhTW — 2026-11-16
+
+- Installs the Chinese (Traditional) quest dialogue as three packs, Alliance, Horde and the quests both
+  sides share, now that the faction packs have CurseForge projects. 7 sound packs in all.
 
 ## 3.1.0 — 2026-11-11
 
 - Installs the English boss stories too, which ship inside Spoken Audio: Places and Bosses.
   Updating this addon makes sure everyone who installed it earlier gets them.
 - Called Spoken: English in the AddOns list and on CurseForge.
+
+## 1.1.0 — spoken-all-frFR — 2026-11-15
+
+- Installs Spoken French Audio: Bosses too, now that it has a CurseForge project, so the French
+  boss stories come with one install. 7 sound packs in all.
+
+## 1.1.0 — spoken-all-koKR — 2026-11-15
+
+- Installs Spoken Korean Audio: Bosses too, now that it has a CurseForge project, so the
+  Korean boss stories come with one install. 5 sound packs in all.
+
+## 1.1.0 — spoken-all-ruRU — 2026-11-15
+
+- Installs Spoken Russian Audio: Bosses too, now that it has a CurseForge project, so the
+  Russian boss stories come with one install. 5 sound packs in all.
+
+## 1.1.0 — spoken-all-zhCN — 2026-11-15
+
+- Installs Spoken Chinese (Simplified) Audio: Bosses too, now that it has a CurseForge project,
+  so the Chinese (Simplified) boss stories come with one install. 5 sound packs in all.
+
+## 1.1.0 — spoken-all-zhTW — 2026-11-15
+
+- Installs Spoken Chinese (Traditional) Audio: Bosses too, now that it has a CurseForge project,
+  so the Chinese (Traditional) boss stories come with one install. 5 sound packs in all.
 
 ## 1.1.0 — spoken-all-deDE — 2026-11-04
 

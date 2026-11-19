@@ -62,7 +62,8 @@ afterAll(closeDb);
 describe("row-level security", () => {
   it("binds every table with a team, so a new one cannot be left open", async () => {
     // team_language and team_member are read before a team is set: one to find the request's
-    // team, the other for a viewer's grants, which span teams.
+    // team, the other for a viewer's grants, which span teams. archive_object says which bucket
+    // holds an object, for every request for a take whatever its team, and holds no secret.
     const { rows } = await db().query<{ table: string; enabled: boolean; forced: boolean; policies: number }>(
       `select c."relname" as "table", c."relrowsecurity" as "enabled", c."relforcerowsecurity" as "forced",
               (select count(*)::int from "pg_policies" p
@@ -70,7 +71,7 @@ describe("row-level security", () => {
          from "pg_class" c
          join "pg_namespace" n on n."oid" = c."relnamespace"
          join "pg_attribute" a on a."attrelid" = c."oid" and a."attname" = 'teamId' and not a."attisdropped"
-        where n."nspname" = 'public' and c."relkind" in ('r', 'p') and c."relname" not in ('team_language', 'team_member')`,
+        where n."nspname" = 'public' and c."relkind" in ('r', 'p') and c."relname" not in ('team_language', 'team_member', 'archive_object')`,
     );
     expect(rows.length).toBeGreaterThan(0);
     expect(rows.filter((row) => !row.enabled || !row.forced || row.policies === 0)).toEqual([]);

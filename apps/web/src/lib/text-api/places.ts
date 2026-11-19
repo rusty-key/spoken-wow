@@ -2,11 +2,12 @@ import "server-only";
 
 import { query } from "@/lib/db";
 import { BASE_LANG, type Lang } from "@/lib/lang";
-import { catalogue, type CatalogueEntry } from "@/lib/places/catalogue";
+import { baseCatalogue, catalogue, type CatalogueEntry } from "@/lib/places/catalogue";
 import { restoreLore, retireLore, saveLore } from "@/lib/places/lore";
 
 import { catalogueReads, nameVersionOf, nameVersions } from "./catalogue-page";
 import { Refused } from "./errors";
+import { saveNarratedOverride } from "./narrated-override";
 import type { NameTarget, SectionApi, TextItem } from "./types";
 
 function targetOf(entry: CatalogueEntry): NameTarget {
@@ -34,6 +35,7 @@ async function itemsOf(lang: Lang, entries: CatalogueEntry[]): Promise<TextItem[
     return {
       id: entry.id,
       text: translated ? entry.full : null,
+      override: entry.override?.text ?? null,
       short: translated ? (row?.short ?? entry.short) : null,
       version: translated ? (row?.version ?? null) : null,
       name: named ? entry.name : null,
@@ -69,6 +71,13 @@ export const places: SectionApi = {
       audit,
     });
     return { version: saved.version, lines: [id], wrote: saved.wrote };
+  },
+
+  async saveOverride(args) {
+    const { lang, id } = args;
+    const entry = (await baseCatalogue(lang)).find((e) => e.id === id);
+    const original = entry && !entry.missing?.text ? entry.full : null;
+    return saveNarratedOverride("places", args, original, await places.version(lang, id, 0));
   },
 
   async nameTarget(_lang, id) {

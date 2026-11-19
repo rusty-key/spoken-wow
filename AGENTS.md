@@ -22,6 +22,9 @@ covers how they are made. Spoken has no guide; `docs/spoken/` holds its changelo
 - `apps/web`: the site, `spoken.quest`, a Next.js app backed by Postgres. It imports
   `pipelines/places` and `pipelines/readables` (`@tools/*` and `@readables-tools/*`), so a change there is
   a change to the site.
+- `apps/brann`: Brann Bronzebeard, the Discord bot. He answers support questions from
+  `docs/support/FAQ.md` and files Discord bug reports as issues. He runs on the droplet beside the
+  site and deploys with it.
 - `pipelines/`: `quests` is Python, `places` and `readables` are Node, and `lib` holds the `.mjs`
   modules they and the site share.
 - `publishers/<section>/*.md`: every store page. `make descriptions` regenerates the READMEs
@@ -61,9 +64,11 @@ droplet, through the site. Do not add a generation flag to a CLI. `make places-l
 credits, even with `--dry-run`.
 
 **Data only comes home from production.** The take archive is the only audio and only the
-site writes it: `audio-history/` on the droplet's volume, and the `spoken-archive` R2 bucket,
-whose objects are named by their SHA-256 (`apps/web/src/lib/blobs/store.ts`). Nothing deletes
-from the bucket's `takes/` or `recordings/`. The `<section>-pull-*` targets never delete anything.
+site writes it: `audio-history/` on the droplet's volume, the `spoken-archive` R2 bucket, and the
+buckets teams bring themselves (`docs/platform/STORAGE.md`). Objects are named by their SHA-256
+(`apps/web/src/lib/blobs/store.ts`). Nothing deletes from our bucket's `takes/` or `recordings/`.
+A team's own bucket is the team's: we recommend the same rule there and do not enforce it, and the
+site never deletes an archive object from it. The `<section>-pull-*` targets never delete anything.
 The `<section>-sync` targets replace local tables and are destructive, so confirm before
 running one. `sounds` directories are assembled from the live takes before a build and are
 never the record. Audio stays out of git; `.gitignore` says which directories cannot be
@@ -94,6 +99,11 @@ place: `pipelines/quests/tts_cli/naming.py` (mirrored by
 
 **Migrations are forward-only and additive.** Deploy migrates before the symlink swap and
 rollback restores code without reverting the schema.
+
+**Changing a setting's default changes it for existing players.** AceDB does not save a value
+equal to the default, so everyone who never touched the setting gets the new default. To keep
+their old behaviour, add a one-time migration that saves the old value explicitly. Renaming the
+setting instead drops every player's choice.
 
 **The `make/*.mk` files stay separate.** They share many target names, and the root `Makefile`
 dispatches `quests-*`, `places-*`, `readables-*` and `web-*` to them. Each target is commented with
@@ -128,6 +138,21 @@ its date.
 - The checks above are the verification. Do not stack extra self-review passes or use
   subagents to re-check finished work.
 
+## Bug fixes
+
+- Make it fail first. Show the failure on master: the code path with `file:line`, a log, or
+  steps in game. If nothing shows it, say what would, and don't build a fix.
+- Write the test that fails without the fix, and check that it does. A test stub more lenient
+  than the client proves nothing.
+- Fix where the fault starts, not where it shows. Keep asking why until you reach the first
+  wrong assumption.
+- Bugs cluster. Search for every other place that makes the same assumption and fix them all,
+  or fix the shared helper they call.
+- Before removing or loosening a guard, a key reset or a default, find out why it is there
+  (`git log -S`). It usually protects a case your test doesn't cover.
+- No special case, flag, extra slot, timer or retry that only makes the reported case work. If
+  the real fix is too large for the PR, say so in the description and name it.
+
 ## PR descriptions
 
 A PR description is prose for the reviewer and for whoever finds the branch in a year. Aim for
@@ -138,6 +163,7 @@ Include:
 - Why the change exists and what limits it, followable with no prior context.
 - How it works, only where the diff doesn't show it. Say where the risk sits so the reviewer
   looks there.
+- For a bug fix, where the fault starts and why the change is made there.
 - Deliberate omissions, and why.
 - Verification as facts only: what ran, what passed, what was not checked (for example, "not
   looked at in-game").

@@ -6,6 +6,7 @@ lang: itIT
 pack: horde
 version: 0.0.2
 github: false
+inMeta: false
 slug: spoken-italian-audio-quests-horde
 name: Spoken Italian Audio: Quests - Horde
 summary: Horde-only quest dialogue, voiced in Italian. Pair it with the Shared pack. Needs Spoken.

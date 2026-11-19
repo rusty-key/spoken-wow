@@ -15,8 +15,8 @@ import "server-only";
 
 import { auditDetail, type ApiAudit } from "@/lib/activity/kinds";
 import { recordActivity } from "@/lib/activity/store";
-import { query, withTeam } from "@/lib/db";
-import { ownerOrAll } from "@/lib/teams/store";
+import { query } from "@/lib/db";
+import { withTextTeam } from "@/lib/teams/store";
 import { answersQuestMomentSql, baseLineId, momentOf, playerGenderForms } from "@/lib/contributions/naming";
 import { BASE_LANG, type Lang } from "@/lib/lang";
 import { branchesOnPlayerGender } from "@/lib/player-words";
@@ -108,7 +108,7 @@ export async function saveQuestText(args: {
   if (!text) throw new Error("the text cannot be empty");
   const moment = momentOf(args.lineId);
 
-  return withTeam(await ownerOrAll(args.lang), async (client) => {
+  return withTextTeam(args.lang, async (client, team) => {
     // Every current row of the moment in this language, so a split can retire the others.
     const { rows: momentRows } = await client.query<Structure>(
       `select ${COLUMNS}, ${STRUCTURE} from "quest_line"
@@ -210,6 +210,7 @@ export async function saveQuestText(args: {
       saved ??= inserted[0];
       await recordActivity(
         {
+          team,
           kind: "text.edited",
           lang: args.lang,
           actorId: args.editedBy,
@@ -248,7 +249,7 @@ export async function restoreQuestText(
   by: string | null,
 ): Promise<QuestTextVersion> {
   refuseEnglish(lang);
-  return withTeam(await ownerOrAll(lang), async (client) => {
+  return withTextTeam(lang, async (client, team) => {
     const { rows } = await client.query<Row>(
       `select ${COLUMNS} from "quest_line"
         where "lineId" = $1 and "variant" = $2 and "lang" = $3 and "version" = $4 for update`,
@@ -281,6 +282,7 @@ export async function restoreQuestText(
     );
     await recordActivity(
       {
+        team,
         kind: "text.restored",
         lang,
         actorId: by,
@@ -304,7 +306,7 @@ export async function retireQuestText(
   by: string | null,
 ): Promise<void> {
   refuseEnglish(lang);
-  return withTeam(await ownerOrAll(lang), async (client) => {
+  return withTextTeam(lang, async (client, team) => {
     const { rowCount } = await client.query(
       `update "quest_line" set "isCurrent" = false
         where "lineId" = $1 and "variant" = $2 and "lang" = $3 and "version" = $4 and "isCurrent"`,
@@ -312,7 +314,7 @@ export async function retireQuestText(
     );
     if (!rowCount) throw new QuestTextConflict(`${lineId} v${version} is not the current text`);
     await recordActivity(
-      { kind: "text.retired", lang, actorId: by, source: "quests", subject: lineId, lineId, detail: { version } },
+      { team, kind: "text.retired", lang, actorId: by, source: "quests", subject: lineId, lineId, detail: { version } },
       client,
     );
   });

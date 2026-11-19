@@ -4,7 +4,7 @@ release: quests-audio-gossip-zhTW
 section: quests
 lang: zhTW
 pack: gossip
-version: 0.0.1
+version: 0.0.2
 github: false
 slug: spoken-chinese-traditional-audio-gossip
 name: Spoken Chinese (Traditional) Audio: Gossip

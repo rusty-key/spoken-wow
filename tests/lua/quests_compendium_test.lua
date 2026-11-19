@@ -1020,6 +1020,14 @@ do
         page.body.lastParts[#page.body.lastParts].text, "Pack words.")
     Expect("...leaving the shipped words alone, which matching reads", SpokenQuestsText[KOBOLDS].complete, nil)
     testPack.TextByFileName = nil
+    -- Polish chosen as the Text Language: a text pack's words (Spoken's Texts.lua), where no pack in
+    -- Polish voices the part.
+    H.ReadText("plPL")
+    Spoken:RegisterText("plPL", "quests", { lines = { ["q:7:complete"] = "Polskie słowa, $N." } })
+    Click("Kobold Camp Cleanup")
+    Expect("Polish chosen, a text pack's words show on the part, the player named",
+        page.body.lastParts[#page.body.lastParts].text, "Polskie słowa, " .. UnitName("player") .. ".")
+    H.ReadText(nil)
     -- Two wordings of one moment: the page follows the one it shows, as Play does.
     local acceptWords = SpokenQuestsText[KOBOLDS].accept
     SpokenQuestsText[KOBOLDS].accept = "Back again."
@@ -1391,6 +1399,30 @@ Expect("...another character's name where the player's was", (PageWords() or "")
 stub.world.playerName = "Tester"
 local kept = VO.Addon.db.global.CompendiumText
 Expect("...kept by language", kept.deDE[KOBOLDS] ~= nil and kept.enUS == nil, true)
+
+-- An item starter keeps its real icon after the item has left the player's bags.
+do
+    local ITEM, ITEM_ICON, oldCItem = 211315, "Interface\\Icons\\INV_Misc_Map_01", _G.C_Item
+    _G.C_Item = { GetItemInfoInstant = function() return nil, nil, nil, nil, ITEM_ICON end }
+    testPack.ItemIDLookupByQuestID = { [CANDLES] = ITEM }
+    Tab:Open(CANDLES)
+    local offer = page.body.lastParts[1]
+    Expect("an item-started quest uses the item's real icon", offer.face.viewport.texture:GetTexture(), ITEM_ICON)
+    -- The item in the bags is the one that starts the quest; the packs' id only stands in for it.
+    local BAG_ICON, oldContainer = 134939, _G.C_Container
+    _G.C_Container = {
+        GetContainerNumSlots = function(bag) return bag == 1 and 1 or 0 end,
+        GetContainerItemInfo = function() return { iconFileID = BAG_ICON } end,
+        GetContainerItemQuestInfo = function() return { isQuestItem = true, questID = CANDLES } end,
+    }
+    Tab:Open(KOBOLDS)
+    Tab:Open(CANDLES)
+    Expect("...the item in the bags before the packs' id", page.body.lastParts[1].face.viewport.texture:GetTexture(), BAG_ICON)
+    _G.C_Container = oldContainer
+    testPack.ItemIDLookupByQuestID, _G.C_Item = nil, oldCItem
+    Tab:Open(KOBOLDS)
+end
+
 -- A window whose id, title and words the game hands over as secrets keeps nothing.
 stub.world.questID = JENNEA
 stub.world.title = "Versiegelte Befehle"

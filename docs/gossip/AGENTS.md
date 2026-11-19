@@ -11,7 +11,7 @@ section.
   window is a new source in that addon; a new kind of game event is a new folder. Notes players
   see go under `## Unreleased` in `docs/spoken/CHANGELOG.md`.
 - The saved names `GossipFrequency`, `StopAudioOnDisengage`, `OGThrall`, `GreetingFirst` and
-  `hasSeenGossipForNPC`, and the variable `SpokenQuestsSettings`, are what players already have.
+  `hasSeenGossipForNPC`, `ignoredGossipNPCs`, and the variable `SpokenQuestsSettings`, are what players already have.
   Renaming one drops their choice without an error.
 - The core's global `VoiceOver` keeps its name. Every sound pack ever built calls
   `VoiceOver.DataModules:Register(...)`, and packs on players' disks cannot follow a rename.

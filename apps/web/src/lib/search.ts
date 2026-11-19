@@ -24,7 +24,8 @@ import { overrideOf, type LineOverride } from "./quests/override";
 import { hasDrifted } from "./quests/override-drift";
 import type { LineBroadcast } from "./broadcast/store";
 import type { BroadcastStatus } from "./broadcast/status";
-import type { AudioState } from "./audio-state";
+import { AUDIO_STATES, type AudioState, type StateCounts } from "./audio-state";
+import { PAGE_SIZE } from "./page-size";
 import { isVoiceable, unvoicedReason, type UnvoicedReason } from "./text-gate";
 import { madeByFacets, madeByMatches, type MadeBy, type MadeByFacets } from "./takes/made-by";
 import { recordedMatches, type LiveRecording, type Recorded } from "./recordings/live";
@@ -254,8 +255,8 @@ export type SearchResult = {
   lines: ResultLine[];
   /** Matching lines across every page. */
   total: number;
-  /** Distinct NPCs across every page, which no count of `lines` can recover. */
-  npcCount: number;
+  /** For the audio buttons; see StateCounts. Outdated and up to date read zero without `context.stale`. */
+  counts: StateCounts;
   offset: number;
   limit: number;
   /** What the model and author chips offer. Absent when the context carried no `madeBy`. */
@@ -267,8 +268,6 @@ export type SearchResult = {
    */
   recordable?: true;
 };
-
-export const PAGE_SIZE = 50;
 
 /**
  * One unit of work in a batch regeneration.
@@ -288,24 +287,17 @@ export type BatchLine = {
   preview: string;
 };
 
+/** Why a matched line is not a job of its own: never voiced, or its file is already in. */
+export type BatchSkip = UnvoicedReason | "shared-file";
+
 /**
- * The lines a batch would actually generate.
+ * The lines a batch would actually generate, plus a count of the matched lines that did not
+ * become a job, by reason.
  *
  * Deduplicated by audio file, because 1,076 files in the corpus are spoken by more than one
  * NPC and generating a shared file twice would pay for it twice and leave the second take
  * live. Lines the generator never voices are dropped here rather than failed one by one.
  */
-export function batchJobs(
-  lines: CorpusLine[],
-  overrides: Map<string, LineOverride> = NO_CONTEXT.overrides,
-): BatchLine[] {
-  return batchPlan(lines, overrides).jobs;
-}
-
-/** Why a matched line is not a job of its own: never voiced, or its file is already in. */
-export type BatchSkip = UnvoicedReason | "shared-file";
-
-/** batchJobs, plus a count of the matched lines that did not become a job, by reason. */
 export function batchPlan(
   lines: CorpusLine[],
   overrides: Map<string, LineOverride> = NO_CONTEXT.overrides,
@@ -484,7 +476,7 @@ export function matchingLines(
       : lines.filter((line) => !ignores.has(baseLineId(line.lineId)));
   }
   if (query) lines = lines.filter((line) => matches(line, query, filter));
-  if (state === "missing") lines = lines.filter((line) => isGap(line, store, overrides));
+  if (state) lines = lines.filter((line) => inState(line, state, store, overrides, stale));
   if (race) lines = lines.filter((line) => line.race === race);
   if (gender) lines = lines.filter((line) => line.gender === gender);
   if (flavor) lines = lines.filter((line) => line.flavor === flavor);
@@ -504,16 +496,6 @@ export function matchingLines(
   // An id the corpus no longer carries matches nothing rather than everything, because a
   // report about a dropped line must not read as "here it is".
   if (lineId) lines = lines.filter((line) => line.lineId === lineId);
-  // Absent `stale` means nobody asked for it, so nothing matches rather than everything: the
-  // honest answer to "which audio is out of date?" without the data is none, not all.
-  if (state === "stale") lines = lines.filter((line) => stale?.has(audioRelPath(line)) ?? false);
-  // Current needs the same set, for the same reason: without it nothing is known current.
-  if (state === "current") {
-    lines = lines.filter((line) => {
-      const file = audioRelPath(line);
-      return store.has(file) && stale !== undefined && !stale.has(file);
-    });
-  }
   // Absent `dirty` means nobody asked, so nothing matches rather than everything - the
   // argument the line above makes, for the same reason.
   if (dirty) lines = lines.filter((line) => dirtyOf?.has(audioRelPath(line)) ?? false);
@@ -571,13 +553,41 @@ export function matchingLines(
   return [...lines].sort(order);
 }
 
+/**
+ * Whether a line's audio is in `state`, for the state filter and the counts beside it alike.
+ *
+ * Absent `stale` means nobody asked for it, so nothing is stale rather than everything: the
+ * honest answer to "which audio is out of date?" without the data is none, not all. Current
+ * needs the same set, for the same reason.
+ */
+function inState(
+  line: CorpusLine,
+  state: AudioState,
+  store: Set<string>,
+  overrides: Map<string, LineOverride> | undefined,
+  stale: Set<string> | undefined,
+): boolean {
+  if (state === "missing") return isGap(line, store, overrides);
+  const file = audioRelPath(line);
+  if (state === "stale") return stale?.has(file) ?? false;
+  return store.has(file) && stale !== undefined && !stale.has(file);
+}
+
 export function search(
   corpus: Corpus,
   store: Set<string>,
   { offset = 0, limit = PAGE_SIZE, ...filters }: SearchOptions = {},
   context: SearchContext = NO_CONTEXT,
 ): SearchResult {
-  const all = matchingLines(corpus, store, filters, context);
+  // Matched once without the state, which the counts ignore, and narrowed after: filtering
+  // keeps the order, so the corpus is neither filtered nor sorted twice.
+  const unstated = matchingLines(corpus, store, { ...filters, state: undefined }, context);
+  const { state } = filters;
+  const all = state ? unstated.filter((line) => inState(line, state, store, context.overrides, context.stale)) : unstated;
+  const counts: StateCounts = { all: unstated.length, missing: 0, stale: 0, current: 0 };
+  for (const line of unstated) {
+    for (const each of AUDIO_STATES) if (inState(line, each, store, context.overrides, context.stale)) counts[each]++;
+  }
   const keys = rowKeys(corpus);
 
   const start = Math.max(0, Math.floor(offset));
@@ -610,7 +620,7 @@ export function search(
   return {
     lines,
     total: all.length,
-    npcCount: new Set(all.map(npcKey)).size,
+    counts,
     offset: start,
     limit,
     ...(context.madeBy && { madeBy: madeByFacets(context.madeBy.values()) }),

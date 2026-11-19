@@ -2,17 +2,17 @@
  * Lines the corpus has but a player's pack could not voice.
  *
  * The addon gathers a line exactly when the installed pack has no sound for it, so a gathered
- * envelope the corpus already knows is one a player heard in silence. The /contribute page
- * drops those (there is nothing to triage); the Spoken Manager, when its player turned Sharing
- * on, sends the same file with a random install id, and each such line is counted here once
- * per line, pack language and install. Ranked by installs, that is which lines to voice next,
+ * envelope the corpus already knows is one a player heard in silence. There is nothing to
+ * triage, so it is not stored as a contribution; it is counted here instead, once per line, pack
+ * language and install, whenever it arrives with an install id: the Spoken Manager's, when its
+ * player turned Sharing on, or the browser's own from a Contribute link (browser-install.ts). Ranked by installs, that is which lines to voice next,
  * and which players are only behind on their pack.
  *
  * Server-side only: it writes.
  */
 import { db, queryIn } from "@/lib/db";
 import { BASE_LANG, isLang, type Lang } from "@/lib/lang";
-import { memoByLang } from "@/lib/memo";
+import { memoByTeamLang } from "@/lib/memo";
 import { corpus, isCorpusEmpty } from "@/lib/quests/catalogue";
 import { matchingLines } from "@/lib/search";
 import { ownerOrAll } from "@/lib/teams/store";
@@ -88,7 +88,7 @@ const hiddenKey = Symbol.for("spoken.quests-hidden-by-default.by-lang");
  */
 async function hiddenByDefaultLineIds(lang: Lang): Promise<ReadonlySet<string>> {
   const quests = await corpus(lang);
-  return memoByLang(hiddenKey, lang, quests.lines, () => {
+  return memoByTeamLang(hiddenKey, lang, quests.lines, () => {
     const shown = new Set(matchingLines(quests, new Set()).map((line) => line.lineId));
     const hidden = new Map<string, boolean>();
     for (const line of quests.lines) {

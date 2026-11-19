@@ -16,7 +16,7 @@ from tqdm import tqdm
 
 from tts_cli.ignores import ignored_files, wordless
 from tts_cli.length_table import write_sound_length_table_lua
-from tts_cli.lua import lua_value
+from tts_cli.lua import lua_global, lua_string, lua_value
 from tts_cli.naming import (BROADCAST_SOURCES, followup_stem_from_line_id, gossip_hash_from_line_id,
                             moment_of, quest_moment_stem, quest_stem_from_line_id,
                             several_wordings, split_voice, subfolder_from_line_id,
@@ -53,7 +53,7 @@ QUEST_SEARCH_WORDS = 15
 # there instead of to nothing.
 MODULE_LUA = """if not VoiceOver or not VoiceOver.DataModules then return end
 
-{module} = {{}}
+{define}
 
 function {module}:GetSoundPath(fileName, event)
     setfenv(1, VoiceOver)
@@ -66,8 +66,26 @@ function {module}:GetSoundPath(fileName, event)
     end
 end
 
-VoiceOver.DataModules:Register("{module}", {module})
+VoiceOver.DataModules:Register({name}, {module})
 """
+
+
+def module_lua(module_name: str, extension: str) -> str:
+    """Module.lua, which defines the global named by the pack's folder and registers it.
+
+    A folder that is a Lua identifier is written bare, as every pack already shipped is. Any
+    other - a team's slug may hold a hyphen - is bound to a local, since `function _G["a-b"]:f`
+    does not parse; the global and the registration keep the folder's exact name, which is
+    what the player enumerates and looks a module up by.
+    """
+    variable = lua_global(module_name)
+    if variable == module_name:
+        define = f"{module_name} = {{}}"
+    else:
+        variable = "module"
+        define = f"local module = {{}}\n{lua_global(module_name)} = module"
+    return MODULE_LUA.format(define=define, module=variable, name=lua_string(module_name),
+                             extension=extension)
 
 # No RequiredDeps on purpose: a player of this lineage ships under three folder names by
 # now - AI_VoiceOver, AI_VoiceOver_Continued, VoiceOverRedux - and a dep on a disabled or
@@ -359,6 +377,16 @@ def build_tables(corpus: dict, ignored=()) -> dict:
     }
 
 
+#: Every entry names gossip audio, directly or through GossipAliases, so only a pack holding
+#: gossip carries these. The body and sex tables stay in every pack: quest lines read them too.
+GOSSIP_TEXT_TABLES = ("npc_gossip_file_lookups", "object_gossip_file_lookups",
+                      "npc_name_gossip_file_lookups", "object_name_gossip_file_lookups")
+
+
+def carries_gossip(include) -> bool:
+    return include is None or any(stem.startswith("gossip/") for stem in include)
+
+
 #: The tables a language's Gossip pack gets a client-locale copy of: the ones keyed by the
 #: NPC's words and its id. Quest ids come from the client itself on every supported release,
 #: names are only shown, and the name-keyed gossip tables are the fallback for a speaker with
@@ -405,32 +433,38 @@ def write_lua_table(path: str, module_name: str, table_name: str, data,
     That copy is in a language's pack, but a player on an English client may install the
     pack to hear the language, and their client shows English: the English tables are the
     ones that match there, so the copy returns before it is built. With `only_on`, the table
-    itself is built only on a client in that locale.
+    itself is built only where that language is the one the words are read in: Spoken's Text
+    Language, which on Auto is the client's. A Spoken without one asks the client's.
     """
     os.makedirs(os.path.dirname(path), exist_ok=True)
     with open(path, "w", encoding="utf-8") as f:
         f.write(GUARD + "\n")
-        target = f"{module_name}.{table_name}"
+        module = lua_global(module_name)
+        target = f"{module}.{table_name}"
         if lang:
             f.write("if not VoiceOver.Language or "
                     f'VoiceOver.Language:GetClientLanguage() ~= "{lang}" then return end\n')
-            f.write(f"{module_name}.ClientLocaleLookups = "
-                    f"{module_name}.ClientLocaleLookups or {{}}\n")
-            target = f"{module_name}.ClientLocaleLookups.{table_name}"
+            f.write(f"{module}.ClientLocaleLookups = "
+                    f"{module}.ClientLocaleLookups or {{}}\n")
+            target = f"{module}.ClientLocaleLookups.{table_name}"
         if only_on:
-            f.write("if not VoiceOver.Language or "
-                    f'VoiceOver.Language:GetClientLanguage() ~= "{only_on}" then return end\n')
+            f.write("if not VoiceOver.Language or (VoiceOver.Language.GetTextLanguage "
+                    "and VoiceOver.Language:GetTextLanguage() or VoiceOver.Language:GetClientLanguage()) "
+                    f'~= "{only_on}" then return end\n')
         f.write(f"{target} = ")
         f.write(lua_value(data))
         f.write("\n")
 
 
 def module_toc(module_name: str, generated_files: list, version: str = "1.0.1",
-               title: str = DEFAULT_TITLE, language: str = None) -> str:
+               title: str = DEFAULT_TITLE, language: str = None, extra=()) -> str:
     """The TOC, listing exactly the files this build produced.
 
     The title is what tells the packs apart in the AddOns list, where five of them can sit at
     once and their folder names differ only by a suffix.
+
+    `extra` is (key, value) pairs written after the header: a team's pack names its team, and a
+    language Spoken does not build in its names, so the addon can show them.
     """
     lines = [TOC_HEADER.format(version=version, title=toc_title(title),
                                module=module_name, icon=ICON_NAME)]
@@ -438,6 +472,8 @@ def module_toc(module_name: str, generated_files: list, version: str = "1.0.1",
         # Only when asked: the addon reads an absent key as enUS, so every English pack keeps
         # its exact TOC.
         lines.insert(0, f"## {LANGUAGE_KEY}: {language}\n")
+    if extra:
+        lines.append("".join(f"## {key}: {value}\n" for key, value in extra))
     lines.extend(f"generated\\{name}" for name in generated_files)
     return "\n".join(lines) + "\n"
 
@@ -446,7 +482,7 @@ def build_module(corpus: dict, store_dir: str, dist_dir: str = DEFAULT_DIST_DIR,
                  module_name: str = DEFAULT_MODULE_NAME, version: str = "1.0.1",
                  progress: bool = False, ignored=(), include=None,
                  title: str = DEFAULT_TITLE, language: str = None,
-                 locale_text: list = None) -> dict:
+                 locale_text: list = None, icon_language: str = None, toc_extra=()) -> dict:
     """Assemble the data module. Returns a report.
 
     An ignored line's audio is left behind as well as its lookup entry, so a take made
@@ -455,16 +491,20 @@ def build_module(corpus: dict, store_dir: str, dist_dir: str = DEFAULT_DIST_DIR,
 
     `include` is a set of store-relative stems ('quests/5-accept', no extension) and makes
     this one pack of several: the store is staged once and built into a pack per side of the
-    war. None means everything in the store. The lookup tables are not narrowed with it -
-    they map text to ids and hashes rather than to files, they are the same in every pack,
-    and an entry whose audio is in a pack the player did not install simply finds no length
-    and stays quiet. See tts_cli/factions.py.
+    war. None means everything in the store. The lookup tables are not narrowed with it, except
+    GOSSIP_TEXT_TABLES - they map text to ids and hashes rather than to files, and
+    an entry whose audio is in a pack the player did not install simply finds no length and
+    stays quiet. See tts_cli/factions.py.
 
     `locale_text` is `language`'s rows from tts_cli.locale_text, and adds that language's
     gossip tables under generated/<language>/, loaded only on a client in it. Only the
     language's pack holding its gossip - Gossip, or All - is given them (cli-main.py refuses
     the rest). The English tables
     are written either way: they are what matches on an English client.
+
+    `icon_language` is the badge the pack wears, `language`'s unless given: a team's pack in a
+    language nobody drew a badge for wears English's mark, and its title names the language.
+    `toc_extra` is module_toc's `extra`.
     """
     if locale_text is not None and (not language or language == "enUS"):
         raise ValueError("locale text belongs to a language pack; pass its language")
@@ -497,6 +537,9 @@ def build_module(corpus: dict, store_dir: str, dist_dir: str = DEFAULT_DIST_DIR,
         shutil.copy2(os.path.join(store_dir, rel), os.path.join(sounds_dir, rel))
 
     tables = build_tables(corpus, ignored)
+    if not carries_gossip(include):
+        for name in GOSSIP_TEXT_TABLES:
+            del tables[name]
     written = []
     for filename, (table_name, data) in sorted(tables.items()):
         write_lua_table(os.path.join(generated_dir, filename + ".lua"),
@@ -527,7 +570,8 @@ def build_module(corpus: dict, store_dir: str, dist_dir: str = DEFAULT_DIST_DIR,
     written.append("word_times_table.lua")
 
     # For this pack's audio alone, or four packs of a language each repeat every line's text. Only
-    # on a client in the pack's language, the only one that shows it: megabytes of strings otherwise.
+    # where the pack's language is the one read, the only place it shows: megabytes of strings
+    # otherwise.
     words = take_text(store_dir)
     texts = {os.path.basename(stem): words[stem]
              for stem in (os.path.splitext(rel)[0] for rel in audio) if stem in words}
@@ -535,15 +579,15 @@ def build_module(corpus: dict, store_dir: str, dist_dir: str = DEFAULT_DIST_DIR,
                     module_name, "TextByFileName", texts, only_on=language or "enUS")
     written.append("text_table.lua")
 
-    shutil.copy2(icon_source(language), os.path.join(module_dir, ICON_NAME))
+    shutil.copy2(icon_source(icon_language or language), os.path.join(module_dir, ICON_NAME))
 
     with open(os.path.join(module_dir, "Module.lua"), "w", encoding="utf-8") as f:
-        f.write(MODULE_LUA.format(module=module_name, extension=extension))
+        f.write(module_lua(module_name, extension))
         if language:
             # The unguarded tables are built from the English corpus whatever the pack speaks.
-            f.write(f'{module_name}.LookupLocale = "enUS"\n')
+            f.write(f'{lua_global(module_name)}.LookupLocale = "enUS"\n')
     with open(os.path.join(module_dir, module_name + ".toc"), "w", encoding="utf-8") as f:
-        f.write(module_toc(module_name, sorted(written), version, title, language))
+        f.write(module_toc(module_name, sorted(written), version, title, language, toc_extra))
 
     return {
         "moduleDir": module_dir,
