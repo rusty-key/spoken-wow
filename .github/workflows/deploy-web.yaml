@@ -430,17 +430,21 @@ jobs:
           # the in-CI smoke test against a seeded throwaway database. This step is about
           # whether the release boots and serves on the droplet, not about whether somebody
           # has run a one-time import.
+          #
+          # The script goes to `bash -s` on stdin because ssh hands a command string to the
+          # remote user's LOGIN shell, and that is fish, which cannot parse `code=$(...)`.
+          smoke='set -e
+          port=$1
+          curl -fsS --max-time 10 -o /dev/null "http://127.0.0.1:$port/api/quests/search?q=thrall"
+          code=$(curl -s --max-time 10 -o /tmp/places-smoke -w "%{http_code}" "http://127.0.0.1:$port/api/places/search?state=current")
+          case $code in
+            200) exit 0 ;;
+            503) grep -q corpus_empty /tmp/places-smoke && { echo "  places: not seeded yet, which is expected before the cutover"; exit 0; } ;;
+          esac
+          echo "  places answered $code"; exit 1'
           ok=""
           for i in $(seq 1 10); do
-            if ssh -i ~/.ssh/deploy_key "$TARGET" \
-              "set -e
-               curl -fsS --max-time 10 -o /dev/null 'http://127.0.0.1:$PORT/api/quests/search?q=thrall'
-               code=\$(curl -s --max-time 10 -o /tmp/places-smoke -w '%{http_code}' 'http://127.0.0.1:$PORT/api/places/search?state=current')
-               case \$code in
-                 200) exit 0 ;;
-                 503) grep -q corpus_empty /tmp/places-smoke && { echo '  places: not seeded yet, which is expected before the cutover'; exit 0; } ;;
-               esac
-               echo \"  places answered \$code\"; exit 1"
+            if ssh -i ~/.ssh/deploy_key "$TARGET" bash -s -- "$PORT" <<< "$smoke"
             then ok=1; break; fi
             echo "attempt $i failed, retrying..."
             sleep 3

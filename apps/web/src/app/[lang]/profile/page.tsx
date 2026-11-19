@@ -35,9 +35,9 @@ export default async function Page({ params }: { params: Promise<{ lang: string 
   const spends = spendsCredits(viewer);
   const textLangs = langsWhere(viewer, "text");
   const regenerateLangs = langsWhere(viewer, "regenerate");
+  // Either grant backs text access.
   const tokenLangs: TokenLang[] = [...new Set([...textLangs, ...regenerateLangs])].map((code) => ({
     lang: code,
-    text: textLangs.includes(code),
     generate: regenerateLangs.includes(code),
   }));
   // The status, never the key. Sent to a client component as props, so this is the shape

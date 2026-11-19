@@ -71,7 +71,7 @@ export async function PUT(request: Request) {
     }
   }
 
-  const override = await writeOverride(lang, draft.file, draft.lineId, draft.text, session.user.id);
+  const { override } = await writeOverride(lang, draft.file, draft.lineId, draft.text, session.user.id);
   return Response.json({ override });
 }
 

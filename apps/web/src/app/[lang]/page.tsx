@@ -20,6 +20,7 @@ import { DISCORD_INVITE as DISCORD } from "@/lib/discord";
 import { BUILTIN, type BuiltinLang, type Lang } from "@/lib/lang";
 import { pageLang } from "@/lib/lang-server";
 import { packDownloads, packFor, type Section } from "@/lib/packs";
+import "@/components/landing/brand.css";
 import "@/components/landing/landing.css";
 
 export const metadata: Metadata = {

@@ -21,7 +21,9 @@ import path from "node:path";
 import { promisify } from "node:util";
 
 import { recordActivity } from "@/lib/activity/store";
-import { blobBytes, blobKey, blobOrFile, keep, readsBlobs, type Stored } from "@/lib/blobs/store";
+import { keep } from "@/lib/blobs/keep";
+import { blobKey, blobOrFile, readsBlobs, type Stored } from "@/lib/blobs/store";
+import { blobBytes } from "@/lib/blobs/where";
 import { withTeam } from "@/lib/db";
 import type { Lang } from "@/lib/lang";
 import { VOICE_REFERENCES_DIR } from "@/lib/paths";
@@ -75,7 +77,7 @@ export async function readReferenceAudio(
   lang: Lang,
   sha256: string | null,
 ): Promise<Buffer | null> {
-  if (readsBlobs()) return sha256 ? blobBytes(blobKey("references", sha256)) : null;
+  if (readsBlobs()) return sha256 ? blobBytes(blobKey("references", sha256), lang) : null;
   return fs.readFile(referencePath(voice, lang)).catch((error: NodeJS.ErrnoException) => {
     if (error.code === "ENOENT") return null;
     throw error;
@@ -84,7 +86,7 @@ export async function readReferenceAudio(
 
 /** In r2 mode a row with no hash has no clip, whatever the volume still holds. */
 export function referenceClip(reference: Reference): Stored {
-  return blobOrFile("references", reference.sha256, readsBlobs() ? null : referencePath(reference.voice, reference.lang));
+  return blobOrFile("references", reference.sha256, readsBlobs() ? null : referencePath(reference.voice, reference.lang), reference.lang);
 }
 
 export async function readReference(voice: string, lang: Lang): Promise<Reference | null> {
@@ -261,7 +263,7 @@ export async function saveReference(input: SaveReference): Promise<Reference> {
   const transcript = (await input.transcribe(audio)).trim();
   if (!transcript) throw new Error("fish.audio heard nothing in that window");
 
-  const sha256 = await keep("references", audio, "audio/mpeg", referencePath(input.voice, input.lang));
+  const sha256 = await keep("references", audio, "audio/mpeg", referencePath(input.voice, input.lang), input.lang);
   await withTeam(team, (client) => client.query(
     `insert into "fish_reference"
        ("voice", "lang", "sample", "startSec", "endSec", "transcript", "clipHash", "updatedBy", "updatedAt", "sha256")

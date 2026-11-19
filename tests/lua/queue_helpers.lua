@@ -237,4 +237,11 @@ function M.Has(list, code)
     return false
 end
 
+--- The story Spoken's caption names, as "kind id", or "none".
+function M.CaptionStory()
+    local caption = _G.Spoken:GetCaption()
+    local story = caption and caption.story
+    return story and (story.kind .. " " .. story.id) or "none"
+end
+
 return M

@@ -12,6 +12,7 @@
  * a lexicon change with no before or after, a text edit with no previous version -- so
  * every field a backfill could not supply is optional.
  */
+import type { Lang } from "@/lib/lang";
 import type { Capability } from "@/lib/permissions";
 import type { Branch, Settings } from "@/lib/teams/found";
 
@@ -89,8 +90,8 @@ export type ActivityDetail = {
   "lexicon.added": { after?: string };
   "lexicon.edited": { before?: string; after?: string };
   "lexicon.removed": { before?: string };
-  "override.set": { text: string; before?: string | null; contribution?: number };
-  "override.cleared": { before?: string | null };
+  "override.set": { text: string; before?: string | null; contribution?: number } & ApiAuditDetail;
+  "override.cleared": { before?: string | null } & ApiAuditDetail;
   "ignore.set": { reason?: string | null };
   "ignore.cleared": Record<string, never>;
   "setting.changed": { setting: string };
@@ -151,6 +152,12 @@ export type ActivityDetail = {
   "language.added": { name: string };
   "team.created": { slug: string };
   "team.renamed": { name: string };
+  /** Filed under no team, since the team is gone. */
+  "team.deleted": { slug: string; members: { email: string; lang: Lang; capability: Capability }[] };
+  /** Whether the team must keep its audio in its own bucket (docs/platform/STORAGE.md). */
+  "team.own_storage": { ownStorage: boolean };
+  /** Whether the team's releases skip review and its packs go unlabelled. */
+  "team.official": { official: boolean };
   /** A language handed to another team, by team slug. */
   "team.language_moved": { from: string; to: string };
   /** A second team made beside the language's privileged team `beside`, by slug; filed under the new team. */
@@ -163,7 +170,13 @@ export type ActivityDetail = {
 
   // Releases.
   "release.started": { section: string };
-  "release.finished": { section: string; state: "done" | "unchanged" | "failed"; version?: string };
+  /** `awaiting_review`: a team that is not official staged it, for a site owner to review. */
+  "release.finished": { section: string; state: "done" | "unchanged" | "failed" | "awaiting_review"; version?: string };
+  /** A site owner's review of a team's staged release, filed under the team; the subject is the run id. */
+  "release.approved": { section: string; version?: string };
+  "release.rejected": { section: string; reason: string; version?: string };
+  /** A site owner took a team's pack off the channel; the subject is the delist run's id. */
+  "release.delisted": { section: string };
 
   // Community packs: every language's, the subject is the pack id.
   "pack.submitted": PackSubmissionDetail;

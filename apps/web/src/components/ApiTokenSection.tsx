@@ -15,7 +15,8 @@ function dateInDays(days: number): string {
   return new Date(Date.now() + days * DAY_MS).toISOString().slice(0, 10);
 }
 
-export type TokenLang = { lang: Lang; text: boolean; generate: boolean };
+/** A language where the person holds `text` or `regenerate`, either of which backs text access. */
+export type TokenLang = { lang: Lang; generate: boolean };
 
 const SELECT = "border-input bg-background h-9 rounded-md border px-2 text-sm";
 
@@ -30,22 +31,19 @@ export default function ApiTokenSection({ langs, initial }: { langs: TokenLang[]
   );
   const [label, setLabel] = useState("");
   const [lang, setLang] = useState<Lang>(langs[0].lang);
-  const [access, setAccess] = useState<TokenAccess>(langs[0].text ? "read" : "none");
-  const [generate, setGenerate] = useState(!langs[0].text && langs[0].generate);
+  const [access, setAccess] = useState<TokenAccess>("read");
+  const [generate, setGenerate] = useState(false);
   const [expires, setExpires] = useState(() => dateInDays(90));
   const [created, setCreated] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
   const chosen = langs.find((entry) => entry.lang === lang) ?? langs[0];
 
-  // Switching language drops a choice the owner cannot make there and restores the one that
-  // was dropped: Read when text is back, generate on when it is all they can do.
   function chooseLang(code: Lang) {
     const next = langs.find((entry) => entry.lang === code) ?? langs[0];
     setLang(code);
-    if (!next.text) setAccess("none");
-    else if (access === "none") setAccess("read");
     if (!next.generate) setGenerate(false);
-    else if (!next.text) setGenerate(true);
+    // With generate gone, "No text" would leave nothing to create.
+    if (!next.generate && access === "none") setAccess("read");
   }
 
   const create = () =>
@@ -75,10 +73,12 @@ export default function ApiTokenSection({ langs, initial }: { langs: TokenLang[]
       <h2 className="mb-1 font-medium">API tokens</h2>
       <p className="text-muted-foreground mb-4 text-sm">
         Lets a script or an agent read or change text in one language on your behalf. Point it at{" "}
-        <code>/api/v1</code>. Writes go live at once, under your name. A token stops working at its
-        expiry, when revoked, or when you stop being a text maintainer in its language. A generate
-        token also queues audio, which spends your own ElevenLabs or fish.audio key, and stops
-        working when you lose the right to regenerate in its language.
+        <code>/api/v1</code>. Writes go live at once, under your name. If you are a text maintainer
+        in the token's language, it writes the original text; if not, it writes only your team's
+        overrides. A token stops working at its expiry, when revoked, or when you hold neither the
+        text grant nor the right to regenerate in its language. A generate token also queues audio,
+        which spends your own ElevenLabs or fish.audio key, and can no longer queue audio once you
+        lose the right to regenerate in its language.
       </p>
 
       {error && (
@@ -116,8 +116,8 @@ export default function ApiTokenSection({ langs, initial }: { langs: TokenLang[]
           Access
           <select value={access} onChange={(e) => setAccess(e.target.value as TokenAccess)} className={SELECT}>
             <option value="none">No text</option>
-            {chosen.text && <option value="read">Read</option>}
-            {chosen.text && <option value="write">Read and write</option>}
+            <option value="read">Read</option>
+            <option value="write">Read and write</option>
           </select>
         </label>
         <label className="flex items-center gap-2 pb-2">

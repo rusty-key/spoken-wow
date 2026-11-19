@@ -7,8 +7,10 @@
  */
 import { afterAll, afterEach, beforeEach, describe, expect, it } from "vitest";
 
-import { closeDb, db } from "@/lib/db";
-import { asSystem, ownTeam, testUser } from "@/lib/teams/testing";
+import { closeDb, db, type TeamId } from "@/lib/db";
+import type { Lang } from "@/lib/lang";
+import { forgetTeams } from "@/lib/teams/store";
+import { asSystem, dropLang, dropTeam, newTeamIn, ownTeam, systemRows, testUser, uniqueLang } from "@/lib/teams/testing";
 
 import {
   countRecent,
@@ -212,6 +214,72 @@ describe("a report's team", () => {
     } finally {
       await french.restore();
     }
+  });
+});
+
+describe("a report on a team's pack", () => {
+  let lang: Lang;
+  let other: Lang;
+  let privileged: TeamId;
+  let second: TeamId;
+  let elsewhere: TeamId;
+  const slugOf = async (team: TeamId) =>
+    (await systemRows<{ slug: string }>(`select "slug" from "team" where "id" = $1`, [team]))[0].slug;
+  const filed = async () =>
+    systemRows<{ teamId: TeamId; queue: string }>(`select "teamId", "queue" from "report" where "ip" = $1`, [ip]);
+
+  beforeEach(async () => {
+    forgetTeams();
+    lang = await uniqueLang();
+    other = await uniqueLang();
+    privileged = await newTeamIn(lang, true, "test-report-plain");
+    second = await newTeamIn(lang, false, "test-report-stimmen");
+    elsewhere = await newTeamIn(other, true, "test-report-elsewhere");
+  });
+
+  afterEach(async () => {
+    await asSystem.query(`delete from "report" where "ip" like $1`, [`${ip}%`]);
+    await asSystem.query(`delete from "line_override" where "teamId" = any($1::uuid[])`, [[privileged, second, elsewhere]]);
+    for (const team of [privileged, second, elsewhere]) await dropTeam(team);
+    for (const each of [lang, other]) await dropLang(each);
+    forgetTeams();
+  });
+
+  const context = (fields: Record<string, string>) => ({ fields: { pack: lang, ...fields }, text: null });
+
+  it("is filed with the team whose pack played", async () => {
+    await createReport(submission({ lang, context: context({ packTeam: await slugOf(second) }) }));
+    expect(await filed()).toEqual([{ teamId: second, queue: "audio" }]);
+  });
+
+  it("is filed with the privileged team when a plain pack played", async () => {
+    await createReport(submission({ lang, context: context({ packFolder: "SpokenQuestsAudioHorde_xqXQ" }) }));
+    expect(await filed()).toEqual([{ teamId: privileged, queue: "audio" }]);
+  });
+
+  it("is filed with the privileged team when the team named does not voice the language", async () => {
+    await createReport(submission({ lang, context: context({ packTeam: await slugOf(elsewhere) }) }));
+    expect(await filed()).toEqual([{ teamId: privileged, queue: "audio" }]);
+  });
+
+  it("judges a wrong_text report by the filing team's overrides", async () => {
+    const file = `quests/${ip}.mp3`;
+    await asSystem.query(
+      `insert into "line_override" ("teamId", "lang", "file", "lineId", "text") values ($1, $2, $3, 'q:1:accept', 'Ours.')`,
+      [second, lang, file],
+    );
+    await createReport(
+      submission({ lang, file, category: "wrong_text", context: context({ packTeam: await slugOf(second) }) }),
+    );
+    await createReport(submission({ lang, file, category: "wrong_text", ip: `${ip}-plain`, context: context({}) }));
+    const rows = await systemRows<{ teamId: TeamId; queue: string; ip: string }>(
+      `select "teamId", "queue", "ip" from "report" where "ip" like $1 order by "ip"`,
+      [`${ip}%`],
+    );
+    expect(rows).toEqual([
+      { teamId: second, queue: "audio", ip },
+      { teamId: privileged, queue: "text", ip: `${ip}-plain` },
+    ]);
   });
 });
 

@@ -54,8 +54,11 @@ export async function systemRows<R extends QueryResultRow = QueryResultRow>(text
 
 /** Tables a test may leave rows in under the borrowed team, deleted before the team is. */
 const STAMPED = [
+  // A team's own buckets, and which objects they hold, before the team itself.
+  "storage_move", "archive_object", "storage_backend",
   "regeneration_pause", "regeneration_batch", "take_ack", "take", "recording", "activity", "report", "line_ignore",
   "voice_assignment", "voice", "generation_setting", "queue_dismissal",
+  "text_override",
 ];
 
 /**
@@ -91,10 +94,11 @@ export async function unowned(lang: Lang): Promise<{ restore: () => Promise<void
   };
 }
 
+/** A site owner's move, so the team is official. */
 export async function ownTeam(lang: Lang): Promise<{ team: TeamId; restore: () => Promise<void> }> {
   const slug = `test-${lang.toLowerCase()}-${Math.random().toString(36).slice(2, 8)}`;
   const { rows } = await db().query<{ id: TeamId }>(
-    `insert into "team" ("slug", "name") values ($1, $1) returning "id"`,
+    `insert into "team" ("slug", "name", "official") values ($1, $1, true) returning "id"`,
     [slug],
   );
   const team = rows[0].id;
@@ -154,7 +158,7 @@ export async function runningJob(lang: Lang, team: TeamId): Promise<{ cleanup: (
 
 /** The caller deletes any rows under the team beyond its members, roster and languages first. */
 export async function dropTeam(team: TeamId): Promise<void> {
-  for (const table of ["team_member", "voice_assignment", "voice", "generation_setting", "queue_dismissal", "team_language"]) {
+  for (const table of ["text_override", "team_member", "voice_assignment", "voice", "generation_setting", "queue_dismissal", "team_language"]) {
     await asSystem.query(`delete from "${table}" where "teamId" = $1`, [team]);
   }
   await asSystem.query(`delete from "team" where "id" = $1`, [team]);

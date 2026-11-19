@@ -7,10 +7,11 @@ import { Contained } from "@/components/Width";
 import { viewerOf } from "@/lib/grants/store";
 import { langName } from "@/lib/lang";
 import { isAdmin, langsWhere } from "@/lib/permissions";
-import { SECOND_TEAM_RELEASE } from "@/lib/releases/sections";
+import { releasesClosedFor } from "@/lib/releases/droplet";
+import { TEAM_RELEASES_CLOSED } from "@/lib/releases/sections";
 import { releaseView } from "@/lib/releases/view";
 import { currentSession } from "@/lib/session";
-import { actsAsSecondTeam } from "@/lib/teams/store";
+import { actingTeamRow } from "@/lib/teams/store";
 
 export const metadata: Metadata = { title: "Release · Spoken" };
 
@@ -28,6 +29,7 @@ export default async function Page({ searchParams }: { searchParams: Promise<{ l
 
   const { lang: asked } = await searchParams;
   const lang = administered.find((code) => code === asked) ?? administered[0];
+  const closed = releasesClosedFor(await actingTeamRow(lang));
 
   return (
     <main className="pb-36">
@@ -39,8 +41,8 @@ export default async function Page({ searchParams }: { searchParams: Promise<{ l
         description={`Publish ${langName(lang)}'s sound packs to the Manager. A release marks the latest takes and rebuilds the addon files; it takes a while, since it reads production and builds the pack first.`}
       />
       <Contained className="pt-6">
-        {(await actsAsSecondTeam(lang)) ? (
-          <p className="text-muted-foreground text-sm">{SECOND_TEAM_RELEASE}</p>
+        {closed ? (
+          <p className="text-muted-foreground text-sm">{TEAM_RELEASES_CLOSED}</p>
         ) : (
           <ReleasePanel key={lang} lang={lang} initial={await releaseView(lang)} />
         )}

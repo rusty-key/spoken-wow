@@ -1,6 +1,6 @@
 # Self-serve teams
 
-Design, 2026-11-12. Requests and approval are built (plan 2) for new and unmaintained languages; the second team for a maintained one is plan 5a, with the text layer for every source left to 5b and the Explorer's team picker to 5c. Builds on [`TEAMS.md`](TEAMS.md) phase 1.
+Design, 2026-11-12. Requests and approval are built (plan 2) for new and unmaintained languages, the second team for a maintained one (plan 5a), on the site the text layer for places, readables and bosses (plan 5b), the text API's override layer (plan 5b2), and the Explorer's team picker (plan 5c). Builds on [`TEAMS.md`](TEAMS.md) phase 1.
 
 ## Why
 
@@ -46,6 +46,13 @@ Takes never leave the site through the API. Nothing downloads audio, English or 
   "New language…" choice takes the code, English name and native name, and creating the team
   adds the language and the team in one step (user, 2026-11-13). It runs the same step approval
   runs.
+- **Deletes a team** from its row on `/admin/teams` (user, 2026-11-18). Its roster, settings,
+  lexicon (and its history), pauses, members, invites and log go with it: the log was the team's
+  alone, and a row with no team would be everyone's to read. The site log keeps one
+  `team.deleted` row naming its members. A team that holds a language is refused until the
+  language is handed over; one with takes, recordings, buckets, jobs, overrides or anything else
+  of its own is refused, since work is never deleted. Its ElevenLabs pronunciation dictionary is
+  not deleted there and stays on the account.
 
 ## What approval does
 
@@ -139,7 +146,7 @@ the ten client locales.
   string type. *(My call.)*
 - **Tokens that generate.** A token gains a separate opt-in `generate` scope, beside `read` and
   `write`. Existing tokens never gain spending power. A `generate` token works while its owner
-  holds `regenerate` in its language; text reads and writes need `text`, and override writes need `regenerate`. Each person creates
+  holds `regenerate` in its language; text reads need `text` or `regenerate`, original writes need `text`, and override writes need `regenerate`. Each person creates
   their own tokens; an admin does not issue tokens for members. *(My call.)*
 
 ## Second team in a language
@@ -150,10 +157,10 @@ site. The rest of phase 2 is distribution and stays out.
 - The second team is a non-privileged `team_language` row. Its takes, voices, clones, settings,
   lexicon, ignores, queue and activity are its own, isolated by the existing row-level security.
 - **Text layer.** The team cannot edit the original. Per-team overrides generalise `line_override`
-  from quest lines to every source. The text a team voices and shows is its override where present,
-  else the original, and a take's staleness is judged against that. The text API's writes from a
-  non-text-maintainer team go to its override layer, under `regenerate`. *(My call: without this the
-  team cannot change a word, and TEAMS.md already designs it.)*
+  from quest lines to every source. The text a team voices is its override where present, else the
+  original, and a take's staleness is judged against that; the text shown stays the original. The
+  text API's writes from a non-text-maintainer team go to its override layer, under `regenerate`.
+  *(My call: without this the team cannot change a word, and TEAMS.md already designs it.)*
 - **One team per person per language.** A person works on a language in one team only. A deferred
   trigger on `team_member` enforces it, and the request, approval, grant and invite paths refuse
   it first with a message. *(User.)*
@@ -165,15 +172,38 @@ site. The rest of phase 2 is distribution and stays out.
   the `text` grant, whatever team the maintainer works in. *(User.)*
 - **A second team's admin** sees only their own team's members, invites and grants. Its activity
   is filed under the second team.
-- **Tokens.** Only `text` writes the original text, in any language. A second team's token reads
-  its language's original text and writes its team's overrides when its owner holds `regenerate`,
-  and never writes the original (plan 5b). A token route opts in to second teams, and one not yet
-  converted answers 403 to a second team's token. *(User.)* Until 5b, the text routes answer 403 to
-  the token of anyone whose team in the language is a second team, text maintainers included.
+- **Tokens.** Only `text` writes the original text, in any language. A token reads its language's
+  original text, with its owner's team's overrides, when its owner holds `text` or `regenerate`,
+  and writes that team's overrides when its owner holds `regenerate`. A token route opts in to
+  second teams, and one not opted in answers 403 to a second team's token. *(User.)*
+- **The token's layer.** A write goes to the original or to the owner's team's overrides, chosen
+  per request by a top-level `layer`. With none, a text maintainer's token writes the original, as
+  it always did, and anyone else's writes the overrides; a maintainer who holds `regenerate` sends
+  `"layer": "override"` for theirs. `"layer": "original"` without `text` is refused with 403.
+  Undoing a run restores an override in the team that wrote it, and only for a write token whose
+  owner holds `regenerate` now and acts as that team; otherwise the undo reports the override as
+  skipped (`not_allowed`) and leaves it live. A site owner may undo any team's override.
+  *(My call, set by the controller.)*
 - **Releases and gender splits.** A second team cannot release yet, and cannot split a line by the
   reader's gender, since that rewrites the original every team voices. A plain override is written
   into its own team's layer.
-- **Explorer** gets a team picker per language, so either team's takes can be viewed.
+- **Explorer.** In a language with a second team, the places, bosses, readables and quests
+  explorers show a "Team" picker listing every team that voices it, the main team first. The
+  pick is `?team=<slug>` and chooses whose live takes play, anonymous visitors included. With
+  none, the explorer plays the team the visitor works in, else the main team, so existing links
+  play what they always did. A single-team language shows no picker.
+- **Another team's view is read-only.** It plays that team's live takes and shows its override
+  on a line with a live take that speaks it. Each line reads voiced or
+  missing, with no stale, dirty, made-by, report or recording marks, and the regenerate,
+  override, ignore, record, report and clear-mark controls are hidden. The pencil that writes the
+  original stays, since the original is shared. A note says whose takes play, with a link back to the visitor's own view.
+- **A site owner acts inside a team through the picker.** Their pick is kept per language in the
+  `spoken_team` cookie, read only for a site owner, and every read and write in that language
+  goes to the picked team until they pick again. An entry is kept only where it changes who they
+  act as, so a site owner who is a member of a second team can still act as the main team. While
+  an entry holds, every page of the language shows "Working as {team}" with the picker. The queue
+  panel shows each team only its own finished lines and pauses, and a site owner's Stop cancels
+  pending work in every team of their languages.
 - Contributions and text reports keep going to the text maintainers.
 
 ## Left to the builder
@@ -190,3 +220,4 @@ site. The rest of phase 2 is distribution and stays out.
 
 - A later migration sets language `name`, `native`, `bcp47` and `provider` NOT NULL once no pre-0109 release runs.
 - The CLI `apps/web/scripts/seed-voice-sources.mts` knows only the built-in languages; it does not load the registry.
+- The queue panel's counts, failures and cursor still cut at the latest dismissal mark of any team, so one team's dismissal clears another's counts.

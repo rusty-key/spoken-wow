@@ -134,6 +134,18 @@ describe("staleFiles", () => {
     expect(await staleFiles([file], "enUS", undefined, changed)).toEqual(new Set([file]));
   });
 
+  it("gives an override the hash a fresh take of it carries, by either provider", async () => {
+    await writeOverride("enUS", file, LINE, "Something else entirely.", null);
+    const { rows } = await asSystem.query<{ spokenHashes: string[] }>(
+      `select "spokenHashes" from "line_override" where "file" = $1 and "lang" = 'enUS'`,
+      [file],
+    );
+    for (const provider of ["elevenlabs", "fish"] as const) {
+      const hash = spokenHash(SHAPE[provider](applyPronunciation("Something else entirely.", fileDefaults().rules), undefined));
+      expect(rows[0].spokenHashes).toContain(hash);
+    }
+  });
+
   it("says nothing about a file with no take at all", async () => {
     expect(await staleFiles([file])).toEqual(new Set());
     expect(await staleFiles([])).toEqual(new Set());

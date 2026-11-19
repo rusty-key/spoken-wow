@@ -182,9 +182,9 @@ export function describe(row: ActivityRow): { what: string; quote: string | null
       if (num(d.contribution)) {
         return { what: `took a correction from the game (contribution #${num(d.contribution)})`, quote: str(d.text) };
       }
-      return { what: "overrode the English text", quote: str(d.text) };
+      return { what: "overrode the text", quote: str(d.text) };
     case "override.cleared":
-      return { what: "cleared the English text override", quote: str(d.before) };
+      return { what: "cleared the text override", quote: str(d.before) };
     case "ignore.set":
       return {
         what: row.lang === null ? "ignored a line in every language" : "ignored a line",
@@ -277,8 +277,28 @@ export function describe(row: ActivityRow): { what: string; quote: string | null
       return { what: `added the language ${str(d.name) ?? ""}`.trim(), quote: null };
     case "team.created":
       return { what: `created the team ${str(d.slug) ?? ""}`.trim(), quote: null };
+    case "team.deleted": {
+      const members = Array.isArray(d.members) ? d.members : [];
+      const left = members.length ? `, removing ${plural(members.length, "membership")}` : "";
+      return { what: `deleted the team ${str(d.slug) ?? "?"}${left}`, quote: null };
+    }
     case "team.renamed":
       return { what: "renamed the team", quote: str(d.name) };
+    case "team.own_storage":
+      return {
+        // The event names no language, so the team is named here.
+        what: d.ownStorage
+          ? `required ${row.subject ?? "the team"} to keep its new audio in its own bucket`
+          : `let ${row.subject ?? "the team"} use Spoken's archive`,
+        quote: null,
+      };
+    case "team.official":
+      return {
+        what: d.official
+          ? `made ${row.subject ?? "the team"} official`
+          : `made ${row.subject ?? "the team"} unofficial: its releases wait for review`,
+        quote: null,
+      };
     case "team.language_moved":
       return { what: `handed the language from ${str(d.from) ?? "?"} to ${str(d.to) ?? "?"}`, quote: null };
     case "team.second_in_language":
@@ -290,9 +310,23 @@ export function describe(row: ActivityRow): { what: string; quote: string | null
       return { what: `pressed Release for ${str(d.section) ?? "a section"}`, quote: null };
     case "release.finished":
       return {
-        what: `release of ${str(d.section) ?? "a section"} ${d.state === "failed" ? "failed" : d.state === "unchanged" ? "found nothing to release" : "finished"}`,
+        what: `release of ${str(d.section) ?? "a section"} ${
+          d.state === "failed"
+            ? "failed"
+            : d.state === "unchanged"
+              ? "found nothing to release"
+              : d.state === "awaiting_review"
+                ? "is waiting for a site owner's review"
+                : "finished"
+        }`,
         quote: str(d.version),
       };
+    case "release.approved":
+      return { what: `approved the team's release of ${str(d.section) ?? "a section"}`, quote: str(d.version) };
+    case "release.rejected":
+      return { what: `did not approve the team's release of ${str(d.section) ?? "a section"} ${str(d.version) ?? ""}`.trim(), quote: str(d.reason) };
+    case "release.delisted":
+      return { what: `delisted the team's ${str(d.section) ?? "a section"} pack`, quote: null };
     case "pack.submitted":
       return { what: `submitted the community pack ${row.subject} ${str(d.version) ?? ""}`.trim(), quote: null };
     case "pack.approved":

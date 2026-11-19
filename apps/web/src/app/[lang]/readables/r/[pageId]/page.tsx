@@ -8,7 +8,7 @@ import ReportForm from "@/components/ReportForm";
 import { packReleases } from "@/lib/releases/store";
 import ListenFirst from "@/components/reports/ListenFirst";
 import { audioRelPath } from "@/lib/readables/audio";
-import { isCorpusEmpty, loadContext, pageById } from "@/lib/readables/catalogue";
+import { isCorpusEmpty, loadContext, teamPageById } from "@/lib/readables/catalogue";
 import { Contained } from "@/components/Width";
 
 /**
@@ -35,7 +35,7 @@ async function resolve(params: Promise<Params>) {
   const lang = await pageLang(params);
   const { pageId } = await params;
   try {
-    return await pageById(pageId, lang);
+    return await teamPageById(pageId, lang);
   } catch (error) {
     // An unseeded corpus names no pages, so no address resolves to one. What a player
     // arriving from the game should see is the same page an unknown id gives them.
@@ -106,6 +106,13 @@ export default async function Page({ params }: { params: Promise<Params> }) {
           )}
 
           <p className="mt-5 whitespace-pre-line">{page.text}</p>
+          {/* Under the original, which is what the game shows, and only while the live take speaks it:
+              until then the override is the team's work in progress and the narration says the original. */}
+          {page.override && take?.textHash === page.hash && (
+            <p className="mt-2 border-l-2 border-sky-400/60 pl-2 whitespace-pre-line" title="What the narration says">
+              {page.override.text}
+            </p>
+          )}
 
           <section className="bg-muted mt-8 rounded-lg border p-4">
             <h2 className="font-medium">Report a problem</h2>

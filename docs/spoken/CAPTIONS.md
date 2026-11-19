@@ -177,6 +177,10 @@ DialogueUI's own text under every narrator style, Voice Only included, when Mark
 is on; with DialogueUI installed Spoken's page offers them under Voice Only
 (`DialogueUIOptions:WordRowsShown`). **Type Out By** applies there too.
 
+The caption's `story` is the `{ kind, id }` that `Spoken:PlayStory` was asked for when it played
+the line, so an addon that played a story knows the caption is its line without comparing text. It
+is nil for any other line, a story that autoplays included.
+
 ## Checks
 
 Run from the repository root:

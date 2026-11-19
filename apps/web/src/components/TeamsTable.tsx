@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -39,6 +39,8 @@ function people(team: TeamSummary): Person[] {
   return [...byUser.values()];
 }
 
+type Confirm = { title: string; description: string; label: string; destructive?: boolean; action: () => ReturnType<typeof send> };
+
 const liveTakes = (count: number) => `${count} live take${count === 1 ? "" : "s"}`;
 
 export default function TeamsTable({ initial, takes, languages }: Props) {
@@ -46,10 +48,18 @@ export default function TeamsTable({ initial, takes, languages }: Props) {
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [names, setNames] = useState(() => Object.fromEntries(initial.map((team) => [team.id, team.name])));
+  const [ownStorage, setOwnStorage] = useState<Record<string, boolean>>({});
+  const [official, setOfficial] = useState<Record<string, boolean>>({});
+  // A saved value shows only until the refresh after the save lands. That refresh read the team
+  // after the save, so its value is the one to show, even one another owner saved since.
+  useEffect(() => {
+    setOwnStorage({});
+    setOfficial({});
+  }, [initial]);
   const [form, setForm] = useState({ slug: "", name: "", adminEmail: "", langs: [] as Lang[] });
   const [newLanguage, setNewLanguage] = useState(false);
   const [fresh, setFresh] = useState<NewLanguage>({ code: "", name: "", native: "" });
-  const [moving, setMoving] = useState<{ lang: Lang; target: TeamSummary } | null>(null);
+  const [confirming, setConfirming] = useState<Confirm | null>(null);
 
   async function run(action: () => ReturnType<typeof send>): Promise<boolean> {
     setBusy(true);
@@ -71,12 +81,30 @@ export default function TeamsTable({ initial, takes, languages }: Props) {
     });
   };
 
-  function move() {
-    if (!moving) return;
-    const { lang, target } = moving;
-    setMoving(null);
-    void run(() => send(`/api/teams/${target.id}/languages`, "PUT", { lang }));
+  function confirm() {
+    if (!confirming) return;
+    setConfirming(null);
+    void run(confirming.action);
   }
+
+  const handOver = (lang: Lang, target: TeamSummary) =>
+    setConfirming({
+      title: `Hand ${lang} to ${target.name}?`,
+      description: `${liveTakes(takes[lang] ?? 0)} move with it, along with its voices, settings and members.`,
+      label: "Hand over",
+      action: () => send(`/api/teams/${target.id}/languages`, "PUT", { lang }),
+    });
+
+  const remove = (team: TeamSummary) =>
+    setConfirming({
+      title: `Delete ${team.name}?`,
+      description: `Its voices, settings, lexicon, members and invites go with it${
+        team.alsoIn.length ? `, and it stops being a second team in ${team.alsoIn.join(", ")}` : ""
+      }. A team with takes, recordings or other work of its own is refused.`,
+      label: "Delete team",
+      destructive: true,
+      action: () => send(`/api/teams/${team.id}`, "DELETE"),
+    });
 
   async function create(event: React.FormEvent) {
     event.preventDefault();
@@ -111,7 +139,16 @@ export default function TeamsTable({ initial, takes, languages }: Props) {
             <th className="py-2 pr-3 font-normal">Slug</th>
             <th className="py-2 pr-3 font-normal">Name</th>
             <th className="py-2 pr-3 font-normal">Languages</th>
-            <th className="py-2 font-normal">Members</th>
+            <th className="py-2 pr-3 font-normal">Members</th>
+            <th className="py-2 pr-3 font-normal" title="New audio goes only to its own bucket; what is already in Spoken's archive stays">
+              Own storage
+            </th>
+            <th className="py-2 pr-3 font-normal" title="Its releases need no review, and its packs carry no team name in the Manager">
+              Official
+            </th>
+            <th className="py-2 font-normal">
+              <span className="sr-only">Delete</span>
+            </th>
           </tr>
         </thead>
         <tbody>
@@ -139,7 +176,7 @@ export default function TeamsTable({ initial, takes, languages }: Props) {
                           disabled={busy}
                           onValueChange={(id) => {
                             const target = initial.find((other) => other.id === id);
-                            if (target) setMoving({ lang, target });
+                            if (target) handOver(lang, target);
                           }}
                         >
                           <SelectTrigger size="sm" className="text-xs" aria-label={`Move ${lang} to`}>
@@ -166,7 +203,7 @@ export default function TeamsTable({ initial, takes, languages }: Props) {
                   {team.langs.length === 0 && team.alsoIn.length === 0 && <li className="text-muted-foreground text-xs">none</li>}
                 </ul>
               </td>
-              <td className="py-2">
+              <td className="py-2 pr-3">
                 <ul className="flex flex-col gap-1">
                   {people(team).map((person) => (
                     <li key={person.email}>
@@ -178,6 +215,46 @@ export default function TeamsTable({ initial, takes, languages }: Props) {
                     </li>
                   ))}
                 </ul>
+              </td>
+              <td className="py-2 pr-3">
+                <input
+                  type="checkbox"
+                  aria-label={`${team.slug}'s new audio goes only to its own bucket`}
+                  checked={ownStorage[team.id] ?? team.ownStorage}
+                  disabled={busy}
+                  onChange={(event) => {
+                    const next = event.target.checked;
+                    void run(() => send(`/api/teams/${team.id}`, "PATCH", { ownStorage: next })).then((ok) => {
+                      if (ok) setOwnStorage((current) => ({ ...current, [team.id]: next }));
+                    });
+                  }}
+                />
+              </td>
+              <td className="py-2 pr-3">
+                <input
+                  type="checkbox"
+                  aria-label={`${team.slug} is official`}
+                  checked={official[team.id] ?? team.official}
+                  disabled={busy}
+                  onChange={(event) => {
+                    const next = event.target.checked;
+                    void run(() => send(`/api/teams/${team.id}`, "PATCH", { official: next })).then((ok) => {
+                      if (ok) setOfficial((current) => ({ ...current, [team.id]: next }));
+                    });
+                  }}
+                />
+              </td>
+              <td className="py-2 pl-3 text-right">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  aria-label={`Delete ${team.slug}`}
+                  title={team.langs.length ? "Hand its languages to another team first" : undefined}
+                  disabled={busy || team.langs.length > 0}
+                  onClick={() => remove(team)}
+                >
+                  Delete
+                </Button>
               </td>
             </tr>
           ))}
@@ -231,22 +308,20 @@ export default function TeamsTable({ initial, takes, languages }: Props) {
         </Button>
       </form>
 
-      <Dialog open={moving !== null} onOpenChange={(open) => !open && setMoving(null)}>
-        {moving && (
+      <Dialog open={confirming !== null} onOpenChange={(open) => !open && setConfirming(null)}>
+        {confirming && (
           <DialogContent>
             <DialogHeader>
-              <DialogTitle>
-                Hand {moving.lang} to {moving.target.name}?
-              </DialogTitle>
-              <DialogDescription>
-                {liveTakes(takes[moving.lang] ?? 0)} move with it, along with its voices, settings and members.
-              </DialogDescription>
+              <DialogTitle>{confirming.title}</DialogTitle>
+              <DialogDescription>{confirming.description}</DialogDescription>
             </DialogHeader>
             <DialogFooter>
-              <Button variant="ghost" onClick={() => setMoving(null)}>
+              <Button variant="ghost" onClick={() => setConfirming(null)}>
                 Cancel
               </Button>
-              <Button onClick={move}>Hand over</Button>
+              <Button variant={confirming.destructive ? "destructive" : "default"} onClick={confirm}>
+                {confirming.label}
+              </Button>
             </DialogFooter>
           </DialogContent>
         )}

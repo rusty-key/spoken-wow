@@ -4,6 +4,10 @@
  * A sibling route, not a second verb on /api/contributions: that path's POST is open to the
  * whole internet and this one must never be. Whoever edits the language rather than an
  * admin, as on the reports side -- these are the people who already act on lines.
+ *
+ * Accepting may carry `text`, the reviewer's edit of what the player sent ("keep with fix").
+ * Rejecting may carry `reason`, which the Rejected tab shows; any other status clears it. Both are
+ * written in the resolve's own transaction (resolveContribution).
  */
 import { mayIgnoreIn, requireCapability } from "@/lib/generation/authz";
 import { contributionLocale } from "@/lib/contributions/store";
@@ -16,7 +20,13 @@ import { bookMatchOf } from "@/lib/contributions/book-match";
 export const dynamic = "force-dynamic";
 
 export async function POST(request: Request) {
-  const body = (await request.json().catch(() => ({}))) as { id?: unknown; status?: unknown; bookMatch?: unknown };
+  const body = (await request.json().catch(() => ({}))) as {
+    id?: unknown;
+    status?: unknown;
+    bookMatch?: unknown;
+    text?: unknown;
+    reason?: unknown;
+  };
 
   const id = Number(body.id);
   if (!Number.isInteger(id) || id <= 0) {
@@ -43,7 +53,10 @@ export async function POST(request: Request) {
   // A readables row's match as the moderator saw it: accepting refuses a row that now matches
   // otherwise, as the bulk route does.
   const bookMatch = bookMatchOf(body.bookMatch);
-  const outcome = await resolveContribution(id, body.status, session.user.id, undefined, mayIgnore, bookMatch);
+  const outcome = await resolveContribution(id, body.status, session.user.id, undefined, mayIgnore, bookMatch, {
+    text: typeof body.text === "string" ? body.text : undefined,
+    reason: typeof body.reason === "string" ? body.reason : null,
+  });
   if (!outcome.ok) {
     if (outcome.reason === "not-found") {
       return Response.json({ error: "unknown contribution" }, { status: 404 });

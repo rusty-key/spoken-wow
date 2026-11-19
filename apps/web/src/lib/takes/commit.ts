@@ -25,7 +25,8 @@ import "server-only";
 import path from "node:path";
 
 import { recordActivity } from "@/lib/activity/store";
-import { keep, readsBlobs } from "@/lib/blobs/store";
+import { keep } from "@/lib/blobs/keep";
+import { readsBlobs } from "@/lib/blobs/store";
 import { queryIn, withTeam } from "@/lib/db";
 import type { Source } from "@/lib/sections";
 import { teamOf, type TeamId } from "@/lib/teams/store";
@@ -111,7 +112,7 @@ export async function commitTake(
 
   const name = archiveName(next, data);
   const archived = path.join(historyDirOf(source, file, lang), name);
-  const sha256 = await keep("takes", data, "audio/mpeg", archived);
+  const sha256 = await keep("takes", data, "audio/mpeg", archived, lang);
   const onDisk = !readsBlobs();
   const archiveFile = onDisk ? name : null;
 

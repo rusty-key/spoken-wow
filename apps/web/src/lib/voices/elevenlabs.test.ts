@@ -3,6 +3,7 @@ import { describe, expect, it, vi } from "vitest";
 import {
   addVoice,
   deleteVoice,
+  getSubscription,
   isRenamable,
   listAccountVoices,
   listModels,
@@ -317,5 +318,25 @@ describe("generationStatus, in a language", () => {
     expect(english.voices).toEqual(["orc-male-standard"]);
     expect(german.voices).toEqual(["narrator-male"]);
     expect(german.voiceIds.get("narrator-male")).toBe("de");
+  });
+});
+
+// A degraded ElevenLabs once hung /voices and /lexicon until nginx gave up: a read must fail.
+describe("account reads", () => {
+  // Answers nothing until the request is aborted, like a server that accepted and stalled.
+  const stalled = vi.fn(
+    (_url: RequestInfo | URL, init?: RequestInit) =>
+      new Promise<Response>((_resolve, reject) =>
+        init?.signal?.addEventListener("abort", () => reject(init.signal!.reason)),
+      ),
+  );
+  const options = { apiKey: "k", fetchImpl: stalled, timeoutMs: 20 };
+
+  it.each([
+    ["listVoices", () => listVoices(options)],
+    ["listModels", () => listModels(options)],
+    ["getSubscription", () => getSubscription(options)],
+  ])("%s gives up on a stalled ElevenLabs and says so", async (_name, read) => {
+    await expect(read()).rejects.toThrow(/timed out: ElevenLabs did not answer within 0.02s/);
   });
 });

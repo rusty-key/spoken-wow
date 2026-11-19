@@ -181,6 +181,8 @@ export async function approveRequest(
         team: { slug: null, name: row.teamName },
         adminId: row.userId,
         settings: options.settings,
+        // Its releases wait for a site owner's review.
+        official: false,
       },
       actorId,
     );

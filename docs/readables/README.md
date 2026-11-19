@@ -116,6 +116,17 @@ plays (`pipelines/readables/tools/lib/absorb.mjs`).
 | generate | `book_line` | mp3s and `take` rows | anyone with an ElevenLabs key |
 | export | `book_line` | `addons/Spoken_Readables/Data/Books.lua` | a maintainer, before a release |
 
+### A team's own wording
+
+On `/readables`, the override control beside a page's edit control changes what the viewer's team
+says for that page, and leaves `book_line` alone. It needs `regenerate` in the language, works in
+every language, English included, and is offered only on a page with its own text in the language.
+The override belongs to that team (`text_override`, see `docs/platform/TEAMS.md`): its takes speak
+it and are judged stale against it, while the page shown on the site and in game, and every other
+team, keep the original. A page's spoken title keeps the book's original name. The row shows the
+override under the page, and says when the original has changed since, with Keep and Drop. A minted
+page's override moves with it when the page is absorbed.
+
 ## Running it locally
 
 The databases are OrbStack containers and a native Postgres. Nothing here touches the
@@ -311,12 +322,15 @@ envelope and the address to paste. The player copies it, opens it, and sees exac
 about to be sent before it goes — the same page, submitted again by the same or another
 reader, bumps a count on one row at `/contributions` rather than filing a second. The first
 click ever also offers Spoken's **Collect Missing Lines**, which keeps such pages in
-`SpokenContributions.lua` for the player to upload at `/contribute`. The page goes with the
-reader's name, class and race as `$N`, `$C` and `$R` (`Detemplate`); the name is matched as
-written and in capitals, as the client writes it into some pages ("GRIMBALOR,"). Pages kept
-before that are not rewritten at login: the file is the account's and holds no record of which
-character kept a page, so a character's name cannot be taken out of one without risking another's
-words ("The Light keeps you.").
+`SpokenContributions.lua` for the player to upload at `/contribute`. The page goes as the client
+showed it, with the reader's name, class, race and sex beside it, and the site puts the name,
+class and race back as `$N`, `$C` and `$R` and keeps no name (`apps/web/src/lib/contributions/reader.ts`,
+as for quests). The `page` checksum is taken with the tokens back (`Detemplate`), so every
+character's copy is one page; the name is matched as written and in capitals, as the client
+writes it into some pages ("GRIMBALOR,"). A kept page holds the page as shown, the reader's name
+included, in the player's own file; the name is taken out when the file is uploaded. Pages a
+version older than 3.6.0 kept carry the name in their text with no `reader` beside it, and the
+site cannot tell it from the page's own words ("The Light keeps you."), so those go as they are.
 
 ### The Readables tab
 

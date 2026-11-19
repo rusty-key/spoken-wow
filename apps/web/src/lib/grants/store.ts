@@ -41,6 +41,17 @@ export async function grantsOf(userId: string, client?: Pick<ClientBase, "query"
   return grants;
 }
 
+/** `userId`'s grants in `lang` that `team` holds, with `text`, which is in no team. */
+export async function grantsInTeam(userId: string, lang: Lang, team: TeamId | null): Promise<Grant[]> {
+  const rows = await query<{ capability: string }>(
+    `select 'text' as "capability" from "language_grant" where "userId" = $1 and "lang" = $2
+     union all
+     select "capability" from "team_member" where "userId" = $1 and "lang" = $2 and "teamId" = $3`,
+    [userId, lang, team],
+  );
+  return rows.flatMap(({ capability }) => (isCapability(capability) ? [{ lang, capability }] : []));
+}
+
 /** Keyed on the user id, a string, which is what lets React's cache find it again. */
 const cachedGrants = cache(grantsOf);
 

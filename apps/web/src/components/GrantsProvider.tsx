@@ -12,37 +12,48 @@ import type { Grant } from "@/lib/permissions";
  * the same request twice on every page a translator opened. Empty for a visitor, who costs
  * no request at all. The server checks again on every write: this only decides what to draw.
  *
- * The same answer carries a site admin's count of pack submissions waiting for review. The
- * review page sets it after each decision, so the header's badge does not go on counting a
- * submission that was just decided.
+ * The same answer carries a site admin's counts of pack submissions and team releases waiting
+ * for review. Each review page sets its count after each decision, so the header's badge does
+ * not go on counting something that was just decided.
  */
 type Mine = {
   grants: readonly Grant[];
   pendingPacks: number;
   setPendingPacks: (count: number) => void;
+  pendingReleases: number;
+  setPendingReleases: (count: number) => void;
 };
 
-const GrantsContext = createContext<Mine>({ grants: [], pendingPacks: 0, setPendingPacks: () => {} });
+const GrantsContext = createContext<Mine>({
+  grants: [],
+  pendingPacks: 0,
+  setPendingPacks: () => {},
+  pendingReleases: 0,
+  setPendingReleases: () => {},
+});
 
 export function GrantsProvider({ children }: { children: React.ReactNode }) {
   const { data: session } = useSession();
   const userId = session?.user.id ?? null;
   const [grants, setGrants] = useState<Grant[]>([]);
   const [pendingPacks, setPendingPacks] = useState(0);
+  const [pendingReleases, setPendingReleases] = useState(0);
 
   useEffect(() => {
     if (!userId) {
       setGrants([]);
       setPendingPacks(0);
+      setPendingReleases(0);
       return;
     }
     let live = true;
     fetch("/api/grants/mine")
       .then((response) => (response.ok ? response.json() : { grants: [] }))
-      .then((body: { grants: Grant[]; pendingPacks?: number }) => {
+      .then((body: { grants: Grant[]; pendingPacks?: number; pendingReleases?: number }) => {
         if (!live) return;
         setGrants(body.grants);
         setPendingPacks(body.pendingPacks ?? 0);
+        setPendingReleases(body.pendingReleases ?? 0);
       })
       .catch(() => {});
     return () => {
@@ -50,7 +61,10 @@ export function GrantsProvider({ children }: { children: React.ReactNode }) {
     };
   }, [userId]);
 
-  const value = useMemo(() => ({ grants, pendingPacks, setPendingPacks }), [grants, pendingPacks]);
+  const value = useMemo(
+    () => ({ grants, pendingPacks, setPendingPacks, pendingReleases, setPendingReleases }),
+    [grants, pendingPacks, pendingReleases],
+  );
   return <GrantsContext.Provider value={value}>{children}</GrantsContext.Provider>;
 }
 
@@ -62,4 +76,10 @@ export function useGrants(): readonly Grant[] {
 export function usePendingPacks(): [number, (count: number) => void] {
   const { pendingPacks, setPendingPacks } = useContext(GrantsContext);
   return [pendingPacks, setPendingPacks];
+}
+
+/** Teams' releases waiting for review; always 0 for anybody but a site admin. */
+export function usePendingReleases(): [number, (count: number) => void] {
+  const { pendingReleases, setPendingReleases } = useContext(GrantsContext);
+  return [pendingReleases, setPendingReleases];
 }

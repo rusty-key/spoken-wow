@@ -64,9 +64,11 @@ droplet, through the site. Do not add a generation flag to a CLI. `make places-l
 credits, even with `--dry-run`.
 
 **Data only comes home from production.** The take archive is the only audio and only the
-site writes it: `audio-history/` on the droplet's volume, and the `spoken-archive` R2 bucket,
-whose objects are named by their SHA-256 (`apps/web/src/lib/blobs/store.ts`). Nothing deletes
-from the bucket's `takes/` or `recordings/`. The `<section>-pull-*` targets never delete anything.
+site writes it: `audio-history/` on the droplet's volume, the `spoken-archive` R2 bucket, and the
+buckets teams bring themselves (`docs/platform/STORAGE.md`). Objects are named by their SHA-256
+(`apps/web/src/lib/blobs/store.ts`). Nothing deletes from our bucket's `takes/` or `recordings/`.
+A team's own bucket is the team's: we recommend the same rule there and do not enforce it, and the
+site never deletes an archive object from it. The `<section>-pull-*` targets never delete anything.
 The `<section>-sync` targets replace local tables and are destructive, so confirm before
 running one. `sounds` directories are assembled from the live takes before a build and are
 never the record. Audio stays out of git; `.gitignore` says which directories cannot be

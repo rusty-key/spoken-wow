@@ -29,7 +29,6 @@ describe("search by npc", () => {
   it("finds an npc by name, case-insensitively", () => {
     const result = find({ q: "dughan", filter: "npc", limit: 50_000 });
     expect(npcKeys(result.lines)).toEqual(["creature:240"]);
-    expect(result.npcCount).toBe(1);
     expect(result.total).toBe(28);
   });
 
@@ -235,7 +234,6 @@ describe("paging", () => {
     const page = find({});
     expect(page.lines).toHaveLength(50);
     expect(page.total).toBe(corpus.lines.length);
-    expect(page.npcCount).toBeGreaterThan(2_000);
   });
 
   it("does not repeat or skip a line between pages", () => {
@@ -383,7 +381,23 @@ describe("overrides", () => {
     expect(new Set(found.map(audioRelPath))).toEqual(new Set([fresh]));
   });
 
-  it("matches nothing when staleness was never fetched, rather than everything", () => {
+  it("counts every state under a pressed one, so Missing does not zero Outdated", () => {
+    const [fresh, outdated] = corpus.lines
+      .filter((l) => l.generatable)
+      .slice(0, 2)
+      .map(audioRelPath);
+    const voiced = new Set([fresh, outdated]);
+    const context = { ...rewrite(outdated, "anything"), stale: new Set([outdated]) };
+
+    const everything = search(corpus, voiced, {}, context);
+    const missing = search(corpus, voiced, { state: "missing" }, context);
+
+    expect(missing.counts).toEqual(everything.counts);
+    expect(missing.counts).toMatchObject({ all: everything.total, stale: 1, current: 1 });
+    expect(missing.total).toBe(missing.counts.missing);
+  });
+
+    it("matches nothing when staleness was never fetched, rather than everything", () => {
     // The filter costs a query and a hash per take, so it is fetched only when asked for. An
     // absent answer must not read as "every take is out of date".
     expect(matchingLines(corpus, store, { state: "stale" })).toEqual([]);

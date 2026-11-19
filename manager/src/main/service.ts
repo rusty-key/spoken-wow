@@ -2,8 +2,8 @@
 // the settings and the catalog, and runs jobs.
 import path from 'node:path'
 import { CHANNELS, type AddGameResult, type ClearDownloadsResult, type InstallOptions } from '../shared/api'
-import { isSupportedFlavor, type Catalog, type CommunityCatalog, type GameInstall, type JobProgress, type Product, type ProductStatus, type ReleaseInfo, type Settings, type SharingChoice, type SharingStatus, type Snapshot } from '../shared/types'
-import { PRODUCTS, productById } from '../shared/products'
+import { isSupportedFlavor, type Catalog, type CatalogUpdate, type CommunityCatalog, type GameInstall, type JobProgress, type Product, type ProductStatus, type ReleaseInfo, type Settings, type SharingChoice, type SharingStatus, type Snapshot } from '../shared/types'
+import { installedVoiceProduct, languagesFor, productById, productsFor } from '../shared/products'
 import { compareVersions } from '../shared/version'
 import { buildCatalog, latestFor, loadCatalog, saveCatalog } from './catalog'
 import { COMMUNITY_PREFIX, communityProduct, communityRelease, fetchCommunity, isCommunityProductId, loadCommunity, saveCommunity } from './community'
@@ -21,11 +21,11 @@ import { isChannelRelease } from '../shared/channel'
 import { channelRelease, withChannel } from './packs-catalog'
 import { PACKS_BASE_URL } from './packs-key'
 import { estimatePack } from './packs-plan'
-import { fetchIndex, fetchManifest, loadCachedIndex, loadCachedManifest, type ChannelIndex, type ChannelOptions, type ChannelPack } from './packs-remote'
+import { fetchIndex, fetchManifest, loadCachedIndex, loadCachedManifest, type ChannelIndexV2, type ChannelOptions, type ChannelPack } from './packs-remote'
 import { dropPackState, loadPackState } from './packs-state'
 import { syncPacks } from './packs-sync'
 import { loadLedger, resetInstallId, sendPending, type SendResult, type ShareLedger } from './share'
-import { getRecord, loadSettings, loadState, log, sanitizeSettings, saveSettings } from './state'
+import { getRecord, loadSettings, loadState, log, sanitizeSettings, saveSettings, type StateFile } from './state'
 import { computeStatuses } from './status'
 
 export interface ServiceOptions {
@@ -82,7 +82,7 @@ export class ManagerService {
   private refreshingCommunity: Promise<CommunityCatalog> | null = null
   community: CommunityCatalog
   /** The channel's index: the last verified one, until a refresh brings a newer one. */
-  channel: ChannelIndex | null = null
+  channel: ChannelIndexV2 | null = null
   /** Settles when the first scan is done; handlers wait for it. Never rejects. */
   ready: Promise<void> = Promise.resolve()
   sharingStatus: SharingStatus
@@ -148,7 +148,8 @@ export class ManagerService {
       settings: this.settings,
       catalog: this.effectiveCatalog(),
       community: this.community,
-      products: PRODUCTS,
+      products: this.products(),
+      languages: languagesFor(this.channel),
       appVersion: this.opts.appVersion,
       dataPath: this.opts.dataPath,
       platform: process.platform === 'darwin' ? 'darwin' : process.platform === 'win32' ? 'win32' : 'linux',
@@ -216,9 +217,9 @@ export class ManagerService {
         ...(this.opts.fetchImpl ? { fetchImpl: this.opts.fetchImpl } : {}),
         ...(this.opts.apiBase ? { apiBase: this.opts.apiBase } : {})
       }),
-      fetchIndex(this.opts.dataPath, this.channelOptions())
+      fetchIndex(this.opts.dataPath, this.channelOptions(), () => this.channel)
     ])
-    if (ch.index) this.channel = ch.index
+    if (ch.index) this.takeChannel(ch.index)
     if (!ch.offline) this.channelFetchedAt = Date.now()
     // When the request failed and nothing was cached, keep what the catalog already held.
     const keepOld = res.offline && res.releases.length === 0
@@ -237,8 +238,8 @@ export class ManagerService {
     }
     // The file keeps GitHub's list alone; the window is offered what can be installed, channel packs too.
     const offered = this.effectiveCatalog()
-    this.opts.send(CHANNELS.catalogChanged, offered)
-    await this.warmManifests(offered)
+    this.catalogChanged(offered)
+    await this.warmManifests()
     return offered
   }
 
@@ -247,8 +248,9 @@ export class ManagerService {
     try {
       const state = loadState(this.opts.dataPath)
       const catalog = this.effectiveCatalog()
+      const products = this.productLists(state).all
       for (const game of this.games.filter((g) => isSupportedFlavor(g.flavor))) {
-        for (const status of await computeStatuses(game, catalog, this.settings, state, this.allProducts())) {
+        for (const status of await computeStatuses(game, catalog, this.settings, state, products)) {
           const key = `${game.id}:${status.productId}`
           if (status.state !== 'update-available' || status.blockedReason || isCommunityProductId(status.productId)) continue
           if (getRecord(state, game.id, status.productId)?.pinned || this.autoSkip.has(key)) continue
@@ -264,12 +266,14 @@ export class ManagerService {
 
   /**
    * Warms the manifest cache of installed channel packs so the Update label can be computed offline. The window has
-   * the catalog already; it is told again once a manifest it lacked has arrived, so the label's size can show.
+   * the catalog already; it is told again once a manifest it lacked has arrived, so the label's size can show. What it
+   * is told then is the catalog of that moment: a refresh meanwhile may have brought a newer channel.
    */
-  private async warmManifests(offered: Catalog): Promise<void> {
+  private async warmManifests(): Promise<void> {
     const wanted = new Map<string, ChannelPack>()
+    const products = this.products()
     for (const game of this.games) {
-      for (const p of PRODUCTS) {
+      for (const p of products) {
         const packs = this.channelPacks(p)
         if (!packs || !p.folders!.some((f) => loadPackState(game, f))) continue
         p.folders!.forEach((f, i) => {
@@ -290,7 +294,7 @@ export class ManagerService {
           )
         )
       )
-      if (got.some(Boolean)) this.opts.send(CHANNELS.catalogChanged, offered)
+      if (got.some(Boolean)) this.catalogChanged(this.effectiveCatalog())
     }
   }
 
@@ -310,16 +314,26 @@ export class ManagerService {
   }
 
   private async fetchChannel(signal?: AbortSignal): Promise<void> {
-    const ch = await fetchIndex(this.opts.dataPath, this.channelOptions(signal))
+    const ch = await fetchIndex(this.opts.dataPath, this.channelOptions(signal), () => this.channel)
     if (ch.offline || !ch.index) throw new PlainError(t('service.channelUnreadable'))
-    const changed = ch.index.generatedAt !== this.channel?.generatedAt
-    this.channel = ch.index
+    // A fetch that changed nothing gives back the index in use. index.json read as v2 can change with the same generatedAt.
+    const changed = this.takeChannel(ch.index)
     this.channelFetchedAt = Date.now()
     if (!changed) return
     // A row saying "update first" needs the update it points at to be on offer.
-    const offered = this.effectiveCatalog()
-    this.opts.send(CHANNELS.catalogChanged, offered)
-    void this.warmManifests(offered).catch((err) => log('Manifests of the channel:', err))
+    this.catalogChanged(this.effectiveCatalog())
+    void this.warmManifests().catch((err) => log('Manifests of the channel:', err))
+  }
+
+  /**
+   * Puts a fetched index in use unless the one in use is newer: the catalog's refresh and the channel's can overlap, and
+   * the one that started first may finish last. Whether the index in use changed.
+   */
+  private takeChannel(index: ChannelIndexV2): boolean {
+    if (index === this.channel) return false
+    if (this.channel && Date.parse(index.generatedAt) < Date.parse(this.channel.generatedAt)) return false
+    this.channel = index
+    return true
   }
 
   // ---------------------------------------------------------------- community
@@ -353,16 +367,52 @@ export class ManagerService {
     return next
   }
 
-  /** The official table plus the registry's packs. */
+  // Keyed by the index and registry objects, which a fetch keeps when nothing changed, and by the delisted ids.
+  private productsMemo: { channel: ChannelIndexV2 | null; community: CommunityCatalog; listed: Product[]; listedIds: Set<string>; delisted: string; all: Product[]; products: Product[] } | null = null
+
+  /**
+   * Every product, then the window's share of them: Spoken and the voice packs. The table, every team's and new
+   * language's pack the channel lists, the registry's packs, and those installed earlier, in any game, that no list
+   * carries any more, so they can still be seen and removed.
+   */
+  private productLists(state: StateFile = loadState(this.opts.dataPath)): { all: Product[]; products: Product[] } {
+    let memo = this.productsMemo
+    if (memo?.channel !== this.channel || memo.community !== this.community) {
+      const listed = [...productsFor(this.channel), ...this.community.packs.map((p) => communityProduct(p))]
+      const listedIds = new Set(listed.map((p) => p.id))
+      memo = { channel: this.channel, community: this.community, listed, listedIds, delisted: '', all: listed, products: listed.filter((p) => p.kind !== 'community') }
+    }
+    const { listedIds } = memo
+    const installed = Object.values(state.installs).flatMap((perGame) => Object.keys(perGame))
+    const delistedIds = [...new Set(installed.filter((id) => !listedIds.has(id)))].sort()
+    if (delistedIds.join('\n') !== memo.delisted) {
+      const all = [...memo.listed, ...delistedIds.flatMap((id) => this.delistedProduct(id) ?? [])]
+      memo = { ...memo, delisted: delistedIds.join('\n'), all, products: all.filter((p) => p.kind !== 'community') }
+    }
+    this.productsMemo = memo
+    return memo
+  }
+
+  /** Spoken and the voice packs, delisted ones among them: what the window is sent. */
+  products(): Product[] {
+    return this.productLists().products
+  }
+
+  /** The products follow the channel, so the window is sent them with every catalog. */
+  private catalogChanged(catalog: Catalog): void {
+    this.opts.send(CHANNELS.catalogChanged, { catalog, products: this.products(), languages: languagesFor(this.channel) } satisfies CatalogUpdate)
+  }
+
+  /** The products plus the registry's packs, delisted ones among them. */
   private allProducts(): Product[] {
-    return [...PRODUCTS, ...this.community.packs.map((p) => communityProduct(p))]
+    return this.productLists().all
   }
 
   /** The catalog with the registry's packs as one release each. */
   private effectiveCatalog(): Catalog {
     const releases = { ...this.catalog.releases }
     for (const p of this.community.packs) releases[COMMUNITY_PREFIX + p.id] = [communityRelease(p)]
-    return withChannel({ ...this.catalog, releases }, PRODUCTS, this.channel, this.packsBase())
+    return withChannel({ ...this.catalog, releases }, this.products(), this.channel, this.packsBase())
   }
 
   private packsBase(): string {
@@ -437,18 +487,18 @@ export class ManagerService {
     return this.allProducts().find((p) => p.id === productId)
   }
 
+  /** A pack installed earlier that its list no longer carries, rebuilt from its id. */
+  private delistedProduct(productId: string): Product | null {
+    if (isCommunityProductId(productId)) return communityProduct({ id: productId.slice(COMMUNITY_PREFIX.length) })
+    return installedVoiceProduct(productId)
+  }
+
   // ---------------------------------------------------------------- statuses
 
   async statuses(gameId: string): Promise<ProductStatus[]> {
     const game = this.requireGame(gameId)
     const state = loadState(this.opts.dataPath)
-    const products = this.allProducts()
-    // A pack installed earlier and since removed from the registry still shows, so it can be removed.
-    for (const id of Object.keys(state.installs[gameId] ?? {})) {
-      if (isCommunityProductId(id) && !products.some((p) => p.id === id)) {
-        products.push(communityProduct({ id: id.slice(COMMUNITY_PREFIX.length) }))
-      }
-    }
+    const products = this.productLists(state).all
     const out = await computeStatuses(game, this.effectiveCatalog(), this.settings, state, products)
     const spoken = out.find((s) => s.productId === 'spoken')?.installedVersion
     for (const status of out) {
@@ -558,11 +608,8 @@ export class ManagerService {
 
   uninstall(gameId: string, productId: string): string {
     const game = this.requireGame(gameId)
-    let product = this.findProduct(productId)
-    // A community pack that left the registry can still be removed.
-    if (!product && isCommunityProductId(productId)) product = communityProduct({ id: productId.slice(COMMUNITY_PREFIX.length) })
-    if (!product) throw new Error('Unknown product')
-    const target = product
+    const target = this.findProduct(productId)
+    if (!target) throw new Error('Unknown product')
     const refused = isSupportedFlavor(game.flavor) ? null : notSupportedMessage(game.flavorFolder)
     return this.jobs.enqueue({
       gameId,

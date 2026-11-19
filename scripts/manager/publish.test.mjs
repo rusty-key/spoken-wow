@@ -5,22 +5,25 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 
 import { pointerText } from "../lib/clip-pointer.mjs";
-import { generateKeys, openJson, sha256Text } from "./sign.mjs";
+import { generateKeys, openJson, sealJson, sha256Text } from "./sign.mjs";
 import { ConflictError, memoryStore } from "./store.mjs";
-import { IMMUTABLE, INDEX_CACHE, latestSpokenRelease, publish } from "./publish.mjs";
+import { MIN_SPOKEN_TEAM } from "../lib/packs.mjs";
+import { delist, IMMUTABLE, INDEX_CACHE, latestSpokenRelease, minSpokenFor, promote, publish } from "./publish.mjs";
 
 const keys = generateKeys();
 const minSpoken = { quests: "3.0.0", places: "3.0.0", readables: "3.0.0" };
 const packs = [{ folder: "SpokenPlacesAudio_deDE", section: "places", lang: "deDE" }];
 const quiet = () => {};
 
-function dist(files) {
+/** A dist/ holding each of `folders`, a folder name to its files. */
+function distOf(folders) {
   const dir = mkdtempSync(join(tmpdir(), "dist-"));
-  writeFolder(dir, files);
+  for (const [folder, files] of Object.entries(folders)) writeFolder(dir, files, folder);
   return dir;
 }
-function writeFolder(dir, files) {
-  const root = join(dir, "SpokenPlacesAudio_deDE");
+const dist = (files) => distOf({ SpokenPlacesAudio_deDE: files });
+function writeFolder(dir, files, folder = "SpokenPlacesAudio_deDE") {
+  const root = join(dir, folder);
   rmSync(root, { recursive: true, force: true });
   for (const [p, text] of Object.entries(files)) {
     mkdirSync(join(root, ...p.split("/").slice(0, -1)), { recursive: true });
@@ -28,7 +31,7 @@ function writeFolder(dir, files) {
   }
 }
 const run = (store, distDir, extra = {}) => publish({
-  store, packs, distDir, signingKey: keys.privateKey, minSpoken, latestSpoken: "3.0.0",
+  store, packs, distDir, signingKey: keys.privateKey, minSpoken, minSpokenTeam: "3.0.0", latestSpoken: "3.0.0",
   cache: new Map(), log: quiet, now: new Date("2026-10-18T14:22:33Z"), ...extra,
 });
 const index = (store) => openJson(store.objects.get("index.json").body.toString(), keys.publicKey).value;
@@ -151,6 +154,24 @@ test("a reserved Windows device name in a file path is refused", async () => {
 test("a pack that needs an unreleased Spoken is refused", async () => {
   await assert.rejects(run(memoryStore(), dist({ "SpokenPlacesAudio_deDE.toc": "t" }), { minSpoken: { ...minSpoken, places: "3.1.0" } }),
     /needs Spoken 3.1.0, but the latest release is 3.0.0/);
+});
+
+test("a team's pack needs the first Spoken that plays team voices", () => {
+  assert.equal(minSpokenFor("SpokenPlacesAudio_deDE_stimmen", "places", minSpoken, "3.12.0"), "3.12.0");
+  assert.equal(minSpokenFor("SpokenQuestsAudioHorde_deDE_die-stimmen", "quests", minSpoken, "3.12.0"), "3.12.0");
+  // ...or its section's, where that is later.
+  assert.equal(minSpokenFor("SpokenPlacesAudio_deDE_stimmen", "places", { ...minSpoken, places: "4.0.0" }, "3.12.0"), "4.0.0");
+  assert.throws(() => minSpokenFor("SpokenPlacesAudio_deDE_stimmen", "places", minSpoken, undefined), /team's pack/);
+});
+
+test("a language's plain pack, and English's, keep their section's", () => {
+  assert.equal(minSpokenFor("SpokenPlacesAudio_deDE", "places", minSpoken, "3.12.0"), "3.0.0");
+  assert.equal(minSpokenFor("SpokenPlacesAudio", "places", minSpoken, "3.12.0"), "3.0.0");
+  assert.equal(minSpokenFor("SpokenQuestsAudioHorde_deDE", "quests", minSpoken, undefined), "3.0.0");
+});
+
+test("the Spoken that plays team voices is named, if not yet released", () => {
+  assert.match(MIN_SPOKEN_TEAM, /^\d+\.\d+\.\d+$/);
 });
 
 test("a publish that loses the race to the index fails", async () => {
@@ -331,11 +352,7 @@ test("one press gives its changed folders one version, past the highest, and lea
   const folders = ["SpokenQuestsAudioAlliance", "SpokenQuestsAudioHorde", "SpokenQuestsAudioShared"];
   const quests = folders.map((folder) => ({ folder, section: "quests", lang: "enUS" }));
   const distDir = mkdtempSync(join(tmpdir(), "dist-"));
-  const write = (folder, version, clip) => {
-    mkdirSync(join(distDir, folder), { recursive: true });
-    writeFileSync(join(distDir, folder, `${folder}.toc`), toc(version));
-    writeFileSync(join(distDir, folder, "1.ogg"), clip);
-  };
+  const write = (folder, version, clip) => writeFolder(distDir, { [`${folder}.toc`]: toc(version), "1.ogg": clip }, folder);
   const store = memoryStore();
   write(folders[0], "2.5.0", "a");
   write(folders[1], "2.6.0", "b");
@@ -354,10 +371,304 @@ test("one press gives its changed folders one version, past the highest, and lea
   assert.equal(index(store).packs[folders[1]].rev, first[folders[1]].rev);
 });
 
+// index-v2.json is the channel's record; index.json is written from it with only the ids an
+// older Manager accepts.
+const indexV2 = (store) => openJson(store.objects.get("index-v2.json").body.toString(), keys.publicKey).value;
+const stimmen = { slug: "stimmen", name: "Stimmen", official: false };
+const SPOKEN = { spoken: [{ version: "3.6.0", sha256: "z".repeat(64), size: 1 }] };
+
+/** A channel as it was before index-v2.json: index.json alone, with Spoken's zip and a German pack. */
+async function legacyChannel() {
+  const store = memoryStore();
+  await run(store, dist({ "SpokenPlacesAudio_deDE.toc": "toc", "s/1.ogg": "one" }));
+  store.objects.delete("index-v2.json");
+  const legacy = { ...index(store), addons: SPOKEN };
+  await store.put("index.json", sealJson(legacy, keys.privateKey).text, {});
+  return store;
+}
+
+test("a first publish onto a channel with only index.json seeds index-v2.json from it", async () => {
+  const store = await legacyChannel();
+  const before = index(store).packs.SpokenPlacesAudio_deDE;
+  const d = distOf({ SpokenPlacesAudio_frFR: { "SpokenPlacesAudio_frFR.toc": "toc", "s/1.ogg": "un" } });
+  // The fixture's own publish wrote both indexes; the order checked is this publish's.
+  store.log.length = 0;
+  await run(store, d, { packs: [{ folder: "SpokenPlacesAudio_frFR", section: "places", lang: "frFR" }], now: later });
+  const v2 = indexV2(store);
+  assert.deepEqual(v2.packs.SpokenPlacesAudio_deDE, { ...before, lang: "deDE", section: "places", pack: null, team: null });
+  assert.equal(v2.packs.SpokenPlacesAudio_frFR.lang, "frFR");
+  assert.deepEqual(v2.addons, SPOKEN);
+  assert.deepEqual(index(store).addons, SPOKEN);
+  const puts = store.log.filter(([op]) => op === "put").map(([, k]) => k);
+  assert.ok(puts.indexOf("index-v2.json") < puts.indexOf("index.json"));
+  assert.equal(store.objects.get("index-v2.json").cacheControl, INDEX_CACHE);
+});
+
+test("a second team's pack is in index-v2.json with its team, and not in index.json", async () => {
+  const store = await legacyChannel();
+  const legacyBefore = index(store).packs;
+  const folder = "SpokenPlacesAudio_deDE_stimmen";
+  const d = distOf({ [folder]: { [`${folder}.toc`]: "toc", "s/1.ogg": "eins" } });
+  await run(store, d, {
+    packs: [{ folder, section: "places", lang: "deDE", team: stimmen }],
+    languages: [{ code: "deDE", name: "German", native: "Deutsch" }],
+    now: later,
+  });
+  const v2 = indexV2(store);
+  assert.deepEqual(
+    { lang: v2.packs[folder].lang, section: v2.packs[folder].section, pack: v2.packs[folder].pack, team: v2.packs[folder].team },
+    { lang: "deDE", section: "places", pack: null, team: stimmen },
+  );
+  assert.deepEqual(v2.languages, { deDE: { code: "deDE", name: "German", native: "Deutsch" } });
+  const legacy = index(store);
+  assert.equal(legacy.packs[folder], undefined);
+  // Every legacy entry is still there, at its rev, in its old shape.
+  assert.deepEqual(legacy.packs, legacyBefore);
+  assert.equal(legacy.languages, undefined);
+});
+
+test("a new language's own pack is in both indexes, and index-v2.json names its language", async () => {
+  const store = await legacyChannel();
+  const folder = "SpokenReadablesAudio_jaJP";
+  const d = distOf({ [folder]: { [`${folder}.toc`]: "toc", "1.ogg": "ichi" } });
+  const team = { slug: "nihongo", name: "Nihongo", official: false };
+  await run(store, d, {
+    packs: [{ folder, section: "readables", lang: "jaJP", team }],
+    languages: [{ code: "jaJP", name: "Japanese", native: "日本語" }],
+    now: later,
+  });
+  assert.deepEqual(indexV2(store).packs[folder].team, team);
+  assert.deepEqual(indexV2(store).languages.jaJP, { code: "jaJP", name: "Japanese", native: "日本語" });
+  const legacy = index(store).packs[folder];
+  assert.equal(legacy.rev, indexV2(store).packs[folder].rev);
+  assert.deepEqual(Object.keys(legacy).sort(), ["fileCount", "manifestSha256", "requires", "rev", "totalSize"]);
+});
+
+test("a second publish reads its live rev from index-v2.json", async () => {
+  const store = memoryStore();
+  const folder = "SpokenPlacesAudio_deDE_stimmen";
+  const packsOf = [{ folder, section: "places", lang: "deDE", team: stimmen }];
+  const d = distOf({ [folder]: { [`${folder}.toc`]: "toc", "s/1.ogg": "eins" } });
+  await run(store, d, { packs: packsOf });
+  store.log.length = 0;
+  const out = await run(store, d, { packs: packsOf, now: later });
+  assert.equal(out.rev, null);
+  assert.equal(store.log.filter(([op]) => op === "put").length, 0);
+});
+
+test("a pack whose files are unchanged takes its new team and language names, at its rev", async () => {
+  const store = memoryStore();
+  const folder = "SpokenPlacesAudio_deDE_stimmen";
+  const d = distOf({ [folder]: { [`${folder}.toc`]: "toc", "s/1.ogg": "eins" } });
+  const first = await run(store, d, {
+    packs: [{ folder, section: "places", lang: "deDE", team: stimmen }],
+    languages: [{ code: "deDE", name: "German", native: "Deutsch" }],
+  });
+  const legacyBefore = index(store).packs;
+  store.log.length = 0;
+  const renamed = { ...stimmen, name: "Stimmen Azeroths", official: true };
+  const out = await run(store, d, {
+    packs: [{ folder, section: "places", lang: "deDE", team: renamed }],
+    languages: [{ code: "deDE", name: "German (Germany)", native: "Deutsch" }],
+    now: later,
+  });
+  assert.equal(out.rev, null);
+  assert.deepEqual(out.changed, []);
+  const entry = indexV2(store).packs[folder];
+  assert.equal(entry.rev, first.rev);
+  assert.deepEqual(entry.team, renamed);
+  assert.equal(indexV2(store).languages.deDE.name, "German (Germany)");
+  assert.deepEqual(index(store).packs, legacyBefore);
+  // Nothing but the indexes: no blob, no manifest.
+  assert.deepEqual(store.log.filter(([op]) => op === "put").map(([, k]) => k), ["index-v2.json", "index.json"]);
+});
+
+test("a publish that finds index.json behind index-v2.json brings it up to date", async () => {
+  const store = memoryStore();
+  const d = dist({ "SpokenPlacesAudio_deDE.toc": "toc", "s/1.ogg": "one" });
+  await run(store, d);
+  await store.put("index.json", sealJson({ ...index(store), packs: {} }, keys.privateKey).text, {});
+  await run(store, d, { now: later });
+  assert.equal(index(store).packs.SpokenPlacesAudio_deDE.rev, indexV2(store).packs.SpokenPlacesAudio_deDE.rev);
+});
+
+test("a failure after index-v2.json says index.json is behind it", async () => {
+  const store = memoryStore();
+  const put = store.put;
+  store.put = async (key, ...rest) => {
+    if (key === "index.json") throw new Error("network down");
+    return put(key, ...rest);
+  };
+  await assert.rejects(run(store, dist({ "SpokenPlacesAudio_deDE.toc": "toc" })), /index\.json is behind index-v2\.json.*network down/);
+  assert.ok(store.objects.has("index-v2.json"));
+});
+
 test("with no bump a publish takes the .toc as staged", async () => {
   const store = memoryStore();
   await run(store, dist({ "SpokenPlacesAudio_deDE.toc": toc("1.2.3"), "s/1.ogg": "one" }));
   const out = await run(store, dist({ "SpokenPlacesAudio_deDE.toc": toc("1.2.4"), "s/1.ogg": "one" }), { now: later });
   assert.equal(out.version, null);
   assert.equal(liveToc(store, out.rev), toc("1.2.4"));
+});
+
+// A team that is not official stages: blobs and manifests go up, no index changes, and a site
+// owner's approval promotes what was staged into both indexes.
+const stimmenFolder = "SpokenPlacesAudio_deDE_stimmen";
+const stimmenPacks = [{ folder: stimmenFolder, section: "places", lang: "deDE", team: stimmen }];
+const GERMAN = [{ code: "deDE", name: "German", native: "Deutsch" }];
+const stage = (store, files, extra = {}) =>
+  run(store, distOf({ [stimmenFolder]: { [`${stimmenFolder}.toc`]: toc("1.0.0"), ...files } }), {
+    packs: stimmenPacks, languages: GERMAN, stage: true, bump: "patch", now: later, ...extra,
+  });
+const promoting = (store, staged, extra = {}) =>
+  promote({ store, signingKey: keys.privateKey, staged, log: quiet, now: new Date("2026-10-20T00:00:00Z"), ...extra });
+const indexBytes = (store) => [store.objects.get("index.json")?.body.toString(), store.objects.get("index-v2.json")?.body.toString()];
+
+test("a staged publish leaves both indexes as they were, with its manifest and blobs in place", async () => {
+  const store = await legacyChannel();
+  const before = indexBytes(store);
+  const out = await stage(store, { "s/1.ogg": "eins" });
+  assert.deepEqual(indexBytes(store), before);
+  const entry = out.staged.packs[stimmenFolder];
+  assert.equal(entry.baseRev, null);
+  assert.equal(out.staged.version, "1.0.0");
+  assert.deepEqual(entry.team, stimmen);
+  assert.equal(entry.lang, "deDE");
+  assert.ok(store.objects.has(`packs/${stimmenFolder}/${entry.rev}.json`));
+  assert.ok(store.objects.has(`blobs/${sha256Text("eins")}`));
+  assert.deepEqual(out.staged.languages, { deDE: GERMAN[0] });
+  assert.equal(out.version, "1.0.0");
+});
+
+test("a staged publish of nothing new stages nothing", async () => {
+  const store = memoryStore();
+  const first = await stage(store, { "s/1.ogg": "eins" });
+  await promoting(store, first.staged);
+  const out = await stage(store, { "s/1.ogg": "eins" }, { now: new Date("2026-10-21T00:00:00Z") });
+  assert.deepEqual(out.staged.packs, {});
+  assert.equal(out.version, null);
+});
+
+test("promoting lists what was staged in index-v2.json, and in index.json only an id an older Manager accepts", async () => {
+  const store = await legacyChannel();
+  const staged = await stage(store, { "s/1.ogg": "eins" });
+  const jaFolder = "SpokenReadablesAudio_jaJP";
+  const ja = await run(store, distOf({ [jaFolder]: { [`${jaFolder}.toc`]: toc("1.0.0"), "1.ogg": "ichi" } }), {
+    packs: [{ folder: jaFolder, section: "readables", lang: "jaJP", team: { slug: "nihongo", name: "Nihongo", official: false } }],
+    languages: [{ code: "jaJP", name: "Japanese", native: "日本語" }],
+    stage: true, bump: "patch", now: later,
+  });
+  const both = {
+    version: staged.staged.version,
+    packs: { ...staged.staged.packs, ...ja.staged.packs },
+    languages: { ...staged.staged.languages, ...ja.staged.languages },
+  };
+  const out = await promoting(store, both);
+  assert.deepEqual([...out.promoted].sort(), [stimmenFolder, jaFolder]);
+  const v2 = indexV2(store);
+  assert.equal(v2.packs[stimmenFolder].rev, staged.staged.packs[stimmenFolder].rev);
+  assert.equal(v2.packs[stimmenFolder].manifestSha256, staged.staged.packs[stimmenFolder].manifestSha256);
+  assert.deepEqual(v2.packs[stimmenFolder].team, stimmen);
+  assert.equal(v2.packs[stimmenFolder].baseRev, undefined);
+  assert.equal(v2.packs[stimmenFolder].version, undefined);
+  assert.deepEqual(v2.languages.jaJP, { code: "jaJP", name: "Japanese", native: "日本語" });
+  assert.equal(index(store).packs[stimmenFolder], undefined);
+  assert.deepEqual(Object.keys(index(store).packs[jaFolder]).sort(), ["fileCount", "manifestSha256", "requires", "rev", "totalSize"]);
+  assert.deepEqual(index(store).addons, SPOKEN);
+  // The German page pack is still there.
+  assert.ok(index(store).packs.SpokenPlacesAudio_deDE);
+});
+
+// A store whose next index.json write fails, as a dropped connection between the two index writes would.
+function dropNextIndexJson(store) {
+  const put = store.put;
+  let dropped = false;
+  store.put = async (key, ...rest) => {
+    if (key === "index.json" && !dropped) {
+      dropped = true;
+      throw new Error("network down");
+    }
+    return put(key, ...rest);
+  };
+  return store;
+}
+
+test("promoting again after index.json failed to write lists the pack there too", async () => {
+  const store = await legacyChannel();
+  const jaFolder = "SpokenReadablesAudio_jaJP";
+  const ja = await run(store, distOf({ [jaFolder]: { [`${jaFolder}.toc`]: toc("1.0.0"), "1.ogg": "ichi" } }), {
+    packs: [{ folder: jaFolder, section: "readables", lang: "jaJP", team: { slug: "nihongo", name: "Nihongo", official: false } }],
+    languages: [{ code: "jaJP", name: "Japanese", native: "日本語" }],
+    stage: true, bump: "patch", now: later,
+  });
+  dropNextIndexJson(store);
+  await assert.rejects(promoting(store, ja.staged), /index\.json is behind index-v2\.json.*network down/);
+  assert.equal(indexV2(store).packs[jaFolder].rev, ja.staged.packs[jaFolder].rev);
+  assert.equal(index(store).packs[jaFolder], undefined);
+  const out = await promoting(store, ja.staged, { now: new Date("2026-10-21T00:00:00Z") });
+  assert.deepEqual(out.promoted, [jaFolder]);
+  assert.equal(index(store).packs[jaFolder].rev, ja.staged.packs[jaFolder].rev);
+});
+
+test("promoting a pack whose live rev moved since it was staged is refused, and writes nothing", async () => {
+  const store = memoryStore();
+  const first = await stage(store, { "s/1.ogg": "eins" });
+  await promoting(store, first.staged);
+  const older = await stage(store, { "s/1.ogg": "zwei" }, { now: new Date("2026-10-21T00:00:00Z") });
+  const newer = await stage(store, { "s/1.ogg": "drei" }, { now: new Date("2026-10-22T00:00:00Z") });
+  await promoting(store, newer.staged, { now: new Date("2026-10-23T00:00:00Z") });
+  const before = indexBytes(store);
+  await assert.rejects(
+    promoting(store, older.staged, { now: new Date("2026-10-24T00:00:00Z") }),
+    { message: `${stimmenFolder} changed on the channel since it was staged: ask Stimmen to release again` },
+  );
+  assert.deepEqual(indexBytes(store), before);
+});
+
+test("promoting a staged entry whose manifest is missing is refused", async () => {
+  const store = memoryStore();
+  const staged = await stage(store, { "s/1.ogg": "eins" });
+  store.objects.delete(`packs/${stimmenFolder}/${staged.staged.packs[stimmenFolder].rev}.json`);
+  await assert.rejects(promoting(store, staged.staged), /has no manifest/);
+  assert.equal(store.objects.has("index-v2.json"), false);
+});
+
+test("delisting removes a pack from both indexes and keeps its manifest", async () => {
+  const store = await legacyChannel();
+  const staged = await stage(store, { "s/1.ogg": "eins" });
+  await promoting(store, staged.staged);
+  const out = await delist({
+    store, signingKey: keys.privateKey, folders: [stimmenFolder, "SpokenPlacesAudio_deDE"], log: quiet,
+    now: new Date("2026-10-21T00:00:00Z"),
+  });
+  assert.deepEqual(out.delisted, [stimmenFolder, "SpokenPlacesAudio_deDE"]);
+  assert.equal(indexV2(store).packs[stimmenFolder], undefined);
+  assert.equal(index(store).packs.SpokenPlacesAudio_deDE, undefined);
+  assert.equal(indexV2(store).languages.deDE, undefined);
+  assert.deepEqual(index(store).addons, SPOKEN);
+  assert.ok(store.objects.has(`packs/${stimmenFolder}/${staged.staged.packs[stimmenFolder].rev}.json`));
+});
+
+test("delisting a folder no index lists writes nothing, and says so", async () => {
+  const store = memoryStore();
+  await run(store, dist({ "SpokenPlacesAudio_deDE.toc": "toc" }));
+  const before = indexBytes(store);
+  const said = [];
+  const out = await delist({ store, signingKey: keys.privateKey, folders: [stimmenFolder], log: (line) => said.push(line) });
+  assert.deepEqual(out.delisted, []);
+  assert.deepEqual(indexBytes(store), before);
+  assert.ok(said.some((line) => line.includes(`${stimmenFolder} is not listed`)));
+});
+
+test("delisting again after index.json failed to write takes the pack out of it too", async () => {
+  const store = await legacyChannel();
+  const delisting = (now) => delist({ store, signingKey: keys.privateKey, folders: ["SpokenPlacesAudio_deDE"], log: quiet, now });
+  dropNextIndexJson(store);
+  await assert.rejects(delisting(new Date("2026-10-21T00:00:00Z")), /index\.json is behind index-v2\.json.*network down/);
+  assert.equal(indexV2(store).packs.SpokenPlacesAudio_deDE, undefined);
+  assert.ok(index(store).packs.SpokenPlacesAudio_deDE);
+  const out = await delisting(new Date("2026-10-22T00:00:00Z"));
+  assert.deepEqual(out.delisted, []);
+  assert.equal(index(store).packs.SpokenPlacesAudio_deDE, undefined);
+  assert.deepEqual(index(store).addons, SPOKEN);
 });

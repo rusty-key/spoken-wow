@@ -145,12 +145,24 @@ local function Widget(kind, name)
     function w:UnregisterAllEvents() self.events = {} end
     function w:SetScript(script, fn) self.scripts[script] = fn end
     function w:GetScript(script) return self.scripts[script] end
+    -- Only OnClick is modelled per type; every other script reads as supported.
+    function w:HasScript(script)
+        if script == "OnClick" then
+            local frameType = self.frameType or self.kind
+            return frameType == "Button" or frameType == "CheckButton"
+        end
+        return true
+    end
     function w:LockHighlight() self.highlightLocked = true end
     function w:UnlockHighlight() self.highlightLocked = false end
     -- A secure button's attributes (Spoken Developer's /reload macro), kept to be read back.
     function w:SetAttribute(key, value) self.attributes = self.attributes or {}; self.attributes[key] = value end
     function w:GetAttribute(key) return self.attributes and self.attributes[key] end
     function w:HookScript(script, fn)
+        -- The client raises here too: "script type not supported by this object".
+        if not self:HasScript(script) then
+            error(("%s:HookScript(): Cannot assign script handler for '%s'"):format(self:GetObjectType(), script), 2)
+        end
         self.hooks[script] = self.hooks[script] or {}
         table.insert(self.hooks[script], fn)
     end
@@ -302,6 +314,11 @@ local function Widget(kind, name)
     function w:Enable() self.enabled = true end
     function w:Disable() self.enabled = false end
     function w:IsEnabled() return self.enabled ~= false end
+    function w:SetTextColor(r, g, b, a) self.textColor = { r, g, b, a } end
+    function w:GetTextColor()
+        local color = self.textColor or { 1, 1, 1, 1 }
+        return color[1], color[2], color[3], color[4] or 1
+    end
     function w:SetChecked(v) self.checked = v end
     function w:GetChecked() return self.checked end
     function w:GetFont() return "Fonts\\FRIZQT__.TTF", 12 end
@@ -447,7 +464,7 @@ function _G.UnitGUID() return world.npcGUID end
 function _G.UnitExists() return true end
 function _G.UnitIsPlayer() return false end
 function _G.UnitCanAttack() return not world.npcFriendly end
-function _G.UnitSex() return world.unitSex end
+function _G.UnitSex(unit) return unit == "player" and world.playerSex or world.unitSex end
 function _G.UnitIsDead() return false end
 function _G.UnitIsDeadOrGhost() return world.playerDead end
 function _G.UnitIsUnit(a, b) return a == b end

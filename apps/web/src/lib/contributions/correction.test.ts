@@ -25,9 +25,11 @@ const ip = `test-${Math.random().toString(36).slice(2, 10)}`;
 const contributedQuest = quest - 1;
 const splitQuest = quest - 2;
 const extractedQuest = quest - 3;
+// A plain line a correction splits by gender, edited after the corrections tab loaded it.
+const genderedQuest = quest - 4;
 // A deDE moment split by player gender whose sides differ: only :m names the reader.
-const twoSidedQuest = quest - 4;
-const quests = [quest, contributedQuest, splitQuest, extractedQuest, twoSidedQuest];
+const twoSidedQuest = quest - 5;
+const quests = [quest, contributedQuest, splitQuest, extractedQuest, genderedQuest, twoSidedQuest];
 const moments = quests.map((q) => `q:${q}:accept`);
 const linesOf = (q: number) => [`q:${q}:accept`, `q:${q}:accept:m`, `q:${q}:accept:f`];
 
@@ -67,8 +69,9 @@ beforeAll(async () => {
        ("lineId", "variant", "lang", "version", "isCurrent", "origin", "source", "fileName",
         "text", "originalText", "localeText")
      values ($1, 0, 'enUS', 1, true, 'contributed', 'accept', $2, 'Well met, lass.', 'Well met, lass.', null),
-            ($3, 0, 'enUS', 1, true, 'extracted', 'accept', $4, 'Well met, lass.', 'Well met, lass.', null)`,
-    [moments[1], `${contributedQuest}-accept`, moments[3], `${extractedQuest}-accept`],
+            ($3, 0, 'enUS', 1, true, 'extracted', 'accept', $4, 'Well met, lass.', 'Well met, lass.', null),
+            ($5, 0, 'enUS', 1, true, 'extracted', 'accept', $6, 'Hail, brother.$B$BGo now.', 'Hail, brother.$B$BGo now.', null)`,
+    [moments[1], `${contributedQuest}-accept`, moments[3], `${extractedQuest}-accept`, moments[4], `${genderedQuest}-accept`],
   );
   await asSystem.query(
     `insert into "quest_line"
@@ -261,6 +264,30 @@ describe("acceptCorrection", () => {
     expect(rows).toEqual([{ lineId: `${moments[3]}:f` }, { lineId: `${moments[3]}:m` }]);
   });
 
+  it("splits a plain line by gender from the line as it now stands, the player's text on their side", async () => {
+    const id = await contribution("enUS", "Hail, sister.\n\nGo now.", "accept", genderedQuest);
+    const outcome = await acceptCorrection(id, ACCEPTER, undefined, undefined, "f");
+    expect(outcome.ok && outcome.contribution.status).toBe("accepted");
+    // The row keeps what the player's client showed.
+    expect(outcome.ok && outcome.contribution.text).toBe("Hail, sister.\n\nGo now.");
+
+    const { rows } = await asSystem.query(
+      `select "lineId", "text" from "quest_line"
+        where "lineId" = any($1::text[]) and "lang" = 'enUS' and "isCurrent" order by "lineId"`,
+      [linesOf(genderedQuest)],
+    );
+    expect(rows).toEqual([
+      { lineId: `${moments[4]}:f`, text: "Hail, sister.\n\nGo now." },
+      { lineId: `${moments[4]}:m`, text: "Hail, brother.\n\nGo now." },
+    ]);
+  });
+
+  it("refuses a split by gender where the line is split already", async () => {
+    const id = await contribution("enUS", "Hail, friend.", "accept", splitQuest);
+    const outcome = await acceptCorrection(id, ACCEPTER, undefined, undefined, "f");
+    expect(!outcome.ok && outcome.reason).toBe("not-a-correction");
+  });
+
   it("refuses a contribution the corpus does not differ from", async () => {
     const id = await contribution("enUS", "Hello, $N.");
     const outcome = await acceptCorrection(id, ACCEPTER);
@@ -335,7 +362,7 @@ describe("acceptCorrection: a readables page", () => {
       { version: 2, text: english, origin: "edited", note: correctionNote(id) },
     ]);
     const [state] = await lineStates([{ source: "readables", locale: "esES", text: english, meta: {} }]);
-    expect(state).toEqual({ kind: "known", lineId: page });
+    expect(state).toEqual({ kind: "known", lineId: page, variant: 0 });
   });
 
   it("changes nothing when accepted a second time with the same text", async () => {

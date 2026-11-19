@@ -28,9 +28,10 @@ import { viewersIn } from "@/lib/grants/store";
 import { isAdmin } from "@/lib/permissions";
 import { overrideOf } from "@/lib/quests/override";
 import { readOverrides } from "@/lib/quests/overrides";
-import { asTeamOf, ownerOrAll, queryAs } from "@/lib/teams/store";
+import { asTeam } from "@/lib/teams/acting";
+import { asTeamOf, ownerOrAll, queryAs, teamsOf } from "@/lib/teams/store";
 
-import type { ReportContext } from "./context";
+import { packTeam, type ReportContext } from "./context";
 import { CATEGORIES, CATEGORY_QUEUE, QUEUES, queuesOf, type Category, type Queue, type Report, type Status } from "./reports";
 import type { Source } from "@/lib/sections";
 
@@ -94,9 +95,27 @@ export async function createReport(input: {
   context?: ReportContext | null;
 }): Promise<void> {
   // Returns nothing: the reporter cannot read a report back, so an id would only be a handle
-  // on something they cannot reach. The team comes from the language alone, so the addon's
-  // anonymous report is filed with whoever looks after its language.
+  // on something they cannot reach. A report on a team's pack is filed as that team, its queue
+  // judged by that team's overrides; any other is filed with whoever looks after its language,
+  // so the addon's anonymous report on a plain pack goes to the language's privileged team.
   const lang = input.lang ?? BASE_LANG;
+  const team = await packTeamOf(lang, input.context);
+  if (team) return asTeam(lang, team, () => insertReport(input, lang));
+  return insertReport(input, lang);
+}
+
+/**
+ * The team the context names as the one whose pack played, where that team voices `lang`. A
+ * slug naming any other team, which only a forged context can, is no team: the report is filed
+ * as one with none.
+ */
+async function packTeamOf(lang: Lang, context: ReportContext | null | undefined): Promise<TeamId | null> {
+  const slug = packTeam(context);
+  if (!slug) return null;
+  return (await teamsOf(lang)).find((team) => team.slug === slug)?.id ?? null;
+}
+
+async function insertReport(input: Parameters<typeof createReport>[0], lang: Lang): Promise<void> {
   const queue = await queueFor(input.category, lang, input.file ?? null);
   await queryAs(
     lang,

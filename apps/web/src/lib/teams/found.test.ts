@@ -96,6 +96,7 @@ const input = (lang: string, over: Partial<FoundInput> = {}): FoundInput => ({
   language: { name: "Xq New", native: "Xq Neu" },
   team: { slug: null, name: "Japan Crew" },
   adminId: requester.id,
+  official: false,
   ...over,
 });
 
@@ -124,10 +125,11 @@ describe("foundTeam, new language", () => {
     expect(row).toMatchObject({ enabled: true, textByTeam: true, bcp47: `xq-${lang.slice(2)}`, provider: "xq" });
 
     expect(await teamOfLang(lang)).toBe(founded.teamId);
-    const [team] = await systemRows<{ slug: string; name: string }>(`select "slug", "name" from "team" where "id" = $1`, [
-      founded.teamId,
-    ]);
-    expect(team).toEqual({ slug: slugFor("Japan Crew", lang), name: "Japan Crew" });
+    const [team] = await systemRows<{ slug: string; name: string; ownStorage: boolean }>(
+      `select "slug", "name", "ownStorage" from "team" where "id" = $1`,
+      [founded.teamId],
+    );
+    expect(team).toEqual({ slug: slugFor("Japan Crew", lang), name: "Japan Crew", ownStorage: true });
     expect(team.slug).toBe("japan-crew");
 
     const grants = await grantsOf(requester.id);

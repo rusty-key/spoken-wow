@@ -1,10 +1,10 @@
 // A believable fake ManagerApi, used only when `window.manager` is missing (a plain browser:
 // `npm run dev:web`). Address options: ?offline=1, ?empty=1 (no games), ?empty=packs (an empty community
-// list), ?readonly=1 (Anniversary is read-only), ?missing=anniversary (that game was not found; also forever, era), ?linked=1 (Spoken on Anniversary is a link to a development folder), ?update=1 (a manager update banner), ?update=url (an update to download in the browser), ?platform=darwin|linux|win32 (the window frame of that system), ?sharing=on|off (the first-start question already answered), ?contrib=out|fail|nonadmin|result|expire|unreachable (Contributor: start signed out, sign-in refused, an account without admin rights, a finished release to show, a session that ends after a few seconds, a site that answers Retry only after ten seconds).
+// list), ?readonly=1 (Anniversary is read-only), ?missing=anniversary (that game was not found; also forever, era), ?linked=1 (Spoken on Anniversary is a link to a development folder), ?update=1 (a manager update banner), ?update=url (an update to download in the browser), ?platform=darwin|linux|win32 (the window frame of that system), ?sharing=on|off (the first-start question already answered), ?contrib=out|fail|nonadmin|result|expire|unreachable (Contributor: start signed out, sign-in refused, an account without admin rights, a finished release to show, a session that ends after a few seconds, a site that answers Retry only after ten seconds), ?teams=1 (teams' voice packs: German has Stimmen's beside its own, Japanese one team's, Polish two teams').
 import type { AddGameResult, InstallOptions, ManagerApi, UpdaterState } from '@shared/api'
-import { LANGUAGES, PRODUCTS, languageFolders, SPOKEN_FOLDERS, productById } from '@shared/products'
-import type { Catalog, CommunityCatalog, CommunityPack, ContributorView, GameInstall, JobProgress, Product, PublishResult, ProductStatus, ReleaseInfo, ReleaseRow, Settings, SharingStatus, Snapshot } from '@shared/types'
-import { DEFAULT_SETTINGS, FLAVOR_FOLDER_LIST, communityFolder } from '@shared/types'
+import { LANGUAGES, productById, languageFolders, languagesFor, packFolder, productsFor, SPOKEN_FOLDERS, type ChannelListing } from '@shared/products'
+import type { Catalog, ChannelTeam, CommunityCatalog, CommunityPack, Section, ContributorView, GameInstall, JobProgress, Product, PublishResult, ProductStatus, ReleaseInfo, ReleaseRow, Settings, SharingStatus, Snapshot } from '@shared/types'
+import { DEFAULT_SETTINGS, FLAVOR_FOLDER_LIST, QUESTS_SIDES, communityFolder } from '@shared/types'
 import { compareVersions } from '@shared/version'
 
 const MB = 1024 * 1024
@@ -97,9 +97,34 @@ function release(productId: string, [version, date, sizeMB, notes]: Row): Releas
   }
 }
 
-function buildReleases(): Record<string, ReleaseInfo[]> {
+const team = (slug: string, name: string): ChannelTeam => ({ slug, name, official: false })
+
+/** ?teams=1: deDE has Stimmen's packs beside its own, jaJP one team's, and plPL two teams'. */
+function teamListing(): ChannelListing {
+  const packs: ChannelListing['packs'] = {}
+  const add = (lang: string, section: Section, t: ChannelTeam, suffixed: boolean): void => {
+    const slug = suffixed ? t.slug : null
+    for (const side of section === 'quests' ? QUESTS_SIDES : [null]) packs[packFolder(section, lang, side, slug)] = { lang, section, pack: side, team: t }
+  }
+  const stimmen = team('stimmen', 'Stimmen')
+  const kotoba = team('kotoba', 'Kotoba')
+  const lektorzy = team('lektorzy', 'Lektorzy')
+  add('deDE', 'places', stimmen, true)
+  add('deDE', 'quests', stimmen, true)
+  add('jaJP', 'places', kotoba, false)
+  add('jaJP', 'quests', kotoba, false)
+  add('plPL', 'places', team('glosy', 'Głosy'), false)
+  add('plPL', 'places', lektorzy, true)
+  add('plPL', 'readables', lektorzy, true)
+  return { packs, languages: { jaJP: { name: 'Japanese', native: '日本語' } } }
+}
+
+function buildReleases(products: Product[], listing: ChannelListing | null): Record<string, ReleaseInfo[]> {
   const out: Record<string, ReleaseInfo[]> = {}
   for (const [id, rows] of Object.entries(TABLE)) out[id] = rows.map((r) => release(id, r))
+  for (const p of products) {
+    if (listing && p.kind === 'voices' && !out[p.id] && p.folders!.every((f) => listing.packs[f])) out[p.id] = [release(p.id, ['1.0.0', '2026-10-15', p.pack === 'all' ? 960 : 240])]
+  }
   return out
 }
 
@@ -268,10 +293,12 @@ export function createMockApi(): ManagerApi {
   }
   let sharingStatus: SharingStatus = { sending: false, ...(sharingParam === 'on' ? { lastSent: { at: new Date(Date.now() - 3 * 3600 * 1000).toISOString(), count: 37 } } : {}) }
   const sharingListeners = new Set<(s: SharingStatus) => void>()
-  const releases = buildReleases()
+  const listing = q.has('teams') ? teamListing() : null
+  const products = productsFor(listing)
+  const releases = buildReleases(products, listing)
   const packs = q.get('empty') === 'packs' ? [] : COMMUNITY_PACKS
-  const everyProduct = (): Product[] => [...PRODUCTS, ...packs.map(communityProduct)]
-  const productFor = (id: string): Product | undefined => productById(id) ?? everyProduct().find((p) => p.id === id)
+  const everyProduct = (): Product[] => [...products, ...packs.map(communityProduct)]
+  const productFor = (id: string): Product | undefined => everyProduct().find((p) => p.id === id)
   let fetchedAt = offline ? '2026-10-17T09:12:00Z' : new Date().toISOString()
   const catalog = (): Catalog => ({ fetchedAt, offline, error: offline ? 'getaddrinfo ENOTFOUND api.github.com' : undefined, releases })
   const community = (): CommunityCatalog => ({
@@ -452,7 +479,7 @@ export function createMockApi(): ManagerApi {
   const api: ManagerApi = {
     async snapshot(): Promise<Snapshot> {
       await sleep(250)
-      return { games, settings, sharingStatus, catalog: catalog(), community: community(), products: PRODUCTS, appVersion: '0.1.0', platform, dataPath: platform === 'darwin' ? '/Users/hello/Library/Application Support/Spoken Manager' : platform === 'linux' ? '/home/hello/.config/Spoken Manager' : 'C:\\Users\\hello\\AppData\\Roaming\\Spoken Manager' }
+      return { games, settings, sharingStatus, catalog: catalog(), community: community(), products, languages: languagesFor(listing), appVersion: '0.1.0', platform, dataPath: platform === 'darwin' ? '/Users/hello/Library/Application Support/Spoken Manager' : platform === 'linux' ? '/home/hello/.config/Spoken Manager' : 'C:\\Users\\hello\\AppData\\Roaming\\Spoken Manager' }
     },
     async scanGames() {
       await sleep(900)
@@ -601,6 +628,15 @@ export function createMockApi(): ManagerApi {
     async contributorRows(_gameId, lang) {
       await sleep(200)
       return contributorRows(lang)
+    },
+    async contributorZip(_gameId, _lang, folder) {
+      await sleep(1500)
+      const version = contributorRows(_lang).find((r) => r.folder === folder)?.version ?? '1.0.0'
+      const name = `${folder}-${version}.zip`
+      return { version, name, path: `/mock/contributor-zips/${folder}/${name}`, bytes: 734 * 1024 * 1024, uploadUrl: 'https://authors.curseforge.com/#/projects/1700375/files' }
+    },
+    async contributorRevealZip(path) {
+      console.info('[mock] contributorRevealZip', path)
     },
     async contributorPublish(gameId, lang, store, only) {
       const jobId = `job-${++seq}`

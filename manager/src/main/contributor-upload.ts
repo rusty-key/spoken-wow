@@ -125,12 +125,17 @@ async function* counted(source: AsyncIterable<Buffer>, total: number, onProgress
 
 // ---------------------------------------------------------------- CurseForge
 
-const zipName = (folder: string, version: string): string => `${folder}-${version}.zip`
+export const zipName = (folder: string, version: string): string => `${folder}-${version}.zip`
 
 const cfHeaders = (token: string): Record<string, string> => ({ 'X-Api-Token': token })
 
 export function cfProjectLink(project: string): string {
   return `https://www.curseforge.com/projects/${encodeURIComponent(project)}`
+}
+
+/** Where a file is uploaded by hand: the API takes up to 500 MB, the site up to 1 GB. */
+export function cfUploadPage(project: string): string {
+  return `https://authors.curseforge.com/#/projects/${encodeURIComponent(project)}/files`
 }
 
 async function listGameVersions(token: string, fetchImpl: typeof fetch, signal?: AbortSignal): Promise<unknown> {

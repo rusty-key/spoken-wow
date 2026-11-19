@@ -4,7 +4,7 @@ import subprocess
 
 import pytest
 
-from tts_cli.build import (MODULE_LUA, build_tables, escape_lua_string, module_toc,
+from tts_cli.build import (module_lua, build_tables, escape_lua_string, module_toc,
                            prune_quest_id_table, quest_search_text, write_lua_table)
 
 CORPUS = {
@@ -126,7 +126,7 @@ def test_followup_lookup_honours_ignores():
 
 
 def test_module_resolves_followup_sounds_only_where_the_player_knows_the_event():
-    lua = MODULE_LUA.format(module="Mod", extension=".ogg")
+    lua = module_lua("Mod", ".ogg")
     assert ("elseif Enums.SoundEvent.QuestFollowup and event == Enums.SoundEvent.QuestFollowup "
             "then\n        return format([[generated\\sounds\\followup\\%s.ogg]], fileName)") in lua
 
@@ -220,6 +220,21 @@ def test_toc_declares_both_generations_of_the_module_key():
         assert f"## X-VoiceOver-DataModule-{suffix}: {value}\n" in toc
     # A map list would be read and never used: every pack loads on every map.
     assert "-DataModule-Maps" not in toc
+
+
+def test_toc_carries_extra_keys_after_its_header():
+    # A team's pack names its team, and a language Spoken does not build in its names, in keys
+    # the addon reads from the TOC.
+    toc = module_toc("Mod", ["a.lua"], language="jaJP",
+                     extra=[("X-Spoken-LanguageName", "Japanese"), ("X-Spoken-Team", "stimmen")])
+
+    assert "## X-SpokenQuests-Language: jaJP\n" in toc
+    assert "## X-Spoken-LanguageName: Japanese\n## X-Spoken-Team: stimmen\n" in toc
+    assert toc.index("## X-Spoken-Team: stimmen") < toc.index("generated\\a.lua")
+
+
+def test_toc_without_extra_keys_is_unchanged():
+    assert module_toc("Mod", ["a.lua"], extra=()) == module_toc("Mod", ["a.lua"])
 
 
 def test_toc_nests_the_pack_under_spoken():

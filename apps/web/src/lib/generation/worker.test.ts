@@ -273,6 +273,62 @@ describe("startWorker", () => {
    * No request is made when the owner has no usable key, so nothing is spent by failing
    * each job in turn - and the batch's other lines are not cancelled on its account.
    */
+  it("fails a job of a team that must keep its own storage and has none, without generating", async () => {
+    const batch = await seed(2);
+    let generated = 0;
+    const worker = startWorker(() => true, {
+      apiKeyFor: KEYED,
+      budget: async () => 1,
+      storageRefusal: async () => "connect a bucket",
+      regenerate: { quests: async () => {
+        generated += 1;
+        return OK;
+      } },
+    });
+
+    try {
+      await until(async () => (await statesOf(batch)).failed === 2);
+    } finally {
+      await worker.stop();
+    }
+
+    expect(generated).toBe(0);
+    const { rows } = await asSystem.query<{ error: string }>(
+      `select "error" from "regeneration_job" where "batchId" = $1 limit 1`,
+      [batch],
+    );
+    expect(rows[0].error).toBe("connect a bucket");
+  });
+
+  it("fails a job when its team's storage cannot be checked, without generating", async () => {
+    const batch = await seed(1);
+    let generated = 0;
+    const worker = startWorker(() => true, {
+      apiKeyFor: KEYED,
+      budget: async () => 1,
+      storageRefusal: async () => {
+        throw new Error("connection reset");
+      },
+      regenerate: { quests: async () => {
+        generated += 1;
+        return OK;
+      } },
+    });
+
+    try {
+      await until(async () => (await statesOf(batch)).failed === 1);
+    } finally {
+      await worker.stop();
+    }
+
+    expect(generated).toBe(0);
+    const { rows } = await asSystem.query<{ error: string }>(
+      `select "error" from "regeneration_job" where "batchId" = $1 limit 1`,
+      [batch],
+    );
+    expect(rows[0].error).toBe("could not check the team's storage: connection reset");
+  });
+
   it("fails every job of an owner with no usable key, without generating", async () => {
     const batch = await seed(4);
     let generated = 0;

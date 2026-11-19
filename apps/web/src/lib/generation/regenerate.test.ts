@@ -500,6 +500,24 @@ describe("a line whose spoken text has been rewritten", () => {
     expect(result.characters).toBe("Say this instead.".length);
   });
 
+  it("adds the take's hash to the override it spoke, so another team's view can show it", async () => {
+    const { options } = stub();
+    const file = await fileFor(SOLO);
+    await writeOverride("enUS", file, SOLO, "Say this instead.", null);
+    await asSystem.query(`update "line_override" set "spokenHashes" = null where "file" = $1 and "lang" = 'enUS'`, [file]);
+
+    const result = await regenerate(SOLO, options);
+
+    expect(result.ok).toBe(true);
+    const { rows } = await asSystem.query<{ spokenHashes: string[]; spokenHash: string }>(
+      `select o."spokenHashes", t."spokenHash" from "line_override" o
+         join "take" t on t."file" = o."file" and t."lang" = o."lang" and t."teamId" = o."teamId" and t."isCurrent"
+        where o."file" = $1 and o."lang" = 'enUS'`,
+      [file],
+    );
+    expect(rows[0].spokenHashes).toEqual([rows[0].spokenHash]);
+  });
+
   it("saves the line's normal text on the take, because a rewrite can hold respellings", async () => {
     const { options } = stub();
     await writeOverride("enUS", await fileFor(SOLO), SOLO, "Say this instead.", null);

@@ -172,14 +172,14 @@ async function merge(client: PoolClient, survivor: string, loser: string): Promi
     `insert into "quest_line"
        ("lineId", "variant", "lang", "version", "isCurrent", "origin", "source", "questId",
         "questTitle", "playerGender", "fileName", "text", "originalText", "localeText",
-        "generatable", "skipReason", "editedBy", "note")
+        "generatable", "skipReason", "editedBy", "note", "readerGenders")
      select $1, l."variant", l."lang",
             coalesce((select max(v."version") from "quest_line" v
                        where v."lineId" = $1 and v."variant" = l."variant" and v."lang" = l."lang"), 0) + 1,
             true, l."origin", l."source", l."questId", l."questTitle", l."playerGender",
             case when l."playerGender" is null then $3 else l."playerGender" || '-' || $3 end,
             l."text", l."originalText", l."localeText", l."generatable", l."skipReason",
-            l."editedBy", l."note"
+            l."editedBy", l."note", l."readerGenders"
        from "quest_line" l
       where l."lineId" = $2 and l."isCurrent"
         and not exists (select 1 from "quest_line" t

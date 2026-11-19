@@ -1,6 +1,7 @@
 /**
  * The API describing itself, so a maintainer can hand an agent one URL and a token.
  */
+import { MAX_OVERRIDE_LENGTH } from "@/lib/quests/override";
 import { MAX_ITEMS, MAX_NAME, MAX_TEXT } from "@/lib/text-api/apply";
 import { withToken } from "@/lib/text-api/guard";
 import { sections } from "@/lib/text-api/index";
@@ -11,7 +12,7 @@ export const dynamic = "force-dynamic";
 export async function GET(request: Request) {
   return withToken(request, { need: "any" }, async (context) =>
     Response.json({
-      token: { lang: context.lang, access: context.access, generate: context.generate },
+      token: { lang: context.lang, access: context.access, generate: context.generate, layers: context.layers },
       sections: Object.fromEntries(
         Object.entries(sections).map(([name, api]) => [name, { filters: Object.keys(api.filters) }]),
       ),
@@ -19,6 +20,7 @@ export async function GET(request: Request) {
         pageSize: PAGE_SIZE,
         itemsPerUpdate: MAX_ITEMS,
         textLength: MAX_TEXT,
+        questOverrideLength: MAX_OVERRIDE_LENGTH,
         nameLength: MAX_NAME,
         itemsPerGeneration: MAX_ITEMS,
         // nginx enforces this one (nginx-spoken-api.conf), so it cannot be imported.
@@ -27,15 +29,15 @@ export async function GET(request: Request) {
       endpoints: {
         "GET /api/v1/{section}": "List items, optionally by a filter. Follow nextCursor with ?cursor=.",
         "GET /api/v1/{section}/{id}": "One item. Quest lines take ?variant=, default 0.",
-        "PATCH /api/v1/{section}/{id}": "Change one item: {text?, name?, short?, note?, expectedVersion?, expectedNameVersion?}. Quest lines take ?variant=, not a body field.",
-        "PATCH /api/v1/{section}": "Change many: {items: [{id, variant?, text?, name?, short?, ...}], note?}. Returns batchId and one result per item, in order.",
+        "PATCH /api/v1/{section}/{id}": "Change one item: {text?, name?, short?, note?, expectedVersion?, expectedNameVersion?, layer?}. Quest lines take ?variant=, not a body field.",
+        "PATCH /api/v1/{section}": "Change many: {items: [{id, variant?, text?, name?, short?, ...}], note?, layer?}. Returns batchId and one result per item, in order.",
         "GET /api/v1/{section}/reference": "The English text of a section, to translate from. Same filters and cursor as the list; no versions. Any valid token.",
         "POST /api/v1/{section}/generate": "Queue audio on the token owner's own key: {items: [{id, variant?}]} or, for quests, {filters: \"<Explorer query string>\"}; optional label and dryRun. A dry run prices it and queues nothing. Needs a generate token.",
         "GET /api/v1/generations": "This owner's recent generation batches in this language, whichever surface queued them. Kept at least 30 days. Needs a generate token.",
         "GET /api/v1/generations/{batchId}": "One batch: counts by state, credits, cost, and up to 100 recent failures. Needs a generate token.",
         "POST /api/v1/generations/{batchId}/stop": "Cancel the batch's pending jobs. Returns {cancelled}. Needs a generate token.",
         "GET /api/v1/batches": "This owner's recent mass updates in this language.",
-        "POST /api/v1/batches/{batchId}/restore": "Undo a mass update, except lines edited since and gender splits.",
+        "POST /api/v1/batches/{batchId}/restore": "Undo a mass update, except lines edited since, gender splits, and edits to a layer the token may not write now. An override is undone in the team that wrote it.",
         "GET /api/v1/lexicon": "The language's pronunciation lexicon: entries, version, sync.",
         "GET /api/v1/lexicon/{grapheme}": "One entry, matched ignoring case.",
         "PATCH /api/v1/lexicon/{grapheme}": "Replace or add one entry: {ipa | alias, confidence, note?, expectedVersion?}. Needs configure.",
@@ -45,7 +47,8 @@ export async function GET(request: Request) {
         "The language always comes from the token.",
         "Writes go live at once. Edited lines read as stale until someone regenerates them. Text routes make no audio: only generate does, on the token owner's key, and a line that is already done and asked for again is paid for again.",
         "A null text is an item with no translation yet. englishText is what to translate from.",
-        "A quest line's override, when not null, is what gets spoken instead of its text. Writing text does not change it, and this API cannot write it.",
+        "Every item's override, when not null, is what the token owner's team speaks in place of its text. Writes go to the original text when the owner is a text maintainer, else to the team's overrides; send \"layer\": \"override\" to write the override as a text maintainer. Each text result names its layer.",
+        "A quest line heard in another voice than its file was made in is listed on the site as a voice line of its own; that line's override is made on the site only.",
         "Text containing $G splits a quest line into :m and :f. Plain text to either side of an untranslated split is refused: send one text with a $G branch.",
         "A readable page's name is its owner's, shared by every page and item with that owner. A quest's name is shared by all its lines. Gossip lines and pages with no owner have no name to write.",
         "Places: sending text without short regenerates short.",

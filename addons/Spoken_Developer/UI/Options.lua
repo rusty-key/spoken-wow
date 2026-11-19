@@ -12,8 +12,7 @@ local L = Developer.L
 local Log, Copy, Write = Developer.Log, Developer.Copy, Developer.Write
 
 local INDENT, TOP = 25, 16
--- Where a row's label starts (Layout's LABEL_X), and the game's information icon.
-local LABEL_X = 37
+local LABEL_X = SpokenLayout.LABEL_X
 local INFO_ICON = [[Interface\Common\help-i]]
 local INFO_SIZE = 26
 -- The game's light blue for help, apart from the grey notes and the gold labels.

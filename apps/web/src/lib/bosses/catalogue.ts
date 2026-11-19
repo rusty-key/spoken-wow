@@ -13,15 +13,17 @@
 import "server-only";
 
 import { query } from "@/lib/db";
-import { memoByTeamLang } from "@/lib/memo";
+import { memoByLang, memoByTeamLang } from "@/lib/memo";
 import { versionStamp } from "@/lib/stamp";
 import { BASE_LANG, type Lang } from "@/lib/lang";
-import { EMPTY_CONTEXT, sectionContext, type SearchContext, type Take } from "@/lib/places/catalogue";
+import { EMPTY_CONTEXT, publicContext, sectionContext, type SearchContext, type Take } from "@/lib/places/catalogue";
 import { assignFiles, lineIdFor, loadPronunciation, textHash, toSpokenText } from "@/lib/places/tools";
+import { readTextOverrides, stampsWithOverrides, viewOf } from "@/lib/text-overrides/store";
+import type { OverrideView } from "@/lib/text-overrides/types";
 
 import { bossLineId } from "./story";
 
-export { EMPTY_CONTEXT, type SearchContext, type Take };
+export { EMPTY_CONTEXT, publicContext, type SearchContext, type Take };
 
 export type BossEntry = {
   /** boss:{map}:{key}, the addon's clip key. */
@@ -49,6 +51,8 @@ export type BossEntry = {
   nameMissing?: boolean;
   /** The English name, for a translator. Absent in English. */
   englishName?: string;
+  /** The acting team's rewrite of `text`, which `spoken` and `hash` then follow. */
+  override?: OverrideView;
 };
 
 type StructureRow = {
@@ -88,8 +92,14 @@ async function structure(): Promise<StructureRow[]> {
  * rename nothing and still move a position or retire a boss.
  */
 async function stampOf(lang: Lang): Promise<string> {
-  const rows = await query<{ stamp: string }>(
-    `select
+  const { sql, params } = stampSql(lang);
+  const rows = await query<{ stamp: string }>(`select ${sql} as "stamp"`, params);
+  return rows[0]?.stamp ?? "";
+}
+
+function stampSql(lang: Lang): { sql: string; params: unknown[] } {
+  return {
+    sql: `(
        (select count(*) || ':' || coalesce(sum(hashtext(
                  "map" || '|' || "kind" || '|' || "zone" || '|' || "position")), 0)
           from "boss_instance") || '|' ||
@@ -102,10 +112,9 @@ async function stampOf(lang: Lang): Promise<string> {
                                      filter (where "isCurrent"), 0)
           from "boss_line" where "lang" = $1) || '|' ||
        ${versionStamp("entity_name", `"kind" in ('boss', 'instance') and "lang" in ($1, '${BASE_LANG}')`)}
-       as "stamp"`,
-    [lang],
-  );
-  return rows[0]?.stamp ?? "";
+       )`,
+    params: [lang],
+  };
 }
 
 type Names = (kind: "boss" | "instance", id: string) => { own?: string; english?: string };
@@ -169,12 +178,64 @@ async function build(lang: Lang): Promise<BossEntry[]> {
     });
 }
 
+const baseKey = Symbol.for("spoken.bosses-base.by-lang");
 const catalogueKey = Symbol.for("spoken.bosses-catalogue.by-lang");
 const byPathKey = Symbol.for("spoken.bosses-by-path.by-lang");
 
-/** Every live boss, ordered by instance position, then boss position. */
+/**
+ * Every live boss as its original story says it, the same for every team of the language: built
+ * from shared tables alone, so it is memoised per language and teams share the build.
+ */
+export async function baseCatalogue(lang: Lang): Promise<BossEntry[]> {
+  return baseAt(lang, await stampOf(lang));
+}
+
+function baseAt(lang: Lang, stamp: string): Promise<BossEntry[]> {
+  return memoByLang(baseKey, lang, stamp, () => build(lang));
+}
+
+/**
+ * Every live boss, ordered by instance position, then boss position, with the acting team's
+ * overrides laid on the base. A team with none gets the base itself.
+ */
 export async function catalogue(lang: Lang = BASE_LANG): Promise<BossEntry[]> {
-  return memoByTeamLang(catalogueKey, lang, await stampOf(lang), () => build(lang));
+  const stamps = await stampsWithOverrides("bosses", lang, stampSql(lang));
+  return memoByTeamLang(catalogueKey, lang, `${stamps.stamp}|${stamps.overrides}`, () => overlay(lang, stamps));
+}
+
+async function overlay(lang: Lang, stamps: { stamp: string; overrides: string }): Promise<BossEntry[]> {
+  const [base, overrides] = await Promise.all([
+    baseAt(lang, stamps.stamp),
+    readTextOverrides("bosses", lang, stamps.overrides),
+  ]);
+  if (overrides.size === 0) return base;
+  const rules = await overrideRules(lang);
+  return base.map((entry) => {
+    const override = overrides.get(entry.id);
+    const said = override && spokenOverride(entry, override.text, rules);
+    return said ? { ...entry, ...said, override: viewOf(override, entry.text!) } : entry;
+  });
+}
+
+function overrideRules(lang: Lang): Promise<Record<string, string>> {
+  return lang === BASE_LANG ? loadPronunciation() : Promise.resolve({});
+}
+
+function spokenOverride(
+  entry: BossEntry,
+  text: string,
+  rules: Record<string, string>,
+): { spoken: string; hash: string } | undefined {
+  // A boss with no story has nothing for an override to stand on.
+  if (entry.text === null) return undefined;
+  const spoken = toSpokenText(text, rules);
+  return { spoken, hash: textHash(spoken) };
+}
+
+/** The hash the overlay gives a boss speaking `text` as its override, null where it ignores one. */
+export async function overrideSpokenHash(lang: Lang, lineId: string, text: string): Promise<string | null> {
+  const entry = (await baseCatalogue(lang)).find((e) => e.id === lineId);
+  return (entry && spokenOverride(entry, text, await overrideRules(lang))?.hash) ?? null;
 }
 
 export { stampOf as catalogueStamp };
@@ -182,9 +243,16 @@ export { stampOf as catalogueStamp };
 /** A boss by the path its audio file uses, '36/edwin-vancleef'. What /bosses/r/{map}/{slug} resolves. */
 export async function lineByPath(map: number, slug: string, lang: Lang = BASE_LANG): Promise<BossEntry | undefined> {
   if (!Number.isInteger(map)) return undefined;
-  const entries = await catalogue(lang);
-  const byPath = await memoByTeamLang(byPathKey, lang, entries, () => new Map(entries.map((e) => [e.file, e])));
+  const entries = await baseCatalogue(lang);
+  const byPath = await memoByLang(byPathKey, lang, entries, () => new Map(entries.map((e) => [e.file, e])));
   return byPath.get(`${map}/${slug}`);
+}
+
+/** lineByPath in the acting team's catalogue, for a page that shows what the team's take says. */
+export async function teamLineByPath(map: number, slug: string, lang: Lang = BASE_LANG): Promise<BossEntry | undefined> {
+  if (!Number.isInteger(map)) return undefined;
+  const path = `${map}/${slug}`;
+  return (await catalogue(lang)).find((e) => e.file === path);
 }
 
 /**
@@ -193,7 +261,7 @@ export async function lineByPath(map: number, slug: string, lang: Lang = BASE_LA
  * so English answers for all of them.
  */
 export async function isKnownLine(lineId: string): Promise<boolean> {
-  return (await catalogue(BASE_LANG)).some((entry) => entry.id === lineId);
+  return (await baseCatalogue(BASE_LANG)).some((entry) => entry.id === lineId);
 }
 
 /** `seesMadeBy`: whether the viewer works in the language. See SearchContext.madeBy. */
@@ -206,7 +274,7 @@ export type InstanceFacet = { map: number; name: string; count: number; written:
 
 export async function instanceFacets(lang: Lang = BASE_LANG): Promise<InstanceFacet[]> {
   const facets = new Map<number, InstanceFacet>();
-  for (const entry of await catalogue(lang)) {
+  for (const entry of await baseCatalogue(lang)) {
     let facet = facets.get(entry.map);
     if (!facet) {
       facet = { map: entry.map, name: entry.instanceName, count: 0, written: 0 };
