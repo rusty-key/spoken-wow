@@ -20,6 +20,7 @@ import { isGap, matchingLines, NO_CONTEXT } from "@/lib/search";
 
 import { acceptCorrection } from "./correction";
 import { lineIsInExplorer, momentHasSpeaker, resolveContribution, resolveContributions } from "./accept";
+import { LETTER_COPY_ITEM } from "@readables-tools/lib/owners.mjs";
 import {
   broadcastGossipStem,
   gossipFileName,
@@ -1465,6 +1466,15 @@ describe("resolveContribution: a readables contribution, in any language", () =>
     expect(await resolveContribution(second, "accepted", RESOLVER)).toMatchObject({ ok: true });
     expect(await versionsOf(`b:${base}`, "esES")).toHaveLength(2);
     expect(await ownersOf(`b:${base}`)).toEqual({ ownerKind: "object", ownerIds: [base, base + 5] });
+  });
+
+  it("gives no page the Plain Letter a letter becomes when taken out of the mailbox", async () => {
+    const id = await readablesRow({
+      locale: "esES", text: `Carta ${base}.`, meta: { book: `Carta lisa ${base}`, number: "1", item: String(LETTER_COPY_ITEM) },
+    });
+    expect(await resolveContribution(id, "accepted", RESOLVER)).toMatchObject({ ok: true });
+    const [page] = await pagesTitled(`Carta lisa ${base}`, "esES");
+    expect(await ownersOf(page.lineId)).toEqual({ ownerKind: null, ownerIds: null });
   });
 
   it("gives a minted page the item it was read from, named so the page keeps its title", async () => {
