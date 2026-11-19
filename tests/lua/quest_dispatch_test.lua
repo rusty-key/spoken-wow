@@ -483,6 +483,7 @@ stub.Advance(0.5)
 world.questID = 0
 stub.ShowPanel(nil)
 stub.FireEvent("QUEST_FINISHED")
+stub.FireEvent("QUEST_TURNED_IN", full, 0, 0)
 stub.Advance(5)
 Expect("auto turn-in keeps progress when the panel changes without its event",
     string.format("%d-progress, %d-complete", full, full))
@@ -501,6 +502,7 @@ stub.Advance(0.6)
 world.questID = 0
 stub.ShowPanel(nil)
 stub.FireEvent("QUEST_FINISHED")
+stub.FireEvent("QUEST_TURNED_IN", full, 0, 0)
 stub.Advance(5)
 Expect("an unidentified reward page keeps the watcher's progress page",
     string.format("%d-progress, %d-complete", full, full))
