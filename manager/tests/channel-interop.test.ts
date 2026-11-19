@@ -64,6 +64,7 @@ describe('publisher to manager', () => {
       distDir: dist,
       signingKey: keys.privateKey,
       minSpoken: { quests: '3.0.0', places: '3.0.0', readables: '3.0.0' },
+      minSpokenTeam: '3.0.0',
       latestSpoken: '3.0.0',
       cache: new Map(),
       log: () => undefined

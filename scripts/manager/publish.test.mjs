@@ -31,7 +31,7 @@ function writeFolder(dir, files, folder = "SpokenPlacesAudio_deDE") {
   }
 }
 const run = (store, distDir, extra = {}) => publish({
-  store, packs, distDir, signingKey: keys.privateKey, minSpoken, latestSpoken: "3.0.0",
+  store, packs, distDir, signingKey: keys.privateKey, minSpoken, minSpokenTeam: "3.0.0", latestSpoken: "3.0.0",
   cache: new Map(), log: quiet, now: new Date("2026-10-18T14:22:33Z"), ...extra,
 });
 const index = (store) => openJson(store.objects.get("index.json").body.toString(), keys.publicKey).value;
