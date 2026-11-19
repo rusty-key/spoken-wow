@@ -239,7 +239,7 @@ export class ManagerService {
     // The file keeps GitHub's list alone; the window is offered what can be installed, channel packs too.
     const offered = this.effectiveCatalog()
     this.catalogChanged(offered)
-    await this.warmManifests(offered)
+    await this.warmManifests()
     return offered
   }
 
@@ -266,9 +266,10 @@ export class ManagerService {
 
   /**
    * Warms the manifest cache of installed channel packs so the Update label can be computed offline. The window has
-   * the catalog already; it is told again once a manifest it lacked has arrived, so the label's size can show.
+   * the catalog already; it is told again once a manifest it lacked has arrived, so the label's size can show. What it
+   * is told then is the catalog of that moment: a refresh meanwhile may have brought a newer channel.
    */
-  private async warmManifests(offered: Catalog): Promise<void> {
+  private async warmManifests(): Promise<void> {
     const wanted = new Map<string, ChannelPack>()
     const products = this.products()
     for (const game of this.games) {
@@ -293,7 +294,7 @@ export class ManagerService {
           )
         )
       )
-      if (got.some(Boolean)) this.catalogChanged(offered)
+      if (got.some(Boolean)) this.catalogChanged(this.effectiveCatalog())
     }
   }
 
@@ -321,9 +322,8 @@ export class ManagerService {
     this.channelFetchedAt = Date.now()
     if (!changed) return
     // A row saying "update first" needs the update it points at to be on offer.
-    const offered = this.effectiveCatalog()
-    this.catalogChanged(offered)
-    void this.warmManifests(offered).catch((err) => log('Manifests of the channel:', err))
+    this.catalogChanged(this.effectiveCatalog())
+    void this.warmManifests().catch((err) => log('Manifests of the channel:', err))
   }
 
   // ---------------------------------------------------------------- community

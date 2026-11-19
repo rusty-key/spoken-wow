@@ -4,7 +4,7 @@ import { afterEach, describe, expect, it } from 'vitest'
 import { CHANNELS } from '../src/shared/api'
 import type { CatalogUpdate, JobProgress, Product } from '../src/shared/types'
 import { ManagerService } from '../src/main/service'
-import { loadPackState } from '../src/main/packs-state'
+import { loadPackState, savePackState } from '../src/main/packs-state'
 import { channelFixture, channelKeys, serveChannel, type PackSpec } from './channel-helpers'
 import { makeGame, serveBuffer, sha256, startServer, tmpDir, toc, write, yazlZip, type TestServer } from './helpers'
 
@@ -189,6 +189,56 @@ describe('the channel through the service', () => {
     await svc.refreshChannel()
     const told = sent.slice(before).filter((e) => e.channel === CHANNELS.catalogChanged).at(-1)?.payload as CatalogUpdate | undefined
     expect(told?.products.find((p) => p.id === 'places-audio-deDE-stimmen')?.team?.name).toBe('Stimmen')
+  })
+
+  it('sends the latest catalog once a manifest warmed for an older channel arrives', async () => {
+    const own: PackSpec = { ...spec, rev: '20261017T120000Z' }
+    const fx = channelFixture(keys, [own])
+    const s = await serveChannel(fx)
+    server = s
+    const game = await makeGame(tmpDir())
+    savePackState(game, { packId: PACK, rev: '20261001T000000Z', files: {} })
+    // The first request for the manifest waits until the next channel is in; later ones go straight through.
+    let release: (() => void) | null = null
+    let requested: () => void = () => undefined
+    const asked = new Promise<void>((resolve) => (requested = resolve))
+    const fetchImpl = (async (url: string, init?: RequestInit) => {
+      if (String(url).includes(`/packs/${PACK}/${own.rev}.json`) && !release) {
+        await new Promise<void>((resolve) => {
+          release = resolve
+          requested()
+        })
+      }
+      return githubFetch()(url, init)
+    }) as unknown as typeof fetch
+    const sent: { channel: string; payload: unknown }[] = []
+    const svc = new ManagerService({
+      dataPath: tmpDir(), appVersion: '0.1.0', send: (channel, payload) => sent.push({ channel, payload }),
+      fetchImpl, autoPaths: [game.root], isRunning: async () => false, packsBaseUrl: s.base, packsPublicKey: keys.publicKey
+    })
+    await svc.init()
+    await svc.refreshChannel()
+    await asked
+
+    const TEAM = 'SpokenPlacesAudio_deDE_stimmen'
+    fx.objects = channelFixture(keys, [own, { packId: TEAM, rev: '20261019T000000Z', files: { [`${TEAM}.toc`]: 'toc' }, team: { slug: 'stimmen', name: 'Stimmen', official: false } }], {
+      generatedAt: '2026-10-19T00:00:00.000Z'
+    }).objects
+    await svc.refreshChannel()
+    const updates = () => sent.filter((e) => e.channel === CHANNELS.catalogChanged)
+    const told = async (count: number) => {
+      const deadline = Date.now() + 5000
+      while (updates().length < count && Date.now() < deadline) await new Promise((r) => setTimeout(r, 10))
+      expect(updates()).toHaveLength(count)
+    }
+    // The newer channel's own warm-up gets the manifest first and says so; then the held one finishes.
+    const after = updates().length
+    await told(after + 1)
+    release!()
+    await told(after + 2)
+    const last = updates().at(-1)?.payload as CatalogUpdate
+    expect(last.products.some((p) => p.id === 'places-audio-deDE-stimmen')).toBe(true)
+    expect(last.catalog.releases['places-audio-deDE-stimmen']?.[0]?.tag).toBe('channel/20261019T000000Z')
   })
 
   it("keeps its products when a refresh finds the channel unchanged", async () => {

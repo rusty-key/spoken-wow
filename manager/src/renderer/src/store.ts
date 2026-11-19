@@ -1,7 +1,7 @@
 // The window's one store: React context + useReducer. The main process's events are the truth;
 // nothing here guesses the result of an install before the job says so.
 import { createContext, createElement, useContext, useEffect, useMemo, useReducer, useRef, type Dispatch, type ReactNode } from 'react'
-import type { AddGameResult, UpdaterState } from '@shared/api'
+import type { AddGameResult, ManagerApi, UpdaterState } from '@shared/api'
 import type { Catalog, CatalogUpdate, CommunityCatalog, ContributorView, GameInstall, JobProgress, Product, ProductStatus, Settings, SharingStatus, Snapshot, VoiceLanguage } from '@shared/types'
 import { DEFAULT_SETTINGS, isSupportedFlavor } from '@shared/types'
 import { api, errorText } from './api'
@@ -39,7 +39,7 @@ export interface State {
   contributorError: string
 }
 
-type Action =
+export type Action =
   | { type: 'init'; snap: Snapshot; statuses: Record<string, ProductStatus[]>; page: Page; gameId: string; tab?: SpokenTab }
   | { type: 'fatal'; message: string }
   | { type: 'games'; games: GameInstall[] }
@@ -156,7 +156,9 @@ export function reducer(s: State, a: Action): State {
 
 const PAGES: Page[] = ['home', 'spoken', 'voices', 'community', 'release', 'settings']
 
-function parseHash(): { page: Page; gameId?: string; tab?: SpokenTab } {
+type Route = { page: Page; gameId?: string; tab?: SpokenTab }
+
+function parseHash(): Route {
   const [, page, gameId, tab] = location.hash.split('/')
   const found = PAGES.find((p) => p === page)
   return {
@@ -330,6 +332,76 @@ const Ctx = createContext<Store | null>(null)
 /** The store's context, for drawing a page from a made-up state (tests). */
 export const StoreContext = Ctx
 
+/**
+ * Loads the first snapshot and follows the main process's events; gives back the call that stops following them. A
+ * catalog sent once the snapshot is in hand, while the statuses are still on their way, is newer than the snapshot's,
+ * so the last such one is applied after it.
+ */
+export function connect(
+  a: ManagerApi,
+  dispatch: Dispatch<Action>,
+  opts: { games: () => GameInstall[]; route: () => Route; ready: () => void }
+): () => void {
+  let alive = true
+  let starting = false
+  let late: CatalogUpdate | null = null
+  const refetch = (gameId: string): void => {
+    a.statuses(gameId)
+      .then((list) => alive && dispatch({ type: 'statuses', gameId, list }))
+      .catch(() => undefined)
+  }
+  const refetchAll = (): void => opts.games().forEach((g) => refetch(g.id))
+
+  void (async () => {
+    try {
+      const snap = await a.snapshot()
+      starting = true
+      const entries = await Promise.all(
+        snap.games.map(async (g) => [g.id, await a.statuses(g.id).catch(() => [] as ProductStatus[])] as const)
+      )
+      starting = false
+      if (!alive) return
+      const route = opts.route()
+      const usable = snap.games.filter((g) => isSupportedFlavor(g.flavor))
+      const gameId = [route.gameId, snap.settings.lastGameId].find((id) => usable.some((g) => g.id === id)) ?? usable[0]?.id ?? snap.games[0]?.id ?? ''
+      dispatch({ type: 'init', snap, statuses: Object.fromEntries(entries), page: route.page, gameId, tab: route.tab })
+      if (late) {
+        dispatch({ type: 'channel', update: late })
+        late = null
+        snap.games.forEach((g) => refetch(g.id))
+      }
+      opts.ready()
+    } catch (e) {
+      starting = false
+      if (alive) dispatch({ type: 'fatal', message: errorText(e) })
+    }
+  })()
+
+  const offs = [
+    a.onJob((job) => {
+      dispatch({ type: 'job', job })
+      if (job.phase === 'done' || job.phase === 'error' || job.phase === 'cancelled') refetch(job.gameId)
+    }),
+    a.onGamesChanged((games) => {
+      dispatch({ type: 'games', games })
+      games.forEach((g) => refetch(g.id))
+    }),
+    a.onCatalogChanged((update) => {
+      if (starting) late = update
+      dispatch({ type: 'channel', update })
+      refetchAll()
+    }),
+    a.onCommunityChanged((community) => dispatch({ type: 'community', community })),
+    a.onUpdater((u) => dispatch({ type: 'updater', state: u })),
+    a.onSharing((status) => dispatch({ type: 'sharing', status })),
+    a.onContributorChanged((view) => dispatch({ type: 'contributor', view }))
+  ]
+  return () => {
+    alive = false
+    offs.forEach((off) => off())
+  }
+}
+
 export function StoreProvider({ children }: { children: ReactNode }): ReactNode {
   const [state, dispatch] = useReducer(reducer, initial)
   const ref = useRef(state)
@@ -337,58 +409,18 @@ export function StoreProvider({ children }: { children: ReactNode }): ReactNode 
   const actions = useMemo(() => makeActions(dispatch, () => ref.current), [])
 
   useEffect(() => {
-    const a = api()
-    let alive = true
-    const refetch = (gameId: string): void => {
-      a.statuses(gameId)
-        .then((list) => alive && dispatch({ type: 'statuses', gameId, list }))
-        .catch(() => undefined)
-    }
-    const refetchAll = (): void => ref.current.games.forEach((g) => refetch(g.id))
-
-    void (async () => {
-      try {
-        const snap = await a.snapshot()
-        const entries = await Promise.all(
-          snap.games.map(async (g) => [g.id, await a.statuses(g.id).catch(() => [] as ProductStatus[])] as const)
-        )
-        if (!alive) return
-        const route = parseHash()
-        const usable = snap.games.filter((g) => isSupportedFlavor(g.flavor))
-        const gameId = [route.gameId, snap.settings.lastGameId].find((id) => usable.some((g) => g.id === id)) ?? usable[0]?.id ?? snap.games[0]?.id ?? ''
-        dispatch({ type: 'init', snap, statuses: Object.fromEntries(entries), page: route.page, gameId, tab: route.tab })
-        void actions.refreshContributor()
-      } catch (e) {
-        if (alive) dispatch({ type: 'fatal', message: errorText(e) })
-      }
-    })()
-
-    const offs = [
-      a.onJob((job) => {
-        dispatch({ type: 'job', job })
-        if (job.phase === 'done' || job.phase === 'error' || job.phase === 'cancelled') refetch(job.gameId)
-      }),
-      a.onGamesChanged((games) => {
-        dispatch({ type: 'games', games })
-        games.forEach((g) => refetch(g.id))
-      }),
-      a.onCatalogChanged((update) => {
-        dispatch({ type: 'channel', update })
-        refetchAll()
-      }),
-      a.onCommunityChanged((community) => dispatch({ type: 'community', community })),
-      a.onUpdater((u) => dispatch({ type: 'updater', state: u })),
-      a.onSharing((status) => dispatch({ type: 'sharing', status })),
-      a.onContributorChanged((view) => dispatch({ type: 'contributor', view }))
-    ]
+    const disconnect = connect(api(), dispatch, {
+      games: () => ref.current.games,
+      route: parseHash,
+      ready: () => void actions.refreshContributor()
+    })
     const onHash = (): void => {
       const route = parseHash()
       dispatch({ type: 'nav', page: route.page, gameId: route.gameId, tab: route.tab })
     }
     window.addEventListener('hashchange', onHash)
     return () => {
-      alive = false
-      offs.forEach((off) => off())
+      disconnect()
       window.removeEventListener('hashchange', onHash)
     }
   }, [actions])
