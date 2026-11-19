@@ -61,18 +61,42 @@ type Row = {
 };
 
 /**
- * Every file whose live audio changed since `$3`, as `file, lineId, version, at, by, kind`.
+ * Per file, the version that was live at `at` (a parameter, null for none): the one the file's
+ * last cut or restore up to then made live, or, for a file older than the activity log, its
+ * newest version from then. As `file, version`, computed once per query rather than per take.
+ */
+function liveAt(at: string): string {
+  return `select f."file", coalesce(a."version", f."version") as "version"
+    from (select o."file", max(o."version") as "version" from "take" o
+           where o."source" = $1 and o."lang" = $2 and o."teamId" = coalesce(spoken_team(), team_of_lang($2))
+             and o."createdAt" <= ${at}
+           group by o."file") f
+    left join (select distinct on (e."subject") e."subject", (e."detail"->>'version')::int as "version"
+                 from "activity" e
+                where e."lang" = $2 and e."source" = $1 and e."kind" in ('take.generated', 'take.restored')
+                  and e."at" <= ${at}
+                order by e."subject", e."at" desc) a on a."subject" = f."file"`;
+}
+
+/**
+ * Every file whose live audio changed since `$3`, as `file, lineId, version, at, by, kind`: the
+ * acting team's takes, which its release builds from, or the privileged team's read as all teams.
+ * With `$4`, as it stood then: what a release that started at `$4` built from; without, the takes
+ * live now.
  *
  * A restore counts only when it put back something other than what was live at `$3`: cutting
- * v3 and going back to v2 is an undo, and players already have v2. What was live then is the
- * version the file's last cut or restore before `$3` made live, or, for a file older than the
- * activity log, its newest version from before `$3`.
+ * v3 and going back to v2 is an undo, and players already have v2.
  */
 function changed(section: ReleaseSection): string {
+  const live = `($4::timestamptz is null and t."isCurrent"
+    or $4::timestamptz is not null and t."createdAt" <= $4 and t."version" is not distinct from until_live."version")`;
   return `
+  with until_live as (${liveAt("$4::timestamptz")}),
+       since_live as (${liveAt("$3::timestamptz")})
   select t."file", t."lineId", t."version", t."createdAt" as "at", t."createdBy" as "by", 'new' as "kind"
     from "take" t
-   where t."source" = $1 and t."lang" = $2 and t."isCurrent" and t."teamId" = team_of_lang($2)
+    left join until_live on until_live."file" = t."file"
+   where t."source" = $1 and t."lang" = $2 and ${live} and t."teamId" = coalesce(spoken_team(), team_of_lang($2))
      and ($3::timestamptz is null or t."createdAt" > $3) ${SHIPPED[section]}
   union all
   -- A file restored and regenerated since counts once, as the newer take; restored twice, once,
@@ -81,17 +105,13 @@ function changed(section: ReleaseSection): string {
     select distinct on (a."subject") a."subject", t."lineId", t."version", a."at", a."actorId", 'restored'
       from "activity" a
       join "take" t on t."source" = a."source" and t."lang" = a."lang" and t."file" = a."subject"
-                   and t."isCurrent" and t."teamId" = team_of_lang($2)
+                   and t."teamId" = coalesce(spoken_team(), team_of_lang($2))
+      left join until_live on until_live."file" = t."file"
+      left join since_live on since_live."file" = t."file"
      where $3::timestamptz is not null and a."kind" = 'take.restored' and a."lang" = $2
-       and a."source" = $1 and a."at" > $3 and t."createdAt" <= $3 ${SHIPPED[section]}
-       and t."version" is distinct from coalesce(
-         (select (e."detail"->>'version')::int from "activity" e
-           where e."lang" = $2 and e."source" = $1 and e."subject" = t."file"
-             and e."kind" in ('take.generated', 'take.restored') and e."at" <= $3
-           order by e."at" desc limit 1),
-         (select max(o."version") from "take" o
-           where o."source" = t."source" and o."lang" = t."lang" and o."file" = t."file"
-             and o."teamId" = t."teamId" and o."createdAt" <= $3))
+       and a."source" = $1 and a."at" > $3 and ($4::timestamptz is null or a."at" <= $4)
+       and ${live} and t."createdAt" <= $3 ${SHIPPED[section]}
+       and t."version" is distinct from since_live."version"
      order by a."subject", a."at" desc
   ) restored`;
 }
@@ -118,13 +138,15 @@ const SHIPPED_NAMES: Record<ReleaseSection, readonly string[]> = {
 
 /**
  * With `list` false, the counts alone: the release page asks for those on every check, and the
- * list with its text lookups only when a review opens.
+ * list with its text lookups only when a review opens. `people` (with the list by default) names
+ * who made them, as the review page shows without the list. With `until`, the changes up to then
+ * and the takes live then: a staged version, which built from what was live when it started.
  */
 export async function pendingChanges(
   section: ReleaseSection,
   lang: Lang,
   since: Date | null,
-  { list = true }: { list?: boolean } = {},
+  { list = true, people: withPeople = list, until = null }: { list?: boolean; people?: boolean; until?: Date | null } = {},
 ): Promise<PendingView> {
   const CHANGED = changed(section);
   // One after another: a page asks for every section at once, and each query here holds a
@@ -133,7 +155,7 @@ export async function pendingChanges(
     lang,
     `select "by", count(*) as "count", count(*) filter (where "kind" = 'restored') as "restored"
        from (${CHANGED}) c group by "by" order by count(*) desc`,
-    [section, lang, since],
+    [section, lang, since, until],
   );
   const rows = list
     ? await readAs<Row>(
@@ -142,17 +164,17 @@ export async function pendingChanges(
            from (select * from (${CHANGED}) changed order by "at" desc limit ${LISTED}) c
            left join lateral (${TEXT[section]}) x on true
           order by c."at" desc`,
-        [section, lang, since],
+        [section, lang, since, until],
       )
     : [];
   // Everybody in the list, restores included, so a person's chip counts the rows it filters to.
-  const people = list ? byPerson : [];
+  const people = withPeople ? byPerson : [];
   // Before any release everything goes out anyway, so there is nothing to add.
   const text = since
     ? await readAs<{ count: string }>(
         lang,
         `select count(distinct coalesce(a."lineId", a."subject")) as "count" from "activity" a
-          where a."at" > $3
+          where a."at" > $3 and ($6::timestamptz is null or a."at" <= $6)
             and ((a."lang" = $1 and a."source" = $2 and a."kind" = any($4::text[]))
                  -- An ignore in every language has no language of its own, and the build applies it.
                  or (a."lang" is null and a."source" = $2 and a."kind" in ('ignore.set', 'ignore.cleared'))
@@ -160,8 +182,9 @@ export async function pendingChanges(
                      and split_part(a."subject", ':', 1) = any($5::text[])))
             and not exists (select 1 from "take" t
                              where t."source" = $2 and t."lang" = $1 and t."isCurrent"
-                               and t."lineId" = coalesce(a."lineId", a."subject") and t."createdAt" > $3)`,
-        [lang, section, since, TEXT_KINDS, SHIPPED_NAMES[section]],
+                               and t."lineId" = coalesce(a."lineId", a."subject") and t."createdAt" > $3
+                               and ($6::timestamptz is null or t."createdAt" <= $6))`,
+        [lang, section, since, TEXT_KINDS, SHIPPED_NAMES[section], until],
       )
     : [{ count: "0" }];
   const names = await namesOf([...rows.map((row) => row.by), ...people.map((row) => row.by)]);

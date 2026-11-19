@@ -57,7 +57,7 @@ test("release.env can send the archive's reads through the site; the job needs n
 test("a run logs its output, records its code, and leaves no scratch copy", async () => {
   const tools = fakeTools(`console.log("==> step 1/1: " + process.argv.slice(2).join(" ")); console.error("to stderr");`);
   const runDir = runDirectory();
-  assert.equal(await runJob({ runDir, section: "bosses", lang: "enUS", env: { PATH: process.env.PATH }, tools }), 0);
+  assert.equal(await runJob({ runDir, job: { section: "bosses", lang: "enUS" }, env: { PATH: process.env.PATH }, tools }), 0);
   const log = readFileSync(join(runDir, "log"), "utf8");
   assert.match(log, /==> step 1\/1: bosses enUS --bump=patch/);
   assert.match(log, /to stderr/);
@@ -68,28 +68,55 @@ test("a run logs its output, records its code, and leaves no scratch copy", asyn
 test("the job forwards the team the release is for", async () => {
   const tools = fakeTools(`console.log("args: " + process.argv.slice(2).join(" "));`);
   const runDir = runDirectory();
-  assert.equal(await runJob({ runDir, section: "places", lang: "deDE", bump: "minor", team: "stimmen", env: { PATH: process.env.PATH }, tools }), 0);
+  assert.equal(await runJob({ runDir, job: { section: "places", lang: "deDE", bump: "minor", team: "stimmen" }, env: { PATH: process.env.PATH }, tools }), 0);
   assert.match(readFileSync(join(runDir, "log"), "utf8"), /^args: places deDE --bump=minor --team=stimmen$/m);
 });
 
 test("a run with no team, as one started before teams released, names none", async () => {
   const tools = fakeTools(`console.log("args: " + process.argv.slice(2).join(" "));`);
   const runDir = runDirectory();
-  assert.equal(await runJob({ runDir, section: "places", lang: "deDE", env: { PATH: process.env.PATH }, tools }), 0);
+  assert.equal(await runJob({ runDir, job: { section: "places", lang: "deDE" }, env: { PATH: process.env.PATH }, tools }), 0);
   assert.match(readFileSync(join(runDir, "log"), "utf8"), /^args: places deDE --bump=patch$/m);
+});
+
+test("a staged release writes what it staged into the run's directory", async () => {
+  const tools = fakeTools(`console.log("args: " + process.argv.slice(2).join(" "));`);
+  const runDir = runDirectory();
+  assert.equal(await runJob({ runDir, job: { section: "places", lang: "deDE", team: "stimmen", stage: true }, env: { PATH: process.env.PATH }, tools }), 0);
+  const staged = join(runDir, "staged.json");
+  assert.match(readFileSync(join(runDir, "log"), "utf8"), new RegExp(`^args: places deDE --bump=patch --team=stimmen --stage=${staged}$`, "m"));
+});
+
+test("a promote runs cli.mjs promote on the input the site handed over, which it leaves in the run's directory", async () => {
+  const tools = fakeTools(`process.exit(9);`);
+  writeFileSync(join(tools, "scripts/manager/cli.mjs"), `console.log("cli: " + process.argv.slice(2).join(" "));`);
+  const runDir = runDirectory();
+  const input = { version: "1.0.0", packs: {}, languages: {} };
+  assert.equal(await runJob({ runDir, job: { kind: "promote", section: "places", lang: "deDE", team: "stimmen", input }, env: { PATH: process.env.PATH }, tools }), 0);
+  assert.match(readFileSync(join(runDir, "log"), "utf8"), new RegExp(`^cli: promote ${join(runDir, "input.json")}$`, "m"));
+  assert.deepEqual(JSON.parse(readFileSync(join(runDir, "input.json"), "utf8")), input);
+});
+
+test("a delist runs cli.mjs delist on the team's section and language", async () => {
+  const tools = fakeTools(`process.exit(9);`);
+  writeFileSync(join(tools, "scripts/manager/cli.mjs"), `console.log("cli: " + process.argv.slice(2).join(" "));`);
+  const runDir = runDirectory();
+  assert.equal(await runJob({ runDir, job: { kind: "delist", section: "places", lang: "deDE", team: "stimmen", input: null }, env: { PATH: process.env.PATH }, tools }), 0);
+  assert.match(readFileSync(join(runDir, "log"), "utf8"), /^cli: delist places deDE --team=stimmen$/m);
+  assert.equal(existsSync(join(runDir, "input.json")), false);
 });
 
 test("a failing release is recorded, not thrown", async () => {
   const tools = fakeTools(`console.error("error: nope"); process.exit(3);`);
   const runDir = runDirectory();
-  assert.equal(await runJob({ runDir, section: "bosses", lang: "enUS", env: {}, tools }), 3);
+  assert.equal(await runJob({ runDir, job: { section: "bosses", lang: "enUS" }, env: {}, tools }), 3);
   assert.equal(readFileSync(join(runDir, "exit"), "utf8"), "3");
   assert.match(readFileSync(join(runDir, "log"), "utf8"), /error: nope/);
 });
 
 test("tools that cannot be copied still end the run, with the reason in the log", async () => {
   const runDir = runDirectory();
-  assert.equal(await runJob({ runDir, section: "bosses", lang: "enUS", env: {}, tools: join(runDir, "absent") }), 1);
+  assert.equal(await runJob({ runDir, job: { section: "bosses", lang: "enUS" }, env: {}, tools: join(runDir, "absent") }), 1);
   assert.equal(readFileSync(join(runDir, "exit"), "utf8"), "1");
   assert.match(readFileSync(join(runDir, "log"), "utf8"), /^error: /);
 });
@@ -99,7 +126,7 @@ test("the heartbeat moves while the release runs", async () => {
   const runDir = runDirectory();
   const long_ago = new Date(Date.now() - 3_600_000);
   utimesSync(join(runDir, "heartbeat"), long_ago, long_ago);
-  await runJob({ runDir, section: "bosses", lang: "enUS", env: {}, tools, beatMs: 20 });
+  await runJob({ runDir, job: { section: "bosses", lang: "enUS" }, env: {}, tools, beatMs: 20 });
   assert.ok(statSync(join(runDir, "heartbeat")).mtimeMs > long_ago.getTime() + 1000);
 });
 

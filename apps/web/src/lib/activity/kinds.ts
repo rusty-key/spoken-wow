@@ -170,7 +170,13 @@ export type ActivityDetail = {
 
   // Releases.
   "release.started": { section: string };
-  "release.finished": { section: string; state: "done" | "unchanged" | "failed"; version?: string };
+  /** `awaiting_review`: a team that is not official staged it, for a site owner to review. */
+  "release.finished": { section: string; state: "done" | "unchanged" | "failed" | "awaiting_review"; version?: string };
+  /** A site owner's review of a team's staged release, filed under the team; the subject is the run id. */
+  "release.approved": { section: string; version?: string };
+  "release.rejected": { section: string; reason: string; version?: string };
+  /** A site owner took a team's pack off the channel; the subject is the delist run's id. */
+  "release.delisted": { section: string };
 
   // Community packs: every language's, the subject is the pack id.
   "pack.submitted": PackSubmissionDetail;

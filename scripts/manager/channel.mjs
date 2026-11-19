@@ -20,6 +20,11 @@ export async function publishFromEnv(options) {
   });
 }
 
+/** `fn` (promote, delist, gc, publishAddon) on the channel the environment names, signing with its key. */
+export function fromEnv(fn, options) {
+  return fn({ store: r2Store(process.env), signingKey: signingKeyFromEnv(), ...options });
+}
+
 // fetch says only "fetch failed" and keeps what went wrong in `cause`.
 export const errorText = (err) => {
   if (err instanceof ConflictError) return `error: ${err.message} was written by another publish while this one ran; run it again`;

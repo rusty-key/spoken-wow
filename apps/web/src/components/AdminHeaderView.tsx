@@ -3,9 +3,9 @@
 import { ChevronDown, Globe } from "lucide-react";
 import { useEffect, useState } from "react";
 
-import { usePendingPacks } from "@/components/GrantsProvider";
+import { usePendingPacks, usePendingReleases } from "@/components/GrantsProvider";
 import LocaleLink from "@/components/LocaleLink";
-import PendingCount, { packsWaiting } from "@/components/PendingCount";
+import PendingCount, { packsWaiting, releasesWaiting } from "@/components/PendingCount";
 import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Contained } from "@/components/Width";
@@ -13,7 +13,7 @@ import { allLangs, langName, type Lang } from "@/lib/lang";
 import type { ActingTeamName } from "@/lib/teams/store";
 import { cn } from "@/lib/utils";
 
-export type AdminTab = "dashboard" | "team" | "release" | "storage" | "teams" | "packs";
+export type AdminTab = "dashboard" | "team" | "release" | "storage" | "teams" | "team-releases" | "packs";
 
 const PATHS: Record<AdminTab, string> = {
   dashboard: "/admin/dashboard",
@@ -21,13 +21,14 @@ const PATHS: Record<AdminTab, string> = {
   release: "/admin/release",
   storage: "/admin/storage",
   teams: "/admin/teams",
+  "team-releases": "/admin/team-releases",
   packs: "/admin/packs",
 };
 
 /** The site-wide tabs: they act on no one language, so they take no `?lang=`. */
-const GLOBAL: readonly AdminTab[] = ["teams", "packs"];
+const GLOBAL: readonly AdminTab[] = ["teams", "team-releases", "packs"];
 
-const TITLES: Partial<Record<AdminTab, string>> = { teams: "Teams", packs: "Community packs" };
+const TITLES: Partial<Record<AdminTab, string>> = { teams: "Teams", "team-releases": "Team releases", packs: "Community packs" };
 
 /**
  * The top of every admin page: which language it acts on, and the way to the others.
@@ -39,8 +40,8 @@ const TITLES: Partial<Record<AdminTab, string>> = { teams: "Teams", packs: "Comm
  * `lang` is null for the site admin's user list, which spans every language. `teams` names the
  * team acted as in each administered language, since a language can have more than one.
  *
- * `pendingPacks` is the review page's own count, fresher than the one the header was given when
- * the page first loaded; it replaces that one, so the Admin link's badge agrees with it.
+ * `pendingPacks` and `pendingReleases` are a review page's own count, fresher than the one the
+ * header was given when the page first loaded; each replaces that one, so the badges agree with it.
  */
 export default function AdminHeaderView({
   lang,
@@ -50,6 +51,7 @@ export default function AdminHeaderView({
   tab,
   description,
   pendingPacks: fresh,
+  pendingReleases: freshReleases,
 }: {
   lang: Lang | null;
   administered: readonly Lang[];
@@ -58,14 +60,20 @@ export default function AdminHeaderView({
   tab: AdminTab;
   description?: React.ReactNode;
   pendingPacks?: number;
+  pendingReleases?: number;
 }) {
   const [known, setPendingPacks] = usePendingPacks();
+  const [knownReleases, setPendingReleases] = usePendingReleases();
   useEffect(() => {
     if (fresh !== undefined) setPendingPacks(fresh);
   }, [fresh, setPendingPacks]);
+  useEffect(() => {
+    if (freshReleases !== undefined) setPendingReleases(freshReleases);
+  }, [freshReleases, setPendingReleases]);
   const pendingPacks = fresh ?? known;
+  const pendingReleases = freshReleases ?? knownReleases;
 
-  const tabs: { tab: AdminTab; label: string; count?: number }[] = [
+  const tabs: { tab: AdminTab; label: string; count?: { value: number; title: string } }[] = [
     { tab: "dashboard", label: "Dashboard" },
     { tab: "team", label: global && !lang ? "Users" : "Team" },
     { tab: "release", label: "Release" },
@@ -73,7 +81,8 @@ export default function AdminHeaderView({
     ...(global
       ? [
           { tab: "teams" as const, label: "Teams" },
-          { tab: "packs" as const, label: "Packs", count: pendingPacks },
+          { tab: "team-releases" as const, label: "Team releases", count: releasesWaiting(pendingReleases) },
+          { tab: "packs" as const, label: "Packs", count: packsWaiting(pendingPacks) },
         ]
       : []),
   ];
@@ -116,7 +125,7 @@ export default function AdminHeaderView({
               )}
             >
               {item.label}
-              {item.count !== undefined && <PendingCount {...packsWaiting(item.count)} />}
+              {item.count !== undefined && <PendingCount {...item.count} />}
             </LocaleLink>
           ))}
         </nav>

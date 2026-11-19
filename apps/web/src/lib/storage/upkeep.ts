@@ -8,6 +8,7 @@ import "server-only";
 
 import { landQuarantined } from "@/lib/blobs/keep";
 import { archiveMode } from "@/lib/blobs/store";
+import { every } from "@/lib/every";
 
 import { checkObjects } from "./checks";
 import { advanceMoves } from "./moves";
@@ -24,23 +25,14 @@ const TASKS: UpkeepTask[] = [
 const EVERY_MS = 60_000;
 
 export function startStorageUpkeep(isLeader: () => boolean, tasks: UpkeepTask[] = TASKS): { stop: () => void } {
-  let busy = false;
   const lastRun = new Map<string, number>();
-  const round = async () => {
-    if (busy || !isLeader() || archiveMode() !== "r2") return;
-    busy = true;
-    try {
-      for (const task of tasks) {
-        const last = lastRun.get(task.name);
-        if (task.everyMs && last !== undefined && Date.now() - last < task.everyMs) continue;
-        lastRun.set(task.name, Date.now());
-        await task.run().catch((error) => console.error(`storage: ${task.name} failed:`, error));
-      }
-    } finally {
-      busy = false;
+  return every(EVERY_MS, "storage: an upkeep round failed:", async () => {
+    if (!isLeader() || archiveMode() !== "r2") return;
+    for (const task of tasks) {
+      const last = lastRun.get(task.name);
+      if (task.everyMs && last !== undefined && Date.now() - last < task.everyMs) continue;
+      lastRun.set(task.name, Date.now());
+      await task.run().catch((error) => console.error(`storage: ${task.name} failed:`, error));
     }
-  };
-  const timer = setInterval(() => void round().catch((error) => console.error("storage: an upkeep round failed:", error)), EVERY_MS);
-  timer.unref();
-  return { stop: () => clearInterval(timer) };
+  });
 }

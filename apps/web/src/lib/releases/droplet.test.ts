@@ -1,6 +1,6 @@
 import type { ChildProcess } from "node:child_process";
 import { EventEmitter } from "node:events";
-import { mkdirSync, mkdtempSync, realpathSync, writeFileSync } from "node:fs";
+import { mkdirSync, mkdtempSync, readFileSync, realpathSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
@@ -11,6 +11,7 @@ import { needsTeamReleases, releasePlan } from "../../../../../scripts/manager/r
 import {
   currentStep,
   failureReason,
+  jobOf,
   outcome,
   readDropletRun,
   releasesClosedFor,
@@ -83,7 +84,7 @@ describe("releasesClosedFor", () => {
 });
 
 describe("startDropletRun", () => {
-  const run = { id: "run-1", section: "bosses", lang: "enUS", teamSlug: "english" };
+  const run = { id: "run-1", kind: "release" as const, section: "bosses", lang: "enUS", teamSlug: "english", bump: "minor" as const, stage: false, staged: null };
 
   beforeEach(() => {
     mkdirSync(join(shared, "release-tools"));
@@ -93,19 +94,28 @@ describe("startDropletRun", () => {
 
   it("forks the job away and hands it none of the site's secrets", async () => {
     const spawnFn = fakeSpawn(0);
-    await startDropletRun(run, "minor", spawnFn);
+    await startDropletRun(run, spawnFn);
     const [command, args, options] = spawnFn.mock.calls[0] as unknown as [string, string[], { env: Record<string, string> }];
     expect(command).toBe("setsid");
     expect(args[0]).toBe("--fork");
     expect(args).toContain(join(realpathSync(shared), "release-tools/scripts/manager/release-job.mjs"));
-    // The team last: the job takes it as a flag, and a job from before teams released had none.
-    expect(args.slice(-5)).toEqual([join(shared, "release-runs/run-1"), "bosses", "enUS", "minor", "--team=english"]);
+    expect(args.at(-1)).toBe(join(shared, "release-runs/run-1"));
+    expect(JSON.parse(readFileSync(join(shared, "release-runs/run-1/job.json"), "utf8"))).toEqual({
+      kind: "release", section: "bosses", lang: "enUS", bump: "minor", team: "english", stage: false, input: null,
+    });
     expect(Object.keys(options.env).sort()).toEqual(["HOME", "NODE_ENV", "PATH", "SPOKEN_RELEASE_ENV"]);
   });
 
+  it("stages a release that asks to, and hands a promotion its entries", async () => {
+    expect(jobOf({ ...run, stage: true })).toMatchObject({ kind: "release", stage: true, input: null });
+    const staged = { version: "1.0.0", packs: { SpokenBossesAudio_x: { rev: "r" } }, languages: {} };
+    await startDropletRun({ ...run, kind: "promote", staged }, fakeSpawn(0));
+    expect(JSON.parse(readFileSync(join(shared, "release-runs/run-1/job.json"), "utf8"))).toMatchObject({ kind: "promote", input: staged });
+  });
+
   it("refuses when the fork could not start", async () => {
-    await expect(startDropletRun(run, "patch", fakeSpawn(new Error("spawn setsid ENOENT")))).rejects.toThrow("ENOENT");
-    await expect(startDropletRun(run, "patch", fakeSpawn(1))).rejects.toThrow("setsid exited 1");
+    await expect(startDropletRun(run, fakeSpawn(new Error("spawn setsid ENOENT")))).rejects.toThrow("ENOENT");
+    await expect(startDropletRun(run, fakeSpawn(1))).rejects.toThrow("setsid exited 1");
   });
 });
 
@@ -116,6 +126,13 @@ describe("outcome", () => {
 
   it("tells a job that found nothing to release", () => {
     expect(outcome("==> step 3/3: publish\n==> nothing changed: nothing was released\n")).toEqual({ state: "unchanged" });
+  });
+
+  it("waits for review after a staged release, and is done after a promotion or delisting", () => {
+    expect(outcome("==> staged 1.0.3: SpokenPlacesAudio_deDE_x\n")).toEqual({ state: "awaiting_review", version: "1.0.3" });
+    expect(outcome("==> staged: SpokenPlacesAudio_deDE_x\n")).toEqual({ state: "awaiting_review", version: null });
+    expect(outcome("==> promoted 1.0.3: SpokenPlacesAudio_deDE_x\n")).toEqual({ state: "done", version: "1.0.3" });
+    expect(outcome("==> delisted SpokenPlacesAudio_deDE_x\n")).toEqual({ state: "done", version: null });
   });
 
   it("is done with no version when the log does not say", () => {

@@ -4,6 +4,7 @@
 //
 // A team holding the language's plain space (its privileged team) builds the plain pack ids;
 // any other team's carry its slug (scripts/lib/packs.mjs teamFolder).
+import { derivedFolders, loadPacks } from "../lib/packs.mjs";
 
 /** Every language's English and native names, which index-v2.json carries for the Manager. */
 export async function languageNames(db) {
@@ -40,4 +41,13 @@ export async function releaseTeam(db, lang, slug = null) {
     privileged: team.privileged,
     language: { code: language.code, name: language.name, native: language.native, client: language.client },
   };
+}
+
+/**
+ * Every folder the pack of the team `slug` in `section` and `lang` can have, as its releases build
+ * them: what a delisting takes off the channel (`cli.mjs delist`).
+ */
+export async function teamPackFolders(db, section, lang, slug, packs = loadPacks()) {
+  const team = await releaseTeam(db, lang, slug);
+  return derivedFolders(section, lang, team.privileged ? null : team.slug, packs).map((p) => p.folder);
 }

@@ -4,9 +4,11 @@
  */
 import "server-only";
 
-import { currentStep, failureReason, outcome, readDropletRun, type DropletRun } from "./droplet";
+import { currentStep, failureReason, outcome, readDropletRun, readStaged, type DropletRun } from "./droplet";
+import { tellOwnersOfReview, tellPresser } from "./notify";
 import { GithubNotConfiguredError, findRun, type GithubRun } from "./github";
-import { activeRun, updateRun, type ReleaseRun } from "./store";
+import { startNext } from "./launch";
+import { activeOrQueued, applyUpdate, runById, updateRun, type ReleaseRun } from "./store";
 
 // Twelve missed heartbeats. A reboot or an out-of-memory kill leaves no exit file, and nobody
 // could press Release until someone noticed.
@@ -36,12 +38,32 @@ async function lookup(run: ReleaseRun, fetchFn: typeof fetch): Promise<{ found: 
   }
 }
 
+/** A job that exited: its outcome, and for a staged release, what it staged. */
+async function settle(run: ReleaseRun, job: DropletRun & { exitCode: number }): Promise<void> {
+  if (job.exitCode !== 0) {
+    await updateRun(run.id, { state: "failed", error: failureReason(job.log, job.exitCode) });
+    return;
+  }
+  const result = outcome(job.log);
+  if (result.state !== "awaiting_review") {
+    const { changed } = await applyUpdate(run.id, result);
+    // The version a site owner approved is what players have now.
+    const promoted = changed && run.kind === "promote" && run.promotes ? await runById(run.promotes) : null;
+    if (promoted?.state === "done") await tellPresser(promoted, "approved");
+    return;
+  }
+  const staged = (await readStaged(run.id)) as ReleaseRun["staged"];
+  if (!staged || !("packs" in staged) || Object.keys(staged.packs).length === 0) {
+    await updateRun(run.id, { state: "failed", error: "The release staged nothing the site could read" });
+    return;
+  }
+  const { run: settled, changed } = await applyUpdate(run.id, { ...result, staged });
+  if (changed) await tellOwnersOfReview(settled);
+}
+
 async function settleFromJob(run: ReleaseRun, job: DropletRun, now: number): Promise<ReleaseRun | null> {
   if (job.exitCode !== null) {
-    await updateRun(
-      run.id,
-      job.exitCode === 0 ? outcome(job.log) : { state: "failed", error: failureReason(job.log, job.exitCode) },
-    );
+    await settle(run, { ...job, exitCode: job.exitCode });
     return null;
   }
   if (now - job.heartbeatAt > JOB_LOST_AFTER_MS) {
@@ -54,9 +76,21 @@ async function settleFromJob(run: ReleaseRun, job: DropletRun, now: number): Pro
   return updated.state === "running" ? updated : null;
 }
 
+/**
+ * The active run after moving it on, or the queued run that starts because none is active any
+ * more; null when nothing runs. With nothing active or queued, one query.
+ */
 export async function syncActive(fetchFn: typeof fetch = fetch, now: number = Date.now()): Promise<ReleaseRun | null> {
-  const run = await activeRun();
-  if (!run) return null;
+  const active = await activeOrQueued();
+  if (active === null) return null;
+  if (active !== "queued") {
+    const run = await syncRun(active, fetchFn, now);
+    if (run) return run;
+  }
+  return startNext();
+}
+
+async function syncRun(run: ReleaseRun, fetchFn: typeof fetch, now: number): Promise<ReleaseRun | null> {
   const job = await readDropletRun(run.id);
   if (job) return settleFromJob(run, job, now);
   if (checked && checked.runId === run.id && now - checked.at < CHECK_EVERY_MS) return run;
@@ -67,7 +101,7 @@ export async function syncActive(fetchFn: typeof fetch = fetch, now: number = Da
     const [limit, error] = result === "error"
       ? [LOST_AFTER_MS, "Lost track of it: GitHub stopped answering"]
       : [GIVE_UP_AFTER_MS, "GitHub never started it"];
-    if (now - run.createdAt.getTime() < limit) return run;
+    if (now - (run.startedAt ?? run.createdAt).getTime() < limit) return run;
     await updateRun(run.id, { state: "failed", error });
     return null;
   }

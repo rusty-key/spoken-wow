@@ -12,6 +12,11 @@ export default function PendingCount({ value, title }: { value: number; title: s
   );
 }
 
+export const releasesWaiting = (value: number) => ({
+  value,
+  title: `${value} team release${value === 1 ? "" : "s"} waiting for review`,
+});
+
 export const packsWaiting = (value: number) => ({
   value,
   title: `${value} pack submission${value === 1 ? "" : "s"} waiting for review`,
