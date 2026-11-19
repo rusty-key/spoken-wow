@@ -29,7 +29,7 @@ import { isAdmin } from "@/lib/permissions";
 import { overrideOf } from "@/lib/quests/override";
 import { readOverrides } from "@/lib/quests/overrides";
 import { asTeam } from "@/lib/teams/acting";
-import { asTeamOf, ownerOrAll, queryAs, teamsOf } from "@/lib/teams/store";
+import { asTeamOf, freshOwners, NoTeamError, ownerOrAll, plainTeamOf, queryAs, teamsOf } from "@/lib/teams/store";
 
 import { packTeam, type ReportContext } from "./context";
 import { CATEGORIES, CATEGORY_QUEUE, QUEUES, queuesOf, type Category, type Queue, type Report, type Status } from "./reports";
@@ -44,10 +44,13 @@ const COLUMNS = `"id", "source", "lineId", "target", "category", "body", "status
                  "name", "email", to_json("createdAt") #>> '{}' as "createdAt",
                  to_json("resolvedAt") #>> '{}' as "resolvedAt", "resolvedBy", "context", "queue"`;
 
-/** The rows the acting team sees: the language's text queue, and its own audio reports. */
-const REPORT_SCOPE = (team: number) => `("queue" = 'text' or "teamId" = $${team})`;
+/**
+ * The rows the acting team sees: the language's text queue, and its own audio reports. With no
+ * team (a text maintainer in none of the language's), the text queue alone.
+ */
+const REPORT_SCOPE = (team: number) => `("queue" = 'text' or "teamId" = $${team}::uuid)`;
 
-/** The acting team REPORT_SCOPE cuts by; null in a language nobody owns, which has no reports. */
+/** The acting team REPORT_SCOPE cuts by; null where the caller works in no team of `lang`. */
 async function scopeTeam(lang: Lang): Promise<TeamId | null> {
   const team = await ownerOrAll(lang);
   return team === ALL_TEAMS ? null : team;
@@ -64,7 +67,6 @@ async function readScoped<T extends QueryResultRow>(
   params: readonly unknown[],
 ): Promise<T[]> {
   const team = await scopeTeam(lang);
-  if (team === null) return [];
   const scoped = [...where, REPORT_SCOPE(params.length + 1)].join(" and ");
   return queryIn<T>(ALL_TEAMS, sql(scoped), [...params, team]);
 }
@@ -94,19 +96,38 @@ export async function createReport(input: {
   context?: ReportContext | null;
 }): Promise<void> {
   // Returns nothing: the reporter cannot read a report back, so an id would only be a handle
-  // on something they cannot reach. A report on a team's pack is filed as that team, its queue
-  // judged by that team's overrides; any other is filed with whoever looks after its language,
-  // so the addon's anonymous report on a plain pack goes to the language's privileged team.
+  // on something they cannot reach. Each copy's queue is judged by its own team's overrides; a
+  // text report is the language's, so it is filed once, whatever the teams.
   const lang = input.lang ?? BASE_LANG;
-  const team = await packTeamOf(lang, input.context);
-  if (team) return asTeam(lang, team, () => insertReport(input, lang));
-  return insertReport(input, lang);
+  const teams = await reportTeams(lang, input.context);
+  if (teams.length === 0) throw new NoTeamError(lang);
+  let filedText = false;
+  for (const team of teams) {
+    await asTeam(lang, team, async () => {
+      const queue = await queueFor(input.category, lang, input.file ?? null);
+      if (queue === "text" && filedText) return;
+      filedText ||= queue === "text";
+      await insertReport(input, lang, queue);
+    });
+  }
+}
+
+/**
+ * The teams a report is filed with: the team whose pack played, else the reporter's, else the
+ * team with plain packs, whose packs a report naming no team (an older addon, the plain pack)
+ * played. Else every team of the language, since none of them is the one.
+ */
+async function reportTeams(lang: Lang, context: ReportContext | null | undefined): Promise<TeamId[]> {
+  const pack = await packTeamOf(lang, context);
+  if (pack) return [pack];
+  const team = (await freshOwners([lang])).get(lang) ?? (await plainTeamOf(lang));
+  if (team) return [team];
+  return (await teamsOf(lang)).map((each) => each.id);
 }
 
 /**
  * The team the context names as the one whose pack played, where that team voices `lang`. A
- * slug naming any other team, which only a forged context can, is no team: the report is filed
- * as one with none.
+ * slug naming any other team, which only a forged context can, is no team.
  */
 async function packTeamOf(lang: Lang, context: ReportContext | null | undefined): Promise<TeamId | null> {
   const slug = packTeam(context);
@@ -114,8 +135,7 @@ async function packTeamOf(lang: Lang, context: ReportContext | null | undefined)
   return (await teamsOf(lang)).find((team) => team.slug === slug)?.id ?? null;
 }
 
-async function insertReport(input: Parameters<typeof createReport>[0], lang: Lang): Promise<void> {
-  const queue = await queueFor(input.category, lang, input.file ?? null);
+async function insertReport(input: Parameters<typeof createReport>[0], lang: Lang, queue: Queue): Promise<void> {
   await queryAs(
     lang,
     `insert into "report"
@@ -362,7 +382,6 @@ export async function skipReports(
 ): Promise<number> {
   if (!ids.length) return 0;
   const team = await scopeTeam(lang);
-  if (team === null) return 0;
   const { rowCount } = await withTeam(ALL_TEAMS, (client) => client.query(
     `insert into "report_skip" ("userId", "reportId")
      select $1, "id" from "report"
@@ -377,7 +396,6 @@ export async function skipReports(
 /** Puts every report this person skipped in one section and language back in their queue. */
 export async function resetSkips(userId: string, source: Source, lang: Lang): Promise<number> {
   const team = await scopeTeam(lang);
-  if (team === null) return 0;
   const { rowCount } = await withTeam(ALL_TEAMS, (client) => client.query(
     `delete from "report_skip" s
       using "report" r

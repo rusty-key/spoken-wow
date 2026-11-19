@@ -35,7 +35,7 @@ export function envelopeFor(raw: unknown, source: Source): Envelope<ReportSource
 
 /**
  * The slug of the team whose pack played the reported line, or null: a language's plain pack,
- * which is its privileged team's, or an addon from before packs had teams.
+ * which is the team with plain packs', or an addon from before packs had teams.
  */
 export function packTeam(context: ReportContext | null | undefined): string | null {
   const slug = context?.fields.packTeam;

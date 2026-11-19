@@ -33,8 +33,8 @@ export type ActivityEvent<K extends ActivityKind = ActivityKind> = {
   lineId?: string | null;
   detail: ActivityDetail[K];
   /**
-   * The team the act is filed under, when it is not the language's owner for whoever is acting.
-   * ALL_TEAMS files it under none.
+   * The team the act is filed under, when it is not the team whoever is acting works in, which
+   * is the default. ALL_TEAMS files it under none; so is an act by somebody in no team of it.
    */
   team?: TeamId | typeof ALL_TEAMS;
 };
@@ -78,7 +78,7 @@ export async function recordActivities(
   }
 }
 
-/** A language nobody owns has no team to file under, so its act is kept with none. */
+/** An act in a language the actor works in no team of has no team to file under, so it is kept with none. */
 function rowsOf(events: ActivityEvent[], owners: Map<Lang, TeamId>): string {
   return JSON.stringify(
     events.map((event) => ({
