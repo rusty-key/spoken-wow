@@ -21,7 +21,7 @@ const LANG = "xxXX" as Lang;
 // A team for it, since a language nobody owns has nothing to read.
 beforeAll(async () => {
   await asSystem.query(
-    `insert into "team_language" ("teamId", "lang") select "id", $1 from "team" where "slug" = 'english'
+    `insert into "team_language" ("teamId", "lang", "packName") select "id", $1, 'plain' from "team" where "slug" = 'english'
      on conflict do nothing`,
     [LANG],
   );

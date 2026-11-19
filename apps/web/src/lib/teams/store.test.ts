@@ -62,7 +62,12 @@ beforeEach(() => forgetTeams());
 afterAll(async () => {
   await cleanup();
   // Back on its own team, for the suites that write German.
-  if (was) await asSystem.query(`insert into "team_language" ("teamId", "lang") values ($1, $2)`, [was, NEW_LANG]);
+  if (was) {
+    await asSystem.query(`insert into "team_language" ("teamId", "lang", "packName") values ($1, $2, 'plain')`, [
+      was,
+      NEW_LANG,
+    ]);
+  }
   else await asSystem.query(`select adopt_lang($1)`, [NEW_LANG]);
   forgetTeams();
   await user.cleanup();
@@ -120,7 +125,7 @@ describe("a language switched on by the other worker", () => {
   // As the other pm2 worker's setEnabled does: the row, and no forgetTeams in this process.
   const enableElsewhere = () =>
     db().query(
-      `insert into "team_language" ("teamId", "lang") select "id", $1 from "team" where "slug" = 'english'`,
+      `insert into "team_language" ("teamId", "lang", "packName") select "id", $1, 'plain' from "team" where "slug" = 'english'`,
       [NEW_LANG],
     );
 

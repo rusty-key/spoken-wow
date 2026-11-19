@@ -229,7 +229,7 @@ describe("release route", () => {
 
   it("treats a team's other language as its own team's run", async () => {
     const moved = await unowned("esES");
-    await asSystem.query(`insert into "team_language" ("teamId", "lang") values ($1, 'esES')`, [fr.team]);
+    await asSystem.query(`insert into "team_language" ("teamId", "lang", "packName") values ($1, 'esES', 'plain')`, [fr.team]);
     forgetTeams();
     try {
       await makeAdmin("esES", fr.team);
