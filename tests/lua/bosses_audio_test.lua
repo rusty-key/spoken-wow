@@ -203,6 +203,16 @@ do
     Expect("voices: English where neither German pack has it", Path({ "deDE_stimmen", "deDE", "enUS" }, nil, nil),
         "SpokenBossesAudio:enUS")
     Expect("voices: plain German never plays the team's pack", Path({ "deDE" }, TEAM, nil), nil)
+    -- The plain pack at a higher bitrate is the language's best, but the team's take is the one heard.
+    local packs = Packs({ file = "36\\edwin-team", len = 30, times = "0 1", text = "Team words." },
+        { file = "36\\edwin-plain", len = 40, times = "0 1 2", text = "Plain pack words." })
+    packs.SpokenBossesAudio_deDE.bitrate = 192
+    Setup("deDE", nil, nil, packs)
+    _G.Spoken:SetVoiceOrder({ "deDE_stimmen", "deDE", "enUS" })
+    clip = Bosses:StoryClip(36, "edwin vancleef")
+    Expect("voices: the team's take is captioned with its own words and times",
+        tostring(clip.path) .. "|" .. clip.present.transcript .. "|" .. tostring(clip.present.timings),
+        "Interface\\AddOns\\SpokenBossesAudio_deDE_stimmen\\Sounds\\36\\edwin-team.mp3|Team words.|0 1")
     local language = _G.SpokenEnv.Addon.db.profile.Language
     language.Voices = nil
     stub.ResetAddOns()

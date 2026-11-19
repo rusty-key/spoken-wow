@@ -490,12 +490,13 @@ function SpokenPlaces:GetAudioClip(mapID, areaKey)
 		return nil, nil
 	end
 
-	-- The active pack, then each later voice's packs, entry by entry: a German pack that has not
-	-- narrated an area yet leaves it to the next voice's (English) rather than to silence, the way
-	-- a quest line falls back. The entry keys are the same in every language, so any pack names the
-	-- area alike. Past the last voice, nothing else is tried.
-	local candidates = { active }
-	for i = at + 1, #order do
+	-- The active pack, then its voice's other packs, then each later voice's packs, entry by entry:
+	-- a German pack that has not narrated an area yet leaves it to another German pack, then to the
+	-- next voice's (English) rather than to silence, the way a quest line falls back. The entry keys
+	-- are the same in every language, so any pack names the area alike. The active pack leads its
+	-- voice's list. Past the last voice, nothing else is tried.
+	local candidates = {}
+	for i = at, #order do
 		for _, pack in ipairs(byVoice[order[i]] or {}) do
 			table.insert(candidates, pack)
 		end

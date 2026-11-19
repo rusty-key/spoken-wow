@@ -523,6 +523,11 @@ do
     Spoken:SetVoiceOrder({ "deDE", "enUS" })
     Expect("V. a 64 kbps pack chosen for deDE is still the plain voice's", V:GetActiveAudioPack().addon,
         "SpokenPlacesAudio_deDE64")
+    Expect("V. an area the chosen 64 kbps pack lacks comes from the voice's other pack, not English",
+        File(ONLY_ENGLISH), "SpokenPlacesAudio_deDE:de-senjin")
+    Spoken:SetVoiceOrder({ "deDE" })
+    Expect("V. ...and with no voice after it, rather than silence", File(ONLY_ENGLISH),
+        "SpokenPlacesAudio_deDE:de-senjin")
     Spoken:SetVoiceOrder({ "deDE_stimmen", "deDE" })
     Expect("V. ...and does not take the team's place", V:GetActiveAudioPack().addon, "SpokenPlacesAudio_deDE_stimmen")
     Expect("V. switching to the team's pack keeps the plain voice's choice",
