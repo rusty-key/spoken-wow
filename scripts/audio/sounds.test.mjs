@@ -105,3 +105,35 @@ test("a release's pointers record the takes they hold, by version and hash", { s
     }
   }
 });
+
+test("a release whose takes are in a team's own bucket needs a site's archive route", { skip }, async () => {
+  const { sql, lit } = seed;
+  const [backend] = sql(`insert into "storage_backend" ("teamId", "label", "provider", "endpoint", "bucket", "accessKeyId", "secretSealed")
+    values (${lit(b.id)}, 'test', 'r2', 'https://bucket.invalid', 'team-test', 'key', 'sealed') returning "id"`)[0];
+  sql(`insert into "archive_object" ("prefix", "sha256", "backendId", "teamId") values ('takes', ${lit(B_SHA)}, ${lit(backend)}, ${lit(b.id)})`);
+  const archive = createServer((_request, response) => response.writeHead(200, { "content-length": "10" }).end());
+  await new Promise((resolve) => archive.listen(0, "127.0.0.1", resolve));
+  const build = (base) => {
+    const env = {
+      PATH: process.env.PATH, LOCAL_DB: seed.url, SPOKEN_CLIP_POINTERS: "1", SPOKEN_RELEASE_TEAM: b.id, SPOKEN_ARCHIVE_URL: base,
+    };
+    return promisify(execFile)(process.execPath, [SOUNDS, `--lang=${lang}`, "readables"], { env });
+  };
+  try {
+    const site = `http://127.0.0.1:${archive.address().port}`;
+    await assert.rejects(build(`${site}/`), (error) => /kept in their team's own bucket.*\/api\/archive\//s.test(error.stderr));
+    await build(`${site}/api/archive/`);
+  } finally {
+    archive.close();
+    sql(`delete from "archive_object" where "backendId" = ${lit(backend)}`);
+    sql(`delete from "storage_backend" where "id" = ${lit(backend)}`);
+    rmSync(join(ROOT, "build", "readables", lang), { recursive: true, force: true });
+    for (const dir of [join(ROOT, "build", "readables"), join(ROOT, "build")]) {
+      try {
+        rmdirSync(dir);
+      } catch {
+        break;
+      }
+    }
+  }
+});
