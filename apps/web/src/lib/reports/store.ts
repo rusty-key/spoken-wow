@@ -250,9 +250,10 @@ export async function reportById(id: number, lang: Lang): Promise<Report | null>
 /**
  * The language a report was filed in and the queue it waits in, or null for an id that does not
  * exist. Across every team: these are what say whose it is, and whether the caller may see it.
+ * No team is a text report whose team was deleted with no other in the language.
  */
-export async function reportPlace(id: number): Promise<{ lang: Lang; queue: Queue; teamId: TeamId } | null> {
-  const rows = await queryIn<{ lang: Lang; queue: Queue; teamId: TeamId }>(
+export async function reportPlace(id: number): Promise<{ lang: Lang; queue: Queue; teamId: TeamId | null } | null> {
+  const rows = await queryIn<{ lang: Lang; queue: Queue; teamId: TeamId | null }>(
     ALL_TEAMS,
     `select "lang", "queue", "teamId" from "report" where "id" = $1`,
     [id],
@@ -278,11 +279,11 @@ export async function queueHolders(lang: Lang): Promise<Record<Queue, Set<string
  * audio report as the acting team, so one that is not theirs matches nothing.
  */
 function writeAs<T>(
-  place: { queue: Queue; teamId: TeamId },
+  place: { queue: Queue; teamId: TeamId | null },
   lang: Lang,
   work: (client: PoolClient) => Promise<T>,
 ): Promise<T> {
-  return place.queue === "text" ? withTeam(place.teamId, work) : asTeamOf(lang, work);
+  return place.queue === "text" ? withTeam(place.teamId ?? ALL_TEAMS, work) : asTeamOf(lang, work);
 }
 
 /**
@@ -293,13 +294,18 @@ function stillText(place: { queue: Queue }): string {
   return place.queue === "text" ? ` and "queue" = 'text'` : "";
 }
 
-/** `lang` is the report's. A report already in `queue` is left unlogged. */
+/**
+ * `lang` is the report's. A report already in `queue` is left unlogged. A report with no team
+ * passed to audio becomes the acting team's, and stays put where the caller acts in none.
+ */
 export async function setQueue(id: number, queue: Queue, actorId: string, lang: Lang): Promise<Report | null> {
   const place = await reportPlace(id);
   if (!place) return null;
+  const team = place.teamId ?? (await scopeTeam(lang));
+  if (team === null) return reportById(id, lang);
   const { rows } = await writeAs(place, lang, (client) => client.query<Report>(
-    `update "report" set "queue" = $2 where "id" = $1 and "queue" <> $2${stillText(place)} returning ${COLUMNS}`,
-    [id, queue],
+    `update "report" set "queue" = $2, "teamId" = $3 where "id" = $1 and "queue" <> $2${stillText(place)} returning ${COLUMNS}`,
+    [id, queue, team],
   ));
   const report = rows[0];
   if (!report) return reportById(id, lang);
@@ -311,7 +317,7 @@ export async function setQueue(id: number, queue: Queue, actorId: string, lang: 
     lineId: report.lineId,
     actorId,
     detail: { to: queue },
-    team: place.teamId,
+    team,
   });
   return report;
 }
@@ -347,7 +353,7 @@ export async function setStatus(
     lineId: report.lineId,
     actorId: userId,
     detail: { status: report.status, category: report.category },
-    team: place.teamId,
+    team: place.teamId ?? ALL_TEAMS,
   });
   return report;
 }

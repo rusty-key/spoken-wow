@@ -153,7 +153,15 @@ export type ActivityDetail = {
   "team.created": { slug: string };
   "team.renamed": { name: string };
   /** Filed under no team, since the team is gone. */
-  "team.deleted": { slug: string; members: { email: string; lang: Lang; capability: Capability }[] };
+  /** `langs` and `counts`, its rows by table, since any team could be deleted (migration 0124). */
+  "team.deleted": {
+    slug: string;
+    members: { email: string; lang: Lang; capability: Capability }[];
+    langs?: Lang[];
+    counts?: Record<string, number>;
+    /** Its open voice reports, closed: their takes went with it. */
+    closedReports?: number;
+  };
   /** Whether the team must keep its audio in its own bucket (docs/platform/STORAGE.md). */
   "team.own_storage": { ownStorage: boolean };
   /** Whether the team's releases skip review and its packs go unlabelled. */

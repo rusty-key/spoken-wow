@@ -90,6 +90,7 @@ describe("GET /api/teams/[id]/deletion", () => {
       ],
       members: [{ email: `${user.id}@example.invalid`, lang: "deDE", capability: "admin" }],
       pending: 1,
+      reports: { moving: 0, closing: 1 },
       packs: [{ lang: "deDE", section: "places", version: "1.0.1" }],
       refusal: null,
     });

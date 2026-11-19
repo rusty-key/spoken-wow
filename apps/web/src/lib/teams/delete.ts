@@ -1,19 +1,29 @@
 /**
- * Deleting a team (docs/platform/TEAMS.md, *Deleting a team*). What would go, for the dialog that
- * asks for the team's slug.
+ * Deleting a team (docs/platform/TEAMS.md, *Deleting a team*). startDeletion marks the team
+ * `deletingAt`, which stops it making anything (migration 0124), cancels its pending generation and
+ * queues a `delist` run per pack it may have on the channel. When the last of them settles, the
+ * release queue's settle hook (releases/store.ts) calls settleDeletion, which deletes its rows in
+ * the same transaction. With no pack to delist, they go at once. Nothing is deleted while any
+ * delisting is still to run, and a failed one stops the deletion with its reason until a Retry.
  */
 import "server-only";
 
-import type { ClientBase } from "pg";
+import type { ClientBase, PoolClient } from "pg";
 
+import { recordActivity } from "@/lib/activity/store";
 import { ALL_TEAMS, withTeam } from "@/lib/db";
 import { BASE_LANG, type Lang } from "@/lib/lang";
+import { setEnabledOn } from "@/lib/languages/store";
 import type { Capability } from "@/lib/permissions";
-import type { ReleaseSection } from "@/lib/releases/sections";
+import { runsOnDroplet } from "@/lib/releases/droplet";
+import { launchRun, launchStarted, type Launch } from "@/lib/releases/launch";
+import { RELEASE_SECTIONS, type ReleaseSection } from "@/lib/releases/sections";
+import { insertRun, type ReleaseRun } from "@/lib/releases/store";
+import { syncActive } from "@/lib/releases/sync";
 
 import { TeamError } from "./admin";
 import { membersOf } from "./members";
-import type { TeamId } from "./store";
+import { forgetTeams, type TeamId } from "./store";
 
 /**
  * Every table with a team's rows that goes with it, children before parents. Reports are not
@@ -47,8 +57,10 @@ export type DeletionPreview = {
   /** Each language it voices, `alone` where no other team does, which leaves it switched off. */
   langs: { lang: Lang; alone: boolean }[];
   members: { email: string; lang: Lang; capability: Capability }[];
-  /** Its rows in each table that goes with it, and its reports, which move. */
+  /** Its rows in each table that goes with it, and all its reports. */
   counts: Record<DeletedTable | "report", number>;
+  /** Its reports by what becomes of them: text ones move, open voice ones close. */
+  reports: { moving: number; closing: number };
   /** Generation that has not started, which is cancelled. */
   pending: number;
   packs: LivePack[];
@@ -132,6 +144,12 @@ export async function deletionPreview(team: TeamId): Promise<DeletionPreview> {
       `select count(*) as "count" from "regeneration_job" where "teamId" = $1 and "state" = 'pending'`,
       [team],
     );
+    const { rows: reports } = await client.query<{ moving: number; closing: number }>(
+      `select (count(*) filter (where "queue" = 'text'))::int as "moving",
+              (count(*) filter (where "queue" = 'audio' and "status" = 'open'))::int as "closing"
+         from "report" where "teamId" = $1`,
+      [team],
+    );
     return {
       id: row.id,
       slug: row.slug,
@@ -139,9 +157,203 @@ export async function deletionPreview(team: TeamId): Promise<DeletionPreview> {
       langs,
       members: await membersOf(client, team),
       counts: await countsOf(client, team),
+      reports: reports[0],
       pending: Number(pending[0].count),
       packs: await livePacks(client, team),
       refusal: await refusalOf(client, row),
     };
   });
+}
+
+/**
+ * Every pack of the team a delisting takes off the channel: those its releases put there, and
+ * every section where its packs are plain, which `make manager-release` published before the site
+ * ran releases, leaving no row. A team whose packs carry its slug only ever released here.
+ */
+async function packsToDelist(client: ClientBase, team: TeamId): Promise<{ lang: Lang; section: ReleaseSection }[]> {
+  const packs = new Map<string, { lang: Lang; section: ReleaseSection }>();
+  for (const { lang, section } of await livePacks(client, team)) packs.set(`${lang}:${section}`, { lang, section });
+  const { rows } = await client.query<{ lang: Lang }>(
+    `select "lang" from "team_language" where "teamId" = $1 and "packName" = 'plain' order by "lang"`,
+    [team],
+  );
+  for (const { lang } of rows) {
+    for (const section of RELEASE_SECTIONS) packs.set(`${lang}:${section}`, { lang, section });
+  }
+  return [...packs.values()].sort((a, b) => `${a.lang}:${a.section}`.localeCompare(`${b.lang}:${b.section}`));
+}
+
+/**
+ * Marks the team deleting from now and queues its delistings; deletes it at once when it has
+ * none. The first run, when it took the lock, is for the caller to launch after the commit.
+ */
+async function begin(
+  client: PoolClient,
+  team: TeamRow,
+  actorId: string,
+): Promise<{ first: ReleaseRun | null; deleted: boolean }> {
+  const packs = await packsToDelist(client, team.id);
+  if (packs.length && !runsOnDroplet()) {
+    throw new TeamError("Only the site that signs the channel can take its packs off it; delete the team there.", 409);
+  }
+  await client.query(`update "team" set "deletingAt" = now(), "deleteError" = null where "id" = $1`, [team.id]);
+  // Running jobs are left alone and end refused (the take trigger); their takes would go with the
+  // team anyway.
+  await client.query(
+    `update "regeneration_job" set "state" = 'cancelled', "finishedAt" = now() where "teamId" = $1 and "state" = 'pending'`,
+    [team.id],
+  );
+  await client.query(
+    `update "regeneration_batch" set "stoppedAt" = now(), "stoppedBecause" = 'The team is being deleted'
+      where "teamId" = $1 and "stoppedAt" is null`,
+    [team.id],
+  );
+  // Approved after the delisting, a waiting version would put the pack back.
+  await client.query(
+    `update "release_run" set "state" = 'rejected', "reviewedBy" = $2, "reviewedAt" = now(), "reviewNote" = 'The team is being deleted.'
+      where "teamId" = $1 and "state" = 'awaiting_review'`,
+    [team.id, actorId],
+  );
+  if (!packs.length) {
+    await finishDeletion(client, team.id, actorId);
+    return { first: null, deleted: true };
+  }
+  let first: ReleaseRun | null = null;
+  for (const pack of packs) {
+    const run = await insertRun(client, { kind: "delist", teamId: team.id, ...pack, requestedBy: actorId });
+    first ??= run;
+  }
+  return { first, deleted: false };
+}
+
+/**
+ * Starts deleting `team` once `typedSlug` is its slug: "deleted" when it had no pack to delist,
+ * else "deleting" until its delistings settle.
+ */
+export async function startDeletion(
+  team: TeamId,
+  actorId: string,
+  typedSlug: string,
+  launch: Launch = launchRun,
+): Promise<"deleting" | "deleted"> {
+  // A finished run would hold the lock until somebody looked.
+  await syncActive();
+  const { first, deleted } = await withTeam(ALL_TEAMS, async (client) => {
+    const row = await teamRow(client, team, true);
+    if (typedSlug.trim() !== row.slug) throw new TeamError(`Type the team's slug, ${row.slug}, to delete it.`, 400);
+    const refusal = await refusalOf(client, row);
+    if (refusal) throw new TeamError(refusal, 409);
+    return begin(client, row, actorId);
+  });
+  return launched(first, deleted, launch);
+}
+
+/** A deletion that stopped on a failure, started again from its delistings. */
+export async function retryDeletion(team: TeamId, actorId: string, launch: Launch = launchRun): Promise<"deleting" | "deleted"> {
+  await syncActive();
+  const { first, deleted } = await withTeam(ALL_TEAMS, async (client) => {
+    const row = await teamRow(client, team, true);
+    if (!row.deletingAt) throw new TeamError(`${row.slug} is not being deleted.`, 409);
+    if (!row.deleteError) throw new TeamError(`${row.slug} is still being deleted.`, 409);
+    return begin(client, row, actorId);
+  });
+  return launched(first, deleted, launch);
+}
+
+async function launched(first: ReleaseRun | null, deleted: boolean, launch: Launch): Promise<"deleting" | "deleted"> {
+  if (deleted) {
+    forgetTeams();
+    return "deleted";
+  }
+  // A job that cannot start fails its run, and the deletion says so once the rest settle.
+  if (first?.state === "dispatching") await launchStarted(first, launch).catch(() => {});
+  return "deleting";
+}
+
+/**
+ * Called as a `delist` run settles, in its transaction. Once the last of a deletion's delistings
+ * has settled, the team is deleted if every one succeeded, and stops with the reason if one
+ * failed. A delete that fails stops it too, and the run still settles.
+ */
+export async function settleDeletion(client: PoolClient, run: ReleaseRun): Promise<void> {
+  // Locked, so two delistings settling at once see each other's commit.
+  const { rows } = await client.query<{ deletingAt: Date | null }>(
+    `select "deletingAt" from "team" where "id" = $1 for update`,
+    [run.teamId],
+  );
+  const since = rows[0]?.deletingAt;
+  if (!since || run.createdAt < since) return;
+  const { rows: runs } = await client.query<{ section: string; lang: Lang; state: string; error: string | null }>(
+    `select "section", "lang", "state", "error" from "release_run"
+      where "teamId" = $1 and "kind" = 'delist' and "createdAt" >= $2 order by "createdAt"`,
+    [run.teamId, since],
+  );
+  if (runs.some((each) => ["queued", "dispatching", "running"].includes(each.state))) return;
+  const stop = (reason: string) => client.query(`update "team" set "deleteError" = $2 where "id" = $1`, [run.teamId, reason]);
+  const failed = runs.find((each) => each.state === "failed");
+  if (failed) {
+    await stop(`Taking ${failed.section} in ${failed.lang} off the channel failed: ${failed.error ?? "no reason given"}`);
+    return;
+  }
+  await client.query("savepoint team_delete");
+  try {
+    await finishDeletion(client, run.teamId, run.requestedBy);
+    await client.query("release savepoint team_delete");
+  } catch (error) {
+    await client.query("rollback to savepoint team_delete");
+    await stop(`Deleting its rows failed: ${error instanceof Error ? error.message : "unknown error"}`);
+  }
+}
+
+/**
+ * Deletes the team's rows, on the caller's transaction as ALL_TEAMS. Its text reports move to
+ * another team of their language, else wait on the language's text queue under no team. Its voice
+ * reports are about takes that go with it, so an open one is closed, and all of them keep no team.
+ * A language it leaves with no team is switched off. Archive objects stay in their bucket; only
+ * their rows go.
+ */
+export async function finishDeletion(client: PoolClient, team: TeamId, actorId: string | null): Promise<void> {
+  const row = await teamRow(client, team, true);
+  const counts = await countsOf(client, team);
+  const members = await membersOf(client, team);
+  const langs = await langsOf(client, team);
+  await client.query(
+    `with "moved" as (
+       select r."id", (select tl."teamId" from "team_language" tl join "team" t on t."id" = tl."teamId"
+                        where tl."lang" = r."lang" and tl."teamId" <> $1 and t."deletingAt" is null
+                        order by tl."packName" = 'plain' desc, t."name", t."slug" limit 1) as "to"
+         from "report" r where r."teamId" = $1 and r."queue" = 'text')
+     update "report" r set "teamId" = m."to" from "moved" m where r."id" = m."id"`,
+    [team],
+  );
+  // No column says why a report closed; the team.deleted row counts these.
+  const { rowCount: closedReports } = await client.query(
+    `update "report" set "status" = 'not_an_issue', "resolvedAt" = now(), "resolvedBy" = $2
+      where "teamId" = $1 and "queue" = 'audio' and "status" = 'open'`,
+    [team, actorId],
+  );
+  await client.query(`update "report" set "teamId" = null where "teamId" = $1 and "queue" = 'audio'`, [team]);
+  await client.query(`update "release_run" set "promotes" = null where "teamId" = $1`, [team]);
+  for (const table of DELETED) await client.query(`delete from "${table}" where "teamId" = $1`, [team]);
+  // team_member, team_language and invite cascade; an approved request forgets the team.
+  await client.query(`delete from "team" where "id" = $1`, [team]);
+  const hidden: Lang[] = [];
+  for (const { lang, alone } of langs) {
+    if (alone && (await setEnabledOn(client, lang, false, actorId))) hidden.push(lang);
+  }
+  await recordActivity(
+    {
+      kind: "team.deleted",
+      lang: null,
+      actorId,
+      subject: row.slug,
+      detail: { slug: row.slug, members, langs: langs.map((each) => each.lang), counts, closedReports: closedReports ?? 0 },
+    },
+    client,
+  );
+  for (const lang of hidden) {
+    await recordActivity({ kind: "language.toggled", lang, actorId, detail: { enabled: false }, team: ALL_TEAMS }, client);
+  }
+  // Every worker drops its team memo at commit.
+  await client.query(`select pg_notify('spoken_team_language', '')`);
 }

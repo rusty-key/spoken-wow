@@ -433,4 +433,26 @@ describe("queues", () => {
     expect(rows).toEqual([{ detail: { to: "text" } }]);
     await asSystem.query(`delete from "activity" where "kind" = 'report.passed' and "subject" = $1`, [String(report.id)]);
   });
+
+  it("lists a text report with no team, as a deleted team leaves one, resolves it, and passes it to audio as the acting team's", async () => {
+    const lang = await uniqueLang();
+    const team = await newTeamIn(lang, true);
+    try {
+      const [{ id }] = await systemRows<{ id: string }>(
+        `insert into "report" ("source", "lang", "lineId", "category", "body", "ip", "teamId", "queue")
+         values ('quests', $1, 'q:1:accept', 'other', 'x', $2, null, 'text') returning "id"`,
+        [lang, ip],
+      );
+      const listed = await asTeam(lang, team, () => listReports("open", "all", "all", null, lang, ["text"]));
+      expect(listed.map((report) => String(report.id))).toEqual([id]);
+      expect((await asTeam(lang, team, () => setStatus(Number(id), "minor", RESOLVER, lang)))?.status).toBe("minor");
+      expect((await asTeam(lang, team, () => setQueue(Number(id), "audio", RESOLVER, lang)))?.queue).toBe("audio");
+      expect(await systemRows(`select "teamId" from "report" where "id" = $1`, [id])).toEqual([{ teamId: team }]);
+    } finally {
+      await asSystem.query(`delete from "report" where "lang" = $1`, [lang]);
+      await asSystem.query(`delete from "activity" where "lang" = $1`, [lang]);
+      await dropTeam(team);
+      await dropLang(lang);
+    }
+  });
 });

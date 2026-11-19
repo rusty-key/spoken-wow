@@ -3,7 +3,7 @@ import "server-only";
 
 import type { ClientBase } from "pg";
 
-import { ALL_TEAMS, query, withTeam } from "@/lib/db";
+import { ALL_TEAMS, query, queryIn, withTeam } from "@/lib/db";
 import type { ActivityDetail } from "@/lib/activity/kinds";
 import { recordActivities, recordActivity, type ActivityEvent } from "@/lib/activity/store";
 import { addGrants, OtherTeamError, userByEmail } from "@/lib/grants/store";
@@ -13,7 +13,6 @@ import type { Capability } from "@/lib/permissions";
 
 import type { Settings } from "./found";
 
-import { membersOf } from "./members";
 import { isSlug } from "./slug";
 import { forgetTeams, TEAM_ORDER, type TeamId } from "./store";
 
@@ -28,6 +27,8 @@ export type TeamSummary = {
   /** The languages it voices, beside any other team of each. */
   langs: Lang[];
   members: { userId: string; email: string; name: string | null; lang: Lang; capability: Capability }[];
+  /** While it is being deleted (delete.ts): how far its delistings are, and why it stopped if it did. */
+  deleting: { delisted: number; delists: number; error: string | null } | null;
 };
 
 /**
@@ -52,8 +53,20 @@ export function checkSlug(slug: string): void {
 export async function listTeams(only?: TeamId): Promise<TeamSummary[]> {
   const id = [only ?? null];
   const [teams, langs, members] = await Promise.all([
-    query<{ id: TeamId; slug: string; name: string; ownStorage: boolean; official: boolean }>(
-      `select "id", "slug", "name", "ownStorage", "official" from "team" where $1::uuid is null or "id" = $1 order by "slug"`,
+    // Across teams: a team's runs are its own (row-level security).
+    queryIn<{
+      id: TeamId; slug: string; name: string; ownStorage: boolean; official: boolean;
+      deletingAt: Date | null; deleteError: string | null; delisted: number; delists: number;
+    }>(
+      ALL_TEAMS,
+      `select t."id", t."slug", t."name", t."ownStorage", t."official", t."deletingAt", t."deleteError",
+              d."delisted", d."delists"
+         from "team" t
+         left join lateral (
+           select (count(*) filter (where r."state" in ('done', 'unchanged')))::int as "delisted", count(*)::int as "delists"
+             from "release_run" r
+            where r."teamId" = t."id" and r."kind" = 'delist' and r."createdAt" >= t."deletingAt") d on true
+        where $1::uuid is null or t."id" = $1 order by t."slug"`,
       id,
     ),
     query<{ teamId: TeamId; lang: Lang }>(
@@ -69,8 +82,9 @@ export async function listTeams(only?: TeamId): Promise<TeamSummary[]> {
       id,
     ),
   ]);
-  return teams.map((team) => ({
+  return teams.map(({ deletingAt, deleteError, delisted, delists, ...team }) => ({
     ...team,
+    deleting: deletingAt ? { delisted, delists, error: deleteError } : null,
     langs: langs.filter((row) => row.teamId === team.id).map((row) => row.lang),
     members: members
       .filter((row) => row.teamId === team.id)
@@ -181,76 +195,6 @@ export async function renameTeam(team: TeamId, name: string, actorId: string): P
   if (!slug) throw new TeamError("No such team.");
   forgetTeams();
   await recordActivity({ kind: "team.renamed", lang: null, actorId, subject: slug, detail: { name } });
-}
-
-/**
- * The team's setup, deleted with it: the roster, settings and lexicon every team is given or
- * copies, the lexicon's history, and its pauses and dismissal mark. Children before parents.
- */
-const SETUP = [
-  "voice_assignment", "voice", "generation_setting_locale", "generation_setting", "lexicon_change",
-  "pronunciation_lexicon_locale", "pronunciation_lexicon", "queue_dismissal", "regeneration_pause",
-];
-
-/** Plain words for a refusal; any other table goes by its name. */
-const WORK: Record<string, string> = {
-  take: "takes",
-  take_ack: "acknowledged takes",
-  recording: "recordings",
-  voice_clone: "voice clones",
-  voice_sample: "voice samples",
-  fish_reference: "voice references",
-  regeneration_batch: "regeneration batches",
-  regeneration_job: "regeneration jobs",
-  report: "reports",
-  line_ignore: "ignored lines",
-  line_override: "text overrides",
-  text_override: "text overrides",
-  release_run: "releases",
-  storage_backend: "a storage bucket",
-  archive_object: "archived audio",
-  storage_move: "storage moves",
-};
-
-/**
- * Deletes a team that holds no language and has made nothing. Any row of work under it (a take,
- * a recording, a bucket) refuses the delete, since work is never deleted.
- */
-export async function deleteTeam(team: TeamId, actorId: string): Promise<void> {
-  await withTeam(ALL_TEAMS, async (client) => {
-    // Locked, so a language cannot join it between the check and the delete.
-    const { rows } = await client.query<{ slug: string }>(`select "slug" from "team" where "id" = $1 for update`, [team]);
-    if (rows.length === 0) throw new TeamError("No such team.", 404);
-    const { rows: held } = await client.query<{ lang: string }>(
-      `select "lang" from "team_language" where "teamId" = $1 and "privileged" order by "lang"`,
-      [team],
-    );
-    if (held.length) {
-      throw new TeamError(`${rows[0].slug} holds ${held.map((row) => row.lang).join(", ")}; a team with plain packs cannot be deleted yet.`, 409);
-    }
-    const members = await membersOf(client, team);
-    try {
-      for (const table of SETUP) await client.query(`delete from "${table}" where "teamId" = $1`, [team]);
-      // Only the team could read its log; left under no team, every team could (0090's "site_wide").
-      await client.query(`delete from "activity" where "teamId" = $1`, [team]);
-      // team_member, team_language and invite cascade; an approved request forgets the team.
-      await client.query(`delete from "team" where "id" = $1`, [team]);
-    } catch (error) {
-      const { code, table } = error as { code?: string; table?: string };
-      if (code !== "23503") throw error;
-      const work = (table && WORK[table]) ?? table ?? "work";
-      throw new TeamError(
-        `${rows[0].slug} still has ${work} of its own, and work is never deleted: keep the team.`,
-        409,
-      );
-    }
-    // In the transaction, so the log never loses the team's rows without saying why.
-    const slug = rows[0].slug;
-    await recordActivity({ kind: "team.deleted", lang: null, actorId, subject: slug, detail: { slug, members } }, client);
-    // Every worker drops its team memo at commit.
-    await client.query(`select pg_notify('spoken_team_language', '')`);
-  });
-  forgetTeams();
 }
 
 /** `team` joins `lang` beside its other teams, as joinLanguage, and the log says so. */

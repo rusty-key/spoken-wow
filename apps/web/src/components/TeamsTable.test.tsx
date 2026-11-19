@@ -62,6 +62,7 @@ const team = (langs: Lang[]) => ({
   official: true,
   langs,
   members: [],
+  deleting: null,
 });
 
 test("a team holding a language can be asked to go; the site decides", () => {

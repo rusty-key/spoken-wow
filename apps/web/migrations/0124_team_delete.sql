@@ -8,10 +8,13 @@ alter table "team" add column "deletingAt" timestamptz;
 -- Why the deletion stopped: a delist that failed, or the delete itself. Cleared by a Retry.
 alter table "team" add column "deleteError" text;
 
--- A deleted team's reports move to another team of the language, else wait on the language's
+-- A deleted team's text reports move to another team of the language, else wait on the language's
 -- text queue under no team. RLS keeps a row with no team from every team but ALL_TEAMS, which is
 -- what the report reads act as.
 alter table "report" alter column "teamId" drop not null;
+-- Its voice reports are about takes that go with it, so they close and keep no team. No team reads
+-- an open voice report with none.
+alter table "report" add constraint "report_team_or_text" check ("teamId" is not null or "queue" = 'text' or "status" <> 'open');
 
 -- While a team is being deleted it makes nothing: a take, a recording or a generation job landing
 -- after its rows were counted would block the delete, a member added would be granted into a

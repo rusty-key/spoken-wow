@@ -69,7 +69,7 @@ export async function setEnabledOn(
   client: ClientBase,
   lang: string,
   enabled: boolean,
-  userId: string,
+  userId: string | null,
 ): Promise<boolean> {
   // The CTE reads the row as it was before this statement, so "was" is the previous state. A row
   // is described when it is made (migration 0109), so this only ever updates one.

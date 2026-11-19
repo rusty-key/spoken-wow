@@ -5,9 +5,9 @@ import { afterAll, afterEach, beforeEach, describe, expect, it } from "vitest";
 
 import { closeDb, inTransaction, withTeam } from "@/lib/db";
 
-import { addToLanguage, createTeam, createTeamWithLangs, deleteTeam, listTeams, renameTeam, TeamError } from "./admin";
+import { addToLanguage, createTeam, createTeamWithLangs, listTeams, renameTeam, TeamError } from "./admin";
 import { forgetTeams, foundLangTeam, teamsOf } from "./store";
-import { addMember, asSystem, dropLang, dropTeam, newTeamIn, plainTeam, systemRows, testUser, uniqueLang } from "./testing";
+import { asSystem, dropLang, dropTeam, newTeamIn, plainTeam, systemRows, testUser, uniqueLang } from "./testing";
 
 let tag: string;
 let user: Awaited<ReturnType<typeof testUser>>;
@@ -83,96 +83,16 @@ describe("renameTeam", () => {
   });
 });
 
-describe("deleteTeam", () => {
-  const exists = async (team: string) => (await systemRows(`select 1 from "team" where "id" = $1`, [team])).length > 0;
-
-  /** With English's roster, as a new team starts. */
-  async function secondTeam(): Promise<string> {
-    const team = await newTeamIn("deDE", false);
-    made.push(team);
-    await asSystem.query(`select copy_team_roster((select "id" from "team" where "slug" = 'english'), $1)`, [team]);
-    return team;
-  }
-
-  it("deletes a second team with its roster, lexicon history, pause and log, recording its members", async () => {
-    const team = await secondTeam();
-    await addMember(team, actor, "deDE", "admin");
-    await asSystem.query(`insert into "activity" ("lang", "kind", "actorId", "teamId") values ('deDE', 'grant.added', $1, $2)`, [
-      actor, team,
-    ]);
-    await asSystem.query(
-      `insert into "lexicon_change" ("grapheme", "kind", "versionId", "changedBy", "lang", "teamId")
-       values ('Ork', 'added', 'v1', $1, 'deDE', $2)`,
-      [actor, team],
-    );
-    await asSystem.query(`insert into "regeneration_pause" ("lang", "pausedBy", "teamId") values ('deDE', $1, $2)`, [actor, team]);
-
-    await deleteTeam(team, actor);
-
-    expect(await exists(team)).toBe(false);
-    for (const table of ["voice", "lexicon_change", "regeneration_pause", "activity"]) {
-      expect(await systemRows(`select 1 from "${table}" where "teamId" = $1`, [team])).toHaveLength(0);
-    }
-    // Deleted, not left under no team, where every team could read it.
-    const log = await systemRows<{ kind: string; teamId: string | null; detail: { members: unknown[] } }>(
-      `select "kind", "teamId", "detail" from "activity" where "actorId" = $1 order by "id"`,
-      [actor],
-    );
-    expect(log).toEqual([
-      {
-        kind: "team.deleted",
-        teamId: null,
-        detail: { slug: expect.any(String), members: [{ email: `${actor}@example.invalid`, lang: "deDE", capability: "admin" }] },
-      },
-    ]);
-  });
-
-  it("refuses a team holding a language, naming it", async () => {
-    const lang = await uniqueLang();
-    const team = await newTeamIn(lang, true);
-    made.push(team);
-    try {
-      await expect(deleteTeam(team, actor)).rejects.toMatchObject({ status: 409, message: expect.stringContaining(lang) });
-      expect(await exists(team)).toBe(true);
-    } finally {
-      await asSystem.query(`delete from "team_language" where "lang" = $1`, [lang]);
-      await dropLang(lang);
-    }
-  });
-
-  it("refuses a team with a take of its own and deletes nothing", async () => {
-    const team = await secondTeam();
-    const file = `gossip/${tag}delete.mp3`;
-    await asSystem.query(
-      `insert into "take" ("source", "lang", "file", "lineId", "version", "isCurrent", "origin", "bytes", "teamId")
-       values ('quests', 'deDE', $1, 'g:delete', 1, true, 'generated', 1, $2)`,
-      [file, team],
-    );
-    try {
-      await expect(deleteTeam(team, actor)).rejects.toMatchObject({
-        status: 409,
-        message: expect.stringContaining("still has takes of its own"),
-      });
-      expect(await exists(team)).toBe(true);
-      expect(await systemRows(`select 1 from "voice" where "teamId" = $1`, [team])).not.toHaveLength(0);
-    } finally {
-      await asSystem.query(`delete from "take" where "file" = $1`, [file]);
-    }
-  });
-
+describe("a team's foreign keys", () => {
   it("finds no table but its memberships, languages, invites and requests letting go of a team", async () => {
-    // Any other would lose its rows with the team rather than refuse the delete: add it to
-    // deleteTeam's SETUP if it is setup, or give it a plain reference if it is work.
+    // Any other would lose its rows with the team unseen: list it in delete.ts DELETED, where
+    // delete.test.ts checks every table with a team's rows is.
     const rows = await systemRows<{ table: string }>(
       `select conrelid::regclass::text as "table" from pg_constraint
         where contype = 'f' and confrelid = '"team"'::regclass and confdeltype <> 'a'
         order by 1`,
     );
     expect(rows.map((row) => row.table)).toEqual(["invite", "team_language", "team_member", "team_request"]);
-  });
-
-  it("answers 404 for no such team", async () => {
-    await expect(deleteTeam(randomUUID(), actor)).rejects.toMatchObject({ status: 404 });
   });
 });
 
