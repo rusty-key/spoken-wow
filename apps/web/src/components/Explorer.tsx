@@ -63,10 +63,6 @@ export type LineState =
 
 const DEBOUNCE_MS = 200;
 
-function plural(count: number, noun: string): string {
-  return `${count.toLocaleString()} ${noun}${count === 1 ? "" : "s"}`;
-}
-
 /** Everything that narrows the corpus, as the query string the two search endpoints read. */
 function filterParams(filters: LineFilters): URLSearchParams {
   const params = new URLSearchParams();
@@ -868,6 +864,7 @@ export default function Explorer({ facets, teams, viewed, home }: { facets: Face
           canTriage={showRegenerate}
           madeBy={result?.madeBy}
           recordable={showRecordings}
+          counts={result?.counts}
         />
 
         {showRecordings && <RecordingDropZone source="quests" onUploaded={refetch} />}
@@ -887,7 +884,6 @@ export default function Explorer({ facets, teams, viewed, home }: { facets: Face
 
         <div className="flex flex-wrap items-center gap-x-3 gap-y-1 pt-3 pb-1">
           <div className="text-muted-foreground flex items-center gap-2 text-sm">
-            {result && `${plural(result.total, "line")} across ${plural(result.npcCount, "NPC")}`}
             {loading && result && <Refreshing />}
           </div>
           {/* This page's marks, which is what the row-level question was asked for. The

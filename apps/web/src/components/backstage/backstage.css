@@ -586,6 +586,9 @@ body:has(main.bs) {
   color: var(--foreground);
   font: inherit;
   font-size: 16px;
+}
+/* The field's own ring, .cat-q:focus-within, shows focus; .bs :focus-visible would draw a second one inside it. */
+.cat-q input:focus-visible {
   outline: none;
 }
 .cat-q input::placeholder {
@@ -620,6 +623,11 @@ body:has(main.bs) {
   box-shadow: none;
   color: #101216;
   font-weight: 500;
+}
+.cat-count {
+  opacity: 0.65;
+  font-variant-numeric: tabular-nums;
+  font-weight: 400;
 }
 .cat-dot {
   width: 7px;

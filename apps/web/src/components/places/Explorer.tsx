@@ -9,7 +9,6 @@ import { usePathname, useSearchParams } from "next/navigation";
 import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import ApiKeyRequiredDialog from "@/components/ApiKeyRequiredDialog";
-import FilterLink from "@/components/FilterLink";
 import Key from "@/components/Key";
 import Pagination from "@/components/Pagination";
 import { Loading, Refreshing } from "@/components/Loading";
@@ -660,6 +659,7 @@ export function Explorer<L extends ExplorerLine, F extends ExplorerFilters>({
           canTriage={canTriage}
           madeBy={result?.madeBy}
           recordable={showRecordings}
+          counts={result?.counts}
           query={query}
           inputRef={searchInput}
           onQueryChange={setQuery}
@@ -685,29 +685,8 @@ export function Explorer<L extends ExplorerLine, F extends ExplorerFilters>({
 
         <div className="flex flex-wrap items-center gap-x-3 gap-y-1 pt-3 pb-1">
           <div className="text-muted-foreground flex items-center gap-2 text-sm">
-            {result && `${result.total.toLocaleString()} ${result.total === 1 ? "line" : "lines"}`}
             {loading && result && <Refreshing />}
           </div>
-          {result && result.counts.missing > 0 && (
-            <FilterLink
-              href={filtersHref({ state: "missing" })}
-              onApply={() => updateFilters({ state: "missing" })}
-              className="text-destructive text-sm underline-offset-2 hover:underline"
-              title="Show only lines without audio"
-            >
-              {result.counts.missing} missing
-            </FilterLink>
-          )}
-          {result && result.counts.stale > 0 && (
-            <FilterLink
-              href={filtersHref({ state: "stale" })}
-              onApply={() => updateFilters({ state: "stale" })}
-              className="text-sm text-amber-300 underline-offset-2 hover:underline"
-              title="Show only lines whose audio is older than their text"
-            >
-              {result.counts.stale} outdated
-            </FilterLink>
-          )}
           {/* Its own count, beside the states rather than among them: a line can be current
               and carry this at once. The button only for someone who could act on it. */}
           {result && result.dirty > 0 && (

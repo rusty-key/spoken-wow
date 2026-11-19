@@ -21,7 +21,7 @@ import { DEFAULT_CLIENT_FILTER, type ClientFilter } from "@/lib/contributions/cl
 import { BROADCAST_OPTIONS, type BroadcastStatus } from "@/lib/broadcast/status";
 import type { MadeByFacets } from "@/lib/takes/made-by";
 import type { Facets } from "@/lib/facets";
-import { AUDIO_STATE_LABELS } from "@/lib/audio-state";
+import { AUDIO_STATE_LABELS, type StateCounts } from "@/lib/audio-state";
 import { RECORDED_OPTIONS, type Recorded } from "@/lib/recordings/live";
 import { NPC_TYPE_LABELS, NPC_TYPES, SOURCE_LABELS, SOURCES, type Source } from "@/lib/line-fields";
 import type { Filter, LineFilters } from "@/lib/search";
@@ -39,6 +39,8 @@ type Props = {
   madeBy?: MadeByFacets;
   /** The viewer records here, so the search answers whether each line is recorded. */
   recordable?: boolean;
+  /** The last answer's counts, for the audio buttons; absent before the first. */
+  counts?: StateCounts;
 };
 
 // Roster values are lower-case identifiers; the label capitalises them, the URL keeps the value.
@@ -71,7 +73,7 @@ const labelOf = (options: readonly Option[], value: string) =>
 const capital = (value: string) => value.charAt(0).toUpperCase() + value.slice(1);
 
 const SearchBar = forwardRef<HTMLInputElement, Props>(function SearchBar(
-  { query, filters, facets, onQuery, onFilters, onClearAll, canTriage, madeBy, recordable },
+  { query, filters, facets, onQuery, onFilters, onClearAll, canTriage, madeBy, recordable, counts },
   ref,
 ) {
   /** The flavors reachable under a race and gender, or all of them under neither. */
@@ -106,9 +108,9 @@ const SearchBar = forwardRef<HTMLInputElement, Props>(function SearchBar(
     onFilters({ state: filters.state === state ? undefined : state });
 
   const statuses = [
-    { key: "missing", label: "Missing audio", tone: "missing" as const, pressed: filters.state === "missing", onPress: () => setState("missing") },
-    { key: "stale", label: "Outdated", tone: "stale" as const, pressed: filters.state === "stale", onPress: () => setState("stale") },
-    { key: "current", label: "Up to date", tone: "current" as const, pressed: filters.state === "current", onPress: () => setState("current") },
+    { key: "missing", label: "Missing", tone: "missing" as const, count: counts?.missing, pressed: filters.state === "missing", onPress: () => setState("missing") },
+    { key: "stale", label: "Outdated", tone: "stale" as const, count: counts?.stale, pressed: filters.state === "stale", onPress: () => setState("stale") },
+    { key: "current", label: "Up to date", tone: "current" as const, count: counts?.current, pressed: filters.state === "current", onPress: () => setState("current") },
     // Triagers only: the count on a row is public, but a list of complaints is a worklist.
     ...(canTriage
       ? [
@@ -172,6 +174,7 @@ const SearchBar = forwardRef<HTMLInputElement, Props>(function SearchBar(
         />
       }
       statuses={statuses}
+      allCount={counts?.all}
       onShowAll={() => onFilters({ state: undefined, reports: undefined })}
       active={active}
       onClearAll={onClearAll}

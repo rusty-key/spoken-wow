@@ -537,6 +537,7 @@ export function Explorer({ books, teams, viewed, home }: { books: BookFacet[] } 
           canTriage={canTriage}
           madeBy={result?.madeBy}
           recordable={showRecordings}
+          counts={result?.counts}
         />
 
         {showRecordings && <RecordingDropZone source="readables" onUploaded={refetch} />}
@@ -554,14 +555,11 @@ export function Explorer({ books, teams, viewed, home }: { books: BookFacet[] } 
           </div>
         )}
 
-        <div className="text-muted-foreground mb-2 flex items-center gap-3 text-xs">
-          {loading && result && <Refreshing />}
-          <span>
-            {result ? result.total.toLocaleString() : "…"} pages
-            {result && ` · ${result.counts.missing.toLocaleString()} without audio`}
-            {result && result.counts.stale > 0 && ` · ${result.counts.stale.toLocaleString()} outdated`}
-            {result && result.dirty > 0 && ` · ${result.dirty.toLocaleString()} pronunciation`}
-          </span>
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-1 pt-3 pb-1">
+          <div className="text-muted-foreground flex items-center gap-2 text-sm">
+            {result && result.dirty > 0 && `${result.dirty.toLocaleString()} pronunciation`}
+            {loading && result && <Refreshing />}
+          </div>
           {/* Beside the counts, and only for someone who could act on it. */}
           {canRegenerate && result && result.dirty > 0 && (
             <Button size="sm" variant="ghost" onClick={clearAllDirty}>
@@ -572,6 +570,8 @@ export function Explorer({ books, teams, viewed, home }: { books: BookFacet[] } 
             <BatchGenerate total={result.total} state={filters.state} noun={["page", "pages"]} onClick={askToRegenerateAll} />
           )}
         </div>
+
+        <Pagination page={page} pageCount={pageCount} onPage={(next) => updateUrl({ page: next })} />
       </div>
 
       <Wide>

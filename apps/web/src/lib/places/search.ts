@@ -11,6 +11,7 @@
 // sha1 of the SPOKEN text. If these two ever disagree, the explorer is lying about what
 // needs regenerating.
 
+import { stateCounts, type StateCounts } from "@/lib/audio-state";
 import { isDirty } from "@/lib/generation/dirty";
 import { recordedMatches, type LiveRecording } from "@/lib/recordings/live";
 import { madeByFacets, madeByMatches, type MadeBy, type MadeByFacets } from "@/lib/takes/made-by";
@@ -70,7 +71,8 @@ export type SearchResult = {
   total: number;
   /** What the current filter selects, for the header and the regenerate quote. */
   totalChars: number;
-  counts: Record<State, number>;
+  /** For the audio buttons; see StateCounts. */
+  counts: StateCounts;
   /** How many of the matched lines are dirty. Not a fourth state; see ResultLine.dirty. */
   dirty: number;
   offset: number;
@@ -211,13 +213,13 @@ export function search(
   limit = PAGE_SIZE,
 ): SearchResult {
   const all = entries.map((entry) => decorate(entry, context));
-  const matched = order(matching(all, filters));
+  const unstated = matching(all, { ...filters, state: undefined });
+  const counts = stateCounts(unstated);
+  const matched = order(filters.state ? unstated.filter((line) => line.state === filters.state) : unstated);
 
-  const counts: Record<State, number> = { missing: 0, stale: 0, current: 0 };
   let totalChars = 0;
   let dirty = 0;
   for (const line of matched) {
-    counts[line.state]++;
     if (line.dirty) dirty++;
     totalChars += line.chars;
   }

@@ -11,7 +11,7 @@ import {
   type Option,
 } from "@/components/catalogue/CatalogueSearch";
 import type { MadeByFacets } from "@/lib/takes/made-by";
-import { AUDIO_STATE_LABELS } from "@/lib/audio-state";
+import { AUDIO_STATE_LABELS, type StateCounts } from "@/lib/audio-state";
 import type { BookFacet } from "@/lib/readables/catalogue";
 import { RECORDED_OPTIONS, type Recorded } from "@/lib/recordings/live";
 import { FIELDS, OWNER_KINDS, type PageFilters } from "@/lib/readables/filters";
@@ -41,6 +41,8 @@ type Props = {
   canTriage: boolean;
   madeBy?: MadeByFacets;
   recordable?: boolean;
+  /** The last answer's counts, for the audio buttons; absent before the first. */
+  counts?: StateCounts;
 };
 
 const labelOf = (options: readonly Option[], value: string) =>
@@ -58,6 +60,7 @@ export function SearchBar({
   canTriage,
   madeBy,
   recordable,
+  counts,
 }: Props) {
   const bookOptions: Option[] = books.map((book) => ({
     value: book.bookId,
@@ -68,9 +71,9 @@ export function SearchBar({
 
   const setState = (state: PageFilters["state"]) => onChange({ state: filters.state === state ? undefined : state });
   const statuses = [
-    { key: "missing", label: "Missing audio", tone: "missing" as const, pressed: filters.state === "missing", onPress: () => setState("missing") },
-    { key: "stale", label: "Outdated", tone: "stale" as const, pressed: filters.state === "stale", onPress: () => setState("stale") },
-    { key: "current", label: "Up to date", tone: "current" as const, pressed: filters.state === "current", onPress: () => setState("current") },
+    { key: "missing", label: "Missing", tone: "missing" as const, count: counts?.missing, pressed: filters.state === "missing", onPress: () => setState("missing") },
+    { key: "stale", label: "Outdated", tone: "stale" as const, count: counts?.stale, pressed: filters.state === "stale", onPress: () => setState("stale") },
+    { key: "current", label: "Up to date", tone: "current" as const, count: counts?.current, pressed: filters.state === "current", onPress: () => setState("current") },
     // Triagers only: the count on a row is public, but a list of complaints is a worklist.
     ...(canTriage
       ? [
@@ -114,6 +117,7 @@ export function SearchBar({
         />
       }
       statuses={statuses}
+      allCount={counts?.all}
       onShowAll={() => onChange({ state: undefined, reports: undefined })}
       active={active}
       onClearAll={onClearAll}

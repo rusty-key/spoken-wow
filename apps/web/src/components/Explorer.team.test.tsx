@@ -54,7 +54,7 @@ const line: ResultLine = {
   ignored: null,
   madeBy: null,
 };
-const result: SearchResult = { lines: [line], total: 12, npcCount: 3, offset: 0, limit: 50 };
+const result: SearchResult = { lines: [line], total: 12, counts: { all: 12, missing: 0, stale: 0, current: 12 }, offset: 0, limit: 50 };
 const fetchMock = vi.fn();
 
 beforeEach(() => {
@@ -102,7 +102,7 @@ async function playGrunt() {
 
 test("another team's view asks for its lines, and offers no batch or queue", async () => {
   explorer({ team: "t-main", slug: "main-crew", name: "Main Crew", own: false });
-  await screen.findByText("12 lines across 3 NPCs");
+  await screen.findByRole("button", { name: "All 12" });
 
   expect(urls().filter((url) => url.startsWith("/api/quests/search"))).not.toHaveLength(0);
   for (const url of urls()) expect(new URL(url, "http://x").searchParams.get("team")).toBe("main-crew");
@@ -119,7 +119,7 @@ test("another team's view asks for its lines, and offers no batch or queue", asy
 
 test("the visitor's own view offers the batch and sends no team", async () => {
   explorer(null);
-  await screen.findByText("12 lines across 3 NPCs");
+  await screen.findByRole("button", { name: "All 12" });
 
   for (const url of urls()) expect(url).not.toContain("team=");
   expect(screen.getByRole("button", { name: /Regenerate all 12/ })).not.toBeNull();
@@ -140,7 +140,7 @@ test("a team the search no longer knows leaves no rows, rather than breaking the
   explorer({ team: "t-main", slug: "main-crew", name: "Main Crew", own: false });
   await waitFor(() => expect(fetchMock).toHaveBeenCalled());
   await waitFor(() => expect(screen.getByLabelText("Team")).not.toBeNull());
-  expect(screen.queryByText(/lines across/)).toBeNull();
+  expect(screen.queryByRole("button", { name: /^All \d/ })).toBeNull();
 });
 
 // An untranslated line can be neither edited nor voiced here, so the row says where its text comes from.

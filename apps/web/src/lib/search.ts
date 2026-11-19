@@ -24,7 +24,7 @@ import { overrideOf, type LineOverride } from "./quests/override";
 import { hasDrifted } from "./quests/override-drift";
 import type { LineBroadcast } from "./broadcast/store";
 import type { BroadcastStatus } from "./broadcast/status";
-import type { AudioState } from "./audio-state";
+import type { AudioState, StateCounts } from "./audio-state";
 import { isVoiceable, unvoicedReason, type UnvoicedReason } from "./text-gate";
 import { madeByFacets, madeByMatches, type MadeBy, type MadeByFacets } from "./takes/made-by";
 import { recordedMatches, type LiveRecording, type Recorded } from "./recordings/live";
@@ -254,8 +254,8 @@ export type SearchResult = {
   lines: ResultLine[];
   /** Matching lines across every page. */
   total: number;
-  /** Distinct NPCs across every page, which no count of `lines` can recover. */
-  npcCount: number;
+  /** For the audio buttons; see StateCounts. Outdated and up to date read zero without `context.stale`. */
+  counts: StateCounts;
   offset: number;
   limit: number;
   /** What the model and author chips offer. Absent when the context carried no `madeBy`. */
@@ -564,6 +564,18 @@ export function matchingLines(
   return [...lines].sort(order);
 }
 
+/** Each state counted by the same test its filter in matchingLines applies. */
+function stateCountsOf(lines: CorpusLine[], store: Set<string>, { overrides, stale }: SearchContext): StateCounts {
+  const counts: StateCounts = { all: lines.length, missing: 0, stale: 0, current: 0 };
+  for (const line of lines) {
+    const file = audioRelPath(line);
+    if (isGap(line, store, overrides)) counts.missing++;
+    if (stale?.has(file)) counts.stale++;
+    else if (stale && store.has(file)) counts.current++;
+  }
+  return counts;
+}
+
 export function search(
   corpus: Corpus,
   store: Set<string>,
@@ -571,6 +583,7 @@ export function search(
   context: SearchContext = NO_CONTEXT,
 ): SearchResult {
   const all = matchingLines(corpus, store, filters, context);
+  const unstated = filters.state ? matchingLines(corpus, store, { ...filters, state: undefined }, context) : all;
   const keys = rowKeys(corpus);
 
   const start = Math.max(0, Math.floor(offset));
@@ -603,7 +616,7 @@ export function search(
   return {
     lines,
     total: all.length,
-    npcCount: new Set(all.map(npcKey)).size,
+    counts: stateCountsOf(unstated, store, context),
     offset: start,
     limit,
     ...(context.madeBy && { madeBy: madeByFacets(context.madeBy.values()) }),

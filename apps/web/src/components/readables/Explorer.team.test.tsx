@@ -47,7 +47,7 @@ const result: SearchResult = {
   lines: [page],
   total: 1,
   totalChars: 14,
-  counts: { current: 1, stale: 0, missing: 0 },
+  counts: { all: 1, current: 1, stale: 0, missing: 0 },
   dirty: 0,
   offset: 0,
   limit: 50,

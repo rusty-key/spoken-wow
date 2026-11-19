@@ -4,6 +4,7 @@
 // A boss with no story in the language has no hash, so with a take it is stale and without one
 // it is missing; either way there is nothing to voice until somebody writes it.
 
+import { stateCounts, type StateCounts } from "@/lib/audio-state";
 import { isDirty } from "@/lib/generation/dirty";
 import { recordedMatches, type LiveRecording } from "@/lib/recordings/live";
 import { madeByFacets, madeByMatches, type MadeBy, type MadeByFacets } from "@/lib/takes/made-by";
@@ -50,7 +51,8 @@ export type SearchResult = {
   lines: ResultLine[];
   total: number;
   totalChars: number;
-  counts: Record<State, number>;
+  /** For the audio buttons; see StateCounts. */
+  counts: StateCounts;
   dirty: number;
   offset: number;
   limit: number;
@@ -155,16 +157,16 @@ export function search(
   offset = 0,
   limit = PAGE_SIZE,
 ): SearchResult {
-  const matched = matching(
+  const unstated = matching(
     entries.map((entry) => decorate(entry, context)),
-    filters,
+    { ...filters, state: undefined },
   );
+  const counts = stateCounts(unstated);
+  const matched = filters.state ? unstated.filter((line) => line.state === filters.state) : unstated;
 
-  const counts: Record<State, number> = { missing: 0, stale: 0, current: 0 };
   let totalChars = 0;
   let dirty = 0;
   for (const line of matched) {
-    counts[line.state]++;
     if (line.dirty) dirty++;
     totalChars += line.chars;
   }

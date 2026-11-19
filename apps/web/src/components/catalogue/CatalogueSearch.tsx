@@ -10,6 +10,8 @@ export type StatusOption = {
   label: string;
   /** The dot's colour: the same state colours the rows use. */
   tone?: "missing" | "stale" | "current" | "reported" | "neutral";
+  /** Lines in this state under every other filter; absent until the first answer arrives. */
+  count?: number;
   pressed: boolean;
   onPress: () => void;
 };
@@ -37,6 +39,7 @@ export function CatalogueSearch({
   onQuerySubmit,
   scope,
   statuses,
+  allCount,
   onShowAll,
   groups,
   active,
@@ -51,6 +54,7 @@ export function CatalogueSearch({
   /** Where the query is matched, as a small select inside the field. */
   scope?: ReactNode;
   statuses: StatusOption[];
+  allCount?: number;
   /**
    * "All" as one write: pressing each status off in turn would fire several URL writes in one
    * tick, each built from the same params, and the last would put the others back.
@@ -99,6 +103,7 @@ export function CatalogueSearch({
           onClick={onShowAll}
         >
           All
+          <Count value={allCount} />
         </button>
         {statuses.map((status) => (
           <button
@@ -110,6 +115,7 @@ export function CatalogueSearch({
           >
             {status.tone ? <i className={cn("cat-dot", `cat-dot-${status.tone}`)} aria-hidden="true" /> : null}
             {status.label}
+            <Count value={status.count} />
           </button>
         ))}
         <span className="cat-sep" aria-hidden="true" />
@@ -380,5 +386,16 @@ export function ScopeSelect({
         </option>
       ))}
     </select>
+  );
+}
+
+function Count({ value }: { value: number | undefined }) {
+  if (value === undefined) return null;
+  // The space keeps the accessible name "Missing 56", not "Missing56"; a flex row draws none.
+  return (
+    <>
+      {" "}
+      <span className="cat-count">{value.toLocaleString()}</span>
+    </>
   );
 }
