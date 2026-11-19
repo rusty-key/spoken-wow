@@ -145,3 +145,43 @@ test("a derived pack is refused before any step where team releases are not open
   assert.match(run.stderr, /team releases are not open here: set SPOKEN_TEAM_RELEASES=1 in app.env to open them/);
   assert.doesNotMatch(run.stdout, /==> step/);
 });
+
+// Stands in for every step's child process: records the database each would have read, and runs none.
+const RECORD_STEPS = `
+import { appendFileSync } from "node:fs";
+import { createRequire, syncBuiltinESMExports } from "node:module";
+const child = createRequire(import.meta.url)("node:child_process");
+child.spawnSync = (command, args, { env }) => {
+  appendFileSync(process.env.STEP_LOG, JSON.stringify({ args, LOCAL_DB: env.LOCAL_DB, DATABASE_URL: env.DATABASE_URL }) + "\\n");
+  return { status: 0 };
+};
+syncBuiltinESMExports();
+`;
+
+test("the team and every step come from one database when LOCAL_DB and DATABASE_URL differ", { skip: seed ? false : "DATABASE_URL is not set" }, () => {
+  const dir = mkdtempSync(join(tmpdir(), "release-db-"));
+  const stub = join(dir, "record-steps.mjs");
+  writeFileSync(stub, RECORD_STEPS);
+  const log = join(dir, "steps.jsonl");
+  const run = spawnSync(process.execPath, ["--import", stub, join(HERE, "release.mjs"), "places", lang, "--stage-only"], {
+    cwd: REPO,
+    env: {
+      ...process.env,
+      LOCAL_DB: seed.url,
+      DATABASE_URL: "postgres://nobody@127.0.0.1:1/elsewhere",
+      SPOKEN_ARCHIVE_URL: "https://archive.invalid/",
+      STEP_LOG: log,
+    },
+    encoding: "utf8",
+  });
+  // The team was read, so from LOCAL_DB: nothing listens where DATABASE_URL points.
+  assert.match(run.stdout, /==> step 1\/5: clip pointers/, run.stderr);
+  const steps = readFileSync(log, "utf8").trim().split("\n").map((line) => JSON.parse(line));
+  assert.deepEqual(steps.map(({ args }) => args[0].slice(REPO.length + 1)), [
+    "scripts/audio/sounds.mjs",
+    "pipelines/places/tools/voice/export-manifest.mjs",
+    "pipelines/places/tools/voice/build-lookup.mjs",
+    "pipelines/places/tools/voice/validate-audio.mjs",
+  ]);
+  for (const step of steps) assert.deepEqual([step.LOCAL_DB, step.DATABASE_URL], [seed.url, seed.url], step.args[0]);
+});

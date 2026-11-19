@@ -12,10 +12,10 @@
 // site owner's approval would list goes to <file> (dist/staged.json without one) for
 // `cli.mjs promote`. The site stages every release of a team that is not official.
 //
-// DATABASE_URL names the database; a checkout's LOCAL_DB wins for the steps that read it. The
-// channel's keys come as for cli.mjs. Each step prints `==> step n/m`, then its own progress, and
-// the last line says what came of it: `==> released <version>`, `==> staged <version>` or
-// `==> nothing changed`.
+// DATABASE_URL names the database; a checkout's LOCAL_DB wins over it. The team and every step
+// read that one database, so the takes a step looks up are the team's. The channel's keys come as
+// for cli.mjs. Each step prints `==> step n/m`, then its own progress, and the last line says what
+// came of it: `==> released <version>`, `==> staged <version>` or `==> nothing changed`.
 import { spawnSync } from "node:child_process";
 import { readFile, writeFile } from "node:fs/promises";
 import { dirname, join, resolve } from "node:path";
@@ -62,7 +62,7 @@ const teamSlug = flags.find((flag) => flag.startsWith("--team="))?.slice("--team
 
 /** The team and language the release builds for, and every language's names, read before any step runs. */
 async function readTeam() {
-  const db = new pg.Client({ connectionString: process.env.LOCAL_DB || process.env.DATABASE_URL });
+  const db = new pg.Client({ connectionString: process.env.DATABASE_URL });
   await db.connect();
   try {
     return { team: await releaseTeam(db, lang, teamSlug), languages: await languageNames(db) };
@@ -78,7 +78,7 @@ function run(command, args, { cwd, env, label }) {
 }
 
 function runNode(script, args = []) {
-  const env = { LOCAL_DB: process.env.LOCAL_DB || process.env.DATABASE_URL, SPOKEN_CLIP_POINTERS: "1", SPOKEN_PLACES_LANG: lang };
+  const env = { SPOKEN_CLIP_POINTERS: "1", SPOKEN_PLACES_LANG: lang };
   run(process.execPath, [join(ROOT, script), ...args], { cwd: ROOT, env, label: script });
 }
 
@@ -102,6 +102,9 @@ try {
   await loadEnv();
   if (!process.env.DATABASE_URL) throw new Error("DATABASE_URL is not set");
   if (!process.env.SPOKEN_ARCHIVE_URL) throw new Error("SPOKEN_ARCHIVE_URL is not set");
+  // Some steps read LOCAL_DB and some DATABASE_URL: each names the one database, which every step
+  // inherits, so the team read here is the one whose takes they look up.
+  process.env.LOCAL_DB = process.env.DATABASE_URL = process.env.LOCAL_DB || process.env.DATABASE_URL;
   const { team, languages } = await readTeam();
   const plan = releasePlan(section, lang, team);
   // Only where the site has opened team releases (docs/platform/TEAMS.md, *Releases*) does a
