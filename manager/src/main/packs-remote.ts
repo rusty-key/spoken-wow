@@ -323,23 +323,24 @@ function settle(file: string, raw: string, index: ChannelIndexV2, current: Chann
  * index-v2.json from the server, saved for offline use, or index.json read as v2 when the channel has no v2. A v2 that
  * fails its signature is refused, not read around: that is an attack or a broken channel, not an old one. `current` is
  * the index in use, which a fetch must not go back from and which stands when the server cannot be reached or fails
- * the checks; without it, the saved one is read.
+ * the checks; without it, the saved one is read. It is asked for once the answer is in, not when the request goes out,
+ * since another fetch may have brought a newer one meanwhile.
  */
 export async function fetchIndex(
   dataPath: string,
   opts: ChannelOptions = {},
-  current?: ChannelIndexV2 | null
+  current?: () => ChannelIndexV2 | null
 ): Promise<{ index: ChannelIndexV2 | null; offline: boolean; error?: string }> {
   const base = opts.baseUrl ?? PACKS_BASE_URL
-  const known = current === undefined ? loadCachedIndex(dataPath, opts.publicKey) : current
+  const known = current ?? (() => loadCachedIndex(dataPath, opts.publicKey))
   try {
     const rawV2 = await getText(`${base}index-v2.json`, opts, 'may-be-missing')
-    if (rawV2 !== null) return { index: settle(indexV2File(dataPath), rawV2, parseIndexV2(openEnvelope(rawV2, opts.publicKey)), known, 'same'), offline: false }
+    if (rawV2 !== null) return { index: settle(indexV2File(dataPath), rawV2, parseIndexV2(openEnvelope(rawV2, opts.publicKey)), known(), 'same'), offline: false }
     const raw = await getText(`${base}index.json`, opts)
-    return { index: settle(indexFile(dataPath), raw, fromV1(parseIndex(openEnvelope(raw, opts.publicKey))), known, 'any'), offline: false }
+    return { index: settle(indexFile(dataPath), raw, fromV1(parseIndex(openEnvelope(raw, opts.publicKey))), known(), 'any'), offline: false }
   } catch (err) {
     log('Voice pack index:', err)
-    return { index: known, offline: true, error: err instanceof Error ? err.message : String(err) }
+    return { index: known(), offline: true, error: err instanceof Error ? err.message : String(err) }
   }
 }
 

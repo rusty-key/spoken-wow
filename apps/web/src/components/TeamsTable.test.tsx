@@ -83,3 +83,22 @@ test("deleting asks first, then sends DELETE for the team", async () => {
   expect(fetchMock.mock.calls[0][1].method).toBe("DELETE");
   expect(refresh).toHaveBeenCalled();
 });
+
+test("a saved checkbox shows what the refresh after the save read, even when another owner changed it back", async () => {
+  const user = userEvent.setup();
+  const { rerender } = render(<TeamsTable initial={[team([])]} takes={{}} languages={languages} />);
+  const official = () => screen.getByLabelText("spare is official") as HTMLInputElement;
+  const ownStorage = () => screen.getByLabelText("spare's new audio goes only to its own bucket") as HTMLInputElement;
+
+  await user.click(official());
+  await waitFor(() => expect(official().disabled).toBe(false));
+  expect(official().checked).toBe(false);
+  await user.click(ownStorage());
+  await waitFor(() => expect(ownStorage().disabled).toBe(false));
+  expect(ownStorage().checked).toBe(false);
+
+  // Before the refresh read the team, another owner saved both back to true.
+  rerender(<TeamsTable initial={[team([])]} takes={{}} languages={languages} />);
+  expect(official().checked).toBe(true);
+  expect(ownStorage().checked).toBe(true);
+});

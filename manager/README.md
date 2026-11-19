@@ -73,7 +73,8 @@ with Remove only.
 
 Install All installs the chosen author's packs. With All chosen and more than one team, it installs
 the official packs; where the language has none, it asks which team's packs to install and
-downloads nothing until one is picked. One press never installs two teams' packs of one section.
+downloads nothing until one is picked. One press never installs two teams' packs of one section. Where some of a
+team's quests sides are installed already, it installs the sides missing instead of the whole quests pack.
 
 A team's pack needs a Spoken that knows team packs (`requires.Spoken` in the index); installing one
 updates Spoken first when the installed one is older.

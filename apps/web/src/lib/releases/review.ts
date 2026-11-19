@@ -20,7 +20,7 @@ import { isUuid } from "@/lib/uuid";
 import { runsOnDroplet } from "./droplet";
 import { LaunchError, launchNew } from "./launch";
 import { tellPresser } from "./notify";
-import { pendingChanges } from "./pending";
+import { pendingChanges, stagedChanges } from "./pending";
 import { isReleaseSection, type LiveTeamPack, type PendingView, type ReleaseSection, type WaitingVersion } from "./sections";
 import { COLUMNS, insertRun, type ReleaseRun } from "./store";
 
@@ -133,13 +133,13 @@ export async function delistPack(teamId: string, lang: Lang, section: string, ac
   }));
 }
 
-const WAITING = `from "release_run" r join "team" t on t."id" = r."teamId"
+const waitingFrom = (joins = "") => `from "release_run" r join "team" t on t."id" = r."teamId" ${joins}
                  where r."kind" = 'release' and r."state" in ('awaiting_review', 'approved')`;
 
 /** How many versions wait for a site owner, approved ones still being listed among them, for the header's badge. */
 export async function waitingCount(): Promise<number> {
   return withTeam(ALL_TEAMS, async (client) => {
-    const { rows } = await client.query<{ count: string }>(`select count(*) as "count" ${WAITING}`);
+    const { rows } = await client.query<{ count: string }>(`select count(*) as "count" ${waitingFrom()}`);
     return Number(rows[0].count);
   });
 }
@@ -154,21 +154,46 @@ const SINCE = `(select max(coalesce(s."startedAt", s."createdAt")) from "release
 
 const STARTED = `coalesce(r."startedAt", r."createdAt")`;
 
+/**
+ * `had`: the team's release players have of a waiting version `r`'s pack, its newest one listed
+ * and not delisted since, with whether its build recorded its takes; no row when they have none.
+ */
+const HAD = `left join lateral (
+  select s."id", s."takes" is not null as "recorded" from "release_run" s
+   where s."kind" = 'release' and s."state" = 'done'
+     and s."teamId" = r."teamId" and s."lang" = r."lang" and s."section" = r."section"
+     and not exists (select 1 from "release_run" d
+                      where d."kind" = 'delist' and d."state" = 'done' and d."teamId" = s."teamId"
+                        and d."lang" = s."lang" and d."section" = s."section"
+                        and coalesce(d."finishedAt", d."createdAt") > coalesce(s."finishedAt", s."createdAt"))
+   order by s."createdAt" desc limit 1) had on true`;
+
+/** Whether the version's lines come from the takes its build recorded, against those players have. */
+const SELECTED = `(r."takes" is not null and (had."id" is null or had."recorded"))`;
+
 type WaitingRow = {
   id: string; teamId: string; slug: string; name: string; lang: Lang; section: ReleaseSection; version: string | null;
   requestedBy: string | null; createdAt: Date; error: string | null; approving: boolean; since: Date | null;
   /** When its build started, which a queued press does after it was pressed. */
   startedAt: Date;
+  selected: boolean;
+  /** The release players have, which `selected` compares with. */
+  hadId: string | null;
 };
 
+type Counted = Pick<WaitingRow, "id" | "teamId" | "lang" | "section" | "since" | "startedAt" | "selected" | "hadId">;
+
 /**
- * What a waiting version changes for players, as its team counts it, read as that team: up to
- * when its build started, with the takes live then, which it read. Takes cut since wait for the
- * team's next release.
+ * What a waiting version changes for players, read as its team. From the takes its build put in
+ * the pack, against those of the release players have; for a version or a release built before
+ * builds recorded them, as its team's release page counted it when the build started, from the
+ * takes live then.
  */
-function changesOf(row: Pick<WaitingRow, "teamId" | "lang" | "section" | "since" | "startedAt">, list: boolean): Promise<PendingView> {
+function changesOf(row: Counted, list: boolean): Promise<PendingView> {
   return asTeam(row.lang, row.teamId, () =>
-    pendingChanges(row.section, row.lang, row.since, { list, people: true, until: row.startedAt }),
+    row.selected
+      ? stagedChanges(row.section, row.lang, row.id, row.hadId, { list, people: true, since: row.since, until: row.startedAt })
+      : pendingChanges(row.section, row.lang, row.since, { list, people: true, until: row.startedAt }),
   );
 }
 
@@ -183,8 +208,8 @@ export async function waitingReviews(): Promise<WaitingVersion[]> {
     const { rows } = await client.query<WaitingRow>(
       `select r."id", r."teamId", t."slug", t."name", r."lang", r."section", r."version", r."requestedBy",
               r."createdAt", r."error", r."state" = 'approved' as "approving", ${SINCE} as "since",
-              ${STARTED} as "startedAt"
-         ${WAITING} order by r."createdAt"`,
+              ${STARTED} as "startedAt", ${SELECTED} as "selected", had."id" as "hadId"
+         ${waitingFrom(HAD)} order by r."createdAt"`,
     );
     return rows;
   });
@@ -212,8 +237,10 @@ export async function waitingReviews(): Promise<WaitingVersion[]> {
 export async function waitingLines(runId: string): Promise<PendingView | null> {
   if (!isUuid(runId)) return null;
   const row = await withTeam(ALL_TEAMS, async (client) => {
-    const { rows } = await client.query<Pick<WaitingRow, "teamId" | "lang" | "section" | "since" | "startedAt">>(
-      `select r."teamId", r."lang", r."section", ${STARTED} as "startedAt", ${SINCE} as "since" ${WAITING} and r."id" = $1`,
+    const { rows } = await client.query<Counted>(
+      `select r."id", r."teamId", r."lang", r."section", ${STARTED} as "startedAt", ${SINCE} as "since",
+              ${SELECTED} as "selected", had."id" as "hadId"
+         ${waitingFrom(HAD)} and r."id" = $1`,
       [runId],
     );
     return rows[0];

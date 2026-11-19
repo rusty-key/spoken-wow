@@ -3,10 +3,14 @@
 //
 // A language with two teams, each holding a live take of the same line: a release's listing
 // holds its own team's take alone, and a build outside a release the privileged team's.
-import { execFileSync } from "node:child_process";
+import { execFile, execFileSync } from "node:child_process";
 import { randomInt } from "node:crypto";
+import { mkdtempSync, readFileSync, rmdirSync, rmSync } from "node:fs";
+import { createServer } from "node:http";
+import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
+import { promisify } from "node:util";
 import { after, before, test } from "node:test";
 import assert from "node:assert/strict";
 
@@ -17,6 +21,8 @@ const seed = seedDatabase();
 const skip = seed ? false : "DATABASE_URL is not set";
 const A_SHA = "a".repeat(64);
 const B_SHA = "b".repeat(64);
+const C_SHA = "c".repeat(64);
+const ROOT = join(dirname(SOUNDS), "../..");
 let lang;
 let a;
 let b;
@@ -68,3 +74,34 @@ for (const section of ["readables", "quests", "bosses"]) {
     assert.deepEqual(listing(section, null), [`blobs/takes/${A_SHA}`]);
   });
 }
+
+test("a release's pointers record the takes they hold, by version and hash", { skip }, async () => {
+  // The archive's address, answering every take's size, as the bucket would.
+  const archive = createServer((_request, response) => response.writeHead(200, { "content-length": "10" }).end());
+  await new Promise((resolve) => archive.listen(0, "127.0.0.1", resolve));
+  const selected = join(mkdtempSync(join(tmpdir(), "selected-")), "takes.json");
+  seed.take({ source: "readables", lang, file: "b-2", lineId: "b:2", team: b.id, sha256: C_SHA, version: 4 });
+  try {
+    const env = {
+      PATH: process.env.PATH, LOCAL_DB: seed.url, SPOKEN_CLIP_POINTERS: "1", SPOKEN_RELEASE_TEAM: b.id,
+      SPOKEN_ARCHIVE_URL: `http://127.0.0.1:${archive.address().port}/`, SPOKEN_SELECTED_TAKES: selected,
+    };
+    await promisify(execFile)(process.execPath, [SOUNDS, `--lang=${lang}`, "readables"], { env });
+    assert.deepEqual(JSON.parse(readFileSync(selected, "utf8")), {
+      "b-1": { version: 1, sha256: B_SHA },
+      "b-2": { version: 4, sha256: C_SHA },
+    });
+  } finally {
+    archive.close();
+    seed.sql(`delete from "take" where "lang" = ${seed.lit(lang)} and "file" = 'b-2'`);
+    rmSync(join(ROOT, "build", "readables", lang), { recursive: true, force: true });
+    // And the folders above it, when this made them.
+    for (const dir of [join(ROOT, "build", "readables"), join(ROOT, "build")]) {
+      try {
+        rmdirSync(dir);
+      } catch {
+        break;
+      }
+    }
+  }
+});

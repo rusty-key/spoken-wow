@@ -115,3 +115,16 @@ export async function stagePack(section, lang, { root, plan, readme = null }) {
   }
   return { folder, version };
 }
+
+/**
+ * A staged release as `release.mjs --stage` writes it: what publish staged, and `takes`, the takes
+ * its clip pointers were made from (sounds.mjs SPOKEN_SELECTED_TAKES), which its review plays.
+ * promote reads only `packs` and `languages`. Without a selection file, no `takes`.
+ */
+export async function stagedWithTakes(staged, selectionFile) {
+  const text = await readFile(selectionFile, "utf8").catch((error) => {
+    if (error.code === "ENOENT") return null;
+    throw error;
+  });
+  return text === null ? staged : { ...staged, takes: JSON.parse(text) };
+}

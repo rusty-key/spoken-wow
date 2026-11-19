@@ -4,7 +4,7 @@ import { dirname, join } from "node:path";
 import { test } from "node:test";
 import assert from "node:assert/strict";
 
-import { rewriteToc, stagePack } from "./stage-pack.mjs";
+import { rewriteToc, stagePack, stagedWithTakes } from "./stage-pack.mjs";
 
 function tree(root, files) {
   for (const [path, text] of Object.entries(files)) {
@@ -189,4 +189,13 @@ test("a page pack missing its badge is still an error", async () => {
   tree(join(root, "build/places/frFR"), { "Sounds/1/zone.mp3": "french clip", "Data/Sounds.lua": "french lookup" });
   const plan = planOf({ folder: "SpokenPlacesAudio_frFR", title: "Spoken French Audio: Places", version: "2.0.0" });
   await assert.rejects(stagePack("places", "frFR", { root, plan, readme: null }), /spoken-zones-frFR\.tga/);
+});
+
+test("a staged release carries the takes its pointers were made from, when they were recorded", async () => {
+  const dir = mkdtempSync(join(tmpdir(), "staged-takes-"));
+  const staged = { version: "1.0.0", packs: { SpokenPlacesAudio_deDE_x: { rev: "r1", baseRev: null } }, languages: {} };
+  const takes = { "1411/razor-hill": { version: 3, sha256: "a".repeat(64) } };
+  writeFileSync(join(dir, "selected-takes.json"), JSON.stringify(takes));
+  assert.deepEqual(await stagedWithTakes(staged, join(dir, "selected-takes.json")), { ...staged, takes });
+  assert.deepEqual(await stagedWithTakes(staged, join(dir, "none.json")), staged);
 });

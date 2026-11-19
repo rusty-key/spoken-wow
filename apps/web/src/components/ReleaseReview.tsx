@@ -46,15 +46,14 @@ export function bumped(from: string | null | undefined, bump: ReleaseBump): stri
 type Filter = { kind: "all" | "new" | "restored"; person?: string | null; q: string };
 
 /**
- * A team's waiting version (`runId`) as a site owner reviews it: each line plays the team's live
- * take, and `actions` (approve, reject) replace the release button.
+ * A team's waiting version (`runId`) as a site owner reviews it: each line plays the take the
+ * version was built with, and `actions` (approve, reject) replace the release button.
  */
 type AsReviewed = { runId: string; team: ReviewTeam; actions: React.ReactNode };
 
-/** Where `team`'s live take of `file` plays, as the explorer plays another team's. */
-export function teamTakeUrl(section: ReleaseSection, lang: Lang, file: string, slug: string): string {
-  const path = section === "quests" ? file : `${file}.mp3`;
-  return withLang(lang, `/api/${section}/audio/${path}?${new URLSearchParams({ team: slug })}`);
+/** Where version `version` of `file` plays for a site owner reviewing the release `runId`, of another team. */
+export function stagedTakeUrl(runId: string, file: string, version: number): string {
+  return `/api/releases/${runId}/take?${new URLSearchParams({ file, version: String(version) })}`;
 }
 
 /**
@@ -185,10 +184,10 @@ function Review({
       setPlaying(null);
       return;
     }
-    // Another team's take plays as its live one: its history is the team's own, and the audio
-    // routes serve another team only its live takes (serveViewed), not the version staged.
+    // Another team's version through the route only site owners may ask: the take routes serve
+    // another team only its live takes.
     element.src = reviewed
-      ? teamTakeUrl(section, lang, change.file, reviewed.team.slug)
+      ? stagedTakeUrl(reviewed.runId, change.file, change.version)
       : withLang(lang, `/api/takes/audio?${new URLSearchParams({ source: section, file: change.file, version: String(change.version) })}`);
     void element.play().catch(() => setPlaying(null));
     setPlaying(key);
@@ -214,7 +213,7 @@ function Review({
             <>Nothing was released from {reviewed ? "this team" : "here"} yet, so this sends every live line. </>
           )}
           {reviewed
-            ? "The lines this version was built with. Each plays the team's live take, which is newer where the team has recut the line since. Players get this version once you approve it."
+            ? "The lines this version was built with, each playing the take it holds. Players get this version once you approve it."
             : "Players get it on their next Manager refresh."}
         </DialogDescription>
         {pending.count > 0 && (
@@ -338,6 +337,12 @@ function Review({
                     </p>
                     <p className="text-muted-foreground text-xs">
                       {[moment, `v${change.version}`].filter(Boolean).join(" · ")}
+                      {reviewed && change.current != null && (
+                        <span className="text-amber-300" title="The team recut this line after the version was built; this version keeps the take it was built with.">
+                          {" "}
+                          · v{change.current} live now
+                        </span>
+                      )}
                     </p>
                   </div>
                   <div className="flex items-center gap-2.5 text-xs">

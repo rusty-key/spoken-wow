@@ -99,6 +99,8 @@ export type PendingChange = {
   /** What the line belongs to and says, in the language; null before it has a text row. */
   title: string | null;
   text: string | null;
+  /** The version live now where it is not `version`: a staged one's line recut since. */
+  current?: number | null;
 };
 
 export type PendingView = {

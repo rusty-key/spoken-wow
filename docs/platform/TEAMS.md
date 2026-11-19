@@ -286,9 +286,12 @@ Oggs rather than the takes.
 `dispatching` or `running` row across all teams. On the droplet a press while another runs is
 **queued** (migration 0121): it waits as `queued`, with the bump it asked for, and whenever a run
 settles the oldest queued one starts (`lib/releases/launch.ts` `startNext`). On the droplet a tick
-in the server process that leads (`lib/releases/tick.ts`, started at boot by `lib/generation/boot.ts`)
-settles a finished job and starts the next every 15 seconds, so the queue moves with no release page open. A queued run whose job
-cannot start ends `failed`, and the next one starts, so the queue never stalls. Whoever pressed it, or
+in pm2's first worker (`lib/releases/tick.ts`, started at boot by `instrumentation-node.ts`, apart from
+the regeneration queue) settles a finished job and starts the next every 15 seconds, so the queue moves
+with no release page open; a reload waits for a tick still starting a run. A queued run whose job
+cannot start ends `failed`, and the next one starts, so the queue never stalls; so does one still
+`dispatching` two minutes after it started with no job directory, which a restart between claiming
+it and spawning its job leaves. Whoever pressed it, or
 a site owner, can cancel a queued run (`DELETE /api/releases/<id>`). A run dispatched to GitHub
 Actions still gets a 409 while another is active, since the workflow's own `concurrency` group queues
 there. Promotions and delistings (below) take the same queue. A team sees only that another team's
@@ -350,11 +353,16 @@ passes its slug to `release.mjs --team`, and every builder query that picked the
   that is not official **stages**, decided at the press from `team.official` and kept on the row
   (`stage`): `release.mjs --stage` uploads the blobs and signs each pack's manifest
   (`packs/<folder>/<rev>.json`) but writes neither index, and leaves what it staged in the run's
-  directory (`staged.json`). The site stores that on the row and settles it `awaiting_review`, and
-  emails the site owners. They review it on `/admin/team-releases`: team, language, section, version,
-  who pressed it, and the lines it changes as the team's own release page counted them when it was
-  pressed (the takes live then), each playing the team's live take, since the audio routes serve
-  another team only its live ones, with a link to the explorer on `?team=<slug>`. **Approve** makes
+  directory (`staged.json`), with the takes its clip pointers were made from (`takes`, by file: version
+  and hash, which `scripts/audio/sounds.mjs` records). The site stores that on the row (`staged`, and
+  `takes` in a column of its own) and settles it `awaiting_review`, and emails the site owners. They
+  review it on `/admin/team-releases`: team, language, section, version, who pressed it, and the lines
+  whose take in the pack is not the one players have, compared with the takes of the team's release
+  players have (every line when they have none). A version or a listed release built before builds
+  recorded their takes is counted as the team's own release page counted it when its build started
+  (the takes live then). Each line plays the version built (`/api/releases/<id>/take`, a site owner's
+  alone: the take routes serve another team only its live takes), and says so where the team recut it
+  since. A link opens the explorer on `?team=<slug>`. **Approve** makes
   the staged run `approved` and queues a `promote` run (`scripts/manager/cli.mjs promote`), which
   writes the staged entries into both indexes; its success makes the staged run `done`, so `done`
   keeps meaning "players have it", and the team's pending counts drop only then. An `approved`

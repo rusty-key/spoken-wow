@@ -39,7 +39,7 @@ export function buildArgs(lang, plan, { changelogVersion = null, localeText = nu
   }));
 }
 
-/** `plan` is releasePlan's (release-pack.mjs). */
+/** `plan` is releasePlan's (release-pack.mjs). Each step inherits the release's database (release.mjs). */
 export async function questsSteps(lang, { root, plan, run }) {
   const quests = join(root, "pipelines/quests");
   const english = lang === BASE_LOCALE;
@@ -51,7 +51,6 @@ export async function questsSteps(lang, { root, plan, run }) {
   const badge = existsSync(join(quests, "assets/icon", `spoken-quests-${lang}.tga`));
   const venv = join(quests, ".venv/bin/python");
   const env = {
-    DATABASE_URL: process.env.LOCAL_DB || process.env.DATABASE_URL,
     PYTHONPATH: join(quests, "vendor"),
     PYTHONUNBUFFERED: "1",
   };

@@ -37,11 +37,16 @@ export function groupByAuthor(rows: readonly Product[], authors: Authors): { aut
   return authors.list.map((author) => ({ author, rows: rows.filter((p) => authors.keyOf(p) === author.key) })).filter((g) => g.rows.length > 0)
 }
 
-/** An author's packs of one section to install: the quests bundle in place of its sides when there is one. */
-function packsOf(released: readonly Product[], authors: Authors, key: string, section: Section): Product[] {
+/**
+ * An author's packs of one section to install: the quests bundle in place of its sides when there is one, unless a side
+ * is installed or under way already. Then the bundle, partly installed, is not needed itself, and the sides it lacks are.
+ */
+function packsOf(released: readonly Product[], authors: Authors, key: string, section: Section, needed: (p: Product) => boolean): Product[] {
   const own = released.filter((p) => p.section === section && authors.keyOf(p) === key)
+  if (section !== 'quests') return own
   const bundle = own.filter((p) => p.pack === 'all')
-  return section === 'quests' && bundle.length > 0 ? bundle : own
+  const sides = own.filter((p) => p.pack !== 'all')
+  return bundle.length > 0 && sides.every(needed) ? bundle : sides
 }
 
 export type InstallAllPlan = { kind: 'install'; products: Product[] } | { kind: 'ask'; authors: Author[] }
@@ -55,13 +60,13 @@ export function installAllPlan(released: readonly Product[], authors: Authors, c
   const pick = (author: (section: Section) => string | undefined): Product[] =>
     SECTIONS.flatMap((section) => {
       const key = author(section)
-      return key === undefined ? [] : packsOf(released, authors, key, section)
+      return key === undefined ? [] : packsOf(released, authors, key, section, needed)
     }).filter(needed)
   if (choice !== ALL_AUTHORS) return { kind: 'install', products: pick(() => choice) }
   if (authors.list.length <= 1) return { kind: 'install', products: pick(() => authors.list[0]?.key) }
   const official = authors.list.filter((a) => a.official)
   if (official.length === 0) return { kind: 'ask', authors: authors.list }
-  return { kind: 'install', products: pick((section) => official.find((a) => packsOf(released, authors, a.key, section).length > 0)?.key) }
+  return { kind: 'install', products: pick((section) => official.find((a) => packsOf(released, authors, a.key, section, needed).length > 0)?.key) }
 }
 
 /** Whether Install All has anything to do; for a question, whether any answer would install something. */

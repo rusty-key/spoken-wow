@@ -163,6 +163,21 @@ describe("pendingChanges", () => {
     expect([pending.count, pending.textChanges]).toEqual([1, 0]);
   });
 
+  it("up to a moment, leaves out the text of a line whose audio then counts, though it was recut after", async () => {
+    // Edited and recut inside the window; v3 came after it, so the window's audio is v2.
+    const until = new Date("2026-11-03T00:00:00Z");
+    await take("pending-test-late", 1, before, { team: de.team, current: false });
+    await take("pending-test-late", 2, after, { team: de.team, current: false });
+    await take("pending-test-late", 3, "2026-11-04T00:00:00Z", { team: de.team });
+    await asSystem.query(
+      `insert into "activity" ("at", "lang", "kind", "source", "subject", "lineId", "detail", "teamId")
+       values ($1, 'deDE', 'text.edited', 'places', 'z:pending-test-late', 'z:pending-test-late', '{}', $2)`,
+      ["2026-11-02T08:00:00Z", de.team],
+    );
+    const pending = await pendingChanges("places", "deDE", CUTOFF, { list: false, until });
+    expect([pending.count, pending.textChanges]).toEqual([1, 0]);
+  });
+
   it("reads what was live at the release from a restore made before it", async () => {
     // v1 put back before the release, so players have v1; putting v2 back since is a change.
     await take("pending-test-twice", 1, "2026-11-01T09:00:00Z", { team: de.team, current: false });

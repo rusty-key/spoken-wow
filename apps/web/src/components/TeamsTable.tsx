@@ -50,15 +50,11 @@ export default function TeamsTable({ initial, takes, languages }: Props) {
   const [names, setNames] = useState(() => Object.fromEntries(initial.map((team) => [team.id, team.name])));
   const [ownStorage, setOwnStorage] = useState<Record<string, boolean>>({});
   const [official, setOfficial] = useState<Record<string, boolean>>({});
-  // Once the refreshed teams agree with a saved value it is theirs to show, so a later change made
-  // elsewhere comes through.
+  // A saved value shows only until the refresh after the save lands. That refresh read the team
+  // after the save, so its value is the one to show, even one another owner saved since.
   useEffect(() => {
-    const settle = (key: "ownStorage" | "official") => (current: Record<string, boolean>) => {
-      const left = Object.entries(current).filter(([id, value]) => initial.find((team) => team.id === id)?.[key] !== value);
-      return left.length === Object.keys(current).length ? current : Object.fromEntries(left);
-    };
-    setOwnStorage(settle("ownStorage"));
-    setOfficial(settle("official"));
+    setOwnStorage({});
+    setOfficial({});
   }, [initial]);
   const [form, setForm] = useState({ slug: "", name: "", adminEmail: "", langs: [] as Lang[] });
   const [newLanguage, setNewLanguage] = useState(false);
@@ -228,7 +224,6 @@ export default function TeamsTable({ initial, takes, languages }: Props) {
                   disabled={busy}
                   onChange={(event) => {
                     const next = event.target.checked;
-                    // Kept until the refreshed page agrees, as the name drafts are.
                     void run(() => send(`/api/teams/${team.id}`, "PATCH", { ownStorage: next })).then((ok) => {
                       if (ok) setOwnStorage((current) => ({ ...current, [team.id]: next }));
                     });
