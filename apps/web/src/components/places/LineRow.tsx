@@ -309,7 +309,7 @@ export function LineRow<L extends ExplorerLine>({
           }
           more={[
             // Outside the edit gates: reporting is what a visitor who cannot sign in has.
-            ...(onReport ? [{ label: "Report a problem", aria: `Report ${line.name}`, onClick: () => onReport(line) }] : []),
+            ...(onReport ? [{ label: "Report a problem", aria: `Report a problem with ${line.name}`, onClick: () => onReport(line) }] : []),
             // Only on a dirty row: a clean one would be offering to clear nothing.
             ...(canRegenerate && line.dirty && !unwritten
               ? [

@@ -73,6 +73,7 @@ export function RowActions({
           <PopoverContent
             align="end"
             className="cat-menu w-auto min-w-48 p-1"
+            aria-label={`More actions for ${subject}`}
             onCloseAutoFocus={(event) => {
               const action = picked.current;
               if (!action) return;

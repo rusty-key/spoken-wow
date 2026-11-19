@@ -568,13 +568,13 @@ export default function LineRow({
             // Outside the canRegenerate gate: reporting is what a player who cannot sign in has.
             // Hidden only when the line has no address the report page could resolve.
             ...(onReport && targetForLine(line)
-              ? [{ label: "Report a problem", aria: `Report ${line.npcName}'s line`, onClick: () => onReport(line) }]
+              ? [{ label: "Report a problem", aria: `Report a problem with ${line.npcName}'s line`, onClick: () => onReport(line) }]
               : []),
             ...(onIgnore
               ? [
                   {
-                    label: line.ignored ? "Ignored…" : "Never voice this line",
-                    aria: `Ignore ${line.npcName}'s line`,
+                    label: line.ignored ? "Ignored" : "Never voice this line",
+                    aria: `${line.ignored ? "Ignored" : "Never voice this line"}: ${line.npcName}'s line`,
                     title: line.ignored ? `Ignored: ${line.ignored}` : undefined,
                     marked: Boolean(line.ignored),
                     onClick: () => onIgnore(line),

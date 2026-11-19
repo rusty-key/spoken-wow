@@ -126,7 +126,7 @@ test("another team's view asks for its takes, and offers no write but the origin
   expect(regenerate()).toHaveLength(0);
   expect(overrideButton()).toBeNull();
   expect(pencil()).not.toBeNull();
-  expect(screen.queryByRole("button", { name: "Report Goldshire" })).toBeNull();
+  expect(screen.queryByRole("button", { name: "Report a problem with Goldshire" })).toBeNull();
   expect(screen.getByText("You are listening to Main Crew. Their takes play; their work is theirs.")).not.toBeNull();
   // No queue or generation status is read for a team the visitor cannot act on.
   expect(fetchMock.mock.calls.some(([url]) => String(url).includes("/api/regenerate/queue"))).toBe(false);
@@ -148,9 +148,9 @@ for (const [name, viewed] of [
     expect(overrideButton()).not.toBeNull();
     expect(pencil()).not.toBeNull();
     // Report sits behind the row's More menu once the row has edit actions.
-    expect(screen.queryByRole("button", { name: "Report Goldshire" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Report a problem with Goldshire" })).toBeNull();
     await userEvent.setup().click(screen.getByRole("button", { name: "More actions for Goldshire" }));
-    expect(screen.queryByRole("button", { name: "Report Goldshire" })).not.toBeNull();
+    expect(screen.queryByRole("button", { name: "Report a problem with Goldshire" })).not.toBeNull();
     expect(screen.queryByText(/You are listening to/)).toBeNull();
 
     await playGoldshire();

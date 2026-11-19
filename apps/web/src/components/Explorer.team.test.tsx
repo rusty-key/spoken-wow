@@ -111,7 +111,7 @@ test("another team's view asks for its lines, and offers no batch or queue", asy
   expect(screen.getByText("Lok'tar ogar.")).not.toBeNull();
   expect(named(/^Edit the spoken text/)).toHaveLength(0);
   expect(named(/^Report /)).toHaveLength(0);
-  expect(named(/^Ignore/)).toHaveLength(0);
+  expect(named(/^Never voice this line/)).toHaveLength(0);
 
   await playGrunt();
   expect(new URL(audioSrc()!, "http://x").searchParams.get("team")).toBe("main-crew");
@@ -129,7 +129,7 @@ test("the visitor's own view offers the batch and sends no team", async () => {
   expect(named(/^Report /)).toHaveLength(0);
   await userEvent.setup().click(screen.getAllByRole("button", { name: /^More actions for / })[0]);
   expect(named(/^Report /)).toHaveLength(1);
-  expect(named(/^Ignore/)).toHaveLength(1);
+  expect(named(/^Never voice this line/)).toHaveLength(1);
 
   await playGrunt();
   expect(audioSrc()).not.toContain("team=");

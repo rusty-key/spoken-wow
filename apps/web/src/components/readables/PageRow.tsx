@@ -327,7 +327,7 @@ export function PageRow({
           }
           more={[
             // Outside the edit gates: reporting is what a reader who cannot sign in has.
-            ...(onReport ? [{ label: "Report a problem", aria: `Report page ${line.pageNumber} of ${line.title}`, onClick: () => onReport(line) }] : []),
+            ...(onReport ? [{ label: "Report a problem", aria: `Report a problem with page ${line.pageNumber} of ${line.title}`, onClick: () => onReport(line) }] : []),
             // Only on a dirty row: a clean one would be offering to clear nothing.
             ...(canRegenerate && line.dirty
               ? [
