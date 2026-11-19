@@ -69,7 +69,7 @@ describe("syncActive", () => {
   });
 
   async function age(id: string, minutes: number) {
-    await asSystem.query(`update "release_run" set "createdAt" = now() - make_interval(mins => $2) where "id" = $1`, [id, minutes]);
+    await asSystem.query(`update "release_run" set "createdAt" = now() - make_interval(mins => $2), "startedAt" = now() - make_interval(mins => $2) where "id" = $1`, [id, minutes]);
   }
 
   describe("a job on this machine", () => {

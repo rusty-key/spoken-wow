@@ -286,8 +286,8 @@ Oggs rather than the takes.
 `dispatching` or `running` row across all teams. On the droplet a press while another runs is
 **queued** (migration 0121): it waits as `queued`, with the bump it asked for, and whenever a run
 settles the oldest queued one starts (`lib/releases/launch.ts` `startNext`). On the droplet a tick
-in every server process (`lib/releases/tick.ts`, started from `instrumentation.ts`) settles a finished
-job and starts the next every 15 seconds, so the queue moves with no release page open. A queued run whose job
+in the server process that leads (`lib/releases/tick.ts`, started at boot by `lib/generation/boot.ts`)
+settles a finished job and starts the next every 15 seconds, so the queue moves with no release page open. A queued run whose job
 cannot start ends `failed`, and the next one starts, so the queue never stalls. Whoever pressed it, or
 a site owner, can cancel a queued run (`DELETE /api/releases/<id>`). A run dispatched to GitHub
 Actions still gets a 409 while another is active, since the workflow's own `concurrency` group queues

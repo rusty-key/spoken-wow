@@ -26,6 +26,9 @@ alter table "release_run" add column if not exists "promotes" uuid references "r
 alter table "release_run" add column if not exists "reviewedBy" text references "user" ("id") on delete set null;
 alter table "release_run" add column if not exists "reviewedAt" timestamptz;
 alter table "release_run" add column if not exists "reviewNote" text;
+-- When it left the queue to build, which is what its build read the takes at; null for a run that
+-- started before this, whose press and start were one moment.
+alter table "release_run" add column if not exists "startedAt" timestamptz;
 
 alter table "release_run" drop constraint "release_run_state_check";
 alter table "release_run" add constraint "release_run_state_check"

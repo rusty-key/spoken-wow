@@ -1,6 +1,6 @@
 /**
- * Starting a run's job: a press that found the lock free, or the oldest queued run once the
- * active one settles.
+ * Starting a run's job: a new run (a press, an approval or a delisting) that found the lock free,
+ * or the oldest queued run once the active one settles.
  */
 import "server-only";
 
@@ -9,6 +9,7 @@ import { encodeMissingForPack } from "@/lib/takes/encode";
 import { runsOnDroplet, startDropletRun } from "./droplet";
 import { dispatchRelease } from "./github";
 import { claimNext, updateRun, type ReleaseRun } from "./store";
+import { syncActive } from "./sync";
 
 export type Launch = (run: ReleaseRun) => Promise<void>;
 
@@ -20,21 +21,28 @@ export async function launchRun(run: ReleaseRun): Promise<void> {
   return dispatchRelease(run);
 }
 
-export const failureOf = (error: unknown) => (error instanceof Error ? error.message : "the release could not be started");
+const failureOf = (error: unknown) => (error instanceof Error ? error.message : "the release could not be started");
+
+/** A new run whose job could not start; the run is `failed` with the same reason. */
+export class LaunchError extends Error {}
 
 /**
- * Starts a run that took the lock as it was made; a queued one waits for startNext. A job that
- * cannot start settles the run `failed`, starts the next, and throws.
+ * Makes a run with `insert` and starts it if it took the lock; a queued one waits for startNext.
+ * A finished run is settled first, or it would hold the lock until somebody happened to look. A
+ * job that cannot start settles the run `failed`, starts the next, and throws LaunchError.
  */
-export async function begin(run: ReleaseRun, launch: Launch = launchRun): Promise<void> {
-  if (run.state !== "dispatching") return;
+export async function launchNew(insert: () => Promise<ReleaseRun>, launch: Launch = launchRun): Promise<ReleaseRun> {
+  await syncActive();
+  const run = await insert();
+  if (run.state !== "dispatching") return run;
   try {
     await launch(run);
   } catch (error) {
     await updateRun(run.id, { state: "failed", error: failureOf(error) });
     await startNext(launch);
-    throw error;
+    throw new LaunchError(failureOf(error));
   }
+  return run;
 }
 
 /**

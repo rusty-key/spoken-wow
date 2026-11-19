@@ -70,9 +70,14 @@ describe("release runs", () => {
     const first = await startRun("quests", "frFR", user.id);
     const second = await startRun("places", "deDE", user.id, { bump: "major" });
     await startRun("bosses", "frFR", user.id);
+    expect(first.startedAt).toEqual(first.createdAt);
+    expect(second.startedAt).toBeNull();
     expect(await claimNext()).toBeNull();
     await updateRun(first.id, { state: "done" });
-    expect(await claimNext()).toMatchObject({ id: second.id, state: "dispatching", bump: "major" });
+    const claimed = await claimNext();
+    expect(claimed).toMatchObject({ id: second.id, state: "dispatching", bump: "major" });
+    // A queued run builds from when it leaves the queue, not from its press.
+    expect(claimed!.startedAt!.getTime()).toBeGreaterThan(second.createdAt.getTime());
     expect(await claimNext()).toBeNull();
     expect((await activeRun())?.id).toBe(second.id);
   });

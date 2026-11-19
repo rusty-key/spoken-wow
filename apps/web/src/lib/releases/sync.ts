@@ -8,7 +8,7 @@ import { currentStep, failureReason, outcome, readDropletRun, readStaged, type D
 import { tellOwnersOfReview, tellPresser } from "./notify";
 import { GithubNotConfiguredError, findRun, type GithubRun } from "./github";
 import { startNext } from "./launch";
-import { activeRun, applyUpdate, runById, updateRun, type ReleaseRun } from "./store";
+import { activeOrQueued, applyUpdate, runById, updateRun, type ReleaseRun } from "./store";
 
 // Twelve missed heartbeats. A reboot or an out-of-memory kill leaves no exit file, and nobody
 // could press Release until someone noticed.
@@ -78,15 +78,19 @@ async function settleFromJob(run: ReleaseRun, job: DropletRun, now: number): Pro
 
 /**
  * The active run after moving it on, or the queued run that starts because none is active any
- * more; null when nothing runs.
+ * more; null when nothing runs. With nothing active or queued, one query.
  */
 export async function syncActive(fetchFn: typeof fetch = fetch, now: number = Date.now()): Promise<ReleaseRun | null> {
-  return (await syncRun(fetchFn, now)) ?? startNext();
+  const active = await activeOrQueued();
+  if (active === null) return null;
+  if (active !== "queued") {
+    const run = await syncRun(active, fetchFn, now);
+    if (run) return run;
+  }
+  return startNext();
 }
 
-async function syncRun(fetchFn: typeof fetch, now: number): Promise<ReleaseRun | null> {
-  const run = await activeRun();
-  if (!run) return null;
+async function syncRun(run: ReleaseRun, fetchFn: typeof fetch, now: number): Promise<ReleaseRun | null> {
   const job = await readDropletRun(run.id);
   if (job) return settleFromJob(run, job, now);
   if (checked && checked.runId === run.id && now - checked.at < CHECK_EVERY_MS) return run;
@@ -97,7 +101,7 @@ async function syncRun(fetchFn: typeof fetch, now: number): Promise<ReleaseRun |
     const [limit, error] = result === "error"
       ? [LOST_AFTER_MS, "Lost track of it: GitHub stopped answering"]
       : [GIVE_UP_AFTER_MS, "GitHub never started it"];
-    if (now - run.createdAt.getTime() < limit) return run;
+    if (now - (run.startedAt ?? run.createdAt).getTime() < limit) return run;
     await updateRun(run.id, { state: "failed", error });
     return null;
   }

@@ -18,12 +18,11 @@ import { namesOf } from "@/lib/users/store";
 import { isUuid } from "@/lib/uuid";
 
 import { runsOnDroplet } from "./droplet";
-import { begin, failureOf } from "./launch";
+import { LaunchError, launchNew } from "./launch";
 import { tellPresser } from "./notify";
 import { pendingChanges } from "./pending";
 import { isReleaseSection, type LiveTeamPack, type PendingView, type ReleaseSection, type WaitingVersion } from "./sections";
-import { COLUMNS, insertRun, runById, type ReleaseRun } from "./store";
-import { syncActive } from "./sync";
+import { COLUMNS, insertRun, type ReleaseRun } from "./store";
 
 export class ReviewError extends Error {
   constructor(
@@ -56,9 +55,7 @@ async function waitingRun(client: PoolClient, runId: string): Promise<ReleaseRun
  */
 export async function approve(runId: string, actorId: string): Promise<ReleaseRun> {
   if (!runsOnDroplet()) throw new ReviewError("Only the site that signs the channel can list a release.", 409);
-  // A finished run nobody settled yet would otherwise keep the promotion queued behind it.
-  await syncActive();
-  const promote = await withTeam(ALL_TEAMS, async (client) => {
+  return launched(() => withTeam(ALL_TEAMS, async (client) => {
     const run = await waitingRun(client, runId);
     await client.query(
       `update "release_run" set "state" = 'approved', "reviewedBy" = $2, "reviewedAt" = now(), "reviewNote" = null, "error" = null
@@ -74,18 +71,17 @@ export async function approve(runId: string, actorId: string): Promise<ReleaseRu
       client,
     );
     return promote;
-  });
-  return started(promote);
+  }));
 }
 
-/** A run made here, started when it took the lock; its job failing to start is a 502. */
-async function started(run: ReleaseRun): Promise<ReleaseRun> {
+/** launchNew, with a job that could not start as a 502. */
+async function launched(insert: () => Promise<ReleaseRun>): Promise<ReleaseRun> {
   try {
-    await begin(run);
+    return await launchNew(insert);
   } catch (error) {
-    throw new ReviewError(`It could not start: ${failureOf(error)}`, 502);
+    if (error instanceof LaunchError) throw new ReviewError(`It could not start: ${error.message}`, 502);
+    throw error;
   }
-  return (await runById(run.id)) ?? run;
 }
 
 /** Rejects a staged version with the reason, which its team sees. Nothing on the channel changes. */
@@ -123,8 +119,7 @@ export async function delistPack(teamId: string, lang: Lang, section: string, ac
   if (!isReleaseSection(section)) throw new ReviewError("No such section.", 400);
   if (!isUuid(teamId)) throw new ReviewError("No such team.", 404);
   if (!runsOnDroplet()) throw new ReviewError("Only the site that signs the channel can delist a pack.", 409);
-  await syncActive();
-  const run = await withTeam(ALL_TEAMS, async (client) => {
+  return launched(() => withTeam(ALL_TEAMS, async (client) => {
     const { rows } = await client.query<{ official: boolean }>(`select "official" from "team" where "id" = $1`, [teamId]);
     const team = rows[0];
     if (!team) throw new ReviewError("No such team.", 404);
@@ -135,8 +130,7 @@ export async function delistPack(teamId: string, lang: Lang, section: string, ac
       client,
     );
     return run;
-  });
-  return started(run);
+  }));
 }
 
 const WAITING = `from "release_run" r join "team" t on t."id" = r."teamId"
@@ -154,29 +148,33 @@ export async function waitingCount(): Promise<number> {
  * When the team's last release that brought players up to date started, which a waiting version
  * `r` counts from: as its team's release page counts it (store.ts lastReleasedAt).
  */
-const SINCE = `(select max(s."createdAt") from "release_run" s
+const SINCE = `(select max(coalesce(s."startedAt", s."createdAt")) from "release_run" s
                  where s."kind" = 'release' and s."state" in ('done', 'unchanged')
                    and s."teamId" = r."teamId" and s."lang" = r."lang" and s."section" = r."section")`;
+
+const STARTED = `coalesce(r."startedAt", r."createdAt")`;
 
 type WaitingRow = {
   id: string; teamId: string; slug: string; name: string; lang: Lang; section: ReleaseSection; version: string | null;
   requestedBy: string | null; createdAt: Date; error: string | null; approving: boolean; since: Date | null;
+  /** When its build started, which a queued press does after it was pressed. */
+  startedAt: Date;
 };
 
 /**
  * What a waiting version changes for players, as its team counts it, read as that team: up to
- * when it was pressed, with the takes live then, which its build read. Takes cut since wait for
- * the team's next release.
+ * when its build started, with the takes live then, which it read. Takes cut since wait for the
+ * team's next release.
  */
-function changesOf(row: Pick<WaitingRow, "teamId" | "lang" | "section" | "since" | "createdAt">, list: boolean): Promise<PendingView> {
+function changesOf(row: Pick<WaitingRow, "teamId" | "lang" | "section" | "since" | "startedAt">, list: boolean): Promise<PendingView> {
   return asTeam(row.lang, row.teamId, () =>
-    pendingChanges(row.section, row.lang, row.since, { list, people: true, until: row.createdAt }),
+    pendingChanges(row.section, row.lang, row.since, { list, people: true, until: row.startedAt }),
   );
 }
 
 /**
  * Every version waiting for review, oldest first, each with what it changes for players as its
- * team's own release page counted it when it was pressed: the team's takes live then, since its
+ * team's own release page counted it when its build started: the team's takes live then, since its
  * last approved release. The
  * counts and people only; the dialog asks for the lines (waitingLines).
  */
@@ -184,7 +182,8 @@ export async function waitingReviews(): Promise<WaitingVersion[]> {
   const rows = await withTeam(ALL_TEAMS, async (client) => {
     const { rows } = await client.query<WaitingRow>(
       `select r."id", r."teamId", t."slug", t."name", r."lang", r."section", r."version", r."requestedBy",
-              r."createdAt", r."error", r."state" = 'approved' as "approving", ${SINCE} as "since"
+              r."createdAt", r."error", r."state" = 'approved' as "approving", ${SINCE} as "since",
+              ${STARTED} as "startedAt"
          ${WAITING} order by r."createdAt"`,
     );
     return rows;
@@ -213,8 +212,8 @@ export async function waitingReviews(): Promise<WaitingVersion[]> {
 export async function waitingLines(runId: string): Promise<PendingView | null> {
   if (!isUuid(runId)) return null;
   const row = await withTeam(ALL_TEAMS, async (client) => {
-    const { rows } = await client.query<Pick<WaitingRow, "teamId" | "lang" | "section" | "since" | "createdAt">>(
-      `select r."teamId", r."lang", r."section", r."createdAt", ${SINCE} as "since" ${WAITING} and r."id" = $1`,
+    const { rows } = await client.query<Pick<WaitingRow, "teamId" | "lang" | "section" | "since" | "startedAt">>(
+      `select r."teamId", r."lang", r."section", ${STARTED} as "startedAt", ${SINCE} as "since" ${WAITING} and r."id" = $1`,
       [runId],
     );
     return rows[0];

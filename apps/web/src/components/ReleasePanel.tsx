@@ -194,6 +194,11 @@ function Panel({ lang, initial }: { lang: Lang; initial: ReleaseView }) {
 
   const { active } = view;
   const elsewhere = active && !ours ? active : null;
+  const where = elsewhere && (
+    <>
+      <span className="font-medium capitalize">{elsewhere.section}</span> in {langName(elsewhere.lang)}
+    </>
+  );
   const holdUp = active ? `${SOURCE_LABELS[active.section]} in ${langName(active.lang)}` : null;
   return (
     <div>
@@ -214,20 +219,13 @@ function Panel({ lang, initial }: { lang: Lang; initial: ReleaseView }) {
           <span aria-hidden className="bg-primary size-2 shrink-0 animate-pulse rounded-full motion-reduce:animate-none" />
           <p>
             {elsewhere.own && elsewhere.kind === "delist" ? (
-              <>
-                <span className="font-medium capitalize">{elsewhere.section}</span> in {langName(elsewhere.lang)} is being
-                delisted by a site owner.
-              </>
+              <>{where} is being delisted by a site owner.</>
             ) : elsewhere.own ? (
               <RunLink run={elsewhere}>
-                <span className="font-medium capitalize">{elsewhere.section}</span> in {langName(elsewhere.lang)}:{" "}
-                {elsewhere.step ?? SHOWN[elsewhere.state]}
+                {where}: {elsewhere.step ?? SHOWN[elsewhere.state]}
               </RunLink>
             ) : (
-              <>
-                <span className="font-medium capitalize">{elsewhere.section}</span> in {langName(elsewhere.lang)} is
-                releasing for another team.
-              </>
+              <>{where} is releasing for another team.</>
             )}{" "}
             <span className="text-muted-foreground">
               {view.onDroplet

@@ -55,6 +55,8 @@ export type ReleaseRun = {
   version: string | null;
   requestedBy: string | null;
   createdAt: Date;
+  /** When it became `dispatching`, which a queued run does after its press; null before runs kept it. */
+  startedAt: Date | null;
   finishedAt: Date | null;
 };
 
@@ -67,7 +69,7 @@ export class ReleaseBusyError extends Error {
 export const COLUMNS = `"id", "kind", "teamId", (select t."slug" from "team" t where t."id" = "release_run"."teamId") as "teamSlug",
                  "section", "lang", "state", "bump", "stage", "staged", "promotes", "reviewedBy", "reviewedAt", "reviewNote",
                  "githubRunId"::float8 as "githubRunId", "githubUrl",
-                 "step", "error", "version", "requestedBy", "createdAt", "finishedAt"`;
+                 "step", "error", "version", "requestedBy", "createdAt", "startedAt", "finishedAt"`;
 const ACTIVE = `"state" in ('dispatching', 'running')`;
 const UNIQUE_VIOLATION = "23505";
 
@@ -77,6 +79,21 @@ export async function activeRun(): Promise<ReleaseRun | null> {
   return withTeam(ALL_TEAMS, async (client) => {
     const { rows } = await client.query<ReleaseRun>(`select ${COLUMNS} from "release_run" where ${ACTIVE}`);
     return rows[0] ?? null;
+  });
+}
+
+/**
+ * The active run; else, when none is, "queued" if a run waits to start, and null if none does.
+ * One query, as the tick asks it every few seconds and nothing is running most of the time.
+ */
+export async function activeOrQueued(): Promise<ReleaseRun | "queued" | null> {
+  return withTeam(ALL_TEAMS, async (client) => {
+    const { rows } = await client.query<ReleaseRun>(
+      `select ${COLUMNS} from "release_run" where ${ACTIVE} or "state" = 'queued'
+        order by "state" = 'queued', "createdAt" limit 1`,
+    );
+    const run = rows[0];
+    return run ? (run.state === "queued" ? "queued" : run) : null;
   });
 }
 
@@ -110,8 +127,8 @@ export type NewRun = {
 export async function insertRun(client: PoolClient, run: NewRun): Promise<ReleaseRun> {
   const insert = (state: ReleaseState) =>
     client.query<ReleaseRun>(
-      `insert into "release_run" ("kind", "teamId", "section", "lang", "state", "requestedBy", "bump", "stage", "staged", "promotes")
-       values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10) returning ${COLUMNS}`,
+      `insert into "release_run" ("kind", "teamId", "section", "lang", "state", "requestedBy", "bump", "stage", "staged", "promotes", "startedAt")
+       values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, case when $5 = 'dispatching' then now() end) returning ${COLUMNS}`,
       [run.kind ?? "release", run.teamId, run.section, run.lang, state, run.requestedBy, run.bump ?? null,
        run.stage ?? false, run.staged ? JSON.stringify(run.staged) : null, run.promotes ?? null],
     );
@@ -159,7 +176,7 @@ export async function claimNext(): Promise<ReleaseRun | null> {
       const { rowCount: busy } = await client.query(`select 1 from "release_run" where ${ACTIVE}`);
       if (busy) return null;
       const { rows } = await client.query<ReleaseRun>(
-        `update "release_run" set "state" = 'dispatching'
+        `update "release_run" set "state" = 'dispatching', "startedAt" = now()
           where "id" = (select "id" from "release_run" where "state" = 'queued'
                          order by "createdAt", "id" limit 1 for update skip locked)
           returning ${COLUMNS}`,
@@ -204,14 +221,24 @@ async function recordFinish(run: ReleaseRun, state: ReleaseState, client: PoolCl
 }
 
 /**
- * Serialises, until the commit, what decides which version of a team's pack waits for review: a
- * failed promotion putting its version back, and a newer version settling to wait. Each then sees
- * the other's commit, so two versions of one pack never both wait.
+ * At most one version of a pack waits for review: the newest waiting one, as its team, section and
+ * language go, and every older one waiting is `superseded`. Called once a row of the pack has
+ * come to wait. Takes a lock on the pack until the commit, so a failed promotion putting its
+ * version back and a newer version settling to wait each see the other's commit, and two versions
+ * never both wait.
  */
-async function lockPack(client: PoolClient, run: Pick<ReleaseRun, "teamId" | "section" | "lang">): Promise<void> {
+async function keepNewestWaiting(client: PoolClient, pack: Pick<ReleaseRun, "teamId" | "section" | "lang">): Promise<void> {
   await client.query(`select pg_advisory_xact_lock(hashtext('release_run_pack:' || $1 || ':' || $2 || ':' || $3))`, [
-    run.teamId, run.section, run.lang,
+    pack.teamId, pack.section, pack.lang,
   ]);
+  await client.query(
+    `update "release_run" r set "state" = 'superseded'
+      where r."state" = 'awaiting_review' and r."teamId" = $1 and r."section" = $2 and r."lang" = $3
+        and r."id" <> (select n."id" from "release_run" n
+                        where n."state" = 'awaiting_review' and n."teamId" = $1 and n."section" = $2 and n."lang" = $3
+                        order by n."createdAt" desc, n."id" desc limit 1)`,
+    [pack.teamId, pack.section, pack.lang],
+  );
 }
 
 /**
@@ -229,17 +256,11 @@ async function settlePromoted(client: PoolClient, promote: ReleaseRun, state: Re
     if (rows[0]) await recordFinish(rows[0], "done", client);
     return;
   }
-  await lockPack(client, promote);
-  await client.query(
-    `update "release_run" r set
-       "state" = case when exists (select 1 from "release_run" n
-                                    where n."state" = 'awaiting_review' and n."id" <> r."id" and n."teamId" = r."teamId"
-                                      and n."section" = r."section" and n."lang" = r."lang" and n."createdAt" > r."createdAt")
-                      then 'superseded' else 'awaiting_review' end,
-       "error" = $2
-     where r."id" = $1 and r."state" = 'approved'`,
+  const { rowCount } = await client.query(
+    `update "release_run" set "state" = 'awaiting_review', "error" = $2 where "id" = $1 and "state" = 'approved'`,
     [promote.promotes, `Approving failed: ${promote.error ?? "the promotion did not finish"}`],
   );
+  if (rowCount) await keepNewestWaiting(client, promote);
 }
 
 /**
@@ -288,18 +309,11 @@ export async function applyUpdate(id: string, patch: RunPatch): Promise<{ run: R
        patch.error ?? null, patch.version ?? null, settles !== null, patch.staged ? JSON.stringify(patch.staged) : null],
     );
     const run = rows[0];
-    // At most one version of a pack waits for review: the older one goes once this one waits, and
-    // not before, so a build that fails leaves it in place. One `approved` and being listed is let
-    // finish (settlePromoted replaces it if that fails); listing this one after it is then
-    // refused, as staged over an older rev. approve() holds the row's lock, so this sees its state.
-    if (settles === "awaiting_review") {
-      await lockPack(client, run);
-      await client.query(
-        `update "release_run" r set "state" = 'superseded'
-          where r."state" = 'awaiting_review' and r."id" <> $1 and r."teamId" = $2 and r."section" = $3 and r."lang" = $4`,
-        [run.id, run.teamId, run.section, run.lang],
-      );
-    }
+    // The older version goes once this one waits, and not before, so a build that fails leaves it
+    // in place. One `approved` and being listed is let finish (settlePromoted replaces it if that
+    // fails); listing this one after it is then refused, as staged over an older rev. approve()
+    // holds the row's lock, so this sees its state.
+    if (settles === "awaiting_review") await keepNewestWaiting(client, run);
     if (settles) await SETTLE[run.kind](client, run, settles);
     return { run, changed: true };
   });
@@ -331,7 +345,7 @@ export async function recentRuns(lang: Lang, limit: number): Promise<ReleaseRun[
 export async function lastReleasedAt(lang: Lang): Promise<Map<string, Date>> {
   const rows = await readAs<{ section: string; at: Date }>(
     lang,
-    `select "section", max("createdAt") as "at" from "release_run"
+    `select "section", max(coalesce("startedAt", "createdAt")) as "at" from "release_run"
       where "lang" = $1 and "kind" = 'release' and "state" in ('done', 'unchanged') group by "section"`,
     [lang],
   );
@@ -346,13 +360,13 @@ export async function lastReleasedAt(lang: Lang): Promise<Map<string, Date>> {
  */
 export async function packReleases(section: string, lang: Lang): Promise<PackRelease[]> {
   return withTeam(ALL_TEAMS, async (client) => {
-    const { rows } = await client.query<{ version: string; createdAt: Date }>(
-      `select "version", "createdAt" from "release_run"
+    const { rows } = await client.query<{ version: string; at: Date }>(
+      `select "version", coalesce("startedAt", "createdAt") as "at" from "release_run"
         where "section" = $1 and "lang" = $2 and "kind" = 'release' and "state" = 'done' and "version" is not null
         order by "createdAt" desc`,
       [section, lang],
     );
-    return rows.map((row) => ({ version: row.version, at: row.createdAt.toISOString() }));
+    return rows.map((row) => ({ version: row.version, at: row.at.toISOString() }));
   });
 }
 

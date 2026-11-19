@@ -76,12 +76,12 @@ afterAll(async () => {
   await closeDb();
 });
 
-/** A version of the second team's places, staged and waiting. */
-async function waiting(section = "places"): Promise<string> {
+/** A version of the second team's places, staged and waiting; pressed an hour ago, and started then unless `startedAgo`. */
+async function waiting(section = "places", startedAgo: string | null = null): Promise<string> {
   const [{ id }] = await systemRows<{ id: string }>(
-    `insert into "release_run" ("teamId", "section", "lang", "state", "requestedBy", "stage", "staged", "version", "createdAt", "finishedAt")
-     values ($1, $2, 'frFR', 'awaiting_review', $3, true, $4, '1.0.0', now() - interval '1 hour', now()) returning "id"`,
-    [second, section, presser.id, JSON.stringify(STAGED)],
+    `insert into "release_run" ("teamId", "section", "lang", "state", "requestedBy", "stage", "staged", "version", "createdAt", "startedAt", "finishedAt")
+     values ($1, $2, 'frFR', 'awaiting_review', $3, true, $4, '1.0.0', now() - interval '1 hour', now() - $5::interval, now()) returning "id"`,
+    [second, section, presser.id, JSON.stringify(STAGED), startedAgo ?? "1 hour"],
   );
   return id;
 }
@@ -243,6 +243,13 @@ describe("the review page's lists", () => {
     const id = await waiting();
     expect((await waitingReviews())[0].pending.count).toBe(1);
     expect((await waitingLines(id))?.changes.map((c) => [c.file, c.version])).toEqual([["review-test-recut", 1]]);
+  });
+
+  it("counts a queued version from when its build started, not when it was pressed", async () => {
+    await take(second, "review-test-while-queued", { ago: "40 minutes" });
+    await take(second, "review-test-after-start", { ago: "10 minutes" });
+    const id = await waiting("places", "20 minutes");
+    expect((await waitingLines(id))?.changes.map((c) => c.file)).toEqual(["review-test-while-queued"]);
   });
 
   it("shows an approved version as being listed", async () => {

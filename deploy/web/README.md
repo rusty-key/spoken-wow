@@ -795,8 +795,9 @@ one had it and the other did not.
 Mass regeneration is a queue in Postgres (`regeneration_batch`, `regeneration_job`), drained
 inside the app processes rather than by a separate service. A session-scoped advisory lock
 picks one process to lead, and only that one claims jobs. A process joins leader contention
-the first time one of the `/api/regenerate/queue` routes is called on it — not on boot, but
-lazily.
+the first time one of the `/api/regenerate/queue` routes is called on it, or at boot on the droplet
+(`SPOKEN_RELEASE_ENV` set), where the leader also ticks the release queue. Its worker still starts
+lazily, on the first queue route.
 
 **Two things worth knowing:**
 

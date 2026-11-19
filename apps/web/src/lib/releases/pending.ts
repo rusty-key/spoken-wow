@@ -61,35 +61,42 @@ type Row = {
 };
 
 /**
- * Whether the take `t` was the live one at `$4`, or is live now when `$4` is null: the version the
- * file's last cut or restore up to `$4` made live, or, for a file older than the activity log, its
- * newest version from then.
+ * Per file, the version that was live at `at` (a parameter, null for none): the one the file's
+ * last cut or restore up to then made live, or, for a file older than the activity log, its
+ * newest version from then. As `file, version`, computed once per query rather than per take.
  */
-const LIVE_AT = `($4::timestamptz is null and t."isCurrent"
-  or $4::timestamptz is not null and t."createdAt" <= $4 and t."version" is not distinct from coalesce(
-    (select (e."detail"->>'version')::int from "activity" e
-      where e."lang" = $2 and e."source" = $1 and e."subject" = t."file"
-        and e."kind" in ('take.generated', 'take.restored') and e."at" <= $4
-      order by e."at" desc limit 1),
-    (select max(o."version") from "take" o
-      where o."source" = t."source" and o."lang" = t."lang" and o."file" = t."file"
-        and o."teamId" = t."teamId" and o."createdAt" <= $4)))`;
+function liveAt(at: string): string {
+  return `select f."file", coalesce(a."version", f."version") as "version"
+    from (select o."file", max(o."version") as "version" from "take" o
+           where o."source" = $1 and o."lang" = $2 and o."teamId" = coalesce(spoken_team(), team_of_lang($2))
+             and o."createdAt" <= ${at}
+           group by o."file") f
+    left join (select distinct on (e."subject") e."subject", (e."detail"->>'version')::int as "version"
+                 from "activity" e
+                where e."lang" = $2 and e."source" = $1 and e."kind" in ('take.generated', 'take.restored')
+                  and e."at" <= ${at}
+                order by e."subject", e."at" desc) a on a."subject" = f."file"`;
+}
 
 /**
  * Every file whose live audio changed since `$3`, as `file, lineId, version, at, by, kind`: the
  * acting team's takes, which its release builds from, or the privileged team's read as all teams.
- * With `$4`, as it stood then: what a release that started at `$4` built from.
+ * With `$4`, as it stood then: what a release that started at `$4` built from; without, the takes
+ * live now.
  *
  * A restore counts only when it put back something other than what was live at `$3`: cutting
- * v3 and going back to v2 is an undo, and players already have v2. What was live then is the
- * version the file's last cut or restore before `$3` made live, or, for a file older than the
- * activity log, its newest version from before `$3`.
+ * v3 and going back to v2 is an undo, and players already have v2.
  */
 function changed(section: ReleaseSection): string {
+  const live = `($4::timestamptz is null and t."isCurrent"
+    or $4::timestamptz is not null and t."createdAt" <= $4 and t."version" is not distinct from until_live."version")`;
   return `
+  with until_live as (${liveAt("$4::timestamptz")}),
+       since_live as (${liveAt("$3::timestamptz")})
   select t."file", t."lineId", t."version", t."createdAt" as "at", t."createdBy" as "by", 'new' as "kind"
     from "take" t
-   where t."source" = $1 and t."lang" = $2 and ${LIVE_AT} and t."teamId" = coalesce(spoken_team(), team_of_lang($2))
+    left join until_live on until_live."file" = t."file"
+   where t."source" = $1 and t."lang" = $2 and ${live} and t."teamId" = coalesce(spoken_team(), team_of_lang($2))
      and ($3::timestamptz is null or t."createdAt" > $3) ${SHIPPED[section]}
   union all
   -- A file restored and regenerated since counts once, as the newer take; restored twice, once,
@@ -98,18 +105,13 @@ function changed(section: ReleaseSection): string {
     select distinct on (a."subject") a."subject", t."lineId", t."version", a."at", a."actorId", 'restored'
       from "activity" a
       join "take" t on t."source" = a."source" and t."lang" = a."lang" and t."file" = a."subject"
-                   and ${LIVE_AT} and t."teamId" = coalesce(spoken_team(), team_of_lang($2))
+                   and t."teamId" = coalesce(spoken_team(), team_of_lang($2))
+      left join until_live on until_live."file" = t."file"
+      left join since_live on since_live."file" = t."file"
      where $3::timestamptz is not null and a."kind" = 'take.restored' and a."lang" = $2
        and a."source" = $1 and a."at" > $3 and ($4::timestamptz is null or a."at" <= $4)
-       and t."createdAt" <= $3 ${SHIPPED[section]}
-       and t."version" is distinct from coalesce(
-         (select (e."detail"->>'version')::int from "activity" e
-           where e."lang" = $2 and e."source" = $1 and e."subject" = t."file"
-             and e."kind" in ('take.generated', 'take.restored') and e."at" <= $3
-           order by e."at" desc limit 1),
-         (select max(o."version") from "take" o
-           where o."source" = t."source" and o."lang" = t."lang" and o."file" = t."file"
-             and o."teamId" = t."teamId" and o."createdAt" <= $3))
+       and ${live} and t."createdAt" <= $3 ${SHIPPED[section]}
+       and t."version" is distinct from since_live."version"
      order by a."subject", a."at" desc
   ) restored`;
 }

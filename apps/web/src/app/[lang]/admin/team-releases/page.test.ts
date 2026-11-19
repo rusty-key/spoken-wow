@@ -13,9 +13,6 @@ vi.mock("@/lib/session", () => ({
 const review = vi.hoisted(() => ({ waitingReviews: vi.fn(), liveTeamPacks: vi.fn() }));
 vi.mock("@/lib/releases/review", () => review);
 
-const sync = vi.hoisted(() => ({ syncActive: vi.fn() }));
-vi.mock("@/lib/releases/sync", () => sync);
-
 import Page from "./page";
 
 const waiting = [{ id: "a" }, { id: "b" }] as WaitingVersion[];
@@ -33,7 +30,6 @@ const propsOf = <P>(tree: ReactNode, type: unknown) => elements(tree).find((el) 
 beforeEach(() => {
   review.waitingReviews.mockReset().mockResolvedValue(waiting);
   review.liveTeamPacks.mockReset().mockResolvedValue([]);
-  sync.syncActive.mockReset().mockResolvedValue(null);
 });
 
 describe("the team releases page", () => {
@@ -43,14 +39,6 @@ describe("the team releases page", () => {
       await expect(Page()).rejects.toMatchObject({ digest: expect.stringContaining("404") });
     }
     expect(review.waitingReviews).not.toHaveBeenCalled();
-    expect(sync.syncActive).not.toHaveBeenCalled();
-  });
-
-  it("settles a finished run before it lists, so a version listed meanwhile is not shown as being listed", async () => {
-    who.role = "admin";
-    await Page();
-    expect(sync.syncActive).toHaveBeenCalledTimes(1);
-    expect(sync.syncActive.mock.invocationCallOrder[0]).toBeLessThan(review.waitingReviews.mock.invocationCallOrder[0]);
   });
 
   it("lists the waiting versions, and the header counts the same ones", async () => {
