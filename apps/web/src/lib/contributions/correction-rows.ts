@@ -16,7 +16,9 @@ import { classWordMarks, isMarked } from "./class-words";
 import { clientOf, matchesClient } from "./client";
 import { readable } from "./compare";
 import { tabOf, type LineState } from "./known";
+import { momentOf } from "./naming";
 import { matchesSearch, matchesStage, type ClientFilter, type StageFilter } from "./query";
+import { readerGenderOf, readersOf } from "./readers";
 import { observationMeta, type Contribution } from "./store";
 import { questFor } from "./triage";
 import type { Filter } from "@/lib/search";
@@ -43,7 +45,12 @@ export async function correctionRowsFor({
     return state.kind === "changed" && tabOf(row.status, state) === "corrections" ? [{ row, state }] : [];
   });
   if (candidates.length === 0) return [];
-  const marks = await classWordMarks(candidates.map(({ row }) => row));
+  const [marks, readers] = await Promise.all([
+    classWordMarks(candidates.map(({ row }) => row)),
+    source === "quests"
+      ? readersOf(candidates.flatMap(({ row, state }) => state.wordings.map((line) => ({ ...line, lang: row.locale }))))
+      : () => [],
+  ]);
 
   return candidates.flatMap(({ row, state }) => {
     if (!matchesClient(clientOf(row.build).family, client)) return [];
@@ -56,6 +63,8 @@ export async function correctionRowsFor({
       variant: line.variant,
       editHref: explorerHref(source, line.lineId),
       before: readable(line.text),
+      split: momentOf(line.lineId) !== line.lineId,
+      readBy: readers(row.locale, line.lineId, line.variant),
     }));
     const corpusText = wordings.map((line) => line.before).join("\n");
     // Readables have no NPC or quest, so a number there is text to find, not an id.
@@ -75,6 +84,7 @@ export async function correctionRowsFor({
         status: row.status,
         npc,
         after: row.text ?? "",
+        readerGender: readerGenderOf(row.meta),
         body: row.body,
         rejectReason: row.rejectReason,
       },

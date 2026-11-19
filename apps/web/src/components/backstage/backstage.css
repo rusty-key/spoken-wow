@@ -502,6 +502,16 @@ body:has(main.bs) {
 .bs-reason:hover {
   background: rgba(240, 96, 93, 0.24);
 }
+/* The same panel offering ways to accept, not reasons to drop. */
+.bs-reasons.bs-choices {
+  background: var(--secondary);
+}
+.bs-choices .bs-reason {
+  background: var(--background);
+}
+.bs-choices .bs-reason:hover {
+  background: rgba(46, 160, 67, 0.2);
+}
 .bs-refusal {
   margin: 0;
   color: var(--bs-red-text);

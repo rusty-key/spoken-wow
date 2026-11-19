@@ -26,11 +26,11 @@ import { parseEnvelope } from "@/lib/contributions/envelope";
 import {
   CONTRIBUTION_WINDOW_MS,
   CONTRIBUTIONS_PER_HOUR,
+  intakeStates,
   resolveSpeakers,
   speakersOf,
   stringOrNull,
 } from "@/lib/contributions/intake";
-import { lineStates } from "@/lib/contributions/known";
 import {
   INSTALL_UPLOADS_PER_HOUR,
   hitFrom,
@@ -109,7 +109,7 @@ export async function POST(request: Request) {
       refuse("describe");
       continue;
     }
-    const submission = submissionFrom(parsed.value, raw, null);
+    const submission = submissionFrom(parsed.value, null);
     if (!submission) {
       refuse("incomplete");
       continue;
@@ -119,9 +119,9 @@ export async function POST(request: Request) {
   const submissions = await keepClassWords(sent);
 
   // Lines the corpus already has are counted as accepted -- the player sent nothing wrong --
-  // and not stored as contributions: known.ts's lineStates, asked once for the file. With an
-  // install id each is a line that player heard in silence, and is counted as one.
-  const states = await lineStates(submissions);
+  // and not stored as contributions: intakeStates, asked once for the file. With an install id
+  // each is a line that player heard in silence, and is counted as one.
+  const states = await intakeStates(submissions);
   const hits: MissingAudioHit[] = [];
   const unknown: Submission[] = [];
   let known = 0;

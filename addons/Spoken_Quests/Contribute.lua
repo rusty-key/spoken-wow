@@ -22,11 +22,12 @@ local EVENT_PATHS =
 
 Contribute = {}
 
---- Whether the Spoken folder beside this addon has what Detemplate and the gathering call. An
+--- Whether the Spoken folder beside this addon has what contributing and the gathering call. An
 --- older one does not, and a player on it has no contribute button rather than an error.
 local function CoreIsCurrent()
     local contribute, gather = _G.Spoken and Spoken.Contribute, _G.Spoken and Spoken.Gather
     return contribute and contribute.NameWords and contribute.ReplaceWord and contribute.Parse
+        and contribute.ReaderFields and contribute.Detemplate
         and (not gather or (gather.Lines and gather.Get and gather.Remove and gather.IsTidied))
         and true or false
 end
@@ -244,71 +245,16 @@ local function GossipOnScreen()
     return GetGossipText and NotSecret(GetGossipText())
 end
 
---- The text with this character's name, class and race put back as the game's own tokens.
----
---- The client hands us quest text with $N, $C and $R already expanded to whoever is reading
---- it, and a line voiced from that would greet every other player by this one's name. The
---- extract never has the problem -- it reads the templates -- so the fix is to send what the
---- extract would have seen: the site substitutes a token the same way the extract does, and a
---- gossip line hashes to the same id the world database's copy of it would.
----
---- Only this client knows which words were substituted. Once the text leaves, "Thrall" in a
---- line is as likely an NPC as the player, which is why this is done here and not on arrival.
----
---- Class and race are replaced wherever they occur as words, so a warrior reading "a warrior's
---- discipline" sends "a $c's discipline" -- a known cost, taken over voicing someone's class
---- at every other player. The class is kept as written on a quest that only that class can take
---- (questID), since the word there is the quest's own whichever way Blizzard wrote it. $G cannot
---- be undone at all: the client picked one side of the branch, and the words of the other side
---- are not on screen.
-function Contribute:Detemplate(text, questID)
-    local swaps = {}
-    local function add(word, token)
-        if type(word) == "string" and word ~= "" then
-            swaps[#swaps + 1] = { word, token }
-        end
-    end
-    local function addCased(word, upper, lower)
-        add(word, upper)
-        if type(word) == "string" and string.lower(word) ~= word then
-            add(string.lower(word), lower)
-        end
-    end
-
-    -- A character with a surname (the Classic beta gives Skybourne elves one) is named whole by
-    -- UnitName -- "Valaas Dawnsight" -- while a line greets them by one part: "Greetings, young
-    -- Valaas". Each part is the player too, as written or in capitals. Sorted with the class and
-    -- race below, so a part of the name inside a longer class or race ("Hunter" in "Demon
-    -- Hunter") does not take it first.
-    for _, word in ipairs(Spoken.Contribute:NameWords(UnitName and UnitName("player"))) do
-        add(word, "$N")
-    end
-    local localized, classFile, classID
-    if UnitClass then
-        localized, classFile, classID = UnitClass("player")
-    end
+--- Who is reading, onto `fields`, beside a text sent as shown, and the classes `questID` is for
+--- where the Compendium says: on a quest only the reader's class can take, the class is the
+--- quest's own word and the site leaves it as written.
+local function ReaderFields(fields, questID)
     local quests = _G.SpokenQuestsCompendium and _G.SpokenQuestsCompendium.quests
     local quest = questID and quests and quests[questID]
-    if localized and not (quest and classID and quest.classes == 2 ^ (classID - 1)) then
-        addCased(localized, "$C", "$c")
-        -- The locales that inflect a class by gender (deDE "Kriegerin") render the form for
-        -- this character, which is the one UnitClass already answered; both are asked for in
-        -- case a line names the other.
-        for _, names in ipairs({ _G.LOCALIZED_CLASS_NAMES_MALE or {}, _G.LOCALIZED_CLASS_NAMES_FEMALE or {} }) do
-            addCased(classFile and names[classFile], "$C", "$c")
-        end
+    if quest and quest.classes then
+        fields[#fields + 1] = { "questClasses", quest.classes }
     end
-    if UnitRace then
-        addCased((UnitRace("player")), "$R", "$r")
-    end
-
-    -- Longest first, so "Night Elf" goes as one race before a shorter word inside it can be
-    -- taken for something else.
-    table.sort(swaps, function(a, b) return string.len(a[1]) > string.len(b[1]) end)
-    for _, pair in ipairs(swaps) do
-        text = Spoken.Contribute:ReplaceWord(text, pair[1], pair[2])
-    end
-    return text
+    Spoken.Contribute:ReaderFields(fields)
 end
 
 --- The fields every quests envelope starts with: which addon, which client, which language.
@@ -367,12 +313,12 @@ function Contribute:Capture(reworded, module)
         fields[#fields + 1] = { "npc", NPCField() }
         Observations(fields, reworded)
         fields[#fields + 1] = { "title", GetTitleText and NotSecret(GetTitleText()) or "" }
+        ReaderFields(fields, questID)
         -- The second value is what Gather keys the line on: the quest, the moment and who said
         -- it. The text is left out on purpose -- the same panel read twice is one line. The
         -- third is the text the envelope carries.
-        local said = Contribute:Detemplate(text, questID)
-        return Spoken.Contribute:Envelope("quests", fields, said),
-            format("q:%s:%s:%s", tostring(questID or 0), EVENT_PATHS[event], tostring(NPCID() or "")), said
+        return Spoken.Contribute:Envelope("quests", fields, text),
+            format("q:%s:%s:%s", tostring(questID or 0), EVENT_PATHS[event], tostring(NPCID() or "")), text
     end
 
     -- Gossip: no quest and no event, but an NPC saying something this corpus has never heard.
@@ -384,16 +330,16 @@ function Contribute:Capture(reworded, module)
     -- the words are still readable and the unit is already gone.
     local gossip = GossipOnScreen()
     if gossip and gossip ~= "" and NPCID() then
-        -- Detemplated before the key is taken too, so the same line gathered on two
-        -- characters is one line rather than one per name.
-        gossip = Contribute:Detemplate(gossip)
         fields[#fields + 1] = { "npc", NPCField() }
         Observations(fields, reworded)
-        -- An NPC can say several different things, so gossip is keyed on the words as well.
-        -- Keyed on the sex too, so a man and a woman saying the same words are two lines.
+        ReaderFields(fields)
+        -- An NPC can say several different things, so gossip is keyed on the words as well,
+        -- detemplated so the same line gathered on two characters is one line rather than one
+        -- per name. Keyed on the sex too, so a man and a woman saying the same words are two lines.
         local sex = UnitSex and NotSecret(UnitSex("npc"))
         return Spoken.Contribute:Envelope("quests", fields, gossip),
-            format("g:%d:%d%s", NPCID(), Spoken.Contribute:Checksum(gossip), sex == 3 and ":f" or "")
+            format("g:%d:%d%s", NPCID(), Spoken.Contribute:Checksum(Spoken.Contribute:Detemplate(gossip)),
+                sex == 3 and ":f" or "")
     end
 
     return nil
@@ -444,7 +390,10 @@ function Contribute:ReportContext(clip)
     if clip.title and clip.title ~= "" then
         fields[#fields + 1] = { "title", clip.title }
     end
-    local text = type(clip.text) == "string" and clip.text ~= "" and self:Detemplate(clip.text) or nil
+    local text = type(clip.text) == "string" and clip.text ~= "" and clip.text or nil
+    if text then
+        ReaderFields(fields, clip.questID)
+    end
     return Spoken.Contribute:Envelope("quests", fields, text)
 end
 
@@ -793,7 +742,8 @@ function Contribute:CaptureFromLog(questID, title)
     fields[#fields + 1] = { "event", "accept" }
     fields[#fields + 1] = { "title", title or "" }
     fields[#fields + 1] = { "from", "log" }
-    return Spoken.Contribute:Envelope("quests", fields, Contribute:Detemplate(text, questID))
+    ReaderFields(fields, questID)
+    return Spoken.Contribute:Envelope("quests", fields, text)
 end
 
 --- Whether the quest log should offer Contribute in place of a Play it cannot give.

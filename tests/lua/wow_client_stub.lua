@@ -447,7 +447,7 @@ function _G.UnitGUID() return world.npcGUID end
 function _G.UnitExists() return true end
 function _G.UnitIsPlayer() return false end
 function _G.UnitCanAttack() return not world.npcFriendly end
-function _G.UnitSex() return world.unitSex end
+function _G.UnitSex(unit) return unit == "player" and world.playerSex or world.unitSex end
 function _G.UnitIsDead() return false end
 function _G.UnitIsDeadOrGhost() return world.playerDead end
 function _G.UnitIsUnit(a, b) return a == b end

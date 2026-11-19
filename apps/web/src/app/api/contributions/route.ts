@@ -27,10 +27,10 @@ import { submissionFrom } from "@/lib/contributions/submission";
 import {
   CONTRIBUTION_WINDOW_MS,
   CONTRIBUTIONS_PER_HOUR,
+  intakeStates,
   storeSubmission,
   stringOrNull,
 } from "@/lib/contributions/intake";
-import { lineStates } from "@/lib/contributions/known";
 import { hitFrom, installIdFrom, recordMissingAudio } from "@/lib/contributions/missing-audio";
 import { countRecentContributions, recordContributionHit } from "@/lib/contributions/store";
 
@@ -69,7 +69,7 @@ export async function POST(request: Request) {
     return Response.json({ error: "describe" }, { status: 400 });
   }
 
-  const sent = submissionFrom(parsed.value, raw, description);
+  const sent = submissionFrom(parsed.value, description);
   if (!sent) {
     return Response.json({ error: "incomplete" }, { status: 400 });
   }
@@ -92,7 +92,7 @@ export async function POST(request: Request) {
   // A line the corpus already has is thanked for and dropped, the same answer as a stored one:
   // the player did nothing wrong, there is just nothing to triage. A complaint about it is
   // still kept -- that is a report about the line, not a copy of it.
-  const [state] = await lineStates([submission]);
+  const [state] = await intakeStates([submission]);
   const known = state?.kind === "known";
   if (!known || complaint) {
     await storeSubmission(submission, {

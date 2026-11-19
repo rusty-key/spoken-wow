@@ -12,8 +12,9 @@ import { STAGE_LABELS } from "@/components/contribution-chips";
 import SendersButton from "@/components/SendersButton";
 import { useLocalDates } from "@/components/useLocalDates";
 import type { ClientSummary } from "@/lib/contributions/client";
-import { hasClassSlot, wordDiff, type DiffPart } from "@/lib/contributions/compare";
+import { genderSplit, hasClassSlot, readerSide, wordDiff, type DiffPart } from "@/lib/contributions/compare";
 import type { ContributionStatus } from "@/lib/contributions/contributions";
+import { GENDER_NAMES, otherGender, type ReaderGender } from "@/lib/contributions/gender";
 import type { QuestStage } from "@/lib/contributions/query";
 import { langName, localeHref } from "@/lib/lang";
 import { cn } from "@/lib/utils";
@@ -29,6 +30,10 @@ export type CorrectionWording = {
   editHref: string;
   /** The corpus's current text, its `$B` breaks already made line breaks. */
   before: string;
+  /** One side of a moment already split by player gender. */
+  split: boolean;
+  /** The player genders whose client has shown this text word for word (lib/contributions/readers.ts). */
+  readBy: ReaderGender[];
 };
 
 export type CorrectionRow = {
@@ -53,15 +58,18 @@ export type CorrectionRow = {
   title: string | null;
   /** What the player's client showed. */
   after: string;
+  /** The gender of the character it was shown to, where the addon said: the side of every `$G` it took. */
+  readerGender: ReaderGender | null;
   body: string | null;
   rejectReason: string | null;
 };
 
 /**
- * What an accept sends beside the id: the wording it fixes, or that it is another wording, and
- * the moderator's edit of the player's text where there is one.
+ * What an accept sends beside the id: the wording it fixes, and the player gender the player's
+ * text is for where it splits that wording instead; or that it is another wording. With the
+ * moderator's edit of the player's text where there is one.
  */
-type Accept = ({ lineId: string; variant: number } | { as: "wording" }) & { text?: string };
+type Accept = ({ lineId: string; variant: number; split?: ReaderGender } | { as: "wording" }) & { text?: string };
 type Extra = Accept | { reason: string };
 
 export type CorrectionSource = "quests" | "readables";
@@ -88,6 +96,8 @@ export default function CorrectionTable({
   const [busy, setBusy] = useState<ReadonlySet<number>>(new Set());
   const inFlight = useRef(new Set<number>());
   const [droppingId, setDroppingId] = useState<number | null>(null);
+  /** The row whose Keep both choices are open. */
+  const [keepingId, setKeepingId] = useState<number | null>(null);
   const [reasonsOf, setReasonsOf] = useState<Record<number, string>>({});
   /** A long backlog renders a page at a time: every row diffs both texts. */
   const [limit, setLimit] = useState(CORRECTIONS_SHOWN);
@@ -152,7 +162,10 @@ export default function CorrectionTable({
   const resolve = useCallback(
     async (id: number, next: ContributionStatus, as?: Extra): Promise<boolean> => {
       const ok = (await held(id, () => send(id, next, as))) ?? false;
-      if (ok && next === "accepted") setDroppingId((open) => (open === id ? null : open));
+      if (ok && next === "accepted") {
+        setDroppingId((open) => (open === id ? null : open));
+        setKeepingId((open) => (open === id ? null : open));
+      }
       return ok;
     },
     [send, held],
@@ -188,6 +201,16 @@ export default function CorrectionTable({
     const { lineId, variant } = row.wordings[chosenOf(row)];
     return { lineId, variant, ...editOf(row) };
   };
+  /**
+   * The template a split by gender writes, theirs on either side, for the buttons and their
+   * previews; null where our line is not one plain quest line the two texts can split. The server
+   * builds its own from the line as it then stands.
+   */
+  const splitsOf = (wording: CorrectionWording, after: string): Record<ReaderGender, string> | null => {
+    if (source !== "quests" || wording.split) return null;
+    const f = genderSplit(wording.before, after, "f");
+    return f ? { f, m: genderSplit(wording.before, after, "m")! } : null;
+  };
   return (
     <div className="bs-rows">
       {initial.slice(0, limit).map((row) => {
@@ -201,6 +224,13 @@ export default function CorrectionTable({
         const classWord = classWordOf(row);
         const hold = busy.has(row.id);
         const dropping = droppingId === row.id && current === "new";
+        const splits = current === "new" ? splitsOf(wording, after) : null;
+        // Offered outright where the evidence says which side theirs is.
+        const side = splits && readerSide(row.readerGender, wording.readBy);
+        const chooser = keepingId === row.id ? splits : null;
+        const keepAsWording = () => void resolve(row.id, "accepted", { as: "wording", ...editOf(row) });
+        const splitAs = (theirsFor: ReaderGender) =>
+          void resolve(row.id, "accepted", { lineId: wording.lineId, variant: wording.variant, split: theirsFor, ...editOf(row) });
         return (
           <div key={row.id} id={`contribution-${row.id}`} className="bs-review-row" data-moved={current !== row.status ? "" : undefined}>
             <div className="bs-who">
@@ -295,15 +325,30 @@ export default function CorrectionTable({
                   >
                     Replace ours
                   </button>
+                  {splits && side ? (
+                    <button
+                      type="button"
+                      className="bs-btn"
+                      disabled={hold}
+                      title={`Ours for ${GENDER_NAMES[otherGender(side)]} players, theirs for ${GENDER_NAMES[side]} ones:\n${splits[side]}`}
+                      onClick={() => splitAs(side)}
+                    >
+                      Split by gender
+                    </button>
+                  ) : null}
                   {source === "quests" ? (
                     <button
                       type="button"
                       className="bs-btn"
                       disabled={hold}
-                      title="Keep our text and add the player's as another wording of this moment"
-                      onClick={() => void resolve(row.id, "accepted", { as: "wording", ...editOf(row) })}
+                      title={
+                        splits
+                          ? "Keep our text and add the player's beside it: as another wording, or one for each player gender"
+                          : "Keep our text and add the player's as another wording of this moment"
+                      }
+                      onClick={() => (splits ? setKeepingId(chooser ? null : row.id) : keepAsWording())}
                     >
-                      Keep both
+                      {splits ? "Keep both…" : "Keep both"}
                     </button>
                   ) : null}
                   <button
@@ -333,6 +378,8 @@ export default function CorrectionTable({
                 {row.client.label} · {row.locale}
                 {row.client.buildNumber ? ` · ${row.client.buildNumber}` : null}
               </span>
+              {row.readerGender ? <span>Theirs read by a {GENDER_NAMES[row.readerGender]} character</span> : null}
+              {wording.readBy.length ? <span>Ours read by {wording.readBy.map((g) => GENDER_NAMES[g]).join(" and ")} characters</span> : null}
               <span className="inline-flex items-center gap-1">
                 Sent by <SendersButton id={row.id} count={row.count} />
               </span>
@@ -345,6 +392,29 @@ export default function CorrectionTable({
               <div className="bs-aside">
                 <p className="bs-label">What the player said was wrong</p>
                 <p className="bs-text">{row.body}</p>
+              </div>
+            ) : null}
+            {chooser ? (
+              <div className="bs-reasons bs-choices">
+                <p>Keep both how? A split plays ours to one gender and theirs to the other.</p>
+                <button type="button" className="bs-reason" disabled={hold} onClick={keepAsWording}>
+                  As another wording
+                </button>
+                {(row.readerGender === "m" ? (["m", "f"] as const) : (["f", "m"] as const)).map((side) => (
+                  <button
+                    key={side}
+                    type="button"
+                    className="bs-reason"
+                    disabled={hold}
+                    title={chooser[side]}
+                    onClick={() => splitAs(side)}
+                  >
+                    Theirs for {GENDER_NAMES[side]} players{row.readerGender === side ? " · the reader's gender" : ""}
+                  </button>
+                ))}
+                <button type="button" className="bs-btn bs-btn-text" onClick={() => setKeepingId(null)}>
+                  Cancel
+                </button>
               </div>
             ) : null}
             {dropping ? (

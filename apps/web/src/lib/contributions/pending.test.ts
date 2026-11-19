@@ -21,7 +21,7 @@ function row(id: number, source: Contribution["source"], status: Contribution["s
 }
 
 const MISSING: LineState = { kind: "missing" };
-const KNOWN: LineState = { kind: "known", lineId: "q:1:accept" };
+const KNOWN: LineState = { kind: "known", lineId: "q:1:accept", variant: 0 };
 const CHANGED: LineState = { kind: "changed", wordings: [], closest: 0 };
 
 /** A state per row, told apart by id so the test sees whether each stays with its own row. */

@@ -401,7 +401,23 @@ The import (`tts_cli/locale_import.py`), accept and the explorer's text editor a
 rule. A plain line made from a split English line is read beside English's male side.
 
 A player's client has already picked one side of any `$G`, so a contribution is one plain line.
-A moderator splits it by writing the `$G` back in the explorer: the plain line stops being
+An addon that sends the text as shown also says the reader's gender (`readerSex`). Every copy
+intake drops as already on file records that gender on the line it matched
+(`quest_line.readerGenders`, on the current version, so new text starts with none;
+`lib/contributions/readers.ts`). Recording is best-effort: if the write fails, intake logs it and
+takes the upload anyway, so a matching copy does not always count. Most lines gather both. Where
+our line is one plain line that only the other gender has seen, a correction from the reader's
+gender may be the other side of a `$G` the line lost, or may be a plain fix the other gender
+never got to send. The corrections tab offers **Split by gender** for the moderator to weigh
+against Replace ours: ours for the gender that saw it, theirs for the reader's, each run of words
+they differ in written as a `$G` branch, in any language (`compare.ts` `readerSide`,
+`genderSplit`). It is not offered on a line both genders have seen or none has yet, nor where
+one text only adds words to the other or a differing run crosses a sentence's end, which a
+branch cannot hold. A moderator who knows better can still split any plain line from **Keep
+both…**: theirs for female players or for male players, ours for the other, whatever the evidence
+says. Either sends only the side (`split`); the server builds the template from the line as it
+then stands and writes it as the correction, which splits the moment as below, and the row keeps
+what the player's client showed. Otherwise a moderator splits it by writing the `$G` back in the explorer: the plain line stops being
 current and `:m` and `:f` take its place, both holding the template. English splits the same way,
 except that each side holds its own reader's words. On a moment already split, a rewrite holding a
 `$G` overrides both sides and an accepted correction writes both (`apps/web/src/lib/quests/moment-rewrite.ts`). The site decides the shape: `extract` leaves out a dump
@@ -1087,14 +1103,21 @@ rules `tts_cli/naming.py` uses, and a `quest_line_speaker` row carrying the cont
 From there it is an ordinary line — the explorer lists it under missing audio with a
 *contributed* badge linking back, an editor fixes anything the player's client substituted
 that the addon could not put back (the branch of a `$G` it picked) through the usual text
-override, generates a take, and the next export carries it into the pack. The addon does put
-back the reader's own name, class and race as `$N`, `$C` and `$R` before sending — only the
-client knows which words those were; the name as written and in capitals — so a contributed line is a template like an extracted
-one: stored as `originalText`, spoken as `Adventurer`/`Traveler` by the extract's own table,
-and hashed on the template when it is gossip. Class and race are swapped wherever they occur as
+override, generates a take, and the next export carries it into the pack. The addon sends the
+text as the client showed it, marked `shown=1`, with the reader beside it: `reader` (the
+character's name), `readerClass` and its gendered forms, `readerClassID`, `readerRace`,
+`readerSex`, and on a quest the Compendium knows, `questClasses`. Intake puts the name, class and
+race back as `$N`, `$C` and `$R` (`lib/contributions/reader.ts`), the name whole, by either part
+and in capitals, so a contributed line is a template like an extracted one: stored as
+`originalText`, spoken as `Adventurer`/`Traveler` by the extract's own table, and hashed on the
+template when it is gossip. The name is not kept: `raw`, `meta` and a report's context hold the
+text with the name as `$N` and the class and race as shown, so the rule can run again. An older
+addon put the tokens back itself and sends no `shown`, and its text is taken as it is. The addon
+still detemplates a gossip line for the key `Collect Missing Lines` keeps it under, so the same
+line from two characters is kept once. Class and race are swapped wherever they occur as
 whole words, so a warrior's "a warrior's discipline" arrives as "a `$c`'s discipline"; that
 false positive is accepted over voicing one player's class at everyone, except on a quest only
-that class can take (the Compendium's `classes` is that one class), where the class is left as
+that class can take (`questClasses` is that one class), where the class is left as
 written. A quest whose text names a class as a word of its own ("There's a priest out in the
 mountains") is marked from its row on the corrections tab, per language (`quest_class_word`,
 migration 0105). From then on that language's intake puts the word back wherever a `$c` (frFR's
