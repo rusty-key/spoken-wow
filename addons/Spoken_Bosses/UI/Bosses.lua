@@ -481,7 +481,7 @@ function Bosses:StoryClip(map, key)
 	if recording then
 		clip.path, clip.length = recording.path, recording.len or clip.length
 		-- The pack it plays from and its voice, which a report names.
-		clip.packFolder, clip.voice = recording.pack, recording.voice
+		clip.packFolder, clip.voice = recording.packFolder, recording.voice
 		-- Timed to the recording's own words, so not under a story in another language, nor under a
 		-- text pack's words in its language.
 		if language == recording.language and not unsaid then clip.present.timings = recording.times end

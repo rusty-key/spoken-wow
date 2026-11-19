@@ -90,6 +90,12 @@ function SpokenPlaces:ShowContribution(mapID, subzone)
     end
 end
 
+--- The pack the entry would play from now, as a clip names it, without building the clip.
+local function WouldPlay(self, mapID, areaKey)
+    local pack = select(3, self:GetAudioClip(mapID, areaKey))
+    return pack and { packFolder = pack.addon, voice = pack.voice }
+end
+
 --- What a report carries beside its address: this client, and the place by name as it shows it.
 --- The pack the `clip` played from, or with no clip (the lore page's Report) the one that would play
 --- now, which may be a later voice's rather than the active one, and that pack's team: the site
@@ -105,9 +111,8 @@ function SpokenPlaces:ReportContext(mapID, areaKey, clip)
     if areaKey then
         fields[#fields + 1] = { "key", areaKey }
     end
-    local pack = (clip and clip.pack) or select(3, self:GetAudioClip(mapID, areaKey))
-    if pack and Spoken.Contribute.PackFields then
-        Spoken.Contribute:PackFields(fields, pack.addon, pack.voice)
+    if Spoken.Contribute.PackFields then
+        Spoken.Contribute:PackFields(fields, clip or WouldPlay(self, mapID, areaKey))
     end
     return Spoken.Contribute:Envelope("places", fields, nil)
 end

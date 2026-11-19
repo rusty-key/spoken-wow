@@ -85,8 +85,9 @@ function Bosses:PackStoryText(map, key, language)
 	return nil
 end
 
---- The recording of the boss `key` of `map`: `{ path, len, times, language, pack }`, `pack` the
---- folder that has it, from the first voice's packs that has it, best first; nil where none has it.
+--- The recording of the boss `key` of `map`: `{ path, len, times, language, packFolder, voice }`,
+--- `packFolder` the folder that has it, from the first voice's packs that has it, best first; nil
+--- where none has it.
 --- A language's plain voice never plays a team's pack, nor the other way.
 function Bosses:GetAudioClip(map, key)
 	local packs = self:GetAudioPacks()
@@ -104,7 +105,7 @@ function Bosses:GetAudioClip(map, key)
 				len = entry.len,
 				times = entry.times,
 				language = pack.language,
-				pack = pack.addon,
+				packFolder = pack.addon,
 				voice = pack.voice,
 			}
 		end

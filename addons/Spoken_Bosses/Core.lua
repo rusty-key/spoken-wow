@@ -69,14 +69,9 @@ function Bosses:ReportContext(map, key, clip)
 		{ "map", map },
 		{ "key", key },
 	}
-	local folder, voice
-	if clip then
-		folder, voice = clip.packFolder, clip.voice
-	else
-		local recording = self.GetAudioClip and self:GetAudioClip(map, key)
-		folder, voice = recording and recording.pack, recording and recording.voice
+	if Spoken.Contribute.PackFields then
+		Spoken.Contribute:PackFields(fields, clip or (self.GetAudioClip and self:GetAudioClip(map, key)))
 	end
-	if Spoken.Contribute.PackFields then Spoken.Contribute:PackFields(fields, folder, voice) end
 	return Spoken.Contribute:Envelope("bosses", fields, nil)
 end
 

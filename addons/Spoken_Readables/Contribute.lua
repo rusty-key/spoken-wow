@@ -103,9 +103,8 @@ function SpokenReadables:ReportContext(pageId, clip)
 	end
 	local fields = BaseFields(self)
 	fields[#fields + 1] = { "id", pageId }
-	clip = clip or self:ClipFor(pageId)
-	if clip and Spoken.Contribute.PackFields then
-		Spoken.Contribute:PackFields(fields, clip.packFolder, clip.voice)
+	if Spoken.Contribute.PackFields then
+		Spoken.Contribute:PackFields(fields, clip or self:ClipFor(pageId))
 	end
 	local text
 	local open = ItemTextGetText and NotSecret(ItemTextGetText())

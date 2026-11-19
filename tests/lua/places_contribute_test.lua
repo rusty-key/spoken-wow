@@ -95,12 +95,12 @@ do
     Z.GetActiveAudioPack = function()
         return { addon = "SpokenPlacesAudio_deDE_stimmen", language = "deDE", voice = "deDE_stimmen", packVersion = "1.0.0" }
     end
-    local english = { pack = { addon = "SpokenPlacesAudio", language = "enUS", voice = "enUS" } }
+    local english = { packFolder = "SpokenPlacesAudio", voice = "enUS" }
     local report = Z:ReportContext(1537, "a nook", english)
     Expect("a report names the pack its clip played from, not the active one",
         report:match("\npackFolder=SpokenPlacesAudio\n") ~= nil, true)
     Expect("...and a plain pack names no team", report:match("\npackTeam=") == nil, true)
-    local stimmen = { pack = { addon = "SpokenPlacesAudio_deDE_stimmen", language = "deDE", voice = "deDE_stimmen" } }
+    local stimmen = { packFolder = "SpokenPlacesAudio_deDE_stimmen", voice = "deDE_stimmen" }
     Expect("a team's pack names its team",
         Z:ReportContext(1537, "a nook", stimmen):match("\npackFolder=SpokenPlacesAudio_deDE_stimmen\npackTeam=stimmen\n") ~= nil,
         true)
@@ -109,7 +109,7 @@ do
     -- The lore page's Report has no clip: it names the pack that would play now, a team's when
     -- the team's voice comes first.
     local getClip = Z.GetAudioClip
-    Z.GetAudioClip = function() return "path", 3, stimmen.pack end
+    Z.GetAudioClip = function() return "path", 3, { addon = "SpokenPlacesAudio_deDE_stimmen", language = "deDE", voice = "deDE_stimmen" } end
     Expect("a report with no clip names the pack the story would play from, and its team",
         Z:ReportContext(1537, "a nook"):match("\npackFolder=SpokenPlacesAudio_deDE_stimmen\npackTeam=stimmen\n") ~= nil,
         true)

@@ -194,7 +194,7 @@ do
         Setup("deDE", nil, nil, Packs(team, plain))
         _G.Spoken:SetVoiceOrder(voices)
         local found = Bosses:GetAudioClip(36, "edwin vancleef")
-        return found and (found.pack .. ":" .. found.voice) or nil
+        return found and (found.packFolder .. ":" .. found.voice) or nil
     end
     Expect("voices: the team's first", Path({ "deDE_stimmen", "deDE", "enUS" }, TEAM, GERMAN),
         "SpokenBossesAudio_deDE_stimmen:deDE_stimmen")

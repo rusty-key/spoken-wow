@@ -612,7 +612,9 @@ function SpokenPlaces:NewLoreSound(mapID, areaKey)
 		path = path,
 		length = length,
 		fileName = fileName,
-		pack = pack,
+		-- The pack it plays from and its voice, which a report names.
+		packFolder = pack.addon,
+		voice = pack.voice,
 		mapID = mapID,
 		areaKey = areaKey,
 		present = {

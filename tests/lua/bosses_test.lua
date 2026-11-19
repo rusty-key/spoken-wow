@@ -552,10 +552,10 @@ Expect("...filed under the language heard, not the one on screen", reported,
 local built
 Spoken.ShowReport = function(_, url, build) reported, built = url, build and build() end
 Bosses.GetAudioClip = function()
-    return { path = "x.mp3", len = 41.2, language = "deDE", pack = "SpokenBossesAudio_deDE_stimmen", voice = "deDE_stimmen" }
+    return { path = "x.mp3", len = 41.2, language = "deDE", packFolder = "SpokenBossesAudio_deDE_stimmen", voice = "deDE_stimmen" }
 end
 voiced = Bosses:StoryClip(36, "edwin vancleef")
-Bosses.GetAudioClip = function() return { path = "y.mp3", len = 1, language = "enUS", pack = "SpokenBossesAudio", voice = "enUS" } end
+Bosses.GetAudioClip = function() return { path = "y.mp3", len = 1, language = "enUS", packFolder = "SpokenBossesAudio", voice = "enUS" } end
 voiced.present.actions[1].onClick(voiced)
 Expect("...with an envelope of its own", built and built:match("^!SPOKEN1 bosses\n") ~= nil, true)
 Expect("...naming the boss", built and built:match("\nmap=36\nkey=edwin vancleef\n") ~= nil, true)
