@@ -21,9 +21,6 @@ alter table "release_run" add column if not exists "bump" text;
 alter table "release_run" add column if not exists "stage" boolean not null default false;
 -- A staged run's channel entries; a promote run's copy of them; a delist run's folders.
 alter table "release_run" add column if not exists "staged" jsonb;
--- The takes a staged run's pack was built from, by file: { version, sha256 }, which its review lists
--- and plays. Apart from "staged", which a promote run copies and every status check reads.
-alter table "release_run" add column if not exists "takes" jsonb;
 alter table "release_run" add column if not exists "promotes" uuid references "release_run" ("id");
 alter table "release_run" add column if not exists "reviewedBy" text references "user" ("id") on delete set null;
 alter table "release_run" add column if not exists "reviewedAt" timestamptz;
