@@ -142,7 +142,7 @@ export default function VoiceSlotList({
     failed: string[];
   } | null>(null);
   const [confirmingSweep, setConfirmingSweep] = useState(false);
-  const player = usePlayer();
+  const player = usePlayer(tab);
 
   const seedable = slots.filter((slot) => seedSlots.includes(slot.name));
 
@@ -284,7 +284,8 @@ export default function VoiceSlotList({
     return { tone: "fix", label: "Not in your account" };
   }
 
-  const directed = (slot: VoiceSlot) => Boolean(tags[slot.name] || tags[raceOf(slot)]);
+  // On the saved directions, so a row being edited does not filter itself away before its save.
+  const directed = (slot: VoiceSlot) => Boolean(saved[slot.name] || saved[raceOf(slot)]);
   const filters: Filter[] =
     tab === "elevenlabs"
       ? [
@@ -307,8 +308,8 @@ export default function VoiceSlotList({
     activeFilter.test(slot) &&
     (!needle ||
       slot.name.includes(needle) ||
-      (tags[slot.name] ?? "").toLowerCase().includes(needle) ||
-      (tags[raceOf(slot)] ?? "").toLowerCase().includes(needle));
+      (saved[slot.name] ?? "").toLowerCase().includes(needle) ||
+      (saved[raceOf(slot)] ?? "").toLowerCase().includes(needle));
   const shown = slots.filter(matches).length;
 
   /** The clip a row's play button plays: the reference on fish.audio, the first clip otherwise. */
@@ -668,26 +669,39 @@ export default function VoiceSlotList({
  * One <audio> for the whole list, so starting a voice stops the last one rather than talking
  * over it.
  */
-function usePlayer() {
+function usePlayer(tab: Provider) {
   const audio = useRef<HTMLAudioElement | null>(null);
-  const [playing, setPlaying] = useState<string | null>(null);
+  // Which request is current, so a play() an older one lost does not clear the newer one.
+  const request = useRef(0);
+  const [state, setState] = useState<{ tab: Provider; src: string } | null>(null);
+  // Kept with its tab: switching provider hides the row that could stop it.
+  const playing = state?.tab === tab ? state.src : null;
 
-  useEffect(() => () => audio.current?.pause(), []);
+  useEffect(
+    () => () => {
+      request.current++;
+      audio.current?.pause();
+    },
+    [tab],
+  );
 
   function toggle(src: string) {
     if (!audio.current) {
       audio.current = new Audio();
-      audio.current.onended = () => setPlaying(null);
-      audio.current.onerror = () => setPlaying(null);
+      audio.current.onended = () => setState(null);
+      audio.current.onerror = () => setState(null);
     }
+    const mine = ++request.current;
     if (playing === src) {
       audio.current.pause();
-      setPlaying(null);
+      setState(null);
       return;
     }
     audio.current.src = src;
-    void audio.current.play().catch(() => setPlaying(null));
-    setPlaying(src);
+    void audio.current.play().catch(() => {
+      if (request.current === mine) setState(null);
+    });
+    setState({ tab, src });
   }
 
   return { playing, toggle };

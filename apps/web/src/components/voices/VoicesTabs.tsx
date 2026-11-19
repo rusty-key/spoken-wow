@@ -313,26 +313,25 @@ export default function VoicesTabs(props: Props) {
           </p>
         )}
 
-        {showSettings && (
-          <div id="voice-settings" className="vo-settings">
-            {tab === "elevenlabs" ? (
-              <ElevenLabsSettingsForm
-                key={JSON.stringify(settings.elevenlabs)}
-                saved={settings.elevenlabs}
-                models={account?.models ?? null}
-                modelsNote={modelsNote(props.keys.elevenlabs, reading, account)}
-                onSave={(elevenlabs) => save({ elevenlabs })}
-              />
-            ) : (
-              <FishSettingsForm
-                key={JSON.stringify(settings.fish)}
-                saved={settings.fish}
-                models={props.fishModels}
-                onSave={(fish) => save({ fish })}
-              />
-            )}
-          </div>
-        )}
+        {/* Hidden rather than unmounted, so closing it keeps an unsaved edit. */}
+        <div id="voice-settings" className="vo-settings" hidden={!showSettings}>
+          {tab === "elevenlabs" ? (
+            <ElevenLabsSettingsForm
+              key={JSON.stringify(settings.elevenlabs)}
+              saved={settings.elevenlabs}
+              models={account?.models ?? null}
+              modelsNote={modelsNote(props.keys.elevenlabs, reading, account)}
+              onSave={(elevenlabs) => save({ elevenlabs })}
+            />
+          ) : (
+            <FishSettingsForm
+              key={JSON.stringify(settings.fish)}
+              saved={settings.fish}
+              models={props.fishModels}
+              onSave={(fish) => save({ fish })}
+            />
+          )}
+        </div>
 
         {tab === "elevenlabs" && props.keys.elevenlabs && present !== null && (
           <PopulateDialog
