@@ -28,6 +28,9 @@ export default async function Page({
   searchParams: Promise<{ team?: string | string[] }>;
 }) {
   const lang = await pageLang(params);
+  // Read before the empty-state return too, so its section tabs keep the team being viewed.
+  const { team } = await searchParams;
+  const viewedTeam = typeof team === "string" ? team : undefined;
   let books;
   try {
     books = await bookFacets(lang);
@@ -37,7 +40,7 @@ export default async function Page({
     // that the import has not been run.
     if (!isCorpusEmpty(error)) throw error;
     return (
-      <AudioPage lang={lang} section="readables">
+      <AudioPage lang={lang} section="readables" team={viewedTeam}>
         <AudioPageEmpty>
             The readables corpus has not been loaded into this database yet, so there is nothing to
             show. It is extracted from the vmangos world database with{" "}
@@ -49,11 +52,10 @@ export default async function Page({
   }
 
   // An unknown team slug falls back to the default team.
-  const { team } = await searchParams;
-  const view = await teamView(lang, typeof team === "string" ? team : null);
+  const view = await teamView(lang, viewedTeam ?? null);
 
   return (
-    <AudioPage lang={lang} section="readables" team={typeof team === "string" ? team : undefined}>
+    <AudioPage lang={lang} section="readables" team={viewedTeam}>
       {/* Suspense is required: Explorer calls useSearchParams(). */}
       {/* Outside the column: the explorer places its own search (capped) and table (wide). */}
       <Suspense>

@@ -24,13 +24,16 @@ export default async function Page({
   searchParams: Promise<{ team?: string | string[] }>;
 }) {
   const lang = await pageLang(params);
+  // Read before the empty-state return too, so its section tabs keep the team being viewed.
+  const { team } = await searchParams;
+  const viewedTeam = typeof team === "string" ? team : undefined;
   const instances = await instanceFacets(lang);
 
   // Every live boss is listed in every language, so no instances means no boss rows at all:
   // the intake has not been run against this database.
   if (instances.length === 0) {
     return (
-      <AudioPage lang={lang} section="bosses">
+      <AudioPage lang={lang} section="bosses" team={viewedTeam}>
         <AudioPageEmpty>
             The boss tables have not been loaded into this database yet, so there is nothing to
             show. They are seeded from the committed Lua by the one-off intake,{" "}
@@ -42,11 +45,10 @@ export default async function Page({
   }
 
   // An unknown team slug falls back to the default team.
-  const { team } = await searchParams;
-  const view = await teamView(lang, typeof team === "string" ? team : null);
+  const view = await teamView(lang, viewedTeam ?? null);
 
   return (
-    <AudioPage lang={lang} section="bosses" team={typeof team === "string" ? team : undefined}>
+    <AudioPage lang={lang} section="bosses" team={viewedTeam}>
       {/* Suspense is required: Explorer calls useSearchParams(). */}
       <Suspense>
         <BossesExplorer key={viewKey(view)} instances={instances} {...view} />
