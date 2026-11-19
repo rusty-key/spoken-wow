@@ -90,11 +90,10 @@ export interface Product {
   legacy?: { id: string; tagPrefix: string; folders: string[]; assetPattern: string }
   /**
    * Who released a voice pack, as the channel says: null for the language's official team's pack in its plain folders,
-   * absent when the channel does not carry it.
+   * absent when the channel does not carry it. A team's pack installed before the channel dropped it keeps its slug as
+   * its name.
    */
   team?: ChannelTeam | null
-  /** Who made a voice pack, as the Voice Packs page groups and names it (shared/products.ts resolves it). */
-  author?: PackAuthor
 }
 
 /**

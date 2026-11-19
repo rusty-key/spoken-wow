@@ -1,7 +1,7 @@
 // What the manager can install, as a table. The names follow scripts/lib/packs.mjs in the repo:
 // a release tag is `<product id>/v<version>`, English's folders are the plain names and a
 // language's are those plus `_<lang>`. Which of these have a release is the catalog's business.
-import { PAGE_AUTHOR, QUESTS_SIDES, TEAM_SLUG, type ChannelTeam, type PackAuthor, type Product, type QuestsPack, type QuestsSide, type Section, type VoiceLanguage } from './types'
+import { LANG_CODE, PAGE_AUTHOR, QUESTS_SIDES, SECTIONS, TEAM_SLUG, type ChannelTeam, type PackAuthor, type Product, type QuestsPack, type QuestsSide, type Section, type VoiceLanguage } from './types'
 
 export const BASE_LANGUAGE = 'enUS'
 
@@ -104,6 +104,12 @@ export function packFolder(section: Section, lang: string, side: QuestsSide | nu
   return `${name}${tail(lang, slug, '_')}`
 }
 
+/** A pack's folders: the quests bundle holds the four sides' folders, as the store installs them; any other pack has one. */
+export function foldersOf(section: Section, lang: string, pack: QuestsPack, slug: string | null = null): string[] {
+  if (section === 'quests' && pack === 'all') return QUESTS_SIDES.map((s) => packFolder('quests', lang, s, slug))
+  return [packFolder(section, lang, section === 'quests' ? (pack as QuestsSide) : null, slug)]
+}
+
 /** What a pack's zip is named before its version: the quests bundle's has a name of its own. */
 function assetBaseOf(section: Section, lang: string, pack: QuestsPack, slug: string | null): string {
   return section === 'quests' && pack === 'all' ? `SpokenQuestsAudioAll${tail(lang, slug, '_')}` : packFolder(section, lang, pack === 'all' ? null : pack, slug)
@@ -130,9 +136,7 @@ export const PAGE_PACKS: PackAuthor = { key: PAGE_AUTHOR, name: null, official: 
 
 /** A pack of the table: a page pack, with what it was released as before. */
 function voices(section: Section, lang: string, pack: QuestsPack): Product {
-  // "all" is a bundle holding the four split packs' folders, as the store installs them.
-  const folders = section === 'quests' && pack === 'all' ? QUESTS_SIDES.map((s) => packFolder('quests', lang, s)) : [packFolder(section, lang, section === 'quests' ? (pack as QuestsSide) : null)]
-  const product = voiceProduct(section, lang, pack, folders, null)
+  const product = voiceProduct(section, lang, pack, foldersOf(section, lang, pack), null)
   const english = lang === BASE_LANGUAGE
   let legacy: Product['legacy']
   if (section === 'quests') {
@@ -149,7 +153,7 @@ function voices(section: Section, lang: string, pack: QuestsPack): Product {
       legacy = { id, tagPrefix: id, folders: [oldFolder], assetPattern: zip(oldFolder) }
     }
   }
-  return { ...product, author: PAGE_PACKS, ...(legacy ? { legacy } : {}) }
+  return legacy ? { ...product, legacy } : product
 }
 
 const SPOKEN: Product = {
@@ -185,7 +189,8 @@ export function currentProductId(id: string): string {
   return PRODUCTS.find((p) => p.legacy?.id === id)?.id ?? id
 }
 
-const VOICE_ID = new RegExp(`^(quests|places|readables|bosses)-audio(?:-(alliance|horde|shared|gossip))?(?:-([a-z]{2}[A-Z]{2})(?:-(${TEAM_SLUG.source.slice(1, -1)}))?)?$`)
+const unanchored = (re: RegExp): string => re.source.slice(1, -1)
+const VOICE_ID = new RegExp(`^(${SECTIONS.join('|')})-audio(?:-(${QUESTS_SIDES.join('|')}))?(?:-(${unanchored(LANG_CODE)})(?:-(${unanchored(TEAM_SLUG)}))?)?$`)
 
 /**
  * The voice pack a product id names, with the folders the id gives, for a pack installed earlier that the channel no
@@ -196,14 +201,11 @@ export function installedVoiceProduct(id: string): Product | null {
   const m = VOICE_ID.exec(id)
   if (!m) return null
   const section = m[1] as Section
-  const side = (m[2] ?? null) as QuestsSide | null
+  const pack = (m[2] ?? 'all') as QuestsPack
   const lang = m[3] ?? BASE_LANGUAGE
   const slug = m[4] ?? null
-  const pack: QuestsPack = side ?? 'all'
   if (productIdOf(section, lang, pack, slug) !== id) return null
-  const folders = section === 'quests' && !side ? QUESTS_SIDES.map((s) => packFolder('quests', lang, s, slug)) : [packFolder(section, lang, side, slug)]
-  const author: PackAuthor = slug ? { key: slug, name: slug, official: false } : PAGE_PACKS
-  return { ...voiceProduct(section, lang, pack, folders, slug), author }
+  return { ...voiceProduct(section, lang, pack, foldersOf(section, lang, pack, slug), slug), team: slug ? { slug, name: slug, official: false } : null }
 }
 
 /** What products and languages are read from in the channel's index-v2.json. */
@@ -259,12 +261,7 @@ export function productsFor(index: ChannelListing | null): Product[] {
     if (present.length === QUESTS_SIDES.length) add(channelProduct('quests', g.lang, g.slug, 'all', present.map((s) => g.folders.get(s)!), g.team))
     for (const side of present) add(channelProduct('quests', g.lang, g.slug, side, [g.folders.get(side)!], g.team))
   }
-  return withAuthors(out)
-}
-
-/** Each voice product's author: its team, or for a pack the channel lists with no team, the page packs'. */
-function withAuthors(products: Product[]): Product[] {
-  return products.map((p) => (p.kind === 'voices' ? { ...p, author: p.team ? { key: p.team.slug, name: p.team.name, official: p.team.official } : PAGE_PACKS } : p))
+  return out
 }
 
 /**

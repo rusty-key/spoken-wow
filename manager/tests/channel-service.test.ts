@@ -2,7 +2,7 @@ import fs from 'node:fs'
 import path from 'node:path'
 import { afterEach, describe, expect, it } from 'vitest'
 import { CHANNELS } from '../src/shared/api'
-import type { CatalogUpdate, JobProgress } from '../src/shared/types'
+import type { CatalogUpdate, JobProgress, Product } from '../src/shared/types'
 import { ManagerService } from '../src/main/service'
 import { loadPackState } from '../src/main/packs-state'
 import { channelFixture, channelKeys, serveChannel, type PackSpec } from './channel-helpers'
@@ -124,8 +124,16 @@ describe('the channel through the service', () => {
       for (const id of ['places-audio-deDE-stimmen', 'places-audio-jaJP']) expect((await waitFor(sent, svc.install(game.id, id))).phase).toBe('done')
 
       fx.objects = (v1Only ? channelFixture(keys, packs, { v1Only: true, generatedAt: '2026-10-20T00:00:00.000Z' }) : channelFixture(keys, [spec], { generatedAt: '2026-10-20T00:00:00.000Z' })).objects
+      const before = sent.length
       await svc.refreshChannel()
-      expect(svc.products().some((p) => p.id === 'places-audio-deDE-stimmen' || p.id === 'places-audio-jaJP')).toBe(false)
+      const told = sent.slice(before).filter((e) => e.channel === CHANNELS.catalogChanged).at(-1)?.payload as CatalogUpdate | undefined
+      const listed = (products: Product[] | undefined) => (products ?? []).filter((p) => p.id === 'places-audio-deDE-stimmen' || p.id === 'places-audio-jaJP').map((p) => [p.id, p.folders, p.team])
+      const rebuilt = [
+        ['places-audio-deDE-stimmen', [TEAM], { slug: 'stimmen', name: 'stimmen', official: false }],
+        ['places-audio-jaJP', [JA], null]
+      ]
+      expect(listed(svc.products())).toEqual(rebuilt)
+      expect(listed(told?.products)).toEqual(rebuilt)
       const delisted = async () => (await svc.statuses(game.id)).filter((st) => st.productId === 'places-audio-deDE-stimmen' || st.productId === 'places-audio-jaJP')
       expect((await delisted()).map((st) => [st.productId, st.installedFolders, st.latest])).toEqual([
         ['places-audio-deDE-stimmen', [TEAM], undefined],
@@ -137,6 +145,7 @@ describe('the channel through the service', () => {
       expect(fs.existsSync(path.join(game.addOnsPath, JA))).toBe(false)
       expect(loadPackState(game, TEAM)).toBeNull()
       expect(await delisted()).toEqual([])
+      expect(listed(svc.products())).toEqual([])
     })
   }
 

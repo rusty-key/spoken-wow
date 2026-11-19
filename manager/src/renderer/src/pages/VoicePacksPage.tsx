@@ -1,7 +1,7 @@
 import { useMemo, useState, type ReactNode } from 'react'
 import { SECTIONS, type Product, type ProductStatus } from '@shared/types'
 import { isChannelRelease } from '@shared/channel'
-import { BASE_LANGUAGE, LANGUAGES, installedVoiceProduct, languageName } from '@shared/products'
+import { BASE_LANGUAGE, LANGUAGES, languageName } from '@shared/products'
 import { jobBusy, latestOf, releasesFor, statusOf } from '../catalog'
 import { RailTop } from '../components/Brand'
 import { NoGame } from '../components/EmptyGames'
@@ -29,18 +29,16 @@ export function VoicePacksPage(): ReactNode {
   const gameStatuses = game ? state.statuses[game.id] : undefined
   // Installed packs with no release, a delisted team's among them: shown so they can be removed.
   const shelved = useMemo(() => {
+    const installed = new Set((gameStatuses ?? []).filter((st) => st.state !== 'not-installed').map((st) => st.productId))
     const released = new Set(releasedVoices.map((p) => p.id))
-    return (gameStatuses ?? [])
-      .filter((st) => st.state !== 'not-installed' && !released.has(st.productId))
-      .map((st) => voices.find((p) => p.id === st.productId) ?? installedVoiceProduct(st.productId))
-      .filter((p): p is Product => p?.kind === 'voices')
+    return voices.filter((p) => installed.has(p.id) && !released.has(p.id))
   }, [gameStatuses, releasedVoices, voices])
   const chosen = state.settings.voiceLanguage || BASE_LANGUAGE
   const languages = state.languages.length > 0 ? state.languages : LANGUAGES
-  const shelvedLangs = new Set(shelved.map((p) => p.lang))
-  const chips = [...languages, ...[...shelvedLangs].filter((c) => !languages.some((l) => l.code === c)).map((code) => ({ code: code!, name: code! }))].filter(
-    (l) => withRelease.has(l.code) || shelvedLangs.has(l.code) || l.code === chosen
-  )
+  const shelvedLangs = new Set(shelved.map((p) => p.lang).filter((code): code is string => !!code))
+  // A language the channel no longer lists at all is named by its code.
+  const unlisted = [...shelvedLangs].filter((code) => !languages.some((l) => l.code === code)).map((code) => ({ code, name: code }))
+  const chips = [...languages.filter((l) => withRelease.has(l.code) || shelvedLangs.has(l.code) || l.code === chosen), ...unlisted]
 
   if (!game) return <NoGame />
 
@@ -248,7 +246,7 @@ function VoiceRow({ product, gameId, writable }: { product: Product; gameId: str
   const present = s !== 'not-installed'
   const channel = isChannelRelease(latest)
   const size = latest ? formatBytes(status?.delta ? status.delta.bytes : latest.assetSize) : ''
-  const maker = product.author?.official === false ? product.author.name : null
+  const maker = product.team?.official === false ? product.team.name : null
   return (
     <PackRow
       gameId={gameId}

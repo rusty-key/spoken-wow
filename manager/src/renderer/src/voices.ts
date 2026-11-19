@@ -13,9 +13,10 @@ export interface Authors {
   keyOf: (p: Product) => string
 }
 
-const authorOf = (p: Product): Author => p.author ?? PAGE_PACKS
+/** A voice pack's author: its team, or for a pack the channel lists with no team, the page packs'. */
+const authorOf = (p: Product): Author => (p.team ? { key: p.team.slug, name: p.team.name, official: p.team.official } : PAGE_PACKS)
 
-/** The authors of a language's products, as shared/products.ts resolved each product's. */
+/** The authors of a language's products. */
 export function authorsOf(products: readonly Product[]): Authors {
   const byKey = new Map<string, Author>()
   for (const p of products) {

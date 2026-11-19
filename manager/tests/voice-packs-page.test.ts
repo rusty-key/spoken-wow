@@ -5,6 +5,7 @@ import { afterEach, describe, expect, it } from 'vitest'
 import { installedVoiceProduct, languagesFor, productsFor, type ChannelListing } from '../src/shared/products'
 import { DEFAULT_SETTINGS, type ChannelTeam, type GameInstall, type Product, type ProductStatus, type QuestsSide, type ReleaseInfo, type Section, type Settings } from '../src/shared/types'
 import { InstallAllConfirm, VoicePacksPage } from '../src/renderer/src/pages/VoicePacksPage'
+import { GameCard } from '../src/renderer/src/components/GameCard'
 import { initial, StoreContext, type Actions, type State } from '../src/renderer/src/store'
 import { setUiLanguage } from '../src/renderer/src/strings'
 import { ALL_AUTHORS, authorsOf, groupByAuthor, installAllPlan, type InstallAllPlan } from '../src/renderer/src/voices'
@@ -99,9 +100,14 @@ describe('Voice Packs: every language, and who made each pack', () => {
 
 describe('Voice Packs: an installed pack the channel no longer lists', () => {
   const installed = (productId: string, folder: string): ProductStatus => ({ gameId: GAME.id, productId, state: 'unknown', installedVersion: '1.0.0', installedFolders: [folder] })
+  /** The page as main sends it with the pack installed: its product rebuilt from the id, after the listed ones. */
+  const withInstalled = (settings: Partial<Settings>, productId: string, folder: string): State => {
+    const state = stateFor(LISTING, settings)
+    return { ...state, products: [...state.products, installedVoiceProduct(productId)!], statuses: { [GAME.id]: [installed(productId, folder)] } }
+  }
 
   it('shows it, with Remove and nothing to install, update or repair', () => {
-    const state = { ...stateFor(LISTING, { voiceLanguage: 'plPL' }), statuses: { [GAME.id]: [installed('places-audio-plPL-klang', 'SpokenPlacesAudio_plPL_klang')] } }
+    const state = withInstalled({ voiceLanguage: 'plPL' }, 'places-audio-plPL-klang', 'SpokenPlacesAudio_plPL_klang')
     const html = draw(state)
     expect(html).toContain('>Polski</button>')
     const places = section(html, 'Places')
@@ -111,10 +117,16 @@ describe('Voice Packs: an installed pack the channel no longer lists', () => {
   })
 
   it('shows it beside the released packs of its language', () => {
-    const state = { ...stateFor(LISTING, { voiceLanguage: 'deDE' }), statuses: { [GAME.id]: [installed('places-audio-deDE-klang', 'SpokenPlacesAudio_deDE_klang')] } }
+    const state = withInstalled({ voiceLanguage: 'deDE' }, 'places-audio-deDE-klang', 'SpokenPlacesAudio_deDE_klang')
     const places = section(draw(state), 'Places')
     expect(places).toContain('by Stimmen')
     expect(places).toContain('by klang')
+  })
+
+  it("gives its language to the game's card", () => {
+    const state = withInstalled({}, 'places-audio-jaJP-klang', 'SpokenPlacesAudio_jaJP_klang')
+    const html = renderToStaticMarkup(createElement(StoreContext.Provider, { value: { state, actions: {} as Actions } }, createElement(GameCard, { game: GAME })))
+    expect(html).toContain('<span class="tag">JA</span>')
   })
 
   it('rebuilds its folders from its id, and nothing from an id that is no pack', () => {
@@ -168,8 +180,7 @@ describe('Voice Packs: the Author filter', () => {
 
 describe('authorsOf', () => {
   const product = (id: string, team: ChannelTeam): Product => ({
-    id, kind: 'voices', title: '', description: '', section: 'places', lang: 'deDE', tagPrefix: id, folders: [id], assetPattern: '', team,
-    author: { key: team.slug, name: team.name, official: team.official }
+    id, kind: 'voices', title: '', description: '', section: 'places', lang: 'deDE', tagPrefix: id, folders: [id], assetPattern: '', team
   })
 
   it('orders official teams first, then by name', () => {
@@ -198,7 +209,7 @@ describe('authorsOf', () => {
 
   it('gives page packs no name, whatever official teams the language has', () => {
     const two = { ...LISTING, packs: { ...LISTING.packs, SpokenReadablesAudio_deDE_aa: at('deDE', 'readables', null, { slug: 'aa', name: 'A', official: true }) } }
-    for (const listing of [LISTING, two]) expect(productsFor(listing).find((p) => p.id === 'places-audio-deDE')?.author).toEqual({ key: '', name: null, official: true })
+    for (const listing of [LISTING, two]) expect(authorsOf(productsFor(listing).filter((p) => p.id === 'places-audio-deDE')).list).toEqual([{ key: '', name: null, official: true }])
   })
 })
 

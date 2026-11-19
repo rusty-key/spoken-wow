@@ -25,7 +25,7 @@ import { fetchIndex, fetchManifest, loadCachedIndex, loadCachedManifest, type Ch
 import { dropPackState, loadPackState } from './packs-state'
 import { syncPacks } from './packs-sync'
 import { loadLedger, resetInstallId, sendPending, type SendResult, type ShareLedger } from './share'
-import { getRecord, loadSettings, loadState, log, sanitizeSettings, saveSettings } from './state'
+import { getRecord, loadSettings, loadState, log, sanitizeSettings, saveSettings, type StateFile } from './state'
 import { computeStatuses } from './status'
 
 export interface ServiceOptions {
@@ -248,8 +248,9 @@ export class ManagerService {
     try {
       const state = loadState(this.opts.dataPath)
       const catalog = this.effectiveCatalog()
+      const products = this.productLists(state).all
       for (const game of this.games.filter((g) => isSupportedFlavor(g.flavor))) {
-        for (const status of await computeStatuses(game, catalog, this.settings, state, this.allProducts())) {
+        for (const status of await computeStatuses(game, catalog, this.settings, state, products)) {
           const key = `${game.id}:${status.productId}`
           if (status.state !== 'update-available' || status.blockedReason || isCommunityProductId(status.productId)) continue
           if (getRecord(state, game.id, status.productId)?.pinned || this.autoSkip.has(key)) continue
@@ -269,8 +270,9 @@ export class ManagerService {
    */
   private async warmManifests(offered: Catalog): Promise<void> {
     const wanted = new Map<string, ChannelPack>()
+    const products = this.products()
     for (const game of this.games) {
-      for (const p of this.products()) {
+      for (const p of products) {
         const packs = this.channelPacks(p)
         if (!packs || !p.folders!.some((f) => loadPackState(game, f))) continue
         p.folders!.forEach((f, i) => {
@@ -355,13 +357,35 @@ export class ManagerService {
     return next
   }
 
-  // Keyed by the index object, which a fetch keeps when the channel has not changed.
-  private productsMemo: { channel: ChannelIndexV2 | null; products: Product[] } | null = null
+  // Keyed by the index and registry objects, which a fetch keeps when nothing changed, and by the delisted ids.
+  private productsMemo: { channel: ChannelIndexV2 | null; community: CommunityCatalog; listed: Product[]; listedIds: Set<string>; delisted: string; all: Product[]; products: Product[] } | null = null
 
-  /** The voice products and Spoken: the table, and every team's and new language's pack the channel lists. */
+  /**
+   * Every product, then the window's share of them: Spoken and the voice packs. The table, every team's and new
+   * language's pack the channel lists, the registry's packs, and those installed earlier, in any game, that no list
+   * carries any more, so they can still be seen and removed.
+   */
+  private productLists(state: StateFile = loadState(this.opts.dataPath)): { all: Product[]; products: Product[] } {
+    let memo = this.productsMemo
+    if (memo?.channel !== this.channel || memo.community !== this.community) {
+      const listed = [...productsFor(this.channel), ...this.community.packs.map((p) => communityProduct(p))]
+      const listedIds = new Set(listed.map((p) => p.id))
+      memo = { channel: this.channel, community: this.community, listed, listedIds, delisted: '', all: listed, products: listed.filter((p) => p.kind !== 'community') }
+    }
+    const { listedIds } = memo
+    const installed = Object.values(state.installs).flatMap((perGame) => Object.keys(perGame))
+    const delistedIds = [...new Set(installed.filter((id) => !listedIds.has(id)))].sort()
+    if (delistedIds.join('\n') !== memo.delisted) {
+      const all = [...memo.listed, ...delistedIds.flatMap((id) => this.delistedProduct(id) ?? [])]
+      memo = { ...memo, delisted: delistedIds.join('\n'), all, products: all.filter((p) => p.kind !== 'community') }
+    }
+    this.productsMemo = memo
+    return memo
+  }
+
+  /** Spoken and the voice packs, delisted ones among them: what the window is sent. */
   products(): Product[] {
-    if (this.productsMemo?.channel !== this.channel) this.productsMemo = { channel: this.channel, products: productsFor(this.channel) }
-    return this.productsMemo.products
+    return this.productLists().products
   }
 
   /** The products follow the channel, so the window is sent them with every catalog. */
@@ -369,9 +393,9 @@ export class ManagerService {
     this.opts.send(CHANNELS.catalogChanged, { catalog, products: this.products(), languages: languagesFor(this.channel) } satisfies CatalogUpdate)
   }
 
-  /** The products plus the registry's packs. */
+  /** The products plus the registry's packs, delisted ones among them. */
   private allProducts(): Product[] {
-    return [...this.products(), ...this.community.packs.map((p) => communityProduct(p))]
+    return this.productLists().all
   }
 
   /** The catalog with the registry's packs as one release each. */
@@ -453,7 +477,7 @@ export class ManagerService {
     return this.allProducts().find((p) => p.id === productId)
   }
 
-  /** A pack installed earlier that its list no longer carries, so it can still be seen and removed. */
+  /** A pack installed earlier that its list no longer carries, rebuilt from its id. */
   private delistedProduct(productId: string): Product | null {
     if (isCommunityProductId(productId)) return communityProduct({ id: productId.slice(COMMUNITY_PREFIX.length) })
     return installedVoiceProduct(productId)
@@ -464,12 +488,7 @@ export class ManagerService {
   async statuses(gameId: string): Promise<ProductStatus[]> {
     const game = this.requireGame(gameId)
     const state = loadState(this.opts.dataPath)
-    const products = this.allProducts()
-    // A pack installed earlier and since removed from the registry or the channel still shows, so it can be removed.
-    for (const id of Object.keys(state.installs[gameId] ?? {})) {
-      const delisted = products.some((p) => p.id === id) ? null : this.delistedProduct(id)
-      if (delisted) products.push(delisted)
-    }
+    const products = this.productLists(state).all
     const out = await computeStatuses(game, this.effectiveCatalog(), this.settings, state, products)
     const spoken = out.find((s) => s.productId === 'spoken')?.installedVersion
     for (const status of out) {
@@ -579,7 +598,7 @@ export class ManagerService {
 
   uninstall(gameId: string, productId: string): string {
     const game = this.requireGame(gameId)
-    const target = this.findProduct(productId) ?? this.delistedProduct(productId)
+    const target = this.findProduct(productId)
     if (!target) throw new Error('Unknown product')
     const refused = isSupportedFlavor(game.flavor) ? null : notSupportedMessage(game.flavorFolder)
     return this.jobs.enqueue({
