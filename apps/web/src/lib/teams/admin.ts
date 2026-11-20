@@ -218,7 +218,7 @@ const WORK: Record<string, string> = {
  */
 export async function deleteTeam(team: TeamId, actorId: string): Promise<void> {
   await withTeam(ALL_TEAMS, async (client) => {
-    // Locked, so a hand-over to it cannot commit between the check and the delete.
+    // Locked, so a language cannot join it between the check and the delete.
     const { rows } = await client.query<{ slug: string }>(`select "slug" from "team" where "id" = $1 for update`, [team]);
     if (rows.length === 0) throw new TeamError("No such team.", 404);
     const { rows: held } = await client.query<{ lang: string }>(
@@ -226,7 +226,7 @@ export async function deleteTeam(team: TeamId, actorId: string): Promise<void> {
       [team],
     );
     if (held.length) {
-      throw new TeamError(`${rows[0].slug} holds ${held.map((row) => row.lang).join(", ")}; hand it to another team first.`, 409);
+      throw new TeamError(`${rows[0].slug} holds ${held.map((row) => row.lang).join(", ")}; a team with plain packs cannot be deleted yet.`, 409);
     }
     const members = await membersOf(client, team);
     try {

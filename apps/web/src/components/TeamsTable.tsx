@@ -237,8 +237,7 @@ export default function TeamsTable({ initial, languages }: Props) {
                   variant="ghost"
                   size="sm"
                   aria-label={`Delete ${team.slug}`}
-                  title={team.langs.length ? "Hand its languages to another team first" : undefined}
-                  disabled={busy || team.langs.length > 0}
+                  disabled={busy}
                   onClick={() => remove(team)}
                 >
                   Delete
