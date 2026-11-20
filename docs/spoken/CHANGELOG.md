@@ -4,6 +4,9 @@ Spoken Player until 3.0.0, when it became Spoken and took its modules into one d
 
 ## Unreleased
 
+- **The minimap right-click menu now uses the client's native menu where available.** Older
+  clients keep the legacy dropdown or Spoken's custom fallback, and the menu also opens from
+  the addon compartment. *([anon1231823](https://github.com/anon1231823))*
 - **Quest pages in Azeroth's Compendium show the progress text**, what the NPC says while a quest
   is under way, between the description and the completion, with its own Play and Report. A quest
   a voice pack voices only in its progress now counts for Voiced Only, and shift-click on its row

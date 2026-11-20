@@ -166,7 +166,11 @@ local function Widget(kind, name)
         self.hooks[script] = self.hooks[script] or {}
         table.insert(self.hooks[script], fn)
     end
-    function w:IsVisible() if self.name then return world.panels[self.name] and true or false end return self.shown end
+    function w:IsVisible()
+        if self.name == "UIParent" then return true end
+        if self.name then return world.panels[self.name] and true or false end
+        return self.shown
+    end
     function w:IsShown() return self:IsVisible() end
     function w:Show()
         self.shown = true
@@ -905,6 +909,94 @@ _G.DropDownList1 = Frame("DropDownList1")
 _G.DropDownList1:Hide()
 local menuAPI = {}
 
+M.openNativeMenu = nil
+M.nativeMenuEntries = {}
+M.nativeMenuAnchor = nil
+local nativeMenuManager = { open = false }
+local nativeMenuAPI = {}
+
+local function NativeDescription(kind, text, callback)
+    local description = {kind = kind, text = text, callback = callback, children = {}, releaseCallbacks = {}}
+    function description:CreateButton(childText, childCallback)
+        local child = NativeDescription("button", childText, childCallback)
+        table.insert(self.children, child)
+        return child
+    end
+    function description:CreateTitle(childText)
+        table.insert(self.children, NativeDescription("title", childText))
+    end
+    function description:CreateDivider()
+        table.insert(self.children, NativeDescription("divider"))
+    end
+    function description:AddMenuReleasedCallback(released)
+        table.insert(self.releaseCallbacks, released)
+    end
+    return description
+end
+
+function nativeMenuManager:CloseMenus()
+    self.open = false
+    if M.openNativeMenu then
+        for _, released in ipairs(M.openNativeMenu.releaseCallbacks or {}) do released() end
+    end
+    M.openNativeMenu = nil
+    M.nativeMenuEntries = {}
+    M.nativeMenuAnchor = nil
+    M.nativeMenuOwner = nil
+end
+function nativeMenuManager:IsAnyMenuOpen()
+    return self.open
+end
+function nativeMenuManager:OpenMenu(owner, root, anchor)
+    self.open = true
+    M.openNativeMenu = root
+    M.nativeMenuEntries = root.children
+    M.nativeMenuAnchor = anchor
+    M.nativeMenuOwner = owner
+end
+
+function M.OpenOtherNativeMenu()
+    nativeMenuManager:CloseMenus()
+    nativeMenuManager:OpenMenu(nil, nativeMenuAPI.CreateRootMenuDescription())
+end
+
+function nativeMenuAPI.CreateRootMenuDescription()
+    return NativeDescription("root")
+end
+function nativeMenuAPI.CreateContextMenu(owner, generator)
+    local root = nativeMenuAPI.CreateRootMenuDescription()
+    generator(owner, root)
+    nativeMenuManager:OpenMenu(owner, root)
+end
+function nativeMenuAPI.PopulateDescription(generator, owner, root)
+    generator(owner, root)
+end
+function nativeMenuAPI.GetManager()
+    return nativeMenuManager
+end
+function nativeMenuAPI.CreateAnchor(...)
+    return {...}
+end
+function nativeMenuAPI.GetDefaultContextMenuMixin()
+    return "default"
+end
+function M.SetNativeMenuAPI(present)
+    if present then
+        _G.MenuUtil = nativeMenuAPI
+        _G.Menu = nativeMenuAPI
+        _G.MenuVariants = nativeMenuAPI
+        _G.MenuResponse = {CloseAll = 4}
+        _G.CreateAnchor = nativeMenuAPI.CreateAnchor
+    else
+        _G.MenuUtil = nil
+        _G.Menu = nil
+        _G.MenuVariants = nil
+        _G.MenuResponse = nil
+        _G.CreateAnchor = nil
+        nativeMenuManager:CloseMenus()
+    end
+end
+
 --- Present the context-menu API, or take it away as a client without it does.
 function M.SetMenuAPI(present)
     for name, fn in pairs(menuAPI) do
@@ -996,6 +1088,7 @@ end
 --- Forget any open context menu.
 function M.ResetDropDowns()
     M.openDropDown, M.dropDownEntries = nil, {}
+    nativeMenuManager:CloseMenus()
 end
 
 function M.ResetUIActions()
