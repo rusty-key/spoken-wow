@@ -142,21 +142,21 @@ env = Install({ Pack("SpokenPlacesAudio_ivrit", { ["X-SpokenPlaces-Language"] = 
 Expect("lore is carried", env.Languages:Get("heIL").lore, true)
 env = Install({ Pack("SpokenPlacesAudio_ivrit", { ["X-SpokenPlaces-Language"] = "heIL" }) })
 Expect("lore is off by default", env.Languages:Get("heIL").lore, false)
-env = Install({ Pack("SpokenCommunity_mixed", { ["X-SpokenQuests-Language"] = "itIT",
+env = Install({ Pack("SpokenCommunity_mixed", { ["X-SpokenQuests-Language"] = "jaJP",
     ["X-SpokenPlaces-Language"] = "enUS", ["X-SpokenPlaces-Lore"] = "1" }) })
 Expect("lore goes to the language under Places' key", env.Languages:Get("enUS").lore, true)
-Expect("...not to the pack's other language", env.Languages:Get("itIT").lore, false)
+Expect("...not to the pack's other language", env.Languages:Get("jaJP").lore, false)
 
 env = Install({ Pack("SpokenQuestsAudio", { [QUESTS_KEY] = "1" }) })
-Expect("before the declaration", env.Languages:Get("itIT"), nil)
-env.Languages:Declare("itIT", "SpokenReadablesAudio_itIT")
-Expect("a declared language is installed", Codes(env), "enUS,itIT")
-env.Languages:Declare("itIT", "SpokenReadablesAudio_itIT")
-Expect("a folder declares once", #env.Languages:Get("itIT").folders, 1)
+Expect("before the declaration", env.Languages:Get("jaJP"), nil)
+env.Languages:Declare("jaJP", "SpokenReadablesAudio_jaJP")
+Expect("a declared language is installed", Codes(env), "enUS,jaJP")
+env.Languages:Declare("jaJP", "SpokenReadablesAudio_jaJP")
+Expect("a folder declares once", #env.Languages:Get("jaJP").folders, 1)
 env.Languages:Declare("hebrew", "SpokenReadablesAudio_x")
 Expect("a non-code is ignored", env.Languages:Get("hebrew"), nil)
 env.Languages:Reset()
-Expect("Reset forgets declarations", env.Languages:Get("itIT"), nil)
+Expect("Reset forgets declarations", env.Languages:Get("jaJP"), nil)
 
 env = Install({
     Pack("SpokenCommunity_a", { ["X-SpokenQuests-Language"] = "heIL" }),
@@ -172,7 +172,7 @@ Expect("enGB is read as enUS", Codes(env), "enUS")
 env = Install({ Pack("SpokenCommunity_a", { ["X-SpokenQuests-Language"] = "heIL" }) })
 Expect("the API answers", Spoken:Language("heIL").code, "heIL")
 Expect("the API lists", #Spoken:InstalledLanguages(), 1)
-Spoken:DeclareLanguage("itIT", "SpokenReadablesAudio_itIT")
+Spoken:DeclareLanguage("jaJP", "SpokenReadablesAudio_jaJP")
 Expect("the API declares", #Spoken:InstalledLanguages(), 2)
 Expect("the API tests a code", Spoken:IsLanguageCode("heIL"), true)
 
@@ -197,9 +197,9 @@ Expect("...a team's voice whose pack is gone is not", env.Options:VoiceInstalled
 Expect("...and Auto always is", env.Options:VoiceInstalled("auto"), true)
 env = Install({ Pack("SpokenCommunity_swedish", { ["X-SpokenQuests-Language"] = "svSE" }) })
 Expect("a pack without names shows its code", env.Options:LanguageName("svSE"), "svSE")
-Expect("an unknown language shows its code", env.Options:LanguageName("itIT"), "itIT")
+Expect("an unknown language shows its code", env.Options:LanguageName("jaJP"), "jaJP")
 Expect("a built-in Latin language shows its native name", env.Options:LanguageName("deDE"), "Deutsch")
-Expect("a language the registry lacks draws nothing", env.Options:LanguageDraws("itIT"), false)
+Expect("a language the registry lacks draws nothing", env.Options:LanguageDraws("jaJP"), false)
 
 -- Every glyph but ASCII is a box here, so only a pack's own font can draw Hebrew.
 stub.TextWidth = function(fs)

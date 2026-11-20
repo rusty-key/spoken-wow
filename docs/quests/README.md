@@ -447,42 +447,13 @@ quest line only that language has (see "When there is no line at all") ships wit
 The addon finds a quest sound by its file name alone. A language split into faction packs would need
 `tts_cli/factions.py` to place such lines, since the split reads the English corpus.
 
-#### Italian, a language no client runs in
+#### A language no client runs in
 
-No Classic client ships `itIT`, so the world database has no Italian and no player's client
-sends any. Its quest text comes from QuestIT (by Drakanast, MIT), a community
-translation shipped as an addon, imported on each of its releases:
-
-```bash
-make quests-import-questit QUESTIT=~/Downloads/QuestIT ARGS=--dry-run   # match and count
-make quests-import-questit QUESTIT=~/Downloads/QuestIT                  # write
-```
-
-QuestIT keys a translation by the hash of the English it was made from (its `Core.EnglishHash`),
-which `tts_cli/questit.py` reproduces over the corpus's English. A line matches only if that
-English is the corpus's, so a quest reworded since is left out. Rows are written with origin
-`community` and the release in `note`; a later release replaces them, and a line edited on the
-site keeps its edit. Everything client-keyed is skipped for a language like this (`client: false`
-in `pipelines/lib/locales.mjs`): its pack carries no gossip locale text, the addon never picks
-it on Auto, and it offers no contributions while a player listens in it.
-
-#### Vietnamese, from Forever's mission export
-
-`viVN` is the same kind of language, and its quest text comes from Forever's mission export, a
-CSV with one row per paragraph of a quest's title, description, progress and completion text:
-
-```bash
-make quests-import-forever-csv CSV=~/Downloads/forever-mission-viVN-20261013-091803.csv ARGS=--dry-run
-make quests-import-forever-csv CSV=~/Downloads/forever-mission-viVN-20261013-091803.csv
-```
-
-The export carries the English the Forever client showed beside each translation, and
-`tts_cli/forever_csv.py` matches it by quest id and field against the corpus's English in that
-shape (`<name>` for `$N`, `<boy/girl>` for `$G`, class and race names folded to tokens, the
-items a progress text asks for cut off its end). A field whose English differs is left out,
-which includes a line where Forever resolved `$G` to one gender: its translation would say
-that gender to every reader. Objectives are not imported. Rows are `community`, with the
-export's stamp in `note`.
+A language a team brings to the site that no game client runs in has no text in the world
+database and none sent by a player's client. Its text is what the team writes on the site.
+Everything client-keyed is skipped for it (`client` false in the database `language` table): its
+pack carries no gossip locale text, the addon never picks it on Auto, and it offers no
+contributions while a player listens in it.
 
 ### Browsing the corpus
 
@@ -578,7 +549,7 @@ Contributions triage shows any token still left after this, a bare `<` or `>`, a
 before `.` or `,` or a mid-sentence double space where a gender branch came through empty,
 above the row's text, so a line that would never be voiced is seen before it is accepted.
 Doing this at send time rather than in the rows covers every way a
-translation arrives — the dump, the ptBR import, QuestIT's Italian, a player's contribution, a translator's edit
+translation arrives — the dump, the ptBR import, a player's contribution, a translator's edit
 — and lets a word be changed later without rewriting any of them; the changed word then marks
 those takes stale.
 

@@ -92,7 +92,7 @@ EG_COMMIT = "2ae21542f54d7168ab430d8b6248deb1f8d50a02"
 EG_DATA = f"https://raw.githubusercontent.com/JIVESCORP/eg-link-output-wowf/{EG_COMMIT}/data"
 EG_PRODUCT = "wow_classic_beta"
 EG_CACHE = os.path.join(CACHE, "efficient-games")
-LOCALES = ["deDE", "esES", "esMX", "frFR", "ptBR", "ruRU", "koKR", "zhCN", "zhTW", "itIT"]
+LOCALES = ["deDE", "esES", "esMX", "frFR", "ptBR", "ruRU", "koKR", "zhCN", "zhTW"]
 
 # The dungeons and raids, and the other instances, under the zone their entrance is in, from the
 # table every pipeline and the addon share (pipelines/lib/dungeons.json). Forever's Excavation Site

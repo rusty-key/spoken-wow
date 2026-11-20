@@ -47,6 +47,7 @@ import { archiveOf, ENCODING_PROFILE, sourceOf } from "../lib/archives.mjs";
 import { pointerText, writePointers } from "../lib/clip-pointer.mjs";
 import { archiveBase, eachParallel, fetchRetrying } from "../lib/download.mjs";
 import { releaseTeamSql } from "../../pipelines/lib/release-team.mjs";
+import { loadPlayerWords } from "../../pipelines/lib/player-words-db.mjs";
 import { CURRENT_TEXT_SQL, NAMED_QUESTS_SQL, currentTextFor, namedBy } from "./relevant.mjs";
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "../..");
@@ -198,6 +199,8 @@ async function writeWordTimes() {
 }
 
 async function writeTakeText() {
+  // A team's language keeps its words in the database, and the site spoke the take's text with them.
+  loadPlayerWords(database);
   const rows = psql(CURRENT_TEXT_SQL).map((row) => {
     const [stem, text, playerGender] = row.split("\t");
     return { stem, text: JSON.parse(text), playerGender };

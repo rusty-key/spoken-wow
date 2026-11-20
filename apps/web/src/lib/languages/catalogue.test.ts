@@ -53,7 +53,10 @@ describe("loadLanguages", () => {
     await asSystem.query(`insert into "language" ("code") values ('qaQA')`);
     forgetLanguages();
     const qa = (await loadLanguages()).find((info) => info.code === "qaQA");
-    expect(qa).toEqual({ code: "qaQA", name: "qaQA", native: "qaQA", bcp47: "qa-QA", provider: "qa", client: false });
+    expect(qa).toEqual({
+      code: "qaQA", name: "qaQA", native: "qaQA", bcp47: "qa-QA", provider: "qa", client: false,
+      playerWords: null, bytesPerCharacter: null,
+    });
     expect(langTag("qaQA")).toBe("qa-QA");
   });
 });

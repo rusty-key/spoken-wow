@@ -24,7 +24,7 @@ replace it.
 | Field | Rule |
 | --- | --- |
 | Pack id | Lower-case letters and digits, with single hyphens between words. At most 48 characters. It names the pack's folder and cannot change. |
-| Language | A language code of the form `xxYY`: two lower-case letters, then two upper-case ones, such as `deDE`, `itIT` or `heIL`. |
+| Language | A language code of the form `xxYY`: two lower-case letters, then two upper-case ones, such as `deDE`, `plPL` or `heIL`. |
 | Section | `quests`, `places` or `readables`. |
 | Title, Author | Plain text, 1 to 80 characters. |
 | Description | Plain text, 1 to 400 characters. |

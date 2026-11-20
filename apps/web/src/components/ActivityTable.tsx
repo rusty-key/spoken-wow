@@ -159,6 +159,8 @@ export function describe(row: ActivityRow): { what: string; quote: string | null
       return { what: `restored text v${version}`, quote: null };
     case "text.retired":
       return { what: `took back text v${version}`, quote: null };
+    case "text.player_words":
+      return { what: d.after ? "changed the words said for the player" : "removed the words said for the player", quote: str(d.after) };
     case "name.edited":
       return { what: "renamed", quote: str(d.name) };
     case "name.restored":

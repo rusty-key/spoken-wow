@@ -123,7 +123,7 @@ every language, the official ones included (user).
 - Nothing in the repo spends TTS credits (AGENTS.md); the generation endpoint is a site route
   driven by the caller's own key, like the Regenerate button.
 - A new language has no client-derived data (contributions, gossip locale, area aliases), as
-  itIT, plPL and viVN today (`client: false`).
+  itIT, plPL and viVN today (`client: false` in their rows).
 
 ## The big change: languages become data
 
@@ -135,11 +135,26 @@ validated string, not a literal union, and the URL proxy matches a language pref
 without a database call. The pipelines' list (`pipelines/lib/locales.mjs`) stays the authority for
 the ten client locales.
 
+A row also carries what code knows of a built-in language and a team's would otherwise lack
+(migration 0125): `playerWords`, what its recordings say where the game writes `$N`, `$C` and `$R`
+(`pipelines/lib/player-words.mjs`), and `bytesPerCharacter`, its width for fish.audio's list price
+(`apps/web/src/lib/generation/calibration.ts`). A language with no words voices no line holding a
+token: the text gate refuses it. Its text maintainers set them on `/<lang>/player-words`
+(`PUT /api/languages/player-words?lang=`, `text`); a built-in language's words are code, and its
+row's are never read. They reach the registry with the rest of the row, and a pack build run by hand
+reads them through psql (`pipelines/lib/player-words-db.mjs`).
+
+**Built in are the ten languages a game client runs in, and no others.** Italian, Vietnamese and
+Polish were the project's until 2026-11-20, and are their teams' now: they left `locales.mjs`,
+`lang.ts` `BUILTIN`, the store pages and the Manager's language list, and their words and
+Vietnamese's byte width moved into their rows unchanged.
+
 ## Calls made without the user (check these)
 
-- **Languages list.** All thirteen languages known today stay in `pipelines/lib/locales.mjs`,
+- **Languages list.** The languages the project keeps stay in `pipelines/lib/locales.mjs`,
   which the pipelines keep using. The database `language` table gains the descriptive columns and
-  is seeded with all thirteen; requested languages exist only there. `lang.test.ts` becomes "every
+  is seeded with all of them; requested languages, and Italian, Vietnamese and Polish since they
+  became their teams', exist only there. `lang.test.ts` becomes "every
   pipeline locale has a matching row". `Lang` stops being a literal union and becomes a validated
   string type. *(My call.)*
 - **Tokens that generate.** A token gains a separate opt-in `generate` scope, beside `read` and

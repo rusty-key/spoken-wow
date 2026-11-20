@@ -307,7 +307,6 @@ local CURSEFORGE_PAGES = {
     esES = "spoken-spanish-eu",
     esMX = "spoken-spanish-al",
     frFR = "spoken-french",
-    itIT = "spoken-italian",
     ptBR = "spoken-portuguese",
     ruRU = "spoken-russian",
     koKR = "spoken-korean",

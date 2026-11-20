@@ -126,12 +126,12 @@ Expect("a language the client's fonts cannot draw is not offered", Has(env.Texts
 local function VoicePack(folder, key, code)
     return { folder = folder, meta = { [key] = code }, loadOnDemand = true }
 end
-env, Spoken = Boot({ VoicePack("SpokenQuestsAudio_itIT", "X-SpokenQuests-Language", "itIT") })
-env.Options.LanguageDraws = function(_, code) return code == "itIT" end
-Expect("a quests voice pack's language is offered", Has(env.Texts:Choices(), "itIT"), true)
-env, Spoken = Boot({ VoicePack("SpokenPlacesAudio_itIT", "X-SpokenPlaces-Language", "itIT") })
-env.Options.LanguageDraws = function(_, code) return code == "itIT" end
-Expect("...and a places one's, with no lore flag", Has(env.Texts:Choices(), "itIT"), true)
+env, Spoken = Boot({ VoicePack("SpokenQuestsAudio_jaJP", "X-SpokenQuests-Language", "jaJP") })
+env.Options.LanguageDraws = function(_, code) return code == "jaJP" end
+Expect("a quests voice pack's language is offered", Has(env.Texts:Choices(), "jaJP"), true)
+env, Spoken = Boot({ VoicePack("SpokenPlacesAudio_jaJP", "X-SpokenPlaces-Language", "jaJP") })
+env.Options.LanguageDraws = function(_, code) return code == "jaJP" end
+Expect("...and a places one's, with no lore flag", Has(env.Texts:Choices(), "jaJP"), true)
 
 _G.GameFontHighlight = realHighlight
 stub.ResetAddOns()

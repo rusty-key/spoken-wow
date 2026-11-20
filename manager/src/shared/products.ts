@@ -12,8 +12,6 @@ export const LANGUAGES: VoiceLanguage[] = [
   { code: 'esES', name: 'Español (España)' },
   { code: 'esMX', name: 'Español (Latinoamérica)' },
   { code: 'frFR', name: 'Français' },
-  { code: 'itIT', name: 'Italiano' },
-  { code: 'plPL', name: 'Polski' },
   { code: 'ptBR', name: 'Português (Brasil)' },
   { code: 'ruRU', name: 'Русский' },
   { code: 'koKR', name: '한국어' },
@@ -170,8 +168,7 @@ function build(): Product[] {
   const out: Product[] = [SPOKEN]
   for (const { code } of LANGUAGES) {
     for (const pack of ['all', ...QUESTS_SIDES] as QuestsPack[]) out.push(voices('quests', code, pack))
-    // Italian has quests voices only, so far, and bosses English only. With no release in a
-    // language, the voice packs page still shows that language's first product.
+    // With no release in a language, the voice packs page still shows that language's first product.
     out.push(voices('places', code, 'all'), voices('readables', code, 'all'), voices('bosses', code, 'all'))
   }
   return out

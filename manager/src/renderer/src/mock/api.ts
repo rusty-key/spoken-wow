@@ -73,7 +73,6 @@ const TABLE: Record<string, Row[]> = {
   'places-audio-frFR': [['1.0.2', '2026-10-04', 398]],
   'quests-audio-esES': [['1.2.0', '2026-09-27', 702]],
   'places-audio-esES': [['1.0.0', '2026-09-27', 301]],
-  'quests-audio-itIT': [['0.9.0', '2026-10-10', 384]],
   'quests-audio-ruRU': [['1.1.0', '2026-10-02', 640]],
   'quests-audio-koKR': [['0.8.0-beta.1', '2026-10-13', 410, 'First beta of the Korean quest voices.']]
 }

@@ -22,7 +22,7 @@ describe("language table seed", () => {
       name: l.name,
       bcp47: l.bcp47,
       provider: l.elevenLabs,
-      client: l.client !== false,
+      client: true,
     });
     expect(rows[0].native).not.toBe("");
   });

@@ -190,7 +190,7 @@ export async function buildLookup({ lang = LANG, out = lookupPath(lang) } = {}) 
       })),
     );
 
-    // A language no client runs in (Italian) has no index: no client shows its words, so a page
+    // A language no client runs in has no index: no client shows its words, so a page
     // is always found by the client's own index and only played in this one.
     let entries = null;
     if (lang === LANG || isClientLocale(lang)) {

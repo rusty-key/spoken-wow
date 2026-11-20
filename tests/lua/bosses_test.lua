@@ -504,10 +504,10 @@ do
         end
         return nil
     end
-    language.Voice, language.Fallback = "viVN", "none"
+    language.Voice, language.Fallback = "yoNG", "none"
     panel.layout:Refresh()
     Expect("a voice language with no boss pack and Stay Silent is said under the voice packs",
-        Silent(), SpokenEnv.L.MODULE_NO_VOICE_FMT:format(Spoken:LanguageName("viVN")))
+        Silent(), SpokenEnv.L.MODULE_NO_VOICE_FMT:format(Spoken:LanguageName("yoNG")))
     Expect("...and English's is not offered, nothing falling back on it", English().shown, false)
     language.Fallback = "enUS"
     panel.layout:Refresh()

@@ -83,7 +83,7 @@ The words of a caption are in the Text Language, whatever the voice and whicheve
 fallback recording is in. It is one setting for every module, Text Language in the Language section
 of Spoken's page, and takes effect after a reload. Auto is the client's language, as the game shows
 a page: on a German client a readable's German words, on an English client its English ones; on
-Auto an Italian or Vietnamese voice, which no client runs in, is captioned in its own words where
+Auto a voice no client runs in is captioned in its own words where
 its pack has them, as its players are on a client in another language. Places reads Auto as the
 client's language once its stories are finished in it, English until then. A language with no
 client, such as Polish, comes as a text pack (`docs/contributors/TEXT-PACKS.md`): its words, and no

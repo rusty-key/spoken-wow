@@ -42,8 +42,8 @@ test("a table with no rows is not cached, so the next run asks again", async () 
     asked++;
     return { ok: true, text: async () => "ID,Name\n" };
   };
-  assert.deepEqual(await wagoTable("Map", { locale: "itIT", cache, fetcher }), []);
-  assert.equal(existsSync(cachePath("Map", { locale: "itIT", cache })), false);
-  await wagoTable("Map", { locale: "itIT", cache, fetcher });
+  assert.deepEqual(await wagoTable("Map", { locale: "deDE", cache, fetcher }), []);
+  assert.equal(existsSync(cachePath("Map", { locale: "deDE", cache })), false);
+  await wagoTable("Map", { locale: "deDE", cache, fetcher });
   assert.equal(asked, 2);
 });

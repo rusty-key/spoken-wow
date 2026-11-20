@@ -172,7 +172,7 @@ local SCRIPT_FONTS = {
     -- An English Forever client has no blei00d.TTF, which its font objects still name.
     traditionalchinese = { "Fonts\\blei00d.TTF", "Fonts\\bKAI00M.TTF" },
     -- A pack's language, which has no script: the stock font most likely to draw accents a Latin
-    -- font lacks, such as Vietnamese's ệ and ữ. A script it cannot draw fails the test like any.
+    -- font lacks, such as ệ and ữ. A script it cannot draw fails the test like any.
     [false] = { "Fonts\\ARIALN.TTF" },
 }
 
@@ -246,7 +246,7 @@ end
 
 --- The Text Language row's choices: "auto", then every language there are words in that this
 --- client can draw: the built-in ones, then those a text pack or a voice pack brings. A voice pack
---- carries the words its voice says, so a language no client runs in (Italian) is read through it.
+--- carries the words its voice says, so a language no client runs in is read through it.
 function Texts:Choices()
     local rest = Languages:WithText()
     for _, entry in ipairs(Languages:Installed()) do table.insert(rest, entry) end

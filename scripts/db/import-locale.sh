@@ -35,8 +35,7 @@ fi
 
 # Which of the three sources this language has. `vmangos` is null where the dump carries no
 # text at all; place names still come from the addon's aliases. A language no client runs in
-# (Italian, Vietnamese) has neither: its text is its community's (make quests-import-questit,
-# make quests-import-forever-csv) and what is written on the site.
+# has neither: its text is what its team writes on the site.
 vmangos=$(node --input-type=module -e '
   const { localeInfo, BASE_LOCALE } = await import("./pipelines/lib/locales.mjs");
   const info = localeInfo(process.argv[1]);
@@ -45,7 +44,7 @@ vmangos=$(node --input-type=module -e '
 ' "$LOCALE")
 if [ "$vmangos" = "client" ]; then
   echo "$LOCALE: no game client runs in it, so the game has no text to import."
-  echo "Its quest text comes from QuestIT (make quests-import-questit); the rest is written on the site."
+  echo "Its text is written on the site."
   exit 0
 fi
 

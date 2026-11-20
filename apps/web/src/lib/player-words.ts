@@ -3,7 +3,7 @@
  * TypeScript loader. CLIENT-SAFE: the explorer asks the text gate, and the gate asks this.
  */
 import * as words from "../../../../pipelines/lib/player-words.mjs";
-import type { Lang } from "./lang";
+import type { Lang, PlayerWords } from "./lang";
 
 export const branchesOnPlayerGender = words.branchesOnPlayerGender as (text: string) => boolean;
 
@@ -20,3 +20,12 @@ export const speakPlayerTokens = words.speakPlayerTokens as (
   lang: Lang,
   playerGender?: "m" | "f" | null,
 ) => string;
+
+/** Words as stored, trimmed, or null where any is missing or unspeakable (player-words.mjs). */
+export const validPlayerWords = words.validPlayerWords as (value: unknown) => PlayerWords | null;
+
+/** Whether `lang`'s words are code, which a row cannot change. */
+export const hasBuiltinPlayerWords = words.hasBuiltinPlayerWords as (lang: string) => boolean;
+
+/** The words `lang` speaks its tokens in, or null with none. */
+export const playerWordsOf = words.playerWordsOf as (lang: string) => PlayerWords | null;

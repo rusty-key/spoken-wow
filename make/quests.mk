@@ -59,7 +59,7 @@ endef
         package-meta icon \
         downloads-status \
         factions followup-lines compendium-text compendium release release-audio release-audio-dry release-wago release-curse \
-        release-dry import-corpus import-locale import-npc-bodies fill-locales import-questit import-forever-csv export-corpus export-ignores export-locale-text export-giver-names export-gossip-text export-chatter-lines \
+        release-dry import-corpus import-locale import-npc-bodies fill-locales export-corpus export-ignores export-locale-text export-giver-names export-gossip-text export-chatter-lines \
         sync check-synced full-release upload upload-dry
 
 help: ## Show this help
@@ -398,22 +398,6 @@ fill-locales: ## Fill vmangos's empty *_locN columns from TrinityCore (TDB335= T
 	@cd $(QUESTS_DIR) && $(abspath $(PYTHON)) tools/fill_locales_from_tdb.py \
 	  --tdb335 "$(abspath $(TDB335))" --tdb-world "$(abspath $(TDB_WORLD))" \
 	  --tdb-hotfixes "$(abspath $(TDB_HOTFIXES))" $(ARGS)
-
-# Italian, which no client runs in, from the QuestIT community's addon: quest text, quest
-# titles and the few book pages it has, as 'community' rows. Run again on each of their
-# releases; an edit made on the site is kept. ARGS=--dry-run counts instead.
-import-questit: ## Import a QuestIT release into itIT (QUESTIT=~/Downloads/QuestIT)
-	@test -n "$(QUESTIT)" || { echo "import-questit: set QUESTIT to a QuestIT release folder"; exit 2; }
-	@cd $(QUESTS_DIR) && $(abspath $(PYTHON)) tools/import_questit.py "$(abspath $(patsubst ~/%,$(HOME)/%,$(QUESTIT)))" $(ARGS)
-
-# Vietnamese, which no client runs in either, from Forever's mission export: quest text and
-# titles, as 'community' rows. Run again on each new export; an edit made on the site is
-# kept. ARGS=--dry-run counts instead. The path is resolved in the shell, not with abspath:
-# an export saved by a browser has spaces in its name, and make splits words on them.
-import-forever-csv: ## Import a Forever mission export into its language (CSV=~/Downloads/forever-mission-viVN-….csv)
-	@test -n "$(CSV)" || { echo "import-forever-csv: set CSV to a forever-mission-<lang>-<stamp>.csv export"; exit 2; }
-	@csv='$(CSV)'; case "$$csv" in "~/"*) csv="$$HOME/$${csv#\~/}";; /*) ;; *) csv="$(CURDIR)/$$csv";; esac; \
-	  cd $(QUESTS_DIR) && $(abspath $(PYTHON)) tools/import_forever_csv.py "$$csv" $(ARGS)
 
 export-corpus: check-synced ## quest_line -> corpus/corpus.json.gz (ARGS=--check to compare instead)
 	@$(QUESTS_CLI) export-corpus $(ARGS)

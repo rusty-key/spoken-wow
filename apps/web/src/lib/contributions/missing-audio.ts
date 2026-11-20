@@ -11,7 +11,8 @@
  * Server-side only: it writes.
  */
 import { db, queryIn } from "@/lib/db";
-import { BASE_LANG, isLang, type Lang } from "@/lib/lang";
+import { BASE_LANG, type Lang } from "@/lib/lang";
+import { knownLang } from "@/lib/languages/catalogue";
 import { memoByTeamLang } from "@/lib/memo";
 import { corpus, isCorpusEmpty } from "@/lib/quests/catalogue";
 import { matchingLines } from "@/lib/search";
@@ -37,9 +38,10 @@ export function installIdFrom(value: unknown): string | null {
  * `pack` is the language the player hears (BaseFields in each module's Contribute.lua),
  * `packVersion` that pack's .toc version or "none".
  */
-export function hitFrom(submission: Submission, lineId: string): MissingAudioHit | null {
+export async function hitFrom(submission: Submission, lineId: string): Promise<MissingAudioHit | null> {
   const packLang = submission.meta.pack;
-  if (!isLang(packLang)) return null;
+  // Read from the table where this process does not know it yet: a team's language is a row.
+  if (!(await knownLang(packLang))) return null;
   const version = submission.meta.packVersion;
   const packVersion = version && /^[\w.+-]{1,32}$/.test(version) ? version : null;
   return { lineId, packLang, packVersion };
@@ -101,7 +103,7 @@ async function hiddenByDefaultLineIds(lang: Lang): Promise<ReadonlySet<string>> 
 
 /** The lines the ranking leaves out, as the explorer hides them by default. None for a language with no catalogue. */
 async function hiddenLines(packLang: string): Promise<string[]> {
-  if (!isLang(packLang)) return [];
+  if (!(await knownLang(packLang))) return [];
   try {
     return [...(await hiddenByDefaultLineIds(packLang))];
   } catch (error) {

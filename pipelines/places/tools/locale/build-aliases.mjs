@@ -25,7 +25,7 @@
 // an exact string match is both available and the most precise thing on offer.
 //
 // Some locales have no Era translation and their table comes out empty. That is
-// a real answer -- Italian Classic runs on English area names -- not a failure.
+// a real answer -- that client runs on English area names -- not a failure.
 //
 // It also writes tools/seed/area-names.json: every corpus zone and subzone's name in
 // each language, same-as-English ones included, zones from UiMap and subzones from

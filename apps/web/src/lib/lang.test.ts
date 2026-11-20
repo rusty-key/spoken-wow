@@ -30,33 +30,26 @@ describe("the site's language list", () => {
         client: isClientLang(locale.code),
       })),
     ).toEqual(
-      PIPELINE_LOCALES.map(({ code, name, bcp47, elevenLabs, client }) => ({
+      PIPELINE_LOCALES.map(({ code, name, bcp47, elevenLabs }) => ({
         code,
         name,
         bcp47,
         elevenLabs,
-        client: client !== false,
+        client: true,
       })),
     );
   });
 
-  it("knows Italian as a language no client runs in", () => {
-    expect(isLang("itIT")).toBe(true);
-    expect(isClientLang("itIT")).toBe(false);
+  it("builds in only the languages a client runs in", () => {
+    expect(BUILTIN.every((locale) => locale.client)).toBe(true);
     expect(isClientLang("ptBR")).toBe(true);
-  });
-
-  it("knows Vietnamese as a language no client runs in", () => {
-    expect(isLang("viVN")).toBe(true);
-    expect(isClientLang("viVN")).toBe(false);
-    expect(clientLang("viVN")).toBeNull();
   });
 
   it("takes a contribution's language only from a client that exists", () => {
     expect(clientLang("enGB")).toBe("enUS");
     expect(clientLang("ptBR")).toBe("ptBR");
-    // Nothing the game wrote says itIT: an envelope that does was made by hand.
-    expect(clientLang("itIT")).toBeNull();
+    // Nothing the game wrote says plPL: an envelope that does was made by hand.
+    expect(clientLang("plPL")).toBeNull();
     expect(clientLang("xxYY")).toBeNull();
   });
 
