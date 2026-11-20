@@ -4,6 +4,9 @@ Spoken Player until 3.0.0, when it became Spoken and took its modules into one d
 
 ## Unreleased
 
+- **Text Language offers the language of every voice pack you have installed**, including one no
+  game client runs in, such as Italian. The captions then show what that pack's voice says. Before,
+  such a language appeared only with a text pack, so an Italian voice came with English words.
 - **When Stop When Window Closes is enabled, unaccepted quest offers and unturned-in quest pages stop
   when their dialog closes.** Accepted offers and turned-in quest pages continue playing. Gossip
   audio is unaffected and continues after its window closes; with the option off, quest behavior

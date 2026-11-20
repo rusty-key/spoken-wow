@@ -80,8 +80,7 @@ export async function broadcastIdFor(
   const { rows } = await q.query<{ id: number }>(
     `select b."broadcastTextId" as "id"
        from "broadcast_text" b
-      where b."lang" = $1
-        and (gossip_readings(b."text") || gossip_readings(b."text1")) @> array[gossip_norm($2)]
+      where gossip_lang_readings(b."lang", b."text", b."text1") @> array[gossip_lang_key($1, $2)]
         and gossip_norm($2) = any(gossip_readings(${form}))
       order by 1
       limit 1`,
