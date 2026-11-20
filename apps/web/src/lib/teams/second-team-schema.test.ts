@@ -158,4 +158,14 @@ describe("invite.joinTeamId", () => {
       ),
     ).rejects.toMatchObject({ code: "23514" });
   });
+
+  // An invite a previous release left with no team is still revoked by an update to this.
+  it("lets a revoked invite name no team", async () => {
+    const [row] = await systemRows<{ joinTeamId: string | null }>(
+      `insert into "invite" ("email", "lang", "capabilities", "tokenHash", "invitedBy", "expiresAt", "revokedAt", "revokedBy")
+       values ($1, 'qbQB', array['text'], $2, $3, now() + interval '1 day', now(), $3) returning "joinTeamId"`,
+      [`revoked-${tag}@example.invalid`, `hash-revoked-${tag}`, user.id],
+    );
+    expect(row.joinTeamId).toBeNull();
+  });
 });

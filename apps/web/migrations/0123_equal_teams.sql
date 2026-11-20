@@ -7,7 +7,8 @@
 -- PACK NAMES. Every team privileged today keeps its plain packs.
 alter table "team_language" add column "packName" text check ("packName" in ('plain', 'slug'));
 update "team_language" set "packName" = case when "privileged" then 'plain' else 'slug' end;
-alter table "team_language" alter column "packName" set not null;
+-- A check rather than NOT NULL: the insert trigger below fills it in for a previous release.
+alter table "team_language" add constraint "team_language_pack_name_set" check ("packName" is not null);
 create unique index "team_language_plain_idx" on "team_language" ("lang") where "packName" = 'plain';
 
 -- An insert that names no pack name gets plain packs when the team's slug is the language's code
@@ -104,17 +105,18 @@ create trigger "invite_join_team"
   for each row execute function "invite_join_team"();
 
 -- Validated only when every row has a team: an invite into a language that had none is left as
--- it is, and the check still holds for every new row.
-alter table "invite" add constraint "invite_join_team_check" check ("joinTeamId" is not null) not valid;
+-- it is, and the check still holds for every new row. A revoked invite may name none, so such an
+-- invite can still be revoked.
+alter table "invite" add constraint "invite_join_team_check" check ("joinTeamId" is not null or "revokedAt" is not null) not valid;
 do $$
 declare
   v_open integer;
 begin
-  select count(*) into v_open from "invite" where "joinTeamId" is null;
+  select count(*) into v_open from "invite" where "joinTeamId" is null and "revokedAt" is null;
   if v_open = 0 then
     alter table "invite" validate constraint "invite_join_team_check";
   else
-    raise notice '0123: % invites name no team and their language has none; the check is left not valid', v_open;
+    raise notice '0123: % open invites name no team and their language has none; the check is left not valid', v_open;
   end if;
 end
 $$;

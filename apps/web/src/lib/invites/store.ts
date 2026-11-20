@@ -14,7 +14,7 @@ import { sendInviteEmail } from "@/lib/email";
 import { addGrants, grantsOf, OtherTeamError, refusedGrant, viewerById } from "@/lib/grants/store";
 import { langName, type Lang } from "@/lib/lang";
 import { knownLang } from "@/lib/languages/catalogue";
-import { capabilityLabel, isCapability, type Capability } from "@/lib/permissions";
+import { capabilityLabel, isAdmin, isCapability, type Capability } from "@/lib/permissions";
 import { hashSecret as hashOf, mintSecret as newToken } from "@/lib/secret-token";
 import { SITE } from "@/lib/site";
 import { teamIn } from "@/lib/teams/acting";
@@ -390,8 +390,8 @@ class NotClaimed extends Error {}
 
 /**
  * Give `user` what the invite names, as the inviter, once. The inviter is checked again here
- * with `canGrant`, all or none: if they may no longer give every capability, nothing is given
- * and the invite stays pending. The invite is claimed in the same transaction as the grants,
+ * with `canGrant`, all or none: if they may no longer give every capability, or have left the
+ * invite's team and are no site owner, nothing is given and the invite stays pending. The invite is claimed in the same transaction as the grants,
  * so two presses give them once. The grants go into the invite's team; somebody who works on the
  * language in another team is refused, and the invite stays pending. `shownId` is the invite the page showed: a link opened later
  * in another tab replaces the token, and pressing Accept here must not accept that one.
@@ -418,6 +418,11 @@ export async function acceptInvite(
   // `text` joins no team, so only the team capabilities can meet another team.
   const team = invite.teamId;
   const joins = capabilities.some((capability) => capability !== "text");
+  // An admin who has left the invite's team grants into it no more; a site owner grants into any.
+  if (joins && !isAdmin(viewer?.role) && (await teamIn(invite.invitedById, lang)) !== team) {
+    const capability = capabilities.find((one) => one !== "text");
+    return { ok: false, reason: "inviter-cannot-grant", inviterName, capability };
+  }
   const theirs = joins ? await teamIn(user.id, lang) : null;
   if (theirs && theirs !== team) return { ok: false, reason: "other-team", lang };
 

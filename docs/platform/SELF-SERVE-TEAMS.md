@@ -155,7 +155,8 @@ A request for a maintained language brings in the part of TEAMS.md *Phase 2* tha
 site. The rest of phase 2 is distribution and stays out.
 
 - The second team is a `team_language` row like the first: a language's teams are equal. Its
-  pack name, fixed when it joins, is its slug (`packName`, TEAMS.md *A language's teams*). Its
+  pack name, fixed when it joins, is `slug` (`packName`, TEAMS.md *A language's teams*): its packs
+  carry its slug, so team `dragon`'s French places pack is `SpokenPlacesAudio_frFR_dragon`. Its
   takes, voices, clones, settings, lexicon, ignores, queue and activity are its own, isolated by the
   existing row-level security. A rejected contribution's ignore is the language's, and holds for
   every team.

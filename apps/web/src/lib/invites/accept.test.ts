@@ -250,6 +250,23 @@ describe("acceptInvite in a language with a second team", () => {
     expect((await lookupInvite(token))?.state).toBe("pending");
   });
 
+  it("refuses when the inviter has moved to another team, and stays pending; a site owner's stands", async () => {
+    const { token, user, admin } = await invite(teamA!);
+    await asSystem.query(`delete from "team_member" where "userId" = $1`, [admin.id]);
+    await addMember(teamB!, admin.id, lang, "admin");
+    expect(await acceptInvite(token, user)).toMatchObject({
+      ok: false,
+      reason: "inviter-cannot-grant",
+      capability: "edit",
+    });
+    expect(await teamsOf(user.id)).toEqual([]);
+    expect((await lookupInvite(token))?.state).toBe("pending");
+
+    await asSystem.query(`update "user" set "role" = 'admin' where "id" = $1`, [admin.id]);
+    expect((await acceptInvite(token, user)).ok).toBe(true);
+    expect(await teamsOf(user.id)).toEqual([teamA]);
+  });
+
   it("accepts a text-only invite for somebody in the second team, logged under the team they act as", async () => {
     const { invite: sent, token, user } = await invite(teamA!, ["text"]);
     await addMember(teamB!, user.id, lang, "record");
