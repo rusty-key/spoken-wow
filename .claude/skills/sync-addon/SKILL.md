@@ -22,7 +22,7 @@ server; nothing on the server can reach that machine.
 Fill in this worktree's path and folder name (`git rev-parse --show-toplevel`) and the client:
 
 ```sh
-ssh dev cat <worktree path>/scripts/developer/sync-addons.sh | bash -s -- --watch <worktree name> <client>
+ssh ${SPOKEN_DEV_HOST:-dev} cat <worktree path>/scripts/developer/sync-addons.sh | bash -s -- --watch <worktree name> <client>
 ```
 
 It streams the script from the server, so that machine needs no checkout. From a checkout there,
