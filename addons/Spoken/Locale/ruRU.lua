@@ -6,7 +6,7 @@
 
 setfenv(1, SpokenEnv)
 
-if GetLocale() ~= "ruRU" then
+if not Interface:In("ruRU") then
 	return
 end
 
@@ -150,7 +150,7 @@ L.MODULE_NOT_LOADED = "Не загружен"
 L.MODULE_NO_PACK = "|cffff8080Пакет озвучки не установлен.|r Без него вслух ничего не читается."
 L.MODULE_RESET = "Сбросить"
 L.REASON_PART_OFF = "Включите «Включить» вверху этой страницы, чтобы пользоваться этим."
-L.MODULE_NO_VOICE_FMT = "Нет пакета озвучки на языке %1$s, а для «Если нет озвучки» выбрано «Молчать»: вслух ничего не читается."
+L.MODULE_NO_VOICE_FMT = "Нет пакета озвучки на языке %1$s, как и для следующих озвучек в вашем списке: вслух ничего не читается."
 L.PART_VOICE = "Пакеты озвучки"
 L.OPT_PART_CLICK_ON = "Нажмите, чтобы включить."
 L.OPT_PART_CLICK_OFF = "Нажмите, чтобы выключить."
@@ -223,10 +223,22 @@ L.OPT_LOWER_AMBIENCE = "Окружение"
 L.OPT_LOWER_SFX = "Эффекты"
 L.OPT_LOWER_DIALOG = "Голоса НИП"
 L.OPT_LANGUAGE_TITLE = "Язык"
-L.OPT_VOICE_LANGUAGE = "Язык озвучки"
+L.OPT_VOICES = "Озвучки по порядку"
+L.OPT_VOICES_TIP = "Реплика звучит в первой озвучке, где она есть. Если её нет ни в одной, Spoken молчит."
+L.OPT_VOICE_ADD = "Добавить озвучку"
+L.OPT_VOICE_EARLIER = "Выше"
+L.OPT_VOICE_LATER = "Ниже"
+L.OPT_VOICE_REMOVE = "Убрать"
+L.OPT_VOICE_MISSING = "(не установлена)"
 L.OPT_LANG_AUTO_FMT = "Авто (%1$s)"
-L.OPT_FALLBACK_LANGUAGE = "Если нет озвучки"
-L.OPT_FALLBACK_NONE = "Молчать"
+L.OPT_VOICE_TEAM_FMT = "%1$s · %2$s"
+L.OPT_TEXT_LANGUAGE = "Язык текста"
+L.OPT_TEXT_LANGUAGE_SET_FMT = "После перезагрузки интерфейса текст будет на языке: %1$s."
+L.OPT_TEXT_LANGUAGE_RELOAD = "Введите /reload, чтобы переключиться на него."
+L.OPT_INTERFACE_LANGUAGE = "Язык интерфейса"
+L.OPT_INTERFACE_LANGUAGE_SET_FMT = "После перезагрузки интерфейса окна и настройки Spoken будут на языке: %1$s."
+L.OPT_RELOAD_NOW = "Перезагрузить сейчас"
+L.OPT_LATER = "Позже"
 
 -- Azeroth's Compendium, on Spoken's page.
 L.OPT_COMPENDIUM_TITLE = "Компендиум Азерота"

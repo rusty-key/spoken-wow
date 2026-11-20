@@ -106,7 +106,9 @@ export default function FishReference({
         headers: { "Content-Type": "application/json" },
         ...init,
       });
-      const body = (await response.json()) as { reference?: ReferenceView | null; error?: string };
+      // A failure may be a proxy's page rather than the route's JSON: its status is the message. A
+      // success that does not parse throws, and the panel keeps what it showed.
+      const body = (await (response.ok ? response.json() : response.json().catch(() => ({})))) as { reference?: ReferenceView | null; error?: string };
       if (!response.ok) throw new Error(body.error ?? `failed (${response.status})`);
       const next = body.reference ?? null;
       setReference(next);
@@ -133,7 +135,9 @@ export default function FishReference({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ replace: false }),
       });
-      const body = (await response.json()) as { samples?: Sample[]; error?: string };
+      // A failure may be a proxy's page rather than the route's JSON: its status is the message. A
+      // success that does not parse throws, and the panel keeps what it showed.
+      const body = (await (response.ok ? response.json() : response.json().catch(() => ({})))) as { samples?: Sample[]; error?: string };
       if (!response.ok) throw new Error(body.error ?? `import failed (${response.status})`);
       onSamples(body.samples ?? []);
     } catch (err) {
@@ -144,7 +148,7 @@ export default function FishReference({
   }
 
   return (
-    <section className="border-t px-9 py-3 text-sm">
+    <section className="text-sm">
       <h3 className="mb-1 font-medium">fish.audio reference</h3>
       <p className="text-muted-foreground mb-3 text-xs">
         fish.audio speaks this voice from {MIN_SECONDS}-{MAX_SECONDS} seconds of one clip and a

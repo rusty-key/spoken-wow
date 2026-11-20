@@ -74,6 +74,7 @@ local function Play(name)
     VO, env = stub.LoadQuests(QUESTS, SPOKEN)
     VO.Addon:OnInitialize()
     env.Addon:TakeVoiceLanguageFromQuests()
+    env.Addon:BuildVoiceList()
     local spoken, quests = env.Addon.db:GetCurrentProfile(), VO.Addon.db:GetCurrentProfile()
     local fontSize = env.Addon.db.profile.Transcript.FontSize
     local autoplay = VO.Addon.db.profile.Audio.Autoplay
@@ -213,6 +214,30 @@ SpokenSettings.char["Alice - Realm"] = nil
 SpokenQuestsSettings.profiles["Alice - Realm"].Audio.VoiceLanguage = "frFR"
 Play("Alice")
 Expect("a character alone on its profile takes the voice language from the quests page", Voice("Alice - Realm"), "frFR")
+Expect("...and its voice list is built from it, English filling in as before",
+    table.concat(SpokenSettings.profiles["Alice - Realm"].Language.Voices or {}, ","), "frFR,enUS")
+
+---------------------------------------------------------------- the voice list, built once from the old two
+local function Built(voice, fallback)
+    local language = env.Addon.db.profile.Language
+    language.Voices, language.Voice, language.Fallback = nil, voice, fallback
+    env.Addon:BuildVoiceList()
+    return language.Voices and table.concat(language.Voices, ",") or nil
+end
+Expect("a voice and no fallback: the voice, then English", Built("deDE", nil), "deDE,enUS")
+Expect("Stay Silent adds nothing", Built("frFR", "none"), "frFR")
+Expect("a fallback and no voice: Auto, then the fallback", Built(nil, "esES"), "auto,esES")
+Expect("a voice and a fallback", Built("auto", "ruRU"), "auto,ruRU")
+Expect("the fallback the voice already is is not repeated", Built("deDE", "deDE"), "deDE")
+Expect("neither set: no list, and each module keeps its own", Built(nil, nil), nil)
+do
+    local language = env.Addon.db.profile.Language
+    Built("deDE", nil)
+    language.Voice = "frFR"
+    env.Addon:BuildVoiceList()
+    Expect("it is built once: a list already there stays", table.concat(language.Voices, ","), "deDE,enUS")
+    language.Voices, language.Voice, language.Fallback = nil, nil, nil
+end
 
 ---------------------------------------------------------------- the choice on Spoken's page
 Seed(nil)

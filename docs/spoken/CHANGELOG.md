@@ -6,6 +6,84 @@ Spoken Player until 3.0.0, when it became Spoken and took its modules into one d
 
 - **`/spq mute [on | off]` silences Spoken audio without disabling its features.** Quest, lore and
   readable text continues to work while audio is muted. *([Trusty565](https://github.com/Trusty565))*
+- **The minimap right-click menu now uses the client's native menu where available.** Older
+  clients keep the legacy dropdown or Spoken's custom fallback, and the menu also opens from
+  the addon compartment. *([anon1231823](https://github.com/anon1231823))*
+- **Quest pages in Azeroth's Compendium show the progress text**, what the NPC says while a quest
+  is under way, between the description and the completion, with its own Play and Report. A quest
+  a voice pack voices only in its progress now counts for Voiced Only, and shift-click on its row
+  plays it. *([anon1231823](https://github.com/anon1231823))*
+- **A non-English client finds Forever's newer places.** The area names now come from client
+  1.60.1.70959, so the new dungeons' areas and the places Forever renamed match their stories.
+  Dalaran in Korean and Russian, Dire Maul in Spanish and Dreadmaul Post in Russian have no
+  story: the client gives each the name of another place in the same zone. *([svengabr](https://github.com/svengabr))*
+- **Text Language offers the language of every voice pack you have installed**, including one no
+  game client runs in, such as Italian. The captions then show what that pack's voice says. Before,
+  such a language appeared only with a text pack, so an Italian voice came with English words.
+  *([rusty-key](https://github.com/rusty-key))*
+- **When Stop When Window Closes is enabled, unaccepted quest offers and unturned-in quest pages stop
+  when their dialog closes.** Accepted offers and turned-in quest pages continue playing. Gossip
+  audio is unaffected and continues after its window closes; with the option off, quest behavior
+  remains as before. *([anon1231823](https://github.com/anon1231823))*
+  New profiles have the option enabled by default; existing saved choices are kept.
+- **No more Lua error on the world map with Leatrix Maps.** Spoken Bosses no longer tries to
+  make other addons' map frames clickable while it looks for Leatrix's dungeon pins and menu.
+  *([anon1231823](https://github.com/anon1231823))*
+- **Forever's five new dungeons are in the Compendium.** The Bosses tab lists the bosses of the
+  Drowned City, Krol'dok Stronghold, Alcaz Prison, Blackmaw Hold and the Shaper's Terrace. The
+  Places tab lists Krol'dok Stronghold, Blackmaw Hold and the Shaper's Terrace under the zone of
+  their entrance, and entering one counts it as found. Its story is read where your voice pack has
+  it.
+  *([svengabr](https://github.com/svengabr))*
+
+## 3.10.1 — 2026-11-19
+
+- **A line or page you contribute goes as your game showed it.** Your character's name, class,
+  race and sex go beside it, and the site turns them back into the game's placeholders before
+  anything is kept, so the site never stores your name from what this version sends. Collect
+  Missing Lines keeps lines as your game showed them, name included, in your own saved file until
+  you upload it. The site can now improve that step without an addon update. *([rusty-key](https://github.com/rusty-key))*
+- For feature addons: `Spoken:GetCaption()` names the story `Spoken:PlayStory` played in `story`,
+  as the `{ kind, id }` it was asked for, so an addon knows the line is its own without comparing
+  text. *([Torchlite-bit](https://github.com/Torchlite-bit))*
+- **Bosses has its own icon in the AddOns list.** It showed Spoken's mark; it now shows a dragon's
+  head, like Quests, Places and Readables each show their own. *([Nucabe](https://github.com/Nucabe))*
+- **Mute one NPC's greetings.** A speaker button on an NPC's gossip or greeting window mutes that
+  NPC's automatic greetings for this character and drops its greetings already waiting in the
+  queue. Gossip settings lists the muted NPCs, each with Unmute. The window's Listen button still
+  plays a muted NPC's line.
+  *([anon1231823](https://github.com/anon1231823))*
+- **Voices, in order.** Voice Language and If a Voice Is Missing are now one list in the Language
+  section of Spoken's page: as many voices as you like, moved up and down, removed, and added with
+  Add a Voice. A line plays in the first voice that has it, and past the last Spoken stays silent.
+  Your choice carries over as the first two voices. *([rusty-key](https://github.com/rusty-key))*
+- **Voice packs from other teams.** Where a language has packs from more than one team, each
+  team's is a voice of its own in that list, named for its team, so you choose whose German you
+  hear first and whose fills in. A report on a line names the team whose pack played it, so it
+  reaches them. *([rusty-key](https://github.com/rusty-key))*
+
+## 3.10.0 — 2026-11-17
+
+- **Interface Language.** A new setting in the Language section of Spoken's page picks the language
+  of Spoken's own windows, menus and settings, apart from the game's: any language Spoken is
+  translated into, or one an interface pack brings, such as Polish, made by its translators
+  ([how to make one](https://github.com/rusty-key/spoken-wow/blob/master/docs/contributors/INTERFACE-PACKS.md)).
+  A string the pack has not translated yet shows in the game's language.
+  *([rusty-key](https://github.com/rusty-key))*
+- **Italian voices for places, readables and bosses are offered.** With Italian as the Voice
+  Language, those pages now link to the Italian packs on GitHub.
+  *([rusty-key](https://github.com/rusty-key))*
+- **Text Language, for everything Spoken shows.** A new setting in the Language section of Spoken's
+  page picks the language of the words in captions, subtitles and Azeroth's Compendium, apart from
+  the voice: quests, gossip, readables, bosses and places. It replaces Text Language on the Places
+  page, and a language chosen there carries over. Languages no game client runs in, such as Polish,
+  can now come as text packs: addons of words with no voice, made by their translators
+  ([how to make one](https://github.com/rusty-key/spoken-wow/blob/master/docs/contributors/TEXT-PACKS.md)).
+  *([rusty-key](https://github.com/rusty-key))*
+- **Item-started quests show their item.** The Compendium and the Small Window now show the real
+  icon of the item that starts a quest, even after the item has left your bags, rather than a
+  posted notice. *([anon1231823](https://github.com/anon1231823))*
+
 ## 3.9.0 — 2026-11-14
 
 - **A report names the line you heard.** When a quest is read in more than one voice, or an NPC has

@@ -52,7 +52,8 @@ const TAGS: Record<string, string> = {
   zhTW: 'ZH-TW'
 }
 
-export const langTag = (code: string): string => TAGS[code] ?? code.toUpperCase()
+// A language the table lacks shows its first two letters: JA, not JAJP.
+export const langTag = (code: string): string => TAGS[code] ?? code.slice(0, 2).toUpperCase()
 export { languageName }
 
 type ActiveJob = JobProgress & { phase: 'queued' | 'downloading' | 'verifying' | 'extracting' | 'installing' }

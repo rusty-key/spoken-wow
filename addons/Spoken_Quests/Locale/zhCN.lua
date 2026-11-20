@@ -6,7 +6,7 @@
 
 setfenv(1, VoiceOver)
 
-if GetLocale() ~= "zhCN" then
+if not Spoken:InterfaceIn("zhCN") then
 	return
 end
 
@@ -62,6 +62,7 @@ L.OPT_GREETING = "问候"
 L.OPT_AUTOPLAY_OFF_TIP = "Spoken 设置的“任务”页面中已关闭“自动朗读”。"
 L.OPT_PROGRESS_OFF_TIP = "Spoken 设置的“任务”页面中已关闭“朗读任务进行中文本”。"
 L.OPT_NEVER_TIP = "Spoken 设置的“闲聊”页面中，“朗读问候”设为“从不”。"
+L.OPT_MUTED_TIP = "你已屏蔽此 NPC。可在 Spoken 设置的“闲聊”页面中“已屏蔽的 NPC”处取消屏蔽。"
 L.OPT_CONTRIBUTE = "贡献"
 L.OPT_REPORT = "报告"
 L.OPT_REPORT_COPY = "Spoken Quests|n|n复制此地址并在浏览器中打开。"
@@ -92,6 +93,15 @@ L.OPT_OG_THRALL = "萨尔原版演讲"
 L.OPT_FORGET_GREETINGS = "忘记已听过的问候"
 L.REASON_FORGET_GREETINGS = "将“朗读问候”设为“每段问候一次”或“任务发布者一次”后才能使用。"
 L.OPT_FORGET_GREETINGS_DONE = "已清除此角色听过的问候列表。"
+L.OPT_MUTE_NPC = "屏蔽此 NPC 的闲聊"
+L.OPT_UNMUTE_NPC = "取消屏蔽"
+L.OPT_UNMUTE_NPC_GOSSIP = "取消屏蔽此 NPC 的闲聊"
+L.MUTE_NPC_DONE = "已屏蔽 %s 的自动问候语。"
+L.UNMUTE_NPC_DONE = "已取消屏蔽 %s 的自动问候语。"
+L.OPT_MUTED_NPCS = "已屏蔽的 NPC"
+L.OPT_NO_MUTED_NPCS = "没有已屏蔽的 NPC。在 NPC 的对话窗口中点击扬声器按钮即可屏蔽。"
+L.OPT_FORGET_MUTED_NPCS = "忘记已屏蔽的 NPC"
+L.OPT_FORGET_MUTED_NPCS_DONE = "已清除此角色屏蔽的 NPC 列表。"
 L.OPT_PANEL_GAME_GREETING_FIRST = "朗读前先听 NPC 语音"
 L.GREETING_DIALOG_APART = "Spoken：对话音量已设为 %1$d%%，与其他音量滑块不同，以便“朗读前先听 NPC 语音”能知道 NPC 何时说完。"
 L.OPT_REPORT_PROBLEM = "报告问题"
@@ -154,5 +164,6 @@ L.QUESTS_MORE_FMT = "等%1$d处"
 L.QUESTS_TITLE_NTH_FMT = "%1$s（%2$d）"
 L.QUEST_IN_PROGRESS = "进行中"
 L.QUEST_PART_ACCEPT = "任务描述"
+L.QUEST_PART_PROGRESS = "进度"
 L.QUEST_PART_COMPLETE = "完成"
 L.QUEST_PART_NO_TEXT = "这一部分没有已知的文本。"

@@ -3,7 +3,7 @@ release: quests-audio-ruRU
 section: quests
 lang: ruRU
 pack: all
-version: 0.0.3
+version: 0.0.4
 slug: spoken-quests-audio-ruru
 name: Spoken Quests Audio: Russian
 summary: Every quest and gossip line for Spoken, voiced in Russian. All four packs in one download. Needs Spoken.

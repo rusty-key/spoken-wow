@@ -4,12 +4,15 @@
  *
  * Needs DATABASE_URL and migrations applied.
  */
-import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from "vitest";
 
 import { closeDb, db } from "@/lib/db";
-import { asSystem, testUser } from "@/lib/teams/testing";
+import type { Lang } from "@/lib/lang";
+import { canGrant } from "@/lib/permissions";
+import { forgetTeams, sharedLangs } from "@/lib/teams/store";
+import { addMember, asSystem, dropLang, dropTeam, newTeamIn, systemRows, testUser, uniqueLang } from "@/lib/teams/testing";
 
-import { addGrants, grantsOf, listGrants, removeGrant } from "./store";
+import { addGrants, grantsOf, listGrants, listTeamGrants, OtherTeamError, removeGrant } from "./store";
 
 let grantee: Awaited<ReturnType<typeof testUser>>;
 let granter: Awaited<ReturnType<typeof testUser>>;
@@ -96,7 +99,7 @@ describe("two tables", () => {
 });
 
 describe("removeGrant", () => {
-  it("revokes an audio grant filed under a team that does not own the language, as grantsOf reads it", async () => {
+  it("revokes an audio grant filed under a team that does not voice the language, as grantsOf reads it", async () => {
     const { rows } = await asSystem.query<{ id: string }>(
       `select "id" from "team" where "id" is distinct from team_of_lang('esMX') order by "slug" limit 1`,
     );
@@ -123,4 +126,110 @@ describe("removeGrant", () => {
       { lang: "ptBR", actorId: GRANTER, detail: { capability: "text" } },
     ]);
   });
+
+  it("grants nothing when the step that runs first throws", async () => {
+    await expect(
+      addGrants(GRANTEE, "frFR", ["ignore"], GRANTER, {
+        within: async () => {
+          throw new Error("no");
+        },
+      }),
+    ).rejects.toThrow("no");
+    expect((await grantsOf(GRANTEE)).filter((g) => g.capability === "ignore")).toEqual([]);
+  });
 });
+
+describe("a language with two teams", () => {
+  let lang: Lang;
+  let teamA: string;
+  let teamB: string;
+  let w: Awaited<ReturnType<typeof testUser>>;
+  let v: Awaited<ReturnType<typeof testUser>>;
+  let fresh: Awaited<ReturnType<typeof testUser>>;
+
+  beforeEach(async () => {
+    lang = await uniqueLang();
+    w = await testUser("test-grants-w");
+    v = await testUser("test-grants-v");
+    fresh = await testUser("test-grants-fresh");
+    teamA = await newTeamIn(lang, true, "grants-a");
+    teamB = await newTeamIn(lang, false, "grants-b");
+    await addMember(teamB, w.id, lang, "admin");
+    await addMember(teamA, v.id, lang, "regenerate");
+  });
+
+  afterEach(async () => {
+    for (const team of [teamA, teamB]) {
+      await asSystem.query(`delete from "activity" where "teamId" = $1`, [team]);
+      await dropTeam(team);
+    }
+    await dropLang(lang);
+    forgetTeams();
+    for (const user of [w, v, fresh]) await user.cleanup();
+  });
+
+  it("grants into the granter's team, and logs it there", async () => {
+    await addGrants(fresh.id, lang, ["regenerate"], w.id);
+    expect(await systemRows(`select "teamId" from "team_member" where "userId" = $1`, [fresh.id])).toEqual([
+      { teamId: teamB },
+    ]);
+    expect(
+      await systemRows(`select "teamId" from "activity" where "kind" = 'grant.added' and "subject" = $1`, [fresh.id]),
+    ).toEqual([{ teamId: teamB }]);
+  });
+
+  it("refuses somebody who works on the language in the other team", async () => {
+    await expect(addGrants(v.id, lang, ["record"], w.id)).rejects.toBeInstanceOf(OtherTeamError);
+    await expect(addGrants(v.id, lang, ["record"], w.id)).rejects.toThrow(
+      "That person already works on Xq in another team; one person works in one team per language.",
+    );
+    expect(await systemRows(`select 1 from "team_member" where "userId" = $1 and "teamId" = $2`, [v.id, teamB])).toEqual(
+      [],
+    );
+  });
+
+  it("lists only the team's own rows, and no text, for the team alone", async () => {
+    await addGrants(fresh.id, lang, ["regenerate"], w.id);
+    await asSystem.query(
+      `insert into "language_grant" ("userId", "lang", "capability") values ($1, $2, 'edit')`,
+      [v.id, lang],
+    );
+    const rows = await listTeamGrants(new Map([[lang, teamB]]), []);
+    expect(new Set(rows.map((row) => row.userId))).toEqual(new Set([w.id, fresh.id]));
+    expect(rows.some((row) => row.capability === "text")).toBe(false);
+    expect(rows.every((row) => row.teamSlug?.startsWith("grants-b-"))).toBe(true);
+    const all = await listGrants([lang]);
+    expect(all.find((row) => row.capability === "text")).toMatchObject({ userId: v.id, teamSlug: null });
+  });
+
+  it("answers a conflict at commit as OtherTeamError", async () => {
+    await expect(
+      addGrants(fresh.id, lang, ["record"], w.id, {
+        within: async () => {
+          throw Object.assign(new Error("exclusion"), { code: "23P01" });
+        },
+      }),
+    ).rejects.toBeInstanceOf(OtherTeamError);
+  });
+
+  it("files a removal under the team the row was in", async () => {
+    await removeGrant(w.id, lang, "admin", fresh.id);
+    expect(await systemRows(`select 1 from "team_member" where "userId" = $1`, [w.id])).toEqual([]);
+    expect(
+      await systemRows(`select "teamId" from "activity" where "kind" = 'grant.removed' and "subject" = $1`, [w.id]),
+    ).toEqual([{ teamId: teamB }]);
+  });
+
+  it("removes only the named team's row", async () => {
+    await removeGrant(v.id, lang, "regenerate", w.id, teamB);
+    expect(await systemRows(`select "teamId" from "team_member" where "userId" = $1`, [v.id])).toEqual([
+      { teamId: teamA },
+    ]);
+  });
+
+  it("reads a grant in either team alike", async () => {
+    expect((await grantsOf(w.id)).filter((grant) => grant.lang === lang)).toEqual([{ lang, capability: "admin" }]);
+    expect((await grantsOf(v.id)).filter((grant) => grant.lang === lang)).toEqual([{ lang, capability: "regenerate" }]);
+  });
+});
+

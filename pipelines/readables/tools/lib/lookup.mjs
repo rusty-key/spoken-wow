@@ -21,6 +21,7 @@ import { dirname, join } from "node:path";
 import pg from "pg";
 
 import { isClientLocale } from "../../../lib/locales.mjs";
+import { releaseTeamSql } from "../../../lib/release-team.mjs";
 import { packTimes } from "../../../lib/word-times.mjs";
 import { canBeHad, compareIds, indexLua, luaId, pageIndex, quote } from "./lua.mjs";
 import { shownPage } from "./text.mjs";
@@ -174,7 +175,8 @@ export async function buildLookup({ lang = LANG, out = lookupPath(lang) } = {}) 
          join "book_line" b on b."lineId" = t."lineId" and b."lang" = t."lang" and b."isCurrent"
          join "book_page" p on p."lineId" = t."lineId" and p."aliasOf" is null
         where t."source" = 'readables' and t."isCurrent" and t."lang" = $1
-          and t."teamId" = team_of_lang($1)
+          -- the release's team, else the one with plain packs, so a build outside a release reads what it always did
+          and t."teamId" = ${releaseTeamSql("$1")}
         order by t."lineId", t."id" desc) c
         order by c."pageTextId" nulls last, c."lineId"`,
       [lang],

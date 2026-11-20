@@ -3,8 +3,9 @@
 -- The dungeons and raids, by instance map, for every tab of Azeroth's Compendium: `zone`, the
 -- uiMapID of the zone their entrance is in, where the tabs list them; `story`, the Places area
 -- that tells their story ({ uiMapID, key }), absent where none does; and their name in every
--- language, from the client's Map table (Forever 1.60.1.70338, wago.tools). The quests' and the
--- readables' exporters file a dungeon's quests and writings by the same maps. Regenerate with:
+-- language, from the client's Map table (Forever 1.60.1.70959, itIT 1.60.1.70338,
+-- wago.tools). The quests' and the readables' exporters file a dungeon's quests and writings by the
+-- same maps. Regenerate with:
 --   make dungeons
 --
 -- A global rather than a private namespace: a data file cannot reach into the addon's environment.
@@ -14,7 +15,7 @@ SpokenDungeons = {
 
 	dungeons = {
 		[33] = { zone = 1421, story = { 1421, "shadowfang keep" }, "Shadowfang Keep", deDE = "Burg Shadowfang", esES = "Castillo de Colmillo Oscuro", esMX = "Castillo de Colmillo Oscuro", frFR = "Donjon d'Ombrecroc", ptBR = "Bastilha da Presa Negra", ruRU = "Крепость Темного Клыка", koKR = "그림자송곳니 성채", zhCN = "影牙城堡", zhTW = "影牙城堡", itIT = "Forte Zannascura" },
-		[34] = { zone = 1453, "Stormwind Stockade", deDE = "Verlies von Stormwind", esES = "Mazmorras de Ventormenta", esMX = "Mazmorras de Ventormenta", frFR = "Prison de Stormwind", ptBR = "Cárcere de Ventobravo", ruRU = "Тюрьма Штормграда", koKR = "스톰윈드 지하감옥", zhCN = "暴风城监狱", zhTW = "暴風城監獄", itIT = "Segrete di Roccavento" },
+		[34] = { zone = 1453, "Stormwind Stockade", deDE = "Verlies von Stormwind", esES = "Mazmorras de Ventormenta", esMX = "Mazmorras de Ventormenta", frFR = "Prison de Hurlevent", ptBR = "Cárcere de Ventobravo", ruRU = "Тюрьма Штормграда", koKR = "스톰윈드 지하감옥", zhCN = "暴风城监狱", zhTW = "暴風城監獄", itIT = "Segrete di Roccavento" },
 		[36] = { zone = 1436, story = { 1436, "deadmines" }, "Deadmines", deDE = "Todesminen", esES = "Minas de la Muerte", esMX = "Minas de la Muerte", frFR = "Mortemines", ptBR = "Minas Mortas", ruRU = "Мертвые копи", koKR = "죽음의 폐광", zhCN = "死亡矿井", zhTW = "死亡礦坑", itIT = "Miniere della Morte" },
 		[43] = { zone = 1413, story = { 1413, "wailing caverns" }, "Wailing Caverns", deDE = "Höhlen des Wehklagens", esES = "Cuevas de los Lamentos", esMX = "Cuevas de los Lamentos", frFR = "Cavernes des Lamentations", ptBR = "Caverna Ululante", ruRU = "Пещеры Стенаний", koKR = "통곡의 동굴", zhCN = "哀嚎洞穴", zhTW = "哀嚎洞穴", itIT = "Caverna dei Lamenti" },
 		[47] = { zone = 1413, story = { 1413, "razorfen kraul" }, "Razorfen Kraul", deDE = "Kral von Razorfen", esES = "Horado Rajacieno", esMX = "Horado Rajacieno", frFR = "Kraal de Tranchebauge", ptBR = "Urzal dos Tuscos", ruRU = "Лабиринты Иглошкурых", koKR = "가시덩굴 우리", zhCN = "剃刀沼泽", zhTW = "剃刀沼澤", itIT = "Gallerie di Lamaspina" },
@@ -43,8 +44,13 @@ SpokenDungeons = {
 		[2856] = { zone = 1423, "Scarlet Enclave", deDE = "Scharlachrote Enklave", esES = "Enclave Escarlata", esMX = "Enclave Escarlata", frFR = "L’enclave Écarlate", ptBR = "Enclave Escarlate", ruRU = "Анклав Алого ордена", koKR = "붉은십자군 초소", zhCN = "血色领地", zhTW = "血色領區" },
 		[2875] = { zone = 1430, "Karazhan Crypts", deDE = "Karazhangruften", esES = "Criptas de Karazhan", esMX = "Criptas de Karazhan", frFR = "Cryptes de Karazhan", ptBR = "Criptas de Karazhan", ruRU = "Склепы Каражана", koKR = "카라잔 납골당", zhCN = "卡拉赞墓穴", zhTW = "卡拉贊墓穴" },
 		[2959] = { zone = 1416, story = { 1416, "dalaran" }, "City of Dalaran", deDE = "Dalaran", esES = "Ciudad de Dalaran", esMX = "Ciudad de Dalaran", frFR = "Cité de Dalaran", ptBR = "Dalaran", ruRU = "Даларан", koKR = "달라란", zhCN = "达拉然城", zhTW = "達拉然城" },
-		[2998] = { zone = 1437, story = { 1437, "excavation site wetlands" }, "Excavation Site: Wetlands", deDE = "Ausgrabungsstätte: Sumpfland", esES = "Excavación: Los Humedales", esMX = "Excavación: Los Humedales", frFR = "Excavations : les Paluns", ptBR = "Sítio de Escavação: Pantanal", ruRU = "Раскопки: Болотина", koKR = "발굴 현장: 저습지", zhCN = "挖掘场：湿地", zhTW = "挖掘場：濕地" },
+		[2970] = { zone = 1434, "The Drowned City", deDE = "Die Versunkene Stadt", esES = "La Ciudad Sumergida", esMX = "La Ciudad Anegada", frFR = "La cité Submergée", ptBR = "A Cidade Afogada", ruRU = "Затонувший город", koKR = "가라앉은 도시", zhCN = "沉没之城", zhTW = "沉沒之城" },
+		[2974] = { zone = 1447, story = { 1447, "blackmaw hold" }, "Blackmaw Hold", deDE = "Die Schwarzschlundfeste", esES = "Bastión Faucenegra", esMX = "Bastión Faucenegra", frFR = "Repaire des Noiregueules", ptBR = "Gruta Bocanera", ruRU = "Крепость Черночревов", koKR = "검은아귀 요새", zhCN = "黑喉要塞", zhTW = "黑喉要塞" },
+		[2994] = { zone = 1445, "Alcaz Prison", deDE = "Gefängnis von Alcaz", esES = "Prisión de Alcaz", esMX = "Prisión de Alcaz", frFR = "Prison d’Alcaz", ptBR = "Prisão de Alcaz", ruRU = "Тюрьма Алькац", koKR = "알카즈 감옥", zhCN = "奥卡兹监狱", zhTW = "奧卡茲監獄" },
+		[2998] = { zone = 1437, story = { 1437, "excavation site wetlands" }, "Excavation Site: Wetlands", deDE = "Ausgrabungsstätte: Sumpfland", esES = "Excavación: Los Humedales", esMX = "Sitio de Excavación: Los Humedales", frFR = "Excavations : les Paluns", ptBR = "Sítio de Escavação: Pantanal", ruRU = "Раскопки: Болотина", koKR = "발굴 현장: 저습지", zhCN = "挖掘场：湿地", zhTW = "挖掘場：濕地" },
 		[2999] = { zone = 1420, story = { 1420, "ruins of lordaeron" }, "Ruins of Lordaeron", deDE = "Ruinen von Lordaeron", esES = "Ruinas de Lordaeron", esMX = "Ruinas de Lordaeron", frFR = "Ruines de Lordaeron", ptBR = "Ruínas de Lordaeron", ruRU = "Руины Лордерона", koKR = "로데론의 폐허", zhCN = "洛丹伦废墟", zhTW = "羅德隆廢墟" },
+		[3001] = { zone = 1449, story = { 1449, "shapers terrace" }, "The Shaper's Terrace", deDE = "Die Terrasse des Formers", esES = "El Bancal del Creador", esMX = "El Bancal del Creador", frFR = "La terrasse du Façonneur", ptBR = "O Terraço do Moldador", ruRU = "Терраса Создателя", koKR = "구체자의 정원", zhCN = "塑造者之台", zhTW = "塑造者殿堂" },
+		[3039] = { zone = 2548, story = { 2548, "kroldok stronghold" }, "Krol'dok Stronghold", deDE = "Feste Krol'dok", esES = "Bastión Krol'dok", esMX = "Bastión de Krol'dok", frFR = "Bastion Krol’dok", ptBR = "Fortaleza de Krol'Dok", ruRU = "Крепость Крол'док", koKR = "크롤도크 보루", zhCN = "克罗多克要塞", zhTW = "克羅多克要塞" },
 		[3065] = { zone = 1455, story = { 1455, "hall of thanes" }, "The Hall of Thanes", deDE = "Die Halle der Thanen", esES = "El Salón de los Feudales", esMX = "El Salón de Señores Feudales", frFR = "La salle des Thanes", ptBR = "Salão dos Thanes", ruRU = "Чертоги танов", koKR = "영주의 전당", zhCN = "领主大厅", zhTW = "族長之廳" },
 	},
 

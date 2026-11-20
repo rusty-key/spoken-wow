@@ -80,10 +80,10 @@ CACHE = os.path.join(HERE, "cache")
 # The client's tables, in the cache pipelines/lib/wago.mjs keeps for every pipeline, under its
 # file names.
 WAGO_CACHE = os.path.join(ROOT, "pipelines", "lib", "cache", "wago")
-# Forever's client (wago.tools' wow_classic_beta), and Classic Era's: the builds wago.mjs pins
+# Forever's client (wago.tools' wowf), and Classic Era's: the builds wago.mjs pins
 # (tests/test_compendium_tables.py holds them equal). With Era's alone, Forever's own zones and
 # sorts resolve to nothing, even where the DB names them.
-BUILD = "1.60.1.70450"
+BUILD = "1.60.1.70959"
 ERA_BUILD = "1.15.9.69109"
 # Efficient Games' Forever data: what players' Forever clients recorded, per client build (EG Link,
 # CC BY 4.0, credited in THIRD_PARTY.md), at one commit of their repository: it grows every day,

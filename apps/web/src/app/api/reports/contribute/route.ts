@@ -9,7 +9,8 @@
  */
 import { keepClassWords } from "@/lib/contributions/class-words";
 import { requireCapability } from "@/lib/generation/authz";
-import { BASE_LANG, isLang, type Lang } from "@/lib/lang";
+import { BASE_LANG, type Lang } from "@/lib/lang";
+import { knownLang } from "@/lib/languages/catalogue";
 import type { Submission } from "@/lib/contributions/contributions";
 import { contributeReport, reportContribution, reportSubmission } from "@/lib/reports/contribute";
 import { requireReportQueue } from "@/lib/reports/access";
@@ -78,7 +79,7 @@ async function guarded(
   }
   const [submission] = await keepClassWords([sent]);
   if (writes || submission.locale !== lang) {
-    const { denied } = await requireCapability("text", isLang(submission.locale) ? submission.locale : BASE_LANG);
+    const { denied } = await requireCapability("text", (await knownLang(submission.locale)) ?? BASE_LANG);
     if (denied) return { denied };
   }
   return { report, lang, submission, userId: guard.session.user.id };

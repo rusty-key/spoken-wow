@@ -1,16 +1,22 @@
 /**
  * The access boundary for /api/v1, which has a token where the site's routes have a session.
  *
- * The grant is asked for on every request rather than when the token was made, so taking `text`
- * away from somebody kills their tokens at once instead of at their expiry.
+ * The grants are asked for on every request rather than when the token was made, so taking away
+ * the grant that backs a token kills it at once instead of at its expiry.
  */
 import "server-only";
 
-import { viewerOf } from "@/lib/grants/store";
+import type { TeamId } from "@/lib/db";
+import { grantsInTeam, viewerOf } from "@/lib/grants/store";
 import type { Lang } from "@/lib/lang";
-import { can, type Capability } from "@/lib/permissions";
+import { can, isAdmin, type Capability, type Viewer } from "@/lib/permissions";
+import { asTeams, memberTeams } from "@/lib/teams/acting";
+import { defaultTeamOf, sharedLangs } from "@/lib/teams/store";
 import { findLiveToken } from "@/lib/tokens/store";
 import type { TokenAccess } from "@/lib/tokens/types";
+
+/** The original text, written under `text`, or the owner's team's overrides, under `regenerate`. */
+export type Layer = "original" | "override";
 
 export type TokenContext = {
   tokenId: string;
@@ -18,15 +24,119 @@ export type TokenContext = {
   role: string | null;
   lang: Lang;
   access: TokenAccess;
+  generate: boolean;
+  /** The layers this token may write; both false when it cannot write text. */
+  layers: Record<Layer, boolean>;
 };
 
 const BEARER = /^Bearer\s+(\S+)$/;
 
-/** `also` is a grant a route needs on top of `text`: lexicon writes need `configure`, as on the site. */
+export type TokenNeed = "read" | "write" | "generate" | "any";
+
+/**
+ * Which of a token's scopes its owner's grants back: text access needs `text` or `regenerate`,
+ * generate needs `regenerate`. A scope the token does not carry is false. `layers` says which
+ * text its owner may write: the original under `text`, their team's overrides under
+ * `regenerate`.
+ */
+export function backedScopes(
+  viewer: Viewer | null,
+  lang: Lang,
+  access: TokenAccess,
+  generate: boolean,
+): { text: boolean; generate: boolean; layers: Record<Layer, boolean> } {
+  const layers = { original: can(viewer, "text", lang), override: can(viewer, "regenerate", lang) };
+  return {
+    text: access !== "none" && (layers.original || layers.override),
+    generate: generate && layers.override,
+    layers,
+  };
+}
+
+/**
+ * The layer a write goes to: the one `requested`, or with none the original where the owner
+ * holds `text`, so a maintainer's token writes what it always wrote, else their team's
+ * overrides. A layer the owner may not write is a 403, anything else a 400.
+ */
+export function writeLayer(context: TokenContext, requested: unknown): Layer | Response {
+  const refuse = (status: number, error: string) => Response.json({ error }, { status });
+  if (requested === undefined) {
+    if (context.layers.original) return "original";
+    if (context.layers.override) return "override";
+    return refuse(403, `this token's owner holds neither text nor regenerate in ${context.lang}`);
+  }
+  if (requested === "original") {
+    return context.layers.original
+      ? "original"
+      : refuse(
+          403,
+          `this token's owner is not a text maintainer in ${context.lang}, so it writes only its team's overrides`,
+        );
+  }
+  if (requested === "override") {
+    return context.layers.override
+      ? "override"
+      : refuse(403, `this token's owner does not hold regenerate in ${context.lang}, so it cannot write overrides`);
+  }
+  return refuse(400, 'layer must be "original" or "override"');
+}
+
+/**
+ * `need` is the scope the route works under: `read` and `write` need text access, `generate`
+ * needs the generate flag, `any` takes either. Each is checked against the owner's grant now.
+ * `also` is a grant a route needs on top: lexicon writes need `configure`, as on the site.
+ * `noQuery` refuses a query string with a 400, worded as given or a default.
+ */
 export async function requireToken(
   request: Request,
-  options: { write?: boolean; also?: Capability } = {},
+  options: TokenOptions = {},
 ): Promise<{ context: TokenContext; denied: null } | { context: null; denied: Response }> {
+  return checkToken(request, options);
+}
+
+/**
+ * requireToken, with `work` acting as the token's owner. A token acts as its owner's membership,
+ * never as a session or a site owner's acting cookie the request may also carry: `work` runs in
+ * the teams its grants were checked in where the language has several teams, and as no team
+ * where it has one, which reads no membership.
+ */
+export async function withToken(
+  request: Request,
+  options: TokenOptions,
+  work: (context: TokenContext) => Promise<Response>,
+): Promise<Response> {
+  const { context, denied, teams } = await checkToken(request, options);
+  if (denied) return denied;
+  return asTeams(teams ?? new Map(), () => work(context));
+}
+
+type TokenOptions = { need?: TokenNeed; also?: Capability; noQuery?: true | string };
+
+/**
+ * The owner where the language has several teams, with only the grants of the team they act as.
+ * Membership is read first, so a grant from another team, or from one left between the two reads,
+ * never backs a write that lands in this one. A site owner in none of the teams works in the
+ * first, as their session does with no choice made.
+ */
+async function ownerInTeam(
+  userId: string,
+  role: string | null,
+  lang: Lang,
+): Promise<{ viewer: Viewer; teams: Map<string, TeamId> }> {
+  const teams = await memberTeams(userId);
+  const first = isAdmin(role) && !teams.has(lang) ? await defaultTeamOf(lang) : undefined;
+  if (first) teams.set(lang, first.id);
+  return { viewer: { role, grants: await grantsInTeam(userId, lang, teams.get(lang) ?? null) }, teams };
+}
+
+async function checkToken(
+  request: Request,
+  options: TokenOptions,
+): Promise<
+  | { context: TokenContext; denied: null; teams?: Map<string, TeamId> }
+  | { context: null; denied: Response; teams?: undefined }
+> {
+  const need = options.need ?? "read";
   const denied = (status: number, error: string) => ({
     context: null,
     denied: Response.json({ error }, { status }),
@@ -36,13 +146,37 @@ export async function requireToken(
   const token = raw ? await findLiveToken(raw) : null;
   if (!token) return denied(401, "a valid API token is required");
 
-  const viewer = await viewerOf({ user: { id: token.userId, role: token.role } });
-  if (!can(viewer, "text", token.lang)) {
-    return denied(403, `this token's owner is not a text maintainer in ${token.lang}`);
+  // A language with one team reads no membership.
+  const owner = (await sharedLangs()).has(token.lang)
+    ? await ownerInTeam(token.userId, token.role, token.lang)
+    : { viewer: await viewerOf({ user: { id: token.userId, role: token.role } }), teams: undefined };
+  const { viewer } = owner;
+  const hasText = token.access !== "none";
+  const backed = backedScopes(viewer, token.lang, token.access, token.generate);
+  const { text: textOk, generate: generateOk } = backed;
+
+  const noText = () =>
+    hasText
+      ? denied(403, `this token's owner holds neither text nor regenerate in ${token.lang}`)
+      : denied(403, "this token has no text access");
+  const noGenerate = () =>
+    token.generate
+      ? denied(403, `this token's owner does not hold regenerate in ${token.lang}`)
+      : denied(403, "this token cannot generate");
+
+  if (need === "generate") {
+    if (!generateOk) return noGenerate();
+  } else if (need === "any") {
+    if (!textOk && !generateOk) return hasText ? noText() : noGenerate();
+  } else {
+    if (!textOk) return noText();
+    if (need === "write" && token.access !== "write") return denied(403, "this token is read-only");
   }
-  if (options.write && token.access !== "write") return denied(403, "this token is read-only");
   if (options.also && !can(viewer, options.also, token.lang)) {
     return denied(403, `this token's owner does not hold ${options.also} in ${token.lang}`);
+  }
+  if (options.noQuery && new URL(request.url).search) {
+    return denied(400, options.noQuery === true ? "this takes no query string" : options.noQuery);
   }
 
   return {
@@ -51,8 +185,12 @@ export async function requireToken(
       userId: token.userId,
       role: token.role,
       lang: token.lang,
-      access: token.access,
+      // What the grants back, not what the token stores: `any` lets one scope through alone.
+      access: textOk ? token.access : "none",
+      generate: generateOk,
+      layers: textOk && token.access === "write" ? backed.layers : { original: false, override: false },
     },
     denied: null,
+    teams: owner.teams,
   };
 }

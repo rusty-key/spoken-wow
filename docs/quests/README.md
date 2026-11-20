@@ -294,9 +294,13 @@ project: addon managers install the newest file for a project, so a second file 
 move a player from the pack they chose to whichever was uploaded last. The player needs no
 change to read them — `DataModules:PrepareSound` walks every registered module and takes the
 first whose `SoundLengthLookupByFileName` has the file, which is how upstream shipped a pack
-per expansion. Every pack carries the full lookup tables (3.5 MB); they map text to ids and
-hashes rather than to files, so an entry whose audio lives in a pack you did not install finds
-no length and stays quiet.
+per expansion. Every pack carries the lookup tables; they map text to ids and hashes rather
+than to files, so an entry whose audio lives in a pack you did not install finds no length and
+stays quiet. The four keyed by gossip text (`GOSSIP_TEXT_TABLES` in `tts_cli/build.py`, about
+4 MB) are the exception: every entry names gossip audio, so only a pack holding gossip audio
+(`carries_gossip`: Gossip and All) carries them, and the three quest packs do not make the
+client parse them at every login. The price is in Contribute: `IsChanged` reads these tables to
+tell gossip Blizzard reworded, so a player with no pack holding gossip no longer reports it.
 
 **Which side a quest is on comes first from the Compendium's race masks**
 (`addons/Spoken_Quests/Data/Compendium.lua`, `tts_cli/factions.py` `compendium_sides`): a quest
@@ -397,12 +401,37 @@ The import (`tts_cli/locale_import.py`), accept and the explorer's text editor a
 rule. A plain line made from a split English line is read beside English's male side.
 
 A player's client has already picked one side of any `$G`, so a contribution is one plain line.
-A moderator splits it by writing the `$G` back in the explorer: the plain line stops being
+An addon that sends the text as shown also says the reader's gender (`readerSex`). Every copy
+intake drops as already on file records that gender on the line it matched
+(`quest_line.readerGenders`, on the current version, so new text starts with none;
+`lib/contributions/readers.ts`). Recording is best-effort: if the write fails, intake logs it and
+takes the upload anyway, so a matching copy does not always count. Most lines gather both. Where
+our line is one plain line that only the other gender has seen, a correction from the reader's
+gender may be the other side of a `$G` the line lost, or may be a plain fix the other gender
+never got to send. The corrections tab offers **Split by gender** for the moderator to weigh
+against Replace ours: ours for the gender that saw it, theirs for the reader's, each run of words
+they differ in written as a `$G` branch, in any language (`compare.ts` `readerSide`,
+`genderSplit`). It is not offered on a line both genders have seen or none has yet, nor where
+one text only adds words to the other or a differing run crosses a sentence's end, which a
+branch cannot hold. A moderator who knows better can still split any plain line from **Keep
+both…**: theirs for female players or for male players, ours for the other, whatever the evidence
+says. Either sends only the side (`split`); the server builds the template from the line as it
+then stands and writes it as the correction, which splits the moment as below, and the row keeps
+what the player's client showed. Otherwise a moderator splits it by writing the `$G` back in the explorer: the plain line stops being
 current and `:m` and `:f` take its place, both holding the template. English splits the same way,
 except that each side holds its own reader's words. On a moment already split, a rewrite holding a
 `$G` overrides both sides and an accepted correction writes both (`apps/web/src/lib/quests/moment-rewrite.ts`). The site decides the shape: `extract` leaves out a dump
 line the site split and gives its speakers to both sides (`split_here` in
 `tts_cli/corpus_db.py`).
+
+Accepting a translation's correction refuses one with fewer player tokens than a line it would
+overwrite (`correction.ts` `droppedTokens`): a `$N`, `$C` or `$R` the client filled in and intake
+did not put back, or a `$G` the client resolved. It compares the text that would be written, a
+split's template included, with each overwritten line's stored text, on the side that line's
+readers take: a `:m` line on its male side only, a plain line on both. Losing a branch counts
+only on a plain line, since a side line's branch is read one way. Tokens are counted as
+`speakPlayerTokens` replaces them (`playerTokenCounts`), so a form the language does not speak is
+not one. Book pages get the same check. The moderator puts the token back in the explorer.
 
 The forms of one moment are linked by its id without the suffix. Each takes the moment's
 speakers, and the explorer shows a language its own lines, or English's while it has none. An
@@ -1083,14 +1112,21 @@ rules `tts_cli/naming.py` uses, and a `quest_line_speaker` row carrying the cont
 From there it is an ordinary line — the explorer lists it under missing audio with a
 *contributed* badge linking back, an editor fixes anything the player's client substituted
 that the addon could not put back (the branch of a `$G` it picked) through the usual text
-override, generates a take, and the next export carries it into the pack. The addon does put
-back the reader's own name, class and race as `$N`, `$C` and `$R` before sending — only the
-client knows which words those were; the name as written and in capitals — so a contributed line is a template like an extracted
-one: stored as `originalText`, spoken as `Adventurer`/`Traveler` by the extract's own table,
-and hashed on the template when it is gossip. Class and race are swapped wherever they occur as
+override, generates a take, and the next export carries it into the pack. The addon sends the
+text as the client showed it, marked `shown=1`, with the reader beside it: `reader` (the
+character's name), `readerClass` and its gendered forms, `readerClassID`, `readerRace`,
+`readerSex`, and on a quest the Compendium knows, `questClasses`. Intake puts the name, class and
+race back as `$N`, `$C` and `$R` (`lib/contributions/reader.ts`), the name whole, by either part
+and in capitals, so a contributed line is a template like an extracted one: stored as
+`originalText`, spoken as `Adventurer`/`Traveler` by the extract's own table, and hashed on the
+template when it is gossip. The name is not kept: `raw`, `meta` and a report's context hold the
+text with the name as `$N` and the class and race as shown, so the rule can run again. An older
+addon put the tokens back itself and sends no `shown`, and its text is taken as it is. The addon
+still detemplates a gossip line for the key `Collect Missing Lines` keeps it under, so the same
+line from two characters is kept once. Class and race are swapped wherever they occur as
 whole words, so a warrior's "a warrior's discipline" arrives as "a `$c`'s discipline"; that
 false positive is accepted over voicing one player's class at everyone, except on a quest only
-that class can take (the Compendium's `classes` is that one class), where the class is left as
+that class can take (`questClasses` is that one class), where the class is left as
 written. A quest whose text names a class as a word of its own ("There's a priest out in the
 mountains") is marked from its row on the corrections tab, per language (`quest_class_word`,
 migration 0105). From then on that language's intake puts the word back wherever a `$c` (frFR's
@@ -1482,7 +1518,8 @@ python cli-main.py install --force --addons "<WoW folder>/_forever_/Interface/Ad
 install aside to `<module>.replaced` rather than deleting it. The addons are `addons/Spoken` and
 the modules beside it, and Quests needs Spoken. To run a checkout's code, the repo's
 `/link-addon` skill links every addon folder into a client (`forever` is the default)
-and `/reload` loads it. It skips the audio packs, whose mp3s are not in git, so install a pack
+and `/reload` loads it. For a client on another machine than the worktree, `/sync-addon`
+gives the command that copies them there. It skips the audio packs, whose mp3s are not in git, so install a pack
 with the command above.
 
 Use `Spoken_Quests` and not upstream's `AI_VoiceOver/`, which calls
@@ -1662,7 +1699,7 @@ Two generated files feed it, both committed so the addon never needs a database:
   without it, `--no-db` uses the rectangles), as the readables' places have it, else the smallest zone
   rectangle where no tile was extracted, and a city's rectangle over the ground around it), or the QuestSort of a class, profession
   or season with its name in every language, and the races and classes allowed to take it. Areas,
-  zones and sorts are read from Forever's client tables (build 1.60.1.70338 on wago.tools, pinned
+  zones and sorts are read from Forever's client tables (build 1.60.1.70959 on wago.tools, pinned
   in `pipelines/lib/wago.mjs` and cached in `pipelines/lib/cache/wago/` for every pipeline), which
   have Forever's zones and sorts (Zephras Isle, Darkspear Islands,
   Camping, The High Order); Era's (1.15.9.69109) fill in anything they lack. The
@@ -1764,13 +1801,13 @@ Two generated files feed it, both committed so the addon never needs a database:
   apply to every quest again (each line read back, `parse_quest_line`), so a correction written
   since the last run with the database takes effect; the chain entries apply to the quests added.
 - `Data/QuestText.lua` (`make quests-compendium-text`, `tools/export_quest_text.py`, rules in
-  `tts_cli/quest_text.py`): each quest's accept and complete text (its progress only where it has neither, as its accept), the corpus's
+  `tts_cli/quest_text.py`): each quest's accept, progress and complete text, the corpus's
   `originalText` with `$N`, `$C`, `$R`, `$G male:female;` and `$B` kept (the addon writes `$c` and
   `$r` in lower case, as the client does, save on a German client). An objective's amount, a
   Craftsman's Writ's `$2oa`, is written in from Efficient Games' objectives (the same cache as
   `Data/Compendium.lua`'s; `--without-efficient-games` leaves it). A gendered pair is one
   text; where givers' texts differ, the one most of the moment's lines have, ties to the first in
-  the corpus; ignored lines, and the quests the hand corrections `remove`, are left out. About 2.8 MB, parsed at every login on those clients.
+  the corpus; ignored lines, and the quests the hand corrections `remove`, are left out. About 3.3 MB, parsed at every login on those clients.
 
 The tab lists only the quests this character's race and class may take. A quest is found once
 the client says it is completed (`C_QuestLog.GetAllCompletedQuestIDs`, else
@@ -1783,7 +1820,7 @@ are in progress. The list follows the log while it is open (`QUEST_LOG_UPDATE`,
 `QUEST_ACCEPTED`, `QUEST_REMOVED`, drawn again once a burst is over and only when the log's
 quests changed). The rest are locked unless Unlock Unstarted Quests is on, which Spoken's page
 shows in its Compendium section. The filter menu holds Started Only, on until it is turned off (`FoundOnly` unset reads as on; the setting is the account's), and Voiced Only, which leaves
-out the quests no voice pack has the offer or the hand-in of, with any line or banner left with nothing, and counts
+out the quests no voice pack has the offer, the progress or the hand-in of, with any line or banner left with nothing, and counts
 only what it lists. That switch and both filters are kept in
 `SpokenQuestsSettings.global.Compendium`.
 
@@ -1847,15 +1884,13 @@ to be chosen from the list; it has no Play. The client has no chain of its own, 
 in the data every quest is a row of its own.
 
 The page fills the placeholders for the player as the client does. A started quest's page shows
-its offer; its hand-in, with its Play and Report, shows only once the quest is completed, or with
-Unlock Unstarted Quests on, since it tells how the quest ends. The progress, said while the quest
-is under way, has no part on the page: it is not shown or played there, and Voiced Only counts
-only the offer and the hand-in, so a quest voiced only in its progress counts as unvoiced. Each
-part's Play plays that part. A part is named and pictured for who says it: the offer for the
-quest's giver, as the quest log's Play is, and the hand-in for the one it is handed in to
-(`ender` or `enderObject`, else the giver). The offer's part is named Description, by the
+its offer and its progress, said while the quest is under way; its hand-in, with its Play and
+Report, shows only once the quest is completed, or with Unlock Unstarted Quests on, since it
+tells how the quest ends. Each part's Play plays that part. A part is named and pictured for who
+says it: the offer for the quest's giver, as the quest log's Play is, and the progress and the
+hand-in for the one it is handed in to (`ender` or `enderObject`, else the giver). The offer's part is named Description, by the
 client's own `QUEST_DESCRIPTION` (the heading of a quest's text in its quest window) where it has
-one, else `L.QUEST_PART_ACCEPT`; the hand-in's is Completion. Each part is headed as
+one, else `L.QUEST_PART_ACCEPT`; the progress's is Progress, and the hand-in's Completion. Each part is headed as
 the Small Window heads a line, with DialogueUI installed or not: the speaker's round face
 (`Spoken:CreateSpeakerFace`, 44 across) with the part's badge, their name over the part's name
 beside it, the two centred on the face together, and the part's Report (every part, voiced or
@@ -1863,7 +1898,7 @@ not: the site's report page takes a line with no recording) and its Play (where 
 it) at the right on the face's middle. A creature the client has not cached
 shows the book until it has, one never cached or no one known keeps the book, and an object or
 an item shows the quest's item, else a posted notice. Shift-click on a quest's row hands its first part
-shown that a pack voices (its accept line, else its complete line) to `Player:Enqueue`, behind
+shown that a pack voices (its accept line, then its progress, then its complete line) to `Player:Enqueue`, behind
 what the queue holds, and leaves the selection and the page as they were; a line already queued
 is not queued again. The page shown with no quest chosen says so.
 
@@ -1883,9 +1918,9 @@ view's Play, Report or Contribute; and in DialogueUI's window, at the left end o
 a quest page (`UI/DialogueUIBridge.lua`). DialogueUI hides the rest of the interface while it is
 up, so that one closes DialogueUI's window before the Compendium opens.
 
-On a client in another language, `QUEST_DETAIL` and `QUEST_COMPLETE` keep the window's title and
-words in `SpokenQuestsSettings.global.CompendiumText[locale][questID]`, shown over the English;
-`QUEST_PROGRESS` keeps the title alone. The player's name, class and race go back to `$N`, `$C` and `$R` where the
+On a client in another language, `QUEST_DETAIL`, `QUEST_PROGRESS` and `QUEST_COMPLETE` keep the
+window's title and words in `SpokenQuestsSettings.global.CompendiumText[locale][questID]`, shown
+over the English. The player's name, class and race go back to `$N`, `$C` and `$R` where the
 English has them, so another character sees its own. A text kept by a character of the other sex
 is not shown where the English has a `$G`. An English client keeps nothing.
 

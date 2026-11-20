@@ -65,7 +65,6 @@ export type ExplorerSection<L extends ExplorerLine = ExplorerLine, F extends Exp
     kinds: readonly NonNullable<PlaceFilters["kind"]>[];
     fromParams(params: URLSearchParams): F;
     toParams(filters: F): URLSearchParams;
-    activeCount(filters: F): number;
   };
 };
 

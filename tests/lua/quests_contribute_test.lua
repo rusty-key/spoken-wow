@@ -46,7 +46,8 @@ Expect("the pack language is carried beside it", envelope:match("\npack=enUS\n")
 -- with no pack in the language sends.
 Expect("...and the version of the pack speaking it, none without one", envelope:match("\npackVersion=none\n") ~= nil, true)
 Expect("the build is carried", envelope:match("\nbuild=") ~= nil, true)
-Expect("no character name is carried", envelope:match(world.playerName or "Tester") == nil, true)
+Expect("who read it goes beside the text, for the site to take back out",
+    envelope:match("\nshown=1\nreader=Tester\n") ~= nil, true)
 
 -- A quest a party member shares opens the window with them as its "npc". Their name is a
 -- player's, and does not go.
@@ -116,8 +117,8 @@ stub.HidePanels()
 local remembered = VoiceOver.Contribute:ReportContext(clip)
 Expect("...a closed window's clip from what it remembers", remembered
     and remembered:match("\nquest=9123\nevent=accept\nnpc=12345 Deathguard Linnea\ntitle=A Rough Start\n") ~= nil, true)
-Expect("...its text with the reader put back as a token", remembered
-    and remembered:match("\nKill six of them, %$N%.\n") ~= nil, true)
+Expect("...its text as shown, with who read it", remembered
+    and remembered:match("\nKill six of them, Tester%.\n") ~= nil and remembered:match("\nreader=Tester\n") ~= nil, true)
 Expect("...and the addon version", remembered and remembered:match("\naddon=SpokenQuests/9%.9%.9\n") ~= nil, true)
 Expect("nothing on screen and no clip reports no context", VoiceOver.Contribute:ReportContext(nil), nil)
 
@@ -142,70 +143,83 @@ do
     Expect("...and with no pack holding it, the report names no folder",
         VoiceOver.Contribute:ReportContext(nil):match("\npackFolder=") == nil, true)
     stub.HidePanels()
+    Expect("a plain pack's clip names no team", closed:match("\npackTeam=") == nil, true)
+    local stimmen = { METADATA = { AddonName = "SpokenQuestsAudioHorde_deDE_stimmen", ContentVersion = "1.0.0",
+        Team = "stimmen" } }
+    played.module = stimmen
+    Expect("a team's pack's clip names its team beside its folder",
+        VoiceOver.Contribute:ReportContext(played)
+            :match("\npackFolder=SpokenQuestsAudioHorde_deDE_stimmen\npackFolderVersion=1%.0%.0\npackTeam=stimmen\n") ~= nil, true)
 end
 
----------------------------------------------------------------- the reader put back as tokens
--- The client expands $N, $C and $R to whoever is reading, so the text is sent with the
--- tokens back in place of this character's name, class and race.
-world.playerClass, world.playerClassFile = "Warrior", "WARRIOR"
-world.playerRace, world.playerRaceFile = "Night Elf", "NightElf"
-world.questText = "Tester! A Night Elf warrior, Tester's kind. Testers and Tester2 stay."
+---------------------------------------------------------------- who is reading
+-- The client expands $N, $C and $R to whoever is reading. The text goes as shown, with this
+-- character's name, class and race beside it, and the site puts the tokens back.
+world.playerClass, world.playerClassFile, world.playerClassID = "Warrior", "WARRIOR", 1
+world.playerRace, world.playerRaceFile, world.playerSex = "Night Elf", "NightElf", 3
+world.questText = "Tester! A Night Elf warrior, Tester's kind."
 stub.ShowPanel("QuestFrameDetailPanel")
-local swapped = VoiceOver.Contribute:Capture()
-Expect("the name, class and race go back to tokens, whole words only",
-    swapped:match("\n([^\n]*stay%.)\n"), "$N! A $R $c, $N's kind. Testers and Tester2 stay.")
+local shown = VoiceOver.Contribute:Capture()
+H.WriteCapturedFixture(here, "quests-shown", shown)
+Expect("the text goes as the client showed it", shown:match("\nTester! A Night Elf warrior, Tester's kind%.\n") ~= nil, true)
+Expect("...with the reader's name, class, race and sex beside it",
+    shown:match("\nshown=1\nreader=Tester\nreaderClass=Warrior\nreaderClassID=1\nreaderRace=Night Elf\nreaderSex=3\n") ~= nil,
+    true)
 
 _G.LOCALIZED_CLASS_NAMES_FEMALE = { WARRIOR = "Kriegerin" }
-world.questText = "Eine Kriegerin, Tester."
-local inflected = VoiceOver.Contribute:Capture()
-Expect("...and the class in either gender's form", inflected:match("\nEine %$C, %$N%.\n") ~= nil, true)
+Expect("...and the class in either gender's form",
+    VoiceOver.Contribute:Capture():match("\nreaderClassFemale=Kriegerin\n") ~= nil, true)
 _G.LOCALIZED_CLASS_NAMES_FEMALE = nil
 
--- A quest only the reader's class can take says the class as its own word, not as the reader's.
-world.playerClass, world.playerClassFile, world.playerClassID = "Paladin", "PALADIN", 2
-world.questText = "Tester, a paladin must reflect the Light."
+-- A quest only the reader's class can take says the class as its own word: the site needs the
+-- classes the quest is for to tell.
 _G.SpokenQuestsCompendium = { quests = { [9123] = { "A Rough Start", classes = 2 } } }
-Expect("a quest only that class can take keeps the class as written",
-    VoiceOver.Contribute:Capture():match("\n([^\n]*Light%.)\n"), "$N, a paladin must reflect the Light.")
-Expect("...also from the quest log",
-    VoiceOver.Contribute:Detemplate("A paladin, Tester.", 9123), "A paladin, $N.")
-_G.SpokenQuestsCompendium.quests[9123].classes = 2 + 4
-Expect("a quest two classes can take still puts the reader's class back",
-    VoiceOver.Contribute:Capture():match("\n([^\n]*Light%.)\n"), "$N, a $c must reflect the Light.")
+Expect("the classes a quest is for go beside it", VoiceOver.Contribute:Capture():match("\nquestClasses=2\n") ~= nil, true)
+do
+    local real = VoiceOver.Contribute.QuestLogDescription
+    VoiceOver.Contribute.QuestLogDescription = function() return "A paladin's duty." end
+    Expect("...also from the quest log",
+        VoiceOver.Contribute:CaptureFromLog(9123, "A Rough Start"):match("\nquestClasses=2\n") ~= nil, true)
+    VoiceOver.Contribute.QuestLogDescription = real
+end
 _G.SpokenQuestsCompendium.quests[9123].classes = nil
-Expect("...as does a quest open to every class",
-    VoiceOver.Contribute:Capture():match("\n([^\n]*Light%.)\n"), "$N, a $c must reflect the Light.")
+Expect("...and nothing for a quest open to every class",
+    VoiceOver.Contribute:Capture():match("\nquestClasses=") == nil, true)
 _G.SpokenQuestsCompendium = nil
-world.playerClassID = nil
+world.playerClassID, world.playerSex = nil, nil
 
+-- Gather keys a gossip line on its words with the reader's tokens back, so the same line gathered
+-- on two characters is one line.
+world.questText = "Tester! A Night Elf warrior, Tester's kind. Testers and Tester2 stay."
+Expect("the name, class and race go back to tokens for the key, whole words only",
+    SpokenEnv.Spoken.Contribute:Detemplate(world.questText), "$N! A $R $c, $N's kind. Testers and Tester2 stay.")
 world.playerName = "Valaas Dawnsight"
-world.questText = "Greetings, young Valaas. The Dawnsight name is known, Valaas Dawnsight."
-local surnamed = VoiceOver.Contribute:Capture()
 Expect("a surnamed character is swapped whole and by either part",
-    surnamed:match("\nGreetings, young %$N%. The %$N name is known, %$N%.\n") ~= nil, true)
-world.questText = "VALAAS DAWNSIGHT! Valaas. VALAASWOOD stays."
+    SpokenEnv.Spoken.Contribute:Detemplate("Greetings, young Valaas. The Dawnsight name is known, Valaas Dawnsight."),
+    "Greetings, young $N. The $N name is known, $N.")
 Expect("...and in capitals, as some pages write it",
-    VoiceOver.Contribute:Capture():match("\n([^\n]*stays%.)\n"), "$N! $N. VALAASWOOD stays.")
+    SpokenEnv.Spoken.Contribute:Detemplate("VALAAS DAWNSIGHT! Valaas. VALAASWOOD stays."), "$N! $N. VALAASWOOD stays.")
 -- A part of the name inside a longer class phrase leaves that phrase to the class.
 do
     local class = world.playerClass
     world.playerName, world.playerClass = "Valaas Hunter", "Demon Hunter"
     Expect("a part of the name inside the class's words does not take them first",
-        VoiceOver.Contribute:Detemplate("Demon Hunter, rise. Valaas, Hunter."), "$C, rise. $N, $N.")
+        SpokenEnv.Spoken.Contribute:Detemplate("Demon Hunter, rise. Valaas, Hunter."), "$C, rise. $N, $N.")
     world.playerClass = class
 end
 world.playerName = "Zöpf"
 Expect("an accented name in capitals is the name too",
-    VoiceOver.Contribute:Detemplate("ZÖPF, Zöpf, Zöpfe."), "$N, $N, Zöpfe.")
+    SpokenEnv.Spoken.Contribute:Detemplate("ZÖPF, Zöpf, Zöpfe."), "$N, $N, Zöpfe.")
 world.playerName = "Гримбалор"
-Expect("...as is a Cyrillic one", VoiceOver.Contribute:Detemplate("ГРИМБАЛОР."), "$N.")
+Expect("...as is a Cyrillic one", SpokenEnv.Spoken.Contribute:Detemplate("ГРИМБАЛОР."), "$N.")
 world.playerName = nil
 
 stub.HidePanels()
 stub.ShowGossip("Well met, Tester.")
-local _, key = VoiceOver.Contribute:Capture()
+local gossipShown, key = VoiceOver.Contribute:Capture()
 Expect("gossip is keyed on the tokens, so every character gathers the same line",
     key, format("g:12345:%d", SpokenEnv.Spoken.Contribute:Checksum("Well met, $N.")))
+Expect("...and sent as shown", gossipShown:match("\nWell met, Tester%.\n") ~= nil, true)
 stub.HidePanels()
 world.playerClass, world.playerClassFile, world.playerRace, world.playerRaceFile = nil, nil, nil, nil
 world.questText = "Kill six of them.\nThen come back."
@@ -264,8 +278,8 @@ Expect("...of the quest frame itself", button.anchor and button.anchor.relativeT
 _G.QuestFrameCloseButton = stub.Widget("Button", "QuestFrameCloseButton")
 stub.FireEvent("QUEST_COMPLETE")
 -- The stub lays every frame out from 100 at the top to 0 at the bottom, so the close button's
--- bottom edge is 100 below the frame's top: 12 more puts the button in the strip under it.
-Expect("under the close button, where the client draws one", button.anchor and button.anchor.y, -112)
+-- bottom edge is 100 below the frame's top: 8 more puts the button in the strip under it.
+Expect("under the close button, where the client draws one", button.anchor and button.anchor.y, -108)
 Expect("...in from the frame's right edge as far as the details Play is from its own",
     button.anchor and button.anchor.relativeTo == _G.QuestFrame and button.anchor.x, -11)
 Expect("...by its top right corner", button.anchor and button.anchor.point, "TOPRIGHT")
@@ -317,7 +331,7 @@ do
     local clip = { questID = 9555, event = VoiceOver.Enums.SoundEvent.QuestAccept, unitGUID = world.npcGUID,
         name = "Deathguard Linnea", text = "Words no pack has, Tester." }
     for _, missing in ipairs({ { Spoken.Contribute, "NameWords" }, { Spoken.Contribute, "ReplaceWord" },
-        { Spoken.Contribute, "Parse" }, { Gather, "Get" }, { Gather, "Remove" }, { Gather, "IsTidied" } }) do
+        { Spoken.Contribute, "Parse" }, { Spoken.Contribute, "ReaderFields" }, { Gather, "Get" }, { Gather, "Remove" }, { Gather, "IsTidied" } }) do
         local owner, name = missing[1], missing[2]
         local method = owner[name]
         owner[name] = nil

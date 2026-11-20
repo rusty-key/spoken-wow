@@ -4,8 +4,9 @@ import { createHash } from "node:crypto";
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { test } from "node:test";
+import { after, test } from "node:test";
 
+import { seedDatabase } from "../../pipelines/lib/test-db.mjs";
 import { cacheDir, fillCache, liveEncodings } from "./fetch-encodings.mjs";
 
 const hash = (algorithm, text) => createHash(algorithm).update(text).digest("hex");
@@ -35,27 +36,24 @@ test("lays each encoding under its master's md5, and skips what it cannot place"
   assert.equal(existsSync(join(cache, `${hash("md5", "master")}.ogg.part`)), false);
 });
 
-// Needs a migrated database (TEAMS_TEST_DB, e.g. postgres:///spoken_ci_pin); skipped without one.
-test("reads only the privileged team's takes of the language", { skip: !process.env.TEAMS_TEST_DB }, () => {
-  const database = process.env.TEAMS_TEST_DB;
-  const psql = (sql) => execFileSync("psql", [database, "-tA", "-v", "ON_ERROR_STOP=1", "-f", "-"], { input: sql, encoding: "utf8" });
-  const lang = "qaQA";
-  const clean = `delete from "take" where "lang" = '${lang}';
-                 delete from "take_encoding" where "sha256" like 'teamtest-%';
-                 delete from "team" where "slug" in ('teamtest-owner', 'teamtest-other');`;
-  psql(clean);
-  try {
-    psql(`insert into "team" ("slug", "name") values ('teamtest-owner', 'Owner'), ('teamtest-other', 'Other');
-          insert into "team_language" ("teamId", "lang", "privileged")
-            select "id", '${lang}', "slug" = 'teamtest-owner' from "team" where "slug" like 'teamtest-%';
-          insert into "take" ("source", "lang", "file", "lineId", "version", "isCurrent", "origin", "bytes", "sha256", "teamId")
-            select 'quests', '${lang}', t."slug" || '.mp3', t."slug", 1, true, 'generated', 1, 'teamtest-' || t."slug", t."id"
-              from "team" t where t."slug" like 'teamtest-%';
-          insert into "take_encoding" ("source", "sha256", "profile", "encodedSha256", "bytes")
-            select 'quests', 'teamtest-' || "slug", 'ogg-q0-44k', 'enc-' || "slug", 1 from "team" where "slug" like 'teamtest-%';`);
-    assert.deepEqual(liveEncodings(database, lang), [{ sha256: "teamtest-teamtest-owner", encodedSha256: "enc-teamtest-owner" }]);
-  } finally {
-    psql(clean.replace(/delete from "team" where.*$/s, `delete from "team_language" where "lang" = '${lang}';
-      delete from "team" where "slug" in ('teamtest-owner', 'teamtest-other');`));
+// Needs DATABASE_URL naming a migrated test database, as an owner that bypasses row-level
+// security; skipped without one.
+const seed = seedDatabase();
+after(() => seed?.cleanup());
+
+test("reads the takes of the team it names, else of the team with plain packs", { skip: seed ? false : "DATABASE_URL is not set" }, () => {
+  const lang = seed.language();
+  const plain = seed.team(lang);
+  const other = seed.team(lang, { packName: "slug" });
+  const shas = [];
+  for (const team of [plain, other]) {
+    const sha256 = `eq-${team.slug}`;
+    shas.push(sha256);
+    seed.take({ team: team.id, source: "quests", lang, file: `${team.slug}.mp3`, lineId: team.slug, sha256 });
+    seed.sql(`insert into "take_encoding" ("source", "sha256", "profile", "encodedSha256", "bytes")
+              values ('quests', ${seed.lit(sha256)}, 'ogg-q0-44k', ${seed.lit(`enc-${team.slug}`)}, 1)`);
   }
+  seed.onCleanup(`delete from "take_encoding" where "sha256" in (${shas.map(seed.lit).join(", ")})`);
+  assert.deepEqual(liveEncodings(seed.url, lang), [{ sha256: `eq-${plain.slug}`, encodedSha256: `enc-${plain.slug}` }]);
+  assert.deepEqual(liveEncodings(seed.url, lang, other.slug), [{ sha256: `eq-${other.slug}`, encodedSha256: `enc-${other.slug}` }]);
 });

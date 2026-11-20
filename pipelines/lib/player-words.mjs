@@ -132,6 +132,31 @@ export function branchesOnPlayerGender(text) {
   return HAS_GENDER.test(text);
 }
 
+const ANY_TOKEN = /\$\$?([NnCcRr])/g;
+const ANY_GENDER = new RegExp(HAS_GENDER.source, "gu");
+
+function writtenTokens(text) {
+  const counts = { N: 0, C: 0, R: 0 };
+  for (const [, token] of text.matchAll(ANY_TOKEN)) counts[token.toUpperCase()] += 1;
+  return counts;
+}
+
+/**
+ * The player tokens `lang` speaks in a text: `G`, its gender branches, and for each reader (`m`,
+ * `f`) the `N`, `C` and `R` that speakPlayerTokens replaces on that reader's side. A token the
+ * gate refuses ("$Nama") is not one. Correction acceptance compares these to find what a client
+ * filled in for one reader; a language with no words counts its branches only.
+ */
+export function playerTokenCounts(text, lang) {
+  const sides = playerGenderSides(text);
+  const spoken = (side, gender) => {
+    const written = writtenTokens(sides[side]);
+    const left = writtenTokens(speakPlayerTokens(text, lang, gender));
+    return { N: written.N - left.N, C: written.C - left.C, R: written.R - left.R };
+  };
+  return { G: text.match(ANY_GENDER)?.length ?? 0, m: spoken(0, "m"), f: spoken(1, "f") };
+}
+
 /** The text as a male and a female reader read it, every `$G` branch taken to its side. */
 export function playerGenderSides(text) {
   return [text.replace(GENDER, "$1").replace(SWAPPED, "$1"), text.replace(GENDER, "$2").replace(SWAPPED, "$2")];

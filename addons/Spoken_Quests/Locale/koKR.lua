@@ -6,7 +6,7 @@
 
 setfenv(1, VoiceOver)
 
-if GetLocale() ~= "koKR" then
+if not Spoken:InterfaceIn("koKR") then
 	return
 end
 
@@ -62,6 +62,7 @@ L.OPT_GREETING = "인사말"
 L.OPT_AUTOPLAY_OFF_TIP = "Spoken 설정의 퀘스트 페이지에서 '자동으로 읽기'가 꺼져 있습니다."
 L.OPT_PROGRESS_OFF_TIP = "Spoken 설정의 퀘스트 페이지에서 '퀘스트 진행 중 대사 읽기'가 꺼져 있습니다."
 L.OPT_NEVER_TIP = "Spoken 설정의 잡담 페이지에서 '인사말 읽기'가 '안 함'으로 설정되어 있습니다."
+L.OPT_MUTED_TIP = "이 NPC를 음소거했습니다. Spoken 설정의 잡담 페이지에 있는 '음소거한 NPC'에서 해제하세요."
 L.OPT_CONTRIBUTE = "기여하기"
 L.OPT_REPORT = "신고"
 L.OPT_REPORT_COPY = "Spoken Quests|n|n이 주소를 복사하여 웹 브라우저에서 여세요."
@@ -92,6 +93,15 @@ L.OPT_OG_THRALL = "오리지널 스랄 연설"
 L.OPT_FORGET_GREETINGS = "들은 인사말 잊기"
 L.REASON_FORGET_GREETINGS = "이 기능을 쓰려면 '인사말 읽기'를 '인사말마다 한 번' 또는 '퀘스트 제공자는 한 번'으로 설정하세요."
 L.OPT_FORGET_GREETINGS_DONE = "이 캐릭터의 들은 인사말 목록을 지웠습니다."
+L.OPT_MUTE_NPC = "이 NPC의 잡담 음소거"
+L.OPT_UNMUTE_NPC = "음소거 해제"
+L.OPT_UNMUTE_NPC_GOSSIP = "이 NPC의 잡담 음소거 해제"
+L.MUTE_NPC_DONE = "%s의 자동 인사말을 음소거했습니다."
+L.UNMUTE_NPC_DONE = "%s의 자동 인사말 음소거를 해제했습니다."
+L.OPT_MUTED_NPCS = "음소거한 NPC"
+L.OPT_NO_MUTED_NPCS = "음소거한 NPC가 없습니다. NPC 대화 창의 스피커 버튼으로 음소거하세요."
+L.OPT_FORGET_MUTED_NPCS = "음소거한 NPC 잊기"
+L.OPT_FORGET_MUTED_NPCS_DONE = "이 캐릭터의 음소거한 NPC 목록을 지웠습니다."
 L.OPT_PANEL_GAME_GREETING_FIRST = "NPC 음성 먼저 듣기"
 L.GREETING_DIALOG_APART = "Spoken: 'NPC 음성 먼저 듣기'가 NPC의 말이 끝났는지 알 수 있도록 대화 음량을 다른 음량 슬라이더와 다른 %1$d%%로 설정했습니다."
 L.OPT_REPORT_PROBLEM = "문제 신고"
@@ -154,5 +164,6 @@ L.QUESTS_MORE_FMT = " 외 %1$d곳"
 L.QUESTS_TITLE_NTH_FMT = "%1$s (%2$d)"
 L.QUEST_IN_PROGRESS = "진행 중"
 L.QUEST_PART_ACCEPT = "설명"
+L.QUEST_PART_PROGRESS = "진행"
 L.QUEST_PART_COMPLETE = "완료"
 L.QUEST_PART_NO_TEXT = "이 부분의 대사를 알 수 없습니다."

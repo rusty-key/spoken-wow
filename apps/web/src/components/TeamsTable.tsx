@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -12,6 +12,8 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import DeleteTeamDialog from "@/components/DeleteTeamDialog";
+import NewLanguageFields, { type NewLanguage } from "@/components/NewLanguageFields";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { BASE_LANG, type Lang } from "@/lib/lang";
@@ -21,8 +23,6 @@ import type { TeamSummary } from "@/lib/teams/admin";
 
 type Props = {
   initial: TeamSummary[];
-  /** Live takes per language held, for the confirm. */
-  takes: Partial<Record<Lang, number>>;
   languages: { code: Lang; name: string }[];
 };
 
@@ -38,15 +38,43 @@ function people(team: TeamSummary): Person[] {
   return [...byUser.values()];
 }
 
-const liveTakes = (count: number) => `${count} live take${count === 1 ? "" : "s"}`;
 
-export default function TeamsTable({ initial, takes, languages }: Props) {
+/** Where a deletion is: its delistings, or why it stopped. */
+function deletingStep(deleting: NonNullable<TeamSummary["deleting"]>): string {
+  if (deleting.error) return `Deletion stopped: ${deleting.error}`;
+  if (deleting.delists === 0) return "Being deleted";
+  return `Being deleted: taking its packs off the channel, ${deleting.delisted} of ${deleting.delists} done`;
+}
+
+// How often the page reads again while a team is being deleted.
+const DELETING_POLL_MS = 10_000;
+
+export default function TeamsTable({ initial, languages }: Props) {
   const router = useRouter();
+  const nameOf = (lang: Lang) => languages.find((language) => language.code === lang)?.name ?? lang;
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [names, setNames] = useState(() => Object.fromEntries(initial.map((team) => [team.id, team.name])));
+  const [ownStorage, setOwnStorage] = useState<Record<string, boolean>>({});
+  const [official, setOfficial] = useState<Record<string, boolean>>({});
+  // A saved value shows only until the refresh after the save lands. That refresh read the team
+  // after the save, so its value is the one to show, even one another owner saved since.
+  useEffect(() => {
+    setOwnStorage({});
+    setOfficial({});
+  }, [initial]);
   const [form, setForm] = useState({ slug: "", name: "", adminEmail: "", langs: [] as Lang[] });
-  const [moving, setMoving] = useState<{ lang: Lang; target: TeamSummary } | null>(null);
+  const [newLanguage, setNewLanguage] = useState(false);
+  const [fresh, setFresh] = useState<NewLanguage>({ code: "", name: "", native: "" });
+  const [joining, setJoining] = useState<{ lang: Lang; team: TeamSummary } | null>(null);
+  const [deleting, setDeleting] = useState<TeamSummary | null>(null);
+  const underway = initial.some((team) => team.deleting && !team.deleting.error);
+  useEffect(() => {
+    if (!underway) return;
+    // A hidden tab reads nothing; the next poll after it shows again does.
+    const timer = setInterval(() => document.hidden || router.refresh(), DELETING_POLL_MS);
+    return () => clearInterval(timer);
+  }, [underway, router]);
 
   async function run(action: () => ReturnType<typeof send>): Promise<boolean> {
     setBusy(true);
@@ -68,12 +96,13 @@ export default function TeamsTable({ initial, takes, languages }: Props) {
     });
   };
 
-  function move() {
-    if (!moving) return;
-    const { lang, target } = moving;
-    setMoving(null);
-    void run(() => send(`/api/teams/${target.id}/languages`, "PUT", { lang }));
+  function join() {
+    if (!joining) return;
+    const { lang, team } = joining;
+    setJoining(null);
+    void run(() => send(`/api/teams/${team.id}/languages`, "PUT", { lang }));
   }
+
 
   async function create(event: React.FormEvent) {
     event.preventDefault();
@@ -81,10 +110,16 @@ export default function TeamsTable({ initial, takes, languages }: Props) {
       const result = await send("/api/teams", "POST", {
         slug: form.slug.trim(),
         name: form.name,
-        langs: form.langs,
+        ...(newLanguage
+          ? { newLanguage: { code: fresh.code.trim(), name: fresh.name.trim(), native: fresh.native.trim() } }
+          : { langs: form.langs }),
         ...(form.adminEmail.trim() ? { adminEmail: form.adminEmail.trim() } : {}),
       });
-      if (result.ok) setForm({ slug: "", name: "", adminEmail: "", langs: [] });
+      if (result.ok) {
+        setForm({ slug: "", name: "", adminEmail: "", langs: [] });
+        setFresh({ code: "", name: "", native: "" });
+        setNewLanguage(false);
+      }
       return result;
     });
   }
@@ -102,7 +137,16 @@ export default function TeamsTable({ initial, takes, languages }: Props) {
             <th className="py-2 pr-3 font-normal">Slug</th>
             <th className="py-2 pr-3 font-normal">Name</th>
             <th className="py-2 pr-3 font-normal">Languages</th>
-            <th className="py-2 font-normal">Members</th>
+            <th className="py-2 pr-3 font-normal">Members</th>
+            <th className="py-2 pr-3 font-normal" title="New audio goes only to its own bucket; what is already in Spoken's archive stays">
+              Own storage
+            </th>
+            <th className="py-2 pr-3 font-normal" title="Its releases need no review, and its packs carry no team name in the Manager">
+              Official
+            </th>
+            <th className="py-2 font-normal">
+              <span className="sr-only">Delete</span>
+            </th>
           </tr>
         </thead>
         <tbody>
@@ -122,37 +166,36 @@ export default function TeamsTable({ initial, takes, languages }: Props) {
               <td className="py-2 pr-3">
                 <ul className="flex flex-col gap-1">
                   {team.langs.map((lang) => (
-                    <li key={lang} className="flex items-center gap-2">
-                      <span className="w-12 font-mono text-xs">{lang}</span>
-                      {lang !== BASE_LANG && (
-                        <Select
-                          value=""
-                          disabled={busy}
-                          onValueChange={(id) => {
-                            const target = initial.find((other) => other.id === id);
-                            if (target) setMoving({ lang, target });
-                          }}
-                        >
-                          <SelectTrigger size="sm" className="text-xs" aria-label={`Move ${lang} to`}>
-                            <SelectValue placeholder="Move to…" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {initial
-                              .filter((other) => other.id !== team.id)
-                              .map((other) => (
-                                <SelectItem key={other.id} value={other.id}>
-                                  {other.name}
-                                </SelectItem>
-                              ))}
-                          </SelectContent>
-                        </Select>
-                      )}
+                    <li key={lang} className="font-mono text-xs">
+                      {lang}
                     </li>
                   ))}
                   {team.langs.length === 0 && <li className="text-muted-foreground text-xs">none</li>}
+                  {!team.langs.includes(BASE_LANG) && (
+                    <li>
+                      <Select
+                        value=""
+                        disabled={busy}
+                        onValueChange={(lang) => setJoining({ lang: lang as Lang, team })}
+                      >
+                        <SelectTrigger size="sm" className="text-xs" aria-label={`Add ${team.slug} to a language`}>
+                          <SelectValue placeholder="Add to…" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {languages
+                            .filter((language) => language.code !== BASE_LANG && !team.langs.includes(language.code))
+                            .map((language) => (
+                              <SelectItem key={language.code} value={language.code}>
+                                {language.name} ({language.code})
+                              </SelectItem>
+                            ))}
+                        </SelectContent>
+                      </Select>
+                    </li>
+                  )}
                 </ul>
               </td>
-              <td className="py-2">
+              <td className="py-2 pr-3">
                 <ul className="flex flex-col gap-1">
                   {people(team).map((person) => (
                     <li key={person.email}>
@@ -164,6 +207,65 @@ export default function TeamsTable({ initial, takes, languages }: Props) {
                     </li>
                   ))}
                 </ul>
+              </td>
+              <td className="py-2 pr-3">
+                <input
+                  type="checkbox"
+                  aria-label={`${team.slug}'s new audio goes only to its own bucket`}
+                  checked={ownStorage[team.id] ?? team.ownStorage}
+                  disabled={busy}
+                  onChange={(event) => {
+                    const next = event.target.checked;
+                    void run(() => send(`/api/teams/${team.id}`, "PATCH", { ownStorage: next })).then((ok) => {
+                      if (ok) setOwnStorage((current) => ({ ...current, [team.id]: next }));
+                    });
+                  }}
+                />
+              </td>
+              <td className="py-2 pr-3">
+                <input
+                  type="checkbox"
+                  aria-label={`${team.slug} is official`}
+                  checked={official[team.id] ?? team.official}
+                  disabled={busy}
+                  onChange={(event) => {
+                    const next = event.target.checked;
+                    void run(() => send(`/api/teams/${team.id}`, "PATCH", { official: next })).then((ok) => {
+                      if (ok) setOfficial((current) => ({ ...current, [team.id]: next }));
+                    });
+                  }}
+                />
+              </td>
+              <td className="py-2 pl-3 text-right">
+                {team.deleting ? (
+                  <div className="flex flex-col items-end gap-1">
+                    <span className={team.deleting.error ? "text-destructive text-xs" : "text-muted-foreground text-xs"}>
+                      {deletingStep(team.deleting)}
+                    </span>
+                    {team.deleting.error && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        aria-label={`Retry deleting ${team.slug}`}
+                        disabled={busy}
+                        onClick={() => void run(() => send(`/api/teams/${team.id}/deletion`, "POST"))}
+                      >
+                        Retry
+                      </Button>
+                    )}
+                  </div>
+                ) : (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    aria-label={`Delete ${team.slug}`}
+                    title={team.langs.includes(BASE_LANG) ? "English's team cannot be deleted" : undefined}
+                    disabled={busy || team.langs.includes(BASE_LANG)}
+                    onClick={() => setDeleting(team)}
+                  >
+                    Delete
+                  </Button>
+                )}
               </td>
             </tr>
           ))}
@@ -187,6 +289,7 @@ export default function TeamsTable({ initial, takes, languages }: Props) {
         <select
           multiple
           aria-label="Languages"
+          disabled={newLanguage}
           className="border-input bg-background h-40 rounded-md border px-2 py-1 text-sm"
           value={form.langs}
           onChange={(event) =>
@@ -199,6 +302,11 @@ export default function TeamsTable({ initial, takes, languages }: Props) {
             </option>
           ))}
         </select>
+        <label className="flex items-center gap-2 text-sm">
+          <input type="checkbox" checked={newLanguage} onChange={(event) => setNewLanguage(event.target.checked)} />
+          New language…
+        </label>
+        {newLanguage && <NewLanguageFields value={fresh} onChange={setFresh} />}
         <Input
           aria-label="Admin email"
           type="email"
@@ -211,22 +319,31 @@ export default function TeamsTable({ initial, takes, languages }: Props) {
         </Button>
       </form>
 
-      <Dialog open={moving !== null} onOpenChange={(open) => !open && setMoving(null)}>
-        {moving && (
+      <DeleteTeamDialog
+        team={deleting}
+        nameOf={nameOf}
+        onClose={() => setDeleting(null)}
+        onSent={(refused) => {
+          setDeleting(null);
+          setError(refused);
+          router.refresh();
+        }}
+      />
+
+      <Dialog open={joining !== null} onOpenChange={(open) => !open && setJoining(null)}>
+        {joining && (
           <DialogContent>
             <DialogHeader>
-              <DialogTitle>
-                Hand {moving.lang} to {moving.target.name}?
-              </DialogTitle>
+              <DialogTitle>{`Add ${joining.team.name} to ${joining.lang}?`}</DialogTitle>
               <DialogDescription>
-                {liveTakes(takes[moving.lang] ?? 0)} move with it, along with its voices, settings and members.
+                {`It voices ${joining.lang} beside any team there, from English's voices, with nothing of theirs. A language with no team is switched on.`}
               </DialogDescription>
             </DialogHeader>
             <DialogFooter>
-              <Button variant="ghost" onClick={() => setMoving(null)}>
+              <Button variant="ghost" onClick={() => setJoining(null)}>
                 Cancel
               </Button>
-              <Button onClick={move}>Hand over</Button>
+              <Button onClick={join}>Add</Button>
             </DialogFooter>
           </DialogContent>
         )}

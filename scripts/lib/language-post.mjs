@@ -123,15 +123,23 @@ async function allReleases(repo) {
   }
 }
 
-export function discord(token) {
+export function discord(token, { fetch: send = fetch, wait = (ms) => new Promise((r) => setTimeout(r, ms)) } = {}) {
   return async (method, path, body) => {
-    const res = await fetch(`https://discord.com/api/v10${path}`, {
-      method,
-      headers: { Authorization: `Bot ${token}`, ...(body ? { "Content-Type": "application/json" } : {}) },
-      body: body ? JSON.stringify(body) : undefined,
-    });
-    if (!res.ok) throw new Error(`Discord ${method} ${path}: ${res.status} ${await res.text()}`);
-    return res.status === 204 ? null : res.json();
+    // A rate limit says how long to wait; a reader of many channels meets it, and waits.
+    for (let attempt = 0; ; attempt++) {
+      const res = await send(`https://discord.com/api/v10${path}`, {
+        method,
+        headers: { Authorization: `Bot ${token}`, ...(body ? { "Content-Type": "application/json" } : {}) },
+        body: body ? JSON.stringify(body) : undefined,
+      });
+      if (res.status === 429 && attempt < 5) {
+        const { retry_after: seconds = 1 } = await res.json().catch(() => ({}));
+        await wait(Math.ceil(seconds * 1000) + 100);
+        continue;
+      }
+      if (!res.ok) throw new Error(`Discord ${method} ${path}: ${res.status} ${await res.text()}`);
+      return res.status === 204 ? null : res.json();
+    }
   };
 }
 

@@ -370,6 +370,31 @@ describe("an act's team", () => {
       await german.restore();
     }
   });
+  it("is the acting team's in a language of several teams, else the event's, else none", async () => {
+    const { asTeam } = await import("@/lib/teams/acting");
+    const { dropLang, dropTeam, newTeamIn, uniqueLang } = await import("@/lib/teams/testing");
+    const lang = await uniqueLang();
+    const a = await newTeamIn(lang, false, "test-activity-a");
+    const b = await newTeamIn(lang, false, "test-activity-b");
+    try {
+      await asTeam(lang, b, () => recordActivity({ kind: "ignore.set", lang, actorId: actor, subject: "acting", detail: {} }));
+      await recordActivity({ kind: "ignore.set", lang, actorId: actor, subject: "event", detail: {}, team: a });
+      await recordActivity({ kind: "ignore.set", lang, actorId: actor, subject: "outsider", detail: {} });
+      const { rows } = await asSystem.query<{ subject: string; teamId: string | null }>(
+        `select "subject", "teamId" from "activity" where "actorId" = $1 order by "subject"`,
+        [actor],
+      );
+      expect(rows).toEqual([
+        { subject: "acting", teamId: b },
+        { subject: "event", teamId: a },
+        { subject: "outsider", teamId: null },
+      ]);
+    } finally {
+      await asSystem.query(`delete from "activity" where "actorId" = $1`, [actor]);
+      for (const team of [a, b]) await dropTeam(team);
+      await dropLang(lang);
+    }
+  });
 });
 
 describe("isDay", () => {

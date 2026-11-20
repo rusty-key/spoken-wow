@@ -12,20 +12,26 @@
  * on a person, and filing ten from each page is filing twenty. A signed-in person is counted by
  * account, so others on their network cannot use up their allowance.
  *
- * Every read and write runs as the team that owns the report's language. The two that cannot
- * know it run across every team: the rate limit, which is on a person in any language, and
- * reportPlace, which is how a route finds the language and queue to check a permission against.
+ * An audio report is the team's it was filed under, and a text report is the language's: whoever
+ * holds `text` there handles it whatever team they work in. So a read runs across every team and
+ * cuts to the acting team's rows plus the text queue (REPORT_SCOPE), and a write on a text report
+ * runs as the report's own team. The rate limit, which is on a person in any language, and
+ * reportPlace, which is how a route finds the language and queue to check a permission against,
+ * run across every team too.
  */
+import type { PoolClient, QueryResultRow } from "pg";
+
 import { recordActivity } from "@/lib/activity/store";
 import { BASE_LANG, type Lang } from "@/lib/lang";
-import { ALL_TEAMS, queryIn } from "@/lib/db";
+import { ALL_TEAMS, queryIn, withTeam, type TeamId } from "@/lib/db";
 import { viewersIn } from "@/lib/grants/store";
 import { isAdmin } from "@/lib/permissions";
 import { overrideOf } from "@/lib/quests/override";
 import { readOverrides } from "@/lib/quests/overrides";
-import { queryAs, readAs } from "@/lib/teams/store";
+import { asTeam } from "@/lib/teams/acting";
+import { asTeamOf, NoTeamError, ownerOf, plainTeamOf, queryAs, teamsOf } from "@/lib/teams/store";
 
-import type { ReportContext } from "./context";
+import { packTeam, type ReportContext } from "./context";
 import { CATEGORIES, CATEGORY_QUEUE, QUEUES, queuesOf, type Category, type Queue, type Report, type Status } from "./reports";
 import type { Source } from "@/lib/sections";
 
@@ -37,6 +43,32 @@ import type { Source } from "@/lib/sections";
 const COLUMNS = `"id", "source", "lineId", "target", "category", "body", "status", "userId",
                  "name", "email", to_json("createdAt") #>> '{}' as "createdAt",
                  to_json("resolvedAt") #>> '{}' as "resolvedAt", "resolvedBy", "context", "queue"`;
+
+/**
+ * The rows the acting team sees: the language's text queue, and its own audio reports. With no
+ * team (a text maintainer in none of the language's), the text queue alone.
+ */
+const REPORT_SCOPE = (team: number) => `("queue" = 'text' or "teamId" = $${team}::uuid)`;
+
+/** The acting team REPORT_SCOPE cuts by; null where the caller works in no team of `lang`. */
+async function scopeTeam(lang: Lang): Promise<TeamId | null> {
+  return (await ownerOf(lang)) ?? null;
+}
+
+/**
+ * A read across every team, cut by REPORT_SCOPE. `where` holds the conditions and `params` their
+ * values; the acting team is added last.
+ */
+async function readScoped<T extends QueryResultRow>(
+  lang: Lang,
+  sql: (where: string) => string,
+  where: readonly string[],
+  params: readonly unknown[],
+): Promise<T[]> {
+  const team = await scopeTeam(lang);
+  const scoped = [...where, REPORT_SCOPE(params.length + 1)].join(" and ");
+  return queryIn<T>(ALL_TEAMS, sql(scoped), [...params, team]);
+}
 
 /**
  * A complaint about the words goes to whoever keeps them, unless the words were the team's own:
@@ -63,10 +95,46 @@ export async function createReport(input: {
   context?: ReportContext | null;
 }): Promise<void> {
   // Returns nothing: the reporter cannot read a report back, so an id would only be a handle
-  // on something they cannot reach. The team comes from the language alone, so the addon's
-  // anonymous report is filed with whoever looks after its language.
+  // on something they cannot reach. Each copy's queue is judged by its own team's overrides; a
+  // text report is the language's, so it is filed once, whatever the teams.
   const lang = input.lang ?? BASE_LANG;
-  const queue = await queueFor(input.category, lang, input.file ?? null);
+  const teams = await reportTeams(lang, input.context);
+  if (teams.length === 0) throw new NoTeamError(lang);
+  let filedText = false;
+  for (const team of teams) {
+    await asTeam(lang, team, async () => {
+      const queue = await queueFor(input.category, lang, input.file ?? null);
+      if (queue === "text" && filedText) return;
+      filedText ||= queue === "text";
+      await insertReport(input, lang, queue);
+    });
+  }
+}
+
+/**
+ * The teams a report is filed with: the team whose pack played, else the reporter's, else the
+ * team with plain packs, whose packs a report naming no team (an older addon, the plain pack)
+ * played. Else every team of the language, since none of them is the one.
+ */
+async function reportTeams(lang: Lang, context: ReportContext | null | undefined): Promise<TeamId[]> {
+  const pack = await packTeamOf(lang, context);
+  if (pack) return [pack];
+  const team = (await ownerOf(lang)) ?? (await plainTeamOf(lang));
+  if (team) return [team];
+  return (await teamsOf(lang)).map((each) => each.id);
+}
+
+/**
+ * The team the context names as the one whose pack played, where that team voices `lang`. A
+ * slug naming any other team, which only a forged context can, is no team.
+ */
+async function packTeamOf(lang: Lang, context: ReportContext | null | undefined): Promise<TeamId | null> {
+  const slug = packTeam(context);
+  if (!slug) return null;
+  return (await teamsOf(lang)).find((team) => team.slug === slug)?.id ?? null;
+}
+
+async function insertReport(input: Parameters<typeof createReport>[0], lang: Lang, queue: Queue): Promise<void> {
   await queryAs(
     lang,
     `insert into "report"
@@ -125,23 +193,25 @@ export async function listReports(
   // worklist, and which corpus each of them was playing does not change the fix.
   if (category !== "all") where.push(`"category" = $${params.push(category)}`);
 
-  return readAs<Report>(
+  return readScoped<Report>(
     lang,
-    `select ${COLUMNS}
+    (clause) => `select ${COLUMNS}
        from "report"
-      ${where.length ? `where ${where.join(" and ")}` : ""}
+      where ${clause}
       order by "createdAt" desc
       limit $1`,
+    where,
     params,
   );
 }
 
 /** Open reports per category in `queues`, as listReports would list them, with no rows to carry. */
 export async function openReportCounts(lang: Lang, queues: readonly Queue[]): Promise<Record<Category, number>> {
-  const rows = await readAs<{ category: Category; count: string }>(
+  const rows = await readScoped<{ category: Category; count: string }>(
     lang,
-    `select "category", count(*) as "count" from "report"
-      where "lang" = $1 and "queue" = any($2::text[]) and "status" = 'open' group by "category"`,
+    (clause) => `select "category", count(*) as "count" from "report"
+      where ${clause} group by "category"`,
+    [`"lang" = $1`, `"queue" = any($2::text[])`, `"status" = 'open'`],
     [lang, queues],
   );
   const counts = Object.fromEntries(CATEGORIES.map((category) => [category, 0])) as Record<Category, number>;
@@ -155,31 +225,37 @@ export async function reportsForLine(
   lang: Lang = BASE_LANG,
   queues: readonly Queue[] = QUEUES,
 ): Promise<Report[]> {
-  return readAs<Report>(
+  return readScoped<Report>(
     lang,
-    `select ${COLUMNS}
+    (clause) => `select ${COLUMNS}
        from "report"
-      where "source" = $1 and "lineId" = $2 and "lang" = $3
-        and "queue" = any($4::text[])
+      where ${clause}
       order by "status" = 'open' desc, "createdAt" desc`,
+    [`"source" = $1`, `"lineId" = $2`, `"lang" = $3`, `"queue" = any($4::text[])`],
     [source, lineId, lang, queues],
   );
 }
 
 /** `lang` is the report's, from reportLang. */
 export async function reportById(id: number, lang: Lang): Promise<Report | null> {
-  const rows = await readAs<Report>(lang, `select ${COLUMNS} from "report" where "id" = $1`, [id]);
+  const rows = await readScoped<Report>(
+    lang,
+    (clause) => `select ${COLUMNS} from "report" where ${clause}`,
+    [`"id" = $1`],
+    [id],
+  );
   return rows[0] ?? null;
 }
 
 /**
  * The language a report was filed in and the queue it waits in, or null for an id that does not
  * exist. Across every team: these are what say whose it is, and whether the caller may see it.
+ * No team is a text report whose team was deleted with no other in the language.
  */
-export async function reportPlace(id: number): Promise<{ lang: Lang; queue: Queue } | null> {
-  const rows = await queryIn<{ lang: Lang; queue: Queue }>(
+export async function reportPlace(id: number): Promise<{ lang: Lang; queue: Queue; teamId: TeamId | null } | null> {
+  const rows = await queryIn<{ lang: Lang; queue: Queue; teamId: TeamId | null }>(
     ALL_TEAMS,
-    `select "lang", "queue" from "report" where "id" = $1`,
+    `select "lang", "queue", "teamId" from "report" where "id" = $1`,
     [id],
   );
   return rows[0] ?? null;
@@ -198,13 +274,39 @@ export async function queueHolders(lang: Lang): Promise<Record<Queue, Set<string
   return holders;
 }
 
-/** `lang` is the report's. A report already in `queue` is left unlogged. */
+/**
+ * `work` as the team a write on `place` runs as: a text report's own team, whoever acts, and an
+ * audio report as the acting team, so one that is not theirs matches nothing.
+ */
+function writeAs<T>(
+  place: { queue: Queue; teamId: TeamId | null },
+  lang: Lang,
+  work: (client: PoolClient) => Promise<T>,
+): Promise<T> {
+  return place.queue === "text" ? withTeam(place.teamId ?? ALL_TEAMS, work) : asTeamOf(lang, work);
+}
+
+/**
+ * Added to a write's where clause: a text report written as its own team must still be a text
+ * report when the write lands, or a concurrent pass to audio would let it change an audio one.
+ */
+function stillText(place: { queue: Queue }): string {
+  return place.queue === "text" ? ` and "queue" = 'text'` : "";
+}
+
+/**
+ * `lang` is the report's. A report already in `queue` is left unlogged. A report with no team
+ * passed to audio becomes the acting team's, and stays put where the caller acts in none.
+ */
 export async function setQueue(id: number, queue: Queue, actorId: string, lang: Lang): Promise<Report | null> {
-  const { rows } = await queryAs<Report>(
-    lang,
-    `update "report" set "queue" = $2 where "id" = $1 and "queue" <> $2 returning ${COLUMNS}`,
-    [id, queue],
-  );
+  const place = await reportPlace(id);
+  if (!place) return null;
+  const team = place.teamId ?? (await scopeTeam(lang));
+  if (team === null) return reportById(id, lang);
+  const { rows } = await writeAs(place, lang, (client) => client.query<Report>(
+    `update "report" set "queue" = $2, "teamId" = $3 where "id" = $1 and "queue" <> $2${stillText(place)} returning ${COLUMNS}`,
+    [id, queue, team],
+  ));
   const report = rows[0];
   if (!report) return reportById(id, lang);
   await recordActivity({
@@ -215,6 +317,7 @@ export async function setQueue(id: number, queue: Queue, actorId: string, lang: 
     lineId: report.lineId,
     actorId,
     detail: { to: queue },
+    team,
   });
   return report;
 }
@@ -226,17 +329,18 @@ export async function setStatus(
   userId: string,
   lang: Lang,
 ): Promise<Report | null> {
+  const place = await reportPlace(id);
+  if (!place) return null;
   // Reopening clears the resolution rather than leaving a stale resolver on an open report.
-  const { rows } = await queryAs<Report & { lang: Lang }>(
-    lang,
+  const { rows } = await writeAs(place, lang, (client) => client.query<Report & { lang: Lang }>(
     `update "report"
         set "status" = $2,
             "resolvedAt" = case when $2 = 'open' then null else now() end,
             "resolvedBy" = case when $2 = 'open' then null else $3 end
-      where "id" = $1
+      where "id" = $1${stillText(place)}
       returning ${COLUMNS}, "lang"`,
     [id, status, userId],
-  );
+  ));
   if (!rows[0]) return null;
   const { lang: filed, ...report } = rows[0];
   // After the update, which is one statement with no transaction to join. A reopen is logged
@@ -249,6 +353,7 @@ export async function setStatus(
     lineId: report.lineId,
     actorId: userId,
     detail: { status: report.status, category: report.category },
+    team: place.teamId,
   });
   return report;
 }
@@ -258,12 +363,13 @@ export async function setStatus(
  * once: ids are unique across them, so a caller holding one section's reports can use it as is.
  */
 export async function skippedIds(userId: string, lang: Lang): Promise<Set<number>> {
-  const rows = await readAs<{ id: string }>(
+  const rows = await readScoped<{ id: string }>(
     lang,
-    `select r."id"::text as "id"
+    (clause) => `select r."id"::text as "id"
        from "report_skip" s
        join "report" r on r."id" = s."reportId"
-      where s."userId" = $1 and r."lang" = $2 and r."status" = 'open'`,
+      where ${clause}`,
+    [`s."userId" = $1`, `r."lang" = $2`, `r."status" = 'open'`],
     [userId, lang],
   );
   return new Set(rows.map((row) => Number(row.id)));
@@ -280,25 +386,27 @@ export async function skipReports(
   queues: readonly Queue[],
 ): Promise<number> {
   if (!ids.length) return 0;
-  const { rowCount } = await queryAs(
-    lang,
+  const team = await scopeTeam(lang);
+  const { rowCount } = await withTeam(ALL_TEAMS, (client) => client.query(
     `insert into "report_skip" ("userId", "reportId")
      select $1, "id" from "report"
       where "id" = any($2::bigint[]) and "lang" = $3 and "status" = 'open' and "queue" = any($4::text[])
+        and ${REPORT_SCOPE(5)}
      on conflict do nothing`,
-    [userId, ids, lang, queues],
-  );
+    [userId, ids, lang, queues, team],
+  ));
   return rowCount ?? 0;
 }
 
 /** Puts every report this person skipped in one section and language back in their queue. */
 export async function resetSkips(userId: string, source: Source, lang: Lang): Promise<number> {
-  const { rowCount } = await queryAs(
-    lang,
+  const team = await scopeTeam(lang);
+  const { rowCount } = await withTeam(ALL_TEAMS, (client) => client.query(
     `delete from "report_skip" s
       using "report" r
-      where r."id" = s."reportId" and s."userId" = $1 and r."source" = $2 and r."lang" = $3`,
-    [userId, source, lang],
-  );
+      where r."id" = s."reportId" and s."userId" = $1 and r."source" = $2 and r."lang" = $3
+        and ${REPORT_SCOPE(4)}`,
+    [userId, source, lang, team],
+  ));
   return rowCount ?? 0;
 }

@@ -145,16 +145,32 @@ local function Widget(kind, name)
     function w:UnregisterAllEvents() self.events = {} end
     function w:SetScript(script, fn) self.scripts[script] = fn end
     function w:GetScript(script) return self.scripts[script] end
+    -- Only OnClick is modelled per type; every other script reads as supported.
+    function w:HasScript(script)
+        if script == "OnClick" then
+            local frameType = self.frameType or self.kind
+            return frameType == "Button" or frameType == "CheckButton"
+        end
+        return true
+    end
     function w:LockHighlight() self.highlightLocked = true end
     function w:UnlockHighlight() self.highlightLocked = false end
     -- A secure button's attributes (Spoken Developer's /reload macro), kept to be read back.
     function w:SetAttribute(key, value) self.attributes = self.attributes or {}; self.attributes[key] = value end
     function w:GetAttribute(key) return self.attributes and self.attributes[key] end
     function w:HookScript(script, fn)
+        -- The client raises here too: "script type not supported by this object".
+        if not self:HasScript(script) then
+            error(("%s:HookScript(): Cannot assign script handler for '%s'"):format(self:GetObjectType(), script), 2)
+        end
         self.hooks[script] = self.hooks[script] or {}
         table.insert(self.hooks[script], fn)
     end
-    function w:IsVisible() if self.name then return world.panels[self.name] and true or false end return self.shown end
+    function w:IsVisible()
+        if self.name == "UIParent" then return true end
+        if self.name then return world.panels[self.name] and true or false end
+        return self.shown
+    end
     function w:IsShown() return self:IsVisible() end
     function w:Show()
         self.shown = true
@@ -302,6 +318,11 @@ local function Widget(kind, name)
     function w:Enable() self.enabled = true end
     function w:Disable() self.enabled = false end
     function w:IsEnabled() return self.enabled ~= false end
+    function w:SetTextColor(r, g, b, a) self.textColor = { r, g, b, a } end
+    function w:GetTextColor()
+        local color = self.textColor or { 1, 1, 1, 1 }
+        return color[1], color[2], color[3], color[4] or 1
+    end
     function w:SetChecked(v) self.checked = v end
     function w:GetChecked() return self.checked end
     function w:GetFont() return "Fonts\\FRIZQT__.TTF", 12 end
@@ -447,7 +468,7 @@ function _G.UnitGUID() return world.npcGUID end
 function _G.UnitExists() return true end
 function _G.UnitIsPlayer() return false end
 function _G.UnitCanAttack() return not world.npcFriendly end
-function _G.UnitSex() return world.unitSex end
+function _G.UnitSex(unit) return unit == "player" and world.playerSex or world.unitSex end
 function _G.UnitIsDead() return false end
 function _G.UnitIsDeadOrGhost() return world.playerDead end
 function _G.UnitIsUnit(a, b) return a == b end
@@ -888,6 +909,94 @@ _G.DropDownList1 = Frame("DropDownList1")
 _G.DropDownList1:Hide()
 local menuAPI = {}
 
+M.openNativeMenu = nil
+M.nativeMenuEntries = {}
+M.nativeMenuAnchor = nil
+local nativeMenuManager = { open = false }
+local nativeMenuAPI = {}
+
+local function NativeDescription(kind, text, callback)
+    local description = {kind = kind, text = text, callback = callback, children = {}, releaseCallbacks = {}}
+    function description:CreateButton(childText, childCallback)
+        local child = NativeDescription("button", childText, childCallback)
+        table.insert(self.children, child)
+        return child
+    end
+    function description:CreateTitle(childText)
+        table.insert(self.children, NativeDescription("title", childText))
+    end
+    function description:CreateDivider()
+        table.insert(self.children, NativeDescription("divider"))
+    end
+    function description:AddMenuReleasedCallback(released)
+        table.insert(self.releaseCallbacks, released)
+    end
+    return description
+end
+
+function nativeMenuManager:CloseMenus()
+    self.open = false
+    if M.openNativeMenu then
+        for _, released in ipairs(M.openNativeMenu.releaseCallbacks or {}) do released() end
+    end
+    M.openNativeMenu = nil
+    M.nativeMenuEntries = {}
+    M.nativeMenuAnchor = nil
+    M.nativeMenuOwner = nil
+end
+function nativeMenuManager:IsAnyMenuOpen()
+    return self.open
+end
+function nativeMenuManager:OpenMenu(owner, root, anchor)
+    self.open = true
+    M.openNativeMenu = root
+    M.nativeMenuEntries = root.children
+    M.nativeMenuAnchor = anchor
+    M.nativeMenuOwner = owner
+end
+
+function M.OpenOtherNativeMenu()
+    nativeMenuManager:CloseMenus()
+    nativeMenuManager:OpenMenu(nil, nativeMenuAPI.CreateRootMenuDescription())
+end
+
+function nativeMenuAPI.CreateRootMenuDescription()
+    return NativeDescription("root")
+end
+function nativeMenuAPI.CreateContextMenu(owner, generator)
+    local root = nativeMenuAPI.CreateRootMenuDescription()
+    generator(owner, root)
+    nativeMenuManager:OpenMenu(owner, root)
+end
+function nativeMenuAPI.PopulateDescription(generator, owner, root)
+    generator(owner, root)
+end
+function nativeMenuAPI.GetManager()
+    return nativeMenuManager
+end
+function nativeMenuAPI.CreateAnchor(...)
+    return {...}
+end
+function nativeMenuAPI.GetDefaultContextMenuMixin()
+    return "default"
+end
+function M.SetNativeMenuAPI(present)
+    if present then
+        _G.MenuUtil = nativeMenuAPI
+        _G.Menu = nativeMenuAPI
+        _G.MenuVariants = nativeMenuAPI
+        _G.MenuResponse = {CloseAll = 4}
+        _G.CreateAnchor = nativeMenuAPI.CreateAnchor
+    else
+        _G.MenuUtil = nil
+        _G.Menu = nil
+        _G.MenuVariants = nil
+        _G.MenuResponse = nil
+        _G.CreateAnchor = nil
+        nativeMenuManager:CloseMenus()
+    end
+end
+
 --- Present the context-menu API, or take it away as a client without it does.
 function M.SetMenuAPI(present)
     for name, fn in pairs(menuAPI) do
@@ -979,6 +1088,7 @@ end
 --- Forget any open context menu.
 function M.ResetDropDowns()
     M.openDropDown, M.dropDownEntries = nil, {}
+    nativeMenuManager:CloseMenus()
 end
 
 function M.ResetUIActions()
@@ -1231,7 +1341,7 @@ end
 --- Loads exactly what its addon.xml and then Contribute.xml list, in order (a Blizzard-client
 --- .toc's order), then initialises the saved variables the way ADDON_LOADED would.
 function M.LoadSpoken(addonDirectory)
-    for _, file in ipairs({ "Environment", "Version", "Core", "Languages", "SoundUtils", "Callbacks", "SoundQueue", "Sources", "Developer", "OtherSounds",
+    for _, file in ipairs({ "Environment", "Version", "Core", "Languages", "Texts", "Interface", "SoundUtils", "Callbacks", "SoundQueue", "Sources", "Developer", "OtherSounds",
         "BackgroundSound", "Strings", "Locale/deDE", "Locale/esES", "Locale/frFR", "Locale/ptBR", "Locale/ruRU", "Locale/koKR", "Locale/zhCN",
         "Locale/zhTW", "UI/Layout", "UI/DialogueUITheme", "UI/Transcript", "UI/Subtitle", "UI/WordMarks", "UI/Search", "UI/Portrait", "UI/StaticPortrait", "UI/Actions", "UI/Snap", "UI/Face", "UI/PlayerFrame",
         "UI/MinimalPlayer", "UI/Ellesmere", "UI/DialogueUIPlayer", "UI/DialogueUITransitions", "UI/MinimapButton",
@@ -1246,6 +1356,8 @@ function M.LoadSpoken(addonDirectory)
     dofile(addonDirectory .. "UI/Compendium.lua")
     local env = _G.SpokenEnv
     env.Addon:InitDB()
+    env.Texts:Load()
+    env.Interface:Load()
     -- The suites time the queue by each module's own gap; the player's pause between lines has
     -- a test of its own (queue_test).
     env.Addon.db.profile.Audio.LineGap = 0
