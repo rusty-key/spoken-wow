@@ -66,8 +66,9 @@ copy credential files.
 Production audio must go through the existing `spoken.quest` regeneration queue
 with the maintainer's configured voice key. Use `__spoken.plan()`,
 `__spoken.queue(...)`, `__spoken.status()`, and `__spoken.voiced(...)` as
-described by the canonical skill. Respect `voicingCap`; ask once before any
-batch that exceeds it. Poll until the language's queue is idle or 20 minutes
+described by the canonical skill. Respect `voicingCap` for the whole round: all
+queued lines count together, including step 5c re-voicing. Ask once before
+queueing past it. Poll until the language's queue is idle or 20 minutes
 have elapsed, and never requeue failures automatically.
 
 Do not call ElevenLabs direct speech generation for a production batch. Direct
