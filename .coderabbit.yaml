@@ -187,12 +187,39 @@ reviews:
              that should be corrected; a hand-kept list). Better fix exists: name the smaller or
              more general change and the file it belongs in.
           Also list anything the description claims that the diff does not do, and any change in
-          behaviour or risk a reviewer must know that the description leaves out. Judge the
-          description by AGENTS.md (PR descriptions): about 200 words, with no per-change or
-          per-file lists. Never ask for a longer description, a list of the diff's changes or
-          helpers, or history.
+          behaviour or risk a reviewer must know that the description leaves out. Leave the
+          description's form to the "PR description" check.
           Pass only when the problem is Real, the fix is a Root-cause fix and nothing is
           mismatched. Fail otherwise, giving the answers above.
+      - name: "PR description"
+        mode: warning
+        instructions: |-
+          Judge the PR title and description against AGENTS.md (PR descriptions). Release PRs
+          and PRs that only bump dependencies pass.
+          Fail when any of these is missing:
+          - Why: the problem or need behind the change, followable with no prior context. A
+            description that only says what changed fails, however accurate.
+          - For a bug fix: where the fault starts and why the change is made there, not only
+            where it shows.
+          - Risk: where a reviewer should look hardest, when the diff touches behaviour.
+          - Verification as facts: what ran, what passed, what was not checked. "Tested",
+            "works" or a ticked checklist with nothing named fails.
+          - A "How to test" section a reviewer can follow. For a player-visible bug fix, steps
+            in game: where to go, what to do, what went wrong before and what happens now. For
+            a feature, screenshots or how to find and try it. Changes with nothing to try by
+            hand (CI, docs, tooling internals) may say so in one line instead.
+          - A title that states the outcome, not the activity ("Fix", "Update X", "WIP").
+          Fail when any of these is present:
+          - A per-change or per-file list, or a list of the diff's functions or helpers.
+          - History: review rounds, fix-ups, what an earlier version got wrong, dropped designs.
+          - Stacking or sequencing notes: "stacked on #X", "part 2 of 4", what it unblocks.
+          - Tool attribution such as "Generated with Claude Code" or session links.
+          - Claims the diff does not support.
+          Note as a nitpick, without failing: well over 200 words, em dashes, filler, bold labels
+          that restate the line.
+          Never ask for a longer description, for history, or for a list of changes. When
+          something is missing, name it in one line and say what would satisfy it. Pass
+          otherwise.
       - name: "Untrusted surface"
         mode: warning
         instructions: |-
