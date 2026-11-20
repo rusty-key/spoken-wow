@@ -67,7 +67,9 @@ test("a row for a known language says what approving does", () => {
   expect(screen.getByText("Your team joins German, beside any team it has")).toBeTruthy();
 });
 
-const approveBody = async (initial: TeamRequest[], besides: Record<string, string>, tick: boolean) => {
+const deutsch = { id: "00000000-0000-4000-8000-00000000d0de", name: "Deutsch Team" };
+
+const approveBody = async (initial: TeamRequest[], besides: Record<string, typeof deutsch>, tick: boolean) => {
   fetchMock.mockResolvedValue(new Response("{}", { status: 200 }));
   const user = userEvent.setup();
   render(<TeamRequests initial={initial} besides={besides} />);
@@ -77,21 +79,21 @@ const approveBody = async (initial: TeamRequest[], besides: Record<string, strin
   return JSON.parse(fetchMock.mock.calls[0][1].body);
 };
 
-test("a row for a language with a team copies that team's settings only when ticked", async () => {
+test("a row for a language with a team copies the team it names only when ticked", async () => {
   const second = [request()];
-  expect(await approveBody(second, { r1: "Deutsch Team" }, true)).toEqual({ decision: "approve", settings: "copy" });
+  expect(await approveBody(second, { r1: deutsch }, true)).toEqual({ decision: "approve", settings: "copy", from: deutsch.id });
   cleanup();
   fetchMock.mockReset();
-  expect(await approveBody(second, { r1: "Deutsch Team" }, false)).toEqual({ decision: "approve", settings: "fresh" });
+  expect(await approveBody(second, { r1: deutsch }, false)).toEqual({ decision: "approve", settings: "fresh" });
 });
 
 test("a row for a language with a team starts its box unticked", () => {
-  render(<TeamRequests initial={[request()]} besides={{ r1: "Deutsch Team" }} />);
+  render(<TeamRequests initial={[request()]} besides={{ r1: deutsch }} />);
   expect((screen.getByLabelText("Start from Deutsch Team's voices and settings") as HTMLInputElement).checked).toBe(false);
 });
 
 test("a row for a language with no team has no box", () => {
-  render(<TeamRequests initial={[request()]} besides={{ r2: "Deutsch Team" }} />);
+  render(<TeamRequests initial={[request()]} besides={{ r2: deutsch }} />);
   expect(screen.getByRole("button", { name: "Approve Crew" })).toBeTruthy();
   expect(screen.queryByLabelText(/Start from/)).toBeNull();
 });

@@ -8,14 +8,17 @@ import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } 
 import { closeDb } from "@/lib/db";
 import { forgetLanguages, loadLanguages } from "@/lib/languages/catalogue";
 import type { Viewer } from "@/lib/permissions";
+import { ACTING_COOKIE } from "@/lib/teams/acting-cookie";
 import { forgetTeams, sharedLangs } from "@/lib/teams/store";
 import { addMember, asSystem, dropLang, dropTeam, newTeamIn, plainTeam, systemRows, testUser, uniqueLang } from "@/lib/teams/testing";
 
 const who = vi.hoisted(() => ({ viewer: { role: null, grants: [] } as Viewer, id: "" }));
+// The site owner's acting-team cookie, by name.
+const jar = vi.hoisted(() => new Map<string, string>());
 
 vi.mock("next/headers", () => ({
   headers: async () => new Headers(),
-  cookies: async () => ({ get: () => undefined }),
+  cookies: async () => ({ get: (name: string) => (jar.has(name) ? { value: jar.get(name) } : undefined) }),
 }));
 vi.mock("@/lib/auth", () => ({
   auth: { api: { getSession: async () => ({ user: { id: who.id, role: who.viewer.role } }) } },
@@ -253,6 +256,7 @@ describe("/api/grants in a language with two teams", () => {
 
   afterEach(async () => {
     who.id = granter.id;
+    jar.clear();
     for (const team of [teamA, teamB]) {
       await asSystem.query(`delete from "activity" where "teamId" = $1`, [team]);
       await dropTeam(team);
@@ -348,6 +352,16 @@ describe("/api/grants in a language with two teams", () => {
     expect((await putFor(`${fresh.id}@example.invalid`, ["edit"])).status).toBe(200);
     expect(await systemRows(`select "teamId" from "team_member" where "userId" = $1`, [fresh.id])).toEqual([
       { teamId: teamB },
+    ]);
+  });
+
+  it("puts a grant to somebody new in the team the site owner picked, not the one they are in", async () => {
+    who.viewer = { role: "admin", grants: [] };
+    const [{ slug }] = await systemRows<{ slug: string }>(`select "slug" from "team" where "id" = $1`, [teamA]);
+    jar.set(ACTING_COOKIE, encodeURIComponent(JSON.stringify({ [lang]: slug })));
+    expect((await putFor(`${fresh.id}@example.invalid`, ["edit"])).status).toBe(200);
+    expect(await systemRows(`select "teamId" from "team_member" where "userId" = $1`, [fresh.id])).toEqual([
+      { teamId: teamA },
     ]);
   });
 });

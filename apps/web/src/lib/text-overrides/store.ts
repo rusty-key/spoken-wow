@@ -11,7 +11,7 @@ import type { Lang } from "../lang";
 import { memoByTeamLang } from "../memo";
 import { hasDrifted } from "../quests/override-drift";
 import { query, queryIn } from "../db";
-import { ownerOf, queryAs, readAs } from "../teams/store";
+import { queryAs, readAs, readerOf } from "../teams/store";
 import type { NarratedSource, OverrideView, TextOverride } from "./types";
 
 type OverrideRow = {
@@ -50,17 +50,17 @@ export async function overrideStamp(source: NarratedSource, lang: Lang): Promise
 }
 
 /**
- * A catalogue's shared-text stamp and the acting team's override stamp, in one statement on one
- * connection. `shared` reads only shared tables, which answer the same under any team. An
- * unowned language reads no override and stamps `"-"`: acting as ALL_TEAMS, row-level
- * security would count every team's rows.
+ * A catalogue's shared-text stamp and the override stamp of the team readTextOverrides reads
+ * (readerOf), in one statement on one connection. `shared` reads only shared tables, which answer
+ * the same under any team. A language with no team reads no override and stamps `"-"`: acting as
+ * ALL_TEAMS, row-level security would count every team's rows.
  */
 export async function stampsWithOverrides(
   source: NarratedSource,
   lang: Lang,
   shared: { sql: string; params: unknown[] },
 ): Promise<{ stamp: string; overrides: string }> {
-  const team = await ownerOf(lang);
+  const team = await readerOf(lang);
   if (!team) {
     const rows = await query<{ stamp: string }>(`select ${shared.sql} as "stamp"`, shared.params);
     return { stamp: rows[0]?.stamp ?? "", overrides: "-" };

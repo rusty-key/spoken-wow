@@ -286,8 +286,10 @@ export function joinEvents(
 /**
  * `team` voices `lang` beside every team that already does. Its packs are plain where its slug is
  * the language's code and no team has plain packs, else carry its slug (the insert trigger, 0123).
- * `copy` starts it from the first team's roster, model settings and lexicon entries in the
- * language; anything else, or a language with no team, from English's roster. Nothing is copied
+ * `copy` starts it from `source`'s roster, model settings and lexicon entries in the language,
+ * else the first team's; anything else, or a language with no team, from English's roster. A
+ * `source` that no longer voices the language is refused: the team it would copy is not the one
+ * the caller showed. Nothing is copied
  * that a team voiced: the team starts from scratch. A language with no team is switched on.
  *
  * On the caller's client, which acts as ALL_TEAMS; the caller forgets the memo once it commits.
@@ -298,6 +300,7 @@ export async function joinLanguage(
   team: TeamId,
   actorId: string,
   settings: Settings = "fresh",
+  source?: TeamId,
 ): Promise<{ first: boolean; from: string | null; switchedOn: boolean }> {
   if (lang === BASE_LANG) throw new TeamError("English is one team; no other team can join it.");
   const { rows: teams } = await client.query<{ teamId: TeamId; slug: string }>(
@@ -307,11 +310,14 @@ export async function joinLanguage(
     [lang],
   );
   if (teams.some((row) => row.teamId === team)) throw new TeamError(`That team already voices ${lang}.`, 409);
+  const from = settings === "copy" ? ((source ? teams.find((row) => row.teamId === source) : teams[0]) ?? null) : null;
+  if (settings === "copy" && source && !from) {
+    throw new TeamError(`The team to start from no longer voices ${lang}; reload and choose again.`, 409);
+  }
   await client.query(`insert into "team_language" ("teamId", "lang") values ($1, $2)`, [team, lang]);
   // Every worker drops its team memo at commit; until then the others file a new member's work
   // under no team.
   await client.query(`select pg_notify('spoken_team_language', $1)`, [lang]);
-  const from = settings === "copy" ? (teams[0] ?? null) : null;
   if (from) {
     await client.query(`select copy_team_settings($1, $2, $3)`, [from.teamId, team, lang]);
   } else {

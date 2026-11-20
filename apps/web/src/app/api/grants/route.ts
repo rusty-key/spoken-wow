@@ -68,8 +68,8 @@ export async function PUT(request: Request) {
   const user = await userByEmail(address);
   if (user) {
     // A site owner's grant lands in the target person's team, else the team the site owner acts
-    // in, which addGrants picks.
-    const team = isAdmin(who.viewer.role) ? ((await teamIn(user.id, lang)) ?? undefined) : undefined;
+    // in, the one they picked included.
+    const team = isAdmin(who.viewer.role) ? ((await teamIn(user.id, lang)) ?? (await ownerOf(lang))) : undefined;
     try {
       await addGrants(user.id, lang, capabilities, who.userId, {
         team,

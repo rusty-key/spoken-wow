@@ -18,8 +18,8 @@ function age(createdAt: string): string {
 
 type Props = {
   initial: TeamRequest[];
-  /** By request id: the name of the team a request's new team could start from, where its language has one. */
-  besides?: Partial<Record<string, string>>;
+  /** By request id: the team a request's new team could start from, where its language has one. */
+  besides?: Partial<Record<string, { id: string; name: string }>>;
 };
 
 export default function TeamRequests({ initial, besides = {} }: Props) {
@@ -47,7 +47,10 @@ export default function TeamRequests({ initial, besides = {} }: Props) {
       decision === "reject"
         ? { decision, ...(reason ? { reason } : {}) }
         : besides[request.id]
-          ? { decision, settings: copies[request.id] ? "copy" : "fresh" }
+          ? copies[request.id]
+            ? // The team named on the page, so a team that joined since cannot take its place.
+              { decision, settings: "copy", from: besides[request.id]!.id }
+            : { decision, settings: "fresh" }
           : { decision },
     );
     setBusy(null);
@@ -88,7 +91,7 @@ export default function TeamRequests({ initial, besides = {} }: Props) {
                     setCopies((was) => ({ ...was, [request.id]: checked }));
                   }}
                 />
-                Start from {besides[request.id]}&apos;s voices and settings
+                Start from {besides[request.id]!.name}&apos;s voices and settings
               </label>
             )}
             <div className="flex flex-wrap items-center gap-2">

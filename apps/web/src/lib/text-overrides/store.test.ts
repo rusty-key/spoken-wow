@@ -209,5 +209,17 @@ describe("text overrides", () => {
         await dropLang(unowned);
       }
     });
+
+    it("stamp an outsider's read as the team they read, so its new override moves the stamp", async () => {
+      const outsider = () => stampsWithOverrides("places", lang, shared);
+      const before = await outsider();
+      await asActor(v.id, () =>
+        writeTextOverride({ source: "places", lang, lineId: "z:1", text: "First's.", original: "Old.", userId: v.id }),
+      );
+      const after = await outsider();
+      expect(after.overrides).toMatch(/^1:/);
+      expect(after).not.toEqual(before);
+      expect(after.overrides).toBe(await overrideStamp("places", lang));
+    });
   });
 });

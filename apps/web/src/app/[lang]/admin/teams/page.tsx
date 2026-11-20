@@ -28,7 +28,7 @@ export default async function Page() {
       await Promise.all(
         requests.map(async (request) => {
           const first = request.branch === "add-team" ? (await teamsOf(request.lang as Lang))[0] : undefined;
-          return first ? [[request.id, first.name] as const] : [];
+          return first ? [[request.id, { id: first.id, name: first.name }] as const] : [];
         }),
       )
     ).flat(),

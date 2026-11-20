@@ -42,6 +42,8 @@ export type FoundInput = {
   adminId: string | null;
   /** For a language that has a team already; fresh when absent. */
   settings?: Settings;
+  /** The team `copy` starts from, as the approver was shown it; the first team when absent. */
+  source?: TeamId;
   /** A site owner's team is official; a request's is not (docs/platform/TEAMS.md, *Releases*). */
   official: boolean;
 };
@@ -177,7 +179,7 @@ async function addTeam(client: PoolClient, input: FoundInput, actorId: string): 
     if (refusal) throw refusal;
   }
   const team = await newTeam(client, input);
-  const joined = await joinLanguage(client, lang, team.id, actorId, input.settings);
+  const joined = await joinLanguage(client, lang, team.id, actorId, input.settings, input.source);
   const granted = joined.first
     ? await firstTeamGrants(client, input, actorId, team.id)
     : { adminId, granted: adminId ? await grantOn(client, team.id, adminId, lang, ["admin"], actorId) : [] };

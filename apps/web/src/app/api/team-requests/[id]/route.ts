@@ -21,8 +21,8 @@ export async function DELETE(_request: Request, context: { params: Promise<{ id:
 }
 
 /**
- * A site admin approves, saying what a team joining a language with a team starts from, or
- * rejects. An id that is not a uuid is no such request, not no such team.
+ * A site admin approves, saying what a team joining a language with a team starts from and, for
+ * a copy, the team they were shown it would copy (`from`), or rejects. An id that is not a uuid is no such request, not no such team.
  */
 export async function PATCH(request: Request, context: { params: Promise<{ id: string }> }) {
   return withAdmin(async (request, actorId) => {
@@ -35,11 +35,12 @@ export async function PATCH(request: Request, context: { params: Promise<{ id: s
 async function decide(request: Request, actorId: string, id: string): Promise<Response> {
   const body = objectOf(await bodyOf(request));
   if (body?.decision === "approve") {
-    const { settings } = body;
+    const { settings, from } = body;
     if (settings !== undefined && settings !== "copy" && settings !== "fresh") {
       return bad('settings is "copy" or "fresh".');
     }
-    return Response.json({ request: await approveRequest(id, actorId, { settings }) });
+    if (from !== undefined && (typeof from !== "string" || !isUuid(from))) return bad("from is a team id.");
+    return Response.json({ request: await approveRequest(id, actorId, { settings, source: from }) });
   }
   if (body?.decision === "reject") {
     const { reason } = body;
@@ -49,5 +50,5 @@ async function decide(request: Request, actorId: string, id: string): Promise<Re
     const given = typeof reason === "string" && reason.trim() ? reason.trim() : null;
     return Response.json({ request: await rejectRequest(id, actorId, given) });
   }
-  return bad('Expected { decision: "approve", settings? } or { decision: "reject", reason? }.');
+  return bad('Expected { decision: "approve", settings?, from? } or { decision: "reject", reason? }.');
 }

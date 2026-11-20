@@ -188,11 +188,12 @@ export async function actingTeamRow(
 }
 
 /**
- * The slot a memo of `lang`'s per-team data lives in: one copy per team, so a language with
- * several teams never serves one team's rows to another. The value built is still `lang`'s.
+ * The slot a memo of `lang`'s per-team data lives in: one copy per team it is read as (readerOf,
+ * as readAs reads), so a language with several teams never serves one team's rows to another.
+ * The value built is still `lang`'s.
  */
 export async function scopeKey(lang: Lang): Promise<string> {
-  return `${await ownerOrAll(lang)}:${lang}`;
+  return `${(await readerOf(lang)) ?? ALL_TEAMS}:${lang}`;
 }
 
 /** `shared`: the language has other teams besides this one. */
