@@ -11,7 +11,8 @@ export const RELEASE_SH = `${REPO}/scripts/maintainers/spoken-release.sh`;
 
 const LANGS = ["deDE", "esES", "esMX", "frFR", "itIT", "koKR", "ptBR", "ruRU", "zhCN", "zhTW"];
 
-const home = (p) => (p.startsWith("~") ? join(homedir(), p.slice(1)) : p).replace(/\\/g, "/");
+// "~" is the home folder; any other relative path is relative to `base` (the config's folder).
+const home = (p, base = homedir()) => (p.startsWith("~") ? join(homedir(), p.slice(1)) : resolve(base, p)).replace(/\\/g, "/");
 
 export function loadConfig(lang) {
   if (!LANGS.includes(lang)) throw new Error(`--lang wants one of ${LANGS.join(", ")}, not ${lang}`);
@@ -26,9 +27,9 @@ export function loadConfig(lang) {
   return {
     lang,
     dir,
-    addonsDir: home(r.addonsDir),
-    workDir: home(r.workDir ?? `${dir}/release`),
-    releaseEnv: r.releaseEnv ? home(r.releaseEnv) : `${REPO}/scripts/maintainers/spoken-release.env`,
+    addonsDir: home(r.addonsDir, dir),
+    workDir: home(r.workDir ?? `${dir}/release`, dir),
+    releaseEnv: r.releaseEnv ? home(r.releaseEnv, dir) : `${REPO}/scripts/maintainers/spoken-release.env`,
     webUpload: new Set(r.webUpload ?? []),
     minClips: r.minClips ?? 50,
     minShare: r.minShare ?? 0.02,

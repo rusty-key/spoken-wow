@@ -92,6 +92,7 @@ async function check(cfg, [folder, project, name]) {
   const toc = join(cfg.addonsDir, folder, `${folder}.toc`);
   if (!existsSync(toc)) return { ...row, error: `not installed in ${cfg.addonsDir}` };
   row.localVersion = (readFileSync(toc, "utf8").match(/^## Version:\s*(\S+)/m) ?? [])[1] ?? null;
+  if (!row.localVersion) return { ...row, error: `${folder}.toc has no ## Version` };
   const file = await newestFile(project);
   if (!file) return { ...row, error: "no approved file on CurseForge yet" };
   row.cfVersion = file.displayName.replace(/^\S+\s+/, "");

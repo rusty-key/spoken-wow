@@ -11,12 +11,20 @@ window.__spoken = (({ lang, doneModels } = {}) => {
   const SECTIONS = ["quests", "readables", "places"];
 
   // A page's RSC payload: the strings of self.__next_f.push([1,"…"]), joined.
+  // Throws instead of returning an empty payload, so a 404 (no rights for the language), an
+  // expired session or a login redirect stops the round rather than reading as "nothing to do".
   async function flight(path) {
-    const html = await fetch(path, { credentials: "include" }).then((r) => r.text());
+    const r = await fetch(path, { credentials: "include" });
+    if (!r.ok) throw new Error(`${path} returned ${r.status}`);
+    if (r.redirected && new URL(r.url).pathname !== new URL(path, location.origin).pathname) {
+      throw new Error(`${path} redirected to ${new URL(r.url).pathname}: logged out?`);
+    }
+    const html = await r.text();
     let out = "";
     for (const m of html.matchAll(/self\.__next_f\.push\(\[1,("(?:[^"\\]|\\.)*")\]\)/g)) {
       out += JSON.parse(m[1]);
     }
+    if (!out) throw new Error(`${path} has no page payload`);
     return out;
   }
 
@@ -183,7 +191,9 @@ window.__spoken = (({ lang, doneModels } = {}) => {
   }
 
   async function json(url) {
-    return fetch(url, { credentials: "include" }).then((r) => r.json());
+    const r = await fetch(url, { credentials: "include" });
+    if (!r.ok) throw new Error(`${url} returned ${r.status}`);
+    return r.json();
   }
 
   // Audio reports (/<lang>/reports/<section>). The page groups by line, 50 lines per page.
@@ -192,11 +202,15 @@ window.__spoken = (({ lang, doneModels } = {}) => {
   /** Every open report of the language, grouped by line, with the text the client showed. */
   async function reports() {
     const out = [];
+    const seen = new Set();
     for (const s of REPORT_SECTIONS) {
       for (let page = 1; page <= 10; page++) {
         const groups = arrayAfter(await flight(`/${LANG}/reports/${s}?page=${page}`), "groups") ?? [];
+        // Past the last page the server repeats it: stop once a page brings no new report.
+        let fresh = 0;
         for (const g of groups) {
-          const open = g.reports.filter((r) => r.status === "open");
+          const open = g.reports.filter((r) => r.status === "open" && !seen.has(r.id));
+          for (const r of g.reports) if (!seen.has(r.id)) { seen.add(r.id); fresh++; }
           if (!open.length) continue;
           out.push({
             section: s,
@@ -206,7 +220,7 @@ window.__spoken = (({ lang, doneModels } = {}) => {
             reports: open.map((r) => ({ id: r.id, category: r.category, body: r.body, at: r.createdAt.slice(0, 10), pack: r.context?.fields?.packVersion ?? null, npc: r.context?.fields?.npc ?? null, gameText: r.context?.text ?? null })),
           });
         }
-        if (groups.length < 50) break;
+        if (groups.length < 50 || fresh === 0) break;
       }
     }
     return out;

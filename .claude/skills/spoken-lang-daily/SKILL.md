@@ -252,16 +252,17 @@ If the site refuses `acceptWording` (409), reject the correction and put the rea
 For the rows step 4 accepted under "accept + fix". The Text API runs with the maintainer's token via
 `curl`, not in the browser tab (`docs/contributors/TEXT-API.md`):
 
-1. Fetch the state: `curl -s -H @<textApiTokenHeader> "https://spoken.quest/api/v1/quests/<lineId
-   url-encoded>"` (with `variant > 0`: `?variant=<n>`). Never print, `cat` or log the header file.
+1. Fetch the state from the row's own section (`quests`, `places` or `readables`):
+   `curl -s -H @<textApiTokenHeader> "https://spoken.quest/api/v1/<section>/<id url-encoded>"`
+   (quests with `variant > 0`: `?variant=<n>`). Never print, `cat` or log the header file.
 2. Write only if `text` is still exactly the accepted contribution text. If someone changed it since,
    or `version` > 1 from an earlier hand: leave it, put it in the report.
-3. One PATCH for all: `PATCH /api/v1/quests` with `{ note: "<lang>-daily <date> token fixes",
-   items: [{ id, variant?, text, expectedVersion }] }`. A text with `$g…;` splits the line into
-   `:m`/`:f`, which `restore` cannot undo (`gender_split`). So only when the enUS line really
-   addresses the player.
-4. Append the `batchId` with date, count and purpose to `~/.claude/spoken/<lang>/batches.log`.
-   `conflict` entries go into the report.
+3. One PATCH per section: `PATCH /api/v1/<section>` with `{ note: "<lang>-daily <date> token fixes",
+   items: [{ id, variant?, text, expectedVersion }] }`. Send `variant` only for `quests` items. A
+   text with `$g…;` splits a quest line into `:m`/`:f`, which `restore` cannot undo
+   (`gender_split`). So only when the enUS line really addresses the player.
+4. Append each `batchId` with date, section, count and purpose to
+   `~/.claude/spoken/<lang>/batches.log`. `conflict` entries go into the report.
 
 The changed lines are then `stale` or `missing`, and step 6 voices them.
 
@@ -319,11 +320,15 @@ finished, not when queueing. If the job fails, they stay open and the error goes
 - `state=missing&source=accept,complete,gossip,followup,chatter`: the daily round.
 - `state=missing&source=progress`: the progress backlog, plus new progress lines of the day.
 
-`voicingCap` applies to everything together. While the progress backlog breaks it: queue the other
-filters without asking and ask **once** with `AskUserQuestion` about the backlog, with the count and
-characters from `plan()`: all, one level band (`&minLevel=<a>&maxLevel=<b>`, both inclusive, low
-quests first) or nothing today. If progress fits under the cap with the rest, it runs without
-asking. `stale` and the model filters need no split.
+`voicingCap` applies to everything together, and nothing over it is queued without asking:
+- If every filter but progress already adds up to more than the cap, ask **once** with
+  `AskUserQuestion` before queueing anything, with the numbers from `plan()`.
+- Otherwise queue those filters without asking. If progress then breaks the cap, ask **once** about
+  the backlog, with its count and characters from `plan()`: all, one level band
+  (`&minLevel=<a>&maxLevel=<b>`, both inclusive, low quests first) or nothing today. If progress
+  fits under the cap with the rest, it runs without asking.
+
+`stale` and the model filters need no split.
 
 Bosses (`/<lang>/bosses`): one story per boss, queue source `bosses`, same filters as places. A boss
 without a story in the language (`written: false`) has nothing to speak; `plan()` and
@@ -334,7 +339,7 @@ corrections.
 await __spoken.plan()   // per section and filter: total (+ chars for places/readables)
 ```
 
-If the sum is over `voicingCap`: `AskUserQuestion` with the numbers, otherwise without asking:
+Ask as described above when the cap is broken; otherwise queue without asking:
 
 ```js
 // Quests (incl. gossip): one batch per filter from plan() with total > 0, the filter verbatim
