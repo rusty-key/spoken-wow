@@ -115,7 +115,7 @@ async function main() {
       mapsOf,
     );
     const ownNames = new Map([...fromEra.ownNames, ...fromForever.ownNames]);
-    const { aliases, dropped } = withoutUnresolved({ aliases: merged, ownNames }, byZone);
+    const { aliases, dropped } = withoutUnresolved({ aliases: merged, ownNames });
     for (const name of dropped) ambiguous.add(name);
 
     const dir = join(ROOT, "addons/Spoken_Places/Data", locale.code);

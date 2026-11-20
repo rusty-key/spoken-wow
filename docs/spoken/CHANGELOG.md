@@ -6,8 +6,7 @@ Spoken Player until 3.0.0, when it became Spoken and took its modules into one d
 
 - **A non-English client finds Forever's newer places.** The area names now come from client
   1.60.1.70959, so the new dungeons' areas and the places Forever renamed match their stories
-  in every language. In German and Portuguese, Alterac's Dalaran no longer takes the City of
-  Dalaran's story, which shares its name. *([svengabr](https://github.com/svengabr))*
+  in every language. *([svengabr](https://github.com/svengabr))*
 - **Text Language offers the language of every voice pack you have installed**, including one no
   game client runs in, such as Italian. The captions then show what that pack's voice says. Before,
   such a language appeared only with a text pack, so an Italian voice came with English words.

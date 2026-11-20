@@ -38,19 +38,19 @@ export function aliasesOf(englishRows, localizedRows, wanted, keyOf) {
 }
 
 /**
- * The flat aliases less those that are another place's own name where no zone tells the two
- * apart (`byZone` has no entry): the client reports that name for both, and the alias would win
- * at both. Without it the name keys itself, as before the other place had a translation.
+ * The flat aliases less those that are another place's own name. The client reports that name
+ * for both places, and a flat alias would answer for both, in every zone. Without it the name
+ * keys itself; the translated place is still found where zoneAliasesOf tells the two apart.
  *
  * @param flat aliasesOf's result, or several merged: { aliases, ownNames }
  * @returns { aliases, dropped: the names left out }
  */
-export function withoutUnresolved({ aliases, ownNames }, byZone) {
+export function withoutUnresolved({ aliases, ownNames }) {
   const kept = new Map();
   const dropped = [];
   for (const [name, key] of aliases) {
     const own = ownNames.get(name);
-    if (own !== undefined && own !== key && !byZone.has(name)) dropped.push(name);
+    if (own !== undefined && own !== key) dropped.push(name);
     else kept.set(name, key);
   }
   return { aliases: kept, dropped };
