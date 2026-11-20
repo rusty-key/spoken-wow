@@ -4,6 +4,8 @@ Spoken Player until 3.0.0, when it became Spoken and took its modules into one d
 
 ## Unreleased
 
+- **`/spq mute [on | off]` silences Spoken audio without disabling its features.** Quest, lore and
+  readable text continues to work while audio is muted. *([Trusty565](https://github.com/Trusty565))*
 - **The minimap right-click menu now uses the client's native menu where available.** Older
   clients keep the legacy dropdown or Spoken's custom fallback, and the menu also opens from
   the addon compartment. *([anon1231823](https://github.com/anon1231823))*

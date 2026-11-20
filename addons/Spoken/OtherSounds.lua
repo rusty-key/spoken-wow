@@ -148,14 +148,17 @@ function OtherSounds:Sync()
     local cfg = Config()
     if not cfg then return end
     local head = SoundQueue:GetCurrentSound()
-    if cfg.Enabled and head and not head.textOnly and SoundQueue:IsPlaying() then
+    local muted = SoundQueue:IsMuted()
+    if cfg.Enabled and head and not head.textOnly and not head.silent and not muted and SoundQueue:IsPlaying() then
         CancelTimer(self, "settleTimer")
         local voice = head.source and head.source:GetChannel() or Sources:PlayerChannel()
         -- Also when the volumes are on their way back up: a line that starts then turns
         -- them down again from wherever the fade had reached.
         if not self.lowered or self.restoring or voice ~= self.voice then self:Lower(voice) end
-    elseif self.lowered and not self.restoring and not self.settleTimer then
+    elseif self.lowered and not self.restoring then
         -- Switched off mid-line: back at once, rather than after the line that is ending.
+        if muted then self:Restore(true); return end
+        if self.settleTimer then return end
         if not cfg.Enabled then self:Restore(); return end
         self.settleTimer = Addon:ScheduleTimer(function()
             self.settleTimer = nil
