@@ -5,12 +5,20 @@ export const RELEASE_SECTIONS = ["quests", "places", "readables", "bosses"] as c
 
 export type ReleaseSection = (typeof RELEASE_SECTIONS)[number];
 
+/** Each section's name as a heading shows it. */
+export const SECTION_LABELS: Record<ReleaseSection, string> = {
+  quests: "Quests",
+  places: "Places",
+  readables: "Readables",
+  bosses: "Bosses",
+};
+
 export function isReleaseSection(value: unknown): value is ReleaseSection {
   return typeof value === "string" && (RELEASE_SECTIONS as readonly string[]).includes(value);
 }
 
 /**
- * What a team that is not official, or not the language's privileged team, is told when it asks to
+ * What a team that is not official, or whose packs carry its slug, is told when it asks to
  * release where team releases are closed (SPOKEN_TEAM_RELEASES): on production until the Manager and
  * Spoken that list a team's packs have shipped (docs/platform/TEAMS.md, *Releases*).
  */
@@ -51,9 +59,12 @@ export function isActive(state: ReleaseState): boolean {
   return state === "dispatching" || state === "running";
 }
 
+/** The states of a run whose job is not over: waiting its turn, or holding the lock. */
+export const UNSETTLED_STATES: readonly ReleaseState[] = ["queued", "dispatching", "running"];
+
 /** Whether its job is over: nothing the job reports changes it, though a review still may (awaiting_review, approved). */
 export function isSettled(state: ReleaseState): boolean {
-  return !isActive(state) && state !== "queued";
+  return !UNSETTLED_STATES.includes(state);
 }
 
 /** What the panel draws of a run; another team's active run carries only the first four. */

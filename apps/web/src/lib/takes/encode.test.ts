@@ -20,7 +20,8 @@ const { db, closeDb } = await import("@/lib/db");
 const { memoryBlobs, sha256Of, useArchiveForTests } = await import("@/lib/blobs/store");
 const { encodeArchivedForPack, encodeForPack, encodeMissingForPack, encodeOgg, oggDurationSec } = await import("./encode");
 const { commitTake } = await import("./commit");
-const { asSystem, dropTeam, newTeamIn } = await import("@/lib/teams/testing");
+const { asSystem, dropTeam, newTeamIn, plainTeam } = await import("@/lib/teams/testing");
+const { asTeam } = await import("@/lib/teams/acting");
 
 const english = async (): Promise<string> =>
   (await asSystem.query(`select team_of_lang('enUS') as "team"`)).rows[0].team;
@@ -124,9 +125,11 @@ describe.skipIf(!tools)("encodeForPack", () => {
     const master = fs.readFileSync(tone());
     const sha = sha256Of(master);
     const file = `gossip/${Math.random().toString(16).slice(2)}encode-second.mp3`;
+    const english = await plainTeam("enUS");
     const team = await newTeamIn("enUS", false, "encode-second");
     try {
-      await commitTake("quests", file, master, { lineId: "g:encode-second" });
+      // Committed as English's team, as somebody in it would: enUS has two teams here.
+      await asTeam("enUS", english, () => commitTake("quests", file, master, { lineId: "g:encode-second" }));
       await asSystem.query(`update "take" set "teamId" = $2 where "file" = $1`, [file, team]);
       await db().query(`delete from "take_encoding" where "sha256" = $1`, [sha]);
 

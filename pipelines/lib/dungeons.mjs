@@ -18,6 +18,11 @@ import { FOREVER_BUILD, wagoTable } from "./wago.mjs";
 const SOURCE = fileURLToPath(new URL("./dungeons.json", import.meta.url));
 const OUT = fileURLToPath(new URL("../../addons/Spoken/Data/Dungeons.lua", import.meta.url));
 export const LOCALES = ["deDE", "esES", "esMX", "frFR", "ptBR", "ruRU", "koKR", "zhCN", "zhTW", "itIT"];
+// The last Forever build wago served a language's own Map strings in, for a language it now serves
+// in English: Forever's itIT since 1.60.1.70374. Retail's itIT is no stand-in, since it carries the
+// names later expansions gave the maps ("Vecchio Monastero Scarlatto"). A map newer than this build
+// has no name in the language.
+export const STRINGS_BUILD = { itIT: "1.60.1.70338" };
 
 const byMap = (table) => Object.fromEntries(Object.entries(table ?? {}).map(([map, row]) => [Number(map), row]));
 
@@ -35,6 +40,29 @@ export function instanceZones(data = loadDungeons()) {
     for (const [map, row] of Object.entries(part)) out[map] = row.zone;
   }
   return out;
+}
+
+/**
+ * The names of the maps `wanted(map)` accepts, by locale ("enUS" and LOCALES), from Forever's Map
+ * table. A language wago serves only in English falls back to its STRINGS_BUILD.
+ */
+export async function mapNames(wanted, { table = wagoTable } = {}) {
+  const english = await table("Map", { build: FOREVER_BUILD, locale: "enUS" });
+  const englishOf = new Map(english.map((row) => [row.ID, row.MapName_lang]));
+  const names = {};
+  for (const locale of ["enUS", ...LOCALES]) {
+    let rows = locale === "enUS" ? english : await table("Map", { build: FOREVER_BUILD, locale });
+    const fallback = STRINGS_BUILD[locale];
+    if (fallback && rows.length && rows.every((row) => row.MapName_lang === englishOf.get(row.ID))) {
+      rows = await table("Map", { build: fallback, locale });
+    }
+    names[locale] = {};
+    for (const row of rows) {
+      const map = Number(row.ID);
+      if (wanted(map) && row.MapName_lang) names[locale][map] = row.MapName_lang;
+    }
+  }
+  return names;
 }
 
 /** `text` as a Lua string literal. */
@@ -68,8 +96,9 @@ export function render(dungeons, names, worldBosses = {}) {
 -- The dungeons and raids, by instance map, for every tab of Azeroth's Compendium: \`zone\`, the
 -- uiMapID of the zone their entrance is in, where the tabs list them; \`story\`, the Places area
 -- that tells their story ({ uiMapID, key }), absent where none does; and their name in every
--- language, from the client's Map table (Forever ${FOREVER_BUILD}, wago.tools). The quests' and the
--- readables' exporters file a dungeon's quests and writings by the same maps. Regenerate with:
+-- language, from the client's Map table (Forever ${FOREVER_BUILD}, itIT ${STRINGS_BUILD.itIT},
+-- wago.tools). The quests' and the readables' exporters file a dungeon's quests and writings by the
+-- same maps. Regenerate with:
 --   make dungeons
 --
 -- A global rather than a private namespace: a data file cannot reach into the addon's environment.
@@ -93,14 +122,7 @@ ${worldLines.join("\n")}
 
 async function main() {
   const { dungeons, worldBosses } = loadDungeons();
-  const names = {};
-  for (const locale of ["enUS", ...LOCALES]) {
-    names[locale] = {};
-    for (const row of await wagoTable("Map", { build: FOREVER_BUILD, locale })) {
-      const map = Number(row.ID);
-      if ((dungeons[map] || worldBosses[map]) && row.MapName_lang) names[locale][map] = row.MapName_lang;
-    }
-  }
+  const names = await mapNames((map) => Boolean(dungeons[map] || worldBosses[map]));
   const text = render(dungeons, names, worldBosses);
   if (process.argv.includes("--check")) {
     const current = (await readFile(OUT, "utf8")).replace(/\r\n/g, "\n");

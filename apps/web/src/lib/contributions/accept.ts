@@ -30,7 +30,7 @@ import { BOOK_ID_COMPAT, PAGE_COUNT } from "@readables-tools/lib/page.mjs";
 import { normaliseText } from "@readables-tools/lib/text.mjs";
 
 import { recordActivity } from "@/lib/activity/store";
-import { actAs, ALL_TEAMS, db, inTransaction } from "@/lib/db";
+import { actAs, ALL_TEAMS, db, inTransaction, query } from "@/lib/db";
 import { observedFrom } from "@/lib/npc/resolve";
 import {
   getResolution,
@@ -40,7 +40,7 @@ import {
   type NpcRowKind,
   type NpcResolution,
 } from "@/lib/npc/store";
-import { BASE_LANG, allLangs, isLang, type Lang } from "@/lib/lang";
+import { BASE_LANG, isLang, type Lang } from "@/lib/lang";
 import type { CorpusLine } from "@/lib/corpus";
 import { isGeneratable, mintBookId, mintPageId } from "@/lib/readables/tools";
 import { branchesOnPlayerGender, speakPlayerTokens } from "@/lib/player-words";
@@ -59,7 +59,7 @@ import {
 import type { Roster } from "@/lib/voices/roster";
 import { loadRoster } from "@/lib/voices/roster-store";
 import { asTeam } from "@/lib/teams/acting";
-import { privilegedOwners, type TeamId } from "@/lib/teams/store";
+import { freshOwners, type TeamId } from "@/lib/teams/store";
 
 import { namesOneBook } from "@readables-tools/lib/owners.mjs";
 import { loadBookCorpus, matchBook, sameMatch, type BookCorpus, type BookMatchResult } from "./book-match";
@@ -740,13 +740,15 @@ async function nameIfUnnamed(
 /**
  * Ignore every line a quests contribution wrote, in its language, or in every language for an
  * English row. A line it only added a speaker to is ignored whole, whoever else speaks it.
- * The ignores are `owner`'s, the language's privileged team, whichever team the rejecter works in.
+ * The ignores are the language's, which every team of it honours, whichever team the rejecter
+ * works in; their activity is filed under `owner`. The client acts as `acting` again after.
  */
 async function ignoreWrittenLines(
   client: PoolClient,
   contribution: Contribution,
   userId: string,
   owner: TeamId | undefined,
+  acting: TeamId | typeof ALL_TEAMS,
 ): Promise<void> {
   const { rows } = await client.query<{ lineId: string }>(
     `select "lineId" from "quest_line_speaker" where "contributionId" = $1
@@ -755,11 +757,14 @@ async function ignoreWrittenLines(
     [contribution.id, noteFor(contribution.id)],
   );
   const lang = contribution.locale === BASE_LANG || !isLang(contribution.locale) ? null : contribution.locale;
+  // Only ALL_TEAMS writes a row with no team.
+  await actAs(client, ALL_TEAMS);
   await asTeam(lang, owner, async () => {
     for (const { lineId } of rows) {
-      await writeIgnore(lineId, `Rejected ${noteFor(contribution.id)}`, userId, lang, client);
+      await writeIgnore(lineId, `Rejected ${noteFor(contribution.id)}`, userId, { lang, client, wholeLanguage: true });
     }
   });
+  await actAs(client, acting);
 }
 
 /**
@@ -984,12 +989,11 @@ export async function resolveContribution(
     }
   }
   const rejectReason = status === "rejected" ? reason?.trim().slice(0, REJECT_REASON_MAX) || null : null;
-  // Read before the client is held: a refresh of the memo needs a connection of its own. Every
-  // language, since the contribution's is not known yet: one the other worker has just given a
-  // team would otherwise be logged under none. The privileged teams, whoever is acting: a
-  // contribution is original text, so its resolution and the ignores a rejection leaves are
-  // that team's, even for a text maintainer who works in a second team.
-  const owners = await privilegedOwners(allLangs());
+  // Read before the client is held: a refresh of the memo needs a connection of its own. The
+  // resolution is filed under the resolver's team; the ignores a rejection leaves are the
+  // language's, whichever team that is.
+  const [row] = await query<{ locale: string }>(`select "locale" from "contribution" where "id" = $1`, [id]);
+  const owners = await freshOwners(row && isLang(row.locale) ? [row.locale] : []);
   const client = await db().connect();
   // Set only on the path below where rollback itself throws -- that is the one case that
   // releases the client itself (with the error, so node-postgres destroys rather than recycles
@@ -1042,7 +1046,7 @@ export async function resolveContribution(
       if (isLang(contribution.locale)) {
         await recordActivity(
           {
-            team,
+            team: team === ALL_TEAMS ? null : team,
             kind: "contribution.edited",
             lang: contribution.locale,
             source: contribution.source,
@@ -1066,7 +1070,7 @@ export async function resolveContribution(
     let ignored = false;
     if (written && status !== "accepted") {
       if (status === "rejected" && contribution.source === "quests" && mayIgnore) {
-        await ignoreWrittenLines(client, contribution, userId, lang ? owners.get(lang) : undefined);
+        await ignoreWrittenLines(client, contribution, userId, lang ? owners.get(lang) : undefined, team);
         ignored = true;
       } else {
         await client.query("rollback");
@@ -1109,7 +1113,7 @@ export async function resolveContribution(
     // than dropped: somebody still resolved it.
     await recordActivity(
       {
-        team: (lang && owners.get(lang)) || ALL_TEAMS,
+        team: (lang && owners.get(lang)) || null,
         kind: "contribution.resolved",
         lang: isLang(contribution.locale) ? contribution.locale : null,
         source: contribution.source,

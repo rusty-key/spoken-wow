@@ -2,7 +2,7 @@
  * The spoken text a team has rewritten by hand for a place, readable or boss line.
  *
  * Keyed by line id within a source, in the acting team's language. Every read and write is the
- * acting team's, so a second team's rewrite is invisible to the privileged one.
+ * acting team's, so one team's rewrite is invisible to the language's other teams.
  */
 import { auditDetail, type ApiAudit } from "../activity/kinds";
 import { recordActivity } from "../activity/store";
@@ -10,8 +10,8 @@ import { spokenHash } from "../generation/spoken-hash";
 import type { Lang } from "../lang";
 import { memoByTeamLang } from "../memo";
 import { hasDrifted } from "../quests/override-drift";
-import { ALL_TEAMS, query, queryIn } from "../db";
-import { ownerOrAll, queryAs, readAs } from "../teams/store";
+import { query, queryIn } from "../db";
+import { queryAs, readAs, readerOf } from "../teams/store";
 import type { NarratedSource, OverrideView, TextOverride } from "./types";
 
 type OverrideRow = {
@@ -50,18 +50,18 @@ export async function overrideStamp(source: NarratedSource, lang: Lang): Promise
 }
 
 /**
- * A catalogue's shared-text stamp and the acting team's override stamp, in one statement on one
- * connection. `shared` reads only shared tables, which answer the same under any team. An
- * unowned language reads no override and stamps `"-"`: acting as ALL_TEAMS, row-level
- * security would count every team's rows.
+ * A catalogue's shared-text stamp and the override stamp of the team readTextOverrides reads
+ * (readerOf), in one statement on one connection. `shared` reads only shared tables, which answer
+ * the same under any team. A language with no team reads no override and stamps `"-"`: acting as
+ * ALL_TEAMS, row-level security would count every team's rows.
  */
 export async function stampsWithOverrides(
   source: NarratedSource,
   lang: Lang,
   shared: { sql: string; params: unknown[] },
 ): Promise<{ stamp: string; overrides: string }> {
-  const team = await ownerOrAll(lang);
-  if (team === ALL_TEAMS) {
+  const team = await readerOf(lang);
+  if (!team) {
     const rows = await query<{ stamp: string }>(`select ${shared.sql} as "stamp"`, shared.params);
     return { stamp: rows[0]?.stamp ?? "", overrides: "-" };
   }

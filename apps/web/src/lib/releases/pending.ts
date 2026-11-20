@@ -13,7 +13,7 @@
 import "server-only";
 
 import type { Lang } from "@/lib/lang";
-import { readAs } from "@/lib/teams/store";
+import { readAsActing } from "@/lib/teams/store";
 import { namesOf } from "@/lib/users/store";
 
 import { RELEASE_SECTIONS, type PendingChange, type PendingView, type ReleaseSection } from "./sections";
@@ -70,7 +70,7 @@ type Row = {
 function liveAt(at: string): string {
   return `select f."file", coalesce(a."version", f."version") as "version"
     from (select o."file", max(o."version") as "version" from "take" o
-           where o."source" = $1 and o."lang" = $2 and o."teamId" = coalesce(spoken_team(), team_of_lang($2))
+           where o."source" = $1 and o."lang" = $2 and o."teamId" = spoken_team()
              and o."createdAt" <= ${at}
            group by o."file") f
     left join (select distinct on (e."subject") e."subject", (e."detail"->>'version')::int as "version"
@@ -89,7 +89,7 @@ const LIVE = `($4::timestamptz is null and t."isCurrent"
 
 /**
  * Every file whose live audio changed since `$3`, as `file, lineId, version, at, by, kind`: the
- * acting team's takes, which its release builds from, or the privileged team's read as all teams.
+ * acting team's takes, which its release builds from. Read as no team, it is none.
  * With `$4`, as it stood then: what a release that started at `$4` built from; without, the takes
  * live now.
  *
@@ -103,7 +103,7 @@ function changed(section: ReleaseSection): string {
   select t."file", t."lineId", t."version", t."createdAt" as "at", t."createdBy" as "by", 'new' as "kind"
     from "take" t
     left join until_live on until_live."file" = t."file"
-   where t."source" = $1 and t."lang" = $2 and ${LIVE} and t."teamId" = coalesce(spoken_team(), team_of_lang($2))
+   where t."source" = $1 and t."lang" = $2 and ${LIVE} and t."teamId" = spoken_team()
      and ($3::timestamptz is null or t."createdAt" > $3) ${SHIPPED[section]}
   union all
   -- A file restored and regenerated since counts once, as the newer take; restored twice, once,
@@ -112,7 +112,7 @@ function changed(section: ReleaseSection): string {
     select distinct on (a."subject") a."subject", t."lineId", t."version", a."at", a."actorId", 'restored'
       from "activity" a
       join "take" t on t."source" = a."source" and t."lang" = a."lang" and t."file" = a."subject"
-                   and t."teamId" = coalesce(spoken_team(), team_of_lang($2))
+                   and t."teamId" = spoken_team()
       left join until_live on until_live."file" = t."file"
       left join since_live on since_live."file" = t."file"
      where $3::timestamptz is not null and a."kind" = 'take.restored' and a."lang" = $2
@@ -173,13 +173,13 @@ const STAGED = `
   select p."file", t."lineId", p."version", coalesce(t."createdAt", p."built") as "at", t."createdBy" as "by",
          case when exists (select 1 from "take" n
                             where n."source" = $1 and n."lang" = $2 and n."file" = p."file"
-                              and n."teamId" = coalesce(spoken_team(), team_of_lang($2))
+                              and n."teamId" = spoken_team()
                               and n."version" > p."version" and n."createdAt" <= p."built")
               then 'restored' else 'new' end as "kind"
     from picked p
     left join had h on h."file" = p."file"
     left join "take" t on t."source" = $1 and t."lang" = $2 and t."file" = p."file" and t."version" = p."version"
-                      and t."teamId" = coalesce(spoken_team(), team_of_lang($2))
+                      and t."teamId" = spoken_team()
    where h."file" is null or h."version" is distinct from p."version" or h."sha256" is distinct from p."sha256"`;
 
 /**
@@ -209,21 +209,21 @@ async function summarize(
   const params = [section, lang, ...extra];
   // One after another: a page asks for every section at once, and each query here holds a
   // connection of its own while it runs.
-  const byPerson = await readAs<{ by: string | null; count: string; restored: string }>(
+  const byPerson = await readAsActing<{ by: string | null; count: string; restored: string }>(
     lang,
     `select "by", count(*) as "count", count(*) filter (where "kind" = 'restored') as "restored"
        from (${CHANGED}) c group by "by" order by count(*) desc`,
     params,
   );
   const rows = list
-    ? await readAs<Row>(
+    ? await readAsActing<Row>(
         lang,
         `select c.*, x."title", x."text", live_now."version" as "current"
            from (select * from (${CHANGED}) changed order by "at" desc limit ${LISTED}) c
            left join lateral (${TEXT[section]}) x on true
            left join lateral (select n."version" from "take" n
                                where n."source" = $1 and n."lang" = $2 and n."file" = c."file" and n."isCurrent"
-                                 and n."teamId" = coalesce(spoken_team(), team_of_lang($2))) live_now on true
+                                 and n."teamId" = spoken_team()) live_now on true
           order by c."at" desc`,
         params,
       )
@@ -263,7 +263,7 @@ async function summarize(
 export async function textChangeCount(section: ReleaseSection, lang: Lang, since: Date | null, until: Date | null): Promise<number> {
   // Before any release everything goes out anyway, so there is nothing to add.
   if (!since) return 0;
-  const rows = await readAs<{ count: string }>(
+  const rows = await readAsActing<{ count: string }>(
     lang,
     `with until_live as (${liveAt("$4::timestamptz")})
      select count(distinct coalesce(a."lineId", a."subject")) as "count" from "activity" a

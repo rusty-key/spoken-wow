@@ -5,7 +5,7 @@
 //   node scripts/manager/release.mjs <quests|places|readables|bosses> <lang> [--team=<slug>] [--bump=patch|minor|major] [--dry-run] [--allow-removals] [--stage-only] [--stage[=<file>]]
 //
 // --team names the team the release builds for, which the site passes; without it, the
-// language's privileged team. Every step reads that team's live takes (SPOKEN_RELEASE_TEAM,
+// language's only team, and a language with several is refused. Every step reads that team's live takes (SPOKEN_RELEASE_TEAM,
 // pipelines/lib/release-team.mjs).
 //
 // --stage publishes without listing: blobs and manifests go up, no index changes, and what a

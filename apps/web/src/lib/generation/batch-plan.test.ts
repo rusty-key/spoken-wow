@@ -161,6 +161,14 @@ describe("queuePlan", () => {
     );
   });
 
+  it("409s a team whose deletion started between the batch and its jobs", async () => {
+    mocks.enqueue.mockRejectedValueOnce(Object.assign(new Error("crew is being deleted"), { code: "SPTD1" }));
+    const result = (await queuePlan({ ...base, plan: plan([job("a", 10)]) })) as Response;
+    expect(result.status).toBe(409);
+    expect(await result.json()).toEqual({ error: "crew is being deleted; it can make nothing more.", kind: "team-deleting" });
+    expect(mocks.recordActivity).not.toHaveBeenCalled();
+  });
+
   it("leaves apiTokenId out when no token queued it", async () => {
     await queuePlan({ ...base, plan: plan([job("a", 10)]) });
     expect(mocks.recordActivity).toHaveBeenCalledWith(

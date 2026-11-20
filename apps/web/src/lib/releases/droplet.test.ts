@@ -47,32 +47,32 @@ describe("runsOnDroplet", () => {
 });
 
 describe("releasesClosedFor", () => {
-  const privileged = { official: true, privileged: true };
-  const second = { official: false, privileged: false };
+  const own = { official: true, packName: "plain" as const };
+  const other = { official: false, packName: "slug" as const };
 
-  it("refuses any team but the official privileged one until team releases open", () => {
+  it("refuses any team but an official one with plain packs until team releases open", () => {
     vi.stubEnv("SPOKEN_TEAM_RELEASES", "");
-    expect(releasesClosedFor(privileged)).toBe(false);
+    expect(releasesClosedFor(own)).toBe(false);
     expect(releasesClosedFor(null)).toBe(false);
-    expect(releasesClosedFor(second)).toBe(true);
-    expect(releasesClosedFor({ official: true, privileged: false })).toBe(true);
-    expect(releasesClosedFor({ official: false, privileged: true })).toBe(true);
+    expect(releasesClosedFor(other)).toBe(true);
+    expect(releasesClosedFor({ official: true, packName: "slug" })).toBe(true);
+    expect(releasesClosedFor({ official: false, packName: "plain" })).toBe(true);
   });
 
   it("refuses nobody where they are open", () => {
     vi.stubEnv("SPOKEN_TEAM_RELEASES", "1");
-    expect(releasesClosedFor(second)).toBe(false);
+    expect(releasesClosedFor(other)).toBe(false);
   });
 
   // The job refuses a plan that lists a team where team releases are closed (release.mjs), so a
   // press the site accepts and the job then refuses is a run that fails after the lock is taken.
   it.each([
-    ["an official privileged team in a language with no Manager page", "viVN", { official: true, privileged: true }],
-    ["an official privileged team on a page", "deDE", { official: true, privileged: true }],
-    ["a privileged team that is not official, on a page", "deDE", { official: false, privileged: true }],
-    ["a privileged team that is not official, with no page", "viVN", { official: false, privileged: true }],
-    ["an official second team", "deDE", { official: true, privileged: false }],
-    ["a second team that is not official", "viVN", { official: false, privileged: false }],
+    ["an official team with plain packs in a language with no Manager page", "viVN", { official: true, packName: "plain" as const }],
+    ["an official team with plain packs on a page", "deDE", { official: true, packName: "plain" as const }],
+    ["a team with plain packs that is not official, on a page", "deDE", { official: false, packName: "plain" as const }],
+    ["a team with plain packs that is not official, with no page", "viVN", { official: false, packName: "plain" as const }],
+    ["an official team whose packs carry its slug", "deDE", { official: true, packName: "slug" as const }],
+    ["a team that is not official whose packs carry its slug", "viVN", { official: false, packName: "slug" as const }],
   ])("refuses %s exactly when the job would", (_, lang, flags) => {
     vi.stubEnv("SPOKEN_TEAM_RELEASES", "");
     const team = {

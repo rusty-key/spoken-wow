@@ -128,11 +128,7 @@ export function isCapability(value: unknown): value is Capability {
   return typeof value === "string" && (CAPABILITIES as readonly string[]).includes(value);
 }
 
-/**
- * `privileged` is false for a grant in a language's second team, and absent for `text` and for
- * a grant in the privileged team.
- */
-export type Grant = { lang: string; capability: Capability; privileged?: boolean };
+export type Grant = { lang: string; capability: Capability };
 
 /** Who is asking: their global role, and whatever they hold in particular languages. */
 export type Viewer = { role: string | null | undefined; grants: readonly Grant[] };
@@ -192,20 +188,12 @@ export function canManageVoices(viewer: Viewer | null, lang: Lang): boolean {
 /**
  * Whether somebody may hand out or take away `capability` in `lang`.
  *
- * `textByTeam` is the language's flag that its privileged team's admins appoint text
- * maintainers, as a site admin does elsewhere. A second team's admin never does: the original
- * text is what every team in the language voices.
+ * `textByTeam` is the language's flag that its teams' admins appoint text maintainers, as a site
+ * admin does elsewhere. An admin of any team of the language may: the teams are equal.
  */
 export function canGrant(viewer: Viewer | null, capability: Capability, lang: Lang, textByTeam: boolean): boolean {
-  if (!viewer) return false;
-  if (viewer.role === "admin") return true;
-  if (capability !== "text") return can(viewer, "admin", lang);
-  return textByTeam && adminsPrivileged(viewer, lang);
-}
-
-/** Whether `viewer` is an admin of `lang`'s privileged team, as opposed to a second team's. */
-export function adminsPrivileged(viewer: Viewer, lang: string): boolean {
-  return viewer.grants.some((grant) => grant.lang === lang && grant.capability === "admin" && grant.privileged !== false);
+  if (viewer?.role === "admin") return true;
+  return can(viewer, "admin", lang) && (capability !== "text" || textByTeam);
 }
 
 /**

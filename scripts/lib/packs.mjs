@@ -46,8 +46,8 @@ export function englishFolder(section, pack) {
   return "SpokenQuestsAudio" + ALL_QUESTS_PACKS[pack];
 }
 
-// The pack ids the publisher accepts: a pack of the language's privileged team carries the
-// language alone, any other team's the language and its slug (docs/platform/TEAMS.md, *Releases*).
+// The pack ids the publisher accepts: a team's pack carries the language alone where its pack name
+// in the language is `plain`, else the language and its slug (docs/platform/TEAMS.md, *Releases*).
 export const PACK_ID = /^Spoken[A-Za-z]+(_[a-z]{2}[A-Z]{2}(_[a-z][a-z0-9-]{1,40})?)?$/;
 // The ids a Manager from before team packs accepts: an index entry it rejects hides the whole
 // channel, so index.json carries only these.
@@ -65,6 +65,11 @@ export function teamFolder(englishFolder, lang, slug) {
   if (slug !== null && !TEAM_SLUG.test(slug)) throw new Error(`'${slug}' is not a team slug`);
   if (lang === BASE_LOCALE && slug === null) return englishFolder;
   return `${englishFolder}_${lang}${slug === null ? "" : `_${slug}`}`;
+}
+
+// The slug a team's folders in a language carry: none where its packs there are plain.
+export function packSlug(team) {
+  return team.packName === "plain" ? null : team.slug;
 }
 
 // The folders of a pack with no store page, a team's or a new language's: English's Manager

@@ -30,6 +30,8 @@ import { asSystem, dropTeam, systemRows, testUser } from "./testing";
 let requester: Awaited<ReturnType<typeof testUser>>;
 let admin: Awaited<ReturnType<typeof testUser>>;
 let other: Awaited<ReturnType<typeof testUser>>;
+/** Further requesters a test makes. */
+let more: Awaited<ReturnType<typeof testUser>>[] = [];
 let codes: string[];
 
 function code(): string {
@@ -77,7 +79,7 @@ afterEach(async () => {
     `select "teamId" from "team_language" where "lang" = any($1::text[])`,
     [codes],
   );
-  const users = [requester.id, admin.id, other.id];
+  const users = [requester.id, admin.id, other.id, ...more.map((user) => user.id)];
   await asSystem.query(`delete from "activity" where "actorId" = any($1::text[]) or "lang" = any($2::text[])`, [users, codes]);
   await asSystem.query(`delete from "team_request" where "userId" = any($1::text[])`, [users]);
   await asSystem.query(`delete from "language_grant" where "lang" = any($1::text[])`, [codes]);
@@ -86,7 +88,8 @@ afterEach(async () => {
     await asSystem.query(`delete from "${table}" where "teamId" = any($1::uuid[])`, [held.map((row) => row.teamId)]);
   }
   for (const { teamId } of held) await dropTeam(teamId);
-  for (const user of [requester, admin, other]) await user.cleanup();
+  for (const user of [requester, admin, other, ...more]) await user.cleanup();
+  more = [];
   forgetLanguages();
   await loadLanguages();
   forgetTeams();
@@ -209,19 +212,49 @@ describe("approveRequest", () => {
     await expect(approveRequest(request.id, admin.id)).rejects.toSatisfy(refused(409, "already withdrawn"));
   });
 
-  it("makes a second team beside a maintained language, starting from its settings", async () => {
+  it("adds a team beside a maintained language's, starting from its settings", async () => {
     const { lang } = await maintained();
     const request = await createRequest(requester.id, { lang, language: null, teamName: "Second", note: null });
-    expect(request.branch).toBe("second-team");
+    expect(request.branch).toBe("add-team");
     const approved = await approveRequest(request.id, admin.id, { settings: "copy" });
     expect(approved.state).toBe("approved");
     const [second] = await systemRows<{ teamId: string }>(
-      `select "teamId" from "team_language" where "lang" = $1 and not "privileged"`,
+      `select "teamId" from "team_language" where "lang" = $1 and "packName" = 'slug'`,
       [lang],
     );
     expect(approved.approvedTeamId).toBe(second.teamId);
-    const { rows } = await listActivity({ lang, global: true, actorId: admin.id });
-    expect(rows.find((row) => row.kind === "request.approved")?.detail).toMatchObject({ branch: "second-team" });
+    const rows = await systemRows<{ detail: unknown }>(
+      `select "detail" from "activity" where "kind" = 'request.approved' and "actorId" = $1`,
+      [admin.id],
+    );
+    expect(rows).toEqual([{ detail: expect.objectContaining({ branch: "add-team" }) }]);
+  });
+
+  it("copies the team the approver was shown, and refuses one that no longer voices the language", async () => {
+    const { lang } = await maintained();
+    const asks = async (teamName: string) => {
+      const user = await testUser("test-req-more");
+      more.push(user);
+      return createRequest(user.id, { lang, language: null, teamName, note: null });
+    };
+    const zed = await approveRequest((await asks("Zed")).id, admin.id, { settings: "fresh" });
+    // Zed is not the first team: the plain one is.
+    await approveRequest((await asks("Yon")).id, admin.id, { settings: "copy", source: zed.approvedTeamId! });
+    const [{ slug: zedSlug }] = await systemRows<{ slug: string }>(`select "slug" from "team" where "id" = $1`, [
+      zed.approvedTeamId,
+    ]);
+    expect(
+      await systemRows(
+        `select "detail"->>'from' as "from" from "activity" where "kind" = 'team.joined_language' and "lang" = $1 and "subject" like 'yon%'`,
+        [lang],
+      ),
+    ).toEqual([{ from: zedSlug }]);
+
+    const gone = await asks("Xen");
+    await expect(
+      approveRequest(gone.id, admin.id, { settings: "copy", source: "00000000-0000-4000-8000-000000000000" }),
+    ).rejects.toSatisfy(refused(409, "no longer voices"));
+    expect(await systemRows(`select "state" from "team_request" where "id" = $1`, [gone.id])).toEqual([{ state: "pending" }]);
   });
 
   it("refuses a requester who joined the language's team after asking, and leaves the request pending", async () => {
@@ -237,7 +270,7 @@ describe("approveRequest", () => {
     expect(await systemRows(`select "state" from "team_request" where "id" = $1`, [request.id])).toEqual([
       { state: "pending" },
     ]);
-    expect(await systemRows(`select 1 from "team_language" where "lang" = $1 and not "privileged"`, [lang])).toEqual([]);
+    expect(await systemRows(`select 1 from "team_language" where "lang" = $1 and "packName" = 'slug'`, [lang])).toEqual([]);
   });
 });
 

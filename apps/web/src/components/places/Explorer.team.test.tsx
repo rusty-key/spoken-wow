@@ -93,8 +93,8 @@ beforeEach(() => {
 });
 afterEach(cleanup);
 
-const main: TeamChoice = { id: "t-main", slug: "main-crew", name: "Main Crew", privileged: true };
-const second: TeamChoice = { id: "t-second", slug: "second-crew", name: "Second Crew", privileged: false };
+const main: TeamChoice = { id: "t-main", slug: "main-crew", name: "Main Crew" };
+const second: TeamChoice = { id: "t-second", slug: "second-crew", name: "Second Crew" };
 const mainView: ViewedTeam = { team: main.id, slug: main.slug, name: main.name, own: false };
 const ownView: ViewedTeam = { team: second.id, slug: second.slug, name: second.name, own: true };
 

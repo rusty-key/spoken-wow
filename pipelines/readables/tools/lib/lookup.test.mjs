@@ -138,15 +138,15 @@ test("an absorbed page keeps the file its take was cut to under the real numeric
 
 // Needs DATABASE_URL naming a migrated test database (spoken_ci_pin), as an owner that bypasses
 // row-level security; skipped without one.
-test("a release's lookup lists its own team's live take of a page, and a build outside one the privileged team's", {
+test("a release's lookup lists its own team's live take of a page, and a build outside one the plain team's", {
   skip: process.env.DATABASE_URL ? false : "DATABASE_URL is not set",
 }, async () => {
   const seed = seedDatabase();
   try {
     const { sql, lit } = seed;
     const lang = seed.language();
-    const a = seed.team(lang, { privileged: true });
-    const b = seed.team(lang, { privileged: false });
+    const a = seed.team(lang);
+    const b = seed.team(lang, { packName: "slug" });
     const page = 900_000_000 + randomInt(1e8);
     const lineId = `b:${page}`;
     seed.onCleanup(`delete from "entity_name" where "lang" = ${lit(lang)}`);

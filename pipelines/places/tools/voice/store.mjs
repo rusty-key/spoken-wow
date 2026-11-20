@@ -18,7 +18,7 @@ import { execFile } from "node:child_process";
 import { join } from "node:path";
 import { promisify } from "node:util";
 
-import { releaseTeamId, releaseTeamSql } from "../../../lib/release-team.mjs";
+import { plainTeamSql, releaseTeamId, releaseTeamSql } from "../../../lib/release-team.mjs";
 import { BASE_LOCALE, CODES } from "../lib/locales.mjs";
 import { ROOT } from "../lib/loredata.mjs";
 import * as db from "./db.mjs";
@@ -131,7 +131,7 @@ async function loadFromDatabase() {
     `select "lineId", ${TAKE_COLUMNS.map(selectAs).join(", ")}, ${selectAs("generatedAt")}, "wordTimes", "shownText"
        from "take"
       where "source" = '${SOURCE}' and "isCurrent" and "lang" = '${LANG}'
-        -- the release's team, else the privileged team, so a build outside a release reads what it always did
+        -- the release's team, else the one with plain packs, so a build outside a release reads what it always did
         and "teamId" = ${releaseTeamSql(`'${LANG}'`)}`,
   );
 
@@ -179,9 +179,9 @@ export async function loadCurrentLore() {
 export async function currentDictionary() {
   if (!db.isEnabled()) return null;
   const { rows } = await db.query(
-    // English's lexicon is the english team's row (apps/web migration 0089).
+    // English's lexicon is its one team's row (apps/web migration 0089).
     `select "dictionaryId", "versionId" from "pronunciation_lexicon"
-      where "teamId" = team_of_lang('enUS')`,
+      where "teamId" = ${plainTeamSql("'enUS'")}`,
   );
   const row = rows[0];
   if (!row?.dictionaryId || !row.versionId) return null;

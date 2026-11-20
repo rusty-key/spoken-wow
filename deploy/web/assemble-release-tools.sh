@@ -14,6 +14,7 @@ copy=(
   pipelines/lib
   pipelines/places/tools pipelines/places/assets
   pipelines/readables/tools pipelines/readables/assets
+  pipelines/bosses/assets
   publishers
   addons/SpokenPlacesAudio addons/SpokenReadablesAudio addons/SpokenBossesAudio
   # The places lookup reads its zones and subzones from these.

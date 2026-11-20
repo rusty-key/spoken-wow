@@ -1,8 +1,8 @@
 /**
  * The team a person works as in each language, from team_member; for a site owner, the team
- * the acting cookie picks wins. With a second team it need not be the privileged one. Outside a
- * request (worker, script, approval for someone else), name the person with asActor or the team
- * with asTeams, or the privileged team is used.
+ * the acting cookie picks wins. Outside a request (worker, script, approval for someone else),
+ * name the person with asActor or the team with asTeams: otherwise a language with several teams
+ * has none to work as.
  */
 import "server-only";
 
@@ -21,13 +21,12 @@ const NONE: Teams = new Map();
 
 const scope = new AsyncLocalStorage<Teams>();
 
-// The privileged team's rows sort last, so a person in two teams of one language acts as it.
+// Sorted by slug, last first, so a person in two teams of one language always acts as the same one.
 export async function memberTeams(userId: string, client?: Pick<ClientBase, "query">): Promise<Map<string, TeamId>> {
   const { rows } = await (client ?? db()).query<{ lang: string; teamId: TeamId }>(
-    `select m."lang", m."teamId" from "team_member" m
-       left join "team_language" tl on tl."teamId" = m."teamId" and tl."lang" = m."lang"
+    `select m."lang", m."teamId" from "team_member" m join "team" t on t."id" = m."teamId"
       where m."userId" = $1
-      order by tl."privileged" nulls first`,
+      order by t."slug" desc`,
     [userId],
   );
   return new Map(rows.map((row) => [row.lang, row.teamId]));
@@ -51,8 +50,7 @@ export async function asActor<T>(userId: string, work: () => Promise<T>): Promis
 }
 
 /**
- * The session's person's teams; for a site owner, overlaid with the teams the acting cookie
- * picks, the role read from the session on every request. Both loaded on first use, not
+ * The session's person's teams; for a site owner, siteOwnerTeams', the role read from the session on every request. Both loaded on first use, not
  * imported: the session reaches lib/auth, whose activity hook reaches lib/teams/store, which
  * imports this module, and the cookie's module imports lib/teams/store. A script or the worker
  * never loads them.
@@ -63,9 +61,8 @@ const sessionTeams = cache(async (): Promise<Teams> => {
   if (!session) return NONE;
   const member = await memberTeams(session.user.id);
   if (!isAdmin(session.user.role)) return member;
-  const { chosenTeams } = await import("./acting-cookie");
-  const chosen = await chosenTeams();
-  return chosen.size ? new Map([...member, ...chosen]) : member;
+  const { siteOwnerTeams } = await import("./acting-cookie");
+  return siteOwnerTeams(member);
 });
 
 /** Next's refusal of headers() where there is no request: the worker, a script, a test. */

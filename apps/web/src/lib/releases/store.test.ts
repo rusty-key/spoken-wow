@@ -189,7 +189,7 @@ describe("release runs", () => {
 
   it("lists only the asked language's runs when a team holds several", async () => {
     const moved = await unowned("esES");
-    await db().query(`insert into "team_language" ("teamId", "lang") values ($1, 'esES')`, [fr.team]);
+    await db().query(`insert into "team_language" ("teamId", "lang", "packName") values ($1, 'esES', 'plain')`, [fr.team]);
     forgetTeams();
     try {
       await updateRun((await startRun("quests", "frFR", user.id)).id, { state: "done" });

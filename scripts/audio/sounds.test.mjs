@@ -2,7 +2,7 @@
 // row-level security; skipped without one.
 //
 // A language with two teams, each holding a live take of the same line: a release's listing
-// holds its own team's take alone, and a build outside a release the privileged team's.
+// holds its own team's take alone, and a build outside a release the plain packs' team's.
 import { execFile, execFileSync } from "node:child_process";
 import { randomInt } from "node:crypto";
 import { mkdtempSync, readFileSync, rmdirSync, rmSync } from "node:fs";
@@ -31,8 +31,8 @@ before(() => {
   if (!seed) return;
   const { sql, lit } = seed;
   lang = seed.language();
-  a = seed.team(lang, { privileged: true });
-  b = seed.team(lang, { privileged: false });
+  a = seed.team(lang);
+  b = seed.team(lang, { packName: "slug" });
   seed.onCleanup(`delete from "entity_name" where "lang" = ${lit(lang)}`);
   seed.onCleanup(`delete from "quest_line" where "lang" = ${lit(lang)}`);
 
@@ -66,11 +66,11 @@ function listing(section, team) {
 }
 
 for (const section of ["readables", "quests", "bosses"]) {
-  test(`a second team's ${section} release lists its own take, not the privileged team's`, { skip }, () => {
+  test(`a slug team's ${section} release lists its own take, not the plain team's`, { skip }, () => {
     assert.deepEqual(listing(section, b), [`blobs/takes/${B_SHA}`]);
   });
 
-  test(`a ${section} build outside a release lists the privileged team's take`, { skip }, () => {
+  test(`a ${section} build outside a release lists the plain team's take`, { skip }, () => {
     assert.deepEqual(listing(section, null), [`blobs/takes/${A_SHA}`]);
   });
 }

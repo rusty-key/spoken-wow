@@ -229,7 +229,7 @@ describe("release route", () => {
 
   it("treats a team's other language as its own team's run", async () => {
     const moved = await unowned("esES");
-    await asSystem.query(`insert into "team_language" ("teamId", "lang") values ($1, 'esES')`, [fr.team]);
+    await asSystem.query(`insert into "team_language" ("teamId", "lang", "packName") values ($1, 'esES', 'plain')`, [fr.team]);
     forgetTeams();
     try {
       await makeAdmin("esES", fr.team);
@@ -242,7 +242,7 @@ describe("release route", () => {
     }
   });
 
-  describe("a team that is not official, or not the language's privileged team", () => {
+  describe("a team that is not official, or whose packs carry its slug", () => {
     const CLOSED = "Releases for your team are not open on this site yet; your takes stay on the site.";
     let team = "";
     let second: Awaited<ReturnType<typeof testUser>>;
@@ -273,21 +273,20 @@ describe("release route", () => {
     const runsOf = async (teamId: string) =>
       (await asSystem.query(`select "id" from "release_run" where "teamId" = $1`, [teamId])).rows;
 
-    it("is refused with no run while team releases are closed, and the privileged admin still dispatches", async () => {
+    it("is refused with no run while team releases are closed, and the plain team's admin still dispatches", async () => {
       const refused = await pressAs(second.id);
       expect(refused.status).toBe(409);
       expect((await refused.json()).error).toBe(CLOSED);
       expect(await runsOf(team)).toEqual([]);
       expect(github.dispatchRelease).not.toHaveBeenCalled();
 
-      who.id = before;
-      expect((await press("frFR", { section: "places" })).status).toBe(202);
+      expect((await pressAs(before)).status).toBe(202);
       expect(github.dispatchRelease).toHaveBeenCalledTimes(1);
     });
 
-    it("refuses a privileged team a request made, which is not official", async () => {
+    it("refuses a team with plain packs that a request made, which is not official", async () => {
       await asSystem.query(`update "team" set "official" = false where "id" = $1`, [fr.team]);
-      const refused = await press("frFR", { section: "places" });
+      const refused = await pressAs(before);
       expect(refused.status).toBe(409);
       expect((await refused.json()).error).toBe(CLOSED);
       expect(await runsOf(fr.team)).toEqual([]);
@@ -302,7 +301,7 @@ describe("release route", () => {
       const [{ slug }] = (await asSystem.query(`select "slug" from "team" where "id" = $1`, [team])).rows;
       expect(droplet.startDropletRun).toHaveBeenCalledTimes(1);
       expect(droplet.startDropletRun.mock.calls[0][0]).toMatchObject({ teamId: team, teamSlug: slug, section: "places" });
-      // Its own takes, which the pack it builds sends, and not the privileged team's.
+      // Its own takes, which the pack it builds sends, and not the plain team's.
       expect(encode.encodeMissingForPack).toHaveBeenCalledWith("places", "frFR", team);
     });
 

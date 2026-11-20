@@ -7,7 +7,7 @@ import { asSystem, dropTeam, testUser } from "@/lib/teams/testing";
 import { setEnabled } from "@/lib/languages/store";
 import { createReport } from "@/lib/reports/store";
 
-import { adoptEveryLang, byTeam, forgetTeams, NoTeamError, readAs, teamLangs, teamOf } from "./store";
+import { adoptEnglish, byTeam, forgetTeams, NoTeamError, readAs, sharedLangs, teamOf } from "./store";
 
 // A code nobody has a team for once cleanup has run; vitest.teams.ts gives it one again after.
 const NEW_LANG = "deDE";
@@ -23,18 +23,6 @@ async function englishTeam(): Promise<string> {
 
 /** The team NEW_LANG had before this file took it away, given back at the end. */
 let was: string | undefined;
-
-/**
- * The team adoption made for NEW_LANG. The one it had still holds the slug "dede", so adoption
- * makes "dede-2": a language adopted never joins a team that happens to bear its code.
- */
-async function ownTeamId(): Promise<string> {
-  const { rows } = await asSystem.query(
-    `select t."id" from "team" t where t."id" = team_of_lang($1) and t."slug" ~ $2 and t."id" is distinct from $3`,
-    [NEW_LANG, `^${NEW_LANG.toLowerCase()}-[0-9]+$`, was ?? null],
-  );
-  return rows[0]?.id;
-}
 
 async function cleanup() {
   await asSystem.query(`delete from "team_language" where "lang" = $1`, [NEW_LANG]);
@@ -62,12 +50,20 @@ beforeEach(() => forgetTeams());
 afterAll(async () => {
   await cleanup();
   // Back on its own team, for the suites that write German.
-  if (was) await asSystem.query(`insert into "team_language" ("teamId", "lang") values ($1, $2)`, [was, NEW_LANG]);
-  else await asSystem.query(`select adopt_lang($1)`, [NEW_LANG]);
+  if (was) {
+    await asSystem.query(`insert into "team_language" ("teamId", "lang", "packName") values ($1, $2, 'plain')`, [
+      was,
+      NEW_LANG,
+    ]);
+  } else await asSystem.query(`select found_lang_team($1)`, [NEW_LANG]);
   forgetTeams();
   await user.cleanup();
   await closeDb();
 });
+
+const langRows = async (lang: string) =>
+  (await asSystem.query<{ n: number }>(`select count(*)::int as n from "team_language" where "lang" = $1`, [lang]))
+    .rows[0].n;
 
 describe("teamOf", () => {
   it("resolves English to the english team", async () => {
@@ -78,26 +74,14 @@ describe("teamOf", () => {
     await expect(teamOf(NEW_LANG)).rejects.toBeInstanceOf(NoTeamError);
   });
 
-  it("gives a newly enabled language a team of its own", async () => {
+  it("finds no team for a language switched on that has none", async () => {
     await setEnabled(NEW_LANG, true, USER);
-    expect(await teamOf(NEW_LANG)).toBe(await ownTeamId());
-    expect((await teamLangs()).get(NEW_LANG)).toBe(await ownTeamId());
-    const { rows } = await db().query(`select "id" from "team"`);
-    expect(rows.map((row) => row.id)).toContain(await ownTeamId());
-  });
-
-  it("leaves the team alone when a language is toggled again", async () => {
-    await setEnabled(NEW_LANG, true, USER);
-    await setEnabled(NEW_LANG, false, USER);
-    const { rows } = await asSystem.query(
-      `select count(*)::int as n from "team_language" where "lang" = $1`,
-      [NEW_LANG],
-    );
-    expect(rows[0].n).toBe(1);
+    await expect(teamOf(NEW_LANG)).rejects.toBeInstanceOf(NoTeamError);
+    expect(await langRows(NEW_LANG)).toBe(0);
   });
 });
 
-describe("adoptEveryLang", () => {
+describe("adoptEnglish", () => {
   beforeEach(cleanup);
   afterEach(cleanup);
 
@@ -107,12 +91,25 @@ describe("adoptEveryLang", () => {
       body: "test", userId: null, name: null, email: null, ip: IP,
     });
 
-  it("gives a language with no team one, so a report in it can be filed", async () => {
-    await expect(report()).rejects.toBeInstanceOf(NoTeamError);
-    await inTransaction(adoptEveryLang);
+  it("gives a language with no team none, as boot runs it", async () => {
+    await inTransaction(adoptEnglish);
     forgetTeams();
-    await report();
-    expect(await teamOf(NEW_LANG)).toBe(await ownTeamId());
+    expect(await langRows(NEW_LANG)).toBe(0);
+    await expect(report()).rejects.toBeInstanceOf(NoTeamError);
+  });
+
+  it("gives English a team where it has none, as on an empty database", async () => {
+    const client = await db().connect();
+    try {
+      await client.query("begin");
+      await client.query(`delete from "team_language" where "lang" = 'enUS'`);
+      await adoptEnglish(client);
+      const { rows } = await client.query(`select "packName" from "team_language" where "lang" = 'enUS'`);
+      expect(rows).toEqual([{ packName: "plain" }]);
+    } finally {
+      await client.query("rollback");
+      client.release();
+    }
   });
 });
 
@@ -120,7 +117,7 @@ describe("a language switched on by the other worker", () => {
   // As the other pm2 worker's setEnabled does: the row, and no forgetTeams in this process.
   const enableElsewhere = () =>
     db().query(
-      `insert into "team_language" ("teamId", "lang") select "id", $1 from "team" where "slug" = 'english'`,
+      `insert into "team_language" ("teamId", "lang", "packName") select "id", $1, 'plain' from "team" where "slug" = 'english'`,
       [NEW_LANG],
     );
 
@@ -156,7 +153,7 @@ describe("a language switched on by the other worker", () => {
   });
 
   it("has its activity stamped with its team without waiting for the memo to expire", async () => {
-    await teamLangs();
+    await sharedLangs();
     await enableElsewhere();
     vi.advanceTimersByTime(2_000);
     await recordActivity({ kind: "language.toggled", lang: NEW_LANG, actorId: USER, detail: { enabled: true } });

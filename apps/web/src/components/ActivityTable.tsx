@@ -27,6 +27,7 @@ import { isProvider, PROVIDER_NAME } from "@/lib/generation/providers";
 import { localeHref, withLang } from "@/lib/lang";
 import { explorerHref, lexiconHref } from "@/lib/links";
 import { capabilityLabel, isCapability } from "@/lib/permissions";
+import { plural } from "@/lib/plural";
 import { SOURCE_LABELS } from "@/lib/reports/reports";
 import { SOURCES, type Source } from "@/lib/sections";
 import { cn } from "@/lib/utils";
@@ -75,11 +76,6 @@ function str(value: unknown): string | null {
 
 function num(value: unknown): number | null {
   return typeof value === "number" ? value : null;
-}
-
-/** "1 line", "2 lines", or "? lines" for a count the row does not carry. */
-function plural(n: number | null, noun: string, nouns = `${noun}s`): string {
-  return `${n === null ? "?" : n.toLocaleString()} ${n === 1 ? noun : nouns}`;
 }
 
 /** A body a row names, "gnome woman". */
@@ -303,7 +299,12 @@ export function describe(row: ActivityRow): { what: string; quote: string | null
       return { what: `handed the language from ${str(d.from) ?? "?"} to ${str(d.to) ?? "?"}`, quote: null };
     case "team.second_in_language":
       return {
-        what: `made the team ${str(d.slug) ?? "?"} a second team beside ${str(d.beside) ?? "?"}${d.settings === "copy" ? ", starting from its voices and settings" : ""}`,
+        what: `added the team ${str(d.slug) ?? "?"} beside ${str(d.beside) ?? "?"}${d.settings === "copy" ? ", starting from its voices and settings" : ""}`,
+        quote: null,
+      };
+    case "team.joined_language":
+      return {
+        what: `added the team ${str(d.slug) ?? "?"} to the language${str(d.from) ? `, starting from ${str(d.from)}'s voices and settings` : ""}`,
         quote: null,
       };
     case "release.started":

@@ -186,7 +186,7 @@ function LanguageSwitch({
           >
             <span>
               {langName(code)}
-              {teams[code]?.second && <span className="text-muted-foreground"> ({teams[code].name})</span>}
+              {teams[code]?.shared && <span className="text-muted-foreground"> ({teams[code].name})</span>}
             </span>
             <span className="text-muted-foreground font-mono text-xs">{code}</span>
           </LocaleLink>

@@ -245,11 +245,10 @@ function Texts:CanRender(code, cache)
 end
 
 --- The Text Language row's choices: "auto", then every language there are words in that this
---- client can draw: the built-in ones, then those a text pack or a Places lore pack brings.
+--- client can draw: the built-in ones, then those a text pack or a voice pack brings. A voice pack
+--- carries the words its voice says, so a language no client runs in (Italian) is read through it.
 function Texts:Choices()
     local rest = Languages:WithText()
-    for _, entry in ipairs(Languages:Installed()) do
-        if entry.lore then table.insert(rest, entry) end
-    end
+    for _, entry in ipairs(Languages:Installed()) do table.insert(rest, entry) end
     return Languages:ChoiceList(function(code) return self:CanRender(code) end, rest, self:Choice())
 end

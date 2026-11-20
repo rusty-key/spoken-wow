@@ -175,7 +175,7 @@ export async function buildLookup({ lang = LANG, out = lookupPath(lang) } = {}) 
          join "book_line" b on b."lineId" = t."lineId" and b."lang" = t."lang" and b."isCurrent"
          join "book_page" p on p."lineId" = t."lineId" and p."aliasOf" is null
         where t."source" = 'readables' and t."isCurrent" and t."lang" = $1
-          -- the release's team, else the privileged team, so a build outside a release reads what it always did
+          -- the release's team, else the one with plain packs, so a build outside a release reads what it always did
           and t."teamId" = ${releaseTeamSql("$1")}
         order by t."lineId", t."id" desc) c
         order by c."pageTextId" nulls last, c."lineId"`,

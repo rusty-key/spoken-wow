@@ -1,15 +1,15 @@
 // What a release builds: a page pack, exactly as before teams released, or a derived one, in
 // one description that the builders and publish read without asking which it is.
 //
-// The language's privileged team, where the language has a store page on the Manager's channel
-// for the section, builds the page's pack: folders, title, version, icon and .toc as they always
-// were. Every other release is derived from English's Manager folders for the section, each with
-// the language and, for a team other than the privileged one, the team's slug
+// A team with plain packs in the language, where the language has a store page on the Manager's
+// channel for the section, builds the page's pack: folders, title, version, icon and .toc as they
+// always were. Every other release is derived from English's Manager folders for the section, each
+// with the language and, for a team whose packs carry its slug, that slug
 // (scripts/lib/packs.mjs derivedFolders). A derived pack has no page: its title names the language
 // and team, its first version is 1.0.0 (publish.mjs bumps it from the channel after that), and its
 // .toc names the team and, for a language Spoken does not build in, the language.
 import { BASE_LOCALE } from "../../pipelines/lib/locales.mjs";
-import { derivedFolders, findPack, loadPacks, managerFolders, packsFor } from "../lib/packs.mjs";
+import { derivedFolders, findPack, loadPacks, managerFolders, packsFor, packSlug } from "../lib/packs.mjs";
 import { keepsCommittedFolder } from "./stage-pack.mjs";
 
 /**
@@ -25,16 +25,16 @@ import { keepsCommittedFolder } from "./stage-pack.mjs";
  */
 export function releasePlan(section, lang, team, packs = loadPacks()) {
   const pages = managerFolders(packs).filter((p) => p.section === section && p.lang === lang);
-  if (team.privileged && pages.length > 0) return pagePlan(section, lang, team, pages, packs);
+  if (team.packName === "plain" && pages.length > 0) return pagePlan(section, lang, team, pages, packs);
   return derivedPlan(section, lang, team, packs);
 }
 
 /**
  * The team index-v2.json lists a pack under, which the Manager labels it with: none for an
- * official team holding the language's plain space, page or not, whose packs are Spoken's own.
+ * official team with plain packs, page or not, whose packs are Spoken's own.
  */
 function listedTeam(team) {
-  return team.official && team.privileged ? null : { slug: team.slug, name: team.name, official: team.official };
+  return team.official && team.packName === "plain" ? null : { slug: team.slug, name: team.name, official: team.official };
 }
 
 /**
@@ -66,7 +66,7 @@ function pagePlan(section, lang, team, pages, packs) {
 }
 
 function derivedPlan(section, lang, team, packs) {
-  const slug = team.privileged ? null : team.slug;
+  const slug = packSlug(team);
   const english = packsFor(section, BASE_LOCALE, packs);
   const listed = listedTeam(team);
   const folders = derivedFolders(section, lang, slug, packs).map(({ folder, english: englishFolder }) => {

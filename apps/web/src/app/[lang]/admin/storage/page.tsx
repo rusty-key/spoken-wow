@@ -8,7 +8,7 @@ import { viewerOf } from "@/lib/grants/store";
 import { isAdmin, langsWhere } from "@/lib/permissions";
 import { currentSession } from "@/lib/session";
 import { storageView } from "@/lib/storage/view";
-import { freshOwners } from "@/lib/teams/store";
+import { ownersOf } from "@/lib/teams/store";
 
 export const metadata: Metadata = { title: "Storage · Spoken" };
 
@@ -23,7 +23,7 @@ export default async function Page({ searchParams }: { searchParams: Promise<{ l
   const viewer = await viewerOf(session);
   if (!session || !viewer) notFound();
   const all = langsWhere(viewer, "admin");
-  const owners = await freshOwners(all);
+  const owners = await ownersOf(all);
   const administered = all.filter((code) => owners.has(code));
   if (administered.length === 0) notFound();
 

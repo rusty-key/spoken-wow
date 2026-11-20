@@ -7,7 +7,8 @@ import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 
 import { closeDb } from "@/lib/db";
 import { createInvite } from "@/lib/invites/store";
-import { asSystem, testUser } from "@/lib/teams/testing";
+import { TEAM_DELETING } from "@/lib/teams/deleting";
+import { addMember, asSystem, dropLang, dropTeam, newTeamIn, plainTeam, systemRows, testUser, uniqueLang } from "@/lib/teams/testing";
 
 const session = vi.hoisted(() => ({ current: null as null | { user: { id: string; email: string; role: null } } }));
 
@@ -60,7 +61,7 @@ beforeAll(async () => {
     capabilities: ["edit"],
     invitedBy: inviter.id,
     limited: false,
-    team: null,
+    team: await plainTeam("deDE"),
   }));
   inviteId = invite.id;
 });
@@ -120,6 +121,39 @@ describe("POST /api/invites/accept", () => {
     const again = await post();
     expect(again.status).toBe(409);
     expect((await again.json()).reason).toBe("accepted");
+  });
+
+  it("refuses an invite into a team being deleted, saying why, and grants nothing", async () => {
+    const lang = await uniqueLang();
+    const team = await newTeamIn(lang, true, "accept-deleting");
+    const joiner = await testUser("test-accept-deleting");
+    try {
+      await addMember(team, inviter.id, lang, "admin");
+      const made = await createInvite({
+        email: `${joiner.id}@example.invalid`,
+        lang,
+        capabilities: ["record"],
+        invitedBy: inviter.id,
+        limited: false,
+        team,
+      });
+      await asSystem.query(`update "team" set "deletingAt" = now() where "id" = $1`, [team]);
+      session.current = as(joiner);
+      const response = await post(`spoken_invite=${made.token}`, made.invite.id);
+      expect(response.status).toBe(409);
+      expect((await response.json()).error).toMatch(/^accept-deleting-.+ is being deleted; it can make nothing more\.$/);
+      expect(await systemRows(`select 1 from "team_member" where "userId" = $1`, [joiner.id])).toHaveLength(0);
+      // Nor is a new one made.
+      await expect(
+        createInvite({ email: `x-${joiner.id}@example.invalid`, lang, capabilities: ["record"], invitedBy: inviter.id, limited: false, team }),
+      ).rejects.toMatchObject({ code: TEAM_DELETING });
+    } finally {
+      await asSystem.query(`delete from "activity" where "teamId" = $1 or "lang" = $2`, [team, lang]);
+      await asSystem.query(`delete from "team_member" where "teamId" = $1`, [team]);
+      await dropTeam(team);
+      await dropLang(lang);
+      await joiner.cleanup();
+    }
   });
 
   it("answers 404 to a token nobody has, and to no cookie", async () => {

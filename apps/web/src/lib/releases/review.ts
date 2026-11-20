@@ -8,7 +8,7 @@
  */
 import "server-only";
 
-import type { PoolClient } from "pg";
+import type { ClientBase, PoolClient } from "pg";
 
 import { recordActivity } from "@/lib/activity/store";
 import { ALL_TEAMS, withTeam } from "@/lib/db";
@@ -250,10 +250,11 @@ export async function waitingLines(runId: string): Promise<PendingView | null> {
 
 /**
  * The packs of teams that are not official which players have: each team's newest approved
- * version per section and language, unless a site owner delisted it since.
+ * version per section and language, unless a site owner delisted it since. With `only`, that
+ * team's packs, official or not, read on its client, which acts as ALL_TEAMS.
  */
-export async function liveTeamPacks(): Promise<LiveTeamPack[]> {
-  return withTeam(ALL_TEAMS, async (client) => {
+export async function liveTeamPacks(only?: { team: string; client: ClientBase }): Promise<LiveTeamPack[]> {
+  const read = async (client: ClientBase) => {
     const { rows } = await client.query<{
       teamId: string; slug: string; name: string; lang: Lang; section: ReleaseSection; version: string | null; at: Date;
     }>(
@@ -261,7 +262,8 @@ export async function liveTeamPacks(): Promise<LiveTeamPack[]> {
          select distinct on (r."teamId", r."lang", r."section")
                 r."teamId", t."slug", t."name", r."lang", r."section", r."version", coalesce(r."finishedAt", r."createdAt") as "at"
            from "release_run" r join "team" t on t."id" = r."teamId"
-          where r."kind" = 'release' and r."state" = 'done' and not t."official"
+          where r."kind" = 'release' and r."state" = 'done'
+            and case when $1::uuid is null then not t."official" else r."teamId" = $1 end
           order by r."teamId", r."lang", r."section", r."createdAt" desc
        ) live
        where not exists (select 1 from "release_run" d
@@ -270,6 +272,7 @@ export async function liveTeamPacks(): Promise<LiveTeamPack[]> {
                             -- When it took the pack off: a delisting pressed while the listing ran waits behind it.
                             and coalesce(d."finishedAt", d."createdAt") > live."at")
        order by live."lang", live."section", live."name"`,
+      [only?.team ?? null],
     );
     return rows.map((row) => ({
       team: { id: row.teamId, slug: row.slug, name: row.name },
@@ -278,5 +281,6 @@ export async function liveTeamPacks(): Promise<LiveTeamPack[]> {
       version: row.version,
       releasedAt: row.at.toISOString(),
     }));
-  });
+  };
+  return only ? read(only.client) : withTeam(ALL_TEAMS, read);
 }

@@ -6,6 +6,7 @@ import { LaunchError, launchNew } from "@/lib/releases/launch";
 import { isReleaseBump, isReleaseSection, RELEASE_BUMPS, RELEASE_SECTIONS, TEAM_RELEASES_CLOSED } from "@/lib/releases/sections";
 import { pendingChanges } from "@/lib/releases/pending";
 import { ReleaseBusyError, lastReleasedAt, startRun } from "@/lib/releases/store";
+import { deletingResponse } from "@/lib/teams/deleting";
 import { releaseView } from "@/lib/releases/view";
 import { actingTeamRow, NoTeamError } from "@/lib/teams/store";
 
@@ -61,6 +62,8 @@ export async function POST(request: Request) {
     }
     if (error instanceof NoTeamError) return fail(400, `${lang} has no team to release for.`);
     if (error instanceof LaunchError) return fail(502, error.message);
+    const deleting = deletingResponse(error);
+    if (deleting) return deleting;
     throw error;
   }
   return Response.json({ run: { id: run.id, section: run.section, lang: run.lang, state: run.state } }, { status: 202 });

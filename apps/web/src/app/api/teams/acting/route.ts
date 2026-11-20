@@ -16,7 +16,7 @@ export const dynamic = "force-dynamic";
 
 /**
  * `{ lang, team }`: `team` a slug of a team voicing `lang`, or null for the team the site owner
- * acts as without a choice: their own, else the privileged team. An entry is kept only where it
+ * acts as without a choice: their own, else the first the picker lists. An entry is kept only where it
  * changes that, so the choice wins over their membership. Answers the slug kept, and `home`:
  * the team they now act as, which the picker names by leaving `team` out of the address.
  */
@@ -39,7 +39,7 @@ export async function POST(request: Request) {
   if (picked === undefined) return unknownTeam(slug as string, lang as Lang);
 
   const member = await teamIn(session.user.id, lang);
-  const unchosen = teams.find((team) => team.id === member) ?? teams.find((team) => team.privileged);
+  const unchosen = teams.find((team) => team.id === member) ?? teams[0];
   const kept = picked && picked.id !== unchosen?.id ? picked : null;
   const choice = await currentChoice();
   if (kept) choice[lang] = kept.slug;

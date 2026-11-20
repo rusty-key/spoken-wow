@@ -9,6 +9,7 @@ import { afterAll, afterEach, beforeEach, describe, expect, it } from "vitest";
 
 import { closeDb, db, type TeamId } from "@/lib/db";
 import type { Lang } from "@/lib/lang";
+import { asTeam } from "@/lib/teams/acting";
 import { forgetTeams } from "@/lib/teams/store";
 import { asSystem, dropLang, dropTeam, newTeamIn, ownTeam, systemRows, testUser, uniqueLang } from "@/lib/teams/testing";
 
@@ -220,7 +221,7 @@ describe("a report's team", () => {
 describe("a report on a team's pack", () => {
   let lang: Lang;
   let other: Lang;
-  let privileged: TeamId;
+  let plain: TeamId;
   let second: TeamId;
   let elsewhere: TeamId;
   const slugOf = async (team: TeamId) =>
@@ -232,15 +233,15 @@ describe("a report on a team's pack", () => {
     forgetTeams();
     lang = await uniqueLang();
     other = await uniqueLang();
-    privileged = await newTeamIn(lang, true, "test-report-plain");
+    plain = await newTeamIn(lang, true, "test-report-plain");
     second = await newTeamIn(lang, false, "test-report-stimmen");
     elsewhere = await newTeamIn(other, true, "test-report-elsewhere");
   });
 
   afterEach(async () => {
     await asSystem.query(`delete from "report" where "ip" like $1`, [`${ip}%`]);
-    await asSystem.query(`delete from "line_override" where "teamId" = any($1::uuid[])`, [[privileged, second, elsewhere]]);
-    for (const team of [privileged, second, elsewhere]) await dropTeam(team);
+    await asSystem.query(`delete from "line_override" where "teamId" = any($1::uuid[])`, [[plain, second, elsewhere]]);
+    for (const team of [plain, second, elsewhere]) await dropTeam(team);
     for (const each of [lang, other]) await dropLang(each);
     forgetTeams();
   });
@@ -252,14 +253,61 @@ describe("a report on a team's pack", () => {
     expect(await filed()).toEqual([{ teamId: second, queue: "audio" }]);
   });
 
-  it("is filed with the privileged team when a plain pack played", async () => {
+  it("is filed with the team with plain packs when a plain pack played", async () => {
     await createReport(submission({ lang, context: context({ packFolder: "SpokenQuestsAudioHorde_xqXQ" }) }));
-    expect(await filed()).toEqual([{ teamId: privileged, queue: "audio" }]);
+    expect(await filed()).toEqual([{ teamId: plain, queue: "audio" }]);
   });
 
-  it("is filed with the privileged team when the team named does not voice the language", async () => {
+  it("is filed with the team with plain packs when the team named does not voice the language", async () => {
     await createReport(submission({ lang, context: context({ packTeam: await slugOf(elsewhere) }) }));
-    expect(await filed()).toEqual([{ teamId: privileged, queue: "audio" }]);
+    expect(await filed()).toEqual([{ teamId: plain, queue: "audio" }]);
+  });
+
+  it("is filed with the reporter's own team when no pack is named", async () => {
+    await asTeam(lang, second, () => createReport(submission({ lang, context: context({}) })));
+    expect(await filed()).toEqual([{ teamId: second, queue: "audio" }]);
+  });
+
+  describe("in a language none of whose teams has plain packs", () => {
+    let bare: Lang;
+    let x: TeamId;
+    let y: TeamId;
+
+    beforeEach(async () => {
+      bare = await uniqueLang();
+      x = await newTeamIn(bare, false, "test-report-x");
+      y = await newTeamIn(bare, false, "test-report-y");
+    });
+
+    afterEach(async () => {
+      await asSystem.query(`delete from "report" where "ip" like $1`, [`${ip}%`]);
+      for (const team of [x, y]) await dropTeam(team);
+      await dropLang(bare);
+    });
+
+    it("files an audio report naming no team with every team, each seeing its own", async () => {
+      await createReport(submission({ lang: bare }));
+      const rows = await systemRows<{ teamId: TeamId; queue: string }>(
+        `select "teamId", "queue" from "report" where "ip" = $1 order by "teamId" = $2 desc`,
+        [ip, x],
+      );
+      expect(rows).toEqual([
+        { teamId: x, queue: "audio" },
+        { teamId: y, queue: "audio" },
+      ]);
+      expect(await asTeam(bare, x, () => reportsForLine("quests", "q:1:accept", bare))).toHaveLength(1);
+      expect(await asTeam(bare, y, () => reportsForLine("quests", "q:1:accept", bare))).toHaveLength(1);
+    });
+
+    it("files a text report naming no team once, for the language's text holders", async () => {
+      await createReport(submission({ lang: bare, category: "wrong_text" }));
+      expect(await filed()).toEqual([{ teamId: x, queue: "text" }]);
+    });
+
+    it("files a report naming one team with that team alone", async () => {
+      await createReport(submission({ lang: bare, context: { fields: { pack: bare, packTeam: await slugOf(y) }, text: null } }));
+      expect(await filed()).toEqual([{ teamId: y, queue: "audio" }]);
+    });
   });
 
   it("judges a wrong_text report by the filing team's overrides", async () => {
@@ -278,7 +326,7 @@ describe("a report on a team's pack", () => {
     );
     expect(rows).toEqual([
       { teamId: second, queue: "audio", ip },
-      { teamId: privileged, queue: "text", ip: `${ip}-plain` },
+      { teamId: plain, queue: "text", ip: `${ip}-plain` },
     ]);
   });
 });
@@ -384,5 +432,27 @@ describe("queues", () => {
     );
     expect(rows).toEqual([{ detail: { to: "text" } }]);
     await asSystem.query(`delete from "activity" where "kind" = 'report.passed' and "subject" = $1`, [String(report.id)]);
+  });
+
+  it("lists a text report with no team, as a deleted team leaves one, resolves it, and passes it to audio as the acting team's", async () => {
+    const lang = await uniqueLang();
+    const team = await newTeamIn(lang, true);
+    try {
+      const [{ id }] = await systemRows<{ id: string }>(
+        `insert into "report" ("source", "lang", "lineId", "category", "body", "ip", "teamId", "queue")
+         values ('quests', $1, 'q:1:accept', 'other', 'x', $2, null, 'text') returning "id"`,
+        [lang, ip],
+      );
+      const listed = await asTeam(lang, team, () => listReports("open", "all", "all", null, lang, ["text"]));
+      expect(listed.map((report) => String(report.id))).toEqual([id]);
+      expect((await asTeam(lang, team, () => setStatus(Number(id), "minor", RESOLVER, lang)))?.status).toBe("minor");
+      expect((await asTeam(lang, team, () => setQueue(Number(id), "audio", RESOLVER, lang)))?.queue).toBe("audio");
+      expect(await systemRows(`select "teamId" from "report" where "id" = $1`, [id])).toEqual([{ teamId: team }]);
+    } finally {
+      await asSystem.query(`delete from "report" where "lang" = $1`, [lang]);
+      await asSystem.query(`delete from "activity" where "lang" = $1`, [lang]);
+      await dropTeam(team);
+      await dropLang(lang);
+    }
   });
 });

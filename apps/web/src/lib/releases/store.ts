@@ -10,6 +10,7 @@ import type { PoolClient } from "pg";
 import { ALL_TEAMS, withTeam } from "@/lib/db";
 import { recordActivity } from "@/lib/activity/store";
 import type { Lang } from "@/lib/lang";
+import { settleDeletion } from "@/lib/teams/delete";
 import { readAs, teamOf } from "@/lib/teams/store";
 import { isUuid } from "@/lib/uuid";
 
@@ -66,6 +67,13 @@ export type ReleaseRun = {
 export class ReleaseBusyError extends Error {
   constructor(readonly active: { section: string; lang: Lang }) {
     super(`a release is already running: ${active.section} in ${active.lang}`);
+  }
+}
+
+/** No run by the id: never one, or one whose team was deleted as another worker settled it. */
+export class RunGoneError extends Error {
+  constructor(id: string) {
+    super(`no release run ${id}`);
   }
 }
 
@@ -277,7 +285,8 @@ const SETTLE: Record<ReleaseKind, (client: PoolClient, run: ReleaseRun, state: R
   promote: async (client, run, state) => {
     if (run.promotes) await settlePromoted(client, run, state);
   },
-  delist: async () => {},
+  // The last delisting of a team being deleted deletes it.
+  delist: (client, run) => settleDeletion(client, run),
 };
 
 type RunPatch = Partial<Pick<ReleaseRun, "state" | "githubRunId" | "githubUrl" | "step" | "error" | "version" | "staged">> & {
@@ -296,7 +305,7 @@ export async function applyUpdate(id: string, patch: RunPatch): Promise<{ run: R
       `select ${COLUMNS} from "release_run" where "id" = $1 for update`,
       [id],
     );
-    if (!before[0]) throw new Error(`no release run ${id}`);
+    if (!before[0]) throw new RunGoneError(id);
     // Each process polls on its own, so a slower one can arrive after another has settled the
     // run; its write would take the lock again, or clash with the next press's.
     if (isSettled(before[0].state)) return { run: before[0], changed: false };

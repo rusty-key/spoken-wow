@@ -118,7 +118,7 @@ const listing = psql(`select t."file", coalesce(t."archiveFile", ''),
                         left join "take_encoding" e
                           on e."source" = t."source" and e."sha256" = t."sha256" and e."profile" = :'profile'
                        where t."source" = :'source' and t."lang" = :'lang' and t."isCurrent"
-                         -- the release's team, else the privileged team, so a build outside a release reads what it always did
+                         -- the release's team, else the one with plain packs, so a build outside a release reads what it always did
                          and t."teamId" = ${releaseTeamSql(`:'lang'`)}
                        order by t."file"`);
 
@@ -149,7 +149,7 @@ function bossesShipped() {
   const files = new Set(psql(`select t."file" from "take" t
                                 join "boss" b on t."lineId" = 'boss:' || b."map" || ':' || b."key"
                                where t."source" = :'source' and t."lang" = :'lang' and t."isCurrent"
-                                 -- the release's team, else the privileged team, so a build outside a release reads what it always did
+                                 -- the release's team, else the one with plain packs, so a build outside a release reads what it always did
                                  and t."teamId" = ${releaseTeamSql(`:'lang'`)}
                                  and not b."retired"`));
   return (stem) => files.has(stem);

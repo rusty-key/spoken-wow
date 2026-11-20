@@ -23,7 +23,7 @@ vi.mock("@/lib/session", () => ({ currentSession: async () => mocks.session }));
 vi.mock("@/lib/generation/boot", () => ({ ensureQueueRunning: () => {} }));
 vi.mock("@/lib/teams/store", async (importOriginal) => {
   const actual = await importOriginal<typeof import("@/lib/teams/store")>();
-  return { ...actual, secondTeamLangs: vi.fn(actual.secondTeamLangs), freshOwners: vi.fn(actual.freshOwners) };
+  return { ...actual, sharedLangs: vi.fn(actual.sharedLangs), freshOwners: vi.fn(actual.freshOwners) };
 });
 vi.mock("./queue", async (importOriginal) => {
   const actual = await importOriginal<typeof import("./queue")>();
@@ -33,7 +33,7 @@ vi.mock("./queue", async (importOriginal) => {
 import { GET } from "@/app/api/regenerate/queue/route";
 import { closeDb } from "@/lib/db";
 import type { Lang } from "@/lib/lang";
-import { forgetTeams, freshOwners, secondTeamLangs, type TeamId } from "@/lib/teams/store";
+import { forgetTeams, freshOwners, sharedLangs, type TeamId } from "@/lib/teams/store";
 import { asSystem, dropLang, dropTeam, newTeamIn, systemRows, testUser, uniqueLang } from "@/lib/teams/testing";
 
 import { snapshot, type QueueSnapshot } from "./queue";
@@ -99,7 +99,7 @@ beforeEach(async () => {
 });
 
 afterEach(async () => {
-  vi.mocked(secondTeamLangs).mockClear();
+  vi.mocked(sharedLangs).mockClear();
   vi.mocked(freshOwners).mockClear();
   vi.mocked(snapshot).mockClear();
   // Cascades to the jobs.
@@ -198,7 +198,7 @@ describe("GET /api/regenerate/queue", () => {
   });
 
   it("passes no teams and reads no owners when no language has a second team", async () => {
-    vi.mocked(secondTeamLangs).mockResolvedValueOnce(new Set());
+    vi.mocked(sharedLangs).mockResolvedValueOnce(new Set());
     const seen = (await (await get()).json()) as QueueSnapshot;
     expect(freshOwners).not.toHaveBeenCalled();
     expect(vi.mocked(snapshot).mock.calls[0][1]).not.toHaveProperty("teams");

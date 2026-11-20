@@ -23,7 +23,7 @@ const request = (over: Partial<TeamRequest> = {}): TeamRequest => ({
   approvedTeamId: null,
   createdAt: new Date().toISOString(),
   decidedAt: null,
-  branch: "hand-over",
+  branch: "add-team",
   ...over,
 });
 
@@ -62,14 +62,14 @@ test("a refusal shows on the row and the row stays", async () => {
   expect(screen.getByText("Crew")).toBeTruthy();
 });
 
-test("a second-team row says what approving does", () => {
-  render(<TeamRequests initial={[request({ branch: "second-team" })]} />);
-  expect(
-    screen.getByText("German has a team already; approving makes a second team beside it, with audio roles only"),
-  ).toBeTruthy();
+test("a row for a known language says what approving does", () => {
+  render(<TeamRequests initial={[request()]} />);
+  expect(screen.getByText("Your team joins German, beside any team it has")).toBeTruthy();
 });
 
-const approveBody = async (initial: TeamRequest[], besides: Record<string, string>, tick: boolean) => {
+const deutsch = { id: "00000000-0000-4000-8000-00000000d0de", name: "Deutsch Team" };
+
+const approveBody = async (initial: TeamRequest[], besides: Record<string, typeof deutsch>, tick: boolean) => {
   fetchMock.mockResolvedValue(new Response("{}", { status: 200 }));
   const user = userEvent.setup();
   render(<TeamRequests initial={initial} besides={besides} />);
@@ -79,21 +79,21 @@ const approveBody = async (initial: TeamRequest[], besides: Record<string, strin
   return JSON.parse(fetchMock.mock.calls[0][1].body);
 };
 
-test("a second-team row copies the privileged team's settings only when ticked", async () => {
-  const second = [request({ branch: "second-team" })];
-  expect(await approveBody(second, { r1: "Deutsch Team" }, true)).toEqual({ decision: "approve", settings: "copy" });
+test("a row for a language with a team copies the team it names only when ticked", async () => {
+  const second = [request()];
+  expect(await approveBody(second, { r1: deutsch }, true)).toEqual({ decision: "approve", settings: "copy", from: deutsch.id });
   cleanup();
   fetchMock.mockReset();
-  expect(await approveBody(second, { r1: "Deutsch Team" }, false)).toEqual({ decision: "approve", settings: "fresh" });
+  expect(await approveBody(second, { r1: deutsch }, false)).toEqual({ decision: "approve", settings: "fresh" });
 });
 
-test("a second-team row's box starts unticked", () => {
-  render(<TeamRequests initial={[request({ branch: "second-team" })]} besides={{ r1: "Deutsch Team" }} />);
+test("a row for a language with a team starts its box unticked", () => {
+  render(<TeamRequests initial={[request()]} besides={{ r1: deutsch }} />);
   expect((screen.getByLabelText("Start from Deutsch Team's voices and settings") as HTMLInputElement).checked).toBe(false);
 });
 
-test("other rows have no box", () => {
-  render(<TeamRequests initial={[request()]} besides={{ r1: "Deutsch Team" }} />);
+test("a row for a language with no team has no box", () => {
+  render(<TeamRequests initial={[request()]} besides={{ r2: deutsch }} />);
   expect(screen.getByRole("button", { name: "Approve Crew" })).toBeTruthy();
   expect(screen.queryByLabelText(/Start from/)).toBeNull();
 });

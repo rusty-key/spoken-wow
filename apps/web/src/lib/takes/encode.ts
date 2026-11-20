@@ -20,6 +20,7 @@ import { blobBytes } from "@/lib/blobs/where";
 import { ALL_TEAMS, query, queryIn, type TeamId } from "@/lib/db";
 import type { Lang } from "@/lib/lang";
 import type { Source } from "@/lib/sections";
+import { asTeam } from "@/lib/teams/acting";
 
 import { withLocalCopy } from "./bytes";
 
@@ -242,8 +243,7 @@ async function encodeFromArchive(source: Source, sha256: string, take?: EncodedT
 /**
  * Every live take of `team`'s in a language with no usable encoding, encoded before that team's
  * release, which stops on any such take. Encoding at commit is best effort, and only a release
- * would otherwise find a failure. The releasing team's, not the language's privileged team's: a
- * second team's pack sends its own takes.
+ * would otherwise find a failure. The releasing team's: each team's pack sends its own takes.
  *
  * This runs inside the request that starts the release, and nginx gives that request 60 seconds
  * before the page reports a failure for a release that is in fact starting. So it waits at most
@@ -279,7 +279,9 @@ export async function encodeMissingForPack(source: Source, lang: Lang, team: Tea
     if (left <= 0) return;
     let timer: NodeJS.Timeout | undefined;
     const outOfTime = new Promise<"late">((resolve) => (timer = setTimeout(() => resolve("late"), left)));
-    const result = await Promise.race([encodeFromArchive(source, sha256, { lang, ...take }), outOfTime]);
+    // As the team: where the language has several, nobody else finds where its take is kept.
+    const encoded = asTeam(lang, team, () => encodeFromArchive(source, sha256, { lang, ...take }));
+    const result = await Promise.race([encoded, outOfTime]);
     clearTimeout(timer);
     if (result === "late") return;
   }

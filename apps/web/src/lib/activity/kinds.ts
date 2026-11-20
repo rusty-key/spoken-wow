@@ -153,15 +153,25 @@ export type ActivityDetail = {
   "team.created": { slug: string };
   "team.renamed": { name: string };
   /** Filed under no team, since the team is gone. */
-  "team.deleted": { slug: string; members: { email: string; lang: Lang; capability: Capability }[] };
+  /** `langs` and `counts`, its rows by table, since any team could be deleted (migration 0124). */
+  "team.deleted": {
+    slug: string;
+    members: { email: string; lang: Lang; capability: Capability }[];
+    langs?: Lang[];
+    counts?: Record<string, number>;
+    /** Its open voice reports, closed: their takes went with it. */
+    closedReports?: number;
+  };
   /** Whether the team must keep its audio in its own bucket (docs/platform/STORAGE.md). */
   "team.own_storage": { ownStorage: boolean };
   /** Whether the team's releases skip review and its packs go unlabelled. */
   "team.official": { official: boolean };
-  /** A language handed to another team, by team slug. */
+  /** A language handed to another team, by team slug. Only older rows: a language is no longer handed over. */
   "team.language_moved": { from: string; to: string };
-  /** A second team made beside the language's privileged team `beside`, by slug; filed under the new team. */
+  /** A team made beside the team `beside`, by slug; filed under the new team. Only older rows. */
   "team.second_in_language": { slug: string; beside: string; settings: Settings };
+  /** A team joined a language that had teams; `from` is the slug of the team it started from. Filed under the new team. */
+  "team.joined_language": { slug: string; from: string | null };
   "contribution.resolved": { status: string; key?: string; correction?: boolean };
   "contribution.edited": { field: string; value?: unknown };
   "report.resolved": { status: string; category?: string };
@@ -190,7 +200,8 @@ export type ActivityDetail = {
   // Team requests: site-wide, the subject is the request id.
   "request.made": { requestId: string; lang: string; teamName: string; newLanguage: boolean };
   "request.withdrawn": { requestId: string; lang: string };
-  "request.approved": { requestId: string; lang: string; slug: string; branch: Branch };
+  /** `branch` is a Branch, or on older rows "hand-over" or "second-team". */
+  "request.approved": { requestId: string; lang: string; slug: string; branch: Branch | "hand-over" | "second-team" };
   "request.rejected": { requestId: string; lang: string; reason?: string };
 
   // Accounts, through better-auth's admin plugin rather than this app's routes. Every

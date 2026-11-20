@@ -93,8 +93,10 @@ table (`apply-boss-stories.mjs` records them). A boss with no entry says its sto
 
 ## What the sources hold
 
-- The client's table has the 29 dungeons and raids of the Dungeons table and eight more maps Forever
-  has, now listed under the zone of their entrance (`pipelines/lib/dungeons.json`): Demon Fall Canyon
+- The client's table has the 29 dungeons and raids of the Dungeons table, the five dungeons client
+  1.60.1.70959 added (The Drowned City, Krol'dok Stronghold, Alcaz Prison, Blackmaw Hold and The
+  Shaper's Terrace, 34 bosses) and eight more maps Forever has, now listed under the zone of their
+  entrance (`pipelines/lib/dungeons.json`): Demon Fall Canyon
   (Ashenvale), The Tainted Scar (Lord Kazzak, Blasted Lands), Storm Cliffs (Azuregos, Azshara), The
   Crystal Vale (Prince Thunderaan, Silithus), Nightmare Grove (the Emerald Dragons, each under its
   own zone by `bossZones`: Emeriss in Duskwood, Lethon in Feralas, Taerar in Ashenvale, Ysondre in
@@ -109,8 +111,9 @@ table (`apply-boss-stories.mjs` records them). A boss with no entry says its sto
   Defenders, The Vault, The Molten Core, Three Little Wolves and Mana Wraith. One goes back in when a
   source confirms it.
 - The vmangos-style world database of the Forever repack (`world`, port 3317, the one `make compendium`
-  reads) has 21,116 `creature_text` lines. 240 of the 267 bosses match a `creature_template` by name, and
-  111 of them have lines of their own to say.
+  reads) has 21,116 `creature_text` lines. 240 of the first 267 bosses match a `creature_template` by
+  name, and 111 of them have lines of their own to say. The bosses added since, the 34 of 1.60.1.70959
+  among them, are not yet matched against it.
 - Efficient Games' open data (EG Link, CC BY 4.0) has, per Forever build, `encounters` (pulls, kills,
   the creatures of each fight, where it begins) and `creatures` (the spells each casts), and the lines
   NPCs say in each language (`broadcast_text`).

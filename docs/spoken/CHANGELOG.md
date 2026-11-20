@@ -7,6 +7,18 @@ Spoken Player until 3.0.0, when it became Spoken and took its modules into one d
 - **The minimap right-click menu now uses the client's native menu where available.** Older
   clients keep the legacy dropdown or Spoken's custom fallback, and the menu also opens from
   the addon compartment. *([anon1231823](https://github.com/anon1231823))*
+- **Quest pages in Azeroth's Compendium show the progress text**, what the NPC says while a quest
+  is under way, between the description and the completion, with its own Play and Report. A quest
+  a voice pack voices only in its progress now counts for Voiced Only, and shift-click on its row
+  plays it. *([anon1231823](https://github.com/anon1231823))*
+- **A non-English client finds Forever's newer places.** The area names now come from client
+  1.60.1.70959, so the new dungeons' areas and the places Forever renamed match their stories.
+  Dalaran in Korean and Russian, Dire Maul in Spanish and Dreadmaul Post in Russian have no
+  story: the client gives each the name of another place in the same zone. *([svengabr](https://github.com/svengabr))*
+- **Text Language offers the language of every voice pack you have installed**, including one no
+  game client runs in, such as Italian. The captions then show what that pack's voice says. Before,
+  such a language appeared only with a text pack, so an Italian voice came with English words.
+  *([rusty-key](https://github.com/rusty-key))*
 - **When Stop When Window Closes is enabled, unaccepted quest offers and unturned-in quest pages stop
   when their dialog closes.** Accepted offers and turned-in quest pages continue playing. Gossip
   audio is unaffected and continues after its window closes; with the option off, quest behavior
@@ -15,6 +27,12 @@ Spoken Player until 3.0.0, when it became Spoken and took its modules into one d
 - **No more Lua error on the world map with Leatrix Maps.** Spoken Bosses no longer tries to
   make other addons' map frames clickable while it looks for Leatrix's dungeon pins and menu.
   *([anon1231823](https://github.com/anon1231823))*
+- **Forever's five new dungeons are in the Compendium.** The Bosses tab lists the bosses of the
+  Drowned City, Krol'dok Stronghold, Alcaz Prison, Blackmaw Hold and the Shaper's Terrace. The
+  Places tab lists Krol'dok Stronghold, Blackmaw Hold and the Shaper's Terrace under the zone of
+  their entrance, and entering one counts it as found. Its story is read where your voice pack has
+  it.
+  *([svengabr](https://github.com/svengabr))*
 
 ## 3.10.1 — 2026-11-19
 

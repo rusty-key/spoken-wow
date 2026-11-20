@@ -580,7 +580,7 @@ spare first. Before deploying again:
 psql "$PROD_DATABASE_URL" -c 'alter table line_override drop constraint line_override_team_file'
 ```
 
-### A second team in a language
+### Several teams in a language
 
 Migration 0113 enforces one team per person per language with a deferred trigger, and ships with
 the code that makes a second team.
@@ -600,9 +600,15 @@ the code that makes a second team.
    psql "$PROD_DATABASE_URL" -c 'select "userId", lang from team_member group by "userId", lang having count(distinct "teamId") > 1'
    ```
 
-2. **Rolling back past 0113 while a second team exists** gives its members the privileged team's
-   rows: the older release has no overlay, so it resolves every person to the language's privileged
-   team. Nothing guards it; the second team's own rows stay in the database and come back when the
+2. **Rolling back past 0113 while a language has several teams** gives the members of all but its
+   team with plain packs that team's rows: the older release has no overlay, so it resolves every
+   person to the language's privileged team, which 0123 keeps as the one with plain packs. Nothing
+   guards it; each team's own rows stay in the database and come back when the release goes
+   forward again.
+3. **Rolling back to a release before the equal teams** brings back the privileged team: a
+   visitor or worker in no team of a language with several acts as the one with plain packs again,
+   and a language none of whose teams has plain packs shows none of them, since that release finds
+   a language's teams through its privileged one. Nothing is lost; it all comes back when the
    release goes forward again.
 
 ### Promoting the first admin
@@ -676,7 +682,7 @@ next look and frees the lock.
 
 ### Team releases
 
-A press by a team that is not official, or that is not its language's privileged team, builds that
+A press by a team that is not official, or whose packs in the language carry its slug, builds that
 team's packs (`docs/platform/TEAMS.md`, *Team releases*). It is refused with a 409 except on a site
 that sets, in `app.env`:
 
@@ -688,9 +694,9 @@ Staging sets it. **Production sets it only once a Manager that reads `index-v2.j
 that orders a language's voices have been released**: before that no player can install a team's
 pack, and a suffixed pack requires a Spoken that is not out. The site reads it for the press, and the
 job takes it from `app.env` too, so `release.mjs` refuses such a pack anywhere it is unset. It works
-on the droplet only (`SPOKEN_RELEASE_ENV` set): the workflow's synced database gives every take to
-the privileged team, so it cannot build another team's pack. Restart as above after changing it.
-Official privileged teams release as before, with or without it.
+on the droplet only (`SPOKEN_RELEASE_ENV` set): the workflow builds from a synced database, which can
+give a team's takes to another, so it cannot build a team's own pack. Restart as above after changing
+it. An official team with plain packs releases as before, with or without it.
 
 **Review.** A release of a team that is not official uploads its packs and lists them nowhere: it
 ends *Waiting for review*, and every site owner gets an email. Review it on `/admin/team-releases`
@@ -718,6 +724,46 @@ marked failed and the next one starts. A press on GitHub Actions is still refuse
 runs. If the queue looks stuck, check for a `dispatching` or `running` row in `release_run` whose job
 directory (`shared/release-runs/<id>/`) has no recent heartbeat: the site fails it after three
 minutes without one, the next time anybody opens a release page.
+
+### Deleting a team
+
+A site owner deletes a team from its row on `/admin/teams`: the dialog lists what goes, and Delete
+works once the team's slug is typed (`docs/platform/TEAMS.md`, *Deleting a team*). English's team
+cannot be deleted, nor a team with a release queued, running or being listed.
+
+A team with packs on the channel is delisted first, one `delist` run per pack in the release
+queue, so deleting it works on the droplet only. A team with plain packs in a language counts as
+having all four sections there, even ones never published, since a release before the site's left
+no row. Its row says *Being deleted* with how many are
+done. The rows go when the last one ends; until then the team makes nothing, and its members can
+do nothing in it. A team with no pack on the channel and no plain packs goes at once, wherever
+it is deleted.
+
+If a delisting fails, the row says *Deletion stopped* with the reason, and nothing has been
+deleted. Fix the cause (the log is on the run, under `shared/release-runs/<id>/`) and press
+**Retry**, which queues every delisting again; one with nothing left to take off ends at once.
+Cancelling a queued delisting from the release page stops the deletion the same way.
+
+Nothing in any bucket is deleted: the team's `archive_object` rows go, and the objects stay. A
+language left with no team is switched off; adding a team to it switches it back on. Its text
+reports move to another team of the language, or wait on its text queue with no team; its open
+voice reports are closed as *not an issue*, since their takes go with it.
+
+Migration 0124 is additive. A rollback past it leaves a team being deleted unable to make
+anything, and an older release never finishes the deletion. Once the site goes forward again,
+let the row offer Retry by naming why it stopped:
+
+```bash
+psql "$PROD_DATABASE_URL" -c "update team set \"deleteError\" = 'Interrupted by a rollback' where slug = '<slug>' and \"deletingAt\" is not null"
+```
+
+Before a rollback past 0124, close the open text reports a deletion left with no team (their
+language had no other team), or give each a team by hand: the older code expects every report to
+have one.
+
+```bash
+psql "$PROD_DATABASE_URL" -c "update report set status = 'not_an_issue', \"resolvedAt\" = now() where \"teamId\" is null and status = 'open'"
+```
 
 ### On GitHub Actions
 
