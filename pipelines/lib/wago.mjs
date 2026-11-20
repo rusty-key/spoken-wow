@@ -76,8 +76,13 @@ export async function wagoTable(name, { build = FOREVER_BUILD, locale = "enUS", 
     const url = `https://wago.tools/db2/${name}/csv?build=${build}&locale=${locale}`;
     const response = await fetcher(url, { headers: { "User-Agent": "curl/8.0" } });
     if (!response.ok) throw new Error(`HTTP ${response.status} for ${url}`);
+    const body = await response.text();
+    const rows = parseCsv(body);
+    // A cached empty table would fail every later run until someone deleted the file.
+    if (!rows.length) return rows;
     await mkdir(cache, { recursive: true });
-    await writeFile(file, await response.text());
+    await writeFile(file, body);
+    return rows;
   }
   return parseCsv(await readFile(file, "utf8"));
 }
