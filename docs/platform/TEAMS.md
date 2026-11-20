@@ -339,10 +339,10 @@ language. Section `bosses` is Manager-only in the workflow: it has no CurseForge
 upload target there. English places also builds the bosses pack that its zip carries, so an
 English places release publishes `SpokenBossesAudio` too.
 
-A team's pack name in each language (`team_language.packName`) decides its folders. Every team that
-had the language before teams were equal has `plain` packs, with today's ids and folders
-(`SpokenQuestsAudioHorde_deDE`, `SpokenPlacesAudio_frFR`, …) and no team code. Older Managers see no
-change.
+A team's pack name in each language (`team_language.packName`) decides its folders. Every team
+privileged before 0123 has `plain` packs, with today's ids and folders (`SpokenQuestsAudioHorde_deDE`,
+`SpokenPlacesAudio_frFR`, …) and no team code, so older Managers see no change; every other team's
+carry its slug (*A language's teams*).
 
 Every section publishes from the droplet, whose copy of the signing key sits in
 `shared/release.env`, as PLAN.md decided.
