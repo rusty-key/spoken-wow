@@ -12,6 +12,11 @@ Spoken Player until 3.0.0, when it became Spoken and took its modules into one d
 - **No more Lua error on the world map with Leatrix Maps.** Spoken Bosses no longer tries to
   make other addons' map frames clickable while it looks for Leatrix's dungeon pins and menu.
   *([anon1231823](https://github.com/anon1231823))*
+- **Forever's five new dungeons are in the Compendium.** The Bosses tab lists the bosses of the
+  Drowned City, Krol'dok Stronghold, Alcaz Prison, Blackmaw Hold and the Shaper's Terrace. The
+  Places tab lists Krol'dok Stronghold, Blackmaw Hold and the Shaper's Terrace under the zone of
+  their entrance, and entering one reads its story and counts it as found.
+  *([svengabr](https://github.com/svengabr))*
 
 ## 3.10.1 — 2026-11-19
 
