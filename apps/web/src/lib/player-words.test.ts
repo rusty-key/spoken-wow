@@ -135,6 +135,9 @@ describe("speakPlayerTokens", () => {
     expect(speakPlayerTokens("o bilhete solicita $2oax Tisana de Respiração Aquática, além", "ptBR")).toBe(
       "o bilhete solicita algumas unidades de Tisana de Respiração Aquática, além",
     );
+    expect(speakPlayerTokens("la nota chiede $2oa Elixir of Ogre's Strength e riporta", "itIT")).toBe(
+      "la nota chiede una fornitura di Elixir of Ogre's Strength e riporta",
+    );
     expect(speakPlayerTokens("заказ на $2oa темных кожаных мундира:темных кожаных мундиров, а также", "ruRU")).toBe(
       "заказ на несколько темных кожаных мундиров, а также",
     );

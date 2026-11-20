@@ -109,6 +109,7 @@ const QUANTITY = /\$\d+oax?\s+/g;
 const QUANTITY_WORDS = {
   enUS: "an order of ",
   ptBR: "algumas unidades de ",
+  itIT: "una fornitura di ",
 };
 const RU_FORMS = /\$\d+oa\s+([^\s:]+(?:\s+[^\s:]+)*):((?:\s*[^\s,.;:!?]+)+)/g;
 
