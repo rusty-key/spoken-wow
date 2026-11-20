@@ -14,6 +14,11 @@
 # were cut from, and a zones `db-pull`/`db-push` pair written against a table and a Docker
 # database that no longer exist.
 #
+# Team ids differ between databases, so each synced row with a team is given a local one: the
+# team with the same slug where it voices the row's language, else the team with the language's
+# plain packs, else english. A row with no team keeps none: a language's own ignore stays the
+# language's, not one team's.
+#
 # Environment, as the Makefiles pass it:
 #   DROPLET, SSH, REMOTE_ROOT   how to reach production (make/droplet.mk)
 #   LOCAL_DB                    the database to replace into
@@ -32,9 +37,8 @@ tables=("$@")
 # Keyed on `source` and synced per section, unlike the corpus tables, which are copied whole.
 # take_encoding is each take's clip as its pack ships it.
 shared=(take recording take_encoding)
-# The staged tables with a per-team "teamId", remapped to this database's teams after the copy.
-# line_ignore's is nullable, so the foreign-key pass blanks it, and its check constraint refuses a
-# language's row with no team.
+# The staged tables with a per-team "teamId", remapped to this database's teams after the copy,
+# before the foreign-key pass would blank line_ignore's, which is nullable.
 teamed=(take recording take_ack line_ignore)
 # The shared tables with an id, which is one sequence across every section.
 serial=(take recording)
@@ -95,6 +99,9 @@ columns_of() {
     echo "create table $staging.\"$table\" (like public.\"$table\");"
   done
   [ -z "$names_where" ] || echo "create table $staging.\"entity_name\" (like public.\"entity_name\");"
+  # Not named "team": the foreign-key pass below takes a staged table of that name for one this
+  # sync brings, and would stop blanking what points at it.
+  echo "create table $staging.\"upstream_team\" (\"id\" uuid primary key, \"slug\" text not null);"
   upstream "pg_dump \"\$DATABASE_URL\" --data-only ${dump_tables[*]}" \
     | unrestrict | sed -E "s/^COPY public\./COPY $staging./"
   # This section's rows of each shared table, selected on production with a WHERE rather
@@ -114,8 +121,39 @@ columns_of() {
       <<<"copy (select $name_columns from \"entity_name\" where $names_where) to stdout;"
     echo '\.'
   fi
+  echo "copy $staging.\"upstream_team\" (\"id\", \"slug\") from stdin;"
+  upstream 'psql "$DATABASE_URL" -X -q -f -' <<<'copy (select "id", "slug" from "team") to stdout;'
+  echo '\.'
   # pg_dump's output empties search_path for the session; put it back for what follows.
   echo 'set search_path = public;'
+  # Team ids are per database, so a copied "teamId" would dangle (see the header).
+  for table in "${teamed[@]}"; do
+    cat <<SQL
+\\echo ==> teams: remapping "teamId" of $staging."$table" to the local teams
+do \$\$
+declare n bigint;
+begin
+  if exists (select 1 from information_schema.columns
+              where table_schema = '$staging' and table_name = '$table' and column_name = 'teamId') then
+    -- Each upstream team and language once: the same slug's team where it voices the language,
+    -- else the language's plain team, else English's.
+    update $staging."$table" s set "teamId" = m."local"
+      from (select d."teamId", d."lang", coalesce(
+                     (select tl."teamId" from $staging."upstream_team" u
+                        join public."team" t on t."slug" = u."slug"
+                        join public."team_language" tl on tl."teamId" = t."id" and tl."lang" = d."lang"
+                       where u."id" = d."teamId"),
+                     public.team_of_lang(d."lang"),
+                     (select "id" from public."team" where "slug" = 'english')) as "local"
+              from (select distinct "teamId", "lang" from $staging."$table" where "teamId" is not null) d) m
+     where s."teamId" = m."teamId" and s."lang" is not distinct from m."lang";
+    get diagnostics n = row_count;
+    raise warning 'teams: % $table rows stamped', n;
+  end if;
+end
+\$\$;
+SQL
+  done
   cat <<SQL
 do \$\$
 declare fk record;
@@ -145,27 +183,6 @@ begin
 end
 \$\$;
 SQL
-  # Team ids are per database, so a copied "teamId" would dangle. Each row takes its language's
-  # privileged team here, or english's when the language has none.
-  for table in "${teamed[@]}"; do
-    cat <<SQL
-\\echo ==> teams: remapping "teamId" of $staging."$table" to the local privileged teams
-do \$\$
-declare n bigint;
-begin
-  if exists (select 1 from information_schema.columns
-              where table_schema = '$staging' and table_name = '$table' and column_name = 'teamId') then
-    update $staging."$table" s set "teamId" = coalesce(
-        public.team_of_lang(s."lang"),
-        (select "id" from public."team" where "slug" = 'english'))
-      where s."lang" is not null;
-    get diagnostics n = row_count;
-    raise warning 'teams: % $table rows stamped', n;
-  end if;
-end
-\$\$;
-SQL
-  done
   echo "truncate ${quoted%, };"
   for table in "${shared[@]}"; do
     echo "delete from \"$table\" where \"source\" = '$source_name';"

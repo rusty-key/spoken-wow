@@ -6,7 +6,7 @@
 
 setfenv(1, VoiceOver)
 
-if GetLocale() ~= "zhTW" then
+if not Spoken:InterfaceIn("zhTW") then
 	return
 end
 
@@ -59,6 +59,7 @@ L.OPT_GREETING = "問候"
 L.OPT_AUTOPLAY_OFF_TIP = "Spoken 設定的「任務」頁面中已關閉「自動朗讀」。"
 L.OPT_PROGRESS_OFF_TIP = "Spoken 設定的「任務」頁面中已關閉「朗讀任務進行中文字」。"
 L.OPT_NEVER_TIP = "Spoken 設定的「閒聊」頁面中，「朗讀問候」設為「從不」。"
+L.OPT_MUTED_TIP = "你已靜音此 NPC。可在 Spoken 設定的「閒聊」頁面中「已靜音的 NPC」處取消靜音。"
 L.OPT_CONTRIBUTE = "貢獻"
 L.OPT_REPORT = "回報"
 L.OPT_REPORT_COPY = "Spoken Quests|n|n複製此位址並在瀏覽器中開啟。"
@@ -89,6 +90,15 @@ L.OPT_OG_THRALL = "索爾原版演講"
 L.OPT_FORGET_GREETINGS = "忘記已聽過的問候"
 L.REASON_FORGET_GREETINGS = "將「朗讀問候」設為「每段問候一次」或「任務發布者一次」才能使用。"
 L.OPT_FORGET_GREETINGS_DONE = "已清除此角色已聽過的問候清單。"
+L.OPT_MUTE_NPC = "將此 NPC 的閒聊靜音"
+L.OPT_UNMUTE_NPC = "取消靜音"
+L.OPT_UNMUTE_NPC_GOSSIP = "取消此 NPC 的閒聊靜音"
+L.MUTE_NPC_DONE = "已將 %s 的自動問候語靜音。"
+L.UNMUTE_NPC_DONE = "%s 的自動問候語已取消靜音。"
+L.OPT_MUTED_NPCS = "已靜音的 NPC"
+L.OPT_NO_MUTED_NPCS = "沒有已靜音的 NPC。在 NPC 的對話視窗中點擊揚聲器按鈕即可靜音。"
+L.OPT_FORGET_MUTED_NPCS = "忘記已靜音的 NPC"
+L.OPT_FORGET_MUTED_NPCS_DONE = "已清除此角色靜音的 NPC 清單。"
 L.OPT_PANEL_GAME_GREETING_FIRST = "朗讀前先聽 NPC 語音"
 L.GREETING_DIALOG_APART = "Spoken：對話音量已設為 %1$d%%，與其他音量滑桿不同，以便「朗讀前先聽 NPC 語音」能知道 NPC 何時說完。"
 L.OPT_REPORT_PROBLEM = "回報問題"

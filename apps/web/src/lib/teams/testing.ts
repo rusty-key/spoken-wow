@@ -2,12 +2,16 @@
  * For tests: a language moved onto a team of its own, and back. On a test database every
  * language shares the english team, so only a moved language makes "the job's team" observable.
  */
+import { randomInt, randomUUID } from "node:crypto";
+
 import { Pool, type QueryResult, type QueryResultRow } from "pg";
 import { afterAll } from "vitest";
 
 import { db } from "@/lib/db";
 import type { Lang } from "@/lib/lang";
+import { forgetLanguages, loadLanguages } from "@/lib/languages/catalogue";
 
+import { DELETED } from "./delete";
 import { forgetTeams, type TeamId } from "./store";
 
 let fixtures: Pool | undefined;
@@ -51,8 +55,11 @@ export async function systemRows<R extends QueryResultRow = QueryResultRow>(text
 
 /** Tables a test may leave rows in under the borrowed team, deleted before the team is. */
 const STAMPED = [
+  // A team's own buckets, and which objects they hold, before the team itself.
+  "storage_move", "archive_object", "storage_backend",
   "regeneration_pause", "regeneration_batch", "take_ack", "take", "recording", "activity", "report", "line_ignore",
   "voice_assignment", "voice", "generation_setting", "queue_dismissal",
+  "text_override",
 ];
 
 /**
@@ -71,32 +78,36 @@ const COPIED = [
    select $1, "throughJobId", "dismissedBy" from "queue_dismissal" where "teamId" = $2`,
 ];
 
-/** For tests: a language with no privileged team, as one not yet switched on has, and back. */
+/** For tests: a language without its plain team, as one not yet switched on has, and back. */
 export async function unowned(lang: Lang): Promise<{ restore: () => Promise<void> }> {
   const { rows: was } = await db().query<{ teamId: TeamId }>(
-    `delete from "team_language" where "lang" = $1 and "privileged" returning "teamId"`,
+    `delete from "team_language" where "lang" = $1 and "packName" = 'plain' returning "teamId"`,
     [lang],
   );
   forgetTeams();
   return {
     async restore() {
       if (was[0]) {
-        await db().query(`insert into "team_language" ("teamId", "lang") values ($1, $2)`, [was[0].teamId, lang]);
+        await db().query(`insert into "team_language" ("teamId", "lang", "packName") values ($1, $2, 'plain')`, [
+          was[0].teamId,
+          lang,
+        ]);
       }
       forgetTeams();
     },
   };
 }
 
+/** A site owner's move, so the team is official. */
 export async function ownTeam(lang: Lang): Promise<{ team: TeamId; restore: () => Promise<void> }> {
   const slug = `test-${lang.toLowerCase()}-${Math.random().toString(36).slice(2, 8)}`;
   const { rows } = await db().query<{ id: TeamId }>(
-    `insert into "team" ("slug", "name") values ($1, $1) returning "id"`,
+    `insert into "team" ("slug", "name", "official") values ($1, $1, true) returning "id"`,
     [slug],
   );
   const team = rows[0].id;
   const previous = await unowned(lang);
-  await db().query(`insert into "team_language" ("teamId", "lang") values ($1, $2)`, [team, lang]);
+  await db().query(`insert into "team_language" ("teamId", "lang", "packName") values ($1, $2, 'plain')`, [team, lang]);
   const { rows: english } = await db().query<{ id: TeamId }>(`select "id" from "team" where "slug" = 'english'`);
   for (const sql of COPIED) await asSystem.query(sql, [team, english[0].id]);
   forgetTeams();
@@ -149,10 +160,85 @@ export async function runningJob(lang: Lang, team: TeamId): Promise<{ cleanup: (
   };
 }
 
-/** The caller deletes any rows under the team beyond its members, roster and languages first. */
+/** The team with every row under it, as a deletion takes them, and its reports. */
 export async function dropTeam(team: TeamId): Promise<void> {
-  for (const table of ["team_member", "voice_assignment", "voice", "generation_setting", "queue_dismissal", "team_language"]) {
-    await asSystem.query(`delete from "${table}" where "teamId" = $1`, [team]);
-  }
+  for (const table of [...DELETED, "report"]) await asSystem.query(`delete from "${table}" where "teamId" = $1`, [team]);
   await asSystem.query(`delete from "team" where "id" = $1`, [team]);
+  // A language it shared is one team's again: the memo would still have the caller in no team there.
+  forgetTeams();
+}
+
+const CAPITALS = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+
+/** `xq` and two random capitals: a code no real language has. */
+export function randomLang(): Lang {
+  return `xq${CAPITALS[randomInt(26)]}${CAPITALS[randomInt(26)]}` as Lang;
+}
+
+/**
+ * A language row of a code no language has yet, so dropLang never deletes a row the test did not
+ * make; the language catalogue is reloaded with it.
+ */
+export async function uniqueLang({ textByTeam = false } = {}): Promise<Lang> {
+  for (;;) {
+    const code = randomLang();
+    const made = await asSystem.query(
+      `insert into "language" ("code", "name", "native", "bcp47", "provider", "client", "enabled", "textByTeam")
+       values ($1, 'Xq', 'Xq', 'xq-XQ', 'xq', false, false, $2) on conflict do nothing`,
+      [code, textByTeam],
+    );
+    if (made.rowCount) {
+      forgetLanguages();
+      await loadLanguages();
+      return code;
+    }
+  }
+}
+
+/** uniqueLang's row, with the activity and grants left in it; its teams are dropped first. */
+export async function dropLang(lang: Lang): Promise<void> {
+  await asSystem.query(`delete from "activity" where "lang" = $1`, [lang]);
+  await asSystem.query(`delete from "language_grant" where "lang" = $1`, [lang]);
+  await asSystem.query(`delete from "language" where "code" = $1`, [lang]);
+  forgetLanguages();
+}
+
+/**
+ * A new team working on `lang`; dropTeam removes it. `plain`: its packs are `_<lang>`, as the
+ * privileged team had them before migration 0123.
+ */
+export async function newTeamIn(lang: string, plain: boolean, name = "test"): Promise<TeamId> {
+  const [row] = await systemRows<{ id: TeamId }>(`select new_team($1, $1) as "id"`, [
+    `${name}-${randomUUID().slice(0, 8)}`,
+  ]);
+  await asSystem.query(`insert into "team_language" ("teamId", "lang", "packName") values ($1, $2, $3)`, [
+    row.id, lang, plain ? "plain" : "slug",
+  ]);
+  forgetTeams();
+  return row.id;
+}
+
+/** The team with plain packs in `lang`. */
+export async function plainTeam(lang: string): Promise<TeamId> {
+  const [row] = await systemRows<{ team: TeamId }>(`select team_of_lang($1) as "team"`, [lang]);
+  return row.team;
+}
+
+/** A run of `team`'s as its job left it, made and finished at `at`, an SQL time. */
+export async function releaseRun(
+  team: TeamId,
+  { kind = "release", lang = "deDE", section = "quests", state = "done", at = "now()" } = {},
+): Promise<void> {
+  await asSystem.query(
+    `insert into "release_run" ("kind", "teamId", "section", "lang", "state", "version", "createdAt", "finishedAt")
+     values ($1, $2, $3, $4, $5, '1.0.1', ${at}, ${at})`,
+    [kind, team, section, lang, state],
+  );
+}
+
+/** A person's capability in a team's language. */
+export async function addMember(team: TeamId, userId: string, lang: string, capability: string): Promise<void> {
+  await asSystem.query(`insert into "team_member" ("teamId", "userId", "lang", "capability") values ($1, $2, $3, $4)`, [
+    team, userId, lang, capability,
+  ]);
 }

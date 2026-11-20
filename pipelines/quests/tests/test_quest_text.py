@@ -15,16 +15,18 @@ def _line(quest, source, text, npc=288, gender=None, title="Growling Gut"):
             "npcId": npc, "originalText": text, "playerGender": gender}
 
 
-def test_each_quest_keeps_its_offer_and_completion_and_not_its_progress():
+def test_each_quest_keeps_its_offer_progress_and_completion():
     corpus = {"lines": [_line(5, "accept", "Find my pack."), _line(5, "progress", "Not yet?"),
                         _line(5, "complete", "You found it!")]}
-    assert quest_text(corpus) == {5: {"accept": "Find my pack.", "complete": "You found it!"}}
+    assert quest_text(corpus) == {5: {"accept": "Find my pack.", "progress": "Not yet?",
+                                      "complete": "You found it!"}}
 
 
-def test_a_quest_with_only_its_progress_shows_it_as_its_offer():
+def test_a_quest_with_only_its_progress_keeps_it_as_its_progress():
     corpus = {"lines": [_line(98888, "progress", "Back so soon?"),
                         _line(6, "progress", "Not yet?"), _line(6, "complete", "Done!")]}
-    assert quest_text(corpus) == {98888: {"accept": "Back so soon?"}, 6: {"complete": "Done!"}}
+    assert quest_text(corpus) == {98888: {"progress": "Back so soon?"},
+                                  6: {"progress": "Not yet?", "complete": "Done!"}}
 
 
 def test_gossip_and_follow_up_lines_are_not_a_quest_s_words():

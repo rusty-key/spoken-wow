@@ -50,7 +50,6 @@ end
 -- A human mage, Tester, who has completed Kobold Camp Cleanup.
 local KOBOLDS, CANDLES, SHARPTALON, JENNEA = 7, 60, 2, 1860
 stub.world.playerName = "Tester"
-stub.world.playerGUID = "Player-0-0-0-0-Tester-0"
 _G.UnitRace = function() return "Human", "Human", 1 end
 _G.UnitClass = function() return "Mage", "MAGE", 8 end
 local completed = { [KOBOLDS] = true }
@@ -543,20 +542,10 @@ RowOf(CANDLES).scripts.OnClick(RowOf(CANDLES))
 Expect("its page: its title", page.title.text, "Kobold Candles")
 Expect("...where it is, then the quest mark and In progress", page.sub.text.text,
     "In Elwynn Forest · |TInterface\\GossipFrame\\ActiveQuestIcon:0|t " .. L.QUEST_IN_PROGRESS)
-stub.world.questID = CANDLES
-stub.world.progressText = "Have you gathered those candles yet?"
-stub.FireEvent("QUEST_PROGRESS")
-stub.world.questID = 0
-Tab:Refresh()
-Expect("...its offer and the progress text, each under its heading", #page.body.lastParts .. " "
+Expect("...its offer, then its progress", #page.body.lastParts .. " "
     .. page.body.lastParts[1].heading .. " " .. page.body.lastParts[2].heading .. " "
-    .. tostring((PageWords() or ""):find("Have you gathered those candles yet?", 1, true) ~= nil),
+    .. tostring((PageWords() or ""):find(SpokenQuestsText[CANDLES].progress, 1, true) ~= nil),
     "2 " .. L.QUEST_PART_ACCEPT .. " " .. L.QUEST_PART_PROGRESS .. " true")
-Expect("...and keeps that English progress text for the Compendium", VO.Addon.db.global.CompendiumText.enUS
-    and VO.Addon.db.global.CompendiumText.enUS[CANDLES]
-    and VO.Addon.db.global.CompendiumText.enUS[CANDLES].progress ~= nil, true)
-VO.Addon.db.global.CompendiumText.enUS = nil
-stub.world.progressText = ""
 Expect("...not the hand-in before it is completed: it tells how the quest ends",
     (PageWords() or ""):find("Thanks for the candles", 1, true) == nil
     and page.body.lastParts[#page.body.lastParts].heading ~= L.QUEST_PART_COMPLETE, true)
@@ -1032,6 +1021,14 @@ do
         page.body.lastParts[#page.body.lastParts].text, "Pack words.")
     Expect("...leaving the shipped words alone, which matching reads", SpokenQuestsText[KOBOLDS].complete, nil)
     testPack.TextByFileName = nil
+    -- Polish chosen as the Text Language: a text pack's words (Spoken's Texts.lua), where no pack in
+    -- Polish voices the part.
+    H.ReadText("plPL")
+    Spoken:RegisterText("plPL", "quests", { lines = { ["q:7:complete"] = "Polskie słowa, $N." } })
+    Click("Kobold Camp Cleanup")
+    Expect("Polish chosen, a text pack's words show on the part, the player named",
+        page.body.lastParts[#page.body.lastParts].text, "Polskie słowa, " .. UnitName("player") .. ".")
+    H.ReadText(nil)
     -- Two wordings of one moment: the page follows the one it shows, as Play does.
     local acceptWords = SpokenQuestsText[KOBOLDS].accept
     SpokenQuestsText[KOBOLDS].accept = "Back again."
@@ -1049,12 +1046,12 @@ do
     testPack.SoundLengthLookupByFileName["7-accept-w1"] = nil
     SpokenQuestsText[KOBOLDS].accept = acceptWords
     SpokenQuestsText[KOBOLDS].complete = words
-    local handInWords = SpokenQuestsText[CANDLES].complete
-    SpokenQuestsText[CANDLES].complete = nil
+    local handInWords, progressWords = SpokenQuestsText[CANDLES].complete, SpokenQuestsText[CANDLES].progress
+    SpokenQuestsText[CANDLES].complete, SpokenQuestsText[CANDLES].progress = nil, nil
     Click("Kobold Candles")
     Expect("a part with no words known that no pack voices is left out", #page.body.lastParts .. " "
         .. page.body.lastParts[1].heading, "1 " .. L.QUEST_PART_ACCEPT)
-    SpokenQuestsText[CANDLES].complete = handInWords
+    SpokenQuestsText[CANDLES].complete, SpokenQuestsText[CANDLES].progress = handInWords, progressWords
     -- A quest Forever has that the corpus has no lines for says nothing is written.
     local candles = SpokenQuestsText[CANDLES]
     SpokenQuestsText[CANDLES] = nil
@@ -1119,18 +1116,19 @@ Expect("...on its page, the list keeping the filter and leaving its row out", pa
 _, choices = Menu()
 choices[2].func()
 Expect("...off, everything again", Has(Shown(), "Kobold Candles") and Has(Shown(), "Westfall") and Tab:Has(CANDLES), true)
--- A quest a pack voices only in its progress is voiced in the Compendium too.
+-- A quest a pack voices only in its progress counts as voiced.
 do
     testPack.SoundLengthLookupByFileName["60-progress"] = 2
     testPack.NPCIDLookupByQuestID[CANDLES] = MCBRIDE
     Expect("(a pack voicing Kobold Candles' progress)",
         VO.DataModules:PrepareSound({ event = VO.Enums.SoundEvent.QuestProgress, questID = CANDLES }) and true, true)
+    -- What the packs voice is read once per set of packs; a pack gaining a line in place is not one.
     local order = VO.Language.ResolutionOrder
     VO.Language.ResolutionOrder = function() return { "enUS", "progress-test" } end
     Tab:Refresh()
     _, choices = Menu()
     choices[2].func()
-    Expect("a quest a pack voices only in its progress stays in Voiced Only", Has(Shown(), "Kobold Candles"), true)
+    Expect("a quest a pack voices only in its progress is listed by Voiced Only", Has(Shown(), "Kobold Candles"), true)
     _, choices = Menu()
     choices[2].func()
     local shift = _G.IsShiftKeyDown
@@ -1139,6 +1137,7 @@ do
     Click("Kobold Candles")
     Expect("...and shift-click on its row plays its progress", Spoken:GetQueueSize(), 1)
     _G.IsShiftKeyDown = shift
+    Spoken:StopAll()
     testPack.SoundLengthLookupByFileName["60-progress"] = nil
     testPack.NPCIDLookupByQuestID[CANDLES] = nil
     VO.Language.ResolutionOrder = order
@@ -1387,7 +1386,7 @@ QuestMapFrame_ShowQuestDetails(HEIRLOOM)
 Expect("...nor for a quest not started", Tab.mapButton:IsShown(), false)
 
 ---------------------------------------------------------------- another language
--- A German client: the title and any words without a shipped English template are kept, for every
+-- A German client: the words and the title the quest's window shows are kept, for every
 -- character, and shown over the English.
 stub.SetLocale("deDE")
 stub.world.questID = KOBOLDS
@@ -1399,72 +1398,49 @@ Tab:Refresh()
 Click("Säuberung des Koboldlagers")
 words = PageWords() or ""
 Expect("the title the window showed", page.title.text, "Säuberung des Koboldlagers")
-Expect("...and its shipped English words", words:find(SpokenQuestsText[KOBOLDS].accept:sub(1, 20), 1, true) ~= nil, true)
+Expect("...and its words, over the English", words:find("Ihr müsst die Kobolde vertreiben.", 1, true) ~= nil, true)
 Expect("...the moments the window has not shown yet still in English",
     words:find(SpokenQuestsText[KOBOLDS].complete:sub(1, 20), 1, true) ~= nil, true)
 stub.world.playerName = "Zweite"
 Tab:Refresh()
-Expect("...not the first character's kept offer", (PageWords() or ""):find("Ihr müsst die Kobolde", 1, true) == nil, true)
+Expect("...another character's name where the player's was", (PageWords() or ""):find("Zweite, Ihr müsst", 1, true) ~= nil, true)
 stub.world.playerName = "Tester"
 local kept = VO.Addon.db.global.CompendiumText
-Expect("...keeps the localized title but only missing English moments as words",
-    kept.deDE[KOBOLDS] ~= nil and kept.deDE[KOBOLDS].accept == nil and kept.enUS == nil, true)
-local oldUnitClass, oldUnitRace = UnitClass, UnitRace
-_G.UnitClass = function() return "Mage", "MAGE", 8 end
-_G.UnitRace = function() return "Human", "Human" end
+Expect("...kept by language", kept.deDE[KOBOLDS] ~= nil and kept.enUS == nil, true)
 stub.world.questID = CANDLES
 stub.world.title = "Koboldkerzen"
-stub.world.progressText = "Tester, Mage, Human, habt Ihr die Kerzen schon gesammelt?"
+stub.world.progressText = "Habt Ihr die Kerzen schon gesammelt?"
 stub.FireEvent("QUEST_PROGRESS")
-stub.world.questID = 0
+stub.world.questID, stub.world.progressText = 0, ""
 Tab:Refresh()
 Click("Koboldkerzen")
-Expect("captured progress text is shown",
-    (PageWords() or ""):find("Tester, Mage, Human, habt Ihr die Kerzen schon gesammelt?", 1, true) ~= nil, true)
-Expect("...generalizes the missing-template player tokens",
-    kept.deDE[CANDLES].progress.text == "$N, $C, $R, habt Ihr die Kerzen schon gesammelt?", true)
-_G.UnitClass = function() return "Warrior", "WARRIOR", 1 end
-_G.UnitRace = function() return "Orc", "Orc" end
-stub.world.playerName = "Zweite"
-Tab:Refresh()
-Click("Koboldkerzen")
-Expect("shared progress text is filled for a different class and race",
-    (PageWords() or ""):find("Zweite, Warrior, Orc, habt Ihr die Kerzen schon gesammelt?", 1, true) ~= nil, true)
-stub.world.playerName = "Tester"
-stub.world.progressText = "Travel to Redridge, Tester."
-stub.world.questID = CANDLES
-stub.FireEvent("QUEST_PROGRESS")
-Expect("...does not generalize a player name inside another word",
-    kept.deDE[CANDLES].progress.text == "Travel to Redridge, $N.", true)
-stub.world.questID = 0
-stub.world.progressText = "Visit the Mage in Human lands, “Tester”!"
-stub.world.questID = CANDLES
-stub.FireEvent("QUEST_PROGRESS")
-Expect("...generalizes a name beside Unicode punctuation",
-    kept.deDE[CANDLES].progress.text == "Visit the Mage in Human lands, “$N”!", true)
-stub.world.questID = 0
-stub.world.playerName = "Zweite"
-Tab:Refresh()
-Expect("shared progress text is filled for another character",
-    (PageWords() or ""):find("Visit the Mage in Human lands, “Zweite”!", 1, true) ~= nil, true)
-stub.world.progressText = "Zweite, Warrior, Orc, neuer Fortschritt."
-stub.world.questID = CANDLES
-stub.FireEvent("QUEST_PROGRESS")
-stub.world.questID = 0
-Tab:Refresh()
-Click("Koboldkerzen")
-Expect("the other character updates the shared progress text",
-    (PageWords() or ""):find("Zweite, Warrior, Orc, neuer Fortschritt.", 1, true) ~= nil, true)
-_G.UnitClass = function() return "Mage", "MAGE", 8 end
-_G.UnitRace = function() return "Human", "Human" end
-stub.world.playerName = "Tester"
-stub.world.progressText = ""
-Tab:Refresh()
-Click("Koboldkerzen")
-Expect("the shared progress text is filled for the current character",
-    (PageWords() or ""):find("Tester, Mage, Human, neuer Fortschritt.", 1, true) ~= nil, true)
-stub.world.progressText = ""
-_G.UnitClass, _G.UnitRace = oldUnitClass, oldUnitRace
+Expect("the progress the window showed, over the English",
+    (PageWords() or ""):find("Habt Ihr die Kerzen schon gesammelt?", 1, true) ~= nil
+    and (PageWords() or ""):find(SpokenQuestsText[CANDLES].progress, 1, true) == nil, true)
+
+-- An item starter keeps its real icon after the item has left the player's bags.
+do
+    local ITEM, ITEM_ICON, oldCItem = 211315, "Interface\\Icons\\INV_Misc_Map_01", _G.C_Item
+    _G.C_Item = { GetItemInfoInstant = function() return nil, nil, nil, nil, ITEM_ICON end }
+    testPack.ItemIDLookupByQuestID = { [CANDLES] = ITEM }
+    Tab:Open(CANDLES)
+    local offer = page.body.lastParts[1]
+    Expect("an item-started quest uses the item's real icon", offer.face.viewport.texture:GetTexture(), ITEM_ICON)
+    -- The item in the bags is the one that starts the quest; the packs' id only stands in for it.
+    local BAG_ICON, oldContainer = 134939, _G.C_Container
+    _G.C_Container = {
+        GetContainerNumSlots = function(bag) return bag == 1 and 1 or 0 end,
+        GetContainerItemInfo = function() return { iconFileID = BAG_ICON } end,
+        GetContainerItemQuestInfo = function() return { isQuestItem = true, questID = CANDLES } end,
+    }
+    Tab:Open(KOBOLDS)
+    Tab:Open(CANDLES)
+    Expect("...the item in the bags before the packs' id", page.body.lastParts[1].face.viewport.texture:GetTexture(), BAG_ICON)
+    _G.C_Container = oldContainer
+    testPack.ItemIDLookupByQuestID, _G.C_Item = nil, oldCItem
+    Tab:Open(KOBOLDS)
+end
+
 -- A window whose id, title and words the game hands over as secrets keeps nothing.
 stub.world.questID = JENNEA
 stub.world.title = "Versiegelte Befehle"
@@ -1482,10 +1458,10 @@ stub.FireEvent("QUEST_DETAIL")
 stub.world.questID = 0
 Tab:Refresh()
 Click("Koboldkerzen")
-Expect("shipped offer words remain, despite a localized window", (PageWords() or ""):find("Hello, good sir!", 1, true) ~= nil, true)
+Expect("words kept from a man's window, shown to a man", (PageWords() or ""):find("Hallo, werter Herr!", 1, true) ~= nil, true)
 stub.world.unitSex = 3
 Tab:Refresh()
-Expect("...and the shipped words still use her word", (PageWords() or ""):find("Hello, my lady!", 1, true) ~= nil, true)
+Expect("...and to a woman, the English, with her word", (PageWords() or ""):find("Hello, my lady!", 1, true) ~= nil, true)
 stub.world.unitSex = 2
 stub.SetLocale("enUS")
 stub.world.questID = CANDLES

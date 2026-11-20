@@ -78,6 +78,11 @@ jobs:
               - addons/*/README.md
               - scripts/descriptions.mjs
               - scripts/lib/**
+              - apps/brann/**
+              - docs/support/**
+              # The FAQ check reads the addons' and the Manager's English strings and commands.
+              - addons/**/*.lua
+              - manager/src/renderer/src/strings.en.ts
               - package.json
               - pnpm-lock.yaml
               - pnpm-workspace.yaml
@@ -194,3 +199,6 @@ jobs:
       - run: pnpm --filter @spoken/readables-pipeline test
       - run: pnpm --filter @spoken/places-pipeline test
       - run: node --test scripts/lib/*.test.mjs scripts/audio/*.test.mjs scripts/maintainers/*.test.mjs
+      - run: pnpm --filter @spoken/brann test
+      # The FAQ Brann answers from names only settings and commands the code has.
+      - run: node apps/brann/src/faq-check.mjs

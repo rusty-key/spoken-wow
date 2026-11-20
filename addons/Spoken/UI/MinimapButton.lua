@@ -12,19 +12,20 @@ local ICON = [[Interface\AddOns\Spoken\Textures\MinimapButton]]
 local ldbObject, menuFrame, minimapButton
 
 -- The player's own entries: the same playback rows as the Small Window's menu, then the
--- Compendium and the settings.
+-- Compendium and the settings. `words` is the key of the entry's string, read as the menu is built:
+-- an interface pack's strings arrive after this file loads (Interface.lua).
 local PLAYER_ENTRIES = {
-    { id = "PlayPause", text = L.STOP_REPLAY,  order = 1, onClick = function() SoundQueue:TogglePauseQueue() end },
-    { id = "Skip",      text = L.MIN_SKIP,     order = 2, onClick = function() SoundQueue:Skip() end },
-    { id = "Stop",      text = L.MIN_STOP_ALL, order = 3, onClick = function() SoundQueue:RemoveAllSoundsFromQueue() end },
+    { id = "PlayPause", words = "STOP_REPLAY",  order = 1, onClick = function() SoundQueue:TogglePauseQueue() end },
+    { id = "Skip",      words = "MIN_SKIP",     order = 2, onClick = function() SoundQueue:Skip() end },
+    { id = "Stop",      words = "MIN_STOP_ALL", order = 3, onClick = function() SoundQueue:RemoveAllSoundsFromQueue() end },
     -- Azeroth's Compendium, whichever parts have a tab in it (UI/Compendium.lua in each).
-    { id = "Compendium", text = L.OPT_COMPENDIUM_OPEN, order = 4,
+    { id = "Compendium", words = "OPT_COMPENDIUM_OPEN", order = 4,
         visible = function()
             local compendium = _G.SpokenCompendium
             return compendium ~= nil and compendium.Available ~= nil and compendium:Available()
         end,
         onClick = function() _G.SpokenCompendium:Toggle() end },
-    { id = "Settings",  text = L.SETTINGS,     order = 5, onClick = function() Options:Open() end },
+    { id = "Settings",  words = "SETTINGS",     order = 5, onClick = function() Options:Open() end },
 }
 
 --- entry = { id, text, icon, order, onClick(button), tooltip(GameTooltip), visible() }
@@ -47,6 +48,7 @@ end
 function Minimap:BuildMenu()
     local menu = {}
     for _, entry in ipairs(PLAYER_ENTRIES) do
+        entry.text = L[entry.words]
         if not entry.visible or entry.visible() then table.insert(menu, entry) end
     end
     for key, source in Sources:Iterate() do

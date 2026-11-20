@@ -25,8 +25,8 @@
 -- A search lists what matches under what holds it. Where it matches the name of a banner, a line
 -- or a chain, everything inside that one is listed.
 --
--- On a client in another language, the title and words without a shipped English template are kept
--- for the whole account and shown over the English. Shipped English offer and completion words win.
+-- On a client in another language, the words and title each quest's window showed are kept for
+-- the whole account and shown over the English.
 --
 -- Not under setfenv(1, VoiceOver): the frames are built here, and the client's mixins are looked
 -- up in the calling function's environment.
@@ -89,7 +89,8 @@ local function SectionOf(sort)
 end
 local filter = ""
 
--- What a quest's page shows and plays: the offer, its progress page and the hand-in.
+-- What a quest's page shows and plays: the offer, the progress said while it is under way, and
+-- the hand-in.
 local MOMENTS = { "accept", "progress", "complete" }
 local HEADINGS = { accept = "QUEST_PART_ACCEPT", progress = "QUEST_PART_PROGRESS", complete = "QUEST_PART_COMPLETE" }
 
@@ -134,21 +135,15 @@ end
 -- Whether a voice pack has a part of a quest, as its page's Play finds one.
 local AnyVoiced
 
--- The words and titles kept in this client's language, by quest: { title, accept/complete = { text,
--- sex }, progress = { text, sex } ... }.
--- Only a moment with no shipped English text is kept, regardless of the client's language.
-local function Kept(id, moment, create)
-    if id and moment and English(id)[moment] ~= nil then return nil end
+-- The words and titles kept in this client's language, by quest: { title, accept = { text, sex } ... }.
+-- None on an English client: the English shipped is what it would keep.
+local function Kept()
+    if Locale() == "enUS" then return nil end
     local db = VO.Addon.db and VO.Addon.db.global
     if not db then return nil end
-    if not db.CompendiumText then
-        if not create then return nil end
-        db.CompendiumText = {}
-    end
-    local kept = db.CompendiumText[Locale()]
-    if not kept and not create then return nil end
-    if not kept then kept = {}; db.CompendiumText[Locale()] = kept end
-    return kept
+    db.CompendiumText = db.CompendiumText or {}
+    db.CompendiumText[Locale()] = db.CompendiumText[Locale()] or {}
+    return db.CompendiumText[Locale()]
 end
 
 -- The client's title once it has one, else the English; asked for once where it is not loaded,
@@ -156,6 +151,15 @@ end
 local titles, asked = {}, {}
 local function Title(id, ask)
     if titles[id] then return titles[id] end
+    -- A text pack's, in the Text Language the player chose.
+    local language, chosen = VO.Language:GetTextLanguage()
+    if chosen and Spoken and Spoken.TextIn then
+        local packed = Spoken:TextIn(language, "quests", "titles", id)
+        if packed then
+            titles[id] = packed
+            return packed
+        end
+    end
     local kept = Kept()
     local title = kept and kept[id] and kept[id].title
     if not title and Locale() ~= "enUS" and C_QuestLog and C_QuestLog.GetTitleForQuestID then
@@ -934,6 +938,14 @@ end
 -- The words
 --------------------------------------------------------------------------------
 
+local function Sex()
+    return UnitSex and UnitSex("player") or 2
+end
+
+local function Plain(text)
+    return (text:gsub("[%^%$%(%)%%%.%[%]%*%+%-%?]", "%%%0"))
+end
+
 --- A quest's words for this character, as the client fills them: the name, class and race,
 --- the word for its sex out of "$G male:female;", and $B a line break.
 function QuestsTab:Fill(text)
@@ -951,30 +963,24 @@ local function Generalise(text, english)
     }
     for _, each in ipairs(words) do
         local letter, word = each[1], each[2]
-        local token
-        if english == "" then
-            token = "$" .. letter
-        elseif english:find("%$" .. letter:lower()) then
-            token = "$" .. letter:lower()
-        elseif english:find("%$" .. letter) then
-            token = "$" .. letter
-        end
-        if type(word) == "string" and word ~= "" and token then
-            text = Spoken.Contribute:ReplaceWord(text, word, token)
+        if type(word) == "string" and word ~= "" and english:find("%$[" .. letter .. letter:lower() .. "]") then
+            text = text:gsub(Plain(word), "$" .. letter)
         end
     end
     return text
 end
 
 -- Each moment's words as stored: those kept in this client's language, else the English, or nil.
--- A missing-template record is account-wide, like accept and complete.
+-- Kept words filled for the other sex are not used where the English has a word for each.
 local function Stored(id, moment)
     local english = English(id)
-    local kept = Kept(id, moment)
+    local kept = Kept()
     kept = kept and kept[id]
     local own = kept and kept[moment]
     local text = english[moment]
-    if type(own) == "table" and own.text then text = own.text end
+    if type(own) == "table" and own.text and not (own.sex ~= Sex() and (text or ""):find("%$[Gg]")) then
+        text = own.text
+    end
     if text and text ~= "" then return text end
 end
 
@@ -989,32 +995,26 @@ local function SeenText(id, moment)
     return stored and QuestsTab:Fill(stored)
 end
 
+-- A text pack's words in the Text Language come after a pack's own, as on the captions.
 local function PartText(id, moment)
     local soundData = { event = EVENTS[moment], questID = id, text = SeenText(id, moment) }
     VO.DataModules:PrepareSound(soundData)
     if soundData.packText then return QuestsTab:Fill(soundData.packText) end
-    return soundData.text
+    return VO.DataModules:TextPackText(soundData) or soundData.text
 end
 
 --- Keep what the open quest window shows, in this client's language.
 function QuestsTab:Keep(moment, text, title)
     local id = GetQuestID and VO.NotSecret(GetQuestID())
-    if (type(text) ~= "string" or text == "") and (type(title) ~= "string" or title == "") then return end
-    local kept = Kept(id, moment, true)
-    if not id or id == 0 or not Quests()[id] then return end
-    local titleKept = kept
-    if not titleKept and Locale() ~= "enUS" then titleKept = Kept(nil, nil, true) end
+    local kept = Kept()
+    if not kept or not id or id == 0 or not Quests()[id] then return end
+    kept[id] = kept[id] or {}
     if type(title) == "string" and title ~= "" then
-        if titleKept then
-            titleKept[id] = titleKept[id] or {}
-            titleKept[id].title = title
-        end
+        kept[id].title = title
         titles[id] = title
     end
-    if kept and type(text) == "string" and text ~= "" then
-        kept[id] = kept[id] or {}
-        local english = English(id)
-        kept[id][moment] = { text = Generalise(text, english[moment]) }
+    if type(text) == "string" and text ~= "" then
+        kept[id][moment] = { text = Generalise(text, English(id)[moment]), sex = Sex() }
     end
 end
 
@@ -1045,14 +1045,14 @@ local function Shows(id, moment)
     return moment ~= "complete" or Completed(id) or Unlocked()
 end
 
--- Whether the page has words to show: the offer's, progress's or hand-in's where it shows. Looks at
--- the stored text only, so a row can ask it on every render.
+-- Whether the page has words to show: the offer's, the progress's, or the hand-in's where it
+-- shows. Looks at the stored text only, so a row can ask it on every render.
 function QuestsTab:HasWords(id)
     return Stored(id, "accept") ~= nil or Stored(id, "progress") ~= nil
         or (Shows(id, "complete") and Stored(id, "complete") ~= nil)
 end
 
--- Who says one moment of a quest: the hand-in is said by the one it is handed
+-- Who says one moment of a quest: the progress and the hand-in are said by the one it is handed
 -- in to (`ender`, `enderObject` in the data, absent where that is the giver), the offer by its
 -- giver, as the quest log's Play names it.
 local function Speaker(id, moment)
@@ -1080,8 +1080,8 @@ local function SoundData(id, moment, origin)
 end
 
 -- Whether a voice pack has any of a quest (Voiced Only), and a quest played from its row
--- (shift-click): the first part a voice pack has, named for who says it. The quest's page plays
--- each part from its own Play.
+-- (shift-click): what is said when it is offered, under way and handed in, as far as the voice
+-- packs have it, named for who says it. The quest's page plays each part from its own Play.
 local PLAY = {
     has = function(id)
         for _, moment in ipairs(MOMENTS) do
@@ -1089,7 +1089,7 @@ local PLAY = {
         end
         return false
     end,
-    -- One part, the first a pack voices: the offer and the hand-in are said at
+    -- One part, the first a pack voices: the parts are said at
     -- different times, not as one speech. Its words go with it, for the window to show. Nothing
     -- where a part of the quest is queued already: one part of a quest at a time.
     -- `queued`: behind what the queue already holds, not played at once.
@@ -1189,13 +1189,13 @@ local function FaceSpeaker(id, moment)
     if Enums.GUID:IsCreature(kind) then
         return { creatureID = speaker, displayID = VO.Player:QuestFace(speaker), bullet = bullet }
     end
-    local icon = kind == Enums.GUID.Item and Spoken.QuestItemIcon and Spoken:QuestItemIcon(id) or nil
+    local icon = kind == Enums.GUID.Item and VO.Player:QuestItemIcon(id, speaker) or nil
     return { objectOrItem = true, icon = icon, bullet = bullet }
 end
 
--- A quest's words in parts, the offer, progress and hand-in, each headed by the face of who says it
--- beside their name over the part's name, with Report for every part and Play where a pack voices
--- it; the hand-in only where it Shows. A part a pack voices whose words are not known says so,
+-- A quest's words in parts, the offer, the progress and the hand-in, each headed by the face of
+-- who says it beside their name over the part's name, with Report for every part and Play where a
+-- pack voices it; the hand-in only where it Shows. A part a pack voices whose words are not known says so,
 -- and is there to be played and reported. nil with no words and nothing voiced.
 local function Parts(id)
     local parts = {}

@@ -4,7 +4,7 @@
 -- the client's encounter, `ids` every encounter the client has for it, one for each difficulty
 -- (the ids ENCOUNTER_START gives), `key` the boss's English name lowercased without punctuation (how its
 -- story is filed), then its name, and in every other language where it differs (Forever
--- 1.60.1.70450, else retail 12.1.5.70448, wago.tools). Regenerate with:
+-- 1.60.1.70959, else retail 12.1.5.70448, wago.tools). Regenerate with:
 --   make bosses-export
 --
 -- A global rather than a private namespace: a data file cannot reach into the addon's environment.
@@ -18,7 +18,7 @@ SpokenBosses = {
 			{ id = 2749, ids = { 2749 }, key = "razorclaw the butcher", "Razorclaw the Butcher", deDE = "Klingenklaue der Metzger", esES = "Zarpador el Carnicero", esMX = "Zarpador el Carnicero", frFR = "Tranchegriffe le Boucher", ptBR = "Garraguda, o Açougueiro", ruRU = "Остроклык Мясник", koKR = "도살자 칼날발톱", zhCN = "屠夫拉佐克劳", zhTW = "『屠夫』銳爪" },
 			{ id = 2750, ids = { 2750 }, key = "baron silverlaine", "Baron Silverlaine", esES = "Barón Filargenta", esMX = "Barón Filargenta", frFR = "Baron d’Argelaine", ptBR = "Barão Silverlaine", ruRU = "Барон Сильверлейн", koKR = "남작 실버레인", zhCN = "席瓦莱恩男爵", zhTW = "席瓦萊恩男爵", itIT = "Barone Argenius" },
 			{ id = 2751, ids = { 2751 }, key = "commander springvale", "Commander Springvale", deDE = "Kommandant Springvale", esES = "Comandante Vallefont", esMX = "Comandante Vallefont", frFR = "Commandant Printeval", ptBR = "Comandante Floraval", ruRU = "Командир Спрингвейл", koKR = "사령관 스프링베일", zhCN = "指挥官斯普林瓦尔", zhTW = "指揮官斯普林瓦爾", itIT = "Comandante Primavalle" },
-			{ id = 2752, ids = { 2752 }, key = "odo the blindwatcher", "Odo the Blindwatcher", deDE = "Odo der Blindseher", esES = "Odo el vigía ciego", esMX = "Odo el Vigía Ciego", frFR = "Odo l’Aveugle", ptBR = "Odo, o Vigia Cego", ruRU = "Одо Слепой Страж", koKR = "눈먼감시자 오도", zhCN = "盲眼守卫奥杜", zhTW = "『盲眼守衛』奧杜" },
+			{ id = 2752, ids = { 2752 }, key = "odo the blindwatcher", "Odo the Blindwatcher", deDE = "Odo der Blindseher", esES = "Odo el Cegato", esMX = "Odo el Vigía Ciego", frFR = "Odo l’Aveugle", ptBR = "Odo, o Vigia Cego", ruRU = "Одо Слепой Страж", koKR = "눈먼감시자 오도", zhCN = "盲眼守卫奥杜", zhTW = "『盲眼守衛』奧杜" },
 			{ id = 2753, ids = { 2753 }, key = "fenrus the devourer", "Fenrus the Devourer", deDE = "Fenrus der Verschlinger", esES = "Fenrus el Devorador", esMX = "Fenrus el Devorador", frFR = "Fenrus le Dévoreur", ptBR = "Fenrus, o Devorador", ruRU = "Фенрус Пожиратель", koKR = "파멸의 펜루스", zhCN = "吞噬者芬鲁斯", zhTW = "『吞噬者』芬魯斯" },
 			{ id = 2754, ids = { 2754 }, key = "wolf master nandos", "Wolf Master Nandos", deDE = "Wolfmeister Nandos", esES = "Maestro de lobos Nandos", esMX = "Maestro de lobos Nandos", frFR = "Maître-loup Nandos", ptBR = "Nandos, o Mestre de Lobos", ruRU = "Командир воргенов Нандос", koKR = "늑대왕 난도스", zhCN = "狼王南杜斯", zhTW = "狼王南杜斯" },
 			{ id = 2755, ids = { 2755 }, key = "archmage arugal", "Archmage Arugal", deDE = "Erzmagier Arugal", esES = "Archimago Arugal", esMX = "Archimago Arugal", frFR = "Archimage Arugal", ptBR = "Arquimago Arugal", ruRU = "Верховный маг Аругал", koKR = "대마법사 아루갈", zhCN = "大法师阿鲁高", zhTW = "大法師阿魯高" },
@@ -59,7 +59,7 @@ SpokenBosses = {
 			{ id = 2778, ids = { 2778 }, key = "charlga razorflank", "Charlga Razorflank", esES = "Charlga Filonavaja", esMX = "Charlga Filonavaja", frFR = "Charlga Trancheflanc", ptBR = "Charlga Talhaflanco", ruRU = "Чарлга Остробок", koKR = "서슬깃 차를가", zhCN = "卡尔加·刺肋", zhTW = "卡爾加‧刺肋", itIT = "Charlga Fiancospino" },
 		},
 		[48] = {
-			{ id = 2697, ids = { 2697, 2761, 2916 }, key = "ghamoo ra", "Ghamoo-ra", esES = "Ghamoo-Ra", frFR = "Ghamoo-Ra", ruRU = "Гхаму-ра", koKR = "가무라", zhCN = "加摩拉", zhTW = "加摩拉", itIT = "Ghamoo-Ra" },
+			{ id = 2697, ids = { 2697, 2761, 2916 }, key = "ghamoo ra", "Ghamoo-ra", frFR = "Ghamoo-Ra", ruRU = "Гхаму-ра", koKR = "가무라", zhCN = "加摩拉", zhTW = "加摩拉", itIT = "Ghamoo-Ra" },
 			{ id = 2699, ids = { 2699, 2762, 2915 }, key = "lady sarevess", "Lady Sarevess", frFR = "Dame Sarevess", ruRU = "Леди Саревесс", koKR = "여왕 사레베스", zhCN = "萨利维丝", zhTW = "薩利維絲女士" },
 			{ id = 2704, ids = { 2704, 2763, 2914 }, key = "gelihast", "Gelihast", ruRU = "Гелихаст", koKR = "겔리하스트", zhCN = "格里哈斯特", zhTW = "格里哈斯特" },
 			{ id = 2710, ids = { 2710, 2764, 2913 }, key = "lorgus jett", "Lorgus Jett", ruRU = "Лоргус Джетт", koKR = "로구스 제트", zhCN = "洛古斯·杰特", zhTW = "洛古斯·傑特" },
@@ -214,7 +214,7 @@ SpokenBosses = {
 		},
 		[349] = {
 			{ id = 422, ids = { 422 }, key = "noxxion", "Noxxion", frFR = "Noxcion", ptBR = "Tóxxico", ruRU = "Ноксион", koKR = "녹시온", zhCN = "诺克赛恩", zhTW = "諾克賽恩" },
-			{ id = 423, ids = { 423 }, key = "razorlash", "Razorlash", deDE = "Schlingwurzler", esES = "Latisable", esMX = "Latisable", frFR = "Tranchefouet", ptBR = "Azorrague", ruRU = "Бритвохлест", koKR = "칼날채찍", zhCN = "锐刺鞭笞者", zhTW = "銳刺鞭笞者", itIT = "Ramospino" },
+			{ id = 423, ids = { 423 }, key = "razorlash", "Razorlash", deDE = "Schlingwurzler", esES = "Lativaja", esMX = "Latisable", frFR = "Tranchefouet", ptBR = "Azorrague", ruRU = "Бритвохлест", koKR = "칼날채찍", zhCN = "锐刺鞭笞者", zhTW = "銳刺鞭笞者", itIT = "Ramospino" },
 			{ id = 427, ids = { 427 }, key = "tinkerer gizlock", "Tinkerer Gizlock", deDE = "Tüftler Gizlock", esES = "Manitas Gizlock", esMX = "Manitas Gizlock", frFR = "Bricoleur Kadenaz", ptBR = "Engenhoqueiro Bugitranca", ruRU = "Ремонтник Гизлок", koKR = "땜장이 기즐록", zhCN = "工匠吉兹洛克", zhTW = "技工吉茲洛克", itIT = "Meccanista Tagliafizz" },
 			{ id = 424, ids = { 424 }, key = "lord vyletongue", "Lord Vyletongue", deDE = "Lord Schlangenzunge", esES = "Lord Lenguavil", esMX = "Lord Lenguavil", frFR = "Seigneur Vylelangue", ptBR = "Lorde Torpelíngua", ruRU = "Лорд Злоязыкий", koKR = "군주 바일텅", zhCN = "维利塔恩", zhTW = "維利塔恩領主", itIT = "Sire Linguatroce" },
 			{ id = 425, ids = { 425 }, key = "celebras the cursed", "Celebras the Cursed", deDE = "Celebras der Verfluchte", esES = "Celebras el Maldito", esMX = "Celebras el Maldito", frFR = "Celebras le Maudit", ptBR = "Celebras, o Amaldiçoado", ruRU = "Келебрас Проклятый", koKR = "저주받은 셀레브라스", zhCN = "被诅咒的塞雷布拉斯", zhTW = "被詛咒的塞雷布拉斯", itIT = "Celebras il Dannato" },
@@ -225,7 +225,7 @@ SpokenBosses = {
 		[389] = {
 			{ id = 2732, ids = { 2732 }, key = "oggleflint", "Oggleflint", deDE = "Flintauge", esES = "Ogglesílex", esMX = "Ogglesílex", frFR = "Lorgnesilex", ptBR = "Pederneiro", ruRU = "Огглфлинт", koKR = "오글플린트", zhCN = "奥格弗林特", zhTW = "奧格弗林特" },
 			{ id = 2733, ids = { 2733 }, key = "taragaman the hungerer", "Taragaman the Hungerer", deDE = "Taragaman der Hungerleider", esES = "Taragaman el Hambriento", esMX = "Taragaman el Hambriento", frFR = "Taragaman l’Affameur", ptBR = "Taragaman, o Famélico", ruRU = "Тарагаман Ненасытный", koKR = "욕망의 타라가만", zhCN = "饥饿者塔拉加曼", zhTW = "『飢餓者』塔拉加曼" },
-			{ id = 2734, ids = { 2734 }, key = "jergosh the invoker", "Jergosh the Invoker", deDE = "Jergosh der Herbeirufer", esES = "Jergosh el Convocador", esMX = "Jergosh el Convocador", frFR = "Jergosh l’Invocateur", ptBR = "Jergosh, o Invocador", ruRU = "Жергош Призыватель Духов", koKR = "기원사 제로쉬", zhCN = "祈求者耶戈什", zhTW = "『塑能師』耶戈什" },
+			{ id = 2734, ids = { 2734 }, key = "jergosh the invoker", "Jergosh the Invoker", deDE = "Jergosh der Herbeirufer", esES = "Jergosh el Conjurador", esMX = "Jergosh el Convocador", frFR = "Jergosh l’Invocateur", ptBR = "Jergosh, o Invocador", ruRU = "Жергош Призыватель Духов", koKR = "기원사 제로쉬", zhCN = "祈求者耶戈什", zhTW = "『塑能師』耶戈什" },
 			{ id = 2735, ids = { 2735 }, key = "bazzalan", "Bazzalan", ruRU = "Баззалан", koKR = "바잘란", zhCN = "巴扎兰", zhTW = "巴札蘭" },
 		},
 		[409] = {
@@ -359,9 +359,33 @@ SpokenBosses = {
 			{ id = 3300, ids = { 3300 }, key = "mana devourer", "Mana Devourer", deDE = "Manaschlinger", esES = "Devorador de maná", esMX = "Devorador de maná", frFR = "Dévoreur de mana", ptBR = "Devorador de Mana", ruRU = "Пожиратель маны", koKR = "마나 포식자", zhCN = "法力吞噬者", zhTW = "法力吞噬者", itIT = "Divoratore di Mana" },
 			{ id = 3301, ids = { 3301 }, key = "mana elemental", "Mana Elemental", deDE = "Manaelementar", esES = "Elemental de maná", esMX = "Elemental de maná", frFR = "Élémentaire de mana", ptBR = "Elemental de Mana", ruRU = "Элементаль маны", koKR = "마나 정령", zhCN = "法力元素", zhTW = "法力元素" },
 			{ id = 3302, ids = { 3302 }, key = "unstable sentinel", "Unstable Sentinel", deDE = "Instabile Schildwache", esES = "Centinela inestable", esMX = "Centinela inestable", frFR = "Sentinelle instable", ptBR = "Sentinela Oscilante", ruRU = "Нестабильный часовой", koKR = "불안정한 파수꾼", zhCN = "不稳定的哨兵", zhTW = "不穩定的哨兵" },
-			{ id = 3303, ids = { 3303 }, key = "shade of the archmage", "Shade of the Archmage", deDE = "Schemen des Erzmagiers", esES = "Sombra del archimago", esMX = "Sombra del archimago", frFR = "Ombre de l’archimage", ptBR = "Vulto do Arquimago", ruRU = "Тень верховного мага", koKR = "대마법사의 망령", zhCN = "大法师之影", zhTW = "大法師之影" },
 			{ id = 3310, ids = { 3310 }, key = "lyn the ignored", "Lyn the Ignored", deDE = "Lyn der Ignorierte", esES = "Lyn el Ignorado", esMX = "Lyn, el Ignorado", frFR = "Lyn l’Ignoré", ptBR = "Lyn, o Ignorado", ruRU = "Лин Забытый", koKR = "외면받는 린", zhCN = "被无视的琳恩", zhTW = "『忽視者』林恩" },
 			{ id = 3311, ids = { 3311 }, key = "atrexis the grave knight", "Atrexis the Grave Knight", deDE = "Atrexis der Grabritter", esES = "Atrexis el Caballero de la Tumba", esMX = "Atrexis, el Caballero de la tumba", frFR = "Atrexis le Chevalier de la tombe", ptBR = "Atrexis, o Cavaleiro da Sepultura", ruRU = "Атрексий Могильный Рыцарь", koKR = "무덤 기사 아트렉시스", zhCN = "墓穴骑士阿特雷克斯", zhTW = "『墓地騎士』亞崔希斯" },
+			{ id = 3303, ids = { 3303 }, key = "shade of the archmage", "Shade of the Archmage", deDE = "Schemen des Erzmagiers", esES = "Sombra del archimago", esMX = "Sombra del archimago", frFR = "Ombre de l’archimage", ptBR = "Vulto do Arquimago", ruRU = "Тень верховного мага", koKR = "대마법사의 망령", zhCN = "大法师之影", zhTW = "大法師之影" },
+		},
+		[2970] = {
+			{ id = 3474, ids = { 3474 }, key = "zulalai", "Zul'Alai", frFR = "Zul’Alai", ruRU = "Зул'алай", koKR = "줄알라이", zhCN = "祖拉莱", zhTW = "祖爾阿萊" },
+			{ id = 3475, ids = { 3475 }, key = "vartaka", "Var'Taka", frFR = "Var’Taka", ruRU = "Вар'така", koKR = "바르타카", zhCN = "瓦尔塔卡", zhTW = "伐塔卡" },
+			{ id = 3476, ids = { 3476 }, key = "captain dreadrise", "Captain Dreadrise", esES = "Capitán Alzapavor", esMX = "Capitán Alzapavor", frFR = "Capitaine Lèveffroi", ptBR = "Capitão Pavoral", ruRU = "Капитан Морожад", koKR = "대장 드레드라이즈", zhCN = "德雷德莱斯船长", zhTW = "懼湧船長" },
+			{ id = 3478, ids = { 3478 }, key = "deathless guardians", "Deathless Guardians", deDE = "Unsterbliche Wächter", esES = "Guardianes inextinguibles", esMX = "Guardianes inextinguibles", frFR = "Gardiens impérissables", ptBR = "Guardiões Imorredouros", ruRU = "Неумирающие стражи", koKR = "죽지 않는 수호자", zhCN = "不死守护者", zhTW = "不滅的守護者" },
+			{ id = 3511, ids = { 3511 }, key = "primeval elemental", "Primeval Elemental", deDE = "Urtümlicher Elementar", esES = "Elemental primigenio", esMX = "Elemental primitivo", frFR = "Élémentaire primitif", ptBR = "Elemental Primevo", ruRU = "Первородный элементаль", koKR = "태고의 정령", zhCN = "原始元素", zhTW = "原初元素" },
+			{ id = 3479, ids = { 3479 }, key = "minloth the serpent", "Min'loth the Serpent", deDE = "Min'loth die Schlange", esES = "Min'loth la Serpiente", esMX = "Min'loth, la Serpiente", frFR = "Min’loth le Serpent", ptBR = "Min'loth, a Serpente", ruRU = "Мин'лот-Змей", koKR = "독사 민로스", zhCN = "毒蛇明洛斯", zhTW = "聖蛇米洛斯" },
+		},
+		[2974] = {
+			{ id = 3315, ids = { 3315 }, key = "withermaw", "Withermaw", deDE = "Welkschlund", esES = "Faucemarchita", esMX = "Faucemarchita", frFR = "Flétrigueule", ptBR = "Putrigórjeo", ruRU = "Сухозев", koKR = "마른아귀", zhCN = "枯颌", zhTW = "枯萎之喉" },
+			{ id = 3316, ids = { 3316 }, key = "impaan the imprisoner", "Impaan the Imprisoner", deDE = "Impaan der Kerkermeister", esES = "Diapaan el Diabólico", esMX = "Diablaan, el Carcelero diabólico", frFR = "Diablaan l’Enfermeur", ptBR = "Diabraan, o Diabrisionador", ruRU = "Бесаан Бесноватый", koKR = "간수 임판", zhCN = "狱牢头鬼", zhTW = "『小鬼禁錮者』鬼潘" },
+			{ id = 3327, ids = { 3327 }, key = "elder shaman bloodmane", "Elder Shaman Bloodmane", deDE = "Schamanenältester Bloodmane", esES = "Chamán anciano Melenasangre", esMX = "Anciano chamán Sangremelena", frFR = "Ancien chaman crin-de-sang", ptBR = "Xamã Ancião Jubassangue", ruRU = "Старейшина-шаман Кровогрив", koKR = "장로 주술사 핏빛갈기", zhCN = "长者萨满血鬃", zhTW = "薩滿長老血鬃" },
+			{ id = 3322, ids = { 3322 }, key = "bonesnout the unbroken", "Bonesnout the Unbroken", deDE = "Knochenschnauze der Ungebrochene", esES = "Morrohueso el Inquebrantable", esMX = "Hocicóseo, el Irrompible", frFR = "Muflos l’Indompté", ptBR = "Focinhosso, o Inquebrável", ruRU = "Костерыл Несломленный", koKR = "꺾이지 않는 해골주둥이", zhCN = "不屈的白骨之吻", zhTW = "『不屈者』骨鼻" },
+			{ id = 3334, ids = { 3334 }, key = "varrox bleakhoof", "Varrox Bleakhoof", esES = "Varrox Pezuña Lúgubre", esMX = "Varrox Pezuñaumbría", frFR = "Varrox Mornesabot", ptBR = "Varrox Execrasco", ruRU = "Варрокс Мутное Копыто", koKR = "바록스 블릭후프", zhCN = "瓦罗克斯·暗蹄", zhTW = "瓦洛仕‧荒蹄" },
+			{ id = 3323, ids = { 3323 }, key = "blackmaw behemoth", "Blackmaw Behemoth", deDE = "Behemoth des Schwarzschlunds", esES = "Behemoth Faucenegra", esMX = "Behemoth Faucenegra", frFR = "Béhémoth noiregueule", ptBR = "Beemote Bocanera", ruRU = "Исполин из клана Черночревов", koKR = "검은아귀 거수", zhCN = "黑喉巨兽", zhTW = "黑喉巨獸" },
+			{ id = 3336, ids = { 3336 }, key = "unbound spirit", "Unbound Spirit", deDE = "Ungebundener Geist", esES = "Espíritu desvinculado", esMX = "Espíritu desligado", frFR = "Esprit délié", ptBR = "Espírito Desatado", ruRU = "Свободный дух", koKR = "속박 풀린 영혼", zhCN = "不羁之魂", zhTW = "無縛之靈" },
+		},
+		[2994] = {
+			{ id = 3403, ids = { 3403 }, key = "overseer wrex", "Overseer Wrex", deDE = "Aufseher Wrex", esES = "Sobrestante Wrex", esMX = "Sobrestante Wrex", frFR = "Surveillant Wrex", ptBR = "Feitor Wrex", ruRU = "Надзиратель Рекс", koKR = "감독관 렉스", zhCN = "狱监雷克斯", zhTW = "監督者瑞克斯" },
+			{ id = 3410, ids = { 3410 }, key = "tidemistress cazass", "Tidemistress Ca'zass", deDE = "Gezeitenherrin Ca'zass", esES = "Maestra de las mareas Ca'zass", esMX = "Ama de las mareas Ca'zass", frFR = "Maîtresse des marées Ca’zass", ptBR = "Senhora das Marés Ca'zass", ruRU = "Повелительница приливов Ка'засс", koKR = "해일여제 카자스", zhCN = "海潮主母卡扎斯", zhTW = "卡薩絲小姐" },
+			{ id = 3418, ids = { 3418 }, key = "katerina the cleaner", "Katerina the Cleaner", deDE = "Katerina die Aufräumerin", esES = "Katerina la Limpiadora", esMX = "Katerina, la Limpiadora", frFR = "Katerina la Nettoyeuse", ptBR = "Katerina, a Faxineira", ruRU = "Катерина Чистильщица", koKR = "청소부 카테리나", zhCN = "清道夫卡特琳娜", zhTW = "『清潔者』卡特莉娜" },
+			{ id = 3415, ids = { 3415 }, key = "the questioner", "The Questioner", deDE = "Der Verhörer", esES = "El Interrogador", esMX = "El interrogador", frFR = "L’Interrogateur", ptBR = "O Questionador", ruRU = "Дознаватель", koKR = "심문관", zhCN = "质问者", zhTW = "審問者" },
+			{ id = 3409, ids = { 3409 }, key = "blazeroar", "Blazeroar", esES = "Rugellama", esMX = "Rugellamas", frFR = "Rugiflamme", ptBR = "Rugequeima", ruRU = "Пламеяра", koKR = "불길포효", zhCN = "烈焰咆哮者", zhTW = "燃吼" },
 		},
 		[2998] = {
 			{ id = 3480, ids = { 3480 }, key = "saltspine", "Saltspine", deDE = "Salzrücken", esES = "Espinasal", esMX = "Salespina", frFR = "Seléchine", ptBR = "Salespino", ruRU = "Солеспин", koKR = "소금가시", zhCN = "盐脊", zhTW = "鹽脊" },
@@ -373,10 +397,30 @@ SpokenBosses = {
 			{ id = 3353, ids = { 3353 }, key = "witherfang", "Witherfang", deDE = "Welkzahn", esES = "Colmimarchito", esMX = "Marchitacolmillos", frFR = "Croc-Flétri", ptBR = "Sugapresa", ruRU = "Сухожвал", koKR = "쇠퇴송곳니", zhCN = "枯牙", zhTW = "枯萎之牙" },
 			{ id = 3357, ids = { 3357 }, key = "the abandoned", "The Abandoned", deDE = "Der Verlassene", esES = "El Abandonado", esMX = "El Abandonado", frFR = "L’Abandonné", ptBR = "O Abandonado", ruRU = "Покинутый", koKR = "버려진 자", zhCN = "被遗弃者", zhTW = "被棄者" },
 			{ id = 3355, ids = { 3355 }, key = "the butcher", "The Baron", deDE = "Der Baron" },
-			{ id = 3354, ids = { 3354 }, key = "rathmael", "Rath'mael", frFR = "Rath’mael", ruRU = "Рат'маэль", koKR = "라스마엘", zhCN = "拉斯玛尔", zhTW = "拉斯梅爾" },
 			{ id = 3408, ids = { 3408 }, key = "lordaeron captain", "Lordaeron Captain", deDE = "Hauptmann von Lordaeron", esES = "Capitán de Lordaeron", esMX = "Capitán de Lordaeron", frFR = "Capitaine de Lordaeron", ptBR = "Capitão de Lordaeron", ruRU = "Лордеронский капитан", koKR = "로데론 부대장", zhCN = "洛丹伦上尉", zhTW = "羅德隆隊長" },
 			{ id = 3411, ids = { 3411 }, key = "viktor the vile", "Viktor the Vile", deDE = "Viktor der Üble", esES = "Viktor el Abyecto", esMX = "Viktor, el Vil", frFR = "Viktor le Vil", ptBR = "Viktor, o Vil", ruRU = "Виктор Вероломный", koKR = "비열한 빅토르", zhCN = "邪恶的维克多", zhTW = "邪惡的維多" },
 			{ id = 3412, ids = { 3412 }, key = "bjork", "Bjork", ruRU = "Бьорк", koKR = "비요크", zhCN = "比约克", zhTW = "布喬克" },
+			{ id = 3354, ids = { 3354 }, key = "rathmael", "Rath'mael", frFR = "Rath’mael", ruRU = "Рат'маэль", koKR = "라스마엘", zhCN = "拉斯玛尔", zhTW = "拉斯梅爾" },
+		},
+		[3001] = {
+			{ id = 3498, ids = { 3498 }, key = "titanosaur", "Titanosaur", deDE = "Titanosaurus", esES = "Titanosaurio", esMX = "Titanosaurio", frFR = "Titanosaure", ptBR = "Titanossauro", ruRU = "Титанозавр", koKR = "티타노사우루스", zhCN = "泰坦巨龙", zhTW = "泰坦龍" },
+			{ id = 3499, ids = { 3499 }, key = "ravasaur hunters", "Ravasaur Hunters", deDE = "Ravasaurusjäger", esES = "Ravasaurios cazadores", esMX = "Cazadores ravasaurios", frFR = "Ravasaures chasseurs", ptBR = "Ravassauros Caçadores", ruRU = "Равазавры-охотники", koKR = "갈퀴발톱 라바사우루스", zhCN = "暴掠龙猎手", zhTW = "狩獵暴掠龍" },
+			{ id = 3500, ids = { 3500 }, key = "thunderhoof", "Thunderhoof", esES = "Pezuñatrueno", esMX = "Pezuña Trueno", frFR = "Sabot-Tonnerre", ptBR = "Casco do Trovão", ruRU = "Громокопыт", koKR = "천둥발굽", zhCN = "雷蹄", zhTW = "雷蹄" },
+			{ id = 3501, ids = { 3501 }, key = "venomridge", "Venomridge", deDE = "Giftkamm", esES = "Crestaveneno", esMX = "Cimaveneno", frFR = "Crête-venin", ptBR = "Peçonhalta", ruRU = "Ядогорб", koKR = "맹독마루", zhCN = "毒脊", zhTW = "毒脊" },
+			{ id = 3507, ids = { 3507 }, key = "direhorn matriarch", "Direhorn Matriarch", deDE = "Terrorhornmatriarchin", esES = "Matriarca Cuernoatroz", esMX = "Matriarca cuernoatroz", frFR = "Matriarche navrecorne", ptBR = "Matriarca Escornante", ruRU = "Дикорог-матриарх", koKR = "암컷 공포뿔", zhCN = "恐角龙母", zhTW = "恐角龍族母" },
+			{ id = 3503, ids = { 3503 }, key = "cinder", "Cinder", deDE = "Zunder", esES = "Cenizas", esMX = "Ceniza", frFR = "Braise", ptBR = "Brasa", ruRU = "Пепел", koKR = "잉걸불", zhCN = "烈火", zhTW = "燼火" },
+			{ id = 3504, ids = { 3504 }, key = "king op", "King Op", deDE = "König Op", esES = "Rey Op", esMX = "Rey Op", frFR = "Roi Op", ptBR = "Rei Op", ruRU = "Король Оп", koKR = "왕 오프", zhCN = "奥普国王", zhTW = "歐普王" },
+			{ id = 3597, ids = { 3597 }, key = "snowtalon", "Snowtalon", deDE = "Schneekralle", esES = "Garfanieve", esMX = "Garranieve", frFR = "Serre-neigeuse", ptBR = "Garra-de-neve", ruRU = "Снежнокоготь", koKR = "눈갈퀴", zhCN = "雪爪", zhTW = "雪爪" },
+			{ id = 3505, ids = { 3505 }, key = "bolt", "Bolt", esES = "Rayo", esMX = "Rayo", frFR = "Fulguro", ptBR = "Seta", ruRU = "Электр", koKR = "쏜살", zhCN = "霹雳", zhTW = "螺栓" },
+			{ id = 3600, ids = { 3600 }, key = "vitrix", "Vitrix", ruRU = "Витрикс", koKR = "비트릭스", zhCN = "翠鳞", zhTW = "維崔斯" },
+			{ id = 3502, ids = { 3502 }, key = "nanaya", "Nanaya", ruRU = "Нанайя", koKR = "나나야", zhCN = "娜娜亚", zhTW = "娜娜雅" },
+		},
+		[3039] = {
+			{ id = 3450, ids = { 3450 }, key = "slavecrusher grox", "Slavecrusher Grox", deDE = "Sklavenbrecher Grox", esES = "Machacaesclavos Grox", esMX = "Muelesclavos Grox", frFR = "Brise-esclave Grox", ptBR = "Grox Esmaga-escravos", ruRU = "Рабомучитель Грокс", koKR = "노예파괴자 그록스", zhCN = "碎奴者格罗克斯", zhTW = "碎奴者古羅斯" },
+			{ id = 3452, ids = { 3452 }, key = "twilight commander zarmok", "Twilight Commander Zarmok", deDE = "Twilight-Kommandant Zarmok", esES = "Comandante Crepuscular Zarmok", esMX = "Comandante Crepuscular Zarmok", frFR = "Commandant du Crépuscule Zarmok", ptBR = "Comandante do Crepúsculo Zarmok", ruRU = "Сумеречный командир Зармок", koKR = "황혼의 사령관 자르모크", zhCN = "暮光指挥官扎尔莫克", zhTW = "暮光指揮官札莫克" },
+			{ id = 3453, ids = { 3453 }, key = "handler ashka", "Handler Ashka", deDE = "Tierführerin Ashka", esES = "Cuidadora Ashka", esMX = "Líder bélica Ashka", frFR = "Dresseuse Ashka", ptBR = "Domadora Ashka", ruRU = "Укротительница Ашка", koKR = "조련사 아쉬카", zhCN = "驯兽师阿什卡", zhTW = "管理員艾絲卡" },
+			{ id = 3449, ids = { 3449 }, key = "nargurk", "Nar'gurk", frFR = "Nar’gurk", ruRU = "Нар'гурк", koKR = "나르구르크", zhCN = "纳古克", zhTW = "納古克" },
+			{ id = 3451, ids = { 3451 }, key = "overseer mugg", "Overseer Mugg", deDE = "Aufseher Mugg", esES = "Sobrestante Mugg", esMX = "Sobrestante Mugg", frFR = "Suzerain Mugg", ptBR = "Feitor Mugg", ruRU = "Надзиратель Магг", koKR = "감독관 머그", zhCN = "监工莫格", zhTW = "監督者馬戈" },
 		},
 		[3065] = {
 			{ id = 3493, ids = { 3493 }, key = "faldrim anvilmar", "Faldrim Anvilmar", esES = "Faldrim Yunquemar", esMX = "Faldrim Yunquemar", frFR = "Faldrim Courbenclume", ptBR = "Faldrim Sidermar", ruRU = "Фалдрим Старая Наковальня", koKR = "팔드림 앤빌마", zhCN = "法德林·安威玛尔", zhTW = "法爾椎‧安威瑪" },

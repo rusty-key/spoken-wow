@@ -14,9 +14,11 @@ import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from
 const { ALL_TEAMS, closeDb, db, withTeam } = await import("@/lib/db");
 const { liveTakes } = await import("@/lib/takes/store");
 const { listActivity, recordActivity } = await import("@/lib/activity/store");
-const { forgetTeams, teamOf } = await import("./store");
+const { asTeam } = await import("./acting");
+const { forgetTeams } = await import("./store");
+const { plainTeam } = await import("./testing");
 
-/** A second team in deDE beside its privileged one. */
+/** Another team in deDE beside the one with plain packs. */
 let other: string;
 let file: string;
 
@@ -36,7 +38,7 @@ beforeEach(async () => {
     [slug],
   );
   other = rows[0].id;
-  await db().query(`insert into "team_language" ("teamId", "lang", "privileged") values ($1, 'deDE', false)`, [other]);
+  await db().query(`insert into "team_language" ("teamId", "lang", "packName") values ($1, 'deDE', 'slug')`, [other]);
   forgetTeams();
   file = `gossip/${randomUUID()}rls.mp3`;
   await withTeam(other, (client) =>
@@ -62,7 +64,8 @@ afterAll(closeDb);
 describe("row-level security", () => {
   it("binds every table with a team, so a new one cannot be left open", async () => {
     // team_language and team_member are read before a team is set: one to find the request's
-    // team, the other for a viewer's grants, which span teams.
+    // team, the other for a viewer's grants, which span teams. archive_object says which bucket
+    // holds an object, for every request for a take whatever its team, and holds no secret.
     const { rows } = await db().query<{ table: string; enabled: boolean; forced: boolean; policies: number }>(
       `select c."relname" as "table", c."relrowsecurity" as "enabled", c."relforcerowsecurity" as "forced",
               (select count(*)::int from "pg_policies" p
@@ -70,14 +73,14 @@ describe("row-level security", () => {
          from "pg_class" c
          join "pg_namespace" n on n."oid" = c."relnamespace"
          join "pg_attribute" a on a."attrelid" = c."oid" and a."attname" = 'teamId' and not a."attisdropped"
-        where n."nspname" = 'public' and c."relkind" in ('r', 'p') and c."relname" not in ('team_language', 'team_member')`,
+        where n."nspname" = 'public' and c."relkind" in ('r', 'p') and c."relname" not in ('team_language', 'team_member', 'archive_object')`,
     );
     expect(rows.length).toBeGreaterThan(0);
     expect(rows.filter((row) => !row.enabled || !row.forced || row.policies === 0)).toEqual([]);
   });
 
-  it("keeps another team's take out of the privileged team's live takes", async () => {
-    const live = await liveTakes("quests", "deDE");
+  it("keeps another team's take out of the plain team's live takes", async () => {
+    const live = await asTeam("deDE", await plainTeam("deDE"), () => liveTakes("quests", "deDE"));
     expect(live.some((take) => take.file === file)).toBe(false);
 
     const own = await withTeam(other, (client) =>
@@ -92,9 +95,9 @@ describe("row-level security", () => {
   });
 
   it("refuses a row written for another team", async () => {
-    const privileged = await teamOf("deDE");
+    const plain = await plainTeam("deDE");
     await expect(
-      withTeam(privileged, (client) =>
+      withTeam(plain, (client) =>
         client.query(
           `insert into "take" ("source", "lang", "file", "lineId", "version", "origin", "bytes", "teamId")
            values ('quests', 'deDE', $1, 'g:rls', 2, 'generated', 1, $2)`,
@@ -103,7 +106,7 @@ describe("row-level security", () => {
       ),
     ).rejects.toThrow(/row-level security/);
     // Nor can it touch one: the update finds nothing to change.
-    const { rowCount } = await withTeam(privileged, (client) =>
+    const { rowCount } = await withTeam(plain, (client) =>
       client.query(`update "take" set "bytes" = 2 where "file" = $1`, [file]),
     );
     expect(rowCount).toBe(0);
@@ -113,10 +116,10 @@ describe("row-level security", () => {
     const subject = `rls-${randomUUID()}`;
     await recordActivity({ kind: "ignore.set", lang: null, actorId: null, subject, detail: {} });
 
-    const { rows } = await listActivity({ lang: "deDE" });
+    const team = await plainTeam("deDE");
+    const { rows } = await asTeam("deDE", team, () => listActivity({ lang: "deDE" }));
     expect(rows.some((row) => row.subject === subject)).toBe(true);
 
-    const team = await teamOf("deDE");
     await expect(
       withTeam(team, (client) =>
         client.query(`insert into "activity" ("kind", "subject", "detail", "teamId") values ('ignore.set', $1, '{}', null)`, [

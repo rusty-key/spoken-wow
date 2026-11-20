@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { branchesOnPlayerGender, playerGenderSides, speakPlayerTokens } from "./player-words";
+import { branchesOnPlayerGender, playerGenderSides, playerTokenCounts, speakPlayerTokens } from "./player-words";
 import { isVoiceable, skipReasonFor } from "./text-gate";
 
 describe("speakPlayerTokens", () => {
@@ -176,5 +176,49 @@ describe("the text gate on a translation", () => {
   it("voices a frFR line with the class plural $cs", () => {
     expect(skipReasonFor("Les $cs de Comté-du-Nord vous attendent, $n.", "frFR")).toBeNull();
     expect(skipReasonFor("Les $cs de Comté-du-Nord vous attendent, $n.", "frFR", "f")).toBeNull();
+  });
+});
+
+describe("playerTokenCounts", () => {
+  const reader = (N: number, C: number, R: number) => ({ N, C, R });
+
+  it("counts each token the client would fill in, as #548's deDE corrections lost them", () => {
+    expect(playerTokenCounts("wissen, $C, dass", "deDE")).toEqual({ G: 0, m: reader(0, 1, 0), f: reader(0, 1, 0) });
+    expect(playerTokenCounts("wissen, Krieger, dass", "deDE")).toEqual({ G: 0, m: reader(0, 0, 0), f: reader(0, 0, 0) });
+    expect(playerTokenCounts("Seid gegrüßt, $GBruder:Schwester;.", "deDE")).toEqual({
+      G: 1,
+      m: reader(0, 0, 0),
+      f: reader(0, 0, 0),
+    });
+    expect(playerTokenCounts("Vielen Dank, $c. Geht, $n, und $r!", "deDE")).toEqual({
+      G: 0,
+      m: reader(1, 1, 1),
+      f: reader(1, 1, 1),
+    });
+  });
+
+  it("counts a token where the language speaks it, as the text gate does", () => {
+    expect(playerTokenCounts("$$N, kommt her.", "deDE").m).toEqual(reader(1, 0, 0));
+    expect(playerTokenCounts("die Legion $Ns", "deDE").m).toEqual(reader(1, 0, 0));
+    expect(playerTokenCounts("谢谢你，$$N朋友。", "zhCN").m).toEqual(reader(1, 0, 0));
+    expect(playerTokenCounts("Hallo, $uBürger;Bürgerin:.", "deDE").G).toBe(1);
+    // Glued to a letter the language does not speak it, so the gate refuses the line.
+    expect(playerTokenCounts("Merci, $Nama.", "frFR").m).toEqual(reader(0, 0, 0));
+    expect(playerTokenCounts("Merci, $Ns.", "frFR").m).toEqual(reader(0, 0, 0));
+  });
+
+  it("counts the tokens inside a branch on the side each reader takes", () => {
+    const line = "Sei $Gun $C:una $C; coraggioso.";
+    expect(playerTokenCounts(line, "itIT")).toEqual({ G: 1, m: reader(0, 1, 0), f: reader(0, 1, 0) });
+    expect(playerTokenCounts("Sei $Gun guerriero:una guerriera; coraggioso.", "itIT").f).toEqual(reader(0, 0, 0));
+    expect(playerTokenCounts("Sei $Gun $C $C:una guerriera; coraggioso.", "itIT")).toEqual({
+      G: 1,
+      m: reader(0, 2, 0),
+      f: reader(0, 0, 0),
+    });
+  });
+
+  it("does not read a token into the text around a branch", () => {
+    expect(playerTokenCounts("$$gHerr:Dame;Name", "deDE")).toEqual({ G: 1, m: reader(0, 0, 0), f: reader(0, 0, 0) });
   });
 });

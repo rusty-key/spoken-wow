@@ -12,7 +12,9 @@ import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from
 
 import { catalogue } from "@/lib/readables/catalogue";
 import { closeDb, db } from "@/lib/db";
-import { asSystem } from "@/lib/teams/testing";
+import { forgetIgnores, readIgnores } from "@/lib/quests/ignores";
+import { asTeams } from "@/lib/teams/acting";
+import { asSystem, dropTeam, newTeamIn, systemRows } from "@/lib/teams/testing";
 import { BASE_LANG } from "@/lib/lang";
 import { upsertResolution } from "@/lib/npc/store";
 import { corpus, lineIndex } from "@/lib/quests/catalogue";
@@ -20,6 +22,7 @@ import { isGap, matchingLines, NO_CONTEXT } from "@/lib/search";
 
 import { acceptCorrection } from "./correction";
 import { lineIsInExplorer, momentHasSpeaker, resolveContribution, resolveContributions } from "./accept";
+import { LETTER_COPY_ITEM } from "@readables-tools/lib/owners.mjs";
 import {
   broadcastGossipStem,
   gossipFileName,
@@ -322,6 +325,29 @@ describe("resolveContribution: quests accept", () => {
     ]);
     expect(await speakersOf(id)).toHaveLength(1);
     expect(await linesFor(questLineId(questId, "accept"))).toHaveLength(1);
+  });
+
+  it("rejects a written line in a language by ignoring it for every team of the language", async () => {
+    const id = await questContribution();
+    await asSystem.query(`update "contribution" set "locale" = 'deDE' where "id" = $1`, [id]);
+    const lineId = questLineId(questId, "accept");
+    await asSystem.query(
+      `insert into "quest_line" ("lineId", "lang", "version", "isCurrent", "origin", "source", "fileName", "text", "originalText", "note")
+       values ($1, 'deDE', 1, true, 'contributed', 'quest', $2, 'x', 'x', $3)`,
+      [lineId, questFileName(questId, "accept"), `contribution #${id}`],
+    );
+    const second = await newTeamIn("deDE", false, "accept-second");
+    try {
+      expect(await resolveContribution(id, "rejected", RESOLVER, undefined, true)).toMatchObject({ ok: true });
+      expect(await systemRows(`select "lang", "teamId" from "line_ignore" where "lineId" = $1`, [lineId])).toEqual([
+        { lang: "deDE", teamId: null },
+      ]);
+      forgetIgnores();
+      expect((await readIgnores("deDE")).has(lineId)).toBe(true);
+      expect((await asTeams(new Map([["deDE", second]]), () => readIgnores("deDE"))).has(lineId)).toBe(true);
+    } finally {
+      await dropTeam(second);
+    }
   });
 
   it("the corpus wins on a collision: writes no line, only its NPC as one more speaker", async () => {
@@ -1465,6 +1491,15 @@ describe("resolveContribution: a readables contribution, in any language", () =>
     expect(await resolveContribution(second, "accepted", RESOLVER)).toMatchObject({ ok: true });
     expect(await versionsOf(`b:${base}`, "esES")).toHaveLength(2);
     expect(await ownersOf(`b:${base}`)).toEqual({ ownerKind: "object", ownerIds: [base, base + 5] });
+  });
+
+  it("gives no page the Plain Letter a letter becomes when taken out of the mailbox", async () => {
+    const id = await readablesRow({
+      locale: "esES", text: `Carta ${base}.`, meta: { book: `Carta lisa ${base}`, number: "1", item: String(LETTER_COPY_ITEM) },
+    });
+    expect(await resolveContribution(id, "accepted", RESOLVER)).toMatchObject({ ok: true });
+    const [page] = await pagesTitled(`Carta lisa ${base}`, "esES");
+    expect(await ownersOf(page.lineId)).toEqual({ ownerKind: null, ownerIds: null });
   });
 
   it("gives a minted page the item it was read from, named so the page keeps its title", async () => {

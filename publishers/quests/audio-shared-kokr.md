@@ -4,7 +4,7 @@ release: quests-audio-shared-koKR
 section: quests
 lang: koKR
 pack: shared
-version: 0.0.2
+version: 0.0.3
 github: false
 slug: spoken-korean-audio-quests-shared
 name: Spoken Korean Audio: Quests - Shared

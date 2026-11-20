@@ -5,6 +5,8 @@ as real Lua literals: a bare backslash would escape the quote that closes the ke
 whole data file would fail to compile for every player holding the pack.
 """
 
+import re
+
 ESCAPES = {"\\": "\\\\", '"': '\\"', "\n": "\\n", "\r": "\\r"}
 
 
@@ -39,6 +41,20 @@ def lua_value(value, depth: int = 0) -> str:
     if isinstance(value, (list, tuple)):
         return lua_block([lua_value(item, depth + 1) for item in value], depth)
     raise TypeError(f"no Lua literal for {type(value).__name__}")
+
+
+LUA_KEYWORDS = {"and", "break", "do", "else", "elseif", "end", "false", "for", "function", "goto",
+                "if", "in", "local", "nil", "not", "or", "repeat", "return", "then", "true",
+                "until", "while"}
+
+
+def lua_global(name: str) -> str:
+    """An expression naming the global `name`: bare where `name` is a Lua identifier, which is
+    how every pack already shipped writes it, and `_G["name"]` where it is not - a team's pack
+    is named by its slug, which may hold a hyphen."""
+    if re.fullmatch(r"[A-Za-z_][A-Za-z0-9_]*", name) and name not in LUA_KEYWORDS:
+        return name
+    return f"_G[{lua_string(name)}]"
 
 
 def lua_key(key) -> str:

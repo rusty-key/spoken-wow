@@ -6,6 +6,7 @@ lang: itIT
 pack: alliance
 version: 0.0.2
 github: false
+inMeta: false
 slug: spoken-italian-audio-quests-alliance
 name: Spoken Italian Audio: Quests - Alliance
 summary: Alliance-only quest dialogue, voiced in Italian. Pair it with the Shared pack. Needs Spoken.
