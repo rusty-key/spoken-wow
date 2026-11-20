@@ -1,6 +1,7 @@
 /**
- * Give every built-in language a team on the test database, as production's have. A test
- * database starts from English alone, so every per-team write in another language would refuse.
+ * Give every language a team on the test database, as production's have: the built-in ones and
+ * the rows the migrations seed (a team's language, such as Polish). A test database starts from
+ * English alone, so every per-team write in another language would refuse.
  */
 import type { TestProject } from "vitest/node";
 import { Client } from "pg";
@@ -13,7 +14,8 @@ export default async function setup(project: TestProject) {
   const client = new Client({ connectionString: url });
   try {
     await client.connect();
-    for (const lang of allLangs()) {
+    const { rows } = await client.query<{ code: string }>(`select "code" from "language"`);
+    for (const lang of new Set([...allLangs(), ...rows.map((row) => row.code)])) {
       await client.query(`select found_lang_team($1) where team_of_lang($1) is null`, [lang]);
     }
   } catch {
