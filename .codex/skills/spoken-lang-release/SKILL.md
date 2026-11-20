@@ -21,7 +21,9 @@ It compares the locally installed pack contents with the newest approved
 CurseForge file by path, size, and CRC, writes changelogs under the configured
 work directory, and identifies only packs meeting the configured clip/share
 threshold. Report the `worth` packs first, then collecting or blocked packs,
-and print each suggested command in its own code block.
+then each `error` pack with its reason. When any pack has an `error` verdict,
+do not report that no pack is worth releasing; state that the check is incomplete.
+Print each suggested command in its own code block.
 
 Never read, print, copy, or expose `spoken-release.env`; it contains the
 CurseForge token. Never run the commands printed by the checker and never
