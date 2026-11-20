@@ -4,6 +4,10 @@ Spoken Player until 3.0.0, when it became Spoken and took its modules into one d
 
 ## Unreleased
 
+- **Quest pages in Azeroth's Compendium show the progress text**, what the NPC says while a quest
+  is under way, between the description and the completion, with its own Play and Report. A quest
+  a voice pack voices only in its progress now counts for Voiced Only, and shift-click on its row
+  plays it. *([anon1231823](https://github.com/anon1231823))*
 - **A non-English client finds Forever's newer places.** The area names now come from client
   1.60.1.70959, so the new dungeons' areas and the places Forever renamed match their stories.
   Dalaran in Korean and Russian, Dire Maul in Spanish and Dreadmaul Post in Russian have no

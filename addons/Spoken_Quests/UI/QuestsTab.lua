@@ -89,10 +89,9 @@ local function SectionOf(sort)
 end
 local filter = ""
 
--- What a quest's page shows and plays: the offer and the hand-in. The progress, said while the
--- quest is under way, is left out.
-local MOMENTS = { "accept", "complete" }
-local HEADINGS = { accept = "QUEST_PART_ACCEPT", complete = "QUEST_PART_COMPLETE" }
+-- A quest page's parts, in the order a player meets them.
+local MOMENTS = { "accept", "progress", "complete" }
+local HEADINGS = { accept = "QUEST_PART_ACCEPT", progress = "QUEST_PART_PROGRESS", complete = "QUEST_PART_COMPLETE" }
 
 --------------------------------------------------------------------------------
 -- What there is
@@ -1045,13 +1044,15 @@ local function Shows(id, moment)
     return moment ~= "complete" or Completed(id) or Unlocked()
 end
 
--- Whether the page has words to show: the offer's, or the hand-in's where it shows. Looks at the
--- stored text only, so a row can ask it on every render.
+-- Reads stored text only, so a row can ask it on every render.
 function QuestsTab:HasWords(id)
-    return Stored(id, "accept") ~= nil or (Shows(id, "complete") and Stored(id, "complete") ~= nil)
+    for _, moment in ipairs(MOMENTS) do
+        if Shows(id, moment) and Stored(id, moment) ~= nil then return true end
+    end
+    return false
 end
 
--- Who says one moment of a quest: the hand-in is said by the one it is handed
+-- Who says one moment of a quest: the progress and the hand-in are said by the one it is handed
 -- in to (`ender`, `enderObject` in the data, absent where that is the giver), the offer by its
 -- giver, as the quest log's Play names it.
 local function Speaker(id, moment)
@@ -1079,9 +1080,8 @@ local function SoundData(id, moment, origin)
 end
 
 -- Whether a voice pack has any of a quest (Voiced Only), and a quest played from its row
--- (shift-click): what is said when it is offered and handed in, as far as the voice packs have
--- it, named for who says it. A quest voiced only in its progress counts as unvoiced. The quest's
--- page plays each part from its own Play.
+-- (shift-click): what is said when it is offered, under way and handed in, as far as the voice
+-- packs have it, named for who says it. The quest's page plays each part from its own Play.
 local PLAY = {
     has = function(id)
         for _, moment in ipairs(MOMENTS) do
@@ -1089,9 +1089,9 @@ local PLAY = {
         end
         return false
     end,
-    -- One part, the first a pack voices: the offer and the hand-in are said at
-    -- different times, not as one speech. Its words go with it, for the window to show. Nothing
-    -- where a part of the quest is queued already: one part of a quest at a time.
+    -- One part, the first a pack voices: the parts are said at different times, not as one
+    -- speech. Its words go with it, for the window to show. Nothing where a part of the quest is
+    -- queued already: one part of a quest at a time.
     -- `queued`: behind what the queue already holds, not played at once.
     start = function(id, queued)
         if #Clips(id) > 0 then return end
@@ -1155,7 +1155,7 @@ end
 -- once, given the speaker of the quest shown. false where Spoken could not make one.
 local partFaces = {}
 local FACE_SIZE = 44
-local BULLETS = { accept = "quest-accept", complete = "quest-complete" }
+local BULLETS = { accept = "quest-accept", progress = "quest-progress", complete = "quest-complete" }
 
 local function PartFace(moment)
     if partFaces[moment] ~= nil then return partFaces[moment] or nil end
@@ -1193,10 +1193,9 @@ local function FaceSpeaker(id, moment)
     return { objectOrItem = true, icon = icon, bullet = bullet }
 end
 
--- A quest's words in parts, the offer and the hand-in, each headed by the face of who says it
--- beside their name over the part's name, with Report for every part and Play where a pack voices
--- it; the hand-in only where it Shows. A part a pack voices whose words are not known says so,
--- and is there to be played and reported. nil with no words and nothing voiced.
+-- A quest's words in parts, each headed by the speaker's face and name, with Report always and Play
+-- where a pack voices it; the hand-in only where it Shows. A voiced part with unknown words says
+-- so and can still be played and reported. nil with no words and nothing voiced.
 local function Parts(id)
     local parts = {}
     local reportsHidden = Spoken and Spoken.AreReportButtonsHidden and Spoken:AreReportButtonsHidden()
@@ -1747,8 +1746,8 @@ local function OnEvent(_, event, a)
     if event == "QUEST_DETAIL" then
         QuestsTab:Keep("accept", GetQuestText and VO.NotSecret(GetQuestText()), GetTitleText and VO.NotSecret(GetTitleText()))
     elseif event == "QUEST_PROGRESS" then
-        -- Its title alone: the page has no progress part to show its words.
-        QuestsTab:Keep("progress", nil, GetTitleText and VO.NotSecret(GetTitleText()))
+        QuestsTab:Keep("progress", GetProgressText and VO.NotSecret(GetProgressText()),
+            GetTitleText and VO.NotSecret(GetTitleText()))
     elseif event == "QUEST_COMPLETE" then
         QuestsTab:Keep("complete", GetRewardText and VO.NotSecret(GetRewardText()), GetTitleText and VO.NotSecret(GetTitleText()))
     elseif event == "QUEST_TURNED_IN" then
