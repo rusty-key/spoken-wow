@@ -3,8 +3,9 @@
 -- The dungeons and raids, by instance map, for every tab of Azeroth's Compendium: `zone`, the
 -- uiMapID of the zone their entrance is in, where the tabs list them; `story`, the Places area
 -- that tells their story ({ uiMapID, key }), absent where none does; and their name in every
--- language, from the client's Map table (Forever 1.60.1.70959, itIT 1.60.1.70338, wago.tools). The
--- quests' and the readables' exporters file a dungeon's quests and writings by the same maps. Regenerate with:
+-- language, from the client's Map table (Forever 1.60.1.70959, itIT 1.60.1.70338,
+-- wago.tools). The quests' and the readables' exporters file a dungeon's quests and writings by the
+-- same maps. Regenerate with:
 --   make dungeons
 --
 -- A global rather than a private namespace: a data file cannot reach into the addon's environment.

@@ -19,7 +19,7 @@ const SOURCE = fileURLToPath(new URL("./dungeons.json", import.meta.url));
 const OUT = fileURLToPath(new URL("../../addons/Spoken/Data/Dungeons.lua", import.meta.url));
 export const LOCALES = ["deDE", "esES", "esMX", "frFR", "ptBR", "ruRU", "koKR", "zhCN", "zhTW", "itIT"];
 // The last Forever build wago served a language's own Map strings in, for a language it now serves
-// in English: Forever's itIT since 1.60.1.70450. Retail's itIT is no stand-in, since it carries the
+// in English: Forever's itIT since 1.60.1.70374. Retail's itIT is no stand-in, since it carries the
 // names later expansions gave the maps ("Vecchio Monastero Scarlatto"). A map newer than this build
 // has no name in the language.
 export const STRINGS_BUILD = { itIT: "1.60.1.70338" };
@@ -53,7 +53,7 @@ export async function mapNames(wanted, { table = wagoTable } = {}) {
   for (const locale of ["enUS", ...LOCALES]) {
     let rows = locale === "enUS" ? english : await table("Map", { build: FOREVER_BUILD, locale });
     const fallback = STRINGS_BUILD[locale];
-    if (fallback && rows.every((row) => row.MapName_lang === englishOf.get(row.ID))) {
+    if (fallback && rows.length && rows.every((row) => row.MapName_lang === englishOf.get(row.ID))) {
       rows = await table("Map", { build: fallback, locale });
     }
     names[locale] = {};
@@ -96,8 +96,9 @@ export function render(dungeons, names, worldBosses = {}) {
 -- The dungeons and raids, by instance map, for every tab of Azeroth's Compendium: \`zone\`, the
 -- uiMapID of the zone their entrance is in, where the tabs list them; \`story\`, the Places area
 -- that tells their story ({ uiMapID, key }), absent where none does; and their name in every
--- language, from the client's Map table (Forever ${FOREVER_BUILD}, itIT ${STRINGS_BUILD.itIT}, wago.tools). The
--- quests' and the readables' exporters file a dungeon's quests and writings by the same maps. Regenerate with:
+-- language, from the client's Map table (Forever ${FOREVER_BUILD}, itIT ${STRINGS_BUILD.itIT},
+-- wago.tools). The quests' and the readables' exporters file a dungeon's quests and writings by the
+-- same maps. Regenerate with:
 --   make dungeons
 --
 -- A global rather than a private namespace: a data file cannot reach into the addon's environment.

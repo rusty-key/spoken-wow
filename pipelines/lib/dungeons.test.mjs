@@ -39,3 +39,12 @@ test("only the wanted maps are named", async () => {
   const table = fakeTable({ [`${FOREVER_BUILD}/enUS`]: [row(33, "Shadowfang Keep"), row(1, "Kalimdor")] });
   assert.deepEqual((await mapNames((map) => map === 33, { table })).enUS, { 33: "Shadowfang Keep" });
 });
+
+test("an empty table is no sign of English, so a failed fetch shows as missing names", async () => {
+  const table = fakeTable({
+    [`${FOREVER_BUILD}/enUS`]: [row(33, "Shadowfang Keep")],
+    [`${FOREVER_BUILD}/itIT`]: [],
+    [`${STRINGS_BUILD.itIT}/itIT`]: [row(33, "Forte Zannascura")],
+  });
+  assert.deepEqual((await mapNames(() => true, { table })).itIT, {});
+});
