@@ -1,7 +1,7 @@
 ---
 curseforge: 1746507
 lang: itIT
-version: 1.0.0
+version: 1.0.1
 slug: spoken-italian
 name: Spoken: Italian
 summary: Meta package: installs Spoken with every Italian voice pack, quests and gossip. Install through the CurseForge app.
@@ -18,14 +18,15 @@ license: MIT
 
 ## What it installs
 
-[Spoken](https://www.curseforge.com/wow/addons/spoken), which carries Spoken Quests, Spoken Places and Spoken Readables inside it, and the Italian voice packs:
+[Spoken](https://www.curseforge.com/wow/addons/spoken), which carries Spoken Quests, Spoken Places, Spoken Readables and Spoken Bosses inside it, and the Italian voice packs:
 
 | Module | Voices | Its audio |
 | --- | --- | --- |
 | Spoken Quests | quest dialogue | [Spoken Italian Audio: Quests](https://www.curseforge.com/wow/addons/spoken-italian-audio-quests-shared) |
 | Spoken Quests | NPC gossip | [Spoken Italian Audio: Gossip](https://www.curseforge.com/wow/addons/spoken-italian-audio-gossip) |
+| Spoken Places | zone and subzone lore | [Spoken Italian Audio: Places](https://www.curseforge.com/wow/addons/spoken-italian-audio-places) |
 
-Spoken Places and Spoken Readables have no Italian voice pack yet, so they play in English, or not at all, depending on **If a Voice Is Missing**.
+Spoken Readables and Spoken Bosses have no Italian voice pack yet, so they play in English, or not at all, depending on **If a Voice Is Missing**.
 
 ## Language
 

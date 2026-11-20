@@ -2,6 +2,7 @@
 release: places-audio-itIT
 section: places
 lang: itIT
+curseforge: 1816994
 version: 0.0.1
 slug: spoken-italian-audio-places
 name: Spoken Italian Audio: Places
