@@ -52,8 +52,9 @@ timeout; split large reads by section. Navigation drops `window.__spoken`, so
 load the helper again after navigation.
 
 The Text API token is a local file referenced by the language config. Do not
-print, expose, or log it. Use it only for the guarded PATCH operations described
-by the canonical skill, with `expectedVersion` and a batch log entry.
+print, expose, or log it. Use it only for the authenticated GET that reads the
+current text and version, and for the guarded PATCH that follows, as described by
+the canonical skill, with `expectedVersion` and a batch log entry.
 
 Prefer Codex state under `~/.codex/spoken/<lang>/`. If a legacy
 `~/.claude/spoken/<lang>/config.json` is the only config, read it without
