@@ -49,6 +49,14 @@ window.__spoken = (({ lang, doneModels, tbcQuestCeiling } = {}) => {
     return null;
   }
 
+  // Every page carries its arrays even when empty; a missing one means the page changed shape or
+  // is not what we asked for, which must not read as an empty worklist.
+  function need(text, key, path) {
+    const a = arrayAfter(text, key);
+    if (a === null) throw new Error(`${path} has no "${key}" array`);
+    return a;
+  }
+
   function allArraysAfter(text, key) {
     const out = [];
     for (let i = text.indexOf(`"${key}":[`); i >= 0; i = text.indexOf(`"${key}":[`, i + 1)) {
@@ -73,7 +81,8 @@ window.__spoken = (({ lang, doneModels, tbcQuestCeiling } = {}) => {
   async function contributions() {
     const out = {};
     for (const s of SECTIONS) {
-      const ready = (arrayAfter(await flight(`/${LANG}/contributions/${s}?client=all`), "matching") ?? []).filter((r) => r.status === "new");
+      const path = `/${LANG}/contributions/${s}?client=all`;
+      const ready = need(await flight(path), "matching", path).filter((r) => r.status === "new");
       const row = { ready: ready.map((r) => r.id) };
       if (s === "quests") {
         const blocked = (await blockedRows()).filter((r) => r.status === "new");
@@ -91,7 +100,8 @@ window.__spoken = (({ lang, doneModels, tbcQuestCeiling } = {}) => {
   async function blockedRows() {
     const seen = new Map();
     for (let page = 1; page <= 20; page++) {
-      const rows = arrayAfter(await flight(`/${LANG}/contributions/quests?client=all&bucket=blocked&page=${page}`), "initial") ?? [];
+      const path = `/${LANG}/contributions/quests?client=all&bucket=blocked&page=${page}`;
+      const rows = need(await flight(path), "initial", path);
       const before = seen.size;
       for (const r of rows) seen.set(r.id, r);
       if (!rows.length || seen.size === before) break;
@@ -121,7 +131,8 @@ window.__spoken = (({ lang, doneModels, tbcQuestCeiling } = {}) => {
     const want = new Set(ids);
     const found = new Map();
     for (let page = 1; page <= maxPages && found.size < want.size; page++) {
-      const rows = arrayAfter(await flight(`/${LANG}/contributions/${section}?client=all&page=${page}`), "initial") ?? [];
+      const path = `/${LANG}/contributions/${section}?client=all&page=${page}`;
+      const rows = need(await flight(path), "initial", path);
       if (!rows.length) break;
       for (const r of rows) if (want.has(r.id)) found.set(r.id, r);
     }
@@ -134,7 +145,9 @@ window.__spoken = (({ lang, doneModels, tbcQuestCeiling } = {}) => {
     for (const s of SECTIONS) {
       // /corrections redirects to ?show=corrections, and the page carries two "initial" arrays:
       // the first (empty) for rows, the second, with `wordings`, for the corrections.
-      const text = await flight(`/${LANG}/contributions/${s}?client=all&show=corrections`);
+      const path = `/${LANG}/contributions/${s}?client=all&show=corrections`;
+      const text = await flight(path);
+      need(text, "initial", path);
       const rows = allArraysAfter(text, "initial").find((a) => a?.length && a[0].wordings !== undefined) ?? [];
       for (const r of rows) {
         if (r.status !== "new") continue;
@@ -207,7 +220,8 @@ window.__spoken = (({ lang, doneModels, tbcQuestCeiling } = {}) => {
     const seen = new Set();
     for (const s of REPORT_SECTIONS) {
       for (let page = 1; page <= 10; page++) {
-        const groups = arrayAfter(await flight(`/${LANG}/reports/${s}?page=${page}`), "groups") ?? [];
+        const path = `/${LANG}/reports/${s}?page=${page}`;
+        const groups = need(await flight(path), "groups", path);
         // Past the last page the server repeats it: stop once a page brings no new report.
         let fresh = 0;
         for (const g of groups) {
