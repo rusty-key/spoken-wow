@@ -23,7 +23,8 @@ import pg from "pg";
 import { isClientLocale } from "../../../lib/locales.mjs";
 import { releaseTeamSql } from "../../../lib/release-team.mjs";
 import { packTimes } from "../../../lib/word-times.mjs";
-import { canBeHad, compareIds, indexLua, luaId, pageIndex, quote } from "./lua.mjs";
+import { canBeHad, compareIds, indexLua, luaId, pageIndex, placeLua, quote } from "./lua.mjs";
+import { handPlace } from "./hand.mjs";
 import { shownPage } from "./text.mjs";
 
 const ROOT = new URL("../../../../", import.meta.url).pathname;
@@ -72,7 +73,8 @@ export function localeEntries(pages, names) {
     const titles = [...new Set(owned.length ? owned : [page.ownTitle].filter(Boolean))].sort();
     const pageId = page.numeric ? Number(page.pageId) : page.pageId;
     const bookId = /^\d+$/.test(page.bookId) ? Number(page.bookId) : page.bookId;
-    const entry = { pageId, bookId, pageNumber: page.pageNumber, texts: page.texts, titles };
+    const entry = { pageId, bookId, pageNumber: page.pageNumber, texts: page.texts, titles,
+      ownerKind: page.ownerKind, ownerIds: page.ownerIds };
     (page.inEnglish && page.numeric ? known : extra).push(entry);
   }
   return { known, extra };
@@ -128,14 +130,42 @@ export function packLua(lang, clips, entries = null) {
       }
       lines.push("\t},", "", "\tbooks = {");
       const books = new Map();
+      const items = new Map();
+      const bookPlaces = new Map();
       for (const e of [...entries.extra].sort((a, b) => a.pageNumber - b.pageNumber)) {
-        if (!books.has(e.bookId)) books.set(e.bookId, []);
-        books.get(e.bookId).push(e.pageId);
+        if (!books.has(e.bookId)) books.set(e.bookId, { pages: [], title: e.titles[0] });
+        books.get(e.bookId).pages.push(e.pageId);
+        const hand = handPlace(e.bookId);
+        if (hand.type && hand.zones.length) bookPlaces.set(e.bookId, hand);
+        if (e.ownerKind === "item") {
+          for (const item of e.ownerIds ?? []) {
+            const previous = items.get(item);
+            items.set(item, previous !== undefined && previous !== e.bookId ? null : e.bookId);
+          }
+        }
       }
       for (const bookId of [...books.keys()].sort(compareIds)) {
-        lines.push(`\t\t[${luaId(bookId)}] = { pages = { ${books.get(bookId).map(luaId).join(", ")} } },`);
+        const book = books.get(bookId);
+        const title = book.title ? `, title = ${quote(book.title)}` : "";
+        lines.push(`\t\t[${luaId(bookId)}] = { pages = { ${book.pages.map(luaId).join(", ")} }${title} },`);
       }
       lines.push("\t},");
+      if (bookPlaces.size > 0) {
+        lines.push("", "\tbookPlaces = {");
+        for (const [bookId, place] of [...bookPlaces.entries()].sort(([a], [b]) => compareIds(a, b))) {
+          lines.push(placeLua(bookId, place));
+        }
+        lines.push("\t},");
+      }
+      const unambiguousItems = [...items.entries()].filter(([, bookId]) => bookId !== null)
+        .sort(([a], [b]) => Number(a) - Number(b));
+      if (unambiguousItems.length > 0) {
+        lines.push("", "\titems = {");
+        for (const [item, bookId] of unambiguousItems) {
+          lines.push(`\t\t[${item}] = ${luaId(bookId)},`);
+        }
+        lines.push("\t},");
+      }
     }
   }
 

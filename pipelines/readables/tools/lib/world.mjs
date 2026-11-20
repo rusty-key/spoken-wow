@@ -88,9 +88,10 @@ export const FOREVER_OBJECTS = [
   671479, // On The Windlord
 ];
 // Items, whose pages come from Forever's client (the repack has no item table). Advisor
-// Nazgrel hands his Instructions to an elf guest in Grommash Hold. The Bloody Note item is
-// left out: it opens object 617704's pages, and a chain has one kind of owner.
-export const FOREVER_ITEMS = [285357];
+// Nazgrel hands his Instructions to an elf guest in Grommash Hold, and Mountaineer Gretchen's
+// Report is a quest reward. The Bloody Note item is left out: it opens object 617704's pages,
+// and a chain has one kind of owner.
+export const FOREVER_ITEMS = [280430, 285357];
 
 /**
  * The FOREVER_OBJECTS and the given item owners, with every page they reach, from the Forever

@@ -27,9 +27,147 @@ SpokenReadables.eventFrame = frame
 frame:RegisterEvent("ADDON_LOADED")
 frame:RegisterEvent("PLAYER_LOGIN")
 frame:RegisterEvent("PLAYER_ENTERING_WORLD")
+frame:RegisterEvent("BAG_UPDATE")
 frame:RegisterEvent("ITEM_TEXT_BEGIN")
 frame:RegisterEvent("ITEM_TEXT_READY")
 frame:RegisterEvent("ITEM_TEXT_CLOSED")
+
+local function BagSlots(bag)
+	if C_Container and C_Container.GetContainerNumSlots then
+		return C_Container.GetContainerNumSlots(bag) or 0
+	end
+	return GetContainerNumSlots and GetContainerNumSlots(bag) or 0
+end
+
+local function ItemID(bag, slot)
+	if C_Container and C_Container.GetContainerItemID then
+		return C_Container.GetContainerItemID(bag, slot)
+	end
+	if GetContainerItemID then
+		return GetContainerItemID(bag, slot)
+	end
+	if C_Container and C_Container.GetContainerItemInfo then
+		local info = C_Container.GetContainerItemInfo(bag, slot)
+		local link = info and info.hyperlink
+		return link and tonumber(string.match(link, "item:(%d+)"))
+	end
+	if GetContainerItemInfo then
+		local _, _, _, _, _, _, link = GetContainerItemInfo(bag, slot)
+		return link and tonumber(string.match(link, "item:(%d+)"))
+	end
+end
+
+local function ItemCount(bag, slot)
+	if C_Container and C_Container.GetContainerItemInfo then
+		local info = C_Container.GetContainerItemInfo(bag, slot)
+		return info and info.stackCount or 1
+	end
+	if GetContainerItemInfo then
+		local _, count = GetContainerItemInfo(bag, slot)
+		return count or 1
+	end
+	return 1
+end
+
+-- Bump when the quest-to-readable lookup changes so characters that already ran an older
+-- backfill are rescanned automatically after an addon update.
+local QUEST_BACKFILL_VERSION = 5
+
+local function CompletedQuests()
+	local completed = {}
+	if C_QuestLog and C_QuestLog.GetAllCompletedQuestIDs then
+		local quests = C_QuestLog.GetAllCompletedQuestIDs()
+		if not quests then return nil end
+		for _, questID in ipairs(quests) do
+			completed[questID] = true
+		end
+		return completed
+	end
+	if GetQuestsCompleted then
+		local quests = GetQuestsCompleted({})
+		if not quests then return nil end
+		for questID, isCompleted in pairs(quests or {}) do
+			if isCompleted then completed[questID] = true end
+		end
+		return completed
+	end
+	return nil
+end
+
+--- Backfill readable items received from direct quest rewards before this feature existed.
+function SpokenReadables:BackfillQuestReadables()
+	if not SpokenReadablesCharacter or SpokenReadablesCharacter.questReadableBackfill == QUEST_BACKFILL_VERSION then
+		return
+	end
+	local completed = CompletedQuests()
+	local places = _G.SpokenReadablesPlaces and SpokenReadablesPlaces.books
+	if not completed then return end
+	if places then
+		for book, place in pairs(places) do
+			for _, questID in ipairs(place.quests or {}) do
+				if completed[questID] and self:HasBookText(book) then
+					self:MarkBookFound(book)
+					break
+				end
+			end
+		end
+	end
+
+	-- Questie is optional, but when installed it can fill this in before Places.lua has been
+	-- regenerated with quest metadata. Its quest index identifies source items exactly; do not
+	-- use the item reverse index because it may include a choice reward the player did not take.
+	local questie = _G.QuestieDB
+	local data = self:Data()
+	local owners = data and data.owners and data.owners.item
+	local questQuery = questie and questie.QueryQuestSingle
+	if not questQuery and _G.LibQuestieDB and _G.LibQuestieDB.Quest then
+		questQuery = _G.LibQuestieDB.Quest.Get
+	end
+	if owners then
+		if questQuery then
+			for questID in pairs(completed) do
+				local itemID = questQuery(questID, "sourceItemId")
+				local book = itemID and owners[itemID]
+				if book and self:HasBookText(book) then self:MarkBookFound(book) end
+			end
+		end
+	end
+	SpokenReadablesCharacter.questReadableBackfill = QUEST_BACKFILL_VERSION
+end
+
+--- The readable items currently in the player's bags, counted by item ID.
+function SpokenReadables:ReadableItemSnapshot()
+	local current = {}
+	for bag = 0, NUM_BAG_SLOTS or 4 do
+		for slot = 1, BagSlots(bag) do
+			local itemID = ItemID(bag, slot)
+			if self:BookForItem(itemID) then
+				current[itemID] = (current[itemID] or 0) + ItemCount(bag, slot)
+			end
+		end
+	end
+	return current
+end
+
+--- Remember text-bearing notes as soon as they enter the bags, without opening or reading them.
+function SpokenReadables:OnBagUpdate()
+	local current = self:ReadableItemSnapshot()
+	if not self.hasLoggedIn then
+		self.readableItemCounts = current
+		return
+	end
+	if not self.readableItemCounts then
+		self.readableItemCounts = current
+		return
+	end
+	local previous = self.readableItemCounts or {}
+	for itemID, count in pairs(current) do
+		if count > (previous[itemID] or 0) then
+			self:MarkBookFound(self:BookForItem(itemID))
+		end
+	end
+	self.readableItemCounts = current
+end
 
 --- A page became available. The addon's whole in-game entry point.
 function SpokenReadables:OnTextReady()
@@ -159,6 +297,16 @@ frame:SetScript("OnEvent", function(_, name, payload, second)
 		-- and community packs load after it and have declared nothing yet. Every addon has loaded
 		-- by now, and no menu has been built.
 		SpokenReadables:GetAudioPacks()
+		SpokenReadables.hasLoggedIn = true
+		-- Establish the starting inventory so items already owned when the character logs in are
+		-- not treated as newly received. Later BAG_UPDATE events record newly acquired notes.
+		SpokenReadables.readableItemCounts = SpokenReadables:ReadableItemSnapshot()
+		SpokenReadables:BackfillQuestReadables()
+	elseif name == "BAG_UPDATE" then
+		SpokenReadables:OnBagUpdate()
+		-- Completed-quest history can be unavailable during login on some clients. A later bag
+		-- event is a reliable same-session opportunity to retry the still-pending backfill.
+		if SpokenReadables.hasLoggedIn then SpokenReadables:BackfillQuestReadables() end
 	elseif name == "PLAYER_ENTERING_WORLD" then
 		SpokenReadables:SetupSource()
 		if SpokenReadables.SetupOpeners then
@@ -184,6 +332,7 @@ frame:SetScript("OnEvent", function(_, name, payload, second)
 		if SpokenReadables.SetupReadables then
 			SpokenReadables:SetupReadables()
 		end
+		if SpokenReadables.hasLoggedIn then SpokenReadables:BackfillQuestReadables() end
 	end
 end)
 

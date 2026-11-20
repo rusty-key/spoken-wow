@@ -152,6 +152,7 @@ test-player: ## Run the addons' Lua tests (needs luajit)
 	@$(LUA) tests/lua/readables_close_test.lua
 	@$(LUA) tests/lua/readables_contribute_test.lua
 	@$(LUA) tests/lua/readables_compendium_test.lua
+	@$(LUA) tests/lua/readables_pack_compendium_test.lua
 	@$(LUA) tests/lua/quests_compendium_test.lua
 	@$(LUA) tests/lua/quests_shift_queue_test.lua
 	@$(LUA) tests/lua/quests_compendium_races_test.lua

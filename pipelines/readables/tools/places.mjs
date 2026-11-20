@@ -35,13 +35,34 @@ import { instanceZones, loadDungeons } from "../../lib/dungeons.mjs";
 import { loadEnv } from "../../lib/env.mjs";
 import { FOREVER_BUILD, wagoTable } from "../../lib/wago.mjs";
 import { areaReader } from "./lib/area.mjs";
-import { cannotBeHad, dungeonsOf, foreverQuests, isTemplateCopy, typeOf } from "./lib/places.mjs";
-
-await loadEnv("readables");
+import { SOURCES_BY_HAND, applyHandSources, handPlace } from "./lib/hand.mjs";
+import { compareIds, luaTableId, placeLua, readableLua } from "./lib/lua.mjs";
+import { foreverQuests, generatedPlace, isTemplateCopy } from "./lib/places.mjs";
 
 const BOOKS = fileURLToPath(new URL("../../../addons/Spoken_Readables/Data/Books.lua", import.meta.url));
 const OUT = fileURLToPath(new URL("../../../addons/Spoken_Readables/Data/Places.lua", import.meta.url));
 const CORPUS = fileURLToPath(new URL("../../quests/corpus/corpus.json.gz", import.meta.url));
+
+export async function fixtureGozwin() {
+  const { books, pageText } = readableLua(await readFile(BOOKS, "utf8"));
+  const id = "nc0bf109d-e5d1-494d-ba1b-12a6b27352a8";
+  const sources = new Map();
+  const questRewards = new Map();
+  const kind = new Map();
+  const add = (book, zones) => sources.set(book, new Set(zones));
+  const addQuestReward = (book, quest) => questRewards.set(book, new Set([...(questRewards.get(book) ?? []), quest]));
+  applyHandSources({ sourcesByHand: { [id]: SOURCES_BY_HAND[id] }, resolveName: () => true,
+    objectZones: new Map(), add, addQuestReward, kind });
+  const hand = handPlace(id);
+  const record = generatedPlace({ id, book: books.get(id), kind: kind.get(id), spots: sources.get(id), hand,
+    questRewards, pageText });
+  return placeLua(id, record);
+}
+
+if (process.env.PLACES_FIXTURE === "gozwin") {
+  globalThis.__spokenPlacesFixture = await fixtureGozwin();
+} else {
+  await loadEnv("readables");
 // Forever's client, not Era's: Era's 1.15.9 also carries Season of Discovery and anniversary
 // items, and one that shares a vanilla page id lent that book its sources and zones.
 const BUILD = process.env.PLACES_BUILD ?? FOREVER_BUILD;
@@ -66,21 +87,6 @@ const UNSPAWNED = { "Dark Keeper Nameplate": 230 };
 // of Rumination's second page, and would make that Libram, dropped across Azeroth, a book on an
 // Undercity shelf.
 const NOT_PLACING = new Set([678602]);
-// Sources the world DB cannot see, by book id: an item a spell or a machine makes, a quest whose
-// giver it does not spawn. Each names a quest or an object, checked against the world DB, and
-// the zones, where the object's spawns do not give them.
-const SOURCES_BY_HAND = {
-  394: [{ how: "quest", quest: 1016, zones: [1440] }], // Divined Scroll: the Divining Scroll, used in Ashenvale
-  1171: [{ how: "quest", quest: 2944, zones: [1425] }], // Snapshot of Gammerita: taken in the Hinterlands
-  // Gnomeregan's punch cards, each made from the one before at a Matrix Punchograph.
-  1191: [{ how: "object", object: 142345 }], // 3005-A
-  1192: [{ how: "object", object: 142475 }], // 3005-B
-  1193: [{ how: "object", object: 142476 }], // 3005-C
-  1194: [{ how: "object", object: 142696 }], // 3005-D
-  2671: [{ how: "quest start", quest: 7636, zones: [1448] }], // Petrified Bark: Vartrus the Ancient, Felwood
-  2859: [{ how: "quest reward", quest: 8996, zones: [1427] }], // Brazier of Invocation: Bodley, Blackrock Mountain
-  2786: [{ how: "quest reward", quest: 8228, zones: [1455] }], // Fishing Tournament!: Barrus, Ironforge, whom the DB does not spawn
-};
 // The seasonal events' readables, had only while the event runs, by event: the Compendium lists
 // them under Holidays and Events, a line for each event. Their NPCs are spawned by the event, and
 // most have no spawn in the DB.
@@ -97,32 +103,6 @@ const ZONES_BY_HAND = {
   124: [1434], // Green Hills of Stranglethorn: the cover of Hemet Nesingwary's book, whose pages are found in Stranglethorn Vale
   11007: [1454], // Advisor Nazgrel's Instructions: Nazgrel hands it over in Grommash Hold, by gossip
 };
-// Types no title, icon or first page gives away, by book id: read off the words or the wiki.
-const TYPE_BY_HAND = {
-  15: "letter", // William's Shipment: "Hello Morgan, ..."
-  29: "note", // Crate of Horseshoes: "A note is attached to the crate."
-  58: "tablet", 62: "tablet", 285: "tablet", 324: "tablet", // the Troll Legends, from stone tablets
-  358: "tablet", 359: "tablet", // The Lay and The Fall of Ameth'Aran, tablets in Darkshore's ruins
-  73: "journal", // Book from Sven's Farm: Stalvan's diary
-  153: "book", 161: "book", 169: "book", 177: "book", // Green Hills chapters, bound
-  336: "letter", // Cloth Request: "To the Schneiders, ..."
-  439: "letter", // Kravel's Scheme: "Mr. Fizzlebub, the bearer of this letter..."
-  711: "letter", // Neeka's Report: "Helgrum, my compliments..."
-  794: "book", // Lorgalis Manuscript: a four-page history
-  1392: "letter", // Grape Manifest: "Brother Neals, ..."
-  1591: "plaque", // Etched Note: a sign on Jordan Stilwell's anvil
-  2271: "letter", // Cliffwatcher Longhorn Report: "Nataka, ..."
-  2514: "note", // Brock's List: a list of students
-  2807: "journal", // Decoded Tablet Transcription: a diary, "Day 1..."
-  2838: "letter", // From the Desk of Lord Victor Nefarius: "To Whom It May Concern, ..."
-  10322: "note", // Bloody Note: three pages, which would make it a book
-  11007: "letter", // Advisor Nazgrel's Instructions: "Elf, As a guest of the Horde, ..."
-  // The soldiers' letters from the Scourge invasion, and the reports the Keeper of the Rolls
-  // mails back for them.
-  2882: "letter", 2883: "letter", 2884: "letter",
-  2885: "letter", 2886: "letter", 2887: "letter", 2888: "letter", 2889: "letter", 2890: "letter",
-};
-
 // ---------------------------------------------------------------- the client's tables
 
 function table(name) {
@@ -132,20 +112,12 @@ function table(name) {
 // ---------------------------------------------------------------- the readables
 
 const booksLua = await readFile(BOOKS, "utf8");
-const bookPart = booksLua.slice(booksLua.indexOf("\tbooks = {"));
-const books = new Map();
-for (const m of bookPart.matchAll(/\[(\d+)\] = \{ title = "((?:[^"\\]|\\.)*)", pages = \{ ([\d, ]+) \}/g)) {
-  books.set(Number(m[1]), { title: m[2], pages: m[3].split(",").map(Number) });
-}
-const pageBook = new Map();
-for (const [id, book] of books) for (const page of book.pages) pageBook.set(page, id);
+const parsedBooks = readableLua(booksLua);
+const books = parsedBooks.books;
+const pageBook = parsedBooks.pageBook;
 if (books.size === 0) throw new Error(`no books read from ${BOOKS}`);
 // Each page's words, as Lua source: what a gravestone says decides that it is one.
-const pageText = new Map();
-const pagePart = booksLua.slice(booksLua.indexOf("\tpages = {"), booksLua.indexOf("\tbooks = {"));
-for (const m of pagePart.matchAll(/\[(\d+)\] = \{ book = \d+, number = \d+, text = "((?:[^"\\]|\\.)*)"/g)) {
-  pageText.set(Number(m[1]), m[2]);
-}
+const pageText = parsedBooks.pageText;
 
 // ---------------------------------------------------------------- where on the map
 
@@ -216,12 +188,18 @@ const q = async (sql, params = []) => (await db.query(sql, params))[0];
 const list = (xs) => [...new Set(xs)].length ? [...new Set(xs)] : [-1];
 
 const sources = new Map(); // book -> Set of zones it is had in, for those carried
+const questRewards = new Map(); // book -> Set of quests that directly reward its item
 const bookItems = new Map(); // book -> [ item ids ]
 const where = new Map();   // book -> Set of zones it stands in, for those in the world
 const kind = new Map();    // book -> "world" | "carried"
 function add(book, zones) {
   if (!sources.has(book)) sources.set(book, new Set());
   for (const z of zones) if (z) sources.get(book).add(z);
+}
+function addQuestReward(book, quest) {
+  if (!book || !quest) return;
+  if (!questRewards.has(book)) questRewards.set(book, new Set());
+  questRewards.get(book).add(quest);
 }
 
 async function names(tableName, idColumn, nameColumn, ids) {
@@ -267,7 +245,7 @@ try {
   // Carried: the items whose first page is a readable's.
   const itemBook = new Map();
   for (const r of await table("ItemSparse")) {
-    const page = Number(r.PageID || 0);
+    const page = luaTableId(r.PageID ?? 0);
     if (pageBook.has(page)) {
       itemBook.set(Number(r.ID), pageBook.get(page));
       if (!bookItems.has(pageBook.get(page))) bookItems.set(pageBook.get(page), []);
@@ -299,9 +277,9 @@ try {
   // crate's: [{ how, name, zones }] by item.
   async function sourcesOf(wanted) {
     const out = new Map();
-    const put = (item, how, name, zones) => {
+    const put = (item, how, name, zones, quest) => {
       if (!out.has(item)) out.set(item, []);
-      out.get(item).push({ how, name, zones: [...(zones ?? [])] });
+      out.get(item).push({ how, name, quest, zones: [...(zones ?? [])] });
     };
     // Creatures, killed or pickpocketed.
     for (const [column, how] of [["LootID", "drop"], ["PickPocketLootID", "pickpocket"]]) {
@@ -341,7 +319,10 @@ try {
         if (!want.has(Number(r[c]))) continue;
         const how = c === "StartItem" ? "quest start" : c.startsWith("Reward") ? "quest reward" : "quest";
         if (!questItems.has(Number(r.ID))) questItems.set(Number(r.ID), []);
-        questItems.get(Number(r.ID)).push([Number(r[c]), how]);
+        // Choice rewards are deliberately not retained: completed-quest history cannot tell
+        // which choice the player selected, so backfilling them would create false positives.
+        const directReward = /^RewardItem[1-4]$/.test(c) ? Number(r.ID) : undefined;
+        questItems.get(Number(r.ID)).push([Number(r[c]), how, directReward]);
       }
     }
     const mail = new Map();
@@ -367,7 +348,7 @@ try {
     for (const [quest, its] of questItems) {
       let zones = givers.get(quest);
       if (!zones?.size && questSort.get(quest) > 0) zones = [zoneOfArea(questSort.get(quest))].filter(Boolean);
-      for (const [i, how] of its) put(i, how, undefined, zones);
+      for (const [i, how, directReward] of its) put(i, how, undefined, zones, directReward);
     }
     // Sold.
     const vendors = await q("SELECT entry, item FROM npc_vendor WHERE item IN (?)", [list(wanted)]);
@@ -384,10 +365,15 @@ try {
   // Inside another item: the container's sources.
   const contained = await q("SELECT Entry, Item FROM item_loot_template WHERE Item IN (?)", [list(items)]);
   const viaContainer = await sourcesOf(contained.map((r) => Number(r.Entry)));
-  for (const [item, list_] of direct) for (const s of list_) add(itemBook.get(item), s.zones);
+  for (const [item, list_] of direct) for (const s of list_) {
+    const book = itemBook.get(item);
+    add(book, s.zones);
+    if (s.quest) addQuestReward(book, s.quest);
+  }
   for (const r of contained) {
     const book = itemBook.get(Number(r.Item));
-    const zones = new Set((viaContainer.get(Number(r.Entry)) ?? []).flatMap((s) => s.zones));
+    const containerSources = viaContainer.get(Number(r.Entry)) ?? [];
+    const zones = new Set(containerSources.flatMap((s) => s.zones));
     add(book, zones);
   }
 
@@ -396,50 +382,35 @@ try {
   const handQuests = await names(QUEST, "ID", "LogTitle", hand.filter((s) => s.quest).map((s) => s.quest));
   const handObjects = await names(OBJECT, "entry", "name", hand.filter((s) => s.object).map((s) => s.object));
   const handObjectZones = await spawnZones("gameobject", hand.filter((s) => s.object).map((s) => s.object));
-  for (const [book, list_] of Object.entries(SOURCES_BY_HAND)) {
-    for (const s of list_) {
-      const name = s.quest ? handQuests.get(s.quest) : handObjects.get(s.object);
-      if (!name) throw new Error(`book ${book}: no ${s.quest ? `quest ${s.quest}` : `object ${s.object}`} in the world DB`);
-      add(Number(book), s.zones ?? handObjectZones.get(s.object) ?? []);
-    }
-    if (!kind.has(Number(book))) kind.set(Number(book), "carried");
-  }
+  applyHandSources({ sourcesByHand: SOURCES_BY_HAND,
+    resolveName: (source) => source.quest ? handQuests.get(source.quest) : handObjects.get(source.object),
+    objectZones: handObjectZones, add, addQuestReward, kind });
 } finally {
   await db.end();
 }
 
 // ---------------------------------------------------------------- the file
 
-const gone = (id, book) => cannotBeHad(book.title, book.pages.map((page) => pageText.get(page) ?? ""), id);
-
 const lines = [];
 const counts = { world: 0, carried: 0, wide: 0, event: 0, nowhere: 0, gone: 0, types: {}, inDungeon: 0, dungeons: new Map() };
-for (const [id, book] of [...books].sort((a, b) => a[0] - b[0])) {
-  if (gone(id, book)) { counts.gone++; continue; }
+for (const [id, book] of [...books].sort(([a], [b]) => compareIds(a, b))) {
   const k = kind.get(id);
   if (!k) { counts.nowhere++; continue; }
   const spots = new Set(k === "world" ? where.get(id) : sources.get(id));
-  if (!spots.size) for (const zone of ZONES_BY_HAND[id] ?? []) spots.add(zone);
-  const zones = new Set([...spots].map(placeOf));
-  const dungeons = dungeonsOf(spots, INSTANCE_ZONE);
-  const wide = zones.size > WIDE;
+  const record = generatedPlace({ id, book, kind: k, spots, zonesByHand: ZONES_BY_HAND, pageText,
+    questRewards, events: EVENTS, hand: handPlace(id), bookItems, itemIcon, wideLimit: WIDE,
+    placeOf, instanceZone: INSTANCE_ZONE });
+  if (!record) { counts.gone++; continue; }
+  const { zones, dungeons, wide } = record;
   counts[k]++;
   if (wide) counts.wide++;
-  const type = TYPE_BY_HAND[id] ?? typeOf({ title: book.title, world: k === "world", texts: book.pages.map((page) => pageText.get(page) ?? ""),
-    icons: (bookItems.get(id) ?? []).map((item) => itemIcon.get(item) ?? "") });
-  counts.types[type] = (counts.types[type] ?? 0) + 1;
-  const parts = [`kind = "${k}"`, `type = "${type}"`];
-  if (EVENTS.has(id)) { parts.push(`event = "${EVENTS.get(id)}"`); counts.event++; }
-  if (wide) parts.push("wide = true");
-  else if (zones.size) {
-    parts.push(`zones = { ${[...zones].sort((a, b) => a - b).join(", ")} }`);
-    if (dungeons.length) {
-      parts.push(`dungeons = { ${dungeons.join(", ")} }`);
-      counts.inDungeon++;
-      for (const d of dungeons) counts.dungeons.set(d, (counts.dungeons.get(d) ?? 0) + 1);
-    }
+  counts.types[record.type] = (counts.types[record.type] ?? 0) + 1;
+  if (record.event) { counts.event++; }
+  if (!wide && zones.length && dungeons.length) {
+    counts.inDungeon++;
+    for (const d of dungeons) counts.dungeons.set(d, (counts.dungeons.get(d) ?? 0) + 1);
   }
-  lines.push(`\t\t[${id}] = { ${parts.join(", ")} },`);
+  lines.push(placeLua(id, record));
 }
 
 const out = `-- AUTO-GENERATED by pipelines/readables/tools/places.mjs. Do not edit by hand.
@@ -448,6 +419,9 @@ const out = `-- AUTO-GENERATED by pipelines/readables/tools/places.mjs. Do not e
 -- plaque, a book on a shelf); "carried" ones are had in them (a letter dropped, a note handed
 -- over). \`type\` is what it is: book, journal, letter, note, scroll, tablet, plaque, grave,
 -- exhibit, picture or other. \`wide\` is a readable had in too many zones to list under each.
+-- \`quests\` are direct quest IDs that reward the carried readable, used to backfill characters
+-- whose quest history predates the addon. Choice rewards are excluded because the selected item
+-- is not recoverable from completed-quest history.
 -- \`event\` is the seasonal event one is had only during, listed under Holidays and Events, a line
 -- for each event, rather than its zones. Zones are uiMapIDs.
 -- \`dungeons\` are the instance maps of the dungeons and raids a readable is had in from inside
@@ -474,3 +448,4 @@ console.log(`${counts.inDungeon} in dungeons: ` + [...counts.dungeons].sort((a, 
 console.log(Object.entries(counts.types).map(([t, n]) => `${n} ${t}`).join(", "));
 console.log(`${notForever.size} quests left out as not Forever's: ${[...notForever].sort((a, b) => a - b).join(", ")}`);
 console.log(`wrote ${OUT}`);
+}
