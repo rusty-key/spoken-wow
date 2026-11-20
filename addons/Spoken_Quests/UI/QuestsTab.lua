@@ -1045,11 +1045,13 @@ local function Shows(id, moment)
     return moment ~= "complete" or Completed(id) or Unlocked()
 end
 
--- Whether the page has words to show: the offer's, the progress's, or the hand-in's where it
--- shows. Looks at the stored text only, so a row can ask it on every render.
+-- Whether the page has words to show for any part that Shows. Looks at the stored text only, so
+-- a row can ask it on every render.
 function QuestsTab:HasWords(id)
-    return Stored(id, "accept") ~= nil or Stored(id, "progress") ~= nil
-        or (Shows(id, "complete") and Stored(id, "complete") ~= nil)
+    for _, moment in ipairs(MOMENTS) do
+        if Shows(id, moment) and Stored(id, moment) ~= nil then return true end
+    end
+    return false
 end
 
 -- Who says one moment of a quest: the progress and the hand-in are said by the one it is handed
@@ -1089,9 +1091,9 @@ local PLAY = {
         end
         return false
     end,
-    -- One part, the first a pack voices: the parts are said at
-    -- different times, not as one speech. Its words go with it, for the window to show. Nothing
-    -- where a part of the quest is queued already: one part of a quest at a time.
+    -- One part, the first a pack voices: the parts are said at different times, not as one
+    -- speech. Its words go with it, for the window to show. Nothing where a part of the quest is
+    -- queued already: one part of a quest at a time.
     -- `queued`: behind what the queue already holds, not played at once.
     start = function(id, queued)
         if #Clips(id) > 0 then return end
