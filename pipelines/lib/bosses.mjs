@@ -16,7 +16,7 @@
 import { readFile } from "node:fs/promises";
 import { fileURLToPath } from "node:url";
 
-import { LOCALES, loadDungeons, quote } from "./dungeons.mjs";
+import { LOCALES, loadDungeons, mapNames as instanceNames, quote } from "./dungeons.mjs";
 import { FOREVER_BUILD, RETAIL_BUILD, wagoTable } from "./wago.mjs";
 
 const EXPORT = fileURLToPath(new URL("../../addons/Spoken_Bosses/Data/Bosses.lua", import.meta.url));
@@ -250,15 +250,8 @@ async function sync(store, { bossChanges, nameChanges, reconcileBosses }, checkO
   }
   renameAsCreatures(maps, names, JSON.parse(await readFile(RENAMED, "utf8")).renamed);
 
-  // Instance names as dungeons.mjs reads them, from the client's Map table.
-  const mapNames = {};
-  for (const locale of ["enUS", ...LOCALES]) {
-    mapNames[locale] = {};
-    for (const row of await wagoTable("Map", { build: FOREVER_BUILD, locale })) {
-      const map = Number(row.ID);
-      if (dungeons[map] && row.MapName_lang) mapNames[locale][map] = row.MapName_lang;
-    }
-  }
+  // Instance names as Dungeons.lua carries them.
+  const mapNames = await instanceNames((map) => Boolean(dungeons[map]));
 
   const order = Object.keys(dungeons).map(Number).sort((a, b) => a - b);
   const instanceRows = order.map((map, position) => ({
