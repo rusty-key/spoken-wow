@@ -36,15 +36,16 @@ export async function englishFor(rows: readonly Contribution[]): Promise<Map<num
   if (greetings.length > 0) {
     const { rows: matched } = await db().query<{ id: number; text: string }>(
       // The English form at the same place as the one the greeting matched: `text` and `text1` are
-      // the male and female wordings, so a `text1` match was sent from the female one.
+      // the male and female wordings, so a `text1` match was sent from the female one. Matched by
+      // the language-keyed readings (migration 0123): a separate `b."lang" = m."lang"` lets the
+      // planner take the lang btree and run the readings over the whole language per greeting.
       `select distinct on (m."id") m."id",
               case when gossip_norm(m."text") = any(gossip_readings(b."text"))
                    then coalesce(nullif(e."text", ''), e."text1")
                    else coalesce(nullif(e."text1", ''), e."text") end as "text"
          from unnest($1::int[], $2::text[], $3::text[]) as m ("id", "lang", "text")
          join "broadcast_text" b
-           on b."lang" = m."lang"
-          and (gossip_readings(b."text") || gossip_readings(b."text1")) @> array[gossip_norm(m."text")]
+           on gossip_lang_readings(b."lang", b."text", b."text1") @> array[gossip_lang_key(m."lang", m."text")]
          join "broadcast_text" e on e."lang" = $4 and e."broadcastTextId" = b."broadcastTextId"
         order by m."id", b."broadcastTextId"`,
       [greetings.map((row) => row.id), greetings.map((row) => clientLang(row.locale) ?? row.locale), greetings.map((row) => row.text), BASE_LANG],
