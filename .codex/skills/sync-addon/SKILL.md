@@ -18,6 +18,7 @@ clients are `forever`, `era`, and `tbc`.
 The standard remote command is:
 
 ```bash
+set -o pipefail
 ssh ${SPOKEN_DEV_HOST:-dev} cat <worktree path>/scripts/developer/sync-addons.sh | bash -s -- --watch <worktree name> <client>
 ```
 

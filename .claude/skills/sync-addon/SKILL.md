@@ -22,6 +22,7 @@ server; nothing on the server can reach that machine.
 Fill in this worktree's path and folder name (`git rev-parse --show-toplevel`) and the client:
 
 ```sh
+set -o pipefail
 ssh ${SPOKEN_DEV_HOST:-dev} cat <worktree path>/scripts/developer/sync-addons.sh | bash -s -- --watch <worktree name> <client>
 ```
 
