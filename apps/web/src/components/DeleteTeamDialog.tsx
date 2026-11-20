@@ -6,21 +6,17 @@ import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import type { Lang } from "@/lib/lang";
+import { plural } from "@/lib/plural";
+import { SECTION_LABELS } from "@/lib/releases/sections";
 import { send } from "@/lib/send";
 import type { DeletionPreview } from "@/lib/teams/delete";
-
-function plural(count: number, noun: string, nouns = `${noun}s`): string {
-  return `${count.toLocaleString("en")} ${count === 1 ? noun : nouns}`;
-}
-
-const SECTION: Record<string, string> = { quests: "Quests", places: "Places", readables: "Readables", bosses: "Bosses" };
 
 /** What goes with the team, one line each, in plain words; nothing for what it has none of. */
 export function deletionLines(preview: DeletionPreview, nameOf: (lang: Lang) => string): string[] {
   const { counts } = preview;
   const lines: string[] = [];
   if (preview.packs.length) {
-    const packs = preview.packs.map((pack) => `${SECTION[pack.section] ?? pack.section} in ${nameOf(pack.lang)}`).join(", ");
+    const packs = preview.packs.map((pack) => `${SECTION_LABELS[pack.section]} in ${nameOf(pack.lang)}`).join(", ");
     lines.push(`${plural(preview.packs.length, "pack")} players can install now will be delisted first: ${packs}.`);
   }
   if (counts.take) lines.push(`${plural(counts.take, "take")} and their history; the audio files stay in the bucket.`);

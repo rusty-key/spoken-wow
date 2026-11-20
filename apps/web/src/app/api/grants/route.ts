@@ -11,7 +11,7 @@ import { headers } from "next/headers";
 
 import { auth } from "@/lib/auth";
 import { addGrants, OtherTeamError, refusedGrant, removeGrant, userByEmail, viewerOf } from "@/lib/grants/store";
-import { deletingRefusal } from "@/lib/teams/deleting";
+import { deletingResponse } from "@/lib/teams/deleting";
 import { listingFor, notAllowed } from "@/lib/invites/listing";
 import {
   createInvite,
@@ -78,8 +78,8 @@ export async function PUT(request: Request) {
       });
     } catch (error) {
       if (error instanceof OtherTeamError) return Response.json({ error: error.message }, { status: 409 });
-      const deleting = deletingRefusal(error);
-      if (deleting) return Response.json({ error: deleting }, { status: 409 });
+      const deleting = deletingResponse(error);
+      if (deleting) return deleting;
       throw error;
     }
     return listingFor(who.viewer, who.userId, { invited: false });
@@ -102,8 +102,8 @@ export async function PUT(request: Request) {
     });
   } catch (error) {
     if (error instanceof InviteSendError) return Response.json({ error: error.message }, { status: 502 });
-    const deleting = deletingRefusal(error);
-    if (deleting) return Response.json({ error: deleting }, { status: 409 });
+    const deleting = deletingResponse(error);
+    if (deleting) return deleting;
     if (error instanceof InviteExistsError || error instanceof InviteRateError) {
       if (error instanceof InviteRateError) console.warn(`invites: ${who.userId} refused: ${error.message}`);
       return Response.json({ error: error.message }, { status: error instanceof InviteExistsError ? 409 : 429 });

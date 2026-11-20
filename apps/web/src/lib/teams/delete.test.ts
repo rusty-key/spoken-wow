@@ -10,14 +10,25 @@ import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } 
 vi.mock("@/lib/releases/sync", () => ({ syncActive: async () => null }));
 
 import { closeDb } from "@/lib/db";
-import type { Lang } from "@/lib/lang";
+import { BASE_LANG, type Lang } from "@/lib/lang";
 import { startNext } from "@/lib/releases/launch";
 import { activeRun, updateRun, type ReleaseRun } from "@/lib/releases/store";
 
 import { listTeams, TeamError } from "./admin";
 import { DELETED, retryDeletion, startDeletion } from "./delete";
 import { forgetTeams } from "./store";
-import { addMember, asSystem, dropLang, dropTeam, newTeamIn, plainTeam, systemRows, testUser, uniqueLang } from "./testing";
+import {
+  addMember,
+  asSystem,
+  dropLang,
+  dropTeam,
+  newTeamIn,
+  plainTeam,
+  releaseRun,
+  systemRows,
+  testUser,
+  uniqueLang,
+} from "./testing";
 
 let user: Awaited<ReturnType<typeof testUser>>;
 let actor: Awaited<ReturnType<typeof testUser>>;
@@ -53,10 +64,7 @@ afterEach(async () => {
   await asSystem.query(`delete from "report" where "lang" = $1 or "body" = $2`, [lang, `delete-${team}`]);
   await asSystem.query(`delete from "activity" where "actorId" = $1 or "lang" = $2`, [actor.id, lang]);
   await asSystem.query(`delete from "language_grant" where "userId" = $1`, [user.id]);
-  if ((await systemRows(`select 1 from "team" where "id" = $1`, [team])).length) {
-    for (const table of DELETED) await asSystem.query(`delete from "${table}" where "teamId" = $1`, [team]);
-    await dropTeam(team);
-  }
+  if ((await systemRows(`select 1 from "team" where "id" = $1`, [team])).length) await dropTeam(team);
   await dropLang(lang);
   await user.cleanup();
   await actor.cleanup();
@@ -70,14 +78,9 @@ afterAll(async () => {
 
 const exists = async () => (await systemRows(`select 1 from "team" where "id" = $1`, [team])).length > 0;
 
-/** A release of the team players have. */
-async function released(packLang: string, section: string, state = "done") {
-  await asSystem.query(
-    `insert into "release_run" ("kind", "teamId", "section", "lang", "state", "version", "createdAt", "finishedAt")
-     values ('release', $1, $2, $3, $4, '1.0.1', now() - interval '1 hour', now() - interval '1 hour')`,
-    [team, section, packLang, state],
-  );
-}
+/** A release of the team players have, from before the deletion. */
+const released = (lang: string, section: string, state = "done") =>
+  releaseRun(team, { lang, section, state, at: "now() - interval '1 hour'" });
 
 /** Settles the active run as its job would have, and starts the next queued one. */
 async function settleActive(state: "done" | "failed", error?: string): Promise<ReleaseRun> {
@@ -259,13 +262,13 @@ describe("deleting a team", () => {
       status: 409,
       message: expect.stringContaining("release under way"),
     });
-    const [english] = await systemRows<{ id: string }>(`select "id" from "team" where "slug" = 'english'`);
-    await expect(startDeletion(english.id, actor.id, "english", launch)).rejects.toMatchObject({
+    const english = await plainTeam(BASE_LANG);
+    await expect(startDeletion(english, actor.id, "english", launch)).rejects.toMatchObject({
       status: 409,
       message: expect.stringContaining("English's team cannot be deleted"),
     });
     expect(await exists()).toBe(true);
-    expect(await systemRows(`select 1 from "team" where "deletingAt" is not null and "id" in ($1, $2)`, [team, english.id])).toHaveLength(0);
+    expect(await systemRows(`select 1 from "team" where "deletingAt" is not null and "id" in ($1, $2)`, [team, english])).toHaveLength(0);
   });
 
   it("refuses off the site that signs the channel when it has packs there", async () => {

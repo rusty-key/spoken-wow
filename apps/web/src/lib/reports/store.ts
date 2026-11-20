@@ -353,7 +353,7 @@ export async function setStatus(
     lineId: report.lineId,
     actorId: userId,
     detail: { status: report.status, category: report.category },
-    team: place.teamId ?? ALL_TEAMS,
+    team: place.teamId,
   });
   return report;
 }

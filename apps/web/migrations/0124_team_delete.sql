@@ -60,8 +60,6 @@ create trigger "recording_team_not_deleting" before insert on "recording"
   for each row execute function "team_not_deleting"();
 create trigger "regeneration_batch_team_not_deleting" before insert on "regeneration_batch"
   for each row execute function "team_not_deleting"();
-create trigger "regeneration_job_team_not_deleting" before insert on "regeneration_job"
-  for each row execute function "team_not_deleting"();
 create trigger "team_member_team_not_deleting" before insert on "team_member"
   for each row execute function "team_not_deleting"();
 create trigger "team_language_team_not_deleting" before insert on "team_language"
@@ -69,3 +67,20 @@ create trigger "team_language_team_not_deleting" before insert on "team_language
 -- A delisting is how the deletion takes its packs off the channel.
 create trigger "release_run_team_not_deleting" before insert on "release_run"
   for each row when (new."kind" <> 'delist') execute function "team_not_deleting"();
+
+-- A batch queues its jobs in one insert of thousands of rows: each team among them is checked once.
+create function "regeneration_job_team_not_deleting"() returns trigger
+language plpgsql as $$
+declare
+  v_team uuid;
+begin
+  for v_team in select distinct "teamId" from "new_rows" loop
+    perform "team_check_not_deleting"(v_team);
+  end loop;
+  return null;
+end
+$$;
+
+create trigger "regeneration_job_team_not_deleting" after insert on "regeneration_job"
+  referencing new table as "new_rows"
+  for each statement execute function "regeneration_job_team_not_deleting"();

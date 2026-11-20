@@ -4,7 +4,19 @@ import { randomUUID } from "node:crypto";
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { closeDb } from "@/lib/db";
-import { addMember, asSystem, dropLang, dropTeam, newTeamIn, systemRows, testUser, uniqueLang } from "@/lib/teams/testing";
+import { BASE_LANG } from "@/lib/lang";
+import {
+  addMember,
+  asSystem,
+  dropLang,
+  dropTeam,
+  newTeamIn,
+  plainTeam,
+  releaseRun,
+  systemRows,
+  testUser,
+  uniqueLang,
+} from "@/lib/teams/testing";
 
 const who = vi.hoisted(() => ({ id: "", role: "admin" }));
 vi.mock("@/lib/session", () => ({
@@ -31,9 +43,6 @@ beforeEach(async () => {
 });
 
 afterEach(async () => {
-  for (const table of ["release_run", "report", "regeneration_job", "regeneration_batch", "take"]) {
-    await asSystem.query(`delete from "${table}" where "teamId" = $1`, [team]);
-  }
   await dropTeam(team);
   await dropLang(lang as never);
 });
@@ -45,14 +54,6 @@ afterAll(async () => {
 
 const get = (id = team) =>
   GET(new Request(`http://x/api/teams/${id}/deletion`), { params: Promise.resolve({ id }) });
-
-async function release(state: string, kind = "release", lang = "deDE", section = "quests", at = "now()") {
-  await asSystem.query(
-    `insert into "release_run" ("kind", "teamId", "section", "lang", "state", "version", "createdAt", "finishedAt")
-     values ($1, $2, $3, $4, $5, '1.0.1', ${at}, ${at})`,
-    [kind, team, section, lang, state],
-  );
-}
 
 describe("GET /api/teams/[id]/deletion", () => {
   it("counts what goes, the packs on the channel, and which language is left with no team", async () => {
@@ -75,9 +76,9 @@ describe("GET /api/teams/[id]/deletion", () => {
       [batch.id, team],
     );
     // Live: places in deDE. Delisted since: quests in deDE.
-    await release("done", "release", "deDE", "places");
-    await release("done", "release", "deDE", "quests", "now() - interval '1 day'");
-    await release("done", "delist", "deDE", "quests");
+    await releaseRun(team, { section: "places" });
+    await releaseRun(team, { at: "now() - interval '1 day'" });
+    await releaseRun(team, { kind: "delist" });
 
     const res = await get();
     expect(res.status).toBe(200);
@@ -109,13 +110,12 @@ describe("GET /api/teams/[id]/deletion", () => {
   });
 
   it("says a team with a release under way cannot be deleted now", async () => {
-    await release("queued");
+    await releaseRun(team, { state: "queued" });
     expect((await (await get()).json()).refusal).toMatch(/has a release under way/);
   });
 
   it("says English's team cannot be deleted", async () => {
-    const [english] = await systemRows<{ id: string }>(`select "id" from "team" where "slug" = 'english'`);
-    expect((await (await get(english.id)).json()).refusal).toMatch(/English's team cannot be deleted/);
+    expect((await (await get(await plainTeam(BASE_LANG))).json()).refusal).toMatch(/English's team cannot be deleted/);
   });
 
   it("is for site owners only, and 404 for no such team", async () => {

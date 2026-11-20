@@ -11,6 +11,7 @@ import { db } from "@/lib/db";
 import type { Lang } from "@/lib/lang";
 import { forgetLanguages, loadLanguages } from "@/lib/languages/catalogue";
 
+import { DELETED } from "./delete";
 import { forgetTeams, type TeamId } from "./store";
 
 let fixtures: Pool | undefined;
@@ -159,11 +160,9 @@ export async function runningJob(lang: Lang, team: TeamId): Promise<{ cleanup: (
   };
 }
 
-/** The caller deletes any rows under the team beyond its members, roster and languages first. */
+/** The team with every row under it, as a deletion takes them, and its reports. */
 export async function dropTeam(team: TeamId): Promise<void> {
-  for (const table of ["text_override", "team_member", "voice_assignment", "voice", "generation_setting", "queue_dismissal", "team_language"]) {
-    await asSystem.query(`delete from "${table}" where "teamId" = $1`, [team]);
-  }
+  for (const table of [...DELETED, "report"]) await asSystem.query(`delete from "${table}" where "teamId" = $1`, [team]);
   await asSystem.query(`delete from "team" where "id" = $1`, [team]);
   // A language it shared is one team's again: the memo would still have the caller in no team there.
   forgetTeams();
@@ -223,6 +222,18 @@ export async function newTeamIn(lang: string, plain: boolean, name = "test"): Pr
 export async function plainTeam(lang: string): Promise<TeamId> {
   const [row] = await systemRows<{ team: TeamId }>(`select team_of_lang($1) as "team"`, [lang]);
   return row.team;
+}
+
+/** A run of `team`'s as its job left it, made and finished at `at`, an SQL time. */
+export async function releaseRun(
+  team: TeamId,
+  { kind = "release", lang = "deDE", section = "quests", state = "done", at = "now()" } = {},
+): Promise<void> {
+  await asSystem.query(
+    `insert into "release_run" ("kind", "teamId", "section", "lang", "state", "version", "createdAt", "finishedAt")
+     values ($1, $2, $3, $4, $5, '1.0.1', ${at}, ${at})`,
+    [kind, team, section, lang, state],
+  );
 }
 
 /** A person's capability in a team's language. */

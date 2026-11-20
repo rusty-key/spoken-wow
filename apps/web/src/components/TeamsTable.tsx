@@ -38,7 +38,6 @@ function people(team: TeamSummary): Person[] {
   return [...byUser.values()];
 }
 
-type Confirm = { title: string; description: string; label: string; action: () => ReturnType<typeof send> };
 
 /** Where a deletion is: its delistings, or why it stopped. */
 function deletingStep(deleting: NonNullable<TeamSummary["deleting"]>): string {
@@ -67,12 +66,13 @@ export default function TeamsTable({ initial, languages }: Props) {
   const [form, setForm] = useState({ slug: "", name: "", adminEmail: "", langs: [] as Lang[] });
   const [newLanguage, setNewLanguage] = useState(false);
   const [fresh, setFresh] = useState<NewLanguage>({ code: "", name: "", native: "" });
-  const [confirming, setConfirming] = useState<Confirm | null>(null);
+  const [joining, setJoining] = useState<{ lang: Lang; team: TeamSummary } | null>(null);
   const [deleting, setDeleting] = useState<TeamSummary | null>(null);
   const underway = initial.some((team) => team.deleting && !team.deleting.error);
   useEffect(() => {
     if (!underway) return;
-    const timer = setInterval(() => router.refresh(), DELETING_POLL_MS);
+    // A hidden tab reads nothing; the next poll after it shows again does.
+    const timer = setInterval(() => document.hidden || router.refresh(), DELETING_POLL_MS);
     return () => clearInterval(timer);
   }, [underway, router]);
 
@@ -96,19 +96,12 @@ export default function TeamsTable({ initial, languages }: Props) {
     });
   };
 
-  function confirm() {
-    if (!confirming) return;
-    setConfirming(null);
-    void run(confirming.action);
+  function join() {
+    if (!joining) return;
+    const { lang, team } = joining;
+    setJoining(null);
+    void run(() => send(`/api/teams/${team.id}/languages`, "PUT", { lang }));
   }
-
-  const join = (lang: Lang, team: TeamSummary) =>
-    setConfirming({
-      title: `Add ${team.name} to ${lang}?`,
-      description: `It voices ${lang} beside any team there, from English's voices, with nothing of theirs. A language with no team is switched on.`,
-      label: "Add",
-      action: () => send(`/api/teams/${team.id}/languages`, "PUT", { lang }),
-    });
 
 
   async function create(event: React.FormEvent) {
@@ -183,7 +176,7 @@ export default function TeamsTable({ initial, languages }: Props) {
                       <Select
                         value=""
                         disabled={busy}
-                        onValueChange={(lang) => join(lang as Lang, team)}
+                        onValueChange={(lang) => setJoining({ lang: lang as Lang, team })}
                       >
                         <SelectTrigger size="sm" className="text-xs" aria-label={`Add ${team.slug} to a language`}>
                           <SelectValue placeholder="Add to…" />
@@ -337,20 +330,20 @@ export default function TeamsTable({ initial, languages }: Props) {
         }}
       />
 
-      <Dialog open={confirming !== null} onOpenChange={(open) => !open && setConfirming(null)}>
-        {confirming && (
+      <Dialog open={joining !== null} onOpenChange={(open) => !open && setJoining(null)}>
+        {joining && (
           <DialogContent>
             <DialogHeader>
-              <DialogTitle>{confirming.title}</DialogTitle>
-              <DialogDescription>{confirming.description}</DialogDescription>
+              <DialogTitle>{`Add ${joining.team.name} to ${joining.lang}?`}</DialogTitle>
+              <DialogDescription>
+                {`It voices ${joining.lang} beside any team there, from English's voices, with nothing of theirs. A language with no team is switched on.`}
+              </DialogDescription>
             </DialogHeader>
             <DialogFooter>
-              <Button variant="ghost" onClick={() => setConfirming(null)}>
+              <Button variant="ghost" onClick={() => setJoining(null)}>
                 Cancel
               </Button>
-              <Button onClick={confirm}>
-                {confirming.label}
-              </Button>
+              <Button onClick={join}>Add</Button>
             </DialogFooter>
           </DialogContent>
         )}

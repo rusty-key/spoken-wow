@@ -62,6 +62,7 @@ import { applyResolutions, type ReportGroup } from "@/lib/reports/rows";
 import type { ResultLine as QuestLine } from "@/lib/search";
 import { cn } from "@/lib/utils";
 import type { ResultLine as ZoneLine } from "@/lib/places/search";
+import { SECTION_LABELS } from "@/lib/releases/sections";
 import type { ResultLine as BossLine } from "@/lib/bosses/search";
 import { placesSection } from "@/components/places/sections";
 import { bossesSection } from "@/components/bosses/sections";
@@ -70,13 +71,6 @@ import type { Source } from "@/lib/sections";
 // No facets: the table plays lines, it does not narrow to them.
 const PLACES = placesSection();
 const BOSSES = bossesSection();
-
-const SECTION_LABELS: Record<Section, string> = {
-  quests: "Quests",
-  readables: "Readables",
-  places: "Places",
-  bosses: "Bosses",
-};
 
 const VIEW_LABELS: Record<StatusView, string> = { ...STATUS_LABELS, all: "All" };
 

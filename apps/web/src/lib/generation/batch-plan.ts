@@ -22,7 +22,7 @@ import { AUDIO_STATES } from "@/lib/audio-state";
 import { CLIENT_FILTERS } from "@/lib/contributions/client";
 import { filtersFromParams, needsDirty, needsLevels, needsStale } from "@/lib/search-request";
 import type { Source } from "@/lib/sections";
-import { deletingRefusal } from "@/lib/teams/deleting";
+import { deletingResponse } from "@/lib/teams/deleting";
 import { pinnedVoices } from "@/lib/voices/references";
 
 import { requireApiKey } from "./authz";
@@ -322,8 +322,8 @@ export async function queuePlan(args: {
   try {
     batchId = await createBatch(label, userId, section, lang);
   } catch (error) {
-    const deleting = deletingRefusal(error);
-    if (deleting) return NextResponse.json({ error: deleting, kind: "team-deleting" }, { status: 409 });
+    const deleting = deletingResponse(error, { kind: "team-deleting" });
+    if (deleting) return deleting;
     throw error;
   }
   const { queued, skipped } = await enqueue(batchId, plan.jobs, section, lang, provider);

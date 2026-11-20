@@ -10,20 +10,21 @@ import "server-only";
 
 import type { ClientBase, PoolClient } from "pg";
 
-import { recordActivity } from "@/lib/activity/store";
+import { recordActivities, recordActivity } from "@/lib/activity/store";
 import { ALL_TEAMS, withTeam } from "@/lib/db";
 import { BASE_LANG, type Lang } from "@/lib/lang";
 import { setEnabledOn } from "@/lib/languages/store";
 import type { Capability } from "@/lib/permissions";
 import { runsOnDroplet } from "@/lib/releases/droplet";
 import { launchRun, launchStarted, type Launch } from "@/lib/releases/launch";
-import { RELEASE_SECTIONS, type ReleaseSection } from "@/lib/releases/sections";
+import { liveTeamPacks } from "@/lib/releases/review";
+import { isSettled, RELEASE_SECTIONS, UNSETTLED_STATES, type ReleaseSection, type ReleaseState } from "@/lib/releases/sections";
 import { insertRun, type ReleaseRun } from "@/lib/releases/store";
 import { syncActive } from "@/lib/releases/sync";
 
 import { TeamError } from "./admin";
 import { membersOf } from "./members";
-import { forgetTeams, type TeamId } from "./store";
+import { forgetTeams, TEAM_ORDER, type TeamId } from "./store";
 
 /**
  * Every table with a team's rows that goes with it, children before parents. Reports are not
@@ -70,21 +71,11 @@ export type DeletionPreview = {
 
 /** Its packs on the channel, from its releases: a release made before the site ran them has no row. */
 export async function livePacks(client: ClientBase, team: TeamId): Promise<LivePack[]> {
-  const { rows } = await client.query<LivePack>(
-    `select live."lang", live."section", live."version" from (
-       select distinct on ("lang", "section") "lang", "section", "version", coalesce("finishedAt", "createdAt") as "at"
-         from "release_run" where "teamId" = $1 and "kind" = 'release' and "state" = 'done'
-        order by "lang", "section", "createdAt" desc
-     ) live
-     where not exists (select 1 from "release_run" d
-                        where d."kind" = 'delist' and d."state" = 'done' and d."teamId" = $1
-                          and d."lang" = live."lang" and d."section" = live."section"
-                          and coalesce(d."finishedAt", d."createdAt") > live."at")
-     order by live."lang", live."section"`,
-    [team],
-  );
-  return rows;
+  return (await liveTeamPacks({ team, client })).map(({ lang, section, version }) => ({ lang, section, version }));
 }
+
+/** A release of the team under way, or approved and waiting to be listed. */
+const RELEASE_UNDER_WAY: readonly ReleaseState[] = [...UNSETTLED_STATES, "approved"];
 
 /** Why `team` cannot be deleted now, or null. On the caller's client, as ALL_TEAMS. */
 export async function refusalOf(
@@ -92,16 +83,13 @@ export async function refusalOf(
   team: { id: TeamId; slug: string; deletingAt: Date | null },
 ): Promise<string | null> {
   if (team.deletingAt) return `${team.slug} is being deleted already.`;
-  const { rowCount: english } = await client.query(
-    `select 1 from "team_language" where "teamId" = $1 and "lang" = $2`,
-    [team.id, BASE_LANG],
+  const { rows } = await client.query<{ english: boolean; busy: boolean }>(
+    `select exists (select 1 from "team_language" where "teamId" = $1 and "lang" = $2) as "english",
+            exists (select 1 from "release_run" where "teamId" = $1 and "state" = any($3)) as "busy"`,
+    [team.id, BASE_LANG, RELEASE_UNDER_WAY],
   );
-  if (english) return "English's team cannot be deleted: every other language is built from it.";
-  const { rowCount: busy } = await client.query(
-    `select 1 from "release_run" where "teamId" = $1 and "state" in ('queued', 'dispatching', 'running', 'approved')`,
-    [team.id],
-  );
-  if (busy) return `${team.slug} has a release under way; delete it once that is finished.`;
+  if (rows[0].english) return "English's team cannot be deleted: every other language is built from it.";
+  if (rows[0].busy) return `${team.slug} has a release under way; delete it once that is finished.`;
   return null;
 }
 
@@ -116,13 +104,22 @@ export async function teamRow(client: ClientBase, team: TeamId, lock = false): P
   return rows[0];
 }
 
-async function countsOf(client: ClientBase, team: TeamId): Promise<DeletionPreview["counts"]> {
+/** Its rows in each table, its reports by what becomes of them, and its generation not yet started: one read. */
+async function countsOf(client: ClientBase, team: TeamId): Promise<Pick<DeletionPreview, "counts" | "reports" | "pending">> {
   const tables = [...DELETED, "report"] as const;
   const { rows } = await client.query<Record<string, string>>(
-    `select ${tables.map((table) => `(select count(*) from "${table}" where "teamId" = $1) as "${table}"`).join(", ")}`,
+    `select ${tables.map((table) => `(select count(*) from "${table}" where "teamId" = $1) as "${table}"`).join(", ")},
+            (select count(*) from "report" where "teamId" = $1 and "queue" = 'text') as "moving",
+            (select count(*) from "report" where "teamId" = $1 and "queue" = 'audio' and "status" = 'open') as "closing",
+            (select count(*) from "regeneration_job" where "teamId" = $1 and "state" = 'pending') as "pending"`,
     [team],
   );
-  return Object.fromEntries(tables.map((table) => [table, Number(rows[0][table])])) as DeletionPreview["counts"];
+  const [row] = rows;
+  return {
+    counts: Object.fromEntries(tables.map((table) => [table, Number(row[table])])) as DeletionPreview["counts"],
+    reports: { moving: Number(row.moving), closing: Number(row.closing) },
+    pending: Number(row.pending),
+  };
 }
 
 /** Each language of the team, `alone` where no other team voices it that is not being deleted too. */
@@ -139,26 +136,13 @@ async function langsOf(client: ClientBase, team: TeamId): Promise<DeletionPrevie
 export async function deletionPreview(team: TeamId): Promise<DeletionPreview> {
   return withTeam(ALL_TEAMS, async (client) => {
     const row = await teamRow(client, team);
-    const langs = await langsOf(client, team);
-    const { rows: pending } = await client.query<{ count: string }>(
-      `select count(*) as "count" from "regeneration_job" where "teamId" = $1 and "state" = 'pending'`,
-      [team],
-    );
-    const { rows: reports } = await client.query<{ moving: number; closing: number }>(
-      `select (count(*) filter (where "queue" = 'text'))::int as "moving",
-              (count(*) filter (where "queue" = 'audio' and "status" = 'open'))::int as "closing"
-         from "report" where "teamId" = $1`,
-      [team],
-    );
     return {
       id: row.id,
       slug: row.slug,
       name: row.name,
-      langs,
+      langs: await langsOf(client, team),
       members: await membersOf(client, team),
-      counts: await countsOf(client, team),
-      reports: reports[0],
-      pending: Number(pending[0].count),
+      ...(await countsOf(client, team)),
       packs: await livePacks(client, team),
       refusal: await refusalOf(client, row),
     };
@@ -184,14 +168,10 @@ async function packsToDelist(client: ClientBase, team: TeamId): Promise<{ lang: 
 }
 
 /**
- * Marks the team deleting from now and queues its delistings; deletes it at once when it has
- * none. The first run, when it took the lock, is for the caller to launch after the commit.
+ * Marks the team deleting from now and queues its delistings, returning the first for the caller
+ * to launch after the commit. With none to queue, deletes it at once and returns null.
  */
-async function begin(
-  client: PoolClient,
-  team: TeamRow,
-  actorId: string,
-): Promise<{ first: ReleaseRun | null; deleted: boolean }> {
+async function begin(client: PoolClient, team: TeamRow, actorId: string): Promise<ReleaseRun | null> {
   const packs = await packsToDelist(client, team.id);
   if (packs.length && !runsOnDroplet()) {
     throw new TeamError("Only the site that signs the channel can take its packs off it; delete the team there.", 409);
@@ -216,14 +196,14 @@ async function begin(
   );
   if (!packs.length) {
     await finishDeletion(client, team.id, actorId);
-    return { first: null, deleted: true };
+    return null;
   }
   let first: ReleaseRun | null = null;
   for (const pack of packs) {
     const run = await insertRun(client, { kind: "delist", teamId: team.id, ...pack, requestedBy: actorId });
     first ??= run;
   }
-  return { first, deleted: false };
+  return first;
 }
 
 /**
@@ -236,37 +216,46 @@ export async function startDeletion(
   typedSlug: string,
   launch: Launch = launchRun,
 ): Promise<"deleting" | "deleted"> {
-  // A finished run would hold the lock until somebody looked.
-  await syncActive();
-  const { first, deleted } = await withTeam(ALL_TEAMS, async (client) => {
-    const row = await teamRow(client, team, true);
+  return deletion(team, actorId, launch, async (client, row) => {
     if (typedSlug.trim() !== row.slug) throw new TeamError(`Type the team's slug, ${row.slug}, to delete it.`, 400);
     const refusal = await refusalOf(client, row);
     if (refusal) throw new TeamError(refusal, 409);
-    return begin(client, row, actorId);
   });
-  return launched(first, deleted, launch);
 }
 
 /** A deletion that stopped on a failure, started again from its delistings. */
 export async function retryDeletion(team: TeamId, actorId: string, launch: Launch = launchRun): Promise<"deleting" | "deleted"> {
-  await syncActive();
-  const { first, deleted } = await withTeam(ALL_TEAMS, async (client) => {
-    const row = await teamRow(client, team, true);
+  return deletion(team, actorId, launch, async (_client, row) => {
     if (!row.deletingAt) throw new TeamError(`${row.slug} is not being deleted.`, 409);
     if (!row.deleteError) throw new TeamError(`${row.slug} is still being deleted.`, 409);
-    return begin(client, row, actorId);
   });
-  return launched(first, deleted, launch);
 }
 
-async function launched(first: ReleaseRun | null, deleted: boolean, launch: Launch): Promise<"deleting" | "deleted"> {
-  if (deleted) {
+/** begin on the team, locked, once `guard` lets it through; then its first run launched. */
+async function deletion(
+  team: TeamId,
+  actorId: string,
+  launch: Launch,
+  guard: (client: PoolClient, row: TeamRow) => Promise<void>,
+): Promise<"deleting" | "deleted"> {
+  // A finished run would hold the lock until somebody looked.
+  await syncActive();
+  const first = await withTeam(ALL_TEAMS, async (client) => {
+    const row = await teamRow(client, team, true);
+    await guard(client, row);
+    return begin(client, row, actorId);
+  });
+  return launched(first, launch);
+}
+
+/** `first` is begin's: null when it deleted the team at once. */
+async function launched(first: ReleaseRun | null, launch: Launch): Promise<"deleting" | "deleted"> {
+  if (!first) {
     forgetTeams();
     return "deleted";
   }
   // A job that cannot start fails its run, and the deletion says so once the rest settle.
-  if (first?.state === "dispatching") await launchStarted(first, launch).catch(() => {});
+  if (first.state === "dispatching") await launchStarted(first, launch).catch(() => {});
   return "deleting";
 }
 
@@ -283,12 +272,12 @@ export async function settleDeletion(client: PoolClient, run: ReleaseRun): Promi
   );
   const since = rows[0]?.deletingAt;
   if (!since || run.createdAt < since) return;
-  const { rows: runs } = await client.query<{ section: string; lang: Lang; state: string; error: string | null }>(
+  const { rows: runs } = await client.query<{ section: string; lang: Lang; state: ReleaseState; error: string | null }>(
     `select "section", "lang", "state", "error" from "release_run"
       where "teamId" = $1 and "kind" = 'delist' and "createdAt" >= $2 order by "createdAt"`,
     [run.teamId, since],
   );
-  if (runs.some((each) => ["queued", "dispatching", "running"].includes(each.state))) return;
+  if (runs.some((each) => !isSettled(each.state))) return;
   const stop = (reason: string) => client.query(`update "team" set "deleteError" = $2 where "id" = $1`, [run.teamId, reason]);
   const failed = runs.find((each) => each.state === "failed");
   if (failed) {
@@ -314,14 +303,14 @@ export async function settleDeletion(client: PoolClient, run: ReleaseRun): Promi
  */
 export async function finishDeletion(client: PoolClient, team: TeamId, actorId: string | null): Promise<void> {
   const row = await teamRow(client, team, true);
-  const counts = await countsOf(client, team);
+  const { counts } = await countsOf(client, team);
   const members = await membersOf(client, team);
   const langs = await langsOf(client, team);
   await client.query(
     `with "moved" as (
        select r."id", (select tl."teamId" from "team_language" tl join "team" t on t."id" = tl."teamId"
                         where tl."lang" = r."lang" and tl."teamId" <> $1 and t."deletingAt" is null
-                        order by tl."packName" = 'plain' desc, t."name", t."slug" limit 1) as "to"
+                        order by ${TEAM_ORDER} limit 1) as "to"
          from "report" r where r."teamId" = $1 and r."queue" = 'text')
      update "report" r set "teamId" = m."to" from "moved" m where r."id" = m."id"`,
     [team],
@@ -351,9 +340,10 @@ export async function finishDeletion(client: PoolClient, team: TeamId, actorId: 
     },
     client,
   );
-  for (const lang of hidden) {
-    await recordActivity({ kind: "language.toggled", lang, actorId, detail: { enabled: false }, team: ALL_TEAMS }, client);
-  }
+  await recordActivities(
+    hidden.map((lang) => ({ kind: "language.toggled" as const, lang, actorId, detail: { enabled: false }, team: null })),
+    client,
+  );
   // Every worker drops its team memo at commit.
   await client.query(`select pg_notify('spoken_team_language', '')`);
 }

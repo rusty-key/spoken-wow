@@ -25,9 +25,6 @@ beforeEach(async () => {
 });
 
 afterEach(async () => {
-  for (const table of ["release_run", "regeneration_batch", "take", "activity"]) {
-    await asSystem.query(`delete from "${table}" where "teamId" = $1`, [team]);
-  }
   await dropTeam(team);
   await user.cleanup();
   forgetTeams();
