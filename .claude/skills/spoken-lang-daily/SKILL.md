@@ -73,8 +73,9 @@ cookie. Never ask for a password or token, never read cookies.
 1. Open `https://spoken.quest/<lang>/contributions/quests` (or use the open tab). If it
    redirects to the login, stop and ask the maintainer to log in in that tab. A 404 while logged
    in means the account has no maintainer rights for this language: stop and say so.
-2. Run `window.__spokenCfg = { lang: "<lang>", doneModels: <from config> }` with `javascript_tool`,
-   then read `spoken.js` from this folder and run its **whole content**. Answer:
+2. Read `TBC_QUEST_CEILING` from `apps/web/src/lib/quests/line-client.ts` in this repository. Run
+   `window.__spokenCfg = { lang: "<lang>", doneModels: <from config>, tbcQuestCeiling: <that value> }`
+   with `javascript_tool`, then read `spoken.js` from this folder and run its **whole content**. Answer:
    `"__spoken loaded for <lang>"`. Any navigation of the tab drops `window.__spoken`; then load both
    again. The helpers only use `fetch`, so the tab never has to navigate.
 3. Each `javascript_tool` call has 45 s. Split big steps into several calls, e.g. one section per

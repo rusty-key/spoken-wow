@@ -35,17 +35,16 @@ export function loadConfig(lang) {
   };
 }
 
-// The pack folders spoken-release.sh knows (its add_pack list), by the release key prefix in
-// publishers/. A publisher with a CurseForge project and a prefix missing here is warned about.
-const FOLDERS = {
-  "quests-audio-alliance": "SpokenQuestsAudioAlliance",
-  "quests-audio-horde": "SpokenQuestsAudioHorde",
-  "quests-audio-shared": "SpokenQuestsAudioShared",
-  "quests-audio-gossip": "SpokenQuestsAudioGossip",
-  "places-audio": "SpokenPlacesAudio",
-  "readables-audio": "SpokenReadablesAudio",
-  "bosses-audio": "SpokenBossesAudio",
-};
+// The pack folders spoken-release.sh knows, read from its `add_pack <section> <Folder>` lines and
+// keyed by the release key prefix in publishers/: SpokenQuestsAudioAlliance -> quests-audio-alliance.
+// A publisher with a CurseForge project and a prefix missing here is warned about.
+const FOLDERS = Object.fromEntries(
+  [...readFileSync(RELEASE_SH, "utf8").matchAll(/^add_pack \w+ (Spoken\w+)\s*$/gm)].map(([, folder]) => [
+    folder.slice("Spoken".length).replace(/([a-z])([A-Z])/g, "$1-$2").toLowerCase(),
+    folder,
+  ]),
+);
+if (!Object.keys(FOLDERS).length) throw new Error(`no add_pack lines found in ${RELEASE_SH}`);
 
 function frontmatter(file) {
   const m = readFileSync(file, "utf8").match(/^---\r?\n([\s\S]*?)\r?\n---/);

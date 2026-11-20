@@ -1,8 +1,10 @@
 // Helpers for /spoken-lang-daily. Set window.__spokenCfg = { lang, doneModels } first, then run
 // this whole file with javascript_tool in the spoken.quest tab; it creates window.__spoken.
 // Every call afterwards stays under the 45 s the tool gives one call.
-window.__spoken = (({ lang, doneModels } = {}) => {
-  if (!/^[a-z]{2}[A-Z]{2}$/.test(lang ?? "") || lang === "enUS") throw new Error("set window.__spokenCfg = { lang: 'frFR', doneModels: [...] } first");
+window.__spoken = (({ lang, doneModels, tbcQuestCeiling } = {}) => {
+  if (!/^[a-z]{2}[A-Z]{2}$/.test(lang ?? "") || lang === "enUS") throw new Error("set window.__spokenCfg = { lang: 'frFR', doneModels: [...], tbcQuestCeiling } first");
+  // TBC_QUEST_CEILING from apps/web/src/lib/quests/line-client.ts, passed in so there is one source.
+  if (!Number.isInteger(tbcQuestCeiling)) throw new Error("set window.__spokenCfg.tbcQuestCeiling from TBC_QUEST_CEILING in apps/web/src/lib/quests/line-client.ts");
   const LANG = lang;
   // Takes of these models count as done; takes of any other model get re-voiced. v4 and v4 Turbo
   // sound the same, so both count by default.
@@ -98,14 +100,14 @@ window.__spoken = (({ lang, doneModels } = {}) => {
   }
 
   // Like lib/quests/line-client.ts (PR #909): the site shows and voices only Era + Forever. A row
-  // from another client (TBC Anniversary, 1.12, 3.3.5a, Retail), or a quest below 13000 the Classic
+  // from another client (TBC Anniversary, 1.12, 3.3.5a, Retail), or a quest below tbcQuestCeiling the Classic
   // corpus lacks (Wowhead TBC imports carry a Forever build), is not an open item.
   const FOCUS = ["era", "forever"];
   const enQuest = new Map();
   async function isOtherClient(r) {
     if (r.client?.family && !FOCUS.includes(r.client.family)) return true;
     const q = r.quest && r.quest !== "gossip" ? r.quest.questId : null;
-    if (q == null || q >= 13000) return false;
+    if (q == null || q >= tbcQuestCeiling) return false;
     if (!enQuest.has(q)) {
       const hit = await json(`/api/quests/search?lang=enUS&client=all&line=q:${q}:${r.quest.stage}`);
       enQuest.set(q, (hit.lines ?? []).some((l) => !l.clientFamily || FOCUS.includes(l.clientFamily)));
