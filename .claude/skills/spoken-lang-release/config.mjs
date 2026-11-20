@@ -9,13 +9,12 @@ export const SKILL = dirname(fileURLToPath(import.meta.url)).replace(/\\/g, "/")
 export const REPO = resolve(SKILL, "../../..").replace(/\\/g, "/");
 export const RELEASE_SH = `${REPO}/scripts/maintainers/spoken-release.sh`;
 
-const LANGS = ["deDE", "esES", "esMX", "frFR", "itIT", "koKR", "ptBR", "ruRU", "zhCN", "zhTW"];
-
 // "~" is the home folder; any other relative path is relative to `base` (the config's folder).
 const home = (p, base = homedir()) => (p.startsWith("~") ? join(homedir(), p.slice(1)) : resolve(base, p)).replace(/\\/g, "/");
 
 export function loadConfig(lang) {
-  if (!LANGS.includes(lang)) throw new Error(`--lang wants one of ${LANGS.join(", ")}, not ${lang}`);
+  const langs = [...new Set(publisherFiles().map((f) => frontmatter(f).lang).filter((l) => l && l !== "enUS"))].sort();
+  if (!langs.includes(lang)) throw new Error(`--lang wants one of ${langs.join(", ")} (from publishers/), not ${lang}`);
   const dir = home(`~/.claude/spoken/${lang}`);
   const file = `${dir}/config.json`;
   if (!existsSync(file)) {
@@ -36,7 +35,8 @@ export function loadConfig(lang) {
   };
 }
 
-// The pack folders spoken-release.sh knows, by the release key prefix in publishers/.
+// The pack folders spoken-release.sh knows (its add_pack list), by the release key prefix in
+// publishers/. A publisher with a CurseForge project and a prefix missing here is warned about.
 const FOLDERS = {
   "quests-audio-alliance": "SpokenQuestsAudioAlliance",
   "quests-audio-horde": "SpokenQuestsAudioHorde",
@@ -71,8 +71,10 @@ export function packs(lang) {
   for (const file of publisherFiles()) {
     const f = frontmatter(file);
     if (f.lang !== lang || !f.release || !f.curseforge) continue;
+    if (!f.release.endsWith(`-${lang}`)) continue;
     const prefix = f.release.slice(0, -(lang.length + 1));
-    if (FOLDERS[prefix] && f.release.endsWith(`-${lang}`)) out.push([`${FOLDERS[prefix]}_${lang}`, Number(f.curseforge), f.name]);
+    if (FOLDERS[prefix]) out.push([`${FOLDERS[prefix]}_${lang}`, Number(f.curseforge), f.name]);
+    else console.error(`warning: ${file} has release ${f.release}, which spoken-release.sh does not know; skipped`);
   }
   const order = Object.values(FOLDERS);
   return out.sort((a, b) => order.indexOf(a[0].split("_")[0]) - order.indexOf(b[0].split("_")[0]));
