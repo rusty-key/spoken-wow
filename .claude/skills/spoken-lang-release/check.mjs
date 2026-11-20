@@ -93,6 +93,10 @@ async function check(cfg, [folder, project, name]) {
   if (!existsSync(toc)) return { ...row, error: `not installed in ${cfg.addonsDir}` };
   row.localVersion = (readFileSync(toc, "utf8").match(/^## Version:[ \t]*(\S+)/m) ?? [])[1] ?? null;
   if (!row.localVersion) return { ...row, error: `${folder}.toc has no ## Version` };
+  // The version names the changelog file: no path separators or "..".
+  if (!/^[0-9A-Za-z][0-9A-Za-z.+-]*$/.test(row.localVersion) || row.localVersion.includes("..")) {
+    return { ...row, error: `${folder}.toc has an odd version: ${row.localVersion}` };
+  }
   const file = await newestFile(project);
   if (!file) return { ...row, error: "no approved file on CurseForge yet" };
   row.cfVersion = file.displayName.replace(/^\S+\s+/, "");

@@ -20,6 +20,8 @@ const toc = join(cfg.addonsDir, folder, `${folder}.toc`);
 if (!existsSync(toc)) throw new Error(`${folder} is not installed in ${cfg.addonsDir}`);
 const version = (readFileSync(toc, "utf8").match(/^## Version:[ \t]*(\S+)/m) ?? [])[1];
 if (!version) throw new Error(`${folder}.toc has no ## Version`);
+// The version names the zip, which is deleted first if it exists: no path separators or "..".
+if (!/^[0-9A-Za-z][0-9A-Za-z.+-]*$/.test(version) || version.includes("..")) throw new Error(`${folder}.toc has an odd version: ${version}`);
 
 const out = `${cfg.workDir}/manual`;
 mkdirSync(out, { recursive: true });
