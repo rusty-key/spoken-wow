@@ -44,7 +44,7 @@ local urls = {
     Z:ReportURL(1411, "valley of trials", "esMX"),
     Z:ReportURL(1413, "razorfen downs", "koKR"),
     B:ReportURL(261),
-    B:ReportURL(261, "plPL"),
+    B:ReportURL(261, "ptBR"),
     D:ReportURL(36, "edwin vancleef"),
     D:ReportURL(409, "majordomo executus", "frFR"),
 }
