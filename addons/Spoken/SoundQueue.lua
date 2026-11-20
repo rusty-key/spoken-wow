@@ -871,8 +871,9 @@ function SoundQueue:SetMuted(value)
     if value then
         local head = self:GetCurrentSound()
         if head and head.nextSoundTimer then
+            local interrupted = not head.silent and not head.textOnly
             head.silent = true
-            head.mutedWhilePlaying = true
+            head.mutedWhilePlaying = interrupted or nil
             SoundUtils:StopSound(head)
             StopWatching(head)
         end

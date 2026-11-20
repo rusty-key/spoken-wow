@@ -197,6 +197,18 @@ Expect("a silent line can be paused after unmuting", Q:PauseQueue(), true)
 Expect("...and remains paused", Q:IsPaused(), true)
 Q:RemoveAllSoundsFromQueue()
 
+Fresh()
+local repeatedlyToggled = H.Clip({ length = 5 })
+Q:SetMuted(true)
+quests:Enqueue(repeatedlyToggled)
+stub.Advance(1)
+Q:SetMuted(false)
+Q:SetMuted(true)
+Q:SetMuted(false)
+Expect("repeated toggles keep a line that started muted silent", #world.played, 0)
+stub.Advance(4.1)
+Expect("...and leave its original finish timer intact", Q:IsEmpty(), true)
+
 ---------------------------------------------------------------- per-source queue limit
 Fresh()
 local head = H.Clip()
