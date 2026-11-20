@@ -19,7 +19,8 @@ Spoken Player until 3.0.0, when it became Spoken and took its modules into one d
 - **Forever's five new dungeons are in the Compendium.** The Bosses tab lists the bosses of the
   Drowned City, Krol'dok Stronghold, Alcaz Prison, Blackmaw Hold and the Shaper's Terrace. The
   Places tab lists Krol'dok Stronghold, Blackmaw Hold and the Shaper's Terrace under the zone of
-  their entrance, and entering one reads its story and counts it as found.
+  their entrance, and entering one counts it as found. Its story is read where your voice pack has
+  it.
   *([svengabr](https://github.com/svengabr))*
 
 ## 3.10.1 — 2026-11-19
