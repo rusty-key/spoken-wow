@@ -15,7 +15,7 @@ import { startNext } from "@/lib/releases/launch";
 import { activeRun, updateRun, type ReleaseRun } from "@/lib/releases/store";
 
 import { listTeams, TeamError } from "./admin";
-import { DELETED, retryDeletion, startDeletion } from "./delete";
+import { DELETED, deletionPreview, retryDeletion, startDeletion } from "./delete";
 import { forgetTeams } from "./store";
 import {
   addMember,
@@ -244,6 +244,32 @@ describe("deleting a team", () => {
       expect(await exists()).toBe(false);
     } finally {
       await dropLang(plainLang);
+    }
+  });
+
+  it("previews every section it would delist where its packs are plain, with no version where no release says", async () => {
+    const plainLang = await uniqueLang();
+    try {
+      await asSystem.query(`insert into "team_language" ("teamId", "lang", "packName") values ($1, $2, 'plain')`, [team, plainLang]);
+      expect((await deletionPreview(team)).packs).toEqual(
+        ["bosses", "places", "quests", "readables"].map((section) => ({ lang: plainLang, section, version: null })),
+      );
+    } finally {
+      await asSystem.query(`delete from "team_language" where "lang" = $1`, [plainLang]);
+      await dropLang(plainLang);
+    }
+  });
+
+  it("switches off a language whose last two teams are deleted at once", async () => {
+    const other = await newTeamIn(lang, false, "del-other");
+    const [{ slug: otherSlug }] = await systemRows<{ slug: string }>(`select "slug" from "team" where "id" = $1`, [other]);
+    try {
+      expect(
+        await Promise.all([startDeletion(team, actor.id, slug, launch), startDeletion(other, actor.id, otherSlug, launch)]),
+      ).toEqual(["deleted", "deleted"]);
+      expect(await systemRows(`select "enabled" from "language" where "code" = $1`, [lang])).toEqual([{ enabled: false }]);
+    } finally {
+      if ((await systemRows(`select 1 from "team" where "id" = $1`, [other])).length) await dropTeam(other);
     }
   });
 

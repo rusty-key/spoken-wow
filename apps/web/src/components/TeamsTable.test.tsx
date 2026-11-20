@@ -121,7 +121,7 @@ test("the dialog says what goes in plain words, and deletes only once the slug i
   render(<TeamsTable initial={[team(["deDE" as Lang, "plPL" as Lang])]} languages={[...languages, { code: "plPL" as Lang, name: "Polish" }]} />);
   await user.click(screen.getByRole("button", { name: "Delete spare" }));
 
-  expect(await screen.findByText("2 packs players can install now will be delisted first: Quests in German, Places in Polish.")).toBeTruthy();
+  expect(await screen.findByText("2 packs will be delisted first: Quests in German, Places in Polish.")).toBeTruthy();
   expect(screen.getByText("312 takes and their history; the audio files stay in the bucket.")).toBeTruthy();
   expect(screen.getByText("40 lines waiting to generate will be cancelled.")).toBeTruthy();
   expect(screen.getByText("3 text reports will move to another team of the language, or to its text queue.")).toBeTruthy();

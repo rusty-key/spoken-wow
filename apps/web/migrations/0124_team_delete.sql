@@ -10,7 +10,8 @@ alter table "team" add column "deleteError" text;
 
 -- A deleted team's text reports move to another team of the language, else wait on the language's
 -- text queue under no team. RLS keeps a row with no team from every team but ALL_TEAMS, which is
--- what the report reads act as.
+-- what the report reads act as. Only a deletion makes such a row; a previous release lists it but
+-- moderates it as its team, so cannot close it until this one is back.
 alter table "report" alter column "teamId" drop not null;
 -- Its voice reports are about takes that go with it, so they close and keep no team. No team reads
 -- an open voice report with none.

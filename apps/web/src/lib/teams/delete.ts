@@ -64,6 +64,7 @@ export type DeletionPreview = {
   reports: { moving: number; closing: number };
   /** Generation that has not started, which is cancelled. */
   pending: number;
+  /** What a delisting would take off the channel; `version` null where no release row says. */
   packs: LivePack[];
   /** Why it cannot be deleted now; null when it can. */
   refusal: string | null;
@@ -143,7 +144,7 @@ export async function deletionPreview(team: TeamId): Promise<DeletionPreview> {
       langs: await langsOf(client, team),
       members: await membersOf(client, team),
       ...(await countsOf(client, team)),
-      packs: await livePacks(client, team),
+      packs: await packsToDelist(client, team),
       refusal: await refusalOf(client, row),
     };
   });
@@ -154,15 +155,19 @@ export async function deletionPreview(team: TeamId): Promise<DeletionPreview> {
  * every section where its packs are plain, which `make manager-release` published before the site
  * ran releases, leaving no row. A team whose packs carry its slug only ever released here.
  */
-async function packsToDelist(client: ClientBase, team: TeamId): Promise<{ lang: Lang; section: ReleaseSection }[]> {
-  const packs = new Map<string, { lang: Lang; section: ReleaseSection }>();
-  for (const { lang, section } of await livePacks(client, team)) packs.set(`${lang}:${section}`, { lang, section });
+async function packsToDelist(client: ClientBase, team: TeamId): Promise<LivePack[]> {
+  const packs = new Map<string, LivePack>();
+  for (const pack of await livePacks(client, team)) packs.set(`${pack.lang}:${pack.section}`, pack);
   const { rows } = await client.query<{ lang: Lang }>(
     `select "lang" from "team_language" where "teamId" = $1 and "packName" = 'plain' order by "lang"`,
     [team],
   );
   for (const { lang } of rows) {
-    for (const section of RELEASE_SECTIONS) packs.set(`${lang}:${section}`, { lang, section });
+    for (const section of RELEASE_SECTIONS) {
+      const key = `${lang}:${section}`;
+      // No release row says which version players have.
+      if (!packs.has(key)) packs.set(key, { lang, section, version: null });
+    }
   }
   return [...packs.values()].sort((a, b) => `${a.lang}:${a.section}`.localeCompare(`${b.lang}:${b.section}`));
 }
@@ -200,7 +205,7 @@ async function begin(client: PoolClient, team: TeamRow, actorId: string): Promis
   }
   let first: ReleaseRun | null = null;
   for (const pack of packs) {
-    const run = await insertRun(client, { kind: "delist", teamId: team.id, ...pack, requestedBy: actorId });
+    const run = await insertRun(client, { kind: "delist", teamId: team.id, lang: pack.lang, section: pack.section, requestedBy: actorId });
     first ??= run;
   }
   return first;
@@ -305,6 +310,13 @@ export async function finishDeletion(client: PoolClient, team: TeamId, actorId: 
   const row = await teamRow(client, team, true);
   const { counts } = await countsOf(client, team);
   const members = await membersOf(client, team);
+  // Two deletions of a language's last teams would each see the other's team still there, and
+  // neither switch it off: the second waits here for the first's commit, and then sees it gone.
+  await client.query(
+    `select 1 from "language" where "code" in (select "lang" from "team_language" where "teamId" = $1)
+      order by "code" for update`,
+    [team],
+  );
   const langs = await langsOf(client, team);
   await client.query(
     `with "moved" as (

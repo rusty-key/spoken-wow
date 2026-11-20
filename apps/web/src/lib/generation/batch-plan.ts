@@ -319,14 +319,17 @@ export async function queuePlan(args: {
   }
 
   let batchId: string;
+  let queued: number;
+  let skipped: number;
+  // A deletion can start between the batch and its jobs, and refuses the jobs then.
   try {
     batchId = await createBatch(label, userId, section, lang);
+    ({ queued, skipped } = await enqueue(batchId, plan.jobs, section, lang, provider));
   } catch (error) {
     const deleting = deletingResponse(error, { kind: "team-deleting" });
     if (deleting) return deleting;
     throw error;
   }
-  const { queued, skipped } = await enqueue(batchId, plan.jobs, section, lang, provider);
   // One row for the whole batch, however many lines it holds.
   await recordActivity({
     kind: "batch.queued",

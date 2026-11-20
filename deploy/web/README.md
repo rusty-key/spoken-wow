@@ -732,9 +732,12 @@ works once the team's slug is typed (`docs/platform/TEAMS.md`, *Deleting a team*
 cannot be deleted, nor a team with a release queued, running or being listed.
 
 A team with packs on the channel is delisted first, one `delist` run per pack in the release
-queue, so deleting it works on the droplet only. Its row says *Being deleted* with how many are
+queue, so deleting it works on the droplet only. A team with plain packs in a language counts as
+having all four sections there, even ones never published, since a release before the site's left
+no row. Its row says *Being deleted* with how many are
 done. The rows go when the last one ends; until then the team makes nothing, and its members can
-do nothing in it. A team with no pack on the channel goes at once.
+do nothing in it. A team with no pack on the channel and no plain packs goes at once, wherever
+it is deleted.
 
 If a delisting fails, the row says *Deletion stopped* with the reason, and nothing has been
 deleted. Fix the cause (the log is on the run, under `shared/release-runs/<id>/`) and press

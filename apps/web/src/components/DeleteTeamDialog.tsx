@@ -9,7 +9,30 @@ import type { Lang } from "@/lib/lang";
 import { plural } from "@/lib/plural";
 import { SECTION_LABELS } from "@/lib/releases/sections";
 import { send } from "@/lib/send";
-import type { DeletionPreview } from "@/lib/teams/delete";
+import type { DeletedTable, DeletionPreview } from "@/lib/teams/delete";
+
+/** A team's setup beside its voices, which the voices' line names. */
+const SETUP: readonly DeletedTable[] = [
+  "voice_assignment", "voice_sample", "fish_reference", "generation_setting_locale", "generation_setting",
+  "lexicon_change", "pronunciation_lexicon_locale", "pronunciation_lexicon",
+];
+
+/** Rows no other line names, so a team with only these is not "nothing but its name". */
+const OTHER: readonly [DeletedTable, string, string?][] = [
+  ["line_ignore", "ignored line"],
+  ["line_flag", "line flag"],
+  ["line_issue", "line issue"],
+  ["regeneration_batch", "generation batch", "generation batches"],
+  ["regeneration_pause", "generation pause"],
+  ["queue_dismissal", "dismissed queue line"],
+  ["archive_object", "archive record"],
+  ["storage_move", "storage move"],
+  ["activity", "activity log entry", "activity log entries"],
+];
+
+function listed(items: string[]): string {
+  return items.length > 1 ? `${items.slice(0, -1).join(", ")} and ${items.at(-1)}` : items[0];
+}
 
 /** What goes with the team, one line each, in plain words; nothing for what it has none of. */
 export function deletionLines(preview: DeletionPreview, nameOf: (lang: Lang) => string): string[] {
@@ -17,12 +40,13 @@ export function deletionLines(preview: DeletionPreview, nameOf: (lang: Lang) => 
   const lines: string[] = [];
   if (preview.packs.length) {
     const packs = preview.packs.map((pack) => `${SECTION_LABELS[pack.section]} in ${nameOf(pack.lang)}`).join(", ");
-    lines.push(`${plural(preview.packs.length, "pack")} players can install now will be delisted first: ${packs}.`);
+    lines.push(`${plural(preview.packs.length, "pack")} will be delisted first: ${packs}.`);
   }
   if (counts.take) lines.push(`${plural(counts.take, "take")} and their history; the audio files stay in the bucket.`);
   if (counts.recording) lines.push(`${plural(counts.recording, "recording")}; the audio files stay in the bucket.`);
   const voices = [counts.voice && plural(counts.voice, "voice"), counts.voice_clone && plural(counts.voice_clone, "voice clone")];
   if (voices.some(Boolean)) lines.push(`${voices.filter(Boolean).join(" and ")}, with its generation settings and lexicon.`);
+  else if (SETUP.some((table) => counts[table])) lines.push("Its generation settings and lexicon.");
   if (preview.pending) lines.push(`${plural(preview.pending, "line")} waiting to generate will be cancelled.`);
   const overrides = counts.line_override + counts.text_override;
   if (overrides) lines.push(`${plural(overrides, "text override")}.`);
@@ -31,6 +55,8 @@ export function deletionLines(preview: DeletionPreview, nameOf: (lang: Lang) => 
   if (moving) lines.push(`${plural(moving, "text report")} will move to another team of the language, or to its text queue.`);
   if (closing) lines.push(`${plural(closing, "open voice report")} will be closed: their takes go with the team.`);
   if (counts.storage_backend) lines.push("Its storage bucket is forgotten; everything in it stays.");
+  const also = OTHER.filter(([table]) => counts[table]).map(([table, noun, nouns]) => plural(counts[table], noun, nouns));
+  if (also.length) lines.push(`Also ${listed(also)}.`);
   const people = new Set(preview.members.map((member) => member.email)).size;
   if (people) lines.push(`${plural(people, "person", "people")} will lose what they do in it; text maintainers keep theirs.`);
   for (const { lang, alone } of preview.langs) {
@@ -85,7 +111,7 @@ export default function DeleteTeamDialog({ team, nameOf, onClose, onSent }: Prop
   return (
     <Dialog open={team !== null} onOpenChange={(open) => !open && onClose()}>
       {team && (
-        <DialogContent>
+        <DialogContent className="max-h-[calc(100dvh-2rem)] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Delete {team.name}?</DialogTitle>
             <DialogDescription>
