@@ -135,14 +135,18 @@ declare n bigint;
 begin
   if exists (select 1 from information_schema.columns
               where table_schema = '$staging' and table_name = '$table' and column_name = 'teamId') then
-    update $staging."$table" s set "teamId" = coalesce(
-        (select tl."teamId" from $staging."upstream_team" u
-           join public."team" t on t."slug" = u."slug"
-           join public."team_language" tl on tl."teamId" = t."id" and tl."lang" = s."lang"
-          where u."id" = s."teamId"),
-        (select "teamId" from public."team_language" where "lang" = s."lang" and "packName" = 'plain'),
-        (select "id" from public."team" where "slug" = 'english'))
-      where s."teamId" is not null;
+    -- Each upstream team and language once: the same slug's team where it voices the language,
+    -- else the language's plain team, else English's.
+    update $staging."$table" s set "teamId" = m."local"
+      from (select d."teamId", d."lang", coalesce(
+                     (select tl."teamId" from $staging."upstream_team" u
+                        join public."team" t on t."slug" = u."slug"
+                        join public."team_language" tl on tl."teamId" = t."id" and tl."lang" = d."lang"
+                       where u."id" = d."teamId"),
+                     public.team_of_lang(d."lang"),
+                     (select "id" from public."team" where "slug" = 'english')) as "local"
+              from (select distinct "teamId", "lang" from $staging."$table" where "teamId" is not null) d) m
+     where s."teamId" = m."teamId" and s."lang" is not distinct from m."lang";
     get diagnostics n = row_count;
     raise warning 'teams: % $table rows stamped', n;
   end if;

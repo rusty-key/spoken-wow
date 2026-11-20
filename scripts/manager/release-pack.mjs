@@ -9,7 +9,7 @@
 // and team, its first version is 1.0.0 (publish.mjs bumps it from the channel after that), and its
 // .toc names the team and, for a language Spoken does not build in, the language.
 import { BASE_LOCALE } from "../../pipelines/lib/locales.mjs";
-import { derivedFolders, findPack, loadPacks, managerFolders, packsFor } from "../lib/packs.mjs";
+import { derivedFolders, findPack, loadPacks, managerFolders, packsFor, packSlug } from "../lib/packs.mjs";
 import { keepsCommittedFolder } from "./stage-pack.mjs";
 
 /**
@@ -66,7 +66,7 @@ function pagePlan(section, lang, team, pages, packs) {
 }
 
 function derivedPlan(section, lang, team, packs) {
-  const slug = team.packName === "plain" ? null : team.slug;
+  const slug = packSlug(team);
   const english = packsFor(section, BASE_LOCALE, packs);
   const listed = listedTeam(team);
   const folders = derivedFolders(section, lang, slug, packs).map(({ folder, english: englishFolder }) => {

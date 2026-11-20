@@ -40,7 +40,7 @@ import { basename, dirname, join, posix, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
 import { BASE_LOCALE, CODES } from "../../pipelines/lib/locales.mjs";
-import { scriptTeamId } from "../../pipelines/lib/release-team.mjs";
+import { scriptTeam } from "../../pipelines/lib/release-team.mjs";
 import { luaString } from "../../pipelines/places/tools/lib/wiki.mjs";
 import { archiveOf, sourceOf } from "../lib/archives.mjs";
 import { actedFolder, audioFamily, englishFolder } from "../lib/packs.mjs";
@@ -267,17 +267,11 @@ export function toc({ section, lang, version, credits, iface }) {
  * overlay's folder carries no slug, so another team's would overwrite it.
  */
 export function actedTeamId(database, lang, slug = null) {
-  const team = scriptTeamId(database, lang, slug);
-  if (slug !== null) {
-    const packName = execFileSync("psql", [database, "-tAX", "-v", "ON_ERROR_STOP=1", "-v", `lang=${lang}`, "-v", `team=${team}`, "-f", "-"], {
-      input: `select "packName" from "team_language" where "lang" = :'lang' and "teamId" = :'team'::uuid`,
-      encoding: "utf8",
-    }).trim();
-    if (packName !== "plain") {
-      throw new Error(`${slug}'s packs in ${lang} carry its slug; acted packs are built only for the team with plain packs`);
-    }
+  const team = scriptTeam(database, lang, slug);
+  if (team.packName !== "plain") {
+    throw new Error(`${slug}'s packs in ${lang} carry its slug; acted packs are built only for the team with plain packs`);
   }
-  return team;
+  return team.id;
 }
 
 function live(section, lang, slug) {

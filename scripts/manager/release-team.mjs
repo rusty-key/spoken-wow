@@ -4,7 +4,7 @@
 //
 // A team's pack name in the language decides its folders: `plain` builds `<Pack>_<lang>`, `slug`
 // `<Pack>_<lang>_<slug>` (scripts/lib/packs.mjs teamFolder).
-import { derivedFolders, loadPacks } from "../lib/packs.mjs";
+import { derivedFolders, loadPacks, packSlug } from "../lib/packs.mjs";
 
 /** Every language's English and native names, which index-v2.json carries for the Manager. */
 export async function languageNames(db) {
@@ -50,5 +50,5 @@ export async function releaseTeam(db, lang, slug = null) {
  */
 export async function teamPackFolders(db, section, lang, slug, packs = loadPacks()) {
   const team = await releaseTeam(db, lang, slug);
-  return derivedFolders(section, lang, team.packName === "plain" ? null : team.slug, packs).map((p) => p.folder);
+  return derivedFolders(section, lang, packSlug(team), packs).map((p) => p.folder);
 }

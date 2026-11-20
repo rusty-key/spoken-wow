@@ -82,7 +82,7 @@ select s.*, (select id from "user" where email = '$ADMIN_EMAIL'), now(),
        coalesce(
          (select tl."teamId" from "team_language" tl join "team" t on t.id = tl."teamId"
            where tl.lang = s.lang and t.slug = '$TEAM'),
-         (select "teamId" from "team_language" where lang = s.lang and '$TEAM' = '' and "packName" = 'plain'))
+         case when '$TEAM' = '' then team_of_lang(s.lang) end)
   from seeded s
 on conflict ("teamId", voice, lang) do update set
   sample = excluded.sample, "startSec" = excluded."startSec", "endSec" = excluded."endSec",

@@ -49,7 +49,7 @@ begin
     -- A sample's language is in its clone's name, 'voice@lang'.
     v_lang := case t when 'voice_sample' then 'split_part(r."clone", ''@'', 2)' else 'r."lang"' end;
     -- Null for a language with no plain packs, which the comparison leaves out.
-    v_plain := format('(select "teamId" from "team_language" where "lang" = %s and "packName" = ''plain'')', v_lang);
+    v_plain := format('team_of_lang(%s)', v_lang);
     v_where := format('r."teamId" = $1 and %s <> $1
                        and not exists (select 1 from "team_language" where "lang" = %s and "teamId" = $1)',
                       v_plain, v_lang);

@@ -67,6 +67,11 @@ export function teamFolder(englishFolder, lang, slug) {
   return `${englishFolder}_${lang}${slug === null ? "" : `_${slug}`}`;
 }
 
+// The slug a team's folders in a language carry: none where its packs there are plain.
+export function packSlug(team) {
+  return team.packName === "plain" ? null : team.slug;
+}
+
 // The folders of a pack with no store page, a team's or a new language's: English's Manager
 // folders for the section, each carrying the language and slug, and naming the English folder
 // (`english`) it is derived from.

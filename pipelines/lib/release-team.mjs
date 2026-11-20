@@ -17,7 +17,7 @@ export function releaseTeamId(env = process.env) {
 
 /** SQL for the team whose packs in `langExpr` carry no slug: null when no team's do. */
 export function plainTeamSql(langExpr) {
-  return `(select "teamId" from "team_language" where "lang" = ${langExpr} and "packName" = 'plain')`;
+  return `team_of_lang(${langExpr})`;
 }
 
 /** SQL for the team whose takes a build of `langExpr`'s pack reads. */
@@ -27,16 +27,24 @@ export function releaseTeamSql(langExpr, env = process.env) {
 }
 
 /**
- * The id of the team a script run by hand reads in `lang`: the one `slug` names (its --team), else
- * the one with plain packs. Throws rather than read nothing when there is none.
+ * The team a script run by hand reads in `lang`, with its pack name there: the one `slug` names
+ * (its --team), else the one with plain packs. Throws rather than read nothing when there is none.
  */
-export function scriptTeamId(database, lang, slug = null) {
-  const id = execFileSync("psql", [database, "-tAX", "-v", "ON_ERROR_STOP=1", "-v", `lang=${lang}`, "-v", `slug=${slug ?? ""}`, "-f", "-"], {
-    input: `select tl."teamId" from "team_language" tl join "team" t on t."id" = tl."teamId"
+export function scriptTeam(database, lang, slug = null) {
+  const row = execFileSync("psql", [database, "-tAX", "-v", "ON_ERROR_STOP=1", "-v", `lang=${lang}`, "-v", `slug=${slug ?? ""}`, "-f", "-"], {
+    input: `select tl."teamId", tl."packName" from "team_language" tl join "team" t on t."id" = tl."teamId"
              where tl."lang" = :'lang'
                and case when :'slug' = '' then tl."packName" = 'plain' else t."slug" = :'slug' end`,
     encoding: "utf8",
   }).trim();
-  if (id) return id;
+  if (row) {
+    const [id, packName] = row.split("|");
+    return { id, packName };
+  }
   throw new Error(slug ? `no team ${slug} voices ${lang}` : `${lang} has no team with plain packs: name one with --team`);
+}
+
+/** scriptTeam's id. */
+export function scriptTeamId(database, lang, slug = null) {
+  return scriptTeam(database, lang, slug).id;
 }
