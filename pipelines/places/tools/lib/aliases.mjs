@@ -13,14 +13,18 @@ export function aliasesOf(englishRows, localizedRows, wanted, keyOf) {
   const englishById = new Map(englishRows.map((row) => [row.ID, (row.AreaName_lang || "").trim()]));
   const aliases = new Map();
   const ambiguous = new Set();
+  const ownNames = new Map();
   for (const row of localizedRows) {
     const localized = (row.AreaName_lang || "").trim();
     const englishName = englishById.get(row.ID);
     if (!localized || !englishName) continue;
 
     const key = keyOf(englishName);
-    if (localized === englishName) continue;
     if (!wanted.has(key)) continue;
+    if (localized === englishName) {
+      ownNames.set(localized, key);
+      continue;
+    }
 
     const existing = aliases.get(localized);
     if (existing && existing !== key) {
@@ -30,7 +34,26 @@ export function aliasesOf(englishRows, localizedRows, wanted, keyOf) {
       aliases.set(localized, key);
     }
   }
-  return { aliases, ambiguous };
+  return { aliases, ambiguous, ownNames };
+}
+
+/**
+ * The flat aliases less those that are another place's own name where no zone tells the two
+ * apart (`byZone` has no entry): the client reports that name for both, and the alias would win
+ * at both. Without it the name keys itself, as before the other place had a translation.
+ *
+ * @param flat aliasesOf's result, or several merged: { aliases, ownNames }
+ * @returns { aliases, dropped: the names left out }
+ */
+export function withoutUnresolved({ aliases, ownNames }, byZone) {
+  const kept = new Map();
+  const dropped = [];
+  for (const [name, key] of aliases) {
+    const own = ownNames.get(name);
+    if (own !== undefined && own !== key && !byZone.has(name)) dropped.push(name);
+    else kept.set(name, key);
+  }
+  return { aliases: kept, dropped };
 }
 
 /**

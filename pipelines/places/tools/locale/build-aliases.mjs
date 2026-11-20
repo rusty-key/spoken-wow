@@ -37,7 +37,7 @@
 import { mkdir, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 
-import { aliasesOf, emitAliases, zoneAliasesOf } from "../lib/aliases.mjs";
+import { aliasesOf, emitAliases, withoutUnresolved, zoneAliasesOf } from "../lib/aliases.mjs";
 import { areaNames, mapNames } from "../lib/area-names.mjs";
 import { ERA_BUILD, FOREVER_BUILD, wagoTable as fetchTable } from "../../../lib/wago.mjs";
 import { BASE_LOCALE, isClientLocale, LOCALES } from "../lib/locales.mjs";
@@ -101,12 +101,12 @@ async function main() {
     const foreverRows = await fetchTable("AreaTable", { build: FOREVER_BUILD, locale: locale.code });
     const fromForever = aliasesOf(foreverEnglish, foreverRows, wanted, foreverKey);
     const fromEra = aliasesOf(english, rows, wanted, eraKey);
-    const aliases = new Map(fromForever.aliases);
+    const merged = new Map(fromForever.aliases);
     const ambiguous = new Set(fromForever.ambiguous);
     for (const [name, key] of fromEra.aliases) {
-      if (!aliases.has(name) && !ambiguous.has(name)) aliases.set(name, key);
+      if (!merged.has(name) && !ambiguous.has(name)) merged.set(name, key);
     }
-    for (const name of fromEra.ambiguous) if (!aliases.has(name)) ambiguous.add(name);
+    for (const name of fromEra.ambiguous) if (!merged.has(name)) ambiguous.add(name);
     const byZone = zoneAliasesOf(
       [
         { english: foreverEnglish, localized: foreverRows, keyOf: foreverKey },
@@ -114,6 +114,9 @@ async function main() {
       ],
       mapsOf,
     );
+    const ownNames = new Map([...fromEra.ownNames, ...fromForever.ownNames]);
+    const { aliases, dropped } = withoutUnresolved({ aliases: merged, ownNames }, byZone);
+    for (const name of dropped) ambiguous.add(name);
 
     const dir = join(ROOT, "addons/Spoken_Places/Data", locale.code);
     await mkdir(dir, { recursive: true });
