@@ -18,7 +18,7 @@ const cfg = loadConfig(opt("--lang"));
 
 const toc = join(cfg.addonsDir, folder, `${folder}.toc`);
 if (!existsSync(toc)) throw new Error(`${folder} is not installed in ${cfg.addonsDir}`);
-const version = (readFileSync(toc, "utf8").match(/^## Version:\s*(\S+)/m) ?? [])[1];
+const version = (readFileSync(toc, "utf8").match(/^## Version:[ \t]*(\S+)/m) ?? [])[1];
 if (!version) throw new Error(`${folder}.toc has no ## Version`);
 
 const out = `${cfg.workDir}/manual`;

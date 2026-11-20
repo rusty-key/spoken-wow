@@ -257,12 +257,16 @@ For the rows step 4 accepted under "accept + fix". The Text API runs with the ma
    (quests with `variant > 0`: `?variant=<n>`). Never print, `cat` or log the header file.
 2. Write only if `text` is still exactly the accepted contribution text. If someone changed it since,
    or `version` > 1 from an earlier hand: leave it, put it in the report.
-3. One PATCH per section: `PATCH /api/v1/<section>` with `{ note: "<lang>-daily <date> token fixes",
+3. One PATCH per section, split into batches of at most 1,000 items (the API's limit):
+   `PATCH /api/v1/<section>` with `{ note: "<lang>-daily <date> token fixes",
    items: [{ id, variant?, text, expectedVersion }] }`. Send `variant` only for `quests` items. A
    text with `$g…;` splits a quest line into `:m`/`:f`, which `restore` cannot undo
    (`gender_split`). So only when the enUS line really addresses the player.
 4. Append each `batchId` with date, section, count and purpose to
-   `~/.claude/spoken/<lang>/batches.log`. `conflict` entries go into the report.
+   `~/.claude/spoken/<lang>/batches.log`. Each item succeeds or fails on its own: read every
+   item's result. Retry `internal` items once (the API marks them retryable). Every item that still
+   failed (`conflict`, `invalid`, `unknown_id`, `internal`, …) goes into the report with its id
+   and result.
 
 The changed lines are then `stale` or `missing`, and step 6 voices them.
 
@@ -320,9 +324,11 @@ finished, not when queueing. If the job fails, they stay open and the error goes
 - `state=missing&source=accept,complete,gossip,followup,chatter`: the daily round.
 - `state=missing&source=progress`: the progress backlog, plus new progress lines of the day.
 
-`voicingCap` applies to everything together, and nothing over it is queued without asking:
-- If every filter but progress already adds up to more than the cap, ask **once** with
-  `AskUserQuestion` before queueing anything, with the numbers from `plan()`.
+`voicingCap` applies to everything together, and nothing over it is queued without asking.
+"Everything" is the `plan()` totals plus the lines step 5c collected for re-voicing, which
+`plan()` does not count when their audio is current:
+- If the 5c lines and every filter but progress already add up to more than the cap, ask **once**
+  with `AskUserQuestion` before queueing anything, with the combined numbers.
 - Otherwise queue those filters without asking. If progress then breaks the cap, ask **once** about
   the backlog, with its count and characters from `plan()`: all, one level band
   (`&minLevel=<a>&maxLevel=<b>`, both inclusive, low quests first) or nothing today. If progress
