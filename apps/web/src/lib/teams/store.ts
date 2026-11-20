@@ -136,6 +136,14 @@ export async function ownerOf(lang: Lang): Promise<TeamId | undefined> {
   return (await freshOwners([lang])).get(lang);
 }
 
+/**
+ * The team whose work a reader of `lang` sees: the acting one, else the first as teamsOf lists
+ * them, as the Explorer shows an outsider. Never for writes.
+ */
+export async function readerOf(lang: Lang): Promise<TeamId | undefined> {
+  return (await ownerOf(lang)) ?? (await defaultTeamOf(lang))?.id;
+}
+
 /** ownerOf for each of `langs`. Reads the session only when one of them has more than one team. */
 export async function freshOwners(langs: readonly (Lang | null)[]): Promise<Map<Lang, TeamId>> {
   return overlay(await mappingFor(langs), langs);
@@ -260,6 +268,17 @@ export async function queryAs<T extends QueryResultRow = QueryResultRow>(
  * switched on still renders an empty explorer.
  */
 export async function readAs<T extends QueryResultRow = QueryResultRow>(
+  lang: Lang,
+  text: string,
+  params?: unknown[],
+): Promise<T[]> {
+  const team = await readerOf(lang);
+  if (!team) return [];
+  return queryIn<T>(team, text, params);
+}
+
+/** readAs for the acting team only: somebody outside every team of `lang` reads nothing. */
+export async function readAsActing<T extends QueryResultRow = QueryResultRow>(
   lang: Lang,
   text: string,
   params?: unknown[],

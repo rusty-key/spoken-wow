@@ -14,7 +14,7 @@ import type { LineOverride } from "@/lib/quests/override";
 import type { OverrideView } from "@/lib/text-overrides/types";
 
 import { asTeam } from "./acting";
-import { ownerOf, sharedLangs, teamsOf, type TeamId, type TeamRef } from "./store";
+import { ownerOf, readerOf, sharedLangs, teamsOf, type TeamId, type TeamRef } from "./store";
 import type { TeamView } from "./view";
 
 export type TeamChoice = TeamRef;
@@ -88,7 +88,7 @@ export async function asPublished<E extends { id: string; override?: OverrideVie
   lang: Lang,
 ): Promise<E[]> {
   if (!entries.some((entry) => entry.override)) return entries;
-  const team = await ownerOf(lang);
+  const team = await readerOf(lang);
   const live = team ? await teamLiveOverrides(team, source, lang) : new Map<string, string>();
   const original = new Map((await base()).map((entry) => [entry.id, entry]));
   return entries.map((entry) => {
@@ -103,7 +103,7 @@ export async function asPublished<E extends { id: string; override?: OverrideVie
 /** Quest overrides as asPublished leaves them: those a live take speaks, without their author. */
 export async function publishedOverrides(lang: Lang, overrides: Map<string, LineOverride>): Promise<Map<string, LineOverride>> {
   if (overrides.size === 0) return overrides;
-  const team = await ownerOf(lang);
+  const team = await readerOf(lang);
   const live = team ? await teamLiveOverrides(team, "quests", lang) : new Map<string, string>();
   return new Map(
     [...overrides]
@@ -156,16 +156,16 @@ export function asHeard<
 }
 
 /**
- * The team a request's `team` parameter names, when it is not the acting one: null without one
- * (an empty one counts as none), and then no lookup is made; null for the acting team's own slug;
- * a 404 for a slug naming no team of `lang`.
+ * The team a request's `team` parameter names, when it is not the one the visitor reads as
+ * (readerOf): null without one (an empty one counts as none), and then no lookup is made; null
+ * for that team's own slug; a 404 for a slug naming no team of `lang`.
  */
 export async function viewedOther(params: URLSearchParams, lang: Lang): Promise<TeamId | null | Response> {
   const slug = params.get("team") || null;
   if (slug === null) return null;
   const viewed = await viewedTeam(lang, slug);
   if (!viewed) return unknownTeam(slug, lang);
-  return viewed.own ? null : viewed.team;
+  return viewed.team === (await readerOf(lang)) ? null : viewed.team;
 }
 
 /**

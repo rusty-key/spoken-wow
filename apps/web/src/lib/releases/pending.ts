@@ -13,7 +13,7 @@
 import "server-only";
 
 import type { Lang } from "@/lib/lang";
-import { readAs } from "@/lib/teams/store";
+import { readAsActing } from "@/lib/teams/store";
 import { namesOf } from "@/lib/users/store";
 
 import { RELEASE_SECTIONS, type PendingChange, type PendingView, type ReleaseSection } from "./sections";
@@ -209,14 +209,14 @@ async function summarize(
   const params = [section, lang, ...extra];
   // One after another: a page asks for every section at once, and each query here holds a
   // connection of its own while it runs.
-  const byPerson = await readAs<{ by: string | null; count: string; restored: string }>(
+  const byPerson = await readAsActing<{ by: string | null; count: string; restored: string }>(
     lang,
     `select "by", count(*) as "count", count(*) filter (where "kind" = 'restored') as "restored"
        from (${CHANGED}) c group by "by" order by count(*) desc`,
     params,
   );
   const rows = list
-    ? await readAs<Row>(
+    ? await readAsActing<Row>(
         lang,
         `select c.*, x."title", x."text", live_now."version" as "current"
            from (select * from (${CHANGED}) changed order by "at" desc limit ${LISTED}) c
@@ -263,7 +263,7 @@ async function summarize(
 export async function textChangeCount(section: ReleaseSection, lang: Lang, since: Date | null, until: Date | null): Promise<number> {
   // Before any release everything goes out anyway, so there is nothing to add.
   if (!since) return 0;
-  const rows = await readAs<{ count: string }>(
+  const rows = await readAsActing<{ count: string }>(
     lang,
     `with until_live as (${liveAt("$4::timestamptz")})
      select count(distinct coalesce(a."lineId", a."subject")) as "count" from "activity" a

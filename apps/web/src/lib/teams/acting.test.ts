@@ -67,7 +67,8 @@ describe("the owner a person works as", () => {
   it("is no team outside any scope, and the person's own team inside one", async () => {
     expect(await ownerOrAll(lang)).toBe(ALL_TEAMS);
     await expect(teamOf(lang)).rejects.toBeInstanceOf(NoTeamError);
-    expect(await readAs(lang, `select 1 as "one"`)).toEqual([]);
+    // A reader outside every team reads as the first, as the Explorer shows them.
+    expect(await readAs(lang, `select 1 as "one"`)).toEqual([{ one: 1 }]);
     expect(await asActor(u.id, () => ownerOrAll(lang))).toBe(teamB);
     expect(await asActor(v.id, () => ownerOrAll(lang))).toBe(teamA);
   });
