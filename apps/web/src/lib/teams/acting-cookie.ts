@@ -10,7 +10,7 @@ import { cookies } from "next/headers";
 
 import type { Lang } from "@/lib/lang";
 
-import { sharedLangs, teamsOf, type TeamId } from "./store";
+import { defaultTeamOf, sharedLangs, teamsOf, type TeamId } from "./store";
 
 export const ACTING_COOKIE = "spoken_team";
 
@@ -71,7 +71,7 @@ export async function siteOwnerTeams(member: ReadonlyMap<string, TeamId>): Promi
   if (shared.size === 0) return new Map(member);
   const unchosen = new Map<string, TeamId>();
   for (const lang of shared) {
-    const first = (await teamsOf(lang))[0];
+    const first = await defaultTeamOf(lang);
     if (first) unchosen.set(lang, first.id);
   }
   return new Map([...unchosen, ...member, ...(await chosenTeams())]);

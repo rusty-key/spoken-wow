@@ -11,7 +11,7 @@ import { grantsInTeam, viewerOf } from "@/lib/grants/store";
 import type { Lang } from "@/lib/lang";
 import { can, isAdmin, type Capability, type Viewer } from "@/lib/permissions";
 import { asTeams, memberTeams } from "@/lib/teams/acting";
-import { sharedLangs, teamsOf } from "@/lib/teams/store";
+import { defaultTeamOf, sharedLangs } from "@/lib/teams/store";
 import { findLiveToken } from "@/lib/tokens/store";
 import type { TokenAccess } from "@/lib/tokens/types";
 
@@ -124,7 +124,7 @@ async function ownerInTeam(
   lang: Lang,
 ): Promise<{ viewer: Viewer; teams: Map<string, TeamId> }> {
   const teams = await memberTeams(userId);
-  const first = isAdmin(role) && !teams.has(lang) ? (await teamsOf(lang))[0] : undefined;
+  const first = isAdmin(role) && !teams.has(lang) ? await defaultTeamOf(lang) : undefined;
   if (first) teams.set(lang, first.id);
   return { viewer: { role, grants: await grantsInTeam(userId, lang, teams.get(lang) ?? null) }, teams };
 }

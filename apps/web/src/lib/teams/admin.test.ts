@@ -94,7 +94,7 @@ describe("deleteTeam", () => {
     return team;
   }
 
-  it("deletes a team beside another with its roster, lexicon history, pause and log, recording its members", async () => {
+  it("deletes a second team with its roster, lexicon history, pause and log, recording its members", async () => {
     const team = await secondTeam();
     await addMember(team, actor, "deDE", "admin");
     await asSystem.query(`insert into "activity" ("lang", "kind", "actorId", "teamId") values ('deDE', 'grant.added', $1, $2)`, [
@@ -127,9 +127,9 @@ describe("deleteTeam", () => {
     ]);
   });
 
-  it("refuses a language's only team, naming the language", async () => {
+  it("refuses a team holding a language, naming it", async () => {
     const lang = await uniqueLang();
-    const team = await newTeamIn(lang, false);
+    const team = await newTeamIn(lang, true);
     made.push(team);
     try {
       await expect(deleteTeam(team, actor)).rejects.toMatchObject({ status: 409, message: expect.stringContaining(lang) });

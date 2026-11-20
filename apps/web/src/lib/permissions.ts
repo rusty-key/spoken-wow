@@ -192,10 +192,8 @@ export function canManageVoices(viewer: Viewer | null, lang: Lang): boolean {
  * admin does elsewhere. An admin of any team of the language may: the teams are equal.
  */
 export function canGrant(viewer: Viewer | null, capability: Capability, lang: Lang, textByTeam: boolean): boolean {
-  if (!viewer) return false;
-  if (viewer.role === "admin") return true;
-  if (capability !== "text") return can(viewer, "admin", lang);
-  return textByTeam && can(viewer, "admin", lang);
+  if (viewer?.role === "admin") return true;
+  return can(viewer, "admin", lang) && (capability !== "text" || textByTeam);
 }
 
 /**

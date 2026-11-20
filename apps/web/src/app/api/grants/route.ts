@@ -10,7 +10,6 @@
 import { headers } from "next/headers";
 
 import { auth } from "@/lib/auth";
-import { ALL_TEAMS } from "@/lib/db";
 import { addGrants, OtherTeamError, refusedGrant, removeGrant, userByEmail, viewerOf } from "@/lib/grants/store";
 import { listingFor, notAllowed } from "@/lib/invites/listing";
 import {
@@ -25,7 +24,7 @@ import {
 import { knownLang } from "@/lib/languages/catalogue";
 import { isAdmin, isCapability, removesOwnAdmin, type Viewer } from "@/lib/permissions";
 import { teamIn } from "@/lib/teams/acting";
-import { ownerOrAll } from "@/lib/teams/store";
+import { ownerOf } from "@/lib/teams/store";
 
 export const dynamic = "force-dynamic";
 
@@ -86,8 +85,7 @@ export async function PUT(request: Request) {
   // Nobody has registered as it: invite the address instead, into the inviter's team. A site
   // owner's joins the team they act in: the language's one team, else the one they picked.
   const inviterTeam = isAdmin(who.viewer.role) ? null : await teamIn(who.userId, lang);
-  const acting = inviterTeam ?? (await ownerOrAll(lang));
-  const team = acting === ALL_TEAMS ? null : acting;
+  const team = inviterTeam ?? (await ownerOf(lang));
   if (!team) return Response.json({ error: `${lang} has no team to invite into` }, { status: 409 });
   try {
     await createInvite({
@@ -127,12 +125,11 @@ export async function DELETE(request: Request) {
   }
 
   // A team admin takes away only what their own team gave.
-  const team =
-    isAdmin(who.viewer.role) || capability === "text" ? undefined : ((await teamIn(who.userId, lang)) ?? undefined);
-  if (team) {
-    const theirs = await teamIn(userId, lang);
-    if (theirs && theirs !== team) return notAllowed();
-  }
-  await removeGrant(userId, lang, capability, who.userId, team);
+  const [team, theirs] =
+    isAdmin(who.viewer.role) || capability === "text"
+      ? [undefined, undefined]
+      : await Promise.all([teamIn(who.userId, lang), teamIn(userId, lang)]);
+  if (team && theirs && theirs !== team) return notAllowed();
+  await removeGrant(userId, lang, capability, who.userId, team ?? undefined);
   return listingFor(who.viewer, who.userId);
 }

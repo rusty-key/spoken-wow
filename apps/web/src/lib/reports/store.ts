@@ -29,7 +29,7 @@ import { isAdmin } from "@/lib/permissions";
 import { overrideOf } from "@/lib/quests/override";
 import { readOverrides } from "@/lib/quests/overrides";
 import { asTeam } from "@/lib/teams/acting";
-import { asTeamOf, freshOwners, NoTeamError, ownerOrAll, plainTeamOf, queryAs, teamsOf } from "@/lib/teams/store";
+import { asTeamOf, NoTeamError, ownerOf, plainTeamOf, queryAs, teamsOf } from "@/lib/teams/store";
 
 import { packTeam, type ReportContext } from "./context";
 import { CATEGORIES, CATEGORY_QUEUE, QUEUES, queuesOf, type Category, type Queue, type Report, type Status } from "./reports";
@@ -52,8 +52,7 @@ const REPORT_SCOPE = (team: number) => `("queue" = 'text' or "teamId" = $${team}
 
 /** The acting team REPORT_SCOPE cuts by; null where the caller works in no team of `lang`. */
 async function scopeTeam(lang: Lang): Promise<TeamId | null> {
-  const team = await ownerOrAll(lang);
-  return team === ALL_TEAMS ? null : team;
+  return (await ownerOf(lang)) ?? null;
 }
 
 /**
@@ -120,7 +119,7 @@ export async function createReport(input: {
 async function reportTeams(lang: Lang, context: ReportContext | null | undefined): Promise<TeamId[]> {
   const pack = await packTeamOf(lang, context);
   if (pack) return [pack];
-  const team = (await freshOwners([lang])).get(lang) ?? (await plainTeamOf(lang));
+  const team = (await ownerOf(lang)) ?? (await plainTeamOf(lang));
   if (team) return [team];
   return (await teamsOf(lang)).map((each) => each.id);
 }

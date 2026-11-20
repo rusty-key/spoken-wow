@@ -31,6 +31,9 @@ const TTL_MS = 60_000;
 /** How old the memo must be for a miss to read the mapping again: at most once a second. */
 const MISS_REFRESH_MS = 1_000;
 
+/** How a language's teams are ordered, over "team_language" tl joined to "team" t: plain packs first, then by name. */
+export const TEAM_ORDER = `tl."packName" = 'plain' desc, t."name", t."slug"`;
+
 /** A team that voices a language, as the memo keeps it. */
 export type TeamRef = { id: TeamId; slug: string; name: string };
 
@@ -56,7 +59,7 @@ function mapping(): Promise<Mapping> {
   const read = query<{ lang: Lang; teamId: TeamId; plain: boolean; slug: string; name: string }>(
     `select tl."lang", tl."teamId", tl."packName" = 'plain' as "plain", t."slug", t."name"
        from "team_language" tl join "team" t on t."id" = tl."teamId"
-      order by tl."packName" = 'plain' desc, t."name", t."slug"`,
+      order by ${TEAM_ORDER}`,
   ).then((rows) => {
     const langs = new Map<Lang, TeamId[]>();
     const plain = new Map<Lang, TeamId>();
@@ -108,6 +111,11 @@ export async function teamsOf(lang: Lang): Promise<TeamRef[]> {
   return (langs.get(lang) ?? []).flatMap((id) => teams.get(id) ?? []);
 }
 
+/** The team a site owner, or anybody with no choice made, acts in: the first as teamsOf lists them. */
+export async function defaultTeamOf(lang: Lang): Promise<TeamRef | undefined> {
+  return (await teamsOf(lang))[0];
+}
+
 /** The team whose packs in `lang` carry no slug; undefined when no team has them. A miss reads again once. */
 export async function plainTeamOf(lang: Lang): Promise<TeamId | undefined> {
   return (await mappingFor([lang])).plain.get(lang);
@@ -124,13 +132,21 @@ export async function onlyTeamOf(lang: Lang): Promise<TeamId | undefined> {
  * team. Undefined when no team voices `lang`, or when it has several and the caller works in
  * none of them. Work done for someone outside their request runs in asActor or asTeams.
  */
-async function ownerOf(lang: Lang): Promise<TeamId | undefined> {
+export async function ownerOf(lang: Lang): Promise<TeamId | undefined> {
   return (await freshOwners([lang])).get(lang);
 }
 
 /** ownerOf for each of `langs`. Reads the session only when one of them has more than one team. */
 export async function freshOwners(langs: readonly (Lang | null)[]): Promise<Map<Lang, TeamId>> {
   return overlay(await mappingFor(langs), langs);
+}
+
+/**
+ * freshOwners with no re-read for a language nobody voices, for callers that pass every
+ * language: a newly teamed one may lag until the memo is dropped or expires.
+ */
+export async function ownersOf(langs: readonly Lang[]): Promise<Map<Lang, TeamId>> {
+  return overlay(await mapping(), langs);
 }
 
 async function overlay({ langs: teams, shared }: Mapping, langs: readonly (Lang | null)[]): Promise<Map<Lang, TeamId>> {
@@ -207,14 +223,14 @@ export async function ownerOrAll(lang: Lang | null): Promise<TeamId | typeof ALL
 
 /**
  * `work` in a transaction for `lang`'s original text, which every team shares and no team owns:
- * as the acting team, so the activity it logs is filed under the writer's team, else ALL_TEAMS.
+ * as the acting team, else ALL_TEAMS. `team` is the activity's: the writer's team, else none.
  */
 export async function withTextTeam<T>(
   lang: Lang | null,
-  work: (client: PoolClient, team: TeamId | typeof ALL_TEAMS) => Promise<T>,
+  work: (client: PoolClient, team: TeamId | null) => Promise<T>,
 ): Promise<T> {
   const team = await ownerOrAll(lang);
-  return withTeam(team, (client) => work(client, team));
+  return withTeam(team, (client) => work(client, team === ALL_TEAMS ? null : team));
 }
 
 /**
@@ -253,12 +269,10 @@ export async function readAs<T extends QueryResultRow = QueryResultRow>(
   return queryIn<T>(team, text, params);
 }
 
-/** These languages grouped by the team the caller works as in each, in their given order. Others are left out. */
-export async function byTeam(langs: readonly Lang[]): Promise<Map<TeamId, Lang[]>> {
-  const owners = await freshOwners(langs);
-  const grouped = new Map<TeamId, Lang[]>();
-  for (const lang of langs) {
-    const team = owners.get(lang);
+/** Each language under its team, in their given order; a pair with no team is left out. */
+export function groupByTeam<L extends string>(pairs: Iterable<readonly [TeamId | undefined, L]>): Map<TeamId, L[]> {
+  const grouped = new Map<TeamId, L[]>();
+  for (const [team, lang] of pairs) {
     if (!team) continue;
     const group = grouped.get(team);
     if (group) group.push(lang);
@@ -267,18 +281,16 @@ export async function byTeam(langs: readonly Lang[]): Promise<Map<TeamId, Lang[]
   return grouped;
 }
 
+/** These languages grouped by the team the caller works as in each, in their given order. Others are left out. */
+export async function byTeam(langs: readonly Lang[]): Promise<Map<TeamId, Lang[]>> {
+  const owners = await freshOwners(langs);
+  return groupByTeam(langs.map((lang) => [owners.get(lang), lang] as const));
+}
+
 /** These languages grouped under every team that voices each. For work that reaches all of a language's teams, whoever is acting. */
 export async function everyTeamOf(langs: readonly Lang[]): Promise<Map<TeamId, Lang[]>> {
   const { langs: teams } = await mappingFor(langs);
-  const grouped = new Map<TeamId, Lang[]>();
-  for (const lang of langs) {
-    for (const team of teams.get(lang) ?? []) {
-      const group = grouped.get(team);
-      if (group) group.push(lang);
-      else grouped.set(team, [lang]);
-    }
-  }
-  return grouped;
+  return groupByTeam(langs.flatMap((lang) => (teams.get(lang) ?? []).map((team) => [team, lang] as const)));
 }
 
 /**

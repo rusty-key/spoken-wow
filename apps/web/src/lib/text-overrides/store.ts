@@ -10,8 +10,8 @@ import { spokenHash } from "../generation/spoken-hash";
 import type { Lang } from "../lang";
 import { memoByTeamLang } from "../memo";
 import { hasDrifted } from "../quests/override-drift";
-import { ALL_TEAMS, query, queryIn } from "../db";
-import { ownerOrAll, queryAs, readAs } from "../teams/store";
+import { query, queryIn } from "../db";
+import { ownerOf, queryAs, readAs } from "../teams/store";
 import type { NarratedSource, OverrideView, TextOverride } from "./types";
 
 type OverrideRow = {
@@ -60,8 +60,8 @@ export async function stampsWithOverrides(
   lang: Lang,
   shared: { sql: string; params: unknown[] },
 ): Promise<{ stamp: string; overrides: string }> {
-  const team = await ownerOrAll(lang);
-  if (team === ALL_TEAMS) {
+  const team = await ownerOf(lang);
+  if (!team) {
     const rows = await query<{ stamp: string }>(`select ${shared.sql} as "stamp"`, shared.params);
     return { stamp: rows[0]?.stamp ?? "", overrides: "-" };
   }

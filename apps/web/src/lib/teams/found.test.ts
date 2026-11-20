@@ -11,7 +11,7 @@ import { addLanguage, describeNew } from "@/lib/languages/store";
 import { TeamError } from "./admin";
 import { afterFounded, foundTeam, languageBranch, slugFor, type FoundInput, type Founded } from "./found";
 import { forgetTeams } from "./store";
-import { asSystem, dropTeam, systemRows, testUser } from "./testing";
+import { asSystem, dropTeam, plainTeam, systemRows, testUser } from "./testing";
 
 let actor: Awaited<ReturnType<typeof testUser>>;
 let requester: Awaited<ReturnType<typeof testUser>>;
@@ -77,13 +77,9 @@ async function known(lang: string, name = "Xq Old"): Promise<string> {
   await inTransaction((client) => addLanguage(client, describeNew(lang, name, name), actor.id));
   forgetLanguages();
   await loadLanguages();
-  const [{ team }] = await systemRows<{ team: string }>(`select team_of_lang($1) as "team"`, [lang]);
+  const team = await plainTeam(lang);
   teams.add(team);
   return team;
-}
-
-async function teamOfLang(lang: string): Promise<string | null> {
-  return (await systemRows<{ team: string | null }>(`select team_of_lang($1) as "team"`, [lang]))[0].team;
 }
 
 async function textByTeamOf(lang: string): Promise<boolean | undefined> {
@@ -124,7 +120,7 @@ describe("foundTeam, new language", () => {
     );
     expect(row).toMatchObject({ enabled: true, textByTeam: true, bcp47: `xq-${lang.slice(2)}`, provider: "xq" });
 
-    expect(await teamOfLang(lang)).toBe(founded.teamId);
+    expect(await plainTeam(lang)).toBe(founded.teamId);
     const [team] = await systemRows<{ slug: string; name: string; ownStorage: boolean }>(
       `select "slug", "name", "ownStorage" from "team" where "id" = $1`,
       [founded.teamId],
@@ -360,7 +356,7 @@ describe("foundTeam, a known language", () => {
       [lang, `xq-${lang.slice(2)}`],
     );
     const founded = await found(input(lang, { team: { slug: lang.toLowerCase(), name: "Xq" } }));
-    expect(await teamOfLang(lang)).toBe(founded.teamId);
+    expect(await plainTeam(lang)).toBe(founded.teamId);
   });
 
   it("ignores the names a request gave for a code that is known by now", async () => {

@@ -25,7 +25,7 @@ import { addLanguage, describeNew, giveTextToTeam, LanguageExistsError, setEnabl
 import type { Capability } from "@/lib/permissions";
 
 import { teamIn } from "./acting";
-import { checkSlug, joinLanguage, TeamError } from "./admin";
+import { checkSlug, joinEvents, joinLanguage, TeamError } from "./admin";
 import { forgetTeams, type TeamId } from "./store";
 
 export type Branch = "new-language" | "add-team";
@@ -256,17 +256,8 @@ export async function afterFounded(founded: Founded, actorId: string): Promise<v
   if (founded.branch === "new-language") {
     events.push({ kind: "language.added", lang, actorId, detail: { name: founded.languageName ?? lang } });
   }
-  if (founded.branch === "add-team") {
-    events.push({
-      kind: "team.joined_language",
-      lang,
-      actorId,
-      subject: slug,
-      detail: { slug, from: founded.from },
-      team: founded.teamId,
-    });
-  }
-  if (founded.switchedOn) events.push({ kind: "language.toggled", lang, actorId, detail: { enabled: true } });
+  const joined = founded.branch === "add-team" ? { team: { id: founded.teamId, slug }, from: founded.from } : null;
+  events.push(...joinEvents(lang, actorId, joined, founded.switchedOn));
   for (const capability of founded.granted) {
     events.push({
       kind: "grant.added",

@@ -5,7 +5,7 @@ import type { ClientBase } from "pg";
 
 import { ALL_TEAMS, query, withTeam } from "@/lib/db";
 import type { ActivityDetail } from "@/lib/activity/kinds";
-import { recordActivity } from "@/lib/activity/store";
+import { recordActivities, recordActivity, type ActivityEvent } from "@/lib/activity/store";
 import { addGrants, OtherTeamError, userByEmail } from "@/lib/grants/store";
 import { BASE_LANG, type Lang } from "@/lib/lang";
 import { setEnabledOn } from "@/lib/languages/store";
@@ -15,7 +15,7 @@ import type { Settings } from "./found";
 
 import { membersOf } from "./members";
 import { isSlug } from "./slug";
-import { forgetTeams, type TeamId } from "./store";
+import { forgetTeams, TEAM_ORDER, type TeamId } from "./store";
 
 export type TeamSummary = {
   id: TeamId;
@@ -213,25 +213,20 @@ const WORK: Record<string, string> = {
 };
 
 /**
- * Deletes a team that is no language's only team and has made nothing. Any row of work under it
- * (a take, a recording, a bucket) refuses the delete, since work is never deleted.
+ * Deletes a team that holds no language and has made nothing. Any row of work under it (a take,
+ * a recording, a bucket) refuses the delete, since work is never deleted.
  */
 export async function deleteTeam(team: TeamId, actorId: string): Promise<void> {
   await withTeam(ALL_TEAMS, async (client) => {
-    // Locked, so joining a language cannot commit between the check and the delete.
+    // Locked, so a hand-over to it cannot commit between the check and the delete.
     const { rows } = await client.query<{ slug: string }>(`select "slug" from "team" where "id" = $1 for update`, [team]);
     if (rows.length === 0) throw new TeamError("No such team.", 404);
-    // A language left with no team could write nothing; deleting its last team comes with
-    // switching it off, which this does not do.
     const { rows: held } = await client.query<{ lang: string }>(
-      `select tl."lang" from "team_language" tl
-        where tl."teamId" = $1
-          and not exists (select 1 from "team_language" o where o."lang" = tl."lang" and o."teamId" <> $1)
-        order by tl."lang"`,
+      `select "lang" from "team_language" where "teamId" = $1 and "privileged" order by "lang"`,
       [team],
     );
     if (held.length) {
-      throw new TeamError(`${rows[0].slug} is the only team of ${held.map((row) => row.lang).join(", ")}; it cannot be deleted yet.`, 409);
+      throw new TeamError(`${rows[0].slug} holds ${held.map((row) => row.lang).join(", ")}; hand it to another team first.`, 409);
     }
     const members = await membersOf(client, team);
     try {
@@ -266,15 +261,26 @@ export async function addToLanguage(lang: Lang, team: TeamId, actorId: string): 
     return { slug: rows[0].slug, ...(await joinLanguage(client, lang, team, actorId)) };
   });
   forgetTeams();
-  await recordActivity({
-    kind: "team.joined_language",
-    lang,
-    actorId,
-    subject: joined.slug,
-    detail: { slug: joined.slug, from: joined.from },
-    team,
-  });
-  if (joined.switchedOn) await recordActivity({ kind: "language.toggled", lang, actorId, detail: { enabled: true } });
+  await recordActivities(joinEvents(lang, actorId, { team: { id: team, slug: joined.slug }, from: joined.from }, joined.switchedOn));
+}
+
+/**
+ * The log of a join: `joined.team` voices `lang` now, unless the language's first team came with
+ * it (null), and the language was switched on, when it was.
+ */
+export function joinEvents(
+  lang: Lang,
+  actorId: string,
+  joined: { team: { id: TeamId; slug: string }; from: string | null } | null,
+  switchedOn: boolean,
+): ActivityEvent[] {
+  const events: ActivityEvent[] = [];
+  if (joined) {
+    const { team, from } = joined;
+    events.push({ kind: "team.joined_language", lang, actorId, subject: team.slug, detail: { slug: team.slug, from }, team: team.id });
+  }
+  if (switchedOn) events.push({ kind: "language.toggled", lang, actorId, detail: { enabled: true } });
+  return events;
 }
 
 /**
@@ -297,7 +303,7 @@ export async function joinLanguage(
   const { rows: teams } = await client.query<{ teamId: TeamId; slug: string }>(
     `select tl."teamId", t."slug" from "team_language" tl join "team" t on t."id" = tl."teamId"
       where tl."lang" = $1
-      order by tl."packName" = 'plain' desc, t."name", t."slug"`,
+      order by ${TEAM_ORDER}`,
     [lang],
   );
   if (teams.some((row) => row.teamId === team)) throw new TeamError(`That team already voices ${lang}.`, 409);

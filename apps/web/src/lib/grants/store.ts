@@ -191,7 +191,6 @@ export async function addGrants(
           subject: userId,
           actorId: grantedBy,
           detail: { capability },
-          // Not ALL_TEAMS, which would file the row unowned: no team falls back to the language's.
           team: team === ALL_TEAMS ? undefined : team,
         })),
         client,

@@ -8,7 +8,7 @@ import "server-only";
 import { ALL_TEAMS, query, queryIn } from "@/lib/db";
 import type { Lang } from "@/lib/lang";
 import type { RangeRequest } from "@/lib/range";
-import { freshOwners } from "@/lib/teams/store";
+import { ownerOf } from "@/lib/teams/store";
 import { listenInServer } from "@/lib/teams/listen";
 
 import { unseal } from "./seal";
@@ -113,7 +113,7 @@ export async function locate(key: string, lang?: Lang): Promise<Where> {
   // The team matters only between copies, which is rare: most objects have one row or none. It is
   // the acting team, where the language has several a member's own (lib/teams/acting.ts).
   if (rows.length > 1 && lang) {
-    const team = (await freshOwners([lang])).get(lang);
+    const team = await ownerOf(lang);
     found = rows.find((row) => row.teamId === team) ?? found;
   }
   if (!found) return { store: archive(), key, backendId: null, pending: false };

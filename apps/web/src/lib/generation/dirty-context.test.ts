@@ -9,10 +9,10 @@
  */
 import { afterAll, afterEach, beforeAll, describe, expect, it } from "vitest";
 
-import type { Lang } from "@/lib/lang";
+import { BASE_LANG, type Lang } from "@/lib/lang";
 
 const { closeDb } = await import("@/lib/db");
-const { asSystem } = await import("@/lib/teams/testing");
+const { asSystem, plainTeam } = await import("@/lib/teams/testing");
 const { dirtyFiles, loadDirtyContext } = await import("./dirty");
 const { forgetTeams } = await import("@/lib/teams/store");
 
@@ -21,9 +21,8 @@ const LANG = "xxXX" as Lang;
 // A team for it, since a language nobody owns has nothing to read.
 beforeAll(async () => {
   await asSystem.query(
-    `insert into "team_language" ("teamId", "lang", "packName") select "id", $1, 'plain' from "team" where "slug" = 'english'
-     on conflict do nothing`,
-    [LANG],
+    `insert into "team_language" ("teamId", "lang", "packName") values ($2, $1, 'plain') on conflict do nothing`,
+    [LANG, await plainTeam(BASE_LANG)],
   );
   forgetTeams();
 });

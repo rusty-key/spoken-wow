@@ -8,7 +8,7 @@ import { listGrants, listTeamGrants, type GrantRow } from "@/lib/grants/store";
 import type { Lang } from "@/lib/lang";
 import { can, isAdmin, langsWhere, type Viewer } from "@/lib/permissions";
 import { memberTeams } from "@/lib/teams/acting";
-import { onlyTeamOf, type TeamId } from "@/lib/teams/store";
+import { groupByTeam, onlyTeamOf, type TeamId } from "@/lib/teams/store";
 
 import { listInvites, type InviteRow } from "./store";
 
@@ -43,11 +43,9 @@ export async function visibleGrants(viewer: Viewer, teams: Teams, langs: readonl
  */
 export async function visibleInvites(viewer: Viewer, teams: Teams, langs: readonly string[]): Promise<InviteRow[]> {
   if (isAdmin(viewer.role)) return listInvites([...langs]);
-  const byTeam = new Map<TeamId, string[]>();
-  for (const lang of langs) {
-    const team = teams.get(lang) ?? (await onlyTeamOf(lang as Lang));
-    if (team) byTeam.set(team, [...(byTeam.get(team) ?? []), lang]);
-  }
+  const owners: [TeamId | undefined, string][] = [];
+  for (const lang of langs) owners.push([teams.get(lang) ?? (await onlyTeamOf(lang as Lang)), lang]);
+  const byTeam = groupByTeam(owners);
   const lists = await Promise.all([...byTeam].map(([team, inTeam]) => listInvites(inTeam, team)));
   return lists.flat().sort((a, b) => b.createdAt.localeCompare(a.createdAt));
 }

@@ -64,12 +64,9 @@ const team = (langs: Lang[]) => ({
   members: [],
 });
 
-test("a language's only team cannot be deleted, and one of two can", () => {
-  const { rerender } = render(<TeamsTable initial={[team(["deDE" as Lang])]} languages={languages} />);
+test("a team holding a language cannot be deleted", () => {
+  render(<TeamsTable initial={[team(["deDE" as Lang])]} languages={languages} />);
   expect((screen.getByRole("button", { name: "Delete spare" }) as HTMLButtonElement).disabled).toBe(true);
-  const other = { ...team(["deDE" as Lang]), id: "00000000-0000-0000-0000-000000000002", slug: "other" };
-  rerender(<TeamsTable initial={[team(["deDE" as Lang]), other]} languages={languages} />);
-  expect((screen.getByRole("button", { name: "Delete spare" }) as HTMLButtonElement).disabled).toBe(false);
 });
 
 test("deleting asks first, then sends DELETE for the team", async () => {

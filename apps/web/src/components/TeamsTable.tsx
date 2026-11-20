@@ -40,9 +40,6 @@ function people(team: TeamSummary): Person[] {
 type Confirm = { title: string; description: string; label: string; destructive?: boolean; action: () => ReturnType<typeof send> };
 
 export default function TeamsTable({ initial, languages }: Props) {
-  // A language's last team cannot be deleted: the language would have none.
-  const alone = (team: TeamSummary) =>
-    team.langs.filter((lang) => !initial.some((other) => other.id !== team.id && other.langs.includes(lang)));
   const router = useRouter();
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -240,8 +237,8 @@ export default function TeamsTable({ initial, languages }: Props) {
                   variant="ghost"
                   size="sm"
                   aria-label={`Delete ${team.slug}`}
-                  title={alone(team).length ? `The only team of ${alone(team).join(", ")}` : undefined}
-                  disabled={busy || alone(team).length > 0}
+                  title={team.langs.length ? "Hand its languages to another team first" : undefined}
+                  disabled={busy || team.langs.length > 0}
                   onClick={() => remove(team)}
                 >
                   Delete
