@@ -29,8 +29,9 @@ timeout, security boundary, invariant, or load-bearing external contract.
 
 Never edit model-facing strings, generated files, lockfiles, vendored code,
 README files, docs unless requested, license headers, or lint/type directives.
-For a stack, edit each owning branch from the bottom up and preserve the
-upper-layer tree when rebasing.
+For a stack, edit each owning branch from the bottom up. Ordinary rebases must
+retain cleanup from lower layers; restore an upper-layer tree only during the
+canonical conflict procedure.
 
 Verify with the relevant build, lint, and tests. Report deleted and shortened
 comment counts and the kinds of comments intentionally kept.
