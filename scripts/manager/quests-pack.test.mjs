@@ -11,11 +11,11 @@ test("English's version is the newest audio section of the changelog", () => {
   assert.throws(() => englishVersion("## 9.0.0\n"), /no Spoken Quests Audio section/);
 });
 
-const privileged = (lang) => ({
-  id: "0b7e6a3c-1d2f-4a5b-8c9d-0e1f2a3b4c5d", slug: "x", name: "X", official: true, privileged: true,
+const plain = (lang) => ({
+  id: "0b7e6a3c-1d2f-4a5b-8c9d-0e1f2a3b4c5d", slug: "x", name: "X", official: true, packName: "plain",
   language: { code: lang, name: "X", native: "X", client: true },
 });
-const pagePlan = (lang) => releasePlan("quests", lang, privileged(lang));
+const pagePlan = (lang) => releasePlan("quests", lang, plain(lang));
 
 test("English builds its four folders, each its own slice, under one version", () => {
   const builds = buildArgs("enUS", pagePlan("enUS"), { changelogVersion: "2.3.0", localeText: "/tmp/text.json.gz" });

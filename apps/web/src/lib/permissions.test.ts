@@ -215,14 +215,10 @@ describe("canGrant text", () => {
     expect(canGrant(owner, "text", "xqAA", false)).toBe(true);
   });
 
-  it("lets only the privileged team's admins appoint text", () => {
-    const second = (privileged?: boolean) => ({
-      role: "member" as const,
-      grants: [{ lang: "xqAA", capability: "admin" as const, ...(privileged === undefined ? {} : { privileged }) }],
-    });
-    expect(canGrant(second(false), "text", "xqAA", true)).toBe(false);
-    expect(canGrant(second(false), "regenerate", "xqAA", true)).toBe(true);
-    expect(canGrant(second(true), "text", "xqAA", true)).toBe(true);
-    expect(canGrant(second(), "text", "xqAA", true)).toBe(true);
+  it("lets an admin of any team of the language appoint text, where its teams do", () => {
+    const admin = { role: "member" as const, grants: [{ lang: "xqAA", capability: "admin" as const }] };
+    expect(canGrant(admin, "text", "xqAA", true)).toBe(true);
+    expect(canGrant(admin, "text", "xqAA", false)).toBe(false);
+    expect(canGrant(admin, "text", "xqBB", true)).toBe(false);
   });
 });

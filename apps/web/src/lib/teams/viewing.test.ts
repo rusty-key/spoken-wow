@@ -8,7 +8,7 @@ import type { Lang } from "@/lib/lang";
 const { closeDb, db } = await import("@/lib/db");
 const { teamLivePath, teamLiveTakes } = await import("@/lib/takes/store");
 const { asActor } = await import("./acting");
-const { everyTeamOf, forgetTeams, privilegedOf, secondTeamLangs } = await import("./store");
+const { everyTeamOf, forgetTeams, plainTeamOf, sharedLangs } = await import("./store");
 const { addMember, asSystem, dropLang, dropTeam, newTeamIn, systemRows, testUser, uniqueLang } = await import("./testing");
 const { teamLiveOverrides, teamsVoicing, teamView, viewedTeam } = await import("./viewing");
 
@@ -53,28 +53,37 @@ afterEach(async () => {
 afterAll(closeDb);
 
 describe("teamsVoicing", () => {
-  it("lists the privileged team first, then the second teams by name", async () => {
+  it("lists the team with plain packs first, then the others by name, none marked", async () => {
     const teams = await teamsVoicing(lang);
     // "test-view-0d-…" sorts before "test-view-b-…", the reverse of the order they were made in.
-    expect(teams.map((team) => [team.id, team.privileged])).toEqual([
-      [a, true],
-      [d, false],
-      [b, false],
-    ]);
-    expect(teams[2].slug).toBe(slugs.get(b));
-    expect(teams[2].name).toBe(slugs.get(b));
+    expect(teams.map((team) => team.id)).toEqual([a, d, b]);
+    expect(teams[2]).toEqual({ id: b, slug: slugs.get(b), name: slugs.get(b) });
+  });
+
+  it("lists every team of a language none of whose teams has plain packs, by name", async () => {
+    const bare = await uniqueLang();
+    const y = await newTeamIn(bare, false, "test-view-y");
+    const x = await newTeamIn(bare, false, "test-view-x");
+    try {
+      expect((await teamsVoicing(bare)).map((team) => team.id)).toEqual([x, y]);
+      expect(await viewedTeam(bare, null)).toMatchObject({ team: x, own: false });
+    } finally {
+      await dropTeam(x);
+      await dropTeam(y);
+      await dropLang(bare);
+    }
   });
 
   it("answers a single-team language from the memo alone", async () => {
-    await secondTeamLangs();
-    await privilegedOf(otherLang);
+    await sharedLangs();
+    await plainTeamOf(otherLang);
     const pool = db();
     const queries = vi.spyOn(pool, "query");
     const connects = vi.spyOn(pool, "connect");
 
     expect(await teamsVoicing(otherLang)).toEqual([]);
     const viewed = await viewedTeam(otherLang, null);
-    expect(viewed).toMatchObject({ team: await privilegedOf(otherLang), own: true });
+    expect(viewed).toMatchObject({ team: await plainTeamOf(otherLang), own: true });
     expect(viewed?.slug).toBeTruthy();
 
     expect(queries).not.toHaveBeenCalled();
@@ -83,14 +92,14 @@ describe("teamsVoicing", () => {
 });
 
 describe("viewedTeam in a single-team language", () => {
-  it("takes the privileged team's own slug, from the memo alone", async () => {
-    const privileged = (await privilegedOf(otherLang))!;
-    const [row] = await systemRows<{ slug: string }>(`select "slug" from "team" where "id" = $1`, [privileged]);
+  it("takes the team's own slug, from the memo alone", async () => {
+    const team = (await plainTeamOf(otherLang))!;
+    const [row] = await systemRows<{ slug: string }>(`select "slug" from "team" where "id" = $1`, [team]);
     const pool = db();
     const queries = vi.spyOn(pool, "query");
     const connects = vi.spyOn(pool, "connect");
 
-    expect(await viewedTeam(otherLang, row.slug)).toMatchObject({ team: privileged, slug: row.slug, own: true });
+    expect(await viewedTeam(otherLang, row.slug)).toMatchObject({ team: team, slug: row.slug, own: true });
     expect(queries).not.toHaveBeenCalled();
     expect(connects).not.toHaveBeenCalled();
   });
@@ -101,7 +110,10 @@ describe("viewedTeam", () => {
     expect(await asActor(user.id, () => viewedTeam(lang, null))).toEqual({
       team: b, slug: slugs.get(b), name: slugs.get(b), own: true,
     });
-    expect(await viewedTeam(lang, null)).toMatchObject({ team: a, own: true });
+  });
+
+  it("is the first team, not one's own, for somebody in none of them", async () => {
+    expect(await viewedTeam(lang, null)).toMatchObject({ team: a, own: false });
   });
 
   it("is the named team, not one's own", async () => {
@@ -119,7 +131,7 @@ describe("teamView", () => {
     const single = await uniqueLang();
     const team = await newTeamIn(single, true, "test-view-single");
     try {
-      await secondTeamLangs();
+      await sharedLangs();
       const pool = db();
       const queries = vi.spyOn(pool, "query");
       const connects = vi.spyOn(pool, "connect");
@@ -159,12 +171,12 @@ describe("teamView", () => {
       const view = await asActor(user.id, () => teamView(lang, slug));
       expect(view.viewed).toMatchObject({ team: b, own: true });
     }
-    expect((await teamView(lang, "no-such-team")).viewed).toMatchObject({ team: a, own: true });
+    expect(await teamView(lang, "no-such-team")).toMatchObject({ viewed: { team: a, own: false }, home: slugs.get(a) });
   });
 });
 
 describe("everyTeamOf", () => {
-  it("groups a language under its privileged team and every second team", async () => {
+  it("groups a language under every team of it", async () => {
     const grouped = await everyTeamOf([lang, otherLang]);
     expect(grouped.get(a)).toEqual([lang]);
     expect(grouped.get(b)).toEqual([lang]);

@@ -12,6 +12,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import DeleteTeamDialog from "@/components/DeleteTeamDialog";
 import NewLanguageFields, { type NewLanguage } from "@/components/NewLanguageFields";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -22,8 +23,6 @@ import type { TeamSummary } from "@/lib/teams/admin";
 
 type Props = {
   initial: TeamSummary[];
-  /** Live takes per language held, for the confirm. */
-  takes: Partial<Record<Lang, number>>;
   languages: { code: Lang; name: string }[];
 };
 
@@ -39,12 +38,20 @@ function people(team: TeamSummary): Person[] {
   return [...byUser.values()];
 }
 
-type Confirm = { title: string; description: string; label: string; destructive?: boolean; action: () => ReturnType<typeof send> };
 
-const liveTakes = (count: number) => `${count} live take${count === 1 ? "" : "s"}`;
+/** Where a deletion is: its delistings, or why it stopped. */
+function deletingStep(deleting: NonNullable<TeamSummary["deleting"]>): string {
+  if (deleting.error) return `Deletion stopped: ${deleting.error}`;
+  if (deleting.delists === 0) return "Being deleted";
+  return `Being deleted: taking its packs off the channel, ${deleting.delisted} of ${deleting.delists} done`;
+}
 
-export default function TeamsTable({ initial, takes, languages }: Props) {
+// How often the page reads again while a team is being deleted.
+const DELETING_POLL_MS = 10_000;
+
+export default function TeamsTable({ initial, languages }: Props) {
   const router = useRouter();
+  const nameOf = (lang: Lang) => languages.find((language) => language.code === lang)?.name ?? lang;
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [names, setNames] = useState(() => Object.fromEntries(initial.map((team) => [team.id, team.name])));
@@ -59,7 +66,15 @@ export default function TeamsTable({ initial, takes, languages }: Props) {
   const [form, setForm] = useState({ slug: "", name: "", adminEmail: "", langs: [] as Lang[] });
   const [newLanguage, setNewLanguage] = useState(false);
   const [fresh, setFresh] = useState<NewLanguage>({ code: "", name: "", native: "" });
-  const [confirming, setConfirming] = useState<Confirm | null>(null);
+  const [joining, setJoining] = useState<{ lang: Lang; team: TeamSummary } | null>(null);
+  const [deleting, setDeleting] = useState<TeamSummary | null>(null);
+  const underway = initial.some((team) => team.deleting && !team.deleting.error);
+  useEffect(() => {
+    if (!underway) return;
+    // A hidden tab reads nothing; the next poll after it shows again does.
+    const timer = setInterval(() => document.hidden || router.refresh(), DELETING_POLL_MS);
+    return () => clearInterval(timer);
+  }, [underway, router]);
 
   async function run(action: () => ReturnType<typeof send>): Promise<boolean> {
     setBusy(true);
@@ -81,30 +96,13 @@ export default function TeamsTable({ initial, takes, languages }: Props) {
     });
   };
 
-  function confirm() {
-    if (!confirming) return;
-    setConfirming(null);
-    void run(confirming.action);
+  function join() {
+    if (!joining) return;
+    const { lang, team } = joining;
+    setJoining(null);
+    void run(() => send(`/api/teams/${team.id}/languages`, "PUT", { lang }));
   }
 
-  const handOver = (lang: Lang, target: TeamSummary) =>
-    setConfirming({
-      title: `Hand ${lang} to ${target.name}?`,
-      description: `${liveTakes(takes[lang] ?? 0)} move with it, along with its voices, settings and members.`,
-      label: "Hand over",
-      action: () => send(`/api/teams/${target.id}/languages`, "PUT", { lang }),
-    });
-
-  const remove = (team: TeamSummary) =>
-    setConfirming({
-      title: `Delete ${team.name}?`,
-      description: `Its voices, settings, lexicon, members and invites go with it${
-        team.alsoIn.length ? `, and it stops being a second team in ${team.alsoIn.join(", ")}` : ""
-      }. A team with takes, recordings or other work of its own is refused.`,
-      label: "Delete team",
-      destructive: true,
-      action: () => send(`/api/teams/${team.id}`, "DELETE"),
-    });
 
   async function create(event: React.FormEvent) {
     event.preventDefault();
@@ -168,39 +166,33 @@ export default function TeamsTable({ initial, takes, languages }: Props) {
               <td className="py-2 pr-3">
                 <ul className="flex flex-col gap-1">
                   {team.langs.map((lang) => (
-                    <li key={lang} className="flex items-center gap-2">
-                      <span className="w-12 font-mono text-xs">{lang}</span>
-                      {lang !== BASE_LANG && (
-                        <Select
-                          value=""
-                          disabled={busy}
-                          onValueChange={(id) => {
-                            const target = initial.find((other) => other.id === id);
-                            if (target) handOver(lang, target);
-                          }}
-                        >
-                          <SelectTrigger size="sm" className="text-xs" aria-label={`Move ${lang} to`}>
-                            <SelectValue placeholder="Move to…" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {initial
-                              .filter((other) => other.id !== team.id)
-                              .map((other) => (
-                                <SelectItem key={other.id} value={other.id}>
-                                  {other.name}
-                                </SelectItem>
-                              ))}
-                          </SelectContent>
-                        </Select>
-                      )}
+                    <li key={lang} className="font-mono text-xs">
+                      {lang}
                     </li>
                   ))}
-                  {team.alsoIn.map((lang) => (
-                    <li key={`${lang}-second`} className="font-mono text-xs">
-                      {lang} (second team)
+                  {team.langs.length === 0 && <li className="text-muted-foreground text-xs">none</li>}
+                  {!team.langs.includes(BASE_LANG) && (
+                    <li>
+                      <Select
+                        value=""
+                        disabled={busy}
+                        onValueChange={(lang) => setJoining({ lang: lang as Lang, team })}
+                      >
+                        <SelectTrigger size="sm" className="text-xs" aria-label={`Add ${team.slug} to a language`}>
+                          <SelectValue placeholder="Add to…" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {languages
+                            .filter((language) => language.code !== BASE_LANG && !team.langs.includes(language.code))
+                            .map((language) => (
+                              <SelectItem key={language.code} value={language.code}>
+                                {language.name} ({language.code})
+                              </SelectItem>
+                            ))}
+                        </SelectContent>
+                      </Select>
                     </li>
-                  ))}
-                  {team.langs.length === 0 && team.alsoIn.length === 0 && <li className="text-muted-foreground text-xs">none</li>}
+                  )}
                 </ul>
               </td>
               <td className="py-2 pr-3">
@@ -245,16 +237,35 @@ export default function TeamsTable({ initial, takes, languages }: Props) {
                 />
               </td>
               <td className="py-2 pl-3 text-right">
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  aria-label={`Delete ${team.slug}`}
-                  title={team.langs.length ? "Hand its languages to another team first" : undefined}
-                  disabled={busy || team.langs.length > 0}
-                  onClick={() => remove(team)}
-                >
-                  Delete
-                </Button>
+                {team.deleting ? (
+                  <div className="flex flex-col items-end gap-1">
+                    <span className={team.deleting.error ? "text-destructive text-xs" : "text-muted-foreground text-xs"}>
+                      {deletingStep(team.deleting)}
+                    </span>
+                    {team.deleting.error && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        aria-label={`Retry deleting ${team.slug}`}
+                        disabled={busy}
+                        onClick={() => void run(() => send(`/api/teams/${team.id}/deletion`, "POST"))}
+                      >
+                        Retry
+                      </Button>
+                    )}
+                  </div>
+                ) : (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    aria-label={`Delete ${team.slug}`}
+                    title={team.langs.includes(BASE_LANG) ? "English's team cannot be deleted" : undefined}
+                    disabled={busy || team.langs.includes(BASE_LANG)}
+                    onClick={() => setDeleting(team)}
+                  >
+                    Delete
+                  </Button>
+                )}
               </td>
             </tr>
           ))}
@@ -308,20 +319,31 @@ export default function TeamsTable({ initial, takes, languages }: Props) {
         </Button>
       </form>
 
-      <Dialog open={confirming !== null} onOpenChange={(open) => !open && setConfirming(null)}>
-        {confirming && (
+      <DeleteTeamDialog
+        team={deleting}
+        nameOf={nameOf}
+        onClose={() => setDeleting(null)}
+        onSent={(refused) => {
+          setDeleting(null);
+          setError(refused);
+          router.refresh();
+        }}
+      />
+
+      <Dialog open={joining !== null} onOpenChange={(open) => !open && setJoining(null)}>
+        {joining && (
           <DialogContent>
             <DialogHeader>
-              <DialogTitle>{confirming.title}</DialogTitle>
-              <DialogDescription>{confirming.description}</DialogDescription>
+              <DialogTitle>{`Add ${joining.team.name} to ${joining.lang}?`}</DialogTitle>
+              <DialogDescription>
+                {`It voices ${joining.lang} beside any team there, from English's voices, with nothing of theirs. A language with no team is switched on.`}
+              </DialogDescription>
             </DialogHeader>
             <DialogFooter>
-              <Button variant="ghost" onClick={() => setConfirming(null)}>
+              <Button variant="ghost" onClick={() => setJoining(null)}>
                 Cancel
               </Button>
-              <Button variant={confirming.destructive ? "destructive" : "default"} onClick={confirm}>
-                {confirming.label}
-              </Button>
+              <Button onClick={join}>Add</Button>
             </DialogFooter>
           </DialogContent>
         )}

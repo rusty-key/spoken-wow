@@ -38,7 +38,7 @@ Takes never leave the site through the API. Nothing downloads audio, English or 
 ## What the site owner does
 
 - Sees pending requests on the admin teams page and approves or rejects each one.
-- **Approve** does one of three things, by the state of the language (below), and makes the
+- **Approve** does one of two things, by the state of the language (below), and makes the
   requester the team's admin.
 - **Reject** closes the request; the requester can see it was rejected.
 - **Appoints text maintainers** for languages that already have them, as today.
@@ -46,27 +46,25 @@ Takes never leave the site through the API. Nothing downloads audio, English or 
   "New language…" choice takes the code, English name and native name, and creating the team
   adds the language and the team in one step (user, 2026-11-13). It runs the same step approval
   runs.
-- **Deletes a team** from its row on `/admin/teams` (user, 2026-11-18). Its roster, settings,
-  lexicon (and its history), pauses, members, invites and log go with it: the log was the team's
-  alone, and a row with no team would be everyone's to read. The site log keeps one
-  `team.deleted` row naming its members. A team that holds a language is refused until the
-  language is handed over; one with takes, recordings, buckets, jobs, overrides or anything else
-  of its own is refused, since work is never deleted. Its ElevenLabs pronunciation dictionary is
-  not deleted there and stays on the account.
+- **Deletes a team** from its row on `/admin/teams`, any team but English's, after a dialog that
+  lists what goes and asks for its slug (`TEAMS.md`, *Deleting a team*). Its packs come off the
+  channel first, then its rows go, its log with them: the log was the team's alone, and a row with
+  no team would be everyone's to read. The site log keeps one `team.deleted` row naming its
+  languages and members and counting what went. Its text reports move to another team of the
+  language, its open voice reports are closed, and a language it leaves with no team is switched
+  off. Its audio files stay in their buckets,
+  and its ElevenLabs pronunciation dictionary stays on the account.
 
 ## What approval does
 
 | Language requested | Approval | Original text (`text`) |
 |---|---|---|
-| New code (jaJP) | Creates the language, switched on, and a team owning it. Appears on the site without a deploy. | The requester's team: its admin becomes text maintainer and may grant `text` in it. |
-| Known, no active team (plPL, an empty itIT) | Hands the language over to the new team (`move_team_lang`), with its rows, roster and settings, and switches it on. | The requester's team, as above. |
-| Known, with an active team (deDE) | Creates a **second team** in the language, beside the existing privileged one. | Stays with the text maintainers the site owner appoints. The new team gets audio capabilities only. |
+| New code (jaJP) | Creates the language, switched on, and a team voicing it, with plain packs. Appears on the site without a deploy. | The requester's team: its admin becomes text maintainer and may grant `text` in it. |
+| Known, with no team (hidden) | Adds the team and switches the language on. Its packs are plain only if its slug is the code. | The requester's team, as above. |
+| Known, with a team (deDE) | Adds the team beside the others, equal to them. The language stays switched on or off as it was. | Stays with the text maintainers. The new team's admin gets `admin` alone. |
 
-A language is maintained, and its privileged team "active", when that team has a `team_member`
-row in the language held by a user who is not a site owner, or the language has a text
-maintainer who is not a site owner. A site owner's own grants do not count: they hold them to keep
-a language running, not to keep it. Requests are open for every language, the official ones
-included (user).
+Approval never moves a language or its rows between teams. Requests are open for
+every language, the official ones included (user).
 
 ## Decisions (user, 2026-11-12)
 
@@ -149,13 +147,17 @@ the ten client locales.
   holds `regenerate` in its language; text reads need `text` or `regenerate`, original writes need `text`, and override writes need `regenerate`. Each person creates
   their own tokens; an admin does not issue tokens for members. *(My call.)*
 
-## Second team in a language
+## Several teams in a language
 
-A request for a maintained language brings in the part of TEAMS.md *Phase 2* that lives on the
+A request for a language that has a team brings in the part of TEAMS.md *Phase 2* that lives on the
 site. The rest of phase 2 is distribution and stays out.
 
-- The second team is a non-privileged `team_language` row. Its takes, voices, clones, settings,
-  lexicon, ignores, queue and activity are its own, isolated by the existing row-level security.
+- The new team is a `team_language` row like the first: a language's teams are equal. Its
+  pack name, fixed when it joins, is `slug` (`packName`, TEAMS.md *A language's teams*): its packs
+  carry its slug, so team `dragon`'s French places pack is `SpokenPlacesAudio_frFR_dragon`. Its
+  takes, voices, clones, settings, lexicon, ignores, queue and activity are its own, isolated by the
+  existing row-level security. A rejected contribution's ignore is the language's, and holds for
+  every team.
 - **Text layer.** The team cannot edit the original. Per-team overrides generalise `line_override`
   from quest lines to every source. The text a team voices is its override where present, else the
   original, and a take's staleness is judged against that; the text shown stays the original. The
@@ -164,18 +166,18 @@ site. The rest of phase 2 is distribution and stays out.
 - **One team per person per language.** A person works on a language in one team only. A deferred
   trigger on `team_member` enforces it, and the request, approval, grant and invite paths refuse
   it first with a message. *(User.)*
-- **The start.** A second team is made only by approval. It inherits the original text; it never
-  gets the other team's takes or text overrides. The site owner chooses at approval whether its
-  settings are a copy of the privileged team's or fresh, fresh being the default. A copy brings
+- **The start.** It inherits the original text; it never gets another team's takes or text
+  overrides. The site owner chooses at approval whether its settings are a copy of the first
+  team's (the one with plain packs, else the first by name) or fresh, fresh being the default. A copy brings
   settings only, never voice material. *(User.)*
 - **Text maintainers** are independent of team membership: text reports and contributions follow
   the `text` grant, whatever team the maintainer works in. *(User.)*
-- **A second team's admin** sees only their own team's members, invites and grants. Its activity
-  is filed under the second team.
+- **A team's admin** sees only their own team's members, invites and grants, and the language's
+  text maintainers. Its activity is filed under the team.
 - **Tokens.** Only `text` writes the original text, in any language. A token reads its language's
   original text, with its owner's team's overrides, when its owner holds `text` or `regenerate`,
-  and writes that team's overrides when its owner holds `regenerate`. A token route opts in to
-  second teams, and one not opted in answers 403 to a second team's token. *(User.)*
+  and writes that team's overrides when its owner holds `regenerate`. Every token route acts as
+  the owner's team. *(User.)*
 - **The token's layer.** A write goes to the original or to the owner's team's overrides, chosen
   per request by a top-level `layer`. With none, a text maintainer's token writes the original, as
   it always did, and anyone else's writes the overrides; a maintainer who holds `regenerate` sends
@@ -184,14 +186,15 @@ site. The rest of phase 2 is distribution and stays out.
   owner holds `regenerate` now and acts as that team; otherwise the undo reports the override as
   skipped (`not_allowed`) and leaves it live. A site owner may undo any team's override.
   *(My call, set by the controller.)*
-- **Releases and gender splits.** A second team cannot release yet, and cannot split a line by the
-  reader's gender, since that rewrites the original every team voices. A plain override is written
-  into its own team's layer.
-- **Explorer.** In a language with a second team, the places, bosses, readables and quests
-  explorers show a "Team" picker listing every team that voices it, the main team first. The
-  pick is `?team=<slug>` and chooses whose live takes play, anonymous visitors included. With
-  none, the explorer plays the team the visitor works in, else the main team, so existing links
-  play what they always did. A single-team language shows no picker.
+- **Gender splits.** Splitting a line by the reader's gender rewrites the original every team
+  voices, so it takes `text`, whatever team its holder works in. A plain override is written into
+  its own team's layer.
+- **Explorer.** In a language with several teams, the places, bosses, readables and quests
+  explorers show a "Team" picker listing every team that voices it, none marked: the one with
+  plain packs first, then by name. The pick is `?team=<slug>` and chooses whose live takes play,
+  anonymous visitors included. With none, the explorer plays the team the visitor works in, else
+  the first listed, read-only for a visitor in none of them. A single-team language shows no
+  picker.
 - **Another team's view is read-only.** It plays that team's live takes and shows its override
   on a line with a live take that speaks it. Each line reads voiced or
   missing, with no stale, dirty, made-by, report or recording marks, and the regenerate,
@@ -200,7 +203,8 @@ site. The rest of phase 2 is distribution and stays out.
 - **A site owner acts inside a team through the picker.** Their pick is kept per language in the
   `spoken_team` cookie, read only for a site owner, and every read and write in that language
   goes to the picked team until they pick again. An entry is kept only where it changes who they
-  act as, so a site owner who is a member of a second team can still act as the main team. While
+  act as, so a site owner who is a member of one team can still act as another. With no entry, a
+  site owner acts in their own team, else the first listed. While
   an entry holds, every page of the language shows "Working as {team}" with the picker. The queue
   panel shows each team only its own finished lines and pauses, and a site owner's Stop cancels
   pending work in every team of their languages.

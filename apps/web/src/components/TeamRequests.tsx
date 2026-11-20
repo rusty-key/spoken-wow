@@ -18,8 +18,8 @@ function age(createdAt: string): string {
 
 type Props = {
   initial: TeamRequest[];
-  /** By request id: the name of the privileged team a second-team request would sit beside. */
-  besides?: Partial<Record<string, string>>;
+  /** By request id: the team a request's new team could start from, where its language has one. */
+  besides?: Partial<Record<string, { id: string; name: string }>>;
 };
 
 export default function TeamRequests({ initial, besides = {} }: Props) {
@@ -46,8 +46,11 @@ export default function TeamRequests({ initial, besides = {} }: Props) {
       "PATCH",
       decision === "reject"
         ? { decision, ...(reason ? { reason } : {}) }
-        : request.branch === "second-team"
-          ? { decision, settings: copies[request.id] ? "copy" : "fresh" }
+        : besides[request.id]
+          ? copies[request.id]
+            ? // The team named on the page, so a team that joined since cannot take its place.
+              { decision, settings: "copy", from: besides[request.id]!.id }
+            : { decision, settings: "fresh" }
           : { decision },
     );
     setBusy(null);
@@ -77,7 +80,7 @@ export default function TeamRequests({ initial, besides = {} }: Props) {
             </div>
             {request.note && <p className="text-muted-foreground">{request.note}</p>}
             {request.branch && <p>{branchText(request.branch, nameOf(request))}</p>}
-            {request.branch === "second-team" && (
+            {besides[request.id] && (
               <label className="flex items-center gap-2">
                 <input
                   type="checkbox"
@@ -88,7 +91,7 @@ export default function TeamRequests({ initial, besides = {} }: Props) {
                     setCopies((was) => ({ ...was, [request.id]: checked }));
                   }}
                 />
-                Start from {besides[request.id] ?? "the existing team"}&apos;s voices and settings
+                Start from {besides[request.id]!.name}&apos;s voices and settings
               </label>
             )}
             <div className="flex flex-wrap items-center gap-2">

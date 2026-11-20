@@ -14,31 +14,25 @@ import { recordActivities, recordActivity } from "@/lib/activity/store";
 import { ALL_TEAMS, db, query, withTeam } from "@/lib/db";
 import { teamIn } from "@/lib/teams/acting";
 import { deleteMember, insertMembers } from "@/lib/teams/members";
-import { ownerOrAll, privilegedOwners, secondTeamLangs, teamOf, type TeamId } from "@/lib/teams/store";
+import { ownerOrAll, sharedLangs, teamOf, type TeamId } from "@/lib/teams/store";
 import { isLang, langName, type Lang } from "@/lib/lang";
 import { textByTeam } from "@/lib/languages/store";
 import { canGrant, isCapability, type Capability, type Grant, type Viewer } from "@/lib/permissions";
 
 /**
- * On the caller's client when given. A team's row is privileged only when the team is the
- * language's cached privileged owner, so a second team the memo does not know yet fails closed.
+ * A team being deleted is left out: its members may do nothing in it while its packs come off
+ * the channel. On the caller's client when given.
  */
 export async function grantsOf(userId: string, client?: Pick<ClientBase, "query">): Promise<Grant[]> {
-  const { rows } = await (client ?? db()).query<{ lang: string; capability: string; teamId: TeamId | null }>(
-    `select "lang", 'text' as "capability", null::uuid as "teamId" from "language_grant" where "userId" = $1
+  const { rows } = await (client ?? db()).query<{ lang: string; capability: string }>(
+    `select "lang", 'text' as "capability" from "language_grant" where "userId" = $1
      union all
-     select "lang", "capability", "teamId" from "team_member" where "userId" = $1
+     select m."lang", m."capability" from "team_member" m join "team" t on t."id" = m."teamId"
+      where m."userId" = $1 and t."deletingAt" is null
      order by "lang", "capability"`,
     [userId],
   );
-  const owners = await privilegedOwners(rows.filter((row) => row.teamId !== null).map((row) => row.lang as Lang));
-  const grants: Grant[] = [];
-  for (const { lang, capability, teamId } of rows) {
-    if (!isCapability(capability)) continue;
-    const privileged = teamId === null || owners.get(lang as Lang) === teamId;
-    grants.push(privileged ? { lang, capability } : { lang, capability, privileged: false });
-  }
-  return grants;
+  return rows.flatMap(({ lang, capability }) => (isCapability(capability) ? [{ lang, capability }] : []));
 }
 
 /** `userId`'s grants in `lang` that `team` holds, with `text`, which is in no team. */
@@ -46,7 +40,8 @@ export async function grantsInTeam(userId: string, lang: Lang, team: TeamId | nu
   const rows = await query<{ capability: string }>(
     `select 'text' as "capability" from "language_grant" where "userId" = $1 and "lang" = $2
      union all
-     select "capability" from "team_member" where "userId" = $1 and "lang" = $2 and "teamId" = $3`,
+     select m."capability" from "team_member" m join "team" t on t."id" = m."teamId"
+      where m."userId" = $1 and m."lang" = $2 and m."teamId" = $3 and t."deletingAt" is null`,
     [userId, lang, team],
   );
   return rows.flatMap(({ capability }) => (isCapability(capability) ? [{ lang, capability }] : []));
@@ -94,11 +89,11 @@ const GRANTS = `(
 )`;
 
 /**
- * Who holds a grant in `lang`. In a language with a second team, the acting team's members and
+ * Who holds a grant in `lang`. In a language with several teams, the acting team's members and
  * the `text` holders, who belong to no team; else everyone.
  */
 export async function viewersIn(lang: Lang): Promise<Map<string, Viewer>> {
-  const shared = (await secondTeamLangs()).has(lang);
+  const shared = (await sharedLangs()).has(lang);
   const team = shared ? await ownerOrAll(lang) : ALL_TEAMS;
   const rows = await query<{ userId: string; role: string | null; capability: Capability }>(
     `select g."userId", u."role", g."capability"
@@ -143,7 +138,7 @@ async function selectGrants(where: string, params: unknown[]): Promise<GrantRow[
   return rows.map((row) => ({ ...row, grantedAt: row.grantedAt.toISOString() }));
 }
 
-/** The refusal of a second team in `lang`: "`already` on <language> in `team`; one person ...". */
+/** The refusal of another team in `lang`: "`already` on <language> in `team`; one person ...". */
 export function oneTeamPerLanguage(already: string, lang: string, team: string): string {
   return `${already} on ${langName(lang)} in ${team}; one person works in one team per language.`;
 }
@@ -156,7 +151,7 @@ export class OtherTeamError extends Error {
   }
 }
 
-/** Postgres' exclusion_violation, which team_member raises at commit for a second team in one language. */
+/** Postgres' exclusion_violation, which team_member raises at commit for a person's other team in one language. */
 export function isOtherTeam(error: unknown): boolean {
   return typeof error === "object" && error !== null && (error as { code?: unknown }).code === "23P01";
 }
@@ -167,7 +162,7 @@ export function isOtherTeam(error: unknown): boolean {
  * the log would otherwise say it was handed out twice.
  *
  * Team capabilities go to `options.team`, else the team the granter works on the language in,
- * else the language's owner. Somebody who works on it in another team is refused with
+ * else the language's one team. Somebody who works on it in another team is refused with
  * OtherTeamError. `options.within` runs first on the same transaction.
  */
 export async function addGrants(
@@ -181,7 +176,7 @@ export async function addGrants(
   const members = capabilities.filter((capability) => capability !== "text");
   // A language with one team has only teamOf's to grant into, and the commit's 23P01 still
   // backstops a membership elsewhere.
-  const teams = members.length > 0 && (await secondTeamLangs()).has(lang);
+  const teams = members.length > 0 && (await sharedLangs()).has(lang);
   const team = members.length
     ? (options.team ?? (teams ? await teamIn(grantedBy, lang) : null) ?? (await teamOf(lang)))
     : await ownerOrAll(lang);
@@ -201,7 +196,6 @@ export async function addGrants(
           subject: userId,
           actorId: grantedBy,
           detail: { capability },
-          // Not ALL_TEAMS, which would file the row unowned: no team falls back to the language's.
           team: team === ALL_TEAMS ? undefined : team,
         })),
         client,

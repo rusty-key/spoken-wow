@@ -5,14 +5,16 @@ import type { ClientBase } from "pg";
 
 import { ALL_TEAMS, query, queryIn, withTeam } from "@/lib/db";
 import type { ActivityDetail } from "@/lib/activity/kinds";
-import { recordActivity } from "@/lib/activity/store";
+import { recordActivities, recordActivity, type ActivityEvent } from "@/lib/activity/store";
 import { addGrants, OtherTeamError, userByEmail } from "@/lib/grants/store";
-import type { Lang } from "@/lib/lang";
+import { BASE_LANG, type Lang } from "@/lib/lang";
+import { setEnabledOn } from "@/lib/languages/store";
 import type { Capability } from "@/lib/permissions";
 
-import { membersOf } from "./members";
+import type { Settings } from "./found";
+
 import { isSlug } from "./slug";
-import { forgetTeams, type TeamId } from "./store";
+import { forgetTeams, TEAM_ORDER, type TeamId } from "./store";
 
 export type TeamSummary = {
   id: TeamId;
@@ -22,11 +24,11 @@ export type TeamSummary = {
   ownStorage: boolean;
   /** Its releases need no review and its packs carry no team label (docs/platform/TEAMS.md). */
   official: boolean;
-  /** The languages it is privileged in. */
+  /** The languages it voices, beside any other team of each. */
   langs: Lang[];
-  /** The languages it is a second team in, beside another team. */
-  alsoIn: Lang[];
   members: { userId: string; email: string; name: string | null; lang: Lang; capability: Capability }[];
+  /** While it is being deleted (delete.ts): how far its delistings are, and why it stopped if it did. */
+  deleting: { delisted: number; delists: number; error: string | null } | null;
 };
 
 /**
@@ -51,12 +53,24 @@ export function checkSlug(slug: string): void {
 export async function listTeams(only?: TeamId): Promise<TeamSummary[]> {
   const id = [only ?? null];
   const [teams, langs, members] = await Promise.all([
-    query<{ id: TeamId; slug: string; name: string; ownStorage: boolean; official: boolean }>(
-      `select "id", "slug", "name", "ownStorage", "official" from "team" where $1::uuid is null or "id" = $1 order by "slug"`,
+    // Across teams: a team's runs are its own (row-level security).
+    queryIn<{
+      id: TeamId; slug: string; name: string; ownStorage: boolean; official: boolean;
+      deletingAt: Date | null; deleteError: string | null; delisted: number; delists: number;
+    }>(
+      ALL_TEAMS,
+      `select t."id", t."slug", t."name", t."ownStorage", t."official", t."deletingAt", t."deleteError",
+              d."delisted", d."delists"
+         from "team" t
+         left join lateral (
+           select (count(*) filter (where r."state" in ('done', 'unchanged')))::int as "delisted", count(*)::int as "delists"
+             from "release_run" r
+            where r."teamId" = t."id" and r."kind" = 'delist' and r."createdAt" >= t."deletingAt") d on true
+        where $1::uuid is null or t."id" = $1 order by t."slug"`,
       id,
     ),
-    query<{ teamId: TeamId; lang: Lang; privileged: boolean }>(
-      `select "teamId", "lang", "privileged" from "team_language"
+    query<{ teamId: TeamId; lang: Lang }>(
+      `select "teamId", "lang" from "team_language"
         where $1::uuid is null or "teamId" = $1 order by "lang"`,
       id,
     ),
@@ -68,10 +82,10 @@ export async function listTeams(only?: TeamId): Promise<TeamSummary[]> {
       id,
     ),
   ]);
-  return teams.map((team) => ({
+  return teams.map(({ deletingAt, deleteError, delisted, delists, ...team }) => ({
     ...team,
-    langs: langs.filter((row) => row.teamId === team.id && row.privileged).map((row) => row.lang),
-    alsoIn: langs.filter((row) => row.teamId === team.id && !row.privileged).map((row) => row.lang),
+    deleting: deletingAt ? { delisted, delists, error: deleteError } : null,
+    langs: langs.filter((row) => row.teamId === team.id).map((row) => row.lang),
     members: members
       .filter((row) => row.teamId === team.id)
       .map(({ teamId: _team, ...member }) => member),
@@ -87,8 +101,8 @@ export async function resolveAdmin(adminEmail: string | null): Promise<string | 
 }
 
 /**
- * Writes the team alone: membership is per language, so the admin is granted once a language
- * is handed over, and only their id is returned.
+ * Writes the team alone: membership is per language, so the admin is granted once the team joins
+ * a language, and only their id is returned.
  */
 export async function createTeam(
   input: { slug: string; name: string; adminEmail: string | null },
@@ -112,34 +126,34 @@ export async function createTeam(
   return { id, adminId };
 }
 
-/** A refusal part way keeps the team and what already moved, so its message says what did. */
+/** A refusal part way keeps the team and the languages it already joined, so its message says which. */
 export async function createTeamWithLangs(
   input: { slug: string; name: string; adminEmail: string | null; langs: readonly Lang[] },
   actorId: string,
-): Promise<{ team: TeamSummary; moved: Lang[] }> {
+): Promise<{ team: TeamSummary; joined: Lang[] }> {
   const { id, adminId } = await createTeam(input, actorId);
-  const moved: Lang[] = [];
+  const joined: Lang[] = [];
   for (const lang of input.langs) {
     try {
-      await handOver(lang, id, actorId);
+      await addToLanguage(lang, id, actorId);
     } catch (error) {
       if (!(error instanceof TeamError)) throw error;
-      const done = moved.length ? `moved ${moved.join(", ")}; ` : "";
+      const done = joined.length ? `joined ${joined.join(", ")}; ` : "";
       throw new TeamError(`${done}${lang} refused: ${error.message}`, error.status);
     }
-    moved.push(lang);
+    joined.push(lang);
     if (!adminId) continue;
     try {
       await addGrants(adminId, lang, ["admin"], actorId, { team: id });
     } catch (error) {
       if (error instanceof OtherTeamError) {
-        throw new TeamError(`moved ${moved.join(", ")}; ${error.message}`, 409);
+        throw new TeamError(`joined ${joined.join(", ")}; ${error.message}`, 409);
       }
       throw error;
     }
   }
   const [team] = await listTeams(id);
-  return { team, moved };
+  return { team, joined };
 }
 
 // A team's flags a site owner sets, each logged under its own kind with the flag as its detail.
@@ -183,124 +197,78 @@ export async function renameTeam(team: TeamId, name: string, actorId: string): P
   await recordActivity({ kind: "team.renamed", lang: null, actorId, subject: slug, detail: { name } });
 }
 
-/**
- * The team's setup, deleted with it: the roster, settings and lexicon every team is given or
- * copies, the lexicon's history, and its pauses and dismissal mark. Children before parents.
- */
-const SETUP = [
-  "voice_assignment", "voice", "generation_setting_locale", "generation_setting", "lexicon_change",
-  "pronunciation_lexicon_locale", "pronunciation_lexicon", "queue_dismissal", "regeneration_pause",
-];
-
-/** Plain words for a refusal; any other table goes by its name. */
-const WORK: Record<string, string> = {
-  take: "takes",
-  take_ack: "acknowledged takes",
-  recording: "recordings",
-  voice_clone: "voice clones",
-  voice_sample: "voice samples",
-  fish_reference: "voice references",
-  regeneration_batch: "regeneration batches",
-  regeneration_job: "regeneration jobs",
-  report: "reports",
-  line_ignore: "ignored lines",
-  line_override: "text overrides",
-  text_override: "text overrides",
-  release_run: "releases",
-  storage_backend: "a storage bucket",
-  archive_object: "archived audio",
-  storage_move: "storage moves",
-};
-
-/**
- * Deletes a team that holds no language and has made nothing. Any row of work under it (a take,
- * a recording, a bucket) refuses the delete, since work is never deleted.
- */
-export async function deleteTeam(team: TeamId, actorId: string): Promise<void> {
-  await withTeam(ALL_TEAMS, async (client) => {
-    // Locked, so a hand-over to it cannot commit between the check and the delete.
-    const { rows } = await client.query<{ slug: string }>(`select "slug" from "team" where "id" = $1 for update`, [team]);
+/** `team` joins `lang` beside its other teams, as joinLanguage, and the log says so. */
+export async function addToLanguage(lang: Lang, team: TeamId, actorId: string): Promise<void> {
+  const joined = await withTeam(ALL_TEAMS, async (client) => {
+    const { rows } = await client.query<{ slug: string }>(`select "slug" from "team" where "id" = $1`, [team]);
     if (rows.length === 0) throw new TeamError("No such team.", 404);
-    const { rows: held } = await client.query<{ lang: string }>(
-      `select "lang" from "team_language" where "teamId" = $1 and "privileged" order by "lang"`,
-      [team],
-    );
-    if (held.length) {
-      throw new TeamError(`${rows[0].slug} holds ${held.map((row) => row.lang).join(", ")}; hand it to another team first.`, 409);
-    }
-    const members = await membersOf(client, team);
-    try {
-      for (const table of SETUP) await client.query(`delete from "${table}" where "teamId" = $1`, [team]);
-      // Only the team could read its log; left under no team, every team could (0090's "site_wide").
-      await client.query(`delete from "activity" where "teamId" = $1`, [team]);
-      // team_member, team_language and invite cascade; an approved request forgets the team.
-      await client.query(`delete from "team" where "id" = $1`, [team]);
-    } catch (error) {
-      const { code, table } = error as { code?: string; table?: string };
-      if (code !== "23503") throw error;
-      const work = (table && WORK[table]) ?? table ?? "work";
-      throw new TeamError(
-        `${rows[0].slug} still has ${work} of its own, and work is never deleted: keep the team.`,
-        409,
-      );
-    }
-    // In the transaction, so the log never loses the team's rows without saying why.
-    const slug = rows[0].slug;
-    await recordActivity({ kind: "team.deleted", lang: null, actorId, subject: slug, detail: { slug, members } }, client);
-    // Every worker drops its team memo at commit.
-    await client.query(`select pg_notify('spoken_team_language', '')`);
+    return { slug: rows[0].slug, ...(await joinLanguage(client, lang, team, actorId)) };
   });
   forgetTeams();
-}
-
-/** Hands `lang`, with every row of it, to `team`; returns the rows moved. */
-export async function handOver(lang: Lang, team: TeamId, actorId: string): Promise<number> {
-  const moved = await withTeam(ALL_TEAMS, (client) => moveLang(client, lang, team));
-  // Before the log row, which takes its team from the memo: it belongs to the new owner.
-  forgetTeams();
-  await recordActivity({
-    kind: "team.language_moved",
-    lang,
-    actorId,
-    subject: moved.to,
-    detail: { from: moved.from, to: moved.to },
-  });
-  return moved.moved;
+  await recordActivities(joinEvents(lang, actorId, { team: { id: team, slug: joined.slug }, from: joined.from }, joined.switchedOn));
 }
 
 /**
- * move_team_lang on the caller's client, which must act as ALL_TEAMS, with the slugs it moved
- * between; the caller forgets the memo once that commits.
+ * The log of a join: `joined.team` voices `lang` now, unless the language's first team came with
+ * it (null), and the language was switched on, when it was.
  */
-export async function moveLang(
+export function joinEvents(
+  lang: Lang,
+  actorId: string,
+  joined: { team: { id: TeamId; slug: string }; from: string | null } | null,
+  switchedOn: boolean,
+): ActivityEvent[] {
+  const events: ActivityEvent[] = [];
+  if (joined) {
+    const { team, from } = joined;
+    events.push({ kind: "team.joined_language", lang, actorId, subject: team.slug, detail: { slug: team.slug, from }, team: team.id });
+  }
+  if (switchedOn) events.push({ kind: "language.toggled", lang, actorId, detail: { enabled: true } });
+  return events;
+}
+
+/**
+ * `team` voices `lang` beside every team that already does. Its packs are plain where its slug is
+ * the language's code and no team has plain packs, else carry its slug (the insert trigger, 0123).
+ * `copy` starts it from `source`'s roster, model settings and lexicon entries in the language,
+ * else the first team's; anything else, or a language with no team, from English's roster. A
+ * `source` that no longer voices the language is refused: the team it would copy is not the one
+ * the caller showed. Nothing is copied
+ * that a team voiced: the team starts from scratch. A language with no team is switched on.
+ *
+ * On the caller's client, which acts as ALL_TEAMS; the caller forgets the memo once it commits.
+ */
+export async function joinLanguage(
   client: ClientBase,
   lang: string,
   team: TeamId,
-): Promise<{ moved: number; from: string; to: string }> {
-  try {
-    const { rows: slugs } = await client.query<{ from: string | null; to: string | null }>(
-      `select (select "slug" from "team" where "id" = team_of_lang($1)) as "from",
-              (select "slug" from "team" where "id" = $2) as "to"`,
-      [lang, team],
-    );
-    const { rows } = await client.query<{ moved: number }>(`select move_team_lang($1, $2) as "moved"`, [lang, team]);
-    return { moved: rows[0].moved, from: slugs[0].from ?? "", to: slugs[0].to ?? "" };
-  } catch (error) {
-    // 55006 is a running job; P0001 is any other refusal of move_team_lang.
-    const code = (error as { code?: string }).code;
-    if (code === "55006") throw new TeamError((error as Error).message, 409);
-    if (code === "P0001") throw new TeamError((error as Error).message);
-    throw error;
+  actorId: string,
+  settings: Settings = "fresh",
+  source?: TeamId,
+): Promise<{ first: boolean; from: string | null; switchedOn: boolean }> {
+  if (lang === BASE_LANG) throw new TeamError("English is one team; no other team can join it.");
+  const { rows: teams } = await client.query<{ teamId: TeamId; slug: string }>(
+    `select tl."teamId", t."slug" from "team_language" tl join "team" t on t."id" = tl."teamId"
+      where tl."lang" = $1
+      order by ${TEAM_ORDER}`,
+    [lang],
+  );
+  if (teams.some((row) => row.teamId === team)) throw new TeamError(`That team already voices ${lang}.`, 409);
+  const from = settings === "copy" ? ((source ? teams.find((row) => row.teamId === source) : teams[0]) ?? null) : null;
+  if (settings === "copy" && source && !from) {
+    throw new TeamError(`The team to start from no longer voices ${lang}; reload and choose again.`, 409);
   }
+  await client.query(`insert into "team_language" ("teamId", "lang") values ($1, $2)`, [team, lang]);
+  // Every worker drops its team memo at commit; until then the others file a new member's work
+  // under no team.
+  await client.query(`select pg_notify('spoken_team_language', $1)`, [lang]);
+  if (from) {
+    await client.query(`select copy_team_settings($1, $2, $3)`, [from.teamId, team, lang]);
+  } else {
+    await client.query(`select copy_team_roster((select "id" from "team" where "slug" = 'english'), $1)`, [team]);
+  }
+  const first = teams.length === 0;
+  const switchedOn = first && !(await setEnabledOn(client, lang, true, actorId));
+  return { first, from: from?.slug ?? null, switchedOn };
 }
 
-/** Live takes per language in its privileged team, which a hand-over moves too. */
-export async function liveTakeCounts(): Promise<Map<Lang, number>> {
-  const rows = await queryIn<{ lang: Lang; count: number }>(
-    ALL_TEAMS,
-    `select "lang", count(*)::int as "count" from "take"
-      where "isCurrent" and "teamId" = team_of_lang("lang")
-      group by "lang"`,
-  );
-  return new Map(rows.map((row) => [row.lang, row.count]));
-}

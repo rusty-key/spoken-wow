@@ -194,7 +194,7 @@ contribute-fixtures:
 
 test: test-player ## Everything: the site, the Node and Python pipelines, the addons
 	@pnpm -r test
-	@node --test scripts/lib/*.test.mjs scripts/audio/*.test.mjs scripts/maintainers/*.test.mjs pipelines/lib/*.test.mjs
+	@node --test scripts/lib/*.test.mjs scripts/audio/*.test.mjs scripts/maintainers/*.test.mjs scripts/db/*.test.mjs pipelines/lib/*.test.mjs
 	@[ -x pipelines/quests/.venv/bin/python ] || { \
 	  echo "No venv at pipelines/quests/.venv -- see the comment above 'test' in the Makefile"; \
 	  exit 1; }
@@ -364,8 +364,8 @@ manager-publish-dry: ## Show what the manager channel would get from dist/ (ONLY
 manager-publish: ## Publish dist/'s manager packs to the manager channel (ONLY_PRESENT=1: only what is built)
 	@node scripts/manager/cli.mjs publish $(if $(ONLY_PRESENT),--present) $(if $(ALLOW_REMOVALS),--allow-removals)
 
-manager-release: ## One section and language onto the manager channel, with no clips here (SECTION=, LOCALE=, DRY_RUN=1)
-	@node scripts/manager/release.mjs $(SECTION) $(or $(LOCALE),enUS) $(if $(DRY_RUN),--dry-run) $(if $(ALLOW_REMOVALS),--allow-removals)
+manager-release: ## One section and language onto the manager channel, with no clips here (SECTION=, LOCALE=, TEAM=, DRY_RUN=1)
+	@node scripts/manager/release.mjs $(SECTION) $(or $(LOCALE),enUS) $(if $(TEAM),--team=$(TEAM)) $(if $(DRY_RUN),--dry-run) $(if $(ALLOW_REMOVALS),--allow-removals)
 
 manager-gc-dry: ## Show what manager-gc would delete
 	@node scripts/manager/cli.mjs gc --dry-run

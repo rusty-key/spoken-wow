@@ -29,10 +29,10 @@ export function runsOnDroplet(): boolean {
 }
 
 /**
- * Whether a team that is not official, or not the language's privileged team, may release: only
+ * Whether a team that is not official, or whose packs carry its slug, may release: only
  * where SPOKEN_TEAM_RELEASES=1. Staging sets it; production sets it once a Manager and a Spoken
  * that list a team's packs have shipped. On the droplet only: the workflow builds from a synced
- * database, whose sync gives every take to the privileged team. A release of a team that is not
+ * database, whose sync can give a team's takes to another. A release of a team that is not
  * official waits for a site owner's review either way.
  */
 export function teamReleasesOpen(): boolean {
@@ -41,12 +41,12 @@ export function teamReleasesOpen(): boolean {
 
 /**
  * Whether the acting team (actingTeamRow) is refused a release here: one that is not both official
- * and the language's privileged team, where team releases are not open. No team is not refused.
+ * and holding plain packs in the language, where team releases are not open. No team is not refused.
  * The job refuses the same teams, whose packs it lists under the team
  * (scripts/manager/release-pack.mjs needsTeamReleases), so a press accepted here is one it builds.
  */
-export function releasesClosedFor(team: { official: boolean; privileged: boolean } | null): boolean {
-  return team !== null && !(team.official && team.privileged) && !teamReleasesOpen();
+export function releasesClosedFor(team: { official: boolean; packName: "plain" | "slug" } | null): boolean {
+  return team !== null && !(team.official && team.packName === "plain") && !teamReleasesOpen();
 }
 
 function runDir(id: string): string | null {

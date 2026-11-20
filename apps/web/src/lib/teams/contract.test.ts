@@ -23,6 +23,9 @@ const TABLES = [
 /** Site-wide rows: no language, so no team. */
 const SITE_WIDE = ["line_ignore", "activity"];
 
+/** A deleted team's text report may have no team, and its closed voice reports none (migration 0124). */
+const NO_TEAM_ALLOWED = `("queue" = 'text' or "status" <> 'open')`;
+
 const ENGLISH = `select "id" from "team" where "slug" = 'english'`;
 
 const rollback = new Error("rollback");
@@ -42,21 +45,30 @@ async function failure(team: string, sql: string, params: unknown[] = []): Promi
 }
 
 describe("team contract", () => {
-  it.each(TABLES)("leaves no %s row without a team but a site-wide one", async (table) => {
-    const siteWide = SITE_WIDE.includes(table) ? ` and "lang" is not null` : "";
+  // A language's own ignore has no team either.
+  it.each(TABLES.filter((t) => t !== "line_ignore"))("leaves no %s row without a team but a site-wide one", async (table) => {
+    const siteWide = SITE_WIDE.includes(table) ? ` and "lang" is not null` : table === "report" ? ` and not ${NO_TEAM_ALLOWED}` : "";
     const { rows } = await asSystem.query(
       `select count(*)::int as "n" from "${table}" where "teamId" is null${siteWide}`,
     );
     expect(rows[0].n).toBe(0);
   });
 
-  it.each(TABLES.filter((t) => !SITE_WIDE.includes(t)))("requires a team on %s", async (table) => {
+  it.each(TABLES.filter((t) => !SITE_WIDE.includes(t) && t !== "report"))("requires a team on %s", async (table) => {
     const { rows } = await asSystem.query(
       `select "is_nullable" from "information_schema"."columns"
         where "table_name" = $1 and "column_name" = 'teamId'`,
       [table],
     );
     expect(rows[0].is_nullable).toBe("NO");
+  });
+
+  it("refuses an audio report with no team", async () => {
+    const error = await failure(
+      ALL_TEAMS,
+      `insert into "report" ("source", "lang", "category", "body", "teamId", "queue") values ('quests', 'deDE', 'other', 'x', null, 'audio')`,
+    );
+    expect(error).toMatchObject({ code: "23514", constraint: "report_team_or_text" });
   });
 
   it("refuses a take with no team", async () => {
@@ -132,7 +144,7 @@ describe("team contract", () => {
     expect(error).toMatchObject({ code: "23505" });
   });
 
-  it("refuses a site-wide ignore with a team, and a language's without one", async () => {
+  it("refuses a site-wide ignore with a team, and takes a language's without one", async () => {
     const english = (await asSystem.query(ENGLISH)).rows[0].id;
     expect(await failure(
       ALL_TEAMS,
@@ -142,6 +154,6 @@ describe("team contract", () => {
     expect(await failure(
       ALL_TEAMS,
       `insert into "line_ignore" ("lineId", "lang", "reason", "teamId") values ('contract-test', 'deDE', 'x', null)`,
-    )).toMatchObject({ code: "23514" });
+    )).toBeNull();
   });
 });

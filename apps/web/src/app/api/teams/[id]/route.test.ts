@@ -9,7 +9,7 @@ vi.mock("@/lib/session", () => ({
   currentSession: async () => ({ user: { id: who.id, role: "admin" } }),
 }));
 
-import { PATCH } from "./route";
+import { DELETE, PATCH } from "./route";
 
 let user: Awaited<ReturnType<typeof testUser>>;
 let team = "";
@@ -94,5 +94,24 @@ describe("PATCH /api/teams/[id]", () => {
   it("never changes the slug", async () => {
     expect((await patch({ slug: "renamed-slug" })).status).toBe(400);
     expect(await slugOf()).toBe(slug);
+  });
+});
+
+describe("DELETE /api/teams/[id]", () => {
+  const del = (body: unknown) =>
+    DELETE(new Request(`http://x/api/teams/${team}`, { method: "DELETE", body: JSON.stringify(body) }), {
+      params: Promise.resolve({ id: team }),
+    });
+
+  it("asks for the slug, refuses another, and deletes a team with nothing on the channel at once", async () => {
+    expect((await del({})).status).toBe(400);
+    const wrong = await del({ slug: "not-it" });
+    expect(wrong.status).toBe(400);
+    expect((await wrong.json()).error).toBe(`Type the team's slug, ${slug}, to delete it.`);
+
+    const res = await del({ slug });
+    expect(res.status).toBe(200);
+    expect(await res.json()).toEqual({ state: "deleted" });
+    expect(await systemRows(`select 1 from "team" where "id" = $1`, [team])).toHaveLength(0);
   });
 });

@@ -1,5 +1,5 @@
 /**
- * A site owner's choice of team in each language with a second team, kept in a cookie so every
+ * A site owner's choice of team in each language with several teams, kept in a cookie so every
  * route and page acts in it through actingTeams, with no parameter threaded through the site's
  * calls. TEAMS.md lets a site owner act inside any team without being a member; for anyone
  * else the cookie is ignored, so editing it moves nobody out of their team.
@@ -10,7 +10,7 @@ import { cookies } from "next/headers";
 
 import type { Lang } from "@/lib/lang";
 
-import { secondTeamLangs, teamsOf, type TeamId } from "./store";
+import { defaultTeamOf, sharedLangs, teamsOf, type TeamId } from "./store";
 
 export const ACTING_COOKIE = "spoken_team";
 
@@ -45,17 +45,34 @@ export async function currentChoice(): Promise<Record<string, string>> {
 
 /**
  * The cookie's choices that name a team voicing their language, from the memo. The caller checks
- * that the session's person is a site owner. Without a second team anywhere the cookie is not read.
+ * that the session's person is a site owner. Without a language of several teams the cookie is
+ * not read.
  */
 export async function chosenTeams(): Promise<Map<string, TeamId>> {
-  const second = await secondTeamLangs();
+  const shared = await sharedLangs();
   const chosen = new Map<string, TeamId>();
-  if (second.size === 0) return chosen;
+  if (shared.size === 0) return chosen;
   for (const [key, slug] of Object.entries(await currentChoice())) {
     const lang = key as Lang;
-    if (!second.has(lang)) continue;
+    if (!shared.has(lang)) continue;
     const team = (await teamsOf(lang)).find((candidate) => candidate.slug === slug);
     if (team) chosen.set(lang, team.id);
   }
   return chosen;
+}
+
+/**
+ * The teams a site owner acts in: in each language of several teams, the cookie's choice, else
+ * their own team there, else the first as the picker lists them, so a site owner always has a
+ * team to work in.
+ */
+export async function siteOwnerTeams(member: ReadonlyMap<string, TeamId>): Promise<Map<string, TeamId>> {
+  const shared = await sharedLangs();
+  if (shared.size === 0) return new Map(member);
+  const unchosen = new Map<string, TeamId>();
+  for (const lang of shared) {
+    const first = await defaultTeamOf(lang);
+    if (first) unchosen.set(lang, first.id);
+  }
+  return new Map([...unchosen, ...member, ...(await chosenTeams())]);
 }

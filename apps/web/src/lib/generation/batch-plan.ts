@@ -22,6 +22,7 @@ import { AUDIO_STATES } from "@/lib/audio-state";
 import { CLIENT_FILTERS } from "@/lib/contributions/client";
 import { filtersFromParams, needsDirty, needsLevels, needsStale } from "@/lib/search-request";
 import type { Source } from "@/lib/sections";
+import { deletingResponse } from "@/lib/teams/deleting";
 import { pinnedVoices } from "@/lib/voices/references";
 
 import { requireApiKey } from "./authz";
@@ -317,8 +318,18 @@ export async function queuePlan(args: {
     if (denied) return denied;
   }
 
-  const batchId = await createBatch(label, userId, section, lang);
-  const { queued, skipped } = await enqueue(batchId, plan.jobs, section, lang, provider);
+  let batchId: string;
+  let queued: number;
+  let skipped: number;
+  // A deletion can start between the batch and its jobs, and refuses the jobs then.
+  try {
+    batchId = await createBatch(label, userId, section, lang);
+    ({ queued, skipped } = await enqueue(batchId, plan.jobs, section, lang, provider));
+  } catch (error) {
+    const deleting = deletingResponse(error, { kind: "team-deleting" });
+    if (deleting) return deleting;
+    throw error;
+  }
   // One row for the whole batch, however many lines it holds.
   await recordActivity({
     kind: "batch.queued",

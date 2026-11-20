@@ -89,7 +89,7 @@ export interface Product {
    */
   legacy?: { id: string; tagPrefix: string; folders: string[]; assetPattern: string }
   /**
-   * Who released a voice pack, as the channel says: null for the language's official team's pack in its plain folders,
+   * Who released a voice pack, as the channel says: null for an official team's pack in the language's plain folders,
    * absent when the channel does not carry it. A team's pack installed before the channel dropped it keeps its slug as
    * its name.
    */
@@ -98,7 +98,7 @@ export interface Product {
 
 /**
  * A voice pack's author: its team, or PAGE_AUTHOR, with no name, which the window gives, for a pack the channel lists
- * with no team (the language's official team holding its plain folders).
+ * with no team (an official team's, in the language's plain folders).
  */
 export interface PackAuthor {
   /** The team's slug, or PAGE_AUTHOR. */

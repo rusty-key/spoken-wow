@@ -35,6 +35,12 @@ export async function launchNew(insert: () => Promise<ReleaseRun>, launch: Launc
   await syncActive();
   const run = await insert();
   if (run.state !== "dispatching") return run;
+  await launchStarted(run, launch);
+  return run;
+}
+
+/** Starts the job of a new run that took the lock, as launchNew does once it has inserted one. */
+export async function launchStarted(run: ReleaseRun, launch: Launch = launchRun): Promise<void> {
   try {
     await launch(run);
   } catch (error) {
@@ -42,7 +48,6 @@ export async function launchNew(insert: () => Promise<ReleaseRun>, launch: Launc
     await startNext(launch);
     throw new LaunchError(failureOf(error));
   }
-  return run;
 }
 
 /**

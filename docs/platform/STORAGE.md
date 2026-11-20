@@ -205,9 +205,9 @@ move with the reason.
 ### Teams that keep their own storage
 
 `team."ownStorage"` (migration 0116) is set by `createTeam` and `foundTeam`, so every team a person
-creates, from a request or the New team form, has it; existing teams and `adopt_lang`'s do not.
-Such a team keeps no new audio on our volume or in our archive; what is already there stays
-(decision 3) (`ownStorageRefusal`, `lib/blobs/keep.ts`):
+creates, from a request or the New team form, has it; existing teams and those `found_lang_team`
+makes for a language a site owner adds do not. Such a team keeps no new audio on our volume or in
+our archive; what is already there stays (decision 3) (`ownStorageRefusal`, `lib/blobs/keep.ts`):
 
 - `keep()` and the pack encodings refuse with an `OwnStorageError` while it has no bucket switched
   on, or our archive is not in `r2` mode, before anything is written anywhere;

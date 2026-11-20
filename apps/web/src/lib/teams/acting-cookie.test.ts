@@ -6,14 +6,14 @@
  */
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 
-import { closeDb } from "@/lib/db";
+import { ALL_TEAMS, closeDb } from "@/lib/db";
 import type { Lang } from "@/lib/lang";
 import { withToken } from "@/lib/text-api/guard";
 import { mintToken } from "@/lib/text-api/testing";
 
 import { actingTeams } from "./acting";
 import { ACTING_COOKIE, chosenTeams } from "./acting-cookie";
-import { forgetTeams, ownerOrAll, queryAs, secondTeamLangs, type TeamId } from "./store";
+import { forgetTeams, ownerOrAll, queryAs, sharedLangs, type TeamId } from "./store";
 import { addMember, asSystem, dropLang, dropTeam, newTeamIn, systemRows, testUser, uniqueLang } from "./testing";
 
 const mocks = vi.hoisted(() => ({
@@ -27,7 +27,7 @@ vi.mock("next/headers", () => ({ headers: async () => new Headers(), cookies: mo
 vi.mock("@/lib/session", () => ({ currentSession: mocks.currentSession }));
 vi.mock("./store", async (importOriginal) => {
   const real = await importOriginal<typeof import("./store")>();
-  return { ...real, secondTeamLangs: vi.fn(real.secondTeamLangs) };
+  return { ...real, sharedLangs: vi.fn(real.sharedLangs) };
 });
 
 let lang: Lang;
@@ -116,6 +116,17 @@ describe("a site owner's cookie", () => {
     expect(await ownerOrAll(lang)).toBe(a);
   });
 
+  it("without a choice acts in their own team, else the first the picker lists", async () => {
+    mocks.session = { user: { id: owner.id, role: "admin" } };
+    expect(await ownerOrAll(lang)).toBe(a);
+    await addMember(b, owner.id, lang, "regenerate");
+    try {
+      expect(await ownerOrAll(lang)).toBe(b);
+    } finally {
+      await asSystem.query(`delete from "team_member" where "userId" = $1`, [owner.id]);
+    }
+  });
+
   it("malformed is no choice", async () => {
     mocks.session = { user: { id: owner.id, role: "admin" } };
     mocks.cookie = "{not json";
@@ -136,9 +147,9 @@ describe("anyone else's cookie", () => {
     expect(mocks.cookies).not.toHaveBeenCalled();
   });
 
-  it("changes nothing signed out", async () => {
+  it("changes nothing signed out, who works in no team", async () => {
     choose({ [lang]: await slugOf(b) });
-    expect(await ownerOrAll(lang)).toBe(a);
+    expect(await ownerOrAll(lang)).toBe(ALL_TEAMS);
     expect(mocks.cookies).not.toHaveBeenCalled();
   });
 });
@@ -147,7 +158,7 @@ describe("cost", () => {
   it("reads no cookie with no second team anywhere", async () => {
     mocks.session = { user: { id: owner.id, role: "admin" } };
     choose({ [lang]: await slugOf(b) });
-    vi.mocked(secondTeamLangs).mockResolvedValueOnce(new Set());
+    vi.mocked(sharedLangs).mockResolvedValueOnce(new Set());
     expect((await actingTeams()).get(lang)).toBeUndefined();
     expect(mocks.cookies).not.toHaveBeenCalled();
   });
@@ -179,7 +190,7 @@ describe("a token", () => {
     expect(mocks.cookies).not.toHaveBeenCalled();
   });
 
-  it("in a single-team language reads neither session nor cookie", async () => {
+  it("in a single-team language reads neither session nor cookie, and acts in no team elsewhere", async () => {
     mocks.session = { user: { id: owner.id, role: "admin" } };
     choose({ [lang]: await slugOf(b) });
     const token = await mintToken(owner.id, single, "read", false);
@@ -189,7 +200,7 @@ describe("a token", () => {
       return Response.json({});
     });
     expect(response.status).toBe(200);
-    expect(acted).toBe(a);
+    expect(acted).toBe(ALL_TEAMS);
     expect(mocks.cookies).not.toHaveBeenCalled();
     expect(mocks.currentSession).not.toHaveBeenCalled();
   });

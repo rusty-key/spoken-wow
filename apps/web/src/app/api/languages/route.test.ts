@@ -65,13 +65,16 @@ function post(body: unknown): Promise<Response> {
 }
 
 describe("POST /api/languages", () => {
-  it("adds a language, switched off, with a team to hold its work", async () => {
+  it("adds a language, switched off, with one official team to hold its work", async () => {
     const response = await post(JAPANESE);
     expect(response.status).toBe(200);
     const body = (await response.json()) as { languages: { code: string; name: string; enabled: boolean }[] };
     expect(body.languages.find((l) => l.code === "jaJP")).toEqual({ code: "jaJP", name: "Japanese", enabled: false });
-    const [row] = await systemRows<{ team: string | null }>(`select team_of_lang('jaJP') as "team"`);
-    expect(row.team).not.toBeNull();
+    const teams = await systemRows<{ slug: string; official: boolean; packName: string }>(
+      `select t."slug", t."official", tl."packName"
+         from "team_language" tl join "team" t on t."id" = tl."teamId" where tl."lang" = 'jaJP'`,
+    );
+    expect(teams).toEqual([{ slug: "jajp", official: true, packName: "plain" }]);
     const [lang] = await systemRows<{ client: boolean }>(`select "client" from "language" where "code" = 'jaJP'`);
     expect(lang.client).toBe(false);
     expect((await (await GET()).json()).languages.some((l: { code: string }) => l.code === "jaJP")).toBe(true);

@@ -23,7 +23,7 @@ export function BannerShown({ shown, children }: { shown: boolean; children: Rea
 }
 
 /**
- * Which team's takes the explorer plays, where the language has a second team, and a note
+ * Which team's takes the explorer plays, where the language has several teams, and a note
  * while it is another team's: that view is read-only. A site owner's pick is also the team they
  * act inside: it is saved first, so the view that follows is their own. Through the router,
  * not a history write, and refreshed, since the page and the layout resolve the view and the
@@ -35,7 +35,7 @@ export default function TeamPicker({
   home,
   className = "mb-3",
 }: {
-  /** Privileged first, as teamsVoicing lists them. */
+  /** As teamsVoicing lists them. */
   teams: TeamChoice[];
   viewed: ViewedTeam | null;
   /** The default team's slug, named by leaving `team` out of the address. */
@@ -51,7 +51,8 @@ export default function TeamPicker({
   const [error, setError] = useState<string | null>(null);
   const bannerShows = useContext(BannerPicker);
   if (teams.length < 2 || viewed === null) return null;
-  const homeTeam = teams.find((team) => team.slug === home);
+  // A visitor in none of the teams starts on the first, which is not their own: no way back to it.
+  const homeTeam = teams.find((team) => team.slug === home && team.slug !== viewed.slug);
   const note = !viewed.own && (
     <p className="text-muted-foreground">
       {`You are listening to ${viewed.name}. Their takes play; their work is theirs.`}
@@ -108,7 +109,7 @@ export default function TeamPicker({
         >
           {teams.map((team) => (
             <option key={team.id} value={team.slug}>
-              {team.privileged ? `${team.name} (main)` : team.name}
+              {team.name}
             </option>
           ))}
         </select>

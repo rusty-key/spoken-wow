@@ -164,11 +164,14 @@ async function lockPending(client: PoolClient, id: string): Promise<Row> {
   return row;
 }
 
-/** `options.settings` is what a second team starts from; the other branches ignore it. */
+/**
+ * `options.settings` is what a team joining a language with a team starts from, and
+ * `options.source` the team a copy starts from; otherwise ignored.
+ */
 export async function approveRequest(
   id: string,
   actorId: string,
-  options: { settings?: Settings } = {},
+  options: { settings?: Settings; source?: TeamId } = {},
 ): Promise<TeamRequest> {
   const { row, founded } = await inTransaction(async (client) => {
     const row = await lockPending(client, id);
@@ -181,6 +184,7 @@ export async function approveRequest(
         team: { slug: null, name: row.teamName },
         adminId: row.userId,
         settings: options.settings,
+        source: options.source,
         // Its releases wait for a site owner's review.
         official: false,
       },

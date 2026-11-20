@@ -8,7 +8,7 @@ import { restoreName, retireName, type NameKind } from "@/lib/names/store";
 import { clearOverride, writeOverride } from "@/lib/quests/overrides";
 import type { Source } from "@/lib/sections";
 import { asTeam } from "@/lib/teams/acting";
-import { freshOwners, readAs } from "@/lib/teams/store";
+import { ownerOf, readAs } from "@/lib/teams/store";
 import { clearTextOverride } from "@/lib/text-overrides/store";
 
 import { describeError } from "./errors";
@@ -242,7 +242,7 @@ type Restorer = { by: string; layers: Record<Layer, boolean>; admin: boolean };
 export async function restoreBatch(batch: Batch, { by, layers, admin }: Restorer): Promise<UndoResult[]> {
   const results: UndoResult[] = [];
   let acting: { team: TeamId | undefined } | undefined;
-  const actingTeam = async () => (acting ??= { team: (await freshOwners([batch.lang])).get(batch.lang) }).team;
+  const actingTeam = async () => (acting ??= { team: await ownerOf(batch.lang) }).team;
   for (const edit of await editsOf(batch.id)) {
     const head = await headOf(batch.lang, batch.section, edit);
     try {

@@ -30,7 +30,7 @@ import { recordActivities, type ActivityEvent } from "@/lib/activity/store";
 import { ALL_TEAMS, queryIn, withTeam } from "@/lib/db";
 import { BASE_LANG, type Lang } from "@/lib/lang";
 import type { Source } from "@/lib/sections";
-import { asTeamOf, byTeam, everyTeamOf, queryAs, teamLangs, type TeamId } from "@/lib/teams/store";
+import { asTeamOf, byTeam, everyTeamOf, queryAs, teamedLangs, type TeamId } from "@/lib/teams/store";
 import { maxActiveFrom } from "./concurrency";
 import type { QueueLine } from "./queue-line";
 import type { Provider } from "./speakers/speaker";
@@ -408,9 +408,10 @@ export async function cancelPending(
   scope: { batchId?: string; langs?: readonly Lang[]; by?: string | null; everyTeam?: boolean } = {},
 ): Promise<number> {
   const batchId = scope.batchId ?? null;
-  // Every language means every language some team owns: nothing is queued in any other.
-  const langs = scope.langs ?? [...(await teamLangs()).keys()];
-  const teams = scope.everyTeam ? await everyTeamWith(langs, batchId) : await byTeam(langs);
+  // Every language means every language some team voices: nothing is queued in any other. The
+  // worker's own Stop acts as no team, so it reaches every team of them.
+  const langs = scope.langs ?? (await teamedLangs());
+  const teams = scope.everyTeam || !scope.langs ? await everyTeamWith(langs, batchId) : await byTeam(langs);
 
   let cancelled = 0;
   const stopped: StoppedBatch[] = [];
@@ -683,7 +684,7 @@ export async function snapshot(
   // what it is waiting behind - only what is being said, and why it failed, is private.
   const linesOf = options.linesOf ?? null;
   // The team whose finished lines and pauses to list, per language; a language not named keeps
-  // every team's. A second team's finished lines are its own work, as its pauses are, and only
+  // every team's. A team's finished lines are its own work, as its pauses are, and only
   // its own dismissal hides them. Both "teamId" columns are not null, so the match is exact.
   const teams = JSON.stringify(Object.fromEntries(options.teams ?? []));
   // Live work first, then whatever finished recently: the two halves of what the panel is

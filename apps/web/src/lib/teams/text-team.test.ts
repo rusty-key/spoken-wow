@@ -1,6 +1,7 @@
 /**
- * A text maintainer who works in a second team still files the language's original text, and
- * what resolving a contribution leaves, under the privileged team that ships it.
+ * The language's original text is no team's: a text maintainer's edit, and what resolving a
+ * contribution leaves, are filed under the team they work in, and a rejection's ignores are the
+ * language's.
  *
  * Needs DATABASE_URL and migrations through 0113 applied.
  */
@@ -72,17 +73,17 @@ afterEach(async () => {
 
 afterAll(closeDb);
 
-describe("a text maintainer who works in a second team", () => {
-  it("files a quest text edit under the privileged team", async () => {
+describe("a text maintainer in a team without plain packs", () => {
+  it("files a quest text edit under their own team", async () => {
     await line("extracted");
     await asActor(m.id, () =>
       saveQuestText({ lineId, variant: 0, lang, text: "Salve, viandante.", editedBy: m.id }),
     );
     const acts = await systemRows(`select "teamId" from "activity" where "kind" = 'text.edited' and "lang" = $1`, [lang]);
-    expect(acts).toEqual([{ teamId: teamA }]);
+    expect(acts).toEqual([{ teamId: teamB }]);
   });
 
-  it("files a contribution's rejection, and the ignore it leaves, under the privileged team", async () => {
+  it("files a contribution's rejection under their own team, and leaves the language's ignore", async () => {
     const dedup = `text-team-${tag}`;
     await createContribution({
       source: "quests", key: lineId, locale: lang, build: "1.12.1/5875", text: "Hello.", meta: {},
@@ -96,15 +97,15 @@ describe("a text maintainer who works in a second team", () => {
     expect(outcome).toMatchObject({ ok: true });
 
     const ignores = await systemRows(`select "teamId", "lang" from "line_ignore" where "lineId" = $1`, [lineId]);
-    expect(ignores).toEqual([{ teamId: teamA, lang }]);
+    expect(ignores).toEqual([{ teamId: null, lang }]);
     const acts = await systemRows(
       `select "kind", "teamId" from "activity" where "lang" = $1 and "kind" in ('contribution.resolved', 'ignore.set')
         order by "kind"`,
       [lang],
     );
     expect(acts).toEqual([
-      { kind: "contribution.resolved", teamId: teamA },
-      { kind: "ignore.set", teamId: teamA },
+      { kind: "contribution.resolved", teamId: teamB },
+      { kind: "ignore.set", teamId: teamB },
     ]);
   });
 });

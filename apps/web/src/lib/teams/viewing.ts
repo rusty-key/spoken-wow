@@ -5,7 +5,7 @@
  */
 import "server-only";
 
-import { ALL_TEAMS, query } from "@/lib/db";
+import { query } from "@/lib/db";
 import type { Lang } from "@/lib/lang";
 import type { Source } from "@/lib/sections";
 import { serveTake } from "@/lib/takes/serve";
@@ -14,28 +14,31 @@ import type { LineOverride } from "@/lib/quests/override";
 import type { OverrideView } from "@/lib/text-overrides/types";
 
 import { asTeam } from "./acting";
-import { ownerOrAll, secondTeamLangs, teamsOf, type TeamId } from "./store";
+import { ownerOf, readerOf, sharedLangs, teamsOf, type TeamId, type TeamRef } from "./store";
 import type { TeamView } from "./view";
 
-export type TeamChoice = { id: TeamId; slug: string; name: string; privileged: boolean };
+export type TeamChoice = TeamRef;
 
-/** The teams a visitor may pick between: none where the language has one team, so no picker shows. */
+/** The teams a visitor may pick between, as teamsOf lists them: none where the language has one team, so no picker shows. */
 export async function teamsVoicing(lang: Lang): Promise<TeamChoice[]> {
-  if (!(await secondTeamLangs()).has(lang)) return [];
-  return (await teamsOf(lang)).map((team, index) => ({ ...team, privileged: index === 0 }));
+  if (!(await sharedLangs()).has(lang)) return [];
+  return teamsOf(lang);
 }
 
 export type ViewedTeam = { team: TeamId; slug: string; name: string; own: boolean };
 
 /**
- * The team whose takes play: the one `slug` names, else the acting team, else the privileged
- * team. Null for a slug naming no team of `lang`, or for a language nobody owns. `own` is
- * whether the view is the visitor's acting team, the one their work goes to.
+ * The team whose takes play: the one `slug` names, else the acting team, else the first as
+ * teamsOf lists them (the one with plain packs, else the first by name). Null for a slug naming no
+ * team of `lang`, or for a language no team voices. `own` is whether the view is the visitor's
+ * acting team, the one their work goes to.
  */
 export async function viewedTeam(lang: Lang, slug: string | null): Promise<ViewedTeam | null> {
-  const acting = await ownerOrAll(lang);
-  if (acting === ALL_TEAMS) return null;
-  const found = (await teamsOf(lang)).find((team) => (slug === null ? team.id === acting : team.slug === slug));
+  const teams = await teamsOf(lang);
+  if (teams.length === 0) return null;
+  const acting = await ownerOf(lang);
+  const found =
+    slug === null ? (teams.find((team) => team.id === acting) ?? teams[0]) : teams.find((team) => team.slug === slug);
   return found ? { team: found.id, slug: found.slug, name: found.name, own: found.id === acting } : null;
 }
 
@@ -85,8 +88,8 @@ export async function asPublished<E extends { id: string; override?: OverrideVie
   lang: Lang,
 ): Promise<E[]> {
   if (!entries.some((entry) => entry.override)) return entries;
-  const team = await ownerOrAll(lang);
-  const live = team === ALL_TEAMS ? new Map<string, string>() : await teamLiveOverrides(team, source, lang);
+  const team = await readerOf(lang);
+  const live = team ? await teamLiveOverrides(team, source, lang) : new Map<string, string>();
   const original = new Map((await base()).map((entry) => [entry.id, entry]));
   return entries.map((entry) => {
     if (!entry.override) return entry;
@@ -100,8 +103,8 @@ export async function asPublished<E extends { id: string; override?: OverrideVie
 /** Quest overrides as asPublished leaves them: those a live take speaks, without their author. */
 export async function publishedOverrides(lang: Lang, overrides: Map<string, LineOverride>): Promise<Map<string, LineOverride>> {
   if (overrides.size === 0) return overrides;
-  const team = await ownerOrAll(lang);
-  const live = team === ALL_TEAMS ? new Map<string, string>() : await teamLiveOverrides(team, "quests", lang);
+  const team = await readerOf(lang);
+  const live = team ? await teamLiveOverrides(team, "quests", lang) : new Map<string, string>();
   return new Map(
     [...overrides]
       .filter(([file, override]) => live.get(file) === override.text)
@@ -153,16 +156,16 @@ export function asHeard<
 }
 
 /**
- * The team a request's `team` parameter names, when it is not the acting one: null without one
- * (an empty one counts as none), and then no lookup is made; null for the acting team's own slug;
- * a 404 for a slug naming no team of `lang`.
+ * The team a request's `team` parameter names, when it is not the one the visitor reads as
+ * (readerOf): null without one (an empty one counts as none), and then no lookup is made; null
+ * for that team's own slug; a 404 for a slug naming no team of `lang`.
  */
 export async function viewedOther(params: URLSearchParams, lang: Lang): Promise<TeamId | null | Response> {
   const slug = params.get("team") || null;
   if (slug === null) return null;
   const viewed = await viewedTeam(lang, slug);
   if (!viewed) return unknownTeam(slug, lang);
-  return viewed.own ? null : viewed.team;
+  return viewed.team === (await readerOf(lang)) ? null : viewed.team;
 }
 
 /**
@@ -173,6 +176,6 @@ export async function serveViewed(request: Request, source: Source, file: string
   const other = await viewedOther(new URL(request.url).searchParams, lang);
   if (other instanceof Response) return other;
   if (other !== null) return serveTake(request, await teamLivePath(other, source, file, lang), { immutable: false, lang });
-  const perVisitor = (await secondTeamLangs()).has(lang);
+  const perVisitor = (await sharedLangs()).has(lang);
   return serveTake(request, await livePath(source, file, lang), { immutable: false, lang, perVisitor });
 }

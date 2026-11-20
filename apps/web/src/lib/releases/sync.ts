@@ -9,7 +9,7 @@ import { tellOwnersOfReview, tellPresser } from "./notify";
 import { GithubNotConfiguredError, findRun, type GithubRun } from "./github";
 import { startNext } from "./launch";
 import {
-  activeOrQueued, applyUpdate, runById, updateRun, type ReleaseRun, type SelectedTakes, type StagedRelease,
+  activeOrQueued, applyUpdate, runById, RunGoneError, updateRun, type ReleaseRun, type SelectedTakes, type StagedRelease,
 } from "./store";
 
 // Twelve missed heartbeats. A reboot or an out-of-memory kill leaves no exit file, and nobody
@@ -93,7 +93,11 @@ export async function syncActive(fetchFn: typeof fetch = fetch, now: number = Da
   const active = await activeOrQueued();
   if (active === null) return null;
   if (active !== "queued") {
-    const run = await syncRun(active, fetchFn, now);
+    const run = await syncRun(active, fetchFn, now).catch((error) => {
+      // Another worker settled it, and its team's deletion took it.
+      if (error instanceof RunGoneError) return null;
+      throw error;
+    });
     if (run) return run;
   }
   return startNext();

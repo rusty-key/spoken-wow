@@ -131,7 +131,7 @@ function voiceProduct(section: Section, lang: string, pack: QuestsPack, folders:
   }
 }
 
-/** The author of the packs the channel lists with no team: the language's official team's, in its plain folders. */
+/** The author of the packs the channel lists with no team: an official team's, in the language's plain folders. */
 export const PAGE_PACKS: PackAuthor = { key: PAGE_AUTHOR, name: null, official: true }
 
 /** A pack of the table: a page pack, with what it was released as before. */

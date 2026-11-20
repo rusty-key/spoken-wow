@@ -17,8 +17,8 @@ let lineId;
 before(() => {
   if (!seed) return;
   lang = seed.language();
-  a = seed.team(lang, { privileged: true });
-  b = seed.team(lang, { privileged: false });
+  a = seed.team(lang);
+  b = seed.team(lang, { packName: "slug" });
   const map = 900_000_000 + randomInt(1e8);
   lineId = `boss:${map}:boss`;
   seed.take({ team: a.id, source: "bosses", lang, file: `boss-${map}`, lineId, sha256: "a".repeat(64), shownText: "A" });
@@ -31,7 +31,7 @@ after(async () => {
   seed?.cleanup();
 });
 
-test("a release reads its own team's live boss takes; a build outside one, the privileged team's", { skip }, async () => {
+test("a release reads its own team's live boss takes; a build outside one, the plain team's", { skip }, async () => {
   process.env.SPOKEN_RELEASE_TEAM = b.id;
   assert.deepEqual((await readLiveTakes(lang)).map((take) => [take.lineId, take.text]), [[lineId, "B"]]);
   delete process.env.SPOKEN_RELEASE_TEAM;

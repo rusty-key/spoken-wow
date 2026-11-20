@@ -1,5 +1,6 @@
 import { describedName, NAME_RULE } from "@/lib/languages/validate";
-import { deleteTeam, renameTeam, setOfficial, setOwnStorage } from "@/lib/teams/admin";
+import { renameTeam, setOfficial, setOwnStorage } from "@/lib/teams/admin";
+import { startDeletion } from "@/lib/teams/delete";
 
 import { bad, bodyOf, withAdmin } from "../guard";
 
@@ -25,8 +26,13 @@ export const PATCH = withAdmin(async (request, actorId, team) => {
   return Response.json({ ok: true });
 }, "id");
 
-/** Refused while the team holds a language or anything made under it. */
-export const DELETE = withAdmin(async (_request, actorId, team) => {
-  await deleteTeam(team, actorId);
-  return Response.json({ ok: true });
+/**
+ * `{ slug }`, typed by the site owner, starts deleting the team (lib/teams/delete.ts): 200 when it
+ * is gone, 202 while its packs come off the channel first.
+ */
+export const DELETE = withAdmin(async (request, actorId, team) => {
+  const { slug } = await bodyOf(request);
+  if (typeof slug !== "string") return bad("Type the team's slug to delete it.");
+  const state = await startDeletion(team, actorId, slug);
+  return Response.json({ state }, { status: state === "deleted" ? 200 : 202 });
 }, "id");
