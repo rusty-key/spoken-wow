@@ -291,7 +291,7 @@ local function CategoryTitle(cat)
     if type(loc) == "string" then return loc end
     return cat
 end
-for _, name in ipairs({ "SPOKEN_PLAYPAUSE", "SPOKEN_SKIP", "SPOKEN_STOP", "SPOKEN_COMPENDIUM" }) do
+for _, name in ipairs({ "SPOKEN_PLAYPAUSE", "SPOKEN_SKIP", "SPOKEN_STOP", "SPOKEN_MUTE", "SPOKEN_COMPENDIUM" }) do
     local element
     for tag in bindings:gmatch("<Binding%s[^>]*>") do
         if tag:find('name="' .. name .. '"', 1, true) then element = tag end
@@ -303,6 +303,7 @@ for _, name in ipairs({ "SPOKEN_PLAYPAUSE", "SPOKEN_SKIP", "SPOKEN_STOP", "SPOKE
     Expect("...named in the game's key bindings list", type(_G["BINDING_NAME_" .. name]), "string")
 end
 Expect("the keys section sets the Compendium's key too", Row(home, L.BIND_COMPENDIUM) ~= nil, true)
+Expect("the keys section sets the mute key too", Row(home, L.BIND_MUTE) ~= nil, true)
 
 ---------------------------------------------------------------- /sp in the settings' words
 do
