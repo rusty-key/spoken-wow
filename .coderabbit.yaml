@@ -5,7 +5,8 @@
 language: en-US
 tone_instructions: >-
   Be brief and concrete. Report correctness bugs and broken repo rules first. Skip style nits
-  other than comment cleanup, and skip praise and restating the diff.
+  other than comment cleanup, and skip praise and restating the diff. Never ask for a longer PR
+  description (AGENTS.md).
 
 reviews:
   profile: assertive
@@ -185,8 +186,11 @@ reviews:
              hiding bad data; catch-and-continue; a retry or delay; an override on a mechanism
              that should be corrected; a hand-kept list). Better fix exists: name the smaller or
              more general change and the file it belongs in.
-          Also list anything the diff does that the description does not mention, and anything
-          the description claims that the diff does not do.
+          Also list anything the description claims that the diff does not do, and any change in
+          behaviour or risk a reviewer must know that the description leaves out. Judge the
+          description by AGENTS.md (PR descriptions): about 200 words, with no per-change or
+          per-file lists. Never ask for a longer description, a list of the diff's changes or
+          helpers, or history.
           Pass only when the problem is Real, the fix is a Root-cause fix and nothing is
           mismatched. Fail otherwise, giving the answers above.
       - name: "Untrusted surface"
