@@ -149,6 +149,10 @@ window.__spoken = (({ lang, doneModels, tbcQuestCeiling } = {}) => {
       const text = await flight(path);
       need(text, "initial", path);
       const rows = allArraysAfter(text, "initial").find((a) => a?.length && a[0].wordings !== undefined) ?? [];
+      // The corrections table is only rendered when there are corrections: a positive count with no
+      // rows parsed means the page changed shape, not that the list is empty.
+      const shown = Number(text.match(/"shownCounts":\{[^}]*"corrections":(\d+)/)?.[1] ?? 0);
+      if (shown > 0 && !rows.length) throw new Error(`${path} shows ${shown} corrections but none could be read`);
       for (const r of rows) {
         if (r.status !== "new") continue;
         // A row carries `wordings` (every wording of the corpus line) and `closest` (the most
