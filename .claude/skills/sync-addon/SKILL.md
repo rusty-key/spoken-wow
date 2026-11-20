@@ -23,7 +23,7 @@ Fill in this worktree's path and folder name (`git rev-parse --show-toplevel`) a
 
 ```sh
 set -o pipefail
-ssh ${SPOKEN_DEV_HOST:-dev} cat <worktree path>/scripts/developer/sync-addons.sh | bash -s -- --watch <worktree name> <client>
+ssh ${SPOKEN_DEV_HOST:-dev} cat <worktree path>/scripts/developer/sync-addons.sh | SPOKEN_DEV_HOST="${SPOKEN_DEV_HOST:-dev}" bash -s -- --watch <worktree name> <client>
 ```
 
 It streams the script from the server, so that machine needs no checkout. From a checkout there,

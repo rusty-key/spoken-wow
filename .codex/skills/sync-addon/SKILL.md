@@ -19,7 +19,7 @@ The standard remote command is:
 
 ```bash
 set -o pipefail
-ssh ${SPOKEN_DEV_HOST:-dev} cat <worktree path>/scripts/developer/sync-addons.sh | bash -s -- --watch <worktree name> <client>
+ssh ${SPOKEN_DEV_HOST:-dev} cat <worktree path>/scripts/developer/sync-addons.sh | SPOKEN_DEV_HOST="${SPOKEN_DEV_HOST:-dev}" bash -s -- --watch <worktree name> <client>
 ```
 
 Use `SPOKEN_DEV_HOST` when the configured server is not `dev`. The script
