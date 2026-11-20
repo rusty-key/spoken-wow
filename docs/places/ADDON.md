@@ -97,9 +97,9 @@ a language pins it on every client.
 - A language is offered only when `Data/Languages.lua` marks it ready (every story translated, and
   an alias table where a client runs in it) and the client's fonts can draw it
   (`CanRenderLanguage`, Spoken's `Texts:CanRender`). Spoken's Text Language lists every built-in
-  language the fonts can draw, plus any pack language whose `.toc` says `X-SpokenPlaces-Lore: 1` or
-  that a text pack brings (`docs/contributors/TEXT-PACKS.md`). Places reads one only where it is
-  ready here, and Auto otherwise. A text pack's `places` tables are taken as a lore pack's are,
+  language the fonts can draw, plus any language an installed voice pack or a text pack brings
+  (`docs/contributors/TEXT-PACKS.md`). Places reads one only where it is ready here, or a pack
+  says `X-SpokenPlaces-Lore: 1`, and Auto otherwise. A text pack's `places` tables are taken as a lore pack's are,
   through `RegisterLoreData`, so a text pack with no places leaves the stories on Auto.
   Interface strings are not required, because each key falls back to English.
   The fonts are asked by drawing the language's own name, and for the two Chinese the characters
