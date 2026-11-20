@@ -89,8 +89,7 @@ local function SectionOf(sort)
 end
 local filter = ""
 
--- What a quest's page shows and plays: the offer, the progress said while it is under way, and
--- the hand-in.
+-- A quest page's parts, in the order a player meets them.
 local MOMENTS = { "accept", "progress", "complete" }
 local HEADINGS = { accept = "QUEST_PART_ACCEPT", progress = "QUEST_PART_PROGRESS", complete = "QUEST_PART_COMPLETE" }
 
@@ -1045,8 +1044,7 @@ local function Shows(id, moment)
     return moment ~= "complete" or Completed(id) or Unlocked()
 end
 
--- Whether the page has words to show for any part that Shows. Looks at the stored text only, so
--- a row can ask it on every render.
+-- Reads stored text only, so a row can ask it on every render.
 function QuestsTab:HasWords(id)
     for _, moment in ipairs(MOMENTS) do
         if Shows(id, moment) and Stored(id, moment) ~= nil then return true end
@@ -1195,10 +1193,9 @@ local function FaceSpeaker(id, moment)
     return { objectOrItem = true, icon = icon, bullet = bullet }
 end
 
--- A quest's words in parts, the offer, the progress and the hand-in, each headed by the face of
--- who says it beside their name over the part's name, with Report for every part and Play where a
--- pack voices it; the hand-in only where it Shows. A part a pack voices whose words are not known says so,
--- and is there to be played and reported. nil with no words and nothing voiced.
+-- A quest's words in parts, each headed by the speaker's face and name, with Report always and Play
+-- where a pack voices it; the hand-in only where it Shows. A voiced part with unknown words says
+-- so and can still be played and reported. nil with no words and nothing voiced.
 local function Parts(id)
     local parts = {}
     local reportsHidden = Spoken and Spoken.AreReportButtonsHidden and Spoken:AreReportButtonsHidden()
