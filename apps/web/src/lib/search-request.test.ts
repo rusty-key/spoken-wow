@@ -69,5 +69,6 @@ describe("filtersFromParams", () => {
     expect((await filtersFromParams(new URLSearchParams("zone=1411"), "enUS")).zone).toBe(1411);
     expect((await filtersFromParams(new URLSearchParams("zone=1414"), "enUS")).zone).toBeUndefined();
     expect((await filtersFromParams(new URLSearchParams("zone=Durotar"), "enUS")).zone).toBeUndefined();
+    expect((await filtersFromParams(new URLSearchParams("zone=01411"), "enUS")).zone).toBeUndefined();
   });
 });
