@@ -14,6 +14,7 @@ import { describe, expect, it } from "vitest";
 
 import { BASE_LANG, isLang } from "@/lib/lang";
 import { localeRedirects, localeRewrites } from "@/lib/locale-routes";
+import { pageSections } from "@/lib/page-sections";
 
 import { parseTarget } from "./target";
 
@@ -31,9 +32,10 @@ function route(rules: { source: string; destination: string }[], path: string): 
   for (const rule of rules) {
     const found = match<Record<string, string | string[]>>(rule.source, { decode: decodeURIComponent })(path);
     if (!found) continue;
-    return rule.destination.replace(/:(\w+)\*?/g, (_, name: string) => {
+    return rule.destination.replace(/\/:(\w+)\*?/g, (_, name: string) => {
       const value = found.params[name];
-      return Array.isArray(value) ? value.join("/") : (value ?? "");
+      const filled = Array.isArray(value) ? value.join("/") : (value ?? "");
+      return filled ? `/${filled}` : "";
     });
   }
   return null;
@@ -69,7 +71,7 @@ describe("the report addresses the addon builds", () => {
       const path = new URL(url).pathname;
       // English goes bare; an /enUS/ prefix would be redirected first.
       expect(route(localeRedirects, path), url).toBeNull();
-      const served = route(localeRewrites, path) ?? path;
+      const served = route(localeRewrites(pageSections()), path) ?? path;
       const parts = served.match(/^\/([^/]+)\/(quests|places|readables|bosses)\/r\/(.+)$/);
       expect(parts, url).not.toBeNull();
       const [, lang, section, rest] = parts!;

@@ -111,11 +111,14 @@ function Footer({
 export function ElevenLabsSettingsForm({
   saved,
   models,
+  modelsNote,
   onSave,
 }: {
   saved: Settings["elevenlabs"];
   /** From the account; null when there is no key to ask with, or the account would not say. */
   models: ElevenLabsModelOption[] | null;
+  /** Said under the form about where the models stand, or null for nothing. */
+  modelsNote: string | null;
   onSave: (next: Settings["elevenlabs"]) => Promise<void>;
 }) {
   const { draft, setDraft, busy, error, changed, submit } = useDraft(saved, onSave);
@@ -189,11 +192,7 @@ export function ElevenLabsSettingsForm({
           ))}
         </select>
       </div>
-      {models === null && (
-        <p className="text-muted-foreground text-xs">
-          The models your account offers appear once an ElevenLabs key is stored.
-        </p>
-      )}
+      {modelsNote && <p className="text-muted-foreground text-xs">{modelsNote}</p>}
       <Footer busy={busy} changed={changed} error={error} onSave={submit} />
     </div>
   );

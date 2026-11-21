@@ -1,0 +1,23 @@
+!SPOKEN1 quests
+addon=SpokenQuests/9.9.9
+build=1.60.1/70338
+locale=enUS
+pack=enUS
+packVersion=none
+quest=9123
+event=accept
+npc=12345 Deathguard Linnea
+kind=creature
+sex=2
+creature=Humanoid
+title=A Rough Start
+shown=1
+reader=Tester
+readerClass=Warrior
+readerClassID=1
+readerRace=Night Elf
+readerSex=3
+text<<
+Tester! A Night Elf warrior, Tester's kind.
+>>
+sum=1720343198

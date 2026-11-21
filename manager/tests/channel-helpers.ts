@@ -23,18 +23,43 @@ export interface PackSpec {
   rev: string
   files: Record<string, string>
   requires?: string
+  /** index-v2.json's team for the pack; none is a page pack's. */
+  team?: { slug: string; name: string; official: boolean }
 }
 
+type V1Entry = { rev: string; manifestSha256: string; fileCount: number; totalSize: number; requires: { Spoken: string } }
+type V2Entry = V1Entry & { lang: string | null; section: string | null; pack: string | null; team: PackSpec['team'] | null }
+
 export interface ChannelFixture {
-  /** Request path (`/index.json`, `/packs/<id>/<rev>.json`, `/blobs/<sha>`) to body. */
+  /** Request path (`/index.json`, `/index-v2.json`, `/packs/<id>/<rev>.json`, `/blobs/<sha>`) to body. */
   objects: Map<string, Buffer>
-  index: { generatedAt: string; packs: Record<string, { rev: string; manifestSha256: string; fileCount: number; totalSize: number; requires: { Spoken: string } }> }
+  index: { generatedAt: string; packs: Record<string, V1Entry> }
+  indexV2: { generatedAt: string; packs: Record<string, V2Entry>; languages: Record<string, { code: string; name: string; native: string }> }
   manifestSigned: Record<string, string>
 }
 
-export function channelFixture(keys: ChannelKeys, packs: PackSpec[]): ChannelFixture {
+// The ids index.json carries: an older Manager refuses the whole index over one it does not accept.
+const LEGACY_PACK_ID = /^Spoken[A-Za-z]+(_[a-z]{2}[A-Z]{2})?$/
+const FOLDER = /^Spoken(Quests|Places|Readables|Bosses)Audio(Alliance|Horde|Shared|Gossip)?(?:_([a-z]{2}[A-Z]{2})(?:_([a-z][a-z0-9-]{1,40}))?)?$/
+
+/** What scripts/lib/packs.mjs `describeFolder` reads from a folder's name, as the publisher writes it to index-v2.json. */
+function describe(folder: string): { lang: string | null; section: string | null; pack: string | null } {
+  const m = FOLDER.exec(folder)
+  if (!m) return { lang: null, section: null, pack: null }
+  return { section: m[1]!.toLowerCase(), pack: m[2] ? m[2].toLowerCase() : null, lang: m[3] ?? 'enUS' }
+}
+
+export interface FixtureOptions {
+  generatedAt?: string
+  /** A channel from before index-v2.json: only index.json is served. */
+  v1Only?: boolean
+  languages?: Record<string, { code: string; name: string; native: string }>
+}
+
+export function channelFixture(keys: ChannelKeys, packs: PackSpec[], options: FixtureOptions = {}): ChannelFixture {
   const objects = new Map<string, Buffer>()
-  const fx: ChannelFixture = { objects, index: { generatedAt: '2026-10-18T00:00:00.000Z', packs: {} }, manifestSigned: {} }
+  const generatedAt = options.generatedAt ?? '2026-10-18T00:00:00.000Z'
+  const fx: ChannelFixture = { objects, index: { generatedAt, packs: {} }, indexV2: { generatedAt, packs: {}, languages: options.languages ?? {} }, manifestSigned: {} }
   for (const p of packs) {
     const files = Object.entries(p.files).map(([path, text]) => {
       const body = Buffer.from(text)
@@ -46,9 +71,12 @@ export function channelFixture(keys: ChannelKeys, packs: PackSpec[]): ChannelFix
     const sealed = seal({ packId: p.packId, rev: p.rev, requires, fileCount: files.length, totalSize, files }, keys)
     objects.set(`/packs/${p.packId}/${p.rev}.json`, Buffer.from(sealed.text))
     fx.manifestSigned[p.packId] = sealed.signed
-    fx.index.packs[p.packId] = { rev: p.rev, manifestSha256: sha256(sealed.signed), fileCount: files.length, totalSize, requires }
+    const entry = { rev: p.rev, manifestSha256: sha256(sealed.signed), fileCount: files.length, totalSize, requires }
+    if (LEGACY_PACK_ID.test(p.packId)) fx.index.packs[p.packId] = entry
+    fx.indexV2.packs[p.packId] = { ...entry, ...describe(p.packId), team: p.team ?? null }
   }
   objects.set('/index.json', Buffer.from(seal(fx.index, keys).text))
+  if (!options.v1Only) objects.set('/index-v2.json', Buffer.from(seal(fx.indexV2, keys).text))
   return fx
 }
 

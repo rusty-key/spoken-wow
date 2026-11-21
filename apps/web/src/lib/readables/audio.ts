@@ -6,7 +6,7 @@ import path from "node:path";
 
 import { BASE_LANG } from "@/lib/lang";
 
-import { catalogue } from "./catalogue";
+import { baseCatalogue } from "./catalogue";
 import type { Lang } from "@/lib/lang";
 
 /**
@@ -39,7 +39,7 @@ export function audioRelPath(file: string): string {
 // and no amount of "../" produces a member of this set. lib/places/audio.ts makes the same
 // argument for the places store.
 export async function addressableFiles(lang: Lang = BASE_LANG): Promise<Set<string>> {
-  return new Set((await catalogue(lang)).map((page) => audioRelPath(page.file)));
+  return new Set((await baseCatalogue(lang)).map((page) => audioRelPath(page.file)));
 }
 
 export async function isAddressable(relPath: string, lang: Lang = BASE_LANG): Promise<boolean> {

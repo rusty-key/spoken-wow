@@ -57,11 +57,11 @@ function greeting(id: number, text: string) {
 
 describe("lineStates", () => {
   it("knows a quest line the corpus has, written the client's way", async () => {
-    expect(await lineStates([moment("accept", "Hello, $N.\n\nTurn right at the tree.")])).toEqual([{ kind: "known", lineId: `q:${quest}:accept` }]);
+    expect(await lineStates([moment("accept", "Hello, $N.\n\nTurn right at the tree.")])).toEqual([{ kind: "known", lineId: `q:${quest}:accept`, variant: 0 }]);
   });
 
   it("finds a player-gender variant under its moment", async () => {
-    expect(await lineStates([moment("complete", "Thank you, sir.")])).toEqual([{ kind: "known", lineId: `q:${quest}:complete:m` }]);
+    expect(await lineStates([moment("complete", "Thank you, sir.")])).toEqual([{ kind: "known", lineId: `q:${quest}:complete:m`, variant: 0 }]);
   });
 
   it("gives the corpus text of a moment that reads differently", async () => {
@@ -87,11 +87,11 @@ describe("lineStates", () => {
   });
 
   it("counts a text any wording of the moment says as known", async () => {
-    expect(await lineStates([moment("accept", "Oh, you are back.")])).toEqual([{ kind: "known", lineId: `q:${quest}:accept:w1` }]);
+    expect(await lineStates([moment("accept", "Oh, you are back.")])).toEqual([{ kind: "known", lineId: `q:${quest}:accept:w1`, variant: 0 }]);
   });
 
   it("compares a translation against its own language's text", async () => {
-    expect(await lineStates([moment("accept", "Hallo, $N.\n\nBiegt rechts ab.", "deDE")])).toEqual([{ kind: "known", lineId: `q:${quest}:accept` }]);
+    expect(await lineStates([moment("accept", "Hallo, $N.\n\nBiegt rechts ab.", "deDE")])).toEqual([{ kind: "known", lineId: `q:${quest}:accept`, variant: 0 }]);
     expect(await lineStates([moment("accept", "Hello, $N.\n\nTurn right at the tree.", "frFR")])).toEqual([
       { kind: "missing" },
     ]);
@@ -112,7 +112,7 @@ describe("lineStates", () => {
 
   it("knows a greeting only from the NPC that speaks it, and never calls one changed", async () => {
     expect(await lineStates([greeting(npc, "Well met, traveler."), greeting(npc, "Begone."), greeting(npc + 1, "Well met, traveler.")])).toEqual([
-      { kind: "known", lineId: gossipId },
+      { kind: "known", lineId: gossipId, variant: 0 },
       { kind: "missing" },
       { kind: "missing" },
     ]);
@@ -127,13 +127,13 @@ describe("lineStates", () => {
       [npc],
     );
     try {
-      expect(await lineStates([woman, man])).toEqual([{ kind: "missing" }, { kind: "known", lineId: expect.any(String) }]);
+      expect(await lineStates([woman, man])).toEqual([{ kind: "missing" }, { kind: "known", lineId: expect.any(String), variant: 0 }]);
       await db().query(
         `insert into "npc_body" ("npcKind", "npcId", "race", "sex", "flavor", "provenance")
          values ('creature', $1, 'human', 2, 'official', 'corpus'), ('creature', $1, 'human', 3, 'official', 'client')`,
         [npc],
       );
-      expect(await lineStates([woman, man])).toEqual([{ kind: "known", lineId: expect.any(String) }, { kind: "known", lineId: expect.any(String) }]);
+      expect(await lineStates([woman, man])).toEqual([{ kind: "known", lineId: expect.any(String), variant: 0 }, { kind: "known", lineId: expect.any(String), variant: 0 }]);
     } finally {
       await db().query(`delete from "npc_body" where "npcKind" = 'creature' and "npcId" = $1`, [npc]);
       await db().query(`delete from "npc" where "npcKind" = 'creature' and "npcId" = $1`, [npc]);
@@ -155,7 +155,7 @@ describe("lineStates", () => {
          values ('creature', $1, 'human', 2, 'standard', 'corpus'), ('creature', $1, 'gnome', 2, null, 'client')`,
         [npc],
       );
-      expect((await lineStates([gnome]))[0]).toEqual({ kind: "known", lineId: expect.any(String) });
+      expect((await lineStates([gnome]))[0]).toEqual({ kind: "known", lineId: expect.any(String), variant: 0 });
     } finally {
       await db().query(`delete from "npc_body" where "npcKind" = 'creature' and "npcId" = $1`, [npc]);
       await db().query(`delete from "npc" where "npcKind" = 'creature' and "npcId" = $1`, [npc]);
@@ -190,7 +190,7 @@ describe("lineStates", () => {
       [npc],
     );
     try {
-      expect((await lineStates([man]))[0]).toEqual({ kind: "known", lineId: expect.any(String) });
+      expect((await lineStates([man]))[0]).toEqual({ kind: "known", lineId: expect.any(String), variant: 0 });
     } finally {
       await db().query(`delete from "npc" where "npcKind" = 'creature' and "npcId" = $1`, [npc]);
     }
@@ -239,7 +239,7 @@ describe("lineStates: readables", () => {
       { source: "readables", locale: "esES", text: `Words one ${base}.`, meta: { book: `Libro ${base}`, number: "1" } },
       { source: "readables", locale: "esES", text: "Nada.", meta: { book: `Nuevo ${base}`, number: "1" } },
     ]);
-    expect(known).toEqual({ kind: "known", lineId: expect.any(String) });
+    expect(known).toEqual({ kind: "known", lineId: expect.any(String), variant: 0 });
     expect(changed).toEqual({ kind: "changed", wordings: [{ lineId: pages[0], variant: 0, text: `Texto uno ${base}.` }], closest: 0 });
     expect(missing).toEqual({ kind: "missing" });
   });
@@ -251,7 +251,7 @@ describe("lineStates: readables", () => {
       { source: "readables", locale: "esES", text: `Texto uno ${base}.`, meta: { book: `Libro ${base}`, number: "1" }, matchNewBook: true },
     ]);
     expect(named).toEqual({ kind: "changed", wordings: [{ lineId: pages[0], variant: 0, text: `Texto uno ${base}.` }], closest: 0 });
-    expect(ownText).toEqual({ kind: "known", lineId: expect.any(String) });
+    expect(ownText).toEqual({ kind: "known", lineId: expect.any(String), variant: 0 });
     expect(newBook).toEqual({ kind: "missing" });
   });
 });
@@ -266,8 +266,8 @@ describe("tabOf", () => {
   });
 
   it("lists a known row nowhere while it waits, and where it was resolved once it is", () => {
-    expect(tabOf("new", { kind: "known", lineId: expect.any(String) })).toBeNull();
-    expect(tabOf("accepted", { kind: "known", lineId: expect.any(String) })).toBe("contributions");
-    expect(tabOf("rejected", { kind: "known", lineId: expect.any(String) })).toBe("contributions");
+    expect(tabOf("new", { kind: "known", lineId: expect.any(String), variant: 0 })).toBeNull();
+    expect(tabOf("accepted", { kind: "known", lineId: expect.any(String), variant: 0 })).toBe("contributions");
+    expect(tabOf("rejected", { kind: "known", lineId: expect.any(String), variant: 0 })).toBe("contributions");
   });
 });

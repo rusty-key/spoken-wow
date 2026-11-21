@@ -2,7 +2,7 @@
 
 import { Button } from "@/components/ui/button";
 import { langName } from "@/lib/lang";
-import type { ApiToken } from "@/lib/tokens/types";
+import { accessLabel, type ApiToken } from "@/lib/tokens/types";
 
 import { useApiTokens } from "./useApiTokens";
 
@@ -39,7 +39,7 @@ export default function ApiTokenTable({ initial }: { initial: (ApiToken & { user
                 <td className="py-1.5">{token.userEmail}</td>
                 <td>{token.label}</td>
                 <td>{langName(token.lang)}</td>
-                <td>{token.access}</td>
+                <td>{accessLabel(token)}{token.generate ? ", generate" : ""}</td>
                 <td>{token.expiresAt.slice(0, 10)}</td>
                 <td>{token.lastUsedAt?.slice(0, 10) ?? "never"}</td>
                 <td className="text-right">

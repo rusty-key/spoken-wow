@@ -9,6 +9,7 @@ export const PARALLEL = 16;
 export const archiveBase = (url) => (url.endsWith("/") ? url : `${url}/`);
 
 const RETRIES = 5;
+const MAX_RETRY_AFTER_S = 30;
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
 // The archive's CDN answers 429 to a burst and drops the odd connection, so one refused clip must
@@ -24,8 +25,9 @@ export async function fetchRetrying(url, fetchImpl = fetch, wait = sleep) {
       continue;
     }
     if ((res.status !== 429 && res.status < 500) || attempt === RETRIES) return res;
+    // Capped: a server asking for a day would otherwise hold a whole release.
     const after = Number(res.headers?.get("retry-after"));
-    await wait((after > 0 ? after : 2 ** attempt) * 1000);
+    await wait(Math.min(after > 0 ? after : 2 ** attempt, MAX_RETRY_AFTER_S) * 1000);
   }
 }
 

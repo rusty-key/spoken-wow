@@ -1,6 +1,6 @@
-// A minted page later found in the world database: its texts, takes, reports and contributions
-// move to the real page, and the minted row stays behind as an alias so a pack that shipped it
-// still plays. Audio files are not renamed: a take keeps the file it was cut to.
+// A minted page later found in the world database: its texts, takes, reports, overrides and
+// contributions move to the real page, and the minted row stays behind as an alias so a pack
+// that shipped it still plays. Audio files are not renamed: a take keeps the file it was cut to.
 
 import { isGeneratable, normaliseText } from "./text.mjs";
 
@@ -44,6 +44,15 @@ export async function absorb(client, { from, to }) {
   for (const table of ["take", "report", "recording"]) {
     await client.query(`update "${table}" set "lineId" = $2 where "lineId" = $1 and "source" = 'readables'`, [from, to]);
   }
+  // A team's rewrite of the real page in a language stays; its rewrite of the minted copy goes.
+  await client.query(
+    `delete from "text_override" m
+      where m."lineId" = $1 and m."source" = 'readables'
+        and exists (select 1 from "text_override" r
+                     where r."lineId" = $2 and r."source" = 'readables' and r."teamId" = m."teamId" and r."lang" = m."lang")`,
+    [from, to],
+  );
+  await client.query(`update "text_override" set "lineId" = $2 where "lineId" = $1 and "source" = 'readables'`, [from, to]);
   // Both pages may have had a current take in one language; the newer stays current.
   await client.query(
     `update "take" set "isCurrent" = false

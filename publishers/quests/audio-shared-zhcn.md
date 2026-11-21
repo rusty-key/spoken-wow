@@ -4,7 +4,7 @@ release: quests-audio-shared-zhCN
 section: quests
 lang: zhCN
 pack: shared
-version: 0.0.1
+version: 0.0.2
 github: false
 slug: spoken-chinese-simplified-audio-quests-shared
 name: Spoken Chinese (Simplified) Audio: Quests - Shared

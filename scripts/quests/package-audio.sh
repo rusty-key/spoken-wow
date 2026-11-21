@@ -180,6 +180,7 @@ rsync -a -f'+ */' -f'- *' "$STORE/" "$staging/"
 # The takes' word times and words, written beside the clips by scripts/audio/sounds.mjs.
 [ ! -f "$STORE/word-times.json" ] || cp "$STORE/word-times.json" "$staging/"
 [ ! -f "$STORE/take-text.json" ] || cp "$STORE/take-text.json" "$staging/"
+[ ! -f "$STORE/line-text.json" ] || cp "$STORE/line-text.json" "$staging/"
 
 if [ "$ENCODE" = copy ]; then
   echo "copying $count masters (ENCODE=copy)..."

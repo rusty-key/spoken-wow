@@ -1,7 +1,9 @@
 #!/usr/bin/env node
 // Lay the encodings the site made at commit into the quests build's transcode cache.
 //
-//   node scripts/audio/fetch-encodings.mjs [--lang=deDE]     (LOCAL_DB, SPOKEN_ARCHIVE_URL)
+//   node scripts/audio/fetch-encodings.mjs [--lang=deDE] [--team=<slug>]     (LOCAL_DB, SPOKEN_ARCHIVE_URL)
+//
+// --team names the team whose takes it reads; without it, the team with the language's plain packs.
 //
 // package-audio.sh keys its cache on each master's md5 and encodes only what is missing, so this
 // turns a release's hour of oggenc into a download. Run after fetch-blobs.mjs brings the masters.
@@ -12,6 +14,7 @@ import { readFile } from "node:fs/promises";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
+import { scriptTeamId } from "../../pipelines/lib/release-team.mjs";
 import { archiveOf, ENCODING_PROFILE as PROFILE } from "../lib/archives.mjs";
 import { archiveBase, downloadVerified, eachParallel } from "../lib/download.mjs";
 
@@ -44,14 +47,15 @@ export async function fillCache(rows, { archive, cache, base, fetchImpl = fetch 
   return tally;
 }
 
-/** The live quests takes of the language's privileged team, with their encodings. */
-export function liveEncodings(database, lang) {
-  return execFileSync("psql", [database, "-tA", "-F", "\t", "-v", `lang=${lang}`, "-v", `profile=${PROFILE}`, "-f", "-"], {
+/** The live quests takes of team `slug` in the language, else of its plain packs' team, with their encodings. */
+export function liveEncodings(database, lang, slug = null) {
+  const team = scriptTeamId(database, lang, slug);
+  return execFileSync("psql", [database, "-tA", "-F", "\t", "-v", `lang=${lang}`, "-v", `profile=${PROFILE}`, "-v", `team=${team}`, "-f", "-"], {
     // The owner connection bypasses row-level security, so the team is named.
     input: `select t."sha256", e."encodedSha256" from "take" t
               join "take_encoding" e on e."source" = t."source" and e."sha256" = t."sha256" and e."profile" = :'profile'
              where t."source" = 'quests' and t."lang" = :'lang' and t."isCurrent"
-               and t."teamId" = team_of_lang(:'lang')`,
+               and t."teamId" = :'team'::uuid`,
     encoding: "utf8",
     maxBuffer: 64 * 1024 * 1024,
   })
@@ -65,13 +69,14 @@ export function liveEncodings(database, lang) {
 
 if (process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1]) {
   const lang = process.argv.find((arg) => arg.startsWith("--lang="))?.slice(7) || "enUS";
+  const team = process.argv.find((arg) => arg.startsWith("--team="))?.slice(7) || null;
   const base = process.env.SPOKEN_ARCHIVE_URL;
   const database = process.env.LOCAL_DB;
   if (!base || !database) {
     console.error("fetch-encodings.mjs needs SPOKEN_ARCHIVE_URL and LOCAL_DB");
     process.exit(2);
   }
-  const rows = liveEncodings(database, lang);
+  const rows = liveEncodings(database, lang, team);
   const tally = await fillCache(rows, {
     archive: archiveOf("quests"),
     cache: cacheDir(lang),

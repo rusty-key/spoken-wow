@@ -10,6 +10,7 @@
 // current row -- it lands underneath as a non-current version, once (a re-run that brings the
 // same text again records nothing).
 
+import { releaseTeamSql } from "../../../lib/release-team.mjs";
 import { isEnabled, query, transaction, close } from "../voice/db.mjs";
 
 export { isEnabled, close };
@@ -223,7 +224,8 @@ export async function readLiveTakes(lang) {
        left join "boss" b on t."lineId" = 'boss:' || b."map" || ':' || b."key"
        left join "boss_line" l on l."bossId" = b."id" and l."lang" = t."lang" and l."isCurrent"
       where t."source" = 'bosses' and t."lang" = $1 and t."isCurrent"
-        and t."teamId" = team_of_lang($1)`,
+        -- the release's team, else the one with plain packs, so a build outside a release reads what it always did
+        and t."teamId" = ${releaseTeamSql("$1")}`,
     [lang],
   );
   return rows;

@@ -387,7 +387,7 @@ do
     local function Silent()
         for _, row in ipairs(Group(quests, L.PART_VOICE).rows) do
             local text = row.control.GetText and row.control:GetText()
-            if row.shown and type(text) == "string" and text:find("Stay Silent", 1, true) then return text end
+            if row.shown and type(text) == "string" and text:find("No voice pack speaks", 1, true) then return text end
         end
     end
     local language = env.Addon.db.profile.Language
@@ -401,7 +401,7 @@ do
     quests:Refresh()
     -- The stub draws a Han character as wide as the box a missing glyph draws, so no font of its own
     -- draws Chinese: it is named in English, as on a client whose font lacks it.
-    Expect("a voice language with no Quests pack and Stay Silent is said under the voice packs", Silent(),
+    Expect("a voice language with no Quests pack and nothing after it is said under the voice packs", Silent(),
         format(L.MODULE_NO_VOICE_FMT, "Chinese (Simplified)"))
     -- A font with the glyphs measures the text apart from the box a missing one draws.
     stub.TextWidth = function(fs)
@@ -416,8 +416,18 @@ do
     language.Fallback = "enUS"
     quests:Refresh()
     Expect("...and not while English fills in", Silent(), nil)
+    -- With a list of voices, the note stands while no voice in it has a pack for the module.
+    language.Voices = { "zhCN" }
+    quests:Refresh()
+    Expect("a list whose only voice has no Quests pack is said too", Silent() ~= nil, true)
+    language.Voices = { "zhCN", "deDE" }
+    quests:Refresh()
+    Expect("...and not while a later voice has one", Silent(), nil)
+    language.Voices = { "zhCN", "enUS" }
+    quests:Refresh()
+    Expect("...nor while English is in the list", Silent(), nil)
     _G.Spoken.VoicePack = voicePack
-    language.Voice, language.Fallback = nil, nil
+    language.Voice, language.Fallback, language.Voices = nil, nil, nil
     quests:Refresh()
 end
 
@@ -753,6 +763,17 @@ do
     Expect("...and the addons' Report and Contribute buttons, told to ask again",
         heard.REPORT_SETTINGS_CHANGED .. "," .. heard.CONTRIBUTE_SETTINGS_CHANGED, "1,1")
     for _, handle in pairs(handles) do _G.Spoken:UnregisterCallback(handle) end
+    -- A profile last played before the list of voices gets one when switched to, not at the next
+    -- login: what plays is the order the page shows.
+    local language = env.Addon.db.profile.Language
+    language.Voice, language.Fallback, language.Voices = "deDE", nil, nil
+    _G.Spoken:GetVoiceOrder()
+    registered.OnProfileChanged("OnProfileChanged", env.Addon.db, "Other")
+    Expect("...and a profile with no list of voices gets one from its voice language",
+        language.Voices and table.concat(language.Voices, ","), "deDE,enUS")
+    Expect("...which plays in the order the page shows", table.concat(_G.Spoken:GetVoiceOrder() or {}, ","),
+        table.concat(Options:VoiceList(), ","))
+    language.Voice, language.Fallback, language.Voices = nil, nil, nil
     for _, restore in ipairs(undo) do restore() end
     env.Addon.db = keep
     Options:UpdateRows()

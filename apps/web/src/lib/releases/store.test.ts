@@ -1,10 +1,23 @@
 import { afterAll, afterEach, beforeAll, describe, expect, it } from "vitest";
 
-import { closeDb, db } from "@/lib/db";
+import { ALL_TEAMS, closeDb, db, withTeam } from "@/lib/db";
 import { forgetTeams } from "@/lib/teams/store";
 import { asSystem, ownTeam, unowned, systemRows, testUser } from "@/lib/teams/testing";
 
-import { ReleaseBusyError, activeRun, lastDoneRuns, lastReleasedAt, recentRuns, startRun, updateRun } from "./store";
+import {
+  ReleaseBusyError,
+  activeRun,
+  cancelQueued,
+  claimNext,
+  lastDoneRuns,
+  lastReleasedAt,
+  latestPackVersions,
+  packReleases,
+  recentRuns,
+  runById,
+  startRun,
+  updateRun,
+} from "./store";
 
 // Only this file touches release_run, and vitest.config runs files one at a time, so the
 // one-active index cannot be tripped by another suite.
@@ -31,13 +44,90 @@ describe("release runs", () => {
     await closeDb();
   });
 
-  it("refuses a second run while one is active, naming the first even when it is another team's", async () => {
+  it("queues a second press while one is active, even another team's, and keeps its bump", async () => {
     const first = await startRun("quests", "frFR", user.id);
     expect(first.state).toBe("dispatching");
-    const error = await startRun("places", "deDE", user.id).catch((e) => e);
+    const second = await startRun("places", "deDE", user.id, { bump: "minor" });
+    expect(second).toMatchObject({ state: "queued", bump: "minor", kind: "release", stage: false, teamId: de.team });
+    expect((await activeRun())?.id).toBe(first.id);
+  });
+
+  it("refuses a second press that may not queue, naming the first even when it is another team's", async () => {
+    await startRun("quests", "frFR", user.id);
+    const error = await startRun("places", "deDE", user.id, { queue: false }).catch((e) => e);
     expect(error).toBeInstanceOf(ReleaseBusyError);
     expect((error as ReleaseBusyError).active).toEqual({ section: "quests", lang: "frFR" });
-    expect((await activeRun())?.id).toBe(first.id);
+  });
+
+  it("queues a press behind one already waiting, though nothing is active", async () => {
+    const first = await startRun("quests", "frFR", user.id);
+    await startRun("places", "deDE", user.id);
+    await updateRun(first.id, { state: "done" });
+    expect((await startRun("bosses", "frFR", user.id)).state).toBe("queued");
+  });
+
+  it("starts the oldest queued run once nothing is active, and only one", async () => {
+    const first = await startRun("quests", "frFR", user.id);
+    const second = await startRun("places", "deDE", user.id, { bump: "major" });
+    await startRun("bosses", "frFR", user.id);
+    expect(first.startedAt).toEqual(first.createdAt);
+    expect(second.startedAt).toBeNull();
+    expect(await claimNext()).toBeNull();
+    await updateRun(first.id, { state: "done" });
+    const claimed = await claimNext();
+    expect(claimed).toMatchObject({ id: second.id, state: "dispatching", bump: "major" });
+    // A queued run builds from when it leaves the queue, not from its press.
+    expect(claimed!.startedAt!.getTime()).toBeGreaterThan(second.createdAt.getTime());
+    expect(await claimNext()).toBeNull();
+    expect((await activeRun())?.id).toBe(second.id);
+  });
+
+  it("starts the oldest queued run though another claimer holds it, waiting rather than passing over it, and only once", async () => {
+    const first = await startRun("quests", "frFR", user.id);
+    const second = await startRun("places", "deDE", user.id);
+    await startRun("bosses", "frFR", user.id);
+    await updateRun(first.id, { state: "done" });
+    let release!: () => void;
+    const released = new Promise<void>((resolve) => (release = resolve));
+    let locked!: () => void;
+    const holding = new Promise<void>((resolve) => (locked = resolve));
+    // Another claimer that has the oldest row locked and settles without starting it.
+    const holder = withTeam(ALL_TEAMS, async (client) => {
+      await client.query(`select 1 from "release_run" where "id" = $1 for update`, [second.id]);
+      locked();
+      await released;
+    });
+    await holding;
+    // Two workers asking at once: one starts it, and the other, having waited, starts nothing.
+    const claims = Promise.all([claimNext(), claimNext()]);
+    await new Promise((resolve) => setTimeout(resolve, 200));
+    release();
+    await holder;
+    const [a, b] = await claims;
+    expect([a, b].filter((run) => run !== null)).toEqual([expect.objectContaining({ id: second.id, state: "dispatching" })]);
+    expect((await activeRun())?.id).toBe(second.id);
+  });
+
+  it("cancels a queued run, and only a queued one", async () => {
+    const first = await startRun("quests", "frFR", user.id);
+    const second = await startRun("places", "frFR", user.id);
+    expect(await cancelQueued(first.id)).toBeNull();
+    expect(await cancelQueued(second.id)).toMatchObject({ state: "failed", error: "Cancelled" });
+    expect(await cancelQueued(second.id)).toBeNull();
+    await updateRun(first.id, { state: "done" });
+    expect(await claimNext()).toBeNull();
+  });
+
+  it("finds a run by its id, and nothing for an id that is not a uuid, rather than failing the query", async () => {
+    const run = await startRun("quests", "frFR", user.id);
+    expect((await runById(run.id))?.id).toBe(run.id);
+    expect(await runById("-".repeat(36))).toBeNull();
+    expect(await runById("not-a-run")).toBeNull();
+  });
+
+  it("reads a run from before kinds as a release", async () => {
+    const run = await startRun("quests", "frFR", user.id);
+    expect(run).toMatchObject({ kind: "release", stage: false, staged: null, promotes: null });
   });
 
   it("starts again once the active run is done", async () => {
@@ -59,6 +149,23 @@ describe("release runs", () => {
     expect(runs.map((run) => [run.section, run.version])).toEqual([["bosses", "1.0.0"]]);
   });
 
+  it("lists a language's released pack versions newest first, and each language's newest, across teams", async () => {
+    const run = async (section: string, lang: "frFR" | "deDE", patch: Parameters<typeof updateRun>[1]) =>
+      updateRun((await startRun(section, lang, user.id)).id, patch);
+    await run("quests", "frFR", { state: "done", version: "1.2.0" });
+    await run("quests", "frFR", { state: "done", version: "1.3.0" });
+    await run("quests", "frFR", { state: "unchanged" });
+    await run("quests", "frFR", { state: "failed", error: "no" });
+    await run("quests", "deDE", { state: "done", version: "2.0.1" });
+    await run("places", "deDE", { state: "done", version: "9.0.0" });
+    const releases = await packReleases("quests", "frFR");
+    expect(releases.map((r) => r.version)).toEqual(["1.3.0", "1.2.0"]);
+    expect(Date.parse(releases[0].at)).toBeGreaterThan(Date.parse(releases[1].at));
+    expect(await packReleases("quests", "deDE")).toMatchObject([{ version: "2.0.1" }]);
+    expect(await packReleases("readables", "frFR")).toEqual([]);
+    expect(await latestPackVersions("quests")).toEqual({ frFR: "1.3.0", deDE: "2.0.1" });
+  });
+
   it("counts a section as released from a run that released or found nothing, not one that failed", async () => {
     const done = await startRun("quests", "deDE", user.id);
     await updateRun(done.id, { state: "done", version: "1.0.0" });
@@ -71,15 +178,18 @@ describe("release runs", () => {
     expect(released.get("quests")?.getTime()).toBe(done.createdAt.getTime());
   });
 
-  it("keeps a run to its own language's team", async () => {
-    await startRun("quests", "frFR", user.id);
+  it("keeps a run to its own language's team, and names it by slug for the job", async () => {
+    const run = await startRun("quests", "frFR", user.id);
+    const [{ slug }] = await systemRows<{ slug: string }>(`select "slug" from "team" where "id" = $1`, [fr.team]);
+    expect(run.teamSlug).toBe(slug);
+    expect((await updateRun(run.id, { step: "lookup" })).teamSlug).toBe(slug);
     expect(await recentRuns("deDE", 10)).toEqual([]);
     expect(await recentRuns("frFR", 10)).toHaveLength(1);
   });
 
   it("lists only the asked language's runs when a team holds several", async () => {
     const moved = await unowned("esES");
-    await db().query(`insert into "team_language" ("teamId", "lang") values ($1, 'esES')`, [fr.team]);
+    await db().query(`insert into "team_language" ("teamId", "lang", "packName") values ($1, 'esES', 'plain')`, [fr.team]);
     forgetTeams();
     try {
       await updateRun((await startRun("quests", "frFR", user.id)).id, { state: "done" });
