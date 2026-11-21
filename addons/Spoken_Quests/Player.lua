@@ -530,6 +530,10 @@ function Player:Setup()
         if not Player:Owns(clip) then
             return
         end
+        if clip.source == Player.source and clip.origin ~= "/spq test" then
+            -- A queued or dropped clip was never heard. Manual plays count as heard too.
+            Addon:MarkQuestLineHeard(clip.event, clip.questID)
+        end
         Debug:Record("playing", format("Playing %s", clip.path or clip.fileName or "voiceover"))
     end)
 

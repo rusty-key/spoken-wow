@@ -87,7 +87,7 @@ end
 function M.LoadPlaces(addonDirectory, seed)
     local SpokenPlaces = seed or {}
     if not _G.SpokenCompendium then dofile(addonDirectory .. "../Spoken/UI/Compendium.lua") end
-    for _, file in ipairs({ "Language", "Core", "Audio", "Contribute" }) do
+    for _, file in ipairs({ "Language", "Core", "History", "Audio", "Contribute" }) do
         local chunk = assert(loadfile(addonDirectory .. file .. ".lua"))
         chunk("Spoken_Places", SpokenPlaces)
     end
@@ -120,6 +120,7 @@ function M.NewZoneLore()
         showMapPanel = true, panelSide = "RIGHT",
         panelWidth = 320, fontSize = 12, highlightOpacity = 0.35 }
     local Z = { printed = {}, heard = {}, zoneChanged = {}, clientLocale = "enUS" }
+    assert(loadfile(PLACES .. "History.lua"))("Spoken_Places", Z)
     -- Audio.lua's, which is not loaded here: no pack carries words.
     Z.PackLoreText = function() return nil end
     -- The addon's real English strings, so a label a file reads (a minimap entry, a button,

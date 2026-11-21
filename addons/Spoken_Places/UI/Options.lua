@@ -198,13 +198,17 @@ function SpokenPlaces:SetupOptions()
 	-- Greyed as the reading it resets is: the greeting, the dungeon stories and Include Places
 	-- Found Before all read only with Read Automatically and the voice on.
 	layout:Section(W.MODULE_HISTORY)
+	layout:Checkbox(L.OPT_SHARE_HISTORY, nil,
+		function() return SpokenPlaces:SharesHistory() end,
+		function(value) SpokenPlaces:SetSharesHistory(value) end)
 	local function Heard() return SpokenPlaces.HeardCount and SpokenPlaces:HeardCount() or 0 end
 	local forget = layout:Button(L.OPT_FORGET_PLACES, 200, function()
 		local heard = Heard()
 		local question = heard == 1 and L.OPT_FORGET_PLACES_CONFIRM_ONE or L.OPT_FORGET_PLACES_CONFIRM
 		SpokenLayout.Confirm(question:format(heard), L.OPT_FORGET, W.CANCEL, function()
 			if SpokenPlaces.ForgetAutoplayHistory then SpokenPlaces:ForgetAutoplayHistory() end
-			SpokenPlaces:Print(L.OPT_FORGET_PLACES_DONE)
+			SpokenPlaces:Print(SpokenPlaces:SharesHistory() and
+				L.OPT_FORGET_PLACES_SHARED_DONE or L.OPT_FORGET_PLACES_DONE)
 			layout:Refresh()
 		end)
 	end)

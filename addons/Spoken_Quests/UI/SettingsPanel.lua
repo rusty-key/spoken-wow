@@ -61,9 +61,16 @@ function SettingsPanel:Setup()
     local progress = layout:Checkbox(L.OPT_PANEL_PROGRESS, nil,
         function() return Addon:IsProgressTextOn() end,
         function(value) Addon:SetProgressText(value) end)
+    local once = layout:Checkbox(L.OPT_PANEL_ACCOUNT_ONCE, nil,
+        function() return Addon:SkipsHeardQuestLines() end,
+        function(value)
+            Addon.db.global.SkipHeardQuestLines = value and true or false
+            if DialogPlayButton and DialogPlayButton.Refresh then DialogPlayButton:Refresh() end
+        end)
     layout:Outdent()
     layout:Requires(followup, function() return Addon:IsAutoplayOn() end, L.REASON_AUTOPLAY)
     layout:Requires(progress, function() return Addon:IsAutoplayOn() end, L.REASON_AUTOPLAY)
+    layout:Requires(once, function() return Addon:IsAutoplayOn() end, L.REASON_AUTOPLAY)
     local stopOnClose = layout:Checkbox(L.OPT_PANEL_STOP_ON_CLOSE, nil,
         function() return audio().StopAudioOnDisengage end,
         function(value) audio().StopAudioOnDisengage = value end,

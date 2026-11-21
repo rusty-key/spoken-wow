@@ -146,6 +146,38 @@ for event, quest in pairs(QUEST_EVENTS) do
     EVENT_OF_SOUND[quest.sound] = event
 end
 
+-- The account hears a quest's offer, progress and reward separately. File names vary with
+-- language, NPC and wording, so the stable quest ID and moment, not the audio file, identify it.
+local QUEST_MOMENTS = {
+    [Enums.SoundEvent.QuestAccept] = "accept",
+    [Enums.SoundEvent.QuestProgress] = "progress",
+    [Enums.SoundEvent.QuestComplete] = "complete",
+}
+
+local function HeardQuestKey(event, questID)
+    local moment = QUEST_MOMENTS[event]
+    return moment and type(questID) == "number" and questID > 0 and
+        (tostring(questID) .. ":" .. moment) or nil
+end
+
+function Addon:SkipsHeardQuestLines()
+    return self.db and self.db.global.SkipHeardQuestLines == true
+end
+
+function Addon:HasHeardQuestLine(event, questID)
+    local key = HeardQuestKey(event, questID)
+    local history = self.db and self.db.global.heardQuestLines
+    return key ~= nil and type(history) == "table" and history[key] == true
+end
+
+function Addon:MarkQuestLineHeard(event, questID)
+    local key = HeardQuestKey(event, questID)
+    if not key or not self.db then return end
+    local global = self.db.global
+    if type(global.heardQuestLines) ~= "table" then global.heardQuestLines = {} end
+    global.heardQuestLines[key] = true
+end
+
 local function PruneQuestSnapshots()
     local now = GetTime()
     for i = #questSnapshots, 1, -1 do
@@ -480,6 +512,13 @@ function Addon:WhyHeld(event)
         return L.OPT_NEVER_TIP
     elseif event and self:PartOfPage(event) == "gossip" and self:IsGossipNPCIgnored(Utils:GetNPCGUID()) then
         return L.OPT_MUTED_TIP
+    elseif event and QUEST_EVENTS[event] and self:SkipsHeardQuestLines() then
+        local quest = QUEST_EVENTS[event]
+        local questID = ResolveQuestID(quest.source, CurrentQuestID(), QuestTitle(),
+            Utils:GetNPCName() or "", quest.text(), true)
+        if self:HasHeardQuestLine(quest.sound, questID) then
+            return L.OPT_HEARD_QUEST_LINE
+        end
     end
 end
 
@@ -1022,7 +1061,7 @@ function Addon:OnInitialize()
             local stage = Debug.runtime and Debug.runtime.stage
             if stage == "queued" or stage == "queue-paused" or stage == "playing" or
                stage == "sound-disabled" or stage == "file-playback-failed" or stage == "playback-failed" or
-               stage == "data-lookup-failed" then
+               stage == "data-lookup-failed" or stage == "quest-heard" then
                 FinishPage(state, key, visibleEvent, questID)
             end
         end
@@ -1435,6 +1474,13 @@ function ResolveQuestID(source, questID, questTitle, targetName, questText, quie
 end
 
 local function QueueRead(soundData, manual)
+    if not manual and Addon:SkipsHeardQuestLines() and
+        Addon:HasHeardQuestLine(soundData.event, soundData.questID) then
+        Debug:Record("quest-heard", format("Not reading quest %d again: its %s was heard on this account",
+            soundData.questID, QUEST_MOMENTS[soundData.event]))
+        if Spoken and Spoken.EndMuteGameDialogueAhead then Spoken:EndMuteGameDialogueAhead() end
+        return
+    end
     -- A read from the snapshot of a window that has already closed has nothing left to wait for.
     -- A quest-log page has no NPC window behind it and is never accepted, so it is not held.
     if not manual and Addon.db.profile.Audio.ReadAfterAccept and not questSnapshotInUse
@@ -1766,6 +1812,13 @@ local function TakeGreetingMute(self, event)
     -- Silenced only where a pack reads the line; any other NPC keeps its greeting. A quest whose
     -- ID is not known yet is muted too: its greeting starts now, and with no line the mute lifts.
     local questID = quest and CurrentQuestID()
+    -- QUEST_GREETING is a Gossip line, not one of the three quest moments tracked by
+    -- this setting; its existing greeting-frequency rules still decide whether it plays.
+    -- If the quest ID is unknown, retain the original mute behavior until it resolves.
+    if quest and questID and questID ~= 0 and self:SkipsHeardQuestLines()
+        and self:HasHeardQuestLine(quest.sound, questID) then
+        return
+    end
     if (quest and (not questID or questID == 0)) or self:ExpectedLine(event) then
         local muted = Spoken:MuteGameDialogueAhead(self:PartOfPage(event) == "gossip" and Player.gossipSource or Player.source)
         greetingMutedFor = muted and SPEECH_EVENTS[event] and event or nil
