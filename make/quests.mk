@@ -189,12 +189,12 @@ icon: ## Rebuild the addons' icon.tga and the minimap BLP from pipelines/quests/
 package: ## Zip the quests addon into dist/
 	@./scripts/quests/package.sh
 
-# Languages no client runs in (pipelines/lib/locales.mjs, `client: false`). Their packs carry
-# no gossip locale text: the addon matches gossip by what the client shows, which is never in
-# them. Recursive, so only a target that reads it pays for the node start.
-NON_CLIENT_LOCALES = $(shell node --input-type=module -e 'const { LOCALES } = await import("./pipelines/lib/locales.mjs"); console.log(LOCALES.filter((l) => l.client === false).map((l) => l.code).join(" "))')
+# The languages a client runs in (pipelines/lib/locales.mjs). Only their packs carry gossip
+# locale text: the addon matches gossip by what the client shows, which a team's language is never
+# in. Recursive, so only a target that reads it pays for the node start.
+CLIENT_LOCALES = $(shell node --input-type=module -e 'const { CODES } = await import("./pipelines/lib/locales.mjs"); console.log(CODES.join(" "))')
 
-package-audio: check-synced export-corpus export-ignores $(if $(filter-out enUS $(NON_CLIENT_LOCALES),$(LOCALE)),export-locale-text) sounds ## Transcode, build and zip the four split packs, and bundle them into one zip for GitHub, into dist/ (VERSION=1.4.0)
+package-audio: check-synced export-corpus export-ignores $(if $(filter-out enUS,$(filter $(CLIENT_LOCALES),$(LOCALE))),export-locale-text) sounds ## Transcode, build and zip the four split packs, and bundle them into one zip for GitHub, into dist/ (VERSION=1.4.0)
 	@VERSION=$(VERSION) ENCODE=$(if $(ENCODE),$(ENCODE),ogg-q0-44k) MODULE=SpokenQuestsAudio \
 	  LANGUAGE="$(or $(LOCALE),enUS)" JOBS=$(JOBS) ./scripts/quests/package-audio.sh
 

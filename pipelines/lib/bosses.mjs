@@ -221,7 +221,7 @@ async function sync(store, { bossChanges, nameChanges, reconcileBosses }, checkO
   for (const locale of LOCALES) {
     names[locale] = {};
     const rows = await wagoTable("DungeonEncounter", { build: FOREVER_BUILD, locale });
-    // An empty table is a failed fetch, not English: stop rather than write retail's names.
+    // An empty table is a failed fetch: stop rather than write a language with no names.
     if (!rows.length) throw new Error(`wago served no ${locale} DungeonEncounter rows for ${FOREVER_BUILD}`);
     for (const row of rows) {
       const id = Number(row.ID);

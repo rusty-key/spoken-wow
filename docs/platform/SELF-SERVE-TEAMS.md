@@ -142,7 +142,7 @@ A row also carries what code knows of a built-in language and a team's would oth
 token: the text gate refuses it. Its text maintainers set them on `/<lang>/player-words`
 (`PUT /api/languages/player-words?lang=`, `text`); a built-in language's words are code, and its
 row's are never read. They reach the registry with the rest of the row, and a pack build run by hand
-reads them through psql (`pipelines/lib/player-words-db.mjs`).
+registers them from the table (`PLAYER_WORDS_SQL` in `pipelines/lib/player-words.mjs`).
 
 **Built in are the ten languages a game client runs in, and no others.** Italian, Vietnamese and
 Polish were the project's until 2026-11-20, and are their teams' now: they left `locales.mjs`,

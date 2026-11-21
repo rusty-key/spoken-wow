@@ -27,22 +27,10 @@ describe("the site's language list", () => {
         name: locale.name,
         bcp47: locale.bcp47,
         elevenLabs: locale.provider,
-        client: isClientLang(locale.code),
       })),
     ).toEqual(
-      PIPELINE_LOCALES.map(({ code, name, bcp47, elevenLabs }) => ({
-        code,
-        name,
-        bcp47,
-        elevenLabs,
-        client: true,
-      })),
+      PIPELINE_LOCALES.map(({ code, name, bcp47, elevenLabs }) => ({ code, name, bcp47, elevenLabs })),
     );
-  });
-
-  it("builds in only the languages a client runs in", () => {
-    expect(BUILTIN.every((locale) => locale.client)).toBe(true);
-    expect(isClientLang("ptBR")).toBe(true);
   });
 
   it("takes a contribution's language only from a client that exists", () => {

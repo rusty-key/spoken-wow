@@ -24,6 +24,9 @@ export const speakPlayerTokens = words.speakPlayerTokens as (
 /** Words as stored, trimmed, or null where any is missing or unspeakable (player-words.mjs). */
 export const validPlayerWords = words.validPlayerWords as (value: unknown) => PlayerWords | null;
 
+/** The longest word a row may hold. */
+export const PLAYER_WORD_LIMIT = words.WORD_LIMIT as number;
+
 /** Whether `lang`'s words are code, which a row cannot change. */
 export const hasBuiltinPlayerWords = words.hasBuiltinPlayerWords as (lang: string) => boolean;
 

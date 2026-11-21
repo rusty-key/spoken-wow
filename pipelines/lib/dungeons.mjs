@@ -13,11 +13,12 @@ import { readFileSync } from "node:fs";
 import { readFile, writeFile } from "node:fs/promises";
 import { fileURLToPath } from "node:url";
 
+import { BASE_LOCALE, CODES } from "./locales.mjs";
 import { FOREVER_BUILD, wagoTable } from "./wago.mjs";
 
 const SOURCE = fileURLToPath(new URL("./dungeons.json", import.meta.url));
 const OUT = fileURLToPath(new URL("../../addons/Spoken/Data/Dungeons.lua", import.meta.url));
-export const LOCALES = ["deDE", "esES", "esMX", "frFR", "ptBR", "ruRU", "koKR", "zhCN", "zhTW"];
+export const LOCALES = CODES.filter((code) => code !== BASE_LOCALE);
 
 const byMap = (table) => Object.fromEntries(Object.entries(table ?? {}).map(([map, row]) => [Number(map), row]));
 
@@ -42,10 +43,9 @@ export function instanceZones(data = loadDungeons()) {
  * table.
  */
 export async function mapNames(wanted, { table = wagoTable } = {}) {
-  const english = await table("Map", { build: FOREVER_BUILD, locale: "enUS" });
   const names = {};
   for (const locale of ["enUS", ...LOCALES]) {
-    const rows = locale === "enUS" ? english : await table("Map", { build: FOREVER_BUILD, locale });
+    const rows = await table("Map", { build: FOREVER_BUILD, locale });
     names[locale] = {};
     for (const row of rows) {
       const map = Number(row.ID);

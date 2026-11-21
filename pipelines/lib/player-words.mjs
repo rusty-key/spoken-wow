@@ -17,7 +17,7 @@
  * The languages a game client runs in keep their words here. A language a team brings keeps its
  * own in the database (`language."playerWords"`, migration 0125), which its text maintainers edit
  * on the site; the site registers them (lib/lang.ts registerLanguages) and a build run by hand
- * reads them (player-words-db.mjs). Words here win over a row's.
+ * registers PLAYER_WORDS_SQL's rows (registerPlayerWordRows). Words here win over a row's.
  *
  * About nine tokens in ten are the reader being addressed ("Gut gemacht, $C."), where any
  * "adventurer" reads naturally. The rest read as awkwardly as the English does and are fixed
@@ -88,7 +88,18 @@ export function registerPlayerWords(entries) {
   registered.byLang = byLang;
 }
 
-const WORD_LIMIT = 40;
+/**
+ * The database's words, for a build outside the site to register: run it however the build asks
+ * Postgres (pg or psql), as `"code", "playerWords"` rows, the words as JSON text.
+ */
+export const PLAYER_WORDS_SQL = `select "code", "playerWords"::text from "language" where "playerWords" is not null`;
+
+/** Registers PLAYER_WORDS_SQL's rows, as [code, JSON text] pairs. */
+export function registerPlayerWordRows(rows) {
+  registerPlayerWords(rows.map(([code, json]) => [code, JSON.parse(json)]));
+}
+
+export const WORD_LIMIT = 40;
 const REQUIRED = ["name", "race"];
 const OPTIONAL = ["nameGenitive", "classPlural"];
 

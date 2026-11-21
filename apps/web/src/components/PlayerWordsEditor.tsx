@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import type { Lang, PlayerForms, PlayerWords } from "@/lib/lang";
 import { withLang } from "@/lib/lang";
+import { PLAYER_WORD_LIMIT } from "@/lib/player-words";
 import { send } from "@/lib/send";
 
 type Reader = "m" | "f";
@@ -69,7 +70,7 @@ export default function PlayerWordsEditor({ lang, initial }: { lang: Lang; initi
               <span>{field.label}</span>
               <Input
                 required={field.required}
-                maxLength={40}
+                maxLength={PLAYER_WORD_LIMIT}
                 placeholder={field.hint}
                 value={words[reader.key][field.key] ?? ""}
                 onChange={(event) => set(reader.key, field.key, event.target.value)}
