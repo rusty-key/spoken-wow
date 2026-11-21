@@ -21,6 +21,7 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
 import { parseFrontmatter } from "./frontmatter.mjs";
+import { unwrap } from "./changelog.mjs";
 import { changelogSection, isLanguageHeading, loadPacks } from "./packs.mjs";
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "../..");
@@ -54,7 +55,7 @@ function sectionFor(text, version, matches) {
   for (let i = starts[0] + 1; i < lines.length; i++) {
     if (lines[i].startsWith("## ")) { end = i; break; }
   }
-  return lines.slice(starts[0] + 1, end).join("\n").trim();
+  return unwrap(lines.slice(starts[0] + 1, end).join("\n").trim());
 }
 
 function addonName(publishersDir, prefix) {
