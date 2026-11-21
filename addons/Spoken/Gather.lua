@@ -18,7 +18,7 @@ setfenv(1, SpokenEnv)
 -- own checksum: an envelope captured again a second later can differ only in the NPC model a
 -- slow cache has since answered, and that should replace the first rather than sit beside it.
 
-Gather = { CAP = 2000 } -- a few kilobytes each, so a full store stays a file the site will take
+Gather = { CAP = 2000, SEEN_CAP = 2000 } -- a few kilobytes each, so a full store stays a file the site will take
 Spoken.Gather = Gather
 
 -- Read through _G on every call rather than cached: the client assigns the table when the
@@ -31,6 +31,7 @@ local function Store()
         _G.SpokenContributionsDB = store
     end
     store.Lines = store.Lines or {}
+    store.Seen = store.Seen or {}
     return store
 end
 
@@ -55,8 +56,8 @@ function Gather:SetIntroduced()
     Store().Introduced = true
 end
 
-local function IndexOf(key)
-    local lines = Store().Lines
+local function IndexOf(key, lines)
+    lines = lines or Store().Lines
     for i = 1, #lines do
         if lines[i].key == key then
             return i
@@ -126,8 +127,45 @@ function Gather:SetTidied()
     Store().Tidied = true
 end
 
+--- Keep one NPC's sighting envelope under `npc` ("creature:3429"), replacing the one it held:
+--- which zones the player met it in, for the site's zone filter. Beside the lines rather than
+--- among them, so sightings never push a line out of CAP. The upload finds every envelope in
+--- the file wherever it sits. Does nothing unless the player opted in.
+---@return boolean stored
+function Gather:See(npc, envelope)
+    if not self:IsEnabled() then
+        return false
+    end
+    if type(npc) ~= "string" or npc == "" or type(envelope) ~= "string" or envelope == "" then
+        return false
+    end
+    local seen = Store().Seen
+    local at = IndexOf(npc, seen)
+    if at then
+        seen[at].envelope = envelope
+        return true
+    end
+    seen[#seen + 1] = { key = npc, envelope = envelope }
+    while #seen > self.SEEN_CAP do
+        table.remove(seen, 1)
+    end
+    return true
+end
+
+---@return string|nil
+function Gather:GetSeen(npc)
+    local seen = Store().Seen
+    local at = IndexOf(npc, seen)
+    return at and seen[at].envelope or nil
+end
+
+function Gather:SeenCount()
+    return #Store().Seen
+end
+
 --- Forget everything gathered. The addon cannot see the upload happen, so this is the
 --- player's to press once they have sent the file.
 function Gather:Clear()
     Store().Lines = {}
+    Store().Seen = {}
 end
