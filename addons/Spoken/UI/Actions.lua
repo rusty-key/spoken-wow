@@ -272,8 +272,7 @@ local TAIL_GAP, TAIL_IN = 6, .25
 local function EaseOut(t) return 1 - (1 - t) * (1 - t) end
 
 -- A line queued while Spoken is stopped waits unheard, and a count that only fades in reads as
--- nothing happening (#706). The count swells to PULSE_GROW its size by PULSE_PEAK, lit gold with
--- a glow behind it, and settles back by PULSE_TIME.
+-- nothing happening, so the count swells, lit gold, and settles back.
 local PULSE_TIME, PULSE_PEAK, PULSE_GROW = .7, .15, 1.8
 local PULSE_GOLD = { 1, .82, 0 }
 local COUNT_GLOW = ART .. "CountGlow"
@@ -306,7 +305,6 @@ function Actions.Pulse(text)
     return pulse
 end
 
---- From the start, in the count's font and colour as they are now.
 function Pulse:Start()
     local font, size, flags = self.text:GetFont()
     if not font then return end
@@ -319,7 +317,7 @@ end
 
 function Pulse:Active() return self.t ~= nil end
 
---- `elapsed` on; the count itself is hidden under the copy until it settles.
+--- The count itself is hidden under the copy until it settles.
 function Pulse:Step(elapsed)
     if not self.t then return end
     self.t = self.t + elapsed
@@ -330,6 +328,11 @@ function Pulse:Step(elapsed)
     -- Whole sizes, each set once: the client renders a font afresh at every size it is given.
     local size = math.floor(self.size * (1 + (PULSE_GROW - 1) * swell) + .5)
     local text = self.text:GetText()
+    if not self.drawn then
+        burst:Show()
+        self.glow:Show()
+        self.text:SetAlpha(0)
+    end
     if size ~= self.drawn or text ~= burst:GetText() then
         self.drawn = size
         burst:SetText(text)
@@ -338,10 +341,7 @@ function Pulse:Step(elapsed)
     end
     burst:SetTextColor(color[1] + (PULSE_GOLD[1] - color[1]) * swell, color[2] + (PULSE_GOLD[2] - color[2]) * swell,
         color[3] + (PULSE_GOLD[3] - color[3]) * swell)
-    burst:Show()
     self.glow:SetAlpha(.8 * swell)
-    self.glow:Show()
-    self.text:SetAlpha(0)
 end
 
 function Pulse:Stop()
@@ -775,7 +775,7 @@ local function Greys(button)
 end
 
 --- Dress `button` as a square Play button with the game's checkbox for a border, as the quest
---- log's rows have beside it: Play's glyph inside, `button:SetState("play" | "stop" | "replay" | "queue" | "queued")`.
+--- log's rows have beside it: Play's glyph inside, `button:SetState(state)`, a state of `Spoken:PlayState`.
 --- `button:MatchBox(checkbox)` takes the checkbox's size and, where it is drawn from an atlas,
 --- that atlas, so the two read as a pair whatever the client draws its checkbox with.
 function Actions.BoxPlay(button)
@@ -841,7 +841,7 @@ function Actions.NewRound(parent, kind, name, icon)
     if kind == "play" then
         local button = Actions.RoundButton(parent, 12, name)
         Actions.SetPlayGlyph(button, "play")
-        --- "play", "stop", "replay", "queue" or "queued".
+        --- A state of `Spoken:PlayState`.
         function button:SetState(state) Actions.SetPlayGlyph(self, state) end
         function button:SetPlaying(playing) Actions.SetPlayGlyph(self, playing and "stop" or "play") end
         Greys(button)

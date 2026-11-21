@@ -244,7 +244,7 @@ do
 end
 
 -- With Show Name and Title off, a line queued behind a stop is counted after "(Stopped)" and the
--- count swells: otherwise it waits with nothing on screen to say so (#706).
+-- count swells: otherwise it waits with nothing on screen to say so.
 do
     local env = _G.SpokenEnv
     local quests = env.Sources:Register("stopped", { title = "Stopped", addon = "Spoken", order = 10 })

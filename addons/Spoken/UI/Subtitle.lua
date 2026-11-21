@@ -389,20 +389,26 @@ function Subtitle:RowHeight()
     return math.max(Pictured() and PICTURE or 0, self.title:GetStringHeight() or 0)
 end
 
+--- Whether "+N" shows: with Show Name off, only behind a stop.
+function Subtitle:CountShown(paused)
+    return (self:NameShown() or paused) and (self.waiting or 0) > 0
+end
+
+function Subtitle:CountWidth()
+    return LABEL_GAP + (self.moreDot:GetStringWidth() or 0) + LABEL_GAP + (self.more:GetStringWidth() or 0)
+end
+
 --- The row's visible width, so it centres on what shows. The title is cut to keep it within WIDTH.
 function Subtitle:RowWidth(paused)
-    -- Show Name off still shows Stopped, why the line waits and, behind a stop, the count: Wanted
-    -- keeps such a line on screen to say why it is not being read, and a line queued behind the stop
-    -- would otherwise wait with nothing on screen to say so (#706).
+    -- Show Name off still shows Stopped, why the line waits and, behind a stop, the count: each says
+    -- why nothing is being read.
     if not self:NameShown() then
         local width = paused and (self.pausedLabel:GetStringWidth() or 0) or 0
         if self.heldText then
             if paused then width = width + LABEL_GAP + (self.heldDot:GetStringWidth() or 0) + LABEL_GAP end
             width = width + (self.held:GetStringWidth() or 0)
         end
-        if paused and (self.waiting or 0) > 0 then
-            width = width + LABEL_GAP + (self.moreDot:GetStringWidth() or 0) + LABEL_GAP + (self.more:GetStringWidth() or 0)
-        end
+        if self:CountShown(paused) then width = width + self:CountWidth() end
         return width
     end
     local start = (Pictured() and PICTURE + PICTURE_GAP or 0) + (self.title:GetStringWidth() or 0)
@@ -412,9 +418,7 @@ function Subtitle:RowWidth(paused)
     if self.heldText then
         more = LABEL_GAP + (self.heldDot:GetStringWidth() or 0) + LABEL_GAP + (self.held:GetStringWidth() or 0)
     end
-    if (self.waiting or 0) > 0 then
-        more = more + LABEL_GAP + (self.moreDot:GetStringWidth() or 0) + LABEL_GAP + (self.more:GetStringWidth() or 0)
-    end
+    if self:CountShown(paused) then more = more + self:CountWidth() end
     if self.labelText then
         local lead = LABEL_GAP + (self.dot:GetStringWidth() or 0) + LABEL_GAP
         self.label:SetWidth(0)
@@ -451,7 +455,7 @@ function Subtitle:PlaceRow(left)
     -- why it waits starts the row, and the count shows only behind a stop.
     local last = self.shownPaused and self.pausedLabel or (named and (self.labelText and self.label or self.title))
     local parts = { { self.heldDot, self.held, self.heldText ~= nil },
-        { self.moreDot, self.more, (named or self.shownPaused) and (self.waiting or 0) > 0 } }
+        { self.moreDot, self.more, self:CountShown(self.shownPaused) } }
     for _, part in ipairs(parts) do
         local dot, text, shown = part[1], part[2], part[3]
         dot:SetShown(shown and last and true or false)
@@ -1054,12 +1058,8 @@ function Subtitle:Waiting()
     return math.max(0, SoundQueue:GetQueueSize() - 1)
 end
 
---- The count swells when it grew behind a stop, on the same line: a new line on screen is not one queued.
 function Subtitle:SetWaiting(waiting)
-    if waiting > (self.waiting or 0) and self.countedClip == self.clip and SoundQueue:IsPaused() then
-        self.morePulse:Start()
-    end
-    self.waiting, self.countedClip = waiting, self.clip
+    self.waiting = waiting
     self.more:SetText(waiting > 0 and ("+" .. waiting) or "")
 end
 
@@ -1067,10 +1067,14 @@ function Subtitle:CountWaiting()
     local waiting = self:Waiting()
     local held = self:Held()
     if waiting ~= self.waiting or held ~= self.heldText then
+        -- The count swells when it grew behind a stop. Not from Prepare: a new line on screen is
+        -- not one queued.
+        if waiting > (self.waiting or 0) and SoundQueue:IsPaused() then self.morePulse:Start() end
         -- With Show Name off the row is there only while there is something to say, so the words
         -- move for it.
-        local moves = held ~= self.heldText and not self:NameShown()
+        local counted = self:CountShown(self.shownPaused)
         self:SetWaiting(waiting)
+        local moves = (held ~= self.heldText or counted ~= self:CountShown(self.shownPaused)) and not self:NameShown()
         self:SetHeld(held)
         if moves and self.page then self:Relayout() else self:Fit() end
     end

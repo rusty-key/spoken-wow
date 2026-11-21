@@ -1895,21 +1895,8 @@ local function Ink(fontString, color)
 	fontString:SetShadowColor(0, 0, 0, 0)
 end
 
---- A Play button's state for `clip`, the line it plays as the queue holds it (nil when not queued),
---- as the quest log's Play has it: "stop" while it is the head and speaking, "replay" while it is
---- the head and the queue is stopped. Behind another line that goes on, "queued" where it already
---- waits and "queue" where a click would put it there. "play" otherwise.
 function C.PlayState(clip)
-	local spoken = _G.Spoken
-	if not (spoken and spoken.GetCurrent) then return "play" end
-	local current = spoken:GetCurrent()
-	if clip and current == clip then
-		if spoken:IsPaused() then return "replay" end
-		if spoken:GetNowPlaying() == clip then return "stop" end
-		return "play"
-	end
-	if spoken.WouldQueue and spoken:WouldQueue() then return clip and "queued" or "queue" end
-	return "play"
+	return _G.Spoken and _G.Spoken:PlayState(clip) or "play"
 end
 
 --- A click on a Play button whose line is `clip` (nil when not queued): Stop and Replay stop the
@@ -1938,8 +1925,7 @@ function C.PlayTooltip(button, state)
 	local words = _G.SpokenEnv and _G.SpokenEnv.L
 	if not (words and GameTooltip) then return end
 	GameTooltip:SetOwner(button, "ANCHOR_LEFT")
-	local key = ({ stop = "STOP", replay = "REPLAY", queue = "QUEUE", queued = "QUEUED" })[state] or "PLAY"
-	GameTooltip:SetText(words[key])
+	GameTooltip:SetText(words[(state or "play"):upper()])
 	if button.IsEnabled and not button:IsEnabled() then
 		GameTooltip:AddLine(words.PLAY_NO_VOICE, 1, 0.8, 0.2, true)
 	end

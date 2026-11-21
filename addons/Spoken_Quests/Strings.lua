@@ -66,9 +66,6 @@ L.OPT_CONTENT_VERSION_UPDATE_FMT = "%2$s -> |cFF00CCFF%1$s|r"
 
 L.OPT_CMD_GROUP = "Commands"
 L.OPT_STOP = "Stop"
-L.OPT_REPLAY = "Replay"
-L.OPT_QUEUE = "Queue"
-L.OPT_QUEUED = "Queued"
 L.OPT_CMD_SKIP = "Skip Line"
 L.OPT_CMD_SKIP_DESC = "Skips the line being read"
 L.OPT_CMD_READ = "Read Visible Quest"
@@ -131,7 +128,6 @@ L.OPT_PACK_INCLUDED = "In All Quests"
 -- Quest and gossip windows
 --------------------------------------------------------------------------------
 
-L.OPT_PLAY = "Play"
 -- The quest window's worded button, where a word has to say what it does.
 L.OPT_LISTEN = "Listen"
 L.OPT_DIALOG_STOP_TIP = "Stop reading"

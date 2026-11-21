@@ -876,9 +876,10 @@ function Spoken:IsPaused()
     return SoundQueue:IsPaused()
 end
 
---- True where Play would queue a line behind the one going on rather than play it at once.
-function Spoken:WouldQueue()
-    return SoundQueue:WouldQueue()
+--- A Play button's state for `clip` (nil when not queued): "play", "stop", "replay", "queue" or
+--- "queued".
+function Spoken:PlayState(clip)
+    return SoundQueue:PlayState(clip)
 end
 
 function Spoken:GetHeldReason(clip)
@@ -908,7 +909,7 @@ function Spoken:CreateRoundButton(parent, kind, name, icon)
 end
 
 --- `button`, a Button the caller made, dressed as a square Play button with the game's checkbox for
---- its border (`button:SetState("play" | "stop" | "replay" | "queue" | "queued")`, `button:MatchBox(checkbox)`): the quest log's rows.
+--- its border (`button:SetState(state)`, a state of `Spoken:PlayState`, `button:MatchBox(checkbox)`): the quest log's rows.
 function Spoken:DressBoxButton(button)
     return Actions.BoxPlay(button)
 end
