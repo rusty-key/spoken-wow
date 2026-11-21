@@ -43,6 +43,9 @@ REPO="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 # supplies the empty default when there is none.
 export DATABASE_URL="${DATABASE_URL-}"
 
+# A missing .toc reads as no version, which every caller refuses with its own remedy.
+toc_version() { { sed -n 's/^## Version:[[:space:]]*//p' "$@" 2>/dev/null || true; } | head -1 | tr -d '\r'; }
+
 # The language being packaged. Everything below that names a folder, a title or a cache follows
 # from it, so an esMX run cannot write into English's folder or its zip.
 LOCALE="${LOCALE:-enUS}"
@@ -153,7 +156,7 @@ if [[ ! -f "$TOC" ]]; then
 fi
 
 if english; then
-  version="$(sed -n 's/^## Version:[[:space:]]*//p' "$TOC" | head -1 | tr -d '\r')"
+  version="$(toc_version "$TOC")"
 else
   version="$PACK_VERSION"
 fi
@@ -202,7 +205,7 @@ node "$REPO/scripts/descriptions.mjs" --write >/dev/null
 # ships that; until one exists it falls back the same way.
 tier_readme() {
   if ! english; then echo "$REPO/dist/descriptions/$PACK_SLUG.md"; return; fi
-  echo "$REPO/dist/descriptions/spoken-places-audio.md"
+  echo "$REPO/dist/descriptions/$(node "$REPO/scripts/lib/packs.mjs" get places enUS - slug).md"
 }
 
 # Transcoding needs ffmpeg, but only for the tiers that are not a straight copy.

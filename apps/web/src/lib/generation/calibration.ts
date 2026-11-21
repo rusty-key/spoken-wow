@@ -5,8 +5,9 @@
  * `pg` import anywhere in a client component's graph fails the production build with an
  * error neither pnpm test nor pnpm typecheck reports.
  */
-import { db } from "@/lib/db";
-import type { Lang } from "@/lib/lang";
+import { ALL_TEAMS, queryIn } from "@/lib/db";
+import { type BuiltinLang, type Lang, languageInfo } from "@/lib/lang";
+import { readAs } from "@/lib/teams/store";
 import { fishPrice } from "@/lib/voices/fish";
 
 import { CALIBRATION_SAMPLE, LIST_RATE, type Rate } from "./billing";
@@ -16,9 +17,12 @@ import { CALIBRATION_SAMPLE, LIST_RATE, type Rate } from "./billing";
  *
  * Per model, because the flash and turbo families are billed at half the others, and one
  * blended rate would be right for neither.
+ *
+ * As ALL_TEAMS: the rate is the plan's, and every team's takes were billed by the same one.
  */
 export async function observedRate(modelId: string): Promise<Rate> {
-  const { rows } = await db().query<{ characters: string | null; credits: string | null; n: string }>(
+  const rows = await queryIn<{ characters: string | null; credits: string | null; n: string }>(
+    ALL_TEAMS,
     `select sum("characters")::text as characters,
             sum("credits")::text    as credits,
             count(*)::text          as n
@@ -53,16 +57,14 @@ export async function observedRate(modelId: string): Promise<Rate> {
  * character; accented Latin a little over; Cyrillic two for letters and one for spaces and
  * punctuation; Hangul and Han three. Each figure is the script's letter width, so the
  * estimate is an upper bound until real takes calibrate it, which is the direction to err.
+ * A team's language carries its own in its row (`bytesPerCharacter`), else reads as accented Latin.
  */
-const BYTES_PER_CHARACTER: Partial<Record<Lang, number>> = {
+const BYTES_PER_CHARACTER: Partial<Record<BuiltinLang, number>> = {
   enUS: 1,
   ruRU: 2,
   koKR: 3,
   zhCN: 3,
   zhTW: 3,
-  // Not a letter width: Vietnamese mixes ASCII letters with two- and three-byte ones, and
-  // the Forever translation's letters average 1.41 bytes.
-  viVN: 1.5,
 };
 const ACCENTED_LATIN = 1.1;
 
@@ -74,7 +76,8 @@ const ACCENTED_LATIN = 1.1;
  * language's: a rate learned from English would price Korean at a third of what it costs.
  */
 export async function observedFishRate(modelId: string, lang: Lang): Promise<Rate> {
-  const { rows } = await db().query<{ characters: string | null; usd: string | null; n: string }>(
+  const rows = await readAs<{ characters: string | null; usd: string | null; n: string }>(
+    lang,
     `select sum("characters")::text as characters,
             sum("costUsd")::text    as usd,
             count(*)::text          as n
@@ -102,6 +105,9 @@ export async function observedFishRate(modelId: string, lang: Lang): Promise<Rat
   if (perByte === null) {
     return { rate: 0, unit: "usd", unknown: true, samples: 0, modelId };
   }
-  const width = BYTES_PER_CHARACTER[lang] ?? ACCENTED_LATIN;
+  const width =
+    (BYTES_PER_CHARACTER as Partial<Record<string, number>>)[lang] ??
+    languageInfo(lang)?.bytesPerCharacter ??
+    ACCENTED_LATIN;
   return { rate: (perByte / 1_000_000) * width, unit: "usd", samples: 0, modelId };
 }

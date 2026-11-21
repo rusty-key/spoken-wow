@@ -9,7 +9,8 @@
  */
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from "vitest";
 
-const { closeDb, db } = await import("@/lib/db");
+const { closeDb } = await import("@/lib/db");
+const { asSystem } = await import("@/lib/teams/testing");
 const { BookConflict, BookMissing, bookHistory, restoreBookText, saveBookText } = await import("./text");
 
 /** A page id no other run will collide with, so this can share a database. */
@@ -17,13 +18,13 @@ let lineId: string;
 
 async function seed(text: string, skipReason: string | null = null) {
   const bookId = 900_000_000 + Math.floor(Math.random() * 90_000_000);
-  await db().query(
+  await asSystem.query(
     `insert into "book_page"
        ("lineId", "pageTextId", "bookId", "pageNumber", "ownerKind", "ownerIds", "material")
      values ($1, $2::int, $2::int::text, 1, 'item', '{1}'::integer[], 0)`,
     [lineId, bookId],
   );
-  await db().query(
+  await asSystem.query(
     `insert into "book_line"
        ("lineId", "lang", "version", "isCurrent", "origin", "pageId", "bookId",
         "pageNumber", "pageCount", "title", "ownerKind", "ownerIds", "material", "text",
@@ -35,7 +36,7 @@ async function seed(text: string, skipReason: string | null = null) {
 }
 
 async function voiceable(lang: string) {
-  const { rows } = await db().query<{ generatable: boolean; skipReason: string | null }>(
+  const { rows } = await asSystem.query<{ generatable: boolean; skipReason: string | null }>(
     `select "generatable", "skipReason" from "book_line"
       where "lineId" = $1 and "lang" = $2 and "isCurrent"`,
     [lineId, lang],
@@ -51,7 +52,7 @@ let editor: string;
 
 beforeAll(async () => {
   editor = `test-${Math.random().toString(36).slice(2, 10)}`;
-  await db().query(
+  await asSystem.query(
     `insert into "user" ("id", "name", "email", "emailVerified", "createdAt", "updatedAt")
      values ($1, 'Editor', $1 || '@test', false, now(), now())`,
     [editor],
@@ -63,27 +64,27 @@ beforeEach(() => {
 });
 
 afterEach(async () => {
-  await db().query(`delete from "activity" where "lineId" = $1`, [lineId]);
-  await db().query(`delete from "book_line" where "lineId" = $1`, [lineId]);
-  await db().query(`delete from "book_page" where "lineId" = $1`, [lineId]);
+  await asSystem.query(`delete from "activity" where "lineId" = $1`, [lineId]);
+  await asSystem.query(`delete from "book_line" where "lineId" = $1`, [lineId]);
+  await asSystem.query(`delete from "book_page" where "lineId" = $1`, [lineId]);
 });
 
 afterAll(async () => {
-  await db().query(`delete from "user" where "id" = $1`, [editor]);
+  await asSystem.query(`delete from "user" where "id" = $1`, [editor]);
   await closeDb();
 });
 
 describe("a page with no words yet", () => {
   it("takes the first words of a page English lacks", async () => {
     const id = 900_000_000 + Math.floor(Math.random() * 90_000_000);
-    await db().query(
+    await asSystem.query(
       `insert into "book_page" ("lineId", "pageTextId", "bookId", "pageNumber", "ownerKind", "ownerIds")
        values ($1, $2::int, $2::int::text, 1, 'item', '{1}'::integer[])`,
       [lineId, id],
     );
     const saved = await saveBookText({ lineId, text: "Hola.", editedBy: editor, lang: "esES" });
     expect(saved).toMatchObject({ lineId, version: 1, text: "Hola." });
-    const { rows } = await db().query(
+    const { rows } = await asSystem.query(
       `select "pageId", "bookId", "pageNumber", "pageCount", "title" from "book_line"
         where "lineId" = $1 and "lang" = 'esES'`,
       [lineId],
@@ -94,10 +95,10 @@ describe("a page with no words yet", () => {
   it("takes the first words of a minted page, leaving the structure the game never gave it empty", async () => {
     const bookId = `n${crypto.randomUUID()}`;
     lineId = `b:${bookId}`;
-    await db().query(`insert into "book_page" ("lineId", "bookId", "pageNumber") values ($1, $2, 1)`, [lineId, bookId]);
+    await asSystem.query(`insert into "book_page" ("lineId", "bookId", "pageNumber") values ($1, $2, 1)`, [lineId, bookId]);
     const saved = await saveBookText({ lineId, text: "Hola.", editedBy: editor, lang: "esES" });
     expect(saved).toMatchObject({ lineId, version: 1, text: "Hola." });
-    const { rows } = await db().query(
+    const { rows } = await asSystem.query(
       `select "pageId", "bookId", "pageNumber", "pageCount", "ownerKind", "ownerIds" from "book_line"
         where "lineId" = $1 and "lang" = 'esES'`,
       [lineId],
@@ -107,7 +108,7 @@ describe("a page with no words yet", () => {
 
   it("refuses a page that has words but no book_page row", async () => {
     await seed("Words.");
-    await db().query(`delete from "book_page" where "lineId" = $1`, [lineId]);
+    await asSystem.query(`delete from "book_page" where "lineId" = $1`, [lineId]);
     await expect(saveBookText({ lineId, text: "Other.", editedBy: editor })).rejects.toThrow(BookMissing);
     const history = await bookHistory(lineId);
     expect(history).toHaveLength(1);
@@ -138,7 +139,7 @@ describe("rewriting a page", () => {
     await seed("Before.");
     await saveBookText({ lineId, text: "After.", editedBy: editor });
 
-    const { rows } = await db().query<{ title: string; pageCount: number }>(
+    const { rows } = await asSystem.query<{ title: string; pageCount: number }>(
       `select "title", "pageCount" from "book_line" where "lineId" = $1 and "isCurrent"`,
       [lineId],
     );
@@ -215,14 +216,14 @@ describe("putting an earlier version back", () => {
     await seed("First.");
     await saveBookText({ lineId, text: "Second.", editedBy: editor });
     await restoreBookText(lineId, 1, "enUS", editor);
-    await db().query(
+    await asSystem.query(
       `update "book_line" set "title" = 'Corrected' where "lineId" = $1 and "version" = 1`,
       [lineId],
     );
 
     await saveBookText({ lineId, text: "Third.", editedBy: editor });
 
-    const { rows } = await db().query(
+    const { rows } = await asSystem.query(
       `select "title" from "book_line" where "lineId" = $1 and "version" = 3`,
       [lineId],
     );

@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 
+import { useLang } from "@/components/LangProvider";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -13,6 +14,7 @@ import {
 } from "@/components/ui/dialog";
 import { branchesOnPlayerGender } from "@/lib/player-words";
 import { OverrideError, rewriteHasInvalidChars, validateRewrite } from "@/lib/quests/override";
+import { dropOverride, saveOverride } from "@/lib/quests/override-client";
 import { INVALID_CHARS } from "@/lib/text-gate";
 import type { ResultLine } from "@/lib/search";
 import { isModelVoice } from "@/lib/voices/voices";
@@ -38,6 +40,7 @@ type Props = {
  * this can always be reverted to.
  */
 export default function OverrideDialog({ line, onSaved, onRewritten, onCancel }: Props) {
+  const lang = useLang();
   const [draft, setDraft] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -59,8 +62,7 @@ export default function OverrideDialog({ line, onSaved, onRewritten, onCancel }:
   // than the corpus's baked flag - otherwise a narrated line, which is already voiceable,
   // would claim every edit rescued it.
   // No rewrite rescues a line in a model slot, which is refused for its voice, not its text.
-  const rescues =
-    !line.voiceable && line.skipReason !== "progress" && !isModelVoice(line.voice) && !rewriteHasInvalidChars(draft);
+  const rescues = !line.voiceable && !isModelVoice(line.voice) && !rewriteHasInvalidChars(draft, lang);
   const gendered = branchesOnPlayerGender(draft);
 
   async function send(method: "PUT" | "DELETE") {
@@ -72,21 +74,12 @@ export default function OverrideDialog({ line, onSaved, onRewritten, onCancel }:
       if (method === "PUT") {
         // Checked here so the message lands next to the field, and again on the server
         // because that is the copy that counts.
-        validateRewrite({ file: line.audioPath, lineId: line.lineId, text: draft });
+        validateRewrite({ file: line.audioPath, lineId: line.lineId, text: draft }, lang);
       }
 
-      const url =
-        method === "PUT"
-          ? "/api/quests/lines/override"
-          : `/api/quests/lines/override?file=${encodeURIComponent(line.audioPath)}`;
-      const response = await fetch(url, {
-        method,
-        headers: { "Content-Type": "application/json" },
-        body:
-          method === "PUT"
-            ? JSON.stringify({ file: line.audioPath, lineId: line.lineId, text: draft })
-            : undefined,
-      });
+      const response = await (method === "PUT"
+        ? saveOverride(lang, line.audioPath, line.lineId, draft)
+        : dropOverride(lang, line.audioPath));
 
       const body = (await response.json().catch(() => ({}))) as { error?: string; files?: string[] };
       if (!response.ok) {

@@ -346,6 +346,6 @@ export async function textToDialogue(
   );
 }
 
-function message(error: unknown): string {
+export function message(error: unknown): string {
   return error instanceof Error ? error.message : String(error);
 }

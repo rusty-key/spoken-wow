@@ -29,6 +29,8 @@ const followup = {
   npcType: "creature",
 } as Parameters<typeof targetForLine>[0];
 
+const chatter = { ...followup, source: "chatter", questId: null } as typeof followup;
+
 const progress = { ...quest, lineId: "q:7:progress", source: "progress", questId: 7 } as typeof quest;
 
 describe("targetForLine", () => {
@@ -51,10 +53,14 @@ describe("targetForLine", () => {
     expect(targetForLine(followup)).toBe("npc/197");
   });
 
+  it("addresses an NPC's chat in the world by its speaker, as it has no quest", () => {
+    expect(targetForLine(chatter)).toBe("npc/197");
+  });
+
   it("produces addresses the report page can parse", () => {
     // The whole point of reusing the addon's address format: a report filed from the site and
     // one filed from the game land on the same target string, so triage sees one kind of row.
-    for (const line of [quest, progress, gossip, poster, followup]) {
+    for (const line of [quest, progress, gossip, poster, followup, chatter]) {
       const address = targetForLine(line);
       expect(address).not.toBeNull();
       expect(parseTarget(address!.split("/"))).not.toBeNull();

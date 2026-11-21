@@ -1,6 +1,6 @@
 // The contract between the window and the main process. The preload exposes `ManagerApi` as
 // `window.manager`; the main process answers each channel.
-import type { Catalog, CommunityCatalog, GameInstall, JobProgress, ProductStatus, Settings, SharingStatus, Snapshot } from './types'
+import type { Catalog, CatalogUpdate, CommunityCatalog, ContributorView, GameInstall, JobProgress, ManualZip, ProductStatus, ReleaseRow, SendResult, Settings, SharingStatus, Snapshot, StoreId } from './types'
 
 export const CHANNELS = {
   snapshot: 'manager:snapshot',
@@ -19,9 +19,18 @@ export const CHANNELS = {
   openExternal: 'manager:open-external',
   openLogs: 'manager:open-logs',
   checkManagerUpdate: 'manager:updater:check',
+  restartManager: 'manager:updater:restart',
   clearDownloads: 'manager:downloads:clear',
   shareNow: 'manager:sharing:send',
   resetShareId: 'manager:sharing:reset-id',
+  contributorView: 'manager:contributor:view',
+  contributorSignIn: 'manager:contributor:sign-in',
+  contributorSignOut: 'manager:contributor:sign-out',
+  contributorSaveStore: 'manager:contributor:save-store',
+  contributorRows: 'manager:contributor:rows',
+  contributorPublish: 'manager:contributor:publish',
+  contributorZip: 'manager:contributor:zip',
+  contributorRevealZip: 'manager:contributor:reveal-zip',
   windowMinimize: 'manager:window:minimize',
   windowToggleMaximize: 'manager:window:toggle-maximize',
   windowClose: 'manager:window:close',
@@ -33,6 +42,7 @@ export const CHANNELS = {
   communityChanged: 'manager:event:community',
   updaterState: 'manager:event:updater',
   sharingChanged: 'manager:event:sharing',
+  contributorChanged: 'manager:event:contributor',
   windowMaximized: 'manager:event:window-maximized'
 } as const
 
@@ -61,8 +71,19 @@ export type UpdaterState =
   /** `url`: where to download it, when this system cannot update the manager by itself (macOS without signing). */
   | { state: 'available'; version: string; url?: string }
   | { state: 'downloading'; percent: number }
-  | { state: 'ready'; version: string }
+  /** `message`: installing it failed; pressing Restart again may still work. */
+  | { state: 'ready'; version: string; message?: string }
   | { state: 'error'; message: string }
+
+/** What a store form sends. A token is write-only: the window can set it but never read it back. */
+export interface StoreInput {
+  store: StoreId
+  /** Empty removes the saved token; absent keeps it. */
+  token?: string
+  projects?: Record<string, string>
+  repo?: string
+  gameVersions?: string
+}
 
 export interface ManagerApi {
   /** Everything the window needs to draw its first frame. */
@@ -90,15 +111,35 @@ export interface ManagerApi {
   openPath(path: string): Promise<void>
   openExternal(url: string): Promise<void>
   openLogs(): Promise<void>
-  /** Asks for a newer manager now. Progress and failures come through `onUpdater`. */
-  checkManagerUpdate(): Promise<void>
+  /**
+   * Asks for a newer manager now. Progress and failures come through `onUpdater`.
+   * `background`: respects the auto-update setting and only logs a failure.
+   */
+  checkManagerUpdate(background?: boolean): Promise<void>
+  /** Installs the ready update and starts the new version. Does nothing while a job runs. */
+  restartManager(): Promise<void>
   /** Deletes the downloaded zips (and half-finished ones) kept in the downloads folder. Refused while a job runs. */
   clearDownloads(): Promise<ClearDownloadsResult>
-  /** Sends the collected lines now. Refused while Sharing is off. */
-  /** The status comes through onSharing. */
-  shareNow(): Promise<void>
+  /**
+   * Sends the collected lines now and resolves with how it ended, null when Sharing went off
+   * meanwhile. Refused while Sharing is off. The status also comes through onSharing.
+   */
+  shareNow(): Promise<SendResult | null>
   /** Gives this manager a new random id. */
   resetShareId(): Promise<void>
+  /** The signed-in account and the stores' settings, with no secret in it. */
+  contributorView(): Promise<ContributorView>
+  contributorSignIn(email: string, password: string): Promise<ContributorView>
+  contributorSignOut(): Promise<ContributorView>
+  contributorSaveStore(input: StoreInput): Promise<ContributorView>
+  contributorRows(gameId: string, lang: string, store: StoreId): Promise<ReleaseRow[]>
+  /** Starts a release of a language's packs, or of the one folder `only`; progress comes through `onJob`
+   *  and `cancel` stops it. Returns the job id. */
+  contributorPublish(gameId: string, lang: string, store: StoreId, only?: string): Promise<string>
+  /** Zips one CurseForge pack for an upload by hand, replacing that pack's older zips. */
+  contributorZip(gameId: string, lang: string, folder: string): Promise<ManualZip>
+  /** Shows a zip made by `contributorZip` in Explorer or Finder. */
+  contributorRevealZip(path: string): Promise<void>
   /** The window has no system title bar, so the page draws its own buttons and calls these. */
   windowMinimize(): Promise<void>
   /** Maximizes the window, or puts it back when it is already maximized. */
@@ -108,10 +149,11 @@ export interface ManagerApi {
 
   onJob(listener: (progress: JobProgress) => void): () => void
   onGamesChanged(listener: (games: GameInstall[]) => void): () => void
-  onCatalogChanged(listener: (catalog: Catalog) => void): () => void
+  onCatalogChanged(listener: (update: CatalogUpdate) => void): () => void
   onCommunityChanged(listener: (community: CommunityCatalog) => void): () => void
   onUpdater(listener: (state: UpdaterState) => void): () => void
   onSharing(listener: (status: SharingStatus) => void): () => void
+  onContributorChanged(listener: (view: ContributorView) => void): () => void
   /** True when the window becomes maximized, false when it is put back. */
   onWindowMaximized(listener: (maximized: boolean) => void): () => void
 }

@@ -77,7 +77,8 @@ def connect():
             "Producing audio and building a pack still need no database; this command does."
         )
     # Here rather than at the top, so the module's pure parts (split_contributed) load and are
-    # tested without psycopg2, which only requirements-extract.txt installs.
+    # tested without psycopg2, which only requirements-extract.txt installs, and the droplet's
+    # python3-psycopg2 package.
     import psycopg2
 
     return psycopg2.connect(url)
@@ -126,7 +127,7 @@ def with_answered_voices(lines, answers):
 
 def split_here(variants, live):
     """The dump's plain lines the site split by player gender: (lineId, variant) whose own row
-    is not current while its `:m` or `:f` is (apps/web/src/lib/quests/english-rewrite.ts).
+    is not current while its `:m` or `:f` is (apps/web/src/lib/quests/moment-rewrite.ts).
 
     The site is the corpus. Such a line is left out, never promoted back beside its split, and
     its speakers are written onto the two sides.
@@ -291,10 +292,14 @@ def _import_types(cur, npcs):
             new_flavor = cur.rowcount > 0
         if not (new_race or new_flavor) or not voice or is_model_voice(voice):
             continue
-        cur.execute("""insert into "voice" ("name", "race", "gender") values (%s, %s, %s)
+        # The types are every team's, so every team's roster gets the voice. As the table owner
+        # with no spoken.team, the column default is null, so each team is named.
+        cur.execute("""insert into "voice" ("teamId", "name", "race", "gender")
+                       select t."id", %s, %s, %s from "team" t
                        on conflict do nothing""", (voice, race, gender or ""))
-        cur.execute("""insert into "voice_assignment" ("race", "gender", "flavor", "voice")
-                       values (%s, %s, %s, %s) on conflict do nothing""",
+        cur.execute("""insert into "voice_assignment" ("teamId", "race", "gender", "flavor", "voice")
+                       select t."id", %s, %s, %s, %s from "team" t
+                       on conflict do nothing""",
                     (race, gender, flavor if new_flavor else None, voice))
 
 

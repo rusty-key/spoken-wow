@@ -30,7 +30,7 @@ local BUTTON_HEIGHT = 20
 local BUTTON_WIDTH = 90
 local GAP = 2
 -- From the close button's bottom edge down into the middle of the strip under the title bar.
-local STRIP_OFFSET = 12
+local STRIP_OFFSET = 8
 local CORNER_INSET = 32
 -- Fallback margins under and beside DialogueUI's footer buttons: its bottom (36) and side (26)
 -- paddings at its default size (1.1).

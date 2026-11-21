@@ -10,6 +10,11 @@
  * A contribution never becomes a regeneration job, for the reason api/reports/route.ts gives:
  * a public write that could start one would be a public write that spends money. A
  * collaborator reads the row and the pipeline picks it up from the export.
+ *
+ * A line the corpus already has is not stored, but it was still sent because the player's pack
+ * could not voice it. With the browser's install id (lib/contributions/browser-install.ts) it is
+ * counted as a missing-audio hit for the pack's language, as the manager's uploads are -- the only
+ * way a team whose language no client runs in hears of it.
  */
 import { headers } from "next/headers";
 
@@ -17,14 +22,16 @@ import { auth } from "@/lib/auth";
 import { clientIp } from "@/lib/reports/client-ip";
 import { COMPLAINT_MAX, descriptionFrom } from "@/lib/contributions/contributions";
 import { MAX_BYTES, parseEnvelope } from "@/lib/contributions/envelope";
+import { keepClassWords } from "@/lib/contributions/class-words";
 import { submissionFrom } from "@/lib/contributions/submission";
 import {
   CONTRIBUTION_WINDOW_MS,
   CONTRIBUTIONS_PER_HOUR,
-  knownSubmissions,
+  intakeStates,
   storeSubmission,
   stringOrNull,
 } from "@/lib/contributions/intake";
+import { hitFrom, installIdFrom, recordMissingAudio } from "@/lib/contributions/missing-audio";
 import { countRecentContributions, recordContributionHit } from "@/lib/contributions/store";
 
 export const dynamic = "force-dynamic";
@@ -62,8 +69,8 @@ export async function POST(request: Request) {
     return Response.json({ error: "describe" }, { status: 400 });
   }
 
-  const submission = submissionFrom(parsed.value, raw, description);
-  if (!submission) {
+  const sent = submissionFrom(parsed.value, description);
+  if (!sent) {
     return Response.json({ error: "incomplete" }, { status: 400 });
   }
 
@@ -77,12 +84,16 @@ export async function POST(request: Request) {
   // Identity from the session when there is one, and the typed fields dropped rather than
   // merged -- the reports route's reasoning: signing in and typing someone else's name is a
   // way to put words in their mouth.
-  const session = await auth.api.getSession({ headers: await headers() });
+  const [session, [submission]] = await Promise.all([
+    auth.api.getSession({ headers: await headers() }),
+    keepClassWords([sent]),
+  ]);
 
   // A line the corpus already has is thanked for and dropped, the same answer as a stored one:
   // the player did nothing wrong, there is just nothing to triage. A complaint about it is
   // still kept -- that is a report about the line, not a copy of it.
-  const [known] = await knownSubmissions([submission]);
+  const [state] = await intakeStates([submission]);
+  const known = state?.kind === "known";
   if (!known || complaint) {
     await storeSubmission(submission, {
       body: complaint || null,
@@ -92,6 +103,12 @@ export async function POST(request: Request) {
       ip,
     });
   }
+
+  // Not counted against the install's own allowance: that is the manager's, per file, and a
+  // player may follow several links in an hour. The IP's allowance above still bounds it.
+  const installId = installIdFrom(body.installId);
+  const hit = installId && state?.kind === "known" ? await hitFrom(submission, state.lineId) : null;
+  if (installId && hit) await recordMissingAudio(installId, [hit]);
 
   // After the write, and unconditionally: the hit is what the limiter counts, and an identical
   // paste that only bumped a count is still a paste.

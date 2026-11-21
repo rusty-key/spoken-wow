@@ -14,14 +14,17 @@ import "server-only";
 
 import { query } from "@/lib/db";
 import type { LiveRecording } from "@/lib/recordings/live";
-import { memoByLang } from "@/lib/memo";
+import { memoByLang, memoByTeamLang } from "@/lib/memo";
 import { nameStamp, versionStamp } from "@/lib/stamp";
 import { loadDirtyContext, NO_DIRT, type DirtyContext } from "@/lib/generation/dirty";
 import { BASE_LANG, type Lang } from "@/lib/lang";
 
 import { corpusRows, currentLore } from "./lore";
 import { madeByOf, type MadeBy } from "@/lib/takes/made-by";
-import { liveTakes } from "@/lib/takes/store";
+import { liveTakes, teamLiveTakes, type PublicTake } from "@/lib/takes/store";
+import { readAs, type TeamId } from "@/lib/teams/store";
+import { readTextOverrides, stampsWithOverrides, viewOf } from "@/lib/text-overrides/store";
+import type { OverrideView } from "@/lib/text-overrides/types";
 import {
   assignFiles,
   loadPronunciation,
@@ -61,6 +64,8 @@ export type CorpusEntry = {
   english?: string;
   /** The English name of the place, likewise. */
   englishName?: string;
+  /** The acting team's rewrite of `full`, which `spoken` and `hash` then follow. */
+  override?: OverrideView;
 };
 
 /**
@@ -185,22 +190,27 @@ export function isCorpusEmpty(error: unknown): boolean {
  * and a deploy restarts the process.
  *
  */
+const baseKey = Symbol.for("spoken.places-base.by-lang");
 const catalogueKey = Symbol.for("spoken.places-catalogue.by-lang");
 const byPathKey = Symbol.for("spoken.places-by-path.by-lang");
 
 /** What one language's lore rows are, as one comparable value. See the note above. */
 async function stampOf(lang: Lang = BASE_LANG): Promise<string> {
+  const { sql, params } = stampSql(lang);
+  const rows = await query<{ stamp: string }>(`select ${sql} as "stamp"`, params);
+  return rows[0]?.stamp ?? "";
+}
+
+function stampSql(lang: Lang): { sql: string; params: unknown[] } {
   const english = versionStamp("lore_line", `"lang" = '${BASE_LANG}'`);
   // Another language is read over the English lines and names its places in entity_name, so
   // its memo moves with either of those as well as with its own prose: one statement.
-  const rows = await query<{ stamp: string }>(
-    lang === BASE_LANG
-      ? `select ${english} as "stamp"`
-      : `select ${english} || '|' || ${versionStamp("lore_line", `"lang" = $1`)} || '|' ||
-                ${nameStamp(["zone", "subzone"])} as "stamp"`,
-    lang === BASE_LANG ? [] : [lang],
-  );
-  return rows[0]?.stamp ?? "";
+  if (lang === BASE_LANG) return { sql: english, params: [] };
+  return {
+    sql: `(${english} || '|' || ${versionStamp("lore_line", `"lang" = $1`)} || '|' ||
+           ${nameStamp(["zone", "subzone"])})`,
+    params: [lang],
+  };
 }
 
 /**
@@ -252,7 +262,7 @@ async function buildCorpus(lang: Lang): Promise<CorpusEntry[]> {
  */
 async function buildTranslated(lang: Lang): Promise<CorpusEntry[]> {
   const [english, own, names] = await Promise.all([
-    catalogue(BASE_LANG),
+    baseCatalogue(BASE_LANG),
     currentLore(lang),
     query<{ entityId: string; name: string }>(
       `select "entityId", "name" from "entity_name"
@@ -286,8 +296,60 @@ async function buildTranslated(lang: Lang): Promise<CorpusEntry[]> {
   });
 }
 
+/**
+ * Every line as its original text says it, the same for every team of the language: built from
+ * shared tables alone, so it is memoised per language and teams share the build.
+ */
+export async function baseCatalogue(lang: Lang): Promise<CatalogueEntry[]> {
+  return baseAt(lang, await stampOf(lang));
+}
+
+function baseAt(lang: Lang, stamp: string): Promise<CatalogueEntry[]> {
+  return memoByLang(baseKey, lang, stamp, () => buildCorpus(lang));
+}
+
+/**
+ * The base with the acting team's overrides laid on: an overridden line speaks, and is judged
+ * stale against, its override. A team with none gets the base itself.
+ */
 export async function catalogue(lang: Lang = BASE_LANG): Promise<CatalogueEntry[]> {
-  return memoByLang(catalogueKey, lang, await stampOf(lang), () => buildCorpus(lang));
+  const stamps = await stampsWithOverrides("places", lang, stampSql(lang));
+  return memoByTeamLang(catalogueKey, lang, `${stamps.stamp}|${stamps.overrides}`, () => overlay(lang, stamps));
+}
+
+async function overlay(lang: Lang, stamps: { stamp: string; overrides: string }): Promise<CatalogueEntry[]> {
+  const [base, overrides] = await Promise.all([
+    baseAt(lang, stamps.stamp),
+    readTextOverrides("places", lang, stamps.overrides),
+  ]);
+  if (overrides.size === 0) return base;
+  const rules = await overrideRules(lang);
+  return base.map((entry) => {
+    const override = overrides.get(entry.id);
+    const said = override && spokenOverride(entry, override.text, rules);
+    return said ? { ...entry, ...said, override: viewOf(override, entry.full) } : entry;
+  });
+}
+
+function overrideRules(lang: Lang): Promise<Record<string, string>> {
+  return lang === BASE_LANG ? loadPronunciation() : Promise.resolve({});
+}
+
+function spokenOverride(
+  entry: CatalogueEntry,
+  text: string,
+  rules: Record<string, string>,
+): { spoken: string; hash: string } | undefined {
+  // A line with no text of its own has nothing for an override to stand on.
+  if (entry.missing?.text) return undefined;
+  const spoken = toSpokenText(text, rules);
+  return { spoken, hash: textHash(spoken) };
+}
+
+/** The hash the overlay gives a line speaking `text` as its override, null where it ignores one. */
+export async function overrideSpokenHash(lang: Lang, lineId: string, text: string): Promise<string | null> {
+  const entry = (await baseCatalogue(lang)).find((e) => e.id === lineId);
+  return (entry && spokenOverride(entry, text, await overrideRules(lang))?.hash) ?? null;
 }
 
 /**
@@ -311,10 +373,10 @@ export { stampOf as catalogueStamp };
  *
  * Memoised like catalogue() and addressableFiles(), and for the same reason.
  */
-async function linesByPath(lang: Lang): Promise<Map<string, CatalogueEntry>> {
+export async function linesByPath(lang: Lang = BASE_LANG): Promise<Map<string, CatalogueEntry>> {
   // Keyed on the catalogue it was built from, so it rebuilds exactly when that does and
   // asks the database nothing of its own.
-  const entries = await catalogue(lang);
+  const entries = await baseCatalogue(lang);
   return memoByLang(byPathKey, lang, entries, () => new Map(entries.map((e) => [e.file, e])));
 }
 
@@ -327,25 +389,46 @@ export async function lineByPath(
   return (await linesByPath(lang)).get(`${mapID}/${slug}`);
 }
 
+/** lineByPath in the acting team's catalogue, for a page that shows what the team's take says. */
+export async function teamLineByPath(
+  mapID: number,
+  slug: string,
+  lang: Lang = BASE_LANG,
+): Promise<CatalogueEntry | undefined> {
+  if (!Number.isInteger(mapID)) return undefined;
+  const path = `${mapID}/${slug}`;
+  return (await catalogue(lang)).find((e) => e.file === path);
+}
+
 /** `seesMadeBy`: whether the viewer works in the language. See SearchContext.madeBy. */
 export async function loadContext(
   lang: Lang = BASE_LANG,
   seesMadeBy = false,
 ): Promise<SearchContext> {
+  return sectionContext("places", lang, seesMadeBy);
+}
+
+/** The same context for any section whose lines are one file each, keyed by line id. */
+export async function sectionContext(
+  source: "places" | "bosses",
+  lang: Lang,
+  seesMadeBy: boolean,
+): Promise<SearchContext> {
   const [takeRows, reportRows, dirt] = await Promise.all([
-    liveTakes("places", lang),
+    liveTakes(source, lang),
     // Grouped in the database rather than counted here: the resolved rows are the ones
     // that accumulate, and there is no reason to carry them across the wire to drop them.
     // `lineId is not null` excludes a report about the project, which belongs to no line.
-    query<{ lineId: string; open: number }>(
+    readAs<{ lineId: string; open: number }>(
+      lang,
       `select "lineId", count(*)::int as "open"
          from "report"
-        where "source" = 'places' and "status" = 'open' and "lineId" is not null
+        where "source" = $2 and "status" = 'open' and "lineId" is not null
           and "lang" = $1
         group by "lineId"`,
-      [lang],
+      [lang, source],
     ),
-    loadDirtyContext("places", lang),
+    loadDirtyContext(source, lang),
   ]);
 
   return {
@@ -373,6 +456,33 @@ export async function loadContext(
   };
 }
 
+/** Another team's live take as a row shows it: what plays and when, nothing of its making. */
+function publicTake(row: PublicTake): Take {
+  return {
+    version: row.version,
+    file: row.file,
+    textHash: row.spokenHash ?? "",
+    chars: row.characters ?? 0,
+    credits: null,
+    durationSec: row.durationSec,
+    bytes: row.bytes,
+    modelId: null,
+    voiceId: null,
+    generatedAt: row.createdAt.toISOString(),
+    takes: 1,
+  };
+}
+
+/** `team`'s live takes, and none of its other rows: no reports, dirt, made-by or recordings. */
+export async function publicContext(
+  source: "places" | "bosses" | "readables",
+  lang: Lang,
+  team: TeamId,
+): Promise<SearchContext> {
+  const rows = await teamLiveTakes(team, source, lang);
+  return { ...EMPTY_CONTEXT, takes: new Map(rows.map((row) => [row.lineId, publicTake(row)])) };
+}
+
 /**
  * Whether a lineId names something that exists.
  *
@@ -381,7 +491,7 @@ export async function loadContext(
  * from outside calls it.
  */
 export async function isKnownLine(lineId: string): Promise<boolean> {
-  const entries = await catalogue();
+  const entries = await baseCatalogue(BASE_LANG);
   return entries.some((entry) => entry.id === lineId);
 }
 
@@ -389,7 +499,7 @@ export async function isKnownLine(lineId: string): Promise<boolean> {
 export type ZoneFacet = { mapID: number; name: string; lines: number };
 
 export async function zoneFacets(lang: Lang = BASE_LANG): Promise<ZoneFacet[]> {
-  const entries = await catalogue(lang);
+  const entries = await baseCatalogue(lang);
   const counts = new Map<number, ZoneFacet>();
 
   for (const entry of entries) {

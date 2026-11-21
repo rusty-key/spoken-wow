@@ -15,9 +15,10 @@ import "server-only";
 
 import type { PoolClient } from "pg";
 
-import { db } from "@/lib/db";
+import { ALL_TEAMS, withTeam } from "@/lib/db";
 import type { Lang } from "@/lib/lang";
 import type { Source } from "@/lib/sections";
+import { freshOwners, readAs, type TeamId } from "@/lib/teams/store";
 
 import { FOLDS, prefixesOf, type ActivityDetail, type ActivityKind, type Category, type Group } from "./kinds";
 
@@ -31,12 +32,21 @@ export type ActivityEvent<K extends ActivityKind = ActivityKind> = {
   subject?: string | null;
   lineId?: string | null;
   detail: ActivityDetail[K];
+  /**
+   * The team the act is filed under. Undefined is the team whoever is acting works in; null, and
+   * an act by somebody in no team of it, is filed under none.
+   */
+  team?: TeamId | null;
 };
 
-const INSERT = `insert into "activity" ("lang", "kind", "source", "subject", "lineId", "detail", "actorId")
-                select "lang", "kind", "source", "subject", "lineId", coalesce("detail", '{}'), "actorId"
+/**
+ * "teamId" comes from each row, not the column default: one call can carry acts in several
+ * languages, and an act on every language belongs to no team.
+ */
+const INSERT = `insert into "activity" ("lang", "kind", "source", "subject", "lineId", "detail", "actorId", "teamId")
+                select "lang", "kind", "source", "subject", "lineId", coalesce("detail", '{}'), "actorId", "teamId"
                   from jsonb_to_recordset($1::jsonb) as r("lang" text, "kind" text, "source" text,
-                       "subject" text, "lineId" text, "detail" jsonb, "actorId" text)`;
+                       "subject" text, "lineId" text, "detail" jsonb, "actorId" text, "teamId" uuid)`;
 
 /** Record one act, as part of `client`'s transaction when given. */
 export async function recordActivity<K extends ActivityKind>(
@@ -55,7 +65,22 @@ export async function recordActivities(
   client?: Pick<PoolClient, "query">,
 ): Promise<void> {
   if (!events.length) return;
-  const rows = JSON.stringify(
+  if (client) {
+    await client.query(INSERT, [rowsOf(events, await freshOwners(events.map((event) => event.lang)))]);
+    return;
+  }
+  try {
+    // As no one team: every row names its own.
+    const rows = rowsOf(events, await freshOwners(events.map((event) => event.lang)));
+    await withTeam(ALL_TEAMS, (scoped) => scoped.query(INSERT, [rows]));
+  } catch (error) {
+    console.error(`activity: could not record ${events.length} ${events[0].kind}`, error);
+  }
+}
+
+/** An act in a language the actor works in no team of has no team to file under, so it is kept with none. */
+function rowsOf(events: ActivityEvent[], owners: Map<Lang, TeamId>): string {
+  return JSON.stringify(
     events.map((event) => ({
       lang: event.lang,
       kind: event.kind,
@@ -64,17 +89,9 @@ export async function recordActivities(
       lineId: event.lineId ?? null,
       detail: event.detail,
       actorId: event.actorId,
+      teamId: event.team !== undefined ? event.team : (event.lang && owners.get(event.lang)) || null,
     })),
   );
-  if (client) {
-    await client.query(INSERT, [rows]);
-    return;
-  }
-  try {
-    await db().query(INSERT, [rows]);
-  } catch (error) {
-    console.error(`activity: could not record ${events.length} ${events[0].kind}`, error);
-  }
 }
 
 export type ActivityRow = {
@@ -126,9 +143,21 @@ export type ActivityFilter = {
   to?: string;
   before?: Cursor;
   limit?: number;
-  /** Whether the viewer is a global admin, the only one who sees account events (user.*). */
+  /** Whether the viewer is a global admin, the only one who sees GLOBAL_ONLY_PREFIXES' events. */
   global?: boolean;
 };
+
+/**
+ * Kinds of every language's that only a global admin reads: account events, community packs,
+ * whose moderation page a team admin cannot open, and team requests, which are logged without a
+ * language and must not leak a pending request into a language team's log. A team admin shown
+ * them would read rejection reasons and owner hand-overs that are not theirs, and follow links
+ * that 404.
+ */
+const GLOBAL_ONLY_PREFIXES = ["user.", "pack.", "request."];
+
+/** SQL true when alias `a`'s row is one a viewer who is not a global admin may see. */
+const NOT_GLOBAL_ONLY = GLOBAL_ONLY_PREFIXES.map((prefix) => `a."kind" not like '${prefix}%'`).join(" and ");
 
 const COLUMNS = `a."id"::text as "id", a."at", a."lang", a."kind", a."source", a."subject",
                  a."lineId", a."detail", a."actorId", u."name" as "actorName",
@@ -198,7 +227,7 @@ export async function listActivity(
   const where = [`not (${FOLDED})`];
   const { values, param } = params(filter.lang);
 
-  if (!filter.global) where.push(`a."kind" not like 'user.%'`);
+  if (!filter.global) where.push(NOT_GLOBAL_ONLY);
   if (filter.category) {
     where.push(`split_part(a."kind", '.', 1) = any(${param(prefixesOf(filter.category))}::text[])`);
   }
@@ -237,17 +266,30 @@ export async function listActivity(
        limit ${n})`;
 
   // A batch's count is of the takes in the range, so that it matches what opening it lists.
-  const { rows } = await db().query<Row>(
-    `select ${COLUMNS},
-            case when a."kind" = 'batch.queued' then (
-              select count(*)::int from "activity" t
-               where t."kind" = 'take.generated' and t."detail"->>'batchId' = a."detail"->>'batchId'
-                 ${from || to ? `and ${cut("t")}` : ""}
-            ) end as "takes"
-       from (${branch(`a."lang" = $1`)} union all ${branch(`a."lang" is null`)}) a
+  // Counted for the whole page at once, on the language's index from the oldest batch on: a
+  // batch's takes are in its language and cut after it was queued. Under the team policy the
+  // batch index is never used, and a count per batch read the whole log once for each.
+  const rows = await readAs<Row>(
+    filter.lang,
+    `with "page" as (
+       select * from (${branch(`a."lang" = $1`)} union all ${branch(`a."lang" is null`)}) a
+        order by a."at" desc, a."id" desc
+        limit ${n}
+     ), "batches" as (
+       select t."detail"->>'batchId' as "batchId", count(*)::int as "takes"
+         from "activity" t
+        where t."kind" = 'take.generated' and t."lang" = $1
+          and t."at" >= (select min(p."at") from "page" p where p."kind" = 'batch.queued')
+          and t."detail"->>'batchId' in (select p."detail"->>'batchId' from "page" p where p."kind" = 'batch.queued')
+          ${from || to ? `and ${cut("t")}` : ""}
+        group by 1
+     )
+     select ${COLUMNS},
+            case when a."kind" = 'batch.queued' then coalesce(b."takes", 0) end as "takes"
+       from "page" a
+       left join "batches" b on a."kind" = 'batch.queued' and b."batchId" = a."detail"->>'batchId'
        ${JOINS}
-      order by a."at" desc, a."id" desc
-      limit ${n}`,
+      order by a."at" desc, a."id" desc`,
     values,
   );
 
@@ -275,7 +317,8 @@ export async function groupRows(
   const where = [`a."lang" = $1`, `a."kind" = $2`, `a."detail"->>'${key}' = $3`];
   const { cut } = dayRange(param, range);
   if (range.from || range.to) where.push(cut("a"));
-  const { rows } = await db().query<Row>(
+  const rows = await readAs<Row>(
+    lang,
     `select ${COLUMNS}
        from "activity" a
        ${JOINS}
@@ -288,22 +331,22 @@ export async function groupRows(
 
 /**
  * Everybody who has done anything in a language, for the person filter. Without `global`,
- * not somebody whose only acts were on accounts: listing them would say an event exists
- * that this viewer is not shown.
+ * not somebody whose only acts were on accounts or packs: listing them would say an event
+ * exists that this viewer is not shown.
  */
 export async function activityActors(
   lang: Lang,
   global = false,
 ): Promise<{ id: string; name: string }[]> {
-  const { rows } = await db().query<{ id: string; name: string }>(
+  return readAs<{ id: string; name: string }>(
+    lang,
     `select u."id", u."name" from "user" u
       where exists (select 1 from "activity" a
                      where a."actorId" = u."id" and (a."lang" = $1 or a."lang" is null)
-                       and ($2 or a."kind" not like 'user.%'))
+                       and ($2 or (${NOT_GLOBAL_ONLY})))
       order by u."name"`,
     [lang, global],
   );
-  return rows;
 }
 
 function serialise(row: Row): ActivityRow {

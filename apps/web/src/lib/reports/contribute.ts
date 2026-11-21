@@ -2,9 +2,9 @@
  * A report's text as a contribution: what the reporter's addon sent with the report (its
  * context), handled as the same text sent from /contribute would be.
  *
- * The context is the contribute envelope with its checksum and fences dropped, so it is written
- * back out (formatEnvelope) and goes through the contribute route's own submission and the
- * contributions page's own accepts. Which accept is the corpus's answer, as it is for a stored
+ * The context is the contribute envelope with its checksum and fences dropped, and goes through
+ * the contribute route's own submission, which writes it back out, and the contributions page's
+ * own accepts. Which accept is the corpus's answer, as it is for a stored
  * row (known.ts): a moment or greeting the corpus lacks is a contribution, accepted as the
  * contributions tab accepts one (accept.ts); a moment it has with other text is a correction,
  * accepted as the corrections tab does (correction.ts) -- as a fix of one of the moment's
@@ -24,17 +24,17 @@
 import "server-only";
 
 import { resolveContribution } from "@/lib/contributions/accept";
-import { closeness, readable, sameLine } from "@/lib/contributions/compare";
+import { readable } from "@/lib/contributions/compare";
 import type { ContributionStatus, Submission } from "@/lib/contributions/contributions";
 import { acceptAsWording, acceptCorrection, type WordingPick } from "@/lib/contributions/correction";
-import { formatEnvelope } from "@/lib/contributions/envelope";
+import { isEnvelopeSource } from "@/lib/contributions/envelope";
 import { storeSubmission } from "@/lib/contributions/intake";
-import { lineStates, oneLineEach, type LineState } from "@/lib/contributions/known";
+import { lineStates, stateOfMoment, type LineState } from "@/lib/contributions/known";
 import { wordingsOfMomentSql } from "@/lib/contributions/naming";
 import { contributionByDedup, type Contribution } from "@/lib/contributions/store";
 import { submissionFrom } from "@/lib/contributions/submission";
-import { db } from "@/lib/db";
-import { BASE_LANG } from "@/lib/lang";
+import { query } from "@/lib/db";
+import type { Lang } from "@/lib/lang";
 
 import type { Report } from "./reports";
 import { setStatus } from "./store";
@@ -67,12 +67,13 @@ export type ContributeOutcome =
 /** The submission a report's context makes, or why it makes none. */
 export function reportSubmission(report: Report): Submission | string {
   const { context } = report;
-  if (report.source === "places" || !context?.text?.trim()) {
+  const { source } = report;
+  if (source === "places" || !isEnvelopeSource(source) || !context?.text?.trim()) {
     return "This report carries no text from the game.";
   }
-  const envelope = { source: report.source, fields: context.fields, text: context.text };
+  const envelope = { source, fields: context.fields, text: context.text };
   return (
-    submissionFrom(envelope, formatEnvelope(envelope), report.body) ??
+    submissionFrom(envelope, report.body) ??
     "The addon did not say which line this text is."
   );
 }
@@ -101,6 +102,8 @@ export async function reportContribution(submission: Submission): Promise<Report
  */
 export async function contributeReport(
   report: Report,
+  // The report's own, from reportPlace: the submission's locale may be another.
+  lang: Lang,
   submission: Submission,
   userId: string,
   accept: CorrectionAccept = {},
@@ -135,34 +138,27 @@ export async function contributeReport(
     };
   }
 
-  const fixed = await setStatus(report.id, "fixed", userId);
+  const fixed = await setStatus(report.id, "fixed", userId, lang);
   if (!fixed) return { ok: false, reason: "not-found" };
   return { ok: true, report: fixed, contribution: outcome.contribution };
 }
 
 /**
  * The report's text against the corpus: known.ts's answer, except that a quest moment's wordings
- * are compared on what they speak -- the English override where one is set, else the line's own
- * text -- in the order and shape known.ts lists them.
+ * are compared on their text rather than what they print. Never on a team's override: a correction
+ * changes the original, which the override sits above.
  */
 async function reportState(submission: Submission): Promise<LineState> {
   const [state] = await lineStates([submission]);
   const { quest, event } = submission.meta;
   if (state.kind === "missing" || submission.source !== "quests" || !quest || !event || !submission.text) return state;
 
-  const { rows } = await db().query<{ lineId: string; variant: number; text: string }>(
-    `select l."lineId", l."variant", coalesce(o."text", l."text") as "text"
-       from "quest_line" l
-       left join "line_override" o on o."lineId" = l."lineId" and l."lang" = $3
-      where l."lang" = $2 and l."isCurrent" and ${wordingsOfMomentSql(`l."questId"`, `l."source"`, "$1")}
-      order by l."lineId" ~ ':w[0-9]+(:[mf])?$', l."lineId", l."variant"`,
-    [`q:${quest}:${event}`, submission.locale, BASE_LANG],
+  const rows = await query<{ lineId: string; variant: number; text: string }>(
+    `select "lineId", "variant", "text"
+       from "quest_line"
+      where "lang" = $2 and "isCurrent" and ${wordingsOfMomentSql(`"questId"`, `"source"`, "$1")}
+      order by "lineId" ~ ':w[0-9]+(:[mf])?$', "lineId", "variant"`,
+    [`q:${quest}:${event}`, submission.locale],
   );
-  const text = submission.text;
-  if (rows.length === 0) return state;
-  const same = rows.find((row) => sameLine(row.text, text));
-  if (same) return { kind: "known", lineId: same.lineId };
-  const wordings = oneLineEach(rows);
-  const scores = wordings.map((line) => closeness(line.text, text));
-  return { kind: "changed", wordings, closest: scores.indexOf(Math.max(...scores)) };
+  return rows.length === 0 ? state : stateOfMoment(rows, submission.text);
 }

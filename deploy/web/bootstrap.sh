@@ -4,9 +4,10 @@
 #
 #   sudo bash deploy/web/bootstrap.sh
 #
-# Adds a directory tree, a database and a database role. It installs no Node, no pm2, no
-# nginx and no firewall rule, and it touches neither /srv/voiceover nor /srv/zonelore --
-# which keep serving until the cutover and stay whole afterwards as the rollback.
+# Adds a directory tree, a database and two database roles, the owner and the app's. It
+# installs no Node, no pm2, no nginx and no firewall rule, and it touches neither
+# /srv/voiceover nor /srv/zonelore -- which keep serving until the cutover and stay whole
+# afterwards as the rollback.
 #
 # It does NOT write shared/app.env. That holds the secrets, one of which has to be copied
 # from the zones deployment by hand; deploy/web/README.md has the block to paste.
@@ -15,6 +16,7 @@ set -euo pipefail
 ROOT=/srv/spoken
 DB_USER=spoken
 DB_NAME=spoken
+APP_USER=spoken_app
 
 id deploy >/dev/null 2>&1 || {
   echo "bootstrap: there is no 'deploy' user. The two existing sites run as one; this uses the same." >&2
@@ -70,6 +72,24 @@ else
   echo "    role $DB_USER already exists; its password is whatever app.env already says"
 fi
 
+# The owner reads every team's rows for migrations, backups and pack builds, and the tables force
+# row-level security on it, so it needs BYPASSRLS. Only a superuser can grant that; 0090 refuses
+# to run without it.
+sudo -u postgres psql -q -c "alter role $DB_USER bypassrls"
+
+# The role the app logs in as, which row-level security binds. Made here because making a role
+# needs CREATEROLE, which the owner lacks; 0090 grants it what it may touch.
+if ! sudo -u postgres psql -tAc "select 1 from pg_roles where rolname = '$APP_USER'" | grep -q 1; then
+  APPPW=$(openssl rand -base64 24 | tr -d '/+=')
+  sudo -u postgres psql -q -c "create role $APP_USER login password '$APPPW'"
+  echo
+  echo "    the app's password, for APP_DATABASE_URL in $ROOT/shared/app.env:"
+  echo "    $APPPW"
+  echo
+else
+  echo "    role $APP_USER already exists; its password is whatever app.env already says"
+fi
+
 if ! sudo -u postgres psql -tAc "select 1 from pg_database where datname = '$DB_NAME'" | grep -q 1; then
   sudo -u postgres createdb -O "$DB_USER" "$DB_NAME"
 else
@@ -97,7 +117,8 @@ cat <<'NEXT'
        /srv/spoken/bin/migrate.sh /srv/spoken/current      (after the first deploy)
 
   4. Get the certificate and install the vhost:
-       certbot certonly --nginx -d spoken.rusty.one
+       certbot certonly --nginx -d spoken.quest -d www.spoken.quest
+       cp deploy/web/nginx-spoken-api.conf /etc/nginx/snippets/spoken-api.conf
        cp deploy/web/nginx-spoken.conf /etc/nginx/sites-available/spoken
        ln -s /etc/nginx/sites-available/spoken /etc/nginx/sites-enabled/
        nginx -t && systemctl reload nginx

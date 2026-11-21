@@ -25,8 +25,8 @@ const argv = process.argv.slice(2);
 const WTF_FOLDERS = [
   argv.includes("--wtf") ? argv[argv.indexOf("--wtf") + 1] : null,
   process.env.SPOKEN_PLACES_WTF,
-  "C:/Program Files (x86)/World of Warcraft/_classic_beta_/WTF/Account",
-  "/Applications/World of Warcraft/_classic_beta_/WTF/Account",
+  "C:/Program Files (x86)/World of Warcraft/_forever_/WTF/Account",
+  "/Applications/World of Warcraft/_forever_/WTF/Account",
   "/Applications/World of Warcraft/_classic_era_/WTF/Account",
 ].filter(Boolean);
 const SAVED = "Spoken_Places.lua";

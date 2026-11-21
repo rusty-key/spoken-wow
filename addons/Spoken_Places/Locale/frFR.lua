@@ -7,7 +7,7 @@
 
 local _, SpokenPlaces = ...
 
-if GetLocale() ~= "frFR" then
+if not Spoken:InterfaceIn("frFR") then
 	return
 end
 
@@ -22,10 +22,12 @@ L.OPT_PLAY_BUTTON = "Lire les récits à voix haute"
 L.OPT_AUTOPLAY = "Lire automatiquement"
 L.OPT_AUTOPLAY_SUB = "Inclure les sous-zones"
 L.OPT_AUTOPLAY_EXPLORED = "Inclure les lieux déjà découverts"
-L.OPT_LANG_RELOAD = "Tapez /reload pour passer à cette langue."
-L.OPT_LANGUAGE = "Langue du texte"
-L.OPT_LANG_AUTO_FMT = "Auto (%1$s)"
-L.OPT_LANG_SET_FMT = "Les récits seront en %1$s après le rechargement de l'interface."
+L.OPT_AUTOPLAY_COMBAT = "Arrêter en entrant en combat"
+L.OPT_AUTOPLAY_EVERY_VISIT = "Lire à chaque visite"
+L.OPT_AUTOPLAY_GAP = "Relire après"
+L.OPT_GAP_1D = "1 jour"
+L.OPT_GAP_1W = "1 semaine"
+L.OPT_GAP_1MO = "1 mois"
 L.OPT_LANG_PROFILE_FMT = "Ce profil lit les récits en %1$s. Tapez /reload pour changer."
 L.OPT_REPORT_PROBLEM = "Signaler un problème"
 L.MENU_LORE_WINDOW = "Ouvrir le Compendium d'Azeroth"
@@ -67,6 +69,7 @@ L.OPT_DEV_DEBUG = "Débogage des Lieux"
 L.OPT_DEV_PREVIEW = "Traductions inachevées"
 L.REASON_VOICE = "Activez l'option Lire les récits à voix haute pour utiliser ceci."
 L.REASON_DISCOVERY = "Activez l'option Lire automatiquement pour utiliser ceci."
+L.REASON_EVERY_VISIT = "Désactivez l'option Lire à chaque visite pour utiliser ceci."
 L.REASON_MAP_PANEL = "Activez l'option Récit à côté de la carte pour utiliser ceci."
 
 -- Voice packs
@@ -80,12 +83,11 @@ L.OPT_FORGET_PLACES_DONE = "La liste des lieux entendus par ce personnage est ef
 
 -- Starting over
 L.OPT_RESET_PAGE_CONFIRM = "Remettre chaque paramètre du module Lieux à sa valeur par défaut ?"
-L.OPT_RELOAD_NOW = "Recharger maintenant"
-L.OPT_LATER = "Plus tard"
 
 -- Lore of Azeroth and Zone Lore
 L.COMPENDIUM_PLACES = "Lieux"
 L.LORE_PANEL_TITLE = "Récit du lieu"
+L.BOSS_LORE_TITLE = "Récit du boss"
 L.MAP_PANEL_EXPAND = "Afficher le récit du lieu"
 L.PANEL_SHOWN = "Récit à côté de la carte : activé"
 L.PANEL_HIDDEN = "Récit à côté de la carte : désactivé"

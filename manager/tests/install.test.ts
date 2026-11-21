@@ -137,6 +137,15 @@ describe('installProduct: success', () => {
     expect(listDir(env.addOns)).toEqual([WORK_DIR, ...product.folders!].sort())
   })
 
+  it('installs a release from before the section was renamed, with its old folder', async () => {
+    const env = await setup()
+    const product = productById('places-audio-deDE')!
+    const zip = await yazlZip([{ name: 'SpokenZonesAudio_deDE/SpokenZonesAudio_deDE.toc', data: toc('x', '2.1.1') }, { name: 'SpokenZonesAudio_deDE/a.ogg', data: 'ogg' }])
+    const result = await installProduct(env.game, product, release('places-audio-deDE', '2.1.1', zip, await serveZip(zip)), ctx(env))
+    expect(result.folders).toEqual(['SpokenZonesAudio_deDE'])
+    expect(listDir(env.addOns)).toEqual([WORK_DIR, 'SpokenZonesAudio_deDE'].sort())
+  })
+
   it('moves a folder from another product to the new owner in the record', async () => {
     const env = await setup()
     const all = productById('quests-audio')!
@@ -337,6 +346,76 @@ describe('installProduct: refusals', () => {
   })
 })
 
+describe('installProduct: second source', () => {
+  async function failing(status: number): Promise<{ url: string; hits: () => number; close: () => Promise<void> }> {
+    let hits = 0
+    const s = await startServer((_req, res) => {
+      hits++
+      res.writeHead(status)
+      res.end()
+    })
+    return { url: `${s.url}/asset.zip`, hits: () => hits, close: () => s.close() }
+  }
+
+  it('fetches from the second source when the first answers 504', async () => {
+    const env = await setup()
+    const zip = await yazlZip(spokenEntries('3.5.0'))
+    const channel = await failing(504)
+    try {
+      const rel = { ...release('spoken', '3.5.0', zip, channel.url), fallbackUrl: await serveZip(zip) }
+      await installProduct(env.game, productById('spoken')!, rel, ctx(env))
+      expect(channel.hits()).toBe(1)
+      expect(fs.existsSync(path.join(env.addOns, 'Spoken', 'Spoken.toc'))).toBe(true)
+    } finally {
+      await channel.close()
+    }
+  })
+
+  it('never uses the second source when the first works', async () => {
+    const env = await setup()
+    const zip = await yazlZip(spokenEntries('3.5.0'))
+    const github = await failing(500)
+    try {
+      const rel = { ...release('spoken', '3.5.0', zip, await serveZip(zip)), fallbackUrl: github.url }
+      await installProduct(env.game, productById('spoken')!, rel, ctx(env))
+      expect(github.hits()).toBe(0)
+    } finally {
+      await github.close()
+    }
+  })
+
+  it('reports the failure when both sources fail', async () => {
+    const env = await setup()
+    const zip = await yazlZip(spokenEntries('3.5.0'))
+    const [channel, github] = await Promise.all([failing(504), failing(503)])
+    try {
+      const rel = { ...release('spoken', '3.5.0', zip, channel.url), fallbackUrl: github.url }
+      const err = await installProduct(env.game, productById('spoken')!, rel, ctx(env)).catch((e) => e)
+      expect(err).toBeInstanceOf(PlainError)
+      expect(err.message).toMatch(/server answered 503/)
+      expect(fs.existsSync(path.join(env.addOns, 'Spoken'))).toBe(false)
+    } finally {
+      await Promise.all([channel.close(), github.close()])
+    }
+  })
+
+  it('does not try the second source after a cancel', async () => {
+    const env = await setup()
+    const zip = await yazlZip(spokenEntries('3.5.0'))
+    const github = await failing(500)
+    try {
+      const controller = new AbortController()
+      controller.abort()
+      const rel = { ...release('spoken', '3.5.0', zip, await serveZip(zip)), fallbackUrl: github.url }
+      const err = await installProduct(env.game, productById('spoken')!, rel, ctx(env, { signal: controller.signal })).catch((e) => e)
+      expect(isAbortError(err)).toBe(true)
+      expect(github.hits()).toBe(0)
+    } finally {
+      await github.close()
+    }
+  })
+})
+
 describe('installProduct: rollback', () => {
   it('puts every folder back when the second folder cannot be moved in', async () => {
     const env = await setup()
@@ -534,6 +613,14 @@ describe('installProduct: folders no longer in the zip', () => {
     const result = await installFolders(env, '3.6.0', ['Spoken'])
     expect(result.removed.sort()).toEqual(['Spoken_Quests', 'Spoken_Readables'])
     expect(result.message).toMatch(/^Removed the old Spoken_Quests and Spoken_Readables folders\. /)
+  })
+
+  it('removes Spoken_NPCs once Spoken_Bosses replaces it', async () => {
+    const env = await setup()
+    await installFolders(env, '3.6.0', ['Spoken', 'Spoken_NPCs'])
+    const result = await installFolders(env, '3.7.0', ['Spoken', 'Spoken_Bosses'])
+    expect(result.removed).toEqual(['Spoken_NPCs'])
+    expect(listDir(env.addOns)).toEqual([WORK_DIR, 'Spoken', 'Spoken_Bosses'].sort())
   })
 
   it('leaves a linked old folder alone', async () => {

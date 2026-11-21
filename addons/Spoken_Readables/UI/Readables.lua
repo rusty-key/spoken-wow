@@ -67,6 +67,7 @@ local TYPE_ICONS = {
 local function TypeIcon(type)
 	return { objectOrItem = true, icon = [[Interface\Icons\]] .. (TYPE_ICONS[type] or TYPE_ICONS.other), bullet = "book" }
 end
+local READABLES_ICON = { objectOrItem = true, icon = C.ICON, bullet = "book" }
 local filter = ""
 
 --------------------------------------------------------------------------------
@@ -81,14 +82,14 @@ end
 -- Each readable's title for the rows being built: they are asked for it while sorting and for
 -- every keystroke of a search, and on another language's client each answer walks the packs.
 local titles = {}
--- In this client's language where Spoken has it, as the page's words are.
+-- In the Text Language where Spoken has it, as the page's words are.
 local function Title(id)
 	local title = titles[id]
 	if title then return title end
 	local book = Books()[id]
 	if not book then return tostring(id) end
-	local client = SpokenReadables:GetClientLanguage()
-	title = client ~= SpokenReadables.BASE_LANGUAGE and SpokenReadables:TitleIn(id, book.pages[1], client)
+	local language = SpokenReadables:GetTextLanguage()
+	title = language ~= SpokenReadables.BASE_LANGUAGE and SpokenReadables:TitleIn(id, book.pages[1], language)
 		or book.title or tostring(id)
 	titles[id] = title
 	return title
@@ -401,11 +402,13 @@ local function AsLeft(named, build)
 end
 
 -- each(text) for every page of a readable that has words, in order, until it returns true. A page
--- is in this client's language where Spoken has its words, else in the corpus's English.
+-- is in the Text Language where Spoken has its words, else in the corpus's English. A pack's
+-- words come first in English too, so the page reads what Play says.
 local function EachText(id, each)
 	local data = SpokenReadables:Data()
 	for _, pageId in ipairs(Books()[id].pages) do
-		local text = SpokenReadables:ClientPageText(pageId) or (data.pages[pageId] and data.pages[pageId].text)
+		local text = SpokenReadables:PackPageText(pageId, SpokenReadables:GetTextLanguage())
+			or SpokenReadables:TextLanguagePageText(pageId) or (data.pages[pageId] and data.pages[pageId].text)
 		if text and text ~= "" and each(text) then return true end
 	end
 	return false
@@ -849,7 +852,7 @@ end
 local function ShowEntry()
 	if not page then return end
 	if not selection then
-		page:Show({ title = L.COMPENDIUM_READABLES, subtitle = Count(Tally(Index().all)) })
+		page:Show({ title = L.COMPENDIUM_READABLES, subtitle = Count(Tally(Index().all)), icon = READABLES_ICON })
 		return
 	end
 	if selection.book then

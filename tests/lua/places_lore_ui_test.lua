@@ -56,6 +56,8 @@ _G.CreateFrame = function(kind, name, parent, template)
         frame.MinimizeButton, frame.MaximizeButton = createFrame("Button", nil, frame), createFrame("Button", nil, frame)
         frame:SetSize(28, 28)
         maxMin = frame
+    elseif template == "DefaultPanelFlatTemplate" then
+        function frame:SetTitle(text) self.title = text end
     end
     frame.template = template
     -- A colour painted on a texture, kept to be read back: a page with no art is one.
@@ -144,7 +146,7 @@ Z.PlaceAbove = audio.PlaceAbove
 local dressScrollBar = SpokenLayout.dressScrollBar
 dofile(here .. "/../../addons/Spoken/UI/Layout.lua")
 SpokenLayout.dressScrollBar = dressScrollBar
-for _, file in ipairs({ "UI/LorePage", "UI/LoreWindow", "UI/MapPanel" }) do
+for _, file in ipairs({ "UI/LorePage", "UI/LoreWindow", "UI/OpenMap", "UI/MapPanel" }) do
     assert(loadfile(PLACES .. file .. ".lua"))("Spoken_Places", Z)
 end
 
@@ -202,6 +204,12 @@ _G.SpokenCompendium:Hide()
 Z:ToggleLoreWindow()
 Expect("opening it lands on where the player stands", page.title.text, "Durotar")
 Expect("...the story in the spellbook's ink", page.body.ink and page.body.ink[1], 0.24)
+local noPackWords = Z.PackLoreText
+Z.PackLoreText = function(_, mapID, _, language) return mapID == 1411 and language == Z:GetLanguage() and "Pack words." or nil end
+Z:RefreshLoreWindow()
+Expect("a pack's words in the language read show on the page", page.body.text:GetText(), "Pack words.")
+Z.PackLoreText = noPackWords
+Z:RefreshLoreWindow()
 Expect("...with Play and Report for it", page.target[1] == 1411 and page.play:IsShown() and page.report:IsShown(), true)
 -- Hide Report Buttons is Spoken's; here, a Spoken that answers it, and the redraw its
 -- REPORT_SETTINGS_CHANGED runs.
@@ -289,7 +297,7 @@ Expect("a continent is a banner across the list, its name as it is", RowFor("Kal
     and RowFor("Kalimdor").label.text, "Kalimdor")
 Expect("a zone is a line under it, with no picture or bar", RowFor("Durotar").row.style == "group" and RowFor("Durotar").row.nest, 0)
 Expect("...the places found in it out of all and the share, beside its name", RowFor("Durotar").count.text,
-    "0/3 • 0%")
+    "0/3 · 0%")
 Expect("...greyed with none found", RowFor("Durotar").row.none, true)
 Expect("...its areas rows inside it", RowFor("Valley of Trials").row.leaf and RowFor("Valley of Trials").row.nest, 1)
 
@@ -303,8 +311,6 @@ Expect("...its page with the zone's round portrait left of the title, the zone b
 RowFor("Durotar").scripts.OnClick(RowFor("Durotar"))
 Expect("...and another opens it again", Shown(), "Eastern Kingdoms|Dun Morogh|Kalimdor|Durotar|Orgrimmar|Sen'jin Village|Valley of Trials")
 Expect("...open once more", RowFor("Durotar").row.open, true)
-Expect("...the banner's line beside it solid again, not left fading from when the line ended it",
-    RowFor("Durotar").bannerRail.gradient.from.a, RowFor("Durotar").bannerRail.gradient.to.a)
 RowFor("Valley of Trials").scripts.OnClick(RowFor("Valley of Trials"))
 RowFor("Durotar").scripts.OnClick(RowFor("Durotar"))
 Expect("an area chosen, a click on its zone's line still closes it", Shown(), "Eastern Kingdoms|Dun Morogh|Kalimdor|Durotar")
@@ -318,16 +324,7 @@ Expect("...a line, one level in, as an area is", RowFor("Orgrimmar").row.style =
     RowFor("Valley of Trials").row.nest)
 Expect("...indented under its zone's line, 16 further in",
     RowFor("Orgrimmar").indent - RowFor("Durotar").indent, 16)
-Expect("...with the line down the open zone's contents beside it", RowFor("Orgrimmar").rails[1]:IsShown()
-    and RowFor("Valley of Trials").rails[1]:IsShown(), true)
-Expect("...the line fading out at the last row it runs past, not before", RowFor("Valley of Trials").rails[1].fades
-    and not RowFor("Orgrimmar").rails[1].fades, true)
-Expect("...and the banner's line at the last row under the banner", RowFor("Valley of Trials").bannerRail.fades
-    and not RowFor("Durotar").bannerRail.fades, true)
 Expect("...and with no areas of its own, no numbers on it", RowFor("Orgrimmar").count.text, "")
-Expect("...a line down the left of what a continent's banner holds, as down an open zone's",
-    RowFor("Durotar").bannerRail ~= nil and RowFor("Durotar").bannerRail:IsShown()
-    and RowFor("Kalimdor").bannerRail == nil or not RowFor("Kalimdor").bannerRail:IsShown(), true)
 Expect("...a found area's tick at the end of its row, where a padlock goes", RowFor("Valley of Trials").status.anchor.point,
     "CENTER")
 Expect("...counted with the zone's areas", RowFor("Durotar").count.text:match("/(%d+)"), "3")
@@ -525,12 +522,53 @@ local mapSetAlpha = WorldMapFrame.SetAlpha
 -- The quest log beside the map, shown.
 _G.QuestMapFrame = CreateFrame("Frame", "QuestMapFrame", WorldMapFrame)
 QuestMapFrame:Show()
+-- Era's windowed map shows MiniBorderFrame, with BorderFrame hidden.
+local miniBorder = CreateFrame("Frame", nil, WorldMapFrame)
+local fullBorder = CreateFrame("Frame", nil, WorldMapFrame)
+WorldMapFrame.MiniBorderFrame, WorldMapFrame.BorderFrame = miniBorder, fullBorder
+miniBorder:Show()
+fullBorder:Hide()
 Z:SetupMapPanel()
 local panel = Z.panel
 Expect("the story beside the map wears the quest log's frame", panel ~= nil, true)
 -- The game's movement fader calls the map's SetAlpha every frame; hooked, it raised errors there
 -- on the Forever client.
 Expect("...and leaves the map's SetAlpha unhooked", WorldMapFrame.SetAlpha == mapSetAlpha, true)
+Expect("...and follows Era's visible minimized-map border", panel.anchor.relativeTo, miniBorder)
+-- The panel laid out with the map open, which then closes again.
+local function Relaid()
+    WorldMapFrame:Show()
+    Z:RefreshPanel()
+    WorldMapFrame:Hide()
+end
+-- The remaining layout checks model the older stub map, which has neither named border.
+WorldMapFrame.MiniBorderFrame, WorldMapFrame.BorderFrame = nil, nil
+Relaid()
+Expect("...returns to the default map edge when no alternate map is active", panel.anchor.relativeTo, WorldMapFrame)
+-- Leatrix Maps loaded, its simple frame on. The client has no global IsAddOnLoaded: only Spoken's
+-- environment answers.
+local loadedAddon = _G.IsAddOnLoaded
+WorldMapFrame.ScrollContainer = CreateFrame("Frame", nil, WorldMapFrame)
+_G.LeaMapsDB = { SimpleMapFrame = "On" }
+_G.IsAddOnLoaded = nil
+rawset(SpokenEnv, "IsAddOnLoaded", function(name) return name == "Leatrix_Maps" or loadedAddon(name) end)
+Relaid()
+Expect("on Era, Leatrix's frame is the map's edge", panel.anchor.relativeTo ~= WorldMapFrame, true)
+Expect("...on Era with the panel against the gold border, not stepped back over the game's", panel.anchor.x, 2)
+local variant = SpokenEnv.Version.Variant
+SpokenEnv.Version.Variant = "forever"
+Relaid()
+Expect("Forever selects Leatrix's map edge too", panel.anchor.relativeTo ~= WorldMapFrame, true)
+_G.IsAddOnLoaded, _G.LeaMapsDB = loadedAddon, nil
+rawset(SpokenEnv, "IsAddOnLoaded", nil)
+Relaid()
+Expect("...and without Leatrix keeps the small gap, the default border having no clear edge there",
+    panel.anchor.x, 2)
+SpokenEnv.Version.Variant = variant
+Relaid()
+Expect("on Era without Leatrix, the panel steps back over the default border's clear edge", panel.anchor.x, -10)
+WorldMapFrame.ScrollContainer = nil
+Z:RefreshPanel()
 -- A frame drawn: the OnUpdate of whichever of the panel and its button is shown.
 local function NextFrame()
     for _, frame in ipairs({ panel, _G.SpokenPlacesPanelToggle }) do
@@ -587,6 +625,10 @@ SetCVar("InputDeviceInterfaceStyle", "0")
 Z:RefreshPanel()
 Expect("with the gamepad UI off again, the panel goes back into the map", panel.parent, WorldMapFrame)
 Expect("...and stops reading the map's alpha each frame", panel:GetScript("OnUpdate"), nil)
+-- Under the panel the Forever client draws no 3D model at all, in the map or beside it.
+local body = panel.page.body
+Expect("a boss's model stays in the page, as the Compendium's does", body.model:GetParent(), body.child)
+Expect("...with no stage of its own", panel.stage, nil)
 -- Side tabs hang down the quest log's right edge, the game's own and other addons' alike, with no
 -- name Spoken knows: here two unnamed ones, as Adventure Guide Forever hangs its own, the upper one
 -- reaching 60 past the map's edge and the lower one 50. The map is 300 wide and 100 high.
@@ -616,7 +658,7 @@ Expect("folded, its button goes under the lowest side tab on the map's edge",
     toggle.anchor.relativeTo == guideTab and (toggle.anchor.relativePoint .. " " .. toggle.anchor.y), "BOTTOMLEFT -3")
 Z:SetMapPanelCollapsed(false)
 Expect("...and open, the panel stands clear of the widest, though not of a panel beside the map",
-    panel.anchor.x, 62)
+    panel.anchor.x, 50)
 besidePanel:Hide()
 -- The tabs are the quest log's and go with it. Closing or opening it refreshes nothing else.
 local function CloseQuestLog()
@@ -627,30 +669,30 @@ Z:SetMapPanelCollapsed(true)
 CloseQuestLog()
 Expect("with the quest log closed, the button is back on the map's edge",
     toggle.anchor.relativeTo == WorldMapFrame and toggle.anchor.relativePoint, "TOPRIGHT")
-Expect("...and the panel against the map", panel.anchor.x, 2)
+Expect("...and the panel against the map", panel.anchor.x, -10)
 QuestMapFrame:Show()
 Expect("opening the quest log puts the button back under its tabs", toggle.anchor.relativeTo == guideTab, true)
-Expect("...and the panel past them", panel.anchor.x, 62)
+Expect("...and the panel past them", panel.anchor.x, 50)
 -- The game's own tabs show and hide on their own: switching the gamepad UI off shows them under the
 -- open log, and the log checking its tabs hides them again, neither through the log's show or hide.
 -- Here one hangs lowest of all, reaching 80, and has not been laid out when first seen.
 local gameTab = SideTab(49, 29, 80)
 gameTab.unplaced, gameTab.shown = true, false
 Z:RefreshPanel()
-Expect("a side tab that is not shown moves nothing", panel.anchor.x, 62)
+Expect("a side tab that is not shown moves nothing", panel.anchor.x, 50)
 gameTab.unplaced = nil
 gameTab:Show()
 stub.Advance(0.1)
-Expect("a side tab shown by itself puts the panel past it on the next frame", panel.anchor.x, 82)
+Expect("a side tab shown by itself puts the panel past it on the next frame", panel.anchor.x, 70)
 gameTab.shown = false
 for _, hook in ipairs(gameTab.hooks.OnHide or {}) do hook(gameTab) end
 stub.Advance(0.1)
-Expect("...and hidden again, back past the others", panel.anchor.x, 62)
+Expect("...and hidden again, back past the others", panel.anchor.x, 50)
 -- Made after the quest log opened, by an addon whose hook on it ran after Spoken's.
 local lateTab = SideTab(26, 6, 70)
 lateTab:Show()
 Z:RefreshPanel()
-Expect("a side tab made later is found on the next refresh", panel.anchor.x, 72)
+Expect("a side tab made later is found on the next refresh", panel.anchor.x, 60)
 lateTab:Hide()
 CloseQuestLog()
 Z:SetMapPanelCollapsed(false)
@@ -667,7 +709,7 @@ Expect("...the middle stretched to the bottom-right corner's", border and border
     and border[9].anchor.relativePoint, "TOPLEFT")
 Expect("...and shows the zone the map is on, with its story", mapPage.title.text .. ": " .. mapPage.body.text.text,
     "Durotar: Durotar is a cracked, red land.")
-Expect("...with no round picture by its title, unlike the Compendium's pages", mapPage.headFace == false
+Expect("...with no round picture by its title, unlike the Compendium's pages", mapPage.headFace == nil
     and mapPage.shift, 0)
 Z.selected = { mapID = 1411, areaName = "Valley of Trials", entry = Z.Subzones[1411]["valley of trials"] }
 Z:RefreshPanel()
@@ -677,6 +719,44 @@ mapPage.sub.scripts.OnClick(mapPage.sub)
 Expect("...and the line goes back to the zone's story", mapPage.title.text, "Durotar")
 Expect("a zone's line is Lore of Azeroth's: its continent, and how many areas", mapPage.sub.text.text,
     (Z:PlaceLine(1411)))
+
+-- OpenMap's map follows its view, so its map is Kalimdor while the view still shows Durotar.
+local displayedMap = Z.GetDisplayedMapID
+Z.GetDisplayedMapID = function() return 1414 end
+OpenMapAPI = { major = 1, version = 4, IsStitched = function() return true end }
+Z.selected = { mapID = 1411, areaName = "Valley of Trials", entry = Z.Subzones[1411]["valley of trials"] }
+Z:RefreshPanel()
+Expect("on OpenMap's map an area clicked stays chosen as the map follows the view",
+    mapPage.title.text .. "|" .. mapPage.sub.text.text, "Valley of Trials|" .. Z.L.IN_ZONE_FMT:format("Durotar"))
+Z.selected = { mapID = 1411, areaName = "Valley of Trials", entry = Z.Subzones[1411]["valley of trials"] }
+Z:RefreshPanel()
+mapPage.sub.scripts.OnClick(mapPage.sub)
+Expect("...its line goes back to the zone it is in, though the map is not that zone",
+    Z.selected and Z.selected.mapID == 1411 and mapPage.body.text.text, "Durotar is a cracked, red land.")
+Z:SelectMap(1454)
+Expect("...and a city clicked there tells its own story, though its map is not the one shown",
+    mapPage.body.text.text, "The orcs' city.")
+-- Nothing chosen, zoomed in on Durotar while OpenMap's map is still Kalimdor: Durotar's story.
+local zoom = 6
+OpenMapAPI.GetView = function() return 0.3, 0.6, zoom end
+OpenMapAPI.MapAt = function() return 1411 end
+local isZoneMap = Z.IsZoneMap
+Z.IsZoneMap = function(_, mapID) return mapID == 1411 or mapID == 1454 end
+Z.selected = nil
+Z:RefreshPanel()
+Expect("nothing chosen, the zone at the view's centre, as on Blizzard's zone map", mapPage.body.text.text,
+    "Durotar is a cracked, red land.")
+zoom = 2
+Z:RefreshPanel()
+Expect("...and the continent zoomed out to it", mapPage.body.text.text, "The western continent.")
+Z.IsZoneMap = isZoneMap
+OpenMapAPI = nil
+Z.selected = { mapID = 1411, areaName = "Valley of Trials", entry = Z.Subzones[1411]["valley of trials"] }
+Z:RefreshPanel()
+Expect("without OpenMap, another map drops the area chosen", Z.selected == nil and mapPage.body.text.text,
+    "The western continent.")
+Z.GetDisplayedMapID = displayedMap
+Z:RefreshPanel()
 
 ---------------------------------------------------------------- Lore of Azeroth from the panel
 local opened
@@ -696,6 +776,14 @@ local displayed = Z.GetDisplayedMapID
 Z.GetDisplayedMapID = function() return 9999 end
 Z:RefreshPanel()
 Expect("...and a map with no entry at all offers nothing to open", mapPage.open:IsShown(), false)
+Z.GetDisplayedMapID = function() return 1411 end
+Z:ShowMapStory(1411, { title = "Edwin VanCleef", panelTitle = "Boss Story", text = "Boss story." })
+Expect("a boss opened from a Leatrix map has its own panel title", panel.title, "Boss Story")
+Z.selected = { mapID = 1411, areaName = "Valley of Trials", entry = Z.Subzones[1411]["valley of trials"] }
+Z:RefreshPanel()
+Expect("...and choosing an area on that map replaces the boss's story", mapPage.title.text, "Valley of Trials")
+Expect("...under the panel's own title", panel.title, Z.L.LORE_PANEL_TITLE)
+Z.selected = nil
 Z.Zones[947] = { name = "Azeroth", full = "The world." }
 Z.GetDisplayedMapID = function() return 947 end
 Z:RefreshPanel()
@@ -763,7 +851,7 @@ Expect("...a place found marked with the quest log's gold tick, as a completed q
     RowFor("Valley of Trials").status.shown ~= false and RowFor("Sen'jin Village").status.shown == false, true)
 RowFor("Sen'jin Village").scripts.OnEnter(RowFor("Sen'jin Village"))
 Expect("...not lit under the pointer", RowFor("Sen'jin Village").over, false)
-Expect("...a zone's line its areas found out of all, and the share of them", RowFor("Durotar").count.text, "1/3 • 33%")
+Expect("...a zone's line its areas found out of all, and the share of them", RowFor("Durotar").count.text, "1/3 · 33%")
 Expect("...not greyed with some found", RowFor("Durotar").row.none, false)
 Expect("...a continent's banner the places its zones' cards count, found out of all", RowFor("Kalimdor").count.text, "1/3")
 RowFor("Eastern Kingdoms").scripts.OnClick(RowFor("Eastern Kingdoms"))
@@ -799,7 +887,7 @@ Expect("a place not discovered, opened from elsewhere, says so and to go there t
     "Sen'jin Village: You have not discovered this place yet. Go there to read its story.")
 Expect("...with nothing to play", page.target, nil)
 Shown()
-Expect("...and is not counted found for being chosen", RowFor("Durotar").count.text, "1/3 • 33%")
+Expect("...and is not counted found for being chosen", RowFor("Durotar").count.text, "1/3 · 33%")
 Expect("...still locked in the list", RowFor("Sen'jin Village").row.locked, true)
 Z.selected = { mapID = 1411, areaName = "Sen'jin Village", entry = Z.Subzones[1411]["sen'jin village"] }
 Z:RefreshPanel()
@@ -837,9 +925,15 @@ showAll = true
 Z:RefreshLoreWindow()
 Expect("Unlock Undiscovered Places opens every area", Locked(), "")
 Expect("...the places not found still greyed", Greyed(), "Dun Morogh|Orgrimmar")
-Expect("...the counts still what this character has found", RowFor("Durotar").count.text, "1/3 • 33%")
+Expect("...the counts still what this character has found", RowFor("Durotar").count.text, "1/3 · 33%")
+Z:Set("loreDiscoveredOnly", true)
+Z:RefreshLoreWindow()
+Expect("Unlock Undiscovered Places shows every zone despite Discovered Only", Shown(),
+    "Eastern Kingdoms|Dun Morogh|Kalimdor|Durotar|Orgrimmar|Sen'jin Village|Valley of Trials")
+Z:Set("loreDiscoveredOnly", false)
+Z:RefreshLoreWindow()
 RowFor("Sen'jin Village").scripts.OnClick(RowFor("Sen'jin Village"))
-Expect("...and when a place not found is chosen", RowFor("Durotar").count.text, "1/3 • 33%")
+Expect("...and when a place not found is chosen", RowFor("Durotar").count.text, "1/3 · 33%")
 Expect("...its story told", page.body.text.text, _G.SpokenCompendium.NotWritten())
 RowFor("Dun Morogh").scripts.OnClick(RowFor("Dun Morogh"))
 Expect("...a zone not found tells its story", page.body.text.text, _G.SpokenCompendium.NotWritten())
@@ -848,7 +942,8 @@ RowFor("Dun Morogh").scripts.OnClick(RowFor("Dun Morogh"))
 Z:ShowLoreFor(1411, nil)
 showAll = false
 
--- Discovered Only, in the filter menu beside the search box, leaves the places not found out of it.
+-- Discovered Only, in the filter menu beside the search box, leaves the places not found out of it
+-- when Unlock Undiscovered Places is off.
 local function Only() return stub.OpenDropdown(window.filterMenu)[1] end
 Expect("the filter menu holds Discovered Only, a checkbox", Only().text == Z.L.LORE_DISCOVERED_ONLY and Only().isNotRadio, true)
 Expect("...which is off here, the mock's settings having no default", Only().checked and true or false, false)
@@ -1114,21 +1209,6 @@ do
         .. tostring(banner.label.justifyV) .. " | " .. banner.count.anchor.point .. " " .. banner.count.anchor.y .. " "
         .. tostring(banner.count.justifyV) .. " | " .. banner.toggle.anchor.point .. " " .. banner.toggle.anchor.y,
         "RIGHT>LEFT 0 MIDDLE | RIGHT 0 MIDDLE | LEFT -1.5")
-    -- A line reaches up through the gap above its row, 4 at most (under a banner), to the foot of the
-    -- box above, and no further: inside it, it crossed the box's edge or the group's plus or minus.
-    local railed, reach = 0, 0
-    for _, row in ipairs(rows) do
-        local lines = { row.bannerRail }
-        for _, rail in ipairs(row.rails or {}) do table.insert(lines, rail) end
-        for _, rail in pairs(lines) do
-            if rail:IsShown() then
-                railed = railed + 1
-                reach = math.max(reach, rail.top or 0)
-            end
-        end
-    end
-    Expect("...its tree lines drawn, each from the foot of the box above its row, never into it",
-        tostring(railed > 0) .. " " .. reach, "true 4")
     banner.selected = true
     banner.scripts.OnEnter(banner)
     Expect("...a chosen row lit flat, with the accent edge, no streak",
@@ -1137,9 +1217,9 @@ do
     banner.scripts.OnLeave(banner)
     local search
     for _, child in ipairs(window.children or {}) do if child.template == "SearchBoxTemplate" then search = child end end
-    -- Level with the rows (the list's 6, the scroll frame's 4 and the rows' 3), to the arrow's 26.
+    -- Level with the rows (the list's 6, the scroll frame's 4 and the rows' 6), to the arrow's 26.
     Expect("the search box level with the rows, to the filter menu's arrow, with no tome over its corner",
-        tostring(search.anchor.x) .. " " .. tostring(search:GetWidth()), "13 312")
+        tostring(search.anchor.x) .. " " .. tostring(search:GetWidth()), "16 317")
     _G.SpokenCompendium:Select("places")
     local tab, other
     for i = 1, 6 do
@@ -1376,10 +1456,12 @@ do
     do
         local rows, title = Fonted(NewSession())
         Expect("on a client EllesmereUI's font writes, the list's rows and the window's title are in it", rows .. " " .. title, "all font")
-        local getLocale = _G.GetLocale
+        -- A Russian client, whose interface is Russian on Auto.
+        local getLocale, interface = _G.GetLocale, SpokenEnv.Interface.Language
         _G.GetLocale = function() return "ruRU" end
+        SpokenEnv.Interface.Language = function() return "ruRU" end
         rows, title = Fonted(NewSession())
-        _G.GetLocale = getLocale
+        _G.GetLocale, SpokenEnv.Interface.Language = getLocale, interface
         Expect("...and on one it does not, in the game's font, rows and title alike", rows .. " " .. title, "none plain")
     end
 

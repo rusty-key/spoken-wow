@@ -11,8 +11,8 @@ import { corpus as questCorpus } from "@/lib/quests/catalogue";
 
 /**
  * The three of lib/line-fields.ts's SOURCES that a quest address can name. `gossip` has no
- * quest to hang an id on and travels as an NPC address instead, and so does `followup`,
- * which has a quest but is neither of its dialogs (lib/reports/line-target.ts).
+ * quest to hang an id on and travels as an NPC address instead, and so do `chatter` and
+ * `followup`, which has a quest but is neither of its dialogs (lib/reports/line-target.ts).
  */
 const QUEST_EVENTS = ["accept", "progress", "complete"] as const;
 
@@ -87,4 +87,27 @@ export async function resolveTarget(target: Target, corpus?: Corpus): Promise<Co
   return speakers.length > 0
     ? speakers
     : lines.lines.filter((line) => line.npcType === "gameobject" && line.npcId === target.npcId);
+}
+
+/** Every line an address can mean, once: the report alone cannot say which one was heard. */
+export async function lineIdsOfAddress(raw: string, corpus?: Corpus): Promise<string[]> {
+  const target = parseTarget(raw.split("/"));
+  if (!target) return [];
+  return [...new Set((await resolveTarget(target, corpus)).map((line) => line.lineId))];
+}
+
+/**
+ * Which of an address's lines a report is about: the one the reporter picked, else the one whose
+ * file the addon played, else the only one. Null when several remain and nothing says which.
+ */
+export function pickLine<T extends Pick<CorpusLine, "lineId" | "fileName">>(
+  choices: T[],
+  chosen: string | null,
+  played: string | null,
+): T | null {
+  return (
+    choices.find((candidate) => candidate.lineId === chosen) ??
+    choices.find((candidate) => candidate.fileName === played) ??
+    (choices.length === 1 ? choices[0] : null)
+  );
 }

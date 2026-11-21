@@ -2,27 +2,31 @@
 // the settings and the catalog, and runs jobs.
 import path from 'node:path'
 import { CHANNELS, type AddGameResult, type ClearDownloadsResult, type InstallOptions } from '../shared/api'
-import { isSupportedFlavor, type Catalog, type CommunityCatalog, type GameInstall, type JobProgress, type Product, type ProductStatus, type ReleaseInfo, type Settings, type SharingChoice, type SharingStatus, type Snapshot } from '../shared/types'
-import { PRODUCTS, productById } from '../shared/products'
+import { isSupportedFlavor, type Catalog, type CatalogUpdate, type CommunityCatalog, type GameInstall, type JobProgress, type Product, type ProductStatus, type ReleaseInfo, type SendResult, type Settings, type SharingChoice, type SharingStatus, type Snapshot } from '../shared/types'
+import { installedVoiceProduct, languagesFor, productById, productsFor } from '../shared/products'
 import { compareVersions } from '../shared/version'
 import { buildCatalog, latestFor, loadCatalog, saveCatalog } from './catalog'
 import { COMMUNITY_PREFIX, communityProduct, communityRelease, fetchCommunity, isCommunityProductId, loadCommunity, saveCommunity } from './community'
 import { PlainError } from './errors'
 import { checkDownloadsPath } from './guard'
-import { cleanLeftovers, clearDownloads } from './cleanup'
+import { cleanContributorTmp, cleanLeftovers, clearDownloads } from './cleanup'
+import { ContributorService, NO_SECRET_BOX, withUserAgent } from './contributor'
+import type { SecretBox } from './contributor-store'
 import { addGame, notSupportedMessage, removeGame, scanGames } from './games'
 import { fetchReleases } from './github'
+import { t, setMainLanguage } from './i18n'
 import { installProduct, recoverInterrupted, uninstallProduct, type FsOps, type JobContext } from './install'
-import { JobManager } from './jobs'
+import { JobManager, type JobSpec } from './jobs'
 import { isChannelRelease } from '../shared/channel'
 import { channelRelease, withChannel } from './packs-catalog'
 import { PACKS_BASE_URL } from './packs-key'
 import { estimatePack } from './packs-plan'
-import { fetchIndex, fetchManifest, loadCachedIndex, loadCachedManifest, type ChannelIndex, type ChannelOptions, type ChannelPack } from './packs-remote'
+import { fetchIndex, fetchManifest, loadCachedIndex, loadCachedManifest, type ChannelIndexV2, type ChannelOptions, type ChannelPack } from './packs-remote'
 import { dropPackState, loadPackState } from './packs-state'
+import { normalizeProxy } from './proxy'
 import { syncPacks } from './packs-sync'
-import { loadLedger, resetInstallId, sendPending, type SendResult, type ShareLedger } from './share'
-import { loadSettings, loadState, log, sanitizeSettings, saveSettings } from './state'
+import { loadLedger, resetInstallId, sendPending, type ShareLedger } from './share'
+import { getRecord, loadSettings, loadState, log, sanitizeSettings, saveSettings, type StateFile } from './state'
 import { computeStatuses } from './status'
 
 export interface ServiceOptions {
@@ -47,6 +51,15 @@ export interface ServiceOptions {
   packsTimeoutMs?: number
   /** Replaces the site's contributions address (tests, and SPOKEN_SHARE_URL in a dev build). */
   shareUrl?: string
+  /** Replaces the site's address (tests, and SPOKEN_SITE_URL in a dev build). */
+  siteUrl?: string
+  /** Seals the contributor's tokens and cookie; without one, none can be saved. */
+  secretBox?: SecretBox
+  /** The fetch for the site and the stores, when it must differ from `fetchImpl`. */
+  contributorFetch?: typeof fetch
+  /** Network work outside `jobs` that a proxy change would cut off: the manager's own update. */
+  busyElsewhere?: () => boolean
+  settingsChanged?: (settings: Settings, previous: Settings) => void
 }
 
 /** A catalog fetched less than this long ago is not fetched again unless forced. */
@@ -62,11 +75,17 @@ export class ManagerService {
   settings: Settings
   catalog: Catalog
   readonly jobs: JobManager
+  readonly contributor: ContributorService
   private refreshing: Promise<Catalog> | null = null
+  /** `gameId:productId` of automatic updates cancelled or failed this session; skipped until a check by hand. */
+  private autoSkip = new Set<string>()
+  private refreshingChannel: Promise<void> | null = null
+  /** When the server last gave a verified index; 0 until then. */
+  private channelFetchedAt = 0
   private refreshingCommunity: Promise<CommunityCatalog> | null = null
   community: CommunityCatalog
   /** The channel's index: the last verified one, until a refresh brings a newer one. */
-  channel: ChannelIndex | null = null
+  channel: ChannelIndexV2 | null = null
   /** Settles when the first scan is done; handlers wait for it. Never rejects. */
   ready: Promise<void> = Promise.resolve()
   sharingStatus: SharingStatus
@@ -79,10 +98,22 @@ export class ManagerService {
 
   constructor(private opts: ServiceOptions) {
     this.settings = loadSettings(opts.dataPath)
+    setMainLanguage(this.settings.uiLanguage)
     this.catalog = loadCatalog(opts.dataPath)
     this.community = loadCommunity(opts.dataPath)
     this.channel = loadCachedIndex(opts.dataPath, opts.packsPublicKey)
     this.jobs = new JobManager((p: JobProgress) => opts.send(CHANNELS.jobProgress, p))
+    this.contributor = new ContributorService({
+      dataPath: opts.dataPath,
+      box: opts.secretBox ?? NO_SECRET_BOX,
+      fetchImpl: withUserAgent(opts.contributorFetch ?? opts.fetchImpl ?? fetch, opts.appVersion),
+      ...(opts.siteUrl ? { siteUrl: opts.siteUrl } : {}),
+      jobs: this.jobs,
+      game: (gameId) => this.requireGame(gameId),
+      channel: () => this.channel,
+      refreshChannel: (options) => this.refreshChannel(options),
+      changed: (view) => opts.send(CHANNELS.contributorChanged, view)
+    })
     this.ledger = loadLedger(opts.dataPath)
     this.sharingStatus = { sending: false, ...(this.ledger.lastSent ? { lastSent: this.ledger.lastSent } : {}) }
   }
@@ -105,6 +136,7 @@ export class ManagerService {
           if (failed.length > 0) log(`Could not restore ${failed.join(', ')} on ${game.label}; the backup is kept.`)
         }
         await cleanLeftovers(this.games, this.downloadsPath())
+        await cleanContributorTmp(this.opts.dataPath)
       })
       .then(
         () => undefined,
@@ -117,9 +149,10 @@ export class ManagerService {
     return {
       games: this.games,
       settings: this.settings,
-      catalog: this.catalog,
+      catalog: this.effectiveCatalog(),
       community: this.community,
-      products: PRODUCTS,
+      products: this.products(),
+      languages: languagesFor(this.channel),
       appVersion: this.opts.appVersion,
       dataPath: this.opts.dataPath,
       platform: process.platform === 'darwin' ? 'darwin' : process.platform === 'win32' ? 'win32' : 'linux',
@@ -166,12 +199,17 @@ export class ManagerService {
     if (this.refreshing) return this.refreshing
     if (!force && this.catalog.fetchedAt && !this.catalog.offline) {
       const age = Date.now() - Date.parse(this.catalog.fetchedAt)
-      if (age >= 0 && age < FRESH_MS) return Promise.resolve(this.catalog)
+      if (age >= 0 && age < FRESH_MS) return Promise.resolve(this.effectiveCatalog())
     }
     this.refreshing = this.doRefresh().finally(() => {
       this.refreshing = null
     })
-    return this.refreshing
+    if (!force) return this.refreshing
+    this.autoSkip.clear()
+    return this.refreshing.then(async (catalog) => {
+      await this.autoUpdate()
+      return catalog
+    })
   }
 
   private async doRefresh(): Promise<Catalog> {
@@ -182,9 +220,10 @@ export class ManagerService {
         ...(this.opts.fetchImpl ? { fetchImpl: this.opts.fetchImpl } : {}),
         ...(this.opts.apiBase ? { apiBase: this.opts.apiBase } : {})
       }),
-      fetchIndex(this.opts.dataPath, this.channelOptions())
+      fetchIndex(this.opts.dataPath, this.channelOptions(), () => this.channel)
     ])
-    if (ch.index) this.channel = ch.index
+    if (ch.index) this.takeChannel(ch.index)
+    if (!ch.offline) this.channelFetchedAt = Date.now()
     // When the request failed and nothing was cached, keep what the catalog already held.
     const keepOld = res.offline && res.releases.length === 0
     const next = keepOld
@@ -200,12 +239,44 @@ export class ManagerService {
     } catch (err) {
       log('Could not save the catalog:', err)
     }
-    this.opts.send(CHANNELS.catalogChanged, next)
-    // Warm the manifest cache of installed channel packs so the Update label can be computed offline. The window has
-    // the catalog already; it is told again once a manifest it lacked has arrived, so the label's size can show.
+    // The file keeps GitHub's list alone; the window is offered what can be installed, channel packs too.
+    const offered = this.effectiveCatalog()
+    this.catalogChanged(offered)
+    await this.warmManifests()
+    return offered
+  }
+
+  async autoUpdate(): Promise<void> {
+    if (!this.settings.autoUpdateContent) return
+    try {
+      const state = loadState(this.opts.dataPath)
+      const catalog = this.effectiveCatalog()
+      const products = this.productLists(state).all
+      for (const game of this.games.filter((g) => isSupportedFlavor(g.flavor))) {
+        for (const status of await computeStatuses(game, catalog, this.settings, state, products)) {
+          const key = `${game.id}:${status.productId}`
+          if (status.state !== 'update-available' || status.blockedReason || isCommunityProductId(status.productId)) continue
+          if (getRecord(state, game.id, status.productId)?.pinned || this.autoSkip.has(key)) continue
+          this.install(game.id, status.productId, undefined, (phase) => {
+            if (phase !== 'done') this.autoSkip.add(key)
+          })
+        }
+      }
+    } catch (err) {
+      log('Automatic content update check failed:', err)
+    }
+  }
+
+  /**
+   * Warms the manifest cache of installed channel packs so the Update label can be computed offline. The window has
+   * the catalog already; it is told again once a manifest it lacked has arrived, so the label's size can show. What it
+   * is told then is the catalog of that moment: a refresh meanwhile may have brought a newer channel.
+   */
+  private async warmManifests(): Promise<void> {
     const wanted = new Map<string, ChannelPack>()
+    const products = this.products()
     for (const game of this.games) {
-      for (const p of PRODUCTS) {
+      for (const p of products) {
         const packs = this.channelPacks(p)
         if (!packs || !p.folders!.some((f) => loadPackState(game, f))) continue
         p.folders!.forEach((f, i) => {
@@ -226,9 +297,46 @@ export class ManagerService {
           )
         )
       )
-      if (got.some(Boolean)) this.opts.send(CHANNELS.catalogChanged, next)
+      if (got.some(Boolean)) this.catalogChanged(this.effectiveCatalog())
     }
-    return next
+  }
+
+  /**
+   * Fetches the channel's index alone, without GitHub's list. With `maxAgeMs`, an index that recent will do, and callers
+   * at once share one request. Without it a new request is always made, which `signal` can cancel. Rejects when the
+   * server gave no verified index, and the last verified one stays.
+   */
+  refreshChannel(options: { maxAgeMs?: number; signal?: AbortSignal } = {}): Promise<void> {
+    if (options.maxAgeMs === undefined) return this.fetchChannel(options.signal)
+    if (this.refreshingChannel) return this.refreshingChannel
+    if (Date.now() - this.channelFetchedAt < options.maxAgeMs) return Promise.resolve()
+    this.refreshingChannel = this.fetchChannel().finally(() => {
+      this.refreshingChannel = null
+    })
+    return this.refreshingChannel
+  }
+
+  private async fetchChannel(signal?: AbortSignal): Promise<void> {
+    const ch = await fetchIndex(this.opts.dataPath, this.channelOptions(signal), () => this.channel)
+    if (ch.offline || !ch.index) throw new PlainError(t('service.channelUnreadable'))
+    // A fetch that changed nothing gives back the index in use. index.json read as v2 can change with the same generatedAt.
+    const changed = this.takeChannel(ch.index)
+    this.channelFetchedAt = Date.now()
+    if (!changed) return
+    // A row saying "update first" needs the update it points at to be on offer.
+    this.catalogChanged(this.effectiveCatalog())
+    void this.warmManifests().catch((err) => log('Manifests of the channel:', err))
+  }
+
+  /**
+   * Puts a fetched index in use unless the one in use is newer: the catalog's refresh and the channel's can overlap, and
+   * the one that started first may finish last. Whether the index in use changed.
+   */
+  private takeChannel(index: ChannelIndexV2): boolean {
+    if (index === this.channel) return false
+    if (this.channel && Date.parse(index.generatedAt) < Date.parse(this.channel.generatedAt)) return false
+    this.channel = index
+    return true
   }
 
   // ---------------------------------------------------------------- community
@@ -262,16 +370,52 @@ export class ManagerService {
     return next
   }
 
-  /** The official table plus the registry's packs. */
+  // Keyed by the index and registry objects, which a fetch keeps when nothing changed, and by the delisted ids.
+  private productsMemo: { channel: ChannelIndexV2 | null; community: CommunityCatalog; listed: Product[]; listedIds: Set<string>; delisted: string; all: Product[]; products: Product[] } | null = null
+
+  /**
+   * Every product, then the window's share of them: Spoken and the voice packs. The table, every team's and new
+   * language's pack the channel lists, the registry's packs, and those installed earlier, in any game, that no list
+   * carries any more, so they can still be seen and removed.
+   */
+  private productLists(state: StateFile = loadState(this.opts.dataPath)): { all: Product[]; products: Product[] } {
+    let memo = this.productsMemo
+    if (memo?.channel !== this.channel || memo.community !== this.community) {
+      const listed = [...productsFor(this.channel), ...this.community.packs.map((p) => communityProduct(p))]
+      const listedIds = new Set(listed.map((p) => p.id))
+      memo = { channel: this.channel, community: this.community, listed, listedIds, delisted: '', all: listed, products: listed.filter((p) => p.kind !== 'community') }
+    }
+    const { listedIds } = memo
+    const installed = Object.values(state.installs).flatMap((perGame) => Object.keys(perGame))
+    const delistedIds = [...new Set(installed.filter((id) => !listedIds.has(id)))].sort()
+    if (delistedIds.join('\n') !== memo.delisted) {
+      const all = [...memo.listed, ...delistedIds.flatMap((id) => this.delistedProduct(id) ?? [])]
+      memo = { ...memo, delisted: delistedIds.join('\n'), all, products: all.filter((p) => p.kind !== 'community') }
+    }
+    this.productsMemo = memo
+    return memo
+  }
+
+  /** Spoken and the voice packs, delisted ones among them: what the window is sent. */
+  products(): Product[] {
+    return this.productLists().products
+  }
+
+  /** The products follow the channel, so the window is sent them with every catalog. */
+  private catalogChanged(catalog: Catalog): void {
+    this.opts.send(CHANNELS.catalogChanged, { catalog, products: this.products(), languages: languagesFor(this.channel) } satisfies CatalogUpdate)
+  }
+
+  /** The products plus the registry's packs, delisted ones among them. */
   private allProducts(): Product[] {
-    return [...PRODUCTS, ...this.community.packs.map((p) => communityProduct(p))]
+    return this.productLists().all
   }
 
   /** The catalog with the registry's packs as one release each. */
   private effectiveCatalog(): Catalog {
     const releases = { ...this.catalog.releases }
     for (const p of this.community.packs) releases[COMMUNITY_PREFIX + p.id] = [communityRelease(p)]
-    return withChannel({ ...this.catalog, releases }, PRODUCTS, this.channel, this.packsBase())
+    return withChannel({ ...this.catalog, releases }, this.products(), this.channel, this.packsBase())
   }
 
   private packsBase(): string {
@@ -323,19 +467,19 @@ export class ManagerService {
     if (spoken?.installedVersion && (compareVersions(spoken.installedVersion, need) ?? -1) >= 0) return
     const release = this.pickRelease('spoken')
     if (!release || (compareVersions(release.version, need) ?? -1) < 0) {
-      throw new PlainError(`${product.title} needs Spoken ${need} or newer, which is not released yet.`)
+      throw new PlainError(t('service.needsSpoken', { product: product.title, need }))
     }
     // Spoken's own 'done' would end the pack's job, so it is reported as a step of the pack's job.
     const inner: JobContext = {
       ...ctx,
-      emit: (p) => ctx.emit({ ...p, productId: product.id, phase: p.phase === 'done' ? 'installing' : p.phase, ...(p.phase === 'done' ? { message: 'Spoken is up to date.' } : {}) })
+      emit: (p) => ctx.emit({ ...p, productId: product.id, phase: p.phase === 'done' ? 'installing' : p.phase, ...(p.phase === 'done' ? { message: t('service.upToDate') } : {}) })
     }
     await installProduct(game, productById('spoken')!, release, inner)
   }
 
   private async syncChannel(game: GameInstall, product: Product, ctx: JobContext, repair: boolean): Promise<void> {
     const packs = this.channelPacks(product)
-    if (!packs) throw new PlainError(`${product.title} is not on the voice pack server right now. Press refresh and try again.`)
+    if (!packs) throw new PlainError(t('service.notOnServer', { product: product.title }))
     const opts = this.channelOptions(ctx.signal)
     const manifests = await Promise.all(packs.map((p, i) => fetchManifest(this.opts.dataPath, product.folders![i]!, p, opts)))
     await this.ensureSpoken(game, product, ctx)
@@ -346,18 +490,18 @@ export class ManagerService {
     return this.allProducts().find((p) => p.id === productId)
   }
 
+  /** A pack installed earlier that its list no longer carries, rebuilt from its id. */
+  private delistedProduct(productId: string): Product | null {
+    if (isCommunityProductId(productId)) return communityProduct({ id: productId.slice(COMMUNITY_PREFIX.length) })
+    return installedVoiceProduct(productId)
+  }
+
   // ---------------------------------------------------------------- statuses
 
   async statuses(gameId: string): Promise<ProductStatus[]> {
     const game = this.requireGame(gameId)
     const state = loadState(this.opts.dataPath)
-    const products = this.allProducts()
-    // A pack installed earlier and since removed from the registry still shows, so it can be removed.
-    for (const id of Object.keys(state.installs[gameId] ?? {})) {
-      if (isCommunityProductId(id) && !products.some((p) => p.id === id)) {
-        products.push(communityProduct({ id: id.slice(COMMUNITY_PREFIX.length) }))
-      }
-    }
+    const products = this.productLists(state).all
     const out = await computeStatuses(game, this.effectiveCatalog(), this.settings, state, products)
     const spoken = out.find((s) => s.productId === 'spoken')?.installedVersion
     for (const status of out) {
@@ -400,20 +544,20 @@ export class ManagerService {
   /** The release of the version that is installed, for a repair. */
   private async releaseToRepair(gameId: string, product: Product): Promise<ReleaseInfo> {
     const status = (await this.statuses(gameId)).find((s) => s.productId === product.id)
-    if (!status || status.installedFolders.length === 0) throw new PlainError(`${product.title} is not installed, so there is nothing to repair. Install it instead.`)
+    if (!status || status.installedFolders.length === 0) throw new PlainError(t('service.nothingToRepair', { product: product.title }))
     const version = status.installedVersion
     const release = version ? this.pickRelease(product.id, version) : undefined
     if (!release) {
       throw new PlainError(
         version
-          ? `Version ${version} of ${product.title} is no longer in the list of releases, so it cannot be put back. Update it instead.`
-          : `The installed version of ${product.title} is not known, so it cannot be put back. Update it instead.`
+          ? t('service.versionGoneRepair', { version, product: product.title })
+          : t('service.versionUnknownRepair', { product: product.title })
       )
     }
     return release
   }
 
-  install(gameId: string, productId: string, options?: InstallOptions): string {
+  install(gameId: string, productId: string, options?: InstallOptions, onEnded?: JobSpec['onEnded']): string {
     const game = this.requireGame(gameId)
     const product = this.findProduct(productId)
     if (!product) throw new Error('Unknown product')
@@ -422,9 +566,11 @@ export class ManagerService {
     const wanted = repair ? undefined : options?.version
     const release = repair ? undefined : this.pickRelease(productId, wanted)
     const channel = channelRelease(product, this.channel, this.packsBase())
+    const pinned = !!wanted && !!release && release.version !== this.pickRelease(productId)?.version
     return this.jobs.enqueue({
       gameId,
       productId,
+      ...(onEnded ? { onEnded } : {}),
       action: repair ? 'repair' : 'install',
       ...(release ? { version: release.version } : {}),
       run: async (ctx) => {
@@ -442,14 +588,14 @@ export class ManagerService {
         if (!release) {
           throw new PlainError(
             wanted
-              ? `Version ${wanted} of ${product.title} is not in the list of releases.`
+              ? t('service.versionNotListed', { version: wanted, product: product.title })
               : this.catalog.fetchedAt
-                ? `There is no release of ${product.title} to install yet.`
-                : 'The list of releases has not been loaded yet. Check your connection, press refresh and try again.'
+                ? t('service.noReleaseYet', { product: product.title })
+                : t('service.listNotLoaded')
           )
         }
         this.dropChannelState(game, product)
-        await installProduct(game, product, release, this.jobContext(ctx.jobId, ctx.signal, ctx.emit))
+        await installProduct(game, product, release, { ...this.jobContext(ctx.jobId, ctx.signal, ctx.emit), pinned })
       }
     })
   }
@@ -465,11 +611,8 @@ export class ManagerService {
 
   uninstall(gameId: string, productId: string): string {
     const game = this.requireGame(gameId)
-    let product = this.findProduct(productId)
-    // A community pack that left the registry can still be removed.
-    if (!product && isCommunityProductId(productId)) product = communityProduct({ id: productId.slice(COMMUNITY_PREFIX.length) })
-    if (!product) throw new Error('Unknown product')
-    const target = product
+    const target = this.findProduct(productId)
+    if (!target) throw new Error('Unknown product')
     const refused = isSupportedFlavor(game.flavor) ? null : notSupportedMessage(game.flavorFolder)
     return this.jobs.enqueue({
       gameId,
@@ -485,7 +628,7 @@ export class ManagerService {
 
   /** Deletes the kept zips; not while a download or install runs. */
   async clearDownloads(): Promise<ClearDownloadsResult> {
-    if (this.jobs.active().length > 0) throw new PlainError('Wait for the running downloads and installs to finish first.')
+    if (this.jobs.active().length > 0) throw new PlainError(t('service.waitForJobs'))
     return clearDownloads(this.downloadsPath())
   }
 
@@ -503,11 +646,14 @@ export class ManagerService {
     void this.ready.then(() => this.shareTick(false))
   }
 
-  /** "Send now": reads every file, whatever the backoff says. The status arrives on sharingChanged. */
-  async sendNow(): Promise<void> {
-    if (this.settings.sharing !== 'on') throw new PlainError('Turn on Sharing first.')
-    await this.sharing?.done
-    await this.shareTick(true)
+  /**
+   * "Send now": reads every file, whatever the backoff says, after any send already running.
+   * Null when Sharing went off meanwhile.
+   */
+  async sendNow(): Promise<SendResult | null> {
+    if (this.settings.sharing !== 'on') throw new PlainError(t('service.turnOnSharing'))
+    while (this.sharing) await this.sharing.done
+    return this.shareTick(true)
   }
 
   /** A new random id for this manager; the lines already sent are not sent again. */
@@ -589,14 +735,26 @@ export class ManagerService {
       const problem = checkDownloadsPath(clean.downloadsPath, this.games)
       if (problem) throw new PlainError(problem)
     }
-    const wasSharing = this.settings.sharing
+    if (typeof clean.proxy === 'string') {
+      // Saved in the form both stacks read, so the window shows what is actually in use.
+      clean.proxy = normalizeProxy(clean.proxy)
+      // Changing it drops the connections in flight, so a download, a publish or the manager's own update
+      // must finish first.
+      if (clean.proxy !== this.settings.proxy && (this.jobs.active().length > 0 || this.opts.busyElsewhere?.())) {
+        throw new PlainError(t('service.waitForJobs'))
+      }
+    }
+    const previous = this.settings
     this.settings = { ...this.settings, ...clean }
+    setMainLanguage(this.settings.uiLanguage)
     try {
       saveSettings(this.opts.dataPath, this.settings)
     } catch (err) {
       log('Could not save the settings:', err)
     }
-    this.sharingChanged(wasSharing)
+    this.sharingChanged(previous.sharing)
+    if (!previous.autoUpdateContent && this.settings.autoUpdateContent) void this.ready.then(() => this.autoUpdate())
+    this.opts.settingsChanged?.(this.settings, previous)
     return this.settings
   }
 }

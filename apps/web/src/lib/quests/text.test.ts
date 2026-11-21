@@ -6,7 +6,8 @@
  */
 import { afterAll, afterEach, beforeAll, describe, expect, it } from "vitest";
 
-const { closeDb, db, query } = await import("@/lib/db");
+const { closeDb, query } = await import("@/lib/db");
+const { asSystem, systemRows } = await import("@/lib/teams/testing");
 const { questTextHistory, restoreQuestText, saveQuestText, QuestTextConflict, QuestTextMissing } = await import("./text");
 const { saveName, nameHistory } = await import("@/lib/names/store");
 const { clearIgnore, readIgnores, writeIgnore } = await import("./ignores");
@@ -29,7 +30,7 @@ beforeAll(async () => {
   if (!rows[0]) throw new Error(`text.test.ts needs an English line ${LANG} has not translated`);
   english = rows[0];
   userId = `test-${Math.random().toString(36).slice(2, 10)}`;
-  await db().query(
+  await asSystem.query(
     `insert into "user" ("id", "name", "email", "emailVerified", "createdAt", "updatedAt")
      values ($1, 'Translator', $1 || '@test', false, now(), now())`,
     [userId],
@@ -40,12 +41,12 @@ keepLanguage(LANG);
 
 afterEach(async () => {
   // Every write here is logged as this user's, so their rows are exactly the ones to drop.
-  await db().query(`delete from "activity" where "actorId" = $1`, [userId]);
-  await db().query(`delete from "line_ignore" where "lineId" = $1`, ["q:0:ignore-test"]);
+  await asSystem.query(`delete from "activity" where "actorId" = $1`, [userId]);
+  await asSystem.query(`delete from "line_ignore" where "lineId" = $1`, ["q:0:ignore-test"]);
 });
 
 afterAll(async () => {
-  await db().query(`delete from "user" where "id" = $1`, [userId]);
+  await asSystem.query(`delete from "user" where "id" = $1`, [userId]);
   await closeDb();
 });
 
@@ -120,7 +121,7 @@ describe("a later translation", () => {
     expect(history.find((v) => v.isCurrent)?.text).toBe("Uno.");
 
     // The flag moving writes no row that names anybody, so the log is the only record.
-    const logged = await query<{ lineId: string; source: string; detail: unknown }>(
+    const logged = await systemRows<{ lineId: string; source: string; detail: unknown }>(
       `select "lineId", "source", "detail" from "activity"
         where "actorId" = $1 and "lang" = $2 and "kind" = 'text.restored'`,
       [userId, LANG],
@@ -130,10 +131,10 @@ describe("a later translation", () => {
     ]);
   });
 
-  it("is never English, which is rewritten through line_override", async () => {
+  it("is never English, which is written through moment-rewrite", async () => {
     await expect(
       saveQuestText({ lineId: english.lineId, variant: english.variant, lang: "enUS", text: "x", editedBy: userId }),
-    ).rejects.toThrow(/line_override/);
+    ).rejects.toThrow(/moment-rewrite/);
   });
 });
 
@@ -148,7 +149,7 @@ describe("a line English does not have", () => {
 
   it("versions from the language's own row", async () => {
     // No English row for the id at all.
-    await db().query(
+    await asSystem.query(
       `insert into "quest_line"
          ("lineId", "variant", "lang", "version", "isCurrent", "origin", "source", "questId",
           "fileName", "text", "originalText", "localeText", "generatable")
@@ -243,7 +244,7 @@ describe("naming", () => {
 
 describe("ignores at two levels", () => {
   it("counts a line ignored in one language only there", async () => {
-    await writeIgnore("q:0:ignore-test", "the Italian never says this", userId, LANG);
+    await writeIgnore("q:0:ignore-test", "the Italian never says this", userId, { lang: LANG });
     expect((await readIgnores(LANG)).get("q:0:ignore-test")?.lang).toBe(LANG);
     expect((await readIgnores("enUS")).has("q:0:ignore-test")).toBe(false);
     expect(await clearIgnore("q:0:ignore-test", LANG, userId)).toBe(true);
@@ -258,7 +259,7 @@ describe("ignores at two levels", () => {
   // Both levels at once since 0038: the broader decision is the one a language reads.
   it("keeps a language's own ignore beside one for every language", async () => {
     await writeIgnore("q:0:ignore-test", "nobody voices this", userId);
-    await writeIgnore("q:0:ignore-test", "nor the Italian", userId, LANG);
+    await writeIgnore("q:0:ignore-test", "nor the Italian", userId, { lang: LANG });
     expect((await readIgnores(LANG)).get("q:0:ignore-test")?.reason).toBe("nobody voices this");
     expect(await clearIgnore("q:0:ignore-test", null, userId)).toBe(true);
     expect((await readIgnores(LANG)).get("q:0:ignore-test")?.reason).toBe("nor the Italian");

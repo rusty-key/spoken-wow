@@ -29,7 +29,7 @@ export async function POST(request: Request) {
   const { source, files } = (await request.json().catch(() => ({}))) as Body;
 
   if (!isSource(source)) {
-    return Response.json({ error: "source must be 'quests', 'places' or 'readables'" }, { status: 400 });
+    return Response.json({ error: "source must be 'quests', 'places', 'readables' or 'bosses'" }, { status: 400 });
   }
   if (!Array.isArray(files) || files.some((file) => typeof file !== "string" || file === "")) {
     return Response.json({ error: "files must be an array of paths" }, { status: 400 });

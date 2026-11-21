@@ -5,6 +5,7 @@
 #   ./scripts/places/release.sh --dry-run        # say what would be sent, send nothing
 #   ./scripts/places/release.sh                  # the English sound pack
 #   ./scripts/places/release.sh --lang=esMX audio # that language's sound pack instead
+#   ./scripts/places/release.sh --section=bosses  # the bosses' sound pack (--lang as above)
 #
 # Needs CURSEFORGE_TOKEN in the environment or in the repo-root .env. Generate one at
 # https://authors-old.curseforge.com/account/api-tokens -- it is an author token
@@ -22,8 +23,13 @@ DIST="$REPO/dist"
 
 # The language whose sound pack `audio` means. English unless --lang says otherwise.
 LANG_CODE=enUS
-pack_field() { node "$REPO/scripts/lib/packs.mjs" get places "$LANG_CODE" - "$1"; }
+# Places' pack unless --section=bosses: the bosses' pack is built as the places pack is, from the
+# same tools, and goes to its own CurseForge projects the same way.
+SECTION=places
+pack_field() { node "$REPO/scripts/lib/packs.mjs" get "$SECTION" "$LANG_CODE" - "$1"; }
 english() { [[ "$LANG_CODE" == enUS ]]; }
+# A missing .toc reads as no version, which the preflight reports as not built.
+toc_version() { { sed -n 's/^## Version:[[:space:]]*//p' "$@" 2>/dev/null || true; } | head -1 | tr -d '\r'; }
 
 # Site-relative API, per game. WoW projects are not reachable through another
 # game's subdomain even with a valid token.
@@ -50,7 +56,7 @@ RELEASE_TYPE="${RELEASE_TYPE:-release}"
 
 # project key -> CurseForge project ID, addon folder the version is read from,
 # and the zip basename package*.sh produces. `audio`'s come from LANG_CODE's page under
-# publishers/places/ -- the registry a language's pack is created in by hand on CurseForge
+# publishers/<section>/ -- the registry a language's pack is created in by hand on CurseForge
 # before it can be released, so an unregistered language fails on the empty project id
 # below rather than uploading over the English project.
 target_curseforge() { case "$1" in audio) pack_field curseforge;; esac; }
@@ -77,8 +83,9 @@ for arg in "$@"; do
   case "$arg" in
     --dry-run|-n) dry_run=1;;
     --lang=*) LANG_CODE="${arg#--lang=}";;
+    --section=places|--section=bosses) SECTION="${arg#--section=}";;
     audio) targets+=("$arg");;
-    *) echo "error: unknown argument '$arg' (expected: audio, --lang=..., --dry-run)" >&2; exit 1;;
+    *) echo "error: unknown argument '$arg' (expected: audio, --lang=..., --section=places|bosses, --dry-run)" >&2; exit 1;;
   esac
 done
 
@@ -95,8 +102,35 @@ if (( ${#targets[@]} == 0 )); then
   targets=("audio")
 fi
 
-command -v curl >/dev/null || { echo "error: curl is required" >&2; exit 1; }
 command -v node >/dev/null || { echo "error: node is required (for JSON handling)" >&2; exit 1; }
+
+#-- preflight -------------------------------------------------------------------
+# THE ZIP IS RESOLVED BEFORE THE TOKEN AND THE NETWORK: it needs neither, so a missing or stale
+# zip is reported on a machine with no token too. Checked in --dry-run as well, since a dry run's
+# job is to say what a real run would hit.
+missing=()
+for target in "${targets[@]}"; do
+  addon="$(target_addon "$target")"
+  if [[ "$target" == audio ]] && ! english; then
+    version="$(pack_field version)"
+  else
+    toc="$REPO/addons/$addon/$addon.toc"
+    version="$(toc_version "$toc")"
+  fi
+  if [[ -z "$version" ]]; then
+    missing+=("$target -- not built (no version); run make $SECTION-package-audio")
+    continue
+  fi
+  zip_path="$DIST/$(target_zip "$target")-$version.zip"
+  [[ -f "$zip_path" ]] || { missing+=("$zip_path"); continue; }
+done
+if (( ${#missing[@]} > 0 )); then
+  echo "error: missing or incomplete zips -- nothing was released:" >&2
+  for m in "${missing[@]}"; do echo "  $m" >&2; done
+  exit 1
+fi
+
+command -v curl >/dev/null || { echo "error: curl is required" >&2; exit 1; }
 
 # The token is account-wide -- it uploads all six projects -- so it lives once, in the
 # repo-root .env alongside the other shared credentials, rather than in a shell history or
@@ -184,35 +218,8 @@ changelog_for() {
       if (lines[i].startsWith("## ")) { end = i; break; }
     }
     process.stdout.write(lines.slice(start, end).join("\n").trim());
-  ' "$REPO/docs/places/CHANGELOG.md" "$1" "$2"
+  ' "$REPO/docs/places/CHANGELOG.md" "$1" "$2" | node "$REPO/scripts/lib/changelog.mjs" unwrap
 }
-
-#-- preflight -------------------------------------------------------------------
-# EVERY TARGET'S ZIP IS RESOLVED BEFORE ANY UPLOAD STARTS. English's default run covers both
-# places and audio, and uploading the addon before discovering the pack was never built is a
-# half release. Checked in --dry-run too, since a dry run's job is to say what a real run
-# would hit.
-missing=()
-for target in "${targets[@]}"; do
-  addon="$(target_addon "$target")"
-  if [[ "$target" == audio ]] && ! english; then
-    version="$(pack_field version)"
-  else
-    toc="$REPO/addons/$addon/$addon.toc"
-    version="$(sed -n 's/^## Version:[[:space:]]*//p' "$toc" 2>/dev/null | head -1 | tr -d '\r')"
-  fi
-  if [[ -z "$version" ]]; then
-    missing+=("$target -- not built (no version); run make places-package-audio")
-    continue
-  fi
-  zip_path="$DIST/$(target_zip "$target")-$version.zip"
-  [[ -f "$zip_path" ]] || missing+=("$zip_path")
-done
-if (( ${#missing[@]} > 0 )); then
-  echo "error: missing zips -- nothing was released:" >&2
-  for m in "${missing[@]}"; do echo "  $m" >&2; done
-  exit 1
-fi
 
 #-- upload --------------------------------------------------------------------
 for target in "${targets[@]}"; do
@@ -232,7 +239,7 @@ for target in "${targets[@]}"; do
     version="$(pack_field version)"
   else
     toc="$REPO/addons/$addon/$addon.toc"
-    version="$(sed -n 's/^## Version:[[:space:]]*//p' "$toc" | head -1 | tr -d '\r')"
+    version="$(toc_version "$toc")"
   fi
   zip_path="$DIST/$zip_name-$version.zip"
 
@@ -244,8 +251,9 @@ for target in "${targets[@]}"; do
     exit 1
   fi
 
-  if [[ "$target" == audio ]] && ! english; then
-    changelog="$(node "$REPO/scripts/lib/packs.mjs" changelog "$REPO/docs/places/CHANGELOG.md" "$version" "$(pack_field release)")"
+  # A language's heading, and every bosses heading, names the pack's release tag.
+  if [[ "$target" == audio ]] && { ! english || [[ "$SECTION" == bosses ]]; }; then
+    changelog="$(node "$REPO/scripts/lib/packs.mjs" changelog "$REPO/docs/$SECTION/CHANGELOG.md" "$version" "$(pack_field release)")"
   else
     changelog="$(changelog_for "$version" "$target")"
   fi
@@ -333,7 +341,7 @@ done
 # from what was last pasted, and say so at the moment somebody is already looking
 # at the project pages.
 echo
-stale="$(node "$REPO/scripts/descriptions.mjs" --drift --group=places)"
+stale="$(node "$REPO/scripts/descriptions.mjs" --drift --group=$SECTION)"
 if [[ -n "$stale" ]]; then
   echo "descriptions that differ from what was last pasted into the site:"
   echo "$stale" | while IFS=$'\t' read -r slug why; do

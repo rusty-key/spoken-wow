@@ -43,8 +43,11 @@ export type CorpusText = { lineId: string; variant: number; text: string };
 
 export type LineState =
   | { kind: "missing" }
-  /** `lineId` is the corpus line it matched: what a missing-audio hit is counted against. */
-  | { kind: "known"; lineId: string }
+  /**
+   * `lineId` and `variant` are the corpus line it matched: what a missing-audio hit is counted
+   * against, and what the reader's gender confirms (readers.ts).
+   */
+  | { kind: "known"; lineId: string; variant: number }
   /**
    * The corpus's texts in the contribution's language: a quest moment's every wording, in
    * order, one line apiece (a split wording by its first side), or a book page alone.
@@ -59,12 +62,20 @@ type Comparable = Pick<Submission, "source" | "locale" | "text" | "meta"> &
 const MISSING: LineState = { kind: "missing" };
 
 /**
- * The quest moment a contribution names, `q:{quest}:{event}`, or null for a greeting. Past the
- * integer ceiling the quest is no id quest_line could hold, and names no moment.
+ * The quest a contribution's envelope names, or null for none. Past the integer ceiling it is
+ * no id quest_line could hold.
  */
-function momentNamed(row: Comparable): string | null {
-  const { quest, event } = row.meta;
-  return quest && event && /^\d+$/.test(quest) && Number(quest) <= 2_147_483_647 ? `q:${quest}:${event}` : null;
+export function questIdOf(row: Pick<Comparable, "meta">): number | null {
+  const { quest } = row.meta;
+  if (!quest || !/^\d+$/.test(quest)) return null;
+  const id = Number(quest);
+  return id <= 2_147_483_647 ? id : null;
+}
+
+/** The quest moment a contribution names, `q:{quest}:{event}`, or null for a greeting. */
+export function momentNamed(row: Pick<Comparable, "meta">): string | null {
+  const quest = questIdOf(row);
+  return quest !== null && row.meta.event ? `q:${quest}:${row.meta.event}` : null;
 }
 
 /** The NPC id a greeting names, from the envelope's `"<id> <name>"`. */
@@ -91,6 +102,20 @@ function otherBody(row: Comparable, voiced: VoicedBodies | undefined): boolean {
   const race = raceOfModel(Number(row.meta.model), gender);
   if (race) return !voiced.bodies.has(bodyName(race, gender));
   return !voiced.sexes.has(sex);
+}
+
+/** A moment's wordings against a player's text: the one it matches, or the one it is closest to. */
+export function stateOfMoment(lines: CorpusText[], text: string): LineState {
+  const same = lines.find((line) => sameLine(line.text, text));
+  if (same) return { kind: "known", lineId: same.lineId, variant: same.variant };
+  const wordings = oneLineEach(lines);
+  return { kind: "changed", wordings, closest: closestOf(wordings, text) };
+}
+
+/** The index of the wording nearest `text`, the first on a tie. */
+export function closestOf(wordings: readonly CorpusText[], text: string): number {
+  const scores = wordings.map((line) => closeness(line.text, text));
+  return scores.indexOf(Math.max(...scores));
 }
 
 /**
@@ -230,7 +255,7 @@ export async function lineStates(rows: readonly Comparable[]): Promise<LineState
         },
         books,
       );
-      if (match.kind === "known") return { kind: "known", lineId: match.lineId };
+      if (match.kind === "known") return { kind: "known", lineId: match.lineId, variant: 0 };
       if (match.kind === "correction") {
         return { kind: "changed", wordings: [{ lineId: match.lineId, variant: 0, text: match.current }], closest: 0 };
       }
@@ -242,17 +267,13 @@ export async function lineStates(rows: readonly Comparable[]): Promise<LineState
     if (moment) {
       const lines = byMoment.get(`${row.locale}|${moment}`);
       if (!lines?.length) return MISSING;
-      const same = lines.find((line) => sameLine(line.text, text));
-      if (same) return { kind: "known", lineId: same.lineId };
-      const wordings = oneLineEach(lines);
-      const scores = wordings.map((line) => closeness(line.text, text));
-      return { kind: "changed", wordings, closest: scores.indexOf(Math.max(...scores)) };
+      return stateOfMoment(lines, text);
     }
     const npcId = npcOf(row);
     const spoken = npcId === null ? undefined : byNpc.get(`${row.locale}|${npcId}`);
     if (npcId !== null && otherBody(row, bodies.get(npcId))) return MISSING;
     const same = spoken?.find((line) => sameLine(line.text, text));
-    return same ? { kind: "known", lineId: same.lineId } : MISSING;
+    return same ? { kind: "known", lineId: same.lineId, variant: same.variant } : MISSING;
   });
 }
 

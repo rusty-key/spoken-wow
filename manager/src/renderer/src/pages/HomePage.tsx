@@ -64,7 +64,7 @@ export function HomePage(): ReactNode {
 
         {newest && (
           <section className="hero" aria-labelledby="whats-new-title">
-            <HeroArt flavor={current?.flavor ?? 'classic_beta'} />
+            <HeroArt flavor={current?.flavor ?? 'forever'} />
             <div className="hero-body">
               <h2 id="whats-new-title" className="eyebrow">
                 {S.home.whatsNew}

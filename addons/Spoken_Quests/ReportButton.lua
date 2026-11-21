@@ -8,7 +8,8 @@ setfenv(1, VoiceOver)
 ---
 --- The address is built from what the client can see - a quest id and an event, or a unit GUID
 --- - and never from soundData. When the data module fails to load there is no soundData at
---- all, and a quest that plays nothing is the report most worth having.
+--- all, and a quest that plays nothing is the report most worth having. A clip that did play
+--- adds its file, which picks the line out of the several an address can mean.
 
 local COPY_DIALOG = "VOICEOVER_COPY_REPORT_LINK"
 
@@ -109,12 +110,24 @@ end
 -- The address the popup is currently showing.
 local shownLink
 
---- The report address for `target`, filed under `language`.
+local function QueryValue(value)
+    return (string.gsub(value, "[^%w%-_%.~]", function(char)
+        return format("%%%02X", string.byte(char))
+    end))
+end
+
+--- The report address for `target`, filed under `language`. `file`, the sound that played,
+--- tells the site which line the player heard when several answer to the address.
 ---@param target string
 ---@param language? string
+---@param file? string
 ---@return string url
-function ReportButton:Link(target, language)
-    return Spoken:ReportURL("quests", target, language)
+function ReportButton:Link(target, language, file)
+    local url = Spoken:ReportURL("quests", target, language)
+    if type(file) == "string" and file ~= "" then
+        url = url .. "?file=" .. QueryValue(file)
+    end
+    return url
 end
 
 --- DialogueUI hides UIParent and the game's popups with it, so under its window the address
@@ -136,7 +149,7 @@ end
 --- line missing from a German pack plays the English fallback, and its report ("no German")
 --- belongs beside the German line: filed under the clip's language, it reached the English page.
 function ReportButton:ShowLink(target, clip)
-    local url = self:Link(target, Language:GetVoiceLanguage())
+    local url = self:Link(target, Language:GetVoiceLanguage(), clip and clip.fileName)
     if not (Spoken and Spoken.ShowReport) then
         ShowCopy(url)
         return

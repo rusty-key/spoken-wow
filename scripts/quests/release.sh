@@ -115,7 +115,7 @@ esac; }
 # after an upload, and for the Wago upload's own log line.
 target_slug() { case "$1" in
   spoken)         echo "spoken";;
-  audio-all)      echo "spoken-quests-audio-all";;
+  audio-all)      echo "spoken-audio-quests-all";;
   spoken-all)     if english; then echo "spoken-english"; else meta_field slug; fi;;
   audio-alliance|audio-horde|audio-shared|audio-gossip) pack_field "$1" slug;;
 esac; }
@@ -172,10 +172,10 @@ target_dependencies() { case "$1" in
   # packs are named here as well as through audio-all, so a manager that does not follow a
   # dependency's own dependencies still installs them.
   spoken-all) ! english && { meta_field dependencies; return; }
-              echo "spoken spoken-quests-audio-all \
+              echo "spoken spoken-audio-quests-all \
                     spoken-audio-quests-alliance spoken-audio-quests-horde \
                     spoken-audio-quests-shared spoken-audio-gossip \
-                    spoken-audio-places spoken-audio-readables";;
+                    spoken-audio-places spoken-audio-readables spoken-audio-bosses";;
   audio-*)   echo "spoken";;
 esac; }
 
@@ -184,8 +184,8 @@ esac; }
 # being approved, above all - is truest after they have just been uploaded. It costs nothing to
 # order it this way and it removes a class of first-release surprise.
 ALL_TARGETS="spoken audio-alliance audio-horde audio-shared audio-gossip audio-all"
-# Accepted by name, never in a bare run: it depends on the places and readables projects too, which
-# this script does not release, and its version moves on its own schedule.
+# Accepted by name, never in a bare run: it depends on the places and readables projects
+# too, which this script does not release, and its version moves on its own schedule.
 EXTRA_TARGETS="spoken-all"
 
 dry_run=""
@@ -216,15 +216,10 @@ if ! english; then
   for t in ${targets[@]+"${targets[@]}"}; do
     [[ "$t" == audio-* || "$t" == spoken-all ]] || { echo "error: --lang=$LANG_CODE releases sound packs; '$t' has one project for every language" >&2; exit 1; }
   done
-  # The language's packs on CurseForge, less any dormant (scripts/lib/packs.mjs): a language
-  # not split by side ships Shared and Gossip alone.
+  # The language's packs on CurseForge.
   if (( ${#targets[@]} == 0 )); then
     for p in $(node "$REPO/scripts/lib/packs.mjs" list quests "$LANG_CODE" curseforge); do targets+=("audio-$p"); done
   fi
-  for t in "${targets[@]}"; do
-    [[ "$t" == spoken-all ]] && continue
-    [[ "$(pack_field "$t" dormant)" == false ]] || { echo "error: the $LANG_CODE $t pack is dormant: its lines ship in Shared" >&2; exit 1; }
-  done
 fi
 
 # Asked once, answered at each of the places below that only concern one store.
@@ -351,7 +346,7 @@ changelog_for() {
       if (lines[i].startsWith("## ")) { end = i; break; }
     }
     process.stdout.write(lines.slice(start, end).join("\n").trim());
-  ' "$file" "$1" "$2"
+  ' "$file" "$1" "$2" | node "$REPO/scripts/lib/changelog.mjs" unwrap
 }
 
 #-- upload --------------------------------------------------------------------------------

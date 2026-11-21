@@ -1,6 +1,8 @@
 "use client";
 
-import { nameSubject, TranslateDialog, type TranslateSubject } from "@/components/TranslateDialog";
+import { PAGE_SIZE } from "@/lib/page-size";
+import { BatchGenerate } from "@/components/catalogue/RowParts";
+import { TranslateDialog, type TranslateSubject } from "@/components/TranslateDialog";
 import { useCan } from "@/components/useCan";
 import { useHistoryMode } from "@/components/useHistoryMode";
 import { useLang } from "@/components/LangProvider";
@@ -16,18 +18,20 @@ import { BookList } from "@/components/readables/BookList";
 import RecordingDropZone from "@/components/RecordingDropZone";
 import ReportDialog from "@/components/ReportDialog";
 import { PageTextDialog } from "@/components/readables/PageTextDialog";
+import TextOverrideDialog from "@/components/TextOverrideDialog";
 import type { RowState } from "@/components/readables/PageRow";
 import { Player } from "@/components/readables/Player";
 import { SearchBar } from "@/components/readables/SearchBar";
-import { Contained, Wide } from "@/components/Width";
+import TeamPicker from "@/components/TeamPicker";
+import { Wide } from "@/components/Width";
 import { Loading, Refreshing } from "@/components/Loading";
 import { Button } from "@/components/ui/button";
 import type { BookFacet } from "@/lib/readables/catalogue";
+import { forTeam, isOwn, keepTeam, otherTeam, type TeamView } from "@/lib/teams/view";
 import {
   filterParams,
   filtersFromParams,
   ownerEntityKind,
-  PAGE_SIZE,
   type PageFilters,
 } from "@/lib/readables/filters";
 import type { ResultLine, SearchResult } from "@/lib/readables/search";
@@ -43,7 +47,9 @@ import {
 import { useClearDirty } from "@/lib/generation/use-clear-dirty";
 import { noApiKeyMessage } from "@/lib/no-api-key";
 import { fetchRows, patchRows } from "@/lib/row-refresh";
+import { withTextOverride } from "@/lib/text-overrides/rows";
 import * as echo from "@/lib/url-echo";
+import { triages } from "@/lib/reports/reports";
 
 // Long enough to hold a whole typed word: the timer restarts on every keystroke, so this is
 // the pause after the last one rather than a rate limit. Enter fires the search immediately.
@@ -51,7 +57,7 @@ const DEBOUNCE_MS = 500;
 
 type Batch = PendingBatch & { lineIds: string[] };
 
-export function Explorer({ books }: { books: BookFacet[] }) {
+export function Explorer({ books, teams, viewed, home }: { books: BookFacet[] } & TeamView) {
   const lang = useLang();
   const pathname = usePathname();
   const params = useSearchParams();
@@ -59,9 +65,15 @@ export function Explorer({ books }: { books: BookFacet[] }) {
   // What this visitor may do. Read in the browser for UserMenu's reason: a session read in
   // the layout would put a database round trip in front of every page view. Every one of
   // these is checked again server-side; nothing here is an access control.
+  //
+  // Team-specific writes target the acting team, so another team's view hides them. The
+  // original text is shared, so its pencil stays.
   const may = useCan();
-  const canRegenerate = may("regenerate");
-  const canEdit = may("edit");
+  const own = isOwn(viewed);
+  const team = otherTeam(viewed);
+  const canRegenerate = own && may("regenerate");
+  const canEdit = may("text");
+  const canTriage = own && triages(may);
   // The book owner's name in this language, written as its own version in entity_name.
   const [naming, setNaming] = useState<TranslateSubject | null>(null);
 
@@ -86,6 +98,7 @@ export function Explorer({ books }: { books: BookFacet[] }) {
   // just edited would vanish as it was saved.
   const [editFor, setEditFor] = useState<ResultLine | null>(null);
   const [rewritten, setRewritten] = useState<Record<string, string>>({});
+  const [overriding, setOverriding] = useState<ResultLine | null>(null);
   // Bumped per page after a regeneration, to bust the browser's audio cache: the filename
   // does not change, so without this the take that was replaced keeps playing.
   const [versions, setVersions] = useState<Record<string, number>>({});
@@ -179,17 +192,17 @@ export function Explorer({ books }: { books: BookFacet[] }) {
 
   const updateFilters = useCallback(
     (next: Partial<PageFilters>) => {
-      writeQuery(filterParams({ ...filters, ...next }));
+      writeQuery(keepTeam(filterParams({ ...filters, ...next }), params));
     },
-    [filters, writeQuery],
+    [filters, params, writeQuery],
   );
 
   const filtersHref = useCallback(
     (next: Partial<PageFilters>) => {
-      const query = filterParams({ ...filters, ...next }).toString();
+      const query = keepTeam(filterParams({ ...filters, ...next }), params).toString();
       return query ? `${pathname}?${query}` : pathname;
     },
-    [filters, pathname],
+    [filters, params, pathname],
   );
 
   //----------------------------------------------------------------------------
@@ -219,7 +232,7 @@ export function Explorer({ books }: { books: BookFacet[] }) {
     const search = new URLSearchParams(filterQuery);
     if (page > 1) search.set("page", String(page));
 
-    fetch(withLang(lang, `/api/readables/search?${search}`), { signal: controller.signal })
+    fetch(withLang(lang, forTeam(`/api/readables/search?${search}`, team)), { signal: controller.signal })
       .then(async (response) => {
         const data = await response.json();
         // 503 with a code, not a crash: "nobody has run the import yet" is a deployment
@@ -229,7 +242,8 @@ export function Explorer({ books }: { books: BookFacet[] }) {
           setResult(null);
         } else {
           setEmpty(null);
-          setResult(data as SearchResult);
+          // An error body is no result: a team renamed since the page loaded answers 404.
+          setResult(response.ok ? (data as SearchResult) : null);
         }
         setLoading(false);
       })
@@ -238,16 +252,17 @@ export function Explorer({ books }: { books: BookFacet[] }) {
       });
 
     return () => controller.abort();
-  }, [filterQuery, page, lang]);
+  }, [filterQuery, page, lang, team]);
 
   const refetch = useCallback(() => {
     const search = new URLSearchParams(filterQueryRef.current);
     if (pageRef.current > 1) search.set("page", String(pageRef.current));
-    fetch(withLang(lang, `/api/readables/search?${search}`))
-      .then((response) => response.json())
-      .then((data: SearchResult) => setResult(data))
+    fetch(withLang(lang, forTeam(`/api/readables/search?${search}`, team)))
+      .then(async (response) => {
+        if (response.ok) setResult((await response.json()) as SearchResult);
+      })
       .catch(() => {});
-  }, [lang]);
+  }, [lang, team]);
 
   /**
    * Fetch these rows again by id and swap them in where they sit, so a row the change moved
@@ -256,14 +271,30 @@ export function Explorer({ books }: { books: BookFacet[] }) {
   const refreshRows = useCallback(
     async (ids: string[]) => {
       const fresh = await fetchRows<ResultLine>(
-        (id) => withLang(lang, `/api/readables/search?${new URLSearchParams({ line: id })}`),
+        (id) => withLang(lang, forTeam(`/api/readables/search?${new URLSearchParams({ line: id })}`, team)),
         ids,
       );
       setResult((current) =>
         current && { ...current, lines: patchRows(current.lines, fresh, (row) => row.id, (row) => row.id) },
       );
     },
-    [lang],
+    [lang, team],
+  );
+
+  // Laid over the row at once, then fetched again for the server's view of it.
+  const overridden = useCallback(
+    (lineId: string, text: string | null) => {
+      setOverriding(null);
+      setResult((current) => current && { ...current, lines: withTextOverride(current.lines, lineId, text) });
+      // A finished regeneration's version would hide that the new words make its take stale.
+      setRowStates((current) => {
+        if (current[lineId]?.phase !== "done") return current;
+        const { [lineId]: _done, ...rest } = current;
+        return rest;
+      });
+      void refreshRows([lineId]);
+    },
+    [refreshRows],
   );
 
   //----------------------------------------------------------------------------
@@ -398,7 +429,9 @@ export function Explorer({ books }: { books: BookFacet[] }) {
       // response does not carry, and inventing one would be a guess dressed as an answer.
       setQueueNote("Could not queue the batch.");
     } else if ("error" in queued) {
-      setKeyRequired(queued.error);
+      // The key dialog only for a missing key; a refusal about the team's storage is a note.
+      if (queued.noKey) setKeyRequired(queued.error);
+      else setQueueNote(queued.error);
     } else if (queued.skipped > 0) {
       setQueueNote(`${queued.skipped.toLocaleString()} already queued`);
     }
@@ -473,6 +506,7 @@ export function Explorer({ books }: { books: BookFacet[] }) {
   //----------------------------------------------------------------------------
 
   const pageCount = result ? Math.max(1, Math.ceil(result.total / PAGE_SIZE)) : 1;
+  const showRecordings = own && result?.recordable === true;
 
   if (empty) {
     return (
@@ -484,7 +518,13 @@ export function Explorer({ books }: { books: BookFacet[] }) {
 
   return (
     <>
-      <Contained>
+      <div className="bs-wide">
+        <TeamPicker
+          teams={teams}
+          viewed={viewed}
+          home={home}
+        />
+
         <SearchBar
           books={books}
           filters={filters}
@@ -493,13 +533,14 @@ export function Explorer({ books }: { books: BookFacet[] }) {
           onQueryChange={setQuery}
           onQuerySubmit={submitQuery}
           onChange={updateFilters}
-          onClearAll={() => writeQuery(new URLSearchParams())}
-          canTriage={canEdit}
+          onClearAll={() => writeQuery(keepTeam(new URLSearchParams(), params))}
+          canTriage={canTriage}
           madeBy={result?.madeBy}
-          recordable={result?.recordable === true}
+          recordable={showRecordings}
+          counts={result?.counts}
         />
 
-        {result?.recordable && <RecordingDropZone source="readables" onUploaded={refetch} />}
+        {showRecordings && <RecordingDropZone source="readables" onUploaded={refetch} />}
 
         {/* A line id has no dropdown to sit in - it arrives by link from /reports - so
             without this the list would be narrowed with nothing on the page saying so. */}
@@ -514,14 +555,11 @@ export function Explorer({ books }: { books: BookFacet[] }) {
           </div>
         )}
 
-        <div className="text-muted-foreground mb-2 flex items-center gap-3 text-xs">
-          {loading && result && <Refreshing />}
-          <span>
-            {result ? result.total.toLocaleString() : "…"} pages
-            {result && ` · ${result.counts.missing.toLocaleString()} without audio`}
-            {result && result.counts.stale > 0 && ` · ${result.counts.stale.toLocaleString()} outdated`}
-            {result && result.dirty > 0 && ` · ${result.dirty.toLocaleString()} pronunciation`}
-          </span>
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-1 pt-3 pb-1">
+          <div className="text-muted-foreground flex items-center gap-2 text-sm">
+            {result && result.dirty > 0 && `${result.dirty.toLocaleString()} pronunciation`}
+            {loading && result && <Refreshing />}
+          </div>
           {/* Beside the counts, and only for someone who could act on it. */}
           {canRegenerate && result && result.dirty > 0 && (
             <Button size="sm" variant="ghost" onClick={clearAllDirty}>
@@ -529,12 +567,12 @@ export function Explorer({ books }: { books: BookFacet[] }) {
             </Button>
           )}
           {canRegenerate && result && result.total > 0 && (
-            <Button size="sm" variant="secondary" onClick={askToRegenerateAll}>
-              Regenerate these
-            </Button>
+            <BatchGenerate total={result.total} state={filters.state} noun={["page", "pages"]} onClick={askToRegenerateAll} />
           )}
         </div>
-      </Contained>
+
+        <Pagination page={page} pageCount={pageCount} onPage={(next) => updateUrl({ page: next })} />
+      </div>
 
       <Wide>
         {loading && !result ? (
@@ -566,32 +604,35 @@ export function Explorer({ books }: { books: BookFacet[] }) {
                 })}
                 current={current}
                 showMadeBy={result.madeBy !== undefined}
-                showRecordings={result.recordable === true}
+                showRecordings={showRecordings}
                 onRecordingChanged={(line) => void refreshRows([line.id])}
                 canRegenerate={canRegenerate}
                 canEdit={canEdit}
+                canTriage={canTriage}
                 rowStates={rowStates}
                 onPlay={play}
                 onClearDirty={(line) => clearDirty([line.file])}
                 onRegenerate={regenerateOne}
                 onSelectBook={(line) => updateFilters({ bookId: line.bookId })}
                 bookHref={(line) => filtersHref({ bookId: line.bookId })}
-                onReport={setReportFor}
+                onReport={own ? setReportFor : null}
                 onEditText={setEditFor}
+                onOverride={setOverriding}
+                onOverrideAnswered={(line) => void refreshRows([line.id])}
                 onRename={
                   lang !== BASE_LANG && canEdit
                     ? (l) => {
                         // A page without an owner is named by no entity.
                         if (!l.ownerKind) return;
                         setNaming(
-                          nameSubject({
+                          {
                             kind: ownerEntityKind(l.ownerKind),
                             entityId: String(l.ownerIds[0]),
                             title: l.title,
                             subtitle: `${l.ownerKind} ${l.ownerIds[0]}`,
                             english: l.englishTitle ?? l.title,
                             current: l.missing?.title ? null : l.title,
-                          }),
+                          },
                         );
                       }
                     : null
@@ -608,9 +649,9 @@ export function Explorer({ books }: { books: BookFacet[] }) {
         )}
       </Wide>
 
-      <Contained>
+      <div className="bs-wide">
         <Pagination page={page} pageCount={pageCount} onPage={(next) => updateUrl({ page: next })} />
-      </Contained>
+      </div>
 
       <div className="fixed inset-x-0 bottom-0 z-20">
         <RegenerationPanel
@@ -620,6 +661,7 @@ export function Explorer({ books }: { books: BookFacet[] }) {
           onDismiss={() => setQueueNote(null)}
         />
         <Player
+          team={team}
           line={current}
           version={current ? (versions[current.id] ?? current.take?.version) : undefined}
           audioRef={audio}
@@ -632,13 +674,26 @@ export function Explorer({ books }: { books: BookFacet[] }) {
         onSaved={(line, text) => setRewritten((current) => ({ ...current, [line.id]: text }))}
       />
 
+      <TextOverrideDialog
+        source="readables"
+        line={
+          overriding && {
+            lineId: overriding.id,
+            original: rewritten[overriding.id] ?? overriding.text,
+            override: overriding.override?.text ?? null,
+          }
+        }
+        onSaved={overridden}
+        onCancel={() => setOverriding(null)}
+      />
+
       <TranslateDialog
         subject={naming}
         onClose={() => setNaming(null)}
         // A title is on every page its owner has.
         onSaved={() => {
           if (!naming) return;
-          const { kind, entityId } = naming.address;
+          const { kind, entityId } = naming;
           void refreshRows(
             (result?.lines ?? [])
               .filter((line) => line.ownerKind && ownerEntityKind(line.ownerKind) === kind && String(line.ownerIds[0]) === String(entityId))

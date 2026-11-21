@@ -3,15 +3,23 @@
  * flavors, and the voice each combination is read with. The only writer of those tables.
  *
  * A refusal is a TypesError whose message is shown to the admin as it stands.
+ *
+ * The types are every team's; each team keeps its own roster over them. Every edit runs as
+ * ALL_TEAMS and writes a row per team, so no team is left with a type it cannot voice and an
+ * edit on /enUS/voices still reaches every language.
  */
 import type { PoolClient } from "pg";
 
-import { inTransaction } from "@/lib/db";
+import { ALL_TEAMS, withTeam } from "@/lib/db";
 
 import { newVoiceName, type Gender } from "./roster";
 import { GENDERS } from "./voices";
 
 export class TypesError extends Error {}
+
+function asEveryRoster<T>(work: (client: PoolClient) => Promise<T>): Promise<T> {
+  return withTeam(ALL_TEAMS, work);
+}
 
 /**
  * A first gender for a genderless type, or a first flavor for a race-gender read by a bare voice,
@@ -48,9 +56,10 @@ async function inUse(
   return rows[0];
 }
 
+/** The voices the combination is read by, one per team or fewer where teams agree. */
 async function ownVoice(client: PoolClient, race: string, g: Gender | null, flavor: string | null): Promise<string | null> {
-  const { rows } = await client.query<{ voice: string }>(
-    `select "voice" from "voice_assignment"
+  const { rows } = await client.query<{ voice: string | null }>(
+    `select string_agg(distinct "voice", ', ' order by "voice") as "voice" from "voice_assignment"
       where "race" = $1 and "gender" is not distinct from $2 and "flavor" is not distinct from $3`,
     [race, g, flavor],
   );
@@ -85,8 +94,8 @@ async function requireType(client: PoolClient, race: string): Promise<void> {
 }
 
 /**
- * Points a combination at `voice`, or at a new voice of its own when `voice` is null. A new
- * voice is named and hashed by the combination itself: md5(text + race + gender).
+ * Points a combination at `voice`, or at a new voice of its own when `voice` is null, in every
+ * team. A new voice is named and hashed by the combination itself: md5(text + race + gender).
  */
 async function assign(
   client: PoolClient,
@@ -99,15 +108,26 @@ async function assign(
   if (name === null) {
     name = newVoiceName(race, g, flavor);
     await client.query(
-      `insert into "voice" ("name", "race", "gender") values ($1, $2, $3) on conflict do nothing`,
+      `insert into "voice" ("teamId", "name", "race", "gender")
+       select "id", $1, $2, $3 from "team"
+       on conflict do nothing`,
       [name, race, g ?? ""],
     );
-  } else if (!(await exists(client, `select 1 from "voice" where "name" = $1`, [name]))) {
+  } else if (
+    await exists(
+      client,
+      `select 1 from "team" t
+        where not exists (select 1 from "voice" v where v."teamId" = t."id" and v."name" = $1)`,
+      [name],
+    )
+  ) {
     throw new TypesError(`${name} is not a voice`);
   }
   await client.query(
-    `insert into "voice_assignment" ("race", "gender", "flavor", "voice") values ($1, $2, $3, $4)
-     on conflict ("race", coalesce("gender", ''), coalesce("flavor", '')) do update set "voice" = excluded."voice"`,
+    `insert into "voice_assignment" ("teamId", "race", "gender", "flavor", "voice")
+     select "id", $1, $2, $3, $4 from "team"
+     on conflict ("teamId", "race", coalesce("gender", ''), coalesce("flavor", '')) do update
+       set "voice" = excluded."voice"`,
     [race, g, flavor, name],
   );
   return name;
@@ -116,7 +136,7 @@ async function assign(
 export async function addType(rawKey: unknown, rawGenders: unknown): Promise<void> {
   const race = key(rawKey);
   const genders = [...new Set((Array.isArray(rawGenders) ? rawGenders : []).map(gender))];
-  await inTransaction(async (client) => {
+  await asEveryRoster(async (client) => {
     if (await exists(client, `select 1 from "race" where "key" = $1`, [race])) {
       throw new TypesError(`${race} is a type already`);
     }
@@ -132,7 +152,7 @@ export async function addType(rawKey: unknown, rawGenders: unknown): Promise<voi
 /** Only while no NPC has it. Its voices stay: they may have takes. */
 export async function deleteType(rawKey: unknown): Promise<void> {
   const race = key(rawKey);
-  await inTransaction(async (client) => {
+  await asEveryRoster(async (client) => {
     await requireType(client, race);
     if (await exists(client, `select 1 from "npc" where "race" = $1 limit 1`, [race])) {
       throw new TypesError(`NPCs are ${race}: give them another type first`);
@@ -148,7 +168,7 @@ export async function addGender(rawRace: unknown, rawGender: unknown, rawExistin
   const race = key(rawRace);
   const g = gender(rawGender);
   const choice = existing(rawExisting);
-  await inTransaction(async (client) => {
+  await asEveryRoster(async (client) => {
     await requireType(client, race);
     if (await exists(client, `select 1 from "gender" where "race" = $1 and "gender" = $2`, [race, g])) {
       throw new TypesError(`${race} has ${g} already`);
@@ -192,7 +212,7 @@ export async function addFlavor(
   const g = optional(rawGender, gender);
   const flavor = key(rawFlavor);
   const choice = existing(rawExisting);
-  await inTransaction(async (client) => {
+  await asEveryRoster(async (client) => {
     await requireType(client, race);
     const gendered = await exists(client, `select 1 from "gender" where "race" = $1`, [race]);
     if (gendered && !g) throw new TypesError(`${race} needs a gender for a flavor`);
@@ -225,7 +245,8 @@ export async function addFlavor(
     // A race-gender is read by its flavors or by one bare voice, never both.
     if (voice) {
       await client.query(
-        `delete from "voice_assignment" where "race" = $1 and "gender" is not distinct from $2 and "flavor" is null`,
+        `delete from "voice_assignment"
+          where "race" = $1 and "gender" is not distinct from $2 and "flavor" is null`,
         [race, g],
       );
     }
@@ -238,12 +259,13 @@ export async function deleteFlavor(rawRace: unknown, rawGender: unknown, rawFlav
   const race = key(rawRace);
   const g = optional(rawGender, gender);
   const flavor = key(rawFlavor);
-  await inTransaction(async (client) => {
+  await asEveryRoster(async (client) => {
     if (await exists(client, `select 1 from "npc" where "race" = $1 and "gender" is not distinct from $2 and "flavor" = $3 limit 1`, [race, g, flavor])) {
       throw new TypesError(`NPCs speak ${flavor}: give them another flavor first`);
     }
     await client.query(
-      `delete from "voice_assignment" where "race" = $1 and "gender" is not distinct from $2 and "flavor" = $3`,
+      `delete from "voice_assignment"
+        where "race" = $1 and "gender" is not distinct from $2 and "flavor" = $3`,
       [race, g, flavor],
     );
     await client.query(`delete from "flavor" where "race" = $1 and "gender" is not distinct from $2 and "flavor" = $3`, [
@@ -252,13 +274,18 @@ export async function deleteFlavor(rawRace: unknown, rawGender: unknown, rawFlav
   });
 }
 
-/** `voice` null: a new voice of the combination's own. */
-export async function assignVoice(rawRace: unknown, rawGender: unknown, rawFlavor: unknown, rawVoice: unknown): Promise<void> {
+/** `voice` null: a new voice of the combination's own, in every team's roster. */
+export async function assignVoice(
+  rawRace: unknown,
+  rawGender: unknown,
+  rawFlavor: unknown,
+  rawVoice: unknown,
+): Promise<void> {
   const race = key(rawRace);
   const g = optional(rawGender, gender);
   const flavor = optional(rawFlavor, key);
   const voice = typeof rawVoice === "string" && rawVoice ? rawVoice : null;
-  await inTransaction(async (client) => {
+  await asEveryRoster(async (client) => {
     await requireType(client, race);
     await assign(client, race, g, flavor, voice);
   });

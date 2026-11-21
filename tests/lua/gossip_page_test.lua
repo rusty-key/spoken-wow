@@ -49,10 +49,10 @@ for _, child in ipairs(content.children) do
         boxes[child.text.text] = child
     end
 end
-Expect("the sections are When to Read and Reading History", table.concat(headings, "|"),
-    W.MODULE_WHEN .. "|" .. W.MODULE_HISTORY)
+Expect("the sections are When to Read, Reading History and Muted NPCs", table.concat(headings, "|"),
+    W.MODULE_WHEN .. "|" .. W.MODULE_HISTORY .. "|" .. L.OPT_MUTED_NPCS)
 -- Voice packs, the test line and Report a Problem are on the Quests page and Spoken's, for every part.
-Expect("no voice pack rows and no test line on this page", #buttons, 1)
+Expect("no voice pack rows and no test line on this page", #buttons, 2)
 
 ---------------------------------------------------------------- the part's own switch
 local switch = boxes[W.MODULE_SWITCH]
@@ -63,6 +63,8 @@ for _, child in ipairs(content.children) do
     if child.dropdownInit and child.layoutLabel and child.layoutLabel.text == L.OPT_PANEL_GREETINGS then greetings = child end
 end
 Expect("the rows under it are live", greetings.dropdownDisabled or false, false)
+local originalThrall = boxes[L.OPT_OG_THRALL]
+Expect("Original Thrall Speech is shown to a player listening in English", originalThrall and originalThrall:IsShown(), true)
 switch:SetChecked(false)
 switch:GetScript("OnClick")(switch)
 Expect("clicking it turns the part off for Spoken", Spoken:IsPartOn("gossip"), false)
@@ -75,8 +77,8 @@ switch:GetScript("OnClick")(switch)
 Expect("turning it on again makes the part read", Spoken:IsPartOn("gossip"), true)
 
 ---------------------------------------------------------------- shared rows on the Quests page
--- Read Automatically and Stop When Window Closes cover the Gossip window too, so the Quests page
--- keeps them live while Gossip is on, whatever Quests is.
+-- Read Automatically covers the Gossip window too, so the Quests page keeps it live while Gossip
+-- is on. Stop When Window Closes is quest-only.
 local function QuestsRow(text)
     for _, child in ipairs(QuestsPanel.panel.content.children) do
         if type(child.text) == "table" and child.text.text == text then return child end
@@ -87,7 +89,7 @@ local autoplayRow, stopRow, followupRow = QuestsRow(L.OPT_PANEL_AUTOPLAY), Quest
 Spoken:SetPartOn("quests", false)
 QuestsPanel.panel.layout:Refresh()
 Expect("with Quests off and Gossip on, Read Automatically stays live", autoplayRow.layoutReason, nil)
-Expect("...and so does Stop When Window Closes", stopRow.layoutReason, nil)
+Expect("...but Stop When Window Closes is quest-only", stopRow.layoutReason, W.REASON_PART_OFF)
 Expect("...while quest-only rows grey", followupRow.layoutReason ~= nil, true)
 Spoken:SetPartOn("gossip", false)
 QuestsPanel.panel.layout:Refresh()
@@ -110,10 +112,42 @@ Expect("...and live with a greeting read once", forget.layoutReason, nil)
 forget.scripts.OnClick(forget)
 Expect("...which clears this character's greetings heard", next(db.char.hasSeenGossipForNPC), nil)
 
+---------------------------------------------------------------- muted NPCs
+local forgetMuted
+for _, button in ipairs(buttons) do if button.text == L.OPT_FORGET_MUTED_NPCS then forgetMuted = button end end
+db.char.ignoredGossipNPCs = { [12345] = "Guard", o678 = "Strongbox" }
+Panel.panel.layout:Refresh()
+local list
+for _, child in ipairs(content.children) do
+    for _, row in ipairs(child.children or {}) do if row.unmute then list = child end end
+end
+local function Unmutes()
+    local shown = {}
+    for _, row in ipairs(list.children) do if row:IsShown() then table.insert(shown, row.unmute) end end
+    return shown
+end
+Expect("each muted NPC has its own Unmute", #Unmutes(), 2)
+local first = Unmutes()[1]
+first.scripts.OnClick(first)
+Expect("...which unmutes that NPC alone", #Unmutes(), 1)
+Expect("Forget Muted NPCs is a button", forgetMuted ~= nil, true)
+forgetMuted.scripts.OnClick(forgetMuted)
+Expect("...which clears this character's muted NPCs", next(db.char.ignoredGossipNPCs), nil)
+
 ---------------------------------------------------------------- the packs that hold gossip
 Expect("the part lists the packs that hold gossip, not Alliance's", table.concat(Spoken:GetSource("gossip").packs(), "|"),
     "Spoken Audio: Gossip")
 Expect("the minimap menu heads its entries with the page's name", Spoken:GetSource("gossip").title, L.OPT_GOSSIP_PAGE_TITLE)
+
+---------------------------------------------------------------- not listening in English
+local audio = VO.Addon.db.profile.Audio
+audio.VoiceLanguage, audio.FallbackLanguage = "deDE", "none"
+Panel.panel.layout:Refresh()
+Expect("Original Thrall Speech is hidden without English among the voices", originalThrall:IsShown(), false)
+audio.FallbackLanguage = "enUS"
+Panel.panel.layout:Refresh()
+Expect("...and shown with English as the fallback", originalThrall:IsShown(), true)
+audio.VoiceLanguage, audio.FallbackLanguage = nil, nil
 
 if Failures() > 0 then print(string.format("\n%d failure(s)", Failures())); os.exit(1) end
 print("\nAll gossip page tests passed")

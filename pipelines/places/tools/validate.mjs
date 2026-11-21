@@ -25,7 +25,8 @@ const DATA = join(ROOT, "addons/Spoken_Places/Data");
 // lower-case word is legitimate vanilla lore ("the black dragonflight").
 const FORBIDDEN = [
   /\bcataclysm\b/i,
-  /\bDeathwing\b/,
+  // Onyxia's parentage is Classic lore (Onyxia's Lair, Wyrmbog); Deathwing's return is not.
+  /(?<!daughter of |Tochter von )\bDeathwing\b/,
   /\bPandaria\b/,
   /\bShadowlands\b/,
   /\bGarrosh\b/,
@@ -393,33 +394,24 @@ for (const lang of languages) {
 //------------------------------------------------------------------------------
 // Locale list parity
 //
-// Language.lua and lib/locales.mjs both enumerate the languages, one for the
-// addon and one for everything that generates files for it. A code in only one of
-// them is either a language nothing can be built for or a directory the addon
-// will never load.
+// Spoken's registry (addons/Spoken/Languages.lua) builds in the languages a game
+// client runs in, and lib/locales.mjs lists them for everything that generates
+// files for the addon. A client language in only one of them is either a language
+// nothing can be built for or a directory the addon will never load. A language no client
+// runs in is in neither: a pack declares it.
 //------------------------------------------------------------------------------
 
 {
-  const languageLua = await readFile(join(ROOT, "addons/Spoken_Places/Language.lua"), "utf8");
-  const luaCodes = [...languageLua.matchAll(/\{ code = "(\w+)"/g)].map((m) => m[1]);
-  if (luaCodes.join(",") !== CODES.join(",")) {
+  const languagesLua = await readFile(join(ROOT, "addons/Spoken/Languages.lua"), "utf8");
+  // Only the table's own entries: the comments above it may quote the entry's shape.
+  const block = languagesLua.match(/^Languages\.BUILTIN = \{\n([\s\S]*?)^\}/m);
+  const luaCodes = block ? [...block[1].matchAll(/\{ code = "(\w+)"/g)].map((m) => m[1]) : [];
+  const clientCodes = LOCALES.map((l) => l.code);
+  if (luaCodes.join(",") !== clientCodes.join(",")) {
     note(
-      `Language.lua LOCALES and lib/locales.mjs LOCALES have drifted:\n` +
-        `      Lua: ${luaCodes.join(" ")}\n` +
-        `      JS:  ${CODES.join(" ")}`
-    );
-  }
-
-  // Which languages no client runs in. The addon keeps Auto off them and the pipelines
-  // build nothing client-keyed for them; one side thinking a client exists and the other
-  // not is aliases built for nobody, or Auto landing on a language with none.
-  const luaNonClient = [...languageLua.matchAll(/\{ code = "(\w+)"[^}]*client = false/g)].map((m) => m[1]);
-  const jsNonClient = LOCALES.filter((l) => l.client === false).map((l) => l.code);
-  if (luaNonClient.join(",") !== jsNonClient.join(",")) {
-    note(
-      `Language.lua and lib/locales.mjs disagree on which languages no client runs in:\n` +
-        `      Lua: ${luaNonClient.join(" ") || "(none)"}\n` +
-        `      JS:  ${jsNonClient.join(" ") || "(none)"}`
+      `Spoken's Languages.BUILTIN and the client languages of lib/locales.mjs have drifted:\n` +
+        `      Lua: ${luaCodes.join(" ") || "(none found)"}\n` +
+        `      JS:  ${clientCodes.join(" ")}`
     );
   }
 
@@ -430,7 +422,7 @@ for (const lang of languages) {
 //------------------------------------------------------------------------------
 // Report URL slugs
 //
-// SpokenPlaces:ReportURL builds spoken.rusty.one/{lang}/places/r/{mapID}/{slug} in Lua, and the site
+// SpokenPlaces:ReportURL builds spoken.quest/{lang}/places/r/{mapID}/{slug} in Lua, and the site
 // resolves that path back to a line by looking it up among the file paths
 // naming.mjs assigns. That only works while every slug is derivable from the key
 // alone: assignFiles has a hash fallback for collisions, and the addon has no way

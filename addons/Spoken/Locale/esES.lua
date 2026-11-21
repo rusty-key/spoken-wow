@@ -7,7 +7,7 @@
 
 setfenv(1, SpokenEnv)
 
-if GetLocale() ~= "esES" and GetLocale() ~= "esMX" then
+if not Interface:In("esES", "esMX") then
 	return
 end
 
@@ -51,12 +51,13 @@ L.OPT_CONTRIBUTE_TITLE = "Contribuir e informar"
 L.OPT_HIDE_CONTRIBUTE = "Ocultar botones de Contribuir"
 L.OPT_HIDE_REPORT = "Ocultar botones de Informar"
 L.OPT_GATHER = "Recopilar líneas que faltan"
+L.OPT_GATHER_VIEW = "Mostrar líneas recopiladas"
 L.OPT_GATHER_SHARE = "Cómo enviar las líneas recopiladas"
 L.OPT_GATHER_CLEAR = "Borrar líneas recopiladas"
 L.CONTRIBUTE_INTRO = "Spoken aún no tiene voz para esto, y el texto del juego es el camino para conseguirla.\n\nPuedes enviar solo esta línea ahora, o dejar que Spoken recopile en silencio, mientras juegas, cada línea que falte y cada línea que ya tiene voz pero dice otra cosa en tu juego, y enviarlas todas a la vez cuando quieras.\n\nNada sale de tu juego a menos que lo subas tú mismo o dejes que Spoken Manager lo envíe por ti, y puedes dejar de recopilar en cualquier momento en la configuración de Spoken."
 L.CONTRIBUTE_JUST_THIS = "Enviar solo esta línea"
 L.CONTRIBUTE_GATHER = "Recopilar mientras juego"
-L.GATHER_INSTRUCTIONS = "Recopilación activada: %1$d línea(s) guardadas hasta ahora. Juega con normalidad.\n\nPara enviarlas:\n1. Cierra la sesión o escribe /reload para que el juego escriba sus archivos.\n2. Abre spoken.rusty.one/contribute y elige Upload a file.\n3. Elige este archivo:\nWorld of Warcraft\\%2$s\\WTF\\Account\\<tu cuenta>\\SavedVariables\\SpokenContributions.lua\n\nDespués borra las líneas recopiladas en la configuración de Spoken. /sp send muestra esto de nuevo.\n\nO activa Sharing en Spoken Manager y las enviará por ti tras cada cierre de sesión o /reload."
+L.GATHER_INSTRUCTIONS = "Recopilación activada: %1$d línea(s) guardadas hasta ahora. Juega con normalidad.\n\nPara enviarlas:\n1. Cierra la sesión o escribe /reload para que el juego escriba sus archivos.\n2. Abre spoken.quest/contribute y elige Upload a file.\n3. Elige este archivo:\nWorld of Warcraft\\%2$s\\WTF\\Account\\<tu cuenta>\\SavedVariables\\SpokenContributions.lua\n\nDespués borra las líneas recopiladas en la configuración de Spoken. /sp send muestra esto de nuevo.\n\nO activa Sharing en Spoken Manager y las enviará por ti tras cada cierre de sesión o /reload."
 L.OPT_RESET = "Restablecer posiciones"
 L.OPT_FIX_TITLE = "Solucionar un problema"
 L.OPT_DIAGNOSTICS = "Mostrar diagnóstico"
@@ -133,6 +134,7 @@ L.SAMPLE_WINDOW_TEXT = "Así se verán las líneas habladas. Lleva la ventana ad
 L.STYLE_PREVIEW = "Vista previa"
 L.STYLE_PREVIEW_HIDE = "Ocultar"
 L.OPT_LINKS_TITLE = "Enlaces"
+L.OPT_LINKS_WEBSITE = "Sitio web"
 L.OPT_LINKS_TIP = "Haz clic para seleccionar la dirección y luego Ctrl+C para copiarla."
 
 -- Modules
@@ -157,7 +159,7 @@ L.MODULE_NOT_LOADED = "No cargado"
 L.MODULE_NO_PACK = "|cffff8080Ningún paquete de voces instalado.|r Sin uno no se lee nada en voz alta."
 L.MODULE_RESET = "Restablecer"
 L.REASON_PART_OFF = "Activa «Activar» al principio de esta página para usar esto."
-L.MODULE_NO_VOICE_FMT = "Ningún paquete de voces habla %1$s y «Si falta la voz» está en «Silencio»: no se lee nada en voz alta."
+L.MODULE_NO_VOICE_FMT = "Ningún paquete de voces habla %1$s, ni ninguna voz posterior de tu lista: no se lee nada en voz alta."
 L.OPT_PART_CLICK_ON = "Haz clic para activarlo."
 L.OPT_PART_CLICK_OFF = "Haz clic para desactivarlo."
 L.PART_TURNED_OFF = "está desactivado en la configuración de Spoken"
@@ -178,10 +180,22 @@ L.OPT_LOWER_DIALOG = "Voces de PNJ"
 
 -- Language
 L.OPT_LANGUAGE_TITLE = "Idioma"
-L.OPT_VOICE_LANGUAGE = "Idioma de las voces"
+L.OPT_VOICES = "Voces, por orden"
+L.OPT_VOICES_TIP = "Una línea suena con la primera voz que la tenga. Si ninguna la tiene, Spoken guarda silencio."
+L.OPT_VOICE_ADD = "Añadir una voz"
+L.OPT_VOICE_EARLIER = "Antes"
+L.OPT_VOICE_LATER = "Después"
+L.OPT_VOICE_REMOVE = "Quitar"
+L.OPT_VOICE_MISSING = "(no instalada)"
 L.OPT_LANG_AUTO_FMT = "Automático (%1$s)"
-L.OPT_FALLBACK_LANGUAGE = "Si falta la voz"
-L.OPT_FALLBACK_NONE = "Silencio"
+L.OPT_VOICE_TEAM_FMT = "%1$s · %2$s"
+L.OPT_TEXT_LANGUAGE = "Idioma del texto"
+L.OPT_TEXT_LANGUAGE_SET_FMT = "El texto estará en %1$s cuando se recargue la interfaz."
+L.OPT_TEXT_LANGUAGE_RELOAD = "Escribe /reload para cambiar a él."
+L.OPT_INTERFACE_LANGUAGE = "Idioma de la interfaz"
+L.OPT_INTERFACE_LANGUAGE_SET_FMT = "Las ventanas y los ajustes de Spoken estarán en %1$s cuando se recargue la interfaz."
+L.OPT_RELOAD_NOW = "Recargar ahora"
+L.OPT_LATER = "Más tarde"
 
 -- Keys
 L.OPT_KEYS_TITLE = "Teclas"
@@ -204,6 +218,7 @@ L.OLD_FOLDERS_LATER = "Más tarde"
 L.OPT_GATHER_ROW = "Líneas recopiladas"
 L.GATHER_OFF = "Sin recopilar"
 L.GATHER_NONE = "Aún no se ha recopilado nada"
+L.GATHER_VIEW_OLDER_FMT = "%1$d línea(s) más antigua(s) no se muestran aquí. Se envían igualmente."
 L.GATHER_BADGE_FMT = "%1$d listas para enviar"
 
 -- Profiles and starting over

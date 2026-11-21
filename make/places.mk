@@ -4,7 +4,7 @@
 .DEFAULT_GOAL := help
 .PHONY: help package package-audio check validate validate-audio lint deploy deploy-copy \
         status remove clean voice voice-zones lookup export \
-        pull-history pull-live pull-recorded package-acted acted history-status sounds ssh-check sync check-synced full-release \
+        pull-history pull-live pull-recorded package-acted acted history-status sounds ssh-check sync check-synced full-release upload upload-dry \
         icon lore-import lore-import-names lore-export lore-check lore-rewrite aliases languages locale-check \
         areas forever-areas pictures \
         release release-dry release-audio release-audio-dry
@@ -323,13 +323,22 @@ release-audio: ## Upload the sound pack (LOCALE=xx for a language's)
 # to docs/places/CHANGELOG.md first; both uploads quote that section. The pack goes to
 # CurseForge only -- Wago answers 413 to a file this size (scripts/lib/wago.sh) -- and to
 # GitHub, which is where a Wago player gets it.
+#
+# The bosses' pack is its own release, to its own projects: bosses-full-release.
 full-release: require-droplet ## Sync, pull live takes, build and upload the sound pack (LOCALE=xx for a language's)
 	@$(MAKE) --no-print-directory -f make/places.mk sync
 	@$(MAKE) --no-print-directory -f make/places.mk pull-live LOCALE=$(LOCALE)
 	@$(MAKE) --no-print-directory -f make/places.mk package-audio LOCALE=$(LOCALE)
-	@./scripts/places/release.sh --dry-run --lang=$(or $(LOCALE),enUS) audio
-	@./scripts/audio-github-release.sh --dry-run places $(or $(LOCALE),enUS)
+	@$(MAKE) --no-print-directory -f make/places.mk upload-dry LOCALE=$(LOCALE)
 	@printf 'Upload the places pack to CurseForge and GitHub? [y/N] '; \
 	  read -r answer; [ "$$answer" = y ] || { echo aborted; exit 1; }
+	@$(MAKE) --no-print-directory -f make/places.mk upload LOCALE=$(LOCALE)
+
+# For a dist/ already built: release-packs.yaml builds and uploads in separate steps.
+upload-dry: ## Show what full-release would upload from dist/ (LOCALE=xx for a language's)
+	@./scripts/places/release.sh --dry-run --lang=$(or $(LOCALE),enUS) audio
+	@./scripts/audio-github-release.sh --dry-run places $(or $(LOCALE),enUS)
+
+upload: ## Upload the pack in dist/ as full-release does, building nothing (LOCALE=xx for a language's)
 	@./scripts/places/release.sh --lang=$(or $(LOCALE),enUS) audio
 	@./scripts/audio-github-release.sh places $(or $(LOCALE),enUS)

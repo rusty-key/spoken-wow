@@ -42,6 +42,17 @@ Expect("no position: every place is already known", envelope:match("\nx=") == ni
 Expect("there is no text block -- the description is written on the page", envelope:match("text<<") == nil, true)
 Expect("the addon field carries the real .toc version, not the \"dev\" fallback",
     envelope:match("\naddon=Spoken_Places/9%.9%.9\n") ~= nil, true)
+Expect("with no pack installed, the pack version says none", envelope:match("\npackVersion=none\n") ~= nil, true)
+
+do
+    local active = Z.GetActiveAudioPack
+    Z.GetActiveAudioPack = function()
+        return { addon = "SpokenPlacesAudio_deDE", language = "deDE", packVersion = "1.4.2" }
+    end
+    Expect("...and with one, the version it registered from its .toc",
+        Z:CaptureContribution(1537, nil):match("\npackVersion=1%.4%.2\n") ~= nil, true)
+    Z.GetActiveAudioPack = active
+end
 
 local zoneOnly = Z:CaptureContribution(1537, nil)
 H.WriteCapturedFixture(here, "places-zone", zoneOnly)
@@ -65,7 +76,7 @@ Z:ShowContribution(1537, "A Nook With No Lore")
 Expect("...only Show() does", encodeCalls, 1)
 local box = env.Spoken.ContributeBox
 Expect("Show() puts a link in the box, not the raw envelope",
-    box.editBox:GetText():match("^https://spoken%.rusty%.one/contribute#e1=") ~= nil, true)
+    box.editBox:GetText():match("^https://spoken%.quest/contribute#e1=") ~= nil, true)
 Expect("...with the link hint", box.hint:GetText(), "Copy this and open it in your browser:")
 env.Spoken.Contribute.Encode = realEncode
 
@@ -75,7 +86,35 @@ Z:ShowContribution(1537, "A Nook With No Lore")
 Expect("...falls back to the raw envelope when Encode is absent",
     box.editBox:GetText():match("^!SPOKEN1 places\n") ~= nil, true)
 Expect("...with the old two-copy hint", box.hint:GetText(), "Press Ctrl+C, then paste it at:")
-Expect("...and the address shown again", box.address:GetText(), "https://spoken.rusty.one/contribute")
+Expect("...and the address shown again", box.address:GetText(), "https://spoken.quest/contribute")
 env.Spoken.Contribute.Encode = realEncode
+
+---------------------------------------------------------------- a report names the pack that played
+do
+    local active = Z.GetActiveAudioPack
+    Z.GetActiveAudioPack = function()
+        return { addon = "SpokenPlacesAudio_deDE_stimmen", language = "deDE", voice = "deDE_stimmen", packVersion = "1.0.0" }
+    end
+    local english = { packFolder = "SpokenPlacesAudio", voice = "enUS" }
+    local report = Z:ReportContext(1537, "a nook", english)
+    Expect("a report names the pack its clip played from, not the active one",
+        report:match("\npackFolder=SpokenPlacesAudio\n") ~= nil, true)
+    Expect("...and a plain pack names no team", report:match("\npackTeam=") == nil, true)
+    local stimmen = { packFolder = "SpokenPlacesAudio_deDE_stimmen", voice = "deDE_stimmen" }
+    Expect("a team's pack names its team",
+        Z:ReportContext(1537, "a nook", stimmen):match("\npackFolder=SpokenPlacesAudio_deDE_stimmen\npackTeam=stimmen\n") ~= nil,
+        true)
+    Expect("a report with no clip and nothing to play names no pack",
+        Z:ReportContext(1537, "a nook"):match("\npackFolder=") == nil, true)
+    -- The lore page's Report has no clip: it names the pack that would play now, a team's when
+    -- the team's voice comes first.
+    local getClip = Z.GetAudioClip
+    Z.GetAudioClip = function() return "path", 3, { addon = "SpokenPlacesAudio_deDE_stimmen", language = "deDE", voice = "deDE_stimmen" } end
+    Expect("a report with no clip names the pack the story would play from, and its team",
+        Z:ReportContext(1537, "a nook"):match("\npackFolder=SpokenPlacesAudio_deDE_stimmen\npackTeam=stimmen\n") ~= nil,
+        true)
+    Z.GetAudioClip = getClip
+    Z.GetActiveAudioPack = active
+end
 
 os.exit(Failures() == 0 and 0 or 1)

@@ -101,7 +101,7 @@ Expect("starting marks the area heard in the per-character record", Z:HasHeard(1
 
 local F = env.PlayerFrame
 Expect("the player frame shows where the zone is, then its name", F.frame.container.name:GetText() .. " "
-    .. tostring(F.frame.container.label:GetText()), "Kalimdor • Durotar")
+    .. tostring(F.frame.container.label:GetText()), "Kalimdor · Durotar")
 Z.GetMapName = GetMapName
 -- Report only, as an icon among the header's controls. Reading the text is reached from the map,
 -- the minimap menu and /spz; a button on the player that opened a window over the thing being
@@ -138,6 +138,7 @@ Spoken:StopAll()
 ---------------------------------------------------------------- the combat gate
 env, Z = Boot(); Spoken = _G.Spoken
 world.inCombat = true
+Z:Set("autoplayStopInCombat", true)
 local held = Z:NewLoreSound(1411, nil)
 held.autoplay = true
 Expect("an autoplayed clip is admitted", Z:EnqueueLore(held), true)
@@ -152,6 +153,60 @@ world.inCombat = false
 stub.Advance(1)
 Expect("leaving combat, the retry tick starts it", Spoken:IsPlaying(held), true)
 Spoken:StopAll()
+
+-- Holding at the door is not enough: a narration already speaking when a fight starts
+-- must stop for it, or it talks through the whole pull (#938).
+env, Z = Boot(); Spoken = _G.Spoken
+Z:Set("autoplayStopInCombat", true)
+local narration = Z:NewLoreSound(1411, "valley of trials"); narration.autoplay = true
+Z:EnqueueLore(narration)
+Expect("out of combat, the narration speaks", Spoken:IsPlaying(narration), true)
+world.inCombat = true
+stub.FireEvent("PLAYER_REGEN_DISABLED")
+Expect("PLAYER_REGEN_DISABLED stops an autoplayed clip already speaking", Spoken:IsPlaying(), false)
+Expect("...and keeps it queued", Spoken:GetCurrent(), narration)
+Expect("...held for combat", Spoken:GetHeldReason(narration), "Waiting for combat to end.")
+stub.Advance(30)
+Expect("...for as long as the fight lasts", Spoken:IsPlaying(), false)
+world.inCombat = false
+stub.Advance(1)
+Expect("the fight over, it replays", Spoken:IsPlaying(narration), true)
+Spoken:StopAll()
+
+-- Stop When Combat Starts off, the default: the speaking narration plays through the fight.
+env, Z = Boot(); Spoken = _G.Spoken
+narration = Z:NewLoreSound(1411, "valley of trials"); narration.autoplay = true
+Z:EnqueueLore(narration)
+world.inCombat = true
+stub.FireEvent("PLAYER_REGEN_DISABLED")
+Expect("with the setting off, combat leaves an autoplayed clip speaking", Spoken:IsPlaying(narration), true)
+Spoken:StopAll()
+held = Z:NewLoreSound(1411, nil); held.autoplay = true
+Z:EnqueueLore(held)
+Expect("...with the setting off, one not yet started is not held", Spoken:GetHeldReason(held), nil)
+Expect("...and it continues playing in combat", Spoken:IsPlaying(held), true)
+Spoken:StopAll()
+world.inCombat = false
+
+env, Z = Boot(); Spoken = _G.Spoken
+Z:Set("autoplayStopInCombat", true)
+Expect("a clicked clip plays", Z:PlayLore(1411, nil), true)
+world.inCombat = true
+stub.FireEvent("PLAYER_REGEN_DISABLED")
+Expect("...and is not cut off by combat", Spoken:IsPlaying(), true)
+Spoken:StopAll()
+
+env, Z = Boot(); Spoken = _G.Spoken
+Z:Set("autoplayStopInCombat", true)
+local questSource = Spoken:RegisterSource("quests", { title = "Quests", addon = "Spoken_Quests", order = 1 })
+local questLine = H.Clip()
+questSource:Enqueue(questLine)
+Expect("a quest line speaks", Spoken:IsPlaying(questLine), true)
+world.inCombat = true
+stub.FireEvent("PLAYER_REGEN_DISABLED")
+Expect("...and combat leaves another source's line alone", Spoken:IsPlaying(questLine), true)
+Spoken:StopAll()
+world.inCombat = false
 
 ---------------------------------------------------------------- the cinematic gate
 -- The greeting fires two seconds after load, and a new character's intro can start after
@@ -335,6 +390,56 @@ stub.Advance(60)
 Expect("once it is over, the greeting gets all its attempts", counter.asked, 8)
 _G.InCinematic = nil
 _G.SpokenPlacesCharacter = nil
+
+---------------------------------------------------------------- a dungeon's story for another addon
+-- Spoken:PlayStory("instance", map) reaches Places through the teller it registers: the instance map
+-- names the area that tells the dungeon's story, and only a voiced, unlocked one counts.
+do
+    local _, P = Boot()
+    local S = _G.Spoken
+    local savedDungeons = _G.SpokenDungeons
+    _G.SpokenDungeons = { dungeons = { [389] = { zone = 1411, story = { 1411, "valley of trials" } },
+        [34] = { zone = 1453 } } }
+    local locked = false
+    P.IsLocked = function() return locked end
+
+    Expect("an instance whose story is voiced has one", S:HasStory("instance", 389), true)
+    Expect("...one with no story has none", S:HasStory("instance", 34), false)
+    Expect("...nor an unknown map, nor no id", tostring(S:HasStory("instance", 1)) .. " " .. tostring(S:HasStory("instance", nil)),
+        "false false")
+    locked = true
+    Expect("...nor a locked one", S:HasStory("instance", 389), false)
+    Expect("...which PlayStory leaves unplayed", tostring(S:PlayStory("instance", 389)) .. " " .. S:GetQueueSize(), "false 0")
+    locked = false
+
+    local Named = H.CaptionStory
+    Expect("PlayStory plays it", S:PlayStory("instance", 389), true)
+    Expect("...the area's story", S:GetNowPlaying().key, "s:1411:valley of trials")
+    Expect("...which GetCaption names as PlayStory took it", Named(), "instance 389")
+    Expect("...and IsPlayingStory says so", S:IsPlayingStory("instance", 389), true)
+    Expect("...for that instance only", S:IsPlayingStory("instance", 34), false)
+    Expect("StopStory stops it", tostring(S:StopStory("instance", 389)) .. " " .. S:GetQueueSize(), "true 0")
+    Expect("...and a second stop finds nothing", S:StopStory("instance", 389), false)
+
+    P:PlayLore(1411, "valley of trials")
+    Expect("the area's story Places plays itself is no story PlayStory played", Named(), "none")
+    S:StopAll()
+
+    local other = H.Clip()
+    S:RegisterSource("other", { title = "Other", addon = "X", order = 9 }):Enqueue(other)
+    Expect("behind a line speaking it waits", tostring(S:PlayStory("instance", 389)) .. " " .. S:GetQueueSize(), "true 2")
+    Expect("...and is not playing", S:IsPlayingStory("instance", 389), false)
+    Expect("StopStory takes it out of the queue, leaving the other line", tostring(S:StopStory("instance", 389))
+        .. " " .. tostring(S:GetNowPlaying() == other) .. " " .. S:GetQueueSize(), "true true 1")
+    S:StopAll()
+
+    S:SetPartOn("places", false)
+    Expect("with Places switched off there is no story", S:HasStory("instance", 389), false)
+    S:SetPartOn("places", true)
+    P:Set("voiceEnabled", false)
+    Expect("...nor with Read Stories Aloud off", S:HasStory("instance", 389), false)
+    _G.SpokenDungeons = savedDungeons
+end
 
 ---------------------------------------------------------------- the pack this repo ships
 -- The shipped Data/Sounds.lua, loaded for real. Everything above uses hand-built tables, so

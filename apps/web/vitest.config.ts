@@ -31,13 +31,20 @@ function localEnv(): Record<string, string> {
     }
   }
 
+  // A checkout set up to try the R2 archive must not have its tests write to the bucket.
+  values.set("SPOKEN_ARCHIVE_STORE", "disk");
+  // As the app role, so row-level security binds the suite as it binds the site: the local and
+  // CI users are superusers, who bypass it. DATABASE_ROLE= (empty) runs as the connecting user.
+  values.set("DATABASE_ROLE", "spoken_app");
   return Object.fromEntries([...values].filter(([key]) => !(key in process.env)));
 }
 
 export default defineConfig({
+  // Component tests (.tsx) use the automatic JSX runtime, as Next does.
+  esbuild: { jsx: "automatic" },
   test: {
     environment: "node",
-    include: ["src/**/*.test.ts"],
+    include: ["src/**/*.test.ts", "src/**/*.test.tsx"],
     env: localEnv(),
     /**
      * One test file at a time.
@@ -50,7 +57,7 @@ export default defineConfig({
      */
     fileParallelism: false,
     // Removes the activity rows a run writes as nobody; see the file for why.
-    globalSetup: ["./vitest.activity.ts"],
+    globalSetup: ["./vitest.activity.ts", "./vitest.teams.ts"],
   },
   resolve: {
     alias: {

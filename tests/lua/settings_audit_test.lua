@@ -28,6 +28,8 @@ env.Sources:Register("readables", { title = "Spoken Readables", addon = "Spoken_
     packs = function() return { "SpokenReadablesAudio" } end })
 env.Sources:Register("places", { title = "Spoken Places", addon = "Spoken_Places", order = 3,
     packs = function() return { "SpokenPlacesAudio" } end })
+env.Sources:Register("bosses", { title = "Spoken Bosses", addon = "Spoken_Bosses", order = 5,
+    packs = function() return { "SpokenBossesAudio" } end })
 _G.Spoken:RegisterOptionalAction("report", "Report")
 env.Addon:Enable()
 local QuestsPanel = stub.LoadQuestsPanel(QUESTS, VO)
@@ -206,9 +208,9 @@ for _, key in ipairs({ "quests", "gossip", "places", "readables" }) do
         local name = Name(control)
         if not control.layoutReason and name ~= "Enable" then table.insert(live, name) end
     end
-    -- Read Automatically and Stop When Window Closes cover Gossip's window too: they stay live
-    -- on the Quests page while Gossip is on.
-    local shared = key == "quests" and "Read Automatically, Stop When Window Closes, NPC Voice Before Reading" or ""
+    -- Read Automatically and NPC Voice Before Reading cover Gossip's window too: they stay live
+    -- on the Quests page while Gossip is on. Stop When Window Closes is quest-only.
+    local shared = key == "quests" and "Read Automatically, NPC Voice Before Reading" or ""
     Expect(page.name .. ", switched off, greys out everything on it but its switch", table.concat(live, ", "), shared)
     _G.Spoken:SetPartOn(key, true)
     env.Options:UpdateRows()

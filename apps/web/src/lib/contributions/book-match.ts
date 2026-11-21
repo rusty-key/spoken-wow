@@ -10,11 +10,13 @@
  * Computed against the corpus as it stands, never stored: once a new book's first page is
  * accepted, its other pages find it by title.
  */
+import { namesOneBook } from "@readables-tools/lib/owners.mjs";
 import { normaliseText } from "@readables-tools/lib/text.mjs";
 
 import type { PoolClient } from "pg";
 
 import { db } from "@/lib/db";
+import { BASE_LANG } from "@/lib/lang";
 import { memoByLang } from "@/lib/memo";
 import { bookPageStamp, versionStamp } from "@/lib/stamp";
 
@@ -68,7 +70,7 @@ export type MatchVia = "moderator" | "owner" | "text" | "title" | "none";
 /**
  * Whether accepting many rows at once may take a row with this match. A new book is minted only
  * by accepting its row on its own: a title no corpus book has may still be one under another
- * title. A correction replaces words the page has, so it is taken from the Corrections tab.
+ * title. A correction replaces existing text, so it is reviewed on its own.
  */
 export const bulkAcceptable = (match: BookMatchResult) =>
   match.kind === "translation" || match.kind === "new-page";
@@ -145,7 +147,8 @@ export function indexCorpus(pages: BookCorpusPage[]): BookCorpus {
       for (const title of titles) addTo(byTitle, `${lang}\u0000${title.trim()}`, page.bookId);
     }
     byPlace.set(`${page.bookId}\u0000${page.pageNumber}`, page);
-    if (page.ownerKind) for (const id of page.ownerIds) addTo(byOwner, `${page.ownerKind}:${id}`, page.bookId);
+    const kind = page.ownerKind;
+    if (kind) for (const id of page.ownerIds) if (namesOneBook(kind, id)) addTo(byOwner, `${kind}:${id}`, page.bookId);
   }
   const byText = new Map([...byTextSets].map(([said, set]) => [said, [...set]]));
   return { pages, byText, normalised, byTitle, byPlace, byOwner };
@@ -168,10 +171,57 @@ function inBook(corpus: BookCorpus, bookId: string, pageNumber: number, said: st
   return page ? onPage(page, said, row, corpus, via) : { kind: "new-page", bookId, pageNumber, via };
 }
 
+export function titleIn(page: BookCorpusPage | undefined, lang: string): string {
+  return page?.titles.get(lang)?.[0] ?? page?.titles.get(BASE_LANG)?.[0] ?? [...(page?.titles.values() ?? [])][0]?.[0] ?? "untitled";
+}
+
+/** One page or book an ambiguous row may be, with enough to tell it from same-named others. */
+export type BookCandidate = {
+  key: string;
+  answer: { lineId: string } | { bookId: string; pageNumber: number };
+  label: string;
+  bookId: string;
+  /** The page shown for it: the row's own, or the book's first when the book has no such page. */
+  lineId: string;
+  excerpt: string | null;
+  owner: { kind: "object" | "item"; id: number } | null;
+};
+
+const EXCERPT_LENGTH = 120;
+
+/** An ambiguous match's candidates: page ids when the words matched, book ids when only the title did. */
+export function bookCandidates(
+  match: BookMatchResult,
+  corpus: BookCorpus,
+  row: Pick<BookMatchInput, "locale" | "meta">,
+): BookCandidate[] {
+  if (match.kind !== "ambiguous") return [];
+  const pageNumber = pageNumberOf(row.meta);
+  return match.candidates.flatMap((candidate) => {
+    const isPage = candidate.startsWith("b:");
+    const bookId = isPage ? null : candidate;
+    const own = isPage ? corpus.pages.find((p) => p.lineId === candidate) : corpus.byPlace.get(`${bookId}\u0000${pageNumber}`);
+    const page = own ?? corpus.pages.filter((p) => p.bookId === bookId).sort((a, b) => a.pageNumber - b.pageNumber)[0];
+    if (!page) return [];
+    const text = page.texts.get(row.locale) ?? page.texts.get(BASE_LANG) ?? [...page.texts.values()][0];
+    return [{
+      key: candidate,
+      answer: isPage ? { lineId: candidate } : { bookId: page.bookId, pageNumber },
+      label: `${titleIn(page, row.locale)} p.${isPage ? page.pageNumber : pageNumber}${own ? "" : " (new page)"}`,
+      bookId: page.bookId,
+      lineId: page.lineId,
+      excerpt: text ? text.replace(/\s+/g, " ").trim().slice(0, EXCERPT_LENGTH) : null,
+      owner: page.ownerKind && page.ownerIds.length > 0 ? { kind: page.ownerKind, id: page.ownerIds[0] } : null,
+    }];
+  });
+}
+
 export function matchBook(row: BookMatchInput, corpus: BookCorpus): BookMatchResult {
   const pageNumber = row.matchPageNumber ?? pageNumberOf(row.meta);
   const title = row.meta.book?.trim() ?? "";
   const said = row.text ? normal(row.text) : "";
+  // A letter copy's title is the item's, the same on every letter, so it tells no page apart.
+  const telling = namesOneBook("item", Number(row.meta.item)) ? title : "";
 
   if (row.matchLineId) {
     const page = corpus.pages.find((p) => p.lineId === row.matchLineId);
@@ -199,9 +249,9 @@ export function matchBook(row: BookMatchInput, corpus: BookCorpus): BookMatchRes
       // Otherwise the contributor's title, in its language and then in any, and its page number
       // may tell the copies apart.
       const named = (p: BookCorpusPage, lang?: string) =>
-        [...p.titles].some(([l, ts]) => (lang === undefined || l === lang) && ts.some((t) => t.trim() === title));
-      let narrowed = title ? same.filter((p) => named(p, row.locale)) : [];
-      if (title && narrowed.length === 0) narrowed = same.filter((p) => named(p));
+        [...p.titles].some(([l, ts]) => (lang === undefined || l === lang) && ts.some((t) => t.trim() === telling));
+      let narrowed = telling ? same.filter((p) => named(p, row.locale)) : [];
+      if (telling && narrowed.length === 0) narrowed = same.filter((p) => named(p));
       if (narrowed.length === 1) return onPage(narrowed[0], said, row, corpus, "text");
       if (narrowed.length > 1) {
         const numbered = narrowed.filter((p) => p.pageNumber === pageNumber);
@@ -214,8 +264,8 @@ export function matchBook(row: BookMatchInput, corpus: BookCorpus): BookMatchRes
   }
 
   // 3. The title and page number, in this language.
-  if (title) {
-    const found = corpus.byTitle.get(`${row.locale}\u0000${title}`);
+  if (telling) {
+    const found = corpus.byTitle.get(`${row.locale}\u0000${telling}`);
     if (found && found.size === 1) return inBook(corpus, [...found][0], pageNumber, said, row, "title");
     if (found && found.size > 1) return { kind: "ambiguous", candidates: [...found].sort() };
   }

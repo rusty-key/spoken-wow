@@ -7,7 +7,7 @@
 
 local _, SpokenPlaces = ...
 
-if GetLocale() ~= "ptBR" then
+if not Spoken:InterfaceIn("ptBR") then
 	return
 end
 
@@ -22,10 +22,12 @@ L.OPT_PLAY_BUTTON = "Ler histórias em voz alta"
 L.OPT_AUTOPLAY = "Ler automaticamente"
 L.OPT_AUTOPLAY_SUB = "Incluir áreas menores"
 L.OPT_AUTOPLAY_EXPLORED = "Incluir lugares já encontrados"
-L.OPT_LANG_RELOAD = "Digite /reload para trocar para ele."
-L.OPT_LANGUAGE = "Idioma do texto"
-L.OPT_LANG_AUTO_FMT = "Automático (%1$s)"
-L.OPT_LANG_SET_FMT = "As histórias estarão em %1$s depois que a interface recarregar."
+L.OPT_AUTOPLAY_COMBAT = "Parar ao entrar em combate"
+L.OPT_AUTOPLAY_EVERY_VISIT = "Ler a cada visita"
+L.OPT_AUTOPLAY_GAP = "Ler de novo após"
+L.OPT_GAP_1D = "1 dia"
+L.OPT_GAP_1W = "1 semana"
+L.OPT_GAP_1MO = "1 mês"
 L.OPT_LANG_PROFILE_FMT = "Este perfil lê as histórias em %1$s. Digite /reload para trocar."
 L.OPT_REPORT_PROBLEM = "Informar um problema"
 L.MENU_LORE_WINDOW = "Abrir o Compêndio de Azeroth"
@@ -71,6 +73,7 @@ L.BATTLEGROUNDS = "Campos de batalha"
 L.DUNGEONS = "Masmorras e raides"
 L.COMPENDIUM_PLACES = "Lugares"
 L.LORE_PANEL_TITLE = "História do Lugar"
+L.BOSS_LORE_TITLE = "História do chefe"
 L.MAP_PANEL_EXPAND = "Mostrar História do Lugar"
 L.PANEL_SHOWN = "História ao lado do mapa: ligado"
 L.PANEL_HIDDEN = "História ao lado do mapa: desligado"
@@ -79,10 +82,9 @@ L.LORE_DISCOVERED_ONLY = "Só descobertas"
 L.LORE_VOICED_ONLY = "Só com voz"
 L.LORE_SEARCH_NONE = "Nada encontrado."
 L.REASON_DISCOVERY = "Marque Ler automaticamente para usar isto."
+L.REASON_EVERY_VISIT = "Desmarque Ler a cada visita para usar isto."
 L.REASON_MAP_PANEL = "Marque História ao lado do mapa para usar isto."
 L.OPT_RESET_PAGE_CONFIRM = "Voltar todas as configurações de Lugares ao padrão?"
-L.OPT_RELOAD_NOW = "Recarregar agora"
-L.OPT_LATER = "Depois"
 L.OPT_PAGE_TITLE = "Lugares"
 L.OPT_DEV_DEBUG = "Depuração de Lugares"
 L.OPT_DEV_PREVIEW = "Oferecer traduções inacabadas"

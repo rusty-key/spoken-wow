@@ -38,14 +38,14 @@ describe("installIdFrom", () => {
 });
 
 describe("hitFrom", () => {
-  it("needs a pack language the site serves, and keeps a well-formed version only", () => {
-    expect(hitFrom(submission({ pack: "deDE", packVersion: "2.3.0" }), "q:1:accept")).toEqual({
+  it("needs a pack language the site serves, and keeps a well-formed version only", async () => {
+    expect(await hitFrom(submission({ pack: "deDE", packVersion: "2.3.0" }), "q:1:accept")).toEqual({
       lineId: "q:1:accept",
       packLang: "deDE",
       packVersion: "2.3.0",
     });
-    expect(hitFrom(submission({ pack: "xxXX" }), "q:1:accept")).toBeNull();
-    expect(hitFrom(submission({ pack: "deDE", packVersion: "a b" }), "q:1:accept")?.packVersion).toBeNull();
+    expect(await hitFrom(submission({ pack: "xxXX" }), "q:1:accept")).toBeNull();
+    expect((await hitFrom(submission({ pack: "deDE", packVersion: "a b" }), "q:1:accept"))?.packVersion).toBeNull();
   });
 });
 
@@ -72,5 +72,50 @@ describe("missingAudioRanking", () => {
       { lineId: lineB, installs: 1, text: null, voiced: false },
     ]);
     expect([...rows[0]!.packVersions].sort()).toEqual(["1.0.0", "none"]);
+  });
+
+  it("leaves out a TBC line, which is nothing to do until the site voices TBC", async () => {
+    // q:8326 is Sunstrider Isle: no Classic extract has it, so lib/quests/line-client.ts calls it TBC.
+    const tbc = "q:8326:accept";
+    await db().query(
+      `insert into "quest_line"
+         ("lineId", "variant", "lang", "version", "isCurrent", "origin", "source", "questId", "fileName", "text", "originalText")
+       values ($1, 0, 'enUS', 1, true, 'contributed', 'accept', 8326, $1, 'Welcome, magister.', 'Welcome, magister.'),
+              ($2, 0, 'enUS', 1, true, 'extracted', 'accept', $3, $2, 'Kill six.', 'Kill six.')`,
+      [tbc, lineA, quest],
+    );
+    // The catalogue lists a line through its speakers.
+    await db().query(
+      `insert into "quest_line_speaker" ("lineId", "variant", "lang", "ord", "npcType", "npcId", "npcName", "race", "gender", "voice")
+       values ($1, 0, 'enUS', 1000000, 'creature', 15278, 'Magistrix Erona', 'bloodelf', 'female', 'bloodelf-female')`,
+      [tbc],
+    );
+    try {
+      await recordMissingAudio(installs[0]!, [
+        { lineId: tbc, packLang: lang, packVersion: "1.0.0" },
+        { lineId: lineA, packLang: lang, packVersion: "1.0.0" },
+      ]);
+      expect((await missingAudioRanking(lang)).map((row) => row.lineId)).toEqual([lineA]);
+    } finally {
+      await db().query(`delete from "quest_line_speaker" where "lineId" = $1`, [tbc]);
+      await db().query(`delete from "quest_line" where "lineId" = $1`, [tbc]);
+    }
+  });
+
+  it("ranks progress text like any other line", async () => {
+    // q:179:progress comes from the seeded corpus, which already lists it through its speakers.
+    await db().query(
+      `insert into "quest_line"
+         ("lineId", "variant", "lang", "version", "isCurrent", "origin", "source", "questId", "fileName", "text", "originalText")
+       values ($1, 0, 'enUS', 1, true, 'extracted', 'accept', $2, $1, 'Kill six.', 'Kill six.')`,
+      [lineA, quest],
+    );
+    await recordMissingAudio(installs[0]!, [
+      { lineId: "q:179:progress", packLang: lang, packVersion: "1.0.0" },
+      { lineId: "q:179:progress", packLang: lang, packVersion: "1.0.0" },
+      { lineId: lineA, packLang: lang, packVersion: "1.0.0" },
+    ]);
+    await recordMissingAudio(installs[1]!, [{ lineId: "q:179:progress", packLang: lang, packVersion: "1.0.0" }]);
+    expect((await missingAudioRanking(lang)).map((row) => row.lineId)).toEqual(["q:179:progress", lineA]);
   });
 });

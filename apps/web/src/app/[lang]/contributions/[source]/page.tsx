@@ -6,13 +6,29 @@ import { notFound, redirect } from "next/navigation";
 
 import ContributionTable, { type ContributionRow } from "@/components/ContributionTable";
 import ContributionsTabs from "@/components/ContributionsTabs";
+import CorrectionTable from "@/components/CorrectionTable";
+import BackstagePage from "@/components/backstage/BackstagePage";
+import Panel from "@/components/backstage/Panel";
+import { correctionRowsFor } from "@/lib/contributions/correction-rows";
+import { checkLine, type LineCheck, type Verdict } from "@/lib/contributions/checks";
+import { englishFor } from "@/lib/contributions/english";
+import { WAITING_KINDS, waitingReason, type WaitingKind, type WaitingReason } from "@/lib/contributions/query";
 import { auth } from "@/lib/auth";
-import { bookFacets, catalogue } from "@/lib/readables/catalogue";
+import { baseCatalogue, bookFacets } from "@/lib/readables/catalogue";
 import { pageKeyOf } from "@/lib/readables/tools";
-import { bulkAcceptable, loadBookCorpus, matchBook, type BookCorpusPage, type BookMatchResult } from "@/lib/contributions/book-match";
-import { clientFilterOf, clientOf, matchesClient } from "@/lib/contributions/client";
+import {
+  bookCandidates,
+  bulkAcceptable,
+  loadBookCorpus,
+  matchBook,
+  titleIn,
+  type BookCandidate,
+  type BookCorpusPage,
+  type BookMatchResult,
+} from "@/lib/contributions/book-match";
+import { buildFilterOf, buildOptions, clientFilterOf, clientOf, matchesBuild, matchesClient } from "@/lib/contributions/client";
 import { corpusLookup } from "@/lib/contributions/existing";
-import { lineStates, tabOf } from "@/lib/contributions/known";
+import { tabOf } from "@/lib/contributions/known";
 import { isStatus, type ContributionStatus } from "@/lib/contributions/contributions";
 import { linesInExplorer, momentHasSpeaker } from "@/lib/contributions/accept";
 import {
@@ -32,9 +48,11 @@ import {
   type ContributionSort,
   type Bucket,
   type StageFilter,
+  isShow,
+  type Show,
 } from "@/lib/contributions/query";
-import { pendingCounts } from "@/lib/contributions/pending";
-import { listContributions, observationMeta, type Contribution } from "@/lib/contributions/store";
+import { listedWithPending } from "@/lib/contributions/pending";
+import { observationMeta, type Contribution } from "@/lib/contributions/store";
 import {
   bookFor,
   npcSummaryFrom,
@@ -47,10 +65,10 @@ import {
 import { observedFrom, resolveNpc } from "@/lib/npc/resolve";
 import { getResolutions, getResolutionsById, resolutionKey, type NpcRowKind } from "@/lib/npc/store";
 import { BASE_LANG, isClientLang, isLang, langName, localeHref, type Lang } from "@/lib/lang";
+import type { Roster } from "@/lib/voices/roster";
 import { loadRoster } from "@/lib/voices/roster-store";
 import { can, isAdmin } from "@/lib/permissions";
-import { lineByPath } from "@/lib/places/catalogue";
-import { Contained, Wide } from "@/components/Width";
+import { linesByPath } from "@/lib/places/catalogue";
 
 export const metadata: Metadata = { title: "Contributions · Spoken" };
 
@@ -69,6 +87,8 @@ async function existingTextFor(
   bookMatches: Map<number, BookMatchResult>,
 ): Promise<Record<number, string>> {
   const found: Record<number, string> = {};
+  // One catalogue read for every places row, not one per row.
+  const places = contributions.some((row) => row.source === "places") ? await linesByPath() : null;
 
   await Promise.all(
     contributions.map(async (row) => {
@@ -76,14 +96,14 @@ async function existingTextFor(
         const match = bookMatches.get(row.id);
         const lineId = match && "lineId" in match ? match.lineId : null;
         const page = lineId
-          ? (await catalogue(isLang(row.locale) ? row.locale : BASE_LANG)).find((p) => p.id === lineId)
+          ? (await baseCatalogue(isLang(row.locale) ? row.locale : BASE_LANG)).find((p) => p.id === lineId)
           : undefined;
         if (page && !page.missing?.text && page.text) found[row.id] = page.text;
         return;
       }
       const lookup = corpusLookup(row.source, row.key);
-      if (lookup?.source === "places") {
-        const line = await lineByPath(lookup.mapID, lookup.slug);
+      if (lookup?.source === "places" && places && Number.isInteger(lookup.mapID)) {
+        const line = places.get(`${lookup.mapID}/${lookup.slug}`);
         if (line) found[row.id] = line.full;
       }
     }),
@@ -96,7 +116,12 @@ async function existingTextFor(
 async function bookMatchesFor(contributions: Contribution[]) {
   const readables = contributions.filter((row) => row.source === "readables");
   if (readables.length === 0) {
-    return { matches: new Map<number, BookMatchResult>(), describe: (_lang: string) => (id: string) => id };
+    return {
+      matches: new Map<number, BookMatchResult>(),
+      describe: (_lang: string) => (id: string) => id,
+      candidatesOf: (_row: Contribution, _match: BookMatchResult): BookCandidate[] => [],
+      englishOf: (_match: BookMatchResult | undefined): string | null => null,
+    };
   }
   const corpus = await loadBookCorpus();
   const matches = new Map(readables.map((row) => [row.id, matchBook(row, corpus)]));
@@ -106,14 +131,17 @@ async function bookMatchesFor(contributions: Contribution[]) {
     const first = firstOf.get(p.bookId);
     if (!first || p.pageNumber < first.pageNumber) firstOf.set(p.bookId, p);
   }
-  const titleIn = (p: BookCorpusPage | undefined, lang: string) =>
-    p?.titles.get(lang)?.[0] ?? p?.titles.get(BASE_LANG)?.[0] ?? [...(p?.titles.values() ?? [])][0]?.[0] ?? "untitled";
   const describe = (lang: string) => (id: string) => {
     if (id.startsWith("book:")) return titleIn(firstOf.get(id.slice(5)), lang);
     const page = byLine.get(id);
     return page ? `${titleIn(page, lang)} p.${page.pageNumber}` : id;
   };
-  return { matches, describe };
+  // The English page a row was matched to, for the review page's side-by-side and checks.
+  const englishOf = (match: BookMatchResult | undefined): string | null => {
+    const lineId = match && "lineId" in match ? match.lineId : null;
+    return (lineId && byLine.get(lineId)?.texts.get(BASE_LANG)) || null;
+  };
+  return { matches, describe, candidatesOf: (row: Contribution, match: BookMatchResult) => bookCandidates(match, corpus, row), englishOf };
 }
 
 /**
@@ -127,8 +155,11 @@ async function bookMatchesFor(contributions: Contribution[]) {
  * moderator or the resolver looked and found no race to assign (a narrator, say). Absent
  * entirely means the envelope never named an NPC at all -- places and readables never do, and a
  * quests envelope keyed on quest+event rather than npc doesn't either.
+ *
+ * `roster` must be the language of every row: a row of another team's would be offered this
+ * team's flavors.
  */
-async function npcFor(contributions: Contribution[]): Promise<Record<number, NpcSummary>> {
+async function npcFor(contributions: Contribution[], roster: Roster): Promise<Record<number, NpcSummary>> {
   const found: Record<number, NpcSummary> = {};
 
   // build and a moderator-chosen kind are columns of their own on a stored contribution, not
@@ -198,7 +229,8 @@ async function npcFor(contributions: Contribution[]): Promise<Record<number, Npc
       o.npcKind !== null
         ? { resolution: resolutions.get(resolutionKey(o.npcKind, o.npcId)), conflict: [] }
         : idOnlyResolution(idOnly.get(o.npcId));
-    found[row.id] = await npcSummaryFrom(
+    found[row.id] = npcSummaryFrom(
+      roster,
       { npcKind: o.npcKind, npcId: o.npcId, npcName: o.npcName },
       lookup.resolution,
       lookup.conflict,
@@ -224,12 +256,14 @@ export default async function Page({
     status?: string;
     bucket?: string;
     client?: string;
+    build?: string;
     stage?: string;
     sort?: string;
     dir?: string;
     page?: string;
     q?: string;
     filter?: string;
+    show?: string;
   }>;
 }) {
   const lang = await pageLang(params);
@@ -247,26 +281,23 @@ export default async function Page({
   // rows hold text and identifying details a stranger pasted in. Per language, because
   // accepting a contribution writes that language's text.
   const viewer = await viewerOf(session);
-  if (!session || !can(viewer, "edit", lang)) notFound();
+  if (!session || !can(viewer, "text", lang)) notFound();
 
   // Every envelope is in the language of the client that wrote it, and no client runs in this
   // one: the queue is empty by construction, not because nobody has sent anything yet.
   if (!isClientLang(lang)) {
     return (
-      <main className="pt-6 pb-24">
-        <Contained>
-          <h1 className="text-xl font-semibold">Contributions</h1>
-          <p className="text-muted-foreground mt-1 mb-5 text-sm">
-            Contributions come from the game client, and no client runs in {langName(lang)}. Its
-            text is written here, on each line&apos;s page.
-          </p>
-          <ContributionsTabs
-            lang={lang}
-            section={source}
-            view="contributions"
-          />
-        </Contained>
-      </main>
+      <BackstagePage
+        title="Review"
+        description={
+          <>
+            Lines come from players&apos; game clients, and no client runs in {langName(lang)}. Its text is
+            written on each line&apos;s own page.
+          </>
+        }
+      >
+        <ContributionsTabs lang={lang} section={source} />
+      </BackstagePage>
     );
   }
 
@@ -274,17 +305,22 @@ export default async function Page({
     status: rawStatus,
     bucket: rawBucket,
     client: rawClient,
+    build: rawBuild,
     stage: rawStage,
     sort: rawSort,
     dir: rawDir,
     page: rawPage,
     q: rawQ,
     filter: rawFilter,
+    show: rawShow,
   } = await searchParams;
   const status: ContributionStatus = isStatus(rawStatus) ? rawStatus : "new";
+  // New lines, corrections, or both: only quests and readables have corrections to tell apart.
+  const show: Show = (source === "quests" || source === "readables") && isShow(rawShow) ? rawShow : "all";
   // Only quests' New tab is split: readables and places name no speaker, an accepted row was ready
   // by definition, and a rejected one's speaker no longer matters.
-  const bucket: Bucket = namesSpeaker(source) && isBucket(rawBucket) ? rawBucket : "ready";
+  // Corrections never wait on an admin, so showing only them shows the ready half.
+  const bucket: Bucket = namesSpeaker(source) && show !== "corrections" && isBucket(rawBucket) ? rawBucket : "ready";
 
   // Which game the text came from, read off `build` (lib/contributions/client.ts). Defaults to
   // Era and Forever: every other client is the low-effort bin, shown only on request.
@@ -301,30 +337,75 @@ export default async function Page({
   const sort: ContributionSort = sortOf(rawSort, rawDir);
 
   // Lines the corpus already has are not this queue's: a different text is a correction, on
-  // its own tab, and the same text is nothing to triage at all (known.ts's tabOf).
-  const [listed, pending] = await Promise.all([
-    listContributions(status, lang, sort, source),
-    pendingCounts(lang),
+  // its own group, and the same text is nothing to triage at all (known.ts's tabOf).
+  const [{ listed, states, pending }, roster] = await Promise.all([
+    listedWithPending(status, lang, sort, source),
+    loadRoster(lang),
   ]);
-  const states = await lineStates(listed);
   const contributions = listed.filter((row, index) => tabOf(row.status, states[index]) === "contributions");
   // Every row's NPC, not just this page's: the buckets read it, and it is one query for the lot.
-  const npcs = await npcFor(contributions);
+  const npcs = await npcFor(contributions, roster);
 
-  const filtered = contributions
+  const build = buildFilterOf(rawBuild);
+  // Lines the corpus has, sent back with other words: a group of their own on the same page.
+  const anyBuildCorrections =
+    source === "quests" || source === "readables" ? await correctionRowsFor({ listed, states, source, client, stage, q, searchIn }) : [];
+  const corrections = anyBuildCorrections.filter((row) => matchesBuild(row.client, build));
+  const anyBuild = contributions
     .filter((row) => matchesClient(clientOf(row.build).family, client))
     .filter((row) => matchesStage(questFor(row), stage))
     .filter((row) => matchesSearch({ text: row.text, npc: npcs[row.id], quest: questFor(row) }, q, searchIn));
+  // Read before the build narrows the rows, or picking one would empty the dropdown of the others.
+  // From whatever the switch shows, so a build only corrections came from can still be picked.
+  const builds = buildOptions([
+    ...(show === "corrections" ? [] : anyBuild.map((row) => clientOf(row.build))),
+    ...(show === "lines" ? [] : anyBuildCorrections.map((row) => row.client)),
+  ]);
+  const filtered = anyBuild.filter((row) => matchesBuild(clientOf(row.build), build));
 
   // Counted after the other filters, so each tab's count matches what it shows.
   const hasSpeaker = await momentHasSpeaker(filtered);
-  const roster = await loadRoster();
   const bucketCounts: Record<Bucket, number> = { ready: 0, blocked: 0 };
   const matching = filtered.filter((row) => {
     const own = bucketOf({ ...row, quest: questFor(row), hasSpeaker: hasSpeaker.has(row.id) }, npcs[row.id] ?? null, roster);
     bucketCounts[own]++;
     return status !== "new" || own === bucket;
   });
+
+  // Every matching row's, not just this page's: "Keep all" leaves out the ones the matcher can't place.
+  const { matches: bookMatches, describe, candidatesOf, englishOf: bookEnglish } = await bookMatchesFor(matching);
+
+  /** The English line each row translates, and what the review checks find against it. */
+  async function checksFor(rows: Contribution[], places?: Record<number, string>): Promise<Map<number, Checked>> {
+    const [questEnglish, placeEnglish] = await Promise.all([
+      englishFor(rows),
+      places ?? (source === "places" ? existingTextFor(rows, bookMatches) : Promise.resolve({} as Record<number, string>)),
+    ]);
+    const englishOf = (row: Contribution): string | null =>
+      row.source === "quests"
+        ? (questEnglish.get(row.id) ?? null)
+        : row.source === "readables"
+          ? bookEnglish(bookMatches.get(row.id))
+          : (placeEnglish[row.id] ?? null);
+    return new Map(rows.map((row) => [row.id, { ...checkLine({ text: row.text, english: englishOf(row), locale: row.locale }), english: englishOf(row) }]));
+  }
+
+  // To review groups and sorts the whole queue, so its first page is what keeps in one click and
+  // "Keep all" reaches every page. Every other tab checks only the rows it shows.
+  const reviewing = status === "new" && bucket === "ready";
+  let checks = reviewing ? await checksFor(matching) : new Map<number, Checked>();
+  if (reviewing) {
+    matching.sort((a, b) => VERDICT_ORDER[checks.get(a.id)!.verdict] - VERDICT_ORDER[checks.get(b.id)!.verdict]);
+  }
+  // Why each waiting row waits, in words the editors who cannot fix it can read.
+  const waiting = new Map<number, WaitingReason>();
+  if (status === "new" && bucket === "blocked") {
+    for (const row of matching) {
+      const reason = waitingReason({ ...row, quest: questFor(row), hasSpeaker: hasSpeaker.has(row.id) }, npcs[row.id] ?? null, roster, langName(lang));
+      if (reason) waiting.set(row.id, reason);
+    }
+  }
+  const waitingSummary = summariseWaiting(matching, waiting, npcs);
 
   // A page of rows, not the whole queue: every row rendered is a row the browser has to build
   // and React has to diff, and a queue of hundreds made both the load and every click slow.
@@ -333,9 +414,8 @@ export default async function Page({
   const pages = Math.max(1, Math.ceil(matching.length / PAGE_SIZE));
   const page = Math.min(pageOf(rawPage), pages);
   const shown = matching.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
-  // Every matching row's, not just this page's: "Accept all" leaves out the ones the matcher can't place.
-  const { matches: bookMatches, describe } = await bookMatchesFor(matching);
   const [existing, linedIds] = await Promise.all([existingTextFor(shown, bookMatches), linesInExplorer(shown)]);
+  if (!reviewing) checks = await checksFor(shown, source === "places" ? existing : undefined);
   // Every language's books, for placing a row in one -- only when this page shows a readables row.
   const books = shown.some((row) => row.source === "readables")
     ? (await bookFacets(lang)).map(({ bookId, title, pages }) => ({ bookId, title, pages }))
@@ -362,46 +442,56 @@ export default async function Page({
     quest: questFor(row),
     book:
       row.source === "readables"
-        ? bookFor(row, bookMatches.get(row.id)!, describe(row.locale), (lineId) =>
-            localeHref(lang, `/readables/r/${pageKeyOf(lineId)}`))
+        ? bookFor(
+            row,
+            bookMatches.get(row.id)!,
+            describe(row.locale),
+            (lineId) => localeHref(lang, `/readables/r/${pageKeyOf(lineId)}`),
+            candidatesOf(row, bookMatches.get(row.id)!),
+          )
         : null,
     hasLine: linedIds.has(row.id),
     hasSpeaker: hasSpeaker.has(row.id),
     place: placeOf(row),
+    english: checks.get(row.id)!.english,
+    check: (({ english: _english, ...check }) => check)(checks.get(row.id)!),
+    waiting: waiting.get(row.id) ?? null,
+    rejectReason: row.rejectReason,
   }));
 
 
   return (
-    <main className="pt-6 pb-24">
-      <Contained>
-        <h1 className="text-xl font-semibold">Contributions</h1>
-        <p className="text-muted-foreground mt-1 mb-5 text-sm">
-          Envelopes players pasted in for text this corpus has no audio for. Accepting a row does
-          not queue anything -- it only marks the row for the next export, which the pipelines
-          pull on their own schedule.
-        </p>
-      </Contained>
-      <Wide>
-        <ContributionsTabs
-          lang={lang}
-          section={source}
-          view="contributions"
-          pending={pending}
-        />
+    <BackstagePage
+      width="wide"
+      title="Review"
+      description="Lines players' game clients sent. Compare each with the original, then keep it or drop it. Kept lines are voiced in a later voicing run."
+    >
+      <div className="mb-6">
+        <ContributionsTabs lang={lang} section={source} pending={pending} />
+      </div>
         <ContributionTable
-          initial={rows}
+          // Showing only corrections leaves the lines out; their count stays on the switch.
+          initial={show === "corrections" ? [] : rows}
           // Every row the filters match, on any page, as just its id, status and whether a bulk
-          // accept may take it: what "Accept all" acts on.
-          matching={matching.map((row) => {
+          // accept may take it, and its group: what "Keep all" and "Drop all" act on.
+          matching={(show === "corrections" ? [] : matching).map((row) => {
             const match = bookMatches.get(row.id);
-            return { id: row.id, status: row.status, bulk: !match || bulkAcceptable(match) };
+            return { id: row.id, status: row.status, bulk: !match || bulkAcceptable(match), verdict: checks.get(row.id)?.verdict ?? "look" };
           })}
           page={page}
-          pages={pages}
+          pages={show === "corrections" ? 1 : pages}
           status={status}
+          show={show}
+          shownCounts={
+            source === "quests" || source === "readables" ? { lines: matching.length, corrections: corrections.length } : null
+          }
           bucket={bucket}
-          bucketCounts={bucketCounts}
+          // To review counts what it shows.
+          bucketCounts={show === "corrections" ? { ready: corrections.length, blocked: 0 } : bucketCounts}
+          waitingSummary={waitingSummary}
           client={client}
+          build={build}
+          builds={builds}
           source={source}
           stage={stage}
           sort={sort}
@@ -414,8 +504,67 @@ export default async function Page({
           // somebody it will answer. Who an NPC is decides its voice in every language, so it
           // is the global admin's alone; everyone else sees where it stands.
           canAnswerNpc={isAdmin(session.user.role)}
+          corrections={
+            show !== "lines" && (source === "quests" || source === "readables") && corrections.length > 0 ? (
+              <Panel
+                id="changes"
+                tone="info"
+                icon={<ChangesIcon />}
+                title="Changes to lines we already have"
+                count={corrections.length}
+                description={
+                  source === "readables"
+                    ? "A player's client showed different words than ours. Replace ours if theirs fixes a mistake; drop it if ours is right."
+                    : "A player's client showed different words than ours. Replace ours if theirs fixes a mistake; keep both if it is just another way to say it."
+                }
+              >
+                <div>
+                  <CorrectionTable source={source} initial={corrections} />
+                </div>
+              </Panel>
+            ) : null
+          }
         />
-      </Wide>
-    </main>
+    </BackstagePage>
   );
 }
+
+function ChangesIcon() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M4 7h11M4 12h7M4 17h9" />
+      <path d="M17 14l3 3-3 3" />
+    </svg>
+  );
+}
+
+/** To review's order: what keeps in one click, then what needs a fix, a look, and what to drop. */
+const VERDICT_ORDER: Record<Verdict, number> = { clean: 0, fix: 1, look: 2, drop: 3 };
+
+/** The waiting tab's breakdown: how many rows wait for each reason, the oldest, and an example NPC. */
+function summariseWaiting(
+  rows: Contribution[],
+  reasons: Map<number, WaitingReason>,
+  npcs: Record<number, NpcSummary>,
+): { kind: WaitingKind; title: string; fix: string; count: number; oldest: string; example: string | null }[] {
+  const byKind = new Map<WaitingKind, { count: number; oldest: string; example: string | null }>();
+  for (const row of rows) {
+    const reason = reasons.get(row.id);
+    if (!reason) continue;
+    const seen = byKind.get(reason.kind);
+    const name = npcs[row.id]?.npcName ?? null;
+    if (!seen) byKind.set(reason.kind, { count: 1, oldest: row.createdAt, example: name });
+    else {
+      seen.count++;
+      if (row.createdAt < seen.oldest) seen.oldest = row.createdAt;
+      seen.example ??= name;
+    }
+  }
+  return (Object.keys(WAITING_KINDS) as WaitingKind[]).flatMap((kind) => {
+    const seen = byKind.get(kind);
+    return seen ? [{ kind, ...WAITING_KINDS[kind], ...seen }] : [];
+  });
+}
+
+/** A row's checks, with the English line they were read against. */
+type Checked = LineCheck & { english: string | null };

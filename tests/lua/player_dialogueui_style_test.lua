@@ -321,7 +321,7 @@ Expect("...naming the speaker", Skin.name:GetText(), "Eagan Peltskinner")
 Expect("...and the line", Skin.title.text:GetText(), "Wolves Across the Border")
 
 quests:Enqueue(H.Clip({ present = { header = "Eagan", label = "Second", portrait = { kind = "none" } } }))
-Expect("a waiting line gets no row, the title counts it", tostring(Skin.rows) .. " " .. Skin.count:GetText(), "nil • +1")
+Expect("a waiting line gets no row, the title counts it", tostring(Skin.rows) .. " " .. Skin.count:GetText(), "nil · +1")
 Spoken:StopAll()
 
 -- A clip that names its own face (present.font) keeps it when the window is laid out again,
@@ -491,7 +491,7 @@ quests:Enqueue(H.Clip({ length = 30, present = { header = "Grull", label = "Held
 env.PlayerFrame:RefreshConfig()
 Skin:UpdateControls()
 Expect("a held line says why after its title", tostring(Skin.held:IsShown()) .. " " .. tostring(Skin.held:GetText()),
-    "true • (in combat)")
+    "true · (in combat)")
 holding = false
 quests:RecheckGates()
 Skin:UpdateControls()
@@ -554,13 +554,13 @@ Skin:ConfigurePortrait()
 Expect("Hide Portrait leaves its face: the header's socket would stand empty", Skin.portrait:IsShown(), true)
 env.Addon.db.profile.Frame.HidePortrait = false
 Expect("the title counts the lines waiting, after it, as the subtitle does",
-    Skin.title.text:GetText() .. "|" .. tostring(Skin.count:IsShown()) .. "|" .. Skin.count:GetText(), "One|true|• +1")
+    Skin.title.text:GetText() .. "|" .. tostring(Skin.count:IsShown()) .. "|" .. Skin.count:GetText(), "One|true|· +1")
 Expect("...fading in as the line is added", Skin.count:GetAlpha() < 1, true)
 Skin:Tick(0.3)
 Expect("...all the way", Skin.count:GetAlpha(), 1)
 quests:Enqueue(H.Clip({ length = 30, present = { header = "Grull", label = "Three", portrait = { kind = "none" } } }))
 Skin:Update()
-Expect("...and again with one more", Skin.count:GetText() .. " " .. tostring(Skin.count:GetAlpha() < 1), "• +2 true")
+Expect("...and again with one more", Skin.count:GetText() .. " " .. tostring(Skin.count:GetAlpha() < 1), "· +2 true")
 Skin:Tick(0.3)
 env.SoundQueue:RemoveSoundFromQueue(env.SoundQueue.sounds[3])
 Skin:Update()
@@ -580,7 +580,7 @@ Expect("Stop stops the line, its glyph turning to Replay", tostring(env.SoundQue
     "true replay")
 Expect("...and the title says it is stopped, after the line's name and a dot, as the count is",
     Skin.title.text:GetText() .. "|" .. tostring(Skin.stopped:IsShown()) .. "|" .. Skin.stopped:GetText(),
-    "One|true|• (" .. env.L.SUBTITLE_STOPPED .. ")")
+    "One|true|· (" .. env.L.SUBTITLE_STOPPED .. ")")
 Expect("...fading in", Skin.stopped:GetAlpha() < 1, true)
 Expect("...the count after it", Skin.count.anchor.x > Skin.stopped.anchor.x, true)
 Skin:Tick(0.3)
@@ -1286,7 +1286,7 @@ Expect("a line from an earlier page of the closing dialog: this window settles o
 for _ = 1, 40 do Skin:Tick(0.05) end
 Expect("...nor once it has landed: the next page's line is counted after the title",
     tostring(Skin.settling) .. " " .. tostring(Skin.landing) .. " " .. tostring(Skin.tuck) .. " " .. Skin.count:GetText(),
-    "nil nil nil • +1")
+    "nil nil nil · +1")
 Expect("...this window showing the first quest's line as it was", Skin.title.text:GetText(), "First")
 -- A quest accepted at once (the space bar): the window closes before its line is read, and the
 -- line joins the queue just after. It is still the dialog's: it settles out of where the dialog

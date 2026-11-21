@@ -1,5 +1,5 @@
 import type { CSSProperties, ReactNode } from 'react'
-import type { Flavor } from '@shared/types'
+import type { Flavor, GameInstall } from '@shared/types'
 import { flavorLook } from '../catalog'
 import { S } from '../strings'
 import artAnniversary from '../assets/games/art-anniversary.jpg'
@@ -23,7 +23,7 @@ interface GameImages {
 }
 
 const IMAGES: Record<Flavor, GameImages> = {
-  classic_beta: { logo: logoForever, art: artForever, icon: iconForever, pos: '34% 30%', filter: 'brightness(0.55) saturate(0.8)' },
+  forever: { logo: logoForever, art: artForever, icon: iconForever, pos: '34% 30%', filter: 'brightness(0.55) saturate(0.8)' },
   classic_era: { logo: logoEra, art: artEra, icon: iconEra, pos: '12% 22%', filter: 'brightness(0.85)' },
   anniversary: { logo: logoAnniversary, art: artAnniversary, icon: iconAnniversary, pos: '26% 40%', filter: 'brightness(0.8)' }
 }
@@ -32,6 +32,15 @@ function look(flavor: Flavor): CSSProperties {
   const l = flavorLook(flavor)
   const img = IMAGES[flavor]
   return { '--g-from': l.from, '--g-to': l.to, '--g-glow': l.glow, '--g-art': `url(${img.art})`, '--g-pos': img.pos, '--g-filter': img.filter } as CSSProperties
+}
+
+export function RailTop({ game }: { game: GameInstall }): ReactNode {
+  return (
+    <div className="rail-top">
+      <Wordmark flavor={game.flavor} kicker />
+      <p className="rail-game">{game.gameVersion ? `${game.label} · ${game.gameVersion}` : game.label}</p>
+    </div>
+  )
 }
 
 /** The game's logo; on the rail of a page it has the small SPOKEN word over it. */

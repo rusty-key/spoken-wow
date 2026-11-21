@@ -96,7 +96,7 @@ GossipText = {
             ["Vous trouverez dame Hoteshem dans la salle d’audience du roi. Elle vous aidera à vous rendre au bassin d’Arathi, où la Ligue d’Arathor a besoin d’aide contre les Profanateurs."] = "9ff1ef7f7918452a7571c3f770ab4e14",
         },
         [167] = {
-            ["Salutations."] = "551b9295c0119ec334ab1eebcbac2bee",
+            ["Salutations."] = "b302043-dwarf-male-guard",
         },
         [197] = {
             ["Hé ! Vous m'avez l'air d'être costaud. Nous autres gardes sommes en sous-effectif. Vous pourriez nous aider..."] = "2343fa9b01b2ca00b5bc7a390ac07935",
@@ -148,6 +148,9 @@ GossipText = {
         },
         [267] = {
             ["Bienvenue dans la ville de Darkshire.  Le greffier Daltry est à votre service.  Puis-je vous aider ?"] = "d61bc8d45a3d7848d3f2554737fea5fb",
+        },
+        [268] = {
+            ["Salutations, voleur ! Ma mission est simple : cataloguer et prendre note de toute connaissance associée à l’histoire du bois de la Pénombre et de Sombre-comté. Peut-être pourrez-vous m’aider ?"] = "frFR-3ce2fdd3cfe125c5411ff5d8abac7d0e",
         },
         [272] = {
             ["Bonjour, bonjour !  Bienvenue dans ma cuisine, $g monsieur:dame; !  C'est ici que sont préparés les meilleurs plats de la Taverne du Corbeau écarlate.  Ah, sentez ce merveilleux arôme !"] = "8d1d7ec8e88045e7ac9d23a49fb86f88",
@@ -328,6 +331,7 @@ GossipText = {
             ["Il y a un mage à la Distillerie Thunderbrew qui pourrait vous apprendre quelques nouveaux sorts. Je crois que son nom est Magis Sparkmantle."] = "cfa572bac748ea1fa7e7c25dc2a4ae04",
             ["Ironforge est le meilleur endroit pour se perfectionner en travail du cuir. Si je me souviens bien, il y a une échoppe du côté de la Grande Forge où vous trouverez votre bonheur."] = "712130efaf95afb9ccb5f2a5c069c0fc",
             ["La banque la plus proche est le Coffre d'Ironforge, $gjeune homme : jeune fille;."] = "501c83ee292da27782fae1e60bf7c3f3",
+            ["La banque la plus proche est le Coffre de Forgefer, jeune homme."] = "frFR-e083bea1630aca04a5f52019590224ad",
             ["Le Coffre d'Ironforge est la banque la plus proche de la région."] = "83965dbeffe98cceda0d3e3dbf0734c2",
             ["Le Maître des gryphons le plus proche se trouve à Ironforge, près de la Grande Forge elle-même. Vous devez vous diriger vers Ironforge si vous souhaitez voyager en gryphon."] = "c32efb4b50768d9afd75e50dc0393a88",
             ["Les Thunderbrew dirigent une excellente auberge à Kharanos, elle porte leur nom. Prenez-y une bonne pinte et dormez un peu."] = "0ee12bb81d2947b566609b7ba822b401",
@@ -491,6 +495,7 @@ GossipText = {
             ["Vous êtes bien meilleur forgeron que moi. Mais je ne l'avouerai jamais publiquement, croyez-moi. Allez parler avec Therum Deepforge. Si quelqu'un peut vous en apprendre plus, c'est bien lui."] = "09a9c4ad934397dc02876bda84bad0ff",
         },
         [963] = {
+            ["Bonjour, $c. Il paraît que vous rejoignez nos rangs. Les bêtes et les voleurs se déversent dans notre bien-aimée Elwynn, et nous avons à peine assez d'hommes pour assurer la sécurité des routes !  Et si ce n'est déjà fait, lisez l'avis sur Lardeur. C'est une bête perdue dans les bois dont il faut s'occuper."] = "frFR-8b9d204bb69c3df3d0fc28c6e018ce17",
             ["Je ne comprends pas les officiels de Stormwind, envoyer comme ça notre armée à l'autre bout du monde... Alors que l'ennemi est à nos portes !$B$BAvec les voleurs qui viennent de la marche de l'Ouest et les gnolls qui dévalent de l'est et de l'ouest, c'est un miracle que Stormwind ne soit pas encore assiégé."] = "e03d3aaa8df7e98fcb210403aad69ebd",
         },
         [985] = {
@@ -536,6 +541,8 @@ GossipText = {
         },
         [1156] = {
             ["Bienvenue au pavillon des Pérégrins, $n !"] = "acbe16ea3d149deb13ccd9048db985c9",
+            ["Bienvenue au pavillon des Pérégrins, Adam !"] = "frFR-cb87a6095dff7d853f3d633e3f59972a",
+            ["Bienvenue au pavillon des Pérégrins, Amelia !"] = "frFR-5726fc2c0e6da51fb31fedf10766cc3c",
             ["Prenez cette tête, vous ne manquerez pas de flanquer une bonne trouille à Daryl. Ce n'est pas qu'il ne le mérite pas, ce bâtard arrogant. Mais ah, j'ai hâte de voir sa tête quand vous lui montrerez !"] = "675474e0619645670f8ac5fe9a9fadbf",
         },
         [1215] = {
@@ -584,6 +591,9 @@ GossipText = {
         },
         [1243] = {
             ["Hegnar Rumbleshot, à votre service !"] = "021dde6de017478913faed817d53af98",
+        },
+        [1244] = {
+            ["Les racines et les fougères parlent de vous en termes élogieux. Je porte de nombreux noms, mais je ne réponds qu’à peu d’entre eux. Vous pouvez m’appeler Rethiel.  Et vous devez prêter l’oreille… car ces terres pleurent de leurs blessures purulentes. Je vous charge de les soigner."] = "frFR-68fadaa416e9e1010c1d8856b06f1385",
         },
         [1246] = {
             ["Je ne peux rien vous enseigner, $N. Parlez à Tally Berryfizz, par là. Elle peine à atteindre les tables, mais quand elle commence à préparer une potion, faites attention !"] = "39ebd1b988bad54e8ab04456d49fb6c9",
@@ -730,6 +740,7 @@ GossipText = {
             ["Si vous avez ce qu'il faut, j'aurai plaisir à vous former."] = "442191b2cfb08109059d8086031cf4ea",
             ["Un vrai professionnel connaît ses limites, et je n'ai pas honte de dire qu'en ce qui vous concerne les miennes sont atteintes. Rendez donc visite à Kitta Firewind, à la Tour d'Azora. Elle est bien connue et sa réputation n'est pas usurpée."] = "26d3bfbb22d8a54e39ab79db7fab0284",
             ["Vous avez raison d'avoir confiance en vous. Maintenant, votre véritable éducation va commencer !"] = "c1383f7b48e9dcb2540129e0a8e3528b",
+            ["Vous semblez avoir confiance en vous. Vous ne rechignerez donc pas à ce que je vous fasse passer une petite épreuve ?"] = "b7896-human-male-standard",
         },
         [1318] = {
             ["Depuis la chute de Dalaran et la destruction de Quel'Thalas, les marchandises comme celles-là sont devenues très rares. Mais Lucan Cordell et certains autres de nos commerçants ont travaillé dur pour obtenir des articles de qualité."] = "7b74123b73660b230105d037e31ae78f",
@@ -975,6 +986,7 @@ GossipText = {
         [1466] = {
             ["Ahhh, quelle malchance ! Mes compétences ne peuvent vous être d'aucune utilité. Allez plutôt voir Fimble Finespindle, là-bas, près du métier à tisser. Il travaille le cuir depuis plus longtemps que moi."] = "b7959-gnome-female-standard",
             ["Cette peau n'est pas prête à être travaillée. J'aimerais qu'il ne faille pas tant de temps pour faire du cuir. Il doit y avoir moyen de raccourcir cette attente. Ce n'est pas bon pour ma santé, vous savez ?"] = "d66a2bc101b5a2594db0e958f8da478a",
+            ["Oh ! Quelque chose à faire pendant que j'attends ! Vous me sauvez la vie, $N !"] = "b7960-gnome-female-standard",
         },
         [1470] = {
             ["Est-ce ma douce et bonne amie Kali qui vous envoie à moi ? Elle est la prunelle de mes yeux."] = "ec7c4633bc5f4374a2102940fcd7c5fe",
@@ -987,6 +999,7 @@ GossipText = {
         [1496] = {
             ["Ah, il s'agit d'Austil de Mon. Il traîne toujours à la taverne, au sud-est de la ville. C'est la Taverne des Pendus, vous ne pouvez pas la rater."] = "b7899941266bd499f36628be4b089ec3",
             ["Ah, vous cherchez le sombre clerc Beryl. Il est en haut de l'escalier, dans la chambre de lecture de la taverne des Pendus. Il lit, il prie, que sais-je. Et qui oserait lui demander ?"] = "b0d229770be3e29c722b451fae65aa8a",
+            ["Allez-y, prenez-le. On dirait bien que Zygand est bien trop occupé pour faire ce trajet insurmontable et le récupérer lui-même."] = "frFR-1069ade124f51e72bf44f4a051fe39da",
             ["Au sud-est de la ville se trouve la taverne des Pendus. Allez-y et montez l'escalier, vous trouverez le sombre clerc Beryl dans la chambre de lecture."] = "5beef90fab0c2fbc8e782f8a205f7045",
             ["C'est Rupert Boch que vous cherchez. Lui et son entourage ont une pièce en haut des escaliers, à la Taverne des Pendus, au sud-est de Brill."] = "4d833ba2be9a9ed29ed79a621d6ebcce",
             ["Cherchez Austil de Mon à la Taverne des Pendus, dans la salle à manger principale. La taverne est au sud-est de Brill."] = "026418de080205834ee64ce5d0625a46",
@@ -1121,6 +1134,7 @@ GossipText = {
             ["Hum, je ne peux pas encore vous aider ! Vous devez d'abord apprendre les bases. Allez donc voir Fée Dérailleur à Hurlevent !"] = "53a615c56f1bceea727ec102f86c7525",
             ["Hum, je ne peux pas encore vous aider ! Vous devez d'abord apprendre les bases. Allez donc voir Sprite Jumpsprocket à Stormwind !"] = "53a615c56f1bceea727ec102f86c7525",
             ["J'ai toujours le temps de discuter avec les étrangers. Disons presque toujours..."] = "6fa11f689cf6d10432a1f4a482d4c9d4",
+            ["Je peux vous montrer deux ou trois choses... À condition que vous fassiez un petit quelque chose pour moi auparavant."] = "b7828-gnome-male-zany",
         },
         [1680] = {
             ["Je n’ai plus rien à vous apprendre. J’ai entendu dire qu’à Baie-du-Butin, le Vieil Heming avait des exemplaires de « Vous et la perche ». Ça vous aidera sûrement à progresser."] = "13d2af5f294a07ae2cff1bf240fa32c1",
@@ -1523,6 +1537,9 @@ GossipText = {
         [1938] = {
             ["Le Kirin Tor n'a pas tenu compte de mes avertissements !  L'Alliance est une imposture.  Arugal est un imbécile."] = "14a7b4d619c97734bcb9178060aba1c8",
         },
+        [1949] = {
+            ["Salutations, aventurier."] = "frFR-9efdb1eb7d59eb4309d93e30b082ee40",
+        },
         [1950] = {
             ["Mon frère et moi sommes sur une mission vitale, mais nous sommes terrés dans cette ferme.  Les Deathstalkers ont besoin de votre aide."] = "957e5f064a2c95a572a7738139e9d6ff",
         },
@@ -1814,6 +1831,7 @@ GossipText = {
             ["Lorsque l'on m'a proposé pour la première fois le titre de Southshore Magistrate, j'étais ravi d'avoir obtenu une telle commission si tôt dans ma carrière.$B$BMais maintenant que je suis ici, je me demande si je n'aurais pas mieux fait de remuer des papiers à Stormwind."] = "a8ed59d051668a2f0fe6cf278d92aa39",
         },
         [2277] = {
+            ["Bonjour, Jacques ! Que puis-je faire pour vous ?"] = "frFR-326ee6163b74256a8e4a0e0d013d33e6",
             ["J'ai beaucoup de travail à faire.  Êtes-vous ici pour m'aider dans mes recherches ?"] = "6eeff286cb7ec7e3c6c00b0d6bdb0dfb",
         },
         [2285] = {
@@ -1825,6 +1843,9 @@ GossipText = {
         [2302] = {
             ["Je regrette, $c, mais vous n'êtes pas encore assez $gaguerri:aguerrie; pour entrer dans le goulet des Warsong."] = "db6d2a2e49b804a2cf643369c2d678f3",
             ["Salutations, $c. Souhaitez-vous aider les Sentinelles d'Aile-argent dans leur combat au goulet des Warsong ?"] = "5f903d5d4508abe7b82460c9b5fcf80e",
+        },
+        [2310] = {
+            ["Je travaille sur des affaires délicates pour les renseignements de la Horde. Il vaudrait mieux, pour vous et pour moi, que vous ne me dérangiez pas."] = "frFR-6be6a1fa7a6850012036f5d8e037beea",
         },
         [2326] = {
             ["Je peux vous enseigner des techniques de Premiers soins."] = "61338bf2449f9fe80a4879d402d94c72",
@@ -1980,6 +2001,9 @@ GossipText = {
         [2457] = {
             ["Bienvenue à la banque de Stormwind. Nous ouvrons des comptes et mettons à disposition un coffre pour les objets de valeur. Avez-vous déjà ouvert un compte chez nous, $gmonsieur:madame; ?"] = "884e826914eac49c2ac85af2e236b022",
             ["Personne, et je dis bien personne dans toute l'Histoire, n'a jamais dérobé quoi que ce soit, ici !"] = "dcd77e7267840142a221c406ad8d42b0",
+        },
+        [2481] = {
+            ["Un client, ici ?! Quelle chance ! Cet endroit débordait de bouteilles d’alchimie vides. C’est étrange.  Ne vous en faites pas, je les ai lavées !"] = "frFR-6b4314c420574edcdf3c0a97181968fa",
         },
         [2485] = {
             ["En tant que mage, vous faites partie d'une élite qui peut invoquer un portail capable de vous ramener ici même. Je peux vous apprendre comment si vous avez les compétences requises."] = "c0b64230899c1f169032e2124bab7479",
@@ -2156,6 +2180,8 @@ GossipText = {
             ["Quand on monte un Cavalier céleste, on comprend vite qu'il n'a pas usurpé sa réputation de force et de rapidité."] = "162e14a98f2a88c099856abef92342b8",
         },
         [2998] = {
+            ["Tout possède un esprit ; si vous apprenez à l'écouter, vous pourrez lui faire prendre la forme que vous voulez. L'art de la forge n'a rien à voir avec des coups de marteau sur du métal. Il s'agit d'écouter l'esprit qui est en lui pour le guider et lui faire prendre la forme qu'il désire."] = "b3954-tauren-male-elder",
+            ["Vous avez du potentiel, mais vous devez d'abord comprendre le sens des choses, vous devez accepter les esprits et entendre leur appel. Voilà ce dont vous avez besoin pour suivre votre route. Allez parler à Thrag, je pense que vous avez beaucoup à vous apprendre respectivement."] = "b5808-tauren-male-elder",
             ["Vous avez l'air $gd'un homme:d'une femme; avide de connaissance. Vous cherchez sans doute à apprendre les secrets du marteau et de l'enclume et peut-être puis-je vous aider dans cette voie. Je ne le ferai cependant que si vous avez accepté les esprits et leur appel."] = "b0b47cf8dcffc971f677db7811e6e84d",
         },
         [3001] = {
@@ -2862,7 +2888,7 @@ GossipText = {
             ["Malheureusement nous n'avons personne qui enseigne l'art du Tailleur ici, au village Bloodhoof, mais vous en trouverez un à Thunder Bluff. Suivez le chemin du nord qui quitte le village jusqu'à ce que vous arriviez aux ascenseurs. Prenez-en un jusqu'au sommet et demandez votre chemin à un Gardien des Hauts."] = "bbf8a87da18419b0d4c795a3f40babb6",
             ["Nous n'avons pas de Maître des Alchimistes à Bloodhoof, mais il y en a un à Thunder Bluff, au nord. Suivez la route et demandez à un Gardien des Hauts de vous conseiller, une fois que vous aurez atteint le sommet."] = "83cd87a9bd04fe41340d47a6a3863fb1",
             ["Nous n'avons pas un endroit de cette sorte au village. Mais ce n'est pas le cas des hauteurs de Thunder Bluff. Allez au nord par la route qui quitte le village Bloodhoof jusqu'à ce que vous parveniez au pied des pitons. Prenez alors l'ascenseur et parlez avec un Gardien des Hauts. Que vos ancêtres vous gardent !"] = "c61c8d0a95bbdd9d8df4d9db44c53e73",
-            ["Qu'est-ce que vous cherchez ?"] = "b3d11178772212cc804676804bb92ca1",
+            ["Qu'est-ce que vous cherchez ?"] = "b4857-tauren-male-warrior",
             ["Que cherchez-vous ?"] = "b3d11178772212cc804676804bb92ca1",
             ["Quel maître cherchez-vous ?"] = "c5fec459a17d0b54dc8cfb9f0c9066ae",
             ["Quelle profession ?"] = "4a850dc32d00c265e503622c595cebf4",
@@ -3121,6 +3147,7 @@ GossipText = {
         [3344] = {
             ["Les Esprits ont guidé votre être jusqu'à moi. En quoi puis-je vous être utile ?"] = "93ff0e2abb20dcd5c4b04b86b60d8ab3",
             ["Que les Esprits soient avec vous !"] = "7be5b41b6547e9fda9b4b9cb85616226",
+            ["Si vous le voulez, en plus de l'enseignement que je propose, j'ai le pouvoir de faire disparaître de votre esprit la connaissance de vos talents. Sachez qu'à chaque fois que vous subissez cette procédure elle est plus difficile à accomplir, et donc plus onéreuse."] = "b8263-orc-female-shaman",
             ["À travers un vigoureux recyclage, j'ai dû contraindre bien des étudiants à oublier ce qu'ils avaient appris, afin qu'ils soient prêts à recevoir mon enseignement. Le service que je propose devient de plus en plus difficile à accomplir. C'est pour cela que c'est sans cesse plus cher. Voulez-vous que je vous fasse oublier ce que vous avez appris ?"] = "28f6b8de934060edb89ab0339b080fcf",
         },
         [3345] = {
@@ -3156,6 +3183,7 @@ GossipText = {
             ["À travers un vigoureux recyclage, j'ai dû contraindre bien des étudiants à oublier ce qu'ils avaient appris, afin qu'ils soient prêts à recevoir mon enseignement. Le service que je propose devient de plus en plus difficile à accomplir. C'est pour cela que c'est sans cesse plus cher. Voulez-vous que je vous fasse oublier ce que vous avez appris ?"] = "3a364a4573d4825a6795e3bb454069d4",
         },
         [3355] = {
+            ["Ce n'est pas un jeu ! Allez parler à Snarl, dehors. Il est peut-être un serpent dans ma maison, mais au moins il sait se servir d'une enclume."] = "b5817-orc-male-guard",
             ["Que recherchez-vous dans ma forge ? De l'entraînement ? Peut-être recherchez-vous le secret de l'acier ? Les mystères de la forge ? Parlez, espèce de grunt !"] = "03b20e4ae05f8ecd44ff03f0c3561c3f",
         },
         [3362] = {
@@ -3212,6 +3240,7 @@ GossipText = {
         [3403] = {
             ["Les esprits ont de fortes affinités avec vous. Qu'est-ce qu'une trollesse peut faire pour vous ?"] = "6c82842b379af58a9a58e28cb35a4d49",
             ["Que les esprits vous protègent !"] = "5bcfe44c67f5e0a247451c8d54a13c74",
+            ["Si vous le voulez, en plus de l'enseignement que je propose, j'ai le pouvoir de faire disparaître de votre esprit la connaissance de vos talents. Sachez qu'à chaque fois que vous subissez cette procédure elle est plus difficile à accomplir, et donc plus onéreuse."] = "b8263-troll-female-old",
             ["À travers un vigoureux recyclage, j'ai dû contraindre bien des étudiants à oublier ce qu'ils avaient appris, afin qu'ils soient prêts à recevoir mon enseignement. Le service que je propose devient de plus en plus difficile à accomplir. C'est pour cela que c'est sans cesse plus cher. Voulez-vous que je vous fasse oublier ce que vous avez appris ?"] = "857ea30c7f6e11d987a132b4e84da4dc",
         },
         [3406] = {
@@ -3789,6 +3818,7 @@ GossipText = {
         [4219] = {
             ["Bienvenue, $gmon frère:ma soeur;. Si vous êtes ici pour vous former, j'aurai plaisir à y contribuer.$B$BOn dit qu'il y a des dissensions au sein du Cercle cénarien, mais n'y prêtez pas attention. Notre archidruide, Fandral Staghelm, nous est un guide précieux et mène Teldrassil à la gloire !"] = "765d7c8eab15fae760b184c664fb9e9a",
             ["Recevez les bénédictions de Cénarius, $c. Que notre maître, l'archidruide Staghelm, nous guide avec tout Teldrassil vers une vie régénérée !"] = "04deb31038105cfd74ab05f52c151823",
+            ["Si vous le voulez, en plus de l'enseignement que je propose, j'ai le pouvoir de faire disparaître de votre esprit la connaissance de vos talents. Sachez qu'à chaque fois que vous subissez cette procédure elle est plus difficile à accomplir, et donc plus onéreuse."] = "d8d678c1fa7a5d0ec00c8daf69cd26f9",
             ["À travers un vigoureux recyclage, j'ai dû contraindre bien des étudiants à oublier ce qu'ils avaient appris, afin qu'ils soient prêts à recevoir mon enseignement. Le service que je propose devient de plus en plus difficile à accomplir. C'est pour cela que c'est sans cesse plus cher. Voulez-vous que je vous fasse oublier ce que vous avez appris ?"] = "30ee103c545f987ab518c70f6d3e640e",
         },
         [4241] = {
@@ -3909,6 +3939,7 @@ GossipText = {
             ["Johnson ? Je pense qu’il se trouve quelque part dans les parages..."] = "5d227c61a514e3f0b41f912efe022c52",
             ["Le Brave ? Il paraît que le Maître des courses Kronkrider, là-haut, dans la tour, sait où il se trouve."] = "288dfdbe6b0b08a6f2781e22dc5d8ce0",
             ["Mon Almanacotron bidulique me dit que nous battrons les gobelins, avec 20 secondes d'avance de plus que la dernière fois !"] = "29cb9f241b67a6bd58f46757f27f6f9e",
+            ["Mon fils peut concevoir des chariots plus rapides que ces vieux tas de ferraille gobelins !"] = "5a9bf6255acd34e980aebcd04a7a6def",
             ["Mon fils peut fabriquer des véhicules plus rapides que ces vieux tas de ferraille gobelins !"] = "5a9bf6255acd34e980aebcd04a7a6def",
             ["Sans la chance invraisemblable des gobelins, ils s'écraseraient sur un arbre à chaque course !"] = "413ec8412f752d13ea7d3bc09e39592d",
             ["Tirth n’est plus tout à fait lui-même ces jours-ci, son assistant non plus d'ailleurs."] = "329639fd7e8c50ac0b798afe6c0f563e",
@@ -4132,6 +4163,7 @@ GossipText = {
         },
         [4731] = {
             ["Au nom de la Société royale des apothicaires, je suis heureux de vous offrir les plus belles montures disponibles pour les Réprouvés. Ces bêtes ont enduré beaucoup d'épreuves comme nous tous et elles aussi en sont sorties bien plus fortes et résistantes que ce que leur permettait leur vulgaire chair mortelle ! Mais je vous en prie, examinez-les et voyez par vous-même."] = "f167e87b57a2b94049d4b806ea806d69",
+            ["Je n’ai pas le temps de m’asseoir et de tailler la croûte avec vous. Si vous voulez un de mes destriers, allez voir Velma là-bas et elle vous apprendra à monter un palefroi squelettique.  J’aimerais éviter que vous ne blessiez un de mes magnifiques chevaux par ignorance."] = "frFR-4671b9542284e120aaf5af04108e3efd",
             ["La Société royale des apothicaires n'a guère de patience envers les imbéciles. Peut-être que la prochaine fois que nous parlerons de mes montures, vous serez $gconsidéré:considérée; comme $gexalté:exaltée; à Undercity. Jusque-là..."] = "eef6f7f6fd25d10d8ba7e4fca44b8d27",
         },
         [4732] = {
@@ -4470,6 +4502,7 @@ GossipText = {
         },
         [5482] = {
             ["Allez voir Shandrina au refuge de Vent-argent. Elle pourra vous vendre un livre de cuisine pour experts."] = "6adb3f498e428354df52f9e4254cab21",
+            ["Dirge Quickcleave de Gadgetzan est un maître des arts culinaires. Vous devriez aller le voir pour vous perfectionner."] = "46bd22a73f998050e4834380890f65e5",
             ["Est-ce que j'ai l'air d'avoir le temps de dorloter tous les touristes qui franchissent ce seuil ? Dites-moi ce que vous voulez et soyez rapide !"] = "ba9110b33785b226537ef9b18e3923a1",
             ["Je ne vois pas beaucoup de Cuisiniers qui cherchent à se perfectionner, mais je pense que je pourrais vous apprendre quelques recettes et autres secrets des arts... culinaires."] = "b3341-human-male-warrior",
         },
@@ -4574,16 +4607,20 @@ GossipText = {
         [5511] = {
             ["Alors comme ça, vous voulez devenir forgeron, hein ? Attrapez un tablier et un marteau, $gl'ami:l'amie;, voyons de quel... fer vous êtes fait !"] = "fb6579870c6584e03dfb38ef8bc3ee7e",
             ["Vous avez tout du forgeron : d'la suie sous les ongles et d'l'acier dans les os. Ouais, c'est du sang de vrai forgeron qui coule dans vos veines ; c'qui veut dire que vous êtes là pour apprendre une chose ou deux. Bon, $gl'ami:l'amie;, attrapez un marteau. Voyons c'que je peux encore vous apprendre."] = "6d836253374e7258f1d26abac7475d18",
+            ["Vous savez deux ou trois choses sur les marteaux et les enclumes, mais pas beaucoup. Allez parler à Dane Lindgren, il vous préparera à suivre mon enseignement."] = "b5780-dwarf-male-guard",
         },
         [5512] = {
             ["Ne laissez pas les humains du Bazar se moquer de vous, $gl'ami:l'amie;. Avec les passages que ces nabots creusent, il est plus facile que vous ne le pensez de convoyer des marchandises d'Ironforge. Si vous voyez qu'ils essayent de vous rouler, dites-leur que vous irez acheter vos équipements chez moi."] = "8ee2a69ee63c41a11aeca4da11d55e13",
+            ["Ne laissez pas les humains du Bazar se moquer de vous, l'ami. Avec les passages que ces nabots creusent, il est plus facile que vous ne le pensez de convoyer des marchandises de Forgefer. Si vous voyez qu'ils essayent de vous rouler, dites-leur que vous irez acheter vos équipements chez moi."] = "frFR-1543e7f963a81af6bf4d0f15f3a411b7",
         },
         [5513] = {
             ["Je suis d'Ironforge, volontaire pour participer à l'effort de reconstruction. Si je peux vous apprendre ce que je sais, peut-être que je pourrai vous demander de me relayer dans cette tâche et rentrer chez moi."] = "ecfb26a965f871793f254dd052d3a1af",
+            ["Je suis de Forgefer, volontaire pour participer à l'effort de reconstruction. Si je peux vous apprendre ce que je sais, peut-être que je pourrai vous demander de me relayer dans cette tâche et rentrer chez moi."] = "frFR-c3c52f83c9d0f4775a1ebb0ac0782b06",
             ["Ouais ? J'espère pour vous qu'vous avez une bonne raison d'me déranger !"] = "7baf64adcb2bac12353e20b721380581",
         },
         [5514] = {
             ["Ne laissez pas les humains du Bazar se moquer de vous, $gl'ami:l'amie;. Avec les passages que ces nabots creusent, il est plus facile que vous ne le pensez de convoyer des marchandises d'Ironforge. Si vous voyez qu'ils essayent de vous rouler, dites-leur que vous irez acheter vos équipements chez moi."] = "8ee2a69ee63c41a11aeca4da11d55e13",
+            ["Ne laissez pas les humains du Bazar se moquer de vous, l'ami. Avec les passages que ces nabots creusent, il est plus facile que vous ne le pensez de convoyer des marchandises de Forgefer. Si vous voyez qu'ils essayent de vous rouler, dites-leur que vous irez acheter vos équipements chez moi."] = "frFR-1543e7f963a81af6bf4d0f15f3a411b7",
         },
         [5515] = {
             ["J'peux pas vous aider. Trouvez-vous un maître de vot'classe, $c."] = "50c3dde9457501168f44f5feeb295930",
@@ -6500,6 +6537,9 @@ GossipText = {
             ["Hum... Vous êtes un peu trop $g grand : grande ; pour chevaucher un mécanotrotteur, $g Monsieur : Madame;. Vous allez écrabouiller les délicats servo-équilibreurs !"] = "65e354785b26bc4ab909aec7cd4f43eb",
             ["Si vous recherchez le don de la vitesse et de la mobilité, vous êtes à destination ! Les nouveaux modèles de mécanotrotteurs sont arrivés et je peux vous montrer ce qu'ils ont à offrir !"] = "299711f9bfc91cd6e18b4f2a9bc2baae",
         },
+        [7998] = {
+            ["Louée soit la lumière, vous êtes là ! J'accepterais même l'aide d'un ogre à deux têtes au point où j'en suis.  La cité a été envahie par des troggs ! Les tentatives pour les éradiquer ont provoqué une contamination de masse. Mais il y a de l'espoir.  Nos scientifiques, qui ont été évacués à Ironforge, travaillent sur un remède. Pendant ce temps, si vous pouviez m'aider à stopper l'invasion des troggs, peut-être que la cité pourrait être reprise."] = "b4083-gnome-female-nerdy",
+        },
         [7999] = {
             ["Bonjour, $c. Je suis Tyrande Murmevent, grande prêtresse d’Élune."] = "b325819-nightelf-female-standard",
         },
@@ -6958,6 +6998,7 @@ GossipText = {
         },
         [9545] = {
             ["Il paraît qu'un aristocrate parmi les élémentaires de l'eau, Hydraxis, se bat contre les serviteurs de la flamme. Espérons qu'il perdra !"] = "e6aaf0a5e40d69ade99a9420f809af6e",
+            ["Le seigneur des eaux Hydraxis se cache en  Azshara, sur une île de la baie des Tempêtes. Je me demande quelle menace il peut rassembler là-bas ?"] = "71d0fe83bfcaabb9c727ec622e2c8f4a",
             ["Le seigneur des eaux Hydraxis se cache en Azshara, sur une île de la baie des Tempêtes. Je me demande quelle menace il peut rassembler là-bas ?"] = "71d0fe83bfcaabb9c727ec622e2c8f4a",
             ["Les élémentaires de l'eau sont en guerre contre les élémentaires du feu, ce qui signifie en gros qu'ils sont en guerre contre nous. Un de leurs chefs, Hydraxis, rassemble des agents pour servir sa cause..."] = "dc9fa668ac5349906d636b678a132bab",
             ["Prenez un verre, $c. Ça pourrait être le dernier !"] = "5ef4543b47e41607c5262c9bd45be597",
@@ -7079,6 +7120,9 @@ GossipText = {
             ["Dans votre course vers la gloire, vous avez supposé que le cours du jeu était déterminé par vos actions. Pouvez-vous seulement comprendre combien cette pensée paraît absurde à un être comme moi ? Un être qui si tel était son désir pourrait faire en sorte que vos propres pensées insignifiantes écrasent le petit pois de matière grise qui flotte dans votre crâne."] = "747904c03bd92809a1a0c31aba9a13d5",
             ["Vous attendiez-vous à ce que je redoute la puissante légion |2 $n?$B$BVous n'êtes rien pour moi. Moins que rien. Si j'avais voulu votre tête, on me l'aurait présentée sur une pique.$B$BVous avez commis la faute que commettent tous les mortels.$B$B<Le seigneur Victor Nefarius soupire.>$B$BLe temps fait des choses étranges à ceux qui l'utilisent comme une monnaie."] = "5283b76d0c71a7568935cb1ce8af6973",
         },
+        [10181] = {
+            ["<Dame Sylvanas Coursevent vous observe en silence.>"] = "frFR-f07217e87b888af92b6314b2448a0299",
+        },
         [10182] = {
             ["Salutations, $c. Je suis Rexxar, champion de la Horde, serviteur de Thrall, maître des bêtes sauvages."] = "af40e357c59edbf15d948e3c6f65eeb5",
         },
@@ -7191,7 +7235,9 @@ GossipText = {
             ["Faites attention où vous mettez les pieds, $gmon garçon : ma fille;. Le Maître voit tout..."] = "333d11951b9b4a96dc4fba7aa0d0b458",
             ["Nous devons nous concentrer si nous voulons faire croître nos dragons !"] = "b601748c1bcd1821ca074af3a2982332",
             ["Silence ! Je ne veux pas perdre le moindre moment de ce cours !"] = "c9264be62f646404252ba9e5e7f5fe65",
+            ["Silence ! Je ne veux pas perdre le moindre moment de cette conférence !"] = "c9264be62f646404252ba9e5e7f5fe65",
             ["Silence ! Vous ne voyez pas que le Maître parle ?"] = "64cfc8290901cd7b5d66e365a067c0e7",
+            ["Silence ! Vous ne voyez pas que le maître parle ?"] = "64cfc8290901cd7b5d66e365a067c0e7",
             ["Vous avez apporté vos manuels ? Je peux regarder avec vous ?"] = "24cd4f43089038e7b82f4d927f11e09a",
             ["Vous avez fini les devoirs d'hier ? Si oui, prenez place à côté de moi !"] = "36ce0ed6ce4ec90a2d4a9413399136e4",
             ["Vous avez oublié vos vêtements d'étudiant ? Vous pensez que la mode est plus importante que la domination du Fléau ?"] = "1836bbc17960fdcb7f08141883cf0cc2",
@@ -7215,6 +7261,10 @@ GossipText = {
             ["La Confrérie du Thorium ne perd pas son temps avec des fourmis. Partez !"] = "807f545aa510396b39fd74ed72c9abcb",
             ["Si vous m'apportiez la peau de cette bête ? Ma foi... Laissez-moi vous montrer."] = "dcf2194937d4f71a8dcd75edc4a3df89",
         },
+        [10666] = {
+            ["Oh, oui. Juste là."] = "frFR-bf8cc72a43e331a359cf89b138b73974",
+            ["On est occupés avec des choses importantes !"] = "frFR-40658a7e192b1f7c8bfb80c4900bb099",
+        },
         [10667] = {
             ["Je vous salue à nouveau, $n. Je sens que le fleuve du temps reste menacé par des forces extrêmement puissantes. Votre aide permanente est toujours la bienvenue pour les dragons de bronze.$B$BLe passé est inébranlable, mais le futur fluctue en permanence. Les décisions que vous prenez ici et maintenant aident à guider ces changements."] = "a1aab080f67d3f1164b33c4dc1a8628b",
             ["Salutations, $N. Mon nom est Chronormu, mais vous pouvez m'appeler Chromie. Ces familiarités ne me dérangent pas.$B$BComment ai-je appris votre nom ? Étant l'un des dragons de bronze, je suis liée au fleuve du temps, et en quelque sorte nous nous sommes déjà rencontrés. Nous nous rencontrerons encore.$B$BJ'espère que le choix de mon apparence physique ne vous perturbe pas. Gardien des lieux où la préservation du cours du temps est le plus important, j'ai tout de même choisi de ne pas m'immerger dans les douleurs de l'endroit."] = "5fbeeb1ccae7f0a6c91aa94af815dd14",
@@ -7222,6 +7272,12 @@ GossipText = {
         [10668] = {
             ["Le corps est celui d'une guerrière orque.$B$BElle est visiblement morte au combat, sans doute contre les hurans de la région."] = "3b33513dae45313b3f3adfa0fe9a92e2",
             ["Vous retournez le corps et voyez des traces de coups d'épée et de sorts offensifs sur l'orque morte. Son armure est détruite, ses cheveux emmêlés lui font comme une mantille.$B$BD'après la description de Mankrik, c'était à l'évidence sa femme.$B$BIl sera bouleversé par cette nouvelle, mais vous pensez qu'il faut lui dire la vérité."] = "234801d843bf8cf2c310d7552c3d58d3",
+        },
+        [10721] = {
+            ["<La guerrière novice déglutit avec nervosité.>  Je peux y arriver."] = "frFR-1398c71d4ba9cf5d15a040c4b1a2e3c6",
+            ["Je suis prêt."] = "frFR-237f5a02106f7d3d4b82608c18088968",
+            ["Êtes-vous là pour prouver votre valeur, vous aussi ?"] = "frFR-4b9a2f9b99e882d58af6cc9bb6aaff99",
+            ["Êtes-vous prêt à commencer ?"] = "frFR-d412485604cb7a391f15ca57f1affe25",
         },
         [10739] = {
             ["Oui, je parle un langage que vous comprenez, $r. Nous ne sommes pas des animaux, mais votre espèce a tenté de nous réduire en esclavage comme des bêtes. Cela dit, nos différends ne sont rien face au drame que vit cette terre. Je vous en prie, oubliez les conflits qui vous opposent aux miens et écoutez ma dernière volonté d'agonisant.$B$BJe suis venu ici pour faire le bien dont j’étais capable, et cela n'aura servi à rien si vous ne m'aidez pas. Je vous demande votre aide dans mon dernier souffle de vie."] = "fc72657a0b7757c758fbe98a28b4863d",
@@ -7478,6 +7534,7 @@ GossipText = {
             ["Enfin, mon âme est libre !"] = "564b4c2f337c2199f444b5155ea4d428",
             ["Merci ! Je suis libre !"] = "7f54e67830fe9b610107dcc6ef833396",
             ["Merci ! La bataille de Darrowshire a été mon malheur, mais vous m'avez libéré !"] = "f2c5356ea5dc812ceaca823c305a9fb8",
+            ["Merci ! La bataille de Darrowshire a été mon malheur, mais vous m'avez libérée !"] = "f2c5356ea5dc812ceaca823c305a9fb8",
             ["Oh, merci ! Cela fait trop longtemps que je suis la victime de ce cauchemar..."] = "f480a00fa10e5310e4267f26515d167f",
         },
         [11065] = {
@@ -8067,11 +8124,16 @@ GossipText = {
             ["Si vous cherchez des informations que le Cercle cénarien pourrait avoir archivées quelque part, c'est à moi qu'il faut parler. Mais vous devez savoir quelles informations vous cherchez avant que je ne puisse vous aider.$B$BVous comprenez comment ça marche maintenant ? Parfait !"] = "310c9f80926c7ac56d95a59b469ade54",
         },
         [11956] = {
+            ["Il faut encore prouver que vous êtes à la hauteur. Même le plus sage et le plus ancien des druides ne peut se flatter d'être totalement prêt à l'heure de l'épreuve ultime.  Vous avez entendu mes paroles, et maintenant vous devez continuer. Tenez compte de ce que je vous ai dit. Le temps viendra où votre force sera mise à l'épreuve. Vous devez affronter votre ennemi comme un ours le ferait. Avec la force du corps et la force du cœur. Apprenez au combat. Allez. Vous avez ma bénédiction."] = "frFR-6731336536babb62b5c719769070af64",
             ["Il faut encore prouver que vous êtes à la hauteur. Même le plus sage et le plus ancien des druides ne peut se flatter d'être totalement prêt à l'heure de l'épreuve ultime.$B$BVous avez entendu mes paroles, et maintenant vous devez continuer. Tenez compte de ce que je vous ai dit. Le temps viendra où votre force sera mise à l'épreuve. Vous devez affronter votre ennemi comme un ours le ferait. Avec la force du corps et la force du cœur. Apprenez au combat. Allez. Vous avez ma bénédiction."] = "6cd1be498e0d68b7c13f9810db056810",
+            ["Je représente la force qui vous soutient, jeune $c. Vous êtes là pour apprendre cette force auprès de moi, et je vous l'enseignerai. Je vous mettrai en contact avec tout ce qui fait l'esprit de l'ours, si vous écoutez et comprenez.  Pour savoir ce que signifie faire appel à mon esprit, vous devez comprendre l'importance de la force du corps et de la force du cœur."] = "frFR-4331716da5a241c1a66303b7f3e50d30",
             ["Je représente la force qui vous soutient, jeune druide. Vous êtes là pour apprendre cette force auprès de moi, et je vous l'enseignerai. Je vous mettrai en contact avec tout ce qui fait l'esprit de l'ours, si vous écoutez et comprenez.$B$BPour savoir ce que signifie faire appel à mon esprit, vous devez comprendre l'importance de la force du corps et de la force du cœur."] = "b8f813269aaa11acc499b0c1f173ed51",
+            ["L'esprit de l'ours vous regarde d'un œil calme et paisible. Une voix vous parle comme si elle venait de l'ours, mais rien n'indique que la créature soit en train de parler.  'Je vous salue, jeune amie. Si vous venez à moi en quête de conseils, peut-être puis-je vous aider à trouver ce que vous cherchez.'"] = "frFR-826c13f228003abba429d7e0b6302882",
             ["L'esprit de l'ours vous regarde d'un œil calme et paisible. Une voix vous parle comme si elle venait de l'ours, mais rien n'indique que la créature soit en train de parler.$B$B'Je vous salue, jeune $gami:amie;. Si vous venez à moi en quête de conseils, peut-être puis-je vous aider à trouver ce que vous cherchez.'"] = "b2794cf09b4092d4684e667496402cd0",
             ["L'ours vous regarde calmement et patiemment, mais ne dit rien."] = "d9f1ffb3d164e0c04c684e839afcf024",
+            ["La force du corps est la puissance et la rapidité de l'action. Vous devez vous maintenir en forme à tout instant, physiquement et mentalement. La corpulence de l'ours augmente sa force, et c'est un ennemi féroce au combat. Mais elle réduit son agilité et la finesse de son esprit. Voici des surprises que vous saurez utiliser à votre avantage.  Vous devez vous reposer sur la force du corps de l'ours pour maîtriser la voie de la Griffe."] = "frFR-551905cdf149c3795d08fa175a6e94bd",
             ["La force du corps est la puissance et la rapidité de l'action. Vous devez vous maintenir en forme à tout instant, physiquement et mentalement. La corpulence de l'ours augmente sa force, et c'est un ennemi féroce au combat. Mais elle réduit son agilité et la finesse de son esprit. Voici des surprises que vous saurez utiliser à votre avantage.$B$BVous devez vous reposer sur la force du corps de l'ours pour maîtriser la voie de la Griffe."] = "c795bb125f2778c3c6d0cc0f61572679",
+            ["La force du cœur est ce qui vous donne le courage d'agir, d'entreprendre des actions dont les racines sont pures et droites. Préserver l'Equilibre ne signifie pas être banal ou falot.  Vous devez faire preuve de conviction, défendre ce en quoi vous croyez, et être prête à vous battre pour cette cause. Les ourses font preuve d'un dévouement sans borne dans la protection de leurs petits, tout comme les vieux ours dans celle de leur clan. C'est ce courage, cette force du cœur, que vous devez montrer si vous voulez maîtriser la voie de la Griffe."] = "frFR-f46e6cd577430b9192c9e38d67fcd50d",
             ["La force du cœur est ce qui vous donne le courage d'agir, d'entreprendre des actions dont les racines sont pures et droites. Préserver l'Equilibre ne signifie pas être banal ou falot.$B$BVous devez faire preuve de conviction, défendre ce en quoi vous croyez, et être $gprêt:prête; à vous battre pour cette cause. Les ourses font preuve d'un dévouement sans borne dans la protection de leurs petits, tout comme les vieux ours dans celle de leur clan. C'est ce courage, cette force du cœur, que vous devez montrer si vous voulez maîtriser la voie de la Griffe."] = "36d7f5626545df44ecc60f71c7c12a9a",
         },
         [12018] = {
@@ -8090,6 +8152,10 @@ GossipText = {
         [12042] = {
             ["Bienvenue, $gmon frère:ma sœur;. Si vous êtes ici pour apprendre, j'aurai grand plaisir à vous enseigner.$B$BBientôt, vous entendrez l'appel du Rêve d'émeraude. Vous hibernerez pendant des années et marcherez parmi les formes les plus pures. C'est là que votre ultime formation aura lieu."] = "1d12fd8e421d229eea70c7677a2daeca",
             ["Même entre de froids murs de pierre comme ceux qui entourent cette ville, on peut trouver la tranquillité et la paix. En fait, on peut les trouver où qu'on soit... Il faut chercher en soi cet équilibre..."] = "922a94a8f826437fe0370bdcd6a587ac",
+        },
+        [12097] = {
+            ["Nous n'avons quasiment pas de matériel. Il nous en faudra beaucoup plus pour être en mesure de lancer une attaque terrestre sur le Champ sanglant."] = "b9114-orc-male-standard",
+            ["À ce qu’on dit, la force et la bravoure suffisent à assurer le succès d’une armée. C’est vrai ! Mais il faut aussi du matériel pour que l’armée reste en forme, et ma tâche est de veiller à ce que nous ayons tout ce qu’il nous faut."] = "b8855-orc-male-standard",
         },
         [12136] = {
             ["$gSalut, beauté, vous cherchez à aller jusqu'à Grom'gol ? Il paraît que ça chauffe pas mal dans ces jungles, je pourrais peut-être prendre quelques vacances avec vous, vous montrer deux ou trois aspects... de la vie sauvage. : Allez ! Faites un voyage dans les magnifiques et luxuriantes jungles tropicales de Strangleronce. C'est ça, vous aussi vous pourriez prendre le soleil près des eaux cristallines pendant que je reste ici sous un soleil de plomb, sans rien d'autre à faire que de regarder toute la journée mon frère Frezza ! Bon voyage !;"] = "808af6c85a55d2308db805b9fb00b368",
@@ -8268,6 +8334,7 @@ GossipText = {
             ["Ah, je crois que Gimble Thistlefuzz est la personne dont vous avez besoin pour devenir Enchanteur ! Vous trouverez Gimble dans son échoppe, les Arcanes de Thistlefuzz, près du Maître des gryphons de la Grande Forge."] = "6e1942115134fa4728a8bd01469f0ee2",
             ["Ah, la vallée d’Alterac ! De grands souvenirs ! <soupir> Bon, je ne peux pas vous y envoyer, mais ça m’a quand même fait plaisir d’y penser ! Pour y aller, vous devrez parler à Glordrum Steelbeard, dans le Hall des Armes, ici à Ironforge."] = "e06fd55d9c7b155fdb8e8ed8c2d4b286",
             ["Ah, le bon vieux Brandur Ironhammer. Je suis sûr qu'il vous donnera l'aide que vous désirez. Vous le trouverez au Hall des mystères, au nord des portes d'Ironforge."] = "63f213a9fe7d396bded4b0fcdb6f51b1",
+            ["Ah, le bon vieux Brandur Ironhammer. Je suis sûre qu'il vous donnera l'aide que vous désirez. Vous le trouverez au Hall des mystères, au nord des portes d'Ironforge."] = "63f213a9fe7d396bded4b0fcdb6f51b1",
             ["Ah, rien ne vaut un prêtre pour guérir les blessures. Bien sûr, une bonne bière aide aussi, mais je ne pense pas que Braenna Flintcrag enseigne la fermentation. Cela dit, vous trouverez bien un prêtre pour vous instruire au Hall des mystères."] = "c813addf44eeb3041f9442747e4f19b7",
             ["Ah, rien ne vaut une bonne promenade en gryphon, pas vrai ? Les elfes de la nuit peuvent se garder leurs hippos, pour moi rien de tel que les bons vieux gryphons !   Mais je ne veux pas vous retarder, allez voir Gryth Thurden à l'est de la Grande Forge. Il vous mettra sur la route."] = "cb6734d0257007705c4566a44b980164",
             ["Alors comme ça, $ggamin:gamine;, vous croyez avoir ce qu’il faut pour défendre l’Alliance face à la Horde dans la vallée d’Alterac ? Très bien ! Dans ce cas, parlez à Glordrum Steelbeard, ici même à Ironforge. Vous le trouverez dans le Hall des Armes, en train de définir des stratégies devant la table de guerre."] = "f0b32b90ead935933c43bb1468fa3f95",
@@ -8344,6 +8411,7 @@ GossipText = {
             ["Johnson ? Je pense qu’il se trouve quelque part dans les parages..."] = "5d227c61a514e3f0b41f912efe022c52",
             ["Le Brave ? Il paraît que le Maître des courses Kronkrider, là-haut, dans la tour, sait où il se trouve."] = "288dfdbe6b0b08a6f2781e22dc5d8ce0",
             ["Mon Almanacotron bidulique me dit que nous battrons les gobelins, avec 20 secondes d'avance de plus que la dernière fois !"] = "29cb9f241b67a6bd58f46757f27f6f9e",
+            ["Mon fils peut concevoir des chariots plus rapides que ces vieux tas de ferraille gobelins !"] = "5a9bf6255acd34e980aebcd04a7a6def",
             ["Mon fils peut fabriquer des véhicules plus rapides que ces vieux tas de ferraille gobelins !"] = "5a9bf6255acd34e980aebcd04a7a6def",
             ["Sans la chance invraisemblable des gobelins, ils s'écraseraient sur un arbre à chaque course !"] = "413ec8412f752d13ea7d3bc09e39592d",
             ["Tirth n’est plus tout à fait lui-même ces jours-ci, son assistant non plus d'ailleurs."] = "329639fd7e8c50ac0b798afe6c0f563e",
@@ -8356,11 +8424,27 @@ GossipText = {
             ["Buliwyf, le maître d'armes des nains, est ici aux Armes de Timberline, il saura vous apprendre le maniement des armes de pugilat, des fusils, des haches à une et deux mains et des masses à une et deux mains.  Woo Ping, le maître d'armes des humains, se trouve à l'Arsenal de Weller de Stormwind. Il vous apprendra l'usage des arbalètes, des dagues, des épées à une et deux mains, des armes d'hast et des bâtons.  Ilyenia, le maître d'armes des elfes de la nuit, se trouve à la Terrasse des guerriers de Darnassus. Elle vous apprendra à utiliser les arcs, les dagues, les armes de poing, les bâtons et les armes de jet."] = "24fbc29bbfa684d547e89fb18cc02719",
             ["Salut ! Vous êtes là pour apprendre à utiliser correctement un nouvelle arme ?"] = "aca797c5fc53636876bb9796d70dee29",
         },
+        [13085] = {
+            ["Nous sommes les pièces d'un immense puzzle, $N. Tout comme on pousse la pièce d'un puzzle vers sa juste place, nous sommes guidés par un autre.  Et peut-être ceux qui nous guident sont-ils eux-mêmes guidés par d'autres, plus puissants encore."] = "frFR-6ddb2148cdaff49fc1cc3fe2b9948879",
+        },
+        [13154] = {
+            ["Vous venez apprendre l'art de la guerre, $r ? Vous êtes au mauvais endroit."] = "b9069-scourge-male-warrior",
+        },
+        [13176] = {
+            ["Il me faut beaucoup plus de matériel pour améliorer nos troupes."] = "b9132-orc-male-standard",
+            ["Nos unités n'ont pas évolué et je n'ai pas assez de ravitaillement pour y parvenir."] = "b8802-orc-male-standard",
+        },
         [13177] = {
             ["Où voulez-vous aller ?"] = "f686b3319d4af5004c6ee3403aea3f5e",
         },
+        [13180] = {
+            ["Il était temps que quelqu'un vienne ! Qu'est-ce qui vous a pris si longtemps ? Ah, peu importe. Couvrez-moi, soldat. Je dois retourner à la base !"] = "b8637-scourge-female-standard",
+        },
         [13220] = {
             ["Le passé vit ici, $c. Prenons garde à ne pas l'éveiller."] = "72d9e590ddf6bf219b208c8b157ddb5c",
+        },
+        [13236] = {
+            ["Le sang de nos ennemis sera versé sur le champ de bataille. Les grands Élémentaires répondront à notre appel et détruiront tout ce qui sera sur notre route !"] = "b8621-tauren-female-shaman",
         },
         [13278] = {
             ["$N, je pense que vous pouvez entreprendre votre tâche ultime. Les runes de feu réparties sur le sol du Cœur du Magma sont des passages vers le royaume du feu et leur présence est à la fois un affront pour nous tous et la source du pouvoir des seigneurs du Feu. Il faut s'en débarrasser !$B$BPour éteindre une rune, prenez une fiole de quintessence aquatique. Versez-en le contenu sur la rune et sa flamme s'éteindra, ce qui la rendra inutile et affaiblira nos ennemis."] = "157a89224c00e05440e1b2e2c9e3c28d",
@@ -8510,6 +8594,9 @@ GossipText = {
         [13447] = {
             ["$N, c’est bon de voir des vétérans comme vous prendre part à l’action ! Je suis désolé, mais nous n’avons pas assez de matériel pour lancer une offensive terrestre importante contre la Horde.$B$BDiscutez-en avec notre intendant, il a des missions de ravitaillement à vous confier."] = "be7b74ece350a6df351c868dce888f81",
         },
+        [13448] = {
+            ["C’est bon de voir des vétérans comme vous dans la vallée d’Alterac, $n. Nos réserves de matériel sont trop faibles pour que nous lancions une attaque terrestre. Parlez à notre intendant, il vous dira comment augmenter nos réserves."] = "b8989-orc-female-warrior",
+        },
         [13616] = {
             ["Bien joué, soldat. Encore un effort et nos écuries seront emplies de montures. Notre cavalerie pourra se mêler aux combats !"] = "28607f3a0d29a8585b7a800ababa8406",
             ["Salutations, soldat. Êtes-vous ici pour servir la cause ?"] = "b39eb5c882dee150f724b5b3066bf272",
@@ -8638,6 +8725,7 @@ GossipText = {
             ["Je soupçonne les diablotins de voler du savoir."] = "de92e3bf1b00e122ea4b943635de2b3a",
             ["Le Gardien du savoir est très âgé. Il a servi sous notre glorieuse reine !"] = "1bb37b5e2ce5b14590bd6d1f7ea818fa",
             ["Le Maître s’intéresse beaucoup au repaire de Nefarian. Si quelqu’un pouvait vaincre le dragon et ses séides et raconter l’histoire au prince, je suis sûr que cela le pousserait à parler. Porte-cendres pourrait être trouvée !"] = "c1dcc591d8d16fba46b238ec1612e330",
+            ["Le Maître s’intéresse beaucoup au repaire de Nefarian. Si quelqu’un pouvait vaincre le dragon et ses séides et raconter l’histoire au prince, je suis sûre que cela le pousserait à parler. Porte-cendres pourrait être trouvée !"] = "c1dcc591d8d16fba46b238ec1612e330",
             ["Le prince vous a-t-il raconté l’histoire de Porte-cendres ? C’est notre préférée. Sa préférée est celle qui vient après, mais personne n’a jamais réussi à le pousser à la raconter."] = "0b91ae5b7eee6652c2cec68b923afa45",
             ["Parlez bas, $g étranger : étrangère ;. Il ne faut pas déranger le Maître dans ses méditations."] = "d5151f42961aedaf4038bdc6a60aa9f2",
             ["Vous ne devez pas fâcher le Maître. Il est affreusement cruel quand il est en colère."] = "4977781f15c9e77ab5e0dab144648ba9",
@@ -8724,6 +8812,9 @@ GossipText = {
         },
         [14524] = {
             ["Salutations, $n."] = "00ee25dc8ec2b9d495d1538ceae07d8e",
+        },
+        [14527] = {
+            ["Quelle belle journée pour être en vie ! Admirez la beauté qui vous entoure, mon $g ami : amie ;. Savourez ce que la vie a à vous donner !"] = "b9744-troll-female-laidback",
         },
         [14531] = {
             ["C’est merveilleux de voir une autre personne dans cette région éloignée de tout. Venez, marchons ensemble. Nos corps se tiendront chaud."] = "592e299bd0edf1ea20bdb5dabf705526",
@@ -9073,6 +9164,7 @@ GossipText = {
             ["L’autel de Zanza, derrière moi, est un lieu sacré pour nous autres Zandalar. Nous y prions pour renforcer notre résolution en préparation de la guerre contre le Dieu sanglant Hakkar.$B$BProuvez votre valeur aux yeux de la tribu en l’utilisant pour détruire les Bijoux hakkari que vous trouverez dans Zul’Gurub. Par ailleurs, je vous donnerai les Marques d’honneur qui servent de monnaie à notre tribu en échange des séries de pièces que vous trouverez à Zul’Gurub. Ramenez-moi les pièces que je recherche, et vous serez $grécompensé:récompensée; !"] = "146cded4f6f6a9fde55acea952be56eb",
         },
         [15076] = {
+            ["Nous, trolls zandalariens, avons voyagé jusqu'ici depuis des îles lointaines, car nous ne pouvons ignorer la menace qu'affronte à présent notre monde."] = "b10618-troll-male-dark",
             ["Nous, trolls zandalariens, avons voyagé jusqu'ici depuis des îles lointaines, car nous ne pouvons ignorer la menace qu'affronte à présent notre monde.$B$BLe chef de notre expédition, Molthor, nous a conduit sur l'île de Yojamba, le long des côtes nord de Strangleronce, et recrute maintenant des héros courageux pour s'aventurer dans l'ancienne cité troll... Zul'Gurub."] = "2b07aacfb7ec7aa8d2c6dc58fbefae37",
         },
         [15077] = {
@@ -9218,6 +9310,7 @@ GossipText = {
         },
         [15183] = {
             ["Vous entendez ? Le bourdonnement devient plus fort de jour en jour. Ce doit être ces cristaux qui rendent les insectes dingues."] = "923b9f247d112d5c467bec4f859d29b2",
+            ["Vous n’avez toujours pas mis la main sur le déserteur du Marteau du crépuscule ? Fouillez soigneusement les montagnes du sud-est. À en croire les rumeurs, un mystérieux ermite y vivrait."] = "b10689-dwarf-female-maternal",
         },
         [15190] = {
             ["Hé ! Merci d’avoir sauvé ma peau ! Je pense que je vais faire profil bas pendant un moment, le temps de reprendre des forces."] = "0e9b47815086b6b0100592326be61808",
@@ -9698,6 +9791,7 @@ GossipText = {
             ["Après le feu d'artifice, ils sortent des coupes pour qu'on puisse trinquer !"] = "89e415bdb73fd26d1d58ccc6394eccff",
             ["Je ne sais pas ce qu'ils mettent dans ces tonneaux, mais ça se laisse boire !"] = "8698393913c403f236550da9075dd3d5",
             ["Surtout, ne manquez pas le prochain feu d'artifice. Il y en a un toutes les heures à partir de 18 h, à l'heure juste."] = "4617036e771dca54c5b409aa97055eaf",
+            ["Une bise me ferait bien plaisir, maintenant. Vous savez où je pourrai en trouve une ?"] = "b818b18848af77ff95b946be1fadd22d",
             ["Une bise me ferait bien plaisir, maintenant. Vous savez où je pourrais en trouve une ?"] = "b818b18848af77ff95b946be1fadd22d",
             ["Voilà une heureuse rencontre, $gmon ami:mon amie; !"] = "5b93963bfae198a2a8e568d7c9b0aa31",
         },
@@ -9732,6 +9826,7 @@ GossipText = {
             ["Le feu d'artifice commencera à 18 heures, depuis le plus haut piton !"] = "727857fad525bb43ce619bc3d7342926",
             ["Les barils débordent de bière forte ! Buvez, mon $gami:amie;, et faites la fête !"] = "bb49e5ebc095702e178198e907dda48f",
             ["Salutations, $c ! Bienvenue à la fête !"] = "a0f202a4ba690c9067f0b8e0a8016cce",
+            ["Une bise me ferait bien plaisir, maintenant. Vous savez où je pourrai en trouve une ?"] = "2e84a1e945a7281e328a46149ab7b1d9",
             ["Une bise me ferait bien plaisir, maintenant. Vous savez où je pourrais en trouve une ?"] = "2e84a1e945a7281e328a46149ab7b1d9",
         },
         [15722] = {
@@ -9833,6 +9928,7 @@ GossipText = {
             ["Après le feu d'artifice, ils sortent des coupes pour qu'on puisse trinquer !"] = "6d7a0a461e2650661f34cbb62df4a64c",
             ["Je ne sais pas ce qu'ils mettent dans ces tonneaux, mais ça se laisse boire !"] = "73bf520ba54e6d1e7f123875ac134dc2",
             ["Surtout, ne manquez pas le prochain feu d'artifice. Il y en a un toutes les heures à partir de 18 h, à l'heure juste."] = "9e44a7a2990575244bfb03e10d9172dd",
+            ["Une bise me ferait bien plaisir, maintenant. Vous savez où je pourrai en trouve une ?"] = "4bf540b1bbdebcaec03285d831690899",
             ["Une bise me ferait bien plaisir, maintenant. Vous savez où je pourrais en trouve une ?"] = "4bf540b1bbdebcaec03285d831690899",
             ["Voilà une heureuse rencontre, $gmon ami:mon amie; !"] = "229605db995a9c242cc65986e5928a1b",
         },
@@ -9840,6 +9936,7 @@ GossipText = {
             ["Après le feu d'artifice, ils sortent des coupes pour qu'on puisse trinquer !"] = "ed03fb23ae16fb04599c13080c1acffe",
             ["Je ne sais pas ce qu'ils mettent dans ces tonneaux, mais ça se laisse boire !"] = "8667d501338eab68c0b14814dab835dd",
             ["Surtout, ne manquez pas le prochain feu d'artifice. Il y en a un toutes les heures à partir de 18 h, à l'heure juste."] = "9946d1873a48e8fbc8fac8ab278eb276",
+            ["Une bise me ferait bien plaisir, maintenant. Vous savez où je pourrai en trouve une ?"] = "bafd33062e7a5ef7f88bd3ac468a4a2e",
             ["Une bise me ferait bien plaisir, maintenant. Vous savez où je pourrais en trouve une ?"] = "bafd33062e7a5ef7f88bd3ac468a4a2e",
             ["Voilà une heureuse rencontre, $gmon ami:mon amie; !"] = "43ccb729b1ae428d1ed345812ed65bd0",
         },
@@ -9848,6 +9945,7 @@ GossipText = {
             ["Le feu d'artifice commencera à 18 heures, depuis le plus haut piton !"] = "c5f7e2df05ba63b220570cf049a0ae7a",
             ["Les barils débordent de bière forte ! Buvez, mon $gami:amie;, et faites la fête !"] = "06f49d9f9d5fb1edcf209836d4309855",
             ["Salutations, $c ! Bienvenue à la fête !"] = "82e1f388e3d1053dc0d340f63090e225",
+            ["Une bise me ferait bien plaisir, maintenant. Vous savez où je pourrai en trouve une ?"] = "e46a99e660cce12f8a4292fdb7f7bc29",
             ["Une bise me ferait bien plaisir, maintenant. Vous savez où je pourrais en trouve une ?"] = "e46a99e660cce12f8a4292fdb7f7bc29",
         },
         [15908] = {
@@ -9855,6 +9953,7 @@ GossipText = {
             ["Le feu d'artifice commencera à 18 heures, depuis le plus haut piton !"] = "1732c988c271232a750d3e2e53c1d1d6",
             ["Les barils débordent de bière forte ! Buvez, mon $gami:amie;, et faites la fête !"] = "a1266790d643e961d1a1d9572db705d7",
             ["Salutations, $c ! Bienvenue à la fête !"] = "9031ad552c6f16d0a461e40e557acbd7",
+            ["Une bise me ferait bien plaisir, maintenant. Vous savez où je pourrai en trouve une ?"] = "25be0d84e393ee3ed1191d398a602628",
             ["Une bise me ferait bien plaisir, maintenant. Vous savez où je pourrais en trouve une ?"] = "25be0d84e393ee3ed1191d398a602628",
         },
         [15909] = {
@@ -10179,6 +10278,9 @@ GossipText = {
             ["Ah, vous êtes $gcelui:celle; qui a trouvé la lettre. Merci pour ces... nouvelles, en quelque sorte, de ma famille. Prenez donc à manger et à boire."] = "db0fd82a2e87168de7f37ba74147a476",
             ["Soyez prudent dans le désert, $c."] = "ba66fca13d25f11aec60b7a40abc3055",
         },
+        [16587] = {
+            ["Où voulez-vous aller ?"] = "008491a7c8f31e3556f00e8c3fdc3190",
+        },
         [16786] = {
             ["Bonjour, $n. Si vous me rapportez les pierres nécrotiques des envahisseurs morts-vivants, je vous donnerai accès aux magasins de l'Aube d'Argent."] = "58b18aa4a206e098e7239f5a128d11eb",
         },
@@ -10194,6 +10296,9 @@ GossipText = {
         [16818] = {
             ["Vous appréciez la fête, $c ?$B$BLe gardien des flammes s’occupe des feux du présent. Quant à moi, je suis une sorte d’historien. Je conserve la mémoire des fêtes passées. Bien sûr, je transmettrai le souvenir de celle de cette année. Pour l’instant, tout se passe à merveille, n’est-ce pas ?$B$BVous savez, $N, tous les feux qui brûlent pendant cette fête ont un certain pouvoir. Je suis certain que des flammes sacrées brûlent au cœur des capitales ennemies…"] = "0b4060988eee47f0f6a9f5aadfb007a3",
         },
+        [16822] = {
+            ["Où voulez-vous aller ?"] = "43540ff7458382b18eb66468d4ff2856",
+        },
         [16999] = {
             ["Greetings, $N. I am Johnny McWeaksauce. I am used as a tool by developers to carry out specific functions for the purpose of testing. For this test period, I am set to do two specific things:$B$B(1) Flag you as having done the Naxxramas attunement quest so that you are able to accept the next quest, 'Echoes of War' from Commander Eligor Dawnbringer. You must first complete that quest to be able to access the quests for your Tier 3 armor set.$B$B(2) Teleport you to Naxxramas.$B$BWhat is it that you require?"] = "38921cd829ce0256aece4a48c2339b21",
             ["« Salutations, $N. Je vois que vous portez déjà le marqueur indiquant que vous avez complété la quête permettant d’entrer dans Naxxramas. N’oubliez pas d’aller parler au commandant Eligor Dawnbringer, à la chapelle de l’Espoir de Lumière dans les Maleterres de l’est, pour obtenir la quête « Les échos de la guerre. » Vous devez commencer par achever cette quête pour avoir accès aux quêtes de votre ensemble d’armure du troisième palier.$B$BJe peux vous téléporter directement à Naxxramas, ou bien vous pouvez utiliser le portail que vous trouverez dans Pestebois, plus à l’ouest. »"] = "6a5bb71550a304cc28b7d2bae4771a81",
@@ -10208,11 +10313,37 @@ GossipText = {
         [18938] = {
             ["Où voulez-vous aller ?"] = "3e057055259d660918d6daacb764fb05",
         },
+        [19583] = {
+            ["Où voulez-vous aller ?"] = "3e057055259d660918d6daacb764fb05",
+        },
+        [20515] = {
+            ["Où voulez-vous aller ?"] = "3e057055259d660918d6daacb764fb05",
+        },
+        [22931] = {
+            ["Où voulez-vous aller ?"] = "008491a7c8f31e3556f00e8c3fdc3190",
+        },
+        [23612] = {
+            ["Où voulez-vous aller ?"] = "3e057055259d660918d6daacb764fb05",
+        },
+        [24366] = {
+            ["Où voulez-vous aller ?"] = "3e057055259d660918d6daacb764fb05",
+        },
         [32413] = {
             ["Bienvenue dans mon auberge, $gvoyageur épuisé:voyageuse épuisée;. Que puis-je faire pour vous ?"] = "b2821-nightelf-female-standard",
         },
         [49808] = {
             ["Enchantée d’vous rencontrer."] = "deDE-204f70f92d5518ee6d7ec52f842661ac",
+        },
+        [185403] = {
+            ["Élune-adore, voyageuse. Mon nom est Cyriden. Mon partenaire Relathor et moi-même cherchons à exhumer les artéfacts perdus de notre peuple.  Si les anciens kaldorei sont la mémoire vivante de notre civilisation, une grande partie de notre patrimoine a sombré dans l’oubli. Si nous n’intervenons pas, il disparaîtra à jamais de la surface de ce monde."] = "frFR-04e8a9ddaec45b762c181b3b011e0d1d",
+        },
+        [185404] = {
+            ["Mon partenaire et moi-même sommes archéologues, et nous espérons redécouvrir l’histoire oubliée des Kaldorei. Ce n’est pas une mince affaire, mais nous devons préserver la mémoire de nos prédécesseurs."] = "frFR-98da499f46561ad4b9a5c093b0d39395",
+            ["Oui ! Une fascinante statuette représentant deux Elfes de la nuit en train de se reposer. Cyriden l’a découverte dans les ruines du repaire de Bathran quelques heures à peine avant que les Réprouvés ne débarquent et ne l’en chassent.  Depuis qu’il est rentré et qu’il me l’a remise, je n’ai cessé de l’étudier.  Elle a été sculptée dans du bois provenant d’Ashenvale il y a des millénaires, à l’époque de la guerre des Satyres. Si les deux personnages sont des hommes, je n’ai pas encore réussi à déterminer leur identité exacte."] = "frFR-ab766369215e8e98fc9d426223c415b1",
+            ["Vous la vendre ? Ah non, hors de question ! Quand Cyriden me l’a donnée, cela m’a rappelé… Disons que j’ai ressenti…  Je ne sais pas, les mots m’échappent, je crois.  Je regrette, tout cela doit vous paraître si ridicule, vouloir conserver une babiole aussi inutile… Enfin, tout ça pour dire que la statuette n’est pas à vendre."] = "frFR-30dfb46824ad67f45605b51b6e3f6a34",
+        },
+        [214099] = {
+            ["Nous avons eu des problèmes de cargaisons qui disparaissaient en Azeroth. Si vous en trouvez, je serais contente si vous me les rapportiez."] = "deDE-39668a6393fbafd0d2a6e1d64259d33f",
         },
         [216289] = {
             ["Salutations, jeune $c."] = "b5989-ancient",
@@ -10227,8 +10358,12 @@ GossipText = {
             ["Votre corps semble usé et votre esprit abattu. Reposez-vous sous notre toit et laissez Elune guider vos rêves."] = "88ed28bad52992326e81df54efce5146",
             ["Votre corps semble usé et votre esprit abattu. Reposez-vous sous notre toit et laissez Élune guider vos rêves."] = "88ed28bad52992326e81df54efce5146",
         },
+        [244808] = {
+            ["Vous n’êtes peut-être pas un paladin, mais vous pouvez toujours trouver du réconfort dans la Lumière si vous le cherchez."] = "frFR-170808ceef2a2512a0206274465d0cfb",
+        },
         [246152] = {
             ["Je peux vous enseigner les subtilités de la monte des chevaux squelettes, à condition que vous ayez assez d'or pour payer la leçon."] = "2e65eb1fa48fb06278bb020f60a84d34",
+            ["La Lumière est un phare qui brille pour tout le monde. Que puis-je faire pour vous, $c ?"] = "frFR-c1448661f59c36dadb918ba76a73321f",
         },
         [246752] = {
             ["Malheureusement, la rumeur sur notre détresse est avérée. Des perturbations sur nos lignes telluriques ont révélé un trouble parmi les forces arcaniques de notre cité.    Maintenant que Dalaran est sur le point de rouvrir ses frontières à nos unités alliées, nous avons un besoin de solutions immédiates."] = "b299703-human-male-standard",
@@ -10245,11 +10380,17 @@ GossipText = {
         },
         [247229] = {
             ["Ah, excellente question !    Les métiers sont un ensemble de compétences liées à l’artisanat, à la récolte et, de manière générale, à la survie dans son ensemble. Il y a plein de métiers différents, et chacun offre ses propres avantages et perspectives économiques. Que vous souhaitiez accumuler des richesses, remplir l’entrepôt de votre guilde avec des objets utiles ou simplement porter votre propre équipement fabriqué à la sueur de votre front, il y a un métier pour !    Les plans et recettes d’artisanat s’apprennent auprès des maîtres de métiers, comme ceux présents ici, ainsi qu’auprès de sources diverses aux quatre coins d’Azeroth. Une fois le plan de fabrication d’un objet appris, vous pouvez en confectionner autant d’exemplaires que vous souhaitez, à condition d’avoir les ressources nécessaires !"] = "b292959-human-male-standard",
+            ["Ah, excellente question !  Les métiers sont un ensemble de compétences liées à l’artisanat, à la récolte et, de manière générale, à la survie dans son ensemble. Il y a plein de métiers différents, et chacun offre ses propres avantages et perspectives économiques. Que vous souhaitiez accumuler des richesses, remplir l’entrepôt de votre guilde avec des objets utiles ou simplement porter votre propre équipement fabriqué à la sueur de votre front, il y a un métier pour !  Les plans et recettes d’artisanat s’apprennent auprès des maîtres de métiers, comme ceux présents ici, ainsi qu’auprès de sources diverses aux quatre coins d’Azeroth. Une fois le plan de fabrication d’un objet appris, vous pouvez en confectionner autant d’exemplaires que vous souhaitez, à condition d’avoir les ressources nécessaires !"] = "frFR-d8829d750e7d6cda7552b922b8889857",
             ["Bien sûr ! Quel métier souhaiteriez-vous apprendre ?    J’indiquerai l’emplacement du maître de votre choix sur votre carte. N’oubliez pas que vous pouvez aussi vous adresser aux maîtres de métiers des autres capitales pour approfondir vos connaissances !"] = "b292988-human-male-standard",
+            ["Bien sûr ! Quel métier souhaiteriez-vous apprendre ?  J’indiquerai l’emplacement du maître de votre choix sur votre carte. N’oubliez pas que vous pouvez aussi vous adresser aux maîtres de métiers des autres capitales pour approfondir vos connaissances !"] = "frFR-0aa285bf092c83c98fb811fd5e33ab18",
+            ["Bonjour, $N ! Souhaitez-vous apprendre un métier ?  Je me ferais un plaisir de répondre à toutes vos questions ou de vous orienter vers l’un de nos maîtres !  Pas de panique, si tout cela vous semble intimidant, vous pouvez toujours repasser quand vous serez prêt, ou rendre visite aux maîtres de métiers des autres capitales pour vous lancer !"] = "frFR-9a87415d3fcedca78c3ca48b59d22d01",
             ["Bonjour, $n ! Souhaitez-vous apprendre un métier ?    Je me ferais un plaisir de répondre à toutes vos questions ou de vous orienter vers l’un de nos maîtres !    Pas de panique, si tout cela vous semble intimidant, vous pouvez toujours repasser quand vous serez $uprêt:prête;, ou rendre visite aux maîtres de métiers des autres capitales pour vous lancer !"] = "b292949-human-male-standard",
+            ["Bonjour, Excelsior ! Souhaitez-vous apprendre un métier ?  Je me ferais un plaisir de répondre à toutes vos questions ou de vous orienter vers l’un de nos maîtres !  Pas de panique, si tout cela vous semble intimidant, vous pouvez toujours repasser quand vous serez prête, ou rendre visite aux maîtres de métiers des autres capitales pour vous lancer !"] = "frFR-74ed2b447815eae9f45cb91ac3c965c7",
+            ["Bonjour, Yhi ! Souhaitez-vous apprendre un métier ?  Je me ferais un plaisir de répondre à toutes vos questions ou de vous orienter vers l’un de nos maîtres !  Pas de panique, si tout cela vous semble intimidant, vous pouvez toujours repasser quand vous serez prête, ou rendre visite aux maîtres de métiers des autres capitales pour vous lancer !"] = "frFR-42f141744da7b3e6c876d8786dc077b0",
             ["De quoi le frère Paxton a-t-il besoin, maintenant ?"] = "b296872-human-male-standard",
             ["Excellent choix ! J’ai indiqué l’emplacement sur votre carte."] = "b316839-human-male-standard",
             ["Les métiers sont divisés en deux catégories : les principaux et les secondaires.    Vous ne pouvez vous spécialiser que dans deux métiers principaux à la fois. Évidemment, vous pouvez abandonner votre métier principal à tout moment, mais vous perdrez l’intégralité de vos compétences et de votre savoir. Ainsi, si vous souhaitez revenir à votre métier d’origine, vous devrez rapprendre les bases et vous procurer toutes les recettes que vous possédiez précédemment afin de vous familiariser à nouveau avec elles.    Les métiers secondaires, eux, ne sont pas soumis à cette contrainte. Ils visent généralement à vous apprendre à subvenir à vos besoins de survie fondamentaux. Vous êtes libre de vous former à l’un ou à l’ensemble de ces métiers, mais vous aurez peut-être moins d’occasions de faire des bénéfices."] = "5f0f285172f8b3fead4c49f9c56d6553",
+            ["Les métiers sont divisés en deux catégories : les principaux et les secondaires.  Vous ne pouvez vous spécialiser que dans deux métiers principaux à la fois. Évidemment, vous pouvez abandonner votre métier principal à tout moment, mais vous perdrez l’intégralité de vos compétences et de votre savoir. Ainsi, si vous souhaitez revenir à votre métier d’origine, vous devrez rapprendre les bases et vous procurer toutes les recettes que vous possédiez précédemment afin de vous familiariser à nouveau avec elles.  Les métiers secondaires, eux, ne sont pas soumis à cette contrainte. Ils visent généralement à vous apprendre à subvenir à vos besoins de survie fondamentaux. Vous êtes libre de vous former à l’un ou à l’ensemble de ces métiers, mais vous aurez peut-être moins d’occasions de faire des bénéfices."] = "frFR-feb5b28f4b549bfcafea8935475e7b8e",
         },
         [248415] = {
             ["J'peux pas vous aider. Trouvez-vous un maître de vot'classe, $c."] = "65ffa984c80ec793cab656acd848ac8c",
@@ -10258,7 +10399,8 @@ GossipText = {
             ["Qu'est-ce que j'peux faire pour vous ?"] = "ff4c1db50d39977890db3fe889ea21ae",
         },
         [249363] = {
-            ["The Wind Spirits have left us.     Now, only mindless echoes remain. Be wary, however. These winds are neither kind, nor gentle."] = "esMX-8ea1947ddf1ff06f840b8522e9a6eb76",
+            ["Les esprits du vent sont partis.  Désormais, il ne reste plus que des échos sans âme. Prenez garde, car ces vents ne sont ni bienveillants, ni cléments."] = "frFR-7b8b0a197a7e8ce69bc2ee12c6bea281",
+            ["The Wind Spirits have left us.     Now, only mindless echoes remain. Be wary, however. These winds are neither kind, nor gentle."] = "esES-aad6f5e6d33ffeb0509ae9a20c763e56",
             ["The Wind Spirits have left us.  Now, only mindless echoes remain. Be wary, however. These winds are neither kind, nor gentle."] = "esMX-8ea1947ddf1ff06f840b8522e9a6eb76",
         },
         [249713] = {
@@ -10269,7 +10411,9 @@ GossipText = {
             ["<As you approach the enormous cyclone construct, you hear a faint buzzing emanating from beneath its massive armor plates. If you listen carefully, you think you might be able to hear a few words being formed but they are too distorted to make out.>"] = "frFR-a8186c04208d33dbd31fa8b070cad3d3",
         },
         [251001] = {
+            ["Assurez-vous qu’il le lise immédiatement. Je crains que notre problème avec le Fléau ne fasse que commencer.  Revenez me vite voir. Je pense être sur le point de découvrir une chose pour laquelle j’aurai besoin de l’aide d’une bonne âme apte au combat."] = "frFR-b49998196fbc234b30a851d34288dd8f",
             ["Qu'est-ce que vous cherchez ?"] = "2496e7dedec4748fa10b50cbb971b275",
+            ["Quelle profession ?"] = "68b0bdb01281865de220bb8ce19e964a",
         },
         [251361] = {
             ["Que me voulez-vous, enfant de Zéphras ?"] = "1394be9de1e0b36dc8ca9962d38734d0",
@@ -10282,11 +10426,31 @@ GossipText = {
             ["Je vous salue, initié de l’Ordre suprême."] = "e3b1e80443822ef0533f362d56abf362",
             ["La magie peut accomplir bien des choses. Cependant, depuis que nous avons quitté Kalimdor il y a plusieurs millénaires, la stagnation et l’inaction nous ont fait oublier qui nous étions réellement. L’Ordre suprême veut que nous nous réappropriions l’héritage perdu des Bien-nés afin que nous puissions reprendre en main notre propre destinée.    Les Sculpte-vents pensent que nous faisons preuve d’autant d’imprudence que d’arrogance… mais je les trouve bien hypocrites. En temps de crise, les Sculpte-vents refusent toute suggestion extérieure… Et c’est nous qui faisons preuve d’arrogance ?"] = "dadcb63a8ca0a60db74bbb61c6c34baa",
             ["La magie peut accomplir bien des choses. Cependant, depuis que nous avons quitté Kalimdor il y a plusieurs millénaires, la stagnation et l’inaction nous ont fait oublier qui nous étions réellement. L’Ordre suprême veut que nous nous réappropriions l’héritage perdu des Bien-nés afin que nous puissions reprendre en main notre propre destinée.  Les Sculpte-vents pensent que nous faisons preuve d’autant d’imprudence que d’arrogance… mais je les trouve bien hypocrites. En temps de crise, les Sculpte-vents refusent toute suggestion extérieure… Et c’est nous qui faisons preuve d’arrogance ?"] = "frFR-de42a3d4a4267899ea6c646c18cb5155",
+            ["Salutations… Sculpte-vent.  Comme vous devez vous en douter, les Sculpte-vents n’ont que très peu en commun avec la plupart des membres de l’Ordre suprême. Une harmonie relative règne dans le bosquet de Thendal, mais vous découvrirez qu’ailleurs, les rivalités se font bien plus vives, engendrant même parfois des conflits violents.  Je n’ai rien de plus à en dire, mais je vous recommande de ne pas vous mêler des objectifs de l’Ordre suprême une fois que vous aurez quitté le bosquet. Vous n’aurez sûrement droit à aucun autre avertissement."] = "frFR-fbd093e4297d68169d355d1d0cab0977",
             ["Zéphras court un terrible danger. Les esprits élémentaires des vents qui nous ont permis de nous installer ici, à Mur-Céleste, il y a plusieurs millénaires… ont disparu en nous abandonnant. Nous sommes à présent sans défense dans ce royaume instable. Notre société s’était établie sur les nombreuses îles-sanctuaires à proximité de Mur-Céleste. Mais aujourd’hui, nous nous demandons si notre île n’abriterait pas tout ce qu’il reste des Shen’dorei.    La situation est critique, mais l’Ordre suprême est bien décidé à agir."] = "0ad0b46c05f2db722e3b617913228055",
             ["Zéphras court un terrible danger. Les esprits élémentaires des vents qui nous ont permis de nous installer ici, à Mur-Céleste, il y a plusieurs millénaires… ont disparu en nous abandonnant. Nous sommes à présent sans défense dans ce royaume instable. Notre société s’était établie sur les nombreuses îles-sanctuaires à proximité de Mur-Céleste. Mais aujourd’hui, nous nous demandons si notre île n’abriterait pas tout ce qu’il reste des Shen’dorei.  La situation est critique, mais l’Ordre suprême est bien décidé à agir."] = "0ad0b46c05f2db722e3b617913228055",
         },
+        [251373] = {
+            ["Si vous avez des prédispositions pour les arts druidiques, je peux vous former."] = "frFR-cb0dd1763089ef1fd80279fd8ffb1ed4",
+        },
+        [251374] = {
+            ["Les esprits du vent ont peut-être quitté la région, mais la puissance des éléments reste à portée de celles et ceux qui ont la patience de les chercher.  Je pourrais vous aider à les conquérir, si on vous a enseigné les arts chamaniques."] = "frFR-fd5e46e30e3c7fb0cccfc53b97f886c6",
+        },
+        [251376] = {
+            ["Zéphras n’a jamais eu autant besoin de ses chasseurs et forestiers. Les vents sont de plus en plus violents, et la magie qui alimente notre île s’étiole. La faune et la flore atteignent des sommets de sauvagerie, et les nôtres ont besoin de la protection de gens comme moi.  Si vous avez des prédispositions pour la chasse, je peux vous fournir le nécessaire pour survivre en pleine nature."] = "frFR-0b2f5bff556f821c25e1e811e14042b9",
+        },
         [251379] = {
+            ["Celles et ceux qui observent les anciennes traditions bien-nées n’ont jamais ressenti une telle soif de savoir et de reconquête de notre culture ancestrale. Si vous cherchez à maîtriser le pouvoir des arcanes et que vous avez le talent nécessaire, je peux vous aider à progresser."] = "frFR-b93dac0c907284dec59f5a156b041473",
             ["The followers of the old Highborne ways have never been more hungry to gain knowledge and reclaim what we've lost. If you would seek to wield the power of the arcane and have the aptitude, I can help you take your next steps."] = "deDE-96e4855959e11e9c97ae1285a80aaebd",
+        },
+        [251389] = {
+            ["Éliminez vos adversaires et séduisez les foules du même coup avec cet improbable subterfuge.  Si vous suivez la voie des voleurs, je peux tout vous apprendre… moyennant finance, bien sûr."] = "frFR-4396c95b8bfeabb8a4aac32798966591",
+        },
+        [251487] = {
+            ["Je perçois dans votre aura que vous descendez d’une famille de Bien-nés. Les membres de l’Ordre suprême n’ont que très peu en commun avec mon propre ordre des Sculpte-vents. Une harmonie relative règne dans le bosquet de Thendal, mais vous découvrirez qu’ailleurs, les rivalités se font bien plus vives, engendrant même parfois des conflits violents.  Tâchez de vous en souvenir lors de vos pérégrinations sur l’île de Zéphras. Et permettez-moi un petit conseil… ne contrariez pas les Sculpte-vents."] = "frFR-bd49983e60dab7cccd6786ac42259fdd",
+            ["Les Shen’dorei seront toujours redevables envers les esprits pour leur aide, et les Sculpte-vents ont juré de rembourser cette dette et de rétablir l’ordre des choses. Hélas, nous sommes incapables de voir clairement ce qui se trame autour de nous à Mur-Céleste sans les esprits pour nous guider.  En plus de son arrogance, l’Ordre suprême n’a aucune vision à long terme, à l’instar des Bien-nés qui l’ont précédé. Ses membres cherchent à maîtriser et à contrôler la magie de ce lieu. C’est cette même voie qui a fini par nous voir quitter Kalimdor pour nous réfugier ici, et j’ai bien peur que, tout comme pour nos ancêtres, leur confiance dépasse de loin leurs compétences, pour un résultat potentiellement désastreux."] = "frFR-064a6a0eef69b8b71463f24cdaf1aa40",
+            ["Que puis-je faire pour vous, Sculpte-vent ?"] = "frFR-cf0562bb6b559a57d3b0cce77ccfca8a",
+            ["Zéphras est malheureusement sur le déclin. Les esprits élémentaires des vents qui nous ont permis de nous installer ici à Mur-Céleste il y a plusieurs millénaires ont disparu, ce qui a eu pour conséquence de tarir la magie dont nous dépendions depuis toujours.  L’île en elle-même est dangereusement instable, et nous avons perdu tout contact avec les autres îles shen’dorei. Les rares Sculpte-vents qui possèdent encore le don de vue céleste ont tenté de communiquer avec nos frères et sœurs des autres îles, mais sans succès.  Nombre d’entre nous craignons que les Shen’dorei de Zéphras soient tout ce qu’il reste de notre peuple…"] = "frFR-b991ea5d61a781304273e13089945d3b",
         },
         [251507] = {
             ["Salutations, $c. Je peux vous enseigner différents talents et techniques."] = "frFR-a1208aad6c36c58f5789620f5f6afc7b",
@@ -10298,6 +10462,7 @@ GossipText = {
         },
         [251684] = {
             ["B-bonjour. Il faut m’excuser, mais vos semblables me fuient, en général."] = "08e163fa7eb8b9f7dbe98b4d86726acc",
+            ["C’est une excellente question… J’ai mauvaise mémoire, mais je me souviens d’une chose… « ingénieur », peut-être ? Voilà qui ou ce que j’étais.  Autrement, tout ce dont je me rappelle est d’avoir filé dans le ciel, puis aperçu un éclair… Ensuite, tout est devenu très agité… Et boum, je me suis écrasé.  Mais cela fait longtemps… Très longtemps."] = "frFR-4af6a80e9f4c3cebba6a613c251ac82f",
             ["Oh, ces choses ? Je les ai construites. Mes petits amis m’ont aidé. J’ai mauvaise mémoire, mais je me souviens qu’à une époque, je construisais beaucoup de choses. De grandes choses ! Mais comme je disais… j’ai fini par m’écraser ici. Maintenant, je ne construis plus rien de grand ni d’impressionnant. Mais ça me rend toujours aussi heureux, hé hé.    M… mais… Si vous voulez, je peux vous apprendre à construire des choses, vous aussi !"] = "5ce9305b1ff139391c9ddbc2c191b656",
             ["Oh, ces choses ? Je les ai construites. Mes petits amis m’ont aidé. J’ai mauvaise mémoire, mais je me souviens qu’à une époque, je construisais beaucoup de choses. De grandes choses ! Mais comme je disais… j’ai fini par m’écraser ici. Maintenant, je ne construis plus rien de grand ni d’impressionnant. Mais ça me rend toujours aussi heureux, hé hé.  M… mais… Si vous voulez, je peux vous apprendre à construire des choses, vous aussi !"] = "frFR-d04d2de3a48103002d831881a3199c2f",
             ["Oh, pas de souci. J-je serai ici si jamais vous changez d’avis. M-merci d’avoir pris le temps de discuter avec moi !"] = "717afcce6d71c311468b41ed92c9b2e0",
@@ -10306,13 +10471,17 @@ GossipText = {
         },
         [251902] = {
             ["La secte ? C’est un ramassis de zélotes et d’assassins. À les écouter, nous subissons un châtiment lié à un péché bien précis. Mais en vérité, les leaders de cette secte sont des opportunistes provenant d’un ordre douteux, les « prêtres » d’Al’Akir, le seigneur des Vents.    Ces lâches se servent de la peur des gens pour consolider leur propre pouvoir… avec beaucoup de succès."] = "b301035-skybourneelf-female-3773",
+            ["Personnellement, je n’ai rien contre les membres de l’Ordre suprême, mais je ne suis pas pour autant tenue de vous faire la conversation. Allez en paix, $c. Toutefois, je vous déconseille de vous mêler des affaires des Sculpte-vents lors de vos pérégrinations sur l’île de Zéphras.  Cela risquerait de mal se terminer pour vous. Il est des transgressions que nous ne pardonnons pas facilement."] = "frFR-19cd4857d4595620b12b4d2e9a6b5009",
+            ["Salutations, mon enfant. Je suis Illaya Ambrevent, l’ancienne Sculpte-vent de l’île de Zéphras. C’est toujours un plaisir de croiser de nouveaux visages en provenance du bosquet.  Mais l’aventure vous appelle, et je ne vous retiens pas plus longtemps. Revenez donc me voir quand vous aurez un moment."] = "frFR-fd10fd905af810ba443286f0b9d57ede",
         },
         [251903] = {
+            ["Bien le bonjour, jeune $c. Je suis Rathiril Lance-Solaire, ancien magistère de l’Ordre suprême sur l’île de Zéphras. C’est toujours un plaisir de voir de nouvelles générations de Shen’dorei prêtes à servir leur royaume.  Mais l’aventure vous attend, et vous avez mieux à faire que bavarder avec un vieux mage sur le retour. Revenez donc me voir quand vous aurez un moment et nous discuterons."] = "frFR-c2bd6e2ac6afd7bfc46b0eefe89dcb6e",
             ["Et quelle est la raison de tout ceci ? Pour résumer, les esprits du vent ont tout simplement… disparu.    Les misérables âmes en peine et les petits élémentaires que vous avez dû croiser ne sont que de pâles imitations des véritables esprits du vent. Ils sont dénués d’intelligence et de but, contrairement aux esprits bienveillants que nous avons côtoyés des millénaires durant."] = "22342a8892082f0c6c59c805de80023b",
             ["Et quelle est la raison de tout ceci ? Pour résumer, les esprits du vent ont tout simplement… disparu.  Les misérables âmes en peine et les petits élémentaires que vous avez dû croiser ne sont que de pâles imitations des véritables esprits du vent. Ils sont dénués d’intelligence et de but, contrairement aux esprits bienveillants que nous avons côtoyés des millénaires durant."] = "frFR-a64c40ef286a3086bff998536f1916d9",
             ["Hello there, young $c. I am Rathiril Sunlance and I am an elder Magister of the High Order here on Zephras Isle. It's always good to see bright-eyed young shen'dorei, ready to do their duty in service to their homeland.    Don't let this dusty old mage hold you up, however. No doubt you've got many adventures to see to. Feel free to stop by later if you'd like to speak more."] = "esMX-0193b3ca4091ce2b6bebbb7b78a5234b",
             ["Hello there, young $c. I am Rathiril Sunlance and I am an elder Magister of the High Order here on Zephras Isle. It's always good to see bright-eyed young shen'dorei, ready to do their duty in service to their homeland.  Don't let this dusty old $c hold you up, however. No doubt you've got many adventures to see to. Feel free to stop by later if you'd like to speak more."] = "frFR-d1242956ef9033981559702f84f5ebbe",
             ["Hélas, je crois que j’ai bien assez parlé. Si jamais vous passez par le port de Valanaar, allez donc voir mon ancien élève, Elaadrin Trombecalme. Il est aujourd’hui magistère en chef de l’Ordre suprême. C’est un homme volontaire et capable, et c’est à lui, ainsi qu’aux jeunes Éolides comme vous qu’il incombe désormais de porter nos espoirs."] = "7957de210cb420c60905de65a8050458",
+            ["Il faut vous rappeler que si nous habitons ce royaume depuis des millénaires, nous n’y serons jamais entièrement chez nous. Nous ne sommes pas dans le monde terrestre qui a vu naître notre peuple ; nous sommes à Mur-Céleste, le plan élémentaire de l’air.  Notre arrivée ici s’est faite sur l’invitation des esprits avec lesquels nous avions trouvé des affinités par le passé. Et aujourd’hui que les Shen’dorei ne peuvent plus compter sur leur présence, et potentiellement leur protection, nul ne sait comment les autres créatures de ce plan vont bien pouvoir nous percevoir."] = "frFR-4a6ee85b31b913e0494f8653bb5d6e73",
             ["La secte ? C’est un ramassis de zélotes et d’assassins. À les écouter, nous subissons un châtiment lié à un péché bien précis. Mais en vérité, les leaders de cette secte sont des opportunistes provenant d’un ordre douteux, les « prêtres » d’Al’Akir, le seigneur des Vents.    Ces lâches se servent de la peur des gens pour consolider leur propre pouvoir… avec beaucoup de succès."] = "esMX-0d6c4466ea96fc3f59d6c4739efeee6b",
             ["La secte ? C’est un ramassis de zélotes et d’assassins. À les écouter, nous subissons un châtiment lié à un péché bien précis. Mais en vérité, les leaders de cette secte sont des opportunistes provenant d’un ordre douteux, les « prêtres » d’Al’Akir, le seigneur des Vents.  Ces lâches se servent de la peur des gens pour consolider leur propre pouvoir… avec beaucoup de succès."] = "frFR-fa294a90bdc73773f14a9cc488762efb",
             ["Même les Sculpte-vents vous diraient que les esprits n’ont jamais tenu la moindre de leurs entités suprêmes en haute estime. La secte reconnaît bien l’existence d’un certain Al’Akir, mais sans jamais invoquer son nom, comme par crainte.    Même si cet Al’Akir est un « seigneur des Vents » tout-puissant ou un maître des élémentaires de vent, c’est à force de nous appuyer sur ces êtres que nous nous retrouvons dans cette situation. Nous devons nous en sortir par nous-mêmes."] = "64bcc159fe14a8f3925e4b50f47a55e3",
@@ -10324,10 +10493,12 @@ GossipText = {
         },
         [251904] = {
             ["Salutations, $c. Vous venez solliciter les bénédictions du seigneur des Vents ?"] = "e46cab9f2913d28d20b74520167b1c50",
+            ["Salutations, l’amie. Je suis Sania Flot-d’Argent, une missionnaire au service de notre maître tout-puissant, Al’Akir le seigneur des Vents.  La populace traite souvent les Al’Aketh de « secte » violente, mais en réalité, nous ne cherchons que la paix et l’éveil. Notre seigneur Al’Akir représente la force suprême du royaume de Mur-Céleste, et ce n’est que par sa grâce que nous survivrons aux épreuves qui se présentent à nous.  N’hésitez pas à revenir me voir. Je me ferais un plaisir de vous prêcher la bonne parole ! Puisse le seigneur des Vents vous bénir, mon amie."] = "frFR-a083210b34bed8dd94d0019a332e34c0",
         },
         [251905] = {
             ["Salut à vous ! Vous venez d’arriver en ville ? Une fois $uinstallé:installée;, venez me voir si vous cherchez du travail. Les préparatifs du festival des Vents me prennent un temps fou et j’ai besoin d’aide pour remplir les garde-manger !"] = "esMX-e9ffc8988c7f98608c8acb8c08b8c322",
             ["Salut à vous ! Vous venez d’arriver en ville ? Une fois installé, venez me voir si vous cherchez du travail. Les préparatifs du festival des Vents me prennent un temps fou et j’ai besoin d’aide pour remplir les garde-manger !"] = "frFR-01d2fd16a0a9993ab6a2f095fa5d2e78",
+            ["Salut à vous ! Vous venez d’arriver en ville ? Une fois installée, venez me voir si vous cherchez du travail. Les préparatifs du festival des Vents me prennent un temps fou et j’ai besoin d’aide pour remplir les garde-manger !"] = "frFR-9848b4bcb45a3585dce3425ea9ba5760",
             ["Si vous cherchez à améliorer vos compétences en cuisine, j’ai quelques astuces à vous transmettre ! Passez vite un tablier, et hop, aux fourneaux !"] = "36b4143cf787c80e54c234543d6e82b8",
         },
         [251906] = {
@@ -10341,6 +10512,10 @@ GossipText = {
         [251964] = {
             ["Le $c qui frémit est le premier à mourir. Si vous souhaitez regarder la mort en face en tant que $c, je vous apprendrai à ne plus jamais tressaillir."] = "frFR-33077159b57e7240c0f27fc8112e1a2b",
             ["Le guerrier qui frémit est le premier à mourir. Si vous souhaitez regarder la mort en face en tant que $uguerrier:guerrière;, je vous apprendrai à ne plus jamais tressaillir."] = "8e72071ac74c912ab2cf7088a192e1e1",
+        },
+        [251968] = {
+            ["<Ayessa Chantelaube vous dévisage avec une colère à peine contenue.>  Vous osez pénétrer dans notre domaine après avoir versé le sang des nôtres ? Soit vous n’avez peur de rien, soit vous êtes stupide. Nous n’accordons pas aisément notre pardon, et nous avons la mémoire longue.  Déguerpissez. Si nous n’étions pas au centre de Zéphras, je vous aurais déjà réglé votre compte."] = "frFR-34cf6dd7b851dda3a5de3e49f09684a4",
+            ["Hmm, je vois. Eh bien, soit, $c. Les Sculpte-vents répondront à l’appel de Valennia. Dites-lui que nous l’aiderons dans son combat.  <Ayessa baisse dangereusement la voix.>  N’allez pas vous imaginer que notre coopération vaut absolution. Vous avez une dette de sang envers nous, et tôt ou tard, nous réclamerons notre dû."] = "frFR-59439f0de8a0e9482a2ae10592e1493d",
         },
         [251991] = {
             ["Tout en légèreté et en fluidité, les étoffes shen’dorei sont une harmonieuse imitation des courants aériens. Si les esprits ont déserté les lieux et que j’ignore s’il me sera permis de les revoir danser un jour… mon travail est tout à la fois un exutoire et un réconfort.    Je peux vous apprendre à travailler le tissu, si vous le souhaitez."] = "49fa7d7be8e9e2cf68f90675f429a01c",
@@ -10360,30 +10535,50 @@ GossipText = {
             ["Si vous le voulez, en plus de l'enseignement que je propose, j'ai le pouvoir de faire disparaître de votre esprit la connaissance de vos talents. Sachez qu'à chaque fois que vous subissez cette procédure elle est plus difficile à accomplir, et donc plus onéreuse."] = "b8263-skybourneelf-male-3776",
         },
         [252373] = {
+            ["Celles et ceux qui observent les anciennes traditions bien-nées n’ont jamais ressenti une telle soif de savoir et de reconquête de notre culture ancestrale. Si vous cherchez à maîtriser le pouvoir des arcanes et que vous avez le talent nécessaire, je peux vous aider à progresser."] = "frFR-6c8e827f462798a7a0d72a2037306021",
             ["The followers of the old Highborne ways have never been more hungry to gain knowledge and reclaim what we've lost. If you would seek to wield the power of the arcane and have the aptitude, I can help you take your next steps."] = "deDE-8c3555ecf533d6642e2ffef649b9517c",
         },
+        [252376] = {
+            ["Voulez-vous apprendre à améliorer votre travail du cuir ?"] = "frFR-18f7b56b4b068b52578e70d88ea14a48",
+        },
         [252377] = {
+            ["Le $c qui frémit est le premier à mourir. Si vous souhaitez regarder la mort en face en tant que $c, je vous apprendrai à ne plus jamais tressaillir."] = "frFR-33077159b57e7240c0f27fc8112e1a2b",
             ["Le guerrier qui frémit est le premier à mourir. Si vous souhaitez regarder la mort en face en tant que $uguerrier:guerrière;, je vous apprendrai à ne plus jamais tressaillir."] = "8e72071ac74c912ab2cf7088a192e1e1",
         },
         [252378] = {
             ["Que les tempêtes maudissent ces fanatiques al’aketh !"] = "e455b2b724321077b2e09289bdfe481a",
         },
+        [252379] = {
+            ["Éliminez vos adversaires et séduisez les foules du même coup avec cet improbable subterfuge.  Si vous suivez la voie des voleurs, je peux tout vous apprendre… moyennant finance, bien sûr."] = "frFR-dad6801d9a1ba67ec599736ba625ab01",
+        },
         [252380] = {
+            ["J’espère que vous ne m’interrompez pas sans raison, je travaille sur un projet de la plus haute importance."] = "frFR-bf08c61d693071c116d308d54a9140b1",
             ["Les vents vous gardent ! Que puis-je faire pour vous ?"] = "esMX-b1bf206766442f9910ea73c4eb9bf653",
             ["Que les vents vous portent ! En quoi puis-je vous aider ?"] = "5a56faeceb0518e365bb866d2f122071",
             ["Welcome to my shop; it's good to see another Tailor here in Valanaar. Are you here for a lesson perhaps?"] = "c32162bf206ad47bd6ce64f120608b1d",
         },
         [252383] = {
+            ["<Valennia détourne brièvement les yeux, avant de vous lancer un regard hésitant.>  Le shal’nan était le meilleur d’entre nous. C’est lui qui a défendu notre peuple face à la folie et à l’oppression à Eldre’Thalas, il y a près de dix mille ans. C’est aussi lui qui a guidé notre peuple dans notre traversée des flots afin d’échapper à la vengeance meurtrière de nos adversaires.  C’est le shal’nan qui a négocié le pacte d’amitié avec les esprits du vent qui nous a permis d’accéder à Mur-Céleste… et de survivre.  C’était un chef dévoué, à l’écoute de ses compatriotes, même après avoir quitté le pouvoir."] = "frFR-160a6047f5adbf28ad5c483facd50cbe",
             ["<Valennia looks away briefly before looking hesitantly back in your direction.>    The Shal'nan was the very best of us. It was he who stood up for our people against madness and oppression in Eldre'Thalas nearly ten thousand years ago. It was the Shal'nan who led us across the uncharted sea to escape the murderous vengeance of our ancient enemies.    It was the Shal'nan who brokered the pact of friendship with the wind spirits that allowed us to ascend to Skywall... and survive.    He was ever the servant leader to his people, even after he abdicated his position of power and retired."] = "esMX-23eecc14edf2f073105d55b16dcf36f2",
             ["<Valennia looks away briefly before looking hesitantly back in your direction.>  The Shal'nan was the very best of us. It was he who stood up for our people against madness and oppression in Eldre'Thalas nearly ten thousand years ago. It was the Shal'nan who led us across the uncharted sea to escape the murderous vengeance of our ancient enemies.  It was the Shal'nan who brokered the pact of friendship with the wind spirits that allowed us to ascend to Skywall... and survive.  He was ever the servant leader to his people, even after he abdicated his position of power and retired."] = "esMX-23eecc14edf2f073105d55b16dcf36f2",
             ["C’est la vérité. Mes troupes d’élite et moi appartenions autrefois à l’ordre des Lames empyréennes. Nous servions de garde rapprochée à notre ancien chef, le shal’nan.    En ces temps troublés, nous sommes les derniers soldats de métier de Zéphras. Nous nous efforçons donc de soutenir la milice civile des garde-paix."] = "esMX-e4c0e021292bb449a75652b7fc9e7166",
             ["C’est la vérité. Mes troupes d’élite et moi appartenions autrefois à l’ordre des Lames empyréennes. Nous servions de garde rapprochée à notre ancien chef, le shal’nan.  En ces temps troublés, nous sommes les derniers soldats de métier de Zéphras. Nous nous efforçons donc de soutenir la milice civile des garde-paix."] = "esMX-e4c0e021292bb449a75652b7fc9e7166",
             ["Je suis peut-être la dernière Shen’dorei encore en vie à avoir échangé plus de quelques mots avec lui.    Je suis restée à son service près de neuf siècles, en qualité de capitaine de ses Lames empyréennes, jusqu’à ce qu’il… nous quitte.    Pour autant, je ne prétendrais pas l’avoir réellement connu. C’était un homme réservé et solitaire, qui passait le plus clair de son temps seul, ou en communion avec les esprits dans les flèches du sanctuaire des Quatre vents… ce lieu que la secte surnomme aujourd’hui le « sanctuaire d’Akir »."] = "7d02b0734a6c09d86a59db08a4cb1d34",
             ["Je suis peut-être la dernière Shen’dorei encore en vie à avoir échangé plus de quelques mots avec lui.  Je suis restée à son service près de neuf siècles, en qualité de capitaine de ses Lames empyréennes, jusqu’à ce qu’il… nous quitte.  Pour autant, je ne prétendrais pas l’avoir réellement connu. C’était un homme réservé et solitaire, qui passait le plus clair de son temps seul, ou en communion avec les esprits dans les flèches du sanctuaire des Quatre vents… ce lieu que la secte surnomme aujourd’hui le « sanctuaire d’Akir »."] = "frFR-4ddd46c886db178a0a5d31dfd59f3898",
+            ["Les garde-paix n’ont aucune chance de rassembler des effectifs suffisants pour attaquer le sanctuaire de front. Sans les renforts des Sculpte-vents et de l’Ordre suprême, c’est perdu d’avance. Les deux groupes ont promis de nous aider en cas de besoin, et l’heure est venue.  Malheureusement, de récents évènements ont provoqué un massacre entre ces factions, et les tensions restent vives.  Que diriez-vous d’exercer vos talents de diplomate ?"] = "frFR-208714197c0779efe0f100ea2c9f8079",
             ["Salutations, $gcitoyen:citoyenne;."] = "197733e5d24c96d857606a47d7038088",
             ["Salutations."] = "197733e5d24c96d857606a47d7038088",
             ["Si je le savais, j’imagine que la vie sur Zéphras serait bien plus simple. La plupart de nos problèmes et de nos conflits découlent de ce mystère.    Et bien que j’apprécie votre curiosité à ce sujet, j’ai peur de ne pas avoir plus à vous en dire pour aujourd’hui."] = "3af1a98c7b3e89ff1e145713a5a2e71d",
             ["Si je le savais, j’imagine que la vie sur Zéphras serait bien plus simple. La plupart de nos problèmes et de nos conflits découlent de ce mystère.  Et bien que j’apprécie votre curiosité à ce sujet, j’ai peur de ne pas avoir plus à vous en dire pour aujourd’hui."] = "3af1a98c7b3e89ff1e145713a5a2e71d",
+        },
+        [252388] = {
+            ["On pourrait croire qu’un mineur comme moi n’a pas grand-chose à faire sur une île flottante comme celle-ci. Mais au cours des derniers millénaires, on a déterré des tas de choses intéressantes.  C’est comme si une force invisible créait régulièrement de nouveaux gisements de minerai. Mais bon, les voies de la magie sont impénétrables, pas vrai ?  En tout cas, si vous cherchez à vous former dans ce noble métier, je suis votre Shen’dorei !"] = "frFR-53d133882bcf385e03e522fff84a8627",
+        },
+        [252389] = {
+            ["Zéphras n’a jamais eu autant besoin de ses chasseurs et forestiers. Les vents sont de plus en plus violents, et la magie qui alimente notre île s’étiole. La faune et la flore atteignent des sommets de sauvagerie, et les nôtres ont besoin de la protection de gens comme moi.  Si vous avez des prédispositions pour la chasse, je peux vous fournir le nécessaire pour survivre en pleine nature."] = "frFR-291d07da3262a398d9847e973f7ff400",
+        },
+        [252392] = {
+            ["Salutations, jeune $c. Bienvenue dans le hall de la guilde du commerce. Ces temps-ci, les ressources se font rares sur Zéphras, mais vous trouverez ici tout l’équipement nécessaire pour mener à bien vos aventures.  Si vous avez la moindre question, je me tiens à votre disposition."] = "frFR-58a4ed5e4cfc935f4dbe5c116bf718a1",
         },
         [252448] = {
             ["<L’homme qui gît devant vous remue, en proie à la douleur. Il se remet de terribles blessures.>"] = "a7706c001be19b9f911c402d0c8cfd0e",
@@ -10391,26 +10586,38 @@ GossipText = {
             ["C’est toujours un plaisir de vous voir, $n."] = "75180d4ba26fde28d9daf2d2a3217f04",
         },
         [252475] = {
+            ["Je vois. Cela me paraît terriblement dangereux, mais la situation exige que nous prenions des risques.  Soit, l’Ordre suprême répondra à l’appel de Valennia. Dites-lui que nous l’aiderons dans son combat."] = "frFR-db2e9f3a1757899e8bbd92a0a776986b",
+            ["Les Sculpte-vents sont presque entièrement responsables de ce qui s’est passé. Leur réticence à changer a compromis notre capacité à nous sauver du péril qui nous menace. Leurs rêves d’absolu les poussent à considérer suppositions et superstitions comme des faits avérés.  Savez-vous qui d’autre se comporte de la sorte ? Les Al’Aketh.  Je ne laisserai pas la foi aveugle en des croyances dangereuses condamner notre peuple. Sans la menace de cette secte, j’emmènerais nos mages de l’autre côté de Valanaar et j’anéantirais les Sculpte-vents."] = "frFR-044679b384782eb61f74ed6a1b99d664",
             ["Salutations. Je suis Elaadrin Trombecalme, archimagistère actuel de l’Ordre suprême. En quoi puis-je vous aider ?"] = "ef98e16f5fd760579d7587066fb80776",
         },
         [252476] = {
             ["Bienvenue à Valanaar, $c."] = "e0d890d3a39a39b25e5f7297115adafd",
+            ["Nous devons absolument en apprendre davantage sur les plans de la secte. Et maintenant que le transfuge est mort, ses informations ont peut-être disparu avec lui…"] = "frFR-9fca34f59071c6fc5e88857238dddd10",
         },
         [252477] = {
+            ["Auriez-vous besoin d’aide pour trouver quelque chose ?"] = "frFR-f686e90436310a25825f4c6db0dcb365",
+            ["Il y a une boîte aux lettres devant l’auberge, près de la route qui part de la ville vers le nord."] = "frFR-67885e32330de2d3393d00b2aa55f2a9",
+            ["La banque et l’hôtel des ventes se trouvent du côté ouest de Valanaar, près du quai des perceciels des Sculpte-vents."] = "frFR-3635a161ba882682ec7af2c9a30f7114",
+            ["Le vaisseau de l’Ordre suprême vers Azeroth se trouve côté sud-est de Valanaar, sur le quai du bout."] = "frFR-fafa2dd0491085783297f1808fe445d4",
             ["L’auberge se trouve du côté est de la route qui part de la ville vers le nord."] = "b315468-skybourneelf-male-3776",
+            ["L’infirmerie de la ville se trouve dans la tour au nord-est de la ville."] = "frFR-5886a9493a7bf497ea7a0cf77259239f",
             ["Puis-je vous aider à trouver quelque chose ?"] = "3e7fde842b8f5cb2598b0db02605dab3",
-            ["Puis-je vous aider à trouver quelque chose ?"] = "827622580df32f9f325f4c57cdaf35e5",
-            ["Que cherchez-vous ?"] = "ac15bcb9c16fc2ebbe2029d0c4ee152a",
+            ["Puis-je vous aider à trouver quelque chose ?"] = "3e7fde842b8f5cb2598b0db02605dab3",
+            ["Que cherchez-vous ?"] = "b3425-skybourneelf-male-3776",
+            ["Que cherchez-vous ?"] = "b3425-skybourneelf-male-3776",
             ["Quel maître de classe recherchez-vous ?"] = "2460af8e9e9e3105d631e90f11310908",
             ["Quel métier ?"] = "c50676554146e52c8e32712568d0b14d",
             ["Quelle profession ?"] = "c50676554146e52c8e32712568d0b14d",
             ["Salutations, $gcitoyen:citoyenne;."] = "5875ba8782b9c88fccbb0ac99305a130",
             ["Salutations."] = "5875ba8782b9c88fccbb0ac99305a130",
+            ["Vous pouvez trouver la maîtresse des cuisiniers dans une petite maison au nord de la ville."] = "frFR-94199c33e9dccf67bc70dec09601024f",
+            ["Vous pouvez trouver le maître des pêcheurs près de la mare au pied de la cascade, dans l’est de la ville."] = "frFR-6f6a92828d0d6971aa47d98a50222a47",
         },
         [252478] = {
             ["Cela fait des années que les perceciels et les navettes n’ont plus servi. Pour autant qu’on sache, il n’y a plus aucune île susceptible de nous approvisionner en marchandises. Mais bon, je reste là… au cas où."] = "8ba831c32d2891c99edf38d524f0a5aa",
         },
         [252479] = {
+            ["Ah, bonjour. J’ai comme l’impression que vous souhaitez me poser une question."] = "frFR-e5e4a5f383a008500169ec0599c066d5",
             ["I hope that your interruption is for a good cause. I was in the middle of some important work."] = "b306273-skybourneelf-male-3776",
             ["J'espère que vous ne m'interrompez pas pour rien ; j'étais sur un travail de grande importance."] = "18f39204b5258528e030327d79360cad",
             ["Les vents vous gardent ! Que puis-je faire pour vous ?"] = "bd332f5d7d3458235a87a234fc01b179",
@@ -10424,6 +10631,7 @@ GossipText = {
             ["<L’Éolide qui gît à vos pieds a perdu connaissance.>"] = "641df5a5a62f4ab8dbb18c5a0b103a62",
         },
         [253004] = {
+            ["Ah, bonjour. J’ai comme l’impression que vous souhaitez me poser une question."] = "frFR-a0af3836f45dee8892639866de92139e",
             ["I hope that your interruption is for a good cause. I was in the middle of some important work."] = "b306273-skybourneelf-female-3773",
             ["J'espère que vous ne m'interrompez pas pour rien ; j'étais sur un travail de grande importance."] = "f203e1b5ce93c4ff82e3d2176bc2b7df",
             ["Les vents vous gardent ! Que puis-je faire pour vous ?"] = "cb3388b4766bf50c80bb641b1201c18d",
@@ -10438,8 +10646,18 @@ GossipText = {
             ["<Cet adepte est mort. En l’inspectant de plus près, vous remarquez qu’il tient un objet serré contre sa poitrine, presque comme s’il cherchait à le protéger.>"] = "f825bec665a2c6605041e74d3fdd0614",
         },
         [253474] = {
+            ["Auriez-vous besoin d’aide pour trouver quelque chose ?"] = "frFR-0374a4150793d28847daa02cf3b183b6",
+            ["Ce maître se trouve dans le sud-est de la ville, près du quai de l’Ordre suprême."] = "frFR-57ae78a7d09508ac35dccedebddac084",
             ["Ce maître se trouve dans une maison près du quai de l’Ordre suprême, dans le sud-est de la ville."] = "b321424-skybourneelf-female-3773",
+            ["Cette maîtresse se trouve au hall des Artisans, dans l’ouest de la ville."] = "frFR-03f8683110646807ef10d56661dec301",
+            ["Il y a une boîte aux lettres devant l’auberge, près de la route qui part de la ville vers le nord."] = "frFR-77f8cb208cb96a2f84b78d4096c3a086",
+            ["Je vous conseille d’aller à la salle d’armes, dans le nord de Valanaar."] = "frFR-87d8488fddb790c86063d93d3458819b",
+            ["La banque et l’hôtel des ventes se trouvent du côté ouest de Valanaar, près du quai des perceciels des Sculpte-vents."] = "frFR-a5680109e96a450d089355820877d4fd",
+            ["Le maître des mages se trouve au pavillon de l’Ordre suprême, dans le sud-est de la ville."] = "frFR-215e8d875c8dddd01b489ef0cdf35f18",
+            ["Le vaisseau de l’Ordre suprême vers Azeroth se trouve côté sud-est de Valanaar, sur le quai du bout."] = "frFR-53588d7044b61309bb663fce712b3082",
             ["L’auberge se trouve du côté est de la route qui part de la ville vers le nord."] = "b315468-skybourneelf-female-3773",
+            ["L’infirmerie de la ville se trouve dans la tour au nord-est de la ville."] = "frFR-8d7ea1ebb67588d534766c8021f9da3b",
+            ["L’ingénierie ? Qu’est-ce que c’est ?  Maintenant que vous le dites… je crois en avoir entendu parler à l’auberge. Cet ivrogne de Sirocco prétendait avoir rencontré un genre d’esprit de la forêt qui se faisait appeler « ingénieur ».  C’est la première fois que j’avais entendu ce mot.  Je crois qu’il a dit que cet esprit se trouvait dans la forêt de Trombenoire, mais je ne vous conseille pas de vous aventurer dans cet endroit maudit !"] = "frFR-70cac8845ffaede04de9c273a76d081b",
             ["Puis-je vous aider à trouver quelque chose ?"] = "d12db9ab4977c86763980f145ab34801",
             ["Puis-je vous aider à trouver quelque chose ?"] = "d12db9ab4977c86763980f145ab34801",
             ["Que cherchez-vous ?"] = "b3425-skybourneelf-female-3773",
@@ -10447,32 +10665,72 @@ GossipText = {
             ["Quel maître de classe recherchez-vous ?"] = "bc624c7cb35ed2690ff2bd380033d8bd",
             ["Quel métier ?"] = "8dae195bab01b5be86934ae013831231",
             ["Quelle profession ?"] = "8dae195bab01b5be86934ae013831231",
+            ["Restez sur vos gardes dans les hautes-terres, citoyenne. Les dangers sont nombreux, entre les bêtes arpentant les plaines, les bandits sanguinaires et la menace des Al’aketh."] = "frFR-d8a5bf83ee70686dd128a25c2de088c8",
             ["Salutations, $gcitoyen:citoyenne;."] = "197733e5d24c96d857606a47d7038088",
             ["Salutations."] = "197733e5d24c96d857606a47d7038088",
+            ["Vous pouvez trouver la maîtresse des cuisiniers dans une petite maison au nord de la ville."] = "frFR-65c23e6f3e4fc429fab4002694fe3eb9",
+            ["Vous pouvez trouver le maître des pêcheurs près de la mare au pied de la cascade, dans l’est de la ville."] = "frFR-f91e5511615eed9fead1be9a6cd0abb4",
+            ["Vous trouverez Lotheluum Brise-Stellaire sur la falaise qui surplombe la cascade, dans l’est de la ville."] = "frFR-5483a8c41660701957cb2b57588649f4",
+            ["Vous trouverez le maître des chamans près des pierres levées des Sculpte-vents, côté ouest."] = "frFR-24ab9133a931413830ef87e6562fcb1a",
+        },
+        [253576] = {
+            ["La plupart des adeptes du sanctum des Tempêtes ont quitté leur tanière pour répondre à notre attaque. Je n’aurais jamais espéré que cela se passe aussi bien. C’est presque trop facile…  Il me semble que les Sculpte-vents et l’Ordre suprême ont donné l’assaut. Valennia se trouve sans doute dans leurs rangs. Entrez, et trouvez-la. Nous allons rester ici pour monter la garde le temps qu’elle et ses comparses en finissent."] = "frFR-2553ea5848535211cd6be70c5aad243d",
+        },
+        [253590] = {
+            ["<Grièvement blessée, Valennia peine à ne pas perdre connaissance.>"] = "frFR-fa0d0a10a3587c68ff93e6b918cdd90b",
         },
         [253844] = {
             ["Salutations, $gcitoyen:citoyenne;."] = "197733e5d24c96d857606a47d7038088",
             ["Salutations."] = "197733e5d24c96d857606a47d7038088",
         },
+        [253847] = {
+            ["Lorthuna est en train d’accomplir une sorte de rituel. Peut-être qu’elle tente de détruire les protections !  Les renforts que nous avons demandés ne sont pas encore arrivés. Nous allons devoir faire au mieux en attendant. Allez vous préparer, puis venez me trouver. Nous irons l’affronter ensemble."] = "frFR-1eea9a9129c9e3ccf23662b80cb51bf8",
+        },
         [253849] = {
             ["Lorthuna est en train d’accomplir une sorte de rituel. Peut-être qu’elle tente de détruire les protections !  Les renforts que nous avons demandés ne sont pas encore arrivés. Nous allons devoir faire au mieux en attendant. Allez vous préparer, puis venez me trouver. Nous irons l’affronter ensemble."] = "frFR-032083b5fa8e6f53bbe810bed15dab18",
         },
+        [254081] = {
+            ["Si vous avez des prédispositions pour les arts druidiques, je peux vous former."] = "frFR-92e562cf560f41dfaa2e2df8e918ad3e",
+        },
+        [254084] = {
+            ["Zéphras n’a jamais eu autant besoin de ses chasseurs et forestiers. Les vents sont de plus en plus violents, et la magie qui alimente notre île s’étiole. La faune et la flore atteignent des sommets de sauvagerie, et les nôtres ont besoin de la protection de gens comme moi.  Si vous avez des prédispositions pour la chasse, je peux vous fournir le nécessaire pour survivre en pleine nature."] = "frFR-0b2f5bff556f821c25e1e811e14042b9",
+        },
         [254086] = {
+            ["Celles et ceux qui observent les anciennes traditions bien-nées n’ont jamais ressenti une telle soif de savoir et de reconquête de notre culture ancestrale. Si vous cherchez à maîtriser le pouvoir des arcanes et que vous avez le talent nécessaire, je peux vous aider à progresser."] = "frFR-6c8e827f462798a7a0d72a2037306021",
             ["The followers of the old Highborne ways have never been more hungry to gain knowledge and reclaim what we've lost. If you would seek to wield the power of the arcane and have the aptitude, I can help you take your next steps."] = "deDE-8c3555ecf533d6642e2ffef649b9517c",
         },
+        [254087] = {
+            ["Éliminez vos adversaires et séduisez les foules du même coup avec cet improbable subterfuge.  Si vous suivez la voie des voleurs, je peux tout vous apprendre… moyennant finance, bien sûr."] = "frFR-dad6801d9a1ba67ec599736ba625ab01",
+        },
         [254088] = {
+            ["Le $c qui frémit est le premier à mourir. Si vous souhaitez regarder la mort en face en tant que $c, je vous apprendrai à ne plus jamais tressaillir."] = "frFR-40dde4303fcad24f64cc0e2584b509e6",
             ["Le guerrier qui frémit est le premier à mourir. Si vous souhaitez regarder la mort en face en tant que $uguerrier:guerrière;, je vous apprendrai à ne plus jamais tressaillir."] = "60866ecc4847f737666b9ef7d2f7a2a8",
         },
         [254089] = {
             ["Bienvenue à l’auberge de Calmebrise. Je vous propose un petit rafraîchissement ?"] = "1b9a413cc5a0c37395ffce5a1833577f",
         },
+        [254100] = {
+            ["J’ai aperçu de plus en plus de perceciels ces derniers temps. C’est rassurant de les voir à nouveau circuler. Si seulement les anciens et anciennes acceptaient de nous expliquer ce qui se passe… On se contente de nous dire que rien n’a changé et qu’on est toujours sans nouvelles des autres îles.  Je ne peux pas m’empêcher de me demander ce que ça peut bien vouloir dire…"] = "frFR-6b28d410fbfd317b251d92d8f6041ba8",
+            ["La secte des Al’Aketh devient de plus en plus problématique, et les garde-paix semblent incapables de l’arrêter. Reste à espérer que les Sculpte-vents et l’Ordre suprême parviendront à mettre leurs différends de côté pour collaborer avec les garde-paix et nous protéger.  Il est hors de question que je rejoigne une secte !"] = "frFR-a447ebc15d3cbc4cabfde7ad812dbf1b",
+            ["La secte des Al’Aketh prétend qu’Al’Akir, le « seigneur des Vents », nous sauvera de tous nos maux ici, sur Zéphras. Mais s’il est bien réel et qu’il est véritablement le maître du Mur-Céleste, pourquoi les esprits du vent ont-ils refusé de le mentionner pendant tout ce temps ?  Soit il n’a jamais existé, soit pire encore, il est bel et bien réel, mais loin d’être aussi bienveillant que le prétendent ses adeptes. Quoi qu’il en soit, rien de ce qui touche de près ou de loin à cette secte ne profite aux petites gens."] = "frFR-9466baffeff05be4ab4a0c704ef5f8b6",
+            ["Les Sculpte-vents et l’Ordre suprême manigancent quelque chose. À en croire les rumeurs, ces deux factions chercheraient à utiliser les perceciels pour fuir Mur-Céleste. Quelle idée ri-di-cu-le ! Il n’y a nulle part où aller !"] = "frFR-b67eb1e342e00ca4e10920a23710fbcf",
+            ["Prenez garde aux adeptes en robe grise et au crâne rasé que vous pourriez croiser. Ces « Al’Aketh » sont une vraie plaie !  Il paraît même que ces énergumènes trafiquent les pylônes d’ancrage autour de l’île.  Si l’on en croit les Sculpte-vents, ces pylônes sont la seule chose qui maintient Zéphras dans le plan élémentaire. Y toucher serait de la folie !"] = "frFR-c38fa2eeaa47c579ff50865e3fccb3a9",
+            ["Si personne n’arrête la secte des Al’Aketh, on nous contraindra à rejoindre les rangs de ces fanatiques. Et je peux vous dire que le crâne rasé, ça ne me va pas du tout !"] = "frFR-84f24ad1ff5ba55e035b8ce5db69156a",
+            ["Vous avez appris pour Ban’aethal ? Les garde-paix déconseillent à tout le monde de s’approcher des ruines, et de la forêt de Trombenoire en général.  Quelqu’un à l’auberge disait avoir vu des esprits du vent malveillants, qui ressemblaient à des silhouettes un peu floues… et presque vides, de façon étrange.  J’ai des frissons rien que d’y penser."] = "frFR-f78513133b81616e6afa59fb26594654",
+            ["Vous avez vu ? Les perceciels circulent de nouveau ! En revanche, il paraît que nous sommes toujours sans nouvelles des autres îles shen’dorei.  J’espère que nous arriverons vite à entrer en contact avec Shen’dramar et Eldranaar… si elles existent encore."] = "frFR-eddaee056493456e6408c25bf9e0a3e3",
+        },
         [254128] = {
             ["<Les deux adeptes discutent à proximité. Vous pourriez apprendre quelque chose en vous cachant derrière ce meuble.>"] = "4861f2bcaadd883678fb64efdf66c73d",
+        },
+        [254149] = {
+            ["<L’Éolide qui se tient devant vous titube, visiblement très ivre.>  Avant, j’étais un marin, vous savez ? Avant que les ennuis commencent. Les perceciels voyageaient d’une île à l’autre. Aujourd’hui, c’est dangereux, ou un truc dans le genre, d’après ce qu’on dit.  Je vois que l’Ordre suprême et les Sculpte-vents ont remis leurs perceciels au service, mais moi, je suis coincé ici, cloué au sol !  Qu’est-ce qu’ils nous cachent ?  <Il se tourne vers l’aubergiste et crie très fort.>  QU’EST-CE QU’ILS NOUS CACHENT, DONAAL ?!"] = "frFR-64b260f36675eb323ac9d0a3534f52f2",
+            ["La forêt de Trombenoire !  Elle est hantée, aussi hantée que le ciel est bleu ! Avec d’horribles esprits de la forêt, des oiseaux terrifiants aux serres aussi grosses que des bras ! C’est… un cauchemar !  <Sirocco se tourne vers Donaal et rote bruyamment.>  JE NE DÉLIRE PAS, DONAAL !"] = "frFR-4c2e9668529916b8cae73e7acad4083d",
         },
         [254151] = {
             ["La Noctegriffe n’apprécie pas les intrusions imprudentes. Faites preuve de prudence à Trombenoire, $c."] = "9a451b7c031973753539b1df7f3e102c",
         },
         [254345] = {
+            ["J’espère que vous ne m’interrompez pas sans raison, je travaille sur un projet de la plus haute importance."] = "frFR-cfe76beade6fc9ffc5cd638a4ea626aa",
             ["Que les vents vous portent ! En quoi puis-je vous aider ?"] = "esMX-10eb2ef6ad1a06bef802b346b97c7d61",
             ["Un autre herboriste, hum. Je doute que vos compétences égalent les miennes ; je peux par conséquent vous apprendre quelques techniques utiles."] = "b3337-skybourneelf-male-3776",
         },
@@ -10486,6 +10744,9 @@ GossipText = {
         [255940] = {
             ["Bienvenue à l’auberge de Calmebrise. Je vous propose un petit rafraîchissement ?"] = "92f5764071224797e5f9ed7dc4b1a23e",
         },
+        [256083] = {
+            ["<Riaani semble totalement absorbé par son travail sur l’assemblage de vent.>"] = "frFR-6005838b15cd48c16303a109ed0682b5",
+        },
         [256247] = {
             ["Qu’est-ce que vous faites là ? Vite, filez d’ici ! Vous allez tout gâcher !"] = "frFR-e6f26d0fd9c9e1c66dd471b02719bddc",
         },
@@ -10498,15 +10759,30 @@ GossipText = {
         [256514] = {
             ["Que voulez-vous ?"] = "1ce9bc82bb6914c043375c43adea804e",
         },
+        [256635] = {
+            ["Aventurière ! Le pont venteux qui mène à l’autre flèche est instable. Vous feriez bien d’attendre son retour à mes côtés."] = "frFR-ab65cbade8d6c871348bd85a8a93776e",
+        },
         [256655] = {
             ["Dirge Quickcleave de Gadgetzan est un maître des arts culinaires. Vous devriez aller le voir pour vous perfectionner."] = "fa94f3b2a7756a7206f2d739132e099b",
         },
         [256658] = {
             ["Vous apprenez vite, c'est une bonne chose. Faites le travail correctement, mettez-y le temps qu'il faut. Mais je crains de devoir vous envoyer à Snarl si vous voulez progresser. Apprenez ce qu'il a à enseigner mais n'écoutez pas ses grommellements. Il est comme ça quand les filles de Saru se moquent de lui."] = "24f51d17fe915ec4494f6d0e34a9f697",
         },
+        [256730] = {
+            ["Les lingots ne sont que des modèles d’exposition !"] = "frFR-402b54285c65eb711632dc41ff747993",
+        },
+        [256930] = {
+            ["C’était le cas d’une grande partie de mon groupe. Le sol qui s’effondrait sous nos pieds a fini par nous pousser à partir. Il y en a qui venaient d’autres îles. Pour ma part, je suis originaire de Shen’dramar, sur la grande île. Enfin, sur ce qui était autrefois la grande île.  Avec ma famille, on a réussi à monter à bord d’un des derniers perceciels avant que l’île se désagrège. On pensait trouver notre salut sur Zéphras, mais on avait tort. Mes proches ont quitté ce monde depuis un bail et moi, je suis là, à attendre mon exécution."] = "frFR-755ea7e06283b897da7649df20716597",
+            ["En grande partie, oui. On a tous un point commun ; on n’a nulle part où aller et on préfère encore vivre de larcins que devenir les esclaves d’une secte démente."] = "frFR-e0ca8ed7890cdd3def01ec656247c632",
+            ["J’ai tué un garde-paix et volé des pierres de vent."] = "frFR-3fefffd78c139915ecfa87eb2529bbe2",
+            ["Par désespoir ? Ou à cause de la faim ? Je suis pas du genre qui aime commettre des vols ou des meurtres. J’ai perdu mon foyer, j’avais nulle part où aller et l’idée de me raser le crâne pour vénérer un dieu des vents imaginaire ne m’enchantait pas. Alors, je me suis tourné vers le crime. La suite semble logique, non ?"] = "frFR-d5b5552b90fc25b739cea30a8b30f8e0",
+            ["Qu’est-ce que vous regardez ?"] = "frFR-fcdee4fe7b77985239e80467fdb3b946",
+            ["À quoi bon nier ? La connétable a déjà tranché, il ne sert à rien de mentir."] = "frFR-181fb84be2fb4d986c1608389b072413",
+        },
         [257003] = {
             ["I hope that your interruption is for a good cause. I was in the middle of some important work."] = "b306273-skybourneelf-female-3773",
             ["Je ne vois pas beaucoup de dépeceurs en quête d'entraînement ici, mais je pense pouvoir vous apprendre quelque chose, si vous êtes $gprêt:prête;."] = "799ff33e2991e4c6cd2bd945a2770456",
+            ["Je ne vois pas beaucoup de dépeceurs en quête d'entraînement ici, mais je pense pouvoir vous apprendre quelque chose, si vous êtes prête."] = "799ff33e2991e4c6cd2bd945a2770456",
         },
         [257004] = {
             ["J'espère que vous ne m'interrompez pas pour rien ; j'étais sur un travail de grande importance."] = "f203e1b5ce93c4ff82e3d2176bc2b7df",
@@ -10515,6 +10791,7 @@ GossipText = {
         },
         [257005] = {
             ["J'espère que vous ne m'interrompez pas pour rien ; j'étais sur un travail de grande importance."] = "f203e1b5ce93c4ff82e3d2176bc2b7df",
+            ["J’espère que vous ne m’interrompez pas sans raison, je travaille sur un projet de la plus haute importance."] = "frFR-bf08c61d693071c116d308d54a9140b1",
             ["Les vents vous gardent ! Que puis-je faire pour vous ?"] = "cb3388b4766bf50c80bb641b1201c18d",
             ["Que les vents vous portent ! En quoi puis-je vous aider ?"] = "esMX-53e476f8c8ec9f9693764b02e4f86356",
         },
@@ -10536,13 +10813,17 @@ GossipText = {
             ["Que les vents vous portent ! En quoi puis-je vous aider ?"] = "3cf816ad18453f687be2eac93856cb8a",
         },
         [257018] = {
+            ["Ah, bonjour. J’ai comme l’impression que vous souhaitez me poser une question."] = "frFR-a0af3836f45dee8892639866de92139e",
             ["I hope that your interruption is for a good cause. I was in the middle of some important work."] = "b306273-skybourneelf-female-3773",
             ["J'espère que vous ne m'interrompez pas pour rien ; j'étais sur un travail de grande importance."] = "f203e1b5ce93c4ff82e3d2176bc2b7df",
+            ["J’espère que vous ne m’interrompez pas sans raison, je travaille sur un projet de la plus haute importance."] = "frFR-bf08c61d693071c116d308d54a9140b1",
             ["Les vents vous gardent ! Que puis-je faire pour vous ?"] = "cb3388b4766bf50c80bb641b1201c18d",
             ["Oh, un camarade Médecin. Je serais heureuse de vous enseigner quelques techniques utiles."] = "c180e031cf35ac323be516595b2f83d8",
             ["Que les vents vous portent ! En quoi puis-je vous aider ?"] = "esMX-53e476f8c8ec9f9693764b02e4f86356",
+            ["Se, me ruftvess Cynegol. Va goibon hamerung re thor veldbarad aldonoth aelgestron ruftos."] = "frFR-c76cb53576604fb4a73120d45e8052e1",
         },
         [257019] = {
+            ["Ah, bonjour. J’ai comme l’impression que vous souhaitez me poser une question."] = "frFR-a0af3836f45dee8892639866de92139e",
             ["I hope that your interruption is for a good cause. I was in the middle of some important work."] = "b306273-skybourneelf-female-3773",
             ["J'espère que vous ne m'interrompez pas pour rien ; j'étais sur un travail de grande importance."] = "f203e1b5ce93c4ff82e3d2176bc2b7df",
             ["Les vents vous gardent ! Que puis-je faire pour vous ?"] = "deDE-c70b6d5f52ae8d75b0bf4ce35fd360ec",
@@ -10550,28 +10831,55 @@ GossipText = {
             ["Un autre alchimiste, hum. Je doute que vos compétences soient égales aux miennes. Je peux donc vous enseigner quelques techniques utiles."] = "b3335-skybourneelf-female-3773",
         },
         [257020] = {
+            ["Ah, bonjour. J’ai comme l’impression que vous souhaitez me poser une question."] = "frFR-a0af3836f45dee8892639866de92139e",
+            ["Bienvenue dans ma boutique ! Il est bon de voir une autre enchanteresse, ici à Shen’dar. Êtes-vous là pour prendre des leçons ?"] = "frFR-e26ddd3236213f0cd47dadd52759613b",
+            ["I hope that your interruption is for a good cause. I was in the middle of some important work."] = "b306273-skybourneelf-female-3773",
             ["J'espère que vous ne m'interrompez pas pour rien ; j'étais sur un travail de grande importance."] = "f203e1b5ce93c4ff82e3d2176bc2b7df",
             ["Les vents vous gardent ! Que puis-je faire pour vous ?"] = "cb3388b4766bf50c80bb641b1201c18d",
             ["Que les vents vous portent ! En quoi puis-je vous aider ?"] = "5a56faeceb0518e365bb866d2f122071",
         },
         [257021] = {
+            ["Ah, bonjour. J’ai comme l’impression que vous souhaitez me poser une question."] = "frFR-a0af3836f45dee8892639866de92139e",
             ["I hope that your interruption is for a good cause. I was in the middle of some important work."] = "b306273-skybourneelf-female-3773",
             ["J'espère que vous ne m'interrompez pas pour rien ; j'étais sur un travail de grande importance."] = "f203e1b5ce93c4ff82e3d2176bc2b7df",
+            ["J’espère que vous ne m’interrompez pas sans raison, je travaille sur un projet de la plus haute importance."] = "frFR-bf08c61d693071c116d308d54a9140b1",
             ["Que les vents vous portent ! En quoi puis-je vous aider ?"] = "5a56faeceb0518e365bb866d2f122071",
             ["Un autre herboriste, hum. Je doute que vos compétences égalent les miennes ; je peux par conséquent vous apprendre quelques techniques utiles."] = "5e3106d656d1e19c87aab693c964dd04",
+        },
+        [257022] = {
+            ["On pourrait croire qu’une mineuse comme moi n’a pas grand-chose à faire sur une île flottante comme celle-ci. Mais au cours des derniers millénaires, on a déterré des tas de choses intéressantes.  C’est comme si une force invisible créait régulièrement de nouveaux gisements de minerai. Mais bon, les voies de la magie sont impénétrables, pas vrai ?  En tout cas, si vous cherchez à vous former dans ce noble métier, je suis votre Shen’dorei !"] = "frFR-34daf62af2051ac057cbda2fac2b4057",
         },
         [257024] = {
             ["J'espère que vous ne m'interrompez pas pour rien ; j'étais sur un travail de grande importance."] = "18f39204b5258528e030327d79360cad",
             ["Je ne vois pas beaucoup de dépeceurs en quête d'entraînement ici, mais je pense pouvoir vous apprendre quelque chose, si vous êtes $gprêt:prête;."] = "fc47ea411175750a7d770f6b3bb182ef",
+            ["Je ne vois pas beaucoup de dépeceurs en quête d'entraînement ici, mais je pense pouvoir vous apprendre quelque chose, si vous êtes prête."] = "fc47ea411175750a7d770f6b3bb182ef",
+            ["Les vents vous gardent ! Que puis-je faire pour vous ?"] = "bd332f5d7d3458235a87a234fc01b179",
+            ["Que les vents vous portent ! En quoi puis-je vous aider ?"] = "frFR-d4b00f344c974275f2b5465d5560036f",
+        },
+        [257036] = {
+            ["Bienvenue à la banque de Valanaar. Nous pouvons entreposer vos possessions et objets de valeur si vous le désirez. Voulez-vous accéder à votre coffre ?"] = "frFR-3408844bdfc61d3835fe8f3de06816b8",
         },
         [257065] = {
             ["Souhaitez-vous obtenir les bénédictions du seigneur des Vents ?"] = "a2780dc416d6641a40bbc4e0c7813698",
+        },
+        [257446] = {
+            ["Pierre et terre parlent avec plus de vérité que n’importe laquelle des langues, si vous faites taire le vacarme qui agite votre cœur assez longtemps pour les entendre.  Si vous avez l’étoffe d’un $c, je peux vous enseigner."] = "frFR-5cbcb1c93016637caac11a7e1c60a117",
+            ["Pierre et terre parlent avec plus de vérité que n’importe laquelle des langues, si vous faites taire le vacarme qui agite votre cœur assez longtemps pour les entendre.  Si vous avez l’étoffe d’un chaman, je peux vous enseigner."] = "frFR-73e5feb39633ef4b487cfd9197f5fc2e",
         },
         [257554] = {
             ["<Un forestier se tient devant vous, le regard fixé sur l’énorme pylône d’ancrage que l’on distingue au loin.>"] = "a4a46a36be7098226552afb81f3f4f65",
         },
         [257595] = {
             ["Bienvenue dans mon auberge, $gvoyageur épuisé:voyageuse épuisée;. Que puis-je faire pour vous ?"] = "e3e01e02de026cbe5e2560a468bbdebb",
+            ["Durant la Guerre des Anciens, le demi-dieu Agamaggan vint affronter la Légion ardente. Ce sanglier colossal fut vaincu, et avec le temps, aux endroits où son sang avait coulé, d'énormes lianes épineuses poussèrent. Les hurans finirent par occuper ces terres, les considérant comme sacrées. Au cœur de ces immenses colonies d'épineux se trouve Tranchebauge. Le kraal de Tranchebauge fut conquis par la mégère, Charlga Trancheflanc, que certains soupçonnent de négocier avec des agents du Fléau dans un but insidieux."] = "0b5e7969b8b45594985feae2eb2ed564",
+            ["Gnomeregan se trouve dans l'ouest de Dun Morogh."] = "ad9e028bbf4d1db826c98feaf297f9c3",
+            ["La prison de Stormwind est un complexe pénitentiaire de haute sécurité, construit sous le quartier des canaux de la ville. Dirigée par le gardien Thelwater, elle abrite de petits escrocs, des prisonniers politiques, des meurtriers et une vingtaine des criminels les plus dangereux du pays. Récemment, une révolte de détenus a semé le chaos dans la prison, d'où les gardiens ont été chassés et où les condamnés circulent en toute liberté."] = "39cefc621bbcaa9de4f15bf64910a0dd",
+            ["La prison de Stormwind se trouve près du quartier des mages, à Stormwind."] = "9cd348728ba38505c5456af01f1ea6f5",
+            ["Le kraal de Tranchebauge se trouve à l'extrémité sud des Tarides du côté ouest de la route."] = "e581a9ed3de8105b6729f7dc085e1c17",
+            ["Les Profondeurs de Brassenoire se trouvent à l'extrémité nord de la grève de Zoram le long de la côte d'Ashenvale."] = "9b605670acd65783140b807060cc5459",
+            ["Situé à Dun Morogh, Gnomeregan est la capitale des gnomes depuis des générations, même si elle a été récemment infestée par des troggs mutants. Lors de l'attaque des troggs, dans une tentative désespérée de représailles, le Grand Bricoleur Mekkatorque ordonna la vidange d'urgence des réservoirs de déchets radioactifs de la ville. Même irradiés, les troggs maintinrent leur siège et les gnomes furent obligés de trouver refuge dans la cité naine d'Ironforge; C'est là que le Grand Bricoleur recrute des âmes hardies pour aider son peuple à reconquérir sa chère cité."] = "b414305e416528da2000301e3515fa68",
+            ["Situées sur la grève de Zoram, en Ashenvale, les Profondeurs de Brassenoire étaient autrefois un magnifique temple voué à la déesse de la lune des elfes de la nuit, Elune. Malheureusement, la Grande Fracture détruisit en partie le sanctuaire, l'engloutissant sous les eaux de la Mer voilée. Il y resta, intact, jusqu'à ce qu'attirés par son pouvoir ancien, les nagas et les satyres le fouillent pour s'emparer de ses secrets. Les légende affirment qu'une bête ancienne, Aku'mai, s'est installée dans les ruines du temple."] = "4770f436e4721b1e363a54416ff3594f",
+            ["Souhaitez-vous explorer l'un de ces donjons ?"] = "338674bfb1edb2117c563bae8305e5f2",
         },
         [257597] = {
             ["Pour éclairer, il faut savoir brûler."] = "frFR-774ff9ddb4225f993aeaae6d47265933",
@@ -10588,6 +10896,9 @@ GossipText = {
         [258113] = {
             ["Les Esprits ont guidé votre être jusqu'à moi. En quoi puis-je vous être utile ?"] = "688528dc8617e517315b28f774aec457",
         },
+        [258130] = {
+            ["<Le cadavre de Jorel Chantelevent gît devant vous.  De profondes lacérations déchirent ses jambes tandis que des brûlures dues à la foudre zèbrent son pelage.  Il est évident qu’il s’est battu avec acharnement avant de succomber à ses blessures.>"] = "frFR-05d8ea50444481c694f606dc30324ab9",
+        },
         [258380] = {
             ["Remplissez votre chope et prenez une chaise. Nous avons des histoires à raconter et des tonnelets à vider."] = "b2826-dwarf-female-maternal",
         },
@@ -10599,6 +10910,9 @@ GossipText = {
         [258572] = {
             ["La plupart des marchandises dont les artisans ont besoin peuvent être trouvées dans le monde. Moi, je vends, à un prix intéressant, des articles plus rares et plus difficiles à trouver."] = "7da2e914119cbb34e9c1d90ccae3ddca",
         },
+        [258785] = {
+            ["Si vous le voulez, en plus de l'enseignement que je propose, j'ai le pouvoir de faire disparaître de votre esprit la connaissance de vos talents. Sachez qu'à chaque fois que vous subissez cette procédure elle est plus difficile à accomplir, et donc plus onéreuse."] = "b8263-gnome-female-standard",
+        },
         [258930] = {
             ["Ah ! Je n'aide que les chasseurs et leurs familiers."] = "b8407-human-male-standard",
             ["Vous êtes là pour une formation qui vous permettrait de fortifier vos familiers ?"] = "530f50b228568790a32debd04b5b6e3e",
@@ -10606,11 +10920,21 @@ GossipText = {
         [259012] = {
             ["Toutes les îles éolides ont commencé à se désagréger et à dériver les unes des autres il y a quelques années. Comme si cela ne suffisait pas, de larges pans de Zéphras commencent maintenant à s’effondrer. Il est difficile d’imaginer voir son foyer tomber du ciel… pourtant, c’est désormais ma réalité."] = "0b31b9f39f80394c757cec12b82b7267",
         },
+        [259013] = {
+            ["<Un Éolide est allongé devant vous, le corps écrasé et meurtri, bien qu’encore reconnaissable. Il a indéniablement souffert d’une fin tragique en tentant de fuir.  Il semblerait que toutes ses affaires se trouvent encore sur son cadavre tandis qu’une caisse à moitié pleine a été renversée non loin de lui.>"] = "frFR-08ae8e5722e791eaed481d8dd853ce74",
+        },
+        [259084] = {
+            ["Le vent vous salue, mon amie. Une autorisation m’a été accordée pour transporter rapidement mes camarades éolides jusqu’à la ville de Hurlevent. N’hésitez pas à utiliser ce portail quand bon vous semble."] = "frFR-7680010ed89d1c184a4fd4c5f5049fc1",
+        },
+        [259118] = {
+            ["Je suis Muln Rageterre du Cercle terrestre. Que faites-vous ici ?"] = "frFR-c71703584c46643373e7dfed336b3c24",
+        },
         [260093] = {
             ["À travers un vigoureux recyclage, j'ai dû contraindre bien des étudiants à oublier ce qu'ils avaient appris, afin qu'ils soient prêts à recevoir mon enseignement. Le service que je propose devient de plus en plus difficile à accomplir. C'est pour cela que c'est sans cesse plus cher. Voulez-vous que je vous fasse oublier ce que vous avez appris ?"] = "a54fabb9fc0936c92134f8611f4e5e8b",
         },
         [260558] = {
             ["Je peux vous apprendre à pêcher."] = "2d127f614bfaf60be0fcf5c914c9f116",
+            ["Pour progresser, vous avez besoin de trouver Nat Pagle, qui vit dans le marécage d'Âprefange."] = "0bf837bea513c0c82387777d0998bdfb",
         },
         [260568] = {
             ["Il n’y a pas de combat aujourd’hui, l’$uami:amie;. La Horde et l’Alliance sont bien trop occupées à s’entretuer dehors… Pff, quel gâchis. Je ne comprends pas pourquoi ils ne font pas ça dans l’arène.    Enfin, revenez quand tout sera prêt !"] = "c47745487b8785a2b025de0216199676",
@@ -10629,10 +10953,12 @@ GossipText = {
         },
         [263399] = {
             ["Salutations, $uvoyageur:voyageuse; !"] = "b313261-human-male-standard",
+            ["Salutations, voyageur !"] = "frFR-74a1181d83c468e54b8cf02aee200af0",
             ["Salutations, voyageuse !"] = "frFR-e72a55204d84cc5e64b2bc00090f97d0",
         },
         [263643] = {
             ["Je regrette, $c, mais vous n’êtes pas encore assez $uaguerri:aguerrie; pour accéder aux îles des Sombrelances."] = "b312929-human-male-official",
+            ["Salutations, $N. Souhaitez-vous prendre part à une bataille sur les îles des Sombrelances ?"] = "frFR-f0080ca0a85375f225a38a7c2a01152f",
         },
         [263644] = {
             ["Je regrette, $c, mais vous n’êtes pas encore assez $uaguerri:aguerrie; pour accéder aux îles des Sombrelances."] = "b312929-human-male-official",
@@ -10653,14 +10979,33 @@ GossipText = {
             ["Salutations, $gcitoyen:citoyenne;."] = "197733e5d24c96d857606a47d7038088",
             ["Salutations."] = "197733e5d24c96d857606a47d7038088",
         },
+        [264078] = {
+            ["C’est un honneur pour moi de m’occuper de l’approvisionnement et du ravitaillement du Cercle terrestre.  Mon stock est limité pour l’instant, mais revenez me voir régulièrement. De nouvelles pièces d’équipement et fournitures seront bientôt disponibles à l’achat."] = "frFR-ea011ea78528064ad05a5a54079b68bf",
+        },
         [264936] = {
             ["Quand le ciel est dégagé, on peut même voir le mont Rochenoire d’ici. Il est à la fois magnifique et terrifiant."] = "feda7a707c2a24a91121f428edf5aaf0",
+        },
+        [265654] = {
+            ["Bienvenue au registre des guildes de Valanaar. Comment puis-je vous aider aujourd’hui ?"] = "frFR-e713dfdfdafea3ba311102c5ee9266fc",
+        },
+        [265756] = {
+            ["Bienvenue aux écuries Beautemps ! J’aimerais pouvoir vous confier l’un de nos magnifiques trotteurs des trombes, mais j’ai l’impression que vous n’avez pas encore assez d’expérience pour en monter un.  Ils peuvent parfois se montrer capricieux et ont tendance à désarçonner les cavaliers novices s’ils ne sont pas maîtrisés correctement. Je me ferais un plaisir de vous entraîner une fois que vous aurez un peu plus d’expérience et que vous disposerez de suffisamment de pièces !"] = "frFR-482413f7096d2c251e12ed6451932028",
+        },
+        [265760] = {
+            ["<Le trotteur s’immobilise et vous fixe de ses yeux dorés.>"] = "frFR-a2b9b7144bfaee25c8c5f359b3ff4074",
+        },
+        [265761] = {
+            ["<Le trotteur tape ses griffes contre le sol humide.>"] = "frFR-cb3357f16426be29c9e0dd2476db4e59",
+        },
+        [265762] = {
+            ["<Le trotteur lisse ses plumes et vous observe avec curiosité.>"] = "frFR-8cb295050b1412e271cbd0a37be2098e",
         },
         [265809] = {
             ["Salutations, $uvoyageur:voyageuse;."] = "5a5cfd9b66c08e54d7f912c93f16aec1",
         },
         [265810] = {
             ["Salutations, $uvoyageur:voyageuse;."] = "db1e160d72699cbbfdba9c1198424caa",
+            ["Salutations, voyageur."] = "db1e160d72699cbbfdba9c1198424caa",
         },
         [265811] = {
             ["Salutations, $uvoyageur:voyageuse;."] = "426fca3f52df4f5b27be5a2162136f84",
@@ -10668,13 +11013,18 @@ GossipText = {
         },
         [265812] = {
             ["Salutations, $uvoyageur:voyageuse;."] = "c06f809139a8fb0583142df2083a555d",
+            ["Salutations, voyageuse."] = "c06f809139a8fb0583142df2083a555d",
         },
         [265813] = {
             ["Salutations, $uvoyageur:voyageuse;."] = "d8461992f589cbc9e251cd2872a33b62",
+            ["Salutations, voyageur."] = "d8461992f589cbc9e251cd2872a33b62",
         },
         [265944] = {
             ["Je peux vous apprendre à cuisiner !"] = "ad9a13f780148372887f7e98605d6f7b",
             ["La cuisine est une activité qui peut vous occuper toute votre vie. Je vois que nous partageons la même passion !"] = "6f112dba70f131803f2dc5fb76026cdd",
+        },
+        [266484] = {
+            ["En tant que paladins, nous devons chaque jour mériter notre place parmi nos confrères réprouvés, sous peine d’être traités de fanatiques comme la Croisade écarlate. La Lumière n’est pas simplement un outil au service de nos adversaires, mais un véhicule pour notre fureur vertueuse ! C’est grâce à notre dévotion envers la Dame noire et à notre amour pour notre patrie que nous pouvons canaliser la Lumière afin de rendre justice face à nos adversaires.  La reine banshee nous surveille de près. Laissons-la faire. Elle verra que notre détermination ne faiblira jamais. Nous sommes les Réprouvés !"] = "frFR-c181f9844d914282f894c3593be98681",
         },
         [267000] = {
             ["Je ne vends que les meilleurs équipements, testés et approuvés. Les prix sont fixés une fois pour toutes. Si vous voulez marchander, trouvez-vous un gobelin."] = "1d035ef80655c9d2cd4e435e275a7bba",
@@ -10706,10 +11056,20 @@ GossipText = {
             ["Bonjour, $n ! Souhaitez-vous apprendre un métier ?    Je me ferais un plaisir de répondre à toutes vos questions ou de vous orienter vers l’un de nos maîtres !    Pas de panique, si tout cela vous semble intimidant, vous pouvez toujours repasser quand vous serez $uprêt:prête;, ou rendre visite aux maîtres de métiers des autres capitales pour vous lancer !"] = "e18e5d7e3ad60eec2792a2af044515f1",
             ["Excellent choix ! J’ai indiqué l’emplacement sur votre carte."] = "4d633193bdbc10f7c1140dfdb4508a77",
         },
+        [267304] = {
+            ["<Il claque gentiment du bec à votre égard.>"] = "frFR-f9964a67d73ae403c5ddf9dcbeaf651c",
+        },
+        [267305] = {
+            ["<Le trotteur des trombes gazouille doucement à votre approche.>"] = "frFR-e6299b0c2f895255f0b68c20907bf417",
+        },
+        [267306] = {
+            ["<Le trotteur vous fixe. Son regard déborde d’impatience et la créature semble presque bondir d’enthousiasme.>"] = "frFR-0c1888a1ca1daffea8eeacb707954d44",
+        },
         [267321] = {
             ["Ah, excellente question !    Les métiers sont un ensemble de compétences liées à l’artisanat, à la récolte et, de manière générale, à la survie dans son ensemble. Il y a plein de métiers différents, et chacun offre ses propres avantages et perspectives économiques. Que vous souhaitiez accumuler des richesses, remplir l’entrepôt de votre guilde avec des objets utiles ou simplement porter votre propre équipement fabriqué à la sueur de votre front, il y a un métier pour !    Les plans et recettes d’artisanat s’apprennent auprès des maîtres de métiers, comme ceux présents ici, ainsi qu’auprès de sources diverses aux quatre coins d’Azeroth. Une fois le plan de fabrication d’un objet appris, vous pouvez en confectionner autant d’exemplaires que vous souhaitez, à condition d’avoir les ressources nécessaires !"] = "53f8951b860f5950b64f7886bb46b3b0",
             ["Bien sûr ! Quel métier souhaiteriez-vous apprendre ?    J’indiquerai l’emplacement du maître de votre choix sur votre carte. N’oubliez pas que vous pouvez aussi vous adresser aux maîtres de métiers des autres capitales pour approfondir vos connaissances !"] = "b292988-tauren-male-warrior",
             ["Bonjour, $n ! Souhaitez-vous apprendre un métier ?    Je me ferais un plaisir de répondre à toutes vos questions ou de vous orienter vers l’un de nos maîtres !    Pas de panique, si tout cela vous semble intimidant, vous pouvez toujours repasser quand vous serez $uprêt:prête;, ou rendre visite aux maîtres de métiers des autres capitales pour vous lancer !"] = "b292949-tauren-male-warrior",
+            ["Bonjour, Garnmoss ! Souhaitez-vous apprendre un métier ?  Je me ferais un plaisir de répondre à toutes vos questions ou de vous orienter vers l’un de nos maîtres !  Pas de panique, si tout cela vous semble intimidant, vous pouvez toujours repasser quand vous serez prêt, ou rendre visite aux maîtres de métiers des autres capitales pour vous lancer !"] = "frFR-a6193733efdf142b6daa7c37ba6fb2a7",
             ["Excellent choix ! J’ai indiqué l’emplacement sur votre carte."] = "b316839-tauren-male-warrior",
             ["Les métiers sont divisés en deux catégories : les principaux et les secondaires.    Vous ne pouvez vous spécialiser que dans deux métiers principaux à la fois. Évidemment, vous pouvez abandonner votre métier principal à tout moment, mais vous perdrez l’intégralité de vos compétences et de votre savoir. Ainsi, si vous souhaitez revenir à votre métier d’origine, vous devrez rapprendre les bases et vous procurer toutes les recettes que vous possédiez précédemment afin de vous familiariser à nouveau avec elles.    Les métiers secondaires, eux, ne sont pas soumis à cette contrainte. Ils visent généralement à vous apprendre à subvenir à vos besoins de survie fondamentaux. Vous êtes libre de vous former à l’un ou à l’ensemble de ces métiers, mais vous aurez peut-être moins d’occasions de faire des bénéfices."] = "e7fccc6c2e5a9fc7b530de23bd52b9ee",
         },
@@ -10732,11 +11092,15 @@ GossipText = {
         [267327] = {
             ["Ça vous dit d’apprendre à récupérer du cuir sur des bêtes tuées ? Ou avez-vous besoin de nouveaux outils ?"] = "b293818-orc-male-guard",
         },
+        [267328] = {
+            ["Vous pensez être à la hauteur pour extraire du minerai ?"] = "frFR-5a71f4e8915d6decd25ecd3d17ddf31e",
+        },
         [267330] = {
             ["Ça vous dit d’apprendre à récupérer du cuir sur des bêtes tuées ? Ou avez-vous besoin de nouveaux outils ?"] = "b293818-tauren-female-shaman",
         },
         [267331] = {
-            ["Comment puis-je vous aider ?"] = "9b44465789a930be0794cd177cfa8d89",
+            ["Comment puis-je vous aider ?"] = "b9724-tauren-female-standard",
+            ["Comment puis-je vous aider ?"] = "b9724-tauren-female-standard",
             ["How can I help you?"] = "9b44465789a930be0794cd177cfa8d89",
         },
         [267333] = {
@@ -10745,6 +11109,7 @@ GossipText = {
         [267334] = {
             ["En quoi puis-je vous aider ?"] = "de5edfa25096a2a517a954307d8a896e",
             ["How can I help you?"] = "de5edfa25096a2a517a954307d8a896e",
+            ["Que puis-je faire pour vous ?"] = "b1529-nightelf-male-official",
         },
         [267336] = {
             ["Ça vous dit d’apprendre à récupérer du cuir sur des bêtes tuées ? Ou avez-vous besoin de nouveaux outils ?"] = "d946f44a23da83262fe2d024db084c06",
@@ -10753,6 +11118,7 @@ GossipText = {
             ["Comment puis-je vous aider ?"] = "b9724-gnome-female-nerdy",
             ["Comment puis-je vous aider ?"] = "b9724-gnome-female-nerdy",
             ["How can I help you?"] = "e59a031ae9f2e24540044783dc7ab1c7",
+            ["Puis-je vous aider ?"] = "b9531-gnome-female-nerdy",
         },
         [268047] = {
             ["$N, la garde Stormpike de la vallée d’Alterac a plus que jamais besoin de votre aide dans son combat contre le clan Frostwolf. Les occasions de gagner de l’honneur et de la réputation y sont plus nombreuses que jamais ! Voulez-vous rejoindre la bataille ?"] = "b10569-human-female-standard",
@@ -10769,18 +11135,29 @@ GossipText = {
         [269153] = {
             ["<Cette montagnarde s’est manifestement bien battue avant de trouver la mort sous les coups des Troggs.>"] = "deDE-6befee659613d26ca0745977ce0db33d",
         },
+        [270570] = {
+            ["Je ne vends que les meilleurs équipements, testés et approuvés. Les prix sont fixés une fois pour toutes. Si vous voulez marchander, trouvez-vous un gobelin."] = "1d035ef80655c9d2cd4e435e275a7bba",
+        },
+        [271465] = {
+            ["Salutations, $c. Avez-vous besoin d’armes ?  J’ai été entraîné par Antarion de Ban’aethal, qui m’a transmis les secrets des antiques maîtres fèvres-mages de Kalimdor.  Vous ne trouverez pas de meilleures armes que les miennes sur l’île de Zéphras."] = "frFR-1ec0900744cd1a99ca62743724d9065f",
+        },
         [271546] = {
             ["Vous cherchez l’estafette ? L’a fui comme un p’tit oiseau.    J’peux pas blâmer c’te pauvre chaton. Ces wendigos, c’est une sale affaire."] = "682af36b98761a235fc70a1a7114c7e1",
+            ["Vous cherchez l’estafette ? L’a fui comme un p’tit oiseau.  J’peux pas blâmer c’te pauvre chaton. Ces wendigos, c’est une sale affaire."] = "frFR-002e5114f8a68e9a8e3372afaee6052e",
         },
         [272101] = {
             ["Qu'est-ce que vous cherchez ?"] = "2cce376a7f0e367a39a45e26216ab5f2",
             ["Quelle profession ?"] = "8d09546b60b6d39bda2ac4ec0471ced5",
             ["Vous trouverez Vance Undergloom dans une chambre à l'étage, dans la Taverne des Pendus, au sud-est de Brill."] = "f3fcdf2085aaeddd3fb4d9eb72210d18",
         },
+        [272633] = {
+            ["Les flux et reflux de la magie sont perturbés ces temps-ci. J’ai même entendu dire que les mages de Dalaran sont déconcertés. Cette perturbation vient-elle d’une source occulte ou sont-ce les éléments eux-mêmes qui s’agitent ?"] = "frFR-8ad473fc004931ea32989e8a1659687d",
+        },
         [274757] = {
             ["De tous les endroits merveilleux de Darnassus, vers lequel voulez-vous que je vous oriente ?"] = "5f49a0ce5b3654379f0db519a20b64a4",
             ["Ici, à Darnassus, vous trouverez des maîtres habiles qui ont peaufiné les compétences de leur classe pendant des décennies d'entraînement. Je vous guiderai vers celui qui peut être votre mentor, vous n'avez qu'à nommer la voie que vous avez choisie."] = "05f41dc20d172bc58dcbca463c852a7a",
             ["Il y a ceux qui cherchent à suivre la voie des voleurs, mais seuls les elfes de la nuit sont vraiment en phase avec les ténèbres. Si vous voulez emprunter le chemin sombre, trouvez Syurna dans l'Enclave cénarienne."] = "9955006745f984da2926e3193c72c1bf",
+            ["Ma formation aux armes, je la dois principalement à l'entraînement d'Ilyenia Moonfire, à la Terrasse des guerriers. Vous devriez aller la voir si vous désirez apprendre à vous servir d'une nouvelle arme."] = "3fdb5882d52420a10cedda5c6704aa3b",
         },
         [274781] = {
             ["Brandur Ironhammer est celui que vous devez voir. Vous le trouverez au Hall des mystères, au nord des portes d'Ironforge."] = "b5103-dwarf-female-guard",
@@ -10795,11 +11172,17 @@ GossipText = {
             ["Ah oui, il a mentionné qu’une agente de l’Ordre suprême rejoindrait bientôt Hurlevent. Il m’a demandé de vous transmettre vos instructions.  <Randal vous tend une note soigneusement scellée.>  Vous y trouverez toutes les informations dont vous avez besoin. Un sacré voyage vous attend, $N. Que la chance vous sourie, au nom de Hurlevent et de l’Alliance."] = "frFR-8dda7375e7be0131ff234bd8a2ab6eb0",
             ["Bien le bonjour à vous. En quoi puis-je vous aider, aujourd’hui ?"] = "frFR-5dae3e8982eb720ceb218dfa77d9e4e9",
         },
+        [276318] = {
+            ["Si vous cherchez à vous rendre au port d’Auberdine en Sombrivage, vous êtes au bon endroit. Nos gens accueillent tous les membres de l’Alliance qui souhaitent commercer, voyager ou aider d’autres personnes sur nos terres."] = "frFR-9b760de4b89f45d5ee47bdcc8266d858",
+        },
         [276731] = {
             ["<Le grand félin étire ses longues pattes en restant parfaitement silencieux pendant que vous vous approchez.>"] = "f110da42dc6d50571d3e377c7785ab41",
         },
         [276800] = {
             ["<Le raptor se tourne vers vous et vous fixe de ses deux yeux orange vif.>"] = "dabd4a08af75f145a4ea17005de3d92f",
+        },
+        [277024] = {
+            ["Bienvenue dans mon salon de coiffure ! Pour une coupe, une couleur ou autre, vous êtes au bon endroit.  Nous vous proposons : barbe et pilosité faciale, ajout de piercings, encrage des tatouages elfes… tout ce que vous désirez !  Asseyez-vous, nous allons nous occuper de vous."] = "frFR-78269d30891bfea500521574fe08ac90",
         },
         [277311] = {
             ["<L’homme à l’air hagard marmonne des paroles incompréhensibles.>"] = "5c709125b8579bf1be7ab2d275225245",
@@ -11073,6 +11456,12 @@ GossipText = {
             ["Le journal de Jandice Barov est une longue suite de propos délirants sur les morts-vivants. Vers la fin, vous trouvez quelque chose qui ressemble au patron d’un sac en gangrétoffe, que les démonistes pourraient utiliser pour conserver des fragments d’âme. Vous savez déjà comment le fabriquer."] = "36abb8fc0a6fcba22ad534dedab0826c",
             ["Le journal de Jandice Barov est une longue suite de propos délirants sur les morts-vivants. Vers la fin, vous trouvez quelque chose qui ressemble à un patron. On dirait un sac en gangrétoffe, que les démonistes pourraient utiliser pour conserver des fragments d’âme. Voulez-vous copier ce patron dans votre propre journal ?"] = "2e4d9884e93c29c98746aa5d29d39c35",
             ["Le journal de Jandice Barov est une longue suite de propos délirants sur les morts-vivants. Vers la fin, vous trouvez quelque chose qui ressemble à un patron. Une sorte de sac, apparemment. Malheureusement, vous ne vous y connaissez pas assez en couture pour le déchiffrer."] = "ac3bf49b09e574e839ef683378f6e79d",
+        },
+    },
+    QuestWordingLookup = {
+        ["92693-accept"] = {
+            ["Vous avez travaillé dur pour nous donner une chance de survie. Même si nous mourrons aujourd’hui, nous saurons au moins que nous avons fait de notre mieux.  C’est votre dernière chance, étranger. Si vous voulez retourner à Valanaar et rester en vie, je ne vous en voudrai pas.  En revanche, si vous avez un faible pour les causes perdues, dites-moi quand vous serez prêt à partir. Nous marcherons la tête haute et advienne que pourra."] = "92693-accept",
+            ["Vous avez travaillé dur pour nous donner une chance de survie. Même si nous mourrons aujourd’hui, nous saurons au moins que nous avons fait de notre mieux.  C’est votre dernière chance, étrangère. Si vous voulez retourner à Valanaar et rester en vie, je ne vous en voudrai pas.  En revanche, si vous avez un faible pour les causes perdues, dites-moi quand vous serez prête à partir. Nous marcherons la tête haute et advienne que pourra."] = "92693-accept-w1",
         },
     },
 }

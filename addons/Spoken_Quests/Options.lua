@@ -85,11 +85,21 @@ local GeneralTab =
                         Addon.db.profile.Audio.FollowupLines = value
                     end,
                 },
+                ToggleProgressText = {
+                    type = "toggle",
+                    order = 6.6,
+                    width = 2,
+                    name = L.OPT_PANEL_PROGRESS,
+                    disabled = function(info) return not Addon:IsAutoplayOn() end,
+                    get = function(info) return Addon:IsProgressTextOn() end,
+                    set = function(info, value) Addon:SetProgressText(value) end,
+                },
                 OGThrall = {
                     type = "toggle",
                     order = 8,
                     width = 2,
                     name = L.OPT_OG_THRALL,
+                    hidden = function() return not EasterEggs:IsAvailable() end,
                     get = function(info) return Addon.db.profile.Audio.OGThrall end,
                     set = function(info, value)
                         Addon.db.profile.Audio.OGThrall = value
@@ -165,6 +175,16 @@ local SlashCommands = {
             guiHidden = true,
             get = function() return "" end,
             set = function(info, value) Followup:Simulate(value) end
+        },
+        Chatter = {
+            type = "input",
+            order = 86,
+            name = L.OPT_CMD_CHATTER,
+            desc = L.OPT_CMD_CHATTER_DESC,
+            dropdownHidden = true,
+            guiHidden = true,
+            get = function() return "" end,
+            set = function(info, value) Chatter:Simulate(value) end
         },
         Diagnostics = {
             type = "execute",
@@ -417,6 +437,7 @@ function Options:Initialize()
         -- which is where profiles and the pack manager live.
         SettingsPanel:Setup()
         GossipSettingsPanel:Setup()
+        ChatterSettingsPanel:Setup()
     end)
     Debug:Print("Done!", "Options")
 

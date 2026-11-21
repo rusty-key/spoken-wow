@@ -742,6 +742,8 @@ local function NewButton(parent, label)
     return button
 end
 Layout.NewButton = NewButton
+-- Where a row's label or button starts, for a page that draws a row of its own (Custom).
+Layout.LABEL_X = LABEL_X
 
 --- A setting's name: the game's gold, GameFontNormal, or GameFontNormalSmall for an option
 --- under another (SettingsListElementMixin).
@@ -1154,12 +1156,61 @@ end
 
 local dropdowns = 0
 
+-- One font object per file, size and flags: the classic menu takes an object and not a path, and
+-- the game's menu forbids SetFont on its entries' text while it allows SetFontObject.
+local faces, faceCount = {}, 0
+local function FaceObject(path, size, flags)
+    size, flags = size or 12, flags or ""
+    local key = path .. "\0" .. size .. "\0" .. flags
+    if not faces[key] then
+        faceCount = faceCount + 1
+        faces[key] = CreateFont("SpokenLayoutFace" .. faceCount)
+        faces[key]:SetFont(path, size, flags)
+    end
+    return faces[key]
+end
+
+-- Draw a text in `path`, or back in the font it had where `path` is nil. Through font objects
+-- only, never SetFont, which the game's menu refuses on the text of its entries.
+local function Refont(fontString, path)
+    if not (fontString and fontString.GetFont and fontString.SetFontObject) then return end
+    if not fontString.layoutOwnFont then
+        fontString.layoutOwnFont = { fontString:GetFont() }
+        fontString.layoutOwnObject = fontString.GetFontObject and fontString:GetFontObject() or false
+    end
+    local file, size, flags = unpack(fontString.layoutOwnFont)
+    if path then
+        fontString:SetFontObject(FaceObject(path, size, flags))
+    elseif fontString.layoutOwnObject then
+        fontString:SetFontObject(fontString.layoutOwnObject)
+    elseif file then
+        fontString:SetFontObject(FaceObject(file, size, flags))
+    end
+end
+
+-- Draw an entry of the game's menu in `face`. Menu buttons are pooled, also with other addons' and
+-- the game's menus, so an entry with no face puts back the font a previous entry's face replaced,
+-- and each entry puts it back when its button goes back to the pool.
+local function FaceEntry(element, face)
+    if not (element and element.AddInitializer) then return end
+    element:AddInitializer(function(button) Refont(button.fontString, face) end)
+    if element.AddResetter then
+        element:AddResetter(function(button) Refont(button.fontString, nil) end)
+    end
+end
+
+-- Draw an entry of the classic menu in `face`, where it is given one.
+local function FaceInfo(info, face)
+    if face then info.fontObject = FaceObject(face) end
+end
+
 --- A dropdown: the game's settings dropdown, with steppers either side (SettingsDropdownWithButtons
 --- Template, the dropdown 220 wide, 48 left of the row's middle), its list the game's own menu.
 --- The plain dropdown where the steppers are missing, the classic one where the menu is, and a
 --- cycle button where there is no dropdown at all. The list may be a function, for a choice
---- whose options depend on what is installed.
-function Layout:Dropdown(label, tooltip, values, read, write, apply, describe)
+--- whose options depend on what is installed. `fontOf(value)` may give the font file an entry's
+--- text is drawn in, for a name the game's font has no glyphs for; nil keeps the game's font.
+function Layout:Dropdown(label, tooltip, values, read, write, apply, describe, fontOf)
     describe = describe or tostring
     local modern = CreateFrame and MenuUtil ~= nil
     if not modern and not (UIDropDownMenu_Initialize and UIDropDownMenu_AddButton and CreateFrame) then
@@ -1195,11 +1246,15 @@ function Layout:Dropdown(label, tooltip, values, read, write, apply, describe)
         dropdown:SetWidth(DROPDOWN_WIDTH)
         dropdown:SetupMenu(function(_, root)
             for _, value in ipairs(Resolve(values)) do
-                root:CreateRadio(describe(value), function() return Chosen(value, read()) end,
+                local element = root:CreateRadio(describe(value), function() return Chosen(value, read()) end,
                     function() Choose(value) end, value)
+                if fontOf then FaceEntry(element, fontOf(value)) end
             end
         end)
-        Sync = function() if dropdown.GenerateMenu then dropdown:GenerateMenu() end end
+        Sync = function()
+            if dropdown.GenerateMenu then dropdown:GenerateMenu() end
+            if fontOf then Refont(dropdown.Text, fontOf(read())) end
+        end
         setEnabled = function(on)
             if control.SetEnabled then control:SetEnabled(on) else dropdown:SetEnabled(on) end
         end
@@ -1207,13 +1262,20 @@ function Layout:Dropdown(label, tooltip, values, read, write, apply, describe)
         dropdowns = dropdowns + 1
         control = CreateFrame("Frame", "SpokenLayoutDropdown" .. dropdowns, parent, "UIDropDownMenuTemplate")
         offset = CONTROL_X - 16
-        Sync = function() UIDropDownMenu_SetText(control, describe(read())) end
+        Sync = function()
+            UIDropDownMenu_SetText(control, describe(read()))
+            if fontOf then
+                local name = control.GetName and control:GetName()
+                Refont(name and _G[name .. "Text"], fontOf(read()))
+            end
+        end
         UIDropDownMenu_Initialize(control, function(_, level)
             local current = read()
             for _, value in ipairs(Resolve(values)) do
                 local info = UIDropDownMenu_CreateInfo()
                 info.text = describe(value)
                 info.checked = Chosen(value, current)
+                FaceInfo(info, fontOf and fontOf(value))
                 info.func = function()
                     Choose(value)
                     if CloseDropDownMenus then CloseDropDownMenus() end
@@ -1341,6 +1403,195 @@ function Layout:Custom(frame, height, fit)
         Put(frame, parent, x - reach, top)
     end)
     return frame
+end
+
+-- An ordered list's buttons: the chat frame's scroll arrows and the panel's close cross, which
+-- every client has, as the game's fonts draw no arrow or cross of their own.
+local ORDER_BUTTON = 24
+local ORDER_ART = {
+    up = [[Interface\ChatFrame\UI-ChatIcon-ScrollUp-]],
+    down = [[Interface\ChatFrame\UI-ChatIcon-ScrollDown-]],
+    remove = [[Interface\Buttons\UI-Panel-MinimizeButton-]],
+}
+local ORDER_ROW = 26        -- a voice's line, a row's height
+local ORDER_ADD_GAP = 4     -- between the last line and the add button
+local ORDER_WIDTH = 360     -- the most the names and their buttons take
+local orderedMenus = 0
+
+local function OrderButton(parent, art, tip)
+    local button = CreateFrame("Button", nil, parent)
+    button:SetSize(ORDER_BUTTON, ORDER_BUTTON)
+    button:SetNormalTexture(ORDER_ART[art] .. "Up")
+    button:SetPushedTexture(ORDER_ART[art] .. "Down")
+    button:SetDisabledTexture(ORDER_ART[art] .. "Disabled")
+    button:SetHighlightTexture([[Interface\Buttons\UI-Common-MouseHilight]], "ADD")
+    Above(button, parent)
+    Tooltip(button, nil, tip)
+    return button
+end
+
+--- A list the player orders: a line for each of `read()`'s values, named by `describe(value)` (in
+--- `fontOf(value)`'s font where it gives one), with buttons to move it earlier or later and to
+--- remove it, and under the last an add button offering `choices()` not in the list. `write(list)`
+--- is given a new array after every change. The list keeps at least one value. `words` holds the
+--- buttons' words (`add`, `earlier`, `later`, `remove`) and `available(value)`, false greying a
+--- value out: one kept in the list that cannot be had now.
+function Layout:OrderedList(label, tooltip, read, write, choices, describe, fontOf, words)
+    self:Columns(nil)
+    local parent, layout = self.parent, self
+    describe = describe or tostring
+    local hit = Band(parent, ORDER_ROW)
+    local caption = Caption(parent, label)
+    local add = NewButton(parent, words.add)
+    FitToLabel(add, 0)
+    Above(add, parent)
+    local regions = { hit, caption, add }
+    local lines, list = {}, {}
+
+    local function Change(changed)
+        write(changed)
+        layout:Refresh()
+    end
+    local function Moved(i, by)
+        local changed = {}
+        for index, value in ipairs(list) do changed[index] = value end
+        changed[i], changed[i + by] = changed[i + by], changed[i]
+        Change(changed)
+    end
+    local function Removed(i)
+        if #list < 2 then return end
+        local changed = {}
+        for index, value in ipairs(list) do
+            if index ~= i then table.insert(changed, value) end
+        end
+        Change(changed)
+    end
+    local function Line(i)
+        if lines[i] then return lines[i] end
+        local line = {}
+        line.name = parent:CreateFontString(nil, "ARTWORK", "GameFontHighlight")
+        line.name:SetHeight(ORDER_ROW)
+        line.name:SetJustifyH("LEFT")
+        line.name:SetJustifyV("MIDDLE")
+        if line.name.SetWordWrap then line.name:SetWordWrap(false) end
+        line.up = OrderButton(parent, "up", words.earlier)
+        line.down = OrderButton(parent, "down", words.later)
+        line.remove = OrderButton(parent, "remove", words.remove)
+        Script(line.up, "OnClick", function() Sound(CLICK); Moved(i, -1) end)
+        Script(line.down, "OnClick", function() Sound(CLICK); Moved(i, 1) end)
+        Script(line.remove, "OnClick", function() Sound(CLICK); Removed(i) end)
+        for _, region in ipairs({ line.name, line.up, line.down, line.remove }) do table.insert(regions, region) end
+        lines[i] = line
+        return line
+    end
+    -- What the add button offers: every choice the list has not got.
+    local function Offered()
+        local have, offered = {}, {}
+        for _, value in ipairs(list) do have[value] = true end
+        for _, value in ipairs(Resolve(choices)) do
+            if not have[value] then table.insert(offered, value) end
+        end
+        return offered
+    end
+    local function Added(value)
+        local changed = {}
+        for index, each in ipairs(list) do changed[index] = each end
+        table.insert(changed, value)
+        Change(changed)
+    end
+
+    local menu
+    local function OpenMenu()
+        if MenuUtil and MenuUtil.CreateContextMenu then
+            MenuUtil.CreateContextMenu(add, function(_, root)
+                for _, value in ipairs(Offered()) do
+                    local element = root:CreateButton(describe(value), function() Added(value) end)
+                    if fontOf then FaceEntry(element, fontOf(value)) end
+                end
+            end)
+            return
+        end
+        if not (UIDropDownMenu_Initialize and ToggleDropDownMenu) then
+            -- No menu at all: each click adds the next voice the list has not got.
+            local offered = Offered()
+            if offered[1] then Added(offered[1]) end
+            return
+        end
+        if not menu then
+            orderedMenus = orderedMenus + 1
+            menu = CreateFrame("Frame", "SpokenLayoutOrderedMenu" .. orderedMenus, parent, "UIDropDownMenuTemplate")
+            UIDropDownMenu_Initialize(menu, function(_, level)
+                for _, value in ipairs(Offered()) do
+                    local info = UIDropDownMenu_CreateInfo()
+                    info.text = describe(value)
+                    info.notCheckable = true
+                    FaceInfo(info, fontOf and fontOf(value))
+                    info.func = function()
+                        Added(value)
+                        if CloseDropDownMenus then CloseDropDownMenus() end
+                    end
+                    UIDropDownMenu_AddButton(info, level)
+                end
+            end, "MENU")
+        end
+        ToggleDropDownMenu(1, nil, menu, add, 0, 0)
+    end
+    Script(add, "OnClick", function() Sound(CLICK); OpenMenu() end)
+
+    local function Sync()
+        list = {}
+        for index, value in ipairs(read() or {}) do list[index] = value end
+        for i, value in ipairs(list) do
+            local line = Line(i)
+            line.name:SetText(describe(value))
+            Refont(line.name, fontOf and fontOf(value) or nil)
+            local grey = words.available and not words.available(value)
+            local color = grey and GREY or WHITE
+            line.name:SetTextColor(color[1], color[2], color[3])
+            if i > 1 then line.up:Enable() else line.up:Disable() end
+            if i < #list then line.down:Enable() else line.down:Disable() end
+            if #list > 1 then line.remove:Enable() else line.remove:Disable() end
+        end
+        if #Offered() > 0 then add:Enable() else add:Disable() end
+    end
+    -- The control is the whole list, lines and add button, which is the row's height.
+    local control = CreateFrame("Frame", nil, parent)
+    table.insert(regions, control)
+    -- A pack installed since the page was last shown is offered: the client fires no refresh.
+    Script(control, "OnShow", function() Sync() end)
+    hit.layoutControl, control.layoutHit = control, hit
+    control.layoutSync, control.layoutLabel, control.layoutLines, control.layoutAdd = Sync, caption, lines, add
+    control.layoutList = function() return list end
+    control.layoutOffered = Offered
+    Tooltip(hit, label, tooltip)
+    self:Index(control, label, tooltip)
+    Sync()
+    local function Height() return math.max(1, #list) * ORDER_ROW + ORDER_ADD_GAP + BUTTON_HEIGHT end
+    local row = self:AddRow(ORDER_ROW, control, regions, function(top, x)
+        PlaceBand(self, hit, top)
+        PlaceLabel(self, caption, x, top)
+        local start = self:Middle() + DROPDOWN_X
+        local width = math.min(ORDER_WIDTH, self.left + self:Width() - start)
+        local nameWidth = width - ORDER_BUTTON * 3
+        for i, line in ipairs(lines) do
+            local y = top - (i - 1) * ORDER_ROW
+            local buttonY = y - math.floor((ORDER_ROW - ORDER_BUTTON) / 2)
+            line.name:SetWidth(nameWidth)
+            Put(line.name, parent, start, y)
+            Put(line.up, parent, start + nameWidth, buttonY)
+            Put(line.down, parent, start + nameWidth + ORDER_BUTTON, buttonY)
+            Put(line.remove, parent, start + nameWidth + ORDER_BUTTON * 2, buttonY)
+            local shown = i <= #list
+            for _, region in ipairs({ line.name, line.up, line.down, line.remove }) do
+                if shown then region:Show() else region:Hide() end
+            end
+        end
+        Put(add, parent, start, top - math.max(1, #list) * ORDER_ROW - ORDER_ADD_GAP)
+        control:SetSize(width, Height())
+        Put(control, parent, start, top)
+    end)
+    row.measure = Height
+    return control
 end
 
 --------------------------------------------------------------------------------

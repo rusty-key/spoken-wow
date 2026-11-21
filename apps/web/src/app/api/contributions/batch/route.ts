@@ -11,12 +11,14 @@
  * A file the Spoken Manager sends carries the install id it made when its player turned
  * Sharing on. Then a line the corpus already knows is counted as a missing-audio hit
  * (lib/contributions/missing-audio.ts) rather than dropped, and the install has an allowance of
- * its own beside the IP's. Without one, as from /contribute, known lines are dropped as before.
+ * its own beside the IP's. Without one, as from a file uploaded on /contribute, known lines are
+ * dropped as before.
  *
  * Places are refused here. A places contribution is the description the player writes on the
  * page, and a file has none; the addon never gathers them, so one arriving is a hand-built file.
  */
 import { headers } from "next/headers";
+import { after } from "next/server";
 
 import { auth } from "@/lib/auth";
 import { clientIp } from "@/lib/reports/client-ip";
@@ -24,10 +26,11 @@ import { parseEnvelope } from "@/lib/contributions/envelope";
 import {
   CONTRIBUTION_WINDOW_MS,
   CONTRIBUTIONS_PER_HOUR,
-  storeSubmission,
+  intakeStates,
+  resolveSpeakers,
+  speakersOf,
   stringOrNull,
 } from "@/lib/contributions/intake";
-import { lineStates } from "@/lib/contributions/known";
 import {
   INSTALL_UPLOADS_PER_HOUR,
   hitFrom,
@@ -39,8 +42,10 @@ import { MAX_ENVELOPES } from "@/lib/contributions/saved-variables";
 import {
   countRecentContributions,
   countRecentInstallUploads,
+  createContributions,
   recordContributionHit,
 } from "@/lib/contributions/store";
+import { keepClassWords } from "@/lib/contributions/class-words";
 import { submissionFrom } from "@/lib/contributions/submission";
 import type { Submission } from "@/lib/contributions/contributions";
 
@@ -82,12 +87,11 @@ export async function POST(request: Request) {
     ip,
   };
 
-  const submissions: Submission[] = [];
+  const sent: Submission[] = [];
   const refused: Record<string, number> = {};
   const refuse = (reason: string) => {
     refused[reason] = (refused[reason] ?? 0) + 1;
   };
-  const resolved = new Set<string>();
 
   for (const raw of envelopes) {
     if (typeof raw !== "string") {
@@ -105,33 +109,41 @@ export async function POST(request: Request) {
       refuse("describe");
       continue;
     }
-    const submission = submissionFrom(parsed.value, raw, null);
+    const submission = submissionFrom(parsed.value, null);
     if (!submission) {
       refuse("incomplete");
       continue;
     }
-    submissions.push(submission);
+    sent.push(submission);
   }
+  const submissions = await keepClassWords(sent);
 
   // Lines the corpus already has are counted as accepted -- the player sent nothing wrong --
-  // and not stored as contributions: known.ts's lineStates, asked once for the file. With an
-  // install id each is a line that player heard in silence, and is counted as one.
-  const states = await lineStates(submissions);
+  // and not stored as contributions: intakeStates, asked once for the file. With an install id
+  // each is a line that player heard in silence, and is counted as one.
+  const states = await intakeStates(submissions);
   const hits: MissingAudioHit[] = [];
+  const unknown: Submission[] = [];
   let known = 0;
   for (const [index, submission] of submissions.entries()) {
     const state = states[index];
     if (state?.kind !== "known") {
-      await storeSubmission(submission, identity, resolved);
+      unknown.push(submission);
       continue;
     }
     known++;
-    const hit = installId ? hitFrom(submission, state.lineId) : null;
+    const hit = installId ? await hitFrom(submission, state.lineId) : null;
     if (hit) hits.push(hit);
   }
+  await createContributions(unknown, identity);
   if (installId) await recordMissingAudio(installId, hits);
 
   await recordContributionHit(ip, installId);
+
+  // After the response: Cloudflare gives up on an origin at 100 seconds, and the lines are stored
+  // by now. Worked out first so the file's text is not held in memory for the whole run.
+  const speakers = speakersOf(unknown);
+  after(() => resolveSpeakers(speakers));
 
   return Response.json({
     ok: true,

@@ -31,7 +31,7 @@ export interface FlavorLook {
 }
 
 const LOOKS: Record<Flavor, FlavorLook> = {
-  classic_beta: { name: 'Forever', label: 'WoW: Forever', from: '#1d6f8f', to: '#0b2a3a', glow: '#f0c25a' },
+  forever: { name: 'Forever', label: 'WoW: Forever', from: '#1d6f8f', to: '#0b2a3a', glow: '#f0c25a' },
   classic_era: { name: 'Classic Era', label: 'WoW: Classic Era', from: '#9a5a1c', to: '#33200f', glow: '#f2b04a' },
   anniversary: { name: 'Anniversary', label: 'WoW: Anniversary', from: '#a23a58', to: '#2e1020', glow: '#f4bb78' }
 }
@@ -44,7 +44,6 @@ const TAGS: Record<string, string> = {
   esES: 'ES',
   esMX: 'MX',
   frFR: 'FR',
-  itIT: 'IT',
   ptBR: 'PT',
   ruRU: 'RU',
   koKR: 'KO',
@@ -52,7 +51,8 @@ const TAGS: Record<string, string> = {
   zhTW: 'ZH-TW'
 }
 
-export const langTag = (code: string): string => TAGS[code] ?? code.toUpperCase()
+// A language the table lacks shows its first two letters: JA, not JAJP.
+export const langTag = (code: string): string => TAGS[code] ?? code.slice(0, 2).toUpperCase()
 export { languageName }
 
 type ActiveJob = JobProgress & { phase: 'queued' | 'downloading' | 'verifying' | 'extracting' | 'installing' }

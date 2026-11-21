@@ -1,4 +1,5 @@
 // Errors whose message is written for the player. Anything else is logged and shown generically.
+import { t } from './i18n'
 
 /** An expected failure. `message` is plain words and safe to show in the window. */
 export class PlainError extends Error {
@@ -10,7 +11,7 @@ export class PlainError extends Error {
 
 /** The player pressed Cancel. */
 export class CancelledError extends Error {
-  constructor(message = 'Cancelled.') {
+  constructor(message = t('errors.cancelled')) {
     super(message)
     this.name = 'AbortError'
   }
@@ -24,12 +25,18 @@ export function throwIfAborted(signal: AbortSignal | undefined): void {
   if (signal?.aborted) throw new CancelledError()
 }
 
+/** Aborts at `signal` or after `ms`. A timeout rejects with a TimeoutError, so it never reads as a cancel. */
+export function withTimeout(ms: number, signal?: AbortSignal): AbortSignal {
+  const timeout = AbortSignal.timeout(ms)
+  return signal ? AbortSignal.any([signal, timeout]) : timeout
+}
+
 /** The message to show for any thrown value. */
 export function plainMessage(err: unknown): string {
   if (err instanceof PlainError) return err.message
-  if (isAbortError(err)) return 'Cancelled.'
+  if (isAbortError(err)) return t('errors.cancelled')
   const text = err instanceof Error ? err.message : String(err)
-  return `Something went wrong: ${text}`
+  return t('errors.failed', { text })
 }
 
 export function errorCode(err: unknown): string | undefined {

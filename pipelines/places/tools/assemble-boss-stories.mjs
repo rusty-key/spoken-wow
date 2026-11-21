@@ -1,8 +1,12 @@
 #!/usr/bin/env node
-// Writes Data/Stories.lua for Spoken NPCs from written sources only, best first, all of it kept to Classic:
+// Assembles boss stories from written sources only, best first, all of it kept to Classic:
 //   1. the Adventure Guide's text for the boss (build-boss-stories.mjs --no-wiki),
 //   2. its History on warcraft.wiki.gg, word for word (boss-history.mjs),
 //   3. the story already in Stories.lua that was written from the game's Classic quest text.
+// It writes apply-boss-stories.mjs' input, [{ map, key, lang, text }] one row per language (the guide's
+// English as enUS), to build/boss-stories/assembled/stories.json unless --out says otherwise; the
+// stories reach boss_line, and from there Stories.lua (make bosses-export), only through that tool.
+// It never writes under addons/.
 // A sentence that names something after Classic (the era filter of lib/wiki.mjs) is dropped; a guide text
 // that loses one is kept in English only, since the other languages cannot be filtered the same way.
 // A boss none of them covers has no story. The dungeons' own stories ("_") are not kept.
@@ -12,15 +16,21 @@
 //   history.json: [{ map, key, title, text }]
 //   current.json: [{ map, key, text }]                                  (the English of Stories.lua now)
 
-import { readFile, writeFile } from "node:fs/promises";
-import { join } from "node:path";
+import { mkdir, readFile, writeFile } from "node:fs/promises";
+import { dirname, join } from "node:path";
 
-import { cleanExtract, ROOT } from "./lib/wiki.mjs";
-import { renderStories } from "./lib/boss-stories.mjs";
+import { cleanExtract } from "./lib/wiki.mjs";
+import { SCRATCH, outsideAddons, storyRows } from "./lib/boss-stories.mjs";
 
 const args = process.argv.slice(2);
 const [guideFile, historyFile, currentFile] = args;
-const OUT = args.includes("--out") ? args[args.indexOf("--out") + 1] : join(ROOT, "addons/Spoken_NPCs/Data/Stories.lua");
+let OUT;
+try {
+  OUT = outsideAddons(args.includes("--out") ? args[args.indexOf("--out") + 1] : join(SCRATCH, "assembled/stories.json"));
+} catch (err) {
+  console.error(`error: ${err.message}`);
+  process.exit(1);
+}
 const load = async (file) => JSON.parse(await readFile(file, "utf8"));
 const id = (r) => `${r.map}\t${r.key}`;
 const MIN_CHARS = 60;
@@ -72,6 +82,8 @@ for (const key of new Set([...guide.keys(), ...history.keys(), ...current.keys()
   dropped.push(`${r.map}/${r.key}`);
 }
 
-await writeFile(OUT, renderStories(stories));
+await mkdir(dirname(OUT), { recursive: true });
+await writeFile(OUT, JSON.stringify(storyRows(stories), null, 2) + "\n");
+console.log(`wrote ${OUT}; record it with: node pipelines/places/tools/apply-boss-stories.mjs ${dirname(OUT)}`);
 console.log(JSON.stringify(counts), "trimmed by the era filter:", trimmed.join(", "));
 console.log("no story:", dropped.join(", "));

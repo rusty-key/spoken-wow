@@ -25,6 +25,8 @@ import path from "node:path";
 
 import pg from "pg";
 
+import { plainTeamSql } from "../../../pipelines/lib/release-team.mjs";
+
 const INVALID_CHARS = "$<>";
 /** Capitalised spans only, mirroring web/src/lib/text-gate.ts. */
 const DIRECTION = /<[A-Z][^<>]*>/g;
@@ -62,7 +64,7 @@ async function main() {
 
   try {
     const { rows: existing } = await pool.query(
-      `select "file" from "line_override" where "file" = any($1::text[])`,
+      `select "file" from "line_override" where "file" = any($1::text[]) and "lang" = 'enUS'`,
       [entries.map((entry) => entry.file)],
     );
     const held = new Set(existing.map((row) => row.file));
@@ -87,9 +89,10 @@ async function main() {
     let written = 0;
     for (const entry of fresh) {
       await pool.query(
-        `insert into "line_override" ("file", "lineId", "text", "updatedBy")
-         values ($1, $2, $3, null)
-         on conflict ("file") do nothing`,
+        // English's text, so its one team's override. The script sets no team, so it names it.
+        `insert into "line_override" ("teamId", "lang", "file", "lineId", "text", "updatedBy")
+         values (${plainTeamSql("'enUS'")}, 'enUS', $1, $2, $3, null)
+         on conflict ("teamId", "lang", "file") do nothing`,
         [entry.file, entry.lineId, entry.text],
       );
       written += 1;

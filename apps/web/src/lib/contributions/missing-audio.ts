@@ -2,18 +2,24 @@
  * Lines the corpus has but a player's pack could not voice.
  *
  * The addon gathers a line exactly when the installed pack has no sound for it, so a gathered
- * envelope the corpus already knows is one a player heard in silence. The /contribute page
- * drops those (there is nothing to triage); the Spoken Manager, when its player turned Sharing
- * on, sends the same file with a random install id, and each such line is counted here once
- * per line, pack language and install. Ranked by installs, that is which lines to voice next,
+ * envelope the corpus already knows is one a player heard in silence. There is nothing to
+ * triage, so it is not stored as a contribution; it is counted here instead, once per line, pack
+ * language and install, whenever it arrives with an install id: the Spoken Manager's, when its
+ * player turned Sharing on, or the browser's own from a Contribute link (browser-install.ts). Ranked by installs, that is which lines to voice next,
  * and which players are only behind on their pack.
  *
  * Server-side only: it writes.
  */
-import { db } from "@/lib/db";
-import { BASE_LANG, isLang } from "@/lib/lang";
+import { db, queryIn } from "@/lib/db";
+import { BASE_LANG, type Lang } from "@/lib/lang";
+import { knownLang } from "@/lib/languages/catalogue";
+import { memoByTeamLang } from "@/lib/memo";
+import { corpus, isCorpusEmpty } from "@/lib/quests/catalogue";
+import { matchingLines } from "@/lib/search";
+import { ownerOrAll } from "@/lib/teams/store";
 
 import type { Submission } from "./contributions";
+import { baseLineId } from "./naming";
 
 /** Per install, beside the per-IP allowance; the manager backs off on a 429 from either. */
 export const INSTALL_UPLOADS_PER_HOUR = 4;
@@ -32,9 +38,10 @@ export function installIdFrom(value: unknown): string | null {
  * `pack` is the language the player hears (BaseFields in each module's Contribute.lua),
  * `packVersion` that pack's .toc version or "none".
  */
-export function hitFrom(submission: Submission, lineId: string): MissingAudioHit | null {
+export async function hitFrom(submission: Submission, lineId: string): Promise<MissingAudioHit | null> {
   const packLang = submission.meta.pack;
-  if (!isLang(packLang)) return null;
+  // Read from the table where this process does not know it yet: a team's language is a row.
+  if (!(await knownLang(packLang))) return null;
   const version = submission.meta.packVersion;
   const packVersion = version && /^[\w.+-]{1,32}$/.test(version) ? version : null;
   return { lineId, packLang, packVersion };
@@ -70,16 +77,53 @@ export type MissingAudioRow = {
 };
 
 /** Rows the page shows: the head of the list is what to voice next, the tail can wait. */
-const RANKING_LIMIT = 200;
+export const RANKING_LIMIT = 200;
 
-/** The lines of one pack language, most players first. */
+const hiddenKey = Symbol.for("spoken.quests-hidden-by-default.by-lang");
+
+/**
+ * Every line id in `lang` none of whose rows the explorer's filters show by default, under its
+ * own id and the id of the line it is a voice of: other clients' lines (TBC Anniversary, the
+ * legacy clients, retail: lib/quests/line-client.ts). Read off the search itself, so the ranking
+ * cannot drift from the explorer's defaults. Ignored lines stay in: the search drops those only
+ * when handed the ignore list, which moves without the catalogue. Rebuilt with the catalogue.
+ */
+async function hiddenByDefaultLineIds(lang: Lang): Promise<ReadonlySet<string>> {
+  const quests = await corpus(lang);
+  return memoByTeamLang(hiddenKey, lang, quests.lines, () => {
+    const shown = new Set(matchingLines(quests, new Set()).map((line) => line.lineId));
+    const hidden = new Map<string, boolean>();
+    for (const line of quests.lines) {
+      const out = !shown.has(line.lineId);
+      for (const id of new Set([line.lineId, baseLineId(line.lineId)])) hidden.set(id, (hidden.get(id) ?? true) && out);
+    }
+    return new Set([...hidden].filter(([, all]) => all).map(([id]) => id));
+  });
+}
+
+/** The lines the ranking leaves out, as the explorer hides them by default. None for a language with no catalogue. */
+async function hiddenLines(packLang: string): Promise<string[]> {
+  if (!(await knownLang(packLang))) return [];
+  try {
+    return [...(await hiddenByDefaultLineIds(packLang))];
+  } catch (error) {
+    if (isCorpusEmpty(error)) return [];
+    throw error;
+  }
+}
+
+/** The lines of one pack language, most players first, leaving out what the explorer hides by default. */
 export async function missingAudioRanking(packLang: string): Promise<MissingAudioRow[]> {
-  const { rows } = await db().query<MissingAudioRow>(
+  const hidden = await hiddenLines(packLang);
+  // As the language's team, for the takes "voiced" reads. The hits are shared, so a language
+  // nobody owns still lists them, all unvoiced.
+  return queryIn<MissingAudioRow>(
+    await ownerOrAll(packLang as Lang),
     `with ranked as (
        select "lineId", count(*)::int as "installs", max("lastSeen") as "lastSeen",
               array_remove(array_agg(distinct "packVersion"), null) as "packVersions"
          from "missing_audio_hit"
-        where "packLang" = $1
+        where "packLang" = $1 and not ("lineId" = any($4::text[]))
         group by "lineId"
         order by count(*) desc, max("lastSeen") desc, "lineId"
         limit $2
@@ -99,7 +143,6 @@ export async function missingAudioRanking(packLang: string): Promise<MissingAudi
                        and t."lineId" = r."lineId" and t."isCurrent") as "voiced"
        from ranked r
       order by r."installs" desc, r."lastSeen" desc, r."lineId"`,
-    [packLang, RANKING_LIMIT, BASE_LANG],
+    [packLang, RANKING_LIMIT, BASE_LANG, hidden],
   );
-  return rows;
 }

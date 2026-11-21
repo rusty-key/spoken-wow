@@ -9,11 +9,15 @@
  * Validation mirrors save_generation in tts_cli/voice_config.py. It lives on the write path
  * rather than the read path on purpose: a value already in the database is a fact, and
  * refusing to read it would take the settings page down exactly when it is needed to fix it.
+ *
+ * Every team has a base generation_setting row, and a language's own locale row is its team's
+ * too. A language nobody has configured reads its team's base, never another team's row.
  */
 import { recordActivity } from "@/lib/activity/store";
-import { db } from "@/lib/db";
+import { ALL_TEAMS, queryIn, TEAM_ROWS } from "@/lib/db";
 import { BASE_LANG, type Lang } from "@/lib/lang";
 import { bareDirection } from "@/lib/generation/narration";
+import { queryAs, readAs, teamOrEnglish } from "@/lib/teams/store";
 
 import {
   isSeedStrategy,
@@ -47,14 +51,21 @@ type Row = {
 
 export async function readSettings(lang: Lang = BASE_LANG): Promise<EffectiveSettings> {
   if (lang !== BASE_LANG) return readLanguageSettings(lang);
-  const defaults = fileDefaults().config;
+  return baseSettings(await readBase(BASE_LANG));
+}
 
-  const { rows } = await db().query<Row>(
+/** The base row of the team that owns `lang`, or English's for a language nobody owns. */
+async function readBase(lang: Lang): Promise<Row | undefined> {
+  const rows = await queryIn<Row>(
+    await teamOrEnglish(lang),
     `select "modelId", "voiceSettings", "seedStrategy", "raceTags", "updatedAt", "updatedBy"
-       from "generation_setting" where "id"`,
+       from "generation_setting" where ${TEAM_ROWS}`,
   );
+  return rows[0];
+}
 
-  const row = rows[0];
+function baseSettings(row: Row | undefined): EffectiveSettings {
+  const defaults = fileDefaults().config;
   if (!row) {
     return { config: defaults, source: "file", defaults, updatedAt: null, updatedBy: null };
   }
@@ -79,16 +90,17 @@ export async function readSettings(lang: Lang = BASE_LANG): Promise<EffectiveSet
 }
 
 /**
- * Another language's settings: its own row, or English's until somebody saves one.
+ * Another language's settings: its own row, or its team's base until somebody saves one.
  *
- * English's without the accent tags, though. A tag like "[Scottish accent]" is a direction
+ * The base without the accent tags, though. A tag like "[Scottish accent]" is a direction
  * about how English is spoken, and a language that has not chosen its own should not start
  * with someone else's.
  */
 async function readLanguageSettings(lang: Lang): Promise<EffectiveSettings> {
-  const [english, { rows }] = await Promise.all([
-    readSettings(BASE_LANG),
-    db().query<Row>(
+  const [english, rows] = await Promise.all([
+    readBase(lang).then(baseSettings),
+    readAs<Row>(
+      lang,
       `select "modelId", "voiceSettings", "seedStrategy", "raceTags", "updatedAt", "updatedBy"
          from "generation_setting_locale" where "lang" = $1`,
       [lang],
@@ -236,11 +248,12 @@ async function upsertLanguage(
   columns: ("modelId" | "voiceSettings" | "seedStrategy" | "raceTags")[],
 ): Promise<void> {
   const set = columns.map((column) => `"${column}" = excluded."${column}"`).join(", ");
-  await db().query(
+  await queryAs(
+    lang,
     `insert into "generation_setting_locale"
        ("lang", "modelId", "voiceSettings", "seedStrategy", "raceTags", "updatedAt", "updatedBy")
      values ($1, $2, $3, $4, $5, now(), $6)
-     on conflict ("lang") do update set
+     on conflict ("teamId", "lang") do update set
        ${set}, "updatedAt" = excluded."updatedAt", "updatedBy" = excluded."updatedBy"`,
     [
       lang,
@@ -283,12 +296,14 @@ export async function writeRaceTags(
     await recordRaceTags(lang, updatedBy);
     return;
   }
+  // Every team's base, as one: each began as a copy of English's, so an edit keeps them alike.
   const defaults = fileDefaults().config;
-  await db().query(
+  await queryIn(
+    ALL_TEAMS,
     `insert into "generation_setting"
-       ("id", "modelId", "voiceSettings", "seedStrategy", "raceTags", "updatedAt", "updatedBy")
-     values (true, $1, $2, $3, $4, now(), $5)
-     on conflict ("id") do update set
+       ("teamId", "modelId", "voiceSettings", "seedStrategy", "raceTags", "updatedAt", "updatedBy")
+     select "id", $1, $2, $3, $4, now(), $5 from "team"
+     on conflict ("teamId") do update set
        "raceTags"  = excluded."raceTags",
        "updatedAt" = excluded."updatedAt",
        "updatedBy" = excluded."updatedBy"`,

@@ -8,6 +8,9 @@ existing compatible sound pack unless the release notes say otherwise.
 - **Language packs carry pages English lacks.** A page that exists only in another language, such
   as one a player sent in, is in that language's pack with its place in its book, so Spoken finds
   and reads it. *([rusty-key](https://github.com/rusty-key))*
+
+## 2.3.0 — Spoken Audio: Readables — 2026-10-31
+
 - **The sound packs are called Spoken Audio: Readables** in the AddOns list, after the module that
   reads them, and a language's is Spoken German Audio: Readables and so on. Their folders keep their names, so nothing needs reinstalling. *([Nucabe](https://github.com/Nucabe))*
 

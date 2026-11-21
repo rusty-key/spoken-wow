@@ -46,6 +46,9 @@ Defaults = {
         },
         -- The voice language and its fallback, for every module at once (Spoken:GetLanguageChoice).
         -- Unset, each module keeps the choice it had before there was one setting for all.
+        -- `Voices`, the voices every module plays in, in order (Spoken:GetVoiceOrder), has no default
+        -- either: unset, the pair above decides. `Text`, the language the words are read in
+        -- (Texts.lua), is unset for Auto.
         Language = {},
         Audio = {
             -- A string, because that is what PlaySoundFile takes.
@@ -222,9 +225,12 @@ function Addon:InitDB()
     end
     MoveKeys(self.db.global.ModulesLegacy, RENAMED_MODULES)
     -- Another profile chosen, copied over this one or reset, from Spoken's page or anywhere
-    -- else: its settings apply now rather than at the next reload.
+    -- else: its settings apply now rather than at the next reload. A profile last played before
+    -- the list of voices gets one now, as at login, so it plays in the order its page shows.
     if self.db.RegisterCallback then
         local function Apply()
+            Addon:BuildVoiceList()
+            Addon:ForgetVoiceOrder()
             Addon:RebindModules()
             Addon:ApplyProfile()
         end
@@ -314,8 +320,9 @@ function Addon:Profile(section)
 end
 
 --- Draws a clip's text in its `present.font`, for a script the game's font has no glyphs for
---- (Czech on a Western client), and any other clip's in the font string's own face. The size
---- and flags stay the player's.
+--- (Czech on a Western client), and any other clip's in the font string's own face. The size and
+--- flags stay the player's. Not the font a pack declares for its language: the name and title
+--- this styles are the client's own text, which that font may not draw (Russian in a Hebrew face).
 function Addon:ClipFont(fontString, clip)
     local face, size, flags = fontString:GetFont()
     if not face then return end
@@ -441,12 +448,12 @@ function Addon:SetPlayerHost(host)
     end
 end
 
---- Whether the window or subtitles show `clip`: Show Narrator is on, and not off for the clip's module.
---- The voice plays either way.
+--- Whether the window or subtitles show `clip`: Show Narrator is on, and not off for the clip's module,
+--- which may never show its words (Sources.noNarrator). The voice plays either way.
 function Addon:ShowsNarrator(clip)
     local cfg = self.db.profile.Transcript
-    local key = clip and clip.source and clip.source.key
-    return cfg.Enabled and not (key and cfg.WordsOff[key])
+    local source = clip and clip.source
+    return cfg.Enabled and not (source and (source.noNarrator or (source.key and cfg.WordsOff[source.key])))
 end
 
 --- What is on screen: the chosen style, or one previewed from the welcome window or the settings
@@ -603,12 +610,13 @@ function Addon:Enable()
 end
 
 -- Said the first time a line waits behind a stop with nothing on screen to show it: with voice
--- only, or Show Narrator off for the line, a stopped queue looks like a broken addon.
+-- only, or Show Narrator off for the line, a stopped queue looks like a broken addon. Not for a
+-- source whose words the game shows itself: its silence is not a missing window.
 local pauseReminded = false
 -- Registered at login, not at load: this file loads before Callbacks.lua does.
 local function WatchPausedQueue()
     Callbacks:Register("CLIP_QUEUED", function(clip)
-        if pauseReminded or not SoundQueue:IsPaused() then return end
+        if pauseReminded or not SoundQueue:IsPaused() or (clip.source and clip.source.noNarrator) then return end
         if Addon:PlayerStyle() == "none" or not Addon:ShowsNarrator(clip) then
             pauseReminded = true
             print("|cff66bbffSpoken:|r " .. L.STOPPED_REMINDER)
@@ -635,9 +643,9 @@ end
 -- globals and events, a second voice for every line. An empty folder an older release left there
 -- is LoadOnDemand and so never loaded, so it stays quiet here and only a full old copy is named.
 --
--- Spoken_Books and Spoken_Writings are the Readables module's folders before it took that name, and
--- Spoken_Zones the Places module's. An older zip unpacked by hand leaves one beside its module, where
--- it registers the same source and reads every page twice.
+-- Spoken_Books and Spoken_Writings are the Readables module's folders before it took that name,
+-- Spoken_Zones the Places module's and Spoken_NPCs the Bosses module's. An older zip unpacked by hand
+-- leaves one beside its module, where it registers the same source and tells every line twice.
 --
 -- Each one found is switched off for the next login, and the player is offered the reload that
 -- finishes it. The Forever client accepts DisableAddOn from an addon (checked 2026-10-04); the
@@ -646,9 +654,14 @@ end
 -- The sound packs were SpokenZonesAudio* and SpokenBooksAudio* before their modules were Places and
 -- Readables. One is old only once its SpokenPlacesAudio* or SpokenReadablesAudio* replacement is
 -- loaded beside it, the same pack one release later; alone it is the player's pack, and stays.
+--
+-- A language's quests were one folder, SpokenQuestsAudio_<lang>, before they were split as English's
+-- are. It is old once all four replacements are installed. Those load on demand, after this runs, so
+-- it goes by what is on disk, and one already switched off is not named again at every login.
 local OLD_FOLDERS = { "SpokenPlayer", "VoiceOverRedux", "ZoneLore", "SpokenQuests", "SpokenZones", "SpokenBooks",
-    "Spoken_Books", "Spoken_Zones", "Spoken_Writings" }
+    "Spoken_Books", "Spoken_Zones", "Spoken_Writings", "Spoken_NPCs" }
 local RENAMED_PACKS = { SpokenZonesAudio = "SpokenPlacesAudio", SpokenBooksAudio = "SpokenReadablesAudio" }
+local QUESTS_SPLIT = { "Alliance", "Horde", "Shared", "Gossip" }
 function Addon:FindOldFolders()
     local found = {}
     if not IsAddOnLoaded then return found end
@@ -657,11 +670,24 @@ function Addon:FindOldFolders()
     end
     local count = (C_AddOns and C_AddOns.GetNumAddOns) or GetNumAddOns
     local info = (C_AddOns and C_AddOns.GetAddOnInfo) or GetAddOnInfo
+    local installed = {}
     for index = 1, (count and info) and count() or 0 do
         local folder = info(index)
+        if type(folder) == "string" then installed[folder] = true end
+    end
+    for index = 1, (count and info) and count() or 0 do
+        local folder, _, _, loadable, reason = info(index)
         for old, new in pairs(RENAMED_PACKS) do
             local rest = type(folder) == "string" and folder:match("^" .. old .. "(.*)$")
             if rest and IsAddOnLoaded(folder) and IsAddOnLoaded(new .. rest) then table.insert(found, folder) end
+        end
+        local lang = type(folder) == "string" and folder:match("^SpokenQuestsAudio_(%a%a%a%a)$")
+        if lang and (loadable or reason ~= "DISABLED") then
+            local split = true
+            for _, side in ipairs(QUESTS_SPLIT) do
+                split = split and installed["SpokenQuestsAudio" .. side .. "_" .. lang]
+            end
+            if split then table.insert(found, folder) end
         end
     end
     return found
@@ -672,7 +698,7 @@ function Addon:RetireOldFolders()
     for _, folder in ipairs(found) do
         if DisableAddOn then pcall(DisableAddOn, folder) end
     end
-    local text = format(L.OLD_FOLDERS_FMT, "• " .. table.concat(found, "\n• "))
+    local text = format(L.OLD_FOLDERS_FMT, "· " .. table.concat(found, "\n· "))
     print("|cff66bbffSpoken:|r " .. text)
     if StaticPopupDialogs and StaticPopup_Show and not self:IsGamepadUI() then
         -- Left-aligned while shown, for the list: the popup frames are shared by every addon and
@@ -748,6 +774,27 @@ function Addon:TakeVoiceLanguageFromQuests()
     end
 end
 
+--- The voice language and the fallback became one list of voices (Spoken:GetVoiceOrder). Once, on a
+--- profile with either set and no list yet, the list is built from them: the voice, then the
+--- fallback, English where none was chosen, as every module read it, and nothing for Stay Silent. A
+--- profile with neither keeps no list, so each module keeps its own choice.
+function Addon:BuildVoiceList()
+    local language = self.db and self.db.profile.Language
+    if not language or language.Voices ~= nil then return end
+    if language.Voice == nil and language.Fallback == nil then return end
+    language.Voices = self:VoiceListFrom(language.Voice, language.Fallback)
+    self:ForgetVoiceOrder()
+end
+
+--- The list of voices the old voice language and fallback make, as BuildVoiceList stores it.
+function Addon:VoiceListFrom(voice, fallback)
+    if voice ~= "auto" and not Languages:IsCode(voice) then voice = "auto" end
+    if fallback == nil then fallback = "enUS" end
+    local list = { voice }
+    if Languages:IsCode(fallback) and fallback ~= voice then table.insert(list, fallback) end
+    return list
+end
+
 -- AceDB needs the saved variable to exist, which is only true once the client has loaded
 -- this addon's file.
 local loader = CreateFrame("Frame")
@@ -757,10 +804,14 @@ loader:RegisterEvent("PLAYER_ENTERING_WORLD")
 loader:SetScript("OnEvent", function(_, ev, name)
     if ev == "ADDON_LOADED" and name == AddonFolder then
         Addon:InitDB()
+        -- Before the modules load, which read the words and strings as their own files run.
+        Texts:Load()
+        Interface:Load()
     elseif ev == "PLAYER_ENTERING_WORLD" then
         Addon:StopWhereNotRead()
     elseif ev == "PLAYER_LOGIN" then
         Addon:TakeVoiceLanguageFromQuests()
+        Addon:BuildVoiceList()
         Addon:Enable()
         Addon:RetireOldFolders()
         WatchPausedQueue()

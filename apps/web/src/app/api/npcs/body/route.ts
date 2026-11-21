@@ -85,7 +85,7 @@ export async function POST(request: Request) {
   if (!isSex(sex)) return Response.json({ error: "sex is 2 or 3" }, { status: 400 });
   const race = text(body.race, 64);
   if (!race) return Response.json({ error: "a body needs a type" }, { status: 400 });
-  const roster = await loadRoster();
+  const roster = await loadRoster(lang);
 
   if (body.action === "add") {
     const exists = bodies.some((row) => row.race === race && row.sex === sex) ||

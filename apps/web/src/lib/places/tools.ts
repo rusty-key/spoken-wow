@@ -52,6 +52,9 @@ export const assignFiles = namingModule.assignFiles as (
   entries: Array<{ mapID: number; key: string | null }>,
 ) => Map<string, string>;
 
+/** The id assignFiles keys its result by: 's:{mapID}:{key}', or 'z:{mapID}' with no key. */
+export const lineIdFor = namingModule.lineId as (entry: { mapID: number; key: string | null }) => string;
+
 export const textHash = namingModule.textHash as (spoken: string) => string;
 
 /** The file-safe form of a canonical subzone key. Round-trips with `normaliseKey` below. */
@@ -74,6 +77,7 @@ export const toSpokenText = normaliseModule.toSpokenText as (
   text: string,
   rules: Record<string, string>,
 ) => string;
+export const hasBrackets = normaliseModule.hasBrackets as (text: string) => boolean;
 export const loadPronunciation = normaliseModule.loadPronunciation as () => Promise<
   Record<string, string>
 >;

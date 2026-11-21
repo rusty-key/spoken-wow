@@ -164,6 +164,9 @@ local paras = Paras("Farmer Test: Hello there, traveller.", "Safe roads.")
 map, span = Marks.Align(caption, paras)
 local function Cut(fields)
     fields.typewriter = fields.typewriter ~= false
+    fields.typewriterBy = fields.typewriterBy or "word"
+    fields.words = fields.words or caption
+    fields.totalWeight = fields.totalWeight or caption[#caption].finish
     local p, byte = Marks.Cut(fields, map, span, paras)
     return p and (p .. ":" .. byte) or "all"
 end
@@ -174,6 +177,11 @@ Expect("...into the next paragraph", Cut({ progress = 0.9, speaking = true, acti
 Expect("once it has finished, all of it", Cut({ progress = 1, speaking = false }), "all")
 Expect("a clip with no length to time it shows all of it", Cut({ speaking = false }), "all")
 Expect("with Type Words Out off, all of it", Cut({ typewriter = false, progress = 0.1, speaking = true, activeWord = 1 }), "all")
+Expect("letter mode reveals only part of the active word",
+    Cut({ typewriterBy = "letter", progress = 0.2, speaking = true, activeWord = 2 }), "1:21")
+Expect("...and lights only the letters typed so far",
+    Marks.Want(paras[1], 1, span, 1, 21, { [1] = { paras[1].words[3], paras[1].words[4] } }, GOLD),
+    "Farmer Test: " .. GOLD .. "Hello|r " .. GOLD .. "th|r")
 
 ---------------------------------------------------------------- the highlight alone
 words.HighlightWord, words.Typewriter = true, false
@@ -233,7 +241,7 @@ Tick(0.4)
 Expect("...and stays blank while its line is on its way", Paragraph(1) .. "|" .. Paragraph(2), "|")
 VO.Addon:QUEST_DETAIL()
 Tick(0.1)
-Expect("the text types out as the voice reads it", Paragraph(1), "Farmer Test: Greetings,")
+Expect("the text types out as the voice reads it", Paragraph(1), "Farmer Test: G")
 Expect("...the paragraph it has not reached is blank", Paragraph(2), "")
 Expect("...and nothing is lit", Lit(), 0)
 Tick(9)
@@ -318,6 +326,25 @@ stub.HidePanels()
 stub.FireEvent("GOSSIP_CLOSED")
 Greet()
 Expect("...but not the greeting on the next visit", VO.Addon:ExpectedLine("GOSSIP_SHOW", true), nil)
+-- What an NPC says in the world is another part's line: the page's words show while it is read.
+stub.HidePanels()
+stub.FireEvent("GOSSIP_CLOSED")
+Greet()
+VO.Player.chatterSource:Enqueue({ key = "chat-y", path = "chat-y.ogg", length = 12, priority = "low",
+    event = VO.Enums.SoundEvent.NPCChatter,
+    present = { header = "Guard", transcript = "Move along.", bullet = "gossip" } })
+stub.SelectGossipOption("Where is the bank?")
+stub.ShowGossip(DIRECTIONS)
+DUI:HandleGossip()
+Tick(0.2)
+Expect("a page drawn while an NPC chats in the world shows its words at once", Paragraph(1), DIRECTIONS)
+Spoken:StopAll()
+VO.Player.chatterSource:Enqueue({ key = "chat-z", path = "chat-z.ogg", length = 12, priority = "low",
+    event = VO.Enums.SoundEvent.NPCChatter,
+    present = { header = "Guard", transcript = DIRECTIONS, bullet = "gossip" } })
+Tick(2)
+Expect("...and a chat line with the page's very words is not lit in it: it is not on the page",
+    Paragraph(1), DIRECTIONS)
 stub.HidePanels()
 stub.FireEvent("GOSSIP_CLOSED")
 Spoken:StopAll()
@@ -766,7 +793,7 @@ driver.scripts.OnShow(driver)
 Fire(icon, "OnClick")
 local box = Spoken.ContributeBox
 local address, context = H.SplitReportLink(box and box.editBox:GetText())
-Expect("Report opens the quest page's address", address, "https://spoken.rusty.one/quests/r/quest/101/accept")
+Expect("Report opens the quest page's address", address, "https://spoken.quest/quests/r/quest/101/accept")
 Expect("...carrying the addon, the quest and the text on screen", context
     and context:find("\naddon=SpokenQuests/", 1, true) and context:find("\nquest=101\nevent=accept\n", 1, true)
     and context:find("\ntext<<\n", 1, true) and true, true)

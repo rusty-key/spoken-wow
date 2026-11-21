@@ -9,7 +9,8 @@
 import { requireCapability } from "@/lib/generation/authz";
 import { loadBookCorpus, matchBook } from "@/lib/contributions/book-match";
 import { contributionLocale, setContributionMatch, type BookAnswer } from "@/lib/contributions/store";
-import { BASE_LANG, isLang } from "@/lib/lang";
+import { BASE_LANG } from "@/lib/lang";
+import { knownLang } from "@/lib/languages/catalogue";
 import { INT32_MAX } from "@/lib/npc/npc";
 
 export const dynamic = "force-dynamic";
@@ -38,7 +39,7 @@ export async function POST(request: Request) {
 
   // Permission before existence, as ../npc-identity does, so a member learns nothing about which ids exist.
   const locale = await contributionLocale(id);
-  const { session, denied } = await requireCapability("edit", isLang(locale) ? locale : BASE_LANG);
+  const { session, denied } = await requireCapability("text", (await knownLang(locale)) ?? BASE_LANG);
   if (denied) return denied;
 
   const corpus = await loadBookCorpus();

@@ -6,7 +6,7 @@
 
 setfenv(1, VoiceOver)
 
-if GetLocale() ~= "frFR" then
+if not Spoken:InterfaceIn("frFR") then
 	return
 end
 
@@ -14,7 +14,6 @@ L.OPT_GROUP_GENERAL = "Général"
 L.OPT_GROUP_AUDIO = "Audio"
 L.OPT_DEBUG = "Débogage des Quêtes"
 L.OPT_DEV_MOCK_MISSING = "Simuler un doublage manquant"
-L.OPT_DEV_MOCK_MISSING_TIP = "Aucune réplique de quête n'est lue, pour montrer une quête sans voix."
 L.OPT_DEV_MOCK_ON = "Simuler un doublage manquant est activé : aucune réplique de quête n'est jouée. Désactivez-le dans Spoken > Développeur."
 L.OPT_AVAILABLE_GROUP = "|cFF00CCFFDisponibles|r"
 L.OPT_ROW_ADDON_NAME = "Nom de l'addon"
@@ -50,8 +49,9 @@ L.OPT_CMD_OPTIONS_DESC = "Ouvre la page de paramètres de ce module"
 L.OPT_PANEL_AUTOPLAY = "Lire automatiquement"
 L.OPT_PANEL_STOP_ON_CLOSE = "Arrêter à la fermeture"
 L.OPT_PANEL_READ_AFTER_CLOSE = "Lire à la fermeture"
-L.OPT_SECTION_TRACKER = "Suivi des objectifs"
-L.OPT_TRACKER_PLAY = "Afficher le bouton Lecture"
+L.OPT_SECTION_TRACKER = "Afficher le bouton Lecture"
+L.OPT_TRACKER_QUEST_LOG = "Journal de quêtes"
+L.OPT_TRACKER_OBJECTIVE = "Suivi des objectifs"
 L.QUEUE_HELD_GREETING = "Attend que le PNJ ait fini de parler."
 L.OPT_SECTION_PACKS = "Packs de voix"
 L.OPT_PLAY = "Lecture"
@@ -59,7 +59,9 @@ L.OPT_DIALOG_STOP_TIP = "Arrêter la lecture"
 L.OPT_READ_TIP = "Lire ceci à voix haute"
 L.OPT_GREETING = "Salutation"
 L.OPT_AUTOPLAY_OFF_TIP = "« Lire automatiquement » est désactivé sur la page Quêtes des paramètres de Spoken."
+L.OPT_PROGRESS_OFF_TIP = "« Lire la progression des quêtes » est désactivé sur la page Quêtes des paramètres de Spoken."
 L.OPT_NEVER_TIP = "« Lire les salutations » est réglé sur « Jamais » sur la page Discussions des paramètres de Spoken."
+L.OPT_MUTED_TIP = "Vous avez rendu ce PNJ muet. Rétablissez-le sous « PNJ muets », sur la page « Discussions » des réglages de Spoken."
 L.OPT_CONTRIBUTE = "Contribuer"
 L.OPT_REPORT = "Signaler"
 L.OPT_REPORT_COPY = "Spoken Quests|n|nCopiez cette adresse et ouvrez-la dans votre navigateur."
@@ -76,12 +78,15 @@ L.OPT_CONTRIBUTE_TIP_SHARE = "Contribuez avec vos données en partageant celles 
 -- Settings page
 L.OPT_PAGE_TITLE = "Quêtes"
 L.OPT_GOSSIP_PAGE_TITLE = "Discussions"
+L.OPT_CHATTER_PAGE_TITLE = "Bavardages du monde"
+L.OPT_CHATTER_NOTE = "Lit à voix haute ce que disent les gens dans le monde, comme les gardes et les habitants. Cela ne se joue que lorsque rien d'autre n'est lu, et une réplique ne se répète pas avant deux minutes."
 L.OPT_GOSSIP_MINIMAP_SETTINGS = "Paramètres des Discussions"
 L.REASON_AUTOPLAY = "Activez l'option Lire automatiquement pour utiliser ceci."
 L.REASON_AUTOPLAY_ON_QUESTS = "Activez l'option Lire automatiquement sur la page Quêtes pour utiliser ceci."
 
 -- Quest follow-ups
 L.OPT_PANEL_FOLLOWUP = "Lire le chat des PNJ ensuite"
+L.OPT_PANEL_PROGRESS = "Lire la progression des quêtes"
 L.OPT_PANEL_GREETINGS = "Lire les salutations"
 L.OPT_GREETING_LABEL_ALWAYS = "À chaque fois"
 L.OPT_GREETING_LABEL_ONCE_QUEST = "Une fois pour les donneurs de quêtes"
@@ -93,6 +98,8 @@ L.OPT_PANEL_GAME_GREETING_FIRST = "Voix du PNJ avant la lecture"
 L.GREETING_DIALOG_APART = "Spoken : volume des dialogues réglé à %1$d%%, à l'écart des autres curseurs de volume, pour que Voix du PNJ avant la lecture sache quand un PNJ a fini de parler."
 L.OPT_CMD_FOLLOWUP = "Suite de quête"
 L.OPT_CMD_FOLLOWUP_DESC = "Rejoue les répliques de suite d'une quête comme si vous veniez de la rendre : /spq followup <questID> [start]"
+L.OPT_CMD_CHATTER = "Bavardages du monde"
+L.OPT_CMD_CHATTER_DESC = "Rejoue ce qu'un PNJ dit à voix haute, comme si vous veniez de l'entendre : /spq chatter [id du PNJ] (celui de votre cible si omis)"
 -- UI/DialogueUIBridge.lua
 L.OPT_SECTION_DIALOGUEUI = "DialogueUI"
 L.OPT_DUI_CAPTIONS = "Marquer les mots dans DialogueUI"
@@ -114,6 +121,15 @@ L.OPT_LISTEN = "Écouter"
 
 -- Reading history
 L.OPT_FORGET_GREETINGS_DONE = "La liste des salutations entendues par ce personnage est effacée."
+L.OPT_MUTE_NPC = "Couper les discussions de ce PNJ"
+L.OPT_UNMUTE_NPC = "Réactiver le son"
+L.OPT_UNMUTE_NPC_GOSSIP = "Rétablir les discussions de ce PNJ"
+L.MUTE_NPC_DONE = "Les salutations automatiques de %s sont maintenant muettes."
+L.UNMUTE_NPC_DONE = "Les salutations automatiques de %s ne sont plus muettes."
+L.OPT_MUTED_NPCS = "PNJ muets"
+L.OPT_NO_MUTED_NPCS = "Aucun PNJ n'est muet. Rendez-en un muet avec le haut-parleur de sa fenêtre de dialogue."
+L.OPT_FORGET_MUTED_NPCS = "Oublier les PNJ muets"
+L.OPT_FORGET_MUTED_NPCS_DONE = "La liste des PNJ muets de ce personnage est effacée."
 L.OPT_FORGET_GREETINGS = "Oublier les salutations entendues"
 
 -- Fix a problem
@@ -157,5 +173,6 @@ L.QUESTS_MORE_FMT = " et %1$d autres"
 L.QUESTS_TITLE_NTH_FMT = "%1$s (%2$d)"
 L.QUEST_IN_PROGRESS = "En cours"
 L.QUEST_PART_ACCEPT = "Description"
+L.QUEST_PART_PROGRESS = "Progression"
 L.QUEST_PART_COMPLETE = "Conclusion"
 L.QUEST_PART_NO_TEXT = "Aucun texte n'est connu pour cette partie."

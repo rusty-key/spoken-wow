@@ -1,0 +1,82 @@
+name: Auto-label
+
+# Pull requests get their area labels from the files they change (.github/labeler.yml) the moment
+# they open. Everything a path cannot say (bug or feature, translation, an issue's area) comes
+# from Claude Haiku in a sweep (scripts/lib/auto-label.mjs).
+#
+# The sweep is scheduled rather than triggered by `issues: opened` because the Discord filer opens
+# its issues with GITHUB_TOKEN, and events from that token start no workflow. A schedule also keeps
+# the job that holds the API key off every event a fork can cause.
+#
+# Needs the ANTHROPIC_API_KEY repo secret. To re-run the sweep on an item, remove its
+# auto-labeled or needs-triage label.
+on:
+  # pull_request gets a read-only token on forks. pull_request_target is safe here only because
+  # nothing in that job checks out or runs the PR's code: labeler reads the PR's file list over
+  # the API and its config from the base branch.
+  pull_request_target:
+    types: [opened, reopened, synchronize, ready_for_review]
+  schedule:
+    - cron: "7,37 * * * *"
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: Print the labels without applying them
+        type: boolean
+        default: true
+
+permissions: {}
+
+jobs:
+  paths:
+    if: ${{ github.event_name == 'pull_request_target' }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
+    steps:
+      - uses: actions/labeler@v7
+
+  classify:
+    if: ${{ github.event_name != 'pull_request_target' }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      issues: write
+      pull-requests: write
+    # Two sweeps side by side would each pay to classify the same new items.
+    concurrency:
+      group: auto-label-classify
+      cancel-in-progress: false
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          persist-credentials: false
+          sparse-checkout: |
+            .github
+            scripts/lib
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 24
+          package-manager-cache: false
+
+      # Into scripts/lib alone, so this job never installs the repo's own dependency tree.
+      - name: Install the Anthropic SDK
+        run: npm install --prefix scripts/lib --no-save --no-package-lock --ignore-scripts @anthropic-ai/sdk@1.6.0
+
+      - name: Label new issues and pull requests
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          GITHUB_TOKEN: ${{ github.token }}
+          DRY_RUN: ${{ inputs.dry_run }}
+        run: |
+          if [ -z "$ANTHROPIC_API_KEY" ]; then
+            echo "::warning::ANTHROPIC_API_KEY is not set; nothing is labeled"
+            exit 0
+          fi
+          if [ "$DRY_RUN" = "true" ]; then
+            node scripts/lib/auto-label.mjs --dry-run
+          else
+            node scripts/lib/auto-label.mjs
+          fi

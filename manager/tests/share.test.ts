@@ -4,7 +4,7 @@ import { describe, expect, it } from 'vitest'
 import { CHANNELS } from '../src/shared/api'
 import type { GameInstall, SharingStatus } from '../src/shared/types'
 import { ManagerService, SHARE_BACKOFF_MS } from '../src/main/service'
-import { chunksOf, findContributionFiles, hashEnvelope, LEDGER_CAP, loadLedger, saveLedger, sendPending } from '../src/main/share'
+import { findContributionFiles, hashEnvelope, LEDGER_CAP, loadLedger, saveLedger, sendPending } from '../src/main/share'
 import { loadSettings, sanitizeSettings } from '../src/main/state'
 import { makeGame, tmpDir, write } from './helpers'
 
@@ -71,14 +71,6 @@ describe('findContributionFiles', () => {
   })
 })
 
-describe('chunksOf', () => {
-  it('splits by count and by size', () => {
-    expect(chunksOf(['a', 'b', 'c'], 2).map((c) => c.length)).toEqual([2, 1])
-    expect(chunksOf(['aaaa', 'bbbb', 'cccc'], 10, 10).map((c) => c.length)).toEqual([1, 1, 1])
-    expect(chunksOf([])).toEqual([])
-  })
-})
-
 describe('sendPending', () => {
   it('sends each envelope once, across accounts, with a lasting install id', async () => {
     const { game, dataPath } = await setup()
@@ -116,6 +108,17 @@ describe('sendPending', () => {
     // The file has not changed, and is read again all the same.
     expect(await sendPending({ dataPath, games: [game], appVersion: '0.1.0', fetchImpl: site.fetchImpl })).toEqual({ outcome: 'sent', count: 2 })
     expect(site.posted[0]!.installId).toBe(site.posted[1]!.installId)
+  })
+
+  it('names the files it could not read, and still sends the readable ones', async () => {
+    const { game, dataPath } = await setup()
+    const locked = contributionsFile(game, 'B')
+    fs.mkdirSync(locked, { recursive: true })
+    const site = fakeSite()
+    expect(await sendPending({ dataPath, games: [game], appVersion: '0.1.0', fetchImpl: site.fetchImpl })).toEqual({ outcome: 'nothing', unread: [locked] })
+    write(contributionsFile(game, 'A'), savedVariables([envelope(1)]))
+    expect(await sendPending({ dataPath, games: [game], appVersion: '0.1.0', fetchImpl: site.fetchImpl })).toEqual({ outcome: 'sent', count: 1, unread: [locked] })
+    expect(site.posted).toHaveLength(1)
   })
 
   it('stops on a 429 and keeps the chunks that went before it', async () => {
@@ -195,11 +198,39 @@ describe('ManagerService sharing', () => {
     expect(svc.snapshot().sharingStatus?.lastSent?.count).toBe(1)
   })
 
+  it('Send Now resolves with how its own send ended', async () => {
+    const { svc, game, site } = await service()
+    svc.setSettings({ sharing: 'on' })
+    expect(await svc.sendNow()).toEqual({ outcome: 'nothing' })
+    write(contributionsFile(game, 'A'), savedVariables([envelope(1), envelope(2)]))
+    expect(await svc.sendNow()).toEqual({ outcome: 'sent', count: 2 })
+    expect(await svc.sendNow()).toEqual({ outcome: 'nothing' })
+    expect(site.posted).toHaveLength(1)
+  })
+
+  it('Send Now waits for the send that turning Sharing on started, then reports its own', async () => {
+    const { svc, game, site } = await service()
+    write(contributionsFile(game, 'A'), savedVariables([envelope(1)]))
+    svc.setSettings({ sharing: 'on' })
+    expect(await svc.sendNow()).toEqual({ outcome: 'nothing' })
+    expect(site.posted).toHaveLength(1)
+    expect(svc.sharingStatus.lastSent?.count).toBe(1)
+  })
+
+  it('a file it could not read shows no error and does not delay the next send', async () => {
+    const { svc, game } = await service()
+    fs.mkdirSync(contributionsFile(game, 'A'), { recursive: true })
+    svc.setSettings({ sharing: 'on' })
+    expect(await svc.sendNow()).toMatchObject({ outcome: 'nothing', unread: [expect.any(String)] })
+    expect(svc.sharingStatus.error).toBeUndefined()
+    expect(await svc.shareTick(false)).toMatchObject({ outcome: 'nothing' })
+  })
+
   it('waits after a failure, and Send Now does not', async () => {
     const { svc, game, site } = await service([500, 500])
     write(contributionsFile(game, 'A'), savedVariables([envelope(1)]))
     svc.setSettings({ sharing: 'on' })
-    await svc.sendNow()
+    expect(await svc.sendNow()).toMatchObject({ outcome: 'failed' })
     expect(svc.sharingStatus.error).toBe('The site answered 500.')
     const posts = site.posted.length
     expect(await svc.shareTick(false)).toBeNull()

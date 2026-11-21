@@ -2,13 +2,15 @@ import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 
 import ApiKeySection from "@/components/ApiKeySection";
+import ApiTokenSection, { type TokenLang } from "@/components/ApiTokenSection";
 import Link from "@/components/LocaleLink";
 import { apiKeyStatus } from "@/lib/api-key";
 import { viewerOf } from "@/lib/grants/store";
 import { localeHref } from "@/lib/lang";
 import { pageLang } from "@/lib/lang-server";
-import { spendsCredits } from "@/lib/permissions";
+import { langsWhere, roleLabel, spendsCredits } from "@/lib/permissions";
 import { currentSession } from "@/lib/session";
+import { listTokens } from "@/lib/tokens/store";
 import { Contained } from "@/components/Width";
 
 export const metadata: Metadata = { title: "Profile · Spoken" };
@@ -29,12 +31,22 @@ export default async function Page({ params }: { params: Promise<{ lang: string 
   if (!session) redirect(localeHref(lang, "/login"));
 
   const role = session.user.role;
-  const spends = spendsCredits(await viewerOf(session));
+  const viewer = await viewerOf(session);
+  const spends = spendsCredits(viewer);
+  const textLangs = langsWhere(viewer, "text");
+  const regenerateLangs = langsWhere(viewer, "regenerate");
+  // Either grant backs text access.
+  const tokenLangs: TokenLang[] = [...new Set([...textLangs, ...regenerateLangs])].map((code) => ({
+    lang: code,
+    generate: regenerateLangs.includes(code),
+  }));
   // The status, never the key. Sent to a client component as props, so this is the shape
   // that decides what the browser can possibly learn.
-  const [status, fishStatus] = spends
-    ? await Promise.all([apiKeyStatus(session.user.id), apiKeyStatus(session.user.id, "fish")])
-    : [null, null];
+  const [tokens, status, fishStatus] = await Promise.all([
+    tokenLangs.length ? listTokens(session.user.id) : [],
+    spends ? apiKeyStatus(session.user.id) : null,
+    spends ? apiKeyStatus(session.user.id, "fish") : null,
+  ]);
 
   return (
     <main className="pt-6 pb-36">
@@ -46,9 +58,15 @@ export default async function Page({ params }: { params: Promise<{ lang: string 
           <dd>{session.user.email}</dd>
           <dt className="text-muted-foreground">Role</dt>
           <dd>
-            <span className="rounded border px-1.5 text-xs uppercase">{role ?? "member"}</span>
+            <span className="rounded border px-1.5 text-xs uppercase">{roleLabel(role)}</span>
           </dd>
         </dl>
+
+        <p className="mb-8 text-sm">
+          <Link href="/request-team" className="text-foreground underline underline-offset-2">
+            Start a team for a language
+          </Link>
+        </p>
 
         {spends ? (
           <div className="space-y-10">
@@ -74,6 +92,7 @@ export default async function Page({ params }: { params: Promise<{ lang: string 
             your own.
           </p>
         )}
+        {tokenLangs.length > 0 && <ApiTokenSection langs={tokenLangs} initial={tokens} />}
       </Contained>
     </main>
   );

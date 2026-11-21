@@ -16,6 +16,7 @@ Before changing a part, read its file:
 - the pictures: [PICTURES.md](PICTURES.md)
 - voice, the site and releases: [VOICE.md](VOICE.md)
 - adding content and finding gaps: [CONTENT.md](CONTENT.md)
+- the boss tables behind Spoken_Bosses: [BOSSES.md](BOSSES.md)
 
 ## Generated files
 
@@ -30,6 +31,10 @@ Fix the source and regenerate. Never hand-edit the output.
   a change to a translation or to the keys of `Locale/enUS.lua`.
 - `addons/Spoken/Data/Dungeons.lua` comes from `pipelines/lib/dungeons.json` (`make dungeons`).
 - `addons/SpokenPlacesAudio/Data/Sounds.lua` is the pack's lookup table (`make places-lookup`).
+- `addons/Spoken_Bosses/Data/Cameras.lua` holds the lens and the model file of each display, read from the
+  Forever tables (`make bosses-cameras`), and `Data/CameraNudges.lua` is made from the camera edits saved in
+  the game by `/spokenbosscam` (`make bosses-nudges`). The game frames each boss itself; a change to how it
+  does changes what every nudge means: see [BOSSES.md](BOSSES.md).
 - `addons/SpokenPlacesAudio/Sounds/` and `build/places/<lang>/` are assembled by `make places-sounds`
   from the live takes. They are not a store.
 
@@ -39,6 +44,12 @@ Kept by hand: `Data/AreaZones.lua`, `pipelines/places/tools/seed/forever-places.
 
 `pipelines/places/tools/voice/generate.mjs` reports on lines and cannot voice one. Keep it that
 way: takes are cut on the site.
+
+`addons/Spoken_Bosses/Data/Bosses.lua`, `Creatures.lua` and `Stories.lua` come from the `boss_instance`,
+`boss` and `boss_line` tables and the boss names in `entity_name`. The tables are the corpus and
+the Lua is an export (`make bosses-export`, checked by `make bosses-check`). Match a boss by its
+encounter id and never key on English text; keys are frozen, and a boss the client drops is
+retired, not deleted. See [BOSSES.md](BOSSES.md).
 
 Line ids (`z:<mapID>`, `s:<mapID>:<key>`) and the keys in them are frozen once a story has one. A
 renamed place keeps its key and gets an alias.
@@ -65,5 +76,6 @@ make lint                 # what CI gates on
   `addons/Spoken_Places/Audio.lua`. That is a format number, unrelated to either `.toc` version.
   Bump it only when the pack's data shape changes.
 - `make places-full-release` chains sync, pull-live, package-audio and the upload, and asks
-  before uploading.
-- `scripts/places/release.sh` uploads the English pack, or one language's pack with `--lang`.
+  before uploading. See [VOICE.md](VOICE.md).
+- `scripts/places/release.sh` uploads the English pack, or one language's pack with `--lang`, and
+  the bosses' pack with `--section=bosses`.

@@ -60,7 +60,6 @@ for _, mapID in ipairs({ 2482, 2521, 2524, 2548, 2652 }) do
     local entry = registered.zones[mapID]
     Expect("zone " .. mapID .. " ships", entry ~= nil, true)
     Expect("...named", entry and (entry.name or "") ~= "", true)
-    Expect("...and pending", entry and entry.pending, true)
 end
 
 -- Every subzone hangs off a zone the addon knows, pending or not: the panel reaches a

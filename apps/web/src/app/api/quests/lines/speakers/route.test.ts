@@ -8,6 +8,7 @@
 import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from "vitest";
 
 import { closeDb, db } from "@/lib/db";
+import { asSystem } from "@/lib/teams/testing";
 import { upsertResolution } from "@/lib/npc/store";
 import { corpus } from "@/lib/quests/catalogue";
 
@@ -33,7 +34,7 @@ const ORD = 1_900_000_000 + Math.floor(Math.random() * 100_000_000);
 const LINE = `q:${questId}:accept`;
 
 beforeAll(async () => {
-  await db().query(
+  await asSystem.query(
     `insert into "user" ("id", "name", "email", "emailVerified")
      values ($1, 'Test Speakers Admin', $2, false)
      on conflict ("id") do nothing`,
@@ -42,20 +43,20 @@ beforeAll(async () => {
 });
 
 afterEach(async () => {
-  await db().query(`delete from "quest_line_speaker" where "lineId" like $1`, [`q:${questId}:%`]);
-  await db().query(`delete from "quest_line_speaker_removed" where "moment" like $1`, [`q:${questId}:%`]);
-  await db().query(`delete from "quest_line" where "lineId" like $1`, [`q:${questId}:%`]);
-  await db().query(`delete from "npc" where "npcId" between $1 and $2`, [base, base + 10]);
-  await db().query(
+  await asSystem.query(`delete from "quest_line_speaker" where "lineId" like $1`, [`q:${questId}:%`]);
+  await asSystem.query(`delete from "quest_line_speaker_removed" where "moment" like $1`, [`q:${questId}:%`]);
+  await asSystem.query(`delete from "quest_line" where "lineId" like $1`, [`q:${questId}:%`]);
+  await asSystem.query(`delete from "npc" where "npcId" between $1 and $2`, [base, base + 10]);
+  await asSystem.query(
     `delete from "entity_name" where ("kind" = 'quest' and "entityId" = $1) or ("kind" = 'creature' and "entityId" = any($2::text[]))`,
     [String(questId), [giver, second].map(String)],
   );
-  await db().query(`delete from "activity" where "actorId" = $1`, [ADMIN]);
-  await db().query(`delete from "contribution" where "ip" = $1`, [IP]);
+  await asSystem.query(`delete from "activity" where "actorId" = $1`, [ADMIN]);
+  await asSystem.query(`delete from "contribution" where "ip" = $1`, [IP]);
 });
 
 afterAll(async () => {
-  await db().query(`delete from "user" where "id" = $1`, [ADMIN]);
+  await asSystem.query(`delete from "user" where "id" = $1`, [ADMIN]);
   await closeDb();
 });
 
@@ -83,7 +84,7 @@ async function answer(npcId: number, race: string, gender: string | null, flavor
 async function line(split = false): Promise<void> {
   const ids = split ? [`${LINE}:m`, `${LINE}:f`] : [LINE];
   for (const [i, lineId] of ids.entries()) {
-    await db().query(
+    await asSystem.query(
       `insert into "quest_line"
          ("lineId", "variant", "lang", "version", "isCurrent", "origin", "source", "questId",
           "questTitle", "fileName", "text", "originalText", "generatable")
@@ -91,7 +92,7 @@ async function line(split = false): Promise<void> {
                'Bring me six wolf pelts.', 'Bring me six wolf pelts.', true)`,
       [lineId, questId, lineId.replaceAll(":", "-")],
     );
-    await db().query(
+    await asSystem.query(
       `insert into "quest_line_speaker"
          ("lineId", "variant", "lang", "ord", "npcType", "npcId", "npcName", "race", "gender", "flavor", "voice")
        values ($1, 0, 'enUS', $2, 'creature', $3, 'Giver', 'human', 'male', 'standard', 'human-male-standard')`,
@@ -101,7 +102,7 @@ async function line(split = false): Promise<void> {
 }
 
 async function speakers(): Promise<{ lineId: string; npcId: number; addedBy: string | null; ord: number }[]> {
-  const { rows } = await db().query(
+  const { rows } = await asSystem.query(
     `select "lineId", "npcId", "addedBy", "ord" from "quest_line_speaker"
       where "lineId" like $1 order by "lineId", "ord"`,
     [`q:${questId}:%`],
@@ -110,7 +111,7 @@ async function speakers(): Promise<{ lineId: string; npcId: number; addedBy: str
 }
 
 async function removals(): Promise<[string, number, string][]> {
-  const { rows } = await db().query<{ moment: string; npcId: number; removedBy: string }>(
+  const { rows } = await asSystem.query<{ moment: string; npcId: number; removedBy: string }>(
     `select "moment", "npcId", "removedBy" from "quest_line_speaker_removed" where "moment" like $1 order by 1, 2`,
     [`q:${questId}:%`],
   );
@@ -121,12 +122,12 @@ const IP = `test-speakers-${base}`;
 
 /** Marks `npcId`'s rows as a contribution's, as accepting one writes them. */
 async function contributed(npcId: number): Promise<void> {
-  const { rows } = await db().query<{ id: number }>(
+  const { rows } = await asSystem.query<{ id: number }>(
     `insert into "contribution" ("source", "key", "raw", "dedup", "text", "ip")
      values ('quests', $1, 'raw', $2, 'Bring me six wolf pelts.', $3) returning "id"`,
     [LINE, `${IP}-${npcId}`, IP],
   );
-  await db().query(
+  await asSystem.query(
     `update "quest_line_speaker" set "contributionId" = $1 where "lineId" like $2 and "npcId" = $3`,
     [rows[0].id, `q:${questId}:%`, npcId],
   );
@@ -275,7 +276,7 @@ describe("DELETE /api/quests/lines/speakers", () => {
   it("refuses to leave a language without a speaker, whatever another language has", async () => {
     await line();
     await answer(second, "orc", "male", "shady");
-    await db().query(
+    await asSystem.query(
       `insert into "quest_line_speaker"
          ("lineId", "variant", "lang", "ord", "npcType", "npcId", "npcName", "race", "gender", "flavor", "voice")
        values ($1, 0, 'deDE', $2, 'creature', $3, 'Zweiter', 'orc', 'male', 'shady', 'orc-male-shady')`,

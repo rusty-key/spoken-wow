@@ -19,13 +19,16 @@
 
 LUA ?= $(shell command -v luajit || command -v lua5.1)
 
-.PHONY: help test test-player contribute-fixtures lint package-all \
+.PHONY: help test test-player contribute-fixtures lint interface-template interface-check package-all \
         package-spoken package-spoken-all release-spoken release-spoken-dry \
         release-spoken-all release-spoken-all-dry \
         descriptions descriptions-check descriptions-published \
-        character-models dungeons bosses \
+        character-models dungeons bosses-extract bosses-export bosses-check bosses-sync bosses-check-synced \
+        bosses-cameras bosses-nudges \
+        bosses-pull-live bosses-sounds bosses-lookup bosses-validate-audio bosses-package-audio \
+        bosses-full-release bosses-upload-dry bosses-upload bosses-icon \
         audio-release audio-release-dry \
-        manager-publish manager-publish-dry manager-gc manager-gc-dry
+        manager-publish manager-publish-dry manager-release manager-gc manager-gc-dry
 
 help: ## Show this help
 	@printf 'Spoken\n\n'
@@ -51,6 +54,10 @@ readables-%:
 
 test-player: ## Run the addons' Lua tests (needs luajit)
 	@[ -n "$(LUA)" ] || { echo "No luajit found: brew install luajit"; exit 1; }
+	@$(LUA) tests/lua/languages_test.lua
+	@$(LUA) tests/lua/text_packs_test.lua
+	@$(LUA) tests/lua/interface_packs_test.lua
+	@$(LUA) tests/lua/interface_strings_test.lua
 	@$(LUA) tests/lua/quest_dispatch_test.lua
 	@$(LUA) tests/lua/quest_autoplay_test.lua
 	@$(LUA) tests/lua/gossip_part_test.lua
@@ -59,7 +66,12 @@ test-player: ## Run the addons' Lua tests (needs luajit)
 	@$(LUA) tests/lua/gossip_frequency_test.lua
 	@$(LUA) tests/lua/gossip_variant_test.lua
 	@$(LUA) tests/lua/quest_overlay_test.lua
+	@$(LUA) tests/lua/tracker_play_button_test.lua
+	@$(LUA) tests/lua/quest_overlay_classic_test.lua
+	@$(LUA) tests/lua/quest_tracker_adapters_test.lua
 	@$(LUA) tests/lua/quest_followup_test.lua
+	@$(LUA) tests/lua/quest_chatter_test.lua
+	@$(LUA) tests/lua/quest_chatbubble_test.lua
 	@$(LUA) tests/lua/quest_abandon_test.lua
 	@$(LUA) tests/lua/easter_egg_test.lua
 	@$(LUA) tests/lua/sound_utils_test.lua
@@ -68,13 +80,14 @@ test-player: ## Run the addons' Lua tests (needs luajit)
 	@$(LUA) tests/lua/parts_test.lua
 	@$(LUA) tests/lua/settings_ux_test.lua
 	@$(LUA) tests/lua/settings_art_test.lua
-	@for lang in enUS deDE esES esMX frFR ptBR ruRU koKR zhCN zhTW itIT viVN; do $(LUA) tests/lua/settings_fit_test.lua $$lang || exit 1; done
+	@for lang in enUS deDE esES esMX frFR ptBR ruRU koKR zhCN zhTW; do $(LUA) tests/lua/settings_fit_test.lua $$lang || exit 1; done
 	@$(LUA) tests/lua/settings_audit_test.lua
 	@$(LUA) tests/lua/queue_test.lua
 	@$(LUA) tests/lua/battlegrounds_test.lua
 	@$(LUA) tests/lua/secret_values_test.lua
 	@$(LUA) tests/lua/developer_hooks_test.lua
 	@$(LUA) tests/lua/developer_log_test.lua
+	@$(LUA) tests/lua/developer_camera_test.lua
 	@$(LUA) tests/lua/quests_log_test.lua
 	@$(LUA) tests/lua/sources_test.lua
 	@$(LUA) tests/lua/api_contract_test.lua
@@ -98,8 +111,10 @@ test-player: ## Run the addons' Lua tests (needs luajit)
 	@$(LUA) tests/lua/places_flight_test.lua
 	@$(LUA) tests/lua/places_instance_test.lua
 	@$(LUA) tests/lua/places_greeting_test.lua
+	@$(LUA) tests/lua/places_every_visit_test.lua
 	@$(LUA) tests/lua/places_pending_test.lua
 	@$(LUA) tests/lua/quests_source_test.lua
+	@$(LUA) tests/lua/quests_pack_text_test.lua
 	@$(LUA) tests/lua/quest_npc_silence_test.lua
 	@$(LUA) tests/lua/quest_greeting_first_test.lua
 	@$(LUA) tests/lua/data_modules_test.lua
@@ -115,6 +130,7 @@ test-player: ## Run the addons' Lua tests (needs luajit)
 	@$(LUA) tests/lua/places_map_click_test.lua
 	@$(LUA) tests/lua/places_map_highlight_test.lua
 	@$(LUA) tests/lua/places_area_at_test.lua
+	@$(LUA) tests/lua/places_openmap_test.lua
 	@$(LUA) tests/lua/places_discovery_test.lua
 	@$(LUA) tests/lua/subtitle_pages_test.lua
 	@$(LUA) tests/lua/defaults_test.lua
@@ -124,6 +140,7 @@ test-player: ## Run the addons' Lua tests (needs luajit)
 	@$(LUA) tests/lua/packs_test.lua
 	@$(LUA) tests/lua/quests_options_test.lua
 	@$(LUA) tests/lua/quests_dialogueui_test.lua
+	@$(LUA) tests/lua/quests_immersion_test.lua
 	@$(LUA) tests/lua/readables_source_test.lua
 	@$(LUA) tests/lua/readables_options_test.lua
 	@$(LUA) tests/lua/module_settings_test.lua
@@ -147,12 +164,16 @@ test-player: ## Run the addons' Lua tests (needs luajit)
 	@$(LUA) tests/lua/places_each_place_once_test.lua
 	@$(LUA) tests/lua/places_city_test.lua
 	@$(LUA) tests/lua/places_dungeons_test.lua
-	@$(LUA) tests/lua/npcs_bosses_test.lua
+	@$(LUA) tests/lua/bosses_test.lua
+	@$(LUA) tests/lua/bosses_leatrix_test.lua
+	@$(LUA) tests/lua/bosses_openmap_test.lua
+	@$(LUA) tests/lua/bosses_audio_test.lua
 	@$(LUA) tests/lua/places_story_place_test.lua
 	@$(LUA) tests/lua/places_area_zones_test.lua
 	@$(LUA) tests/lua/places_forever_places_test.lua
 	@$(LUA) tests/lua/minimap_compartment_test.lua
 	@$(LUA) tests/lua/bronze_rings_test.lua
+	@$(LUA) tests/lua/module_globals_test.lua
 
 # Rewrite the envelope fixtures the TypeScript reader is tested against. A diff here is the
 # wire format changing, and that is a change the reader's tests must be part of. The
@@ -175,20 +196,31 @@ contribute-fixtures:
 
 test: test-player ## Everything: the site, the Node and Python pipelines, the addons
 	@pnpm -r test
-	@node --test scripts/lib/*.test.mjs scripts/audio/*.test.mjs pipelines/lib/*.test.mjs
+	@node --test scripts/lib/*.test.mjs scripts/audio/*.test.mjs scripts/maintainers/*.test.mjs scripts/db/*.test.mjs pipelines/lib/*.test.mjs
 	@[ -x pipelines/quests/.venv/bin/python ] || { \
 	  echo "No venv at pipelines/quests/.venv -- see the comment above 'test' in the Makefile"; \
 	  exit 1; }
 	@cd pipelines/quests && ./.venv/bin/python -m pytest -q
+	@python3 -m unittest discover -s pipelines/places/tools/bosses -p "test_*.py"
 
 lint: ## The checks CI gates on
 	@pnpm -r typecheck
 	@node scripts/check-addon-xml.mjs
 	@./scripts/spoken/check-changelog.sh
+	@./scripts/manager/check-changelog.sh
 	@node pipelines/places/tools/validate.mjs
 	@node scripts/descriptions.mjs --check
 	@node pipelines/places/tools/locale/check-strings.mjs
+	@node apps/brann/src/faq-check.mjs
 	@node pipelines/places/tools/locale/build-languages.mjs --check
+
+# An interface pack's makers start from every English string and check what they made against them
+# (docs/contributors/INTERFACE-PACKS.md). LANG is the pack's code, PACK its folder.
+interface-template: ## Print an interface pack's Lua with every string in English (LANG=plPL)
+	@$(LUA) scripts/interface/strings.lua template $(LANG)
+
+interface-check: ## Check an interface pack's strings against the English (LANG=plPL PACK=<folder>)
+	@$(LUA) scripts/interface/strings.lua check $(LANG) $(PACK)
 
 # The store project pages, for every addon. One tool over publishers/*/ rather than one
 # per project: the pages are the same shape, and a second copy of this would be a second place
@@ -216,9 +248,92 @@ dungeons: ## Rebuild addons/Spoken/Data/Dungeons.lua from pipelines/lib/dungeons
 	@node pipelines/lib/dungeons.mjs
 
 # The bosses of those dungeons and raids, from the client's DungeonEncounter table, for the bosses'
-# tab (Spoken_NPCs/Data/Bosses.lua).
-bosses: ## Rebuild addons/Spoken_NPCs/Data/Bosses.lua from the client's DungeonEncounter table
+# tab. It writes the boss tables, not Spoken_Bosses/Data/Bosses.lua: run bosses-export after it.
+bosses-extract: ## Bring the boss tables into step with the client's DungeonEncounter table
 	@node pipelines/lib/bosses.mjs
+
+# Spoken_Bosses' Bosses, Creatures and Stories Lua are exports of the boss tables. bosses-check needs
+# Postgres, so it stays out of lint, which has to pass on a clone without one.
+bosses-export: ## Write Spoken_Bosses' Bosses, Creatures and Stories Lua from the database
+	@node pipelines/places/tools/bosses/export.mjs
+bosses-check: ## Confirm the committed Spoken_Bosses data matches the database
+	@node pipelines/places/tools/bosses/export.mjs --check
+
+# The game frames each boss model itself: Cameras.lua holds only the lens and each display's model file, read
+# from the Forever tables in ~/Documents/forever-db/csv (see docs/places/BOSSES.md).
+bosses-cameras: ## Write Spoken_Bosses' Data/Cameras.lua (the lens and each display's model file)
+	@python3 pipelines/places/tools/bosses/model_cameras.py
+bosses-nudges: ## Write Spoken_Bosses' Data/CameraNudges.lua from the saved edits (FILE=Spoken_Developer.lua)
+	@python3 pipelines/places/tools/bosses/import_edits.py $(FILE)
+
+include make/droplet.mk
+
+# The site will edit boss stories and names, so production is upstream for the boss tables as it
+# is for every section's corpus. scripts/db/sync-section.sh has the recipe.
+bosses-sync: require-droplet ## Replace the local boss tables, boss names and boss takes with the droplet's (DESTRUCTIVE)
+	@$(DB_ENV) scripts/db/sync-section.sh bosses boss_instance boss boss_line
+	@echo "==> bring the addon into step with:  make bosses-export"
+bosses-check-synced: ## Compare the local boss data with the droplet's, and prompt if they differ
+	@$(DB_ENV) scripts/db/check-synced.sh bosses
+
+# The bosses' sound pack, SpokenBossesAudio, built as the places pack is (make/places.mk): from
+# the live boss takes in LOCAL_DB and the archive, pipelines/places/bosses-audio-history (on the
+# droplet shared/audio-history/bosses). Every step reads the one database LOCAL_DB names, so the
+# clips Sounds/ holds and the entries the lookup lists come from the same takes. LOCALE=deDE
+# acts on that language's pack, under build/bosses/deDE.
+BOSSES_LOCALE = $(or $(LOCALE),enUS)
+BOSSES_DB = DATABASE_URL="$(LOCAL_DB)"
+RSYNC ?= $(shell for r in /opt/homebrew/bin/rsync /usr/local/bin/rsync $$(command -v rsync); do \
+	[ -x "$$r" ] && "$$r" --version 2>/dev/null | head -1 | grep -q 'version 3' && { echo "$$r"; exit 0; }; \
+	done)
+
+# Only the takes the pack is built from, as the local database has them: run bosses-sync first.
+bosses-pull-live: require-droplet ## Fetch only the live boss takes the local database names (after bosses-sync)
+	@$(DB_ENV) RSYNC="$(RSYNC)" scripts/audio/pull-live.sh bosses $(BOSSES_LOCALE)
+
+# Sounds/ is not kept: it is assembled from the live takes before every build (scripts/audio/sounds.mjs).
+bosses-sounds: ## Assemble SpokenBossesAudio's Sounds/ (LOCALE=xx: into build/bosses/xx) from the live takes
+	@$(DB_ENV) node scripts/audio/sounds.mjs --lang=$(BOSSES_LOCALE) bosses
+
+bosses-lookup: ## Write SpokenBossesAudio's Data/Sounds.lua from the live boss takes (LOCALE=xx)
+	@$(BOSSES_DB) node pipelines/places/tools/bosses/build-lookup.mjs --lang $(BOSSES_LOCALE)
+
+# A lookup row whose mp3 is missing plays silence and reports nothing; this fails the build on it.
+bosses-validate-audio: ## Check SpokenBossesAudio's lookup, mp3s and live takes agree (LOCALE=xx)
+	@$(BOSSES_DB) node pipelines/places/tools/bosses/validate-audio.mjs --lang $(BOSSES_LOCALE)
+
+bosses-package-audio: bosses-check-synced bosses-sounds bosses-lookup bosses-validate-audio ## Build the bosses sound-pack zip into dist/ (LOCALE=xx)
+	@LOCALE="$(BOSSES_LOCALE)" ./scripts/bosses/package-audio.sh
+
+# To the pack's CurseForge project and to GitHub, as the places pack goes (make/places.mk). The
+# version is SpokenBossesAudio.toc's (a language's, its page's), and its `## <version> —
+# bosses-audio` section in docs/bosses/CHANGELOG.md is the notes for both.
+bosses-full-release: require-droplet ## Sync, pull live takes, build and upload the bosses sound pack (LOCALE=xx)
+	@$(MAKE) --no-print-directory bosses-sync
+	@$(MAKE) --no-print-directory bosses-pull-live LOCALE=$(LOCALE)
+	@$(MAKE) --no-print-directory bosses-package-audio LOCALE=$(LOCALE)
+	@$(MAKE) --no-print-directory bosses-upload-dry LOCALE=$(LOCALE)
+	@printf 'Upload the bosses pack to CurseForge and GitHub? [y/N] '; \
+	  read -r answer; [ "$$answer" = y ] || { echo aborted; exit 1; }
+	@$(MAKE) --no-print-directory bosses-upload LOCALE=$(LOCALE)
+
+# For a dist/ already built: release-packs.yaml builds and uploads in separate steps.
+bosses-upload-dry: ## Show what bosses-full-release would upload from dist/ (LOCALE=xx)
+	@./scripts/places/release.sh --dry-run --section=bosses --lang=$(BOSSES_LOCALE) audio
+	@./scripts/audio-github-release.sh --dry-run bosses $(BOSSES_LOCALE)
+bosses-upload: ## Upload the bosses pack in dist/ as bosses-full-release does, building nothing (LOCALE=xx)
+	@./scripts/places/release.sh --section=bosses --lang=$(BOSSES_LOCALE) audio
+	@./scripts/audio-github-release.sh bosses $(BOSSES_LOCALE)
+
+# The in-game addon list reads a TGA or BLP, never the PNGs in pipelines/bosses/assets/, so the
+# icon is converted and committed, as places' and readables' are. Both addons carry the same
+# icon: they install as a pair. A language's pack wears it with its badge: package-audio.sh and
+# the Manager's stage-pack.mjs copy spoken-bosses-<locale>.tga over it.
+bosses-icon: ## Rebuild both bosses addons' AddonIcon.tga and the languages' badged TGAs from pipelines/bosses/assets (needs ffmpeg)
+	@python3 pipelines/places/tools/make-icon.py pipelines/bosses/assets/spoken-bosses-512.png addons/Spoken_Bosses/Textures/AddonIcon.tga
+	@cp addons/Spoken_Bosses/Textures/AddonIcon.tga addons/SpokenBossesAudio/Textures/AddonIcon.tga
+	@echo "==> copied to addons/SpokenBossesAudio/Textures/AddonIcon.tga"
+	@for png in pipelines/bosses/assets/spoken-bosses-??[A-Z][A-Z]-512.png; do python3 pipelines/places/tools/make-icon.py "$$png" "$${png%-512.png}.tga"; done
 
 character-models: ## Print how to regenerate apps/web/src/lib/npc/character-models.json
 	@sed -n '2,10p' scripts/character-models.mjs | sed -e 's/^\/\/ //' -e 's/^\/\/$$//'
@@ -251,11 +366,17 @@ audio-release: ## Publish the built sound packs as GitHub releases (needs gh; SE
 # The manager's channel (scripts/manager/): what dist/ holds, uploaded to R2 as changed files only.
 # Build first with the <section>-package-audio targets. Needs R2_ACCOUNT_ID, R2_ACCESS_KEY_ID,
 # R2_SECRET_ACCESS_KEY, R2_BUCKET and SPOKEN_PACKS_SIGNING_KEY, in the repo-root .env.
-manager-publish-dry: ## Show what the manager channel would get from dist/
-	@node scripts/manager/cli.mjs publish --dry-run
+# ONLY_PRESENT=1 publishes just the folders dist/ holds, for a build of one section and language;
+# without it a missing folder stops the run, so a partial build cannot pass for a full one.
+# ALLOW_REMOVALS=1 lets a pack lose more files than publish.mjs accepts unasked.
+manager-publish-dry: ## Show what the manager channel would get from dist/ (ONLY_PRESENT=1: only what is built)
+	@node scripts/manager/cli.mjs publish --dry-run $(if $(ONLY_PRESENT),--present) $(if $(ALLOW_REMOVALS),--allow-removals)
 
-manager-publish: ## Publish dist/'s manager packs to the manager channel
-	@node scripts/manager/cli.mjs publish
+manager-publish: ## Publish dist/'s manager packs to the manager channel (ONLY_PRESENT=1: only what is built)
+	@node scripts/manager/cli.mjs publish $(if $(ONLY_PRESENT),--present) $(if $(ALLOW_REMOVALS),--allow-removals)
+
+manager-release: ## One section and language onto the manager channel, with no clips here (SECTION=, LOCALE=, TEAM=, DRY_RUN=1)
+	@node scripts/manager/release.mjs $(SECTION) $(or $(LOCALE),enUS) $(if $(TEAM),--team=$(TEAM)) $(if $(DRY_RUN),--dry-run) $(if $(ALLOW_REMOVALS),--allow-removals)
 
 manager-gc-dry: ## Show what manager-gc would delete
 	@node scripts/manager/cli.mjs gc --dry-run

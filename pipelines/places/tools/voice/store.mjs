@@ -18,6 +18,7 @@ import { execFile } from "node:child_process";
 import { join } from "node:path";
 import { promisify } from "node:util";
 
+import { plainTeamSql, releaseTeamId, releaseTeamSql } from "../../../lib/release-team.mjs";
 import { BASE_LOCALE, CODES } from "../lib/locales.mjs";
 import { ROOT } from "../lib/loredata.mjs";
 import * as db from "./db.mjs";
@@ -28,8 +29,11 @@ const execFileAsync = promisify(execFile);
 // SPOKEN_PLACES_LANG names another (make passes it as LOCALE=esMX). One per process, because
 // everything downstream -- the manifest, Sounds/, the lookup beside it -- is one language's,
 // and a run that mixed two would build a pack whose table names another language's files.
+//
+// A release (SPOKEN_RELEASE_TEAM set) may build a language only the site's `language` table
+// knows: the release read its row before any step ran.
 export const LANG = process.env.SPOKEN_PLACES_LANG || BASE_LOCALE;
-if (!CODES.includes(LANG)) {
+if (!CODES.includes(LANG) && !(releaseTeamId() && /^[a-z]{2}[A-Z]{2}$/.test(LANG))) {
   throw new Error(`SPOKEN_PLACES_LANG=${LANG} is not a language (expected one of ${CODES.join(", ")})`);
 }
 
@@ -124,9 +128,11 @@ async function loadFromFile() {
 
 async function loadFromDatabase() {
   const { rows } = await db.query(
-    `select "lineId", ${TAKE_COLUMNS.map(selectAs).join(", ")}, ${selectAs("generatedAt")}, "wordTimes"
+    `select "lineId", ${TAKE_COLUMNS.map(selectAs).join(", ")}, ${selectAs("generatedAt")}, "wordTimes", "shownText"
        from "take"
-      where "source" = '${SOURCE}' and "isCurrent" and "lang" = '${LANG}'`,
+      where "source" = '${SOURCE}' and "isCurrent" and "lang" = '${LANG}'
+        -- the release's team, else the one with plain packs, so a build outside a release reads what it always did
+        and "teamId" = ${releaseTeamSql(`'${LANG}'`)}`,
   );
 
   const manifest = {};
@@ -140,9 +146,19 @@ async function loadFromDatabase() {
     // Only where the take has them, so a manifest exported before any take was timed stays
     // as it was.
     if (row.wordTimes) record.wordTimes = row.wordTimes;
+    if (row.shownText) record.shownText = row.shownText;
     manifest[row.lineId] = record;
   }
   return manifest;
+}
+
+/** From the table, as the committed lore files can lag it. With no database those takes ship no words. */
+export async function loadCurrentLore() {
+  if (!db.isEnabled()) return new Map();
+  const { rows } = await db.query(
+    `select "lineId", "full" from "lore_line" where "isCurrent" and "lang" = '${LANG}'`,
+  );
+  return new Map(rows.map((row) => [row.lineId, row.full]));
 }
 
 /**
@@ -163,7 +179,9 @@ async function loadFromDatabase() {
 export async function currentDictionary() {
   if (!db.isEnabled()) return null;
   const { rows } = await db.query(
-    `select "dictionaryId", "versionId" from "pronunciation_lexicon" where "id"`,
+    // English's lexicon is its one team's row (apps/web migration 0089).
+    `select "dictionaryId", "versionId" from "pronunciation_lexicon"
+      where "teamId" = ${plainTeamSql("'enUS'")}`,
   );
   const row = rows[0];
   if (!row?.dictionaryId || !row.versionId) return null;

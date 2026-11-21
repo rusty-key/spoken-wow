@@ -9,7 +9,8 @@
 # rsync without --delete would leave the old ones beside the new. Nothing else is touched.
 #
 # The rows are recorded as ADMIN_EMAIL's on production, looked up there: a local user id
-# need not exist on the droplet.
+# need not exist on the droplet. They go to the team TEAM names (its slug), else to the team with
+# each language's plain packs. A row with neither fails the insert, and no row is written.
 #
 # Environment, as make/droplet.mk's DB_ENV passes it: DROPLET, SSH, REMOTE_ROOT, LOCAL_DB.
 # LOCAL_DB must be the database the seed run wrote to, apps/web/.env.local's DATABASE_URL,
@@ -20,6 +21,9 @@ set -euo pipefail
 : "${ADMIN_EMAIL:?ADMIN_EMAIL is required: who the rows are recorded as on production}"
 : "${LOCAL_DB:?LOCAL_DB is not set}"
 RSYNC=${RSYNC:-rsync}
+TEAM=${TEAM:-}
+# Inlined into the SQL below, so nothing but a slug.
+[[ -z "$TEAM" || "$TEAM" =~ ^[a-z][a-z0-9-]{1,40}$ ]] || { echo "TEAM=$TEAM is not a team slug" >&2; exit 1; }
 
 VOICE=pipelines/quests/voice
 SAMPLES=$VOICE/samples
@@ -72,9 +76,15 @@ SQL
                                       from fish_reference where (lang, voice) in ($values)) to stdout"
   cat <<SQL
 \\.
-insert into fish_reference (voice, lang, sample, "startSec", "endSec", transcript, "clipHash", "updatedBy", "updatedAt")
-select s.*, (select id from "user" where email = '$ADMIN_EMAIL'), now() from seeded s
-on conflict (voice, lang) do update set
+insert into fish_reference (voice, lang, sample, "startSec", "endSec", transcript, "clipHash", "updatedBy", "updatedAt",
+                            "teamId")
+select s.*, (select id from "user" where email = '$ADMIN_EMAIL'), now(),
+       coalesce(
+         (select tl."teamId" from "team_language" tl join "team" t on t.id = tl."teamId"
+           where tl.lang = s.lang and t.slug = '$TEAM'),
+         case when '$TEAM' = '' then team_of_lang(s.lang) end)
+  from seeded s
+on conflict ("teamId", voice, lang) do update set
   sample = excluded.sample, "startSec" = excluded."startSec", "endSec" = excluded."endSec",
   transcript = excluded.transcript, "clipHash" = excluded."clipHash",
   "updatedBy" = excluded."updatedBy", "updatedAt" = now();

@@ -1,0 +1,59 @@
+import { afterEach, describe, expect, it } from "vitest";
+
+import { memoryBlobs, useArchiveForTests } from "@/lib/blobs/store";
+
+import { serveTake } from "./serve";
+
+const SHA = "a".repeat(64);
+const OGG = Buffer.concat([Buffer.from("OggS"), Buffer.alloc(96, 1)]);
+
+let restore: () => void = () => {};
+afterEach(() => restore());
+
+function bucket(prefix: "takes" | "recordings" = "recordings") {
+  const key = `${prefix}/${SHA}`;
+  const store = memoryBlobs();
+  store.objects.set(key, { data: OGG, contentType: "audio/ogg" });
+  restore = useArchiveForTests(store, "r2");
+  return { kind: "blob" as const, key };
+}
+
+const get = (headers: Record<string, string> = {}) => new Request("https://spoken.test/audio", { headers });
+
+describe("serveTake from the bucket", () => {
+  it("redirects a take to the public object", async () => {
+    const res = await serveTake(get(), bucket("takes"), { immutable: true });
+    expect(res.status).toBe(302);
+    expect(res.headers.get("location")).toBe(`https://archive.test/takes/${SHA}`);
+    expect(res.headers.get("cache-control")).toBe("public, max-age=31536000, immutable");
+  });
+
+  it("answers a recording itself, privately, never with the bucket's address", async () => {
+    const res = await serveTake(get(), bucket(), { immutable: true, lang: "deDE" });
+    expect(res.status).toBe(200);
+    expect(res.headers.get("location")).toBeNull();
+    expect(res.headers.get("cache-control")).toBe("private, max-age=31536000, immutable");
+    expect(res.headers.get("content-type")).toBe("audio/ogg");
+    expect(res.headers.get("content-language")).toBe("de-DE");
+    expect(res.headers.get("etag")).toBe(`"${SHA}"`);
+    expect(Buffer.from(await res.arrayBuffer()).equals(OGG)).toBe(true);
+  });
+
+  it("answers Safari's range probe, a 304 for a tag it holds, a 416 past the end and a 404 for a missing object", async () => {
+    const stored = bucket();
+    const probe = await serveTake(get({ range: "bytes=0-1" }), stored, { immutable: true });
+    expect(probe.status).toBe(206);
+    expect(probe.headers.get("content-range")).toBe(`bytes 0-1/${OGG.byteLength}`);
+    expect(probe.headers.get("content-length")).toBe("2");
+    expect(Buffer.from(await probe.arrayBuffer()).toString()).toBe("Og");
+
+    expect((await serveTake(get({ "if-none-match": `"${SHA}"` }), stored, { immutable: false })).status).toBe(304);
+
+    const past = await serveTake(get({ range: `bytes=${OGG.byteLength}-` }), stored, { immutable: true });
+    expect(past.status).toBe(416);
+    expect(past.headers.get("content-range")).toBe(`bytes */${OGG.byteLength}`);
+
+    const missing = { ...stored, key: `recordings/${"b".repeat(64)}` };
+    expect((await serveTake(get(), missing, { immutable: true })).status).toBe(404);
+  });
+});

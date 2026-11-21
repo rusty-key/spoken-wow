@@ -7,8 +7,10 @@
 
 import "server-only";
 
+import { auditDetail, type ApiAudit } from "@/lib/activity/kinds";
 import { recordActivity } from "@/lib/activity/store";
-import { db, query } from "@/lib/db";
+import { query } from "@/lib/db";
+import { withTextTeam } from "@/lib/teams/store";
 import { BASE_LANG, type Lang } from "@/lib/lang";
 import { makeShort } from "./tools";
 
@@ -126,12 +128,10 @@ export async function saveLore(args: {
   editedBy: string;
   expectedVersion?: number | null;
   lang?: Lang;
-}): Promise<LoreVersion> {
+  audit?: ApiAudit;
+}): Promise<LoreVersion & { wrote: boolean }> {
   const lang = args.lang ?? BASE_LANG;
-  const client = await db().connect();
-  try {
-    await client.query("begin");
-
+  return withTextTeam(lang, async (client, team) => {
     const { rows: currentRows } = await client.query<Row & { mapID: number; kind: string; key: string | null }>(
       `select ${COLUMNS}, "mapID", "kind", "key" from "lore_line"
         where "lineId" = $1 and "lang" = $2 and "isCurrent" for update`,
@@ -178,8 +178,7 @@ export async function saveLore(args: {
     // A save that changes nothing must not spend a version number: the history is a
     // record of what the text has been, not of who opened the dialog.
     if (current && full === current.full && (args.short ?? null) === null) {
-      await client.query("commit");
-      return toVersion(current);
+      return { ...toVersion(current), wrote: false };
     }
 
     const shortIsManual = typeof args.short === "string" && args.short.trim() !== "";
@@ -225,25 +224,26 @@ export async function saveLore(args: {
     );
     await recordActivity(
       {
+        team,
         kind: "text.edited",
         lang,
         actorId: args.editedBy,
         source: "places",
         subject: args.lineId,
         lineId: args.lineId,
-        detail: { version, text: full, short, note: args.note?.trim() || null },
+        detail: {
+          version,
+          text: full,
+          short,
+          note: args.note?.trim() || null,
+          ...auditDetail(args.audit, current?.version ?? null),
+        },
       },
       client,
     );
 
-    await client.query("commit");
-    return toVersion(inserted[0]);
-  } catch (err) {
-    await client.query("rollback").catch(() => {});
-    throw err;
-  } finally {
-    client.release();
-  }
+    return { ...toVersion(inserted[0]), wrote: true };
+  });
 }
 
 /**
@@ -265,10 +265,7 @@ export async function restoreLore(
   lang: Lang,
   by: string | null,
 ): Promise<LoreVersion> {
-  const client = await db().connect();
-  try {
-    await client.query("begin");
-
+  return withTextTeam(lang, async (client, team) => {
     const { rows } = await client.query<Row>(
       `select ${COLUMNS} from "lore_line"
         where "lineId" = $1 and "lang" = $3 and "version" = $2 for update`,
@@ -290,6 +287,7 @@ export async function restoreLore(
     );
     await recordActivity(
       {
+        team,
         kind: "text.restored",
         lang,
         actorId: by,
@@ -301,12 +299,25 @@ export async function restoreLore(
       client,
     );
 
-    await client.query("commit");
     return toVersion(restored[0]);
-  } catch (err) {
-    await client.query("rollback").catch(() => {});
-    throw err;
-  } finally {
-    client.release();
-  }
+  });
+}
+
+/**
+ * Takes a first translation back, so the line reads as untranslated again. Restoring cannot,
+ * since there is no earlier version to move to, and the row stays as the record of what it said.
+ */
+export async function retireLore(lineId: string, version: number, lang: Lang, by: string | null): Promise<void> {
+  return withTextTeam(lang, async (client, team) => {
+    const { rowCount } = await client.query(
+      `update "lore_line" set "isCurrent" = false
+        where "lineId" = $1 and "lang" = $2 and "version" = $3 and "isCurrent"`,
+      [lineId, lang, version],
+    );
+    if (!rowCount) throw new LoreConflict(`${lineId} v${version} is not the current text`);
+    await recordActivity(
+      { team, kind: "text.retired", lang, actorId: by, source: "places", subject: lineId, lineId, detail: { version } },
+      client,
+    );
+  });
 }

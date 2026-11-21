@@ -1,9 +1,9 @@
 // The one file the main process and the window both import: what the app talks about.
 
-/** The game versions Spoken runs on, by their folder: `_classic_beta_` (Forever), `_classic_era_`, `_anniversary_`. */
-export type Flavor = 'classic_beta' | 'classic_era' | 'anniversary'
+/** The game versions Spoken runs on, by their folder: `_forever_` (Forever), `_classic_era_`, `_anniversary_`. */
+export type Flavor = 'forever' | 'classic_era' | 'anniversary'
 
-/** One World of Warcraft install: a flavor folder such as `...\World of Warcraft\_classic_beta_`. */
+/** One World of Warcraft install: a flavor folder such as `...\World of Warcraft\_forever_`. */
 export interface GameInstall {
   /** Stable id: the first 12 hex digits of sha1(lower-cased `root`). */
   id: string
@@ -11,10 +11,10 @@ export interface GameInstall {
   root: string
   /** `<root>\Interface\AddOns`; may not exist yet. */
   addOnsPath: string
-  /** `_classic_beta_`. */
+  /** `_forever_`. */
   flavorFolder: string
   flavor: Flavor
-  /** The Blizzard product code from `.build.info` / `.flavor.info`, e.g. `wow_classic_beta`. */
+  /** The Blizzard product code from `.build.info` / `.flavor.info`, e.g. `wow_forever`. */
   product: string
   /** What the player calls it: "WoW: Forever", "WoW: Classic Era", "WoW: Anniversary". */
   label: string
@@ -28,23 +28,46 @@ export interface GameInstall {
 
 /**
  * The game versions Spoken runs on, as publishers/spoken/spoken.md says: made and tested on
- * Forever (`_classic_beta_`), and installs on Classic Era and Anniversary. The scan lists no other.
+ * Forever (`_forever_`), and installs on Classic Era and Anniversary. The scan lists no other.
  */
-export const SUPPORTED_FLAVORS: Flavor[] = ['classic_beta', 'classic_era', 'anniversary']
+export const SUPPORTED_FLAVORS: Flavor[] = ['forever', 'classic_era', 'anniversary']
+
+/** `_forever_, _classic_era_ or _anniversary_`, for the texts that tell the player which folder to pick. */
+export const FLAVOR_FOLDER_LIST = SUPPORTED_FLAVORS.map((f) => `_${f}_`).join(', ').replace(/, ([^,]*)$/, ' or $1')
 
 export function isSupportedFlavor(flavor: Flavor): boolean {
   return SUPPORTED_FLAVORS.includes(flavor)
 }
 
-export type Section = 'quests' | 'places' | 'readables'
+export type Section = 'quests' | 'places' | 'readables' | 'bosses'
 export type QuestsPack = 'all' | 'alliance' | 'horde' | 'shared' | 'gossip'
+export type QuestsSide = Exclude<QuestsPack, 'all'>
+
+/** Every voice section, in the order the Voice Packs page lists them. */
+export const SECTIONS: readonly Section[] = ['quests', 'places', 'readables', 'bosses']
+/** The quests sides, in the order a quests bundle holds their folders. */
+export const QUESTS_SIDES: readonly QuestsSide[] = ['alliance', 'horde', 'shared', 'gossip']
+
+/** A language code as the game and a pack's .toc write it: `deDE`. */
+export const LANG_CODE = /^[a-z]{2}[A-Z]{2}$/
+/** A team's slug. */
+export const TEAM_SLUG = /^[a-z][a-z0-9-]{1,40}$/
+
+/** The team that released a pack, as index-v2.json names it. */
+export interface ChannelTeam {
+  /** Frozen once the team has released: it is part of its packs' folders. */
+  slug: string
+  name: string
+  /** A non-official team's packs say who made them. */
+  official: boolean
+}
 
 /** What can be installed: Spoken itself, or a voice pack. A static table (shared/products.ts). */
 export interface Product {
   /** `spoken`, `quests-audio`, `quests-audio-alliance`, `places-audio-deDE`, ... (the release tag prefix). */
   id: string
   kind: 'addon' | 'voices' | 'community'
-  /** "Spoken","Quests voices", "Places voices", "Readables voices". */
+  /** "Spoken","Quests voices", "Places voices", "Readables voices", "Bosses voices". */
   title: string
   /** One line for the card. */
   description: string
@@ -65,11 +88,42 @@ export interface Product {
    * folder is still this product's, and installing the new one moves it to the backup.
    */
   legacy?: { id: string; tagPrefix: string; folders: string[]; assetPattern: string }
+  /**
+   * Who released a voice pack, as the channel says: null for an official team's pack in the language's plain folders,
+   * absent when the channel does not carry it. A team's pack installed before the channel dropped it keeps its slug as
+   * its name.
+   */
+  team?: ChannelTeam | null
 }
 
 /**
- * One voice pack made by a player, as listed in `community/packs.json` of the repo. Added by
- * pull request, so a maintainer has looked at it. Installs as the folder `SpokenCommunity_<id>`.
+ * A voice pack's author: its team, or PAGE_AUTHOR, with no name, which the window gives, for a pack the channel lists
+ * with no team (an official team's, in the language's plain folders).
+ */
+export interface PackAuthor {
+  /** The team's slug, or PAGE_AUTHOR. */
+  key: string
+  name: string | null
+  official: boolean
+}
+
+/** A voice language the Voice Packs page can list, named in its own words. */
+export interface VoiceLanguage {
+  code: string
+  name: string
+}
+
+/** What the window is told when the catalog changes: the products and languages follow the channel. */
+export interface CatalogUpdate {
+  catalog: Catalog
+  products: Product[]
+  languages: VoiceLanguage[]
+}
+
+/**
+ * One voice pack made by a player, as spoken.quest lists it. Its author submits each version
+ * there and an admin approves it, so somebody has looked at it. Installs as the folder
+ * `SpokenCommunity_<id>`.
  */
 export interface CommunityPack {
   /** Lower-case letters, digits and hyphens: `elune-quests-deDE`. Unique in the registry. */
@@ -122,7 +176,9 @@ export interface ReleaseInfo {
   assetName: string
   assetSize: number
   assetUrl: string
-  /** `sha256:<hex>` from GitHub, when it gives one. */
+  /** Where the same zip can be fetched when `assetUrl` fails. */
+  fallbackUrl?: string
+  /** `sha256:<hex>` from GitHub or the signed channel index, when there is one. */
   digest?: string
   htmlUrl: string
 }
@@ -158,25 +214,66 @@ export interface ProductStatus {
   blockedReason?: string
 }
 
+/**
+ * The languages of the manager's own window, not of the voice packs. `Intl` does not know the
+ * game's codes (`zhCN`) and would silently use the system language, hence `bcp47`.
+ */
+export const UI_LANGUAGES = [
+  { code: 'enUS', bcp47: 'en-US' },
+  { code: 'zhCN', bcp47: 'zh-CN' }
+] as const
+
+export type UiLanguage = (typeof UI_LANGUAGES)[number]['code']
+
+export const UI_LANGUAGE_CODES: readonly UiLanguage[] = UI_LANGUAGES.map((l) => l.code)
+
+export function bcp47Of(lang: UiLanguage): string {
+  return UI_LANGUAGES.find((l) => l.code === lang)?.bcp47 ?? 'en-US'
+}
+
 export interface Settings {
+  /** The language of the window. */
+  uiLanguage: UiLanguage
   includePrereleases: boolean
   checkOnStart: boolean
   /** The manager's own updates. */
   autoUpdateManager: boolean
+  /** Installed Spoken and official voice packs, after the catalog is checked. */
+  autoUpdateContent: boolean
+  startAtLogin: boolean
+  minimizeToTray: boolean
   /** Where downloads are kept; empty means the app's own folder. */
   downloadsPath: string
   keepDownloads: boolean
   /** The language chosen on the Voice Packs page. */
   voiceLanguage: string
+  /** The Author filter's choice per voice language: a team's slug, PAGE_AUTHOR, or ALL_AUTHORS. */
+  voiceAuthors: Record<string, string>
   /** The game last looked at. */
   lastGameId: string
   /** Sending what Spoken collects to the site: 'unset' until the player answers the first-start question. */
   sharing: SharingChoice
+  /**
+   * `scheme://host:port`, or '' for the system proxy. Empty leaves publishing and the site going direct: Node
+   * cannot read the system setting.
+   */
+  proxy: string
 }
 
 export const SHARING_CHOICES = ['unset', 'on', 'off'] as const
 
 export type SharingChoice = (typeof SHARING_CHOICES)[number]
+
+/**
+ * How one send ended. Failures also land in `SharingStatus.error`. `unread` lists files that
+ * could not be read; they are tried again next time and do not make the send a failure.
+ */
+export type SendResult =
+  | { outcome: 'sent'; count: number; unread?: string[] }
+  /** Nothing new: no file changed, or every envelope in them was sent before. */
+  | { outcome: 'nothing'; unread?: string[] }
+  | { outcome: 'rate-limited'; count: number }
+  | { outcome: 'failed'; count: number; error: string }
 
 /** What the window shows of sharing. The install id stays in the main process. */
 export interface SharingStatus {
@@ -189,18 +286,43 @@ export interface SharingStatus {
 }
 
 export const DEFAULT_SETTINGS: Settings = {
+  uiLanguage: 'enUS',
   includePrereleases: false,
   checkOnStart: true,
   autoUpdateManager: true,
+  autoUpdateContent: false,
+  startAtLogin: false,
+  minimizeToTray: false,
   downloadsPath: '',
   keepDownloads: false,
   voiceLanguage: 'enUS',
+  voiceAuthors: {},
   lastGameId: '',
-  sharing: 'unset'
+  sharing: 'unset',
+  proxy: ''
+}
+
+/** The Author filter's choice that shows every author. Not a slug, so no team can take it. */
+export const ALL_AUTHORS = '*'
+/** The author of page packs, which the channel gives no team. Not a slug, so no team can take it. */
+export const PAGE_AUTHOR = ''
+
+// ALL_AUTHORS, a team's slug, or PAGE_AUTHOR.
+const AUTHOR = new RegExp(`^(\\*|${TEAM_SLUG.source.slice(1, -1)})?$`)
+
+/** The Author choices that are a language's and an author's; null when `v` is not a record at all. */
+export function cleanVoiceAuthors(v: unknown): Record<string, string> | null {
+  if (typeof v !== 'object' || v === null || Array.isArray(v)) return null
+  const out: Record<string, string> = {}
+  for (const [lang, author] of Object.entries(v)) {
+    if (LANG_CODE.test(lang) && typeof author === 'string' && AUTHOR.test(author)) out[lang] = author
+  }
+  return out
 }
 
 /** The settings that take only some values of their type; anything else is dropped on load. */
 export const SETTING_CHOICES: Partial<Record<keyof Settings, readonly unknown[]>> = {
+  uiLanguage: UI_LANGUAGE_CODES,
   sharing: SHARING_CHOICES
 }
 
@@ -229,9 +351,9 @@ export interface JobProgress {
   gameId: string
   productId: string
   /** A repair is an install of the version already there. */
-  action: 'install' | 'repair' | 'uninstall'
+  action: 'install' | 'repair' | 'uninstall' | 'publish'
   phase: JobPhase
-  /** Bytes of the download so far and its total. */
+  /** Bytes of the download or upload so far and its total. */
   received: number
   total: number
   bytesPerSecond: number
@@ -247,6 +369,8 @@ export interface Snapshot {
   catalog: Catalog
   community: CommunityCatalog
   products: Product[]
+  /** The voice languages, today's and the channel's. */
+  languages: VoiceLanguage[]
   appVersion: string
   /** The operating system the manager runs on: the window's frame and the game search differ. */
   platform: 'win32' | 'darwin' | 'linux'
@@ -255,4 +379,76 @@ export interface Snapshot {
   /** The manager's own update, as last sent: a window opened later still shows it. */
   updater?: import('./api').UpdaterState
   sharingStatus?: SharingStatus
+}
+
+export type StoreId = 'curseforge' | 'github'
+
+/** A language admin's store settings. Secrets stay in the main process; the window sees only whether one is kept. */
+export interface ContributorConfig {
+  projects: Record<string, string>
+  repo: string
+  gameVersions: string
+  hasCfToken: boolean
+  hasGhToken: boolean
+}
+
+/** A store is configured with a token, and a repo for GitHub or at least one project id for CurseForge. */
+export function storeConfigured(store: StoreId, c: ContributorConfig): boolean {
+  if (store === 'curseforge') return c.hasCfToken && Object.keys(c.projects).length > 0
+  return c.hasGhToken && c.repo !== ''
+}
+
+export interface ContributorView {
+  /** Null when signed out. An account with no admin languages is still an account, so the window can say so. */
+  account: { email: string; adminLangs: string[] } | null
+  config: ContributorConfig
+  /** A stored session the site could not confirm just now. With no account known, a sign-in is not what is missing. */
+  siteUnreachable: boolean
+  /** The site ended a session the user had not asked to end. */
+  sessionExpired: boolean
+  /** Each store's own last run, so a run to one does not take away the links of the other. */
+  lastRuns: Partial<Record<StoreId, PublishResult>>
+}
+
+export interface PublishResult {
+  store: StoreId
+  lang: string
+  published: { folder: string; version: string; link: string }[]
+  skipped: { folder: string; reason: SkipReason }[]
+  failed: { folder: string; reason: string }[]
+  /** A cancel or a failure of the whole run, so folders may be in none of the lists. */
+  stoppedEarly: boolean
+  /** Tells a new run from the same result sent again; the window reloads its rows on a new one. */
+  finishedAt?: string
+}
+
+export type RowState =
+  | 'unreleased'
+  | 'awaiting'
+  | 'live'
+  | 'unchecked'
+  | 'not-installed'
+  | 'update-first'
+  | 'linked'
+  | 'no-project'
+
+/** Why a run left a folder out: the row's state, or a store that turned out to hold the file when the upload began. */
+export type SkipReason = Exclude<RowState, 'unreleased'> | 'already-there'
+
+/** A pack zipped for an upload by hand, on CurseForge's site, when the API refuses its size. */
+export interface ManualZip {
+  version: string
+  /** Under the data folder. */
+  path: string
+  name: string
+  bytes: number
+  /** The project's Files page in CurseForge's author console, where a file is uploaded by hand. */
+  uploadUrl: string
+}
+
+export interface ReleaseRow {
+  folder: string
+  version?: string
+  state: RowState
+  link?: string
 }

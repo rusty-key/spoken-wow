@@ -7,19 +7,22 @@ import { SUPPORTED_FLAVORS } from '@shared/types'
 import { useGame, useStore, useSupportedGames, type Page } from '../store'
 import { S } from '../strings'
 import { flavorLook } from '../catalog'
+import { releaseAvailable } from '../contributor'
 import { GameIcon } from './Brand'
+import { RestartButton } from './RestartButton'
 import { IconGear, IconPlus, IconRefresh, IconWinClose, IconWinMaximize, IconWinMinimize, IconWinRestore } from './Icons'
 
-const TABS: { page: Page; label: string }[] = [
-  { page: 'home', label: S.tabs.home },
-  { page: 'spoken', label: S.tabs.spoken },
-  { page: 'voices', label: S.tabs.voices },
-  { page: 'community', label: S.tabs.community }
-]
-
+/** The tabs are built per draw: a list built at load would keep the first language. */
 export function TopBar(): ReactNode {
   const { state, actions } = useStore()
   const { catalog } = state
+  const tabs: { page: Page; label: string }[] = [
+    { page: 'home', label: S.tabs.home },
+    { page: 'spoken', label: S.tabs.spoken },
+    { page: 'voices', label: S.tabs.voices },
+    { page: 'community', label: S.tabs.community },
+    ...(releaseAvailable(state.contributor) ? [{ page: 'release' as Page, label: S.tabs.release }] : [])
+  ]
   const tip = state.refreshing
     ? S.common.loading
     : catalog.offline
@@ -32,8 +35,8 @@ export function TopBar(): ReactNode {
       <button type="button" className="brand" aria-label={`${S.appName}: ${S.tabs.home}`} onClick={() => actions.navigate('home')}>
         <img src={icon} alt="" width={40} height={40} />
       </button>
-      <nav className="tabs-main" aria-label="Main">
-        {TABS.map((t) => (
+      <nav className="tabs-main" aria-label={S.tabs.main}>
+        {tabs.map((t) => (
           <button key={t.page} type="button" className="tab" aria-current={state.page === t.page ? 'page' : undefined} onClick={() => actions.navigate(t.page)}>
             {t.label}
           </button>
@@ -105,7 +108,7 @@ export function GamesStrip(): ReactNode {
   const games = useSupportedGames()
   const game = useGame()
   if (!state.ready || state.page === 'settings') return null
-  const onGamePage = state.page === 'spoken' || state.page === 'voices' || state.page === 'community'
+  const onGamePage = state.page === 'spoken' || state.page === 'voices' || state.page === 'community' || state.page === 'release'
   return (
     <nav className="strip" aria-label={S.home.title}>
       <span className="strip-label">{S.home.title}</span>
@@ -174,8 +177,9 @@ export function Banners(): ReactNode {
         </div>
       )}
       {updater.state === 'ready' && (
-        <div className="banner banner-info" role="status">
-          {S.banners.updateReady(updater.version)}
+        <div className="banner banner-info banner-action" role="status">
+          {updater.message ?? S.banners.updateReady(updater.version)}
+          <RestartButton className="btn btn-sm" />
         </div>
       )}
       {updater.state === 'downloading' && (

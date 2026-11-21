@@ -9,8 +9,9 @@
  * test may need an ElevenLabs account, and none may ever spend credits. Everything else here
  * runs against the real queue, because the exclusions that keep it honest are in the schema.
  */
+import { ownStorageRefusal } from "@/lib/blobs/keep";
 import { readApiKey } from "@/lib/api-key";
-import { POOL_MAX } from "@/lib/db";
+import { POOL_MAX, withTeam } from "@/lib/db";
 
 import { afterRateLimit, budgetFor, clampToPool, maxActiveFrom, pickLane } from "./concurrency";
 import {
@@ -27,10 +28,12 @@ import {
 import { regenerateLine, type RegenerateResult } from "./regenerate";
 import { regenerateBookLine } from "@/lib/readables/regenerate";
 import { regenerateZoneLine } from "@/lib/places/regenerate";
+import { regenerateBossLine } from "@/lib/bosses/regenerate";
 import { generationStatus } from "./status";
 import type { Lang } from "@/lib/lang";
 import type { Source } from "@/lib/sections";
 import { fishConcurrency, getWallet } from "@/lib/voices/fish";
+import { asTeam } from "@/lib/teams/acting";
 import { readGenerationSettings, type Preference } from "./preference";
 import { speakerFrom } from "./speakers/for";
 import type { Provider, Speaker } from "./speakers/speaker";
@@ -145,6 +148,8 @@ export type WorkerOptions = {
   apiKeyFor?: (userId: string, provider: Provider) => Promise<string | null>;
   /** The owner's settings for each provider, read as each job runs. */
   preferenceFor?: (userId: string) => Promise<Pick<Preference, "elevenlabs" | "fish">>;
+  /** Why the job's team may keep nothing now (lib/blobs/keep.ts), read before each job is paid for. */
+  storageRefusal?: (lang: Lang) => Promise<string | null>;
   backoffMs?: (attempts: number) => number;
   leaseMs?: number;
   /** How long to wait before looking again when the queue was empty. */
@@ -170,11 +175,13 @@ export function startWorker(isLeader: () => boolean, options: WorkerOptions = {}
     quests: options.regenerate?.quests ?? regenerateLine,
     places: options.regenerate?.places ?? regenerateZoneLine,
     readables: options.regenerate?.readables ?? regenerateBookLine,
+    bosses: options.regenerate?.bosses ?? regenerateBossLine,
   };
 
   const budget = options.budget ?? currentBudget;
   const apiKeyFor = options.apiKeyFor ?? readApiKey;
   const preferenceFor = options.preferenceFor ?? readGenerationSettings;
+  const storageFor = options.storageRefusal ?? ownStorageRefusal;
   const backoff = options.backoffMs ?? backoffFor;
   const idleMs = options.idleMs ?? 2_000;
   const maxActive = options.maxActive ?? maxActiveFrom(process.env.QUEUE_MAX_ACTIVE);
@@ -256,12 +263,27 @@ export function startWorker(isLeader: () => boolean, options: WorkerOptions = {}
     return value;
   }
 
-  async function run(job: QueueJob, lane: LaneState): Promise<void> {
+  /** A job's work is its team's: settings, roster, lexicon, overrides and takes all resolve it. */
+  function run(job: QueueJob, lane: LaneState): Promise<void> {
+    return asTeam(job.lang, job.teamId, () => runJob(job, lane));
+  }
+
+  async function runJob(job: QueueJob, lane: LaneState): Promise<void> {
     // Whose credits this line is spent from. A batch is enqueued by someone who had a key at
     // the time, so reaching here without one means it was cleared or the master key changed
     // underneath it. Failed as this job only, like every failure below: see the note there.
     //
     // For the provider the job was queued with, not whichever the owner has chosen since.
+    //
+    // The storage check starts alongside: it depends on nothing here, and is read below in its turn.
+    // An error checking fails the job too: nothing is paid for that might not be kept.
+    const storage = storageFor(job.lang).then(
+      (refused) => (refused ? { kind: "bad-request" as const, message: refused } : null),
+      (error: unknown) => ({
+        kind: "upstream" as const,
+        message: `could not check the team's storage: ${error instanceof Error ? error.message : String(error)}`,
+      }),
+    );
     let apiKey: string | null;
     try {
       apiKey = await apiKeyFor(job.createdBy ?? "", job.provider);
@@ -273,7 +295,7 @@ export function startWorker(isLeader: () => boolean, options: WorkerOptions = {}
       const message =
         `the account that started this batch has no usable ${PROVIDER_NAME[job.provider]} key; set one in your` +
         " profile and start it again";
-      await failJob(job.id, { kind: "auth", message }).catch((error: unknown) =>
+      await withTeam(job.teamId, (client) => failJob(job.id, { kind: "auth", message }, client)).catch((error: unknown) =>
         console.error(`regeneration queue: job ${job.id} could not be failed`, error),
       );
       return;
@@ -288,15 +310,24 @@ export function startWorker(isLeader: () => boolean, options: WorkerOptions = {}
       const message = `could not read the settings of the account that started this batch: ${
         error instanceof Error ? error.message : String(error)
       }`;
-      await failJob(job.id, { kind: "upstream", message }).catch((failure: unknown) =>
+      await withTeam(job.teamId, (client) => failJob(job.id, { kind: "upstream", message }, client)).catch((failure: unknown) =>
         console.error(`regeneration queue: job ${job.id} could not be failed`, failure),
+      );
+      return;
+    }
+    // Before the provider is paid: a team that keeps its audio only in its own bucket and has none
+    // switched on could keep nothing this job makes.
+    const refused = await storage;
+    if (refused) {
+      await withTeam(job.teamId, (client) => failJob(job.id, refused, client)).catch((error: unknown) =>
+        console.error(`regeneration queue: job ${job.id} could not be failed`, error),
       );
       return;
     }
     const generate = generators[job.source];
     if (!generate) {
       const message = `no generator for ${job.source} jobs in this build`;
-      await failJob(job.id, { kind: "bad-request", message }).catch((error: unknown) =>
+      await withTeam(job.teamId, (client) => failJob(job.id, { kind: "bad-request", message }, client)).catch((error: unknown) =>
         console.error(`regeneration queue: job ${job.id} could not be failed`, error),
       );
       return;
@@ -325,36 +356,45 @@ export function startWorker(isLeader: () => boolean, options: WorkerOptions = {}
     // has its lease reclaimed five minutes later and the same file generated and paid for a
     // second time. Nothing can be done about it from here beyond saying so loudly enough that
     // the log explains the duplicate charge.
+    //
+    // Settled as the job's team, in a transaction of its own: holding one across the
+    // provider's call would keep a connection open for it.
     try {
       if (result.ok) {
-        await finishJob(job.id, {
-          version: result.version,
-          credits: result.credits,
-          costUsd: result.costUsd,
-        });
+        await withTeam(job.teamId, (client) =>
+          finishJob(
+            job.id,
+            { version: result.version, credits: result.credits, costUsd: result.costUsd },
+            client,
+          ),
+        );
         return;
       }
 
       const { kind, message } = result.failure;
+      if (kind === "rate-limit") lane.rateLimitedAt = Date.now();
 
-      if (kind === "rate-limit") {
-        lane.rateLimitedAt = Date.now();
+      await withTeam(job.teamId, async (client) => {
         // A retry puts the row back to `pending`, where it would be claimed and paid for
         // after an admin pressed Stop - and where it would flip the queue back to active, so
         // the panel returns to "Regenerating" having just said "Stopped". Stop means stop.
-        if (job.attempts < MAX_ATTEMPTS && !(await batchStopped(job.batchId))) {
-          await retryJob(job.id, backoff(job.attempts));
+        if (
+          kind === "rate-limit" &&
+          job.attempts < MAX_ATTEMPTS &&
+          !(await batchStopped(job.batchId, client))
+        ) {
+          await retryJob(job.id, backoff(job.attempts), client);
           return;
         }
-      }
 
-      // Only this job fails; the rest of its batch carries on, whatever `fatal` says. `fatal`
-      // is the browser's contract (errors.ts) and assumes a batch is one voice and one key,
-      // which a queued batch is not: a "Regenerate all" spans every NPC slot, and cancelling
-      // it for one slot with no voice takes down every line that has one. Even an
-      // account-wide failure - no credits, a revoked key - is refused before anything is
-      // billed, so letting each remaining line fail on its own costs nothing but log rows.
-      await failJob(job.id, { kind, message });
+        // Only this job fails; the rest of its batch carries on, whatever `fatal` says. `fatal`
+        // is the browser's contract (errors.ts) and assumes a batch is one voice and one key,
+        // which a queued batch is not: a "Regenerate all" spans every NPC slot, and cancelling
+        // it for one slot with no voice takes down every line that has one. Even an
+        // account-wide failure - no credits, a revoked key - is refused before anything is
+        // billed, so letting each remaining line fail on its own costs nothing but log rows.
+        await failJob(job.id, { kind, message }, client);
+      });
     } catch (error) {
       console.error(
         `regeneration queue: job ${job.id} (${job.file}) settled but its outcome could not be` +
@@ -419,7 +459,7 @@ export function startWorker(isLeader: () => boolean, options: WorkerOptions = {}
           // retryJob rather than starting it is what keeps a rolling deploy's SIGTERM from
           // stranding the row for its whole five-minute lease. Losing an attempt to a
           // deploy that never actually tried the job is the fair side of that trade.
-          await retryJob(job.id, 0);
+          await withTeam(job.teamId, (client) => retryJob(job.id, 0, client));
           return;
         }
 

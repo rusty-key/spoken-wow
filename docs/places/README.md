@@ -19,6 +19,7 @@ Era) and 20506 (Anniversary), and the code still runs there, but no new work is 
 | [ADDON.md](ADDON.md) | Settings, languages, how a story is read, the voice packs, reading on discovery |
 | [COMPENDIUM.md](COMPENDIUM.md) | The Places tab, undiscovered places, the dungeon and area tables, the map panel |
 | [LORE.md](LORE.md) | How the story text is built, stored, exported and checked |
+| [BOSSES.md](BOSSES.md) | The boss tables behind Spoken_Bosses and the Lua exported from them |
 | [PICTURES.md](PICTURES.md) | The place pictures and their edge masks |
 | [VOICE.md](VOICE.md) | Voice, the site, the voice packs, releases |
 | [CONTENT.md](CONTENT.md) | Adding a place, a dungeon, a picture or a language, and finding what is missing |
@@ -115,7 +116,9 @@ which fails while `Data/Languages.lua` is out of date. The Lua block check
 ## Running the checkout in the game
 
 `/link-addon` (the skill in `.claude/skills/link-addon`) links the worktree's addons into the
-client's `Interface/AddOns`. `/reload` then runs the checkout's code. A texture the game did not
+client's `Interface/AddOns`. `/reload` then runs the checkout's code. When the worktree is on a server and the
+client on another machine, `/sync-addon` gives the `scripts/developer/sync-addons.sh` command,
+which copies the addons across and with `--watch` keeps them in step. A texture the game did not
 list at start draws solid green until the client restarts, so a new picture needs a restart and
 not only `/reload`. `scripts/places/deploy.sh` is older: it installs into Classic Era and
 Anniversary folders only.

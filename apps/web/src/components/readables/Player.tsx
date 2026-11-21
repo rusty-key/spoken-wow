@@ -2,6 +2,7 @@
 
 import { useLang } from "@/components/LangProvider";
 import { withLang } from "@/lib/lang";
+import { forTeam } from "@/lib/teams/view";
 import AudioPlayer from "@/components/AudioPlayer";
 import type { ResultLine } from "@/lib/readables/search";
 
@@ -13,12 +14,14 @@ import type { ResultLine } from "@/lib/readables/search";
  */
 type Props = {
   line: ResultLine | null;
+  /** The slug of another team whose take plays, sent as `team`; null for the visitor's own. */
+  team?: string | null;
   /** Take version, used only to bust the browser cache after a regeneration. */
   version?: number;
   audioRef: React.RefObject<HTMLAudioElement | null>;
 };
 
-export function Player({ line, version, audioRef }: Props) {
+export function Player({ line, team = null, version, audioRef }: Props) {
   const lang = useLang();
   const query = new URLSearchParams();
   if (version !== undefined) query.set("v", String(version));
@@ -31,7 +34,9 @@ export function Player({ line, version, audioRef }: Props) {
     <AudioPlayer
       audioRef={audioRef}
       src={
-        playable ? withLang(lang, `/api/readables/audio/${line.file}.mp3${query.size ? `?${query}` : ""}`) : undefined
+        playable
+          ? withLang(lang, forTeam(`/api/readables/audio/${line.file}.mp3${query.size ? `?${query}` : ""}`, team))
+          : undefined
       }
       title={
         line === null

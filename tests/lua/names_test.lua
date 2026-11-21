@@ -73,17 +73,17 @@ Expect("nothing left behind, nothing found", table.getn(env.Addon:FindOldFolders
 loaded = { SpokenPlayer = true, VoiceOverRedux = true, ZoneLore = true,
     SpokenQuests = true, SpokenZones = true, SpokenBooks = true, Spoken_Books = true,
     Spoken_Writings = true,
-    Spoken_Zones = true,
-    Spoken_Quests = true, Spoken_Places = true, Spoken_Readables = true }
+    Spoken_Zones = true, Spoken_NPCs = true,
+    Spoken_Quests = true, Spoken_Places = true, Spoken_Readables = true, Spoken_Bosses = true }
 local found = env.Addon:FindOldFolders()
 Expect("every old folder is found, and no current one", table.concat(found, " "),
-    "SpokenPlayer VoiceOverRedux ZoneLore SpokenQuests SpokenZones SpokenBooks Spoken_Books Spoken_Zones Spoken_Writings")
+    "SpokenPlayer VoiceOverRedux ZoneLore SpokenQuests SpokenZones SpokenBooks Spoken_Books Spoken_Zones Spoken_Writings Spoken_NPCs")
 Expect("...and finding them disables nothing", table.getn(stub.disabledAddOns), 0)
 stub.popups = {}
 local reloads = stub.reloads
 env.Addon:RetireOldFolders()
 Expect("retiring them switches every old folder off for the next login", table.concat(stub.disabledAddOns, " "),
-    "SpokenPlayer VoiceOverRedux ZoneLore SpokenQuests SpokenZones SpokenBooks Spoken_Books Spoken_Zones Spoken_Writings")
+    "SpokenPlayer VoiceOverRedux ZoneLore SpokenQuests SpokenZones SpokenBooks Spoken_Books Spoken_Zones Spoken_Writings Spoken_NPCs")
 local popup = stub.popups[1]
 -- A sound pack under its module's old name is old only beside its renamed replacement.
 do
@@ -94,11 +94,25 @@ do
         SpokenZonesAudioActed_frFR = true, SpokenPlacesAudioActed_frFR = true }
     Expect("an old pack beside its replacement is found, and one alone is not",
         table.concat(env.Addon:FindOldFolders(), " "), "SpokenZonesAudio_deDE SpokenZonesAudioActed_frFR")
+    -- A language's one quests folder is old beside all four of its split packs, loaded or not.
+    local split = function(lang)
+        return { { folder = "SpokenQuestsAudioAlliance_" .. lang }, { folder = "SpokenQuestsAudioHorde_" .. lang },
+            { folder = "SpokenQuestsAudioShared_" .. lang }, { folder = "SpokenQuestsAudioGossip_" .. lang } }
+    end
+    loaded = {}
+    stub.addons = split("deDE")
+    table.insert(stub.addons, { folder = "SpokenQuestsAudio_deDE" })
+    table.insert(stub.addons, { folder = "SpokenQuestsAudio_frFR" })
+    table.insert(stub.addons, { folder = "SpokenQuestsAudioShared_frFR" })
+    Expect("a language's one quests folder beside its four packs is found, and one beside fewer is not",
+        table.concat(env.Addon:FindOldFolders(), " "), "SpokenQuestsAudio_deDE")
+    stub.addons[5].loadable, stub.addons[5].reason = false, "DISABLED"
+    Expect("...and it is not named again once it is switched off", table.concat(env.Addon:FindOldFolders(), " "), "")
     stub.addons, loaded, stub.disabledAddOns = addons, wasLoaded, wasDisabled
 end
 Expect("...names them in a popup", popup and popup.key, "SPOKEN_OLD_FOLDERS")
 Expect("...that offers the reload which finishes it", popup and popup.dialog.button1, "Reload Now")
-Expect("...listing them one to a line", string.find(popup.dialog.text, "\n\n• SpokenPlayer\n• VoiceOverRedux\n", 1, true) ~= nil, true)
+Expect("...listing them one to a line", string.find(popup.dialog.text, "\n\n· SpokenPlayer\n· VoiceOverRedux\n", 1, true) ~= nil, true)
 local justify = "CENTER"
 local shown = { text = { SetJustifyH = function(_, value) justify = value end } }
 popup.dialog.OnShow(shown)
@@ -112,7 +126,7 @@ Expect("...and reloads when taken up on it", stub.reloads, reloads + 1)
 stub.disabledAddOns, stub.popups = {}, {}
 SetCVar("InputDeviceInterfaceStyle", "1")
 env.Addon:RetireOldFolders()
-Expect("under the gamepad UI, old folders are still switched off", table.getn(stub.disabledAddOns), 9)
+Expect("under the gamepad UI, old folders are still switched off", table.getn(stub.disabledAddOns), 10)
 Expect("...with no popup", table.getn(stub.popups), 0)
 SetCVar("InputDeviceInterfaceStyle", "0")
 loaded = {}
@@ -121,21 +135,5 @@ env.Addon:RetireOldFolders()
 Expect("with nothing old loaded, nothing is disabled and nothing pops up",
     table.getn(stub.disabledAddOns) + table.getn(stub.popups), 0)
 _G.IsAddOnLoaded = realLoaded
-
----------------------------------------------------------------- one list of languages
--- Spoken's list replaces each module's own, so it has to offer every language they do.
-local function Codes(list)
-    local codes = {}
-    for _, locale in ipairs(list) do table.insert(codes, locale.code) end
-    return table.concat(codes, " ")
-end
-local function CodesIn(path)
-    local block = string.match(Read(path), "LOCALES = (%b{})")
-    local codes = {}
-    for code in string.gmatch(block, 'code = "(%a+)"') do table.insert(codes, code) end
-    return table.concat(codes, " ")
-end
-Expect("Spoken's languages are Quests', in the same order", Codes(env.LANGUAGES), CodesIn(QUESTS .. "Language.lua"))
-Expect("...and Readables'", Codes(env.LANGUAGES), CodesIn(ADDONS .. "Spoken_Readables/Language.lua"))
 
 if Failures() > 0 then print(string.format("\n%d failure(s)", Failures())); os.exit(1) end

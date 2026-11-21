@@ -54,6 +54,16 @@ describe("listUsers", () => {
     expect(await ids(PREFIX, { column: "name", direction: "desc" })).toEqual([`${PREFIX}-1`, `${PREFIX}-2`]);
   });
 
+  it("counts a team capability as a grant when sorting by language", async () => {
+    await db().query(
+      `insert into "team_member" ("teamId", "userId", "lang", "capability")
+       values (team_of_lang('deDE'), $1, 'deDE', 'regenerate')`,
+      [`${PREFIX}-2`],
+    );
+    expect(await ids(PREFIX, { column: "languages", direction: "asc" })).toEqual([`${PREFIX}-2`, `${PREFIX}-1`]);
+    await db().query(`delete from "team_member" where "userId" = $1`, [`${PREFIX}-2`]);
+  });
+
   it("puts somebody with grants before somebody with none, by language", async () => {
     await db().query(
       `insert into "language_grant" ("userId", "lang", "capability") values ($1, 'deDE', 'edit')`,

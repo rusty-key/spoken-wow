@@ -1,0 +1,44 @@
+/** What a new language's code and names must look like, shared by the admin route and team requests. */
+import { LANG_SHAPE } from "@/lib/lang";
+
+export const LANG_CODE = new RegExp(`^${LANG_SHAPE}$`);
+const MAX_NAME = 60;
+
+/**
+ * A team's or language's name lands in a pack's .toc, one `## key: value` line each, where a line
+ * break would end it and forge the next key, and in its title, where WoW reads `|` as an escape
+ * (`|c`, `|T`).
+ */
+const NOT_IN_NAME = /[\p{Cc}\p{Zl}\p{Zp}|]/u;
+
+/** What describedName accepts, for the message that refuses a name. */
+export const NAME_RULE = `1 to ${MAX_NAME} characters on one line, without |`;
+
+/** A name trimmed, or null when it is empty, over 60 characters, not one line, holds `|` or is not text. */
+export function describedName(value: unknown): string | null {
+  if (typeof value !== "string") return null;
+  const text = value.trim();
+  return text && text.length <= MAX_NAME && !NOT_IN_NAME.test(text) ? text : null;
+}
+
+/** The page sections, baked in by next.config.ts: the standalone bundle cannot read src/app/[lang]. */
+export function isPageSection(code: string): boolean {
+  const sections = (process.env.SPOKEN_PAGE_SECTIONS ?? "").split(",");
+  return sections.some((section) => section.toLowerCase() === code.toLowerCase());
+}
+
+/** A new language's trimmed names, or why it cannot have them or its code. */
+export function checkNewLanguage(
+  code: string,
+  name: unknown,
+  native: unknown,
+): { error: string } | { language: { name: string; native: string } } {
+  if (!LANG_CODE.test(code)) return { error: "A language code is two lowercase letters and two capitals, like xxXX." };
+  if (isPageSection(code)) return { error: `${code} would shadow a page` };
+  const english = describedName(name);
+  const own = describedName(native);
+  if (!english || !own) {
+    return { error: `A new language needs an English name and a native name, each ${NAME_RULE}.` };
+  }
+  return { language: { name: english, native: own } };
+}

@@ -62,6 +62,13 @@ export function placesHref(options: { q?: string; mapID?: number; field?: ZoneSc
   return params.size ? `/places?${params}` : "/places";
 }
 
+/** The bosses explorer, narrowed to one instance. Bosses calls its map filter `instance`. */
+export function bossesHref(options: { mapID?: number } = {}): string {
+  const params = new URLSearchParams();
+  if (options.mapID !== undefined) params.set("instance", String(options.mapID));
+  return params.size ? `/bosses?${params}` : "/bosses";
+}
+
 /** The readables explorer, narrowed. `field` as in placesHref: readables says `field` too. */
 export function readablesHref(options: { q?: string; field?: BookScope } = {}): string {
   const params = new URLSearchParams();
@@ -80,7 +87,7 @@ export function readablesHref(options: { q?: string; field?: BookScope } = {}): 
  * form, which is what a triager wants to see.
  *
  * `target` is stored as the addon produced it: 'quest/84/accept' or 'npc/5678' for quests,
- * '<mapID>/<slug>' for places, and a bare page id for readables. All three are already
+ * '<mapID>/<slug>' for places and bosses, and a bare page id for readables. Each is already
  * path-shaped, and each section's route takes exactly its own shape.
  */
 export function reportHref(source: Source, target: string): string {
@@ -136,11 +143,12 @@ export function targetExplorerHref(source: Source, target: string): string | nul
     return null;
   }
 
-  if (source === "places") {
-    // '<mapID>/<slug>': the zone filter takes the id, and the slug is the page within it,
-    // which no filter addresses.
+  if (source === "places" || source === "bosses") {
+    // '<mapID>/<slug>': the zone or instance filter takes the id, and the slug is the line
+    // within it, which no filter addresses.
     if (segments.length === 2 && /^\d+$/.test(segments[0])) {
-      return placesHref({ mapID: Number(segments[0]) });
+      const mapID = Number(segments[0]);
+      return source === "places" ? placesHref({ mapID }) : bossesHref({ mapID });
     }
     return null;
   }

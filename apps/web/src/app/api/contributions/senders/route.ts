@@ -5,7 +5,8 @@
  */
 import { requireCapability } from "@/lib/generation/authz";
 import { contributionLocale, contributionSenders } from "@/lib/contributions/store";
-import { BASE_LANG, isLang } from "@/lib/lang";
+import { BASE_LANG } from "@/lib/lang";
+import { knownLang } from "@/lib/languages/catalogue";
 
 export const dynamic = "force-dynamic";
 
@@ -16,7 +17,7 @@ export async function GET(request: Request) {
   }
 
   const locale = await contributionLocale(id);
-  const { denied } = await requireCapability("edit", isLang(locale) ? locale : BASE_LANG);
+  const { denied } = await requireCapability("text", (await knownLang(locale)) ?? BASE_LANG);
   if (denied) return denied;
 
   const senders = locale === null ? null : await contributionSenders(id);

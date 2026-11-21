@@ -4,6 +4,7 @@ import { SharingPrompt } from './components/SharingPrompt'
 import { Banners, GamesStrip, TopBar } from './components/TopBar'
 import { CommunityPage } from './pages/CommunityPage'
 import { HomePage } from './pages/HomePage'
+import { ReleasePage } from './pages/ReleasePage'
 import { SettingsPage } from './pages/SettingsPage'
 import { SpokenPage } from './pages/SpokenPage'
 import { VoicePacksPage } from './pages/VoicePacksPage'
@@ -40,6 +41,7 @@ export function App(): ReactNode {
             {state.page === 'spoken' && <SpokenPage />}
             {state.page === 'voices' && <VoicePacksPage />}
             {state.page === 'community' && <CommunityPage />}
+            {state.page === 'release' && <ReleasePage />}
             {state.page === 'settings' && <SettingsPage />}
           </>
         )}

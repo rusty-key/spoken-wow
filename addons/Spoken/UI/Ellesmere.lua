@@ -29,15 +29,13 @@ local function Run(dress, skin)
     return ok
 end
 
---- EllesmereUI's font while the windows wear its look and it writes the client's language; else nil.
---- It writes Latin script only: Russian, Korean and Chinese clients keep the game's font, which has
---- their script.
+--- EllesmereUI's font while the windows wear its look and it writes the interface's language; else
+--- nil. It writes Latin script only: a Russian, Korean or Chinese interface keeps the game's font,
+--- which has their script, and so does a pack's, whose script Spoken cannot know.
 function Ellesmere:Font()
     if not self.skin then return nil end
-    local client = Options:ClientLanguage()
-    for _, language in ipairs(LANGUAGES) do
-        if language.code == client and language.script then return nil end
-    end
+    local language = Languages:Get(Interface:Language())
+    if not language or language.script ~= "latin" then return nil end
     return (self.skin.GetFont())
 end
 

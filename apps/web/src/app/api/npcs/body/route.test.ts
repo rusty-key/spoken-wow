@@ -7,6 +7,7 @@
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { closeDb, db } from "@/lib/db";
+import { asSystem } from "@/lib/teams/testing";
 import { getBodies, upsertResolution } from "@/lib/npc/store";
 
 const RESOLVER = "test-npcs-body-route";
@@ -20,7 +21,7 @@ import { POST } from "./route";
 const npcId = 900_000_000 + Math.floor(Math.random() * 99_999_999);
 
 beforeAll(async () => {
-  await db().query(
+  await asSystem.query(
     `insert into "user" ("id", "name", "email", "emailVerified") values ($1, 'Test Resolver', $2, false)
      on conflict ("id") do nothing`,
     [RESOLVER, `${RESOLVER}@example.invalid`],
@@ -36,12 +37,12 @@ beforeEach(async () => {
 });
 
 afterEach(async () => {
-  await db().query(`delete from "npc" where "npcId" = $1`, [npcId]);
-  await db().query(`delete from "activity" where "actorId" = $1`, [RESOLVER]);
+  await asSystem.query(`delete from "npc" where "npcId" = $1`, [npcId]);
+  await asSystem.query(`delete from "activity" where "actorId" = $1`, [RESOLVER]);
 });
 
 afterAll(async () => {
-  await db().query(`delete from "user" where "id" = $1`, [RESOLVER]);
+  await asSystem.query(`delete from "user" where "id" = $1`, [RESOLVER]);
   await closeDb();
 });
 
@@ -82,7 +83,7 @@ describe("POST /api/npcs/body", () => {
   });
 
   it("refuses to split an NPC that is neither a man nor a woman", async () => {
-    await db().query(`update "npc" set "race" = 'beast', "gender" = null where "npcId" = $1`, [npcId]);
+    await asSystem.query(`update "npc" set "race" = 'beast', "gender" = null where "npcId" = $1`, [npcId]);
     expect((await post({ action: "split" })).status).toBe(400);
     expect(await getBodies("creature", npcId)).toEqual([]);
   });
@@ -107,7 +108,7 @@ describe("POST /api/npcs/body", () => {
   });
 
   it("adds the NPC's own body to an NPC split without it", async () => {
-    await db().query(
+    await asSystem.query(
       `insert into "npc_body" ("npcKind", "npcId", "race", "sex", "flavor", "provenance")
        values ('creature', $1, 'gnome', 2, 'standard', 'corpus'), ('creature', $1, 'gnome', 3, 'standard', 'corpus')`,
       [npcId],

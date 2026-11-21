@@ -4,13 +4,14 @@
 //
 // Windows (NSIS installer), macOS (signed and notarized, updated from the zip) and a Linux AppImage
 // use electron-updater's generic provider: it downloads the update and installs it when the
-// manager quits. Outside an AppImage on Linux (the tar.gz, deb and rpm) the manager does not use
-// electron-updater at all: it reads the feed's `latest-linux.yml`, compares the version and reports
-// the page to download from. Does nothing when the app is not packaged or the player switched it
+// manager quits, or at once when the player presses Restart. Outside an AppImage on Linux (the
+// tar.gz, deb and rpm) the manager does not use electron-updater at all: it reads the feed's
+// `latest-linux.yml`, compares the version and reports the page to download from. Does nothing when the app is not packaged or the player switched it
 // off; it never throws.
 import { compareVersions } from '../shared/version'
 import type { UpdaterState } from '../shared/api'
 import { log } from './state'
+import { t } from './i18n'
 
 export const FEED_URL = 'https://github.com/rusty-key/spoken-wow/releases/download/manager-latest'
 
@@ -33,6 +34,11 @@ export interface UpdaterOptions {
   loadUpdater?: () => Promise<UpdaterLike | null>
   /** Reads a text file from the web; throws when it cannot (tests). Default: `fetch` with a time limit. */
   fetchText?: (url: string) => Promise<string>
+  /**
+   * Resolves once the session proxy is set. electron-updater sends through its own session, so a check sent
+   * earlier would go by the old route and then have its connections closed under it.
+   */
+  proxyReady?: () => Promise<void>
 }
 
 /** The part of electron-updater's `autoUpdater` this file uses. */
@@ -43,6 +49,7 @@ export interface UpdaterLike {
   logger: unknown
   on(event: string, listener: (arg: never) => void): unknown
   checkForUpdates(): Promise<unknown>
+  quitAndInstall(isSilent?: boolean, isForceRunAfter?: boolean): void
 }
 
 /** `auto`: electron-updater downloads and installs. `manual`: only tell the player where to get the new version. */
@@ -63,8 +70,12 @@ export function parseFeedVersion(text: string): string | null {
   return m ? m[1]! : null
 }
 
-async function fetchWithLimit(url: string): Promise<string> {
-  const res = await fetch(url, { signal: AbortSignal.timeout(15000), headers: { 'User-Agent': 'Spoken-Manager' } })
+/**
+ * The feed read. The fetch is injected so the read can follow the session's proxy: Node's fetch ignores the
+ * system proxy.
+ */
+export async function fetchWithLimit(url: string, fetchImpl: typeof fetch = fetch): Promise<string> {
+  const res = await fetchImpl(url, { signal: AbortSignal.timeout(15000), headers: { 'User-Agent': 'Spoken-Manager' } })
   if (!res.ok) throw new Error(`${url}: HTTP ${res.status}`)
   const text = await res.text()
   if (text.length > 256 * 1024) throw new Error(`${url}: too large`)
@@ -82,6 +93,8 @@ export class ManagerUpdater {
   private last: UpdaterState = { state: 'idle' }
   /** The check in progress was started by the player, not by the manager on its own. */
   private userTriggered = false
+  /** A check is running, including while it waits for the proxy. */
+  private inCheck = false
   private readonly platform: NodeJS.Platform
   private readonly mode: 'auto' | 'manual'
 
@@ -102,8 +115,11 @@ export class ManagerUpdater {
   /** A failed check is only shown when the player asked for it (or a download had begun); otherwise it is logged and the state goes back to idle. */
   private failed(reason: unknown): void {
     log('Manager update failed:', reason)
-    if (this.userTriggered || this.last.state === 'downloading') {
-      this.publish({ state: 'error', message: 'Could not check for a newer manager. Check your connection and try again.' })
+    // check() never runs once an update is ready, so this is the install failing; the download is still good.
+    if (this.last.state === 'ready') {
+      this.publish({ state: 'ready', version: this.last.version, message: t('updater.installFailed') })
+    } else if (this.userTriggered || this.last.state === 'downloading') {
+      this.publish({ state: 'error', message: t('updater.checkFailed') })
     } else this.publish({ state: 'idle' })
   }
 
@@ -132,7 +148,6 @@ export class ManagerUpdater {
 
   /** Linux outside an AppImage: read the feed, compare, point to the download page. */
   private async checkManually(): Promise<void> {
-    this.publish({ state: 'checking' })
     const url = `${this.opts.feedUrl ?? FEED_URL}/${feedFileFor(this.platform)}`
     const text = await (this.opts.fetchText ?? fetchWithLimit)(url)
     const version = parseFeedVersion(text)
@@ -143,21 +158,42 @@ export class ManagerUpdater {
     else this.publish({ state: 'idle' })
   }
 
+  /** A second check would start the download again, and a failed one would take Restart away from an update that is ready. */
+  private checkWouldInterfere(): boolean {
+    const s = this.last
+    return s.state === 'checking' || s.state === 'downloading' || s.state === 'ready' || (s.state === 'available' && !s.url)
+  }
+
   private async check(byPlayer: boolean): Promise<void> {
+    if (this.inCheck || this.checkWouldInterfere()) return
     this.userTriggered = byPlayer
+    // Claimed before the wait: two overlapping checks would race for the feed, and the loser's failure would
+    // replace the link the winner published.
+    this.inCheck = true
     try {
-      if (this.mode === 'manual') return await this.checkManually()
+      await this.opts.proxyReady?.()
+      if (this.mode === 'manual') {
+        this.publish({ state: 'checking' })
+        return await this.checkManually()
+      }
       const u = await this.load()
       if (!u) return this.failed('electron-updater has no autoUpdater')
       await u.checkForUpdates()
     } catch (err) {
       this.failed(err)
+    } finally {
+      // A started download blocks further checks through its state.
+      this.inCheck = false
     }
   }
 
-  /** Called once at start: checks when the player has not switched it off and the app is installed. */
   async start(): Promise<void> {
     this.publish({ state: 'idle' })
+    await this.checkInBackground()
+  }
+
+  /** Checks when the player has not switched it off and the app is installed; failures are only logged. */
+  async checkInBackground(): Promise<void> {
     if (!this.opts.isPackaged || !this.opts.autoUpdateManager()) return
     await this.check(false)
   }
@@ -165,10 +201,29 @@ export class ManagerUpdater {
   /** A check the player asked for: failures are reported as `error`. */
   async checkNow(): Promise<void> {
     if (!this.opts.isPackaged) {
-      this.publish({ state: 'error', message: 'The manager can only update itself when it is installed.' })
+      this.publish({ state: 'error', message: t('updater.notInstalled') })
       return
     }
     await this.check(true)
+  }
+
+  /**
+   * A check or the update's download is on the wire, so closing the session's connections would fail it.
+   * `available` without a link counts: electron-updater starts downloading before its first progress event.
+   * `ready` does not, or a downloaded update would keep the proxy locked until a restart.
+   */
+  onTheWire(): boolean {
+    return this.inCheck || (this.last.state !== 'ready' && this.checkWouldInterfere())
+  }
+
+  restart(): void {
+    if (this.last.state !== 'ready' || !this.updater) return
+    try {
+      // Silent: otherwise Windows shows the installer's wizard. Force-run: otherwise an AppImage does not start again.
+      this.updater.quitAndInstall(true, true)
+    } catch (err) {
+      this.failed(err)
+    }
   }
 }
 
@@ -179,6 +234,14 @@ export async function startUpdater(options: UpdaterOptions): Promise<void> {
   await current.start()
 }
 
-export async function checkForManagerUpdate(): Promise<void> {
-  await current?.checkNow()
+export async function checkForManagerUpdate(background: boolean): Promise<void> {
+  await (background ? current?.checkInBackground() : current?.checkNow())
+}
+
+export function managerUpdateOnTheWire(): boolean {
+  return current?.onTheWire() ?? false
+}
+
+export function restartToUpdateManager(): void {
+  current?.restart()
 }

@@ -16,6 +16,12 @@ CORPUS = {
 SIDES = {5: "alliance", 7: "horde"}
 
 
+def forms(*stems):
+    """Each stem with its player-gender forms, which a pack carries with it."""
+    return {f"{stem.split('/')[0]}/{prefix}{stem.split('/')[1]}"
+            for stem in stems for prefix in ("", "m-", "f-")}
+
+
 def test_a_quest_with_a_side_lands_in_that_pack():
     assert pack_of_line(CORPUS["lines"][0], SIDES) == "alliance"
     assert pack_of_line(CORPUS["lines"][1], SIDES) == "horde"
@@ -45,37 +51,38 @@ def test_followup_lines_split_by_the_quest_that_says_them():
          "fileName": "12-human-male-standard"},
     ]}
     assert pack_of_line(corpus["lines"][0], SIDES) == "alliance"
-    assert pack_stems(corpus, SIDES, "alliance") == {"followup/10-dwarf-male-standard"}
-    assert pack_stems(corpus, SIDES, "horde") == {"followup/11-orc-male-standard"}
-    assert pack_stems(corpus, SIDES, "shared") == {"followup/12-human-male-standard"}
+    assert pack_stems(corpus, SIDES, "alliance") == forms("followup/10-dwarf-male-standard")
+    assert pack_stems(corpus, SIDES, "horde") == forms("followup/11-orc-male-standard")
+    assert pack_stems(corpus, SIDES, "shared") == forms("followup/12-human-male-standard")
     assert pack_stems(corpus, SIDES, "gossip") == set()
 
 
 def test_stems_are_extension_free_so_they_match_a_transcoded_store():
-    assert pack_stems(CORPUS, SIDES, "alliance") == {"quests/5-accept"}
-    assert pack_stems(CORPUS, SIDES, "gossip") == {"gossip/abc123"}
+    assert pack_stems(CORPUS, SIDES, "alliance") == forms("quests/5-accept")
+    assert pack_stems(CORPUS, SIDES, "gossip") == forms("gossip/abc123")
 
 
 def test_a_gossip_file_s_aliases_ship_beside_it():
     # The addon plays an alias when the file itself has no take, so the alias must be there.
     aliases = {"abc123": ["b6029-orc-male"]}
-    assert pack_stems(CORPUS, SIDES, "gossip", aliases) == {
-        "gossip/abc123", "gossip/b6029-orc-male", "gossip/m-b6029-orc-male", "gossip/f-b6029-orc-male"}
-    assert pack_stems(CORPUS, SIDES, "alliance", aliases) == {"quests/5-accept"}
+    assert pack_stems(CORPUS, SIDES, "gossip", aliases) == forms("gossip/abc123", "gossip/b6029-orc-male")
+    assert pack_stems(CORPUS, SIDES, "alliance", aliases) == forms("quests/5-accept")
+
+
+def test_a_line_s_player_gender_forms_ship_together():
+    # A language's text can split by player gender where English's does not, and the other way
+    # round, so its store holds forms the corpus does not name. The addon plays them all.
+    assert pack_stems(CORPUS, SIDES, "alliance") >= {"quests/m-5-accept", "quests/f-5-accept"}
+    gendered = {"lines": [
+        {"lineId": "q:5:accept:m", "source": "accept", "questId": 5, "fileName": "m-5-accept"},
+        {"lineId": "q:5:accept:f", "source": "accept", "questId": 5, "fileName": "f-5-accept"},
+    ]}
+    assert pack_stems(gendered, SIDES, "alliance") == forms("quests/5-accept")
 
 
 def test_the_all_pack_is_every_stem():
-    assert pack_stems(CORPUS, SIDES, "all") == {
-        "quests/5-accept", "quests/7-accept", "quests/9-accept", "gossip/abc123"}
-
-
-def test_the_quests_pack_is_every_side_but_no_gossip():
-    # A language not split by side ships Alliance, Horde and Shared as one pack.
-    assert pack_stems(CORPUS, SIDES, "quests") == (
-        pack_stems(CORPUS, SIDES, "alliance") | pack_stems(CORPUS, SIDES, "horde")
-        | pack_stems(CORPUS, SIDES, "shared"))
-    assert pack_stems(CORPUS, SIDES, "quests") == {
-        "quests/5-accept", "quests/7-accept", "quests/9-accept"}
+    assert pack_stems(CORPUS, SIDES, "all") == forms(
+        "quests/5-accept", "quests/7-accept", "quests/9-accept", "gossip/abc123")
 
 
 def test_the_packs_partition_the_corpus():
@@ -142,7 +149,7 @@ def test_the_compendium_wins_and_the_export_fills_in_what_it_does_not_list(tmp_p
 
 
 def test_pack_names_are_stable():
-    assert PACKS == ("all", "alliance", "horde", "shared", "gossip", "quests")
+    assert PACKS == ("all", "alliance", "horde", "shared", "gossip")
 
 
 def test_every_pack_has_a_folder_suffix_and_a_label():

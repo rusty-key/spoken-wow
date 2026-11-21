@@ -71,6 +71,42 @@ Expect("a pack switched off in the AddOns list is not found", VO.DataModules.pre
 Expect("...while one switched on is", VO.DataModules.presentModules["OnPack"] ~= nil, true)
 Expect("...and nothing was switched on to load it", #stub.enabledAddOns, 0)
 
+---------------------------------------------------------------- loading after login, a pack at a time
+-- Several packs in one callback ran past Hardcore's script-time limit, and a pack that does not
+-- register must not be retried every frame.
+stub.SetClient("16001"); stub.ResetSound(); stub.ResetTimers(); stub.ResetFrames()
+_G.UISpecialFrames = _G.UISpecialFrames or {}
+stub.settingsCategories = {}; stub.ldbObjects = {}; stub.dbIcons = {}
+local callback, loadedIn, loads = 0, {}, 0
+local after, isLoaded = C_Timer.After, _G.IsAddOnLoaded
+_G.IsAddOnLoaded = function(folder) return loadedIn[folder] ~= nil end
+C_Timer.After = function(delay, fn)
+    after(delay, function(...) callback = callback + 1; return fn(...) end)
+end
+local function Pack(folder, registers)
+    return { folder = folder, loadOnDemand = true,
+        meta = { [OLD .. "Version"] = "1", Title = folder, Version = "1.2.1" },
+        onLoad = function()
+            loads = loads + 1
+            loadedIn[folder] = callback
+            if registers then VO.DataModules:Register(folder, { GetSoundPath = function() end }) end
+            return true
+        end }
+end
+stub.SetAddOns({ Pack("PackA", true), Pack("PackBroken", false), Pack("PackC", true) })
+VO = stub.LoadQuests(QUESTS, SPOKEN)
+VO.Addon:OnInitialize()
+Expect("no pack is loaded during initialization", loads, 0)
+stub.Advance(2)
+C_Timer.After, _G.IsAddOnLoaded = after, isLoaded
+Expect("every pack is tried once", loads, 3)
+Expect("...each in its own callback", loadedIn.PackA ~= loadedIn.PackBroken
+    and loadedIn.PackBroken ~= loadedIn.PackC and loadedIn.PackA ~= loadedIn.PackC, true)
+Expect("the packs either side of a broken one register",
+    VO.DataModules:GetModule("PackA") ~= nil and VO.DataModules:GetModule("PackC") ~= nil, true)
+Expect("...the broken one keeps its reason", VO.DataModules:GetModuleLoadError("PackBroken"), "DID_NOT_REGISTER")
+Expect("...and loading finishes", VO.Addon.dataModulesPending, nil)
+
 ---------------------------------------------------------------- not a pack at all
 VO, found = Enumerate({ Title = "Some other addon" })
 Expect("an addon carrying neither key is not a pack", found, nil)

@@ -6,7 +6,7 @@
 
 setfenv(1, SpokenEnv)
 
-if GetLocale() ~= "frFR" then
+if not Interface:In("frFR") then
 	return
 end
 
@@ -50,12 +50,13 @@ L.OPT_CONTRIBUTE_TITLE = "Contribuer et signaler"
 L.OPT_HIDE_CONTRIBUTE = "Masquer les boutons Contribuer"
 L.OPT_HIDE_REPORT = "Masquer les boutons Signaler"
 L.OPT_GATHER = "Collecter les répliques"
+L.OPT_GATHER_VIEW = "Afficher les répliques collectées"
 L.OPT_GATHER_SHARE = "Envoyer les répliques collectées"
 L.OPT_GATHER_CLEAR = "Effacer les répliques collectées"
 L.CONTRIBUTE_INTRO = "Spoken n'a pas encore de voix pour ceci, et le texte du jeu est le moyen de l'obtenir.\n\nVous pouvez envoyer juste cette réplique maintenant, ou laisser Spoken collecter en silence, pendant que vous jouez, chaque réplique manquante et chaque réplique qui a une voix mais dont le texte diffère dans votre jeu, et tout envoyer d'un coup quand vous voulez.\n\nRien ne quitte votre jeu à moins que vous le téléversiez vous-même ou laissiez le Spoken Manager l'envoyer pour vous, et vous pouvez arrêter la collecte à tout moment dans les paramètres de Spoken."
 L.CONTRIBUTE_JUST_THIS = "Envoyer juste cette réplique"
 L.CONTRIBUTE_GATHER = "Collecter en jouant"
-L.GATHER_INSTRUCTIONS = "Collecte activée : %1$d réplique(s) conservée(s) jusqu'ici. Jouez normalement.\n\nPour les envoyer :\n1. Déconnectez-vous, ou tapez /reload, pour que le jeu écrive ses fichiers.\n2. Ouvrez spoken.rusty.one/contribute et choisissez Upload a file.\n3. Choisissez ce fichier :\nWorld of Warcraft\\%2$s\\WTF\\Account\\<votre compte>\\SavedVariables\\SpokenContributions.lua\n\nEffacez ensuite les répliques collectées dans les paramètres de Spoken. /sp send affiche ceci à nouveau.\n\nOu activez Sharing dans le Spoken Manager : il les enverra pour vous après chaque déconnexion ou /reload."
+L.GATHER_INSTRUCTIONS = "Collecte activée : %1$d réplique(s) conservée(s) jusqu'ici. Jouez normalement.\n\nPour les envoyer :\n1. Déconnectez-vous, ou tapez /reload, pour que le jeu écrive ses fichiers.\n2. Ouvrez spoken.quest/contribute et choisissez Upload a file.\n3. Choisissez ce fichier :\nWorld of Warcraft\\%2$s\\WTF\\Account\\<votre compte>\\SavedVariables\\SpokenContributions.lua\n\nEffacez ensuite les répliques collectées dans les paramètres de Spoken. /sp send affiche ceci à nouveau.\n\nOu activez Sharing dans le Spoken Manager : il les enverra pour vous après chaque déconnexion ou /reload."
 L.OPT_RESET = "Réinitialiser les positions"
 L.OPT_FIX_TITLE = "Résoudre un problème"
 L.OPT_DIAGNOSTICS = "Afficher le diagnostic"
@@ -126,6 +127,7 @@ L.SAMPLE_WINDOW_TEXT = "Voici à quoi ressembleront les répliques. Placez la fe
 L.STYLE_PREVIEW = "Aperçu"
 L.STYLE_PREVIEW_HIDE = "Masquer l'aperçu"
 L.OPT_LINKS_TITLE = "Liens"
+L.OPT_LINKS_WEBSITE = "Site web"
 L.OPT_LINKS_TIP = "Cliquez pour sélectionner l'adresse, puis Ctrl+C pour la copier."
 
 -- Modules
@@ -150,7 +152,7 @@ L.MODULE_NOT_LOADED = "Non chargé"
 L.MODULE_NO_PACK = "|cffff8080Aucun pack de voix installé.|r Sans lui, rien n'est lu à voix haute."
 L.MODULE_RESET = "Réinitialiser"
 L.REASON_PART_OFF = "Activez l'option Activer en haut de cette page pour utiliser ceci."
-L.MODULE_NO_VOICE_FMT = "Aucun pack de voix ne parle %1$s, et Si la voix manque est sur Rester silencieux : rien n'est lu à voix haute."
+L.MODULE_NO_VOICE_FMT = "Aucun pack de voix ne parle %1$s, ni aucune voix suivante de votre liste : rien n'est lu à voix haute."
 L.OPT_PART_CLICK_ON = "Cliquez pour l'activer."
 L.OPT_PART_CLICK_OFF = "Cliquez pour le désactiver."
 L.PART_TURNED_OFF = "il est désactivé dans les paramètres de Spoken"
@@ -163,10 +165,22 @@ L.PART_VOICE = "Packs de voix"
 
 -- Language
 L.OPT_LANGUAGE_TITLE = "Langue"
-L.OPT_VOICE_LANGUAGE = "Langue de la voix"
+L.OPT_VOICES = "Voix, dans l'ordre"
+L.OPT_VOICES_TIP = "Une réplique est lue dans la première voix qui l'a. Au-delà de la dernière, Spoken reste silencieux."
+L.OPT_VOICE_ADD = "Ajouter une voix"
+L.OPT_VOICE_EARLIER = "Plus tôt"
+L.OPT_VOICE_LATER = "Plus tard"
+L.OPT_VOICE_REMOVE = "Retirer"
+L.OPT_VOICE_MISSING = "(non installée)"
 L.OPT_LANG_AUTO_FMT = "Auto (%1$s)"
-L.OPT_FALLBACK_LANGUAGE = "Si la voix manque"
-L.OPT_FALLBACK_NONE = "Rester silencieux"
+L.OPT_VOICE_TEAM_FMT = "%1$s · %2$s"
+L.OPT_TEXT_LANGUAGE = "Langue du texte"
+L.OPT_TEXT_LANGUAGE_SET_FMT = "Le texte sera en %1$s après le rechargement de l'interface."
+L.OPT_TEXT_LANGUAGE_RELOAD = "Tapez /reload pour passer à cette langue."
+L.OPT_INTERFACE_LANGUAGE = "Langue de l'interface"
+L.OPT_INTERFACE_LANGUAGE_SET_FMT = "Les fenêtres et les réglages de Spoken seront en %1$s après le rechargement de l'interface."
+L.OPT_RELOAD_NOW = "Recharger maintenant"
+L.OPT_LATER = "Plus tard"
 
 -- Sound
 L.REASON_VOICE_CHANNEL = "Les voix de Spoken passent par ce son, il n'est donc jamais baissé. Changez Volume de référence pour utiliser ceci."
@@ -201,6 +215,7 @@ L.OLD_FOLDERS_LATER = "Plus tard"
 L.OPT_GATHER_ROW = "Répliques collectées"
 L.GATHER_OFF = "Collecte désactivée"
 L.GATHER_NONE = "Rien de collecté pour l'instant"
+L.GATHER_VIEW_OLDER_FMT = "%1$d réplique(s) plus ancienne(s) non affichée(s) ici. Elles sont tout de même envoyées."
 L.GATHER_BADGE_FMT = "%1$d prêtes à envoyer"
 
 -- Profiles and starting over

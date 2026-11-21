@@ -1,12 +1,12 @@
 "use client";
 
-import { nameSubject, TranslateDialog, type TranslateSubject } from "@/components/TranslateDialog";
+import { TranslateDialog, type TranslateSubject } from "@/components/TranslateDialog";
 import { useCan } from "@/components/useCan";
 import { useHistoryMode } from "@/components/useHistoryMode";
 import { useLang } from "@/components/LangProvider";
 import { BASE_LANG, withLang } from "@/lib/lang";
 import { usePathname, useSearchParams } from "next/navigation";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import ApiKeyRequiredDialog from "@/components/ApiKeyRequiredDialog";
 import Key from "@/components/Key";
@@ -15,12 +15,14 @@ import { Loading, Refreshing } from "@/components/Loading";
 import { Button } from "@/components/ui/button";
 import RegenerateDialog, { type PendingBatch } from "@/components/RegenerateDialog";
 import RegenerationPanel from "@/components/RegenerationPanel";
-import { LineRow, type RowState } from "@/components/places/LineRow";
+import { GroupHeader, LineRow, type RowState } from "@/components/places/LineRow";
+import { BatchGenerate } from "@/components/catalogue/RowParts";
 import { LoreDialog } from "@/components/places/LoreDialog";
 import { Player } from "@/components/places/Player";
+import TextOverrideDialog from "@/components/TextOverrideDialog";
 import ReportDialog from "@/components/ReportDialog";
 import { SearchBar } from "@/components/places/SearchBar";
-import { Contained, Wide } from "@/components/Width";
+import TeamPicker from "@/components/TeamPicker";
 import { totals as estimateTotals, LIST_RATE } from "@/lib/generation/billing";
 import {
   fetchGenerationStatus,
@@ -31,13 +33,21 @@ import {
   type QueueSnapshot,
 } from "@/lib/generation/client";
 import { noApiKeyMessage } from "@/lib/no-api-key";
-import type { ZoneFacet } from "@/lib/places/catalogue";
 import RecordingDropZone from "@/components/RecordingDropZone";
-import { filterParams, filtersFromParams, PAGE_SIZE, type LineFilters } from "@/lib/places/filters";
-import type { ResultLine, SearchResult } from "@/lib/places/search";
+import {
+  canPlay,
+  type ExplorerFilters,
+  type ExplorerLine,
+  type ExplorerResult,
+  type ExplorerSection,
+} from "@/components/explorer/section";
+import { PAGE_SIZE } from "@/lib/page-size";
 import { useClearDirty } from "@/lib/generation/use-clear-dirty";
 import { fetchRows, patchRows } from "@/lib/row-refresh";
+import { withTextOverride } from "@/lib/text-overrides/rows";
 import * as echo from "@/lib/url-echo";
+import { triages } from "@/lib/reports/reports";
+import { forTeam, isOwn, keepTeam, otherTeam, type TeamView } from "@/lib/teams/view";
 
 // Long enough to hold a whole typed word: the timer restarts on every keystroke, so this
 // is the pause after the last one, not a rate limit. Anyone who wants results before it
@@ -46,7 +56,15 @@ const DEBOUNCE_MS = 500;
 
 type Batch = PendingBatch & { lineIds: string[] };
 
-export function Explorer({ zones }: { zones: ZoneFacet[] }) {
+export function Explorer<L extends ExplorerLine, F extends ExplorerFilters>({
+  section,
+  teams,
+  viewed,
+  home,
+}: {
+  section: ExplorerSection<L, F>;
+} & TeamView) {
+  const { source, api, nameOf } = section;
   const lang = useLang();
   const pathname = usePathname();
   const params = useSearchParams();
@@ -64,18 +82,25 @@ export function Explorer({ zones }: { zones: ZoneFacet[] }) {
   // In the page's language: a translator may write this language's lore without being able
   // to regenerate it, so editing and regenerating are asked separately. Triage goes with
   // editing -- reading a report and fixing the text it is about are one job.
+  //
+  // Team-specific writes target the acting team, so another team's view hides them. The
+  // original text is shared, so its pencil stays.
   const may = useCan();
-  const canRegenerate = may("regenerate");
-  const canEdit = may("edit");
-  const canTriage = canEdit;
-  // A place's name in this language, written as its own version in entity_name.
-  const [naming, setNaming] = useState<TranslateSubject | null>(null);
+  const own = isOwn(viewed);
+  const team = otherTeam(viewed);
+  const canRegenerate = own && may("regenerate");
+  const canEdit = may("text");
+  const canTriage = own && triages(may);
+  // A line's name in this language, written as its own version in entity_name, and the line
+  // to refresh once it is saved: a boss is named by its id, not by its line's.
+  const [naming, setNaming] = useState<{ subject: TranslateSubject; lineId: string } | null>(null);
 
   // FILTERS ARE REBUILT FROM THE URL EVERY RENDER rather than held in state, so the
   // back button is a working undo for a filter change and a link carries the exact
   // view someone was looking at. This is the single most useful thing the two explorers
   // have in common; the quests one makes the same argument.
-  const filters = useMemo<LineFilters>(() => filtersFromParams(params), [params]);
+  const { fromParams, toParams } = section.filters;
+  const filters = useMemo<F>(() => fromParams(params), [fromParams, params]);
 
   const page = Math.max(1, Number(params.get("page")) || 1);
 
@@ -83,16 +108,17 @@ export function Explorer({ zones }: { zones: ZoneFacet[] }) {
   const [query, setQuery] = useState(urlQuery);
   const pending = useRef<echo.Pending>([]);
 
-  const [result, setResult] = useState<SearchResult | null>(null);
+  const [result, setResult] = useState<ExplorerResult<L> | null>(null);
   const [loading, setLoading] = useState(true);
-  const [current, setCurrent] = useState<ResultLine | null>(null);
-  const [editFor, setEditFor] = useState<ResultLine | null>(null);
+  const [current, setCurrent] = useState<L | null>(null);
+  const [editFor, setEditFor] = useState<L | null>(null);
+  const [overriding, setOverriding] = useState<L | null>(null);
   // Text rewritten since this page was fetched, overlaid on the fetched rows: re-running
   // the search would reorder the table under the cursor, and with ?state=stale the line
   // just edited would vanish as it was saved.
   const [rewritten, setRewritten] = useState<Record<string, string>>({});
   // Anyone can open this one, signed in or not -- see ReportDialog.
-  const [reportFor, setReportFor] = useState<ResultLine | null>(null);
+  const [reportFor, setReportFor] = useState<L | null>(null);
   const [rowStates, setRowStates] = useState<Record<string, RowState>>({});
   // Bumped per line after a regeneration, to bust the browser's audio cache: the
   // filename does not change, so without this the old take keeps playing.
@@ -195,20 +221,21 @@ export function Explorer({ zones }: { zones: ZoneFacet[] }) {
     if (adopt) setQuery(urlQuery);
   }, [urlQuery]);
 
+  // The one place a search bar's write meets the section's own filter type. The bar offers
+  // only the fields and kinds this section lists, so the merge is one of its filter sets.
+  const merge = useCallback((next: Partial<ExplorerFilters>) => ({ ...filters, ...next }) as F, [filters]);
+
   const updateFilters = useCallback(
-    (next: Partial<LineFilters>) => {
-      const merged = { ...filters, ...next };
-      writeQuery(filterParams(merged));
-    },
-    [filters, writeQuery],
+    (next: Partial<ExplorerFilters>) => writeQuery(keepTeam(toParams(merge(next)), params)),
+    [merge, params, toParams, writeQuery],
   );
 
   const filtersHref = useCallback(
-    (next: Partial<LineFilters>) => {
-      const query = filterParams({ ...filters, ...next }).toString();
+    (next: Partial<ExplorerFilters>) => {
+      const query = keepTeam(toParams(merge(next)), params).toString();
       return query ? `${pathname}?${query}` : pathname;
     },
-    [filters, pathname],
+    [merge, params, pathname, toParams],
   );
 
   //----------------------------------------------------------------------------
@@ -216,7 +243,7 @@ export function Explorer({ zones }: { zones: ZoneFacet[] }) {
   //----------------------------------------------------------------------------
 
   // A string, not the object: memoising on object identity would refetch every render.
-  const filterQuery = useMemo(() => filterParams(filters).toString(), [filters]);
+  const filterQuery = useMemo(() => toParams(filters).toString(), [filters, toParams]);
 
   // Held in refs so the callbacks below read the current view without being
   // rebuilt on every filter change.
@@ -232,10 +259,10 @@ export function Explorer({ zones }: { zones: ZoneFacet[] }) {
     const search = new URLSearchParams(filterQuery);
     if (page > 1) search.set("page", String(page));
 
-    fetch(withLang(lang, `/api/places/search?${search}`), { signal: controller.signal })
-      .then((response) => response.json())
-      .then((data: SearchResult) => {
-        setResult(data);
+    fetch(withLang(lang, forTeam(`${api}/search?${search}`, team)), { signal: controller.signal })
+      .then(async (response) => {
+        // An error body is no result: a team renamed since the page loaded answers 404.
+        setResult(response.ok ? ((await response.json()) as ExplorerResult<L>) : null);
         setLoading(false);
       })
       .catch((err) => {
@@ -243,7 +270,7 @@ export function Explorer({ zones }: { zones: ZoneFacet[] }) {
       });
 
     return () => controller.abort();
-  }, [filterQuery, page, lang]);
+  }, [api, filterQuery, page, lang, team]);
 
   //----------------------------------------------------------------------------
   // Pronunciation marks
@@ -251,21 +278,21 @@ export function Explorer({ zones }: { zones: ZoneFacet[] }) {
 
   // Held rather than refetched, for the reason the rewrite overlay is: a search rebuild to
   // unset one boolean is wasteful.
-  const { cleared, clear: clearDirty } = useClearDirty("places");
+  const { cleared, clear: clearDirty } = useClearDirty(source);
 
   // The fetched row, with any rewrite made since it was fetched laid over the top. A
   // rewritten line is stale by definition -- the text no longer hashes to what was spoken
   // -- so the state moves with the text rather than waiting for a refetch.
   /** Every dirty line the current filter matches, not just this page's. */
   const clearAllDirty = useCallback(() => {
-    fetch(withLang(lang, `/api/places/search?${new URLSearchParams(filterQueryRef.current)}&ids=1`))
+    fetch(withLang(lang, `${api}/search?${new URLSearchParams(filterQueryRef.current)}&ids=1`))
       .then((response) => response.json())
       .then(({ dirtyFiles }: { dirtyFiles?: string[] }) => clearDirty(dirtyFiles ?? []))
       .catch(() => {});
-  }, [clearDirty, lang]);
+  }, [api, clearDirty, lang]);
 
   const withEdits = useCallback(
-    (line: ResultLine): ResultLine => {
+    (line: L): L => {
       let out = line;
       if (line.id in rewritten) {
         const text = rewritten[line.id];
@@ -293,11 +320,12 @@ export function Explorer({ zones }: { zones: ZoneFacet[] }) {
   const refetch = useCallback(() => {
     const search = new URLSearchParams(filterQueryRef.current);
     if (pageRef.current > 1) search.set("page", String(pageRef.current));
-    fetch(withLang(lang, `/api/places/search?${search}`))
-      .then((response) => response.json())
-      .then((data: SearchResult) => setResult(data))
+    fetch(withLang(lang, forTeam(`${api}/search?${search}`, team)))
+      .then(async (response) => {
+        if (response.ok) setResult((await response.json()) as ExplorerResult<L>);
+      })
       .catch(() => {});
-  }, [lang]);
+  }, [api, lang, team]);
 
   /**
    * Fetch these rows again by id and swap them in where they sit, so a row the change moved
@@ -305,15 +333,31 @@ export function Explorer({ zones }: { zones: ZoneFacet[] }) {
    */
   const refreshRows = useCallback(
     async (ids: string[]) => {
-      const fresh = await fetchRows<ResultLine>(
-        (id) => withLang(lang, `/api/places/search?${new URLSearchParams({ line: id })}`),
+      const fresh = await fetchRows<L>(
+        (id) => withLang(lang, forTeam(`${api}/search?${new URLSearchParams({ line: id })}`, team)),
         ids,
       );
       setResult((current) =>
         current && { ...current, lines: patchRows(current.lines, fresh, (row) => row.id, (row) => row.id) },
       );
     },
-    [lang],
+    [api, lang, team],
+  );
+
+  // Laid over the row at once, then fetched again for the server's view of it.
+  const overridden = useCallback(
+    (lineId: string, text: string | null) => {
+      setOverriding(null);
+      setResult((current) => current && { ...current, lines: withTextOverride(current.lines, lineId, text) });
+      // A finished regeneration's version would hide that the new words make its take stale.
+      setRowStates((current) => {
+        if (current[lineId]?.phase !== "done") return current;
+        const { [lineId]: _done, ...rest } = current;
+        return rest;
+      });
+      void refreshRows([lineId]);
+    },
+    [refreshRows],
   );
 
   // What the plan allows and what is left of it, for the confirmation dialog. Shared with
@@ -332,10 +376,10 @@ export function Explorer({ zones }: { zones: ZoneFacet[] }) {
    * it reversible. Anything larger goes through the queue below.
    */
   const regenerateOne = useCallback(
-    (line: ResultLine) => {
+    (line: L) => {
       setRowStates((current) => ({ ...current, [line.id]: { phase: "busy" } }));
 
-      fetch(withLang(lang, "/api/places/regenerate"), {
+      fetch(withLang(lang, `${api}/regenerate`), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ lineId: line.id }),
@@ -382,7 +426,7 @@ export function Explorer({ zones }: { zones: ZoneFacet[] }) {
           }));
         });
     },
-    [refreshRows, lang],
+    [api, refreshRows, lang],
   );
 
   /**
@@ -406,7 +450,7 @@ export function Explorer({ zones }: { zones: ZoneFacet[] }) {
     const settle = (next: (open: Batch) => Batch) =>
       setPendingBatch((open) => (open && request === batchRequest.current ? next(open) : open));
 
-    fetch(withLang(lang, `/api/places/search?${new URLSearchParams(filterQueryRef.current)}&ids=1`))
+    fetch(withLang(lang, `${api}/search?${new URLSearchParams(filterQueryRef.current)}&ids=1`))
       .then((response) => response.json())
       .then(({ ids, totalChars }: { ids: string[]; totalChars: number }) => {
         const rate = status?.rate ?? { rate: LIST_RATE, samples: 0, modelId: null };
@@ -423,7 +467,7 @@ export function Explorer({ zones }: { zones: ZoneFacet[] }) {
         }));
       })
       .catch(() => settle((open) => ({ ...open, failed: true })));
-  }, [result, status, lang]);
+  }, [api, result, status, lang]);
 
   /**
    * Hand the batch to the queue.
@@ -438,14 +482,16 @@ export function Explorer({ zones }: { zones: ZoneFacet[] }) {
     setPendingBatch(null);
     setQueueNote(null);
 
-    const queued = await queueBatch({ source: "places", lineIds }, pendingBatch.label, lang);
+    const queued = await queueBatch({ source, lineIds }, pendingBatch.label, lang);
 
     if (!queued) {
       // No reason offered because none was given: the route refused for a cause this
       // response does not carry, and inventing one would be a guess dressed as an answer.
       setQueueNote("Could not queue the batch.");
     } else if ("error" in queued) {
-      setKeyRequired(queued.error);
+      // The key dialog only for a missing key; a refusal about the team's storage is a note.
+      if (queued.noKey) setKeyRequired(queued.error);
+      else setQueueNote(queued.error);
     } else if (queued.skipped > 0) {
       setQueueNote(`${queued.skipped.toLocaleString()} already queued`);
     }
@@ -455,7 +501,7 @@ export function Explorer({ zones }: { zones: ZoneFacet[] }) {
       cursor.current = snapshot.cursor;
       setQueue(snapshot);
     }
-  }, [pendingBatch, lang]);
+  }, [pendingBatch, lang, source]);
 
   /**
    * The queue, polled.
@@ -488,7 +534,7 @@ export function Explorer({ zones }: { zones: ZoneFacet[] }) {
 
         // Only this section's finished jobs. The queue carries both, and a places page told
         // that a quests file is now at version 3 would look for a line it does not have.
-        const mine = snapshot.finished.filter((job) => job.source === "places" && job.lang === lang);
+        const mine = snapshot.finished.filter((job) => job.source === source && job.lang === lang);
         if (mine.length > 0) {
           setVersions((current) => {
             const next = { ...current };
@@ -508,13 +554,13 @@ export function Explorer({ zones }: { zones: ZoneFacet[] }) {
       controller.abort();
       clearTimeout(timer);
     };
-  }, [canRegenerate, refreshRows, lang]);
+  }, [canRegenerate, refreshRows, lang, source]);
 
   //----------------------------------------------------------------------------
   // Playback
   //----------------------------------------------------------------------------
 
-  const play = useCallback((line: ResultLine) => {
+  const play = useCallback((line: L) => {
     setCurrent(line);
     // The <audio> src follows `current`, so play only once React has committed it.
     queueMicrotask(() => void audio.current?.play().catch(() => {}));
@@ -523,7 +569,7 @@ export function Explorer({ zones }: { zones: ZoneFacet[] }) {
   // This page only, deliberately: j at the bottom of page 3 loading page 4 and
   // starting playback is a surprise, and the pager is right there.
   const playable = useMemo(
-    () => (result?.lines ?? []).filter((line) => line.state !== "missing"),
+    () => (result?.lines ?? []).filter(canPlay),
     [result],
   );
 
@@ -594,26 +640,35 @@ export function Explorer({ zones }: { zones: ZoneFacet[] }) {
   const pages = result ? Math.max(1, Math.ceil(result.total / PAGE_SIZE)) : 1;
   // The search sends facets only to somebody working in the language; see MadeBy.tsx.
   const showMadeBy = result?.madeBy !== undefined;
-  const showRecordings = result?.recordable === true;
+  const showRecordings = own && result?.recordable === true;
 
   return (
     <div className="pb-24">
-      <Contained>
+      <div className="bs-wide">
+        <TeamPicker
+          teams={teams}
+          viewed={viewed}
+          home={home}
+        />
+
         <SearchBar
-          zones={zones}
+          section={section}
+          fields={section.filters.fields}
+          kinds={section.filters.kinds}
           filters={filters}
           canTriage={canTriage}
           madeBy={result?.madeBy}
           recordable={showRecordings}
+          counts={result?.counts}
           query={query}
           inputRef={searchInput}
           onQueryChange={setQuery}
           onQuerySubmit={submitQuery}
           onChange={updateFilters}
-          onClearAll={() => writeQuery(new URLSearchParams())}
+          onClearAll={() => writeQuery(keepTeam(new URLSearchParams(), params))}
         />
 
-        {showRecordings && <RecordingDropZone source="places" onUploaded={refetch} />}
+        {showRecordings && <RecordingDropZone source={source} onUploaded={refetch} />}
 
         {/* A line id has no dropdown to sit in - it arrives by link from /reports - so
             without this the list would be narrowed with nothing on the page saying so. */}
@@ -629,16 +684,7 @@ export function Explorer({ zones }: { zones: ZoneFacet[] }) {
         )}
 
         <div className="flex flex-wrap items-center gap-x-3 gap-y-1 pt-3 pb-1">
-          <div className="text-muted-foreground flex items-center gap-2 text-sm">
-            {result && `${result.total.toLocaleString()} ${result.total === 1 ? "line" : "lines"}`}
-            {loading && result && <Refreshing />}
-          </div>
-          {result && result.counts.missing > 0 && (
-            <span className="text-destructive text-sm">{result.counts.missing} missing</span>
-          )}
-          {result && result.counts.stale > 0 && (
-            <span className="text-sm text-amber-300">{result.counts.stale} outdated</span>
-          )}
+          {loading && result && <Refreshing />}
           {/* Its own count, beside the states rather than among them: a line can be current
               and carry this at once. The button only for someone who could act on it. */}
           {result && result.dirty > 0 && (
@@ -653,59 +699,66 @@ export function Explorer({ zones }: { zones: ZoneFacet[] }) {
           )}
 
           {canRegenerate && result && result.total > 0 && (
-            <Button size="xs" variant="secondary" className="ml-auto" onClick={askToRegenerateAll}>
-              Regenerate all {result.total.toLocaleString()}
-            </Button>
+            <BatchGenerate total={result.total} state={filters.state} noun={["line", "lines"]} onClick={askToRegenerateAll} />
           )}
         </div>
 
-        {/* Above the table as well as below it: 43 pages of lore is a lot of scrolling to
-            reach a control that is one line away at the top. */}
+        {/* Above the table as well as below it: a long list is a lot of scrolling to reach a
+            control that is one line away at the top. */}
         <Pagination page={page} pageCount={pages} onPage={(next) => updateUrl({ page: next })} />
-      </Contained>
+      </div>
 
-      <Wide>
-        {/* Fixed layout, because the point of the columns is that they line up down the
-            page: left to auto sizing, one long subzone name would widen its column for
-            every row. The lore column takes whatever the named ones leave. */}
+      <div className="bs-wide">
         {loading && !result && <Loading />}
 
-        <table
-          aria-busy={loading}
-          hidden={!result}
-          className={`w-full table-fixed border-collapse text-sm transition-opacity ${loading ? "opacity-60" : ""}`}
-        >
-          <colgroup>
-            <col className="w-40" />
-            <col className="w-44" />
-            <col />
-            {/* Audio: the state word, or the take selector, both of which are short. */}
-            <col className="w-28" />
-            {/* Made by: "fish:2.1-pro-free" over a name. Only when the search sent it. */}
-            {showMadeBy && <col className="w-36" />}
-            {showRecordings && <col className="w-32" />}
-            {/* Wide enough for what the cell actually holds: icon buttons are 32px and an
-                editor can have three side by side - report, edit, regenerate - plus the
-                report count. Anything narrower and the row overflows left over the prose.
-                w-16 for everyone else, who has the report button and the count; never w-0,
-                since that button is not gated. */}
-            <col className={canRegenerate ? "w-40" : "w-16"} />
-          </colgroup>
-          <thead>
-            <tr className="text-muted-foreground border-border border-b text-left text-xs">
-              <th className="px-2 pb-1 font-medium">Zone</th>
-              <th className="px-2 pb-1 font-medium">Subzone</th>
-              <th className="px-2 pb-1 font-medium">Lore</th>
-              <th className="px-2 pb-1 font-medium">Audio</th>
-              {showMadeBy && <th className="px-2 pb-1 font-medium">Made by</th>}
-              {showRecordings && <th className="px-2 pb-1 font-medium">Voice actor</th>}
-              <th className="sr-only">Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            {result?.lines.map((line) => (
+        <div className="cat-list" hidden={!result || result.total === 0}>
+          {/* Fixed layout, so the columns line up down the page: left to auto sizing, one long
+              subzone name would widen its column for every row. */}
+          <table
+            aria-busy={loading}
+            className={`cat-table w-full table-fixed border-collapse text-sm transition-opacity ${loading ? "opacity-60" : ""}`}
+          >
+            <colgroup>
+              <col className="w-12" />
+              <col />
+              <col className="w-64" />
+              <col className="w-36" />
+              {showMadeBy && <col className="w-36" />}
+              {showRecordings && <col className="w-28" />}
+              <col className="w-48" />
+            </colgroup>
+            <thead>
+              <tr>
+                <th>
+                  <span className="sr-only">Play</span>
+                </th>
+                <th>{section.labels.text}</th>
+                <th>{section.labels.name}</th>
+                <th>Audio</th>
+                {showMadeBy && <th>Made by</th>}
+                {showRecordings && <th>Voice actor</th>}
+                <th>
+                  <span className="sr-only">Actions</span>
+                </th>
+              </tr>
+            </thead>
+            <tbody>
+            {result?.lines.map((line, index) => (
+              <Fragment key={line.id}>
+                {/* By map as well: two zones may share a name, and the heading narrows to one map. */}
+                {(index === 0 ||
+                  line.mapID !== result.lines[index - 1].mapID ||
+                  section.chip(line) !== section.chip(result.lines[index - 1])) && (
+                  <GroupHeader
+                    section={section}
+                    line={line}
+                    columns={5 + (showMadeBy ? 1 : 0) + (showRecordings ? 1 : 0)}
+                    onNarrow={(l) => updateFilters({ mapID: l.mapID })}
+                    href={(l) => filtersHref({ mapID: l.mapID })}
+                  />
+                )}
               <LineRow
-                key={line.id}
+                section={section}
                 line={withEdits(line)}
                 current={line.id === current?.id}
                 showMadeBy={showMadeBy}
@@ -715,8 +768,6 @@ export function Explorer({ zones }: { zones: ZoneFacet[] }) {
                 canEdit={canEdit}
                 canTriage={canTriage}
                 onPlay={play}
-                onNarrowToZone={(l) => updateFilters({ mapID: l.mapID })}
-                zoneHref={(l) => filtersHref({ mapID: l.mapID })}
                 state={rowStates[line.id]}
                 onClearDirty={(l) => clearDirty([l.file])}
                 onRestored={(l, version) => {
@@ -725,60 +776,75 @@ export function Explorer({ zones }: { zones: ZoneFacet[] }) {
                   setVersions((current) => ({ ...current, [l.id]: version }));
                   void refreshRows([l.id]);
                 }}
-                onReport={setReportFor}
+                onReport={own ? setReportFor : null}
                 onEditText={(l) => setEditFor(withEdits(l))}
+                onOverride={setOverriding}
+                onOverrideAnswered={(l) => void refreshRows([l.id])}
                 onRename={
-                  lang !== BASE_LANG && canEdit
+                  lang !== BASE_LANG && canEdit && nameOf
                     ? (l) =>
-                        setNaming(
-                          nameSubject({
-                            kind: l.kind,
-                            entityId: l.id,
+                        setNaming({
+                          lineId: l.id,
+                          subject: {
+                            ...nameOf(l),
                             title: l.name,
                             subtitle: l.id,
                             english: l.englishName ?? l.name,
                             current: l.nameMissing ? null : l.name,
-                          }),
-                        )
+                          },
+                        })
                     : null
                 }
                 onRegenerate={regenerateOne}
               />
+              </Fragment>
             ))}
-          </tbody>
-        </table>
+            </tbody>
+          </table>
+        </div>
 
-        {result && result.total === 0 && !loading && (
-          <p className="text-muted-foreground py-8 text-center">Nothing matches these filters.</p>
-        )}
-      </Wide>
+        {result && result.total === 0 && !loading && <p className="cat-empty">Nothing matches these filters.</p>}
+      </div>
 
-      <Contained>
+      <div className="bs-wide">
         <Pagination page={page} pageCount={pages} onPage={(next) => updateUrl({ page: next })} />
 
         <p className="text-muted-foreground mt-6 flex flex-wrap items-center gap-1.5 text-xs">
           <Key>/</Key> search · <Key>space</Key> play/pause · <Key>j</Key> <Key>k</Key> next and
           previous line on this page
         </p>
-      </Contained>
+      </div>
 
       <LoreDialog
+        section={section}
         line={editFor}
         onClose={() => setEditFor(null)}
         onSaved={(line, full) => setRewritten((current) => ({ ...current, [line.id]: full }))}
       />
 
+      <TextOverrideDialog
+        source={source}
+        line={
+          overriding && {
+            lineId: overriding.id,
+            original: withEdits(overriding).text ?? "",
+            override: overriding.override?.text ?? null,
+          }
+        }
+        onSaved={overridden}
+        onCancel={() => setOverriding(null)}
+      />
+
       <TranslateDialog
-        subject={naming}
+        subject={naming?.subject ?? null}
         onClose={() => setNaming(null)}
-        // A place is named by its line's id; see onRename.
         onSaved={() => {
-          if (naming) void refreshRows([String(naming.address.entityId)]);
+          if (naming) void refreshRows([naming.lineId]);
         }}
       />
 
       <ReportDialog
-        subject={reportFor && { source: "places", line: reportFor }}
+        subject={reportFor && { source, line: reportFor }}
         onClose={() => setReportFor(null)}
       />
 
@@ -800,6 +866,8 @@ export function Explorer({ zones }: { zones: ZoneFacet[] }) {
           onDismiss={() => setQueueNote(null)}
         />
         <Player
+          section={section}
+          team={team}
           line={current}
           version={current ? (versions[current.id] ?? current.take?.version) : undefined}
           audioRef={audio}

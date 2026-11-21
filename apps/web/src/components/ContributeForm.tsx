@@ -24,6 +24,8 @@ import {
   type ParseError,
   takeFragment,
 } from "@/lib/contributions/envelope";
+import { browserInstallId } from "@/lib/contributions/browser-install";
+import { sendFailureMessage } from "@/lib/contributions/send-failure";
 
 const FIELD_LABELS: Record<string, string> = {
   quest: "Quest",
@@ -41,6 +43,10 @@ const FIELD_LABELS: Record<string, string> = {
   addon: "Addon",
   x: "x",
   y: "y",
+  // The site takes the name back out of the text and does not keep it (lib/contributions/reader.ts).
+  reader: "Your character (not kept)",
+  readerClass: "Your class",
+  readerRace: "Your race",
 };
 
 const MESSAGES: Record<ParseError, string> = {
@@ -144,6 +150,7 @@ export default function ContributeForm({ signedInAs }: { signedInAs: string | nu
         name: signedInAs ? null : data.get("name"),
         email: signedInAs ? null : data.get("email"),
         website: data.get("website"),
+        installId: browserInstallId(),
       }),
     }).catch(() => null);
 
@@ -156,7 +163,7 @@ export default function ContributeForm({ signedInAs }: { signedInAs: string | nu
     setError(
       failure?.error === "describe"
         ? `Describe the place in a sentence or two -- at least ${DESCRIPTION_MIN} characters.`
-        : "That did not go through. Try again in a minute.",
+        : sendFailureMessage(response?.status ?? null, failure?.error),
     );
   }
 

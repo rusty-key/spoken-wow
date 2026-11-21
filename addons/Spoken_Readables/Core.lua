@@ -11,6 +11,11 @@
 
 local ADDON_NAME, SpokenReadables = ...
 
+-- Other addons reach the module here; docs/readables/README.md lists the functions they call.
+-- PlayFrom does not check CompendiumHas, so callers do, and they call PlayFrom(pageId, true, true):
+-- without `browsing` the book counts as read in the world.
+_G.SpokenReadables = SpokenReadables
+
 local L = SpokenReadables.L
 
 -- C_AddOns is the modern home of GetAddOnMetadata; the global is the older one. Reading

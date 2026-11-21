@@ -8,8 +8,9 @@ import ReportTable from "@/components/ReportTable";
 import { auth } from "@/lib/auth";
 import { viewerOf } from "@/lib/grants/store";
 import { can, isAdmin } from "@/lib/permissions";
-import { isCategory, type Category, type Status } from "@/lib/reports/reports";
+import { isCategory, queuesOf, queueView, type Category, type Status } from "@/lib/reports/reports";
 import {
+  isSection,
   isStatusView,
   matchesReportSearch,
   pageOf,
@@ -21,8 +22,9 @@ import {
   type StatusView,
 } from "@/lib/reports/query";
 import { npcDetails } from "@/lib/reports/npc";
-import { listReports } from "@/lib/reports/store";
-import { isSection, queryOf } from "@/lib/contributions/query";
+import { latestPackVersions } from "@/lib/releases/store";
+import { listReports, queueHolders } from "@/lib/reports/store";
+import { queryOf } from "@/lib/contributions/query";
 import { localeHref } from "@/lib/lang";
 import { Contained, Wide } from "@/components/Width";
 
@@ -46,10 +48,11 @@ export default async function Page({
   const session = await auth.api.getSession({ headers: await headers() });
 
   // 404 rather than a redirect, matching /issues and /voices: a member has no business
-  // learning the page exists, and these rows hold prose written by strangers. Per language:
-  // whoever may fix a language's text triages what is reported about it.
+  // learning the page exists, and these rows hold prose written by strangers. Per language and
+  // per queue: whoever keeps a language's text or voices it triages what is reported to them.
   const viewer = await viewerOf(session);
-  if (!session || !can(viewer, "edit", lang)) notFound();
+  const queues = queuesOf(viewer, lang);
+  if (!session || !queues.length) notFound();
 
   const { view: rawView, category: rawCategory, q: rawQ, dir: rawDir, page: rawPage } = await searchParams;
   const view: StatusView = isStatusView(rawView) ? rawView : "open";
@@ -61,13 +64,16 @@ export default async function Page({
 
   // Every report in the language, each status and section: both rows of tabs count what the
   // others leave, and a language's reports are few enough to read whole.
-  const all = (await listReports("all", "all", category, null, lang)).filter((report) =>
-    matchesReportSearch(report, q),
-  );
+  const [reports, holders, latestPacks] = await Promise.all([
+    listReports("all", "all", category, null, lang, queues),
+    queueHolders(lang),
+    latestPackVersions(section),
+  ]);
+  const all = reports.filter((report) => matchesReportSearch(report, q));
   const inSection = all.filter((report) => report.source === section);
   const sectionCounts = Object.fromEntries(SECTIONS.map((key) => [key, 0])) as Record<Section, number>;
   for (const report of all) {
-    if (view === "all" || report.status === view) sectionCounts[report.source]++;
+    if (isSection(report.source) && (view === "all" || report.status === view)) sectionCounts[report.source]++;
   }
   const statusCounts = Object.fromEntries(STATUS_VIEWS.map((key) => [key, 0])) as Record<StatusView, number>;
   for (const report of inSection) {
@@ -83,6 +89,7 @@ export default async function Page({
   // A report with no line is about its address; in quests that is most often a gossip NPC.
   const targets = shown.flatMap(({ reports: [first] }) => (!first.lineId && first.target ? [first.target] : []));
   const npcs = section === "quests" ? await npcDetails(targets, lang) : {};
+  const { labelled, passTo } = queueView(queues, holders);
 
   return (
     <main className="pt-6 pb-24">
@@ -110,7 +117,11 @@ export default async function Page({
           filters={{ section, view, category, q, dir }}
           npcs={npcs}
           canRegenerate={can(viewer, "regenerate", lang)}
+          canContribute={can(viewer, "text", lang)}
+          labelled={labelled}
+          passTo={passTo}
           showNpcPage={isAdmin(session.user.role)}
+          latestPacks={latestPacks}
         />
       </Wide>
     </main>

@@ -1,7 +1,7 @@
 ---
 name: link-addon
-description: Use when asked to link, install or point the addons at a WoW client, or when invoked as /link-addon [client]. Symlinks every addon folder of the current worktree into the client's Interface/AddOns, so the client runs this checkout's code. Client is beta (default), era or tbc.
-argument-hint: "[beta|era|tbc]"
+description: Use when asked to link, install or point the addons at a WoW client, or when invoked as /link-addon [client]. Symlinks every addon folder of the current worktree into the client's Interface/AddOns, so the client runs this checkout's code. Client is forever (default), era or tbc.
+argument-hint: "[forever|era|tbc]"
 ---
 
 # Link addon
@@ -12,11 +12,11 @@ linked last, so relink whenever you switch worktree.
 
 ## 1. Pick the client
 
-The argument names the client. Without one, use `beta`.
+The argument names the client. Without one, use `forever`.
 
 | Argument | Client                       | Folder under `/Applications/World of Warcraft` |
 |----------|------------------------------|------------------------------------------------|
-| `beta`   | WoW: Forever beta            | `_classic_beta_`                               |
+| `forever`| WoW: Forever                 | `_forever_`                                    |
 | `era`    | Classic Era                  | `_classic_era_`                                |
 | `tbc`    | TBC Anniversary (2.5.x)      | `_anniversary_`                                |
 

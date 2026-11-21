@@ -46,6 +46,14 @@ function readSecrets() {
   );
 }
 
+const allSecrets = readSecrets();
+
+// Brann's keys (BRANN_*) are his alone: the site never sees the bot token or his API keys, and
+// he never sees the database.
+const brann = {};
+const secrets = {};
+for (const [key, value] of Object.entries(allSecrets)) (key.startsWith("BRANN_") ? brann : secrets)[key] = value;
+
 module.exports = {
   apps: [
     {
@@ -170,9 +178,41 @@ module.exports = {
         // directory is deleted five deploys later.
         SPOKEN_READABLES_AUDIO_HISTORY: `${SHARED}/audio-history/readables`,
 
+        //--------------------------------------------------------------------------
+        // Bosses
+        //--------------------------------------------------------------------------
+
+        // Every boss story take, beside the other sections' and separate from them. Has to be
+        // set: lib/takes/adapters.ts falls back to a path inside the release, and a release
+        // directory is deleted five deploys later.
+        SPOKEN_BOSSES_AUDIO_HISTORY: `${SHARED}/audio-history/bosses`,
+
         // DATABASE_URL, BETTER_AUTH_SECRET, BETTER_AUTH_URL, SPOKEN_SECRET_KEY and
         // ELEVENLABS_DICTIONARY_ID.
-        ...readSecrets(),
+        ...secrets,
+
+        // The app logs in as spoken_app, which row-level security binds, not as the owner, which
+        // reads every team. Without APP_DATABASE_URL the app keeps the owner's and filters nothing.
+        ...(secrets.APP_DATABASE_URL ? { DATABASE_URL: secrets.APP_DATABASE_URL } : {}),
+      },
+    },
+    {
+      // Brann Bronzebeard, the Discord bot (apps/brann/README.md). He ships in release-tools/,
+      // whose node_modules hold his dependencies.
+      name: "brann",
+      script: "release-tools/apps/brann/src/index.mjs",
+      cwd: CURRENT,
+      // Exactly one: a second process is a second gateway session, and every question would be
+      // answered and every bug filed twice.
+      instances: 1,
+      exec_mode: "fork",
+      max_memory_restart: "300M",
+      // Without BRANN_DISCORD_TOKEN he exits at once; this stops pm2 retrying that forever.
+      max_restarts: 10,
+      min_uptime: 10_000,
+      env: {
+        NODE_ENV: "production",
+        ...brann,
       },
     },
   ],

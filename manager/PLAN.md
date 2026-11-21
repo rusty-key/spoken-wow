@@ -31,7 +31,7 @@ GitHub Releases of `rusty-key/spoken-wow` (public, no token). Product tags, from
 
 | Product | Tag | Asset | Folders |
 | --- | --- | --- | --- |
-| Spoken | `spoken/vX.Y.Z` | `Spoken-X.Y.Z.zip` | `Spoken`, `Spoken_Conversations`, `Spoken_Places`, `Spoken_Readables`, `Spoken_NPCs`, `SpokenContributions` |
+| Spoken | `spoken/vX.Y.Z` | `Spoken-X.Y.Z.zip` | `Spoken`, `Spoken_Conversations`, `Spoken_Places`, `Spoken_Readables`, `Spoken_Bosses`, `SpokenContributions` |
 | Quests voices, English, all | `quests-audio/vX` | `SpokenQuestsAudioAll-X.zip` (1.4 GB) | the four split folders |
 | Quests voices, English, split | `quests-audio-{alliance,horde,shared,gossip}/vX` | | `SpokenQuestsAudio<Side>` |
 | Quests voices, a language | `quests-audio-<lang>/vX` | | `SpokenQuestsAudio_<lang>` |
@@ -49,7 +49,7 @@ opens with the last catalog and says so.
 
 ## Which games
 
-From `publishers/spoken/spoken.md`: Spoken is made and tested on Forever (`_classic_beta_`) and
+From `publishers/spoken/spoken.md`: Spoken is made and tested on Forever (`_forever_`) and
 installs on Classic Era (`_classic_era_`) and Anniversary (`_anniversary_`). Those three are
 `SUPPORTED_FLAVORS` in `src/shared/types.ts`, and the only ones the scan looks for. Any other
 flavor folder (Retail, Classic, PTRs, betas) is not listed; adding one by hand is refused with
@@ -59,11 +59,11 @@ The service keeps a cheap refusal as a second check.
 
 ## Community voice packs
 
-A COMMUNITY page lists voice packs players made. The list is `community/packs.json` in the repo
-(`CommunityPack` in `src/shared/types.ts`), fetched from
-`https://raw.githubusercontent.com/rusty-key/spoken-wow/master/community/packs.json`, ETag-cached,
-and kept offline. A player shares a pack by opening a pull request that adds an entry, so a
-maintainer has looked at it; `community/README.md` says how.
+A COMMUNITY page lists voice packs players made. The list is the approved packs on spoken.quest
+(`CommunityPack` in `src/shared/types.ts`), fetched from `https://spoken.quest/api/community/packs`,
+ETag-cached, and kept offline. A pack author submits a pack on the site and the admin approves it, so
+a maintainer has looked at it; `community/README.md` says how. Managers up to 0.1.13 still read the
+frozen `community/packs.json`.
 
 - Product id `community/<pack id>`, installed as the one folder `SpokenCommunity_<pack id>`. It never
   replaces an official pack's folder.
@@ -96,6 +96,7 @@ Spoken Manager
 |- SETTINGS
 |    Game folders (list, Add, Remove, Rescan)
 |    Updates (include pre-releases, check on start, manager auto-update)
+|    General (window language, startup, proxy)
 |    Downloads (cache folder, keep downloaded zips)
 |    Sharing (send what Spoken collects, last sent, send now, reset id)
 |    About (versions, links, open log folder)
@@ -240,8 +241,9 @@ system), so the tests run all three on one machine.
 
 Windows (NSIS), macOS (from the zip; the build is signed, which the Mac updater requires) and a
 Linux AppImage (the `APPIMAGE` variable is set) download the update and install it when the
-manager quits. Linux outside an AppImage (the tar.gz) has nothing to download into, and
-electron-updater does not even check there. There the manager does not use electron-updater: it
+manager quits, or at once when the player presses Restart. The top bar's refresh also checks for a
+new manager, unless the player switched updates off; Settings checks either way. Linux outside an
+AppImage (the tar.gz) has nothing to download into, and electron-updater does not even check there. There the manager does not use electron-updater: it
 fetches `latest-linux.yml` from the feed, compares its
 `version:` with its own, and when the feed is newer shows "available" with a link to
 `https://github.com/rusty-key/spoken-wow/releases/tag/manager-latest`. Failures are silent at start

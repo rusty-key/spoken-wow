@@ -120,8 +120,8 @@ do
 end
 stub.FireEvent("QUEST_DETAIL")
 Expect("a voiced line in other words is gathered", Gather:Count(), 4)
-Expect("...with the reader's name as its token",
-    ((_G.SpokenContributionsDB.Lines[4] or {}).envelope or ""):find("Kill seven of them, $N.", 1, true) ~= nil, true)
+Expect("...as shown, with who read it beside it, for the site to put the token back",
+    ((_G.SpokenContributionsDB.Lines[4] or {}).envelope or ""):find("\nreader=Tester\n.*Kill seven of them, Tester%.") ~= nil, true)
 Expect("...and offers no Contribute button, since it plays", VoiceOver.ContributeButton.button:IsShown(), false)
 world.questText = "Kill six of them.\nThen come back."
 world.questID = 9123
@@ -340,7 +340,7 @@ Expect("...explaining both", box.body:GetText(), SpokenEnv.L.CONTRIBUTE_INTRO)
 Expect("...with no payload to copy yet", box.scroll:IsShown(), false)
 
 box.justThis:Click()
-Expect("choosing one line shows the link", box.editBox:GetText():match("^https://spoken%.rusty%.one/contribute#e1=") ~= nil, true)
+Expect("choosing one line shows the link", box.editBox:GetText():match("^https://spoken%.quest/contribute#e1=") ~= nil, true)
 Expect("...and hides the choice", box.gather:IsShown(), false)
 Expect("...without turning gathering on", Gather:IsEnabled(), false)
 

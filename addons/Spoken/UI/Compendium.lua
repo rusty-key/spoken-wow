@@ -5,11 +5,11 @@
 -- Spoken's, so every module's tab shares one window. The window is the game's portrait frame, resizable from its corner
 -- and folding down to the list. The list is a search box over an inset of rows, with the tab's
 -- switches (Started Only, Discovered Only, Found Only and the like) in the filter menu beside the
--- search. Its rows are drawn in the game's own art: the objective tracker's campaign bar across
--- the list for a banner (a continent, a section, a type of writing), and a line for everything
+-- search. Its rows are drawn in the professions window's look: its header bar across the list for
+-- a banner (a continent, a section, a type of writing), and a line for everything
 -- else: a group of lines (a place, a chain, a kind of quest or of writing) with its plus or minus
 -- and numbers, and each single thing with its tick, quest mark or padlock. What is inside an open
--- group is indented under it, a faint gold line down its left. What the rows are, what a click
+-- group is indented under it. What the rows are, what a click
 -- does and the page beside them are each
 -- tab's own.
 --
@@ -50,36 +50,41 @@ local WINDOW_WIDTH = 920
 local WINDOW_HEIGHT = 600
 local WINDOW_MIN_HEIGHT = 360
 -- Room for the longest zone name in any language (Portuguese's Cordilheira das Torres de
--- Pedra) beside its count, found out of all and the share: 27/27 • 100%.
-local LIST_WIDTH = 345
+-- Pedra) beside its count, found out of all and the share: 27/27 · 100%.
+local LIST_WIDTH = 353
 -- The narrowest the page beside the list lays out at.
 local PAGE_MIN_WIDTH = 278
-local BANNER_ROW = 36
+local BANNER_ROW = 28
 local BANNER_GAP = 14         -- above each banner but the first
 local BANNER_IN = 10          -- a banner's plus or minus from its left
-local BANNER_DROP = 1.5       -- the banner's art sits this much under its row's middle
+local BANNER_DROP = 1.5       -- a flat banner's plus or minus sits this much under its row's middle
 local BANNER_TEXT = 32        -- a banner's name from its left
 local FIRST_GAP = 2           -- above the first row
 local LEAF_ROW = 22
 -- A group (a place, a quest chain, a zone's dungeons, a zone's letters): one line, its plus or
--- minus on the line down its contents, its name over theirs, its numbers on the right.
+-- minus at the left, its name over theirs, its numbers on the right.
 local GROUP_ROW = 24
-local GROUP_FOOT = 0          -- the line down its contents starts under the row, clear of its light
 -- The quest log's plus and minus are drawn 2 left of their picture's middle: the picture moves
--- right by that, so the sign sits on the line down what it opens.
+-- right by that, so the sign sits in the step's column.
 local TOGGLE_SHIFT = 2
 local LEAF_GAP = 4            -- between a banner and the first line under it
 local NEST_AFTER = 2          -- more under an open group's contents, for each one closed there
 local NEST_STEP = 16          -- what an open group holds, this far in under it
--- The line down an open group's contents, this far into the step.
+-- The plus or minus and the chosen row's light stand this far into the step.
 local RAIL_X = 12
-local FOOT, BANNER_FOOT = 3, 2.5
-local LIST_LEFT, LIST_RIGHT = 3, 2
+-- A line's name stands this much over its middle, which the font's own spacing leaves a little low; its
+-- numbers, in a smaller face, one more so that their foot is the name's, and its tick or quest mark as
+-- far as the name.
+local TEXT_LIFT, COUNT_LIFT = 1, 2
+local LIST_LEFT, LIST_RIGHT = 6, 6
+-- The scroll bar stands BAR_SIDE in from the scroll frame's right, BAR_HEAD down from its top and BAR_FOOT
+-- up from its foot. With the rows' own margins that leaves 8 px, measured in the game, between the
+-- inset's border and the rows, between the border and the bar, and between the rows and the bar.
+-- The scroll child ends BAR_ROOM short of the bar, and the rows LIST_RIGHT short of the child's edge.
+local BAR_SIDE, BAR_HEAD, BAR_FOOT, BAR_ROOM = 6, 8, 4, 1
 -- What a banner holds sits this far in from it, one step down the tree; with no banners, nothing
 -- is set in.
 local UNDER_BANNER_IN = 20.4
--- The line down what a banner holds, this far in.
-local BANNER_RAIL_X = 16.4
 local LIST_TOP, LIST_FOOT = 6, 8
 local SCROLL_STEP = 60
 local GRABBER_SIZE = 16
@@ -153,16 +158,6 @@ local function AtlasSpot(atlas)
 		return nil
 	end
 	return info
-end
-
--- `texture` showing the part of the atlas at `spot` from x1 to x2 and y1 to y2, in the atlas's own
--- pixels; turned left to right with `mirror`.
-local function AtlasCut(texture, spot, x1, x2, y1, y2, mirror)
-	local l, r, t, b = spot.leftTexCoord, spot.rightTexCoord, spot.topTexCoord, spot.bottomTexCoord
-	local u1, u2 = l + (r - l) * x1 / spot.width, l + (r - l) * x2 / spot.width
-	if mirror then u1, u2 = u2, u1 end
-	texture:SetTexture(spot.file or spot.filename)
-	texture:SetTexCoord(u1, u2, t + (b - t) * y1 / spot.height, t + (b - t) * y2 / spot.height)
 end
 
 local function Sound(kit)
@@ -911,11 +906,16 @@ local CHECK = "questlog-icon-checkmark-yellow"
 -- One size for every tick in the column down the list's right, on every line.
 local TICK_WIDTH, TICK_HEIGHT = 15, 13
 
--- The campaign header's bar, in its atlas's own pixels: its crest sits half outside the bar at
--- the left end and looked cut off, so the left end is the right one turned round.
-local BAR_HORDE, BAR_ALLIANCE = "Objective-Header-CampaignHorde", "Objective-Header-CampaignAlliance"
-local BAR_TOP, BAR_BOTTOM = 3, 40
-local BAR_MIDDLE, BAR_END = 64, 250
+-- HeaderBar is 256x64 with rounded ends BAR_CAP texels wide. HeaderPlus and HeaderMinus are white, tinted
+-- to the banner's gold.
+local BAR_FILE = [[Interface\AddOns\Spoken\Textures\HeaderBar]]
+local SIGN_FILES = { [true] = [[Interface\AddOns\Spoken\Textures\HeaderMinus]],
+	[false] = [[Interface\AddOns\Spoken\Textures\HeaderPlus]] }
+local BAR_WIDTH, BAR_HEIGHT, BAR_CAP = 256, 64, 24
+local BAR_PIECES = { { 0, BAR_CAP }, { BAR_CAP, BAR_WIDTH - BAR_CAP }, { BAR_WIDTH - BAR_CAP, BAR_WIDTH } }
+local SIGN_SIZE = 14
+local SIGN_INK = { 1, 0.82, 0 }
+local LIST_BACKGROUND = "Professions-background-summarylist"
 
 local ROW_END = 12            -- from a row's right side to its numbers
 local SHARE_INK = { 0.80, 0.76, 0.70 }
@@ -927,27 +927,6 @@ local function Pixels(frame, size, least)
 	return SpokenLayout and SpokenLayout.Pixels and SpokenLayout.Pixels(frame, size, least) or size
 end
 
--- A piece of the faint gold line down an open group's contents: solid, or where the line ends,
--- fading out to its foot.
-local RAIL_INK = { 0.84, 0.71, 0.31, 0.2 }
--- Both ends set every time, solid or not: a row drawn again keeps its texture, and a fade left on
--- it from when it ended the line showed through once more rows came under it.
-local function PaintRail(texture, ends)
-	local r, g, b, a = RAIL_INK[1], RAIL_INK[2], RAIL_INK[3], RAIL_INK[4]
-	local foot = ends and 0 or a
-	texture.fades = ends and true or false
-	texture:SetColorTexture(1, 1, 1, 1)
-	if CreateColor and texture.SetGradient and pcall(texture.SetGradient, texture, "VERTICAL",
-		CreateColor(r, g, b, foot), CreateColor(r, g, b, a)) then
-		return
-	end
-	if texture.SetGradientAlpha then
-		texture:SetGradientAlpha("VERTICAL", r, g, b, foot, r, g, b, a)
-		return
-	end
-	texture:SetColorTexture(r, g, b, (foot + a) / 2)
-end
-
 local function Tint(fontString, colour)
 	fontString:SetTextColor(colour[1], colour[2], colour[3])
 end
@@ -956,14 +935,14 @@ local NAME_INK = { 1, 0.82, 0 }
 local MISSING_INK = { 0.84, 0.71, 0.31 }
 -- The chosen row's edge.
 local EDGE_INK = { 1, 0.82, 0, 0.9 }
--- In EllesmereUI's look: names white and the line down an open group white, as its windows draw
+-- In EllesmereUI's look: names white, as its windows draw
 -- them, the chosen row's edge in its accent, banners as flat boxes and the rows in its
 -- font, where it writes the client's language.
 local flatBanners, listFont
 -- Every list and page built, for what follows EllesmereUI's live changes (OnLooksChanged).
 local lists, pages = {}, {}
 C.Ellesmere(function(skin)
-	NAME_INK, MISSING_INK, RAIL_INK = { 1, 1, 1 }, { 0.62, 0.62, 0.62 }, { 1, 1, 1, 0.15 }
+	NAME_INK, MISSING_INK = { 1, 1, 1 }, { 0.62, 0.62, 0.62 }
 	local r, g, b = skin.GetAccentColor()
 	EDGE_INK = { r, g, b, 0.9 }
 	flatBanners = true
@@ -1026,7 +1005,7 @@ local function Numbers(item, total, ratio, ticked)
 	if total <= 0 then return "" end
 	local numbers = Number(item.count) .. "/" .. Number(total)
 	if not ticked then
-		numbers = numbers .. string.format(" \226\128\162 %d%%", math.floor(100 * ratio + 1e-6))
+		numbers = numbers .. string.format(" \194\183 %d%%", math.floor(100 * ratio + 1e-6))
 	end
 	local going = item.goingCount or 0
 	if going > 0 then numbers = "|T" .. ACTIVE .. ":12:12:0:0|t" .. Number(going) .. "   " .. numbers end
@@ -1037,8 +1016,8 @@ local function ShowAll(parts, shown)
 	for _, part in ipairs(parts) do part:SetShown(shown and true or false) end
 end
 
--- A row's light. A banner brightens; a plain row, or a banner drawn without the game's art, takes
--- a gold wash, stronger when chosen with a gold edge.
+-- A row's light. A banner brightens; a plain row, or EllesmereUI's flat banner, takes a wash under the
+-- pointer and a yellow one when chosen (in EllesmereUI's look its one wash, stronger, with an accent edge).
 local function Light(row)
 	local style = row.row and row.row.style
 	local over, chosen = row.over and true or false, row.selected and true or false
@@ -1049,9 +1028,16 @@ local function Light(row)
 		row.wash:SetColorTexture(1, 1, 1, 0.08)
 		row.edge:SetColorTexture(EDGE_INK[1], EDGE_INK[2], EDGE_INK[3], EDGE_INK[4])
 	end
-	row.wash:SetShown(flat and (over or chosen))
+	if flatBanners then
+		row.wash:SetShown(flat and (over or chosen))
+		row.chosenWash:Hide()
+		row.edge:SetShown(flat and chosen)
+	else
+		row.wash:SetShown(flat and over and not chosen)
+		row.chosenWash:SetShown(flat and chosen)
+		row.edge:Hide()
+	end
 	row.wash:SetAlpha(chosen and 1 or 0.55)
-	row.edge:SetShown(flat and chosen)
 	if row.glow then
 		ShowAll(row.glow, style == "banner" and row.bannerArt and (over or chosen))
 		for _, part in ipairs(row.glow) do part:SetAlpha(chosen and 0.25 or 0.15) end
@@ -1112,7 +1098,9 @@ function C.NewList(panel, opts)
 
 	local inset = NewInset(panel)
 	-- The game's dark marble under the list, at its own colour.
-	if type(inset.Bg) == "table" and inset.Bg.SetTexture then
+	-- Forever has the professions list's background; Era keeps the marble.
+	if type(inset.Bg) == "table" and inset.Bg.SetTexture
+		and (IS_ERA or not Atlas(inset.Bg, LIST_BACKGROUND)) then
 		inset.Bg:SetTexture([[Interface\FrameGeneral\UI-Background-Marble]], "REPEAT", "REPEAT")
 		if inset.Bg.SetHorizTile then inset.Bg:SetHorizTile(true); inset.Bg:SetVertTile(true) end
 		if inset.Bg.SetVertexColor then inset.Bg:SetVertexColor(1, 1, 1, 1) end
@@ -1134,7 +1122,7 @@ function C.NewList(panel, opts)
 	end)
 
 	local scroll = CreateFrame("ScrollFrame", nil, inset)
-	scroll:SetPoint("TOPLEFT", inset, "TOPLEFT", 4, -4)
+	scroll:SetPoint("TOPLEFT", inset, "TOPLEFT", 4, -2)
 	scroll:SetPoint("BOTTOMRIGHT", inset, "BOTTOMRIGHT", -4, 4)
 	if scroll.SetClipsChildren then scroll:SetClipsChildren(true) end
 	scroll:EnableMouseWheel(true)
@@ -1150,7 +1138,10 @@ function C.NewList(panel, opts)
 	scroll:SetScrollChild(child)
 	list.child = child
 	-- The game's minimal scroll bar down the list's right side, as each part draws its pages'.
-	if opts.addScrollBar then list.bar = opts.addScrollBar(scroll, child, inset) end
+	if opts.addScrollBar then
+		list.bar = opts.addScrollBar(scroll, child, inset)
+		list.bar:SetBarInsets(BAR_SIDE, BAR_HEAD, BAR_FOOT, BAR_ROOM)
+	end
 
 	-- The filter menu.
 	local function Listed()
@@ -1292,13 +1283,23 @@ function List:AcquireRow(index)
 	row = CreateFrame("Button", nil, self.child)
 	row.list = self
 
-	-- A row's light: the professions list's own, faint under the pointer and full when chosen, with
-	-- a gold edge on the chosen one. A flat wash where the client has not got it.
+	-- A flat wash where the client has not got the professions list's hover light.
 	row.wash = row:CreateTexture(nil, "BACKGROUND")
 	if not Atlas(row.wash, "Professions_Recipe_Hover", false) then
 		row.wash:SetColorTexture(1, 1, 1, 0.1)
 	end
 	row.wash:Hide()
+	-- Yellow, as the professions list's chosen row. Era names these atlases without their art, so it gets a flat wash.
+	row.chosenWash = row:CreateTexture(nil, "BACKGROUND")
+	if not IS_ERA and Atlas(row.chosenWash, "Professions_Recipe_Active", false) then
+		-- The client's own.
+	elseif not IS_ERA and Atlas(row.chosenWash, "Professions_Recipe_Hover", false) then
+		row.chosenWash:SetVertexColor(1, 0.82, 0)
+	else
+		row.chosenWash:SetColorTexture(1, 0.82, 0, 0.3)
+	end
+	row.chosenWash:SetAllPoints(row.wash)
+	row.chosenWash:Hide()
 	row.edge = row:CreateTexture(nil, "ARTWORK")
 	row.edge:SetWidth(Pixels(row, 2))
 	row.edge:SetColorTexture(EDGE_INK[1], EDGE_INK[2], EDGE_INK[3], EDGE_INK[4])
@@ -1356,28 +1357,37 @@ local function BannerParts(row)
 	row.headLeft = row:CreateTexture(nil, "BACKGROUND")
 	row.headMiddle = row:CreateTexture(nil, "BACKGROUND")
 	row.headRight = row:CreateTexture(nil, "BACKGROUND")
+	row.heads = { row.headLeft, row.headMiddle, row.headRight }
+	row.headLeft:SetPoint("TOPLEFT", row, "TOPLEFT", 0, 0)
+	row.headRight:SetPoint("TOPRIGHT", row, "TOPRIGHT", 0, 0)
+	row.headMiddle:SetPoint("TOPLEFT", row.headLeft, "TOPRIGHT", 0, 0)
+	row.headMiddle:SetPoint("BOTTOMRIGHT", row.headRight, "BOTTOMLEFT", 0, 0)
 	row.glow = {}
 	for i = 1, 3 do
 		local glow = row:CreateTexture(nil, "BORDER")
 		if glow.SetBlendMode then glow:SetBlendMode("ADD") end
+		glow:SetAllPoints(row.heads[i])
 		glow:Hide()
 		row.glow[i] = glow
 	end
-	-- Where the client has not got the bar: a dark band, a gold line along each edge.
+	-- In three pieces, so the rounded ends are not stretched.
+	for i, piece in ipairs(BAR_PIECES) do
+		for _, part in ipairs({ row.heads[i], row.glow[i] }) do
+			part:SetTexture(BAR_FILE)
+			part:SetTexCoord(piece[1] / BAR_WIDTH, piece[2] / BAR_WIDTH, 0, 1)
+		end
+	end
+	-- EllesmereUI's flat box: a fill and a line along each edge, coloured in DrawBanner.
 	row.bannerFill = row:CreateTexture(nil, "BACKGROUND", nil, -1)
-	row.bannerFill:SetColorTexture(0.17, 0.11, 0.06, 0.95)
 	row.bannerFill:SetAllPoints(row)
 	row.bannerTop = row:CreateTexture(nil, "BORDER")
 	row.bannerTop:SetHeight(Pixels(row, 1))
-	row.bannerTop:SetColorTexture(0.79, 0.63, 0.31, 0.8)
 	row.bannerTop:SetPoint("TOPLEFT", row, "TOPLEFT", 0, 0)
 	row.bannerTop:SetPoint("TOPRIGHT", row, "TOPRIGHT", 0, 0)
 	row.bannerBottom = row:CreateTexture(nil, "BORDER")
 	row.bannerBottom:SetHeight(Pixels(row, 1))
-	row.bannerBottom:SetColorTexture(0.79, 0.63, 0.31, 0.45)
 	row.bannerBottom:SetPoint("BOTTOMLEFT", row, "BOTTOMLEFT", 0, 0)
 	row.bannerBottom:SetPoint("BOTTOMRIGHT", row, "BOTTOMRIGHT", 0, 0)
-	-- And down each end, for a flat box.
 	row.bannerLeft = row:CreateTexture(nil, "BORDER")
 	row.bannerLeft:SetWidth(Pixels(row, 1))
 	row.bannerLeft:SetPoint("TOPLEFT", row, "TOPLEFT", 0, 0)
@@ -1399,52 +1409,12 @@ local function ShowStyle(row, style)
 	row.bannerArt = style == "banner" and row.bannerArt
 end
 
--- The faint line down the left of each open group's contents, one for every group a row is inside.
--- Each row draws its share of the line, `gap` up to the row above; a group's or banner's first row
--- draws it on up to that group or banner. The row a line ends at fades it out: the first
--- `goesOn` lines go on into the next row, and the banner's with `bannerGoesOn`.
-local function Rails(row, count, gap, held, underBanner, afterBanner, foot, goesOn, bannerGoesOn)
-	-- In EllesmereUI's look a line starts at the foot of its banner's or group's box, not inside it,
-	-- where it would cross the box's edge or run into the group's plus or minus.
-	local flat = flatBanners
-	if underBanner and not row.bannerRail then
-		row.bannerRail = row:CreateTexture(nil, "BORDER")
-		row.bannerRail:SetWidth(Pixels(row, 1))
-	end
-	if row.bannerRail then
-		PaintRail(row.bannerRail, not bannerGoesOn)
-		row.bannerRail:ClearAllPoints()
-		row.bannerRail:SetPoint("TOPLEFT", row, "TOPLEFT", Pixels(row, BANNER_RAIL_X, 0),
-			gap + ((afterBanner and not flat) and BANNER_FOOT or 0))
-		row.bannerRail:SetPoint("BOTTOMLEFT", row, "BOTTOMLEFT", Pixels(row, BANNER_RAIL_X, 0), 0)
-		row.bannerRail:SetShown(underBanner and true or false)
-	end
-	row.rails = row.rails or {}
-	for i = 1, math.max(count, #row.rails) do
-		local rail = row.rails[i]
-		if i <= count then
-			if not rail then
-				rail = row:CreateTexture(nil, "BORDER")
-				rail:SetWidth(Pixels(row, 1))
-				row.rails[i] = rail
-			end
-			PaintRail(rail, i > (goesOn or 0))
-			local x = Pixels(row, (underBanner and UNDER_BANNER_IN or 0) + (i - 1) * NEST_STEP + RAIL_X, 0)
-			rail:ClearAllPoints()
-			rail:SetPoint("TOPLEFT", row, "TOPLEFT", x, (i <= held or flat) and gap or gap + (foot or FOOT))
-			rail:SetPoint("BOTTOMLEFT", row, "BOTTOMLEFT", x, 0)
-			rail:Show()
-		elseif rail then
-			rail:Hide()
-		end
-	end
-end
 
 -- The quest log's own expand and collapse, on a banner or a group. Where nothing inside
 -- opens -- locked, empty, or none found with the tab's only switch on -- greyed, as the name
 -- beside it is. `found`, where an item counts something narrower than what it holds (the quests
 -- completed, not those in progress too).
-local function Toggle(row, item, onlyFound)
+local function Toggle(row, item, onlyFound, bar)
 	local count = item.found or item.count or 0
 	-- A card with nothing inside it (a dungeon's, a city with no areas) has nothing to open: no
 	-- button, rather than a disabled one that does nothing.
@@ -1453,6 +1423,19 @@ local function Toggle(row, item, onlyFound)
 		return
 	end
 	local opens = not item.locked and not (onlyFound and count == 0)
+	if bar then
+		-- The banner's own sign, white art in the bar's gold, dim where there is nothing to open.
+		row.toggle:SetSize(SIGN_SIZE, SIGN_SIZE)
+		row.toggle:SetTexture(SIGN_FILES[opens and item.open and true or false])
+		row.toggle:SetTexCoord(0, 1, 0, 1)
+		if row.toggle.SetDesaturated then row.toggle:SetDesaturated(false) end
+		row.toggle:SetVertexColor(SIGN_INK[1], SIGN_INK[2], SIGN_INK[3])
+		row.toggle:SetAlpha(opens and 1 or 0.45)
+		row.toggle:Show()
+		return
+	end
+	row.toggle:SetSize(16, 16)
+	row.toggle:SetVertexColor(1, 1, 1)
 	local atlas = opens and item.open and "questlog-icon-shrink" or "questlog-icon-expand"
 	-- Era exposes these modern atlas names even though their backing textures are not present. Using
 	-- them paints the missing-texture green square; its older button files are still available.
@@ -1468,15 +1451,14 @@ local function Toggle(row, item, onlyFound)
 	row.toggle:Show()
 end
 
--- The room above the row for `items[i]`, and how many open groups hold both it and the row above.
 local function GapAbove(items, i)
 	local item, before = items[i], items[i - 1]
-	if not before then return FIRST_GAP, 0 end
-	if item.style == "banner" then return BANNER_GAP, 0 end
-	if before.style == "banner" then return LEAF_GAP, 0 end
+	if not before then return FIRST_GAP end
+	if item.style == "banner" then return BANNER_GAP end
+	if before.style == "banner" then return LEAF_GAP end
 	local was, now = before.nest or 0, item.nest or 0
 	-- Lines one under another, as a list: none between them, a little where a group closes.
-	return now < was and (was - now) * NEST_AFTER or 0, math.min(now, was)
+	return now < was and (was - now) * NEST_AFTER or 0
 end
 
 local function RowHeight(item)
@@ -1485,32 +1467,24 @@ local function RowHeight(item)
 	return LEAF_ROW
 end
 
+-- The gap above `items[i]` and its height, in whole screen pixels: unrounded, a 28 bar at 33.6 px drew 33 px
+-- tall here and 34 there.
+local function RowSpan(child, items, i)
+	return Pixels(child, GapAbove(items, i), 0), Pixels(child, RowHeight(items[i]), 1)
+end
+
 local function DrawBanner(row, item, onlyFound)
 	BannerParts(row)
-	local horde = UnitFactionGroup and UnitFactionGroup("player") == "Horde"
-	local spot = (not flatBanners) and AtlasSpot(horde and BAR_HORDE or BAR_ALLIANCE) or nil
-	row.bannerArt = spot ~= nil
-	if spot then
-		local width = spot.width
-		local cap = math.floor((width - BAR_END) * BANNER_ROW / (BAR_BOTTOM - BAR_TOP) + 0.5)
-		local pieces = { { row.headLeft, BAR_END, width, true }, { row.headMiddle, BAR_MIDDLE, BAR_END },
-			{ row.headRight, BAR_END, width } }
-		for i, piece in ipairs(pieces) do
-			AtlasCut(piece[1], spot, piece[2], piece[3], BAR_TOP, BAR_BOTTOM, piece[4])
-			AtlasCut(row.glow[i], spot, piece[2], piece[3], BAR_TOP, BAR_BOTTOM, piece[4])
-			piece[1]:ClearAllPoints()
-		end
-		row.headLeft:SetSize(cap, BANNER_ROW)
-		row.headLeft:SetPoint("TOPLEFT", row, "TOPLEFT", 0, 0)
-		row.headRight:SetSize(cap, BANNER_ROW)
-		row.headRight:SetPoint("TOPRIGHT", row, "TOPRIGHT", 0, 0)
-		row.headMiddle:SetPoint("TOPLEFT", row.headLeft, "TOPRIGHT", 0, 0)
-		row.headMiddle:SetPoint("BOTTOMRIGHT", row.headRight, "BOTTOMLEFT", 0, 0)
-		for i, piece in ipairs(pieces) do row.glow[i]:SetAllPoints(piece[1]) end
+	row.bannerArt = not flatBanners
+	if row.bannerArt then
+		-- The ends keep their shape at any row height: BAR_CAP texels of the bar's BAR_HEIGHT.
+		local height = Pixels(row, BANNER_ROW, 1)
+		local cap = height * BAR_CAP / BAR_HEIGHT
+		row.headLeft:SetSize(cap, height)
+		row.headRight:SetSize(cap, height)
 	end
-	ShowAll({ row.headLeft, row.headMiddle, row.headRight }, spot ~= nil)
-	ShowAll({ row.bannerFill, row.bannerTop, row.bannerBottom }, spot == nil)
-	ShowAll({ row.bannerLeft, row.bannerRight }, flatBanners)
+	ShowAll(row.heads, row.bannerArt)
+	ShowAll({ row.bannerFill, row.bannerTop, row.bannerBottom, row.bannerLeft, row.bannerRight }, flatBanners)
 	if flatBanners then
 		-- A faint box with a faint edge all round, as EllesmereUI's flat plates are.
 		row.bannerFill:SetColorTexture(1, 1, 1, 0.05)
@@ -1520,27 +1494,23 @@ local function DrawBanner(row, item, onlyFound)
 	end
 
 	row.toggle:ClearAllPoints()
-	-- The plus or minus as far in from the banner's edge as it is from its top and its foot, all
-	-- measured from the banner's gold line, whose middle is 1.5 under the row's.
-	-- The campaign bar's gold line sits under the row's middle; a flat box has its middle. The quest
-	-- log's minus and plus draw their bar 1.5 above their picture's middle (measured in game: the
-	-- minus 1.5 px over the box's middle, the name and the count on it), so the sign alone drops.
-	local drop = flatBanners and 0 or BANNER_DROP
-	local sign = flatBanners and Pixels(row, BANNER_DROP, 0) or BANNER_DROP
+	-- A flat box's sign sits BANNER_DROP under its middle, where the quest log's minus has its bar; the
+	-- bar is level, and so is its sign.
+	local sign = flatBanners and Pixels(row, BANNER_DROP, 0) or 0
 	row.toggle:SetPoint("LEFT", row, "LEFT", BANNER_IN, -sign)
-	Toggle(row, item, onlyFound)
+	Toggle(row, item, onlyFound, row.bannerArt)
 	local locked = item.locked and row.hasLock
 	-- The numbers and padlock in the column the lines' numbers end in.
-	row.lock:SetPoint("RIGHT", row, "RIGHT", -ROW_END, -drop)
-	row.count:SetPoint("RIGHT", row, "RIGHT", -ROW_END, flatBanners and 0 or -1)
+	row.lock:SetPoint("RIGHT", row, "RIGHT", -ROW_END, 0)
+	row.count:SetPoint("RIGHT", row, "RIGHT", -ROW_END, row.bannerArt and TEXT_LIFT or 0)
 	row.lock:SetShown(locked and true or false)
 	row.count:SetShown(not locked)
 	RowFont(row, "banner", "GameFontNormal", "GameFontHighlightSmall")
 	Tint(row.count, BANNER_INK)
 	row.count:SetText(item.total and item.total > 0 and (Number(item.count) .. "/" .. Number(item.total)) or "")
-	-- Both on the box's middle line, by their own middle.
-	if flatBanners and row.label.SetJustifyV then row.label:SetJustifyV("MIDDLE"); row.count:SetJustifyV("MIDDLE") end
-	row.label:SetPoint("LEFT", row, "LEFT", BANNER_TEXT, flatBanners and 0 or -1)
+	-- Both on the bar's middle line, by their own middle.
+	if row.label.SetJustifyV then row.label:SetJustifyV("MIDDLE"); row.count:SetJustifyV("MIDDLE") end
+	row.label:SetPoint("LEFT", row, "LEFT", BANNER_TEXT, 0)
 	row.label:SetPoint("RIGHT", locked and row.lock or row.count, "LEFT", -8, 0)
 	if item.locked then Tint(row.label, LOCKED_INK) else Tint(row.label, NAME_INK) end
 	row.label:SetShadowColor(0, 0, 0, 1)
@@ -1548,7 +1518,7 @@ local function DrawBanner(row, item, onlyFound)
 	row.label:SetText(item.label)
 end
 
--- A group: its plus or minus on the line down what it holds, its name in gold over
+-- A group: its plus or minus at the left, its name in gold over
 -- the names of what it holds, and on the right what is found out of all and the share, the quest
 -- mark with how many are under way, a tick once all are found, a padlock on what does not open.
 local function DrawGroup(row, item, indent, onlyFound)
@@ -1566,23 +1536,29 @@ local function DrawGroup(row, item, indent, onlyFound)
 	if ticked then
 		Ticked(row.status)
 		row.status:ClearAllPoints()
-		row.status:SetPoint("CENTER", row, "RIGHT", edge, 0)
+		row.status:SetPoint("CENTER", row, "RIGHT", edge, TEXT_LIFT)
 	end
 	row.status:SetShown(ticked)
 	RowFont(row, "group", "GameFontNormal", "GameFontHighlightSmall")
 	Tint(row.count, SHARE_INK)
 	if ticked then
-		row.count:SetPoint("RIGHT", row.status, "LEFT", -4, 0)
+		row.count:SetPoint("RIGHT", row.status, "LEFT", -4, COUNT_LIFT - TEXT_LIFT)
 	else
-		row.count:SetPoint("RIGHT", row, "RIGHT", -ROW_END, 0)
+		row.count:SetPoint("RIGHT", row, "RIGHT", -ROW_END, COUNT_LIFT)
 	end
 	local numbers = Numbers(item, total, ratio, ticked)
 	row.count:SetText(numbers)
 	row.count:SetShown(not locked and numbers ~= "")
 
-	row.label:SetPoint("LEFT", row, "LEFT", indent + NEST_STEP + 12, 0)
-	row.label:SetPoint("RIGHT", locked and row.lock or (numbers ~= "" and row.count) or row, locked and "LEFT"
-		or (numbers ~= "" and "LEFT") or "RIGHT", -8, 0)
+	row.label:SetPoint("LEFT", row, "LEFT", indent + NEST_STEP + 12, TEXT_LIFT)
+	-- The numbers are lifted already; the padlock and the row's edge are not.
+	if locked then
+		row.label:SetPoint("RIGHT", row.lock, "LEFT", -8, TEXT_LIFT)
+	elseif numbers ~= "" then
+		row.label:SetPoint("RIGHT", row.count, "LEFT", -8, TEXT_LIFT - COUNT_LIFT)
+	else
+		row.label:SetPoint("RIGHT", row, "RIGHT", -8, TEXT_LIFT)
+	end
 	NameInk(row.label, item)
 	row.label:SetText(item.label)
 end
@@ -1602,7 +1578,7 @@ local function DrawLeaf(row, item, indent)
 	end
 	-- At the row's end, where a padlock goes: one place for what a row's state is.
 	row.status:ClearAllPoints()
-	row.status:SetPoint("CENTER", row, "RIGHT", -(ROW_END + 6), 0)
+	row.status:SetPoint("CENTER", row, "RIGHT", -(ROW_END + 6), TEXT_LIFT)
 	row.status:SetShown(status ~= nil)
 
 	local locked = item.locked and row.hasLock
@@ -1611,9 +1587,9 @@ local function DrawLeaf(row, item, indent)
 	row.count:SetText("")
 	row.count:Hide()
 	RowFont(row, "leaf", "GameFontHighlight")
-	row.label:SetPoint("LEFT", row, "LEFT", indent + 12, 0)
+	row.label:SetPoint("LEFT", row, "LEFT", indent + 12, TEXT_LIFT)
 	-- Clear of the tick, quest mark or padlock at the row's end, which reach 25.5 in.
-	row.label:SetPoint("RIGHT", row, "RIGHT", -28, 0)
+	row.label:SetPoint("RIGHT", row, "RIGHT", -28, TEXT_LIFT)
 	-- Something with nothing to read yet, greyed a little: still there to choose. One not yet
 	-- found, greyer: listed, but it does not open.
 	if item.locked then
@@ -1632,15 +1608,14 @@ function List:Render()
 	local onlyFound = self.opts.onlyGet and self.opts.onlyGet()
 	local unlock = self.panel.tab and self.panel.tab.unlock
 	local unlocked = unlock and unlock.get and unlock.get()
-	local y = LIST_TOP
+	local y = Pixels(self.child, LIST_TOP, 0)
 	local underBanner = false
 	for i, item in ipairs(items) do
 		if unlocked then item.none = false end
 		if item.style == "banner" then underBanner = true end
 		local row = self:AcquireRow(i)
 		row.row = item
-		local gap, held = GapAbove(items, i)
-		local height = RowHeight(item)
+		local gap, height = RowSpan(self.child, items, i)
 		y = y + gap
 		row:SetHeight(height)
 		row:ClearAllPoints()
@@ -1650,12 +1625,6 @@ function List:Render()
 
 		ShowStyle(row, item.style)
 		local nest = item.style ~= "banner" and item.nest or 0
-		local before, after = items[i - 1], items[i + 1]
-		local _, goesOn = 0, 0
-		if after and after.style ~= "banner" then _, goesOn = GapAbove(items, i + 1) end
-		Rails(row, nest, gap, held, item.style ~= "banner" and underBanner,
-			before and before.style == "banner", before and before.style == "group" and GROUP_FOOT or FOOT,
-			goesOn, after ~= nil and after.style ~= "banner")
 		local indent = (underBanner and UNDER_BANNER_IN or 0) + nest * NEST_STEP
 		row.indent = indent
 		row.label:ClearAllPoints()
@@ -1669,7 +1638,7 @@ function List:Render()
 		else
 			DrawLeaf(row, item, indent)
 		end
-		-- A single row's light starts on the line down its left, its gold edge over that line.
+		-- A single row's light starts at the step's column, its gold edge over it.
 		local lit = indent
 		if item.style ~= "banner" and (nest > 0 or underBanner) then lit = indent - (NEST_STEP - RAIL_X) - 0.5 end
 		row.wash:ClearAllPoints()
@@ -1677,7 +1646,7 @@ function List:Render()
 		row.wash:SetPoint("BOTTOMRIGHT", row, "BOTTOMRIGHT", 0, 0)
 		row.edge:ClearAllPoints()
 		row.edge:SetPoint("TOPLEFT", row, "TOPLEFT", lit, 0)
-		row.edge:SetPoint("BOTTOMLEFT", row, "BOTTOMLEFT", lit, 0)
+		row.edge:SetPoint("BOTTOMLEFT", row, "BOTTOMLEFT", lit, Pixels(row, 2, 0))
 		-- Clicks on the row, not on the room beside its line.
 		if row.SetHitRectInsets then row:SetHitRectInsets(indent, 0, 0, 0) end
 
@@ -1701,10 +1670,10 @@ end
 --- something or the list is filtered again: doing it on every refresh would yank the list out
 --- from under a click.
 function List:ScrollToSelection(items)
-	local y = LIST_TOP
+	local y = Pixels(self.child, LIST_TOP, 0)
 	for i, item in ipairs(items) do
-		y = y + GapAbove(items, i)
-		local height = RowHeight(item)
+		local gap, height = RowSpan(self.child, items, i)
+		y = y + gap
 		if self.opts.isSelected and self.opts.isSelected(item) then
 			local viewHeight = self.scroll:GetHeight() or 0
 			-- GetVerticalScrollRange is stale until the next layout pass, right after
@@ -1992,16 +1961,16 @@ local SPELLBOOK_PAGE = { file = ZONES_ART .. "spellbook-Page-Right-C60", coords 
 --- `look`, where given, changes the page's art from the spellbook's for the Compendium:
 --- { art = { file, coords } the parchment; top, right, the heading's room from the page's top and
 --- its right edge; titleSize; oneLine, a title cut short at one line rather than two; backplate = { full,
---- height }; noFace, no round picture by the title }. Spoken Places' page beside the map is the quest
+--- height }; noFace, no round picture by the title unless an entry has `face` }. Spoken Places' page beside the map is the quest
 --- log's details page this way.
 function C.NewPage(parent, addon, play, report, look)
 	look = look or {}
 	local top, right = look.top or TOP, look.right or RIGHT
 	local titleSize = look.titleSize or 26
-	local self = setmetatable({ playing = play, reporting = report, top = top, right = right,
-		titleSize = titleSize, extra = {}, shift = 0, ink = INK, link = LINK, addon = addon }, Page)
-	-- False is a face never made.
-	if look.noFace then self.headFace = false end
+	local self = setmetatable({ playing = play, reporting = report, defaultPlaying = play,
+		defaultReporting = report, top = top, right = right,
+		titleSize = titleSize, extra = {}, shift = 0, ink = INK, link = LINK, addon = addon,
+		noFace = look.noFace }, Page)
 	local frame = CreateFrame("Frame", nil, parent)
 	frame:SetAllPoints()
 	self.frame = frame
@@ -2134,6 +2103,7 @@ function C.NewPage(parent, addon, play, report, look)
 	frame:HookScript("OnSizeChanged", function() self:PlaceDivider() end)
 
 	local body = SpokenTextView.Create(frame, addon)
+	body.cameraPlace = look.place
 	body.frame:SetPoint("TOPLEFT", divider, "BOTTOMLEFT", 6, -2)
 	body.frame:SetPoint("BOTTOMRIGHT", frame, "BOTTOMRIGHT", -right, PAD - 6)
 	body:SetInk(INK[1], INK[2], INK[3])
@@ -2178,9 +2148,11 @@ function C.NewPage(parent, addon, play, report, look)
 	if report and _G.Spoken and Spoken.CreateRoundButton then
 		local button = Spoken:CreateRoundButton(frame, "report")
 		button:SetScript("OnClick", function()
-			if self.target ~= nil then report.open(self.target) end
+			if self.target ~= nil and self.reporting then self.reporting.open(self.target) end
 		end)
-		button:HookScript("OnEnter", function(b) C.ReportTooltip(b, report.title) end)
+		button:HookScript("OnEnter", function(b)
+			if self.reporting then C.ReportTooltip(b, self.reporting.title) end
+		end)
 		button:HookScript("OnLeave", function() if GameTooltip then GameTooltip:Hide() end end)
 		button:Hide()
 		self.report = button
@@ -2194,9 +2166,9 @@ function C.NewPage(parent, addon, play, report, look)
 		local button = Spoken:CreateRoundButton(frame, "play")
 		button:SetScript("OnClick", function()
 			local target = self.target
-			if target == nil then return end
+			if target == nil or not self.playing then return end
 			-- Looked up each click: a line that has since finished is no longer in the queue.
-			C.PlayClick(play.find(target), function() play.start(target) end)
+			C.PlayClick(self.playing.find(target), function() self.playing.start(target) end)
 			self:RefreshPlay()
 			if GameTooltip and GameTooltip:GetOwner() == button then C.PlayTooltip(button, button.pageState) end
 		end)
@@ -2210,6 +2182,12 @@ function C.NewPage(parent, addon, play, report, look)
 	end
 	C.Ellesmere(function(skin) self:Darken(skin) end)
 	return self
+end
+
+--- Changes the actions for the next page shown; nil restores the one the page was built with.
+function Page:SetActions(play, report)
+	self.playing = play == nil and self.defaultPlaying or play
+	self.reporting = report == nil and self.defaultReporting or report
 end
 
 -- EllesmereUI's window backdrop where a page's text is cut, for its fade to blend into: in its own
@@ -2367,10 +2345,10 @@ function Page:RefreshPlay()
 	local report, button = self.report, self.play
 	if report then
 		local hidden = _G.Spoken and Spoken.AreReportButtonsHidden and Spoken:AreReportButtonsHidden()
-		report:SetShown(target ~= nil and not hidden and self.reporting.has(target) and true or false)
+		report:SetShown(target ~= nil and not hidden and self.reporting and self.reporting.has(target) and true or false)
 	end
 	if button then
-		local has = target ~= nil and self.playing.has(target) and true or false
+		local has = target ~= nil and self.playing and self.playing.has(target) and true or false
 		button:SetShown(not self.empty)
 		if has then button:Enable() else button:Disable() end
 		button.pageState = has and C.PlayState(self.playing.find(target)) or "play"
@@ -2414,19 +2392,28 @@ end
 
 --- entry = { title, subtitle, onSubtitle, text, target = what Play and Report act on, or nil for
 --- none, icon = the round portrait left of the title (a Spoken:CreateSpeakerFace speaker table), the
---- Compendium's tome without it, and none on a page made with `noFace`, picture = { file, mask } above the words, parts = { { heading, text, buttons } } in place
+--- Compendium's tome without it, and none on a page made with `noFace` unless `face` is set, model = { displayID }
+--- above the words, picture = { file, mask } above the words, parts = { { heading, text, buttons } } in place
 --- of `text`: words in parts, each under its heading with its own buttons (TextView:SetParts) }. With no text, parts, target or unwritten the page is a group's or a place's: no
 --- Play, and its mark in the middle.
 --- onSubtitle(), where given, is what a click on the line under the title does (the map panel's
 --- area story returns to its zone's with it); without it the line is plain words.
 function Page:Show(entry)
-	if self.headFace == nil then
+	-- Made on first need: nil is not yet made, false is made and failed, which is not tried again.
+	if self.headFace == nil and (not self.noFace or entry.face) then
 		local ok, made = false, nil
-		if _G.Spoken and Spoken.CreateSpeakerFace then ok, made = pcall(Spoken.CreateSpeakerFace, Spoken, self.frame, FACE_SIZE) end
+		if _G.Spoken and Spoken.CreateSpeakerFace then
+			ok, made = pcall(Spoken.CreateSpeakerFace, Spoken, self.frame, FACE_SIZE)
+			if not ok then print("|cffff5555Spoken|r: " .. tostring(made)) end
+		end
 		self.headFace = ok and made or false
 		if made and ok then made:SetPoint("TOPLEFT", self.frame, "TOPLEFT", PAD, -(self.top - 4)) end
 	end
 	local face = self.headFace or nil
+	if face and self.noFace then
+		face:SetShown(entry.face and true or false)
+		if not entry.face then face = nil end
+	end
 	local icon = entry.icon or TOME
 	-- Drawn again only for another picture: a page is shown again on every refresh.
 	if face and icon ~= self.faceIcon then
@@ -2457,6 +2444,7 @@ function Page:Show(entry)
 		contribute:ClearAllPoints()
 		contribute:SetPoint("TOPLEFT", self.body.text, "BOTTOMLEFT", 0, -12)
 		local picture = entry.picture
+		self.body:SetModel(entry.model)
 		self.body:SetPicture(picture and picture.file, picture and picture.mask)
 		-- A page with nothing written says so in one voice on every tab, with Contribute under it.
 		local words = entry.unwritten and C.NotWritten()

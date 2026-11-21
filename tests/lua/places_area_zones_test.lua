@@ -134,7 +134,7 @@ Expect("...headed by Alterac Mountains, where it is listed", clip and clip.prese
 Expect("...with its picture", clip and clip.present.picture and clip.present.picture.file,
     [[Interface\AddOns\Spoken_Places\Textures\Pictures\1424-strahnbrad]])
 Expect("...and its report names the story's map", clip and Z:ReportURL(clip.mapID, clip.areaKey),
-    "https://spoken.rusty.one/places/r/1424/strahnbrad")
+    "https://spoken.quest/places/r/1424/strahnbrad")
 Expect("...the visit recorded in Alterac Mountains, where it is found",
     tostring(SpokenPlacesCharacter.visited["1416/strahnbrad"]) .. "|" .. tostring(Z:IsFound(HILLSBRAD, "strahnbrad")),
     "true|true")
@@ -258,7 +258,7 @@ for _, name in ipairs({ "StoryPlace", "AreaZone", "FoundOn", "AreasIn", "GetSubz
     Z[name] = core[name]
 end
 function Z:ClearSubzone() self.selected = nil; self:RefreshPanel() end
-for _, file in ipairs({ "UI/LorePage", "UI/LoreWindow", "UI/MapPanel" }) do
+for _, file in ipairs({ "UI/LorePage", "UI/LoreWindow", "UI/OpenMap", "UI/MapPanel" }) do
     assert(loadfile(PLACES .. file .. ".lua"))("Spoken_Places", Z)
 end
 Z:SetupLoreWindow()
@@ -356,9 +356,13 @@ Z:RefreshPanel()
 Expect("Strahnbrad clicked on Alterac Mountains' map: its story, in Alterac Mountains",
     mapPage.title.text .. ": " .. mapPage.body.text.text .. "|" .. mapPage.sub.text.text,
     "Strahnbrad: A town in the mountains.|In Alterac Mountains")
+local showLoreFor, opened = Z.ShowLoreFor, nil
+Z.ShowLoreFor = function(_, mapID, areaKey) opened = mapID .. "|" .. areaKey end
+mapPage.open:Click()
+Z.ShowLoreFor = showLoreFor
 Expect("...Play, Report and Open on its story under Hillsbrad Foothills",
     table.concat({ mapPage.target[1], mapPage.target[2], tostring(mapPage.play:IsShown()), tostring(mapPage.report:IsShown()),
-        mapPage.open.mapID, mapPage.open.areaKey }, "|"),
+        tostring(opened) }, "|"),
     "1424|strahnbrad|true|true|1424|strahnbrad")
 showAll = false
 Z:RefreshPanel()

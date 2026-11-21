@@ -10,9 +10,10 @@
  */
 import { readFileSync } from "node:fs";
 
-import { afterAll, afterEach, describe, expect, it, vi } from "vitest";
+import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from "vitest";
 
 import { closeDb, db } from "@/lib/db";
+import { asSystem } from "@/lib/teams/testing";
 import { checksum } from "@/lib/contributions/envelope";
 
 vi.mock("next/headers", () => ({ headers: async () => new Headers() }));
@@ -66,10 +67,10 @@ function gossipEnvelope(npc: string): string {
 }
 
 afterEach(async () => {
-  await db().query(`delete from "contribution" where "ip" = $1`, [ip]);
-  await db().query(`delete from "contribution_hit" where "ip" = $1`, [ip]);
+  await asSystem.query(`delete from "contribution" where "ip" = $1`, [ip]);
+  await asSystem.query(`delete from "contribution_hit" where "ip" = $1`, [ip]);
   // The observed-npc test resolves npc 9123 into a row this database does not otherwise carry.
-  await db().query(`delete from "npc" where "npcId" = $1`, [9123]);
+  await asSystem.query(`delete from "npc" where "npcId" = $1`, [9123]);
   // Nothing to clean up for the overflow test's npc id: the whole point of the fix is that no
   // row is ever written for it, and "npcId" is `integer`, so comparing it against a literal
   // this large would itself fail to cast.
@@ -82,7 +83,7 @@ afterAll(async () => {
 describe("POST /api/contributions", () => {
   it("stores a pasted envelope", async () => {
     expect((await POST(post({ envelope, body: "Nothing played." }))).status).toBe(200);
-    const { rows } = await db().query<{ key: string; locale: string }>(
+    const { rows } = await asSystem.query<{ key: string; locale: string }>(
       `select "key", "locale" from "contribution" where "ip" = $1`,
       [ip],
     );
@@ -99,14 +100,14 @@ describe("POST /api/contributions", () => {
     const short = await POST(post({ envelope: placesEnvelope, description: "idk" }));
     expect(short.status).toBe(400);
 
-    const { rows } = await db().query(`select 1 from "contribution" where "ip" = $1`, [ip]);
+    const { rows } = await asSystem.query(`select 1 from "contribution" where "ip" = $1`, [ip]);
     expect(rows).toHaveLength(0);
   });
 
   it("keeps a place's description as the contribution's text", async () => {
     const description = "A drafty nook behind the forge where the smiths leave their broken tongs.";
     expect((await POST(post({ envelope: placesEnvelope, description }))).status).toBe(200);
-    const { rows } = await db().query<{ key: string; text: string }>(
+    const { rows } = await asSystem.query<{ key: string; text: string }>(
       `select "key", "text" from "contribution" where "ip" = $1`,
       [ip],
     );
@@ -115,11 +116,11 @@ describe("POST /api/contributions", () => {
 
   it("answers a filled honeypot with 200 and writes nothing", async () => {
     expect((await POST(post({ envelope, website: "http://spam.example" }))).status).toBe(200);
-    const { rows } = await db().query(`select 1 from "contribution" where "ip" = $1`, [ip]);
+    const { rows } = await asSystem.query(`select 1 from "contribution" where "ip" = $1`, [ip]);
     expect(rows).toHaveLength(0);
     // Not just the row: a bot that trips the honeypot must not be able to fill another
     // person's rate-limit bucket by sharing a NAT.
-    const hits = await db().query(`select 1 from "contribution_hit" where "ip" = $1`, [ip]);
+    const hits = await asSystem.query(`select 1 from "contribution_hit" where "ip" = $1`, [ip]);
     expect(hits.rows).toHaveLength(0);
   });
 
@@ -160,7 +161,7 @@ describe("POST /api/contributions", () => {
   it("works out who is speaking as the contribution lands", async () => {
     expect((await POST(post({ envelope: observedEnvelope }))).status).toBe(200);
 
-    const { rows } = await db().query<{
+    const { rows } = await asSystem.query<{
       race: string;
       flavor: string;
       provenance: string;
@@ -187,7 +188,7 @@ describe("POST /api/contributions", () => {
     const consoleError = vi.spyOn(console, "error").mockImplementation(() => {});
 
     expect((await POST(post({ envelope: observedEnvelope }))).status).toBe(200);
-    const { rows } = await db().query(`select 1 from "contribution" where "ip" = $1`, [ip]);
+    const { rows } = await asSystem.query(`select 1 from "contribution" where "ip" = $1`, [ip]);
     expect(rows).toHaveLength(1);
     expect(consoleError).toHaveBeenCalled();
 
@@ -206,7 +207,7 @@ describe("POST /api/contributions", () => {
     const response = await POST(post({ envelope: gossipEnvelope("99999999999 Foo") }));
     expect(response.status).toBe(200);
 
-    const { rows } = await db().query<{ key: string }>(
+    const { rows } = await asSystem.query<{ key: string }>(
       `select "key" from "contribution" where "ip" = $1`,
       [ip],
     );
@@ -214,10 +215,80 @@ describe("POST /api/contributions", () => {
   });
 
   it("never queues generation", async () => {
-    const before = await db().query(`select count(*)::text as count from "regeneration_job"`);
+    const before = await asSystem.query(`select count(*)::text as count from "regeneration_job"`);
     await POST(post({ envelope }));
-    const after = await db().query(`select count(*)::text as count from "regeneration_job"`);
+    const after = await asSystem.query(`select count(*)::text as count from "regeneration_job"`);
     // Counted rather than asserted empty: this database holds real jobs.
     expect(after.rows[0].count).toBe(before.rows[0].count);
+  });
+});
+
+describe("POST /api/contributions from a link the corpus already has", () => {
+  const questId = 2_000_000_000 - Math.floor(Math.random() * 1_000_000);
+  const lineId = `q:${questId}:accept`;
+  const installId = crypto.randomUUID();
+
+  /** An English client's accept panel, heard with an Italian pack that has no sound for it. */
+  function heard(text = "Kill six.\n\nThen come back, $N."): string {
+    const body = `!SPOKEN1 quests\naddon=SpokenQuests/3.9.0\nbuild=1.60.1/70938\nlocale=enUS\npack=itIT\npackVersion=0.0.2\nquest=${questId}\nevent=accept\ntitle=Test\nfrom=log\ntext<<\n${text}\n>>\n`;
+    return `${body}sum=${checksum(body)}\n`;
+  }
+
+  async function hits() {
+    const { rows } = await asSystem.query<{ lineId: string; packLang: string; packVersion: string | null }>(
+      `select "lineId", "packLang", "packVersion" from "missing_audio_hit" where "installId" = $1`,
+      [installId],
+    );
+    return rows;
+  }
+
+  beforeAll(async () => {
+    await asSystem.query(
+      `insert into "quest_line"
+         ("lineId", "variant", "lang", "version", "isCurrent", "origin", "source", "questId", "fileName", "text", "originalText")
+       values ($1, 0, 'enUS', 1, true, 'extracted', 'accept', split_part($1, ':', 2)::int, $1, $2, $2)`,
+      [lineId, "Kill six.$B$BThen come back, $n."],
+    );
+  });
+
+  afterEach(async () => {
+    await asSystem.query(`delete from "missing_audio_hit" where "installId" = $1`, [installId]);
+  });
+
+  afterAll(async () => {
+    await asSystem.query(`delete from "quest_line" where "lineId" = $1`, [lineId]);
+  });
+
+  it("counts it as missing audio in the pack's language, not as a contribution", async () => {
+    expect((await POST(post({ envelope: heard(), installId }))).status).toBe(200);
+    expect(await hits()).toEqual([{ lineId, packLang: "itIT", packVersion: "0.0.2" }]);
+    const { rows } = await asSystem.query(`select 1 from "contribution" where "ip" = $1`, [ip]);
+    expect(rows).toHaveLength(0);
+  });
+
+  it("counts the same browser once", async () => {
+    await POST(post({ envelope: heard(), installId }));
+    await POST(post({ envelope: heard(), installId }));
+    expect(await hits()).toHaveLength(1);
+  });
+
+  it("does not spend the install's allowance, only the IP's", async () => {
+    await POST(post({ envelope: heard(), installId }));
+    const { rows } = await asSystem.query(`select 1 from "contribution_hit" where "installId" = $1`, [installId]);
+    expect(rows).toHaveLength(0);
+  });
+
+  it("drops it as before without an install id, or with a bad one", async () => {
+    await POST(post({ envelope: heard() }));
+    await POST(post({ envelope: heard(), installId: "not-an-id" }));
+    const { rows } = await asSystem.query(`select 1 from "missing_audio_hit" where "lineId" = $1`, [lineId]);
+    expect(rows).toHaveLength(0);
+  });
+
+  it("stores a line the corpus lacks as a contribution and counts nothing", async () => {
+    await POST(post({ envelope: heard("Kill seven."), installId }));
+    expect(await hits()).toHaveLength(0);
+    const { rows } = await asSystem.query(`select 1 from "contribution" where "ip" = $1`, [ip]);
+    expect(rows).toHaveLength(1);
   });
 });

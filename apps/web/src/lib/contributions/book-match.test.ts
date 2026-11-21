@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { bookMatchOf, indexCorpus, matchBook, type BookCorpus, type BookMatchInput } from "./book-match";
+import { bookCandidates, bookMatchOf, indexCorpus, matchBook, type BookCorpus, type BookMatchInput } from "./book-match";
 
 function page(lineId: string, bookId: string, pageNumber: number, texts: Record<string, string>, titles: Record<string, string>, owner?: [ "object" | "item", number ]) {
   return {
@@ -28,6 +28,34 @@ const corpus: BookCorpus = indexCorpus([
 function row(over: Partial<BookMatchInput>): BookMatchInput {
   return { locale: "esES", text: null, meta: {}, matchLineId: null, matchBookId: null, matchPageNumber: null, matchNewBook: false, ...over };
 }
+
+describe("bookCandidates", () => {
+  it("is empty for a match that is not ambiguous", () => {
+    expect(bookCandidates({ kind: "known", lineId: "b:38", via: "text" }, corpus, row({}))).toEqual([]);
+  });
+
+  it("answers with the page when the words matched, and tells same-titled pages apart", () => {
+    const found = bookCandidates({ kind: "ambiguous", candidates: ["b:340", "b:341"] }, corpus, row({ locale: "esMX" }));
+    expect(found.map((c) => c.answer)).toEqual([{ lineId: "b:340" }, { lineId: "b:341" }]);
+    expect(found.map((c) => c.owner)).toEqual([{ kind: "item", id: 7 }, { kind: "item", id: 8 }]);
+    expect(found[0]).toMatchObject({ label: "Registro de Reclutamiento p.1", bookId: "340", excerpt: "Carta de reclutamiento" });
+  });
+
+  it("answers with the book and the row's page number when only the title matched", () => {
+    const found = bookCandidates({ kind: "ambiguous", candidates: ["500", "600"] }, corpus, row({ locale: "enUS", meta: { number: "1" } }));
+    expect(found.map((c) => c.answer)).toEqual([{ bookId: "500", pageNumber: 1 }, { bookId: "600", pageNumber: 1 }]);
+    expect(found.map((c) => c.excerpt)).toEqual(["Dust one.", "Dust two."]);
+  });
+
+  it("shows the book's first page and says so when the book has no such page", () => {
+    const [found] = bookCandidates({ kind: "ambiguous", candidates: ["500"] }, corpus, row({ locale: "enUS", meta: { number: "3" } }));
+    expect(found).toMatchObject({ label: "A Dusty Tome p.3 (new page)", lineId: "b:500", answer: { bookId: "500", pageNumber: 3 } });
+  });
+
+  it("leaves out a candidate the corpus no longer has", () => {
+    expect(bookCandidates({ kind: "ambiguous", candidates: ["b:12345", "12345"] }, corpus, row({}))).toEqual([]);
+  });
+});
 
 describe("matchBook", () => {
   it("finds a page by another language's exact words, as a correction where this language differs", () => {
@@ -82,6 +110,37 @@ describe("matchBook", () => {
     expect(matchBook(row({ text: "Han mandado construir", meta: { object: "999999", number: "2" } }), corpus))
       .toMatchObject({ kind: "translation", lineId: "b:39", via: "text" });
   });
+  describe("a letter taken out of the mailbox", () => {
+    // Every copy is the Plain Letter, item 8383, whatever its words.
+    const letters = indexCorpus([
+      page("b:nsfk", "nsfk", 1, { deDE: "Hallo nochmal, $N" }, { deDE: "Schlichter Brief" }, ["item", 8383]),
+    ]);
+
+    it("is not matched by the letter's item", () => {
+      expect(matchBook(row({ locale: "esMX", text: "¡Saludos, joven $c!", meta: { item: "8383", book: "Carta lisa", number: "1" } }), letters))
+        .toEqual({ kind: "new-book", title: "Carta lisa", pageNumber: 1, via: "none" });
+    });
+
+    it("is not matched by the letter's title", () => {
+      expect(matchBook(row({ locale: "deDE", text: "Seid gegrüßt, $c!", meta: { item: "8383", book: "Schlichter Brief", number: "1" } }), letters))
+        .toEqual({ kind: "new-book", title: "Schlichter Brief", pageNumber: 1, via: "none" });
+    });
+
+    it("is not told apart from pages with the same words by the letter's title", () => {
+      const twins = indexCorpus([
+        page("b:x", "x", 1, { enUS: "Lok'tar, $N!" }, { deDE: "Schlichter Brief" }, ["item", 8383]),
+        page("b:y", "y", 1, { enUS: "Lok'tar, $N!" }, { enUS: "Orders" }),
+      ]);
+      expect(matchBook(row({ locale: "deDE", text: "Lok'tar, $N!", meta: { item: "8383", book: "Schlichter Brief", number: "1" } }), twins))
+        .toEqual({ kind: "ambiguous", candidates: ["b:x", "b:y"] });
+    });
+
+    it("is still matched by its words", () => {
+      expect(matchBook(row({ locale: "deDE", text: "Hallo nochmal, $N", meta: { item: "8383", book: "Schlichter Brief", number: "1" } }), letters))
+        .toMatchObject({ kind: "known", lineId: "b:nsfk", via: "text" });
+    });
+  });
+
   it("falls through when an owner id names two books", () => {
     expect(matchBook(row({ text: "Twin", meta: { item: "50", number: "1" } }), corpus))
       .toMatchObject({ kind: "translation", lineId: "b:800", via: "text" });

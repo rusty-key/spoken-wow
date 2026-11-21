@@ -12,7 +12,7 @@ const editable = new Set<string>();
 
 vi.mock("@/lib/generation/authz", () => ({
   requireCapability: async (capability: string, lang: string) =>
-    capability === "edit" && editable.has(lang)
+    capability === "text" && editable.has(lang)
       ? { session: { user: { id: "test" } }, denied: null }
       : { session: null, denied: Response.json({ error: "not allowed" }, { status: 403 }) },
 }));

@@ -10,7 +10,7 @@ local _, SpokenPlaces = ...
 -- esMX shares this file: nothing in these strings varies by region. Both codes
 -- register the same table, so check-strings.mjs (which reads one file per code)
 -- reports esMX as untranslated -- that report is about files, not runtime.
-if GetLocale() ~= "esES" and GetLocale() ~= "esMX" then
+if not Spoken:InterfaceIn("esES", "esMX") then
 	return
 end
 
@@ -25,10 +25,12 @@ L.OPT_PLAY_BUTTON = "Leer historias en voz alta"
 L.OPT_AUTOPLAY = "Leer automáticamente"
 L.OPT_AUTOPLAY_SUB = "Incluir áreas más pequeñas"
 L.OPT_AUTOPLAY_EXPLORED = "Incluir lugares encontrados antes"
-L.OPT_LANG_RELOAD = "Escribe /reload para cambiar a él."
-L.OPT_LANGUAGE = "Idioma del texto"
-L.OPT_LANG_AUTO_FMT = "Automático (%1$s)"
-L.OPT_LANG_SET_FMT = "Las historias estarán en %1$s cuando se recargue la interfaz."
+L.OPT_AUTOPLAY_COMBAT = "Detener al entrar en combate"
+L.OPT_AUTOPLAY_EVERY_VISIT = "Leer en cada visita"
+L.OPT_AUTOPLAY_GAP = "Volver a leer tras"
+L.OPT_GAP_1D = "1 día"
+L.OPT_GAP_1W = "1 semana"
+L.OPT_GAP_1MO = "1 mes"
 L.OPT_LANG_PROFILE_FMT = "Este perfil lee las historias en %1$s. Escribe /reload para cambiar."
 L.OPT_REPORT_PROBLEM = "Informar de un problema"
 L.MENU_LORE_WINDOW = "Abrir el Compendio de Azeroth"
@@ -72,6 +74,7 @@ L.OPT_DEV_DEBUG = "Depuración de Lugares"
 L.OPT_DEV_PREVIEW = "Traducciones sin terminar"
 L.REASON_VOICE = "Activa «Leer historias en voz alta» para usar esto."
 L.REASON_DISCOVERY = "Activa «Leer automáticamente» para usar esto."
+L.REASON_EVERY_VISIT = "Desactiva «Leer en cada visita» para usar esto."
 L.REASON_MAP_PANEL = "Activa «Historia junto al mapa» para usar esto."
 
 -- Voice packs
@@ -85,12 +88,11 @@ L.OPT_FORGET_PLACES_DONE = "Se ha borrado la lista de lugares oídos de este per
 
 -- Starting over
 L.OPT_RESET_PAGE_CONFIRM = "¿Restablecer todos los ajustes de Lugares a su valor predeterminado?"
-L.OPT_RELOAD_NOW = "Recargar ahora"
-L.OPT_LATER = "Más tarde"
 
 -- Lore of Azeroth and Zone Lore
 L.COMPENDIUM_PLACES = "Lugares"
 L.LORE_PANEL_TITLE = "Historia del lugar"
+L.BOSS_LORE_TITLE = "Historia del jefe"
 L.MAP_PANEL_EXPAND = "Mostrar historia del lugar"
 L.PANEL_SHOWN = "Historia junto al mapa: activada"
 L.PANEL_HIDDEN = "Historia junto al mapa: desactivada"

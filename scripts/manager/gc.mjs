@@ -1,5 +1,5 @@
 // Deletes what no recent manifest needs. Run by hand (make manager-gc), never by publish.
-import { eachLimit } from "./publish.mjs";
+import { eachLimit, readIndexes } from "./publish.mjs";
 import { openJson, publicKeyOf } from "./sign.mjs";
 
 export const KEEP_REVS = 10;
@@ -15,12 +15,15 @@ export function revTime(rev) {
 
 export async function gc({ store, signingKey, now = new Date(), dryRun = false, log = console.log }) {
   const publicKey = publicKeyOf(signingKey);
-  const idx = await store.get("index.json");
-  if (!idx) {
+  const { legacy, current } = await readIndexes(store, publicKey);
+  if (!legacy) {
     log("no index.json: nothing to collect");
     return { deleted: [] };
   }
-  const index = openJson(idx.body.toString("utf8"), publicKey).value;
+  // A team's pack is live in index-v2.json alone, and index.json can lag it after a failed
+  // publish, so what either lists is live.
+  const indexes = [legacy, ...(current ? [current] : [])].map((index) => index.value);
+  const live = new Set(indexes.flatMap((index) => Object.entries(index.packs ?? {}).map(([pack, entry]) => `${pack}/${entry.rev}`)));
 
   const revsByPack = new Map();
   for (const { key } of await store.list("packs/")) {
@@ -35,7 +38,7 @@ export async function gc({ store, signingKey, now = new Date(), dryRun = false, 
     revs.sort().reverse();
     revs.forEach((rev, i) => {
       const recent = now - revTime(rev) < KEEP_DAYS * DAY;
-      (i < KEEP_REVS || recent || index.packs[pack]?.rev === rev ? keep : drop).push(`packs/${pack}/${rev}.json`);
+      (i < KEEP_REVS || recent || live.has(`${pack}/${rev}`) ? keep : drop).push(`packs/${pack}/${rev}.json`);
     });
   }
 
@@ -43,6 +46,9 @@ export async function gc({ store, signingKey, now = new Date(), dryRun = false, 
   for (const key of keep) {
     const o = await store.get(key);
     for (const f of openJson(o.body.toString("utf8"), publicKey).value.files) referenced.add(f.sha256);
+  }
+  for (const index of indexes) {
+    for (const { sha256 } of Object.values(index.addons ?? {}).flat()) referenced.add(sha256);
   }
   const blobs = (await store.list("blobs/"))
     .filter(({ key, lastModified }) => !referenced.has(key.slice("blobs/".length)) && now - lastModified > BLOB_GRACE)

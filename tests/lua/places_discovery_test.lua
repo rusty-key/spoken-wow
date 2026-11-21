@@ -48,6 +48,7 @@ local Z = { Zones = { [1411] = {}, [1426] = {}, [1454] = {}, [1450] = {}, [1416]
 local names = { [1411] = "Durotar", [1426] = "Dun Morogh", [1454] = "Orgrimmar", [1450] = "Moonglade" }
 local settings = {}
 function Z:Get(key) return settings[key] end
+function Z:IsPlayerDead() return stub.world.playerDead end
 function Z:GetMapName(mapID) return names[mapID] end
 function Z:ResolveAreaKey(name) return name and string.lower(name) end
 function Z:GetPlayerMapID() return where.map end
@@ -112,6 +113,14 @@ Expect("being on a continent's map, between zones, records no visit", SpokenPlac
 where.map = 1426
 onZone()
 Expect("...a zone's still does", SpokenPlacesCharacter.visited["1426"], true)
+
+where.map, where.subzone = 1450, ""
+stub.world.playerDead = true
+onZone()
+Expect("a dead player does not record a new place", SpokenPlacesCharacter.visited["1450"], nil)
+stub.world.playerDead = false
+onZone()
+Expect("the same place is recorded once alive", SpokenPlacesCharacter.visited["1450"], true)
 
 -- Razorfen Downs: its story kept under Thousand Needles, its entrance in The Barrens, where the
 -- game reports it (Spoken's Data/Dungeons.lua).

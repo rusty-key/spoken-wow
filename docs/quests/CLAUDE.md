@@ -11,14 +11,15 @@ behaviour changes.
 - `apps/web/` quests section: browsing the corpus, regeneration, triage, reports.
 - `addons/Spoken_Quests/`: a module of Spoken that ships inside `Spoken-<v>.zip`. It reads
   quest dialogue and is the Quests tab of Azeroth's Compendium. Its commands are
-  `/spokenquests`, `/spq` (`read`, `test`, `followup`, `diagnostics`, `options`) and `/spqread`.
-  It is two parts of Spoken, each with its own source, switch and settings page: Quests, which
-  reads a quest's text, and Gossip, which reads the greeting a quest giver opens with
-  (`QUEST_GREETING`) and the gossip page (`GOSSIP_SHOW`). `docs/gossip/AGENTS.md` is Gossip's
-  guide.
+  `/spokenquests`, `/spq` (`read`, `test`, `followup`, `chatter`, `diagnostics`, `options`) and `/spqread`.
+  It is three parts of Spoken, each with its own source, switch and settings page: Quests, which
+  reads a quest's text, Gossip, which reads the greeting a quest giver opens with
+  (`QUEST_GREETING`) and the gossip page (`GOSSIP_SHOW`), and World Chatter, which voices what NPCs say
+  out loud in the world (`Chatter.lua`, README "What NPCs say in the world"). `docs/gossip/AGENTS.md`
+  is Gossip's guide.
 - Sound packs `SpokenQuestsAudio{Alliance,Horde,Shared,Gossip}`, plus the `All` meta addon,
-  which depends on those four and `spoken`. A language other than English has one pack,
-  `SpokenQuestsAudio_<lang>` (`LOCALE=xx`), holding quests and gossip together. Pack metadata,
+  which depends on those four and `spoken`. Every other language has the same four, each folder
+  plus `_<lang>` (`LOCALE=xx`). Pack metadata,
   CurseForge and Wago ids live in `publishers/quests/audio-*.md` and are read by
   `scripts/lib/packs.mjs`.
 
@@ -47,7 +48,9 @@ claiming is global.
   (`check-synced`), and `make quests-sync` is destructive.
 - `pipelines/quests/tts_cli/factions.py` owns the four-way split, using the race masks of the
   committed `Data/Compendium.lua`, then `corpus/factions.json` for quests the Compendium does not
-  list. Every pack carries the full lookup tables.
+  list. Every pack carries the full lookup tables except the four keyed by gossip text
+  (`GOSSIP_TEXT_TABLES` in `tts_cli/build.py`), which ship only in a pack holding gossip audio
+  (`carries_gossip`: Gossip and All), beside the audio they name.
 - A pack ships one audio format, `ogg-q0-44k`; `store.py:audio_extension` refuses a store
   holding two.
 - The meta addon must never carry a `DataModule-Version` key. If it does, the player counts it

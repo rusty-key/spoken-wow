@@ -10,25 +10,34 @@
  * decided by the extractor, and a value outside them means the corpus is malformed rather
  * than that the game has something new in it.
  */
-/** "followup" is what an NPC says in chat after a quest is accepted or turned in. */
-export const SOURCES = ["accept", "progress", "complete", "gossip", "followup"] as const;
+/**
+ * "followup" is what an NPC says in chat after a quest is accepted or turned in; "chatter" is
+ * what an NPC says in chat with no quest behind it.
+ */
+export const SOURCES = ["accept", "progress", "complete", "gossip", "followup", "chatter"] as const;
 export const NPC_TYPES = ["creature", "gameobject", "item"] as const;
 
 export type Source = (typeof SOURCES)[number];
 export type NpcType = (typeof NPC_TYPES)[number];
 
 /**
- * What the source filter shows for each value. The first four are words a reader already
- * knows and label themselves; "followup" is a frozen identifier (it names the corpus rows
- * and the followup/ folder) and reads as a typo in a dropdown, so it gets the spelling a
- * person would write. The URL keeps carrying the value, never the label.
+ * What the filters show for each source and speaker type. The corpus values are identifiers
+ * ("followup" names the corpus rows and the followup/ folder) and read as typos in a filter, so
+ * each gets the words a person would use. The URL keeps carrying the value, never the label.
  */
 export const SOURCE_LABELS: Record<Source, string> = {
-  accept: "accept",
-  progress: "progress",
-  complete: "complete",
-  gossip: "gossip",
-  followup: "follow-up",
+  accept: "Quest accept",
+  progress: "Quest progress",
+  complete: "Quest complete",
+  gossip: "Gossip",
+  followup: "Follow-up",
+  chatter: "NPC chat",
+};
+
+export const NPC_TYPE_LABELS: Record<NpcType, string> = {
+  creature: "NPC",
+  gameobject: "Object",
+  item: "Item",
 };
 
 /**
@@ -44,4 +53,10 @@ export function sourcesFromParam(value: string | null): Source[] | undefined {
 export function listParam<T extends string>(value: unknown, allowed: readonly T[]): T[] {
   const picked = typeof value === "string" ? value.split(",") : [];
   return allowed.filter((option) => picked.includes(option));
+}
+
+export const LEVEL_PARAM = /^\d{1,3}$/;
+
+export function levelFromParam(value: string | null): number | undefined {
+  return value && LEVEL_PARAM.test(value) ? Number(value) : undefined;
 }

@@ -3,9 +3,11 @@ import fs from 'node:fs'
 import path from 'node:path'
 import { isInside } from './guard'
 
-const EXTERNAL_HOSTS = new Set(['github.com', 'raw.githubusercontent.com', 'objects.githubusercontent.com'])
+// curseforge.com and www.curseforge.com carry the project links of a release, authors.curseforge.com
+// the page a pack too big for the API is uploaded on; github.com a repo's.
+const EXTERNAL_HOSTS = new Set(['github.com', 'raw.githubusercontent.com', 'objects.githubusercontent.com', 'curseforge.com', 'www.curseforge.com', 'authors.curseforge.com'])
 
-/** Only plain https links to GitHub's own hosts: no other scheme, no credentials, no odd port. */
+/** Only plain https links to GitHub's and CurseForge's own hosts: no other scheme, no credentials, no odd port. */
 export function isAllowedExternalUrl(value: unknown): boolean {
   if (typeof value !== 'string' || value.length > 2048) return false
   let u: URL
@@ -45,5 +47,22 @@ export async function openableDirectory(value: unknown, roots: readonly string[]
   if (platform === 'darwin' && MAC_BUNDLE.test(path.basename(await fs.promises.realpath(target)))) {
     throw new Error('Only folders can be opened from here')
   }
+  return target
+}
+
+/**
+ * A zip to show in Explorer or Finder: a regular `.zip` file under `dir`. Showing selects the file
+ * without opening it, and nothing outside `dir` can be asked for.
+ */
+export async function revealableZip(value: unknown, dir: string): Promise<string> {
+  if (!isAllowedOpenPath(value, [dir]) || !(value as string).toLowerCase().endsWith('.zip')) throw new Error('That file cannot be shown from here')
+  const target = path.resolve(value as string)
+  let st: fs.Stats
+  try {
+    st = await fs.promises.lstat(target)
+  } catch {
+    throw new Error('That zip is gone. Zip the pack again.')
+  }
+  if (!st.isFile()) throw new Error('That file cannot be shown from here')
   return target
 }

@@ -1,6 +1,6 @@
 # Spoken
 
-Discord: https://discord.gg/HEGUgn6Yf
+Discord: https://spoken.quest/discord
 
 Voiced dialogue, lore and text for World of Warcraft Forever. The other clients' code is
 still here, with no new work going into it.
@@ -17,9 +17,10 @@ developers and is not in the zip.
 | Folder | Addon | Voices | Voice packs |
 |---|---|---|---|
 | `Spoken` | **Spoken** | nothing itself: it plays every module's lines | — |
-| `Spoken_Quests` | **Spoken Quests** | quest dialogue and NPC gossip | [All](https://www.curseforge.com/wow/addons/spoken-quests-audio-all), or [Alliance](https://www.curseforge.com/wow/addons/spoken-audio-quests-alliance) · [Horde](https://www.curseforge.com/wow/addons/spoken-audio-quests-horde) · [Shared](https://www.curseforge.com/wow/addons/spoken-audio-quests-shared) · [Gossip](https://www.curseforge.com/wow/addons/spoken-audio-gossip) — or all in one from [GitHub](https://github.com/rusty-key/spoken-wow/releases?q=quests-audio) |
+| `Spoken_Quests` | **Spoken Quests** | quest dialogue and NPC gossip | [All](https://www.curseforge.com/wow/addons/spoken-audio-quests-all), or [Alliance](https://www.curseforge.com/wow/addons/spoken-audio-quests-alliance) · [Horde](https://www.curseforge.com/wow/addons/spoken-audio-quests-horde) · [Shared](https://www.curseforge.com/wow/addons/spoken-audio-quests-shared) · [Gossip](https://www.curseforge.com/wow/addons/spoken-audio-gossip) — or all in one from [GitHub](https://github.com/rusty-key/spoken-wow/releases?q=quests-audio) |
 | `Spoken_Readables` | **Spoken Readables** | books, letters and other in-world texts | [CurseForge](https://www.curseforge.com/wow/addons/spoken-audio-readables) · [GitHub](https://github.com/rusty-key/spoken-wow/releases?q=readables-audio) |
 | `Spoken_Places` | **Spoken Places** | zone and subzone lore | [CurseForge](https://www.curseforge.com/wow/addons/spoken-audio-places) · [GitHub](https://github.com/rusty-key/spoken-wow/releases?q=places-audio) |
+| `Spoken_Bosses` | **Spoken Bosses** | the story of each dungeon and raid boss | [CurseForge](https://www.curseforge.com/wow/addons/spoken-audio-bosses) · [GitHub](https://github.com/rusty-key/spoken-wow/releases?q=bosses-audio) |
 
 `make package-spoken` builds the download, `Spoken-<version>.zip`, with every module built by
 its own packager. A module's voice pack holds its recordings; the module has nothing to play
@@ -105,7 +106,7 @@ no keys bound.
 
 ```
 addons/      Spoken, its modules, and the sound packs
-apps/web     the site, spoken.rusty.one: quests, gossip, zones and books sections,
+apps/web     the site, spoken.quest: quests, gossip, zones and books sections,
              per-line reports and /contribute for text the corpus has none of yet
 pipelines/   corpus extraction and voiceline generation
              quests/ is Python, zones/ and books/ are Node, lib/ is shared

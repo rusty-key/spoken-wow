@@ -23,8 +23,10 @@
  */
 import "server-only";
 
+import { auditDetail, type ApiAudit } from "@/lib/activity/kinds";
 import { recordActivity } from "@/lib/activity/store";
-import { db, query } from "@/lib/db";
+import { query } from "@/lib/db";
+import { withTextTeam } from "@/lib/teams/store";
 
 import { BASE_LANG, type Lang } from "@/lib/lang";
 
@@ -86,12 +88,10 @@ export async function saveBookText(args: {
   editedBy: string;
   expectedVersion?: number | null;
   lang?: Lang;
-}): Promise<BookVersion> {
+  audit?: ApiAudit;
+}): Promise<BookVersion & { wrote: boolean }> {
   const lang = args.lang ?? BASE_LANG;
-  const client = await db().connect();
-  try {
-    await client.query("begin");
-
+  return withTextTeam(lang, async (client, team) => {
     const { rows: currentRows } = await client.query<Row>(
       `select ${COLUMNS} from "book_line"
         where "lineId" = $1 and "lang" = $2 and "isCurrent" for update`,
@@ -126,8 +126,7 @@ export async function saveBookText(args: {
     // A save that changes nothing must not spend a version number: the history is a record
     // of what the page has said, not of who opened the dialog.
     if (current && text === current.text) {
-      await client.query("commit");
-      return toVersion(current);
+      return { ...toVersion(current), wrote: false };
     }
 
     const { rows: maxRows } = await client.query<{ version: string }>(
@@ -167,25 +166,25 @@ export async function saveBookText(args: {
     );
     await recordActivity(
       {
+        team,
         kind: "text.edited",
         lang,
         actorId: args.editedBy,
         source: "readables",
         subject: args.lineId,
         lineId: args.lineId,
-        detail: { version, text, note: args.note?.trim() || null },
+        detail: {
+          version,
+          text,
+          note: args.note?.trim() || null,
+          ...auditDetail(args.audit, current?.version ?? null),
+        },
       },
       client,
     );
 
-    await client.query("commit");
-    return toVersion(inserted[0]);
-  } catch (error) {
-    await client.query("rollback").catch(() => {});
-    throw error;
-  } finally {
-    client.release();
-  }
+    return { ...toVersion(inserted[0]), wrote: true };
+  });
 }
 
 /**
@@ -203,10 +202,7 @@ export async function restoreBookText(
   lang: Lang,
   by: string | null,
 ): Promise<BookVersion> {
-  const client = await db().connect();
-  try {
-    await client.query("begin");
-
+  return withTextTeam(lang, async (client, team) => {
     const { rows } = await client.query<Row>(
       `select ${COLUMNS} from "book_line"
         where "lineId" = $1 and "lang" = $2 and "version" = $3 for update`,
@@ -227,6 +223,7 @@ export async function restoreBookText(
     );
     await recordActivity(
       {
+        team,
         kind: "text.restored",
         lang,
         actorId: by,
@@ -238,12 +235,22 @@ export async function restoreBookText(
       client,
     );
 
-    await client.query("commit");
     return toVersion({ ...rows[0], isCurrent: true });
-  } catch (error) {
-    await client.query("rollback").catch(() => {});
-    throw error;
-  } finally {
-    client.release();
-  }
+  });
+}
+
+/** Takes a first translation back, so the page reads as untranslated again. */
+export async function retireBookText(lineId: string, version: number, lang: Lang, by: string | null): Promise<void> {
+  return withTextTeam(lang, async (client, team) => {
+    const { rowCount } = await client.query(
+      `update "book_line" set "isCurrent" = false
+        where "lineId" = $1 and "lang" = $2 and "version" = $3 and "isCurrent"`,
+      [lineId, lang, version],
+    );
+    if (!rowCount) throw new BookConflict(`${lineId} v${version} is not the current text`);
+    await recordActivity(
+      { team, kind: "text.retired", lang, actorId: by, source: "readables", subject: lineId, lineId, detail: { version } },
+      client,
+    );
+  });
 }

@@ -1,10 +1,10 @@
 ---
 curseforge: 1746501
 lang: deDE
-version: 1.0.0
+version: 1.1.0
 slug: spoken-german
 name: Spoken: German
-summary: Meta package: installs Spoken with every German voice pack, quests, gossip, zones and books. Install through the CurseForge app.
+summary: Meta package: installs Spoken with every German voice pack, quests, gossip, zones, books and boss stories. Install through the CurseForge app.
 categories:
   - Audio & Video
   - Roleplay
@@ -18,7 +18,7 @@ license: MIT
 
 ## What it installs
 
-[Spoken](https://www.curseforge.com/wow/addons/spoken), which carries Spoken Quests, Spoken Places and Spoken Readables inside it, and the German voice packs:
+[Spoken](https://www.curseforge.com/wow/addons/spoken), which carries Spoken Quests, Spoken Places, Spoken Readables and Spoken Bosses inside it, and the German voice packs:
 
 | Module | Voices | Its audio |
 | --- | --- | --- |
@@ -26,6 +26,7 @@ license: MIT
 | Spoken Quests | NPC gossip | [Spoken German Audio: Gossip](https://www.curseforge.com/wow/addons/spoken-german-audio-gossip) |
 | Spoken Places | zone and subzone lore | [Spoken German Audio: Places](https://www.curseforge.com/wow/addons/spoken-german-audio-places) |
 | Spoken Readables | books, letters, notes and plaques | [Spoken German Audio: Readables](https://www.curseforge.com/wow/addons/spoken-german-audio-readables) |
+| Spoken Bosses | the story of each dungeon and raid boss | [Spoken German Audio: Bosses](https://www.curseforge.com/wow/addons/spoken-german-audio-bosses) |
 
 The quest dialogue comes as three packs, one per faction plus the quests both sides share, and this installs all of them: it does not know which side you play. Remove the other faction's pack afterwards if you want the disk space back.
 

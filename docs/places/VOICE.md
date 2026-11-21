@@ -33,8 +33,8 @@ node pipelines/places/tools/voice/generate.mjs --zone Durotar --limit 20
 
 Selectors: `--zone <id|name>` (repeatable; a zone selects its areas too), `--zones-only`,
 `--subzones-only`, `--missing` (no audio yet), `--stale` (the spoken text changed since the take
-was cut), `--dictionary-drift` (cut with another pronunciation dictionary than the one in use;
-needs `DATABASE_URL`), `--older-than <date>`, `--all`, `--limit <n>` and `--list`. The credit
+was cut), `--dictionary-drift` (cut with another pronunciation dictionary than the one last
+uploaded, which also matches every take from another ElevenLabs account; needs `DATABASE_URL`), `--older-than <date>`, `--all`, `--limit <n>` and `--list`. The credit
 estimate uses the rate measured from the manifest, and falls back to `creditRate` in
 `pipelines/places/tools/voice/config.json`, the only thing that file holds.
 
@@ -116,6 +116,9 @@ make places-full-release             # all of the above, with one question befor
 - The pack's version is the `.toc`'s, and the release notes come from `docs/places/CHANGELOG.md`.
   Bump the version and add its section first. A section headed `## <version> — audio` is the
   English pack's and `## <version> — places-audio-<locale>` is a language's.
+- The zip, `SpokenPlacesAudio-<v>.zip`, goes to CurseForge's Spoken Audio: Places and to the
+  GitHub `places-audio` release, where the manager installs from. The bosses pack is released on
+  its own (`make bosses-full-release`, [BOSSES.md](BOSSES.md)).
 - `places-release-audio` uploads to CurseForge only. `places-full-release` also runs
   `scripts/audio-github-release.sh`, which publishes the pack on GitHub. Wago refuses a file that
   size, so a Wago player gets the pack from GitHub.
@@ -136,6 +139,14 @@ The Places explorer is `/places` (`/<lang>/places` for another language) in `app
 is stale. It plays a take, edits a line, translates one and generates one. Editing and generating
 need a role, and a take is cut with the signed-in editor's own key for the voice service. Deployment, the
 roles and the droplet are in `deploy/web/README.md`.
+
+Beside the edit control, the override control changes what the viewer's team says for a line,
+without touching its text. It needs `regenerate` in the language, works in every language, English
+included, and is offered only where the language has its own text for the line. The override is
+kept for that team alone (`text_override`, see `docs/platform/TEAMS.md`): its takes speak it and are
+judged stale against it, while the text shown on the site and in game, the place's name and every
+other team keep the original. The row shows the override under the original, and says when the
+original has changed since, with Keep and Drop.
 
 A line's page, `/places/r/<mapID>/<slug>`, is where the addon's Report button sends a player. The
 slug is the key with spaces as hyphens, and `zone` for a zone. `validate.mjs` fails when the

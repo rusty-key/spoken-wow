@@ -155,7 +155,7 @@ describe('openableDirectory', () => {
 
 describe('the downloads folder', () => {
   const base = tmpDir()
-  const game = { root: path.join(base, 'World of Warcraft', '_classic_beta_'), addOnsPath: path.join(base, 'World of Warcraft', '_classic_beta_', 'Interface', 'AddOns') }
+  const game = { root: path.join(base, 'World of Warcraft', '_forever_'), addOnsPath: path.join(base, 'World of Warcraft', '_forever_', 'Interface', 'AddOns') }
 
   it('accepts empty (the default), an existing folder and one that can be created', () => {
     expect(checkDownloadsPath('', [game])).toBeNull()
@@ -608,6 +608,29 @@ describe('backups, repair, leftovers and downloads', () => {
     svc.jobs.enqueue({ gameId: e.game.id, productId: 'p', action: 'install', run: () => gate })
     await expect(svc.clearDownloads()).rejects.toThrow(/Wait for the running/)
     go()
+  })
+
+  it('service: refuses a proxy change while a job runs or the manager downloads its own update', async () => {
+    const e = await env()
+    let busy = false
+    const svc = new ManagerService({
+      dataPath: e.data,
+      appVersion: '0.1.0',
+      packsBaseUrl: 'http://127.0.0.1:9/',
+      send: () => undefined,
+      autoPaths: [e.game.root],
+      busyElsewhere: () => busy
+    })
+    expect(svc.setSettings({ proxy: 'socks5://127.0.0.1:10808' }).proxy).toBe('socks5://127.0.0.1:10808')
+    // Saving the same address again is not a change, so it stays allowed while something is running.
+    busy = true
+    expect(svc.setSettings({ proxy: 'socks5://127.0.0.1:10808' }).proxy).toBe('socks5://127.0.0.1:10808')
+    expect(() => svc.setSettings({ proxy: 'http://127.0.0.1:8080' })).toThrow(/Wait for the running/)
+    expect(svc.settings.proxy).toBe('socks5://127.0.0.1:10808')
+    busy = false
+    expect(svc.setSettings({ proxy: 'http://127.0.0.1:8080' }).proxy).toBe('http://127.0.0.1:8080')
+    // Back to the system's: an empty address is a change like any other.
+    expect(svc.setSettings({ proxy: '' }).proxy).toBe('')
   })
 
   it('service: start-up undoes an interrupted swap and cleans staging', async () => {

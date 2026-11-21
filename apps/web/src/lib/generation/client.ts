@@ -116,7 +116,7 @@ export type BatchJob = {
 };
 
 /** Mirrors BatchSkip in lib/search.ts. */
-export type BatchSkip = "progress" | "untranslated" | "no-voice" | "invalid-chars" | "shared-file";
+export type BatchSkip = "untranslated" | "no-voice" | "invalid-chars" | "shared-file";
 
 export type BatchJobs = {
   jobs: BatchJob[];
@@ -209,6 +209,8 @@ export type QueueSnapshot = {
    * server omits it.
    */
   paused?: { lang: Lang; pausedAt: string; by: string | null }[];
+  /** Whether any team has paused anything. Optional because an older server omits it. */
+  pausedAnywhere?: boolean;
   /**
    * Each owner's queue in drain order. Mirrors QueueSnapshot["queues"] in queue.ts.
    *
@@ -248,10 +250,10 @@ export async function queueBatch(
     // Both id-driven sections, for the same reason: their explorers already hold the set
     // of ids the visitor was shown, and quoting one set while queueing another is the
     // failure the quote exists to prevent.
-    | { source: "places" | "readables"; lineIds: string[] },
+    | { source: "places" | "readables" | "bosses"; lineIds: string[] },
   label: string,
   lang: Lang = BASE_LANG,
-): Promise<QueuedBatch | { error: string } | null> {
+): Promise<QueuedBatch | { error: string; noKey: boolean } | null> {
   try {
     const response = await fetch(withLang(lang, "/api/regenerate/queue"), {
       method: "POST",
@@ -265,7 +267,12 @@ export async function queueBatch(
     const body = (await response.json().catch(() => ({}))) as Record<string, unknown>;
     if (!response.ok) {
       const noKey = noApiKeyMessage(response.status, body as { error?: string; code?: string });
-      return noKey ? { error: noKey } : null;
+      if (noKey) return { error: noKey, noKey: true };
+      // The server's own words: they say how to unblock the queue.
+      if ((body.kind === "storage-failing" || body.kind === "storage-required") && typeof body.error === "string") {
+        return { error: body.error, noKey: false };
+      }
+      return null;
     }
     return body as unknown as QueuedBatch;
   } catch {

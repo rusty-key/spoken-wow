@@ -7,8 +7,7 @@
  * `fetch` and the base URL are both injectable: no test should need an ElevenLabs account,
  * and none should ever spend money.
  */
-import { parseCloneName } from "./clone-name";
-import { isVoiceSlot } from "./slots";
+import { slotClones } from "./slots";
 
 export const DEFAULT_BASE_URL = "https://api.elevenlabs.io";
 
@@ -18,6 +17,8 @@ export type ElevenLabsOptions = {
   apiKey?: string;
   baseUrl?: string;
   fetchImpl?: Fetch;
+  /** For tests: how long an account read may take (ACCOUNT_READ_TIMEOUT_MS otherwise). */
+  timeoutMs?: number;
 };
 
 function config(options: ElevenLabsOptions = {}) {
@@ -45,30 +46,57 @@ async function failure(response: Response, what: string): Promise<Error> {
 }
 
 /**
+ * How long a read of the account (voices, models, subscription) may take.
+ *
+ * /voices and /lexicon cannot render without one, and fetch never gives up on its own: while
+ * ElevenLabs was degraded, both pages hung until nginx answered 504. Ten seconds is far beyond
+ * a healthy answer, and past it the pages show the account as unreadable instead.
+ */
+const ACCOUNT_READ_TIMEOUT_MS = 10_000;
+
+/** GET an account endpoint and parse its JSON, failing after the timeout rather than waiting. */
+async function readAccount(
+  options: ElevenLabsOptions,
+  path: string,
+  what: string,
+): Promise<unknown> {
+  const { apiKey, baseUrl, fetchImpl } = config(options);
+  const ms = options.timeoutMs ?? ACCOUNT_READ_TIMEOUT_MS;
+  // One signal for the headers and the body alike: a stalled body hangs as surely as no answer.
+  const signal = AbortSignal.timeout(ms);
+  try {
+    const response = await fetchImpl(`${baseUrl}${path}`, {
+      headers: { "xi-api-key": apiKey },
+      cache: "no-store",
+      signal,
+    });
+    if (!response.ok) throw await failure(response, what);
+    return await response.json();
+  } catch (error) {
+    if (signal.aborted) {
+      throw new Error(`${what} timed out: ElevenLabs did not answer within ${ms / 1000}s`);
+    }
+    throw error;
+  }
+}
+
+/**
  * Voices in the account that this project can use, as clone name -> voice id: every
  * language's, `dwarf-male-grim` and `dwarf-male-grim@deDE` alike (see clone-name.ts).
  * generationStatus picks one language's out.
  */
 export async function listVoices(options: ElevenLabsOptions = {}): Promise<Map<string, string>> {
-  const { apiKey, baseUrl, fetchImpl } = config(options);
+  const body = (await readAccount(options, "/v1/voices", "listing ElevenLabs voices")) as {
+    voices?: { name?: string; voice_id?: string }[];
+  };
 
-  const response = await fetchImpl(`${baseUrl}/v1/voices`, {
-    headers: { "xi-api-key": apiKey },
-    cache: "no-store",
-  });
-  if (!response.ok) throw await failure(response, "listing ElevenLabs voices");
-
-  const body = (await response.json()) as { voices?: { name?: string; voice_id?: string }[] };
-
-  const found = new Map<string, string>();
-  for (const voice of body.voices ?? []) {
-    // Stock voices are skipped rather than reported: their names ("Roger - Laid-Back,
-    // Casual, Resonant") cannot express a race-gender mapping, so they are not candidates.
-    if (!voice.name || !voice.voice_id) continue;
-    const clone = parseCloneName(voice.name);
-    if (clone && (await isVoiceSlot(clone.voice))) found.set(voice.name, voice.voice_id);
-  }
-  return found;
+  const named = (body.voices ?? []).flatMap((voice) =>
+    voice.name && voice.voice_id ? [{ name: voice.name, id: voice.voice_id }] : [],
+  );
+  // Stock voices are skipped rather than reported: their names ("Roger - Laid-Back,
+  // Casual, Resonant") cannot express a race-gender mapping, so they are not candidates.
+  const slotted = await slotClones(named.map((voice) => voice.name));
+  return new Map(named.filter((voice) => slotted.has(voice.name)).map((voice) => [voice.name, voice.id]));
 }
 
 /** A voice in the account, whatever it is called: what the picker offers to fill a slot with. */
@@ -86,15 +114,7 @@ export type AccountVoice = {
  * voice designed or added from the library there can be adopted into a slot (renameVoice).
  */
 export async function listAccountVoices(options: ElevenLabsOptions = {}): Promise<AccountVoice[]> {
-  const { apiKey, baseUrl, fetchImpl } = config(options);
-
-  const response = await fetchImpl(`${baseUrl}/v1/voices`, {
-    headers: { "xi-api-key": apiKey },
-    cache: "no-store",
-  });
-  if (!response.ok) throw await failure(response, "listing ElevenLabs voices");
-
-  const body = (await response.json()) as {
+  const body = (await readAccount(options, "/v1/voices", "listing ElevenLabs voices")) as {
     voices?: { name?: string; voice_id?: string; category?: string }[];
   };
   return (body.voices ?? [])
@@ -151,15 +171,11 @@ export type Subscription = {
 };
 
 export async function getSubscription(options: ElevenLabsOptions = {}): Promise<Subscription> {
-  const { apiKey, baseUrl, fetchImpl } = config(options);
-
-  const response = await fetchImpl(`${baseUrl}/v1/user/subscription`, {
-    headers: { "xi-api-key": apiKey },
-    cache: "no-store",
-  });
-  if (!response.ok) throw await failure(response, "reading the ElevenLabs subscription");
-
-  const body = (await response.json()) as Record<string, unknown>;
+  const body = (await readAccount(
+    options,
+    "/v1/user/subscription",
+    "reading the ElevenLabs subscription",
+  )) as Record<string, unknown>;
   const number = (key: string) => (typeof body[key] === "number" ? (body[key] as number) : 0);
   const reset = body.next_character_count_reset_unix;
 
@@ -191,15 +207,7 @@ export type Model = {
 };
 
 export async function listModels(options: ElevenLabsOptions = {}): Promise<Model[]> {
-  const { apiKey, baseUrl, fetchImpl } = config(options);
-
-  const response = await fetchImpl(`${baseUrl}/v1/models`, {
-    headers: { "xi-api-key": apiKey },
-    cache: "no-store",
-  });
-  if (!response.ok) throw await failure(response, "listing ElevenLabs models");
-
-  const body = (await response.json()) as unknown;
+  const body = (await readAccount(options, "/v1/models", "listing ElevenLabs models")) as unknown;
   if (!Array.isArray(body)) return [];
 
   return body
@@ -272,9 +280,9 @@ export type DictionaryLocator = { dictionaryId: string; versionId: string };
  * and keep getting the current rules. This function runs only when no id is configured, and
  * the id it returns is the one to adopt.
  *
- * The rules are phoneme rules, and phoneme rules are honoured by eleven_v3 and
- * eleven_flash_v2 only. This function does not check the model: the dictionary is worth
- * uploading regardless, and the model can change afterwards without re-uploading.
+ * The rules are phoneme rules, honoured only by the models in PHONEME_SYNTAX. This function
+ * does not check the model: the dictionary is worth uploading regardless, and the model can
+ * change afterwards without re-uploading.
  */
 export async function createPronunciationDictionary(
   name: string,
@@ -297,6 +305,12 @@ export async function createPronunciationDictionary(
   return { dictionaryId: body.id, versionId: body.version_id };
 }
 
+/** Not 401, which is a key missing the permission and would fail again on a dictionary of its own. */
+const UNREADABLE_STATUSES = new Set([400, 403, 404, 422]);
+
+/** The id is not one this key's account can use, as opposed to the read having failed. */
+export class DictionaryUnreadable extends Error {}
+
 /** What a stored dictionary holds right now: its newest version, and the rules in it. */
 export type StoredDictionary = { latestVersionId: string; ruleStrings: string[] };
 
@@ -318,7 +332,10 @@ export async function readDictionary(
     headers: { "xi-api-key": apiKey },
     cache: "no-store",
   });
-  if (!response.ok) throw await failure(response, `reading pronunciation dictionary ${dictionaryId}`);
+  if (!response.ok) {
+    const error = await failure(response, `reading pronunciation dictionary ${dictionaryId}`);
+    throw UNREADABLE_STATUSES.has(response.status) ? new DictionaryUnreadable(error.message) : error;
+  }
 
   const body = (await response.json()) as {
     latest_version_id?: string;

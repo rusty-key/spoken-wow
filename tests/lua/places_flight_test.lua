@@ -4,6 +4,7 @@ package.path = here .. "/?.lua;" .. package.path
 local stub = require("wow_client_stub")
 local H = require("queue_helpers")
 local print = stub.print
+local world = stub.world
 local Expect, Failures = H.Expecter(print)
 local SPOKEN = here .. "/../../addons/Spoken/"
 local PLACES = here .. "/../../addons/Spoken_Places/"
@@ -20,6 +21,7 @@ local function Boot(client, taxi, flight, greeting)
     stub.SetClient(client)
     stub.ResetSound(); stub.ResetTimers()
     stub.world.inCombat = false
+    stub.world.playerDead = false
     stub.world.playerLevel = 1
     onTaxi, flying = taxi, flight
     SpokenPlacesSettings = nil
@@ -132,6 +134,38 @@ Expect("...and discovers nothing", Spoken:GetQueueSize(), 0)
 Expect("...nor prints a field after it as the message", printed[1], nil)
 stub.FireEvent("CHAT_MSG_SYSTEM", "Discovered Durotar.")
 Expect("the same message, not secret, still discovers", Spoken:IsPlaying(), true)
+
+-- Dead or a ghost, only autoplay is silent: a story the player asks for still plays.
+Z = Boot("16001", false, false)
+Z:Set("autoplayExplored", true)
+world.playerDead = true
+stub.Advance(2)
+stub.FireEvent("CHAT_MSG_SYSTEM", "Discovered Durotar.")
+Expect("a dead player gets no discovery narration", Spoken:GetQueueSize(), 0)
+stub.FireEvent("ZONE_CHANGED_NEW_AREA")
+Expect("a dead player gets no explored-zone narration", Spoken:GetQueueSize(), 0)
+Expect("manual lore still plays while dead", Z:PlayLore(1411), true)
+Spoken:StopAll()
+
+-- Only discovery stops: a line already speaking plays on through a death.
+Z = Boot("16001", false, false)
+Z:Set("autoplayExplored", true)
+stub.Advance(2)
+stub.FireEvent("ZONE_CHANGED")
+world.playerDead = true
+stub.FireEvent("PLAYER_DEAD")
+Expect("a line speaking at death keeps playing", Spoken:IsPlaying(), true)
+Spoken:StopAll()
+
+-- Alive again by any route, a res on the corpse included, discovery narrates once more.
+Z = Boot("16001", false, false)
+Z:Set("autoplayExplored", true)
+world.playerDead = true
+stub.Advance(2)
+world.playerDead = false
+stub.FireEvent("PLAYER_ALIVE")
+stub.FireEvent("ZONE_CHANGED")
+Expect("alive again, discovery narrates", Spoken:IsPlaying(), true)
 
 if Failures() > 0 then print(string.format("\n%d failure(s)", Failures())); os.exit(1) end
 print("\nAll places flight tests passed")

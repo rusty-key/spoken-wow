@@ -1,21 +1,33 @@
 /**
  * Who may do what in which language.
  *
- * A global admin sees and changes every grant. Somebody who is `admin` in a language sees
- * that language's and may hand out `edit` and `regenerate` in it -- enough to bring
- * translators in without an admin, not enough to decide the language's settings or make
- * another admin. lib/permissions.ts `canGrant` is the rule; this only applies it.
+ * A global admin sees and changes every grant. Somebody who is `admin` in a language sees and
+ * changes their own team's grants there, and hands out its team capabilities into that team. An
+ * admin of any team of the language also sees its text maintainers, and appoints them when the
+ * language lets its teams (`textByTeam`).
+ * lib/permissions.ts `canGrant` is the rule; this only applies it.
  */
 import { headers } from "next/headers";
 
 import { auth } from "@/lib/auth";
-import { addGrants, listGrants, removeGrant, userByEmail, viewerOf } from "@/lib/grants/store";
-import { isLang } from "@/lib/lang";
-import { canGrant, isAdmin, isCapability, langsWhere, type Viewer } from "@/lib/permissions";
+import { addGrants, OtherTeamError, refusedGrant, removeGrant, userByEmail, viewerOf } from "@/lib/grants/store";
+import { deletingResponse } from "@/lib/teams/deleting";
+import { listingFor, notAllowed } from "@/lib/invites/listing";
+import {
+  createInvite,
+  emailInvite,
+  InviteExistsError,
+  InviteRateError,
+  InviteSendError,
+  revokeOpenFor,
+  normalEmail,
+} from "@/lib/invites/store";
+import { knownLang } from "@/lib/languages/catalogue";
+import { isAdmin, isCapability, removesOwnAdmin, type Viewer } from "@/lib/permissions";
+import { teamIn } from "@/lib/teams/acting";
+import { ownerOf } from "@/lib/teams/store";
 
 export const dynamic = "force-dynamic";
-
-const FORBIDDEN = () => Response.json({ error: "not allowed" }, { status: 403 });
 
 async function viewer(): Promise<{ viewer: Viewer; userId: string } | null> {
   const session = await auth.api.getSession({ headers: await headers() });
@@ -23,62 +35,106 @@ async function viewer(): Promise<{ viewer: Viewer; userId: string } | null> {
   return session && seen ? { viewer: seen, userId: session.user.id } : null;
 }
 
-/** What `viewer` may see: every grant for an admin, their own languages' for a language admin. */
-async function listing(viewer: Viewer): Promise<Response> {
-  const langs = langsWhere(viewer, "admin");
-  if (langs.length === 0) return FORBIDDEN();
-  return Response.json({ grants: await listGrants(isAdmin(viewer.role) ? undefined : langs) });
-}
-
 export async function GET() {
   const who = await viewer();
-  return who ? listing(who.viewer) : FORBIDDEN();
+  return who ? listingFor(who.viewer, who.userId) : notAllowed();
 }
 
 export async function PUT(request: Request) {
   const who = await viewer();
-  if (!who) return FORBIDDEN();
+  if (!who) return notAllowed();
 
   const body = (await request.json().catch(() => ({}))) as {
     email?: unknown;
     lang?: unknown;
     capabilities?: unknown;
   };
-  const { email, lang, capabilities } = body;
+  const { email, capabilities } = body;
+  const lang = await knownLang(body.lang);
   if (
     typeof email !== "string" ||
-    !isLang(lang) ||
+    !lang ||
     !Array.isArray(capabilities) ||
     capabilities.length === 0 ||
     !capabilities.every(isCapability)
   ) {
     return Response.json({ error: "expected { email, lang, capabilities: [...] }" }, { status: 400 });
   }
-  // One the viewer may not hand out refuses the lot: half a grant is not what was asked for.
-  if (!capabilities.every((capability) => canGrant(who.viewer, capability, lang))) return FORBIDDEN();
+  const address = normalEmail(email);
+  if (!address) return Response.json({ error: `${email} is not an email address` }, { status: 400 });
+  if (await refusedGrant(who.viewer, capabilities, lang)) return notAllowed();
 
   // By email, not by id: a language admin cannot list the users, and an address is what
   // a translator gives somebody when asking to be let in.
-  const user = await userByEmail(email);
-  if (!user) return Response.json({ error: `nobody has registered as ${email}` }, { status: 404 });
+  const user = await userByEmail(address);
+  if (user) {
+    // A site owner's grant lands in the target person's team, else the team the site owner acts
+    // in, the one they picked included.
+    const team = isAdmin(who.viewer.role) ? ((await teamIn(user.id, lang)) ?? (await ownerOf(lang))) : undefined;
+    try {
+      await addGrants(user.id, lang, capabilities, who.userId, {
+        team,
+        within: (client) => revokeOpenFor(client, lang, address, user.id, capabilities, who.userId),
+      });
+    } catch (error) {
+      if (error instanceof OtherTeamError) return Response.json({ error: error.message }, { status: 409 });
+      const deleting = deletingResponse(error);
+      if (deleting) return deleting;
+      throw error;
+    }
+    return listingFor(who.viewer, who.userId, { invited: false });
+  }
 
-  await addGrants(user.id, lang, capabilities, who.userId);
-  return listing(who.viewer);
+  // Nobody has registered as it: invite the address instead, into the inviter's team. A site
+  // owner's joins the team they act in: the language's one team, else the one they picked.
+  const inviterTeam = isAdmin(who.viewer.role) ? null : await teamIn(who.userId, lang);
+  const team = inviterTeam ?? (await ownerOf(lang));
+  if (!team) return Response.json({ error: `${lang} has no team to invite into` }, { status: 409 });
+  try {
+    await createInvite({
+      email: address,
+      lang,
+      capabilities,
+      invitedBy: who.userId,
+      team,
+      limited: !isAdmin(who.viewer.role),
+      deliver: emailInvite,
+    });
+  } catch (error) {
+    if (error instanceof InviteSendError) return Response.json({ error: error.message }, { status: 502 });
+    const deleting = deletingResponse(error);
+    if (deleting) return deleting;
+    if (error instanceof InviteExistsError || error instanceof InviteRateError) {
+      if (error instanceof InviteRateError) console.warn(`invites: ${who.userId} refused: ${error.message}`);
+      return Response.json({ error: error.message }, { status: error instanceof InviteExistsError ? 409 : 429 });
+    }
+    throw error;
+  }
+  return listingFor(who.viewer, who.userId, { invited: true });
 }
 
 export async function DELETE(request: Request) {
   const who = await viewer();
-  if (!who) return FORBIDDEN();
+  if (!who) return notAllowed();
 
   const params = new URL(request.url).searchParams;
   const userId = params.get("userId");
-  const lang = params.get("lang");
+  const lang = await knownLang(params.get("lang"));
   const capability = params.get("capability");
-  if (!userId || !isLang(lang) || !isCapability(capability)) {
+  if (!userId || !lang || !isCapability(capability)) {
     return Response.json({ error: "userId, lang and capability are required" }, { status: 400 });
   }
-  if (!canGrant(who.viewer, capability, lang)) return FORBIDDEN();
+  if (await refusedGrant(who.viewer, [capability], lang)) return notAllowed();
+  if (removesOwnAdmin(who.viewer, who.userId, userId, capability)) {
+    return Response.json({ error: "you cannot remove your own admin" }, { status: 403 });
+  }
 
-  await removeGrant(userId, lang, capability, who.userId);
-  return listing(who.viewer);
+  // A team admin takes away only what their own team gave.
+  const [team, theirs] =
+    isAdmin(who.viewer.role) || capability === "text"
+      ? [undefined, undefined]
+      : await Promise.all([teamIn(who.userId, lang), teamIn(userId, lang)]);
+  if (team && theirs && theirs !== team) return notAllowed();
+  await removeGrant(userId, lang, capability, who.userId, team ?? undefined);
+  return listingFor(who.viewer, who.userId);
 }

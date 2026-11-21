@@ -34,7 +34,7 @@ SHARED=${SHARED:-/srv/spoken/shared}
 # linked: audio-history/quests is reached THROUGH the audio-history link, and linking it
 # separately would point it at itself.
 LINKS=(audio sounds books audio-history voices audio-previews downloads)
-CHILDREN=(audio-history/quests audio-history/places audio-history/readables)
+CHILDREN=(audio-history/quests audio-history/places audio-history/readables audio-history/bosses)
 
 # The volume has to be mounted BEFORE anything is created under it. /etc/fstab mounts it
 # `nofail`, so a droplet that boots without it boots fine and /mnt/voice is an ordinary

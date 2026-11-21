@@ -12,6 +12,7 @@ import { detailOf, regeneratePath, reportTargetOf, searchPath } from "./detail";
 import type { ResultLine as BookLine } from "@/lib/readables/search";
 import type { ResultLine as QuestLine } from "@/lib/search";
 import type { ResultLine as ZoneLine } from "@/lib/places/search";
+import type { ResultLine as BossLine } from "@/lib/bosses/search";
 
 const questLine = {
   lineId: "q:374:accept",
@@ -118,6 +119,23 @@ describe("detailOf", () => {
   it("reads a rewritten quest line as what it now says, not what the corpus says", () => {
     const rewritten = { ...questLine, override: "Those kobolds are a nuisance." } as QuestLine;
     expect(detailOf("quests", rewritten).text).toBe("Those kobolds are a nuisance.");
+  });
+
+  it("gives an unwritten boss no text and no audio, even with a take from a withdrawn story", () => {
+    const unwritten = {
+      id: "boss:36:edwin vancleef",
+      name: "Edwin VanCleef",
+      instanceName: "Deadmines",
+      text: null,
+      file: "36/edwin-vancleef",
+      state: "stale",
+    } as unknown as BossLine;
+    const detail = detailOf("bosses", unwritten);
+    expect(detail.text).toBeNull();
+    expect(detail.audioSrc).toBeNull();
+    expect(detailOf("bosses", { ...unwritten, text: "A story.", state: "current" } as BossLine).audioSrc).toBe(
+      "/api/bosses/audio/36/edwin-vancleef.mp3",
+    );
   });
 
   it("busts the cache with the take a regeneration just wrote", () => {

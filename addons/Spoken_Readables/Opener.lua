@@ -25,6 +25,24 @@ function SpokenReadables:ObjectEntryOf(guid)
 	return entry and tonumber(entry) or nil
 end
 
+--- The item id behind an Item GUID, when this client exposes the API for it. Forever has this
+--- on the unit that opened a note; older Classic clients do not, so the bag-use candidate below
+--- remains the fallback there.
+function SpokenReadables:ItemIDOfGUID(guid)
+	guid = NotSecret(guid)
+	if type(guid) ~= "string" or not string.match(guid, "^Item%-") then
+		return nil
+	end
+
+	local getID = _G.C_Item and C_Item.GetItemIDByGUID or _G.GetItemIDByGUID
+	if not getID then
+		return nil
+	end
+	local ok, itemID = pcall(getID, guid)
+	itemID = ok and NotSecret(itemID) or nil
+	return type(itemID) == "number" and itemID or nil
+end
+
 --- Something the reader used or pointed at, which may be what opens the next book.
 function SpokenReadables:NoteOpener(kind, id)
 	id = NotSecret(id)
@@ -55,6 +73,21 @@ function SpokenReadables:OnTextBegin()
 	table.sort(fresh, function(a, b) return a.at > b.at end)
 	if self.softObject then
 		fresh[#fresh + 1] = self.softObject
+	end
+	-- Forever can expose a note's item through the unit that opened it, even when no bag-use
+	-- hook ran. Keep this alongside the older bag-use candidate, without duplicating it.
+	local itemID = UnitGUID and self:ItemIDOfGUID(UnitGUID("npc"))
+	if itemID then
+		local already = false
+		for _, opener in ipairs(fresh) do
+			if opener.kind == "item" and opener.id == itemID then
+				already = true
+				break
+			end
+		end
+		if not already then
+			table.insert(fresh, 1, { kind = "item", id = itemID, at = now })
+		end
 	end
 	self.openers = nil
 	self.openedBy = fresh

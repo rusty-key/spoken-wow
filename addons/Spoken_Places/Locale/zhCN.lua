@@ -7,7 +7,7 @@
 
 local _, SpokenPlaces = ...
 
-if GetLocale() ~= "zhCN" then
+if not Spoken:InterfaceIn("zhCN") then
 	return
 end
 
@@ -22,10 +22,12 @@ L.OPT_PLAY_BUTTON = "朗读剧情"
 L.OPT_AUTOPLAY = "自动朗读"
 L.OPT_AUTOPLAY_SUB = "包括次级地区"
 L.OPT_AUTOPLAY_EXPLORED = "包括以前发现的地方"
-L.OPT_LANG_RELOAD = "输入 /reload 即可切换。"
-L.OPT_LANGUAGE = "文本语言"
-L.OPT_LANG_AUTO_FMT = "自动（%1$s）"
-L.OPT_LANG_SET_FMT = "界面重新载入后，剧情将使用%1$s。"
+L.OPT_AUTOPLAY_COMBAT = "进入战斗时停止"
+L.OPT_AUTOPLAY_EVERY_VISIT = "每次到访都朗读"
+L.OPT_AUTOPLAY_GAP = "再次朗读间隔"
+L.OPT_GAP_1D = "1 天"
+L.OPT_GAP_1W = "1 周"
+L.OPT_GAP_1MO = "1 个月"
 L.OPT_LANG_PROFILE_FMT = "此配置文件将以%1$s朗读剧情。输入 /reload 即可切换。"
 L.OPT_REPORT_PROBLEM = "报告问题"
 L.MENU_LORE_WINDOW = "打开艾泽拉斯百科"
@@ -71,6 +73,7 @@ L.BATTLEGROUNDS = "战场"
 L.DUNGEONS = "地下城与团队副本"
 L.COMPENDIUM_PLACES = "地点"
 L.LORE_PANEL_TITLE = "地点剧情"
+L.BOSS_LORE_TITLE = "首领剧情"
 L.MAP_PANEL_EXPAND = "显示地点剧情"
 L.PANEL_SHOWN = "在地图旁显示剧情：开启"
 L.PANEL_HIDDEN = "在地图旁显示剧情：关闭"
@@ -79,10 +82,9 @@ L.LORE_DISCOVERED_ONLY = "仅显示已发现的"
 L.LORE_VOICED_ONLY = "仅显示有语音的"
 L.LORE_SEARCH_NONE = "没有匹配的结果。"
 L.REASON_DISCOVERY = "开启“自动朗读”后才能使用。"
+L.REASON_EVERY_VISIT = "关闭“每次到访都朗读”后才能使用。"
 L.REASON_MAP_PANEL = "开启“在地图旁显示剧情”后才能使用。"
 L.OPT_RESET_PAGE_CONFIRM = "将所有地点设置恢复为默认值？"
-L.OPT_RELOAD_NOW = "立即重新载入"
-L.OPT_LATER = "稍后"
 L.OPT_PAGE_TITLE = "地点"
 L.OPT_DEV_DEBUG = "地点调试信息"
 L.OPT_DEV_PREVIEW = "提供未完成的翻译"

@@ -7,7 +7,7 @@
  *
  *   1.15.x  Classic Era, Hardcore and Season of Discovery (one client; the build cannot tell
  *           them apart)
- *   1.60.x  the WoW: Forever beta (1.16 and up, allowing for its later builds)
+ *   1.60.x  WoW: Forever (1.16 and up, allowing for its later builds)
  *   2.5.x   TBC Anniversary
  *   10+     retail
  *   1.12.1, 2.4.3, 3.3.5  the three legacy clients
@@ -26,7 +26,7 @@ export const CLIENT_FAMILY_LABELS: Record<ClientFamily, string> = {
   era: "Classic Era",
   anniversary: "TBC Anniversary",
   retail: "Retail",
-  forever: "Forever beta",
+  forever: "Forever",
   legacy: "Legacy client",
   other: "Other",
 };
@@ -78,6 +78,29 @@ export type ClientSummary = {
   /** The build-number half, or null likewise. */
   buildNumber: string | null;
 };
+
+/** The `build` query parameter: a build number, or undefined for anything else. */
+export function buildFilterOf(value: unknown): string | undefined {
+  return typeof value === "string" && /^\d{1,10}$/.test(value) ? value : undefined;
+}
+
+export function matchesBuild(client: ClientSummary, build: string | undefined): boolean {
+  return build === undefined || client.buildNumber === build;
+}
+
+/** The builds these rows came from, newest first: the latest build is the one safe to trust. */
+export function buildOptions(clients: readonly ClientSummary[]): { value: string; label: string }[] {
+  const builds = new Map<string, { label: string; count: number }>();
+  for (const { buildNumber, label } of clients) {
+    if (!buildNumber) continue;
+    const build = builds.get(buildNumber);
+    if (build) build.count++;
+    else builds.set(buildNumber, { label, count: 1 });
+  }
+  return [...builds]
+    .sort(([a], [b]) => Number(b) - Number(a))
+    .map(([value, { label, count }]) => ({ value, label: `${value} · ${label} (${count})` }));
+}
 
 const LEGACY_VERSIONS = new Set(["1.12.1", "2.4.3", "3.3.5"]);
 

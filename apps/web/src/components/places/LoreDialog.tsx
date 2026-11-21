@@ -5,7 +5,7 @@ import { withLang } from "@/lib/lang";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Loader2, RotateCcw } from "lucide-react";
 
-import type { ResultLine } from "@/lib/places/search";
+import type { ExplorerLine, ExplorerSection } from "@/components/explorer/section";
 
 // Rewriting a line, and putting an earlier wording back.
 //
@@ -18,24 +18,35 @@ import type { ResultLine } from "@/lib/places/search";
 // was spoken -- and joins the regeneration worklist, where spending credits stays a
 // separate, deliberate act.
 
+/** The text is `full` where the section keeps a short text beside it, `text` where it does not. */
 type Version = {
   version: number;
   isCurrent: boolean;
-  origin: "scraped" | "edited" | "scraped-rewritten" | "translated";
-  full: string;
+  origin: string;
+  full?: string;
+  text?: string;
   note: string | null;
   createdAt: string;
 };
 
-type Props = {
-  line: ResultLine | null;
+function versionText(version: Version, shortText: boolean): string {
+  return (shortText ? version.full : version.text) ?? "";
+}
+
+type Props<L extends ExplorerLine> = {
+  section: Pick<ExplorerSection<L>, "api" | "textApi" | "shortText" | "chip" | "ownLine">;
+  line: L | null;
   onClose: () => void;
   /** Told the new text so the row can update without a reload. */
-  onSaved: (line: ResultLine, full: string) => void;
+  onSaved: (line: L, text: string) => void;
 };
 
-export function LoreDialog({ line, onClose, onSaved }: Props) {
+export function LoreDialog<L extends ExplorerLine>({ section, line, onClose, onSaved }: Props<L>) {
   const lang = useLang();
+  const route = `${section.api}/${section.textApi}`;
+  // Places derives its short text from `full` on save, so one box writes both.
+  const { shortText } = section;
+  const field = shortText ? "full" : "text";
   const dialog = useRef<HTMLDialogElement | null>(null);
   const [text, setText] = useState("");
   const [note, setNote] = useState("");
@@ -53,8 +64,9 @@ export function LoreDialog({ line, onClose, onSaved }: Props) {
     }
 
     // An untranslated line carries the English only so the explorer has something to show;
-    // the box starts empty, and the English to work from is shown above it instead.
-    setText(line.translated === false ? "" : line.text);
+    // the box starts empty, and the English to work from is shown above it instead. A line
+    // with no story in the language starts empty too: saving writes its first version.
+    setText(line.translated === false ? "" : (line.text ?? ""));
     setNote("");
     setError(null);
     setVersions(null);
@@ -64,7 +76,7 @@ export function LoreDialog({ line, onClose, onSaved }: Props) {
     let cancelled = false;
     const params = new URLSearchParams({ lineId: line.id });
 
-    fetch(withLang(lang, `/api/places/lore?${params}`))
+    fetch(withLang(lang, `${route}?${params}`))
       .then((res) => (res.ok ? res.json() : Promise.reject(new Error("could not load history"))))
       .then((data: { versions: Version[] }) => {
         if (cancelled) return;
@@ -78,19 +90,19 @@ export function LoreDialog({ line, onClose, onSaved }: Props) {
     return () => {
       cancelled = true;
     };
-  }, [line, lang]);
+  }, [line, lang, route]);
 
   const save = useCallback(async () => {
     if (!line) return;
     setBusy(true);
     setError(null);
 
-    const res = await fetch(withLang(lang, "/api/places/lore"), {
+    const res = await fetch(withLang(lang, route), {
       method: "PUT",
       headers: { "content-type": "application/json" },
       body: JSON.stringify({
         lineId: line.id,
-        full: text,
+        [field]: text,
         note: note.trim() || null,
         expectedVersion: baseVersion,
       }),
@@ -106,7 +118,7 @@ export function LoreDialog({ line, onClose, onSaved }: Props) {
 
     onSaved(line, text.trim());
     onClose();
-  }, [baseVersion, line, note, onClose, onSaved, text]);
+  }, [baseVersion, field, lang, line, note, onClose, onSaved, route, text]);
 
   const restore = useCallback(
     async (version: number) => {
@@ -114,7 +126,7 @@ export function LoreDialog({ line, onClose, onSaved }: Props) {
       setBusy(true);
       setError(null);
 
-      const res = await fetch(withLang(lang, "/api/places/lore"), {
+      const res = await fetch(withLang(lang, route), {
         method: "POST",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({ lineId: line.id, version }),
@@ -127,16 +139,17 @@ export function LoreDialog({ line, onClose, onSaved }: Props) {
         return;
       }
 
-      const data = (await res.json()) as { version: { full: string } };
-      onSaved(line, data.version.full);
+      const data = (await res.json()) as { version: Version };
+      onSaved(line, versionText(data.version, shortText));
       onClose();
     },
-    [line, onClose, onSaved],
+    [lang, line, onClose, onSaved, route, shortText],
   );
 
   if (!line) return null;
 
-  const changed = text.trim() !== line.text.trim();
+  const changed = text.trim() !== (line.text ?? "").trim();
+  const chip = section.chip(line);
 
   return (
     <dialog
@@ -144,9 +157,9 @@ export function LoreDialog({ line, onClose, onSaved }: Props) {
       onClose={onClose}
       className="fixed top-1/2 left-1/2 w-[46rem] max-w-[92vw] -translate-x-1/2 -translate-y-1/2 rounded-lg border border-border bg-muted p-4 text-foreground backdrop:bg-black/60"
     >
-      <h2 className="font-medium">{line.kind === "zone" ? line.zoneName : line.name}</h2>
+      <h2 className="font-medium">{section.ownLine?.(line) && chip !== null ? chip : line.name}</h2>
       <p className="mb-3 text-xs text-muted-foreground">
-        {line.zoneName} · {line.file}
+        {chip === null ? line.file : `${chip} · ${line.file}`}
       </p>
 
       {/* What is being translated, when this is a translation: the English, to read beside
@@ -199,8 +212,8 @@ export function LoreDialog({ line, onClose, onSaved }: Props) {
               <li key={version.version} className="flex items-baseline gap-2">
                 <span className="w-8 shrink-0 font-mono text-muted-foreground">v{version.version}</span>
                 <span className="w-28 shrink-0 truncate text-muted-foreground">{version.origin}</span>
-                <span className="truncate text-muted-foreground" title={version.full}>
-                  {version.note ?? version.full}
+                <span className="truncate text-muted-foreground" title={versionText(version, shortText)}>
+                  {version.note ?? versionText(version, shortText)}
                 </span>
                 {version.isCurrent ? (
                   <span className="ml-auto shrink-0 text-emerald-400">live</span>

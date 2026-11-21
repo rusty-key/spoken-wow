@@ -11,20 +11,19 @@
 import crypto from 'node:crypto'
 import fs from 'node:fs'
 import path from 'node:path'
-import { envelopesFromSavedVariables, MAX_ENVELOPES } from '@site-contributions/saved-variables'
-import type { GameInstall } from '../shared/types'
+import { envelopesFromSavedVariables } from '@site-contributions/saved-variables'
+import { chunksOf } from '@site-contributions/upload'
+import type { GameInstall, SendResult } from '../shared/types'
 import { findEntrySync, isLinked } from './guard'
 import type { LocalFile } from './packs-plan'
+import { t } from './i18n'
 import { sha256Text } from './packs-remote'
 import { log, readJsonFile, writeJsonAtomic } from './state'
 
-export const SHARE_URL = 'https://spoken.rusty.one/api/contributions/batch'
+export const SHARE_URL = 'https://spoken.quest/api/contributions/batch'
 
 /** Hashes kept; the oldest go first. Far more than one file holds (MAX_ENVELOPES). */
 export const LEDGER_CAP = 20000
-
-/** Under the site's 16 MB request limit, with room to spare. */
-const CHUNK_BYTES = 8 * 1024 * 1024
 
 /** The site may take five minutes for a full file (nginx's proxy_read_timeout on the route). */
 const POST_TIMEOUT_MS = 310 * 1000
@@ -113,32 +112,6 @@ export interface SendOptions {
   all?: boolean
 }
 
-export type SendResult =
-  | { outcome: 'sent'; count: number }
-  /** Nothing new: no file changed, or every envelope in them was sent before. */
-  | { outcome: 'nothing' }
-  | { outcome: 'rate-limited'; count: number }
-  | { outcome: 'failed'; count: number; error: string }
-
-/** Splits envelopes into requests of at most MAX_ENVELOPES and CHUNK_BYTES. */
-export function chunksOf(envelopes: string[], maxCount = MAX_ENVELOPES, maxBytes = CHUNK_BYTES): string[][] {
-  const out: string[][] = []
-  let current: string[] = []
-  let bytes = 0
-  for (const e of envelopes) {
-    const size = Buffer.byteLength(e, 'utf8') + 4
-    if (current.length > 0 && (current.length >= maxCount || bytes + size > maxBytes)) {
-      out.push(current)
-      current = []
-      bytes = 0
-    }
-    current.push(e)
-    bytes += size
-  }
-  if (current.length > 0) out.push(current)
-  return out
-}
-
 function remember(ledger: ShareLedger, hashes: Iterable<string>, at: string): void {
   for (const h of hashes) {
     // Deleted first so a hash sent again moves to the newest end.
@@ -165,6 +138,7 @@ export async function sendPending(opts: SendOptions): Promise<SendResult> {
   /** The envelopes not sent yet, by hash. */
   const fresh = new Map<string, string>()
   const seen: ShareLedger['seen'] = {}
+  const unread: string[] = []
   for (const game of opts.games) {
     for (const file of await findContributionFiles(game)) {
       let st: fs.Stats
@@ -181,6 +155,7 @@ export async function sendPending(opts: SendOptions): Promise<SendResult> {
         text = await fs.promises.readFile(file, 'utf8')
       } catch (err) {
         log('Sharing: could not read', file, err)
+        unread.push(file)
         delete seen[file]
         continue
       }
@@ -199,7 +174,8 @@ export async function sendPending(opts: SendOptions): Promise<SendResult> {
     }
     return result
   }
-  if (fresh.size === 0) return done({ outcome: 'nothing' })
+  const read = unread.length ? { unread } : {}
+  if (fresh.size === 0) return done({ outcome: 'nothing', ...read })
 
   const doFetch = opts.fetchImpl ?? fetch
   const hashes = [...fresh.keys()]
@@ -217,10 +193,10 @@ export async function sendPending(opts: SendOptions): Promise<SendResult> {
       })
     } catch (err) {
       opts.signal?.throwIfAborted()
-      return { outcome: 'failed', count, error: `The site could not be reached (${err instanceof Error ? err.message : String(err)}).` }
+      return { outcome: 'failed', count, error: t('share.reachSite', { why: err instanceof Error ? err.message : String(err) }) }
     }
     if (res.status === 429) return { outcome: 'rate-limited', count }
-    if (!res.ok) return { outcome: 'failed', count, error: `The site answered ${res.status}.` }
+    if (!res.ok) return { outcome: 'failed', count, error: t('share.siteStatus', { status: res.status }) }
     const at = new Date().toISOString()
     // Chunks keep the envelopes' order, so the chunk's hashes are the next ones in line.
     remember(ledger, hashes.slice(count, count + chunk.length), at)
@@ -228,7 +204,7 @@ export async function sendPending(opts: SendOptions): Promise<SendResult> {
     ledger.lastSent = { at, count }
     saveLedger(opts.dataPath, ledger)
   }
-  return done({ outcome: 'sent', count })
+  return done({ outcome: 'sent', count, ...read })
 }
 
 /** A new install id; what was sent stays sent. */

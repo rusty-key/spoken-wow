@@ -1,0 +1,48 @@
+/** Needs DATABASE_URL and migrations applied. */
+import { afterAll, describe, expect, it } from "vitest";
+
+import { asSystem } from "@/lib/teams/testing";
+
+import { listenForTeamChanges, listenInServer, stopListening } from "./listen";
+import { sharedLangs } from "./store";
+
+afterAll(stopListening);
+
+/** The memo once it is not `before`, polled for a second; `each` runs before every look. */
+async function changedFrom(before: Awaited<ReturnType<typeof sharedLangs>>, each = async () => {}) {
+  const deadline = Date.now() + 1_000;
+  let after = before;
+  while (after === before && Date.now() < deadline) {
+    await each();
+    await new Promise((resolve) => setTimeout(resolve, 50));
+    after = await sharedLangs();
+  }
+  return after;
+}
+
+describe("listenForTeamChanges", () => {
+  it("forgets the memo once it is listening, for a move made while it was not", async () => {
+    const before = await sharedLangs();
+    listenForTeamChanges();
+    expect(await changedFrom(before)).not.toBe(before);
+  });
+
+  it("forgets the memo when another connection moves a language", async () => {
+    // Listening since the test above.
+    const before = await sharedLangs();
+    expect(await sharedLangs()).toBe(before);
+    const after = await changedFrom(before, async () => {
+      await asSystem.query(`select pg_notify('spoken_team_language', 'deDE')`);
+    });
+    expect(after).not.toBe(before);
+  });
+
+  it("runs a channel registered on a live connection once its LISTEN holds, for a change made before it", async () => {
+    // Live since the tests above.
+    let runs = 0;
+    listenInServer("spoken_test_late_channel", () => runs++);
+    const deadline = Date.now() + 1_000;
+    while (runs === 0 && Date.now() < deadline) await new Promise((resolve) => setTimeout(resolve, 50));
+    expect(runs).toBe(1);
+  });
+});

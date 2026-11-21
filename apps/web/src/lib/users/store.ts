@@ -49,7 +49,11 @@ export async function listUsers({
        from "user" u
        left join lateral (
          select string_agg(distinct "lang", ',' order by "lang") as "langs"
-           from "language_grant" where "userId" = u."id"
+           from (
+             select "lang" from "language_grant" where "userId" = u."id"
+             union all
+             select "lang" from "team_member" where "userId" = u."id"
+           ) held
        ) g on true
       where $1::text is null or u."name" ilike $1 or u."email" ilike $1
       order by ${ORDER[sort.column]} ${sort.direction === "desc" ? "desc" : "asc"} nulls last,
@@ -63,4 +67,19 @@ export async function listUsers({
     users: rows.map(({ total: _, createdAt, ...user }) => ({ ...user, createdAt: createdAt.toISOString() })),
     total,
   };
+}
+
+/**
+ * Display names for ids, for lists a language admin reads: their teammates' takes and runs, but
+ * also a site admin's or a former member's. Names only, as the activity log shows them; an
+ * address is not theirs to learn, so somebody without a name is absent from the map.
+ */
+export async function namesOf(ids: readonly (string | null)[]): Promise<Map<string, string>> {
+  const wanted = [...new Set(ids.filter((id): id is string => id !== null))];
+  if (wanted.length === 0) return new Map();
+  const rows = await query<{ id: string; name: string }>(
+    `select "id", "name" from "user" where "id" = any($1::text[]) and coalesce("name", '') <> ''`,
+    [wanted],
+  );
+  return new Map(rows.map((row) => [row.id, row.name]));
 }

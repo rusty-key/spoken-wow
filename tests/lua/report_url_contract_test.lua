@@ -15,6 +15,7 @@ local SPOKEN = here .. "/../../addons/Spoken/"
 local QUESTS = here .. "/../../addons/Spoken_Quests/"
 local PLACES = here .. "/../../addons/Spoken_Places/"
 local READABLES = here .. "/../../addons/Spoken_Readables/"
+local BOSSES = here .. "/../../addons/Spoken_Bosses/"
 local FIXTURE = here .. "/../fixtures/report-urls.txt"
 local Expect, Failures = H.Expecter(print)
 
@@ -26,19 +27,26 @@ local B = {}
 for _, file in ipairs({ "Locale/enUS", "Checksum", "Core" }) do
     assert(loadfile(READABLES .. file .. ".lua"))("Spoken_Readables", B)
 end
+local D = {}
+assert(loadfile(BOSSES .. "Core.lua"))("Spoken_Bosses", D)
 
--- English, a language of each script, and Italian, which no client runs in.
+-- English and a language of each script.
 local urls = {
     R:Link(R:TargetForQuest(9123, E.SoundEvent.QuestAccept)),
     R:Link(R:TargetForQuest(9123, E.SoundEvent.QuestProgress), "deDE"),
     R:Link(R:TargetForQuest(9123, E.SoundEvent.QuestComplete), "zhTW"),
     R:Link(R:TargetForGUID("Creature-0-1-2-3-68-0000000001")),
     R:Link(R:TargetForGUID("GameObject-0-1-2-3-68-0000000001"), "ruRU"),
+    -- With the file that played, which picks one line out of an address several answer to.
+    R:Link(R:TargetForQuest(96774, E.SoundEvent.QuestAccept), nil, "96774-accept-troll-male-shaman"),
+    R:Link(R:TargetForGUID("Creature-0-1-2-3-68-0000000001"), "deDE", "f-1a2b3c"),
     Z:ReportURL(1411, nil, "enUS"),
     Z:ReportURL(1411, "valley of trials", "esMX"),
     Z:ReportURL(1413, "razorfen downs", "koKR"),
     B:ReportURL(261),
-    B:ReportURL(261, "itIT"),
+    B:ReportURL(261, "ptBR"),
+    D:ReportURL(36, "edwin vancleef"),
+    D:ReportURL(409, "majordomo executus", "frFR"),
 }
 local built = table.concat(urls, "\n") .. "\n"
 
@@ -52,6 +60,6 @@ local file = assert(io.open(FIXTURE, "rb"))
 local kept = file:read("*a"):gsub("\r\n", "\n")
 file:close()
 Expect("every address is one the site is tested against (make contribute-fixtures)", built, kept)
-Expect("...ten of them, none missing", #urls, 10)
+Expect("...fourteen of them, none missing", #urls, 14)
 
 os.exit(Failures() == 0 and 0 or 1)

@@ -17,7 +17,10 @@ vi.mock("server-only", () => ({}));
 const root = fs.mkdtempSync(path.join(os.tmpdir(), "voice-references-"));
 process.env.SPOKEN_QUESTS_VOICE_REFERENCES = path.join(root, "references");
 
-const { closeDb, db } = await import("@/lib/db");
+const { closeDb } = await import("@/lib/db");
+const { addMember, asSystem, dropLang, dropTeam, newTeamIn, uniqueLang } = await import("@/lib/teams/testing");
+const { asActor } = await import("@/lib/teams/acting");
+const { forgetTeams } = await import("@/lib/teams/store");
 const { FFMPEG } = await import("./merge");
 const references = await import("./references");
 const { fishSpeaker } = await import("@/lib/generation/speakers/fish");
@@ -57,12 +60,12 @@ beforeAll(async () => {
     "-y",
     source,
   ]);
-  await db().query(
+  await asSystem.query(
     `insert into "user" ("id", "name", "email", "emailVerified")
      values ($1, 'Test References', $2, false) on conflict ("id") do nothing`,
     [USER, `${USER}@example.invalid`],
   );
-  const { rows } = await db().query(
+  const { rows } = await asSystem.query(
     `delete from "fish_reference" where "voice" = $1 and "lang" = $2 returning *`,
     [VOICE, LANG],
   );
@@ -70,17 +73,17 @@ beforeAll(async () => {
 });
 
 afterAll(async () => {
-  await db().query(`delete from "fish_reference" where "voice" = $1 and "lang" = $2`, [VOICE, LANG]);
+  await asSystem.query(`delete from "fish_reference" where "voice" = $1 and "lang" = $2`, [VOICE, LANG]);
   for (const row of displaced) {
     const columns = Object.keys(row);
-    await db().query(
+    await asSystem.query(
       `insert into "fish_reference" (${columns.map((c) => `"${c}"`).join(", ")})
        values (${columns.map((_, i) => `$${i + 1}`).join(", ")})`,
       Object.values(row),
     );
   }
-  await db().query(`delete from "activity" where "actorId" = $1`, [USER]);
-  await db().query(`delete from "user" where "id" = $1`, [USER]);
+  await asSystem.query(`delete from "activity" where "actorId" = $1`, [USER]);
+  await asSystem.query(`delete from "user" where "id" = $1`, [USER]);
   fs.rmSync(root, { recursive: true, force: true });
   await closeDb();
 });
@@ -268,7 +271,7 @@ describe.skipIf(!hasFfmpeg)("fish.audio as a speaker", () => {
   it("logs each change under who made it, and not the ones that changed nothing", async () => {
     // A second delete finds no row, and the refused cut above never stored one.
     await references.deleteReference(VOICE, LANG, USER);
-    const { rows } = await db().query<{ kind: string }>(
+    const { rows } = await asSystem.query<{ kind: string }>(
       `select "kind" from "activity"
         where "actorId" = $1 and "subject" = $2 and "lang" = $3 order by "id"`,
       [USER, VOICE, LANG],
@@ -281,5 +284,37 @@ describe.skipIf(!hasFfmpeg)("fish.audio as a speaker", () => {
       "reference.edited",
       "reference.deleted",
     ]);
+  });
+});
+
+describe("a second team's delete", () => {
+  it("leaves the privileged team's reference, file and row, when it has none of its own", async () => {
+    const lang = await uniqueLang();
+    const privileged = await newTeamIn(lang, true, "references-a");
+    const second = await newTeamIn(lang, false, "references-b");
+    await addMember(second, USER, lang, "admin");
+    const file = references.referencePath(VOICE, lang);
+    try {
+      await asSystem.query(
+        `insert into "fish_reference" ("teamId", "voice", "lang", "sample", "startSec", "endSec", "transcript", "clipHash")
+         values ($1, $2, $3, 'clip.wav', 0, 12, 'Well met.', 'a-hash')`,
+        [privileged, VOICE, lang],
+      );
+      fs.mkdirSync(path.dirname(file), { recursive: true });
+      fs.writeFileSync(file, "ID3a");
+
+      await asActor(USER, () => references.deleteReference(VOICE, lang, USER));
+
+      expect(fs.readFileSync(file, "utf8")).toBe("ID3a");
+      const { rows } = await asSystem.query(`select "teamId" from "fish_reference" where "lang" = $1`, [lang]);
+      expect(rows).toEqual([{ teamId: privileged }]);
+    } finally {
+      await asSystem.query(`delete from "fish_reference" where "lang" = $1`, [lang]);
+      await asSystem.query(`delete from "activity" where "lang" = $1`, [lang]);
+      await dropTeam(second);
+      await dropTeam(privileged);
+      await dropLang(lang);
+      forgetTeams();
+    }
   });
 });

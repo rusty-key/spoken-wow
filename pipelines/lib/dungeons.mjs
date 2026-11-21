@@ -13,11 +13,12 @@ import { readFileSync } from "node:fs";
 import { readFile, writeFile } from "node:fs/promises";
 import { fileURLToPath } from "node:url";
 
+import { BASE_LOCALE, CODES } from "./locales.mjs";
 import { FOREVER_BUILD, wagoTable } from "./wago.mjs";
 
 const SOURCE = fileURLToPath(new URL("./dungeons.json", import.meta.url));
 const OUT = fileURLToPath(new URL("../../addons/Spoken/Data/Dungeons.lua", import.meta.url));
-export const LOCALES = ["deDE", "esES", "esMX", "frFR", "ptBR", "ruRU", "koKR", "zhCN", "zhTW", "itIT"];
+export const LOCALES = CODES.filter((code) => code !== BASE_LOCALE);
 
 const byMap = (table) => Object.fromEntries(Object.entries(table ?? {}).map(([map, row]) => [Number(map), row]));
 
@@ -35,6 +36,23 @@ export function instanceZones(data = loadDungeons()) {
     for (const [map, row] of Object.entries(part)) out[map] = row.zone;
   }
   return out;
+}
+
+/**
+ * The names of the maps `wanted(map)` accepts, by locale ("enUS" and LOCALES), from Forever's Map
+ * table.
+ */
+export async function mapNames(wanted, { table = wagoTable } = {}) {
+  const names = {};
+  for (const locale of ["enUS", ...LOCALES]) {
+    const rows = await table("Map", { build: FOREVER_BUILD, locale });
+    names[locale] = {};
+    for (const row of rows) {
+      const map = Number(row.ID);
+      if (wanted(map) && row.MapName_lang) names[locale][map] = row.MapName_lang;
+    }
+  }
+  return names;
 }
 
 /** `text` as a Lua string literal. */
@@ -93,14 +111,7 @@ ${worldLines.join("\n")}
 
 async function main() {
   const { dungeons, worldBosses } = loadDungeons();
-  const names = {};
-  for (const locale of ["enUS", ...LOCALES]) {
-    names[locale] = {};
-    for (const row of await wagoTable("Map", { build: FOREVER_BUILD, locale })) {
-      const map = Number(row.ID);
-      if ((dungeons[map] || worldBosses[map]) && row.MapName_lang) names[locale][map] = row.MapName_lang;
-    }
-  }
+  const names = await mapNames((map) => Boolean(dungeons[map] || worldBosses[map]));
   const text = render(dungeons, names, worldBosses);
   if (process.argv.includes("--check")) {
     const current = (await readFile(OUT, "utf8")).replace(/\r\n/g, "\n");

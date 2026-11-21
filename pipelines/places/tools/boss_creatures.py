@@ -18,7 +18,7 @@ ROOT = Path(__file__).resolve().parents[3]
 sys.path.insert(0, str(ROOT / "pipelines" / "quests" / "tools"))
 import export_compendium as ec  # noqa: E402
 
-text = (ROOT / "addons" / "Spoken_NPCs" / "Data" / "Bosses.lua").read_text(encoding="utf8")
+text = (ROOT / "addons" / "Spoken_Bosses" / "Data" / "Bosses.lua").read_text(encoding="utf8")
 bosses, current = [], None
 for line in text.splitlines():
     head = re.match(r"\t\t\[(\d+)\] = \{", line)

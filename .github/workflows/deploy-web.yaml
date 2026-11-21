@@ -30,6 +30,24 @@ on:
       - "addons/Spoken_Places/Data/**"
       # Its version is read into the bundle, so a report page knows what the latest release is.
       - "addons/Spoken/Spoken.toc"
+      # What the Release button runs on the droplet. A pack's version is on its store page, so
+      # a page changed without a deploy would publish the old one.
+      - "scripts/manager/**"
+      - "scripts/lib/**"
+      - "scripts/audio/**"
+      # Brann, the Discord bot, runs from the release, FAQ included.
+      - "apps/brann/**"
+      - "docs/support/**"
+      - "publishers/**"
+      - "addons/SpokenPlacesAudio/**"
+      - "addons/SpokenReadablesAudio/**"
+      - "addons/SpokenBossesAudio/**"
+      - "pipelines/quests/cli-main.py"
+      - "pipelines/quests/tts_cli/**"
+      - "pipelines/quests/assets/icon/**"
+      - "pipelines/quests/requirements-release.txt"
+      - "addons/Spoken_Quests/Data/Compendium.lua"
+      - "docs/quests/CHANGELOG.md"
       - "deploy/web/**"
       - ".github/workflows/deploy-web.yaml"
   workflow_dispatch:
@@ -39,17 +57,14 @@ on:
 # a push that modifies it, so a freshly cloned or recreated repo needs one such push before
 # dispatch works.
 
-# Never let two deploys interleave a symlink swap. The group is shared with the two frozen
-# workflows on purpose: while they can still be dispatched against the freeze tag, a hotfix
-# to an old site and a deploy of this one must not swap symlinks at the same moment.
-concurrency:
-  group: deploy-web
-  cancel-in-progress: false
-
+# Two jobs, so an approval on the production environment comes after the proof and before the
+# droplet: GitHub can only pause a whole job. build holds no secrets, and ship runs nothing from
+# the repository, only this file and the bundle.
 jobs:
-  deploy:
+  build:
     runs-on: ubuntu-latest
-    environment: production
+    outputs:
+      stamp: ${{ steps.stamp.outputs.stamp }}
 
     # A throwaway database for the build and the smoke test. The droplet's real one is
     # bound to localhost and unreachable from here, which is the point: CI proves the
@@ -185,6 +200,11 @@ jobs:
           # release directory, so without this a deploy has nothing to apply.
           cp -a apps/web/migrations "$R"/migrations
 
+          deploy/web/assemble-release-tools.sh "$R"/release-tools
+
+          test -f "$R"/release-tools/scripts/manager/release-job.mjs
+          test -f "$R"/release-tools/apps/brann/src/index.mjs
+          test -f "$R"/release-tools/docs/support/FAQ.md
           test -f "$R"/apps/web/server.js
           test -f "$R"/apps/web/public/icons/places.png   # public/ survived the copy
           test -L "$R"/apps/web/node_modules/next   # symlink survived the copy
@@ -200,12 +220,22 @@ jobs:
           # build after the tracing root widened pulled in the Python virtualenv and
           # pipelines/quests/.env, which holds the ElevenLabs key and the database
           # password. A release is rsynced to a droplet, so that is a credential leak
-          # rather than merely weight. 150 MB is well clear of the ~75 MB a healthy bundle
+          # rather than merely weight. 150 MB is well clear of the ~90 MB a healthy bundle
           # measures and nowhere near the 200 MB a leak produced.
-          size=$(du -sm "$R" | cut -f1)
-          echo "release is ${size} MB"
+          #
+          # It measures the traced bundle alone. release-tools/ is assembled by hand, not
+          # traced, and grows for its own reasons (Brann's dependencies, the Python vendor
+          # tree), so it has a budget of its own: counted together, a new dependency there
+          # reads as a tracing leak, and a leak can hide behind the room tools leave.
+          size=$(du -sm --exclude=release-tools "$R" | cut -f1)
+          tools=$(du -sm "$R"/release-tools | cut -f1)
+          echo "the bundle is ${size} MB, release-tools ${tools} MB"
           if [ "$size" -gt 150 ]; then
-            echo "::error::the release is ${size} MB. Something is being traced that should not be - check outputFileTracingExcludes in apps/web/next.config.ts, and that no .env came along."
+            echo "::error::the bundle is ${size} MB. Something is being traced that should not be - check outputFileTracingExcludes in apps/web/next.config.ts, and that no .env came along."
+            exit 1
+          fi
+          if [ "$tools" -gt 100 ]; then
+            echo "::error::release-tools is ${tools} MB, past its 100 MB. Check what deploy/web/assemble-release-tools.sh copies and installs, and whether the budget should move."
             exit 1
           fi
           if find "$R" -name ".env*" -o -name "*.venv*" -o -name "pyvenv.cfg" | grep -q .; then
@@ -289,7 +319,49 @@ jobs:
           echo "bundle boots and serves"
 
       - name: Set release name
-        run: echo "STAMP=$(date -u +%Y%m%d-%H%M)-${GITHUB_SHA::7}" >> "$GITHUB_ENV"
+        id: stamp
+        run: echo "stamp=$(date -u +%Y%m%d-%H%M)-${GITHUB_SHA::7}" >> "$GITHUB_OUTPUT"
+
+      # A tar, because upload-artifact drops symlinks and the bundle dies at boot without
+      # node_modules/next. Artifacts of a public repository can be downloaded by anyone, which
+      # the env-file check in "Assemble release" is what makes acceptable.
+      - name: Pack release
+        run: tar -czf release.tar.gz release
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: release
+          path: release.tar.gz
+          if-no-files-found: error
+          compression-level: 0
+          # Long enough to outlast a weekend's wait for approval.
+          retention-days: 7
+
+  ship:
+    needs: build
+    runs-on: ubuntu-latest
+    environment: production
+    # Never let two deploys interleave a symlink swap. The group is shared with the two frozen
+    # workflows on purpose: while they can still be dispatched against the freeze tag, a hotfix
+    # to an old site and a deploy of this one must not swap symlinks at the same moment. It sits
+    # on this job so that builds do not queue behind a deploy waiting for approval.
+    concurrency:
+      group: deploy-web
+      cancel-in-progress: false
+    env:
+      STAMP: ${{ needs.build.outputs.stamp }}
+
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: release
+
+      # Checked here, before anything touches the droplet.
+      - name: Unpack release
+        run: |
+          tar -xzf release.tar.gz
+          test -L release/apps/web/node_modules/next
+          test -f release/apps/web/server.js
 
       # The key goes to a file rather than into an agent so the workflow controls its exact
       # bytes: a secret pasted through a browser commonly loses its trailing newline or
@@ -358,17 +430,21 @@ jobs:
           # the in-CI smoke test against a seeded throwaway database. This step is about
           # whether the release boots and serves on the droplet, not about whether somebody
           # has run a one-time import.
+          #
+          # The script goes to `bash -s` on stdin because ssh hands a command string to the
+          # remote user's LOGIN shell, and that is fish, which cannot parse `code=$(...)`.
+          smoke='set -e
+          port=$1
+          curl -fsS --max-time 10 -o /dev/null "http://127.0.0.1:$port/api/quests/search?q=thrall"
+          code=$(curl -s --max-time 10 -o /tmp/places-smoke -w "%{http_code}" "http://127.0.0.1:$port/api/places/search?state=current")
+          case $code in
+            200) exit 0 ;;
+            503) grep -q corpus_empty /tmp/places-smoke && { echo "  places: not seeded yet, which is expected before the cutover"; exit 0; } ;;
+          esac
+          echo "  places answered $code"; exit 1'
           ok=""
           for i in $(seq 1 10); do
-            if ssh -i ~/.ssh/deploy_key "$TARGET" \
-              "set -e
-               curl -fsS --max-time 10 -o /dev/null 'http://127.0.0.1:$PORT/api/quests/search?q=thrall'
-               code=\$(curl -s --max-time 10 -o /tmp/places-smoke -w '%{http_code}' 'http://127.0.0.1:$PORT/api/places/search?state=current')
-               case \$code in
-                 200) exit 0 ;;
-                 503) grep -q corpus_empty /tmp/places-smoke && { echo '  places: not seeded yet, which is expected before the cutover'; exit 0; } ;;
-               esac
-               echo \"  places answered \$code\"; exit 1"
+            if ssh -i ~/.ssh/deploy_key "$TARGET" bash -s -- "$PORT" <<< "$smoke"
             then ok=1; break; fi
             echo "attempt $i failed, retrying..."
             sleep 3

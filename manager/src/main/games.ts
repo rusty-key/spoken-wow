@@ -6,13 +6,14 @@ import { createHash } from 'node:crypto'
 import fs from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
-import { SUPPORTED_FLAVORS, type Flavor, type GameInstall } from '../shared/types'
+import { FLAVOR_FOLDER_LIST, SUPPORTED_FLAVORS, type Flavor, type GameInstall } from '../shared/types'
 import { canWriteQuick, foldsCase, samePath } from './guard'
+import { t } from './i18n'
 import { loadState, log, updateState } from './state'
 
 // ---------------------------------------------------------------- tables
 
-/** `_classic_beta_` -> `classic_beta`; null for anything that is not a game version Spoken runs on. */
+/** `_forever_` -> `forever`; null for anything that is not a game version Spoken runs on. */
 export function flavorOfFolder(name: string): Flavor | null {
   const lower = name.toLowerCase()
   return SUPPORTED_FLAVORS.find((f) => `_${f}_` === lower) ?? null
@@ -24,7 +25,7 @@ function isFlavorFolderName(name: string): boolean {
 }
 
 const LABELS: Record<Flavor, string> = {
-  classic_beta: 'WoW: Forever',
+  forever: 'WoW: Forever',
   classic_era: 'WoW: Classic Era',
   anniversary: 'WoW: Anniversary'
 }
@@ -33,9 +34,14 @@ export function labelFor(flavor: Flavor): string {
   return LABELS[flavor]
 }
 
+/** Where the ended WoW: Forever beta was installed; the released game is in `_forever_` beside it. */
+const FOREVER_BETA_FOLDER = '_classic_beta_'
+
 /** What to tell a player who picked a game Spoken does not run on. */
 export function notSupportedMessage(folder: string): string {
-  return `Spoken runs on WoW: Forever, Classic Era and Anniversary. ${folder} is not one of them.`
+  // A player who knew _classic_beta_ as Forever would otherwise read this as a contradiction.
+  if (folder.toLowerCase() === FOREVER_BETA_FOLDER) return t('games.betaEnded', { folder })
+  return t('games.notSupported', { folder })
 }
 
 /** First 12 hex digits of sha1 of the root, lower-cased where the file system ignores case (Windows, macOS). */
@@ -69,7 +75,7 @@ export function parseBuildInfo(text: string): Record<string, string>[] {
   return rows
 }
 
-/** `.flavor.info`: a header line, then the product code (`wow_classic_beta`). */
+/** `.flavor.info`: a header line, then the product code (`wow_forever`). */
 export function parseFlavorInfo(text: string): string | undefined {
   const lines = text
     .replace(/^\uFEFF/, '')
@@ -164,7 +170,7 @@ export async function describeFlavorFolder(
 
 function notWowMessage(platform: NodeJS.Platform): string {
   const addOns = platform === 'win32' ? 'Interface\\AddOns' : 'Interface/AddOns'
-  return `This does not look like a World of Warcraft folder. Choose the game folder (the one that holds _classic_beta_, _classic_era_ or _anniversary_), one of those folders, or its ${addOns} folder.`
+  return t('games.notWow', { flavors: FLAVOR_FOLDER_LIST, addOns })
 }
 
 /**
@@ -179,9 +185,9 @@ export async function resolveGamePath(
 ): Promise<{ games: GameInstall[]; error?: string }> {
   const NOT_WOW_MESSAGE = notWowMessage(platform)
   const cleaned = typeof input === 'string' ? input.trim().replace(/^"(.*)"$/, '$1') : ''
-  if (cleaned === '') return { games: [], error: 'Choose a folder first.' }
+  if (cleaned === '') return { games: [], error: t('games.chooseFirst') }
   const abs = path.resolve(cleaned)
-  if (!(await isDir(abs))) return { games: [], error: 'That folder does not exist.' }
+  if (!(await isDir(abs))) return { games: [], error: t('games.notThere') }
 
   const base = path.basename(abs)
   const parent = path.dirname(abs)
@@ -207,7 +213,7 @@ export async function resolveGamePath(
       if (real) candidates.push(path.join(abs, real))
     }
     if (candidates.length === 0) {
-      const other = entries.find((n) => isFlavorFolderName(n))
+      const other = entries.find((n) => n.toLowerCase() === FOREVER_BETA_FOLDER) ?? entries.find((n) => isFlavorFolderName(n))
       return { games: [], error: other ? notSupportedMessage(other) : NOT_WOW_MESSAGE }
     }
   }
@@ -456,15 +462,23 @@ export interface ScanOptions {
 /** Auto-found installs (minus the ones the player removed), then the manual ones. */
 export async function scanGames(dataPath: string, options: ScanOptions = {}): Promise<GameInstall[]> {
   let state = loadState(dataPath)
-  // A game saved by an earlier run that Spoken does not run on is forgotten (nothing on disk is touched).
-  const keep = state.manualGames.filter((p) => flavorOfFolder(path.basename(p)) !== null || !isFlavorFolderName(path.basename(p)))
-  if (keep.length !== state.manualGames.length) {
-    log(`Forgot ${state.manualGames.length - keep.length} saved game folder(s) that Spoken does not run on.`)
+  const platform = options.platform ?? process.platform
+  // A game saved by an earlier run that Spoken does not run on is forgotten (nothing on disk is
+  // touched). A saved Forever beta gives way to the `_forever_` folder beside it, if there is one.
+  const keep: string[] = []
+  for (const p of state.manualGames) {
+    const name = path.basename(p)
+    const beta = name.toLowerCase() === FOREVER_BETA_FOLDER
+    const released = beta ? ((await names(path.dirname(p))) ?? []).find((n) => n.toLowerCase() === '_forever_') : undefined
+    const kept = beta ? released && path.join(path.dirname(p), released) : flavorOfFolder(name) === null && isFlavorFolderName(name) ? undefined : p
+    if (kept && !keep.some((k) => samePath(k, kept, platform))) keep.push(kept)
+  }
+  if (keep.length !== state.manualGames.length || keep.some((p, i) => p !== state.manualGames[i])) {
+    log(`Saved game folders went from ${state.manualGames.length} to ${keep.length}: the ones Spoken does not run on are forgotten, a Forever beta moves to _forever_.`)
     state = updateState(dataPath, (st) => {
       st.manualGames = keep
     })
   }
-  const platform = options.platform ?? process.platform
   const hidden = new Set(state.hiddenGames)
   const found = new Map<string, GameInstall>()
   const candidates = options.autoPaths ?? (await findCandidatePaths({ ...options.discovery, platform }))

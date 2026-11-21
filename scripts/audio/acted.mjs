@@ -2,8 +2,11 @@
 // Build a section's voice-acted overlay pack: every line a voice actor has recorded in one
 // language, and nothing else.
 //
-//   node scripts/audio/acted.mjs [--lang=deDE] [--version=1.0.0] <quests|places|readables>
-//   node scripts/audio/acted.mjs --list [--lang=deDE] <section>   the archive files it reads
+//   node scripts/audio/acted.mjs [--lang=deDE] [--team=<slug>] [--version=1.0.0] <quests|places|readables>
+//   node scripts/audio/acted.mjs --list [--lang=deDE] [--team=<slug>] <section>   the archive files it reads
+//
+// --team names the team whose recordings it reads; without it, the team with the language's plain
+// packs. A team whose packs carry its slug is refused: the overlay's folder has no slug.
 //
 // AN OVERLAY, NOT A PACK. It carries only the recorded lines, and the player prefers it where
 // it has one and falls back to the generated pack for the rest:
@@ -37,9 +40,10 @@ import { basename, dirname, join, posix, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
 import { BASE_LOCALE, CODES } from "../../pipelines/lib/locales.mjs";
+import { scriptTeam } from "../../pipelines/lib/release-team.mjs";
 import { luaString } from "../../pipelines/places/tools/lib/wiki.mjs";
-import { archiveOf } from "../lib/archives.mjs";
-import { actedFolder, audioFamily, languageFolder } from "../lib/packs.mjs";
+import { archiveOf, sourceOf } from "../lib/archives.mjs";
+import { actedFolder, audioFamily, englishFolder } from "../lib/packs.mjs";
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "../..");
 
@@ -213,7 +217,7 @@ function interfaceOf(section) {
   const source =
     section === "quests"
       ? join(ROOT, "pipelines/quests/tts_cli/build.py")
-      : join(ROOT, "addons", languageFolder(section, "all"), `${languageFolder(section, "all")}.toc`);
+      : join(ROOT, "addons", englishFolder(section), `${englishFolder(section)}.toc`);
   // Not anchored: in build.py the line opens a string literal, `TOC_HEADER = """## Interface: …`.
   const found = readFileSync(source, "utf8").match(/## Interface: (.+)$/m);
   if (!found) throw new Error(`no ## Interface line in ${source}`);
@@ -258,14 +262,28 @@ export function toc({ section, lang, version, credits, iface }) {
 // The build
 //------------------------------------------------------------------------------
 
-function live(section, lang) {
+/**
+ * The team whose recordings the overlay of `lang` is built from. Only a team with plain packs: the
+ * overlay's folder carries no slug, so another team's would overwrite it.
+ */
+export function actedTeamId(database, lang, slug = null) {
+  const team = scriptTeam(database, lang, slug);
+  if (team.packName !== "plain") {
+    throw new Error(`${slug}'s packs in ${lang} carry its slug; acted packs are built only for the team with plain packs`);
+  }
+  return team.id;
+}
+
+function live(section, lang, slug) {
   const database = process.env.LOCAL_DB;
   if (!database) throw new Error("LOCAL_DB is not set");
-  const out = execFileSync("psql", [database, "-tA", "-F", "\t", "-v", `source=${section}`, "-v", `lang=${lang}`, "-f", "-"], {
-    input: `select distinct on (r."file") r."file", r."archiveFile", r."format", r."durationSec",
-                   r."credit", r."createdAt", coalesce(r."lineId", '')
+  const team = actedTeamId(database, lang, slug);
+  const out = execFileSync("psql", [database, "-tA", "-F", "\t", "-v", `source=${section}`, "-v", `lang=${lang}`, "-v", `team=${team}`, "-f", "-"], {
+    input: `select distinct on (r."file") r."file", coalesce(r."archiveFile", ''), r."format", r."durationSec",
+                   r."credit", r."createdAt", coalesce(r."lineId", ''), coalesce(r."sha256", '')
               from "recording" r
              where r."source" = :'source' and r."lang" = :'lang' and r."deletedAt" is null
+               and r."teamId" = :'team'::uuid
              order by r."file", r."version" desc`,
     encoding: "utf8",
     maxBuffer: 64 * 1024 * 1024,
@@ -274,8 +292,9 @@ function live(section, lang) {
     .split("\n")
     .filter(Boolean)
     .map((row) => {
-      const [file, archiveFile, format, durationSec, credit, createdAt, lineId] = row.split("\t");
-      return { file, archiveFile, format, durationSec: Number(durationSec), credit, createdAt, lineId };
+      const [file, archiveFile, format, durationSec, credit, createdAt, lineId, sha256] = row.split("\t");
+      const archived = sourceOf("recordings", sha256, archiveFile ? posix.join(recordedDir(section, lang, file), archiveFile) : "");
+      return { file, archived, format, durationSec: Number(durationSec), credit, createdAt, lineId };
     });
 }
 
@@ -324,19 +343,20 @@ async function main(args) {
   const section = args.find((arg) => !arg.startsWith("--"));
   const lang = args.find((arg) => arg.startsWith("--lang="))?.slice(7) || BASE_LOCALE;
   const version = args.find((arg) => arg.startsWith("--version="))?.slice(10) || "1.0.0";
+  const team = args.find((arg) => arg.startsWith("--team="))?.slice(7) || null;
   if (!TITLES[section] || !CODES.includes(lang) || !/^\d+\.\d+\.\d+$/.test(version)) {
-    throw new Error("usage: acted.mjs [--list] [--lang=<code>] [--version=x.y.z] <quests|places|readables>");
+    throw new Error("usage: acted.mjs [--list] [--lang=<code>] [--team=<slug>] [--version=x.y.z] <quests|places|readables>");
   }
 
-  const clips = live(section, lang);
+  const clips = live(section, lang, team);
   if (list) {
-    for (const clip of clips) console.log(posix.join(recordedDir(section, lang, clip.file), clip.archiveFile));
+    for (const clip of clips) console.log(clip.archived);
     return;
   }
   if (clips.length === 0) throw new Error(`no live ${section} recordings in ${lang}; nothing to build`);
 
   const missing = clips
-    .map((clip) => join(archiveOf(section), recordedDir(section, lang, clip.file), clip.archiveFile))
+    .map((clip) => join(archiveOf(section), clip.archived))
     .filter((path) => !existsSync(path));
   if (missing.length) {
     console.error(`${missing.length} live recordings are not on this machine, e.g.:`);
@@ -354,7 +374,7 @@ async function main(args) {
       section,
       clips.map((clip) => [
         clip,
-        join(archiveOf(section), recordedDir(section, lang, clip.file), clip.archiveFile),
+        join(archiveOf(section), clip.archived),
         join(out, packPath(section, clip.file)),
       ]),
     );

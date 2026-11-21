@@ -12,7 +12,7 @@ local Expect, Failures = H.Expecter(print)
 local env, quests = H.Fresh(stub, SPOKEN)
 local Q = env.SoundQueue
 local rec = H.Recorder(env)
-local stories = env.Sources:Register("bosses", { title = "Bosses", addon = "Spoken_NPCs", order = 5, textOnly = true })
+local stories = env.Sources:Register("bosses", { title = "Bosses", addon = "Spoken_Bosses", order = 5, textOnly = true })
 
 local function Story(fields)
     local clip = H.Clip(fields)
@@ -39,7 +39,7 @@ Expect("...and plays once its length and the gap are over", world.played[1], b.p
 env, quests = H.Fresh(stub, SPOKEN)
 Q = env.SoundQueue
 rec = H.Recorder(env)
-stories = env.Sources:Register("bosses", { title = "Bosses", addon = "Spoken_NPCs", order = 5, textOnly = true })
+stories = env.Sources:Register("bosses", { title = "Bosses", addon = "Spoken_Bosses", order = 5, textOnly = true })
 local c = Story()
 stories:Enqueue(c)
 Q:PauseQueue()
@@ -53,7 +53,7 @@ Expect("it can be taken out of the queue while it shows", Q:IsEmpty(), true)
 
 ---------------------------------------------------------------- sound off
 env, quests = H.Fresh(stub, SPOKEN)
-stories = env.Sources:Register("bosses", { title = "Bosses", addon = "Spoken_NPCs", order = 5, textOnly = true })
+stories = env.Sources:Register("bosses", { title = "Bosses", addon = "Spoken_Bosses", order = 5, textOnly = true })
 world.cvars.Sound_EnableAllSound = "0"
 local ok, why = quests:Enqueue(H.Clip())
 Expect("with all sound off a voiced line is refused", ok == nil and why ~= nil, true)
@@ -62,7 +62,7 @@ world.cvars.Sound_EnableAllSound = nil
 
 ---------------------------------------------------------------- after a voiced line
 env, quests = H.Fresh(stub, SPOKEN)
-stories = env.Sources:Register("bosses", { title = "Bosses", addon = "Spoken_NPCs", order = 5, textOnly = true })
+stories = env.Sources:Register("bosses", { title = "Bosses", addon = "Spoken_Bosses", order = 5, textOnly = true })
 env.Addon.db.profile.Audio.AutoToggleDialog = true
 local voiced = H.Clip()
 voiced.cutsGameDialogue = true
@@ -75,7 +75,7 @@ env.Addon.db.profile.Audio.AutoToggleDialog = false
 
 ---------------------------------------------------------------- whether the narrator would show it
 env = H.Fresh(stub, SPOKEN)
-env.Sources:Register("bosses", { title = "Bosses", addon = "Spoken_NPCs", order = 5, textOnly = true })
+env.Sources:Register("bosses", { title = "Bosses", addon = "Spoken_Bosses", order = 5, textOnly = true })
 local words = env.Addon.db.profile.Transcript
 Expect("the narrator shows a source's lines by default", _G.Spoken:ShowsNarratorFor("bosses"), true)
 words.WordsOff.bosses = true

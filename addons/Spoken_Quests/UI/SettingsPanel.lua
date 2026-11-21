@@ -58,8 +58,12 @@ function SettingsPanel:Setup()
     local followup = layout:Checkbox(L.OPT_PANEL_FOLLOWUP, nil,
         function() return audio().FollowupLines ~= false end,
         function(value) audio().FollowupLines = value end)
+    local progress = layout:Checkbox(L.OPT_PANEL_PROGRESS, nil,
+        function() return Addon:IsProgressTextOn() end,
+        function(value) Addon:SetProgressText(value) end)
     layout:Outdent()
     layout:Requires(followup, function() return Addon:IsAutoplayOn() end, L.REASON_AUTOPLAY)
+    layout:Requires(progress, function() return Addon:IsAutoplayOn() end, L.REASON_AUTOPLAY)
     local stopOnClose = layout:Checkbox(L.OPT_PANEL_STOP_ON_CLOSE, nil,
         function() return audio().StopAudioOnDisengage end,
         function(value) audio().StopAudioOnDisengage = value end)
@@ -76,16 +80,28 @@ function SettingsPanel:Setup()
         function(value) audio().ReadAfterClose = value end),
         function() return Addon:IsAutoplayOn() end, L.REASON_AUTOPLAY)
 
-    -- Only where the client has the objective tracker the button is drawn on.
+    local function HasQuestLog()
+        return _G.QuestLogFrame ~= nil or QuestLogQuests_Update ~= nil
+    end
+    local function HasObjectiveTracker()
+        return _G.QuestObjectiveTracker ~= nil or _G.CampaignQuestObjectiveTracker ~= nil
+            or QuestWatch_Update ~= nil
+    end
     layout:Section(L.OPT_SECTION_TRACKER)
-    local trackerPlay = layout:Checkbox(L.OPT_TRACKER_PLAY, nil,
-        function() return Addon.db.profile.TrackerPlayButton end,
+    local questLogPlay = layout:Checkbox(L.OPT_TRACKER_QUEST_LOG, nil,
+        function() return Addon.db.profile.QuestLogPlayButton ~= false end,
+        function(value)
+            Addon.db.profile.QuestLogPlayButton = value
+            QuestOverlayUI:RefreshQuestLog()
+        end)
+    layout:ShowWhen(questLogPlay, HasQuestLog)
+    local trackerPlay = layout:Checkbox(L.OPT_TRACKER_OBJECTIVE, nil,
+        function() return Addon.db.profile.TrackerPlayButton ~= false end,
         function(value)
             Addon.db.profile.TrackerPlayButton = value
             QuestOverlayUI.UpdateTrackerButtons()
         end)
-    layout:ShowWhen(trackerPlay, function() return QuestOverlayUI.UpdateTrackerButtons ~= nil
-        and _G.QuestObjectiveTracker ~= nil end)
+    layout:ShowWhen(trackerPlay, HasObjectiveTracker)
 
     -- Only with DialogueUI installed, on Spoken's page.
     if DialogueUIBridge and DialogueUIBridge.Problem and IsAddOnLoaded and IsAddOnLoaded("DialogueUI") then
@@ -99,6 +115,7 @@ function SettingsPanel:Setup()
     -- a link, so the button hands over one to copy.
     layout:Section(W.PART_VOICE)
     local ALL = "SpokenQuestsAudioAll"
+    local SIDE_LABELS = { alliance = "OPT_PACK_ALLIANCE", horde = "OPT_PACK_HORDE", shared = "OPT_PACK_SHARED" }
     local function Present(name)
         for _, module in DataModules:GetPresentModules() do
             if module.AddonName == name then return module end
@@ -138,11 +155,22 @@ function SettingsPanel:Setup()
             if module.AddonName ~= ALL and Present(ALL) then return "off", L.OPT_PACK_INCLUDED end
         end, W.MODULE_DOWNLOAD, function() ReportButton:ShowAddress(module.URL) end)
     end
-    for _, locale in ipairs(Language.LOCALES) do
-        local folder, url = Spoken:VoicePack("quests", locale.code)
-        if folder then
-            local code = locale.code
-            layout:ShowWhen(PackRow({ AddonName = folder, URL = url }, LanguageName(code)),
+    -- The built-in languages, then those an installed pack declares. Only a built-in language has
+    -- packs to get, so a voice chosen before its pack went needs no row of its own.
+    local codes, seen = {}, {}
+    local function Add(code)
+        if code and not seen[code] then table.insert(codes, code); seen[code] = true end
+    end
+    for _, locale in ipairs(Spoken:KnownLanguages()) do Add(locale.code) end
+    for _, code in ipairs(codes) do
+        for _, pack in ipairs(Spoken:QuestsVoicePacks(code) or {}) do
+            local folder = pack.folder
+            local side = pack.side == "gossip" and L.OPT_PACK_GOSSIP
+                or string.match(L[SIDE_LABELS[pack.side]], "%((.*)%)$")
+            -- "Español (América Latina) (Alianza)" does not fit a row, so the region is its code.
+            local name, regions = string.gsub(LanguageName(code), "%s*%b()", "")
+            if regions > 0 then name = name .. " " .. string.sub(code, 3) end
+            layout:ShowWhen(PackRow({ AddonName = folder, URL = pack.url }, format("%s (%s)", name, side)),
                 function() return Wanted(code, folder) end)
         end
     end
@@ -183,11 +211,11 @@ function SettingsPanel:Setup()
         end, nil, W.OPT_RESET_ALL_TIP)
     end
     -- Switched off, the module is off: everything on its page greys out but its own switch. Read
-    -- Automatically, Stop When Window Closes and NPC Voice Before Reading cover the Gossip window
-    -- too, so they stay live while either part is on.
+    -- Automatically and NPC Voice Before Reading cover the Gossip window too, so they stay live
+    -- while either part is on. Stop When Window Closes applies only to quest windows.
     local function AnyPartOn() return Addon:IsPartOn("quests") or Addon:IsPartOn("gossip") end
     layout:Requires(autoplay, AnyPartOn, W.REASON_PART_OFF)
-    layout:Requires(stopOnClose, AnyPartOn, W.REASON_PART_OFF)
+    layout:Requires(stopOnClose, function() return Addon:IsPartOn("quests") end, W.REASON_PART_OFF)
     layout:Requires(greetingFirst, AnyPartOn, W.REASON_PART_OFF)
     layout:RequiresAll(PartOn, W.REASON_PART_OFF, switch, autoplay, stopOnClose, greetingFirst)
 

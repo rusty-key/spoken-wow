@@ -24,8 +24,8 @@
  */
 import "server-only";
 
-import { query } from "@/lib/db";
-import { memoByLang } from "@/lib/memo";
+import { query, queryIn } from "@/lib/db";
+import { memoByTeamLang } from "@/lib/memo";
 import { isSex } from "@/lib/npc/npc";
 import { splitBody } from "@/lib/npc/store";
 import { nameStamp, versionStamp } from "@/lib/stamp";
@@ -33,7 +33,9 @@ import { npcKey, type Corpus, type CorpusLine } from "@/lib/corpus";
 import { BASE_LANG, type Lang } from "@/lib/lang";
 import { baseLineId, momentOf, momentSql, variantFileName, variantLineId } from "@/lib/contributions/naming";
 import { newVoiceName, type Roster } from "@/lib/voices/roster";
+import { teamOrEnglish } from "@/lib/teams/store";
 import { loadRoster, ROSTER_STAMP } from "@/lib/voices/roster-store";
+import { markClients, type LineClientFacts } from "@/lib/quests/line-client";
 
 
 /**
@@ -83,7 +85,9 @@ async function stampOf(lang: Lang): Promise<string> {
   // also reads English's rows for display, and its own names.
   const english = `${versionStamp("quest_line", `"lang" = '${BASE_LANG}'`)} || '/' || ${SPEAKER_STAMP} || '/' ||
     ${versionStamp("entity_name", `"lang" = '${BASE_LANG}' and "kind" in ('creature', 'gameobject', 'item')`)}`;
-  const rows = await query<{ stamp: string }>(
+  // As the roster's team, whose voices and assignments ROSTER_STAMP reads.
+  const rows = await queryIn<{ stamp: string }>(
+    await teamOrEnglish(lang),
     lang === BASE_LANG
       ? `select ${english} as "stamp"`
       : `select ${english} || '|' || ${versionStamp("quest_line", `"lang" = $1`)} || '/' ||
@@ -149,16 +153,6 @@ const SPEAKERS = speakersBy(`s."lineId"`);
  */
 const MOMENT_SPEAKERS = speakersBy(momentSql(`s."lineId"`));
 
-/**
- * Every NPC speaks a line in its own voice. Where NPCs of different voices share one, the file
- * already made keeps the voice it was made in -- the one its speakers were written with -- and
- * each other voice is a line of its own (naming.ts's variantLineId): the same words, in a file
- * named after the voice. An NPC whose voice changes moves to its new voice's line, which has no
- * audio until somebody generates it; one with no flavor yet moves to a line nobody can voice
- * until it gets one. Progress text is never voiced, so it is never split.
- */
-const OWN_VOICE_SOURCES: ReadonlySet<string> = new Set(["accept", "complete", "gossip", "followup"]);
-
 type Speaking = {
   lineId: string;
   variant: number;
@@ -166,7 +160,6 @@ type Speaking = {
   npcId: number;
   npcSex: number | null;
   npcBody: string | null;
-  source: string;
   race: string;
   gender: string;
   flavor: string | null;
@@ -176,26 +169,32 @@ type Speaking = {
   skipReason: string | null;
 };
 
+/**
+ * Every NPC speaks a line in its own voice. Where NPCs of different voices share one, the file
+ * already made keeps the voice it was made in -- the one its speakers were written with -- and
+ * each other voice is a line of its own (naming.ts's variantLineId): the same words, in a file
+ * named after the voice. An NPC whose voice changes moves to its new voice's line, which has no
+ * audio until somebody generates it; one with no flavor yet moves to a line nobody can voice
+ * until it gets one.
+ */
 function voiced<T extends Speaking>(rows: T[], roster: Roster): (T & { voice: string })[] {
   const written = new Map<string, string>();
   const lineOf = (row: T) => `${row.lineId}|${row.variant}`;
   for (const row of rows) if (!written.has(lineOf(row))) written.set(lineOf(row), row.writtenVoice);
 
-  // Bodies of a split NPC answered with one voice speak one line, listed once, and a line
-  // nobody voices (progress text) is listed once whatever the bodies' voices.
+  // Bodies of a split NPC answered with one voice speak one line, listed once.
   const seen = new Set<string>();
   return rows.map((row) => {
     // An NPC with no type has no voice to move to: its file stays, and nothing can make it again
     // until somebody says who the NPC is.
     if (!row.race) {
-      const silenced = OWN_VOICE_SOURCES.has(row.source) && row.generatable;
-      return { ...row, voice: row.writtenVoice, ...(silenced ? { generatable: false, skipReason: "no-voice" } : {}) };
+      return { ...row, voice: row.writtenVoice, ...(row.generatable ? { generatable: false, skipReason: "no-voice" } : {}) };
     }
     // A combination no voice reads yet still gets its own line, named as its voice would be.
     const voice =
       roster.voiceFor(row.race, row.gender || null, row.flavor) ??
       newVoiceName(row.race, row.gender, row.flavor);
-    if (!OWN_VOICE_SOURCES.has(row.source) || voice === written.get(lineOf(row))) return { ...row, voice };
+    if (voice === written.get(lineOf(row))) return { ...row, voice };
     return {
       ...row,
       voice,
@@ -205,7 +204,7 @@ function voiced<T extends Speaking>(rows: T[], roster: Roster): (T & { voice: st
     };
   }).filter((row) => {
     if (row.npcSex === null) return true;
-    const key = `${lineOf(row)}|${row.npcType}:${row.npcId}|${OWN_VOICE_SOURCES.has(row.source) ? row.voice : ""}`;
+    const key = `${lineOf(row)}|${row.npcType}:${row.npcId}|${row.voice}`;
     if (seen.has(key)) return false;
     seen.add(key);
     return true;
@@ -262,7 +261,7 @@ async function build(lang: Lang): Promise<CorpusLine[]> {
 
   if (rows.length === 0) throw new CorpusEmpty(lang);
 
-  return withSoleSpeakers(voiced(rows, await loadRoster()).map(({ writtenVoice: _written, npcSex, npcBody, ...row }) => ({
+  return withSoleSpeakers(voiced(rows, await loadRoster(lang)).map(({ writtenVoice: _written, npcSex, npcBody, ...row }) => ({
     ...row,
     ...(isSex(npcSex) && npcBody ? { npcSex, npcBody } : {}),
     npcType: row.npcType as CorpusLine["npcType"],
@@ -352,7 +351,7 @@ async function buildTranslated(lang: Lang): Promise<CorpusLine[]> {
 
   if (rows.length === 0) throw new CorpusEmpty();
 
-  return withSoleSpeakers(voiced(rows, await loadRoster()).map((raw) => {
+  return withSoleSpeakers(voiced(rows, await loadRoster(lang)).map((raw) => {
     const { textMissing, titleMissing, nameMissing, native, englishTitle, englishName, writtenVoice: _written, npcSex, npcBody, ...row } = raw;
     return {
       ...row,
@@ -402,7 +401,31 @@ const indexKey = Symbol.for("spoken.quests-line-index.by-lang");
  */
 export async function corpus(lang: Lang = BASE_LANG): Promise<Corpus> {
   const stamp = await stampOf(lang);
-  return memoByLang(cacheKey, lang, stamp, async () => ({ lines: await build(lang) }));
+  return memoByTeamLang(cacheKey, lang, stamp, async () => {
+    const [lines, facts] = await Promise.all([build(lang), lineClientFacts()]);
+    return { lines: markClients(lines, facts) };
+  });
+}
+
+/**
+ * What lib/quests/line-client.ts decides a row's client by. Both move only with quest_line and
+ * its speakers, which the stamp covers: a contribution's build never changes, and the extract's
+ * rows are English, whose quest_line every language's stamp reads.
+ */
+async function lineClientFacts(): Promise<LineClientFacts> {
+  const [quests, contributions] = await Promise.all([
+    query<{ questId: number }>(
+      `select distinct "questId" from "quest_line" where "origin" = 'extracted' and "questId" is not null`,
+    ),
+    query<{ id: number; build: string }>(
+      `select c."id", c."build" from "contribution" c
+        where c."id" in (select "contributionId" from "quest_line_speaker" where "contributionId" is not null)`,
+    ),
+  ]);
+  return {
+    extractedQuests: new Set(quests.map((row) => row.questId)),
+    contributionBuilds: new Map(contributions.map((row) => [row.id, row.build])),
+  };
 }
 
 /**
@@ -415,7 +438,7 @@ export async function corpus(lang: Lang = BASE_LANG): Promise<Corpus> {
  */
 export async function lineIndex(lang: Lang = BASE_LANG): Promise<Map<string, CorpusLine[]>> {
   const lines = (await corpus(lang)).lines;
-  return memoByLang(indexKey, lang, lines, () => {
+  return memoByTeamLang(indexKey, lang, lines, () => {
     const index = new Map<string, CorpusLine[]>();
     for (const line of lines) {
       const group = index.get(line.lineId);
@@ -442,9 +465,10 @@ export async function lineIndex(lang: Lang = BASE_LANG): Promise<Map<string, Cor
  */
 export async function defaultFlavorFor(race: string, gender: string): Promise<string | null> {
   // A race-gender the corpus has no flavored line for yet falls back to the roster's first.
+  // Flavors are every team's, and the answer is for the npc table, which is every language's.
   return (
     (await flavorDefaults()).get(`${race}-${gender}`) ??
-    (await loadRoster()).flavorsOf(race, gender)[0] ??
+    (await loadRoster(BASE_LANG)).flavorsOf(race, gender)[0] ??
     null
   );
 }

@@ -77,16 +77,48 @@
   "source": "Efficient Games: creature_details 256273 Sairuh Maryla, display 139544, the id beside Kaigy Maryla's 256275. Not in the database; no encounter record."
  },
  {
+  "map": 329,
+  "key": "balnazzar",
+  "display": 10691,
+  "source": "Leatrix Maps' Stratholme floor pin uses display 10691 for Balnazzar's dreadlord form; use that form instead of DBM's 10545 Grand Crusader Dathrohan disguise."
+ },
+ {
+  "map": 2856,
+  "key": "balnazzar",
+  "display": 10545,
+  "source": "DBM-Dungeons' DBM-Party-Vanilla/Shared/Stratholme/Balnazzar.lua sets Balnazzar's model to display 10545; use the same model for the Scarlet Enclave encounter."
+ },
+ {
+  "map": 533,
+  "key": "the four horsemen",
+  "display": 10729,
+  "source": "DBM-Raids-Vanilla/VanillaNaxx/MilitaryQuarter/Horsemen.lua sets the Four Horsemen's model to display 10729."
+ },
+ {
   "map": 36,
   "key": "sneed",
   "display": 7125,
   "source": "Sneed himself (643's model) rather than his Shredder (1269), as Efficient Games' encounter 2742 and the Adventure Guide show him. The creature stays the spawned Shredder 642."
  },
  {
+  "map": 230,
+  "key": "ribbly screwspigot",
+  "creature": 9543,
+  "display": 8667,
+  "source": "ClassicDB lists Ribbly Screwspigot's Classic model as display 8667; the creature is 9543."
+ },
+ {
+  "map": 230,
+  "key": "plugger spazzring",
+  "creature": 9499,
+  "display": 8652,
+  "source": "The Classic Encounter Journal lists Plugger Spazzring with display 8652 (EncounterCreatureId 383, encounter 241). The creature remains 9499; the database template model 13780 is not the encounter portrait."
+ },
+ {
   "map": 90,
   "key": "grubbis",
-  "display": 144378,
-  "source": "Efficient Games: every Forever build records Grubbis (7361) with display 144378, not the database's 6533."
+  "display": 6533,
+  "source": "Classic's CreatureDisplayInfo uses display 6533 for Grubbis (7361); the Forever-only display 144378 is not present in Classic Era."
  },
  {
   "map": 289,

@@ -5,8 +5,8 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 
 import {
-  actedFolder,
-  changelogSection, findPack, isLanguageHeading, managerFolders, loadPacks, MIN_SPOKEN, packsFor,
+  actedFolder, derivedFolders, describeFolder, englishFolder, LEGACY_PACK_ID, PACK_ID, teamFolder,
+  changelogSection, findPack, isLanguageHeading, managerFolders, loadPacks, metaFor, MIN_SPOKEN, packsFor,
 } from "./packs.mjs";
 
 // A publishers/ tree in a temp directory, one page per entry: [group, file, frontmatter].
@@ -108,20 +108,29 @@ test("changelogSection takes exactly the language pack's section", () => {
   assert.throws(() => changelogSection(CHANGELOG + "\n## 2.1.0 — readables-audio-esMX\n", "2.1.0", "readables-audio-esMX"), /two/);
 });
 
-test("a language may ship its quests as one pack, with no suffix", () => {
+test("a language's all is a bundle of its four split packs' folders, like English's", () => {
   const allFr = ["quests", "fr.md", { section: "quests", lang: "frFR", pack: "all",
     version: "2.0.0", release: "quests-audio-frFR", slug: "spoken-quests-audio-frfr",
-    name: "Spoken Quests Audio: French" }];
-  const fr = findPack("quests", "frFR", "all", loadPacks(tree([allFr])));
-  assert.equal(fr.folder, "SpokenQuestsAudio_frFR");
+    name: "Spoken Quests Audio: French", manager: "true" }];
+  const packs = loadPacks(tree([allFr]));
+  const fr = findPack("quests", "frFR", "all", packs);
+  assert.equal(fr.zip, "SpokenQuestsAudioAll_frFR-2.0.0.zip");
   assert.equal(fr.tag, "quests-audio-frFR/v2.0.0");
   assert.equal(fr.curseforge, null);
+  assert.deepEqual(managerFolders(packs).map((p) => p.folder), [
+    "SpokenQuestsAudioAlliance_frFR", "SpokenQuestsAudioHorde_frFR", "SpokenQuestsAudioShared_frFR", "SpokenQuestsAudioGossip_frFR",
+  ]);
+});
 
+test("every language has the structure English has", () => {
+  const packs = loadPacks();
+  const shape = (lang) => packsFor(null, lang, packs).filter((p) => p.section === "quests").map((p) => `${p.pack} ${p.github} ${p.manager}`).sort();
+  for (const lang of new Set(packs.map((p) => p.lang))) assert.deepEqual(shape(lang), shape("enUS"), lang);
 });
 
 test("English's all is a bundle of the four split packs' folders, zipped clear of the meta addon's name", () => {
   const allEn = ["quests", "en.md", { section: "quests", lang: "enUS", pack: "all",
-    curseforge: "1660196", release: "quests-audio", slug: "spoken-quests-audio-all",
+    curseforge: "1660196", release: "quests-audio", slug: "spoken-audio-quests-all",
     name: "Spoken Quests Audio: All" }];
   const all = findPack("quests", "enUS", "all", loadPacks(tree([allEn])));
   assert.equal(all.folder, "SpokenQuestsAudioAll");
@@ -149,33 +158,6 @@ test("an acted overlay is the section's English folder plus Acted, and the langu
   assert.throws(() => actedFolder("places", "xxYY"));
 });
 
-const itQuests = (pack, extra = {}) => ["quests", `${pack}.md`, { section: "quests", lang: "itIT",
-  pack, version: "0.0.2", curseforge: "1", release: `quests-audio-${pack}-itIT`,
-  slug: `italian-spoken-quests-${pack}`, name: `Italian ${pack}`, github: "false", ...extra }];
-
-test("a Shared pack holding every quest builds as the quests pack, and its sides are dormant", () => {
-  const packs = loadPacks(tree([itQuests("shared", { holds: "quests" }),
-    itQuests("alliance", { dormant: "true" }), itQuests("horde", { dormant: "true" }), itQuests("gossip")]));
-  const shared = findPack("quests", "itIT", "shared", packs);
-  assert.equal(shared.build, "quests");
-  assert.equal(shared.folder, "SpokenQuestsAudioShared_itIT");
-  assert.equal(findPack("quests", "itIT", "gossip", packs).build, "gossip");
-  assert.equal(findPack("quests", "itIT", "horde", packs).dormant, true);
-});
-
-test("a dormant side needs a Shared pack holding every quest, and the other way round", () => {
-  assert.throws(() => loadPacks(tree([itQuests("shared", { holds: "quests" }), itQuests("horde")])),
-    /must be dormant/);
-  assert.throws(() => loadPacks(tree([itQuests("shared"), itQuests("horde", { dormant: "true" })])),
-    /must say holds: quests/);
-});
-
-test("only a language's shared pack holds quests, and only its sides are dormant", () => {
-  assert.throws(() => loadPacks(tree([itQuests("gossip", { holds: "quests" })])), /holds: quests/);
-  assert.throws(() => loadPacks(tree([itQuests("gossip", { dormant: "true" })])), /dormant: true/);
-  assert.throws(() => loadPacks(tree([["quests", "h.md", { ...hordeEn[2], dormant: "true" }]])), /dormant: true/);
-});
-
 test("manager: true puts a pack's folders on the manager channel", () => {
   const onChannel = ["places", "b.md", { ...placesMx[2], manager: "true" }];
   assert.deepEqual(managerFolders(loadPacks(tree([placesEn, onChannel]))),
@@ -195,5 +177,83 @@ test("manager may only be true", () => {
 });
 
 test("every section names the oldest Spoken its packs need", () => {
-  for (const section of ["quests", "places", "readables"]) assert.match(MIN_SPOKEN[section], /^\d+\.\d+\.\d+$/);
+  for (const section of ["quests", "places", "readables", "bosses"]) assert.match(MIN_SPOKEN[section], /^\d+\.\d+\.\d+$/);
+});
+
+test("the bosses pack is SpokenBossesAudio, and a language's is that plus its code", () => {
+  assert.equal(englishFolder("bosses"), "SpokenBossesAudio");
+  const en = ["bosses", "a.md", { section: "bosses", lang: "enUS", release: "bosses-audio",
+    slug: "spoken-audio-bosses", name: "Spoken Audio: Bosses", manager: "true" }];
+  const de = ["bosses", "b.md", { section: "bosses", lang: "deDE", version: "1.0.0",
+    release: "bosses-audio-deDE", slug: "spoken-german-audio-bosses", name: "Spoken German Audio: Bosses" }];
+  const packs = loadPacks(tree([en, de]));
+  assert.equal(findPack("bosses", "enUS", null, packs).folder, "SpokenBossesAudio");
+  const german = findPack("bosses", "deDE", null, packs);
+  assert.equal(german.folder, "SpokenBossesAudio_deDE");
+  assert.equal(german.tag, "bosses-audio-deDE/v1.0.0");
+  assert.deepEqual(managerFolders(packs), [{ folder: "SpokenBossesAudio", section: "bosses", lang: "enUS" }]);
+});
+
+test("the English bosses pack is its own CurseForge project, apart from the places pack", () => {
+  const packs = loadPacks();
+  const bosses = findPack("bosses", "enUS", null, packs);
+  assert.equal(bosses.curseforge, "1780747");
+  assert.notEqual(bosses.curseforge, findPack("places", "enUS", null, packs).curseforge);
+});
+
+test("inMeta: false keeps a pack on CurseForge out of its language's meta addon, and nothing else is accepted", () => {
+  const pack = (key, extra = {}) => ["quests", `${key}.md`, { section: "quests", lang: "koKR", pack: key,
+    version: "0.0.2", curseforge: "1", release: `quests-audio-${key}-koKR`,
+    slug: `spoken-korean-audio-quests-${key}`, name: key, ...extra }];
+  const meta = ["spoken", "all-kokr.md", { curseforge: "2", lang: "koKR", version: "1.1.0",
+    slug: "spoken-korean", name: "Spoken: Korean" }];
+  const dir = tree([pack("shared"), pack("horde", { inMeta: "false" }), meta]);
+  assert.deepEqual(metaFor("koKR", loadPacks(dir), dir).dependencies,
+    ["spoken", "spoken-korean-audio-quests-shared"]);
+  assert.equal(findPack("quests", "koKR", "horde", loadPacks(dir)).curseforge, "1");
+  assert.throws(() => loadPacks(tree([pack("horde", { inMeta: "true" })])), /inMeta may only be false/);
+});
+
+test("teamFolder suffixes English's folder with the language, then the team's slug", () => {
+  assert.equal(teamFolder("SpokenPlacesAudio", "deDE", "stimmen"), "SpokenPlacesAudio_deDE_stimmen");
+  assert.equal(teamFolder("SpokenPlacesAudio", "jaJP", null), "SpokenPlacesAudio_jaJP");
+  assert.equal(teamFolder("SpokenPlacesAudio", "enUS", null), "SpokenPlacesAudio");
+});
+
+test("teamFolder refuses a slug or a code of the wrong shape", () => {
+  assert.throws(() => teamFolder("SpokenPlacesAudio", "deDE", "Stimmen"), /slug/);
+  assert.throws(() => teamFolder("SpokenPlacesAudio", "de", null), /language/);
+  assert.throws(() => teamFolder("SpokenPlacesAudio", "deDE_x", null), /language/);
+});
+
+test("derivedFolders gives English's split quests folders for a new language", () => {
+  assert.deepEqual(derivedFolders("quests", "jaJP", null), ["Alliance", "Horde", "Shared", "Gossip"].map((side) => ({
+    folder: `SpokenQuestsAudio${side}_jaJP`, section: "quests", lang: "jaJP", english: `SpokenQuestsAudio${side}`,
+  })));
+  assert.deepEqual(derivedFolders("places", "deDE", "stimmen"),
+    [{ folder: "SpokenPlacesAudio_deDE_stimmen", section: "places", lang: "deDE", english: "SpokenPlacesAudio" }]);
+});
+
+test("every folder the pages give today is unchanged and a valid id; a suffixed one is not legacy", () => {
+  for (const pack of loadPacks()) {
+    assert.equal(pack.folder, teamFolder(englishFolder(pack.section, pack.pack), pack.lang, null));
+  }
+  for (const { folder } of managerFolders()) {
+    assert.match(folder, PACK_ID);
+    assert.match(folder, LEGACY_PACK_ID);
+  }
+  assert.match("SpokenPlacesAudio_deDE_stimmen", PACK_ID);
+  assert.doesNotMatch("SpokenPlacesAudio_deDE_stimmen", LEGACY_PACK_ID);
+  assert.doesNotMatch("SpokenPlacesAudio_deDE_Stimmen", PACK_ID);
+});
+
+test("describeFolder reads a folder's section, side, language and slug back", () => {
+  assert.deepEqual(describeFolder("SpokenPlacesAudio_deDE_stimmen"), { section: "places", pack: null, lang: "deDE", slug: "stimmen" });
+  assert.deepEqual(describeFolder("SpokenQuestsAudioHorde_jaJP"), { section: "quests", pack: "horde", lang: "jaJP", slug: null });
+  assert.deepEqual(describeFolder("SpokenBossesAudio"), { section: "bosses", pack: null, lang: "enUS", slug: null });
+  assert.equal(describeFolder("SpokenPlacesAudioActed_deDE"), null);
+  assert.equal(describeFolder("SpokenQuestsAudio"), null);
+  for (const { folder, section, lang } of managerFolders()) {
+    assert.deepEqual({ ...describeFolder(folder), pack: undefined }, { section, pack: undefined, lang, slug: null });
+  }
 });

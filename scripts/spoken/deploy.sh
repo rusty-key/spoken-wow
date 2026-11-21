@@ -3,7 +3,7 @@
 # Spoken's zip carries (scripts/spoken/package.sh), each symlinked to its source here, so an
 # edit is live after a /reload.
 #
-#   ./scripts/spoken/deploy.sh                    # the Forever beta
+#   ./scripts/spoken/deploy.sh                    # Forever
 #   CLIENT=era ./scripts/spoken/deploy.sh         # era, anniversary or forever
 #   ./scripts/spoken/deploy.sh --status           # what every installed client has
 #
@@ -20,13 +20,13 @@ REPO="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 WOW="/Applications/World of Warcraft"
 # Every folder Spoken's zip installs. scripts/spoken/package.sh is the source of truth; keep
 # this in step with its folder list.
-NAMES=(Spoken SpokenContributions Spoken_Quests Spoken_Readables Spoken_Places Spoken_NPCs)
+NAMES=(Spoken SpokenContributions Spoken_Quests Spoken_Readables Spoken_Places Spoken_Bosses)
 
 CLIENTS=(era anniversary forever)
 client_flavour() { case "$1" in
   era)         echo "_classic_era_";;
   anniversary) echo "_anniversary_";;
-  forever)     echo "_classic_beta_";;
+  forever)     echo "_forever_";;
 esac; }
 addons_dir() { echo "$WOW/$(client_flavour "$1")/Interface/AddOns"; }
 

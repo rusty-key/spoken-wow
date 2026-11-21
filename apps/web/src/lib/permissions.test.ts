@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { CODES } from "./lang";
+import { allLangs } from "./lang";
 import {
   can,
   canGrant,
@@ -11,6 +11,7 @@ import {
   canManageVoices,
   isAdmin,
   isRole,
+  roleLabel,
   ROLES,
   roles,
   type Grant,
@@ -25,10 +26,19 @@ describe("isAdmin", () => {
 });
 
 describe("canManageVoices", () => {
-  it("admits only admins", () => {
-    expect(canManageVoices("admin")).toBe(true);
-    expect(canManageVoices("member")).toBe(false);
-    expect(canManageVoices(null)).toBe(false);
+  it("admits a global admin anywhere, and a language's admin only there", () => {
+    expect(canManageVoices({ role: "admin", grants: [] }, "frFR")).toBe(true);
+    const frAdmin = { role: "member", grants: [{ lang: "frFR", capability: "admin" }] as Grant[] };
+    expect(canManageVoices(frAdmin, "frFR")).toBe(true);
+    expect(canManageVoices(frAdmin, "deDE")).toBe(false);
+  });
+
+  it("refuses every other capability, and nobody signed in", () => {
+    const grants: Grant[] = (["text", "edit", "regenerate", "configure", "ignore", "record"] as const).map(
+      (capability) => ({ lang: "frFR", capability }),
+    );
+    expect(canManageVoices({ role: "member", grants }, "frFR")).toBe(false);
+    expect(canManageVoices(null, "frFR")).toBe(false);
   });
 });
 
@@ -46,7 +56,18 @@ describe("isRole", () => {
     expect(isRole("root")).toBe(false);
     // Retired by 0045, which turned it into English grants.
     expect(isRole("collaborator")).toBe(false);
+    // Retired by 0107, when any member could submit packs.
+    expect(isRole("pack_author")).toBe(false);
     expect(isRole(null)).toBe(false);
+  });
+});
+
+describe("roleLabel", () => {
+  it("names each role as the UI does, a missing one as member and an unknown one as stored", () => {
+    expect(roleLabel("member")).toBe("Member");
+    expect(roleLabel("admin")).toBe("Admin");
+    expect(roleLabel(null)).toBe("Member");
+    expect(roleLabel("root")).toBe("root");
   });
 });
 
@@ -111,17 +132,14 @@ describe("per-language permissions", () => {
     expect(can(translator, "edit", "deDE")).toBe(false);
   });
 
-  it("makes a language's admin everything in it, and a granter of edit and regenerate only", () => {
+  it("makes a language's admin everything in it, and a granter of everything in it", () => {
     const lead = member([{ lang: "ptBR", capability: "admin" }]);
     expect(can(lead, "ignore", "ptBR")).toBe(true);
-    expect(canGrant(lead, "edit", "ptBR")).toBe(true);
-    expect(canGrant(lead, "regenerate", "ptBR")).toBe(true);
-    expect(canGrant(lead, "configure", "ptBR")).toBe(false);
-    expect(canGrant(lead, "admin", "ptBR")).toBe(false);
-    expect(canGrant(lead, "edit", "deDE")).toBe(false);
+    expect(canGrant(lead, "regenerate", "ptBR", false)).toBe(true);
+    expect(canGrant(lead, "regenerate", "deDE", false)).toBe(false);
   });
 
-  it("lets a voice actor record their language, and only a global admin make one", () => {
+  it("lets a voice actor record their language, and a language admin make one", () => {
     const actor = member([{ lang: "deDE", capability: "record" }]);
     expect(can(actor, "record", "deDE")).toBe(true);
     expect(can(actor, "record", "frFR")).toBe(false);
@@ -130,13 +148,34 @@ describe("per-language permissions", () => {
     // A language's admin may record in it, as they may do everything there...
     const lead = member([{ lang: "deDE", capability: "admin" }]);
     expect(can(lead, "record", "deDE")).toBe(true);
-    // ...but whose voice ships under the language's name is not theirs to decide.
-    expect(canGrant(lead, "record", "deDE")).toBe(false);
-    expect(canGrant({ role: "admin", grants: [] }, "record", "deDE")).toBe(true);
+    expect(canGrant(lead, "record", "deDE", false)).toBe(true);
+    expect(canGrant(lead, "record", "frFR", false)).toBe(false);
+    expect(canGrant({ role: "admin", grants: [] }, "record", "deDE", false)).toBe(true);
+  });
+
+  it("keeps original text from a language's admin unless a site owner appointed them", () => {
+    const lead = member([{ lang: "deDE", capability: "admin" }]);
+    expect(can(lead, "edit", "deDE")).toBe(true);
+    expect(can(lead, "text", "deDE")).toBe(false);
+    const owner = { role: "admin", grants: [] };
+    expect(can(owner, "edit", "deDE")).toBe(true);
+    expect(can(owner, "text", "deDE")).toBe(true);
+    expect(can(member([{ lang: "deDE", capability: "text" }]), "text", "deDE")).toBe(true);
+    expect(can(member([{ lang: "deDE", capability: "text" }]), "edit", "deDE")).toBe(false);
+  });
+
+  it("lets only a site owner appoint a text maintainer", () => {
+    const lead = member([{ lang: "deDE", capability: "admin" }]);
+    expect(canGrant(lead, "text", "deDE", false)).toBe(false);
+    expect(canGrant({ role: "admin", grants: [] }, "text", "deDE", false)).toBe(true);
+    for (const capability of ["edit", "admin"] as const) {
+      expect(canGrant(lead, capability, "deDE", false)).toBe(true);
+      expect(canGrant(lead, capability, "frFR", false)).toBe(false);
+    }
   });
 
   it("lists the languages somebody may act in", () => {
-    expect(langsWhere({ role: "admin", grants: [] }, "regenerate")).toHaveLength(CODES.length);
+    expect(langsWhere({ role: "admin", grants: [] }, "regenerate")).toHaveLength(allLangs().length);
     expect(langsWhere(member([{ lang: "enUS", capability: "regenerate" }]), "regenerate")).toEqual([
       "enUS",
     ]);
@@ -158,5 +197,28 @@ describe("per-language permissions", () => {
   it("lets somebody working in a language see it before it is switched on", () => {
     expect(worksIn(member([{ lang: "ptBR", capability: "edit" }]), "ptBR")).toBe(true);
     expect(worksIn(member([]), "ptBR")).toBe(false);
+  });
+});
+
+describe("canGrant text", () => {
+  const lead = { role: "member" as const, grants: [{ lang: "xqAA", capability: "admin" as const }] };
+
+  it("lets the admin of a textByTeam language appoint text there only", () => {
+    expect(canGrant(lead, "text", "xqAA", true)).toBe(true);
+    expect(canGrant(lead, "text", "xqAA", false)).toBe(false);
+    expect(canGrant(lead, "text", "deDE", true)).toBe(false);
+  });
+
+  it("always lets a site admin", () => {
+    const owner = { role: "admin" as const, grants: [] };
+    expect(canGrant(owner, "text", "xqAA", true)).toBe(true);
+    expect(canGrant(owner, "text", "xqAA", false)).toBe(true);
+  });
+
+  it("lets an admin of any team of the language appoint text, where its teams do", () => {
+    const admin = { role: "member" as const, grants: [{ lang: "xqAA", capability: "admin" as const }] };
+    expect(canGrant(admin, "text", "xqAA", true)).toBe(true);
+    expect(canGrant(admin, "text", "xqAA", false)).toBe(false);
+    expect(canGrant(admin, "text", "xqBB", true)).toBe(false);
   });
 });

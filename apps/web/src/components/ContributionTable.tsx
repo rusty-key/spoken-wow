@@ -20,26 +20,26 @@
  * reason to make that crossing at all.
  */
 import { useLang } from "@/components/LangProvider";
-import { localeHref, type Lang } from "@/lib/lang";
-import { ChevronDownIcon } from "lucide-react";
+import { langName, localeHref, type Lang } from "@/lib/lang";
+import { CheckIcon, ChevronDownIcon, CircleAlertIcon, ClockIcon, SearchIcon, WrenchIcon, XIcon, EyeIcon } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { memo, useCallback, useMemo, useState } from "react";
+import { memo, useCallback, useMemo, useRef, useState, type ReactNode } from "react";
 
 import ClientSelect from "@/components/ClientSelect";
 import { SEARCH_IN_OPTIONS, STAGE_CHIP_OPTIONS, STAGE_LABELS } from "@/components/contribution-chips";
-import FilterChip from "@/components/FilterChip";
+import FilterChip, { type ChipOption } from "@/components/FilterChip";
 import MultiFilterChip from "@/components/MultiFilterChip";
-import SortHeader from "@/components/SortHeader";
 import SpeakerCell, { ProvenanceBadge, type SpeakerAnswer } from "@/components/SpeakerCell";
-import { ACCEPT_TONE, LiteButton, LiteCheckbox, REJECT_TONE } from "@/components/LiteControls";
+import { LiteButton } from "@/components/LiteControls";
 import { Refreshing } from "@/components/Loading";
 import SendersButton from "@/components/SendersButton";
-import StatusTabs, { BucketTabs } from "@/components/StatusTabs";
+import DropReasons from "@/components/backstage/DropReasons";
+import Panel, { type PanelTone } from "@/components/backstage/Panel";
+import { Chips, Tabs } from "@/components/backstage/Tabs";
+import TokenText from "@/components/backstage/TokenText";
 import { usePendingPush } from "@/components/usePendingPush";
+import { useLocalDates } from "@/components/useLocalDates";
 import { useSearchBox } from "@/components/useSearchBox";
-import { Button } from "@/components/ui/button";
-import { Checkbox } from "@/components/ui/checkbox";
-import { Input } from "@/components/ui/input";
 import {
   RESOLVE_MANY_MAX,
   type ContributionStatus,
@@ -52,28 +52,27 @@ import {
   bucketOf,
   contributionsHref,
   namesSpeaker,
-  nextSort,
   type Bucket,
+  type WaitingKind,
+  type WaitingReason,
   type Section,
   type ClientFilter,
   type ContributionSort,
   type FilterChange,
-  type SortColumn,
   type StageFilter,
+  type Show,
 } from "@/lib/contributions/query";
 import type { Contribution } from "@/lib/contributions/store";
-import { textHints } from "@/lib/contributions/text-hints";
-// Both are computed server-side (npcSummaryFrom reads the roster store) -- `import
-// type` erases the whole thing at compile time, so none of that follows the type in here. The
-// same split existing.ts's `existing` prop already draws.
+import type { LineCheck, Verdict } from "@/lib/contributions/checks";
+import { lineDropReasons } from "@/lib/contributions/reasons";
 import type { BookSummary, NpcConflictOption, NpcSummary, QuestSummary } from "@/lib/contributions/triage";
 // From npc.ts, not npc/store.ts: store.ts imports @/lib/db, and pulling NPC_ROW_KINDS
 // (values, not just types) out of it would drag Postgres's own node built-ins into this bundle.
 import { NPC_ROW_KINDS, type NpcKind, type NpcRowKind } from "@/lib/npc/npc";
 import type { NpcResolution } from "@/lib/npc/store";
 import type { Filter } from "@/lib/search";
-import { cn, endsSelection } from "@/lib/utils";
-import { wowheadEntityUrl, wowheadForeverUrl, wowheadQuestUrl } from "@/lib/wowhead";
+import { cn } from "@/lib/utils";
+import { wowheadEntityUrl, wowheadQuestUrl } from "@/lib/wowhead";
 
 export type { NpcSummary };
 
@@ -102,7 +101,44 @@ export type ContributionRow = Pick<
   hasLine: boolean;
   /** A quest moment that already has this row's NPC as a speaker, in any language: accepted with no speaker answer. */
   hasSpeaker: boolean;
+  /** The English line this one translates, or null where none was found (and for English rows). */
+  english: string | null;
+  /** What the review checks found, against `english` (lib/contributions/checks.ts). */
+  check: LineCheck;
+  /** Why the row waits on an admin, on the waiting tab; null everywhere else. */
+  waiting: WaitingReason | null;
+  /** Why a reviewer rejected it, where they said. */
+  rejectReason: string | null;
 };
+
+/** The waiting tab's breakdown, one entry per reason (page.tsx summariseWaiting). */
+export type WaitingSummary = { kind: WaitingKind; title: string; fix: string; count: number; oldest: string; example: string | null }[];
+
+/** The To review groups, in the order the page lists them (page.tsx sorts the queue the same way). */
+const GROUPS: { verdict: Verdict; tone: PanelTone; title: string; description: string }[] = [
+  { verdict: "clean", tone: "good", title: "Looks right", description: "In the page's language, complete, same placeholders as the English line. Skim and keep." },
+  { verdict: "fix", tone: "fix", title: "Needs a small fix", description: "Good text, but something got spelled out for the player who sent it, or a token won't be voiced. Check the fix, then keep it." },
+  { verdict: "look", tone: "info", title: "Needs a look", description: "No English line was found to compare it with. Read it, then keep it or drop it." },
+  { verdict: "drop", tone: "drop", title: "Probably drop", description: "Cut off, not translated, or a placeholder that can't be repaired. A good copy comes back with the next player who sees the line." },
+];
+
+const GROUP_ICONS: Record<Verdict, ReactNode> = {
+  clean: <CheckIcon />,
+  fix: <WrenchIcon />,
+  look: <EyeIcon />,
+  drop: <XIcon />,
+};
+
+/** The orders the database can sort by (query.ts SORT_COLUMNS), as one choice each. */
+const SORT_OPTIONS = [
+  { value: "count:desc", label: "Most sent first" },
+  { value: "filed:desc", label: "Newest first" },
+  { value: "filed:asc", label: "Oldest first" },
+  { value: "count:asc", label: "Fewest sent first" },
+];
+
+/** What a resolve may carry beside the status: the reviewer's edit on an accept, a reason on a reject. */
+type ResolveExtra = { text?: string; reason?: string };
 
 /** A book a row can be placed in. */
 export type BookChoice = { bookId: string; title: string; pages: number };
@@ -126,7 +162,7 @@ function bookLabels(books: readonly BookChoice[]): BookLabels {
 }
 
 /** What a moderator says a readables row is, as api/contributions/page takes it; null clears it. */
-type MatchAnswer = { bookId: string; pageNumber: number } | { newBook: true } | null;
+type MatchAnswer = { lineId: string } | { bookId: string; pageNumber: number } | { newBook: true } | null;
 
 const STATUS_LABELS: Record<ContributionStatus, string> = {
   new: "New",
@@ -135,15 +171,6 @@ const STATUS_LABELS: Record<ContributionStatus, string> = {
 };
 
 
-/** The day and the clock time, short enough to sit in a column, matching ReportTable's `when`. */
-function when(at: string): string {
-  return new Date(at).toLocaleString(undefined, {
-    month: "short",
-    day: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-  });
-}
 
 
 export default function ContributionTable({
@@ -154,7 +181,10 @@ export default function ContributionTable({
   status,
   bucket,
   bucketCounts,
+  waitingSummary,
   client,
+  build,
+  builds,
   source,
   stage,
   sort,
@@ -164,18 +194,26 @@ export default function ContributionTable({
   books,
   roster: rosterData,
   canAnswerNpc,
+  corrections,
+  show,
+  shownCounts,
 }: {
   /** This page's rows. */
   initial: ContributionRow[];
-  /** Every row the filters match, on any page -- what "Accept all" acts on. */
-  matching: { id: number; status: ContributionStatus; bulk: boolean }[];
+  /** Every row the filters match, on any page, with its group -- what "Keep all" and "Drop all" act on. */
+  matching: { id: number; status: ContributionStatus; bulk: boolean; verdict: Verdict }[];
   page: number;
   pages: number;
   status: ContributionStatus;
   /** Which half of the New tab is shown; the other tabs are not split. */
   bucket: Bucket;
   bucketCounts: Record<Bucket, number>;
+  /** Why the waiting rows wait, counted; empty off the waiting tab. */
+  waitingSummary: WaitingSummary;
   client: ClientFilter;
+  build: string | undefined;
+  /** The builds the rows in view came from. */
+  builds: ChipOption[];
   /** The section shown: its rows only, and only the columns and filters that apply to it. */
   source: Section;
   stage: StageFilter;
@@ -190,8 +228,15 @@ export default function ContributionTable({
   roster: RosterData;
   /** Whether the viewer may set an NPC's race, gender and flavor; if not, they are shown only. */
   canAnswerNpc: boolean;
+  /** The section's corrections, as a group of their own under this view's lines. */
+  corrections?: ReactNode;
+  /** New lines, corrections or both; the lines and corrections handed in are already narrowed to it. */
+  show: Show;
+  /** How many lines and corrections this tab holds, for the switch; null where a section has no corrections. */
+  shownCounts: { lines: number; corrections: number } | null;
 }) {
   const { pending, push } = usePendingPush();
+  const when = useLocalDates();
   const router = useRouter();
   const lang = useLang();
   const roster = useMemo(() => new Roster(rosterData), [rosterData]);
@@ -204,7 +249,8 @@ export default function ContributionTable({
    * until the next reload.
    */
   const [resolved, setResolved] = useState<Record<number, Contribution["status"]>>({});
-  const [busy, setBusy] = useState<number | null>(null);
+  /** Rows with a resolve in flight: each stays locked until its own request answers. */
+  const [busy, setBusy] = useState<ReadonlySet<number>>(new Set());
   /** Same overlay idea as `resolved`, for "Add to explorer" succeeding on an already-accepted row. */
   const [lineCreated, setLineCreated] = useState<Set<number>>(new Set());
   /** A refused resolve, in the words the route already gives -- cleared by the next attempt. */
@@ -264,8 +310,10 @@ export default function ContributionTable({
         [contributionKey(contributionId)]: summary,
         [overrideKey(resolution.npcKind, resolution.npcId)]: summary,
       }));
+      // The waiting reasons and their counts are the server's: read them again.
+      router.refresh();
     },
-    [roster, lang],
+    [roster, lang, router],
   );
 
   /**
@@ -297,8 +345,9 @@ export default function ContributionTable({
           conflict: [],
         },
       }));
+      router.refresh();
     },
-    [roster],
+    [roster, router],
   );
 
   /**
@@ -370,13 +419,13 @@ export default function ContributionTable({
   }, []);
 
   /** One row's status change, from its own buttons. True when it landed. */
-  const send = useCallback(async (id: number, next: ContributionStatus): Promise<boolean> => {
+  const send = useCallback(async (id: number, next: ContributionStatus, extra: ResolveExtra = {}): Promise<boolean> => {
     // What the row was shown to match, so the accept refuses it if that has changed since.
     const bookMatch = next === "accepted" ? initial.find((row) => row.id === id)?.book?.match : undefined;
     const response = await fetch("/api/contributions/resolve", {
       method: "POST",
       headers: { "content-type": "application/json" },
-      body: JSON.stringify({ id, status: next, bookMatch }),
+      body: JSON.stringify({ id, status: next, bookMatch, ...extra }),
     }).catch(() => null);
 
     if (!response?.ok) {
@@ -387,26 +436,41 @@ export default function ContributionTable({
       return false;
     }
     landed(id, next);
+    if (extra.text !== undefined) setEdited((current) => ({ ...current, [id]: extra.text! }));
+    if (extra.reason !== undefined) setReasons((current) => ({ ...current, [id]: extra.reason! }));
     return true;
   }, [initial, landed]);
 
+  /** The reviewer's own edits and reasons this session, shown on the row without a reload. */
+  const [edited, setEdited] = useState<Record<number, string>>({});
+  const [reasons, setReasons] = useState<Record<number, string>>({});
+
+  /** A row's resolve, held to one request at a time per row. True when it landed. */
+  const inFlight = useRef(new Set<number>());
   const resolve = useCallback(
-    async (id: number, next: ContributionStatus) => {
-      setBusy(id);
-      await send(id, next);
-      setBusy(null);
+    async (id: number, next: ContributionStatus, extra?: ResolveExtra): Promise<boolean> => {
+      if (inFlight.current.has(id)) return false;
+      inFlight.current.add(id);
+      setBusy(new Set(inFlight.current));
+      try {
+        return await send(id, next, extra);
+      } finally {
+        inFlight.current.delete(id);
+        setBusy(new Set(inFlight.current));
+      }
     },
     [send],
   );
 
-  /** Rows ticked for "Accept selected" / "Reject selected". */
-  const [selected, setSelected] = useState<Set<number>>(new Set());
   /** A bulk run in flight, for its progress line and to hold every other button still meanwhile. */
   const [bulk, setBulk] = useState<{ next: ContributionStatus; done: number; total: number } | null>(null);
   /** What the last bulk run came to, until the next one starts. */
-  const [bulkOutcome, setBulkOutcome] = useState<string | null>(null);
-  /** "Accept all shown" asks twice: accepting writes quest lines, and a quests row can't be reopened after. */
-  const [confirmAll, setConfirmAll] = useState(false);
+  const [bulkOutcome, setBulkOutcome] = useState<{ summary: string; refused: { id: number; message: string }[] } | null>(null);
+  /**
+   * "Keep all" asks twice: keeping writes quest lines, and a written quests row can't be reopened
+   * after. The confirm holds the rows it was opened for, so a change of view doesn't change them.
+   */
+  const [confirmAll, setConfirmAll] = useState<number[] | null>(null);
 
   /**
    * The rows sent to api/contributions/resolve-many, a chunk per request, resolved side by side
@@ -414,16 +478,16 @@ export default function ContributionTable({
    * under it, exactly as if its own button had been pressed, and the rest carry on.
    */
   const resolveMany = useCallback(
-    async (ids: number[], next: ContributionStatus) => {
+    async (ids: number[], next: ContributionStatus, reason?: string) => {
       setBulkOutcome(null);
       setBulk({ next, done: 0, total: ids.length });
-      const refused: number[] = [];
+      const refused: { id: number; message: string }[] = [];
       for (let start = 0; start < ids.length; start += RESOLVE_MANY_MAX) {
         const chunk = ids.slice(start, start + RESOLVE_MANY_MAX);
         const response = await fetch("/api/contributions/resolve-many", {
           method: "POST",
           headers: { "content-type": "application/json" },
-          body: JSON.stringify({ ids: chunk, status: next }),
+          body: JSON.stringify({ ids: chunk, status: next, reason }),
         }).catch(() => null);
         const body = (await response?.json().catch(() => null)) as
           | { results?: Record<number, ResolveManyResult>; error?: unknown }
@@ -432,23 +496,23 @@ export default function ContributionTable({
           const result = response?.ok ? body?.results?.[id] : undefined;
           if (result?.ok) {
             landed(id, next);
+            // The bulk reason replaces one this session gave the row before.
+            setReasons(({ [id]: _old, ...rest }) => (reason && next === "rejected" ? { ...rest, [id]: reason } : rest));
           } else {
-            refused.push(id);
-            setRefusals(withRefusal(id, result ? result.error : body?.error));
+            const message = typeof (result ? result.error : body?.error) === "string" ? String(result ? result.error : body?.error) : "That didn't go through -- try again.";
+            refused.push({ id, message });
+            setRefusals(withRefusal(id, message));
           }
         }
         setBulk({ next, done: Math.min(start + chunk.length, ids.length), total: ids.length });
       }
       setBulk(null);
-      // The refused rows stay ticked, so fixing their speakers and pressing the same button again
-      // is the whole retry.
-      setSelected(new Set(refused));
       // Rows that left this view leave gaps on this page; the server fills them from the next.
       router.refresh();
-      setBulkOutcome(
-        `${STATUS_LABELS[next]}: ${ids.length - refused.length} of ${ids.length}` +
-          (refused.length > 0 ? ` -- ${refused.length} refused and left selected.` : "."),
-      );
+      setBulkOutcome({
+        summary: `${STATUS_LABELS[next]}: ${ids.length - refused.length} of ${ids.length}${refused.length > 0 ? `, ${refused.length} refused:` : "."}`,
+        refused,
+      });
     },
     [landed, router],
   );
@@ -465,37 +529,20 @@ export default function ContributionTable({
     return override ? { ...override, npcName: row.npc?.npcName ?? override.npcName } : row.npc;
   };
 
-  // Only rows still on screen count: a selected row a bulk reject just moved out of this view
-  // must not be accepted by the next click on a button that no longer shows it.
-  const selectedRows = rows.filter((row) => selected.has(row.id));
-  /** The ids among `from` a bulk change to `next` would actually change. */
-  const changeable = (from: ContributionRow[], next: ContributionStatus) =>
-    from.filter((row) => (resolved[row.id] ?? row.status) !== next).map((row) => row.id);
-  // Every matching row, not just this page's: "Accept all" is for the whole filtered queue.
-  const shownToAccept = matching
-    .filter((row) => row.bulk && (resolved[row.id] ?? row.status) !== "accepted")
-    .map((row) => row.id);
-  // A row with no speaker would only come back refused, nor would a readables row the matcher can't
-  // place: that one is accepted on its own.
-  const notBulk = new Set(matching.filter((row) => !row.bulk).map((row) => row.id));
-  const selectedToAccept = changeable(
-    selectedRows.filter((row) => bucketOf(row, npcOf(row), roster) === "ready" && !notBulk.has(row.id)),
-    "accepted",
-  );
-  const selectedToReject = changeable(selectedRows, "rejected");
-  const allTicked = rows.length > 0 && selectedRows.length === rows.length;
-
-  // Stable, like every callback a row is handed: a row redraws only when its own props change.
-  const toggle = useCallback(
-    (id: number, on: boolean) =>
-      setSelected((current) => {
-        const next = new Set(current);
-        if (on) next.add(id);
-        else next.delete(id);
-        return next;
-      }),
-    [],
-  );
+  // Every matching row, not just this page's: "Keep all" is for the whole group, on every page. A
+  // readables row the matcher can't place is accepted on its own, never in bulk.
+  const stillNew = (row: { id: number; status: ContributionStatus }) => (resolved[row.id] ?? row.status) === "new";
+  const cleanToKeep = matching.filter((row) => row.bulk && row.verdict === "clean" && stillNew(row)).map((row) => row.id);
+  const dropToReject = matching.filter((row) => row.verdict === "drop" && stillNew(row)).map((row) => row.id);
+  const [confirmDrop, setConfirmDrop] = useState<number[] | null>(null);
+  // A row decided from its own buttons while a confirm is open, or with its own request still in
+  // flight, leaves it: the confirm must not send a rejected row back as accepted, or the other way
+  // round. A row reopened since is waiting again and stays.
+  const undecided = (ids: number[] | null) =>
+    ids?.filter((id) => (resolved[id] ?? "new") === "new" && !busy.has(id)) ?? null;
+  const keepConfirmed = undecided(confirmAll);
+  const dropConfirmed = undecided(confirmDrop);
+  const [showFilters, setShowFilters] = useState(Boolean(build || stage.length > 0 || searchIn !== "any"));
 
   /**
    * Move one dropdown and keep the other, then push it -- a soft navigation, not a state
@@ -503,7 +550,8 @@ export default function ContributionTable({
    * ReportTable.tsx's own `go`; the mapping itself is contributionsHref, pulled out to
    * lib/contributions/query.ts so it can be tested without rendering FilterChip or this table.
    */
-  const filters = { status, bucket, client, source, stage, sort, q, searchIn };
+  const filters = { status, bucket, client, build, source, stage, sort, q, searchIn, show };
+  const waitingTab = status === "new" && bucket === "blocked";
   function go(next: FilterChange, toPage = 1) {
     push(localeHref(lang, contributionsHref(filters, next, toPage)));
   }
@@ -512,198 +560,275 @@ export default function ContributionTable({
 
   return (
     <>
-      <StatusTabs
-        active={status}
-        onGo={push}
-        hrefFor={(next) =>
-          localeHref(lang, contributionsHref(filters, { status: next }))
-        }
-      />
-      {status === "new" && namesSpeaker(source) ? (
-        <BucketTabs
-          active={bucket}
-          counts={bucketCounts}
+      <div className="mb-5">
+        <Tabs
+          label="Status"
           onGo={push}
-          hrefFor={(next) => localeHref(lang, contributionsHref(filters, { bucket: next }))}
+          active={status === "new" ? (bucket === "blocked" ? "waiting" : "review") : status}
+          tabs={[
+            {
+              value: "review",
+              label: "To review",
+              href: localeHref(lang, contributionsHref(filters, { status: "new", bucket: "ready" })),
+              count: status === "new" ? bucketCounts.ready : undefined,
+            },
+            // Readables and places name no speaker, so nothing of theirs waits on an admin; nor
+            // does a correction.
+            ...(namesSpeaker(source) && show !== "corrections"
+              ? [
+                  {
+                    value: "waiting",
+                    label: "Waiting on an admin",
+                    href: localeHref(lang, contributionsHref(filters, { status: "new", bucket: "blocked" })),
+                    count: status === "new" ? bucketCounts.blocked : undefined,
+                  },
+                ]
+              : []),
+            { value: "accepted", label: "Accepted", href: localeHref(lang, contributionsHref(filters, { status: "accepted" })) },
+            { value: "rejected", label: "Rejected", href: localeHref(lang, contributionsHref(filters, { status: "rejected" })) },
+          ]}
         />
-      ) : null}
-      <nav className="mb-4 flex flex-wrap items-center gap-2">
-        <Input
-          type="search"
-          value={query}
-          placeholder={
-            source === "quests" ? "NPC, quest, or what they sent…" : "What they sent…"
-          }
-          aria-label="Search"
-          className="h-8 min-w-0 basis-64"
-          onChange={(event) => setQuery(event.target.value)}
-        />
-        {namesSpeaker(source) ? (
-          <FilterChip
-            label="search in"
-            value={searchIn === "any" ? undefined : searchIn}
-            options={SEARCH_IN_OPTIONS}
-            onChange={(next) => go({ searchIn: (next ?? "any") as Filter })}
+      </div>
+      <div className="mb-5 flex flex-wrap items-center gap-3">
+        <label className="bs-search min-w-0 flex-[1_1_280px] sm:max-w-md">
+          <SearchIcon className="size-4 shrink-0" aria-hidden />
+          <input
+            type="search"
+            value={query}
+            placeholder={source === "quests" ? "Find an NPC, quest or phrase" : "Find a phrase"}
+            aria-label="Search"
+            onChange={(event) => setQuery(event.target.value)}
+          />
+        </label>
+        {shownCounts && !waitingTab ? (
+          <Chips
+            label="Show"
+            onGo={push}
+            active={show}
+            tabs={[
+              { value: "all", label: "All", href: localeHref(lang, contributionsHref(filters, { show: "all" })) },
+              {
+                value: "lines",
+                label: "New lines",
+                href: localeHref(lang, contributionsHref(filters, { show: "lines" })),
+                count: shownCounts.lines,
+              },
+              {
+                value: "corrections",
+                label: "Corrections",
+                href: localeHref(lang, contributionsHref(filters, { show: "corrections" })),
+                count: shownCounts.corrections,
+              },
+            ]}
           />
         ) : null}
-        {source === "quests" ? (
-          <MultiFilterChip
-            label="stage"
-            values={stage}
-            options={STAGE_CHIP_OPTIONS}
-            onChange={(next) => go({ stage: next as StageFilter | undefined })}
-          />
-        ) : null}
+        <button
+          type="button"
+          className="bs-btn bs-btn-text"
+          aria-expanded={showFilters}
+          onClick={() => setShowFilters((open) => !open)}
+        >
+          More filters <ChevronDownIcon className={cn("size-3.5 transition-transform", showFilters && "rotate-180")} aria-hidden />
+        </button>
+        {show === "corrections" ? null : (
+          <label className="bs-search h-[34px] w-auto pr-2">
+            <span className="text-sm">{status === "new" && bucket === "ready" ? "Within groups:" : "Order:"}</span>
+            <select
+              aria-label="Order"
+              value={`${sort.column}:${sort.direction}`}
+              onChange={(event) => {
+                const [column, direction] = event.target.value.split(":") as [ContributionSort["column"], ContributionSort["direction"]];
+                go({ sort: { column, direction } });
+              }}
+              className="bg-transparent text-sm text-foreground outline-none"
+            >
+              {SORT_OPTIONS.map((option) => (
+                <option key={option.value} value={option.value} className="bg-popover">
+                  {option.label}
+                </option>
+              ))}
+            </select>
+          </label>
+        )}
         {pending && <Refreshing />}
-        <ClientSelect value={client} onChange={(next) => go({ client: next })} />
-      </nav>
-
-      {rows.length > 0 ? (
-        <div className="mb-3 flex flex-wrap items-center gap-2 text-xs">
-          {bulk ? (
-            <span className="text-muted-foreground">
-              {STATUS_LABELS[bulk.next]}: {bulk.done} of {bulk.total}…
-            </span>
-          ) : (
-            <>
-              {confirmAll ? (
-                <>
-                  <span>
-                    Accept all {shownToAccept.length} matching{pages > 1 ? `, on every page` : ""}? A quests
-                    line can&apos;t be reopened after.
-                  </span>
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    className={ACCEPT_TONE}
-                    onClick={() => {
-                      setConfirmAll(false);
-                      void resolveMany(shownToAccept, "accepted");
-                    }}
-                  >
-                    Accept {shownToAccept.length}
-                  </Button>
-                  <Button size="sm" variant="ghost" onClick={() => setConfirmAll(false)}>
-                    Cancel
-                  </Button>
-                </>
-              ) : status === "new" && bucket === "ready" ? (
-                // Only where every row has a speaker: elsewhere it is a run of refusals.
-                <Button
-                  size="sm"
-                  variant="outline"
-                  className={ACCEPT_TONE}
-                  disabled={shownToAccept.length === 0}
-                  onClick={() => setConfirmAll(true)}
-                >
-                  Accept all matching ({shownToAccept.length})
-                </Button>
-              ) : null}
-              {selectedRows.length > 0 ? (
-                <>
-                  <span className="text-muted-foreground ml-2">{selectedRows.length} selected</span>
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    className={ACCEPT_TONE}
-                    disabled={selectedToAccept.length === 0}
-                    onClick={() => void resolveMany(selectedToAccept, "accepted")}
-                  >
-                    Accept selected ({selectedToAccept.length})
-                  </Button>
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    className={REJECT_TONE}
-                    disabled={selectedToReject.length === 0}
-                    onClick={() => void resolveMany(selectedToReject, "rejected")}
-                  >
-                    Reject selected ({selectedToReject.length})
-                  </Button>
-                  <Button size="sm" variant="ghost" onClick={() => setSelected(new Set())}>
-                    Clear
-                  </Button>
-                </>
-              ) : null}
-              {bulkOutcome ? <span className="text-muted-foreground ml-2">{bulkOutcome}</span> : null}
-            </>
-          )}
-          <Pager page={page} pages={pages} total={matching.length} onGo={(to) => go({}, to)} />
+        {bulk ? (
+          <span className="text-muted-foreground text-sm">
+            {STATUS_LABELS[bulk.next]}: {bulk.done} of {bulk.total}…
+          </span>
+        ) : bulkOutcome ? (
+          <span className="text-muted-foreground text-sm">{bulkOutcome.summary}</span>
+        ) : null}
+        {show === "corrections" ? null : <Pager page={page} pages={pages} total={matching.length} onGo={(to) => go({}, to)} />}
+      </div>
+      {bulkOutcome && bulkOutcome.refused.length > 0 && !bulk ? (
+        <ul className="bs-aside mb-5 flex flex-col gap-1">
+          {bulkOutcome.refused.slice(0, 10).map(({ id, message }) => (
+            <li key={id}>
+              <a href={`#contribution-${id}`} className="underline underline-offset-[3px]">
+                #{id}
+              </a>{" "}
+              <span className="text-muted-foreground">{message}</span>
+            </li>
+          ))}
+          {bulkOutcome.refused.length > 10 ? <li className="text-muted-foreground">and {bulkOutcome.refused.length - 10} more</li> : null}
+        </ul>
+      ) : null}
+      {showFilters ? (
+        <div className="mb-5 flex flex-wrap items-center gap-2">
+          {namesSpeaker(source) ? (
+            <FilterChip
+              label="search in"
+              value={searchIn === "any" ? undefined : searchIn}
+              options={SEARCH_IN_OPTIONS}
+              onChange={(next) => go({ searchIn: (next ?? "any") as Filter })}
+            />
+          ) : null}
+          {source === "quests" ? (
+            <MultiFilterChip
+              label="stage"
+              values={stage}
+              options={STAGE_CHIP_OPTIONS}
+              onChange={(next) => go({ stage: next as StageFilter | undefined })}
+            />
+          ) : null}
+          <FilterChip label="build" value={build} options={builds} onChange={(next) => go({ build: next })} />
+          {/* The build goes with it: a build belongs to one client, so it would match nothing. */}
+          <ClientSelect value={client} onChange={(next) => go({ client: next, build: undefined })} />
         </div>
       ) : null}
 
-      {rows.length === 0 ? (
-        <p className="text-muted-foreground text-sm">Nothing here.</p>
-      ) : (
-        <table
-          aria-busy={pending}
-          className={cn("w-full border-separate border-spacing-0 text-sm transition-opacity", pending && "opacity-60")}
-        >
-          <thead className="text-muted-foreground text-left text-xs">
-            <tr>
-              <th className="border-b py-2 pr-2 font-normal">
-                <Checkbox
-                  aria-label="Select every row shown"
-                  checked={allTicked ? true : selectedRows.length > 0 ? "indeterminate" : false}
-                  disabled={bulk !== null}
-                  onCheckedChange={(on) => setSelected(on === true ? new Set(rows.map((row) => row.id)) : new Set())}
-                />
-              </th>
-              <SortHeader column="filed" sort={sort} onSort={(column) => go({ sort: nextSort(sort, column) })}>
-                Filed
-              </SortHeader>
-              {source === "quests" ? (
-                <>
-                  <th className="border-b py-2 pr-3 font-normal">NPC</th>
-                  <th className="border-b py-2 pr-3 font-normal">Quest</th>
-                </>
-              ) : (
-                <th className="border-b py-2 pr-3 font-normal">{source === "readables" ? "Book" : "Place"}</th>
-              )}
-              <th className="border-b py-2 pr-3 font-normal">Client</th>
-              <SortHeader column="count" sort={sort} onSort={(column) => go({ sort: nextSort(sort, column) })}>
-                Count
-              </SortHeader>
-              <th className="border-b py-2 pr-3 font-normal">What they sent</th>
-              <th className="border-b py-2 font-normal" />
-            </tr>
-          </thead>
+      <div aria-busy={pending} className={cn("flex flex-col gap-5 transition-opacity", pending && "opacity-60")}>
+        {status === "new" && bucket === "blocked" ? (
+          <Panel
+            quiet
+            tone="neutral"
+            icon={<ClockIcon />}
+            title="Waiting on an admin"
+            count={bucketCounts.blocked}
+            description={
+              canAnswerNpc
+                ? "These lines need a voice settled for their NPC before anyone can keep them. Answer the NPC on a row and it moves to To review."
+                : "Not yours to decide: these lines need a voice settled for their NPC first, and only an admin can do that. Each row says what is missing. Once it is settled, the line moves to To review by itself."
+            }
+          >
+            {waitingSummary.length > 0 ? (
+              <div className="overflow-x-auto">
+                <table className="bs-table min-w-[640px]">
+                  <thead>
+                    <tr>
+                      <th>Why it waits</th>
+                      <th>What an admin does</th>
+                      <th>Example</th>
+                      <th className="bs-num">Lines</th>
+                      <th className="bs-num">Waiting since</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {waitingSummary.map((entry) => (
+                      <tr key={entry.kind}>
+                        <td>{entry.title}</td>
+                        <td className="text-muted-foreground">{entry.fix}</td>
+                        <td className="text-muted-foreground">{entry.example ?? ""}</td>
+                        <td className="bs-num">{entry.count}</td>
+                        <td className="bs-num text-muted-foreground">{when(entry.oldest)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            ) : null}
+            {rows.map((row) => renderRow(row))}
+          </Panel>
+        ) : rows.length === 0 && corrections ? null : rows.length === 0 ? (
+          <Panel
+            tone="good"
+            icon={<CheckIcon />}
+            title={status === "new" ? "Nothing left to review" : "Nothing here"}
+            description={status === "new" ? "New lines arrive whenever players send them." : "Lines you decide show up here."}
+          />
+        ) : status === "new" && bucket === "ready" ? (
+          GROUPS.map((group) => {
+            const members = rows.filter((row) => row.check.verdict === group.verdict);
+            if (members.length === 0) return null;
+            const action =
+              group.verdict === "clean" && cleanToKeep.length > 1 ? (
+                keepConfirmed ? (
+                  <>
+                    <span className="text-sm">
+                      Keep all {keepConfirmed.length}{pages > 1 ? " on every page" : ""}? A kept line can&apos;t be reopened once it is written.
+                    </span>
+                    <button
+                      type="button"
+                      className="bs-btn bs-btn-primary"
+                      disabled={bulk !== null || keepConfirmed.length === 0}
+                      onClick={() => {
+                        setConfirmAll(null);
+                        void resolveMany(keepConfirmed, "accepted");
+                      }}
+                    >
+                      Keep {keepConfirmed.length}
+                    </button>
+                    <button type="button" className="bs-btn bs-btn-text" onClick={() => setConfirmAll(null)}>
+                      Cancel
+                    </button>
+                  </>
+                ) : (
+                  <button type="button" className="bs-btn bs-btn-primary" disabled={bulk !== null} onClick={() => setConfirmAll(cleanToKeep)}>
+                    Keep all {cleanToKeep.length}
+                  </button>
+                )
+              ) : group.verdict === "drop" && dropToReject.length > 1 ? (
+                dropConfirmed ? (
+                  <>
+                    <span className="text-sm">Drop all {dropConfirmed.length}{pages > 1 ? " on every page" : ""}?</span>
+                    <button
+                      type="button"
+                      className="bs-btn bs-btn-danger"
+                      disabled={bulk !== null || dropConfirmed.length === 0}
+                      onClick={() => {
+                        setConfirmDrop(null);
+                        void resolveMany(dropConfirmed, "rejected", "Failed the review checks");
+                      }}
+                    >
+                      Drop {dropConfirmed.length}
+                    </button>
+                    <button type="button" className="bs-btn bs-btn-text" onClick={() => setConfirmDrop(null)}>
+                      Cancel
+                    </button>
+                  </>
+                ) : (
+                  <button type="button" className="bs-btn bs-btn-danger" disabled={bulk !== null} onClick={() => setConfirmDrop(dropToReject)}>
+                    Drop all {dropToReject.length}
+                  </button>
+                )
+              ) : null;
+            return (
+              <Panel
+                key={group.verdict}
+                id={`group-${group.verdict}`}
+                tone={group.tone}
+                icon={GROUP_ICONS[group.verdict]}
+                title={group.title}
+                count={members.length}
+                description={group.description}
+                action={action}
+              >
+                {members.map((row) => renderRow(row))}
+              </Panel>
+            );
+          })
+        ) : (
+          <Panel
+            tone={status === "rejected" ? "drop" : status === "accepted" ? "good" : "neutral"}
+            icon={status === "rejected" ? <XIcon /> : status === "accepted" ? <CheckIcon /> : <ClockIcon />}
+            title={status === "rejected" ? "Rejected" : status === "accepted" ? "Accepted" : "Lines waiting on an admin"}
+            count={matching.length}
+          >
+            {rows.map((row) => renderRow(row))}
+          </Panel>
+        )}
+      </div>
 
-          <tbody>
-            {rows.map((row) => {
-              const npc = npcOf(row);
-              const now = bucketOf(row, npc, roster);
-              return (
-                <ContributionTableRow
-                  key={row.id}
-                  row={row}
-                  books={labels}
-                  current={resolved[row.id] ?? row.status}
-                  npc={npc}
-                  bucket={now}
-                  moved={status === "new" && now !== bucket}
-                  found={existing[row.id]}
-                  selected={selected.has(row.id)}
-                  busy={busy === row.id}
-                  npcBusy={npcBusy === row.id}
-                  locked={bulk !== null}
-                  refusal={refusals[row.id]}
-                  lineCreated={lineCreated.has(row.id)}
-                  canAnswerNpc={canAnswerNpc}
-                  roster={roster}
-                  lang={lang}
-                  onToggle={toggle}
-                  onResolve={resolve}
-                  onOverrideNpc={overrideNpc}
-                  onPickConflict={pickConflict}
-                  onNameNpc={nameNpc}
-                  onMatchPage={matchPage}
-                />
-              );
-            })}
-          </tbody>
-        </table>
-      )}
       <datalist id={READABLES_LIST}>
         {[...labels].map(([label, choice]) => (
           <option key={label} value={label}>
@@ -712,20 +837,52 @@ export default function ContributionTable({
         ))}
       </datalist>
       {rows.length > 0 && pages > 1 ? (
-        <div className="mt-3 flex text-xs">
+        <div className="mt-4 flex text-sm">
           <Pager page={page} pages={pages} total={matching.length} onGo={(to) => go({}, to)} />
         </div>
       ) : null}
+      {corrections && !waitingTab ? <div className={rows.length > 0 ? "mt-8" : undefined}>{corrections}</div> : null}
     </>
   );
+
+  function renderRow(row: ContributionRow) {
+    const npc = npcOf(row);
+    const now = bucketOf(row, npc, roster);
+    return (
+      <ReviewRow
+        key={row.id}
+        row={row}
+        books={labels}
+        current={resolved[row.id] ?? row.status}
+        npc={npc}
+        bucket={now}
+        moved={status === "new" && now !== bucket}
+        found={existing[row.id]}
+        busy={busy.has(row.id)}
+        npcBusy={npcBusy === row.id}
+        locked={bulk !== null}
+        refusal={refusals[row.id]}
+        lineCreated={lineCreated.has(row.id)}
+        editedText={edited[row.id]}
+        reason={reasons[row.id] ?? row.rejectReason}
+        canAnswerNpc={canAnswerNpc}
+        roster={roster}
+        lang={lang}
+        onResolve={resolve}
+        onOverrideNpc={overrideNpc}
+        onPickConflict={pickConflict}
+        onNameNpc={nameNpc}
+        onMatchPage={matchPage}
+      />
+    );
+  }
 }
 
 /**
- * One row of the table, redrawn only when its own props change -- which is why the table hands
- * it plain values (`selected`, `busy`) rather than the sets and ids they come from, and stable
- * callbacks. Drawn inline, one tick of one checkbox redrew every row on the page.
+ * One line to review: who says it and where, the English line beside what was sent, what the
+ * checks found, and the reviewer's answer.
  */
-const ContributionTableRow = memo(function ContributionTableRow({
+const ReviewRow = memo(function ReviewRow({
   row,
   books,
   current,
@@ -733,16 +890,16 @@ const ContributionTableRow = memo(function ContributionTableRow({
   bucket,
   moved,
   found,
-  selected,
   busy,
   npcBusy,
   locked,
   refusal,
   lineCreated,
+  editedText,
+  reason,
   canAnswerNpc,
   roster,
   lang,
-  onToggle,
   onResolve,
   onOverrideNpc,
   onPickConflict,
@@ -754,296 +911,300 @@ const ContributionTableRow = memo(function ContributionTableRow({
   /** The row's status, with this session's own changes over the server's. */
   current: ContributionStatus;
   npc: NpcSummary | null;
-  /** Where the row stands now: an answer saved here may have moved it. Only ready rows offer Accept. */
+  /** Where the row stands now: an answer saved here may have moved it. Only ready rows can be kept. */
   bucket: Bucket;
-  /** On the New tab, the row now belongs to the other half. */
+  /** On a new-lines tab, the row now belongs to the other one. */
   moved: boolean;
-  /** The text already on file for the row: a places key's line, or the matched readables page in the row's own language. */
+  /** The text already on file for the row: a places key's line, or the matched readables page in the row's language. */
   found: string | undefined;
-  selected: boolean;
-  /** This row's own resolve is in flight. */
   busy: boolean;
-  /** This row's NPC answer is in flight. */
   npcBusy: boolean;
   /** A bulk run is in flight: every row's buttons hold still. */
   locked: boolean;
   refusal: string | undefined;
   /** "Add to explorer" worked on this row this session. */
   lineCreated: boolean;
+  /** The text this session kept it with, where the reviewer edited it. */
+  editedText: string | undefined;
+  /** Why it was rejected, this session's or the stored one. */
+  reason: string | null;
   canAnswerNpc: boolean;
   roster: Roster;
   lang: Lang;
-  onToggle: (id: number, on: boolean) => void;
-  onResolve: (id: number, next: ContributionStatus) => Promise<void>;
+  onResolve: (id: number, next: ContributionStatus, extra?: ResolveExtra) => Promise<boolean>;
   onOverrideNpc: (id: number, npc: NpcSummary, answer: SpeakerAnswer) => Promise<void>;
   onPickConflict: (id: number, npc: NpcSummary, option: NpcConflictOption) => Promise<void>;
   onNameNpc: (id: number, answer: { npcKind: NpcRowKind; npcId: number; npcName: string }) => Promise<void>;
   onMatchPage: (id: number, answer: MatchAnswer) => Promise<void>;
 }) {
+  const when = useLocalDates();
   // A written page is one-way (accept.ts), so its match is no longer the moderator's to move.
   const pageWritten = current === "accepted" && (row.hasLine || lineCreated);
   const book = row.book;
   // An ambiguous row needs a page picked, and a known one is already in the corpus.
   const acceptHold =
     book?.match.kind === "ambiguous" ? "Pick the page first" : book?.match.kind === "known" ? "Already in the corpus" : null;
-  const [expanded, setExpanded] = useState(false);
-  const hints = useMemo(() => (row.text ? textHints(row.text, row.locale) : []), [row.text, row.locale]);
+  const { check } = row;
+  const sent = editedText ?? row.text ?? "";
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState("");
+  const [dropping, setDropping] = useState(false);
+  const [showNote, setShowNote] = useState(false);
+  const hold = busy || locked;
+  const keepable = current !== "accepted" && bucket === "ready" && acceptHold === null;
+
+  const startEdit = () => {
+    setDraft(check.fix?.text ?? sent);
+    setEditing(true);
+    setDropping(false);
+  };
+  // The picker and the draft close only once the request lands, so a refusal keeps the reviewer's work.
+  const drop = async (why: string) => {
+    if (await onResolve(row.id, "rejected", { reason: why })) setDropping(false);
+  };
+
+  const button = (label: string, className: string, onClick: () => void, disabled = false, title?: string) => (
+    <button type="button" className={cn("bs-btn", className)} disabled={hold || disabled} title={title} onClick={onClick}>
+      {label}
+    </button>
+  );
+
+  let actions: ReactNode;
+  if (editing) {
+    actions = (
+      <>
+        {button("Keep my version", "bs-btn-primary", () => {
+          void onResolve(row.id, "accepted", { text: draft }).then((ok) => ok && setEditing(false));
+        }, !keepable || !draft.trim(), acceptHold ?? undefined)}
+        {button("Cancel", "bs-btn-text", () => setEditing(false))}
+      </>
+    );
+  } else if (current === "new") {
+    const keep = (label: string, className: string, extra?: ResolveExtra) =>
+      button(label, className, () => void onResolve(row.id, "accepted", extra), !keepable, acceptHold ?? (bucket !== "ready" ? "Waits on an admin" : undefined));
+    const dropAsked = button("Drop…", "bs-btn-text", () => {
+      setDropping((open) => !open);
+      setEditing(false);
+    });
+    actions =
+      bucket !== "ready" ? (
+        dropAsked
+      ) : check.verdict === "fix" ? (
+        <>
+          {check.fix ? keep("Keep with fix", "bs-btn-primary", { text: check.fix.text }) : button("Edit text", "bs-btn-primary", startEdit)}
+          {check.fix ? button("Edit text", "bs-btn-text", startEdit) : keep("Keep as sent", "bs-btn-text")}
+          {dropAsked}
+        </>
+      ) : check.verdict === "drop" ? (
+        <>
+          {button("Drop", "bs-btn-danger", () => void drop(check.findings.find((finding) => finding.tone === "drop")?.message ?? "Failed the review checks"))}
+          {button("Edit text and keep", "bs-btn-text", startEdit, !keepable)}
+        </>
+      ) : (
+        <>
+          {keep("Keep", "")}
+          {button("Edit text", "bs-btn-text", startEdit, !keepable)}
+          {dropAsked}
+        </>
+      );
+  } else {
+    actions = (
+      <>
+        {current === "accepted" && (row.source === "quests" || book) && !(row.hasLine || lineCreated)
+          ? // Accepted before lines were written on accept, or reopened since: the same POST again.
+            button("Add to explorer", "bs-btn-primary", () => void onResolve(row.id, "accepted"), acceptHold !== null, acceptHold ?? undefined)
+          : null}
+        {current === "accepted"
+          ? button("Drop…", "bs-btn-text", () => setDropping((open) => !open))
+          : null}
+        {button("Reopen", "bs-btn-text", () => void onResolve(row.id, "new"))}
+      </>
+    );
+  }
+
   return (
-    // Top-aligned, not middle: the NPC/Speaker cell below can grow to a whole form's
-      // height (race/gender/flavor selects), and centring every other
-      // cell against that made the short ones float to mid-row instead of sitting on
-      // a scannable line.
-      <tr
-        // Anchor, not just a key: an accepted quests row's line carries a link back
-        // here (LineRow.tsx's "contributed" badge), and this is what it jumps to.
-        id={`contribution-${row.id}`}
-        onClick={(event) => {
-          // A click on one of the row's controls is that control's, and one ending a drag over
-          // the text is somebody copying it: neither should fold the row out from under them.
-          if ((event.target as HTMLElement).closest("button, a, input, select, textarea, label, form")) return;
-          if (endsSelection()) return;
-          setExpanded((open) => !open);
-        }}
-        className="align-top [&>td]:border-b [&>td]:py-2 [&>td]:leading-5"
-      >
-        <td className="pr-2">
-          <LiteCheckbox
-            aria-label={`Select contribution ${row.id}`}
-            checked={selected}
-            disabled={locked}
-            onChange={(event) => onToggle(row.id, event.target.checked)}
-          />
-        </td>
-
-        <td className="text-muted-foreground pr-3 text-xs whitespace-nowrap">
-          {when(row.createdAt)}
-        </td>
-
-        {/* NPC and Speaker, merged: who the NPC is and who voices their lines are the
-            same question, and showing them as two columns meant scanning across the
-            row to connect an id in one cell with a form three cells later. Name/id/
-            links stay on their own line; the voice -- settled text for a corpus NPC,
-            the override form for one that isn't -- sits right beneath it. */}
+    // Anchor: an accepted quests row's line links back here (LineRow.tsx's "contributed" badge).
+    <div id={`contribution-${row.id}`} className="bs-review-row" data-moved={moved ? "" : undefined}>
+      <div className="bs-who">
         {row.source === "quests" ? (
-          <td className="max-w-[20rem] pr-3 text-xs">
-            {npc ? (
-              <div className="flex flex-col gap-1">
-                <div className="flex items-center gap-1 whitespace-nowrap">
-                  <a
-                    href={localeHref(lang, `/quests?q=${npc.npcId}&filter=npc`)}
-                    className="truncate hover:underline"
-                    title={npc.npcName ?? undefined}
-                  >
-                    {npc.npcName ?? "unnamed"}{" "}
-                    <span className="text-muted-foreground">#{npc.npcId}</span>
-                  </a>
-                  <a
-                    href={
-                      // The corpus's own exact answer means it has this NPC on the branch
-                      // the corpus is built from; anything else -- including a post-vanilla
-                      // NPC like 205729 -- is only ever on the client's own branch. See
-                      // wowhead.ts for why two branches exist rather than one.
-                      //
-                      // A kind-less row (npc.npcKind === null) has no real kind to link
-                      // with yet -- "creature" is a convenience guess for this link only,
-                      // never stored, and every quest/gossip npc field this table has ever
-                      // seen has in fact named one.
-                      npc.provenance === "corpus"
-                        ? wowheadEntityUrl(npc.npcKind ?? "creature", npc.npcId)
-                        : wowheadForeverUrl(npc.npcKind ?? "creature", npc.npcId)
-                    }
-                    target="_blank"
-                    rel="noreferrer"
-                    className="text-muted-foreground shrink-0 hover:underline"
-                  >
-                    wh↗
-                  </a>
-                </div>
-                {npc.conflict.length > 0 ? (
-                  canAnswerNpc ? (
-                    <NpcConflict
-                      npc={npc}
-                      busy={npcBusy}
-                      onPick={(option) => void onPickConflict(row.id, npc, option)}
-                    />
-                  ) : (
-                    <span className="text-muted-foreground">NPC unclear</span>
-                  )
-                ) : (
-                  <SpeakerCell
-                    npc={npc}
-                    roster={roster}
-                    readOnly={!canAnswerNpc}
-                    busy={npcBusy}
-                    onSave={(answer) => void onOverrideNpc(row.id, npc, answer)}
-                  />
-                )}
+          npc ? (
+            <div className="flex flex-col gap-1">
+              <div className="flex min-w-0 items-baseline gap-1">
+                <a
+                  href={localeHref(lang, `/quests?q=${npc.npcId}&filter=npc&client=all`)}
+                  className="bs-who-name truncate hover:underline"
+                  title={npc.npcName ?? undefined}
+                >
+                  {npc.npcName ?? "unnamed"}
+                </a>
+                <a
+                  href={wowheadEntityUrl(npc.npcKind ?? "creature", npc.npcId)}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="bs-who-sub shrink-0 text-xs hover:underline"
+                >
+                  #{npc.npcId} wh↗
+                </a>
               </div>
-            ) : canAnswerNpc ? (
-              // No NPC named at all: an admin can say who speaks it.
-              <MissingNpcForm busy={npcBusy} onSave={(answer) => void onNameNpc(row.id, answer)} />
-            ) : (
-              <span className="text-muted-foreground">Missing NPC</span>
-            )}
-          </td>
-        ) : null}
-
-        <td className="max-w-[14rem] pr-3 text-xs whitespace-nowrap">
-          {book ? (
-            <MatchCell
-              book={book}
-              books={books}
-              busy={npcBusy}
-              locked={pageWritten || locked}
-              onSave={(answer) => void onMatchPage(row.id, answer)}
-            />
-          ) : row.quest === null ? (
-            <span title={row.key}>{row.place ?? row.key}</span>
-          ) : row.quest === "gossip" ? (
-            STAGE_LABELS.gossip
+              <QuestLine row={row} />
+              {npc.conflict.length > 0 ? (
+                canAnswerNpc ? (
+                  <NpcConflict npc={npc} busy={npcBusy} onPick={(option) => void onPickConflict(row.id, npc, option)} />
+                ) : (
+                  <span className="bs-who-sub">NPC unclear</span>
+                )
+              ) : (
+                <SpeakerCell
+                  npc={npc}
+                  roster={roster}
+                  readOnly={!canAnswerNpc}
+                  busy={npcBusy}
+                  onSave={(answer) => void onOverrideNpc(row.id, npc, answer)}
+                />
+              )}
+            </div>
           ) : (
-            <>
-              <span className="truncate">{row.quest.title}</span>{" "}
-              <a
-                href={wowheadQuestUrl(row.quest.questId)}
-                target="_blank"
-                rel="noreferrer"
-                className="text-muted-foreground hover:underline"
-              >
-                #{row.quest.questId}
-              </a>
-              {row.quest.stage ? (
-                <div className="text-muted-foreground">{STAGE_LABELS[row.quest.stage]}</div>
-              ) : null}
-            </>
+            <div className="flex flex-col gap-1">
+              <QuestLine row={row} />
+              {canAnswerNpc ? (
+                <MissingNpcForm busy={npcBusy} onSave={(answer) => void onNameNpc(row.id, answer)} />
+              ) : (
+                <span className="bs-who-sub">No NPC named</span>
+              )}
+            </div>
+          )
+        ) : book ? (
+          <MatchCell
+            book={book}
+            books={books}
+            busy={npcBusy}
+            locked={pageWritten || locked}
+            onSave={(answer) => void onMatchPage(row.id, answer)}
+          />
+        ) : (
+          <span className="bs-who-name" title={row.key}>
+            {row.place ?? row.key}
+          </span>
+        )}
+      </div>
+
+      <div className="min-w-0">
+        <p className="bs-label">English</p>
+        {row.english ? (
+          <p className="bs-text bs-text-en">
+            <TokenText text={row.english} />
+          </p>
+        ) : (
+          <p className="bs-text text-muted-foreground">{row.locale.startsWith("en") ? "This is the English line." : "No English line found."}</p>
+        )}
+      </div>
+
+      <div className="min-w-0">
+        <p className="bs-label">{current === "new" && check.fix && !editing ? "Sent, with the fix" : editedText ? "Kept as edited" : "Sent"}</p>
+        {editing ? (
+          <textarea
+            className="bs-textarea"
+            rows={Math.min(8, Math.max(3, Math.ceil(draft.length / 60)))}
+            value={draft}
+            lang={row.locale.slice(0, 2)}
+            aria-label="Edit the line before keeping it"
+            onChange={(event) => setDraft(event.target.value)}
+          />
+        ) : (
+          <p className="bs-text" lang={row.locale.slice(0, 2)}>
+            {sent ? (
+              <TokenText text={sent} removed={current === "new" && !editedText ? check.fix?.removed : undefined} added={current === "new" && !editedText ? check.fix?.added : undefined} />
+            ) : (
+              <span className="text-muted-foreground">(no text sent)</span>
+            )}
+          </p>
+        )}
+        <ul className="bs-findings">
+          {row.waiting && current === "new" && bucket !== "ready" ? (
+            <li className="bs-finding bs-finding-info">
+              <ClockIcon className="size-3.5" aria-hidden />
+              <span>
+                {row.waiting.why} <span className="text-muted-foreground">{row.waiting.fix}</span>
+              </span>
+            </li>
+          ) : current === "rejected" ? (
+            <li className="bs-finding bs-finding-drop">
+              <XIcon className="size-3.5" aria-hidden />
+              <span>{reason ? `Rejected: ${reason}` : "Rejected, no reason given."}</span>
+            </li>
+          ) : check.findings.length === 0 ? (
+            <li className="bs-finding bs-finding-ok">
+              <CheckIcon className="size-3.5" aria-hidden />
+              <span>Passes every check</span>
+            </li>
+          ) : (
+            check.findings.map((finding) => (
+              <li key={finding.message} className={cn("bs-finding", `bs-finding-${finding.tone}`)}>
+                <CircleAlertIcon className="size-3.5" aria-hidden />
+                <span>{finding.message}</span>
+              </li>
+            ))
           )}
-        </td>
+        </ul>
+      </div>
 
-        {/* Which game, then the locale and the exact build underneath: the version is
-            in the label, and the build number is what tells a beta's builds apart. */}
-        <td className="pr-3 text-xs whitespace-nowrap">
-          <div>{row.client.label}</div>
-          <div className="text-muted-foreground">
-            {row.locale}
-            {row.client.buildNumber ? ` · ${row.client.buildNumber}` : null}
-          </div>
-          {row.pack ? (
-            <div className="text-muted-foreground" title="The language of the voice packs the player was hearing">
-              heard in {row.pack}
-            </div>
-          ) : null}
-        </td>
+      <div className="bs-actions">
+        {actions}
+        {moved ? <p className="bs-refusal text-muted-foreground">{bucket === "ready" ? "Ready to review now" : "Waits on an admin now"}</p> : null}
+        {refusal ? <p className="bs-refusal">{refusal}</p> : null}
+      </div>
 
-        <td className="pr-3 text-xs whitespace-nowrap"><SendersButton id={row.id} count={row.count} /></td>
+      <div className="bs-meta">
+        <span>
+          {row.client.label} · {row.locale}
+          {row.client.buildNumber ? ` · ${row.client.buildNumber}` : null}
+        </span>
+        {row.pack ? <span title="The language of the voice packs the player was hearing">heard in {row.pack}</span> : null}
+        <span className="inline-flex items-center gap-1">
+          Sent by <SendersButton id={row.id} count={row.count} />
+        </span>
+        <span>Filed {when(row.createdAt)}</span>
+        {row.body ? (
+          <button type="button" aria-expanded={showNote} onClick={() => setShowNote((open) => !open)}>
+            {showNote ? "Hide the player's note" : "Player left a note"}
+          </button>
+        ) : null}
+        {found !== undefined ? <span>We already have text for this key</span> : null}
+      </div>
+      {showNote && row.body ? (
+        <div className="bs-aside">
+          <p className="bs-label">What the player said was wrong</p>
+          <p className="bs-text">{row.body}</p>
+        </div>
+      ) : null}
+      {found !== undefined && current === "new" ? (
+        <div className="bs-aside">
+          <p className="bs-label">Already on file</p>
+          <p className="bs-text">{found}</p>
+        </div>
+      ) : null}
 
-        <td className="max-w-md pr-3">
-          {/* Above the clamped text: a line that will never be voiced is what a moderator
-              must see before accepting, not after expanding every row. */}
-          {hints.map((hint) => (
-            <p key={hint} className="text-destructive text-xs">
-              {hint}
-            </p>
-          ))}
-          <div className="flex items-start gap-1">
-            <p className={cn("min-w-0 flex-1 whitespace-pre-wrap", !expanded && "line-clamp-2")}>
-              {row.text ?? <span className="text-muted-foreground">(no text sent)</span>}
-            </p>
-            <button
-              type="button"
-              aria-expanded={expanded}
-              aria-label={expanded ? "Collapse this text" : "Show the whole text"}
-              title={expanded ? "Collapse" : "Show the whole text"}
-              onClick={() => setExpanded((open) => !open)}
-              className="text-muted-foreground hover:text-foreground mt-px shrink-0 cursor-pointer rounded-sm p-0.5"
-            >
-              <ChevronDownIcon className={cn("size-3.5 transition-transform", expanded && "rotate-180")} />
-            </button>
-          </div>
-          {!expanded && (found !== undefined || row.body) ? (
-            <p className="text-muted-foreground text-xs">
-              {[found !== undefined && "corpus already has this key", row.body && "note attached"]
-                .filter(Boolean)
-                .join(" · ")}
-            </p>
-          ) : null}
-          {expanded && row.body ? (
-            // The optional complaint: the one field a player filled in to be read.
-            <div className="mt-2 rounded border p-2">
-              <p className="text-muted-foreground text-xs font-medium">What they said was wrong:</p>
-              <p className="mt-1 whitespace-pre-wrap">{row.body}</p>
-            </div>
-          ) : null}
-          {expanded && found !== undefined ? (
-            // A "missing" key the corpus already answers to is a corpus bug, not an absent
-            // line -- shown beside the submitted text so that reading is a glance.
-            <div className="bg-muted/40 mt-2 rounded p-2">
-              <p className="text-muted-foreground text-xs font-medium">Already on file:</p>
-              <p className="mt-1 whitespace-pre-wrap">{found}</p>
-            </div>
-          ) : null}
-        </td>
-
-        <td>
-          <div className="flex items-center justify-end gap-1">
-            {current !== "accepted" && bucket === "ready" ? (
-              <LiteButton
-                variant="accept"
-                disabled={busy || locked || acceptHold !== null}
-                title={acceptHold ?? undefined}
-                onClick={() => void onResolve(row.id, "accepted")}
-              >
-                Accept
-              </LiteButton>
-            ) : (row.source === "quests" || book) && !(row.hasLine || lineCreated) ? (
-              // A quests row accepted before this feature existed (or reopened and
-              // re-accepted since) has no line in the quest tables yet -- Accept itself is
-              // hidden once `current` is already "accepted", so this is the only way
-              // back to the same POST, still gated by resolveContribution's own rules
-              // (needs-speaker, collision, one-way).
-              <LiteButton
-                variant="accept"
-                disabled={busy || locked || acceptHold !== null}
-                title={acceptHold ?? undefined}
-                onClick={() => void onResolve(row.id, "accepted")}
-              >
-                Add to explorer
-              </LiteButton>
-            ) : null}
-            {current !== "rejected" ? (
-              <LiteButton
-                variant="reject"
-                disabled={busy || locked}
-                onClick={() => void onResolve(row.id, "rejected")}
-              >
-                Reject
-              </LiteButton>
-            ) : null}
-            {current !== "new" ? (
-              <LiteButton
-                variant="ghost"
-                disabled={busy || locked}
-                onClick={() => void onResolve(row.id, "new")}
-              >
-                Reopen
-              </LiteButton>
-            ) : null}
-          </div>
-          {moved ? (
-            <p className="text-muted-foreground mt-1 text-right text-xs">
-              {bucket === "ready" ? "Ready now" : "Needs a speaker now"}
-            </p>
-          ) : null}
-          {refusal ? (
-            // Plain words, straight from resolveContribution's own refusal message --
-            // silence here used to be the whole failure mode ("Degrade per row on a
-            // failed resolve"), and a moderator staring at a button that visibly did
-            // nothing has no way to tell "try again" from "fix something first".
-            <p className="text-destructive mt-1 text-right text-xs">{refusal}</p>
-          ) : null}
-        </td>
-      </tr>
+      {dropping ? (
+        <DropReasons reasons={lineDropReasons(langName(lang))} disabled={hold} onPick={(why) => void drop(why)} onCancel={() => setDropping(false)} />
+      ) : null}
+    </div>
   );
 });
+
+/** Which quest and panel a quests row was read off, or that it is gossip. */
+function QuestLine({ row }: { row: ContributionRow }) {
+  if (row.quest === null) return null;
+  if (row.quest === "gossip") return <span className="bs-who-sub">{STAGE_LABELS.gossip}</span>;
+  return (
+    <span className="bs-who-sub">
+      {row.quest.title}{" "}
+      <a href={wowheadQuestUrl(row.quest.questId)} target="_blank" rel="noreferrer" className="hover:underline">
+        #{row.quest.questId}
+      </a>
+      {row.quest.stage ? ` · ${STAGE_LABELS[row.quest.stage]}` : null}
+    </span>
+  );
+}
 
 /** Which page of the matching rows this is, and the way to the next and previous ones. */
 function Pager({
@@ -1198,6 +1359,45 @@ function MatchCell({
           {book.label}
         </span>
       )}
+      {book.candidates.length > 0 ? (
+        <ul className="flex max-h-56 max-w-[14rem] flex-col gap-2 overflow-y-auto whitespace-normal">
+          {book.candidates.map((candidate) => (
+            <li key={candidate.key} className="border-l pl-2">
+              <div className="flex flex-wrap items-baseline gap-x-1">
+                {candidate.href ? (
+                  <a href={candidate.href} className="hover:underline">
+                    {candidate.label}
+                  </a>
+                ) : (
+                  <span>{candidate.label}</span>
+                )}
+                <span className="text-muted-foreground">#{candidate.bookId}</span>
+                {candidate.owner ? (
+                  <a
+                    href={wowheadEntityUrl(candidate.owner.kind === "object" ? "gameobject" : "item", candidate.owner.id)}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="text-muted-foreground hover:underline"
+                  >
+                    {candidate.owner.kind} {candidate.owner.id} wh↗
+                  </a>
+                ) : null}
+              </div>
+              {candidate.excerpt ? <p className="text-muted-foreground line-clamp-2">{candidate.excerpt}</p> : null}
+              {locked ? null : (
+                <LiteButton
+                  variant="outline"
+                  className="mt-0.5 h-6 px-2 text-xs"
+                  disabled={busy}
+                  onClick={() => onSave(candidate.answer)}
+                >
+                  This one
+                </LiteButton>
+              )}
+            </li>
+          ))}
+        </ul>
+      ) : null}
       {locked ? null : (
         <form
           className="flex flex-wrap items-center gap-1"
@@ -1229,6 +1429,17 @@ function MatchCell({
           <LiteButton type="submit" variant="outline" className="h-7 px-2 text-xs" disabled={busy || !valid}>
             Match
           </LiteButton>
+          {book.match.kind !== "new-book" ? (
+            <LiteButton
+              variant="ghost"
+              className="h-7 px-1.5 text-xs"
+              disabled={busy}
+              title="None of these: accepting this row starts a new book"
+              onClick={() => onSave({ newBook: true })}
+            >
+              New book
+            </LiteButton>
+          ) : null}
           {moderated ? (
             <LiteButton variant="ghost" className="h-7 px-1.5 text-xs" disabled={busy} onClick={() => onSave(null)}>
               Clear

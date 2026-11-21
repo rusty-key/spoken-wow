@@ -11,7 +11,7 @@ local Expect, Failures = H.Expecter(print)
 
 local function LoadReadables()
     local SpokenReadables = {}
-    for _, file in ipairs({ "Locale/enUS", "Checksum", "Core", "Language", "Reader", "Audio", "Contribute" }) do
+    for _, file in ipairs({ "Locale/enUS", "Checksum", "Core", "Language", "Opener", "Reader", "Audio", "Contribute" }) do
         local chunk = assert(loadfile(READABLES .. file .. ".lua"))
         chunk("Spoken_Readables", SpokenReadables)
     end
@@ -44,32 +44,49 @@ Expect("the locale is the client's", envelope:match("\nlocale=enUS\n") ~= nil, t
 Expect("...and the packs' language goes beside it", envelope:match("\npack=enUS\n") ~= nil, true)
 Expect("...with the version of the pack speaking it, or none", envelope:match("\npackVersion=[^\n]+\n") ~= nil, true)
 
--- The client writes the reader's name, class and race into a page: they go back as tokens, so
--- no character's name reaches the site and every character's copy is one page.
+-- The item that opened a note is source metadata, not just a copy-text diagnostic. Keep it in
+-- the contribution so the site can identify the book even when its title is shared.
+B.openedBy = { { kind = "item", id = 9550 } }
+local openedByItem = B:CaptureContribution()
+Expect("the contribution carries the item that opened the note",
+    openedByItem:match("\nitem=9550\n") ~= nil, true)
+
+-- On clients that expose the opened item only through the unit GUID, the same field is still
+-- available. This is the path used by the copy-text diagnostics as well.
+local savedGUID, savedCItem = stub.world.npcGUID, _G.C_Item
+stub.world.npcGUID = "Item-0-0-9550"
+_G.C_Item = { GetItemIDByGUID = function(guid) return guid == stub.world.npcGUID and 9550 or nil end }
+B.openedBy = nil
+local openedByGUID = B:CaptureContribution()
+Expect("the contribution falls back to the item unit GUID",
+    openedByGUID:match("\nitem=9550\n") ~= nil, true)
+stub.world.npcGUID, _G.C_Item = savedGUID, savedCItem
+B.openedBy = nil
+
+-- The client writes the reader's name, class and race into a page. The page goes as shown, with
+-- who read it beside it for the site to put the tokens back, and is keyed on the tokens, so every
+-- character's copy is one page.
 stub.world.playerName, stub.world.playerClass, stub.world.playerRace = "Valaas Dawnsight", "Warrior", "Night Elf"
 local NAMED = "Greetings, Valaas. Valaas Dawnsight, a Warrior of the Night Elf people, reads Valaaswood.\n\nWritten for this test alone."
 stub.ShowPage({ title = "Ledger of Nothing", number = 3, text = NAMED })
 local TEMPLATE = "Greetings, $N. $N, a $C of the $R people, reads Valaaswood.\n\nWritten for this test alone."
 local named = B:CaptureContribution()
-Expect("a page's name, class and race go back as tokens", named:find(TEMPLATE, 1, true) ~= nil, true)
-Expect("...and no name goes with it", named:find("Valaas ", 1, true) or named:find("Dawnsight", 1, true), nil)
+H.WriteCapturedFixture(here, "readables-shown", named)
+Expect("a page goes as the client showed it", named:find(NAMED, 1, true) ~= nil, true)
+Expect("...marked as shown, with who read it",
+    named:match("\nshown=1\nreader=Valaas Dawnsight\nreaderClass=Warrior\n") ~= nil
+        and named:match("\nreaderRace=Night Elf\n") ~= nil, true)
 Expect("...keyed on the page with its tokens", named:match("\npage=" .. B:ChecksumOf(TEMPLATE) .. "\n") ~= nil, true)
--- A part of the name inside a longer class phrase leaves that phrase to the class.
-stub.world.playerName, stub.world.playerClass = "Valaas Hunter", "Demon Hunter"
-Expect("a part of the name inside the class's words does not take them first",
-    B:Detemplate("Demon Hunter, rise. Valaas, Hunter."), "$C, rise. $N, $N.")
-stub.world.playerName, stub.world.playerClass = "Valaas Dawnsight", "Warrior"
--- A report on a page that names the reader sends it with the token too.
+-- A report on a page that names the reader sends it as shown, with the reader beside it.
 stub.ShowPage({ title = "Proof of Deed", number = 1, text = "This proof of deed is to verify that Valaas Dawnsight slew Margol the Rager, scourge of the searing gorge.\n\nThe Ironforge museum recognizes this achievement and thanks the bearer for their generous contribution.\n\n-Head Curator Thorius Stonetender" })
 local report = B:ReportContext(1231)
-Expect("a report on a page with the reader's name in it sends the token",
-    report ~= nil and report:find("verify that $N slew", 1, true) ~= nil and report:find("Valaas", 1, true) == nil, true)
+Expect("a report on a page with the reader's name in it sends it as shown, with the reader",
+    report ~= nil and report:find("verify that Valaas Dawnsight slew", 1, true) ~= nil
+        and report:find("\nreader=Valaas Dawnsight\n", 1, true) ~= nil, true)
 -- The client writes the name in capitals into some pages ("GRIMBALOR,"), and that is the name too.
 stub.ShowPage({ title = "Ledger of Nothing", number = 4, text = "VALAAS DAWNSIGHT,\n\nVALAAS, keep this. VALAASWOOD waits." })
-local shouted = B:CaptureContribution()
-Expect("a page's name in capitals goes back as a token",
-    shouted:find("\n$N,\n\n$N, keep this. VALAASWOOD waits.\n", 1, true) ~= nil, true)
-Expect("...and no name goes with it", shouted:find("VALAAS ", 1, true) or shouted:find("VALAAS,", 1, true), nil)
+Expect("a page's name in capitals is keyed as a token",
+    B:CaptureContribution():match("\npage=" .. B:ChecksumOf("$N,\n\n$N, keep this. VALAASWOOD waits.") .. "\n") ~= nil, true)
 
 -- Pages kept earlier are left as they were at login, with the name in them and under whatever
 -- source an older version wrote ("books", which the site still reads as readables): the file is
@@ -106,8 +123,8 @@ Expect("login leaves every kept page as it was, none lost and none rewritten", u
 Gather:Clear()
 stub.world.playerName, stub.world.playerClass, stub.world.playerRace = nil, nil, nil
 
--- A Spoken older than this addon lacks what Detemplate calls: no button and no error.
-for _, name in ipairs({ "NameWords", "ReplaceWord" }) do
+-- A Spoken older than this addon lacks what contributing calls: no button and no error.
+for _, name in ipairs({ "NameWords", "ReplaceWord", "ReaderFields" }) do
     local method = env.Spoken.Contribute[name]
     env.Spoken.Contribute[name] = nil
     stub.ShowPage({ title = "Ledger of Nothing", number = 2, text = UNKNOWN })
@@ -159,7 +176,7 @@ B:ShowContribution()
 Expect("...only Show() does", encodeCalls, 1)
 local box = env.Spoken.ContributeBox
 Expect("Show() puts a link in the box, not the raw envelope",
-    box.editBox:GetText():match("^https://spoken%.rusty%.one/contribute#e1=") ~= nil, true)
+    box.editBox:GetText():match("^https://spoken%.quest/contribute#e1=") ~= nil, true)
 Expect("...with the link hint", box.hint:GetText(), "Copy this and open it in your browser:")
 env.Spoken.Contribute.Encode = realEncode
 
@@ -169,7 +186,23 @@ B:ShowContribution()
 Expect("...falls back to the raw envelope when Encode is absent",
     box.editBox:GetText():match("^!SPOKEN1 readables\n") ~= nil, true)
 Expect("...with the old two-copy hint", box.hint:GetText(), "Press Ctrl+C, then paste it at:")
-Expect("...and the address shown again", box.address:GetText(), "https://spoken.rusty.one/contribute")
+Expect("...and the address shown again", box.address:GetText(), "https://spoken.quest/contribute")
 env.Spoken.Contribute.Encode = realEncode
+
+---------------------------------------------------------------- a report names the pack that played
+do
+    local played = { pageId = 1231, packFolder = "SpokenReadablesAudio_deDE_stimmen", voice = "deDE_stimmen" }
+    local named = B:ReportContext(1231, played)
+    Expect("a report on a team's clip names its folder and team",
+        named:match("\npackFolder=SpokenReadablesAudio_deDE_stimmen\npackTeam=stimmen\n") ~= nil, true)
+    local plain = B:ReportContext(1231, { pageId = 1231, packFolder = "SpokenReadablesAudio_deDE", voice = "deDE" })
+    Expect("...a plain pack's clip names its folder", plain:match("\npackFolder=SpokenReadablesAudio_deDE\n") ~= nil, true)
+    Expect("...and no team", plain:match("\npackTeam=") == nil, true)
+    local clipFor = B.ClipFor
+    B.ClipFor = function() return played end
+    Expect("a report with no clip names the pack the page would play from",
+        B:ReportContext(1231):match("\npackTeam=stimmen\n") ~= nil, true)
+    B.ClipFor = clipFor
+end
 
 os.exit(Failures() == 0 and 0 or 1)

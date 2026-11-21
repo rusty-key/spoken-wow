@@ -11,24 +11,39 @@ local _, SpokenPlaces = ...
 -- gesture counts as a map drag rather than a click. IsPanning() is unreliable by
 -- the time OnMouseUp fires, so compare positions instead.
 local DRAG_TOLERANCE = 0.01
+-- The same on screen, in UI units, on OpenMap's map only. A map that pans by moving its canvas with the cursor
+-- (OpenMap's) keeps the cursor on the same map point all through a drag, so the normalised
+-- position alone reads every drag as a click.
+local DRAG_PIXELS = 8
 
-local downX, downY, downMap
+local downX, downY, downMap, downScreenX, downScreenY
 
-local function HandleClick(x, y)
-	local mapID = WorldMapFrame.mapID
+local function ScreenCursor()
+	local x, y = GetCursorPosition()
+	local scale = UIParent and UIParent:GetEffectiveScale() or 1
+	return x / scale, y / scale
+end
+
+local function HandleClick()
+	-- On a continent or world map a click is navigation to a child zone; leave that to
+	-- Blizzard's own handlers rather than hijacking it. CursorArea gives no zone there.
+	local mapID, x, y = SpokenPlaces:CursorArea()
 	if not mapID then
-		return
-	end
-
-	-- On a continent or world map a click is navigation to a child zone; leave
-	-- that to Blizzard's own handlers rather than hijacking it.
-	if not SpokenPlaces:IsZoneMap(mapID) then
 		return
 	end
 
 	-- The highlight lights what this finds (SpokenPlaces:AreaAt), so a lit area is one a click opens.
 	local areaName, entry, key, city = SpokenPlaces:AreaAt(mapID, x, y)
 	local debug = SpokenPlaces:Get("debug")
+
+	-- Anywhere else in a zone on OpenMap's map, the zone: its story is not on the panel already,
+	-- as the map there is the continent or the zone at the view's centre.
+	local zoneOnly = not entry and SpokenPlaces:OpenMap() and SpokenPlaces:GetLore(mapID)
+	if zoneOnly then
+		SpokenPlaces:SelectMap(mapID)
+		SpokenPlaces:FitZone(mapID)
+		return
+	end
 
 	if not areaName then
 		if debug then
@@ -54,10 +69,15 @@ local function HandleClick(x, y)
 	-- A city inside the zone (Stormwind City on Elwynn Forest's map) is a map of its own: the click
 	-- opens it, as one on a zone opens the zone from its continent, and the panel tells its story.
 	if city then
-		if WorldMapFrame.SetMapID then WorldMapFrame:SetMapID(city) end
+		if SpokenPlaces:OpenMap() then
+			SpokenPlaces:SelectMap(city)
+		elseif WorldMapFrame.SetMapID then
+			WorldMapFrame:SetMapID(city)
+		end
 	else
 		SpokenPlaces:SelectSubzone(mapID, areaName, entry)
 	end
+	SpokenPlaces:FitZone(mapID)
 	-- Closed beside the map, the panel opens on what was clicked: the click asked for its story.
 	-- Not where the player turned the panel off in the settings.
 	if SpokenPlaces:Get("showMapPanel") and SpokenPlaces:Get("mapPanelCollapsed") then
@@ -80,6 +100,7 @@ function SpokenPlaces:SetupSubzoneClicks()
 	container:HookScript("OnMouseDown", function(self, button)
 		if button == "LeftButton" then
 			downX, downY = self:GetNormalizedCursorPosition()
+			downScreenX, downScreenY = ScreenCursor()
 			downMap = WorldMapFrame.mapID
 		end
 	end)
@@ -88,12 +109,12 @@ function SpokenPlaces:SetupSubzoneClicks()
 		if button ~= "LeftButton" then
 			return
 		end
-		if not SpokenPlaces:IsPartOn() then
+		if not SpokenPlaces:IsPartOn() or SpokenPlaces:MapLeftToOpenMap() then
 			downX, downY, downMap = nil, nil, nil
 			return
 		end
 
-		local startX, startY, startMap = downX, downY, downMap
+		local startX, startY, startMap, startScreenX, startScreenY = downX, downY, downMap, downScreenX, downScreenY
 		downX, downY, downMap = nil, nil, nil
 		if not startX then
 			return
@@ -112,7 +133,12 @@ function SpokenPlaces:SetupSubzoneClicks()
 		if math.abs(x - startX) + math.abs(y - startY) > DRAG_TOLERANCE then
 			return -- the player was panning the map
 		end
+		local screenX, screenY = ScreenCursor()
+		if SpokenPlaces:OpenMap()
+			and math.abs(screenX - startScreenX) + math.abs(screenY - startScreenY) > DRAG_PIXELS then
+			return
+		end
 
-		HandleClick(x, y)
+		HandleClick()
 	end)
 end
