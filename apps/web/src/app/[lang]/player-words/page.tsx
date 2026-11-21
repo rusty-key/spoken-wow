@@ -18,7 +18,7 @@ export const dynamic = "force-dynamic";
 export default async function Page({ params }: { params: Promise<{ lang: string }> }) {
   const lang = await pageLang(params);
   const session = await auth.api.getSession({ headers: await headers() });
-  // 404 as /lexicon: the page is a text maintainer's, in a language whose words are not Spoken's code.
+  // 404, not a redirect: only a text maintainer may learn of it, and only where the words are not code.
   if (!session || !can(await viewerOf(session), "text", lang) || hasBuiltinPlayerWords(lang)) notFound();
 
   return (

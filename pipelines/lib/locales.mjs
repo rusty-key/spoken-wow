@@ -29,11 +29,8 @@ export const BASE_LOCALE = "enUS";
 // *_loc9 column, and pipelines/quests/tools/fill_locales_from_tdb.py adds and fills it. Null is
 // a language the world database has no text for at all.
 //
-// A game client runs in every language here. One it does not (a team's) is not here, so
-// isClientLocale is false for it: GetLocale() never returns it, so everything keyed by what the
-// client shows is never built for it -- area-name aliases, gossip locale text, a readables page
-// index, giver names, interface strings -- and nothing that follows the client ("auto",
-// contributions) ever lands on it.
+// isClientLocale is false for a team's language: GetLocale() never returns it, so nothing keyed by
+// what the client shows (aliases, gossip locale text, a page index) is built for it.
 export const LOCALES = [
   { code: "enUS", name: "English", script: "latin", elevenLabs: "en", bcp47: "en-US", vmangos: 0 },
   { code: "deDE", name: "German", script: "latin", elevenLabs: "de", bcp47: "de-DE", vmangos: 3 },
@@ -57,7 +54,7 @@ export function isLocale(code) {
   return CODES.includes(code);
 }
 
-/** Whether a game client runs in this language: whether it is one of the list. */
+/** Whether a game client runs in this language. */
 export function isClientLocale(code) {
   return isLocale(code);
 }

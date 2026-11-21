@@ -101,9 +101,8 @@ function wordsSummary(words: PlayerWords | null): string | null {
 }
 
 /**
- * Sets a language's player words (pipelines/lib/player-words.mjs), already validated, or clears
- * them with null. Logged only when they change. The row's notify reloads every worker's registry,
- * and every take whose text holds a token goes stale against the new words.
+ * Sets a language's validated player words, or clears them with null; logged only when they
+ * change. Every take whose text holds a token goes stale against the new words.
  */
 export async function setPlayerWords(lang: Lang, words: PlayerWords | null, userId: string): Promise<void> {
   const before = await inTransaction(async (client) => {

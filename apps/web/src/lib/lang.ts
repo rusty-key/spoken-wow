@@ -25,16 +25,13 @@ export type LanguageInfo = {
   /** The code the speech provider takes as language_code. */
   provider: string;
   client: boolean;
-  /**
-   * What its $N, $C and $R are spoken as, for a language whose words are not code
-   * (pipelines/lib/player-words.mjs): its row's, null with none. Absent on a built-in.
-   */
+  /** What its row says $N, $C and $R are spoken as. Absent on a built-in, whose words are code. */
   playerWords?: PlayerWords | null;
   /** UTF-8 bytes per character at worst, for fish.audio's list price; null for the script's default. */
   bytesPerCharacter?: number | null;
 };
 
-/** One reader's words: `name` for $N and $C, `race` for $R (pipelines/lib/player-words.mjs). */
+/** One reader's words: `name` for $N and $C, `race` for $R. */
 export type PlayerForms = { name: string; race: string; nameGenitive?: string; classPlural?: string };
 export type PlayerWords = { m: PlayerForms; f: PlayerForms };
 

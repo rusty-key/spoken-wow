@@ -14,10 +14,9 @@
  * the words themselves are a native speaker's call, and changing one reaches every line at once
  * (and marks its takes stale, which is what they then are).
  *
- * The languages a game client runs in keep their words here. A language a team brings keeps its
- * own in the database (`language."playerWords"`, migration 0125), which its text maintainers edit
- * on the site; the site registers them (lib/lang.ts registerLanguages) and a build run by hand
- * registers PLAYER_WORDS_SQL's rows (registerPlayerWordRows). Words here win over a row's.
+ * The languages a game client runs in keep their words here and win over any row's. A team's
+ * language keeps its own in `language."playerWords"`, which its text maintainers edit on the site
+ * and which must be registered before its text is spoken.
  *
  * About nine tokens in ten are the reader being addressed ("Gut gemacht, $C."), where any
  * "adventurer" reads naturally. The rest read as awkwardly as the English does and are fixed
@@ -63,8 +62,8 @@ const WORDS = {
   zhTW: { m: { name: "冒險者", race: "旅行者" }, f: { name: "冒險者", race: "旅行者" } },
 };
 
-// The words languages beyond WORDS carry in the database, by code. On globalThis for the reason
-// lib/lang.ts's registry is: the site loads this module once per bundle layer.
+// The database's words for languages beyond WORDS, by code. On globalThis because the site loads
+// this module once per bundle layer.
 const registeredKey = Symbol.for("spoken.playerWords");
 const registered = (globalThis[registeredKey] ??= { byLang: new Map() });
 
@@ -73,7 +72,6 @@ export function hasBuiltinPlayerWords(lang) {
   return Object.hasOwn(WORDS, lang);
 }
 
-/** The words `lang` speaks for its tokens, or null where it has none. */
 export function playerWordsOf(lang) {
   return (hasBuiltinPlayerWords(lang) ? WORDS[lang] : registered.byLang.get(lang)) ?? null;
 }
@@ -88,10 +86,7 @@ export function registerPlayerWords(entries) {
   registered.byLang = byLang;
 }
 
-/**
- * The database's words, for a build outside the site to register: run it however the build asks
- * Postgres (pg or psql), as `"code", "playerWords"` rows, the words as JSON text.
- */
+/** The database's words as `code, JSON text` rows, for a build outside the site to register. */
 export const PLAYER_WORDS_SQL = `select "code", "playerWords"::text from "language" where "playerWords" is not null`;
 
 /** Registers PLAYER_WORDS_SQL's rows, as [code, JSON text] pairs. */
@@ -130,7 +125,7 @@ function validForms(value) {
 
 /**
  * Words as `{ m: { name, race, nameGenitive?, classPlural? }, f: {...} }`, trimmed, or null when
- * any is missing, empty, longer than 40 characters, or holds a `$`, `:`, `;` or line break.
+ * any is missing, empty, longer than WORD_LIMIT, or holds a `$`, `:`, `;` or line break.
  */
 export function validPlayerWords(value) {
   if (!value || typeof value !== "object") return null;
