@@ -983,8 +983,11 @@ end
 -- handling: once the popup closes, the d-pad no longer moves on the settings page. There the
 -- question goes to a dialog of Spoken's own instead.
 local function GamepadUI()
-    return InputUtil and InputUtil.IsGamepadUIEnabled and InputUtil.IsGamepadUIEnabled() or false
+    if InputUtil and InputUtil.IsGamepadUIEnabled then return InputUtil.IsGamepadUIEnabled() and true or false end
+    return GetCVar and GetCVar("InputDeviceInterfaceStyle") == "1" or false
 end
+--- Whether Forever's controller UI is on: the one check Spoken and its modules share.
+Layout.IsGamepadUI = GamepadUI
 
 --- Let the controller drive `frame` while it is shown, with B pressing `close`. The controller
 --- moves only between windows the frame controls manager knows of, so the frame registers as a

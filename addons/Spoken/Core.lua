@@ -629,7 +629,7 @@ end
 -- and the "blocked from an action" dialog it raises hangs the client (#165). There the chat line
 -- says it alone.
 function Addon:IsGamepadUI()
-    return GetCVar("InputDeviceInterfaceStyle") == "1"
+    return SpokenLayout.IsGamepadUI()
 end
 
 -- Folders an older release installed, which nothing ships any more: Spoken's own before it was
