@@ -2,9 +2,10 @@
  * Hearing one lexicon entry before it costs a batch.
  *
  * The trick that makes this possible without uploading anything: ElevenLabs accepts a
- * phoneme tag inline in the text, honoured by the same models that honour a dictionary
- * phoneme rule. So a draft entry can be spoken while it is still a draft - before it is
- * saved, before a dictionary exists, and without disturbing the one generation is using.
+ * model-specific pronunciation form inline in the text. Eleven v4 and v4 Turbo use
+ * slash-delimited IPA; the older phoneme-capable models use an SSML phoneme tag. So a draft
+ * entry can be spoken while it is still a draft - before it is saved, before a dictionary
+ * exists, and without disturbing the one generation is using.
  *
  * What it does NOT prove is worth being clear about, because it is the more common
  * misunderstanding: this renders the SOUND, by substituting it directly. It says nothing
@@ -169,21 +170,23 @@ export function sampleSentence(grapheme: string, lines: CorpusLine[]): Sample {
 }
 
 /**
- * Put the entry's pronunciation into the sentence.
+ * Put the entry's pronunciation into the sentence in the syntax the selected model accepts.
  *
- * An alias is substituted outright, which is exactly what an alias rule does. IPA is wrapped
- * in a phoneme tag, which is what the dictionary does by another route. Only the first
- * occurrence is touched: one is enough to hear, and every extra tag is billed.
+ * An alias is substituted outright, which is exactly what an alias rule does. IPA is
+ * slash-delimited for Eleven v4 and v4 Turbo, while the older models use the SSML phoneme
+ * tag. Only the first occurrence is touched: one is enough to hear, and every extra tag is
+ * billed.
  */
-export function speakable(entry: LexiconEntry, sentence: string): string {
+export function speakable(entry: LexiconEntry, sentence: string, modelId: string): string {
   const escaped = entry.grapheme.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
   const pattern = new RegExp(`(?<![\\w'])${escaped}(?![\\w])`, "i");
+  const inlineIpa = modelId === "eleven_v4" || modelId === "eleven_v4_turbo";
 
-  return sentence.replace(pattern, (matched) =>
-    kindOf(entry) === "alias"
-      ? entry.alias!
-      : `<phoneme alphabet="ipa" ph="${entry.ipa!.replace(/"/g, "")}">${matched}</phoneme>`,
-  );
+  return sentence.replace(pattern, (matched) => {
+    if (kindOf(entry) === "alias") return entry.alias!;
+    const ipa = entry.ipa!.replace(/[\/"]/g, "");
+    return inlineIpa ? `/${ipa}/` : `<phoneme alphabet="ipa" ph="${ipa}">${matched}</phoneme>`;
+  });
 }
 
 /**
@@ -259,11 +262,11 @@ export async function renderPreview(
   /** Re-roll: ignore any cached take and pay for a fresh one. */
   force = false,
 ): Promise<PreviewResult> {
-  // Refused rather than rendered. An inline phoneme tag is honoured by exactly the models a
-  // dictionary phoneme rule is, so on any other model this would come back sounding like the
-  // default pronunciation - and someone checking their IPA would conclude they had written
-  // it wrong, and "fix" a transcription that was right. A respelling has no such problem: it
-  // is plain text, and every model reads it.
+  // Refused rather than rendered. The selected model's pronunciation syntax is only supported
+  // by the models in the phoneme capability list, so on any other model this would come back
+  // sounding like the default pronunciation - and someone checking their IPA would conclude
+  // they had written it wrong, and "fix" a transcription that was right. A respelling has no
+  // such problem: it is plain text, and every model reads it.
   if (kindOf(entry) === "ipa" && !honoursPhonemes(config.modelId)) {
     return { ok: false, failure: MODEL_IGNORES_PHONEMES(config.modelId) };
   }
@@ -275,7 +278,7 @@ export async function renderPreview(
       ? { text: entry.grapheme, line: null }
       : sampleSentence(entry.grapheme, (await corpus()).lines);
 
-  const spoken = speakable(entry, sentence);
+  const spoken = speakable(entry, sentence, config.modelId);
   const source = line ? { npcName: line.npcName, lineId: line.lineId } : null;
 
   const voiceId = pickVoice(line);
@@ -378,7 +381,7 @@ export async function previewCache(
     const voiceId = pickVoice(line);
     if (!voiceId) return false;
     return fs.existsSync(
-      previewPath(previewKey({ text: speakable(entry, text), voiceId, config }), dir),
+      previewPath(previewKey({ text: speakable(entry, text, config.modelId), voiceId, config }), dir),
     );
   }
 }
