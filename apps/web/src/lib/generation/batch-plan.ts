@@ -95,7 +95,7 @@ function questPlan(lines: CorpusLine[], overrides: Parameters<typeof batchPlan>[
 export const FILTER_KEYS = new Set([
   "q", "filter", "state", "missing", "outdated", "race", "gender", "flavor", "voice", "source", "type",
   "narration", "client", "line", "overridden", "ignored", "dirty", "fb", "before", "after",
-  "model", "author", "rec", "bt", "minLevel", "maxLevel", "playerGender",
+  "model", "author", "rec", "bt", "minLevel", "maxLevel", "playerGender", "zone",
 ]);
 /** Keys an Explorer URL carries that mean nothing to a batch. */
 const EXPLORER_ONLY = new Set(["page"]);
@@ -149,6 +149,7 @@ export async function filterError(
     minLevel: parsed.minLevel,
     maxLevel: parsed.maxLevel,
     playerGender: parsed.playerGender,
+    zone: parsed.zone,
     before: dayStart(params.get("before") ?? "") === null ? undefined : true,
     after: dayStart(params.get("after") ?? "") === null ? undefined : true,
   };
