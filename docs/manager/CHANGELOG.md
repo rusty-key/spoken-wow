@@ -2,6 +2,11 @@
 
 Spoken Launcher until 0.1.2, when it became Spoken Manager.
 
+## Unreleased
+
+- **Send Now in Settings > Sharing says what it did:** how many lines it sent, or that there was
+  nothing new to send. *([rusty-key](https://github.com/rusty-key))*
+
 ## 0.2.1 — 2026-11-21
 
 - **Use a proxy, in Settings > General > Network.** Left empty, the Manager follows the system

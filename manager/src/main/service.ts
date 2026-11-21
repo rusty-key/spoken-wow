@@ -2,7 +2,7 @@
 // the settings and the catalog, and runs jobs.
 import path from 'node:path'
 import { CHANNELS, type AddGameResult, type ClearDownloadsResult, type InstallOptions } from '../shared/api'
-import { isSupportedFlavor, type Catalog, type CatalogUpdate, type CommunityCatalog, type GameInstall, type JobProgress, type Product, type ProductStatus, type ReleaseInfo, type Settings, type SharingChoice, type SharingStatus, type Snapshot } from '../shared/types'
+import { isSupportedFlavor, type Catalog, type CatalogUpdate, type CommunityCatalog, type GameInstall, type JobProgress, type Product, type ProductStatus, type ReleaseInfo, type SendResult, type Settings, type SharingChoice, type SharingStatus, type Snapshot } from '../shared/types'
 import { installedVoiceProduct, languagesFor, productById, productsFor } from '../shared/products'
 import { compareVersions } from '../shared/version'
 import { buildCatalog, latestFor, loadCatalog, saveCatalog } from './catalog'
@@ -25,7 +25,7 @@ import { fetchIndex, fetchManifest, loadCachedIndex, loadCachedManifest, type Ch
 import { dropPackState, loadPackState } from './packs-state'
 import { normalizeProxy } from './proxy'
 import { syncPacks } from './packs-sync'
-import { loadLedger, resetInstallId, sendPending, type SendResult, type ShareLedger } from './share'
+import { loadLedger, resetInstallId, sendPending, type ShareLedger } from './share'
 import { getRecord, loadSettings, loadState, log, sanitizeSettings, saveSettings, type StateFile } from './state'
 import { computeStatuses } from './status'
 
@@ -646,11 +646,14 @@ export class ManagerService {
     void this.ready.then(() => this.shareTick(false))
   }
 
-  /** "Send now": reads every file, whatever the backoff says. The status arrives on sharingChanged. */
-  async sendNow(): Promise<void> {
+  /**
+   * "Send now": reads every file, whatever the backoff says, after any send already running.
+   * Null when Sharing went off meanwhile.
+   */
+  async sendNow(): Promise<SendResult | null> {
     if (this.settings.sharing !== 'on') throw new PlainError(t('service.turnOnSharing'))
-    await this.sharing?.done
-    await this.shareTick(true)
+    while (this.sharing) await this.sharing.done
+    return this.shareTick(true)
   }
 
   /** A new random id for this manager; the lines already sent are not sent again. */
