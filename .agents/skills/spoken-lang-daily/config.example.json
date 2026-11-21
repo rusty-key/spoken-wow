@@ -1,5 +1,5 @@
 {
-  "textApiTokenHeader": "~/.claude/spoken/xxXX/token-header.txt",
+  "textApiTokenHeader": "~/.config/spoken/xxXX/token-header.txt",
   "doneModels": ["eleven:v4", "eleven:v4_turbo"],
   "voicingCap": 1500,
   "scraperBooksMatch": null,

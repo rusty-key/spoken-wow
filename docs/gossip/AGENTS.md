@@ -2,7 +2,7 @@
 
 The root `AGENTS.md` applies. This file covers the gossip part of `addons/Spoken_Quests`.
 `docs/gossip/README.md` is the reference. The pipeline that builds gossip lines and packs is
-`docs/quests/CLAUDE.md`, because Quests and Gossip share one corpus, one set of packs and one site
+`docs/quests/AGENTS.md`, because Quests and Gossip share one corpus, one set of packs and one site
 section.
 
 ## Rules that bite
