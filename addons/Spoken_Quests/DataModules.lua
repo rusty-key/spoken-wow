@@ -71,6 +71,7 @@ local LOAD_ALL_MODULES = true
 ---@field SoundLengthLookupByFileName table<string, number> Maps sound filenames to their duration in seconds
 ---@field WordTimesByFileName? table<string, string> Maps sound filenames to when each word of their line starts, packed as clip.present.timings takes them
 ---@field TextByFileName? table<string, string> Maps sound filenames to the words their takes were voiced from
+---@field LineTextByFileName? table<string, string> Maps the filenames of lines with no take to their words
 ---@field QuestFileLookupByNPCID? table<string, table<number, string>> Maps a quest line's filename and its giver's Creature ID to the line in that giver's own voice, where it differs
 ---@field QuestFileLookupByObjectID? table<string, table<number, string>> Maps a quest line's filename and its giver's GameObject ID to the line in that giver's own voice, where it differs
 ---@field GossipFileLookupByNPCSex? table<number, table<number, table<string, string>>> Maps a split Creature ID, the sex it is drawn as (UnitSex) and a gossip line's hash to the file that sex hears
@@ -1218,14 +1219,14 @@ end
 
 --- A line's words from a voice pack in `language` that did not play it: a Polish pack's under an
 --- English voice. By the file that played and the line's own, each for the player's sex first.
-local function VoicedWords(self, soundData, language)
+local function PackWords(self, soundData, language, field)
     local names = {}
     for _, name in pairs({ soundData.fileName, soundData.lineFile }) do
         table.insert(names, self:AddPlayerGenderToFilename(name))
         table.insert(names, name)
     end
     for _, module in self:GetModules() do
-        local texts = module.METADATA.Language == language and module.TextByFileName
+        local texts = module.METADATA.Language == language and module[field]
         if texts then
             for _, name in ipairs(names) do
                 if texts[name] then return texts[name] end
@@ -1236,20 +1237,30 @@ local function VoicedWords(self, soundData, language)
 end
 
 --- A line's words in the Text Language the player chose where the recording playing is in another:
---- a voice pack's in it, which are what its voice says, else a text pack's (Spoken's Texts.lua). Its
---- tokens filled in for the player, and the language. Nil on Auto, and where neither has the line.
+--- a voice pack's in it, which are what its voice says, else a text pack's (Spoken's Texts.lua), else
+--- the words a voice pack carries of a line it has no take of. Its tokens filled in for the player,
+--- and the language. Nil on Auto, and where none has the line.
+--- Given a `language`, its words whether the player chose it or not.
 ---@param soundData SoundData
+---@param language string|nil
 ---@return string|nil text
 ---@return string|nil language
-function DataModules:TextPackText(soundData)
-    local language, chosen = Language:GetTextLanguage()
-    if not (chosen and Spoken and Spoken.TextIn) then return nil end
-    local voiced = VoicedWords(self, soundData, language)
-    if voiced then return Utils:FillPlayerTokens(voiced), language end
-    for _, id in ipairs(self:LineIds(soundData.lineFile or soundData.fileName)) do
-        local text = Spoken:TextIn(language, "quests", "lines", id)
-        if text then return Utils:FillPlayerTokens(text), language end
+function DataModules:TextPackText(soundData, language)
+    if not language then
+        local chosen
+        language, chosen = Language:GetTextLanguage()
+        if not chosen then return nil end
     end
+    local voiced = PackWords(self, soundData, language, "TextByFileName")
+    if voiced then return Utils:FillPlayerTokens(voiced), language end
+    if Spoken and Spoken.TextIn then
+        for _, id in ipairs(self:LineIds(soundData.lineFile or soundData.fileName)) do
+            local text = Spoken:TextIn(language, "quests", "lines", id)
+            if text then return Utils:FillPlayerTokens(text), language end
+        end
+    end
+    local written = PackWords(self, soundData, language, "LineTextByFileName")
+    if written then return Utils:FillPlayerTokens(written), language end
     return nil
 end
 

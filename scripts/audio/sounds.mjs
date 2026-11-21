@@ -47,8 +47,8 @@ import { archiveOf, ENCODING_PROFILE, sourceOf } from "../lib/archives.mjs";
 import { pointerText, writePointers } from "../lib/clip-pointer.mjs";
 import { archiveBase, eachParallel, fetchRetrying } from "../lib/download.mjs";
 import { releaseTeamSql } from "../../pipelines/lib/release-team.mjs";
-import { PLAYER_WORDS_SQL, registerPlayerWordRows } from "../../pipelines/lib/player-words.mjs";
-import { CURRENT_TEXT_SQL, NAMED_QUESTS_SQL, currentTextFor, namedBy } from "./relevant.mjs";
+import { PLAYER_WORDS_SQL, registerPlayerWordRows, writtenPlayerTokens } from "../../pipelines/lib/player-words.mjs";
+import { CURRENT_TEXT_SQL, NAMED_QUESTS_SQL, currentLines, currentTextFor, namedBy } from "./relevant.mjs";
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "../..");
 
@@ -212,6 +212,17 @@ async function writeTakeText() {
     if (text) texts[take.stem] = text;
   }
   await writeFile(join(paths.out, "take-text.json"), `${JSON.stringify(texts)}\n`);
+  await writeLineText(rows);
+}
+
+// Every current line's words, recorded or not, so a quest page shows a line in the pack's language
+// before anyone voiced it. Its tokens are left for the addon to fill, in the forms it fills. English
+// ships its words in the addon itself.
+async function writeLineText(rows) {
+  if (lang === BASE_LANG) return;
+  const texts = {};
+  for (const [stem, { text }] of currentLines(rows)) if (text) texts[stem] = writtenPlayerTokens(text);
+  await writeFile(join(paths.out, "line-text.json"), `${JSON.stringify(texts)}\n`);
 }
 
 /** The takes the folder holds, for a staged release's review; nothing without SPOKEN_SELECTED_TAKES. */

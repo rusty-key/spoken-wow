@@ -4,6 +4,10 @@ Spoken Player until 3.0.0, when it became Spoken and took its modules into one d
 
 ## Unreleased
 
+- **Quest pages in the Compendium read in your language before a line is voiced.** A quest you have
+  not opened, whose line has no recording in your language yet, showed its English. It now shows
+  the words your language's quest packs carry, once those packs are rebuilt.
+  *([rusty-key](https://github.com/rusty-key))*
 - **The Compendium's lists take the professions window's look,** with gold header bars and a yellow light on
   the chosen row. *([Nucabe](https://github.com/Nucabe))*
 - **A boss's model sits on a frayed paper edge**, on the map panel and in the Compendium. On the map,

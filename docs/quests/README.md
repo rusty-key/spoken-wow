@@ -237,6 +237,16 @@ them. `build` writes `text_table.lua` (`TextByFileName`) for the clips the pack 
 shows it where the pack is in the client's language (`docs/spoken/CAPTIONS.md`). It does not reach
 the lookup tables, which match the window's words.
 
+A language other than English also gets `audio/line-text.json`: every current quest, gossip and
+followup line's `quest_line` text, recorded or not. Its tokens are left for the addon to fill,
+rewritten into the two forms it fills (`$N`, `$gmale:female;`). `build` writes the lines of the
+pack's share that have no take to `line_text_table.lua` (`LineTextByFileName`), so a quest page reads
+a line in the pack's language before anyone has voiced it, where no window of it was kept
+(`UI/QuestsTab.lua` `PartText`). Captions in a chosen Text Language read it last, after a text
+pack's words, since no voice says them. Like `TextByFileName`, it loads only where the pack's
+language is the Text Language, which on Auto is the client's. For esMX it is about 3.8 MB across
+the four packs, of which 0.85 MB is gossip.
+
 `install` moves any existing install aside to `<module>.replaced` rather than deleting it.
 
 **Icons.** Every addon here carries an `icon.tga` and a `## IconTexture:` line naming

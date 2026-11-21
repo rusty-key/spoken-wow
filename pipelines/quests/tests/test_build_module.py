@@ -324,6 +324,26 @@ def test_text_ships_for_the_clips_a_pack_carries(tmp_path):
     assert report["tableRows"]["text_table"] == 1
 
 
+def test_a_language_pack_carries_the_words_of_its_lines_without_a_take(tmp_path):
+    store = _store(tmp_path, "quests/5-accept.ogg")
+    tables = {"take-text.json": {"quests/5-accept": "Grabada."},
+              "line-text.json": {"quests/5-accept": "Escrita.", "quests/5-complete": "Sin grabar.",
+                                 "quests/9-accept": "Otro paquete."}}
+    for name, table in tables.items():
+        with open(os.path.join(store, name), "w", encoding="utf-8") as f:
+            json.dump(table, f)
+
+    build_module(CORPUS, store, str(tmp_path / "dist"), "Mod", language="esMX",
+                 include={"quests/5-accept", "quests/5-complete"})
+
+    generated = tmp_path / "dist" / "Mod" / "generated"
+    takes = (generated / "text_table.lua").read_text(encoding="utf-8")
+    lines = (generated / "line_text_table.lua").read_text(encoding="utf-8")
+    assert '["5-accept"] = "Grabada."' in takes and "Sin grabar" not in takes
+    assert '["5-complete"] = "Sin grabar."' in lines
+    assert "Escrita" not in lines and "Otro paquete" not in lines
+
+
 def test_text_survives_lua_quoting(tmp_path):
     # A raw newline or an unescaped quote stops the whole pack from loading.
     lua, _ = _text_table(tmp_path, {"quests/5-accept": 'Say "hi"\nC:\\x \tПривет'})

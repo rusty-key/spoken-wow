@@ -244,6 +244,14 @@ export function playerGenderSides(text) {
   return [text.replace(GENDER, "$1").replace(SWAPPED, "$1"), text.replace(GENDER, "$2").replace(SWAPPED, "$2")];
 }
 
+/**
+ * The text with its player tokens in the two forms the addon fills (Utils:FillPlayerTokens): `$N`
+ * and `$gmale:female;`. A doubled `$$`, `$u`, its swapped separators and ruRU's third field are not.
+ */
+export function writtenPlayerTokens(text) {
+  return text.replace(DOUBLED, "$").replace(GENDER, "$$g$1:$2;").replace(SWAPPED, "$$g$1:$2;");
+}
+
 /** The text as it is spoken in `lang`, by a reader of `playerGender` where the line has one. */
 export function speakPlayerTokens(text, lang, playerGender = null) {
   const forms = playerWordsOf(lang);
