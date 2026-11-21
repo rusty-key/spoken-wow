@@ -8,9 +8,8 @@ import { describe, expect, it, vi } from "vitest";
 
 import { filtersFromParams } from "./search-request";
 
-vi.mock("@quests-corpus/zones.json", () => ({
-  default: { zones: [{ uiMapID: 1411, name: "Durotar" }], quests: {}, speakers: {} },
-}));
+// The zones on offer are the vouched sightings'; one is enough to read a zone by.
+vi.mock("@/lib/quests/sightings", () => ({ offeredZones: async () => [{ uiMapID: 1411, name: "Durotar" }] }));
 
 describe("filtersFromParams", () => {
   it("reads the line id a report links with", async () => {

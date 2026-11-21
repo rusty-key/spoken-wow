@@ -1,30 +1,23 @@
-import { describe, expect, it, vi } from "vitest";
+import { describe, expect, it } from "vitest";
 
 import type { CorpusLine } from "../corpus";
 import { matchingLines } from "../search";
-import { zonesOf, type ZonesFile } from "./zones";
+import { zonesOf } from "./zones";
 
-// Kobold Camp Cleanup in Elwynn; Thork at the Crossroads; a trainer in Orgrimmar and The Barrens.
-const FILE: ZonesFile = vi.hoisted(() => ({
-  zones: [
-    { uiMapID: 1429, name: "Elwynn Forest" },
-    { uiMapID: 1454, name: "Orgrimmar" },
-    { uiMapID: 1413, name: "The Barrens" },
-  ],
-  quests: { "7": [1429] },
-  speakers: { "creature:3429": [1413], "creature:3352": [1454, 1413] },
-}));
+// Thork, met at the Crossroads; a trainer met in Orgrimmar and The Barrens.
+const SIGHTED = new Map([
+  ["creature:3429", [1413]],
+  ["creature:3352", [1454, 1413]],
+]);
 
-vi.mock("@quests-corpus/zones.json", () => ({ default: FILE }));
-
-const line = (questId: number | null, npcId: number): CorpusLine => ({
-  lineId: questId === null ? `g:${npcId}` : `q:${questId}:accept`,
+const line = (questId: number | null, npcId: number, npcType: CorpusLine["npcType"] = "creature"): CorpusLine => ({
+  lineId: questId === null ? `g:${npcType}:${npcId}` : `q:${questId}:accept`,
   source: questId === null ? "gossip" : "accept",
   questId,
   questTitle: questId === null ? null : "A quest",
   npcId,
   npcName: "Someone",
-  npcType: "creature",
+  npcType,
   race: "human",
   gender: "male",
   flavor: null,
@@ -38,34 +31,30 @@ const line = (questId: number | null, npcId: number): CorpusLine => ({
 });
 
 describe("zonesOf", () => {
-  it("puts a quest's lines where the Compendium files the quest, wherever the speaker stands", () => {
-    expect(zonesOf(line(7, 3429), FILE)).toEqual([1429]);
+  it("puts a line, quest or gossip, in each zone players met its speaker in", () => {
+    expect(zonesOf(line(7, 3429), SIGHTED)).toEqual([1413]);
+    expect(zonesOf(line(null, 3352), SIGHTED)).toEqual([1454, 1413]);
   });
 
-  it("puts gossip, and a quest the Compendium files under no zone, where the speaker stands", () => {
-    expect(zonesOf(line(null, 3352), FILE)).toEqual([1454, 1413]);
-    expect(zonesOf(line(1500, 3352), FILE)).toEqual([1454, 1413]);
-  });
-
-  it("adds the zones players vouch for to where the map files place the speaker", () => {
-    const sighted = new Map([["creature:3429", [1454, 1413]], ["creature:1", [1411]]]);
-    expect(zonesOf(line(null, 3429), FILE, sighted)).toEqual([1413, 1454]);
-    expect(zonesOf(line(null, 1), FILE, sighted)).toEqual([1411]);
-    expect(zonesOf(line(7, 3429), FILE, sighted)).toEqual([1429]);
-  });
-
-  it("keeps creatures and objects with the same id apart, and places neither it does not know", () => {
-    expect(zonesOf({ ...line(null, 3429), npcType: "gameobject" }, FILE)).toEqual([]);
+  it("places a speaker nobody has vouched for nowhere, and keeps creatures and objects apart", () => {
+    expect(zonesOf(line(null, 1), SIGHTED)).toEqual([]);
+    expect(zonesOf(line(null, 3429, "gameobject"), SIGHTED)).toEqual([]);
+    expect(zonesOf(line(null, 3429))).toEqual([]);
   });
 });
 
 describe("the zone filter", () => {
   const corpus = { lines: [line(7, 3429), line(null, 3429), line(null, 3352), line(null, 1)] };
-  const ids = (zone?: number) => matchingLines(corpus, new Set(), { zone }).map((l) => l.lineId);
+  const ids = (zone?: number, sightings = SIGHTED) =>
+    matchingLines(corpus, new Set(), { zone }, { overrides: new Map(), sightings }).map((l) => l.lineId);
 
-  it("keeps the lines in the zone, a speaker in several zones under each", () => {
-    expect(ids(1413)).toEqual(["g:3352", "g:3429"]);
-    expect(ids(1429)).toEqual(["q:7:accept"]);
+  it("keeps the lines in the zone, a speaker met in several zones under each", () => {
+    expect(ids(1413).sort()).toEqual(["g:creature:3352", "g:creature:3429", "q:7:accept"]);
+    expect(ids(1454)).toEqual(["g:creature:3352"]);
+  });
+
+  it("matches nothing without the sightings, rather than everything", () => {
+    expect(ids(1413, new Map())).toEqual([]);
   });
 
   it("is off without a zone", () => {

@@ -7,7 +7,7 @@
  * Being closed sets also makes them a whitelist, which is what lets /api/search take these
  * straight from a query string.
  *
- * The zones are corpus/zones.json's and any players' sightings add (lib/quests/sightings.ts), asked
+ * The zones are the ones players' sightings name (lib/quests/sightings.ts), asked
  * on every call rather than kept with the roster, since sightings arrive between roster moves.
  *
  * `source` and `npcType` are absent on purpose: they are closed unions on CorpusLine, so

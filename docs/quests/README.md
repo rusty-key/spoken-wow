@@ -502,16 +502,15 @@ its Play button and `/spq read` still play it.
 too. The level lives in `quest_level`, loaded from an extract by a one-off script. A line with no
 known level is in no range, so setting either bound hides gossip and quests the extract lacks.
 
-**The zone filter places a line as the Compendium places quests.** `?zone=<uiMapID>` keeps a quest's
-lines when the Compendium files the quest in that zone, wherever its giver stands. Gossip, and a
-quest filed under a class, profession or season, counts in each zone its speaker spawns in. The
-zones come from the committed `pipelines/quests/corpus/zones.json`, which `make quests-zones` writes
-from `Compendium.lua` and the corpus's spawns. The spawns are placed by the server's map files
-(`COMPENDIUM_MAPS`), as the Compendium places a giver, because the zones' rectangles overlap along
-every border. Rerun it after `make quests-compendium` or a corpus export. A speaker is also in
-each zone two players' uploads say they met it in (`npc_sighting`, `lib/quests/sightings.ts`, the
-collecting described under contributions), which places the NPCs the dump never spawned. The filter
-offers only the zones some line is in, and an item or an unspawned object is in none.
+**The zone filter places a line where players met its speaker.** `?zone=<uiMapID>` keeps every line
+whose speaker two players' uploads say they met in that zone (`npc_sighting`, `lib/quests/sightings.ts`,
+the collecting described under contributions): a quest's accept line where its giver stands, its
+complete line where its ender does, whatever zone the quest log files the quest under. The game says
+which zone the player stands in, so a speaker at a border lands right, and an NPC the dump never
+spawned is placed as readily. A speaker nobody has vouched for yet, and an item, are in no zone, and
+the filter offers only the zones some sighting names. Only the zones in the places seed
+(`pipelines/places/tools/seed/zones.json`) are kept, so Forever's own zones are not filterable until
+it lists them.
 
 **The player filter is for voicing one side of a split line first.** `?playerGender=m` or `f` keeps
 that side's `:m` or `:f` lines and every line that does not branch on the player, and a batch started

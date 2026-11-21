@@ -1,7 +1,7 @@
 /**
  * Where players met each NPC, from the `seen` envelopes their uploads carry
  * (lib/contributions/sighting.ts): the game's own answer to which zone a speaker stands in, for
- * the zone filter beside corpus/zones.json's (lib/quests/zones.ts).
+ * the zone filter (lib/quests/zones.ts).
  *
  * A zone counts for an NPC once VOUCHERS uploaders have sent it: one player's file, sent again
  * after every logout, is one voice. Not a defence against someone set on poisoning it, which
@@ -13,20 +13,19 @@ import type { Sighting } from "@/lib/contributions/sighting";
 import { query } from "@/lib/db";
 import { zoneSeed } from "@/lib/places/tools";
 
-import { QUEST_ZONES, type QuestZone } from "./zones";
+import type { QuestZone } from "./zones";
 
 export const VOUCHERS = 2;
 
 // The world and the two continents: the addon walks a map up to a zone and stops below them.
 const NOT_ZONES = new Set([947, 1414, 1415]);
 
-/** Every zone a sighting may name: the places seed's, and any corpus/zones.json adds (Forever's). */
-const KNOWN_ZONES: ReadonlyMap<number, string> = new Map([
-  ...Object.entries(zoneSeed).flatMap(([id, row]) =>
+/** Every zone a sighting may name, by uiMapID: the places seed's. */
+const KNOWN_ZONES: ReadonlyMap<number, string> = new Map(
+  Object.entries(zoneSeed).flatMap(([id, row]) =>
     /^\d+$/.test(id) && !Array.isArray(row) && !NOT_ZONES.has(Number(id)) ? [[Number(id), row.name] as const] : [],
   ),
-  ...QUEST_ZONES.map((zone) => [zone.uiMapID, zone.name] as const),
-]);
+);
 
 /**
  * Who vouches for a sighting: the account, else the Manager's install, else this upload alone. No
@@ -84,9 +83,9 @@ export function confirmedSightings(now = Date.now()): Promise<Map<string, number
   return vouched.sightings;
 }
 
-/** The zones the filter offers: corpus/zones.json's, and every zone a vouched sighting adds, by name. */
+/** The zones the filter offers, by name: those some vouched sighting names, so no choice selects nothing. */
 export async function offeredZones(now = Date.now()): Promise<readonly QuestZone[]> {
-  const byId = new Map(QUEST_ZONES.map((zone) => [zone.uiMapID, zone]));
+  const byId = new Map<number, QuestZone>();
   for (const zones of (await confirmedSightings(now)).values()) {
     for (const uiMapID of zones) {
       const name = KNOWN_ZONES.get(uiMapID);
