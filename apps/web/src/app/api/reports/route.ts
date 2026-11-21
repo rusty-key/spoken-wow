@@ -19,14 +19,14 @@ import { validateSubmission } from "@/lib/reports/reports";
 import { langParam } from "@/lib/lang-server";
 import { countRecent, createReport } from "@/lib/reports/store";
 import { envelopeFor } from "@/lib/reports/context";
-import type { Envelope } from "@/lib/contributions/envelope";
+import { isContributionEnvelope, type Envelope } from "@/lib/contributions/envelope";
 import { keepClassWords } from "@/lib/contributions/class-words";
 import { submissionFrom } from "@/lib/contributions/submission";
 import {
   CONTRIBUTION_WINDOW_MS,
   CONTRIBUTIONS_PER_HOUR,
   type Identity,
-  knownSubmissions,
+  intakeStates,
   storeSubmission,
 } from "@/lib/contributions/intake";
 import { countRecentContributions, recordContributionHit } from "@/lib/contributions/store";
@@ -41,9 +41,13 @@ export const dynamic = "force-dynamic";
 /** `file` only for a quests line: nothing else can have an override. */
 type Address = { lineId: string | null; target: string; file?: string | null };
 
-/** Deliberately not configurable: a knob nobody turns is a knob set wrong. */
-const PER_HOUR = 10;
-const WINDOW_MS = 60 * 60 * 1000;
+/**
+ * Deliberately not configurable: a knob nobody turns is a knob set wrong. A short window
+ * because reports come in bursts, one quest chain's bad lines at a time: a burst gets through,
+ * and someone who hits the limit waits minutes, not an hour.
+ */
+const PER_WINDOW = 10;
+const WINDOW_MS = 10 * 60 * 1000;
 
 export async function POST(request: Request) {
   const body = (await request.json().catch(() => ({}))) as Record<string, unknown>;
@@ -101,15 +105,19 @@ export async function POST(request: Request) {
     return Response.json({ error: validated.error }, { status: 400 });
   }
 
-  const ip = clientIp(request);
-  if ((await countRecent(ip, WINDOW_MS)) >= PER_HOUR) {
-    return Response.json({ error: "too many reports" }, { status: 429 });
-  }
-
   // A signed-in reporter's identity comes from the session, and any name or email in the body
   // is dropped rather than merged: letting someone sign in and then type a different name is a
   // way to put words in another person's mouth.
   const session = await auth.api.getSession({ headers: await headers() });
+
+  const ip = clientIp(request);
+  const reporter = session ? { userId: session.user.id } : { ip };
+  const recent = await countRecent(reporter, WINDOW_MS);
+  if (recent >= PER_WINDOW) {
+    // The only record of a refusal: pm2's log, which is how a shared bucket shows up.
+    console.warn("report rate-limited", { ...reporter, recent });
+    return Response.json({ error: "too many reports" }, { status: 429 });
+  }
 
   const identity = {
     userId: session?.user.id ?? null,
@@ -135,8 +143,10 @@ export async function POST(request: Request) {
   });
 
   // The report is filed by now: a failure here must not answer 500 and invite a second one.
-  if (envelope && validated.value.category === "missing") {
-    await contributeMissing(envelope, body.context as string, validated.value.body, identity).catch((error) =>
+  // A boss's context is never a contribution: there are none for bosses.
+  const contributing = envelope && isContributionEnvelope(envelope) ? envelope : null;
+  if (contributing && validated.value.category === "missing") {
+    await contributeMissing(contributing, validated.value.body, identity).catch((error) =>
       console.error("filing a missing report as a contribution failed", error),
     );
   }
@@ -154,20 +164,19 @@ export async function POST(request: Request) {
  */
 async function contributeMissing(
   envelope: Envelope,
-  raw: string,
   complaint: string,
   identity: Omit<Identity, "body"> & { ip: string },
 ): Promise<void> {
   if (envelope.source === "places") return;
-  const sent = submissionFrom(envelope, raw);
+  const sent = submissionFrom(envelope);
   if (!sent) return;
   const [recent, [submission]] = await Promise.all([
     countRecentContributions(identity.ip, CONTRIBUTION_WINDOW_MS),
     keepClassWords([sent]),
   ]);
   if (recent >= CONTRIBUTIONS_PER_HOUR) return;
-  const [known] = await knownSubmissions([submission]);
-  if (!known) {
+  const [state] = await intakeStates([submission]);
+  if (state?.kind !== "known") {
     await storeSubmission(submission, { ...identity, body: complaint });
   }
   await recordContributionHit(identity.ip);

@@ -4,7 +4,7 @@ release: quests-audio-horde-zhTW
 section: quests
 lang: zhTW
 pack: horde
-version: 0.0.1
+version: 0.0.2
 github: false
 slug: spoken-chinese-traditional-audio-quests-horde
 name: Spoken Chinese (Traditional) Audio: Quests - Horde

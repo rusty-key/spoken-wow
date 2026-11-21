@@ -22,11 +22,12 @@ local EVENT_PATHS =
 
 Contribute = {}
 
---- Whether the Spoken folder beside this addon has what Detemplate and the gathering call. An
+--- Whether the Spoken folder beside this addon has what contributing and the gathering call. An
 --- older one does not, and a player on it has no contribute button rather than an error.
 local function CoreIsCurrent()
     local contribute, gather = _G.Spoken and Spoken.Contribute, _G.Spoken and Spoken.Gather
     return contribute and contribute.NameWords and contribute.ReplaceWord and contribute.Parse
+        and contribute.ReaderFields and contribute.Detemplate
         and (not gather or (gather.Lines and gather.Get and gather.Remove and gather.IsTidied))
         and true or false
 end
@@ -244,71 +245,16 @@ local function GossipOnScreen()
     return GetGossipText and NotSecret(GetGossipText())
 end
 
---- The text with this character's name, class and race put back as the game's own tokens.
----
---- The client hands us quest text with $N, $C and $R already expanded to whoever is reading
---- it, and a line voiced from that would greet every other player by this one's name. The
---- extract never has the problem -- it reads the templates -- so the fix is to send what the
---- extract would have seen: the site substitutes a token the same way the extract does, and a
---- gossip line hashes to the same id the world database's copy of it would.
----
---- Only this client knows which words were substituted. Once the text leaves, "Thrall" in a
---- line is as likely an NPC as the player, which is why this is done here and not on arrival.
----
---- Class and race are replaced wherever they occur as words, so a warrior reading "a warrior's
---- discipline" sends "a $c's discipline" -- a known cost, taken over voicing someone's class
---- at every other player. The class is kept as written on a quest that only that class can take
---- (questID), since the word there is the quest's own whichever way Blizzard wrote it. $G cannot
---- be undone at all: the client picked one side of the branch, and the words of the other side
---- are not on screen.
-function Contribute:Detemplate(text, questID)
-    local swaps = {}
-    local function add(word, token)
-        if type(word) == "string" and word ~= "" then
-            swaps[#swaps + 1] = { word, token }
-        end
-    end
-    local function addCased(word, upper, lower)
-        add(word, upper)
-        if type(word) == "string" and string.lower(word) ~= word then
-            add(string.lower(word), lower)
-        end
-    end
-
-    -- A character with a surname (the Classic beta gives Skybourne elves one) is named whole by
-    -- UnitName -- "Valaas Dawnsight" -- while a line greets them by one part: "Greetings, young
-    -- Valaas". Each part is the player too, as written or in capitals. Sorted with the class and
-    -- race below, so a part of the name inside a longer class or race ("Hunter" in "Demon
-    -- Hunter") does not take it first.
-    for _, word in ipairs(Spoken.Contribute:NameWords(UnitName and UnitName("player"))) do
-        add(word, "$N")
-    end
-    local localized, classFile, classID
-    if UnitClass then
-        localized, classFile, classID = UnitClass("player")
-    end
+--- Who is reading, onto `fields`, beside a text sent as shown, and the classes `questID` is for
+--- where the Compendium says: on a quest only the reader's class can take, the class is the
+--- quest's own word and the site leaves it as written.
+local function ReaderFields(fields, questID)
     local quests = _G.SpokenQuestsCompendium and _G.SpokenQuestsCompendium.quests
     local quest = questID and quests and quests[questID]
-    if localized and not (quest and classID and quest.classes == 2 ^ (classID - 1)) then
-        addCased(localized, "$C", "$c")
-        -- The locales that inflect a class by gender (deDE "Kriegerin") render the form for
-        -- this character, which is the one UnitClass already answered; both are asked for in
-        -- case a line names the other.
-        for _, names in ipairs({ _G.LOCALIZED_CLASS_NAMES_MALE or {}, _G.LOCALIZED_CLASS_NAMES_FEMALE or {} }) do
-            addCased(classFile and names[classFile], "$C", "$c")
-        end
+    if quest and quest.classes then
+        fields[#fields + 1] = { "questClasses", quest.classes }
     end
-    if UnitRace then
-        addCased((UnitRace("player")), "$R", "$r")
-    end
-
-    -- Longest first, so "Night Elf" goes as one race before a shorter word inside it can be
-    -- taken for something else.
-    table.sort(swaps, function(a, b) return string.len(a[1]) > string.len(b[1]) end)
-    for _, pair in ipairs(swaps) do
-        text = Spoken.Contribute:ReplaceWord(text, pair[1], pair[2])
-    end
-    return text
+    Spoken.Contribute:ReaderFields(fields)
 end
 
 --- The fields every quests envelope starts with: which addon, which client, which language.
@@ -334,14 +280,34 @@ local function BaseFields()
     }
 end
 
+--- The pack folder that holds a line, and that folder's .toc version, onto `fields`. A language's
+--- quests ship as several folders and a release bumps only the ones it changed, so the folder's
+--- own version is what tells the site whether the player has the line's newest recording.
+---@param module table|nil the data module the line resolved to (soundData.module)
+local function FolderFields(fields, module)
+    local metadata = module and module.METADATA
+    if not (metadata and metadata.AddonName) then
+        return
+    end
+    fields[#fields + 1] = { "packFolder", metadata.AddonName }
+    fields[#fields + 1] = { "packFolderVersion", metadata.ContentVersion or "none" }
+    -- The team whose pack played, so the site files the report with them; none for a plain pack,
+    -- which is the language's own team's.
+    if metadata.Team then
+        fields[#fields + 1] = { "packTeam", metadata.Team }
+    end
+end
+
 --- The envelope for what is on screen, or nil when there is nothing to send. `reworded` for a
---- line that plays in other words, which leaves out the displays.
-function Contribute:Capture(reworded)
+--- line that plays in other words, which leaves out the displays. `module` is the data module
+--- the line plays from, for a report.
+function Contribute:Capture(reworded, module)
     if not CoreIsCurrent() then
         return nil
     end
     local event, text = EventOnScreen()
     local fields = BaseFields()
+    FolderFields(fields, module)
 
     if event and text and text ~= "" then
         local questID = GetQuestID and NotSecret(GetQuestID()) or 0
@@ -352,12 +318,12 @@ function Contribute:Capture(reworded)
         fields[#fields + 1] = { "npc", NPCField() }
         Observations(fields, reworded)
         fields[#fields + 1] = { "title", GetTitleText and NotSecret(GetTitleText()) or "" }
+        ReaderFields(fields, questID)
         -- The second value is what Gather keys the line on: the quest, the moment and who said
         -- it. The text is left out on purpose -- the same panel read twice is one line. The
         -- third is the text the envelope carries.
-        local said = Contribute:Detemplate(text, questID)
-        return Spoken.Contribute:Envelope("quests", fields, said),
-            format("q:%s:%s:%s", tostring(questID or 0), EVENT_PATHS[event], tostring(NPCID() or "")), said
+        return Spoken.Contribute:Envelope("quests", fields, text),
+            format("q:%s:%s:%s", tostring(questID or 0), EVENT_PATHS[event], tostring(NPCID() or "")), text
     end
 
     -- Gossip: no quest and no event, but an NPC saying something this corpus has never heard.
@@ -369,16 +335,16 @@ function Contribute:Capture(reworded)
     -- the words are still readable and the unit is already gone.
     local gossip = GossipOnScreen()
     if gossip and gossip ~= "" and NPCID() then
-        -- Detemplated before the key is taken too, so the same line gathered on two
-        -- characters is one line rather than one per name.
-        gossip = Contribute:Detemplate(gossip)
         fields[#fields + 1] = { "npc", NPCField() }
         Observations(fields, reworded)
-        -- An NPC can say several different things, so gossip is keyed on the words as well.
-        -- Keyed on the sex too, so a man and a woman saying the same words are two lines.
+        ReaderFields(fields)
+        -- An NPC can say several different things, so gossip is keyed on the words as well,
+        -- detemplated so the same line gathered on two characters is one line rather than one
+        -- per name. Keyed on the sex too, so a man and a woman saying the same words are two lines.
         local sex = UnitSex and NotSecret(UnitSex("npc"))
         return Spoken.Contribute:Envelope("quests", fields, gossip),
-            format("g:%d:%d%s", NPCID(), Spoken.Contribute:Checksum(gossip), sex == 3 and ":f" or "")
+            format("g:%d:%d%s", NPCID(), Spoken.Contribute:Checksum(Spoken.Contribute:Detemplate(gossip)),
+                sex == 3 and ":f" or "")
     end
 
     return nil
@@ -409,13 +375,14 @@ function Contribute:ReportContext(clip)
         return self:CaptureFromLog(clip.questID, clip.title)
     end
     if not clip or ShowsClip(clip) then
-        local envelope = self:Capture()
+        local envelope = self:Capture(nil, clip and clip.module or self:ModuleForCurrent())
         if envelope or not clip then
             return envelope
         end
     end
 
     local fields = BaseFields()
+    FolderFields(fields, clip.module)
     local path = EVENT_PATHS[clip.event]
     if clip.questID and clip.questID > 0 and path then
         fields[#fields + 1] = { "quest", clip.questID }
@@ -428,23 +395,26 @@ function Contribute:ReportContext(clip)
     if clip.title and clip.title ~= "" then
         fields[#fields + 1] = { "title", clip.title }
     end
-    local text = type(clip.text) == "string" and clip.text ~= "" and self:Detemplate(clip.text) or nil
+    local text = type(clip.text) == "string" and clip.text ~= "" and clip.text or nil
+    if text then
+        ReaderFields(fields, clip.questID)
+    end
     return Spoken.Contribute:Envelope("quests", fields, text)
 end
 
---- Whether this client's data module has a line for what is on screen.
+--- A throwaway soundData for what is on screen, for DataModules:PrepareSound to resolve, or nil.
 ---
 --- Neither VoiceOver.lua nor Player.lua expose a lookup by that name: what actually decides
 --- there is nothing to enqueue is DataModules:PrepareSound, called from Player:Enqueue. Run
 --- against a throwaway table rather than a soundData already headed for playback -- PrepareSound
 --- mutates whatever it is given (fileName, filePath, length, module), and a table built only to
 --- ask the question must not be mistaken afterwards for a clip that plays.
-local function HasSoundForCurrent()
+local function SoundDataForCurrent()
     local event, text = EventOnScreen()
     if event and text and text ~= "" then
         -- The text and giver too: a moment in several wordings is found by the words on screen.
-        return DataModules:PrepareSound({ event = event, questID = GetQuestID and NotSecret(GetQuestID()) or 0,
-            text = text, unitGUID = Utils:GetNPCGUID() })
+        return { event = event, questID = GetQuestID and NotSecret(GetQuestID()) or 0,
+            text = text, unitGUID = Utils:GetNPCGUID() }
     end
 
     local gossip = GossipOnScreen()
@@ -457,18 +427,34 @@ local function HasSoundForCurrent()
     -- GUID, and hands that name to string.gsub, so a nil one is an error thrown at a player
     -- who only walked away from a conversation.
     if gossip and gossip ~= "" and (guid or name) then
-        local soundData = {
+        return {
             event = Enums.SoundEvent.Gossip,
             unitGUID = guid,
             name = name,
             unitIsObjectOrItem = Utils:IsNPCObjectOrItem(),
             text = gossip,
         }
-        -- Drawn as a body its voice is not, a line plays, and is still a line the site lacks.
-        return DataModules:PrepareSound(soundData) and not DataModules:IsOtherBody(soundData)
     end
+end
 
-    return false
+--- The line on screen resolved by DataModules:PrepareSound, or nil when no pack has it.
+local function PreparedForCurrent()
+    local soundData = SoundDataForCurrent()
+    return soundData and DataModules:PrepareSound(soundData) and soundData or nil
+end
+
+--- Whether this client's data module has a line for what is on screen.
+local function HasSoundForCurrent()
+    local soundData = PreparedForCurrent()
+    -- Drawn as a body its voice is not, a line plays, and is still a line the site lacks.
+    return soundData ~= nil
+        and not (soundData.event == Enums.SoundEvent.Gossip and DataModules:IsOtherBody(soundData))
+end
+
+--- The data module the line on screen plays from, or nil when no pack has it.
+function Contribute:ModuleForCurrent()
+    local soundData = PreparedForCurrent()
+    return soundData and soundData.module
 end
 
 --- Whether Capture would build an envelope, without paying to build one.
@@ -489,7 +475,7 @@ local function HasSomethingToSend()
     return false
 end
 
---- Off while the player listens in a language no client runs in (Italian). HasSoundForCurrent
+--- Off while the player listens in a language no client runs in. HasSoundForCurrent
 --- asks the voice language, so every line its pack has not voiced yet would read as missing
 --- text and send English the corpus already has. Its text comes from its translators, not
 --- from the client, so there is nothing for a player to send for it.
@@ -761,7 +747,8 @@ function Contribute:CaptureFromLog(questID, title)
     fields[#fields + 1] = { "event", "accept" }
     fields[#fields + 1] = { "title", title or "" }
     fields[#fields + 1] = { "from", "log" }
-    return Spoken.Contribute:Envelope("quests", fields, Contribute:Detemplate(text, questID))
+    ReaderFields(fields, questID)
+    return Spoken.Contribute:Envelope("quests", fields, text)
 end
 
 --- Whether the quest log should offer Contribute in place of a Play it cannot give.

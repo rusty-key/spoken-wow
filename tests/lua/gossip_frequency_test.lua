@@ -176,9 +176,22 @@ for _, client in ipairs({ "11509", "16001" }) do
     Leave()
     _G.Spoken:SetPartOn("gossip", true)
 
-    -- Stop When Window Closes stops a quest giver's greeting too, as its quest frame closes.
+    -- Gossip audio continues after its window closes; Stop When Window Closes is for quest audio.
     VO.Addon.db.profile.Audio.GossipFrequency = Frequency.Always
     VO.Addon.db.profile.Audio.StopAudioOnDisengage = true
+    stub.ShowGossip(GREETING, { BANK })
+    stub.FireEvent("GOSSIP_SHOW")
+    stub.Advance(0.3)
+    Expect(client .. ": gossip is playing before its window closes", _G.Spoken:GetCurrent() ~= nil, true)
+    stub.HidePanels()
+    stub.FireEvent("GOSSIP_CLOSED")
+    stub.Advance(0.1)
+    Expect(client .. ": gossip continues after its window closes", _G.Spoken:GetCurrent() ~= nil, true)
+    _G.Spoken:StopAll()
+    stub.Advance(1)
+    Played(played)
+
+    -- Quest-giver greetings use the same gossip player, and also continue after their frame closes.
     world.questID = 0
     world.greetingText = GREETING
     stub.ShowPanel("QuestFrameGreetingPanel")
@@ -188,11 +201,48 @@ for _, client in ipairs({ "11509", "16001" }) do
     stub.ShowPanel(nil)
     stub.FireEvent("QUEST_FINISHED")
     stub.Advance(0.1)
-    Expect(client .. ": ...and stops as its window closes, under Stop When Window Closes",
-        _G.Spoken:GetCurrent(), nil)
+    Expect(client .. ": ...and continues as its window closes, under Stop When Window Closes",
+        _G.Spoken:GetCurrent() ~= nil, true)
     stub.Advance(10)
     Played(played)
     VO.Addon.db.profile.Audio.StopAudioOnDisengage = false
+
+    VO.Addon.db.profile.Audio.GossipFrequency = Frequency.Always
+    Talk()
+    Played(played)
+    local mute = VO.DialogPlayButton.muteButton
+    Expect(client .. ": the NPC dialog offers the mute toggle", mute:IsShown(), true)
+    Expect(client .. ": the greeting offers no Mute in Spoken's window", #VO.Player:Current().present.actions, 2)
+    Expect(client .. ": an audible NPC has no mute slash", mute.muteSlash:IsShown(), false)
+    local popups = #stub.popups
+    mute:Click()
+    Expect(client .. ": Mute does not ask for confirmation", #stub.popups, popups)
+    Expect(client .. ": muting removes the current greeting", VO.Player:Current(), nil)
+    Expect(client .. ": the NPC is recorded as muted, by name", VO.Addon.db.char.ignoredGossipNPCs[12345], "Guard")
+    Expect(client .. ": the muted NPC shows a slash", mute.muteSlash:IsShown(), true)
+    Expect(client .. ": a muted NPC's line can still be asked for", VO.DialogPlayButton.button:IsShown(), true)
+    Leave()
+    Talk()
+    Expect(client .. ": a muted NPC's automatic greeting stays quiet", Played(played), "(nothing)")
+    VO.DialogPlayButton:OnClick()
+    stub.Advance(1)
+    Expect(client .. ": Listen plays a muted NPC's greeting", Played(played), "greeting-hash")
+    mute:Click()
+    Expect(client .. ": clicking the toggle again unmutes the NPC", VO.Addon:IsGossipNPCIgnored(world.npcGUID), false)
+    Expect(client .. ": unmuting removes the slash", mute.muteSlash:IsShown(), false)
+    Expect(client .. ": unmuting hands the line back to Read Automatically", VO.DialogPlayButton.button:IsShown(), false)
+    Leave()
+    Talk()
+    Expect(client .. ": an unmuted NPC's automatic greeting plays again", Played(played), "greeting-hash")
+    Leave()
+
+    -- No pack voices this NPC, so there is nothing for the toggle to mute.
+    local voicedName, voicedGUID = world.npcName, world.npcGUID
+    world.npcName, world.npcGUID = "Stranger", "Creature-0-0-0-0-99999-0"
+    Talk()
+    Expect(client .. ": an unvoiced NPC's dialog has no mute toggle", mute:IsShown(), false)
+    Leave()
+    world.npcName, world.npcGUID = voicedName, voicedGUID
 end
 
 if Failures() > 0 then

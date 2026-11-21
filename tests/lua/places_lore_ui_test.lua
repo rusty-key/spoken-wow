@@ -1456,10 +1456,12 @@ do
     do
         local rows, title = Fonted(NewSession())
         Expect("on a client EllesmereUI's font writes, the list's rows and the window's title are in it", rows .. " " .. title, "all font")
-        local getLocale = _G.GetLocale
+        -- A Russian client, whose interface is Russian on Auto.
+        local getLocale, interface = _G.GetLocale, SpokenEnv.Interface.Language
         _G.GetLocale = function() return "ruRU" end
+        SpokenEnv.Interface.Language = function() return "ruRU" end
         rows, title = Fonted(NewSession())
-        _G.GetLocale = getLocale
+        _G.GetLocale, SpokenEnv.Interface.Language = getLocale, interface
         Expect("...and on one it does not, in the game's font, rows and title alike", rows .. " " .. title, "none plain")
     end
 

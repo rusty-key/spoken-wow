@@ -10,7 +10,9 @@ import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } 
 import { closeDb } from "@/lib/db";
 import type { CorpusLine } from "@/lib/corpus";
 import type { Grant } from "@/lib/permissions";
-import { asSystem } from "@/lib/teams/testing";
+import { asActor } from "@/lib/teams/acting";
+import { forgetTeams } from "@/lib/teams/store";
+import { asSystem, dropTeam, systemRows } from "@/lib/teams/testing";
 
 const viewer = vi.hoisted(() => ({ grants: [] as Grant[] }));
 const USER = vi.hoisted(() => `test-override-${Math.random().toString(36).slice(2, 10)}`);
@@ -20,6 +22,14 @@ vi.mock("@/lib/session", () => ({ currentSession: async () => ({ user: { id: USE
 vi.mock("@/lib/grants/store", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@/lib/grants/store")>()),
   viewerOf: async () => ({ role: null, grants: viewer.grants }),
+}));
+const rewritten = vi.hoisted(() => [] as { lang: string; text: string }[]);
+vi.mock("@/lib/quests/moment-rewrite", () => ({
+  momentLines: async (_lang: string, lineId: string) => [{ lineId, playerGender: null }],
+  rewriteMoment: async (lang: string, _rows: unknown, _variant: number, rewrite: { text: string }) => {
+    rewritten.push({ lang, text: rewrite.text });
+    return ["quests/m-test-route-override.mp3", "quests/f-test-route-override.mp3"];
+  },
 }));
 vi.mock("@/lib/audio", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@/lib/audio")>()),
@@ -52,7 +62,13 @@ beforeAll(async () => {
     `insert into "user" ("id", "name", "email", "emailVerified") values ($1, 'Test Override', $2, false)`,
     [USER, `${USER}@example.invalid`],
   );
-  const line = (text: string, skipReason: string | null = null) => ({ lineId: LINE, text, skipReason });
+  const line = (text: string, skipReason: string | null = null) => ({
+    lineId: LINE,
+    text,
+    skipReason,
+    voice: "human-male",
+    playerGender: null,
+  });
   lines.set("enUS", new Map([[FILE, line("Well met.")]]));
   lines.set(
     "deDE",
@@ -65,6 +81,7 @@ beforeAll(async () => {
 
 beforeEach(() => {
   viewer.grants = [{ lang: "deDE", capability: "regenerate" }];
+  rewritten.length = 0;
 });
 
 afterEach(async () => {
@@ -108,5 +125,74 @@ describe("/api/quests/lines/override", () => {
     expect((await remove("deDE")).status).toBe(200);
     expect((await readOverrides("deDE")).has(FILE)).toBe(false);
     expect((await readOverrides("enUS")).get(FILE)?.text).toBe("In English.");
+  });
+
+  it("refuses a gender split without text, and leaves the line alone", async () => {
+    const response = await put("deDE", "Gut gemacht, $GBursche:Mädel;.");
+    expect(response.status).toBe(403);
+    expect((await response.json()).error).toBe(
+      "Splitting a line by the reader's gender changes its original text, which takes the text grant.",
+    );
+    expect(rewritten).toEqual([]);
+    expect((await readOverrides("deDE")).has(FILE)).toBe(false);
+  });
+
+  it("splits a line by the reader's gender with text", async () => {
+    viewer.grants = [
+      { lang: "deDE", capability: "regenerate" },
+      { lang: "deDE", capability: "text" },
+    ];
+    const response = await put("deDE", "Gut gemacht, $GBursche:Mädel;.");
+    expect(response.status).toBe(200);
+    expect(await response.json()).toEqual({
+      files: ["quests/m-test-route-override.mp3", "quests/f-test-route-override.mp3"],
+    });
+    expect(rewritten).toEqual([{ lang: "deDE", text: "Gut gemacht, $GBursche:Mädel;." }]);
+  });
+
+  describe("for a member of a team without plain packs", () => {
+    let team: string;
+
+    beforeEach(async () => {
+      const [row] = await systemRows<{ id: string }>(`select new_team('override-second', 'override-second') as "id"`);
+      team = row.id;
+      await asSystem.query(`insert into "team_language" ("teamId", "lang", "packName") values ($1, 'deDE', 'slug')`, [team]);
+      await asSystem.query(
+        `insert into "team_member" ("teamId", "userId", "lang", "capability") values ($1, $2, 'deDE', 'regenerate')`,
+        [team, USER],
+      );
+      forgetTeams();
+    });
+
+    afterEach(async () => {
+      await asSystem.query(`delete from "activity" where "teamId" = $1`, [team]);
+      await asSystem.query(`delete from "line_override" where "teamId" = $1`, [team]);
+      await dropTeam(team);
+      forgetTeams();
+    });
+
+    it("splits a line by the reader's gender with text, as any team's member does", async () => {
+      viewer.grants = [
+        { lang: "deDE", capability: "regenerate" },
+        { lang: "deDE", capability: "text" },
+      ];
+      const response = await asActor(USER, () => put("deDE", "Well met, $Glad:lass;."));
+      expect(response.status).toBe(200);
+      expect(rewritten).toEqual([{ lang: "deDE", text: "Well met, $Glad:lass;." }]);
+    });
+
+    it("refuses a gender split without text, and leaves the line alone", async () => {
+      const response = await asActor(USER, () => put("deDE", "Well met, $Glad:lass;."));
+      expect(response.status).toBe(403);
+      const { rows } = await asSystem.query(`select 1 from "line_override" where "file" = $1`, [FILE]);
+      expect(rows).toEqual([]);
+      expect(rewritten).toEqual([]);
+    });
+
+    it("writes a plain override into its own team's layer", async () => {
+      expect((await asActor(USER, () => put("deDE", "Gut gemacht."))).status).toBe(200);
+      const { rows } = await asSystem.query(`select "teamId", "text" from "line_override" where "file" = $1`, [FILE]);
+      expect(rows).toEqual([{ teamId: team, text: "Gut gemacht." }]);
+    });
   });
 });

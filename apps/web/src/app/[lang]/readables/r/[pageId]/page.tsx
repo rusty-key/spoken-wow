@@ -5,9 +5,10 @@ import Link from "@/components/LocaleLink";
 import { notFound } from "next/navigation";
 
 import ReportForm from "@/components/ReportForm";
+import { packReleases } from "@/lib/releases/store";
 import ListenFirst from "@/components/reports/ListenFirst";
 import { audioRelPath } from "@/lib/readables/audio";
-import { isCorpusEmpty, loadContext, pageById } from "@/lib/readables/catalogue";
+import { isCorpusEmpty, loadContext, teamPageById } from "@/lib/readables/catalogue";
 import { Contained } from "@/components/Width";
 
 /**
@@ -34,7 +35,7 @@ async function resolve(params: Promise<Params>) {
   const lang = await pageLang(params);
   const { pageId } = await params;
   try {
-    return await pageById(pageId, lang);
+    return await teamPageById(pageId, lang);
   } catch (error) {
     // An unseeded corpus names no pages, so no address resolves to one. What a player
     // arriving from the game should see is the same page an unknown id gives them.
@@ -66,7 +67,8 @@ export default async function Page({ params }: { params: Promise<Params> }) {
 
   // The current take is the only thing here that is not derivable from the corpus row, and it
   // answers one question: is there narration to listen to before complaining about it.
-  const take = (await loadContext(lang)).takes.get(page.id);
+  const [context, releases] = await Promise.all([loadContext(lang), packReleases("readables", lang)]);
+  const take = context.takes.get(page.id);
 
   return (
     <main className="pt-8 pb-24">
@@ -79,7 +81,7 @@ export default async function Page({ params }: { params: Promise<Params> }) {
             {page.pageCount > 1 ? `Page ${page.pageNumber} of ${page.pageCount}` : "One page"}
           </p>
 
-          {take ? <ListenFirst className="mt-4" /> : null}
+          {take ? <ListenFirst className="mt-4" source="readables" recordedAt={take.generatedAt} releases={releases} /> : null}
 
           {take ? (
             // The native control rather than the explorer's Player: that one carries a rate
@@ -104,6 +106,13 @@ export default async function Page({ params }: { params: Promise<Params> }) {
           )}
 
           <p className="mt-5 whitespace-pre-line">{page.text}</p>
+          {/* Under the original, which is what the game shows, and only while the live take speaks it:
+              until then the override is the team's work in progress and the narration says the original. */}
+          {page.override && take?.textHash === page.hash && (
+            <p className="mt-2 border-l-2 border-sky-400/60 pl-2 whitespace-pre-line" title="What the narration says">
+              {page.override.text}
+            </p>
+          )}
 
           <section className="bg-muted mt-8 rounded-lg border p-4">
             <h2 className="font-medium">Report a problem</h2>

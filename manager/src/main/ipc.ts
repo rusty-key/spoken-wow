@@ -3,9 +3,9 @@ import { BrowserWindow, dialog, ipcMain, shell, type IpcMainInvokeEvent } from '
 import { CHANNELS, type InstallOptions, type StoreInput, type UpdaterState } from '../shared/api'
 import { LANGUAGES } from '../shared/products'
 import type { Settings, StoreId } from '../shared/types'
-import { DEFAULT_SETTINGS } from '../shared/types'
+import { cleanVoiceAuthors, DEFAULT_SETTINGS } from '../shared/types'
 import { languageFolders } from '../shared/products'
-import { isAllowedExternalUrl, openableDirectory } from './external'
+import { isAllowedExternalUrl, openableDirectory, revealableZip } from './external'
 import type { ManagerService } from './service'
 import { isOurPage, type AppPage } from './trust'
 import { log, logsDir } from './state'
@@ -77,12 +77,18 @@ export function storeInput(v: unknown): StoreInput {
   }
 }
 
-function settingsPatch(v: unknown): Partial<Settings> {
+export function settingsPatch(v: unknown): Partial<Settings> {
   if (typeof v !== 'object' || v === null || Array.isArray(v)) throw new Error('Invalid settings')
   const out: Partial<Settings> = {}
   const raw = v as Record<string, unknown>
   for (const key of Object.keys(DEFAULT_SETTINGS) as (keyof Settings)[]) {
     if (!(key in raw)) continue
+    if (key === 'voiceAuthors') {
+      const authors = cleanVoiceAuthors(raw[key])
+      if (!authors || Object.keys(authors).length !== Object.keys(raw[key] as object).length) throw new Error(`Invalid setting ${key}`)
+      out.voiceAuthors = authors
+      continue
+    }
     if (typeof raw[key] !== typeof DEFAULT_SETTINGS[key]) throw new Error(`Invalid setting ${key}`)
     if (typeof raw[key] === 'string' && ((raw[key] as string).length > 2000 || (raw[key] as string).includes('\0'))) throw new Error(`Invalid setting ${key}`)
     ;(out as Record<string, unknown>)[key] = raw[key]
@@ -166,6 +172,12 @@ export function registerIpc(service: ManagerService, page: AppPage, updater: () 
   handle(CHANNELS.contributorPublish, (_e, gameId, lang, store, only) => {
     const language = contributorLang(lang)
     return service.contributor.publish(id(gameId, 'game id'), language, contributorStore(store), contributorOnly(language, only))
+  })
+  handle(CHANNELS.contributorZip, (_e, gameId, lang, folder) =>
+    service.contributor.zipForUpload(id(gameId, 'game id'), contributorLang(lang), id(folder, 'pack'))
+  )
+  handle(CHANNELS.contributorRevealZip, async (_e, p) => {
+    shell.showItemInFolder(await revealableZip(p, service.contributor.zipsPath))
   })
 
   handle(CHANNELS.pickFolder, async (event) => {

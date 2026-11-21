@@ -9,6 +9,7 @@
 
 import { quote } from "../../../lib/lua-text.mjs";
 import { pageChecksum } from "./naming.mjs";
+import { namesOneBook } from "./owners.mjs";
 import { cannotBeHad } from "./places.mjs";
 import { spokenText } from "./text.mjs";
 
@@ -121,7 +122,7 @@ export function canBeHad(entries) {
 
 /**
  * `owners = {...}`: item and object id -> the book it opens. An id that opens more than one
- * book is left out, as `loose` leaves out a shared checksum.
+ * book is left out, as `loose` leaves out a shared checksum, and so is the letter copy.
  *
  * @param entries corpus rows with ownerKind ("item", "object" or null) and ownerIds
  */
@@ -131,6 +132,7 @@ export function ownersLua(entries) {
     const byId = owners[entry.ownerKind];
     if (!byId) continue;
     for (const id of entry.ownerIds ?? []) {
+      if (!namesOneBook(entry.ownerKind, id)) continue;
       byId.set(id, byId.has(id) && byId.get(id) !== entry.bookId ? null : entry.bookId);
     }
   }

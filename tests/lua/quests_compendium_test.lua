@@ -535,9 +535,10 @@ RowOf(CANDLES).scripts.OnClick(RowOf(CANDLES))
 Expect("its page: its title", page.title.text, "Kobold Candles")
 Expect("...where it is, then the quest mark and In progress", page.sub.text.text,
     "In Elwynn Forest · |TInterface\\GossipFrame\\ActiveQuestIcon:0|t " .. L.QUEST_IN_PROGRESS)
-Expect("...and its offer alone: no part for its progress", #page.body.lastParts .. " "
-    .. page.body.lastParts[1].heading .. " "
-    .. tostring((PageWords() or ""):find("Did you gather those candles yet?", 1, true)), "1 " .. L.QUEST_PART_ACCEPT .. " nil")
+Expect("...its offer, then its progress", #page.body.lastParts .. " "
+    .. page.body.lastParts[1].heading .. " " .. page.body.lastParts[2].heading .. " "
+    .. tostring((PageWords() or ""):find(SpokenQuestsText[CANDLES].progress, 1, true) ~= nil),
+    "2 " .. L.QUEST_PART_ACCEPT .. " " .. L.QUEST_PART_PROGRESS .. " true")
 Expect("...not the hand-in before it is completed: it tells how the quest ends",
     (PageWords() or ""):find("Thanks for the candles", 1, true) == nil
     and page.body.lastParts[#page.body.lastParts].heading ~= L.QUEST_PART_COMPLETE, true)
@@ -1013,6 +1014,14 @@ do
         page.body.lastParts[#page.body.lastParts].text, "Pack words.")
     Expect("...leaving the shipped words alone, which matching reads", SpokenQuestsText[KOBOLDS].complete, nil)
     testPack.TextByFileName = nil
+    -- Polish chosen as the Text Language: a text pack's words (Spoken's Texts.lua), where no pack in
+    -- Polish voices the part.
+    H.ReadText("plPL")
+    Spoken:RegisterText("plPL", "quests", { lines = { ["q:7:complete"] = "Polskie słowa, $N." } })
+    Click("Kobold Camp Cleanup")
+    Expect("Polish chosen, a text pack's words show on the part, the player named",
+        page.body.lastParts[#page.body.lastParts].text, "Polskie słowa, " .. UnitName("player") .. ".")
+    H.ReadText(nil)
     -- Two wordings of one moment: the page follows the one it shows, as Play does.
     local acceptWords = SpokenQuestsText[KOBOLDS].accept
     SpokenQuestsText[KOBOLDS].accept = "Back again."
@@ -1030,12 +1039,12 @@ do
     testPack.SoundLengthLookupByFileName["7-accept-w1"] = nil
     SpokenQuestsText[KOBOLDS].accept = acceptWords
     SpokenQuestsText[KOBOLDS].complete = words
-    local handInWords = SpokenQuestsText[CANDLES].complete
-    SpokenQuestsText[CANDLES].complete = nil
+    local handInWords, progressWords = SpokenQuestsText[CANDLES].complete, SpokenQuestsText[CANDLES].progress
+    SpokenQuestsText[CANDLES].complete, SpokenQuestsText[CANDLES].progress = nil, nil
     Click("Kobold Candles")
     Expect("a part with no words known that no pack voices is left out", #page.body.lastParts .. " "
         .. page.body.lastParts[1].heading, "1 " .. L.QUEST_PART_ACCEPT)
-    SpokenQuestsText[CANDLES].complete = handInWords
+    SpokenQuestsText[CANDLES].complete, SpokenQuestsText[CANDLES].progress = handInWords, progressWords
     -- A quest Forever has that the corpus has no lines for says nothing is written.
     local candles = SpokenQuestsText[CANDLES]
     SpokenQuestsText[CANDLES] = nil
@@ -1100,25 +1109,32 @@ Expect("...on its page, the list keeping the filter and leaving its row out", pa
 _, choices = Menu()
 choices[2].func()
 Expect("...off, everything again", Has(Shown(), "Kobold Candles") and Has(Shown(), "Westfall") and Tab:Has(CANDLES), true)
--- The page has no progress part, so a quest a pack voices only in its progress counts as unvoiced.
+-- A quest a pack voices only in its progress counts as voiced.
 do
     testPack.SoundLengthLookupByFileName["60-progress"] = 2
     testPack.NPCIDLookupByQuestID[CANDLES] = MCBRIDE
     Expect("(a pack voicing Kobold Candles' progress)",
         VO.DataModules:PrepareSound({ event = VO.Enums.SoundEvent.QuestProgress, questID = CANDLES }) and true, true)
+    -- What the packs voice is read once per set of packs; a pack gaining a line in place is not one.
+    local order = VO.Language.ResolutionOrder
+    VO.Language.ResolutionOrder = function() return { "enUS", "progress-test" } end
+    Tab:Refresh()
     _, choices = Menu()
     choices[2].func()
-    Expect("a quest a pack voices only in its progress is left out by Voiced Only", Has(Shown(), "Kobold Candles"), false)
+    Expect("a quest a pack voices only in its progress is listed by Voiced Only", Has(Shown(), "Kobold Candles"), true)
     _, choices = Menu()
     choices[2].func()
     local shift = _G.IsShiftKeyDown
     _G.IsShiftKeyDown = function() return true end
     Spoken:StopAll()
     Click("Kobold Candles")
-    Expect("...and shift-click on its row plays nothing", Spoken:GetQueueSize(), 0)
+    Expect("...and shift-click on its row plays its progress", Spoken:GetQueueSize(), 1)
     _G.IsShiftKeyDown = shift
+    Spoken:StopAll()
     testPack.SoundLengthLookupByFileName["60-progress"] = nil
     testPack.NPCIDLookupByQuestID[CANDLES] = nil
+    VO.Language.ResolutionOrder = order
+    Tab:Refresh()
 end
 -- A switch in the filter menu leaving out the chosen row tells the tab (onHidden), which says what
 -- the page shows in its place.
@@ -1384,6 +1400,40 @@ Expect("...another character's name where the player's was", (PageWords() or "")
 stub.world.playerName = "Tester"
 local kept = VO.Addon.db.global.CompendiumText
 Expect("...kept by language", kept.deDE[KOBOLDS] ~= nil and kept.enUS == nil, true)
+stub.world.questID = CANDLES
+stub.world.title = "Koboldkerzen"
+stub.world.progressText = "Habt Ihr die Kerzen schon gesammelt?"
+stub.FireEvent("QUEST_PROGRESS")
+stub.world.questID, stub.world.progressText = 0, ""
+Tab:Refresh()
+Click("Koboldkerzen")
+Expect("the progress the window showed, over the English",
+    (PageWords() or ""):find("Habt Ihr die Kerzen schon gesammelt?", 1, true) ~= nil
+    and (PageWords() or ""):find(SpokenQuestsText[CANDLES].progress, 1, true) == nil, true)
+
+-- An item starter keeps its real icon after the item has left the player's bags.
+do
+    local ITEM, ITEM_ICON, oldCItem = 211315, "Interface\\Icons\\INV_Misc_Map_01", _G.C_Item
+    _G.C_Item = { GetItemInfoInstant = function() return nil, nil, nil, nil, ITEM_ICON end }
+    testPack.ItemIDLookupByQuestID = { [CANDLES] = ITEM }
+    Tab:Open(CANDLES)
+    local offer = page.body.lastParts[1]
+    Expect("an item-started quest uses the item's real icon", offer.face.viewport.texture:GetTexture(), ITEM_ICON)
+    -- The item in the bags is the one that starts the quest; the packs' id only stands in for it.
+    local BAG_ICON, oldContainer = 134939, _G.C_Container
+    _G.C_Container = {
+        GetContainerNumSlots = function(bag) return bag == 1 and 1 or 0 end,
+        GetContainerItemInfo = function() return { iconFileID = BAG_ICON } end,
+        GetContainerItemQuestInfo = function() return { isQuestItem = true, questID = CANDLES } end,
+    }
+    Tab:Open(KOBOLDS)
+    Tab:Open(CANDLES)
+    Expect("...the item in the bags before the packs' id", page.body.lastParts[1].face.viewport.texture:GetTexture(), BAG_ICON)
+    _G.C_Container = oldContainer
+    testPack.ItemIDLookupByQuestID, _G.C_Item = nil, oldCItem
+    Tab:Open(KOBOLDS)
+end
+
 -- A window whose id, title and words the game hands over as secrets keeps nothing.
 stub.world.questID = JENNEA
 stub.world.title = "Versiegelte Befehle"

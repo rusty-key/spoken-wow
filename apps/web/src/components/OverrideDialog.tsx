@@ -62,8 +62,7 @@ export default function OverrideDialog({ line, onSaved, onRewritten, onCancel }:
   // than the corpus's baked flag - otherwise a narrated line, which is already voiceable,
   // would claim every edit rescued it.
   // No rewrite rescues a line in a model slot, which is refused for its voice, not its text.
-  const rescues =
-    !line.voiceable && line.skipReason !== "progress" && !isModelVoice(line.voice) && !rewriteHasInvalidChars(draft, lang);
+  const rescues = !line.voiceable && !isModelVoice(line.voice) && !rewriteHasInvalidChars(draft, lang);
   const gendered = branchesOnPlayerGender(draft);
 
   async function send(method: "PUT" | "DELETE") {

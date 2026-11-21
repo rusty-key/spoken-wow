@@ -182,7 +182,7 @@ describe("a language's live takes", () => {
     try {
       expect(await liveTakes("quests", "viVN")).toEqual([]);
     } finally {
-      await asSystem.query(`insert into "team_language" ("teamId", "lang") values ($1, 'viVN')`, [owner]);
+      await asSystem.query(`insert into "team_language" ("teamId", "lang", "packName") values ($1, 'viVN', 'plain')`, [owner]);
       forgetTeams();
     }
   });

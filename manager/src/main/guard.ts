@@ -6,6 +6,7 @@ import path from 'node:path'
 import type { Product } from '../shared/types'
 import { SPOKEN_FOLDERS } from '../shared/products'
 import { PlainError, formatBytes } from './errors'
+import { t } from './i18n'
 
 // ---------------------------------------------------------------- linked folders
 
@@ -59,7 +60,10 @@ export async function isLinked(p: string): Promise<boolean> {
   }
 }
 
-export const LINKED_MESSAGE = 'This folder is linked to a development checkout. The manager will not change it.'
+/** A function, not a constant, so it follows a language change. */
+export function linkedMessage(): string {
+  return t('guard.linked')
+}
 
 // ---------------------------------------------------------------- allowed names
 
@@ -144,9 +148,7 @@ export async function ensureFreeSpace(dir: string, needed: number, what = 'this'
   }
   if (free < needed) {
     const drive = path.parse(path.resolve(dir)).root.replace(/[\\/]+$/, '') || dir
-    throw new PlainError(
-      `Not enough free space on ${drive} for ${what}: about ${formatBytes(needed)} needed, ${formatBytes(free)} free.`
-    )
+    throw new PlainError(t('guard.noSpace', { drive, what, needed: formatBytes(needed), free: formatBytes(free) }))
   }
 }
 
@@ -190,35 +192,33 @@ export function checkDownloadsPath(
   platform: NodeJS.Platform = process.platform
 ): string | null {
   if (value === '') return null
-  if (value.includes('\0') || value.length > (platform === 'win32' ? 240 : 1024)) return 'That is not a usable folder name for downloads.'
+  if (value.includes('\0') || value.length > (platform === 'win32' ? 240 : 1024)) return t('guard.dlBadName')
   if (platform === 'win32' && /^[\\/]{2}/.test(value)) {
-    return 'Network folders (\\\\server\\share) cannot be used for downloads. Choose a folder on a local drive.'
+    return t('guard.dlNetwork')
   }
   if (!pathFor(platform).isAbsolute(value)) {
-    return platform === 'win32'
-      ? 'Choose a full folder path for downloads, such as D:\\Downloads.'
-      : 'Choose a full folder path for downloads, such as /home/you/Downloads.'
+    return platform === 'win32' ? t('guard.dlFullWin') : t('guard.dlFullUnix')
   }
   const abs = pathFor(platform).resolve(value)
   for (const g of games) {
     const wtf = pathFor(platform).join(g.root, findEntrySync(g.root, 'WTF') ?? 'WTF')
     if (isInside(g.addOnsPath, abs, platform) || isInside(wtf, abs, platform)) {
-      return "Downloads cannot be kept inside a game's AddOns or WTF folder."
+      return t('guard.dlInGame')
     }
   }
   let at = abs
   for (;;) {
     try {
       const st = fs.statSync(at)
-      if (!st.isDirectory()) return at === abs ? 'That path is a file, not a folder.' : 'That folder cannot be created: a file is in the way.'
+      if (!st.isDirectory()) return at === abs ? t('guard.dlIsFile') : t('guard.dlFileInWay')
       fs.accessSync(at, fs.constants.W_OK)
       return null
     } catch (err) {
       const code = (err as NodeJS.ErrnoException).code
-      if (code === 'ENOTDIR') return 'That folder cannot be created: a file is in the way.'
-      if (code !== 'ENOENT') return 'The manager cannot write to that folder.'
+      if (code === 'ENOTDIR') return t('guard.dlFileInWay')
+      if (code !== 'ENOENT') return t('guard.dlNoWrite')
       const up = path.dirname(at)
-      if (up === at) return 'That drive does not exist.'
+      if (up === at) return t('guard.dlNoDrive')
       at = up
     }
   }

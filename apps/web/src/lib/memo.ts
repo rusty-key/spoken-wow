@@ -1,3 +1,6 @@
+import type { Lang } from "@/lib/lang";
+import { scopeKey } from "@/lib/teams/store";
+
 /**
  * A value per language, kept on globalThis and rebuilt when its version moves.
  *
@@ -23,4 +26,14 @@ export function memoByLang<T>(key: symbol, lang: string, version: unknown, build
     });
   }
   return value;
+}
+
+/** memoByLang for per-team data: one slot per team of `lang`, the acting one's, as scopeKey keeps them. */
+export async function memoByTeamLang<T>(
+  key: symbol,
+  lang: Lang,
+  version: unknown,
+  build: () => T | Promise<T>,
+): Promise<T> {
+  return memoByLang(key, await scopeKey(lang), version, build);
 }

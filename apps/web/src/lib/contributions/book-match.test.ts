@@ -110,6 +110,37 @@ describe("matchBook", () => {
     expect(matchBook(row({ text: "Han mandado construir", meta: { object: "999999", number: "2" } }), corpus))
       .toMatchObject({ kind: "translation", lineId: "b:39", via: "text" });
   });
+  describe("a letter taken out of the mailbox", () => {
+    // Every copy is the Plain Letter, item 8383, whatever its words.
+    const letters = indexCorpus([
+      page("b:nsfk", "nsfk", 1, { deDE: "Hallo nochmal, $N" }, { deDE: "Schlichter Brief" }, ["item", 8383]),
+    ]);
+
+    it("is not matched by the letter's item", () => {
+      expect(matchBook(row({ locale: "esMX", text: "¡Saludos, joven $c!", meta: { item: "8383", book: "Carta lisa", number: "1" } }), letters))
+        .toEqual({ kind: "new-book", title: "Carta lisa", pageNumber: 1, via: "none" });
+    });
+
+    it("is not matched by the letter's title", () => {
+      expect(matchBook(row({ locale: "deDE", text: "Seid gegrüßt, $c!", meta: { item: "8383", book: "Schlichter Brief", number: "1" } }), letters))
+        .toEqual({ kind: "new-book", title: "Schlichter Brief", pageNumber: 1, via: "none" });
+    });
+
+    it("is not told apart from pages with the same words by the letter's title", () => {
+      const twins = indexCorpus([
+        page("b:x", "x", 1, { enUS: "Lok'tar, $N!" }, { deDE: "Schlichter Brief" }, ["item", 8383]),
+        page("b:y", "y", 1, { enUS: "Lok'tar, $N!" }, { enUS: "Orders" }),
+      ]);
+      expect(matchBook(row({ locale: "deDE", text: "Lok'tar, $N!", meta: { item: "8383", book: "Schlichter Brief", number: "1" } }), twins))
+        .toEqual({ kind: "ambiguous", candidates: ["b:x", "b:y"] });
+    });
+
+    it("is still matched by its words", () => {
+      expect(matchBook(row({ locale: "deDE", text: "Hallo nochmal, $N", meta: { item: "8383", book: "Schlichter Brief", number: "1" } }), letters))
+        .toMatchObject({ kind: "known", lineId: "b:nsfk", via: "text" });
+    });
+  });
+
   it("falls through when an owner id names two books", () => {
     expect(matchBook(row({ text: "Twin", meta: { item: "50", number: "1" } }), corpus))
       .toMatchObject({ kind: "translation", lineId: "b:800", via: "text" });

@@ -7,8 +7,10 @@ name: Manager
 #   tag manager/vX.Y.Z    the same, then a release for the tag with every installer, then the
 #                         `manager-latest` release is refreshed: the manager's own updater reads
 #                         latest*.yml from there (manager/src/main/updater.ts, FEED_URL).
+#                         A stable version is then announced in #announcements.
 #
-# The tag has to match "version" in manager/package.json; the release job checks it.
+# The tag has to match "version" in manager/package.json, and docs/manager/CHANGELOG.md needs a
+# section for it, which becomes the release's notes; the release job checks both.
 #
 # First release: `manager-latest` does not exist yet and the release job creates it as a normal
 # release (not a draft, not a pre-release) that is not marked "latest", so the repo's "latest"
@@ -196,6 +198,7 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: write
+      actions: write # dispatches announce-release.yaml
     concurrency:
       group: manager-release
       cancel-in-progress: false
@@ -214,6 +217,12 @@ jobs:
             echo "Tag ${GITHUB_REF_NAME} says ${version} but manager/package.json says ${have}." >&2
             exit 1
           fi
+          # A pre-release may ship before its notes are written; a release may not.
+          case "${GITHUB_REF_NAME}" in
+            *-*) echo "Installers for Windows, macOS and Linux." > "$RUNNER_TEMP/notes.md" ;;
+            *) node scripts/lib/changelog.mjs section docs/manager/CHANGELOG.md "$version" > "$RUNNER_TEMP/notes.md" ;;
+          esac
+          printf '\nSee [manager/README.md](https://github.com/%s/blob/master/manager/README.md) for how to install them.\n' "$GH_REPO" >> "$RUNNER_TEMP/notes.md"
 
       - uses: actions/download-artifact@v4
         with:
@@ -235,7 +244,7 @@ jobs:
           else
             gh release create "${GITHUB_REF_NAME}" "${installers[@]}" \
               --title "Spoken Manager ${GITHUB_REF_NAME#manager/v}" \
-              --notes "Installers for Windows, macOS and Linux. See manager/README.md for how to install them." \
+              --notes-file "$RUNNER_TEMP/notes.md" \
               --verify-tag --latest=false $flags
           fi
 
@@ -269,3 +278,14 @@ jobs:
               --latest=false
           fi
           gh release edit manager-latest --draft=false --prerelease=false --latest=false
+
+      # A release made with GITHUB_TOKEN fires no `release` event, so announce-release.yaml is
+      # dispatched by hand (which GITHUB_TOKEN may do). Last, so the download links work when
+      # players read it. A pre-release is not announced. Re-running this job announces again.
+      - name: Announce on Discord
+        working-directory: .
+        run: |
+          case "${GITHUB_REF_NAME}" in
+            *-*) echo "Pre-release tag: not announced."; exit 0 ;;
+          esac
+          gh workflow run announce-release.yaml -f tag="${GITHUB_REF_NAME}"

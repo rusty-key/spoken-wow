@@ -16,6 +16,7 @@ import { chunksOf } from '@site-contributions/upload'
 import type { GameInstall } from '../shared/types'
 import { findEntrySync, isLinked } from './guard'
 import type { LocalFile } from './packs-plan'
+import { t } from './i18n'
 import { sha256Text } from './packs-remote'
 import { log, readJsonFile, writeJsonAtomic } from './state'
 
@@ -196,10 +197,10 @@ export async function sendPending(opts: SendOptions): Promise<SendResult> {
       })
     } catch (err) {
       opts.signal?.throwIfAborted()
-      return { outcome: 'failed', count, error: `The site could not be reached (${err instanceof Error ? err.message : String(err)}).` }
+      return { outcome: 'failed', count, error: t('share.reachSite', { why: err instanceof Error ? err.message : String(err) }) }
     }
     if (res.status === 429) return { outcome: 'rate-limited', count }
-    if (!res.ok) return { outcome: 'failed', count, error: `The site answered ${res.status}.` }
+    if (!res.ok) return { outcome: 'failed', count, error: t('share.siteStatus', { status: res.status }) }
     const at = new Date().toISOString()
     // Chunks keep the envelopes' order, so the chunk's hashes are the next ones in line.
     remember(ledger, hashes.slice(count, count + chunk.length), at)

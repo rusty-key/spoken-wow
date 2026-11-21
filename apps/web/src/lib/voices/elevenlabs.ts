@@ -17,6 +17,8 @@ export type ElevenLabsOptions = {
   apiKey?: string;
   baseUrl?: string;
   fetchImpl?: Fetch;
+  /** For tests: how long an account read may take (ACCOUNT_READ_TIMEOUT_MS otherwise). */
+  timeoutMs?: number;
 };
 
 function config(options: ElevenLabsOptions = {}) {
@@ -44,20 +46,49 @@ async function failure(response: Response, what: string): Promise<Error> {
 }
 
 /**
+ * How long a read of the account (voices, models, subscription) may take.
+ *
+ * /voices and /lexicon cannot render without one, and fetch never gives up on its own: while
+ * ElevenLabs was degraded, both pages hung until nginx answered 504. Ten seconds is far beyond
+ * a healthy answer, and past it the pages show the account as unreadable instead.
+ */
+const ACCOUNT_READ_TIMEOUT_MS = 10_000;
+
+/** GET an account endpoint and parse its JSON, failing after the timeout rather than waiting. */
+async function readAccount(
+  options: ElevenLabsOptions,
+  path: string,
+  what: string,
+): Promise<unknown> {
+  const { apiKey, baseUrl, fetchImpl } = config(options);
+  const ms = options.timeoutMs ?? ACCOUNT_READ_TIMEOUT_MS;
+  // One signal for the headers and the body alike: a stalled body hangs as surely as no answer.
+  const signal = AbortSignal.timeout(ms);
+  try {
+    const response = await fetchImpl(`${baseUrl}${path}`, {
+      headers: { "xi-api-key": apiKey },
+      cache: "no-store",
+      signal,
+    });
+    if (!response.ok) throw await failure(response, what);
+    return await response.json();
+  } catch (error) {
+    if (signal.aborted) {
+      throw new Error(`${what} timed out: ElevenLabs did not answer within ${ms / 1000}s`);
+    }
+    throw error;
+  }
+}
+
+/**
  * Voices in the account that this project can use, as clone name -> voice id: every
  * language's, `dwarf-male-grim` and `dwarf-male-grim@deDE` alike (see clone-name.ts).
  * generationStatus picks one language's out.
  */
 export async function listVoices(options: ElevenLabsOptions = {}): Promise<Map<string, string>> {
-  const { apiKey, baseUrl, fetchImpl } = config(options);
-
-  const response = await fetchImpl(`${baseUrl}/v1/voices`, {
-    headers: { "xi-api-key": apiKey },
-    cache: "no-store",
-  });
-  if (!response.ok) throw await failure(response, "listing ElevenLabs voices");
-
-  const body = (await response.json()) as { voices?: { name?: string; voice_id?: string }[] };
+  const body = (await readAccount(options, "/v1/voices", "listing ElevenLabs voices")) as {
+    voices?: { name?: string; voice_id?: string }[];
+  };
 
   const named = (body.voices ?? []).flatMap((voice) =>
     voice.name && voice.voice_id ? [{ name: voice.name, id: voice.voice_id }] : [],
@@ -83,15 +114,7 @@ export type AccountVoice = {
  * voice designed or added from the library there can be adopted into a slot (renameVoice).
  */
 export async function listAccountVoices(options: ElevenLabsOptions = {}): Promise<AccountVoice[]> {
-  const { apiKey, baseUrl, fetchImpl } = config(options);
-
-  const response = await fetchImpl(`${baseUrl}/v1/voices`, {
-    headers: { "xi-api-key": apiKey },
-    cache: "no-store",
-  });
-  if (!response.ok) throw await failure(response, "listing ElevenLabs voices");
-
-  const body = (await response.json()) as {
+  const body = (await readAccount(options, "/v1/voices", "listing ElevenLabs voices")) as {
     voices?: { name?: string; voice_id?: string; category?: string }[];
   };
   return (body.voices ?? [])
@@ -148,15 +171,11 @@ export type Subscription = {
 };
 
 export async function getSubscription(options: ElevenLabsOptions = {}): Promise<Subscription> {
-  const { apiKey, baseUrl, fetchImpl } = config(options);
-
-  const response = await fetchImpl(`${baseUrl}/v1/user/subscription`, {
-    headers: { "xi-api-key": apiKey },
-    cache: "no-store",
-  });
-  if (!response.ok) throw await failure(response, "reading the ElevenLabs subscription");
-
-  const body = (await response.json()) as Record<string, unknown>;
+  const body = (await readAccount(
+    options,
+    "/v1/user/subscription",
+    "reading the ElevenLabs subscription",
+  )) as Record<string, unknown>;
   const number = (key: string) => (typeof body[key] === "number" ? (body[key] as number) : 0);
   const reset = body.next_character_count_reset_unix;
 
@@ -188,15 +207,7 @@ export type Model = {
 };
 
 export async function listModels(options: ElevenLabsOptions = {}): Promise<Model[]> {
-  const { apiKey, baseUrl, fetchImpl } = config(options);
-
-  const response = await fetchImpl(`${baseUrl}/v1/models`, {
-    headers: { "xi-api-key": apiKey },
-    cache: "no-store",
-  });
-  if (!response.ok) throw await failure(response, "listing ElevenLabs models");
-
-  const body = (await response.json()) as unknown;
+  const body = (await readAccount(options, "/v1/models", "listing ElevenLabs models")) as unknown;
   if (!Array.isArray(body)) return [];
 
   return body

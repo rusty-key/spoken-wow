@@ -58,8 +58,12 @@ function SettingsPanel:Setup()
     local followup = layout:Checkbox(L.OPT_PANEL_FOLLOWUP, nil,
         function() return audio().FollowupLines ~= false end,
         function(value) audio().FollowupLines = value end)
+    local progress = layout:Checkbox(L.OPT_PANEL_PROGRESS, nil,
+        function() return Addon:IsProgressTextOn() end,
+        function(value) Addon:SetProgressText(value) end)
     layout:Outdent()
     layout:Requires(followup, function() return Addon:IsAutoplayOn() end, L.REASON_AUTOPLAY)
+    layout:Requires(progress, function() return Addon:IsAutoplayOn() end, L.REASON_AUTOPLAY)
     local stopOnClose = layout:Checkbox(L.OPT_PANEL_STOP_ON_CLOSE, nil,
         function() return audio().StopAudioOnDisengage end,
         function(value) audio().StopAudioOnDisengage = value end)
@@ -151,15 +155,13 @@ function SettingsPanel:Setup()
             if module.AddonName ~= ALL and Present(ALL) then return "off", L.OPT_PACK_INCLUDED end
         end, W.MODULE_DOWNLOAD, function() ReportButton:ShowAddress(module.URL) end)
     end
-    -- The built-in languages, then those an installed pack declares, then the voice and fallback
-    -- chosen: a choice outlives its pack, and Italian has official packs to get it back from.
+    -- The built-in languages, then those an installed pack declares. Only a built-in language has
+    -- packs to get, so a voice chosen before its pack went needs no row of its own.
     local codes, seen = {}, {}
     local function Add(code)
         if code and not seen[code] then table.insert(codes, code); seen[code] = true end
     end
     for _, locale in ipairs(Spoken:KnownLanguages()) do Add(locale.code) end
-    Add(Language:GetVoiceLanguage())
-    Add(Language:GetFallbackLanguage())
     for _, code in ipairs(codes) do
         for _, pack in ipairs(Spoken:QuestsVoicePacks(code) or {}) do
             local folder = pack.folder
@@ -209,11 +211,11 @@ function SettingsPanel:Setup()
         end, nil, W.OPT_RESET_ALL_TIP)
     end
     -- Switched off, the module is off: everything on its page greys out but its own switch. Read
-    -- Automatically, Stop When Window Closes and NPC Voice Before Reading cover the Gossip window
-    -- too, so they stay live while either part is on.
+    -- Automatically and NPC Voice Before Reading cover the Gossip window too, so they stay live
+    -- while either part is on. Stop When Window Closes applies only to quest windows.
     local function AnyPartOn() return Addon:IsPartOn("quests") or Addon:IsPartOn("gossip") end
     layout:Requires(autoplay, AnyPartOn, W.REASON_PART_OFF)
-    layout:Requires(stopOnClose, AnyPartOn, W.REASON_PART_OFF)
+    layout:Requires(stopOnClose, function() return Addon:IsPartOn("quests") end, W.REASON_PART_OFF)
     layout:Requires(greetingFirst, AnyPartOn, W.REASON_PART_OFF)
     layout:RequiresAll(PartOn, W.REASON_PART_OFF, switch, autoplay, stopOnClose, greetingFirst)
 

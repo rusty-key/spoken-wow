@@ -8,7 +8,7 @@
  * followed one. Each rule keeps the language prefix and everything after the section, and
  * Next carries the query string across. 308 keeps an API call's method and body.
  */
-import { CODES } from "./lang";
+import { LANG_SHAPE } from "./lang";
 
 const RENAMED = { zones: "places", books: "readables" } as const;
 
@@ -18,7 +18,7 @@ const PAGES = ["", "/contributions", "/reports", "/reports/sort"];
 /** A rule per prefix: an optional parameter left empty is not dropped from a destination. */
 const PREFIXES = [
   ...PAGES.map((under) => ({ from: under, to: under })),
-  ...PAGES.map((under) => ({ from: `/:lang(${CODES.join("|")})${under}`, to: `/:lang${under}` })),
+  ...PAGES.map((under) => ({ from: `/:lang(${LANG_SHAPE})${under}`, to: `/:lang${under}` })),
   { from: "/api", to: "/api" },
 ];
 

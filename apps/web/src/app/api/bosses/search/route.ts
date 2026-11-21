@@ -4,11 +4,15 @@
  * Every live boss is listed in every language. One with no story in the language comes back
  * with null text and `written: false`, never another language's story.
  */
+import type { Lang } from "@/lib/lang";
 import { langParam, worksHere } from "@/lib/lang-server";
 import { recordingsFor } from "@/lib/recordings/store";
-import { catalogue, loadContext } from "@/lib/bosses/catalogue";
-import { filtersFromParams, PAGE_SIZE } from "@/lib/bosses/filters";
+import { baseCatalogue, catalogue, loadContext, publicContext } from "@/lib/bosses/catalogue";
+import { PAGE_SIZE } from "@/lib/page-size";
+import { filtersFromParams, type LineFilters } from "@/lib/bosses/filters";
 import { search } from "@/lib/bosses/search";
+import type { TeamId } from "@/lib/teams/store";
+import { asHeard, asPublished, teamLiveOverrides, viewedOther, viewOnly } from "@/lib/teams/viewing";
 
 export const dynamic = "force-dynamic";
 
@@ -28,27 +32,50 @@ function corpusEmpty(): Response {
   );
 }
 
-export async function GET(request: Request) {
-  const params = new URL(request.url).searchParams;
-  const { lang, denied } = await langParam(request);
-  if (denied) return denied;
-  const filters = filtersFromParams(params);
-  const page = Math.max(1, Number(params.get("page")) || 1);
+/** The bosses and context as the acting team works on them. */
+async function own(lang: Lang, filters: LineFilters) {
   // Who made each take is for the people working in the language; see /api/places/search.
   const seesMadeBy = await worksHere(lang);
   if (!seesMadeBy) {
     filters.model = undefined;
     filters.author = undefined;
   }
-
   const [entries, context, recordings] = await Promise.all([
     catalogue(lang),
     loadContext(lang, seesMadeBy),
     recordingsFor("bosses", lang),
   ]);
-  if (entries.length === 0) return corpusEmpty();
   if (!recordings) filters.recorded = undefined;
-  const withRecordings = { ...context, recordings };
+  return {
+    entries: seesMadeBy ? entries : await asPublished(entries, () => baseCatalogue(lang), "bosses", lang),
+    context: { ...context, recordings },
+    filters,
+  };
+}
+
+/** The bosses as another team is heard: the original stories, its live takes and the overrides they speak. */
+async function heard(lang: Lang, team: TeamId, filters: LineFilters) {
+  const [base, context, overrides] = await Promise.all([
+    baseCatalogue(lang),
+    publicContext("bosses", lang, team),
+    teamLiveOverrides(team, "bosses", lang),
+  ]);
+  return { ...asHeard(base, context, overrides), filters: viewOnly(filters) };
+}
+
+export async function GET(request: Request) {
+  const params = new URL(request.url).searchParams;
+  const { lang, denied } = await langParam(request);
+  if (denied) return denied;
+  const page = Math.max(1, Number(params.get("page")) || 1);
+  // Whose takes play: the acting team's unless `team` names another of the language.
+  const other = await viewedOther(params, lang);
+  if (other instanceof Response) return other;
+
+  const { entries, context: withRecordings, filters } = await (other
+    ? heard(lang, other, filtersFromParams(params))
+    : own(lang, filtersFromParams(params)));
+  if (entries.length === 0) return corpusEmpty();
 
   // Every matching id, for "regenerate everything this filter matches". Only written bosses:
   // the queue refuses one with no story, so a quote that counted it would promise a take

@@ -6,7 +6,7 @@
 
 setfenv(1, SpokenEnv)
 
-if GetLocale() ~= "koKR" then
+if not Interface:In("koKR") then
 	return
 end
 
@@ -149,7 +149,7 @@ L.MODULE_NOT_LOADED = "불러오지 않음"
 L.MODULE_NO_PACK = "|cffff8080설치된 음성 팩이 없습니다.|r 음성 팩이 없으면 소리로 읽지 않습니다."
 L.MODULE_RESET = "초기화"
 L.REASON_PART_OFF = "이 기능을 쓰려면 이 페이지 맨 위의 '사용'을 켜세요."
-L.MODULE_NO_VOICE_FMT = "%1$s 음성 팩이 없고 '음성이 없을 때'가 '무음'이라 아무것도 읽지 않습니다."
+L.MODULE_NO_VOICE_FMT = "%1$s 음성 팩이 없고 목록의 다음 음성에도 없어 아무것도 읽지 않습니다."
 L.PART_VOICE = "음성 팩"
 L.OPT_PART_CLICK_ON = "클릭하면 켭니다."
 L.OPT_PART_CLICK_OFF = "클릭하면 끕니다."
@@ -222,10 +222,22 @@ L.OPT_LOWER_AMBIENCE = "주변 소리"
 L.OPT_LOWER_SFX = "효과음"
 L.OPT_LOWER_DIALOG = "NPC 음성"
 L.OPT_LANGUAGE_TITLE = "언어"
-L.OPT_VOICE_LANGUAGE = "음성 언어"
+L.OPT_VOICES = "음성 (순서대로)"
+L.OPT_VOICES_TIP = "대사는 그 대사가 있는 첫 번째 음성으로 재생됩니다. 목록의 마지막 음성에도 없으면 Spoken은 아무것도 읽지 않습니다."
+L.OPT_VOICE_ADD = "음성 추가"
+L.OPT_VOICE_EARLIER = "앞으로"
+L.OPT_VOICE_LATER = "뒤로"
+L.OPT_VOICE_REMOVE = "제거"
+L.OPT_VOICE_MISSING = "(설치 안 됨)"
 L.OPT_LANG_AUTO_FMT = "자동 (%1$s)"
-L.OPT_FALLBACK_LANGUAGE = "음성이 없을 때"
-L.OPT_FALLBACK_NONE = "무음"
+L.OPT_VOICE_TEAM_FMT = "%1$s · %2$s"
+L.OPT_TEXT_LANGUAGE = "텍스트 언어"
+L.OPT_TEXT_LANGUAGE_SET_FMT = "UI를 다시 불러오면 텍스트가 %1$s(으)로 표시됩니다."
+L.OPT_TEXT_LANGUAGE_RELOAD = "전환하려면 /reload를 입력하세요."
+L.OPT_INTERFACE_LANGUAGE = "인터페이스 언어"
+L.OPT_INTERFACE_LANGUAGE_SET_FMT = "UI를 다시 불러오면 Spoken의 창과 설정이 %1$s(으)로 표시됩니다."
+L.OPT_RELOAD_NOW = "지금 다시 불러오기"
+L.OPT_LATER = "나중에"
 
 -- Azeroth's Compendium, on Spoken's page.
 L.OPT_COMPENDIUM_TITLE = "아제로스 백과사전"

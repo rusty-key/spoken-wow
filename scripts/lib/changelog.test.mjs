@@ -80,3 +80,42 @@ test("Unreleased comes first", () => {
     .replace("## 3.3.1", "## Unreleased\n\n## 3.3.1");
   assert.match(problems(late).join("\n"), /"## Unreleased" is not the first section/);
 });
+
+test("a section comes out with each bullet and paragraph on one line", () => {
+  const wrapped = [
+    "## 3.5.0 — 2026-11-20",
+    "",
+    "- **A long change** that wraps",
+    "  onto a second line.",
+    "  *([Nucabe](https://github.com/Nucabe))*",
+    "  - A nested bullet",
+    "    that wraps too.",
+    "",
+    "A paragraph that",
+    "wraps.",
+    "",
+    "| a | b |",
+    "|---|---|",
+    "",
+    "```",
+    "code stays",
+    "as it is",
+    "```",
+  ].join("\n");
+  assert.equal(section(wrapped, "3.5.0"), [
+    "## 3.5.0 — 2026-11-20",
+    "",
+    "- **A long change** that wraps onto a second line. *([Nucabe](https://github.com/Nucabe))*",
+    "  - A nested bullet that wraps too.",
+    "",
+    "A paragraph that wraps.",
+    "",
+    "| a | b |",
+    "|---|---|",
+    "",
+    "```",
+    "code stays",
+    "as it is",
+    "```",
+  ].join("\n"));
+});
