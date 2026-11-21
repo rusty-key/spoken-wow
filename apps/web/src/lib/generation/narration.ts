@@ -79,18 +79,14 @@ function raceOf(voice: string): string {
  * gnome whose neutral clips eleven_v3 reads as a woman. Both rather than the slot's alone, so
  * giving one dwarf flavor a direction does not quietly drop its brogue.
  */
-export function directionFor(
-  voice: string,
-  tags: Record<string, string>,
-  npc?: string,
-): string | undefined {
+export function directionFor(voice: string, tags: Record<string, string>): string | undefined {
   const race = raceOf(voice);
-  const own = [tags[race], voice === race ? undefined : tags[voice], npc].filter(Boolean);
+  const own = [tags[race], voice === race ? undefined : tags[voice]].filter(Boolean);
   return own.length > 0 ? own.join(" ") : undefined;
 }
 
 /**
- * The NPC direction for a file (npc.direction), after the slot's in directionFor: one NPC's
+ * The NPC direction for a file (npc.direction), sent after the slot's (accentTagged): one NPC's
  * accent on top of its voice's, "Pretty Boy" Duncan's pirate on a human man.
  *
  * Only when every NPC speaking the file has the same one. A gossip file is shared by every NPC
@@ -140,22 +136,25 @@ export function audioTags(text: string): string {
 
 /**
  * Where a sentence ends and the next begins: a full stop, `!` or `?`, any closing quotes or
- * brackets, then whitespace. Not after a second dot, so "coin... [hic]" and "Adventurer...
- * yeah" stay one sentence.
+ * brackets, then whitespace and something other than a dot. Not in an ellipsis, spaced or not
+ * ("coin... [hic]", "Well. . . maybe"), and not after a title ("Mr. Flint", "Mrs. Dalson"),
+ * which is where the corpus puts a full stop mid-sentence.
  */
-const SENTENCE_END = /((?<!\.)[.!?]["'\u201d\u2019)\]]*)(\s+)(?=\S)/g;
+const SENTENCE_END = /((?<!\b(?:Mr|Mrs|Ms|Dr|Lt|Sgt|Capt|Prof)|\.\s?)[.!?]["'\u201d\u2019)\]]*)(\s+)(?=[^\s.])/g;
 
 /**
- * The direction for a slot (see directionFor), in front of every sentence the NPC says.
+ * The direction for a slot (see directionFor), prefixed to the words the NPC says, then the
+ * NPC's own direction (npcDirection) after it and again in front of every later sentence.
  *
  * Dwarves are the reason this exists: they are meant to have a strong Scottish brogue, and
  * an instant clone read by eleven_v3 returns something closer to RP. The model has no other
  * channel for direction - a text-to-speech request carries text, settings and a seed,
  * nothing else - so the direction has to travel inside the text.
  *
- * In front of every sentence, not once per line: eleven_v4 performs a direction for the first
- * few words and then drifts back to the voice's own delivery, so a pirate was a pirate for
- * half a sentence of a 400-character line. Every sentence pays the direction's characters again.
+ * The NPC's direction is repeated because eleven_v4 performs it for the first few words and
+ * then drifts back to the voice's own delivery: "Pretty Boy" Duncan was a pirate for half a
+ * sentence of a 400-character line. The slot's is not, so the takes made with it stay current
+ * and its characters are paid once; only an NPC's pays per sentence.
  *
  * Applied per stretch of speech rather than once at the front, because a line can be
  * interrupted by a stage direction that `narrator-male` reads. Tagging the whole string would
@@ -171,6 +170,7 @@ export function accentTagged(
   tag: string | undefined,
   raceTags: Record<string, string> = {},
   voice?: string,
+  npc?: string,
 ): string {
   let current = voice;
   return text
@@ -181,12 +181,13 @@ export function accentTagged(
         current = marked;
         return piece;
       }
-      // A marked stretch takes its own slot's direction, not the line's: Wizbang is a goblin
-      // whoever gave the quest.
-      const own = current ? directionFor(current, raceTags) : tag;
-      return DIRECTION.test(piece) || !piece.trim() || !own
-        ? piece
-        : piece.replace(/^(\s*)/, `$1${own} `).replace(SENTENCE_END, `$1$2${own} `);
+      // A marked stretch takes its own slot's direction, not the line's or the NPC's: Wizbang
+      // is a goblin whoever gave the quest.
+      const own = current ? directionFor(current, raceTags) : [tag, npc].filter(Boolean).join(" ");
+      if (DIRECTION.test(piece) || !piece.trim() || !own) return piece;
+      // Sentences first, so a full stop inside the direction just prefixed is not one.
+      const repeated = !current && npc ? piece.replace(SENTENCE_END, `$1$2${npc} `) : piece;
+      return repeated.replace(/^(\s*)/, `$1${own} `);
     })
     .join("");
 }

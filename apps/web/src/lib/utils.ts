@@ -6,6 +6,14 @@ export function cn(...inputs: ClassValue[]) {
 }
 
 /**
+ * A click that ends a drag across text, which a row that toggles on click should ignore:
+ * copying a phrase out of it should not fold it away under the cursor.
+ */
+export function endsSelection(): boolean {
+  return window.getSelection()?.isCollapsed === false;
+}
+
+/**
  * Seconds as m:ss, for a player's elapsed and total readouts.
  *
  * Guards the non-finite case because an <audio> element reports NaN for duration until its

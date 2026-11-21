@@ -1,28 +1,12 @@
--- The settings layout every Spoken addon builds its panel with.
---
--- BYTE-IDENTICAL IN EVERY SPOKEN ADDON. A copy lives in Spoken, SpokenQuests,
--- SpokenZones and SpokenBooks, and the packaging tests assert the copies are the same file.
--- The addons cannot share a file at runtime -- each is installed on its own, and the player is
--- only an optional dependency of the others -- so they share it by carrying it, the way
--- vendored libraries do. Edit one copy and copy it over the others; do not edit in place.
+-- The settings layout Spoken's page and every module's build with: the global SpokenLayout.
 --
 -- Deliberately idiom-free: no setfenv, no addon table, no localisation. Every label and
 -- every accessor is passed in, so the same file suits an addon that runs in a private
 -- environment and one that does not.
 --
--- Lua 5.0 rules, because this loads on 1.12: no `#`, no literal-string method calls.
---
 -- A page is a list of items -- its header, its sections, and the rows in them -- recorded as
 -- they are built and placed by Reflow, top to bottom. Placing them all in one pass is what lets
 -- a row be hidden (ShowWhen) and everything under it close up, rather than leaving a hole.
-
-local VERSION = 62
-
--- LibStub's contract, for LibStub's reason: several addons load this file and the newest
--- copy must win, whichever of them the client happens to load last.
-if SpokenLayout and SpokenLayout.VERSION and SpokenLayout.VERSION >= VERSION then
-    return
-end
 
 local format = string.format
 
@@ -80,7 +64,7 @@ local GOLD = { 1, 0.82, 0 }      -- NORMAL_FONT_COLOR: a setting's name
 local WHITE = { 1, 1, 1 }        -- HIGHLIGHT_FONT_COLOR: a page's and a section's title
 local GREY = { 0.5, 0.5, 0.5 }   -- GameFontDisable: a setting greyed out
 
-local Layout = { VERSION = VERSION }
+local Layout = {}
 Layout.__index = Layout
 
 --- Widen a button to its label, never below `width`. The widths the panels ask for were
@@ -96,29 +80,24 @@ function Layout.Percent(value) return format("%d%%", value * 100) end
 function Layout.Seconds(value) return format("%.1fs", value) end
 function Layout.Number(value) return format("%d", math.floor(value + 0.5)) end
 
--- Where a font the game may not have falls back to one it does: 1.12 names fewer of them.
-local function Font(name, fallback)
-    if _G[name] then return name end
-    return fallback
-end
-
 -- The tooltip a row shows anywhere along it: what it is, what it does, and -- greyed out --
 -- why, under that. A control that does nothing, with no word on what would make it work,
--- reads as broken.
+-- reads as broken. A row with nothing to say beyond its label shows only the band: a tooltip
+-- that repeats the label is noise.
 local function ShowTip(frame, title, body)
     local band = frame.layoutBand or (frame.layoutHit and frame.layoutHit.layoutBand)
     if band then band:Show() end
-    if not body and not title then return end
+    local reason = frame.layoutReason or (frame.layoutControl and frame.layoutControl.layoutReason)
+    if not body and not reason and not frame.layoutHint then return end
     GameTooltip:SetOwner(frame, "ANCHOR_RIGHT")
     if title then
         GameTooltip:SetText(title)
-    else
+    elseif body then
         GameTooltip:SetText(body, 1, 1, 1, 1, true)
     end
     if title and body then
         GameTooltip:AddLine(body, 1, 1, 1, true)
     end
-    local reason = frame.layoutReason or (frame.layoutControl and frame.layoutControl.layoutReason)
     if reason then
         GameTooltip:AddLine(reason, 1, 0.5, 0.25, true)
     end
@@ -135,37 +114,20 @@ local function HideTip(frame)
     GameTooltip:Hide()
 end
 
--- 1.12 and 2.4.3 hand a script handler nothing: the frame is in `this` and its arguments in
--- `arg1` and `arg2`. This file has no environment, so its frames come from the client's own
--- CreateFrame and not a wrapper that would pass them on: every handler here is set through
--- Script or Hook, which do it themselves. Asked each time rather than once as the file loads,
--- so a test that switches clients after loading it gets the client it switched to. 1.12's
--- GetBuildInfo has no interface number at all.
-local function Legacy()
-    if WOW_PROJECT_ID ~= nil or not GetBuildInfo then return false end
-    local _, _, _, interface = GetBuildInfo()
-    return interface == nil or interface < 30000
-end
-
-local function Wrap(fn)
-    if not fn or not Legacy() then return fn end
-    return function() return fn(this, arg1, arg2) end
-end
-
 local function Script(frame, script, fn)
-    frame:SetScript(script, Wrap(fn))
+    frame:SetScript(script, fn)
 end
 
 local function Hook(frame, script, fn)
-    frame:HookScript(script, Wrap(fn))
+    frame:HookScript(script, fn)
 end
 
 -- Run `fn` after whatever `frame` already does on `script`, so a button's own hover face and a
--- row's tooltip can share one OnEnter. Two arguments, not `...`: 1.12 loads this file too.
+-- row's tooltip can share one OnEnter.
 local function Chain(frame, script, fn)
     local before = frame.GetScript and frame:GetScript(script)
     if before then
-        Script(frame, script, function(a, b) before(a, b); fn(a, b) end)
+        Script(frame, script, function(...) before(...); fn(...) end)
     else
         Script(frame, script, fn)
     end
@@ -197,7 +159,7 @@ end
 --
 -- Every control is the game's own, as its settings draw them: the minimal checkbox, the slider
 -- with steppers, the dropdown with steppers, the red panel button. A client without one of them
--- -- the legacy clients this file also loads on -- gets the classic template in its place.
+-- gets the classic template in its place.
 
 local function HasAtlas(name)
     return C_Texture and C_Texture.GetAtlasInfo and C_Texture.GetAtlasInfo(name) ~= nil or false
@@ -211,6 +173,19 @@ local function AtlasTexture(frame, layer, atlas, useAtlasSize)
     texture.layoutAtlas = atlas
     return texture
 end
+
+Layout.AtlasTexture = AtlasTexture
+
+--- `size` in whole screen pixels, as `frame` is drawn: the interface scale cuts a plain 1 into a pixel
+--- and a bit, which draws a line one pixel wide here and two there, and an icon with a ragged edge.
+--- `least` is the fewest pixels it may be (1 for a size, 0 for a place).
+function Layout.Pixels(frame, size, least)
+    if PixelUtil and PixelUtil.GetNearestPixelSize then
+        return PixelUtil.GetNearestPixelSize(size, frame:GetEffectiveScale(), least or 1)
+    end
+    return size
+end
+Layout.HEADER_HEIGHT = HEADER_HEIGHT
 
 -- The settings' own sounds: the checkbox's on and off, as the game's settings play them.
 local function Sound(name)
@@ -270,7 +245,7 @@ end
 --- Every control below indexes itself, so a page is searchable by being built.
 function Layout:Index(frame, label, tooltip)
     table.insert(self.entries, { frame = frame, label = label, tooltip = tooltip,
-        section = self.section, page = self.page })
+        section = self.section })
     return frame
 end
 
@@ -443,13 +418,6 @@ function Layout:Reflow()
             if item.body then y = item.body(y) end
             underDivider = self.intro.fixed and not item.body
             started = false
-        elseif item.kind == "header" then
-            if self.headerHidden then
-                for _, region in ipairs(item.regions or {}) do region:Hide() end
-            else
-                item.place(y)
-                y = y - item.height - HEADER_PAD
-            end
         elseif item.kind == "row" then
             -- Rows outside any section -- a page's search box, its status, its main switch --
             -- placed as one run, so they space like the rows in a box. Right under the divider,
@@ -547,63 +515,10 @@ function Layout:Reflow()
     return y
 end
 
---- Drop the page's title and description: a tab shows the page's name already.
-function Layout:HideHeader()
-    self.headerHidden = true
-    self.dirty = true
-end
-
 --- How tall the panel has grown. For a scrolling host that must size its content.
 function Layout:Height()
     self:Reflow()
     return self.top - self.y
-end
-
---- The top of a page: its icon, its name, and one sentence saying what the page is for.
---- Neither is a row: the panel tests measure rows and sections, and a title is neither.
-function Layout:Header(title, description, width, icon)
-    local parent, left = self.parent, self.left
-    local texture
-    if icon then
-        texture = parent:CreateTexture(nil, "ARTWORK")
-        texture:SetWidth(40)
-        texture:SetHeight(40)
-        texture:SetTexture(icon)
-        self.icon = texture
-    end
-    local textX = icon and 40 + 12 or 0
-    local fs = parent:CreateFontString(nil, "ARTWORK", Font("GameFontHighlightHuge", "GameFontHighlightLarge"))
-    fs:SetJustifyH("LEFT")
-    fs:SetText(title)
-    fs.layoutTitle = true
-    self.page = title
-    local line
-    if description then
-        -- Smaller and softer than the title, so the eye reads it as what the page is about
-        -- rather than as one more setting.
-        line = parent:CreateFontString(nil, "ARTWORK", "GameFontHighlight")
-        line:SetJustifyH("LEFT")
-        line:SetJustifyV("TOP")
-        line:SetTextColor(0.78, 0.78, 0.78)
-        line:SetHeight(32)
-        line:SetText(description)
-    end
-    local height = 26 + (description and 32 or 0)
-    if icon and height < 40 then height = 40 end
-    local layout = self
-    local regions = { fs }
-    if texture then table.insert(regions, texture) end
-    if line then table.insert(regions, line) end
-    table.insert(self.items, { kind = "header", height = height, regions = regions, place = function(top)
-        if texture then Put(texture, parent, left, top) end
-        Put(fs, parent, left + textX, top - 2)
-        if line then
-            line:SetWidth(width or (layout:Width() - textX))
-            Put(line, parent, left + textX, top - 26)
-        end
-    end })
-    self.dirty = true
-    return fs
 end
 
 -- The game's own settings divider (SettingsListSectionHeader), faded at both ends, where the
@@ -615,11 +530,11 @@ local function Rule(parent)
     if info and rule.SetAtlas then
         -- At its own size, as the game's header draws it (useAtlasSize).
         rule:SetAtlas(DIVIDER_ATLAS, true)
-        rule:SetHeight(info.height or 2)
+        rule:SetHeight(Layout.Pixels(parent, info.height or 2))
         rule.layoutAtlas = DIVIDER_ATLAS
     else
         if rule.SetColorTexture then rule:SetColorTexture(GOLD[1], GOLD[2], GOLD[3], 0.3) end
-        rule:SetHeight(1)
+        rule:SetHeight(Layout.Pixels(parent, 1))
     end
     return rule
 end
@@ -632,7 +547,7 @@ local function Divider(parent)
     local line = Flat(parent, "ARTWORK", 1, 1, 1, 1)
     line:SetVertexColor(DIVIDER_COLOR[1], DIVIDER_COLOR[2], DIVIDER_COLOR[3])
     line:SetAlpha(DIVIDER_ALPHA)
-    line:SetHeight(1)
+    line:SetHeight(Layout.Pixels(parent, 1))
     line.layoutColor = DIVIDER_COLOR
     return line
 end
@@ -648,7 +563,7 @@ function Layout:Section(text, plain)
     -- Inside a group a section has no title: a divider stands where it would, and its name is
     -- still what search says its rows are under.
     if text and not self.group then
-        fs = parent:CreateFontString(nil, "ARTWORK", Font("GameFontHighlightLarge", "GameFontNormalLarge"))
+        fs = parent:CreateFontString(nil, "ARTWORK", "GameFontHighlightLarge")
         fs:SetJustifyH("LEFT")
         fs:SetJustifyV("TOP")
         fs:SetTextColor(WHITE[1], WHITE[2], WHITE[3])
@@ -659,7 +574,7 @@ function Layout:Section(text, plain)
     -- from it to where the boxes end (Reflow).
     local small
     if text and self.group then
-        small = parent:CreateFontString(nil, "ARTWORK", Font("GameFontHighlight", "GameFontNormal"))
+        small = parent:CreateFontString(nil, "ARTWORK", "GameFontHighlight")
         small:SetJustifyH("LEFT")
         small:SetText(text)
         small:Hide()
@@ -671,8 +586,8 @@ function Layout:Section(text, plain)
         if fs then
             fs:Show()
             local here = layout.left
-            if layout.centred then
-                -- Across the rows' middle, in a window that centres its titles (the welcome).
+            if layout.centred and not layout.leftTitles then
+                -- Across the rows' middle, in a window that centres its titles.
                 fs:SetJustifyH("CENTER")
                 fs:ClearAllPoints()
                 fs:SetPoint("TOP", parent, "TOPLEFT", math.floor(here + layout:Width() / 2), top - SECTION_TITLE_Y)
@@ -719,7 +634,7 @@ end
 function Layout:Group(title)
     self:Columns(nil)
     local parent = self.parent
-    local fs = parent:CreateFontString(nil, "ARTWORK", Font("GameFontHighlightLarge", "GameFontNormalLarge"))
+    local fs = parent:CreateFontString(nil, "ARTWORK", "GameFontHighlightLarge")
     fs:SetJustifyH("LEFT")
     fs:SetJustifyV("TOP")
     fs:SetTextColor(WHITE[1], WHITE[2], WHITE[3])
@@ -827,6 +742,8 @@ local function NewButton(parent, label)
     return button
 end
 Layout.NewButton = NewButton
+-- Where a row's label or button starts, for a page that draws a row of its own (Custom).
+Layout.LABEL_X = LABEL_X
 
 --- A setting's name: the game's gold, GameFontNormal, or GameFontNormalSmall for an option
 --- under another (SettingsListElementMixin).
@@ -845,9 +762,7 @@ end
 -- 85 short of the row's middle; small for an option under another.
 local function PlaceLabel(layout, caption, x, top)
     local start = x + LABEL_X
-    -- The font object itself: the legacy clients take no font by its name here.
-    local font = x > layout.left and "GameFontNormalSmall" or "GameFontNormal"
-    caption:SetFontObject(_G[font] or font)
+    caption:SetFontObject(x > layout.left and "GameFontNormalSmall" or "GameFontNormal")
     caption:SetWidth(math.max(40, layout:Middle() - LABEL_END - start))
     Put(caption, layout.parent, start, top)
 end
@@ -877,10 +792,12 @@ local function EachRow(layout, fn)
     end
 end
 
-function Layout:RequiresAll(applies, reason, except)
+function Layout:RequiresAll(applies, reason, ...)
+    local except = {}
+    for i = 1, select("#", ...) do except[(select(i, ...))] = true end
     EachRow(self, function(row)
         local control = row.control
-        if control and control ~= except and not control.layoutCard then
+        if control and not except[control] and not control.layoutCard then
             self:Requires(control, applies, reason)
         end
     end)
@@ -974,7 +891,7 @@ function Layout:Highlight(row)
         glow.texture:SetAllPoints()
         if glow.texture.SetColorTexture then glow.texture:SetColorTexture(1, 0.82, 0, 1) end
         Script(glow, "OnUpdate", function(frame, elapsed)
-            frame.left = frame.left - (elapsed or arg1 or 0)
+            frame.left = frame.left - elapsed
             if frame.left <= 0 then
                 frame:Hide()
                 return
@@ -1133,10 +1050,7 @@ function Layout:Slider(label, minValue, maxValue, step, read, write, apply, show
         frame = CreateFrame("Frame", nil, parent)
         frame:SetWidth(SLIDER_WIDTH)
         frame:SetHeight(20)
-        -- OptionsSliderTemplate is the legacy clients' name for it; WOW_PROJECT_ID exists on
-        -- every client that calls it UISliderTemplate.
-        local template = WOW_PROJECT_ID == nil and "OptionsSliderTemplate" or "UISliderTemplate"
-        slider = CreateFrame("Slider", nil, frame, template)
+        slider = CreateFrame("Slider", nil, frame, "UISliderTemplate")
         -- Both load-bearing: a slider given neither draws nothing at all.
         slider:SetHeight(16)
         slider:SetWidth(SLIDER_WIDTH - 50)
@@ -1155,9 +1069,8 @@ function Layout:Slider(label, minValue, maxValue, step, read, write, apply, show
             value:SetText(show(read()))
         end
         Script(frame, "OnShow", sync)
-        -- A slider has no SetEnabled on 2.4.3 and 3.3.5, and Refresh calls this for every slider
-        -- with a Requires: Enable and Disable where it has those, and where it has neither, it
-        -- at least stops taking the mouse.
+        -- Refresh calls this for every slider with a Requires: Enable and Disable where it has
+        -- no SetEnabled, and where it has neither, it at least stops taking the mouse.
         setEnabled = function(on)
             if slider.SetEnabled then
                 slider:SetEnabled(on)
@@ -1222,8 +1135,6 @@ function Layout:Cycle(label, tooltip, values, read, write, apply, describe)
                 break
             end
         end
-        -- Not math.mod: 1.12's Lua has it, LuaJIT does not, and the harness runs on
-        -- LuaJIT. Plain arithmetic is the same wrap on every one of them.
         local following = index + 1
         if following > count then
             following = 1
@@ -1245,12 +1156,61 @@ end
 
 local dropdowns = 0
 
+-- One font object per file, size and flags: the classic menu takes an object and not a path, and
+-- the game's menu forbids SetFont on its entries' text while it allows SetFontObject.
+local faces, faceCount = {}, 0
+local function FaceObject(path, size, flags)
+    size, flags = size or 12, flags or ""
+    local key = path .. "\0" .. size .. "\0" .. flags
+    if not faces[key] then
+        faceCount = faceCount + 1
+        faces[key] = CreateFont("SpokenLayoutFace" .. faceCount)
+        faces[key]:SetFont(path, size, flags)
+    end
+    return faces[key]
+end
+
+-- Draw a text in `path`, or back in the font it had where `path` is nil. Through font objects
+-- only, never SetFont, which the game's menu refuses on the text of its entries.
+local function Refont(fontString, path)
+    if not (fontString and fontString.GetFont and fontString.SetFontObject) then return end
+    if not fontString.layoutOwnFont then
+        fontString.layoutOwnFont = { fontString:GetFont() }
+        fontString.layoutOwnObject = fontString.GetFontObject and fontString:GetFontObject() or false
+    end
+    local file, size, flags = unpack(fontString.layoutOwnFont)
+    if path then
+        fontString:SetFontObject(FaceObject(path, size, flags))
+    elseif fontString.layoutOwnObject then
+        fontString:SetFontObject(fontString.layoutOwnObject)
+    elseif file then
+        fontString:SetFontObject(FaceObject(file, size, flags))
+    end
+end
+
+-- Draw an entry of the game's menu in `face`. Menu buttons are pooled, also with other addons' and
+-- the game's menus, so an entry with no face puts back the font a previous entry's face replaced,
+-- and each entry puts it back when its button goes back to the pool.
+local function FaceEntry(element, face)
+    if not (element and element.AddInitializer) then return end
+    element:AddInitializer(function(button) Refont(button.fontString, face) end)
+    if element.AddResetter then
+        element:AddResetter(function(button) Refont(button.fontString, nil) end)
+    end
+end
+
+-- Draw an entry of the classic menu in `face`, where it is given one.
+local function FaceInfo(info, face)
+    if face then info.fontObject = FaceObject(face) end
+end
+
 --- A dropdown: the game's settings dropdown, with steppers either side (SettingsDropdownWithButtons
 --- Template, the dropdown 220 wide, 48 left of the row's middle), its list the game's own menu.
 --- The plain dropdown where the steppers are missing, the classic one where the menu is, and a
 --- cycle button where there is no dropdown at all. The list may be a function, for a choice
---- whose options depend on what is installed.
-function Layout:Dropdown(label, tooltip, values, read, write, apply, describe)
+--- whose options depend on what is installed. `fontOf(value)` may give the font file an entry's
+--- text is drawn in, for a name the game's font has no glyphs for; nil keeps the game's font.
+function Layout:Dropdown(label, tooltip, values, read, write, apply, describe, fontOf)
     describe = describe or tostring
     local modern = CreateFrame and MenuUtil ~= nil
     if not modern and not (UIDropDownMenu_Initialize and UIDropDownMenu_AddButton and CreateFrame) then
@@ -1262,6 +1222,12 @@ function Layout:Dropdown(label, tooltip, values, read, write, apply, describe)
     local caption = Caption(parent, label)
 
     local control, dropdown, Sync, setEnabled, offset
+    -- Tables by label, since a list built afresh hands back equal entries, not the same tables;
+    -- anything else by value, so two entries with one label are told apart.
+    local function Chosen(value, current)
+        if type(value) == "table" then return describe(value) == describe(current) end
+        return value == current
+    end
     local function Choose(value)
         write(value)
         if apply then apply() end
@@ -1278,15 +1244,17 @@ function Layout:Dropdown(label, tooltip, values, read, write, apply, describe)
     end
     if dropdown then
         dropdown:SetWidth(DROPDOWN_WIDTH)
-        -- Compared by what it says: a list built afresh each time hands back an equal entry, not
-        -- the same table.
         dropdown:SetupMenu(function(_, root)
             for _, value in ipairs(Resolve(values)) do
-                root:CreateRadio(describe(value), function() return describe(read()) == describe(value) end,
+                local element = root:CreateRadio(describe(value), function() return Chosen(value, read()) end,
                     function() Choose(value) end, value)
+                if fontOf then FaceEntry(element, fontOf(value)) end
             end
         end)
-        Sync = function() if dropdown.GenerateMenu then dropdown:GenerateMenu() end end
+        Sync = function()
+            if dropdown.GenerateMenu then dropdown:GenerateMenu() end
+            if fontOf then Refont(dropdown.Text, fontOf(read())) end
+        end
         setEnabled = function(on)
             if control.SetEnabled then control:SetEnabled(on) else dropdown:SetEnabled(on) end
         end
@@ -1294,13 +1262,20 @@ function Layout:Dropdown(label, tooltip, values, read, write, apply, describe)
         dropdowns = dropdowns + 1
         control = CreateFrame("Frame", "SpokenLayoutDropdown" .. dropdowns, parent, "UIDropDownMenuTemplate")
         offset = CONTROL_X - 16
-        Sync = function() UIDropDownMenu_SetText(control, describe(read())) end
+        Sync = function()
+            UIDropDownMenu_SetText(control, describe(read()))
+            if fontOf then
+                local name = control.GetName and control:GetName()
+                Refont(name and _G[name .. "Text"], fontOf(read()))
+            end
+        end
         UIDropDownMenu_Initialize(control, function(_, level)
             local current = read()
             for _, value in ipairs(Resolve(values)) do
                 local info = UIDropDownMenu_CreateInfo()
                 info.text = describe(value)
-                info.checked = describe(value) == describe(current)
+                info.checked = Chosen(value, current)
+                FaceInfo(info, fontOf and fontOf(value))
                 info.func = function()
                     Choose(value)
                     if CloseDropDownMenus then CloseDropDownMenus() end
@@ -1430,6 +1405,195 @@ function Layout:Custom(frame, height, fit)
     return frame
 end
 
+-- An ordered list's buttons: the chat frame's scroll arrows and the panel's close cross, which
+-- every client has, as the game's fonts draw no arrow or cross of their own.
+local ORDER_BUTTON = 24
+local ORDER_ART = {
+    up = [[Interface\ChatFrame\UI-ChatIcon-ScrollUp-]],
+    down = [[Interface\ChatFrame\UI-ChatIcon-ScrollDown-]],
+    remove = [[Interface\Buttons\UI-Panel-MinimizeButton-]],
+}
+local ORDER_ROW = 26        -- a voice's line, a row's height
+local ORDER_ADD_GAP = 4     -- between the last line and the add button
+local ORDER_WIDTH = 360     -- the most the names and their buttons take
+local orderedMenus = 0
+
+local function OrderButton(parent, art, tip)
+    local button = CreateFrame("Button", nil, parent)
+    button:SetSize(ORDER_BUTTON, ORDER_BUTTON)
+    button:SetNormalTexture(ORDER_ART[art] .. "Up")
+    button:SetPushedTexture(ORDER_ART[art] .. "Down")
+    button:SetDisabledTexture(ORDER_ART[art] .. "Disabled")
+    button:SetHighlightTexture([[Interface\Buttons\UI-Common-MouseHilight]], "ADD")
+    Above(button, parent)
+    Tooltip(button, nil, tip)
+    return button
+end
+
+--- A list the player orders: a line for each of `read()`'s values, named by `describe(value)` (in
+--- `fontOf(value)`'s font where it gives one), with buttons to move it earlier or later and to
+--- remove it, and under the last an add button offering `choices()` not in the list. `write(list)`
+--- is given a new array after every change. The list keeps at least one value. `words` holds the
+--- buttons' words (`add`, `earlier`, `later`, `remove`) and `available(value)`, false greying a
+--- value out: one kept in the list that cannot be had now.
+function Layout:OrderedList(label, tooltip, read, write, choices, describe, fontOf, words)
+    self:Columns(nil)
+    local parent, layout = self.parent, self
+    describe = describe or tostring
+    local hit = Band(parent, ORDER_ROW)
+    local caption = Caption(parent, label)
+    local add = NewButton(parent, words.add)
+    FitToLabel(add, 0)
+    Above(add, parent)
+    local regions = { hit, caption, add }
+    local lines, list = {}, {}
+
+    local function Change(changed)
+        write(changed)
+        layout:Refresh()
+    end
+    local function Moved(i, by)
+        local changed = {}
+        for index, value in ipairs(list) do changed[index] = value end
+        changed[i], changed[i + by] = changed[i + by], changed[i]
+        Change(changed)
+    end
+    local function Removed(i)
+        if #list < 2 then return end
+        local changed = {}
+        for index, value in ipairs(list) do
+            if index ~= i then table.insert(changed, value) end
+        end
+        Change(changed)
+    end
+    local function Line(i)
+        if lines[i] then return lines[i] end
+        local line = {}
+        line.name = parent:CreateFontString(nil, "ARTWORK", "GameFontHighlight")
+        line.name:SetHeight(ORDER_ROW)
+        line.name:SetJustifyH("LEFT")
+        line.name:SetJustifyV("MIDDLE")
+        if line.name.SetWordWrap then line.name:SetWordWrap(false) end
+        line.up = OrderButton(parent, "up", words.earlier)
+        line.down = OrderButton(parent, "down", words.later)
+        line.remove = OrderButton(parent, "remove", words.remove)
+        Script(line.up, "OnClick", function() Sound(CLICK); Moved(i, -1) end)
+        Script(line.down, "OnClick", function() Sound(CLICK); Moved(i, 1) end)
+        Script(line.remove, "OnClick", function() Sound(CLICK); Removed(i) end)
+        for _, region in ipairs({ line.name, line.up, line.down, line.remove }) do table.insert(regions, region) end
+        lines[i] = line
+        return line
+    end
+    -- What the add button offers: every choice the list has not got.
+    local function Offered()
+        local have, offered = {}, {}
+        for _, value in ipairs(list) do have[value] = true end
+        for _, value in ipairs(Resolve(choices)) do
+            if not have[value] then table.insert(offered, value) end
+        end
+        return offered
+    end
+    local function Added(value)
+        local changed = {}
+        for index, each in ipairs(list) do changed[index] = each end
+        table.insert(changed, value)
+        Change(changed)
+    end
+
+    local menu
+    local function OpenMenu()
+        if MenuUtil and MenuUtil.CreateContextMenu then
+            MenuUtil.CreateContextMenu(add, function(_, root)
+                for _, value in ipairs(Offered()) do
+                    local element = root:CreateButton(describe(value), function() Added(value) end)
+                    if fontOf then FaceEntry(element, fontOf(value)) end
+                end
+            end)
+            return
+        end
+        if not (UIDropDownMenu_Initialize and ToggleDropDownMenu) then
+            -- No menu at all: each click adds the next voice the list has not got.
+            local offered = Offered()
+            if offered[1] then Added(offered[1]) end
+            return
+        end
+        if not menu then
+            orderedMenus = orderedMenus + 1
+            menu = CreateFrame("Frame", "SpokenLayoutOrderedMenu" .. orderedMenus, parent, "UIDropDownMenuTemplate")
+            UIDropDownMenu_Initialize(menu, function(_, level)
+                for _, value in ipairs(Offered()) do
+                    local info = UIDropDownMenu_CreateInfo()
+                    info.text = describe(value)
+                    info.notCheckable = true
+                    FaceInfo(info, fontOf and fontOf(value))
+                    info.func = function()
+                        Added(value)
+                        if CloseDropDownMenus then CloseDropDownMenus() end
+                    end
+                    UIDropDownMenu_AddButton(info, level)
+                end
+            end, "MENU")
+        end
+        ToggleDropDownMenu(1, nil, menu, add, 0, 0)
+    end
+    Script(add, "OnClick", function() Sound(CLICK); OpenMenu() end)
+
+    local function Sync()
+        list = {}
+        for index, value in ipairs(read() or {}) do list[index] = value end
+        for i, value in ipairs(list) do
+            local line = Line(i)
+            line.name:SetText(describe(value))
+            Refont(line.name, fontOf and fontOf(value) or nil)
+            local grey = words.available and not words.available(value)
+            local color = grey and GREY or WHITE
+            line.name:SetTextColor(color[1], color[2], color[3])
+            if i > 1 then line.up:Enable() else line.up:Disable() end
+            if i < #list then line.down:Enable() else line.down:Disable() end
+            if #list > 1 then line.remove:Enable() else line.remove:Disable() end
+        end
+        if #Offered() > 0 then add:Enable() else add:Disable() end
+    end
+    -- The control is the whole list, lines and add button, which is the row's height.
+    local control = CreateFrame("Frame", nil, parent)
+    table.insert(regions, control)
+    -- A pack installed since the page was last shown is offered: the client fires no refresh.
+    Script(control, "OnShow", function() Sync() end)
+    hit.layoutControl, control.layoutHit = control, hit
+    control.layoutSync, control.layoutLabel, control.layoutLines, control.layoutAdd = Sync, caption, lines, add
+    control.layoutList = function() return list end
+    control.layoutOffered = Offered
+    Tooltip(hit, label, tooltip)
+    self:Index(control, label, tooltip)
+    Sync()
+    local function Height() return math.max(1, #list) * ORDER_ROW + ORDER_ADD_GAP + BUTTON_HEIGHT end
+    local row = self:AddRow(ORDER_ROW, control, regions, function(top, x)
+        PlaceBand(self, hit, top)
+        PlaceLabel(self, caption, x, top)
+        local start = self:Middle() + DROPDOWN_X
+        local width = math.min(ORDER_WIDTH, self.left + self:Width() - start)
+        local nameWidth = width - ORDER_BUTTON * 3
+        for i, line in ipairs(lines) do
+            local y = top - (i - 1) * ORDER_ROW
+            local buttonY = y - math.floor((ORDER_ROW - ORDER_BUTTON) / 2)
+            line.name:SetWidth(nameWidth)
+            Put(line.name, parent, start, y)
+            Put(line.up, parent, start + nameWidth, buttonY)
+            Put(line.down, parent, start + nameWidth + ORDER_BUTTON, buttonY)
+            Put(line.remove, parent, start + nameWidth + ORDER_BUTTON * 2, buttonY)
+            local shown = i <= #list
+            for _, region in ipairs({ line.name, line.up, line.down, line.remove }) do
+                if shown then region:Show() else region:Hide() end
+            end
+        end
+        Put(add, parent, start, top - math.max(1, #list) * ORDER_ROW - ORDER_ADD_GAP)
+        control:SetSize(width, Height())
+        Put(control, parent, start, top)
+    end)
+    row.measure = Height
+    return control
+end
+
 --------------------------------------------------------------------------------
 -- Cards, tiles and status lines
 --------------------------------------------------------------------------------
@@ -1466,11 +1630,10 @@ local function NewBadge(parent, clickable)
     if clickable then
         local ok, made = pcall(CreateFrame, "Button", nil, parent, "UIMenuButtonStretchTemplate")
         badge = ok and made or CreateFrame("Button", nil, parent)
-        badge:SetWidth(FIELD_WIDTH)
     else
         badge = CreateFrame("Frame", nil, parent)
-        badge:SetWidth(FIELD_WIDTH)
     end
+    badge:SetWidth(FIELD_WIDTH)
     badge:SetHeight(FIELD_HEIGHT)
     local text = badge:CreateFontString(nil, "ARTWORK", clickable and "GameFontHighlightSmall" or "GameFontHighlight")
     text:SetJustifyH(clickable and "CENTER" or "LEFT")
@@ -1537,21 +1700,22 @@ local function Hover(frame)
     Chain(frame, "OnLeave", function() if not Inside() then Leave() end end)
 end
 
+-- The game's tooltip border and background, as the game's own cards and lists are drawn.
+local function TooltipBackdrop(frame)
+    frame:SetBackdrop({ bgFile = [[Interface\Tooltips\UI-Tooltip-Background]],
+        edgeFile = [[Interface\Tooltips\UI-Tooltip-Border]], tile = true, tileSize = 16, edgeSize = 14,
+        insets = { left = 4, right = 4, top = 4, bottom = 4 } })
+    frame:SetBackdropColor(0.06, 0.06, 0.06, 0.9)
+end
+
 -- A card: the game's tooltip border round it, the same whatever its state. Chosen or enabled
 -- (`layoutFaceOn`), it stands at full strength under the chosen tab's faint wash; otherwise it
 -- stands back, and comes forward under the pointer. `layoutFaceOff` marks an option that cannot
 -- be had (a module not installed), which stays furthest back and does not answer the pointer.
 local function Card(parent)
-    local template = BackdropTemplateMixin and "BackdropTemplate" or nil
-    local card = CreateFrame("Button", nil, parent, template)
-    -- The game's tooltip border and background, as the game's own cards are drawn; the wash a
-    -- faint light inside it.
-    if card.SetBackdrop then
-        card:SetBackdrop({ bgFile = [[Interface\Tooltips\UI-Tooltip-Background]],
-            edgeFile = [[Interface\Tooltips\UI-Tooltip-Border]], tile = true, tileSize = 16, edgeSize = 14,
-            insets = { left = 4, right = 4, top = 4, bottom = 4 } })
-        card:SetBackdropColor(0.06, 0.06, 0.06, 0.9)
-    end
+    local card = CreateFrame("Button", nil, parent, "BackdropTemplate")
+    -- The wash is a faint light inside the border.
+    if card.SetBackdrop then TooltipBackdrop(card) end
     local wash = Flat(card, "BORDER", 1, 1, 1, 0.05)
     wash:SetPoint("TOPLEFT", card, "TOPLEFT", 4, -4)
     wash:SetPoint("BOTTOMRIGHT", card, "BOTTOMRIGHT", -4, 4)
@@ -1588,8 +1752,7 @@ end
 -- game's tooltip edge, as the card round it is, thinner and in grey so the card's stays the
 -- one that says what is chosen.
 local function InputFrame(parent)
-    local template = BackdropTemplateMixin and "BackdropTemplate" or nil
-    local frame = CreateFrame("Frame", nil, parent, template)
+    local frame = CreateFrame("Frame", nil, parent, "BackdropTemplate")
     local backing = Flat(frame, "BACKGROUND", 0, 0, 0, 0.55)
     backing:SetPoint("TOPLEFT", frame, "TOPLEFT", 2, -2)
     backing:SetPoint("BOTTOMRIGHT", frame, "BOTTOMRIGHT", -2, 2)
@@ -1602,7 +1765,7 @@ local function InputFrame(parent)
 end
 
 -- A card's name and the line about it.
-local function Words(card, item, nameSize)
+local function Words(card, item)
     local title = card:CreateFontString(nil, "ARTWORK", "GameFontNormalLarge")
     title:SetJustifyH("LEFT")
     if title.SetWordWrap then title:SetWordWrap(false) end
@@ -1695,18 +1858,14 @@ end
 -- options_frame_child), or the tooltip border where the client has not got it.
 local BRONZE = "options_frame_child"
 local function ListPanel(parent)
-    local template = BackdropTemplateMixin and "BackdropTemplate" or nil
-    local panel = CreateFrame("Frame", nil, parent, template)
+    local panel = CreateFrame("Frame", nil, parent, "BackdropTemplate")
     if HasAtlas(BRONZE) then
         local frame = panel:CreateTexture(nil, "BACKGROUND")
         frame:SetAtlas(BRONZE)
         frame:SetAllPoints(panel)
         panel.layoutFrame = frame
     elseif panel.SetBackdrop then
-        panel:SetBackdrop({ bgFile = [[Interface\Tooltips\UI-Tooltip-Background]],
-            edgeFile = [[Interface\Tooltips\UI-Tooltip-Border]], tile = true, tileSize = 16, edgeSize = 14,
-            insets = { left = 4, right = 4, top = 4, bottom = 4 } })
-        panel:SetBackdropColor(0.06, 0.06, 0.06, 0.9)
+        TooltipBackdrop(panel)
         panel:SetBackdropBorderColor(0.45, 0.45, 0.45, 1)
     end
     panel.lines = {}
@@ -1727,7 +1886,7 @@ local function ListRow(panel, item)
     row.layoutLight, row.layoutWash = light, over
     if panel.layoutRows[1] then
         local line = Flat(panel, "ARTWORK", 1, 1, 1, LIST_LINE)
-        line:SetHeight(1)
+        line:SetHeight(Layout.Pixels(panel, 1))
         line:SetPoint("BOTTOMLEFT", row, "TOPLEFT", LIST_PAD, 0)
         line:SetPoint("BOTTOMRIGHT", row, "TOPRIGHT", -LIST_PAD, 0)
         table.insert(panel.lines, line)
@@ -1752,7 +1911,7 @@ local function ListWords(row, item, picture, edge)
     local words = CreateFrame("Frame", nil, row)
     words:SetPoint("LEFT", picture, "RIGHT", LIST_GAP, 0)
     words:SetPoint("RIGHT", edge, "LEFT", -LIST_GAP, 0)
-    local title, text = Words(row, item, 14)
+    local title, text = Words(row, item)
     title:SetPoint("TOPLEFT", words, "TOPLEFT", 0, 0)
     title:SetPoint("RIGHT", words, "RIGHT", 0, 0)
     text:SetPoint("TOPLEFT", title, "BOTTOMLEFT", 0, -LIST_NAME_GAP)
@@ -1801,6 +1960,15 @@ local function AddList(layout, panel, pictureWidth, pictureHeight, Right, padY)
     row.measure = function() return (Measure()) end
     for _, each in ipairs(rows) do each.layoutRow = row end
     return rows
+end
+
+-- A row's or card's name in gold while it is on or chosen, else in the grey `rest`.
+local function NameColor(title, lit, rest)
+    if lit then
+        title:SetTextColor(GOLD[1], GOLD[2], GOLD[3])
+    else
+        title:SetTextColor(rest, rest, rest)
+    end
 end
 
 --- The modules, a row each in a list. An item is { icon, title, text, tooltip, read(), write(on),
@@ -1907,11 +2075,7 @@ function Layout:List(items)
             check:SetChecked(live)
             if reason then check:Disable() else check:Enable() end
             if icon.SetDesaturated then icon:SetDesaturated(not live) end
-            if live then
-                title:SetTextColor(GOLD[1], GOLD[2], GOLD[3])
-            else
-                title:SetTextColor(0.7, 0.7, 0.7)
-            end
+            NameColor(title, live, 0.7)
             if status then
                 if item.status then status:Set(item.status()) else status:Set(nil) end
             end
@@ -1953,6 +2117,27 @@ function Layout:List(items)
     return AddList(self, panel, iconSize, iconSize, Right, self.compactList and LIST_PAD_Y_COMPACT or nil)
 end
 
+-- A style's sketch, drawn by `item.art`, centred in its dark `screen`.
+local function Sketch(screen, item)
+    local sketch = CreateFrame("Frame", nil, screen)
+    sketch:SetWidth(SKETCH_WIDTH)
+    sketch:SetHeight(SKETCH_HEIGHT)
+    sketch:SetPoint("CENTER", screen, "CENTER", 0, 0)
+    sketch.width = SKETCH_WIDTH
+    if item.art then item.art(sketch) end
+    return sketch
+end
+
+-- What a click on a style does: choose it.
+local function Chooser(layout, item, write, apply)
+    return function()
+        Sound(CLICK)
+        write(item.value)
+        if apply then apply() end
+        layout:Refresh()
+    end
+end
+
 --- The narrator's styles, a row each in a list, as the modules are: a sketch of the style in a
 --- small dark screen at its left, its name over a line about it, and the page's checkbox at its
 --- right, ticked on the chosen style only: one is always chosen, so an empty box on the others
@@ -1971,12 +2156,7 @@ function Layout:Choices(items, read, write, apply, labels)
         screen:SetWidth(LIST_SCREEN_WIDTH)
         screen:SetHeight(LIST_SCREEN_HEIGHT)
         screen:SetPoint("LEFT", row, "LEFT", LIST_PAD, 0)
-        local sketch = CreateFrame("Frame", nil, screen)
-        sketch:SetWidth(SKETCH_WIDTH)
-        sketch:SetHeight(SKETCH_HEIGHT)
-        sketch:SetPoint("CENTER", screen, "CENTER", 0, 0)
-        sketch.width = SKETCH_WIDTH
-        if item.art then item.art(sketch) end
+        local sketch = Sketch(screen, item)
         if sketch.SetScale then sketch:SetScale(scale) end
 
         local check = NewCheck(row, 26)
@@ -1985,13 +2165,7 @@ function Layout:Choices(items, read, write, apply, labels)
         ListWords(row, item, screen, check)
         row.screen, row.sketch, row.check = screen, sketch, check
 
-        local function Choose()
-            Sound(CLICK)
-            write(item.value)
-            if apply then apply() end
-            self:Refresh()
-        end
-        Script(row, "OnClick", Choose)
+        Script(row, "OnClick", Chooser(self, item, write, apply))
         Script(check, "OnClick", function() check:SetChecked(true) end)
 
         local title = row.name
@@ -2002,11 +2176,7 @@ function Layout:Choices(items, read, write, apply, labels)
             check:SetChecked(chosen)
             if chosen then check:Show() else check:Hide() end
             Layout.Grey(sketch, not chosen)
-            if chosen then
-                title:SetTextColor(GOLD[1], GOLD[2], GOLD[3])
-            else
-                title:SetTextColor(0.7, 0.7, 0.7)
-            end
+            NameColor(title, chosen, 0.7)
             row.layoutSelected = chosen
             row:Look()
         end
@@ -2039,25 +2209,14 @@ function Layout:Tiles(items, read, write, apply, labels)
         screen:SetPoint("TOPLEFT", tile, "TOPLEFT", CARD_PAD, -CARD_PAD)
         screen:SetPoint("TOPRIGHT", tile, "TOPRIGHT", -CARD_PAD, -CARD_PAD)
         screen:SetHeight(SCREEN_HEIGHT)
-        local sketch = CreateFrame("Frame", nil, screen)
-        sketch:SetWidth(SKETCH_WIDTH)
-        sketch:SetHeight(SKETCH_HEIGHT)
-        sketch:SetPoint("CENTER", screen, "CENTER", 0, 0)
-        sketch.width = SKETCH_WIDTH
-        if item.art then item.art(sketch) end
-        local title, text = Words(tile, item, 14)
+        local sketch = Sketch(screen, item)
+        local title, text = Words(tile, item)
         title:SetPoint("TOPLEFT", screen, "BOTTOMLEFT", 0, -10)
         title:SetPoint("RIGHT", tile, "RIGHT", -CARD_PAD, 0)
         text:SetPoint("TOPLEFT", title, "BOTTOMLEFT", 0, -TITLE_GAP)
         tile.screen, tile.sketch, tile.name, tile.text = screen, sketch, title, text
 
-        local function Choose()
-            Sound(CLICK)
-            write(item.value)
-            if apply then apply() end
-            self:Refresh()
-        end
-        Script(tile, "OnClick", Choose)
+        Script(tile, "OnClick", Chooser(self, item, write, apply))
         -- The page's checkbox on the sketch's screen, in its top right corner inside its rim,
         -- over the picture. Only on the chosen style: one is always chosen, so an empty box on
         -- the others offers nothing.
@@ -2075,11 +2234,7 @@ function Layout:Tiles(items, read, write, apply, labels)
             check:SetChecked(chosen)
             if chosen then check:Show() else check:Hide() end
             Layout.Grey(sketch, not chosen)
-            if chosen then
-                title:SetTextColor(GOLD[1], GOLD[2], GOLD[3])
-            else
-                title:SetTextColor(1, 1, 1)
-            end
+            NameColor(title, chosen, 1)
             tile.layoutSelected = chosen
             tile:Look()
         end
@@ -2341,7 +2496,7 @@ function Layout:Intro(icon, title, text)
     local scroller = self.parent.layoutScroller
     local parent = scroller and scroller.outer or self.parent
     if scroller then scroller:SetTop(HEADER_HEIGHT + 2) end
-    local name = parent:CreateFontString(nil, "ARTWORK", Font("GameFontHighlightHuge", "GameFontHighlightLarge"))
+    local name = parent:CreateFontString(nil, "ARTWORK", "GameFontHighlightHuge")
     name:SetJustifyH("LEFT")
     name:SetText(title)
     local rule = Rule(parent)
@@ -2606,6 +2761,10 @@ local function BuildScrollBar(view, parent)
     -- Brighter under the pointer and while held, as the game's thumb is.
     local function Look()
         local alpha = (view.dragging or over) and 1 or 0.8
+        if view.flatThumb then
+            view.flatThumb:SetColorTexture(1, 1, 1, (view.dragging or over) and 0.5 or 0.3)
+            return
+        end
         if pieces then
             for _, piece in ipairs(pieces) do piece:SetAlpha(alpha) end
         else
@@ -2613,6 +2772,10 @@ local function BuildScrollBar(view, parent)
         end
     end
     Look()
+    -- A UI look draws the bar its own way; `repaint` takes the strip it draws for the thumb.
+    if Layout.dressScrollBar then
+        Layout.dressScrollBar(bar, thumb, function(strip) view.flatThumb = strip; Look() end)
+    end
 
     Script(thumb, "OnEnter", function() over = true; Look() end)
     Script(thumb, "OnLeave", function() over = false; Look() end)
@@ -2631,23 +2794,13 @@ local function BuildScrollBar(view, parent)
     local function Release()
         if not view.dragging then return end
         view.dragging = false
+        Script(bar, "OnUpdate", nil)
         Look()
         Sound(TICK)
     end
-    Script(thumb, "OnMouseDown", function(_, button)
-        if button and button ~= "LeftButton" then return end
-        view.grab = (thumb:GetTop() or 0) - CursorY()
-        view.dragging = true
-        Look()
-    end)
-    Script(thumb, "OnMouseUp", Release)
-    Script(thumb, "OnHide", Release)
 
-    -- Map the cursor's Y position onto the scroll range while dragging.
-    Script(bar, "OnUpdate", function()
-        if not view.dragging then
-            return
-        end
+    -- Map the cursor's Y position onto the scroll range, every frame only while the thumb is held.
+    local function Follow()
         -- Let go outside the client's window, the thumb never hears it.
         if IsMouseButtonDown and not IsMouseButtonDown("LeftButton") then
             Release()
@@ -2663,7 +2816,17 @@ local function BuildScrollBar(view, parent)
 
         local offset = (bar:GetTop() or 0) - (CursorY() + (view.grab or thumbHeight / 2))
         view:ScrollTo((Clamp(offset, 0, travel) / travel) * (view.range or 0))
+    end
+
+    Script(thumb, "OnMouseDown", function(_, button)
+        if button and button ~= "LeftButton" then return end
+        view.grab = (thumb:GetTop() or 0) - CursorY()
+        view.dragging = true
+        Script(bar, "OnUpdate", Follow)
+        Look()
     end)
+    Script(thumb, "OnMouseUp", Release)
+    Script(thumb, "OnHide", Release)
 
     view.bar = bar
     view.thumb = thumb

@@ -43,7 +43,7 @@ local function Row(index)
 end
 
 local function Build()
-	menu = CreateFrame("Frame", "SpokenDeveloperMenu", UIParent, BackdropTemplateMixin and "BackdropTemplate" or nil)
+	menu = CreateFrame("Frame", "SpokenDeveloperMenu", UIParent, "BackdropTemplate")
 	menu:SetFrameStrata("TOOLTIP")
 	menu:SetClampedToScreen(true)
 	menu:EnableMouse(true)

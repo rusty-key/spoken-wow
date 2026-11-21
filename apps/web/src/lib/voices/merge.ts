@@ -18,10 +18,9 @@ import { promisify } from "node:util";
 
 import {
   displayName,
-  listSamples,
-  samplePath,
+  storeSampleAs,
   storedNameFor,
-  voiceDir,
+  withSampleFiles,
   type Sample,
 } from "./samples";
 
@@ -96,52 +95,43 @@ export async function mergeSamples(
   files: string[],
   pauseSeconds: number,
 ): Promise<Sample> {
-  const inputs = await Promise.all(files.map((file) => samplePath(voice, file)));
   // Fails before ffmpeg runs if a selected clip has been deleted meanwhile, so the error
   // names the file rather than being an ffmpeg exit code.
-  for (const input of inputs) await fs.access(input);
+  return withSampleFiles(voice, files, async (inputs) => {
+    const args = inputs.flatMap((input) => ["-i", input]);
+    if (pauseSeconds > 0) {
+      args.push("-f", "lavfi", "-t", String(pauseSeconds), "-i", `anullsrc=r=${OUTPUT_RATE}:cl=mono`);
+    }
+    args.push(
+      "-filter_complex",
+      filterGraph(inputs.length, pauseSeconds),
+      "-map",
+      "[out]",
+      "-c:a",
+      "libmp3lame",
+      "-b:a",
+      OUTPUT_BITRATE,
+      "-y",
+    );
 
-  const args = inputs.flatMap((input) => ["-i", input]);
-  if (pauseSeconds > 0) {
-    args.push("-f", "lavfi", "-t", String(pauseSeconds), "-i", `anullsrc=r=${OUTPUT_RATE}:cl=mono`);
-  }
-  args.push(
-    "-filter_complex",
-    filterGraph(inputs.length, pauseSeconds),
-    "-map",
-    "[out]",
-    "-c:a",
-    "libmp3lame",
-    "-b:a",
-    OUTPUT_BITRATE,
-    "-y",
-  );
+    // Named after the first clip in the selection, so the merge is recognisable against the
+    // source it came from rather than being one of several interchangeable "merged" files.
+    const first = displayName(files[0]);
+    const file = storedNameFor(`merged-${path.basename(first, path.extname(first))}.mp3`);
+    // Built in the OS temp directory, not the voice directory: an ffmpeg failure must not
+    // leave anything behind that a listing could pick up, even briefly.
+    const scratch = path.join(await fs.mkdtemp(path.join(os.tmpdir(), "voiceover-merge-")), file);
 
-  const dir = await voiceDir(voice);
-  await fs.mkdir(dir, { recursive: true });
-
-  // Named after the first clip in the selection, so the merge is recognisable against the
-  // source it came from rather than being one of several interchangeable "merged" files.
-  const first = displayName(files[0]);
-  const file = storedNameFor(`merged-${path.basename(first, path.extname(first))}.mp3`);
-  // Built in the OS temp directory, not the voice directory: an ffmpeg failure must not
-  // leave anything behind that a listing could pick up, even briefly.
-  const scratch = path.join(await fs.mkdtemp(path.join(os.tmpdir(), "voiceover-merge-")), file);
-
-  try {
-    await run(FFMPEG, [...args, scratch], { maxBuffer: 8 * 1024 * 1024 });
-    await fs.rename(scratch, path.join(dir, file)).catch(async (error) => {
-      // Temp and voice directories can be on different filesystems, where rename fails.
-      if ((error as NodeJS.ErrnoException).code !== "EXDEV") throw error;
-      await fs.copyFile(scratch, path.join(dir, file));
-    });
-  } catch (error) {
-    throw ffmpegError(error, "merge");
-  } finally {
-    await fs.rm(path.dirname(scratch), { recursive: true, force: true });
-  }
-
-  const merged = (await listSamples(voice)).find((sample) => sample.file === file);
-  if (!merged) throw new Error("merge produced no output");
-  return merged;
+    let data: Buffer;
+    try {
+      await run(FFMPEG, [...args, scratch], { maxBuffer: 8 * 1024 * 1024 });
+      data = await fs.readFile(scratch);
+    } catch (error) {
+      throw ffmpegError(error, "merge");
+    } finally {
+      await fs.rm(path.dirname(scratch), { recursive: true, force: true });
+    }
+    if (data.byteLength === 0) throw new Error("merge produced no output");
+    return storeSampleAs(voice, file, data);
+  });
 }

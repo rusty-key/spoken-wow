@@ -46,6 +46,14 @@ function readSecrets() {
   );
 }
 
+const allSecrets = readSecrets();
+
+// Brann's keys (BRANN_*) are his alone: the site never sees the bot token or his API keys, and
+// he never sees the database.
+const brann = {};
+const secrets = {};
+for (const [key, value] of Object.entries(allSecrets)) (key.startsWith("BRANN_") ? brann : secrets)[key] = value;
+
 module.exports = {
   apps: [
     {
@@ -64,7 +72,7 @@ module.exports = {
       exec_mode: "cluster",
 
       // loadCorpus() memoises 15 MB of parsed JSON per worker for the process lifetime,
-      // measured at ~200 MB RSS, and the zones catalogue adds ~1,353 derived entries beside
+      // measured at ~200 MB RSS, and the places catalogue adds ~1,353 derived entries beside
       // it. A safety net for a leak, not an expected limit.
       max_memory_restart: "600M",
 
@@ -141,38 +149,70 @@ module.exports = {
         SPOKEN_QUESTS_VOICE_CONFIG: `${CURRENT}/pipelines/quests/voice`,
 
         //--------------------------------------------------------------------------
-        // Zones
+        // Places
         //--------------------------------------------------------------------------
 
-        // Where the zones pipeline resolves its own paths from. Its modules derive
+        // Where the places pipeline resolves its own paths from. Its modules derive
         // everything from their own location, which is correct for a script and impossible
         // once webpack has compiled them -- import.meta.url is replaced at build time -- so
         // the deployed app is told instead. Points at the release: what it reads from here
         // is pronunciation.json and the area-name seed, both of which ship with the code
         // that expects them.
-        SPOKEN_ZONES_ROOT: CURRENT,
+        SPOKEN_PLACES_ROOT: CURRENT,
 
-        // Every zone take, beside the quests ones and separate from them: the two sections
+        // Every places take, beside the quests ones and separate from them: the two sections
         // number versions independently and share no filenames.
-        SPOKEN_ZONES_AUDIO_HISTORY: `${SHARED}/audio-history/zones`,
+        SPOKEN_PLACES_AUDIO_HISTORY: `${SHARED}/audio-history/places`,
 
         // The exported manifest. In shared/ rather than the release because the app writes
         // it -- the queue rebuilds it whenever a batch drains -- and a release directory is
         // deleted five deploys later.
-        SPOKEN_ZONES_MANIFEST: `${SHARED}/manifest.json`,
+        SPOKEN_PLACES_MANIFEST: `${SHARED}/manifest.json`,
 
         //--------------------------------------------------------------------------
-        // Books
+        // Readables
         //--------------------------------------------------------------------------
 
-        // Every book take, beside the other two sections' and separate from them. Has to be
-        // set: lib/books/audio.ts falls back to a path inside the release, and a release
+        // Every readables take, beside the other two sections' and separate from them. Has to be
+        // set: lib/readables/audio.ts falls back to a path inside the release, and a release
         // directory is deleted five deploys later.
-        SPOKEN_BOOKS_AUDIO_HISTORY: `${SHARED}/audio-history/books`,
+        SPOKEN_READABLES_AUDIO_HISTORY: `${SHARED}/audio-history/readables`,
+
+        //--------------------------------------------------------------------------
+        // Bosses
+        //--------------------------------------------------------------------------
+
+        // Every boss story take, beside the other sections' and separate from them. Has to be
+        // set: lib/takes/adapters.ts falls back to a path inside the release, and a release
+        // directory is deleted five deploys later.
+        SPOKEN_BOSSES_AUDIO_HISTORY: `${SHARED}/audio-history/bosses`,
 
         // DATABASE_URL, BETTER_AUTH_SECRET, BETTER_AUTH_URL, SPOKEN_SECRET_KEY and
         // ELEVENLABS_DICTIONARY_ID.
-        ...readSecrets(),
+        ...secrets,
+
+        // The app logs in as spoken_app, which row-level security binds, not as the owner, which
+        // reads every team. Without APP_DATABASE_URL the app keeps the owner's and filters nothing.
+        ...(secrets.APP_DATABASE_URL ? { DATABASE_URL: secrets.APP_DATABASE_URL } : {}),
+      },
+    },
+    {
+      // Brann Bronzebeard, the Discord bot (apps/brann/README.md). He ships in release-tools/,
+      // whose node_modules hold his dependencies.
+      name: "brann",
+      script: "release-tools/apps/brann/src/index.mjs",
+      cwd: CURRENT,
+      // Exactly one: a second process is a second gateway session, and every question would be
+      // answered and every bug filed twice.
+      instances: 1,
+      exec_mode: "fork",
+      max_memory_restart: "300M",
+      // Without BRANN_DISCORD_TOKEN he exits at once; this stops pm2 retrying that forever.
+      max_restarts: 10,
+      min_uptime: 10_000,
+      env: {
+        NODE_ENV: "production",
+        ...brann,
       },
     },
   ],

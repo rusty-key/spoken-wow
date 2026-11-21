@@ -10,7 +10,7 @@ local H = require("queue_helpers")
 local Expect, Failures = H.Expecter(stub.print)
 local LAYOUT = here .. "/../../addons/Spoken/UI/Layout.lua"
 
-stub.SetClient("11509"); stub.ResetFrames()
+stub.SetClient("16001"); stub.ResetFrames()
 _G.UISpecialFrames = _G.UISpecialFrames or {}
 
 -- The atlases the game's settings draw with (wow-ui-source, forever).

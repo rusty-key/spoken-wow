@@ -1,16 +1,21 @@
 /**
- * entity_name, written from the site: a translator naming a quest, an NPC, a book's owner
- * or a place in their language. The only module here that writes the table; the catalogues
+ * entity_name, written from the site: a translator naming a quest, an NPC, a book's owner,
+ * a place or a boss in their language. The only module here that writes the table; the catalogues
  * read it, and English is kept in step by trigger (migration 0036), written here only by a
  * moderator's override.
  */
 import "server-only";
 
+import type { PoolClient } from "pg";
+
+import { auditDetail, type ApiAudit } from "@/lib/activity/kinds";
 import { recordActivity } from "@/lib/activity/store";
-import { db, query } from "@/lib/db";
+import { query } from "@/lib/db";
+import { withTextTeam } from "@/lib/teams/store";
 import { BASE_LANG, type Lang } from "@/lib/lang";
 
-export const NAME_KINDS = ["quest", "creature", "gameobject", "item", "zone", "subzone"] as const;
+/** A boss is named by its id as text; instances have no rename control, so no kind here. */
+export const NAME_KINDS = ["quest", "creature", "gameobject", "item", "zone", "subzone", "boss"] as const;
 export type NameKind = (typeof NAME_KINDS)[number];
 
 export function isNameKind(value: unknown): value is NameKind {
@@ -58,16 +63,13 @@ export async function saveName(args: {
   editedBy: string;
   expectedVersion?: number | null;
   anyLanguage?: boolean;
-}): Promise<NameVersion> {
-  if (args.lang === BASE_LANG && !args.anyLanguage) {
-    throw new Error("English names come from the corpus, not from here");
-  }
+  audit?: ApiAudit;
+}): Promise<NameVersion & { wrote: boolean }> {
+  if (!args.anyLanguage) refuseEnglish(args.lang);
   const name = args.name.trim();
   if (!name) throw new Error("the name cannot be empty");
 
-  const client = await db().connect();
-  try {
-    await client.query("begin");
+  return withTextTeam(args.lang, async (client, team) => {
     if (!args.anyLanguage) {
       const { rows: english } = await client.query(
         `select 1 from "entity_name"
@@ -93,8 +95,7 @@ export async function saveName(args: {
       throw new NameConflict(`this name moved to v${current.version} while you were editing it`);
     }
     if (current && current.name === name) {
-      await client.query("commit");
-      return { ...current, createdAt: current.createdAt.toISOString() };
+      return { ...current, createdAt: current.createdAt.toISOString(), wrote: false };
     }
 
     await client.query(
@@ -112,20 +113,84 @@ export async function saveName(args: {
     );
     await recordActivity(
       {
+        team,
         kind: "name.edited",
         lang: args.lang,
         actorId: args.editedBy,
         subject: `${args.kind}:${args.entityId}`,
-        detail: { version: rows[0].version, name, note: rows[0].note },
+        detail: {
+          version: rows[0].version,
+          name,
+          note: rows[0].note,
+          ...auditDetail(args.audit, current?.version ?? null),
+        },
       },
       client,
     );
-    await client.query("commit");
-    return { ...rows[0], createdAt: rows[0].createdAt.toISOString() };
-  } catch (error) {
-    await client.query("rollback").catch(() => {});
-    throw error;
-  } finally {
-    client.release();
-  }
+    return { ...rows[0], createdAt: rows[0].createdAt.toISOString(), wrote: true };
+  });
+}
+
+function refuseEnglish(lang: Lang): void {
+  if (lang === BASE_LANG) throw new Error("English names come from the corpus, not from here");
+}
+
+async function leaveCurrent(
+  client: PoolClient,
+  kind: NameKind,
+  entityId: string,
+  lang: Lang,
+  version: number,
+): Promise<void> {
+  const { rowCount } = await client.query(
+    `update "entity_name" set "isCurrent" = false
+      where "kind" = $1 and "entityId" = $2 and "lang" = $3 and "version" = $4 and "isCurrent"`,
+    [kind, entityId, lang, version],
+  );
+  if (!rowCount) throw new NameConflict(`${kind} ${entityId} v${version} is not the current name`);
+}
+
+/** Moves the live flag back to `version`, as long as `from` still holds it. */
+export async function restoreName(
+  kind: NameKind,
+  entityId: string,
+  lang: Lang,
+  version: number,
+  from: number,
+  by: string | null,
+): Promise<void> {
+  refuseEnglish(lang);
+  return withTextTeam(lang, async (client, team) => {
+    // Two statements: the partial unique index is checked per row, so one statement flipping
+    // both would briefly hold two current rows and be refused.
+    await leaveCurrent(client, kind, entityId, lang, from);
+    const { rowCount: back } = await client.query(
+      `update "entity_name" set "isCurrent" = true
+        where "kind" = $1 and "entityId" = $2 and "lang" = $3 and "version" = $4`,
+      [kind, entityId, lang, version],
+    );
+    if (!back) throw new NameMissing(`${kind} ${entityId} has no version ${version}`);
+    await recordActivity(
+      { team, kind: "name.restored", lang, actorId: by, subject: `${kind}:${entityId}`, detail: { version, from } },
+      client,
+    );
+  });
+}
+
+/** Takes a first name back, so the English shows again. A site translator cannot do this. */
+export async function retireName(
+  kind: NameKind,
+  entityId: string,
+  lang: Lang,
+  version: number,
+  by: string | null,
+): Promise<void> {
+  refuseEnglish(lang);
+  return withTextTeam(lang, async (client, team) => {
+    await leaveCurrent(client, kind, entityId, lang, version);
+    await recordActivity(
+      { team, kind: "name.retired", lang, actorId: by, subject: `${kind}:${entityId}`, detail: { version } },
+      client,
+    );
+  });
 }

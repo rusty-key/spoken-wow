@@ -2,32 +2,34 @@ setfenv(1, SpokenEnv)
 
 -- A one-time welcome: the choices that shape what Spoken is like, in one window, instead of
 -- a first visit to a settings page full of rows. Built from the same boxes, cards and pictures
--- as General, in the same frame as the game's settings window, so a player who opens the
--- settings later recognises all of it. Each choice applies as it is made; Done only closes.
--- Shown once per account, at the first login after it ships, and again from the button at the
--- bottom of General. Only where the Settings API exists: "All Settings" opens a page the
--- legacy clients do not have.
+-- as General, laid out in a scroller as a settings page is, in the same frame as the game's
+-- settings window, so a player who opens the settings later recognises all of it and the window
+-- fits any screen. Each choice applies as it is made; Done only closes.
+-- Shown once per account, at the first login after it ships, and again from the button on the
+-- What Spoken Reads title of Spoken's page. Only where the Settings API exists: "All Settings"
+-- opens its page.
 Welcome = {}
 
 local Layout = SpokenLayout
 local WIDTH = 760
--- The settings page's own margins, measured from the inside of its frame: the page's name 24 in,
--- its lists and sections 44 in, from the left and the right alike. Above the name and under the
--- buttons 22 rather than the page's 35, so the two lists, four modules and five styles, fit a
--- 768-high screen.
 local BORDER = 7        -- the frame's edge, inside which the margins are measured
 local BAR = 19          -- the frame's title bar
 local TITLE_X = BORDER + 24
 local CONTENT_X = BORDER + 44
-local TOP_MARGIN, BOTTOM_MARGIN = 22, 22
-local NAME_Y = 22       -- the page's name, under the page's top: the layout's header puts it there
-local FOOTER_GAP = 20   -- between the last row of tiles and the footer's divider
+local BOTTOM_MARGIN = 22
+-- A settings page's own margins: its rows start INDENT in, the name TOP down, and BOTTOM is left under
+-- the last row.
+local INDENT, TOP, BOTTOM = 25, 16, 16
+-- Room kept round the window on the screen.
+local SCREEN_MARGIN = 100
+local MIN_VIEW = 220
 local RULE_GAP = 16     -- between the footer's divider and its buttons
 local BUTTON_WIDTH, BUTTON_HEIGHT = 160, 22   -- the game's red panel button
 -- A second switch, above the one beside the buttons. As tall as a switch, so the two do not
 -- overlap, and no taller: the window had 25 to spare before running off a 768-high screen.
 local CHECK_ROW, CHECK_SIZE = 24, 24
-local FOOTER = FOOTER_GAP + 1 + RULE_GAP + BUTTON_HEIGHT + BORDER + BOTTOM_MARGIN
+-- From the window's bottom to the bottom of the scrolling view: the footer's buttons, its divider and a gap.
+local VIEW_BOTTOM = BORDER + BOTTOM_MARGIN + BUTTON_HEIGHT + RULE_GAP + 8
 
 local function Refresh()
     PlayerFrame:RefreshConfig()
@@ -94,6 +96,11 @@ end
 function Welcome:Build()
     local frame = Window()
     self.frame = frame
+    Ellesmere:When(function(skin)
+        skin.Shell(frame)
+        local close = frame.ClosePanelButton or frame.CloseButton
+        if type(close) == "table" then skin.CloseButton(close) end
+    end)
     frame:SetWidth(WIDTH)
     frame:SetPoint("CENTER", 0, 40)
     frame:SetFrameStrata("DIALOG")
@@ -106,40 +113,48 @@ function Welcome:Build()
     -- Seen is seen, however the window closes: Done, the X or Escape.
     frame:SetScript("OnHide", function()
         Addon.db.global.Welcomed = true
-        if Subtitle and Subtitle:IsShowingSample() then Subtitle:ShowSample(false) end
+        if Subtitle:IsShowingSample() then Subtitle:ShowSample(false) end
         if Options.previewing or Addon.previewStyle or PlayerFrame:IsShowingSample() then Options:SetPreviewing(false) end
     end)
     table.insert(UISpecialFrames, "SpokenWelcomeFrame")
     frame:Hide()
 
-    -- The page sits a few levels above the window, because a section's box is drawn a level
-    -- under its page: drawn straight on the window, it would land behind the window's own
-    -- background. Laid out in the window's own coordinates: its rows start CONTENT_X in and end
-    -- CONTENT_X short of the right side, a page's rows ending RIGHT_MARGIN short of its edge.
+    -- The footer's widgets sit on `page`, a few levels above the window: a section's box is drawn a
+    -- level under what it is laid out on, so drawn straight on the window it would land behind the
+    -- window's own background. The rows scroll in `view` between the title bar and the footer, laid
+    -- out as a settings page is (Layout.Scroll, Layout:Intro), a bar showing where they run past it.
     local page = CreateFrame("Frame", nil, frame)
-    page:SetPoint("TOPLEFT", frame, "TOPLEFT", 0, -(BAR + TOP_MARGIN - NAME_Y))
-    page:SetWidth(WIDTH - CONTENT_X + Layout.RIGHT_MARGIN)
+    page:SetPoint("TOPLEFT", frame, "TOPLEFT", 0, -BAR)
+    page:SetWidth(WIDTH)
     page:SetHeight(1)
     page:SetFrameLevel(frame:GetFrameLevel() + 5)
-    local layout = Layout.New(page, CONTENT_X, 0)
-    layout.titleX = TITLE_X
-    -- Its name, words and questions across the middle: a window that opens unasked, read top down.
+    local view = CreateFrame("Frame", nil, frame)
+    view:SetPoint("TOPLEFT", frame, "TOPLEFT", BORDER, -BAR)
+    view:SetSize(WIDTH - BORDER * 2, MIN_VIEW)
+    view:SetFrameLevel(frame:GetFrameLevel() + 5)
+    local scroller = Layout.Scroll(view)
+    local layout = Layout.New(scroller.child, INDENT, -TOP)
+    -- Its name and words across the middle, as a window that opens unasked is read top down; the
+    -- questions under them start at the left, as a settings page's titles do.
     layout.centred = true
-    -- Its lists across its width, not from where a settings row's label starts, and compact, so
-    -- every module fits with the window on a small screen.
-    layout.boxLeft, layout.boxRight = 0, 0
-    layout.compactList = true
-    self.page, self.layout = page, layout
+    layout.leftTitles = true
+    layout.onResize = function() self:Resize() end
+    self.page, self.view, self.scroller, self.layout = page, view, scroller, layout
     -- Headed as the settings' pages are, with a name, and then what the window is for: unlike
     -- a settings page, it opens unasked, and has to say what it is.
     layout:Intro([[Interface\AddOns\Spoken\icon.tga]], L.WELCOME_TITLE, L.WELCOME_INTRO)
+    -- Voices are a separate download: said here while none is installed, or a first quest is
+    -- accepted in silence with no word why.
+    local noPack = layout:Note(L.MODULE_NO_PACK .. " " .. L.WELCOME_PACK_WHERE, nil, 32)
+    layout:ShowWhen(noPack, function() return Options:NoVoicePacks() end)
+    self.noPack = noPack
 
     -- What Spoken reads: the modules' list, as on General, a click turning each on or off.
     layout:Section(L.WELCOME_PARTS, true)
     local modules = {}
-    for _, part in ipairs(Options.PARTS) do
+    for _, part in ipairs(Options:Parts()) do
         local key = part.key
-        table.insert(modules, { icon = part.icon, title = part.label, text = part.text, tooltip = part.tip,
+        table.insert(modules, { icon = part.icon, title = part.label, text = part.text,
             read = function() return Spoken:IsPartOn(key) end,
             write = function(v) Sources:SetTurnedOff(key, not v) end,
             apply = function() Options:UpdateRows(); layout:Refresh() end,
@@ -157,7 +172,7 @@ function Welcome:Build()
     local styles = {}
     for _, style in ipairs(Options:Styles()) do
         table.insert(styles, { value = style, title = Options.STYLE_LABELS[style], text = Options.STYLE_TEXTS[style],
-            tooltip = Options.STYLE_TIPS[style], art = Options.SKETCHES[style] })
+            art = Options.SKETCHES[style] })
     end
     self.styles = layout:Choices(styles, function() return Addon:PlayerStyle() end,
         function(v) Addon:SetPlayerStyle(v) end,
@@ -201,20 +216,36 @@ function Welcome:Build()
                 Options:UpdateRows()
             end)
     end
-    -- The debug log is offered here, off: a player who turns it on now has a log to send with
-    -- the first report, rather than being asked to turn it on and wait for it to happen again.
-    -- Its words are the module's.
+    -- The debug log, where the Spoken_Developer module is installed: on from the start, so the
+    -- first report has a log to send with it, and turned off here as on the Developer page. Its
+    -- words are the module's.
     if logShown then
         self.log = FooterCheck(page, frame, bottomY, Developer:Call("SwitchLabel") or "",
             Developer:Call("SwitchTip") or "", function(on) Developer:Call("SetLogOn", on) end)
     end
 
-    frame:SetHeight(BAR + TOP_MARGIN - NAME_Y + layout:Height() + Layout.BOX_MARGIN + FOOTER + extra)
+    self.extra = extra
+    self:Resize()
+end
+
+-- Tall enough for what shows, and no taller than the screen: the rows scroll in the view between the
+-- title bar and the footer, which gives up height first. The voice pack line comes and goes.
+function Welcome:Resize()
+    local content = TOP + self.layout:Height() + BOTTOM
+    local chrome = BAR + VIEW_BOTTOM + self.extra
+    local screen = UIParent and UIParent.GetHeight and UIParent:GetHeight() or 768
+    local view = math.max(MIN_VIEW, math.min(Layout.HEADER_HEIGHT + 2 + content, screen - SCREEN_MARGIN - chrome))
+    self.view:SetHeight(view)
+    self.frame:SetHeight(chrome + view)
+    self.scroller:SetContentHeight(content)
 end
 
 --- Show what is chosen now, and for each part whether it is installed.
 function Welcome:Sync()
-    if self.layout then self.layout:Refresh() end
+    if self.layout then
+        self.layout:Refresh()
+        self:Resize()
+    end
     if self.lower then self.lower:SetChecked(Addon.db.profile.Audio.LowerOthers.Enabled and true or false) end
     if self.log then self.log:SetChecked(Developer:IsLogOn()) end
 end
@@ -226,22 +257,16 @@ function Welcome:Show()
     self.frame:Show()
 end
 
-function Welcome:IsAvailable()
-    return Settings ~= nil and Settings.RegisterCanvasLayoutCategory ~= nil
-end
-
 -- At the first login it ships to, once the world is up and everything has registered, and
 -- never in combat, where a window over the screen is the last thing anyone wants.
 local events = CreateFrame("Frame")
 events:RegisterEvent("PLAYER_ENTERING_WORLD")
--- The upvalue, not the handler's `self`: this file loads before Compat.lua wraps CreateFrame,
--- and 1.12 and 2.4.3 hand an unwrapped handler nothing.
 events:SetScript("OnEvent", function()
     events:UnregisterEvent("PLAYER_ENTERING_WORLD")
-    if not (Addon.db and Welcome:IsAvailable()) or Addon.db.global.Welcomed then return end
+    if not Addon.db or Addon.db.global.Welcomed then return end
     local function Open()
         if InCombatLockdown and InCombatLockdown() then return end
         Welcome:Show()
     end
-    if C_Timer and C_Timer.After then C_Timer.After(2, Open) else Open() end
+    C_Timer.After(2, Open)
 end)

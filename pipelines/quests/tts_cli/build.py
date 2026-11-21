@@ -7,18 +7,23 @@ came from treating a pre-built pack as immutable input.
 
 Needs no database: the corpus carries every field the lookup tables key on.
 """
+import json
 import os
+import re
 import shutil
 
-from slpp import slpp as lua
 from tqdm import tqdm
 
-from tts_cli.ignores import ignored_files
+from tts_cli.ignores import ignored_files, wordless
 from tts_cli.length_table import write_sound_length_table_lua
-from tts_cli.naming import (FOLLOWUP, followup_stem_from_line_id, gossip_hash_from_line_id,
-                            moment_of, split_voice, subfolder_from_line_id, variant_file_name)
-from tts_cli.npc_sexes import GENDER_SEX
-from tts_cli.store import SUBFOLDERS, audio_extension, stored_files
+from tts_cli.lua import lua_global, lua_string, lua_value
+from tts_cli.naming import (BROADCAST_SOURCES, followup_stem_from_line_id, gossip_hash_from_line_id,
+                            moment_of, quest_moment_stem, quest_stem_from_line_id,
+                            several_wordings, split_voice, subfolder_from_line_id,
+                            variant_file_name)
+from tts_cli.npc_bodies import GENDER_SEX, body_name
+from tts_cli.store import (SUBFOLDERS, audio_extension, durations, line_text, stored_files, take_text,
+                           word_times)
 from tts_cli.utils import (get_first_n_words, get_last_n_words,
                            replace_dollar_bs_with_space)
 
@@ -28,11 +33,16 @@ DEFAULT_ADDONS_DIR = ("/Applications/World of Warcraft/_classic_era_"
                       "/Interface/AddOns")
 GUARD = "if not VoiceOver or not VoiceOver.DataModules then return end"
 
-#: Group is what actually nests this under the player in the AddOns list - added in 11.1.0,
+#: Group is what actually nests this under Spoken in the AddOns list - added in 11.1.0,
 #: and its value is the main addon's *name*, so it is the folder name and not the title.
 #: X-Part-Of and X-Child-Of are custom X- fields the client does not read at all; they are
 #: kept because addon managers do, and because upstream shipped them. Three keys that look
 #: interchangeable, one of which does the work.
+
+#: The site's model-to-race map (apps/web/src/lib/npc/models.ts), shipped so the addon can name
+#: the body a creature is drawn as from its model file id.
+CHARACTER_MODELS = os.path.join(os.path.dirname(__file__), "..", "..", "..", "apps", "web", "src",
+                                "lib", "npc", "character-models.json")
 
 #: How many leading and trailing words the addon fuzzy-matches quest text on. Must stay
 #: in step with DataModules:GetQuestID in AI_VoiceOver/DataModules.lua.
@@ -44,7 +54,7 @@ QUEST_SEARCH_WORDS = 15
 # there instead of to nothing.
 MODULE_LUA = """if not VoiceOver or not VoiceOver.DataModules then return end
 
-{module} = {{}}
+{define}
 
 function {module}:GetSoundPath(fileName, event)
     setfenv(1, VoiceOver)
@@ -57,8 +67,26 @@ function {module}:GetSoundPath(fileName, event)
     end
 end
 
-VoiceOver.DataModules:Register("{module}", {module})
+VoiceOver.DataModules:Register({name}, {module})
 """
+
+
+def module_lua(module_name: str, extension: str) -> str:
+    """Module.lua, which defines the global named by the pack's folder and registers it.
+
+    A folder that is a Lua identifier is written bare, as every pack already shipped is. Any
+    other - a team's slug may hold a hyphen - is bound to a local, since `function _G["a-b"]:f`
+    does not parse; the global and the registration keep the folder's exact name, which is
+    what the player enumerates and looks a module up by.
+    """
+    variable = lua_global(module_name)
+    if variable == module_name:
+        define = f"{module_name} = {{}}"
+    else:
+        variable = "module"
+        define = f"local module = {{}}\n{lua_global(module_name)} = module"
+    return MODULE_LUA.format(define=define, module=variable, name=lua_string(module_name),
+                             extension=extension)
 
 # No RequiredDeps on purpose: a player of this lineage ships under three folder names by
 # now - AI_VoiceOver, AI_VoiceOver_Continued, VoiceOverRedux - and a dep on a disabled or
@@ -72,11 +100,18 @@ VoiceOver.DataModules:Register("{module}", {module})
 # only once no supported release still looks for it.
 #
 # The Interface line names every client the packs ship for - Era, Anniversary, Forever - as
-# the zones and books packs do, after 100000: the 1.12/2.4.3/3.3.5 clients read the first
-# number alone and refuse one below 20000. DataModules turns checkAddonVersion off around LoadAddOn, which
+# the places and readables packs do. DataModules turns checkAddonVersion off around LoadAddOn, which
 # loads a pack a client calls out of date, but Forever build 70170 calls an Interface it does
 # not list incompatible instead, and nothing turns that off: the pack has to name the client.
-DEFAULT_TITLE = "Spoken Quests Audio"
+DEFAULT_TITLE = "Spoken Audio: Quests"
+
+#: "Spoken" in the brand colour, as every Spoken addon is titled in the AddOns list. Only the
+#: TOC wears it: the same title names the CurseForge project, where the code would show.
+BRAND = "|cffb48cffSpoken|r"
+
+
+def toc_title(title: str) -> str:
+    return BRAND + title[len("Spoken"):] if title.startswith("Spoken") else title
 
 #: The TOC key naming the language a pack was recorded in. Must match what the addon's
 #: DataModules.lua reads.
@@ -85,25 +120,35 @@ LANGUAGE_KEY = "X-SpokenQuests-Language"
 #: The artwork the client shows beside the addon's name in the AddOns list. Committed as a TGA
 #: rather than converted at build time, so building needs no ffmpeg; tools/make_icon.py is what
 #: made it, and its header explains the format.
-ICON_SOURCE = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
-                           "assets", "icon", "spoken-quests.tga")
+ICON_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
+                        "assets", "icon")
 ICON_NAME = "icon.tga"
 
-TOC_HEADER = """## Interface: 100000, 11509, 20506, 16001
+
+def icon_source(language: str = None) -> str:
+    """English's mark, or the language's: the same mark with its badge, so a language's packs
+    are told apart from English's in the AddOns list. A language without one is an error
+    rather than English's mark, which would ship a pack that looks like the wrong language."""
+    if not language or language == "enUS":
+        return os.path.join(ICON_DIR, "spoken-quests.tga")
+    path = os.path.join(ICON_DIR, f"spoken-quests-{language}.tga")
+    if not os.path.isfile(path):
+        raise FileNotFoundError(f"no icon for {language}: {path} (make quests-icon)")
+    return path
+
+TOC_HEADER = """## Interface: 11509, 20506, 16001
 ## Title: {title}
-## Notes: Contains voiceovers for content released during the Vanilla era.|n|nIt's |cFF20FF20OK|r for this addon to appear |cFF808080"disabled"|r or |cFFFF2020"out of date"|r, it's compatible with any client and |cFFFFD200Spoken Quests|r will load it even if it's disabled or out of date.
+## Notes: Narrated quests and gossip from the Vanilla era, for Spoken Quests.|n|nIt's OK for this addon to appear "disabled" or "out of date", it's compatible with any client and Spoken Quests will load it even if it's disabled or out of date.
 ## Version: {version}
 ## IconTexture: Interface\\AddOns\\{module}\\{icon}
 ## LoadOnDemand: 1
-## Group: SpokenQuests
+## Group: Spoken
 ## X-Part-Of: Spoken
-## X-Child-Of: SpokenQuests
+## X-Child-Of: Spoken_Quests
 ## X-SpokenQuests-DataModule-Version: 1
 ## X-SpokenQuests-DataModule-Priority: 100
-## X-SpokenQuests-DataModule-Maps: 0, 1, 30, 33, 43, 47, 48, 70, 90, 109, 129, 189, 209, 229, 230, 289, 309, 329, 349, 369, 389, 429, 469, 509, 531, 533
 ## X-VoiceOver-DataModule-Version: 1
 ## X-VoiceOver-DataModule-Priority: 100
-## X-VoiceOver-DataModule-Maps: 0, 1, 30, 33, 43, 47, 48, 70, 90, 109, 129, 189, 209, 229, 230, 289, 309, 329, 349, 369, 389, 429, 469, 509, 531, 533
 
 Module.lua
 """
@@ -152,10 +197,38 @@ def prune_quest_id_table(quest_id_table: dict) -> dict:
     return pruned
 
 
+def body_by_model() -> dict:
+    with open(CHARACTER_MODELS, encoding="utf-8") as f:
+        return {int(file_id): body_name(row["race"], row["gender"]) for file_id, row in json.load(f).items()}
+
+
+#: A title the capture kept after the name ("Ishlee Breezewhisper <Skinner>"). The game names
+#: the unit without it, so a key carrying it is never matched and a quest log shows it.
+_SUBNAME = re.compile(r"\s*<[^<>]*>\s*$")
+#: What a capture wrote when it had no name to give: "null", "npc 263664", or the model's
+#: file name ("Doodad_BeerKeg101").
+_PLACEHOLDER = re.compile(r"(?i)null|npc \d+|\w+_\w+")
+
+
+def speaker_name(name: str) -> str:
+    """The name the game shows for the unit: the corpus's, less any <subname>."""
+    return _SUBNAME.sub("", name or "") or name
+
+
+def name_rank(line: dict) -> int:
+    """How far the names table trusts a line's speaker name: an extracted one over a
+    contributed one, which is the contributor's client's language and has put a Russian or
+    German name in the English quest log; a placeholder not at all."""
+    name = speaker_name(line["npcName"])
+    if not name or _PLACEHOLDER.fullmatch(name):
+        return 0
+    return 1 if line.get("contributionId") is not None else 2
+
+
 def build_tables(corpus: dict, ignored=()) -> dict:
     """Every lookup table, as {output filename: (lua table name, data)}.
 
-    Ignored lines are left out entirely, the way progress text is below: an entry pointing
+    Ignored lines are left out entirely: an entry pointing
     at a sound that will never be produced resolves to silence, and the addon has no way to
     tell that apart from a broken lookup.
     """
@@ -169,18 +242,30 @@ def build_tables(corpus: dict, ignored=()) -> dict:
     # own (tts_cli/voice_files.py): keyed by the moment's file and the giver, since the addon
     # names a quest's file from its id and event and knows who is giving it.
     quest_files = {"creature": {}, "gameobject": {}}
-    # A split NPC's file per sex, keyed by the line's own stem: the addon finds the line as
-    # before, then asks the sex.
+    # A quest moment the game shows in several wordings: each wording's text and its file, by
+    # the moment's stem. The addon matches the text on screen against it as it does gossip.
+    wordings = {}
+    # A split NPC's file per body, keyed by the line's own stem: the addon finds the line as
+    # before, then asks the body. Each sex keeps a file too, its fallback body's
+    # (npc_bodies.sex_bodies), for addons that read only the sex.
+    gossip_by_body = {}
+    quest_files_by_body = {}
+    followup_by_body = {}
     gossip_by_sex = {}
     quest_files_by_sex = {}
     followup_by_sex = {}
-    # Which sex each other speaking creature is drawn as, so the addon can tell a man's voice
-    # given to a woman, and offer her line for contribution.
-    split = {(row["npcType"], row["npcId"]) for row in corpus.get("npcSexes", [])}
-    npc_sex = {npc["npcId"]: GENDER_SEX[npc["gender"]] for npc in corpus.get("npcs", [])
+    # The bodies each creature that greets is voiced as, so the addon can tell a body on screen
+    # its voice is not, and offer its line for contribution; and the sex of each unsplit one,
+    # which addons before the bodies read instead.
+    split = {(row["npcType"], row["npcId"]) for row in corpus.get("npcBodies", [])}
+    unsplit = {npc["npcId"]: npc for npc in corpus.get("npcs", [])
                if npc["npcType"] == "creature" and npc.get("gender") in GENDER_SEX
                and ("creature", npc["npcId"]) not in split}
     sex_of = {}
+    bodies_of = {}
+    # Within a rank the last line's name stands, as it always has: the extract gives a few
+    # NPCs two English names, and another order would flip them.
+    ranks = {}
 
     for line in corpus["lines"]:
         base_id, voice = split_voice(line["lineId"])
@@ -188,25 +273,32 @@ def build_tables(corpus: dict, ignored=()) -> dict:
             continue
 
         kind = line["npcType"]
-        names.setdefault(kind, {})[line["npcId"]] = line["npcName"]
+        rank = name_rank(line)
+        if rank and rank >= ranks.get((kind, line["npcId"]), 0):
+            ranks[(kind, line["npcId"])] = rank
+            names.setdefault(kind, {})[line["npcId"]] = speaker_name(line["npcName"])
 
         # Before the quest tables, which it must stay out of: a follow-up line carries its
         # quest, but it is said in chat rather than in the quest dialog, so matching its text
         # there would answer the wrong question. The addon knows the speaker and the
-        # broadcast_text id from its own export, which is all this table is keyed on.
-        if line["source"] == FOLLOWUP:
+        # broadcast_text id from its own export, which is all this table is keyed on. NPC chat
+        # (Chatter.lua) finds its recordings in the same table.
+        if line["source"] in BROADCAST_SOURCES:
             broadcast = int(line["lineId"].split(":")[1])
             stem = followup_stem_from_line_id(line["lineId"])
-            # A split NPC's follow-up is a file per sex. The chat event names the speaker, but
-            # its sex is readable only while the speaker is a unit the player has up, so the
-            # man's file stays the line's for when it is not.
-            if line.get("npcSex"):
+            # A split NPC's follow-up is a file per body. The chat event names the speaker, but
+            # its body is readable only while the speaker is a unit the player has up, so the
+            # man's fallback body's file stays the line's for when it is not.
+            if line.get("npcBody"):
+                followup_by_body.setdefault(line["npcId"], {}).setdefault(broadcast, {})[
+                    line["npcBody"]] = stem
+            if line.get("sexBody"):
                 followup_by_sex.setdefault(line["npcId"], {}).setdefault(broadcast, {})[
                     line["npcSex"]] = stem
             files = followup.setdefault(line["npcId"], {})
-            if line.get("npcSex") == 2:
+            if line.get("sexBody") and line["npcSex"] == 2:
                 files[broadcast] = stem
-            else:
+            elif not line.get("npcBody") or line.get("sexBody"):
                 files.setdefault(broadcast, stem)
             continue
 
@@ -217,37 +309,45 @@ def build_tables(corpus: dict, ignored=()) -> dict:
             # The bare hash: the addon adds the gender prefix when resolving.
             digest = gossip_hash_from_line_id(line["lineId"])
             own = gossip_hash_from_line_id(base_id)
-            if line.get("npcSex") and kind == "creature":
-                gossip_by_sex.setdefault(line["npcId"], {}).setdefault(line["npcSex"], {})[own] = digest
+            if line.get("npcBody") and kind == "creature":
+                gossip_by_body.setdefault(line["npcId"], {}).setdefault(line["npcBody"], {})[own] = digest
+                bodies_of.setdefault(line["npcId"], {})[line["npcBody"]] = True
+                if line.get("sexBody"):
+                    gossip_by_sex.setdefault(line["npcId"], {}).setdefault(line["npcSex"], {})[own] = digest
                 digest = own
-            elif kind == "creature" and line["npcId"] in npc_sex:
-                sex_of[line["npcId"]] = npc_sex[line["npcId"]]
+            elif kind == "creature" and line["npcId"] in unsplit:
+                npc = unsplit[line["npcId"]]
+                sex_of[line["npcId"]] = GENDER_SEX[npc["gender"]]
+                if npc.get("race"):
+                    bodies_of[line["npcId"]] = {body_name(npc["race"], npc["gender"]): True}
             gossip_by_id[kind].setdefault(line["npcId"], {})[text] = digest
             # Same-named NPCs of different voices share one entry here, so it names the line's
             # own file, never a voice's that only some of them speak.
             gossip_by_name[kind].setdefault(
-                escape_lua_string(line["npcName"]), {})[text] = own
+                escape_lua_string(speaker_name(line["npcName"])), {})[text] = own
             continue
 
-        # Progress text is never voiced, so an entry would resolve to silence.
-        if line["source"] == "progress":
-            continue
+        stem = quest_stem_from_line_id(base_id)
+        wordings.setdefault(quest_moment_stem(base_id), {})[
+            escape_lua_string(line["originalText"])] = stem
 
         if line["source"] == "accept" and kind in questlog:
             questlog[kind][line["questId"]] = line["npcId"]
 
-        if line.get("npcSex") and kind == "creature":
-            stem = f'{line["questId"]}-{line["source"]}'
-            quest_files_by_sex.setdefault(stem, {}).setdefault(line["npcId"], {})[
-                line["npcSex"]] = variant_file_name(stem, voice) if voice else stem
+        if line.get("npcBody") and kind == "creature":
+            file_name = variant_file_name(stem, voice) if voice else stem
+            quest_files_by_body.setdefault(stem, {}).setdefault(line["npcId"], {})[line["npcBody"]] = file_name
+            if line.get("sexBody"):
+                quest_files_by_sex.setdefault(stem, {}).setdefault(line["npcId"], {})[line["npcSex"]] = file_name
         elif voice and kind in quest_files:
-            stem = f'{line["questId"]}-{line["source"]}'
             quest_files[kind].setdefault(stem, {})[line["npcId"]] = variant_file_name(stem, voice)
 
         quest_ids.setdefault(line["source"], {}) \
                  .setdefault(escape_lua_string(line["questTitle"]), {}) \
-                 .setdefault(escape_lua_string(line["npcName"]), {}) \
+                 .setdefault(escape_lua_string(speaker_name(line["npcName"])), {}) \
                  .setdefault(quest_search_text(line["originalText"]), line["questId"])
+
+    wordings = several_wordings(wordings)
 
     return {
         "npc_gossip_file_lookups": ("GossipLookupByNPCID", gossip_by_id["creature"]),
@@ -264,12 +364,28 @@ def build_tables(corpus: dict, ignored=()) -> dict:
         "item_name_lookups": ("ItemNameLookupByItemID", names["item"]),
         "followup_lookups": ("FollowupLookup", followup),
         "npc_quest_file_lookups": ("QuestFileLookupByNPCID", quest_files["creature"]),
+        "quest_wording_lookups": ("QuestWordingLookup", wordings),
         "object_quest_file_lookups": ("QuestFileLookupByObjectID", quest_files["gameobject"]),
         "npc_sex_gossip_file_lookups": ("GossipFileLookupByNPCSex", gossip_by_sex),
         "npc_sex_quest_file_lookups": ("QuestFileLookupByNPCSex", quest_files_by_sex),
         "npc_sex_lookups": ("NPCSexByNPCID", sex_of),
         "npc_sex_followup_lookups": ("FollowupLookupByNPCSex", followup_by_sex),
+        "npc_body_gossip_file_lookups": ("GossipFileLookupByNPCBody", gossip_by_body),
+        "npc_body_quest_file_lookups": ("QuestFileLookupByNPCBody", quest_files_by_body),
+        "npc_body_followup_lookups": ("FollowupLookupByNPCBody", followup_by_body),
+        "npc_bodies_lookups": ("NPCBodiesByNPCID", bodies_of),
+        "body_model_lookups": ("BodyByModelFileID", body_by_model()),
     }
+
+
+#: Every entry names gossip audio, directly or through GossipAliases, so only a pack holding
+#: gossip carries these. The body and sex tables stay in every pack: quest lines read them too.
+GOSSIP_TEXT_TABLES = ("npc_gossip_file_lookups", "object_gossip_file_lookups",
+                      "npc_name_gossip_file_lookups", "object_name_gossip_file_lookups")
+
+
+def carries_gossip(include) -> bool:
+    return include is None or any(stem.startswith("gossip/") for stem in include)
 
 
 #: The tables a language's Gossip pack gets a client-locale copy of: the ones keyed by the
@@ -303,8 +419,8 @@ def locale_tables(corpus: dict, rows: list, ignored=()) -> dict:
         kind = line["npcType"]
         if kind not in tables:
             continue
-        # A split NPC's sexes find the line's own stem, and GossipFileLookupByNPCSex the rest.
-        stem = gossip_hash_from_line_id(base_id if line.get("npcSex") else line["lineId"])
+        # A split NPC's bodies find the line's own stem, and GossipFileLookupByNPCBody the rest.
+        stem = gossip_hash_from_line_id(base_id if line.get("npcBody") else line["lineId"])
         for text in texts.get((moment_of(base_id), line["originalText"]), ()):
             tables[kind].setdefault(line["npcId"], {})[escape_lua_string(text)] = stem
     return {filename: (table_name, tables[kind])
@@ -312,41 +428,53 @@ def locale_tables(corpus: dict, rows: list, ignored=()) -> dict:
 
 
 def write_lua_table(path: str, module_name: str, table_name: str, data,
-                    lang: str = None) -> None:
+                    lang: str = None, only_on: str = None) -> None:
     """One generated table. With `lang`, a copy that exists only on a client in that locale.
 
     That copy is in a language's pack, but a player on an English client may install the
     pack to hear the language, and their client shows English: the English tables are the
-    ones that match there, so the copy returns before it is built.
+    ones that match there, so the copy returns before it is built. With `only_on`, the table
+    itself is built only where that language is the one the words are read in: Spoken's Text
+    Language, which on Auto is the client's. A Spoken without one asks the client's.
     """
     os.makedirs(os.path.dirname(path), exist_ok=True)
     with open(path, "w", encoding="utf-8") as f:
         f.write(GUARD + "\n")
-        target = f"{module_name}.{table_name}"
+        module = lua_global(module_name)
+        target = f"{module}.{table_name}"
         if lang:
             f.write("if not VoiceOver.Language or "
                     f'VoiceOver.Language:GetClientLanguage() ~= "{lang}" then return end\n')
-            f.write(f"{module_name}.ClientLocaleLookups = "
-                    f"{module_name}.ClientLocaleLookups or {{}}\n")
-            target = f"{module_name}.ClientLocaleLookups.{table_name}"
+            f.write(f"{module}.ClientLocaleLookups = "
+                    f"{module}.ClientLocaleLookups or {{}}\n")
+            target = f"{module}.ClientLocaleLookups.{table_name}"
+        if only_on:
+            f.write("if not VoiceOver.Language or (VoiceOver.Language.GetTextLanguage "
+                    "and VoiceOver.Language:GetTextLanguage() or VoiceOver.Language:GetClientLanguage()) "
+                    f'~= "{only_on}" then return end\n')
         f.write(f"{target} = ")
-        f.write(lua.encode(data))
+        f.write(lua_value(data))
         f.write("\n")
 
 
 def module_toc(module_name: str, generated_files: list, version: str = "1.0.1",
-               title: str = DEFAULT_TITLE, language: str = None) -> str:
+               title: str = DEFAULT_TITLE, language: str = None, extra=()) -> str:
     """The TOC, listing exactly the files this build produced.
 
     The title is what tells the packs apart in the AddOns list, where five of them can sit at
     once and their folder names differ only by a suffix.
+
+    `extra` is (key, value) pairs written after the header: a team's pack names its team, and a
+    language Spoken does not build in its names, so the addon can show them.
     """
-    lines = [TOC_HEADER.format(version=version, title=title,
+    lines = [TOC_HEADER.format(version=version, title=toc_title(title),
                                module=module_name, icon=ICON_NAME)]
     if language:
         # Only when asked: the addon reads an absent key as enUS, so every English pack keeps
         # its exact TOC.
         lines.insert(0, f"## {LANGUAGE_KEY}: {language}\n")
+    if extra:
+        lines.append("".join(f"## {key}: {value}\n" for key, value in extra))
     lines.extend(f"generated\\{name}" for name in generated_files)
     return "\n".join(lines) + "\n"
 
@@ -355,7 +483,7 @@ def build_module(corpus: dict, store_dir: str, dist_dir: str = DEFAULT_DIST_DIR,
                  module_name: str = DEFAULT_MODULE_NAME, version: str = "1.0.1",
                  progress: bool = False, ignored=(), include=None,
                  title: str = DEFAULT_TITLE, language: str = None,
-                 locale_text: list = None) -> dict:
+                 locale_text: list = None, icon_language: str = None, toc_extra=()) -> dict:
     """Assemble the data module. Returns a report.
 
     An ignored line's audio is left behind as well as its lookup entry, so a take made
@@ -364,16 +492,20 @@ def build_module(corpus: dict, store_dir: str, dist_dir: str = DEFAULT_DIST_DIR,
 
     `include` is a set of store-relative stems ('quests/5-accept', no extension) and makes
     this one pack of several: the store is staged once and built into a pack per side of the
-    war. None means everything in the store. The lookup tables are not narrowed with it -
-    they map text to ids and hashes rather than to files, they are the same in every pack,
-    and an entry whose audio is in a pack the player did not install simply finds no length
-    and stays quiet. See tts_cli/factions.py.
+    war. None means everything in the store. The lookup tables are not narrowed with it, except
+    GOSSIP_TEXT_TABLES - they map text to ids and hashes rather than to files, and
+    an entry whose audio is in a pack the player did not install simply finds no length and
+    stays quiet. See tts_cli/factions.py.
 
     `locale_text` is `language`'s rows from tts_cli.locale_text, and adds that language's
     gossip tables under generated/<language>/, loaded only on a client in it. Only the
     language's pack holding its gossip - Gossip, or All - is given them (cli-main.py refuses
     the rest). The English tables
     are written either way: they are what matches on an English client.
+
+    `icon_language` is the badge the pack wears, `language`'s unless given: a team's pack in a
+    language nobody drew a badge for wears English's mark, and its title names the language.
+    `toc_extra` is module_toc's `extra`.
     """
     if locale_text is not None and (not language or language == "enUS"):
         raise ValueError("locale text belongs to a language pack; pass its language")
@@ -395,16 +527,21 @@ def build_module(corpus: dict, store_dir: str, dist_dir: str = DEFAULT_DIST_DIR,
 
     # Compared without extensions: the ignore list is derived from the corpus and so names
     # mp3s, while a staged store may hold the same audio transcoded to something else.
-    skip = {os.path.splitext(rel)[0] for rel in ignored_files(corpus, ignored)} \
-        if ignored else set()
-    audio = [rel for rel in stored_files(store_dir)
-             if os.path.splitext(rel)[0] not in skip
-             and (include is None or os.path.splitext(rel)[0] in include)]
+    silent = set(wordless(corpus)) | set(ignored)
+    skip = {os.path.splitext(rel)[0] for rel in ignored_files(corpus, silent)} \
+        if silent else set()
+    def carried(stem):
+        return stem not in skip and (include is None or stem in include)
+
+    audio = [rel for rel in stored_files(store_dir) if carried(os.path.splitext(rel)[0])]
     iterator = tqdm(audio, unit="file", desc="Copying audio") if progress else audio
     for rel in iterator:
         shutil.copy2(os.path.join(store_dir, rel), os.path.join(sounds_dir, rel))
 
     tables = build_tables(corpus, ignored)
+    if not carries_gossip(include):
+        for name in GOSSIP_TEXT_TABLES:
+            del tables[name]
     written = []
     for filename, (table_name, data) in sorted(tables.items()):
         write_lua_table(os.path.join(generated_dir, filename + ".lua"),
@@ -420,26 +557,56 @@ def build_module(corpus: dict, store_dir: str, dist_dir: str = DEFAULT_DIST_DIR,
             written.append(f"{language}\\{filename}.lua")
             locale_rows[f"{language}/{filename}"] = len(data)
 
-    # Durations come from the copied files, so the table can never disagree with them.
-    write_sound_length_table_lua(module_name, sounds_dir, generated_dir)
+    # Durations come from the copied files, so the table can never disagree with them; a store of
+    # pointers has none to read, and lists what take_encoding recorded when the Ogg was made.
+    write_sound_length_table_lua(module_name, sounds_dir, generated_dir, durations(store_dir))
     written.append("sound_length_table.lua")
 
-    shutil.copy2(ICON_SOURCE, os.path.join(module_dir, ICON_NAME))
+    # Keyed like the length table, and only for audio this pack carries: the other packs'
+    # times would be dead weight in every one of them.
+    stored = word_times(store_dir)
+    times = {os.path.basename(stem): stored[stem]
+             for stem in (os.path.splitext(rel)[0] for rel in audio) if stem in stored}
+    write_lua_table(os.path.join(generated_dir, "word_times_table.lua"),
+                    module_name, "WordTimesByFileName", times)
+    written.append("word_times_table.lua")
+
+    # For this pack's audio alone, or four packs of a language each repeat every line's text. Only
+    # where the pack's language is the one read, the only place it shows: megabytes of strings
+    # otherwise.
+    words = take_text(store_dir)
+    texts = {os.path.basename(stem): words[stem]
+             for stem in (os.path.splitext(rel)[0] for rel in audio) if stem in words}
+    write_lua_table(os.path.join(generated_dir, "text_table.lua"),
+                    module_name, "TextByFileName", texts, only_on=language or "enUS")
+    written.append("text_table.lua")
+
+    # The words of the pack's lines with no take yet, so a quest page reads them in the pack's
+    # language, not English. Apart from the take text: they are no voice's, so a text pack's win.
+    lines = {os.path.basename(stem): text for stem, text in line_text(store_dir).items()
+             if carried(stem) and os.path.basename(stem) not in texts}
+    write_lua_table(os.path.join(generated_dir, "line_text_table.lua"),
+                    module_name, "LineTextByFileName", lines, only_on=language or "enUS")
+    written.append("line_text_table.lua")
+
+    shutil.copy2(icon_source(icon_language or language), os.path.join(module_dir, ICON_NAME))
 
     with open(os.path.join(module_dir, "Module.lua"), "w", encoding="utf-8") as f:
-        f.write(MODULE_LUA.format(module=module_name, extension=extension))
+        f.write(module_lua(module_name, extension))
         if language:
             # The unguarded tables are built from the English corpus whatever the pack speaks.
-            f.write(f'{module_name}.LookupLocale = "enUS"\n')
+            f.write(f'{lua_global(module_name)}.LookupLocale = "enUS"\n')
     with open(os.path.join(module_dir, module_name + ".toc"), "w", encoding="utf-8") as f:
-        f.write(module_toc(module_name, sorted(written), version, title, language))
+        f.write(module_toc(module_name, sorted(written), version, title, language, toc_extra))
 
     return {
         "moduleDir": module_dir,
         "audioFiles": len(audio),
         "audioFormat": extension,
         "tables": sorted(written),
-        "tableRows": {**{name: len(data) for name, (_, data) in tables.items()}, **locale_rows},
+        "tableRows": {**{name: len(data) for name, (_, data) in tables.items()}, **locale_rows,
+                      "word_times_table": len(times),
+                      "text_table": len(texts)},
         "language": language,
     }
 

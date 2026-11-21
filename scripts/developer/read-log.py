@@ -27,7 +27,7 @@ import re
 import sys
 import time
 
-DEFAULT_WTF = r"D:\BattleNetLibrary\World of Warcraft\_classic_beta_\WTF\Account"
+DEFAULT_WTF = r"D:\BattleNetLibrary\World of Warcraft\_forever_\WTF\Account"
 DIAG_HEAD = re.compile(r"^diag [^ ].*:$")
 WRITTEN = "written for an AI agent"
 WRITE_HOW = ("right-click a Report or Contribute button > Write the Debug Log for an AI Agent, "

@@ -1,8 +1,7 @@
 setfenv(1, SpokenEnv)
 
--- The one queue every source speaks through. Ported from ZoneLore's SoundQueue.lua,
--- itself a port of AI_VoiceOver's, and generalised: what was zone-shaped there is a
--- source here, and what was quest-shaped upstream lives in the quests addon's source.
+-- The one queue every source speaks through. What is specific to a domain (quests, places) lives
+-- in its source, never here.
 --
 -- The policy, in one place:
 --
@@ -11,9 +10,8 @@ setfenv(1, SpokenEnv)
 --    closing on it (below). There is no cross-source priority.
 --  * A LOW-PRIORITY CLIP YIELDS AT THE DOOR, both ways: refused if a normal clip is
 --    queued or speaking, and a waiting low clip is dropped when a normal one arrives.
---    Never the one speaking -- that would be an interruption. This generalises
---    VoiceOverRedux's "no gossip while a quest line is queued" and closes its hole,
---    where a quest arriving after gossip did nothing.
+--    Never the one speaking -- that would be an interruption. So gossip never plays while a
+--    quest line is queued, whichever arrived first.
 --  * GATES HOLD, THEY DO NOT DROP. A gate is a reason the head may not start yet --
 --    combat, a cinematic. Held clips are retried once a second. Gates are asked before a
 --    clip starts; a source that knows one of its own has just closed calls RecheckGates,
@@ -25,14 +23,13 @@ setfenv(1, SpokenEnv)
 --    and never another source's. Narration that has fallen minutes behind is describing
 --    somewhere the player already left; a quest line behind it is not.
 --
--- Gap between clips is per source. Upstream's 0.55 s absorbs durations that are slightly
--- short; ZoneLore's are exact and it uses 0.25. Not worth unifying; the knob is one field.
+-- Gap between clips is per source: one whose recorded durations run slightly short needs a longer
+-- gap than one whose are exact.
 
 ---@class SpokenClip
 ---@field key string          Caller-unique. The dedup key.
 ---@field path string         Full path handed to PlaySoundFile.
 ---@field length number       Seconds. The client cannot report this; the caller must know.
----@field delay? number       Silence before the clip. Only the 2.4.3/3.3.5 path sets it.
 ---@field priority? string    "normal" (default) or "low".
 ---@field group? string       Clips of one item, e.g. a book's pages. No pause or cue between them.
 ---@field continues? boolean  Its next part is put in as it ends (source:Continue). No pause or cue after it.
@@ -62,7 +59,7 @@ local retryTicker = nil
 --------------------------------------------------------------------------------
 
 function SoundQueue:GetQueueSize()
-    return getn(self.sounds)
+    return #self.sounds
 end
 
 function SoundQueue:IsEmpty()
@@ -101,10 +98,7 @@ end
 
 function SoundQueue:IsPlaying(clip)
     local head = self.sounds[1]
-    if clip then
-        return (head == clip and head.nextSoundTimer) and true or false
-    end
-    return (head and head.nextSoundTimer) and true or false
+    return (head and (not clip or head == clip) and head.nextSoundTimer) and true or false
 end
 
 function SoundQueue:IsPaused()
@@ -118,7 +112,8 @@ function SoundQueue:SetPaused(value)
 end
 
 function SoundQueue:CanBePaused()
-    return not self:IsPlaying() or self:GetCurrentSound().handle ~= nil
+    local current = self:GetCurrentSound()
+    return not self:IsPlaying() or current.handle ~= nil or current.textOnly == true
 end
 
 local function CountFor(source)
@@ -170,8 +165,7 @@ local function StopRetryTicker()
     end
 end
 
--- Leaving combat fires no event worth binding a handler to, so this is a poll. AceTimer
--- rather than C_Timer, which 1.12 does not have.
+-- A gate is any source's own callback, and nothing tells the queue when one opens, so this is a poll.
 local function StartRetryTicker()
     if retryTicker then
         return
@@ -181,13 +175,19 @@ local function StartRetryTicker()
     end, RETRY_INTERVAL)
 end
 
+local function CancelSpeakTimer(clip)
+    if clip.nextSoundTimer then
+        Addon:CancelTimer(clip.nextSoundTimer)
+        clip.nextSoundTimer = nil
+    end
+end
+
 -- Silence the head but keep its place: it replays from the start when Advance next
 -- reaches it, since the client has no seek. Shared by the two things allowed to cut a
 -- clip off without ending it -- a human pressing Play, and a gate closing on it.
 local function StopKeeping(head)
     SoundUtils:StopSound(head)
-    Addon:CancelTimer(head.nextSoundTimer)
-    head.nextSoundTimer = nil
+    CancelSpeakTimer(head)
     if head.stopCallback then
         head.stopCallback(head, false)
     end
@@ -216,6 +216,12 @@ local function AfterRemoval()
     if SoundQueue:IsEmpty() then
         StopRetryTicker()
         SoundQueue:MuteGameDialogue(nil)
+        -- Nothing is left to hold: a queue left stopped would hold the next line it is given,
+        -- silent, under a Stop the player can no longer see.
+        if SoundQueue:IsPaused() then
+            SoundQueue:SetPaused(false)
+            Callbacks:Fire("AUDIO_CHANGED")
+        end
         Callbacks:Fire("QUEUE_EMPTY")
     end
 end
@@ -273,10 +279,7 @@ function SoundQueue:RemoveSoundFromQueue(clip, finishedPlaying)
         else
             clip.handle = nil
         end
-        if clip.nextSoundTimer then
-            Addon:CancelTimer(clip.nextSoundTimer)
-            clip.nextSoundTimer = nil
-        end
+        CancelSpeakTimer(clip)
     end
 
     if clip.stopCallback then
@@ -322,10 +325,12 @@ function SoundQueue:RemoveSource(source)
 end
 
 --- End the head and let the backlog run. A stopped queue plays again: skipping is asking for
---- the next line.
+--- the next line. With no line, or one that cannot be stopped, nothing changes.
 function SoundQueue:Skip()
+    local head = self:GetCurrentSound()
+    if not head or not self:CanBePaused() then return false end
     self:SetPaused(false)
-    return self:RemoveSoundFromQueue(self:GetCurrentSound())
+    return self:RemoveSoundFromQueue(head)
 end
 
 --------------------------------------------------------------------------------
@@ -335,20 +340,11 @@ end
 --- Silence the client's own NPC dialogue while we speak, and let it back when the queue
 --- drains. `speakingOn` is the channel being spoken on, or nil when nothing is.
 ---
---- Never the channel we are speaking on: muting that would mute the line. On 1.12 there is
---- no Dialog channel to mute, and what the client can do is cut a bark already playing, so
---- the effects channel is toggled off and straight back on as the line starts.
+--- Never the channel we are speaking on: muting that would mute the line.
 ---@param speakingOn string|nil
 ---@param cut boolean? switch it off at once rather than fade it out
 function SoundQueue:MuteGameDialogue(speakingOn, cut)
     if not Addon.db.profile.Audio.AutoToggleDialog then
-        return
-    end
-    if Version.IsLegacyVanilla then
-        if speakingOn then
-            SetCVar("MasterSoundEffects", 0)
-            SetCVar("MasterSoundEffects", 1)
-        end
         return
     end
     -- Faded, so the NPC is not cut off mid-word; cut where it should not be heard at all.
@@ -361,19 +357,28 @@ end
 local MUTE_AHEAD_SECONDS = 1.5
 local muteAheadTimer
 
+local function LiftMuteAhead()
+    muteAheadTimer = nil
+    -- A line speaking lifts the mute itself when the queue drains. One merely queued --
+    -- held by a gate, or paused since -- may not speak for a long while, and must not
+    -- keep the game's dialogue silent until it does. A line of words alone never holds the mute.
+    local head = SoundQueue:GetCurrentSound()
+    if not (head and head.nextSoundTimer and not head.textOnly) then
+        SoundQueue:MuteGameDialogue(nil)
+    end
+end
+
 --- Mute the game's dialogue now, for a line that will be queued shortly. The client
 --- starts an NPC's greeting as the dialog opens, and a line needs a moment to be read off
 --- the dialog after that: muting only once the line starts cut the greeting off mid-word.
 --- Muted in the same frame the dialog opened, the greeting is never heard at all.
 ---@param speakingOn string The channel the coming line will play on.
+---@return boolean? muted false when nothing was muted: paused, or the game's dialogue left alone
 function SoundQueue:MuteGameDialogueAhead(speakingOn)
     -- Paused, the line will only queue: nothing of ours is going to speak over the greeting.
-    if self:IsPaused() then
-        return
-    end
-    -- On 1.12 muting is cutting every sound, which would cut a line already speaking.
-    if Version.IsLegacyVanilla and not self:IsEmpty() then
-        return
+    -- With the game's dialogue left alone there is nothing to mute either.
+    if self:IsPaused() or not Addon.db.profile.Audio.AutoToggleDialog then
+        return false
     end
     -- Cut, not faded: in the frame the window opens the greeting has barely started, and a fade
     -- lets its first half-second through.
@@ -381,16 +386,23 @@ function SoundQueue:MuteGameDialogueAhead(speakingOn)
     if muteAheadTimer then
         Addon:CancelTimer(muteAheadTimer)
     end
-    muteAheadTimer = Addon:ScheduleTimer(function()
-        muteAheadTimer = nil
-        -- A line speaking lifts the mute itself when the queue drains. One merely queued --
-        -- held by a gate, or paused since -- may not speak for a long while, and must not
-        -- keep the game's dialogue silent until it does.
-        local head = self:GetCurrentSound()
-        if not (head and head.nextSoundTimer) then
-            self:MuteGameDialogue(nil)
-        end
-    end, MUTE_AHEAD_SECONDS)
+    muteAheadTimer = Addon:ScheduleTimer(LiftMuteAhead, MUTE_AHEAD_SECONDS)
+    return true
+end
+
+--- Whether a mute taken ahead still waits for its line, short of its deadline.
+---@return boolean
+function SoundQueue:IsMutingGameDialogueAhead()
+    return muteAheadTimer ~= nil
+end
+
+--- The read a mute ahead was taken for found no line: give the game's dialogue back now rather
+--- than at the deadline.
+function SoundQueue:EndMuteGameDialogueAhead()
+    if muteAheadTimer then
+        Addon:CancelTimer(muteAheadTimer)
+        LiftMuteAhead()
+    end
 end
 
 -- The channel a clip speaks on, ready for it. Whatever we muted, we cannot speak on, so it
@@ -415,6 +427,11 @@ local function FirstPlayable(from)
             return index, SoundQueue.sounds[index]
         end
     end
+end
+
+local function MoveToFront(index)
+    local clip = table.remove(SoundQueue.sounds, index)
+    table.insert(SoundQueue.sounds, 1, clip)
 end
 
 -- `clip`'s voice has ended. The pause after it, and the cue halfway through that pause, only
@@ -476,7 +493,7 @@ local function WatchForCut(clip)
         local ok, playing = pcall(C_Sound.IsPlaying, handle)
         if ok and playing == false then
             StopWatching(clip)
-            if Developer then Developer:Log("player", "voice cut by the client, line stopped") end
+            Developer:Log("player", "voice cut by the client, line stopped")
             SoundQueue:PauseQueue()
         end
     end, CUT_POLL)
@@ -485,7 +502,8 @@ end
 ---@param clip SpokenClip
 function SoundQueue:PlaySound(clip)
     local channel = SpeakingChannel(clip)
-    local willPlay = SoundUtils:PlaySound(clip, channel)
+    -- A text-only line has nothing to play and leaves the game's dialogue alone.
+    local willPlay = clip.textOnly or SoundUtils:PlaySound(clip, channel)
     if not willPlay then
         Discard(clip, "missing")
         self:Advance()
@@ -493,7 +511,12 @@ function SoundQueue:PlaySound(clip)
     end
 
     -- A line read off an NPC's window cuts its voice; one starting elsewhere (a zone's story) fades it.
-    self:MuteGameDialogue(channel, clip.cutsGameDialogue)
+    -- One of words alone lifts a mute a line before it took.
+    if clip.textOnly then
+        self:MuteGameDialogue(nil)
+    else
+        self:MuteGameDialogue(channel, clip.cutsGameDialogue)
+    end
 
     if clip.startCallback then
         clip.startCallback(clip)
@@ -502,14 +525,13 @@ function SoundQueue:PlaySound(clip)
 
     -- The client fires no event when a sound finishes, so the recorded duration is the
     -- only signal that the clip is over.
-    clip.spokenAt = GetTime() + (clip.delay or 0) + clip.length
+    clip.spokenAt = GetTime() + clip.length
     clip.nextSoundTimer = Addon:ScheduleTimer(function()
         AfterSpoken(clip)
-    end, (clip.delay or 0) + clip.length)
+    end, clip.length)
     WatchForCut(clip)
 end
 
---- Seconds of `clip`'s voice heard so far: 0 before it starts, its length once it has ended.
 --- How far through `clip` is, 0 to 1, `elapsed` seconds into its voice: through the whole item
 --- where the clip is one part of it (clip.span, a book read as one line), else through itself.
 function SoundQueue:Share(clip, elapsed)
@@ -522,6 +544,7 @@ function SoundQueue:Share(clip, elapsed)
     return math.max(0, math.min(1, share))
 end
 
+--- Seconds of `clip`'s voice heard so far: 0 before it starts, its length once it has ended.
 function SoundQueue:VoiceElapsed(clip)
     local length = tonumber(clip.length) or 0
     return math.max(0, math.min(length, length - (clip.spokenAt - GetTime())))
@@ -543,8 +566,7 @@ function SoundQueue:Advance()
         return
     end
     if playable > 1 then
-        local clip = table.remove(self.sounds, playable)
-        table.insert(self.sounds, 1, clip)
+        MoveToFront(playable)
     end
 
     StopRetryTicker()
@@ -624,6 +646,32 @@ local function AnyNormalQueued()
     return false
 end
 
+-- Why `clip` from `source` cannot be queued now, or nil: the part is switched off, or the channel
+-- is silent and not by our own mute, which is lifted before the line plays. A line of words alone
+-- needs no channel, whether its source has no recordings or only this line lacks one.
+local function WhyRefused(source, clip)
+    if Sources:IsTurnedOff(source) then
+        return L.PART_TURNED_OFF
+    end
+    if source.textOnly or clip.textOnly then
+        return nil
+    end
+    local channel = source:GetChannel()
+    local inaudible = SoundUtils:WhyInaudible(channel)
+    if inaudible and not SoundUtils:IsMutedByPlayer(channel) then
+        return inaudible
+    end
+end
+
+local function IsQueued(key)
+    for _, queued in ipairs(SoundQueue.sounds) do
+        if queued.key == key then
+            return true
+        end
+    end
+    return false
+end
+
 --- Admit a clip. Returns the clip, or nil and why not.
 ---@param clip SpokenClip
 ---@param source table
@@ -632,13 +680,9 @@ function SoundQueue:Add(clip, source, front)
     if not clip then
         return nil, "no clip"
     end
-    if Sources:IsTurnedOff(source) then
-        return nil, L.PART_TURNED_OFF
-    end
-
-    local inaudible = SoundUtils:WhyInaudible(source:GetChannel())
-    if inaudible and not SoundUtils:IsMutedByPlayer(source:GetChannel()) then
-        return nil, inaudible
+    local refused = WhyRefused(source, clip)
+    if refused then
+        return nil, refused
     end
 
     if source.admit then
@@ -654,10 +698,8 @@ function SoundQueue:Add(clip, source, front)
         return nil, "missing"
     end
 
-    for _, queued in ipairs(self.sounds) do
-        if queued.key == clip.key then
-            return nil, "duplicate"
-        end
+    if IsQueued(clip.key) then
+        return nil, "duplicate"
     end
 
     if IsLow(clip) then
@@ -672,6 +714,8 @@ function SoundQueue:Add(clip, source, front)
     self.soundIdCounter = self.soundIdCounter + 1
     clip.id = self.soundIdCounter
     clip.source = source
+    -- A source of words alone makes every line of it one.
+    clip.textOnly = clip.textOnly or source.textOnly
     if front then
         table.insert(self.sounds, 1, clip)
     else
@@ -700,31 +744,26 @@ function SoundQueue:PlayNow(clip, source)
         return false
     end
     -- A reason, so a Play button clicked by hand says why nothing happened.
-    if Sources:IsTurnedOff(source) then
-        return false, L.PART_TURNED_OFF
-    end
-
-    local inaudible = SoundUtils:WhyInaudible(source:GetChannel())
-    if inaudible and not SoundUtils:IsMutedByPlayer(source:GetChannel()) then
-        return false, inaudible
+    local refused = WhyRefused(source, clip)
+    if refused then
+        return false, refused
     end
 
     -- A line speaking or held by a gate goes on, and this one queues behind it. Only an idle or
     -- stopped queue plays it at once, which also ends the stop.
     local current = self:GetCurrentSound()
     if current and not self:IsPaused() then
-        for _, queued in ipairs(self.sounds) do
-            if queued.key == clip.key then return true end
-        end
+        if IsQueued(clip.key) then return true end
         local queued, why = self:Add(clip, source)
         return queued and true or false, why
     end
 
     -- Clicking Play on something already waiting should play it, not be swallowed by
-    -- the dedup.
+    -- the dedup. Another clip of its key gives way to it.
     for index = self:GetQueueSize(), 1, -1 do
-        if self.sounds[index].key == clip.key then
-            self:RemoveSoundFromQueue(self.sounds[index])
+        local queued = self.sounds[index]
+        if queued ~= clip and queued.key == clip.key then
+            self:RemoveSoundFromQueue(queued)
         end
     end
 
@@ -734,6 +773,18 @@ function SoundQueue:PlayNow(clip, source)
     end
 
     self:SetPaused(false)
+    -- The very clip waiting moves to the front as it is, never taken out and put back: taken out,
+    -- its stopCallback ends what it carries on with, such as a book's pages still to come.
+    for index, queued in ipairs(self.sounds) do
+        if queued == clip then
+            if index > 1 then
+                MoveToFront(index)
+            end
+            self:Advance()
+            Callbacks:Fire("AUDIO_CHANGED")
+            return self:IsPlaying()
+        end
+    end
     local added, reason = self:Add(clip, source, true)
     if not added then
         self:Advance()
@@ -762,10 +813,8 @@ function SoundQueue:PauseQueue()
     -- next one Stop holds. Replay then plays the next line rather than the one already heard.
     if head and head.nextSoundTimer and head.spokenAt and GetTime() >= head.spokenAt then
         self:RemoveSoundFromQueue(head, true)
-        -- It was the last: there is nothing left to hold, and nothing for the queue to stay stopped on.
+        -- It was the last: there is nothing left to hold, and the removal took the stop off.
         if self:IsEmpty() then
-            self:SetPaused(false)
-            Callbacks:Fire("AUDIO_CHANGED")
             return true
         end
         head = self:GetCurrentSound()
@@ -773,10 +822,7 @@ function SoundQueue:PauseQueue()
     if head and self:CanBePaused() then
         -- Faded out, not cut: a pause is the player stepping away, not an interruption.
         SoundUtils:StopSound(head, PAUSE_FADE_MS)
-        if head.nextSoundTimer then
-            Addon:CancelTimer(head.nextSoundTimer)
-            head.nextSoundTimer = nil
-        end
+        CancelSpeakTimer(head)
     end
     -- Nothing of ours is speaking, so the game may. Resuming plays the line, which mutes again.
     self:MuteGameDialogue(nil)

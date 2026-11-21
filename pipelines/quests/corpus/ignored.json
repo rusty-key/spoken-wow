@@ -93,6 +93,10 @@
             "reason": "war-effort tally: $NNNNw expands against a live server counter no corpus can hold"
         },
         {
+            "lineId": "g:cb6d68993aef0d58cbb18ac96a978e4d",
+            "reason": "Placeholder text: \"Unknown\""
+        },
+        {
             "lineId": "g:cb739c796aa3b55fa68a388c2a9df332",
             "reason": "war-effort tally: $NNNNw expands against a live server counter no corpus can hold"
         },
@@ -129,6 +133,10 @@
             "reason": "Blizzard test quest 1, unreachable in game"
         },
         {
+            "lineId": "q:349:accept",
+            "reason": "unused quest"
+        },
+        {
             "lineId": "q:8514:accept:f",
             "reason": "war-effort tally: $NNNNw expands against a live server counter no corpus can hold"
         },
@@ -146,5 +154,5 @@
         }
     ],
     "version": 1,
-    "exportedAt": "2026-10-01T16:31:53Z"
+    "exportedAt": "2026-10-22T21:00:30Z"
 }

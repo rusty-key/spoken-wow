@@ -2,14 +2,17 @@
 // Build a section's voice-acted overlay pack: every line a voice actor has recorded in one
 // language, and nothing else.
 //
-//   node scripts/audio/acted.mjs [--lang=deDE] [--version=1.0.0] <quests|zones|books>
-//   node scripts/audio/acted.mjs --list [--lang=deDE] <section>   the archive files it reads
+//   node scripts/audio/acted.mjs [--lang=deDE] [--team=<slug>] [--version=1.0.0] <quests|places|readables>
+//   node scripts/audio/acted.mjs --list [--lang=deDE] [--team=<slug>] <section>   the archive files it reads
+//
+// --team names the team whose recordings it reads; without it, the team with the language's plain
+// packs. A team whose packs carry its slug is refused: the overlay's folder has no slug.
 //
 // AN OVERLAY, NOT A PACK. It carries only the recorded lines, and the player prefers it where
 // it has one and falls back to the generated pack for the rest:
-//   quests  a data module at DataModule-Priority 200, over the generated packs' 100
-//   zones   an entry in SpokenZonesAudioOverlays, which no release reads as a whole pack
-//   books   an entry in SpokenBooksAudioOverlays, the same way
+//   quests     a data module at DataModule-Priority 200, over the generated packs' 100
+//   places     an entry in SpokenPlacesAudioOverlays, which no release reads as a whole pack
+//   readables  an entry in SpokenReadablesAudioOverlays, the same way
 // So none of it is the TTS packs' machinery -- no corpus tables, no faction split, no tiers --
 // and it is built here, in one place for all three, rather than as a flag through each.
 //
@@ -21,8 +24,8 @@
 // THE AUDIO IS RE-ENCODED TO WHAT EACH PLAYER PLAYS. Uploads are kept as they came, mp3 or
 // Ogg Vorbis. A quests module resolves every sound with one extension (GetSoundPath), and
 // ships Ogg, so an mp3 is encoded with the generated packs' own recipe (ogg-q0-44k:
-// ffmpeg decodes, oggenc -q 0) and an Ogg goes in as uploaded. Zones and books play `.mp3`
-// by name, so there it is the other way round.
+// ffmpeg decodes, oggenc -q 0) and an Ogg goes in as uploaded. Places and readables play
+// `.mp3` by name, so there it is the other way round.
 //
 // Lengths are the database's -- ffprobe measured each upload when it was kept -- since a
 // re-encode moves a clip's length by a frame at most.
@@ -37,13 +40,17 @@ import { basename, dirname, join, posix, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
 import { BASE_LOCALE, CODES } from "../../pipelines/lib/locales.mjs";
-import { luaString } from "../../pipelines/zones/tools/lib/wiki.mjs";
-import { archiveOf } from "../lib/archives.mjs";
-import { actedFolder, languageFolder } from "../lib/packs.mjs";
+import { scriptTeam } from "../../pipelines/lib/release-team.mjs";
+import { luaString } from "../../pipelines/places/tools/lib/wiki.mjs";
+import { archiveOf, sourceOf } from "../lib/archives.mjs";
+import { actedFolder, audioFamily, englishFolder } from "../lib/packs.mjs";
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "../..");
 
-const TITLES = { quests: "Spoken Quests Audio", zones: "Spoken Zones Audio", books: "Spoken Books Audio" };
+/** What each section's packs are called after the family: "Spoken German Audio: Places". */
+const TITLES = { quests: "Quests", places: "Places", readables: "Readables" };
+/** The addon that plays a section's packs, which X-Child-Of names for addon managers. */
+const PLAYERS = { quests: "Spoken_Quests", places: "Spoken_Places", readables: "Spoken_Readables" };
 
 //------------------------------------------------------------------------------
 // Pure: names, paths and the Lua, so they can be tested without a database
@@ -52,7 +59,7 @@ const TITLES = { quests: "Spoken Quests Audio", zones: "Spoken Zones Audio", boo
 /**
  * Where a file's recordings are archived, relative to the section's archive root. The web
  * app's recordedDirOf (apps/web/src/lib/takes/adapters.ts): a quests file's directory is the
- * file without `.mp3`, a zones or books file's is the file.
+ * file without `.mp3`, a places or readables file's is the file.
  */
 export function recordedDir(section, lang, file) {
   const relative = section === "quests" ? file.replace(/\.mp3$/, "") : file;
@@ -79,11 +86,11 @@ function luaCredits(credits) {
 }
 
 /**
- * The zones overlay's Data/Sounds.lua. Entries are shaped like a pack's
- * (pipelines/zones/tools/voice/build-lookup.mjs) and keyed the same way, by the line id:
+ * The places overlay's Data/Sounds.lua. Entries are shaped like a pack's
+ * (pipelines/places/tools/voice/build-lookup.mjs) and keyed the same way, by the line id:
  * `z:<map>` for a zone, `s:<map>:<key>` for a subzone.
  */
-export function zonesLua(lang, clips, credits) {
+export function placesLua(lang, clips, credits) {
   const zones = [];
   const subzones = new Map();
   for (const clip of clips) {
@@ -93,12 +100,12 @@ export function zonesLua(lang, clips, credits) {
     else if (kind === "s") {
       if (!subzones.has(Number(map))) subzones.set(Number(map), []);
       subzones.get(Number(map)).push([rest.join(":"), row]);
-    } else throw new Error(`not a zones line id: ${clip.lineId}`);
+    } else throw new Error(`not a places line id: ${clip.lineId}`);
   }
   const lines = [
     "-- AUTO-GENERATED by scripts/audio/acted.mjs. Do not edit by hand.",
     "--",
-    "-- A voice-acted overlay: only the lines somebody recorded. Spoken Zones plays these",
+    "-- A voice-acted overlay: only the lines somebody recorded. Spoken Places plays these",
     "-- over the generated pack's and falls back to that pack for every other line.",
     "",
     "local ADDON_NAME = ...",
@@ -124,21 +131,21 @@ export function zonesLua(lang, clips, credits) {
     "",
     "overlay.addon = ADDON_NAME",
     "",
-    "-- Its own registry, never SpokenZonesAudioPacks: a release that reads only that one would",
+    "-- Its own registry, never SpokenPlacesAudioPacks: a release that reads only that one would",
     "-- take this for a whole pack and could choose it as the one to play from.",
-    "SpokenZonesAudioOverlays = SpokenZonesAudioOverlays or {}",
-    "SpokenZonesAudioOverlays[ADDON_NAME] = overlay",
+    "SpokenPlacesAudioOverlays = SpokenPlacesAudioOverlays or {}",
+    "SpokenPlacesAudioOverlays[ADDON_NAME] = overlay",
     "",
   );
   return lines.join("\n");
 }
 
-/** The books overlay's Data/Sounds.lua, shaped like the pack's (pipelines/books/tools/lib/lookup.mjs). */
-export function booksLua(lang, clips, credits) {
+/** The readables overlay's Data/Sounds.lua, shaped like the pack's (pipelines/readables/tools/lib/lookup.mjs). */
+export function readablesLua(lang, clips, credits) {
   const lines = [
     "-- AUTO-GENERATED by scripts/audio/acted.mjs. Do not edit by hand.",
     "--",
-    "-- A voice-acted overlay: only the pages somebody recorded. Spoken Books plays these",
+    "-- A voice-acted overlay: only the pages somebody recorded. Spoken Writings plays these",
     "-- over the generated pack's and falls back to that pack for every other page.",
     "",
     "local ADDON_NAME = ...",
@@ -157,9 +164,9 @@ export function booksLua(lang, clips, credits) {
     "\t},",
     "}",
     "",
-    "-- Its own registry, for the reason the zones overlay gives.",
-    "SpokenBooksAudioOverlays = SpokenBooksAudioOverlays or {}",
-    "SpokenBooksAudioOverlays[ADDON_NAME] = overlay",
+    "-- Its own registry, for the reason the places overlay gives.",
+    "SpokenReadablesAudioOverlays = SpokenReadablesAudioOverlays or {}",
+    "SpokenReadablesAudioOverlays[ADDON_NAME] = overlay",
     "",
   );
   return lines.join("\n");
@@ -210,46 +217,37 @@ function interfaceOf(section) {
   const source =
     section === "quests"
       ? join(ROOT, "pipelines/quests/tts_cli/build.py")
-      : join(ROOT, "addons", languageFolder(section, "all"), `${languageFolder(section, "all")}.toc`);
+      : join(ROOT, "addons", englishFolder(section), `${englishFolder(section)}.toc`);
   // Not anchored: in build.py the line opens a string literal, `TOC_HEADER = """## Interface: …`.
   const found = readFileSync(source, "utf8").match(/## Interface: (.+)$/m);
   if (!found) throw new Error(`no ## Interface line in ${source}`);
   return found[1].trim();
 }
 
-/** The quests DataModule maps, from the generated packs' TOC, for the same reason. */
-function questsMaps() {
-  const found = readFileSync(join(ROOT, "pipelines/quests/tts_cli/build.py"), "utf8").match(
-    /^## X-SpokenQuests-DataModule-Maps: (.+)$/m,
-  );
-  if (!found) throw new Error("no DataModule-Maps line in tts_cli/build.py");
-  return found[1].trim();
-}
-
-export function toc({ section, lang, version, credits, iface, maps }) {
-  const title = `${TITLES[section]}: Voice Actors${lang === BASE_LOCALE ? "" : ` (${lang})`}`;
+export function toc({ section, lang, version, credits, iface }) {
+  const title = `${audioFamily(lang)}: ${TITLES[section]} - Voice Actors`;
   const lines = [
     `## Interface: ${iface}`,
-    `## Title: ${title}`,
+    `## Title: ${title.replace(/^Spoken/, "|cffb48cffSpoken|r")}`,
     `## Notes: Lines read by voice actors, played instead of the generated narration where there is one. Voiced by ${credits.join(", ")}.`,
     `## Version: ${version}`,
     `## Author: ${["rusty", ...credits].join(", ")}`,
     `## X-Spoken-Actors: ${credits.join(", ")}`,
+    "## Group: Spoken",
+    "## X-Part-Of: Spoken",
+    `## X-Child-Of: ${PLAYERS[section]}`,
   ];
   if (section === "quests") {
     // Both generations of each key, as the generated packs write them (tts_cli/build.py).
     lines.push(
       "## LoadOnDemand: 1",
-      "## Group: SpokenQuests",
       "## X-SpokenQuests-DataModule-Version: 1",
       // Over the generated packs' 100, which is what makes this the one asked first within a
       // language. Language still comes before priority: a German recording does not play
       // for somebody listening in English.
       "## X-SpokenQuests-DataModule-Priority: 200",
-      `## X-SpokenQuests-DataModule-Maps: ${maps}`,
       "## X-VoiceOver-DataModule-Version: 1",
       "## X-VoiceOver-DataModule-Priority: 200",
-      `## X-VoiceOver-DataModule-Maps: ${maps}`,
     );
     // Only for a language, as the generated packs do: an absent key reads as enUS.
     if (lang !== BASE_LOCALE) lines.unshift(`## X-SpokenQuests-Language: ${lang}`);
@@ -264,14 +262,28 @@ export function toc({ section, lang, version, credits, iface, maps }) {
 // The build
 //------------------------------------------------------------------------------
 
-function live(section, lang) {
+/**
+ * The team whose recordings the overlay of `lang` is built from. Only a team with plain packs: the
+ * overlay's folder carries no slug, so another team's would overwrite it.
+ */
+export function actedTeamId(database, lang, slug = null) {
+  const team = scriptTeam(database, lang, slug);
+  if (team.packName !== "plain") {
+    throw new Error(`${slug}'s packs in ${lang} carry its slug; acted packs are built only for the team with plain packs`);
+  }
+  return team.id;
+}
+
+function live(section, lang, slug) {
   const database = process.env.LOCAL_DB;
   if (!database) throw new Error("LOCAL_DB is not set");
-  const out = execFileSync("psql", [database, "-tA", "-F", "\t", "-v", `source=${section}`, "-v", `lang=${lang}`, "-f", "-"], {
-    input: `select distinct on (r."file") r."file", r."archiveFile", r."format", r."durationSec",
-                   r."credit", r."createdAt", coalesce(r."lineId", '')
+  const team = actedTeamId(database, lang, slug);
+  const out = execFileSync("psql", [database, "-tA", "-F", "\t", "-v", `source=${section}`, "-v", `lang=${lang}`, "-v", `team=${team}`, "-f", "-"], {
+    input: `select distinct on (r."file") r."file", coalesce(r."archiveFile", ''), r."format", r."durationSec",
+                   r."credit", r."createdAt", coalesce(r."lineId", ''), coalesce(r."sha256", '')
               from "recording" r
              where r."source" = :'source' and r."lang" = :'lang' and r."deletedAt" is null
+               and r."teamId" = :'team'::uuid
              order by r."file", r."version" desc`,
     encoding: "utf8",
     maxBuffer: 64 * 1024 * 1024,
@@ -280,8 +292,9 @@ function live(section, lang) {
     .split("\n")
     .filter(Boolean)
     .map((row) => {
-      const [file, archiveFile, format, durationSec, credit, createdAt, lineId] = row.split("\t");
-      return { file, archiveFile, format, durationSec: Number(durationSec), credit, createdAt, lineId };
+      const [file, archiveFile, format, durationSec, credit, createdAt, lineId, sha256] = row.split("\t");
+      const archived = sourceOf("recordings", sha256, archiveFile ? posix.join(recordedDir(section, lang, file), archiveFile) : "");
+      return { file, archived, format, durationSec: Number(durationSec), credit, createdAt, lineId };
     });
 }
 
@@ -294,8 +307,8 @@ function run(child, what) {
 }
 
 /**
- * One clip into the pack, with the generated packs' own recipes: zones' VBR mono mp3
- * (scripts/zones/package-audio.sh) and quests' ogg-q0-44k (scripts/quests/package-audio.sh),
+ * One clip into the pack, with the generated packs' own recipes: places' VBR mono mp3
+ * (scripts/places/package-audio.sh) and quests' ogg-q0-44k (scripts/quests/package-audio.sh),
  * so an overlay sits at the bitrate of the pack under it.
  */
 async function encode(section, clip, from, to) {
@@ -330,19 +343,20 @@ async function main(args) {
   const section = args.find((arg) => !arg.startsWith("--"));
   const lang = args.find((arg) => arg.startsWith("--lang="))?.slice(7) || BASE_LOCALE;
   const version = args.find((arg) => arg.startsWith("--version="))?.slice(10) || "1.0.0";
+  const team = args.find((arg) => arg.startsWith("--team="))?.slice(7) || null;
   if (!TITLES[section] || !CODES.includes(lang) || !/^\d+\.\d+\.\d+$/.test(version)) {
-    throw new Error("usage: acted.mjs [--list] [--lang=<code>] [--version=x.y.z] <quests|zones|books>");
+    throw new Error("usage: acted.mjs [--list] [--lang=<code>] [--team=<slug>] [--version=x.y.z] <quests|places|readables>");
   }
 
-  const clips = live(section, lang);
+  const clips = live(section, lang, team);
   if (list) {
-    for (const clip of clips) console.log(posix.join(recordedDir(section, lang, clip.file), clip.archiveFile));
+    for (const clip of clips) console.log(clip.archived);
     return;
   }
   if (clips.length === 0) throw new Error(`no live ${section} recordings in ${lang}; nothing to build`);
 
   const missing = clips
-    .map((clip) => join(archiveOf(section), recordedDir(section, lang, clip.file), clip.archiveFile))
+    .map((clip) => join(archiveOf(section), clip.archived))
     .filter((path) => !existsSync(path));
   if (missing.length) {
     console.error(`${missing.length} live recordings are not on this machine, e.g.:`);
@@ -360,7 +374,7 @@ async function main(args) {
       section,
       clips.map((clip) => [
         clip,
-        join(archiveOf(section), recordedDir(section, lang, clip.file), clip.archiveFile),
+        join(archiveOf(section), clip.archived),
         join(out, packPath(section, clip.file)),
       ]),
     );
@@ -368,14 +382,13 @@ async function main(args) {
     const files =
       section === "quests"
         ? questsLua(folder, clips, credits)
-        : { "Data/Sounds.lua": (section === "zones" ? zonesLua : booksLua)(lang, clips, credits) };
+        : { "Data/Sounds.lua": (section === "places" ? placesLua : readablesLua)(lang, clips, credits) };
     files[`${folder}.toc`] = toc({
       section,
       lang,
       version,
       credits,
       iface: interfaceOf(section),
-      maps: section === "quests" ? questsMaps() : null,
     });
     for (const [name, text] of Object.entries(files)) {
       mkdirSync(dirname(join(out, name)), { recursive: true });

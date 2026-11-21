@@ -1,5 +1,5 @@
 /**
- * Narrating one line in a section read by the single narrator: zones and books.
+ * Narrating one line in a section read by the single narrator: places, readables and bosses.
  *
  * Both sections voice every line with the one narrator, the generating collaborator's own
  * settings and the pronunciation lexicon, give every line a file of its own, and record a duration --
@@ -26,13 +26,14 @@ import { BASE_LANG } from "@/lib/lang";
 import "server-only";
 
 import { commitTake } from "@/lib/takes/commit";
-import { durationOf } from "@/lib/zones/tools";
+import { durationOf } from "@/lib/places/tools";
 
 import { busy, failure } from "./errors";
 import { BUSY, withTakeLock } from "./lock";
 import { NARRATOR_VOICE } from "./narration";
 import type { RegenerateResult } from "./regenerate";
 import type { Speaker, Spoken } from "./speakers/speaker";
+import { timesFor } from "./word-times";
 import type { Lang } from "@/lib/lang";
 
 /** What a section hands over once it has found a line and decided it can be voiced. */
@@ -42,6 +43,8 @@ export type NarratedLine = {
   file: string;
   /** The text as it will be spoken, after the pronunciation rules. */
   spoken: string;
+  /** The text as the addon shows it, which the take's word times are counted against. */
+  shown: string;
   /** The section's hash of `spoken`, which staleness compares against. */
   hash: string;
 };
@@ -52,7 +55,7 @@ function asFailure(error: unknown) {
 }
 
 export async function regenerateNarrated(
-  source: "zones" | "books",
+  source: "places" | "readables" | "bosses",
   line: NarratedLine,
   createdBy: string,
   options: { speaker: Speaker; lang?: Lang; batchId?: string },
@@ -69,7 +72,7 @@ export async function regenerateNarrated(
       failure: failure(
         "voice-missing",
         `${speaker.missing(NARRATOR_VOICE)} on this account. ` +
-          "Create it on /voices before generating zone lore.",
+          `Create it on /voices before generating ${source} lines.`,
       ),
     };
   }
@@ -120,6 +123,8 @@ export async function regenerateNarrated(
           leadIn: speech.leadIn,
           leadInSec: speech.leadInSec,
           createdBy,
+          wordTimes: timesFor(line.shown, speech.words),
+          shownText: line.shown,
         },
         { lang, measure: durationOf, batchId: options.batchId },
       );

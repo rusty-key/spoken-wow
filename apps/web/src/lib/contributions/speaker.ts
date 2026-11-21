@@ -5,7 +5,7 @@
  * these on every save, and /npcs calls them on the server for every NPC on file, as triage.ts's
  * npcSummaryFrom does with the roster store's Roster.
  */
-import type { NpcResolution, NpcSexAnswer } from "../npc/store";
+import type { NpcResolution, NpcBodyAnswer } from "../npc/store";
 import type { Roster } from "../voices/roster";
 import type { NpcSummary } from "./triage";
 
@@ -13,6 +13,11 @@ import type { NpcSummary } from "./triage";
 export function flavorOptionsFor(race: string | null, gender: string | null, roster: Roster): string[] {
   if (!race || (!gender && !roster.isGenderless(race))) return [];
   return roster.flavorsOf(race, gender);
+}
+
+/** Why an NPC of this type cannot speak yet: a speaker is written with its voice. */
+export function noVoice(type: { race: string | null; gender: string | null; flavor: string | null }): string {
+  return `No voice reads ${[type.race, type.gender, type.flavor].filter(Boolean).join("-")} yet`;
 }
 
 /** A stored resolution, as SpeakerCell renders it. */
@@ -32,8 +37,8 @@ export function summaryFromResolution(resolution: NpcResolution, roster: Roster)
   };
 }
 
-/** One sex of a split NPC, as SpeakerCell renders it: the NPC, drawn as that sex. */
-export function summaryFromSex(npc: NpcSummary, answer: NpcSexAnswer, roster: Roster): NpcSummary {
+/** One body of a split NPC, as SpeakerCell renders it: the NPC, drawn as that race and sex. */
+export function summaryFromBody(npc: NpcSummary, answer: NpcBodyAnswer, roster: Roster): NpcSummary {
   return {
     ...npc,
     race: answer.race,

@@ -1,10 +1,11 @@
 import { describe, expect, it } from "vitest";
 
-import { matchesReportSearch, reportsHref, sectionOfReport, sortedGroups, type ReportFilters } from "./query";
+import { isSection, matchesReportSearch, reportsHref, sortedGroups, type ReportFilters } from "./query";
 import type { Report } from "./reports";
 
 function report(overrides: Partial<Report> = {}): Report {
   return {
+    queue: "audio",
     id: 1,
     source: "quests",
     lineId: "q:374:accept",
@@ -18,32 +19,10 @@ function report(overrides: Partial<Report> = {}): Report {
     createdAt: "2026-09-01T00:00:00Z",
     resolvedAt: null,
     resolvedBy: null,
+    context: null,
     ...overrides,
   };
 }
-
-describe("sectionOfReport", () => {
-  it("lists a gossip line under gossip although it is filed under quests", () => {
-    expect(sectionOfReport(report({ lineId: "g:abc", target: "npc/5" }))).toBe("gossip");
-  });
-
-  it("lists an NPC address with no line picked under gossip", () => {
-    expect(sectionOfReport(report({ lineId: null, target: "npc/5" }))).toBe("gossip");
-  });
-
-  it("keeps a follow-up, which resolved to a quests line, under quests", () => {
-    expect(sectionOfReport(report({ lineId: "f:12:Human-m", target: "npc/5" }))).toBe("quests");
-  });
-
-  it("keeps a report about the project under quests", () => {
-    expect(sectionOfReport(report({ lineId: null, target: null }))).toBe("quests");
-  });
-
-  it("lists zones and books under their own source", () => {
-    expect(sectionOfReport(report({ source: "zones", lineId: "z:1" }))).toBe("zones");
-    expect(sectionOfReport(report({ source: "books", lineId: "b:2" }))).toBe("books");
-  });
-});
 
 describe("matchesReportSearch", () => {
   it("matches the body, the line and the sender, ignoring case", () => {
@@ -84,7 +63,14 @@ describe("reportsHref", () => {
 
   it("keeps the other filters and drops the page on a change", () => {
     const filtered = { ...current, q: "thrall", dir: "asc" as const };
-    expect(reportsHref(filtered, { section: "gossip" })).toBe("/reports/gossip?q=thrall&dir=asc");
+    expect(reportsHref(filtered, { section: "readables" })).toBe("/reports/readables?q=thrall&dir=asc");
     expect(reportsHref(filtered, {}, 3)).toBe("/reports/quests?q=thrall&dir=asc&page=3");
+  });
+});
+
+describe("isSection", () => {
+  it("has a tab for bosses, which takes reports but no contributions", () => {
+    expect(isSection("bosses")).toBe(true);
+    expect(isSection("gossip")).toBe(false);
   });
 });

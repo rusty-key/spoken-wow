@@ -2,9 +2,9 @@
   "compilerOptions": {
     "target": "ES2022",
     "lib": ["dom", "dom.iterable", "esnext"],
-    // The zones pipeline is dependency-free ESM with no build step, and lib/zones/tools.ts
+    // The places pipeline is dependency-free ESM with no build step, and lib/places/tools.ts
     // imports it directly rather than shelling out - see the header there. TypeScript reads
-    // those modules and infers their shapes, which is what makes a change in pipelines/zones
+    // those modules and infers their shapes, which is what makes a change in pipelines/places
     // show up as a type error rather than as undefined at runtime.
     "allowJs": true,
     "skipLibCheck": true,
@@ -20,8 +20,8 @@
     "plugins": [{ "name": "next" }],
     "paths": {
       "@/*": ["./src/*"],
-      "@tools/*": ["../../pipelines/zones/tools/*"],
-      "@books-tools/*": ["../../pipelines/books/tools/*"]
+      "@tools/*": ["../../pipelines/places/tools/*"],
+      "@readables-tools/*": ["../../pipelines/readables/tools/*"]
     }
   },
   "include": ["next-env.d.ts", "**/*.ts", "**/*.tsx", ".next/types/**/*.ts"],

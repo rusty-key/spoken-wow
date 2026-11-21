@@ -1,4 +1,4 @@
-"""What scripts/package-audio.sh should do with each file in the audio store.
+"""What scripts/quests/package-audio.sh should do with each file in the audio store.
 
 One line per clip: `md5<TAB>kbps<TAB>action<TAB>relative path`, where the action is
 `encode` or `copy`.

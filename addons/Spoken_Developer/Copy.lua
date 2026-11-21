@@ -54,7 +54,7 @@ function Copy:Text()
 	for _, line in ipairs(lines) do Add(line) end
 	if not Log:IsOn() then
 		Add("")
-		Add("(The debug log is off: nothing new is kept. Spoken > Developer > Enable Debug Log Recording.)")
+		Add("(The debug log is off: nothing new is kept. Spoken > Developer > Keep a Debug Log.)")
 	end
 	return table.concat(out, "\n"), #lines
 end

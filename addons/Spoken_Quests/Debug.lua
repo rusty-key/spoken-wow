@@ -38,8 +38,6 @@ end
 -- what /spq diagnostics calls the last runtime stage, and in the log they read as the whole story
 -- of a quest window, from the event to the line queued or the reason it was not. Note covers the
 -- decisions that record no stage. Nothing happens without the module, or while its log is off.
---
--- Parsed by the 1.12 client too, so Lua 5.0 syntax: no `#`, no `...`, no string methods.
 
 local function Log(message, a, b, c, d)
     if Spoken and Spoken.Log then Spoken:Log("quests", message, a, b, c, d) end
@@ -86,7 +84,17 @@ function Debug:IsMockingMissingVoice()
     return developer ~= nil and developer.MockMissingVoice == true
 end
 
---- This addon's section of the Developer page. Hands back what puts it back to its defaults.
+--- This addon's switch among the Developer page's chat messages: what Debug:Print says. Hands
+--- back what puts it back to its default.
+function Debug:ChatRows(layout)
+    layout:Checkbox(L.OPT_DEBUG, nil,
+        function() return Addon.db.profile.DebugEnabled end,
+        function(value) Addon.db.profile.DebugEnabled = value end)
+    return function() Addon.db.profile.DebugEnabled = false end
+end
+
+--- This addon's testing tools on the Developer page. Hands back what puts them back to their
+--- defaults.
 function Debug:DeveloperRows(layout)
     -- A dialog already open shows the change at once: its buttons ask DataModules again.
     local function Refresh()
@@ -96,8 +104,7 @@ function Debug:DeveloperRows(layout)
             if button and button.Refresh then button:Refresh() end
         end
     end
-    layout:Section(L.OPT_PAGE_TITLE)
-    layout:Checkbox(L.OPT_DEV_MOCK_MISSING, L.OPT_DEV_MOCK_MISSING_TIP,
+    layout:Checkbox(L.OPT_DEV_MOCK_MISSING, nil,
         function() return Debug:IsMockingMissingVoice() end,
         function(value)
             DeveloperSettings().MockMissingVoice = value and true or false
@@ -112,7 +119,8 @@ function Debug:DeveloperRows(layout)
 end
 
 if Spoken and Spoken.AddDeveloperSettings then
-    Spoken:AddDeveloperSettings(function(layout) return Debug:DeveloperRows(layout) end)
+    Spoken:AddDeveloperSettings(function(layout) return Debug:ChatRows(layout) end, "chat", 1)
+    Spoken:AddDeveloperSettings(function(layout) return Debug:DeveloperRows(layout) end, "testing", 1)
 end
 
 -- Kept between sessions, so said at each login: with it on, no quest line plays.
@@ -159,16 +167,16 @@ local function ContextLines(lines)
         Addon:IsAutoplayOn() and "on" or "off",
         tostring(Enums.GossipFrequency:GetName(audio.GossipFrequency)),
         Debug:IsMockingMissingVoice() and "ON" or "off"))
-    local questID = Safe(function() return GetQuestID and GetQuestID() end)
-    local title = Safe(function() return GetTitleText and GetTitleText() end)
+    local questID = Safe(function() return GetQuestID and NotSecret(GetQuestID()) end)
+    local title = Safe(function() return GetTitleText and NotSecret(GetTitleText()) end)
     local npc = Safe(function() return Utils:GetNPCName() end)
     local guid = Safe(function() return Utils:GetNPCGUID() end)
     table.insert(lines, format("now: quest ID %s, title %q, NPC %q, GUID %s", tostring(questID), tostring(title or ""),
         tostring(npc or ""), tostring(guid)))
-    local heard = guid and Addon.db and Addon.db.char.hasSeenGossipForNPC
-        and Addon.db.char.hasSeenGossipForNPC[guid]
+    local text = Safe(function() return NotSecret(GetGossipText()) or NotSecret(GetGreetingText()) end)
+    local heard = guid and Addon.db and Addon:HasHeardGreeting(guid, text)
     if guid then
-        table.insert(lines, "this NPC's greeting heard before: " .. (heard and "yes" or "no"))
+        table.insert(lines, "this NPC's greeting on screen heard before: " .. (heard and "yes" or "no"))
     end
     local found, probe, event = pcall(function() return Addon:GetVisibleLine() end)
     if found and probe then

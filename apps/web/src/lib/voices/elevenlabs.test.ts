@@ -1,6 +1,15 @@
 import { describe, expect, it, vi } from "vitest";
 
-import { addVoice, deleteVoice, listModels, listVoices } from "./elevenlabs";
+import {
+  addVoice,
+  deleteVoice,
+  getSubscription,
+  isRenamable,
+  listAccountVoices,
+  listModels,
+  listVoices,
+  renameVoice,
+} from "./elevenlabs";
 
 // Declared with the fetch parameters it stands in for, so mock.calls stays typed and the
 // assertions below can read the url and headers without a cast.
@@ -145,6 +154,53 @@ describe("addVoice", () => {
   });
 });
 
+describe("listAccountVoices", () => {
+  it("returns every named voice, stock ones too, sorted by name", async () => {
+    const fetchImpl = respondWith({
+      voices: [
+        { name: "Roger - Laid-Back", voice_id: "stock1", category: "premade" },
+        { name: "orc-male-standard", voice_id: "orc1", category: "cloned" },
+        { name: "Grim Sage", voice_id: "lib1" },
+        { voice_id: "nameless" },
+      ],
+    });
+    expect(await listAccountVoices({ apiKey: "k", fetchImpl })).toEqual([
+      { voiceId: "lib1", name: "Grim Sage", category: "unknown" },
+      { voiceId: "orc1", name: "orc-male-standard", category: "cloned" },
+      { voiceId: "stock1", name: "Roger - Laid-Back", category: "premade" },
+    ]);
+  });
+
+  it("surfaces the API's error text", async () => {
+    const fetchImpl = respondWith({ detail: "invalid_api_key" }, { status: 401 });
+    await expect(listAccountVoices({ apiKey: "k", fetchImpl })).rejects.toThrow(/401/);
+  });
+});
+
+describe("isRenamable", () => {
+  it("refuses premade voices only", () => {
+    expect(isRenamable({ voiceId: "a", name: "a", category: "premade" })).toBe(false);
+    expect(isRenamable({ voiceId: "a", name: "a", category: "professional" })).toBe(true);
+  });
+});
+
+describe("renameVoice", () => {
+  it("posts the new name as multipart to the edit endpoint", async () => {
+    const fetchImpl = respondWith({ status: "ok" });
+    await renameVoice("v1", "orc-male-standard", { apiKey: "k", baseUrl: "https://stub.test", fetchImpl });
+
+    const [url, init] = fetchImpl.mock.calls[0];
+    expect(url).toBe("https://stub.test/v1/voices/v1/edit");
+    expect(init?.method).toBe("POST");
+    expect((init?.body as FormData).get("name")).toBe("orc-male-standard");
+  });
+
+  it("surfaces a refusal", async () => {
+    const fetchImpl = respondWith({ detail: "voice_not_editable" }, { status: 400 });
+    await expect(renameVoice("v1", "x", { apiKey: "k", fetchImpl })).rejects.toThrow(/voice_not_editable/);
+  });
+});
+
 describe("deleteVoice", () => {
   it("deletes by id", async () => {
     const fetchImpl = respondWith({ status: "ok" });
@@ -262,5 +318,25 @@ describe("generationStatus, in a language", () => {
     expect(english.voices).toEqual(["orc-male-standard"]);
     expect(german.voices).toEqual(["narrator-male"]);
     expect(german.voiceIds.get("narrator-male")).toBe("de");
+  });
+});
+
+// A degraded ElevenLabs once hung /voices and /lexicon until nginx gave up: a read must fail.
+describe("account reads", () => {
+  // Answers nothing until the request is aborted, like a server that accepted and stalled.
+  const stalled = vi.fn(
+    (_url: RequestInfo | URL, init?: RequestInit) =>
+      new Promise<Response>((_resolve, reject) =>
+        init?.signal?.addEventListener("abort", () => reject(init.signal!.reason)),
+      ),
+  );
+  const options = { apiKey: "k", fetchImpl: stalled, timeoutMs: 20 };
+
+  it.each([
+    ["listVoices", () => listVoices(options)],
+    ["listModels", () => listModels(options)],
+    ["getSubscription", () => getSubscription(options)],
+  ])("%s gives up on a stalled ElevenLabs and says so", async (_name, read) => {
+    await expect(read()).rejects.toThrow(/timed out: ElevenLabs did not answer within 0.02s/);
   });
 });

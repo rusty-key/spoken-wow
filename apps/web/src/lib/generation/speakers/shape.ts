@@ -11,16 +11,18 @@ import { accentTagged, audioTags, voiceAfter } from "../narration";
 import type { Provider } from "../providers";
 
 /**
- * Audio tags as brackets, and the race's accent direction in front of the NPC's words. Last,
- * so the direction sits before the words rather than before a `<hic>` not yet rewritten.
+ * Audio tags as brackets, and the race's accent direction and the NPC's own in front of the
+ * NPC's words. Last, so the direction sits before the words rather than before a `<hic>` not
+ * yet rewritten.
  */
 function bracketed(
   text: string,
   raceTag: string | undefined,
   raceTags?: Record<string, string>,
+  npc?: string,
   voice?: string,
 ): string {
-  return accentTagged(audioTags(text), raceTag, raceTags, voice);
+  return accentTagged(audioTags(text), raceTag, raceTags, voice, npc);
 }
 
 /**
@@ -46,6 +48,7 @@ function paragraphed(
   text: string,
   raceTag: string | undefined,
   raceTags?: Record<string, string>,
+  npc?: string,
 ): string {
   let voice: string | undefined;
   return text
@@ -53,7 +56,7 @@ function paragraphed(
     .map((paragraph) => paragraph.replace(/\s+/g, " ").trim())
     .filter(Boolean)
     .map((paragraph) => {
-      const shaped = bracketed(paragraph, raceTag, raceTags, voice);
+      const shaped = bracketed(paragraph, raceTag, raceTags, npc, voice);
       voice = voiceAfter(paragraph, voice);
       return shaped;
     })
@@ -64,10 +67,10 @@ function paragraphed(
 // way until listening shows which of them it performs.
 //
 // `raceTag` is the line's own slot's direction (directionFor); `raceTags` is the whole map, for
-// a stretch a voice marker hands to another slot.
+// a stretch a voice marker hands to another slot; `npc` is the NPC's own (npcDirection).
 export const SHAPE: Record<
   Provider,
-  (text: string, raceTag: string | undefined, raceTags?: Record<string, string>) => string
+  (text: string, raceTag: string | undefined, raceTags?: Record<string, string>, npc?: string) => string
 > = {
   elevenlabs: bracketed,
   fish: paragraphed,

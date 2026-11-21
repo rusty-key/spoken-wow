@@ -109,7 +109,7 @@ describe("validateLexicon", () => {
 });
 
 // The other way to say how a name sounds, for anyone who cannot write IPA. Approximate, but
-// honoured by every model rather than only by eleven_v3 and eleven_flash_v2.
+// honoured by every model rather than only by the phoneme models.
 const RESPELLED = {
   grapheme: "Gnomeregan",
   alias: "nomeregan",
@@ -132,19 +132,9 @@ describe("respelled entries", () => {
     expect(() => validateEntry(neither, 0)).toThrow(/either IPA or a respelling/);
   });
 
-  /**
-   * An alias is read aloud as written, so the conventions that make a respelling legible to
-   * a person make it worse as speech: capitals can read as an acronym, a hyphen as a pause.
-   * The stress-capitals form belongs in `say`, which is never sent.
-   */
-  it("rejects a respelling written in stress capitals", () => {
-    expect(() => validateEntry({ ...RESPELLED, alias: "NOME-reh-gan" }, 0)).toThrow(
-      /not in stress capitals/,
-    );
-  });
-
-  it("keeps a leading capital, which is ordinary spelling rather than stress", () => {
-    expect(validateEntry({ ...RESPELLED, alias: "Nomeregan" }, 0).alias).toBe("Nomeregan");
+  /** Stress capitals steer the model, so a respelling keeps them. */
+  it("keeps a respelling written in stress capitals", () => {
+    expect(validateEntry({ ...RESPELLED, alias: "NOME-reh-gan" }, 0).alias).toBe("NOME-reh-gan");
   });
 
   it("lets one lexicon hold both kinds", () => {
@@ -259,7 +249,10 @@ describe("honoursPhonemes", () => {
   // took effect.
   it("knows which models honour a phoneme rule", () => {
     expect(honoursPhonemes("eleven_v3")).toBe(true);
+    expect(honoursPhonemes("eleven_v4")).toBe(true);
+    expect(honoursPhonemes("eleven_v4_turbo")).toBe(true);
     expect(honoursPhonemes("eleven_flash_v2")).toBe(true);
+    expect(honoursPhonemes("toString")).toBe(false);
     expect(honoursPhonemes("eleven_multilingual_v2")).toBe(false);
     expect(honoursPhonemes("eleven_turbo_v2_5")).toBe(false);
   });

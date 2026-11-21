@@ -102,15 +102,16 @@ vi.mock("./store", () => ({
   NPC_ROW_KINDS: ["creature", "gameobject", "item"],
   getResolution: vi.fn(),
   upsertResolution: vi.fn(async (row) => ({ ...row, updatedAt: "now" })),
-  getSexes: vi.fn(async () => []),
-  upsertSex: vi.fn(async (row) => ({ ...row, updatedAt: "now" })),
+  getBodies: vi.fn(async () => []),
+  upsertBody: vi.fn(async (row) => ({ ...row, gender: row.sex === 2 ? "male" : "female", updatedAt: "now" })),
 }));
 
 import { defaultFlavorFor } from "@/lib/quests/catalogue";
 
 import { voiceFromDisplays } from "./display-voices";
-import { getResolution, getSexes, upsertResolution, upsertSex } from "./store";
+import { getResolution, getBodies, upsertBody, upsertResolution } from "./store";
 import { resolveNpc } from "./resolve";
+import { splitByBody } from "./split";
 
 const observed = {
   npcKind: "creature" as const,
@@ -322,7 +323,7 @@ describe("resolveNpc", () => {
   });
 });
 
-describe("splitting by sex", () => {
+describe("splitting by body", () => {
   const corpusGuard = {
     npcKind: "creature" as const, npcId: 68, npcName: null, race: "human", gender: "male", flavor: "official",
     provenance: "corpus" as const, confirmed: true, doubtful: false, modelFileId: null, sex: null,
@@ -333,12 +334,12 @@ describe("splitting by sex", () => {
 
   it("splits an NPC voiced as a man and seen as a woman, the man keeping the NPC's answer", async () => {
     vi.mocked(getResolution).mockResolvedValue(corpusGuard);
-    vi.mocked(getSexes).mockResolvedValueOnce([]);
-    vi.mocked(upsertSex).mockClear();
+    vi.mocked(getBodies).mockResolvedValueOnce([]);
+    vi.mocked(upsertBody).mockClear();
     vi.mocked(voiceFromDisplays).mockResolvedValue(null);
     vi.mocked(defaultFlavorFor).mockResolvedValue("standard");
     await resolveNpc(woman, "enUS");
-    expect(vi.mocked(upsertSex).mock.calls.map(([row]) => [row.sex, row.race, row.flavor, row.provenance])).toEqual([
+    expect(vi.mocked(upsertBody).mock.calls.map(([row]) => [row.sex, row.race, row.flavor, row.provenance])).toEqual([
       [2, "human", "official", "corpus"],
       [3, "human", "standard", "client"],
     ]);
@@ -346,35 +347,34 @@ describe("splitting by sex", () => {
 
   it("takes the game's voice for the woman's appearance where it is exact", async () => {
     vi.mocked(getResolution).mockResolvedValue(corpusGuard);
-    vi.mocked(getSexes).mockResolvedValueOnce([]);
-    vi.mocked(upsertSex).mockClear();
+    vi.mocked(getBodies).mockResolvedValueOnce([]);
+    vi.mocked(upsertBody).mockClear();
     vi.mocked(voiceFromDisplays).mockResolvedValue({ exact: true, voice: { race: "human", gender: "female", flavor: "official" } });
     await resolveNpc({ ...woman, displayIds: [3167, 5446] }, "enUS");
-    expect(vi.mocked(upsertSex).mock.calls[1][0]).toMatchObject({ sex: 3, flavor: "official", provenance: "display", confirmed: true });
+    expect(vi.mocked(upsertBody).mock.calls[1][0]).toMatchObject({ sex: 3, flavor: "official", provenance: "display", confirmed: true });
   });
 
-  it("leaves an NPC seen as the sex it is voiced in alone, without asking after its sexes", async () => {
+  it("leaves an NPC seen as the body it is voiced as alone", async () => {
     vi.mocked(getResolution).mockResolvedValue(corpusGuard);
-    vi.mocked(getSexes).mockClear();
-    vi.mocked(upsertSex).mockClear();
+    vi.mocked(getBodies).mockClear();
+    vi.mocked(upsertBody).mockClear();
     await resolveNpc({ ...woman, sex: 2 }, "enUS");
-    expect(upsertSex).not.toHaveBeenCalled();
-    expect(getSexes).not.toHaveBeenCalled();
+    expect(upsertBody).not.toHaveBeenCalled();
   });
 
   // Answered first, a client's guess would be retyped as the sex just seen -- the write ranks
   // as high as the guess -- and the NPC would flip rather than split.
   it("splits an NPC only a client's guess knows, rather than retyping it as the sex seen", async () => {
     vi.mocked(getResolution).mockResolvedValue({ ...corpusGuard, provenance: "client", confirmed: false });
-    vi.mocked(getSexes).mockResolvedValueOnce([]);
+    vi.mocked(getBodies).mockResolvedValueOnce([]);
     vi.mocked(upsertResolution).mockClear();
-    vi.mocked(upsertSex).mockClear();
+    vi.mocked(upsertBody).mockClear();
     vi.mocked(voiceFromDisplays).mockResolvedValue(null);
     vi.mocked(defaultFlavorFor).mockResolvedValue("standard");
     const row = await resolveNpc(woman, "enUS");
     expect(row).toMatchObject({ gender: "male", provenance: "client" });
     expect(upsertResolution).not.toHaveBeenCalled();
-    expect(vi.mocked(upsertSex).mock.calls.map(([sex]) => [sex.sex, sex.provenance])).toEqual([
+    expect(vi.mocked(upsertBody).mock.calls.map(([sex]) => [sex.sex, sex.provenance])).toEqual([
       [2, "client"],
       [3, "client"],
     ]);
@@ -382,11 +382,90 @@ describe("splitting by sex", () => {
 
   it("answers only the sex it lacks for an NPC split already", async () => {
     vi.mocked(getResolution).mockResolvedValue(corpusGuard);
-    const man = { ...corpusGuard, sex: 2 as const, gender: "male" as const, race: "human", provenance: "corpus" as const };
-    vi.mocked(getSexes).mockResolvedValueOnce([man]);
-    vi.mocked(upsertSex).mockClear();
+    const man = { ...corpusGuard, sex: 2 as const, gender: "male" as const, race: "human", weight: null, provenance: "corpus" as const };
+    vi.mocked(getBodies).mockResolvedValueOnce([man]);
+    vi.mocked(upsertBody).mockClear();
     vi.mocked(voiceFromDisplays).mockResolvedValue(null);
     await resolveNpc(woman, "enUS");
-    expect(vi.mocked(upsertSex).mock.calls.map(([row]) => row.sex)).toEqual([3]);
+    expect(vi.mocked(upsertBody).mock.calls.map(([row]) => row.sex)).toEqual([3]);
+  });
+
+  const npcDwarf = { ...corpusGuard, npcId: 15906, race: "dwarf", gender: "male", flavor: "standard" };
+  const gnomeMan = { ...observed, npcId: 15906, sex: 2, modelFileId: 119159 };
+
+  it("splits an NPC drawn as another race of its own sex", async () => {
+    vi.mocked(getBodies).mockResolvedValueOnce([]);
+    vi.mocked(upsertBody).mockClear();
+    expect(await splitByBody(gnomeMan, npcDwarf)).toBe(true);
+    expect(vi.mocked(upsertBody).mock.calls.map(([row]) => [row.race, row.sex])).toEqual([
+      ["dwarf", 2],
+      ["gnome", 2],
+    ]);
+  });
+
+  it("does not split on a model it cannot read, when the sex matches", async () => {
+    vi.mocked(upsertBody).mockClear();
+    expect(await splitByBody({ ...gnomeMan, modelFileId: 1 }, npcDwarf)).toBe(false);
+    expect(upsertBody).not.toHaveBeenCalled();
+  });
+
+  it("answers a body seen on an NPC split already, once", async () => {
+    vi.mocked(getBodies).mockResolvedValueOnce([
+      { npcKind: "creature", npcId: 15906, race: "dwarf", sex: 2, gender: "male" } as never,
+      { npcKind: "creature", npcId: 15906, race: "gnome", sex: 2, gender: "male" } as never,
+    ]);
+    vi.mocked(upsertBody).mockClear();
+    expect(await splitByBody(gnomeMan, npcDwarf)).toBe(true);
+    expect(upsertBody).not.toHaveBeenCalled();
+  });
+
+  it("splits an NPC whose one body row is the body seen, one row being no split", async () => {
+    vi.mocked(getBodies).mockResolvedValueOnce([
+      { npcKind: "creature", npcId: 15906, race: "gnome", sex: 2, gender: "male" } as never,
+    ]);
+    vi.mocked(upsertBody).mockClear();
+    expect(await splitByBody(gnomeMan, npcDwarf)).toBe(true);
+    expect(vi.mocked(upsertBody).mock.calls.map(([row]) => [row.race, row.sex])).toEqual([
+      ["dwarf", 2],
+      ["gnome", 2],
+    ]);
+  });
+
+  it("leaves an NPC whose one body row is its own body unsplit, seen as that body", async () => {
+    vi.mocked(getBodies).mockResolvedValueOnce([
+      { npcKind: "creature", npcId: 15906, race: "dwarf", sex: 2, gender: "male" } as never,
+    ]);
+    vi.mocked(upsertBody).mockClear();
+    expect(await splitByBody({ ...gnomeMan, modelFileId: 118355 }, npcDwarf)).toBe(false);
+    expect(upsertBody).not.toHaveBeenCalled();
+  });
+
+  it("stores a race the roster has no voice for as a guess, unconfirmed", async () => {
+    vi.mocked(getBodies).mockResolvedValueOnce([]);
+    vi.mocked(upsertBody).mockClear();
+    // 1793470 is a thinhuman man's model: a race in the model map that no voice reads.
+    await splitByBody({ ...gnomeMan, modelFileId: 1793470 }, { ...npcDwarf, race: "human" });
+    const seen = vi.mocked(upsertBody).mock.calls.at(-1)![0];
+    expect(seen).toMatchObject({ race: "thinhuman", sex: 2, provenance: "client", confirmed: false });
+  });
+
+  it("answers its own body on an NPC split without it", async () => {
+    vi.mocked(getBodies).mockResolvedValueOnce([
+      { npcKind: "creature", npcId: 15906, race: "gnome", sex: 2, gender: "male" } as never,
+      { npcKind: "creature", npcId: 15906, race: "gnome", sex: 3, gender: "female" } as never,
+    ]);
+    vi.mocked(upsertBody).mockClear();
+    expect(await splitByBody({ ...gnomeMan, modelFileId: 118355 }, npcDwarf)).toBe(true);
+    expect(vi.mocked(upsertBody).mock.calls.map(([row]) => [row.race, row.sex])).toEqual([["dwarf", 2]]);
+  });
+
+  it("takes no flavor from displays of another race than the body seen", async () => {
+    vi.mocked(getBodies).mockResolvedValueOnce([]);
+    vi.mocked(upsertBody).mockClear();
+    vi.mocked(defaultFlavorFor).mockResolvedValue("standard");
+    vi.mocked(voiceFromDisplays).mockResolvedValue({ exact: false, race: "gnome", gender: "female", flavors: ["gnomish"] });
+    // An unreadable model: the body seen keeps the NPC's dwarf race, whatever the displays say.
+    await splitByBody({ ...gnomeMan, sex: 3, modelFileId: 1, displayIds: [1] }, npcDwarf);
+    expect(vi.mocked(upsertBody).mock.calls.at(-1)![0]).toMatchObject({ race: "dwarf", sex: 3, flavor: "standard" });
   });
 });

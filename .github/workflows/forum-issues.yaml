@@ -1,0 +1,48 @@
+name: Discord issue closed
+
+# Brann, the Discord bot (apps/brann), files each post in the forum #bugs-forever-era and each
+# message a moderator marks with 🐛 as a GitHub issue the moment it appears. Discord cannot see an
+# issue close, so this tells the post or message instead, and tags a post Fixed or Not planned
+# (scripts/lib/forum-issues.mjs).
+on:
+  issues:
+    types: [closed]
+
+permissions:
+  contents: read
+  issues: read
+
+jobs:
+  closed:
+    if: ${{ contains(github.event.issue.labels.*.name, 'from-discord') }}
+    runs-on: ubuntu-latest
+    environment: discord
+    # GitHub keeps one pending run per group, and a waiting report must not be dropped for
+    # another issue's.
+    concurrency:
+      group: forum-issues-${{ github.event.issue.number }}
+      cancel-in-progress: false
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          sparse-checkout: |
+            publishers
+            scripts/lib
+            pipelines/lib
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 24
+          package-manager-cache: false
+
+      - name: Tell the post or message its issue closed
+        env:
+          DISCORD_BOT_TOKEN: ${{ secrets.DISCORD_BOT_TOKEN }}
+          GITHUB_TOKEN: ${{ github.token }}
+          ISSUE: ${{ github.event.issue.number }}
+        run: |
+          if [ -z "$DISCORD_BOT_TOKEN" ]; then
+            echo "::warning::DISCORD_BOT_TOKEN is not set; the post is not told"
+            exit 0
+          fi
+          node scripts/lib/forum-issues.mjs closed "$ISSUE"

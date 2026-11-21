@@ -9,7 +9,8 @@ import { afterAll, afterEach, beforeEach, describe, expect, it } from "vitest";
 import { closeDb, db } from "@/lib/db";
 
 import {
-  getResolution, getResolutionsById, getSexes, listResolutions, listSexes, PROVENANCES, unsplit, upsertResolution, upsertSex,
+  deleteBody, getBodies, getResolution, getResolutionsById, listBodies, listResolutions, PROVENANCES, unsplit, upsertBody,
+  upsertResolution,
 } from "./store";
 
 // A bucket no other run shares: these ids are the primary key, so a fixed one would collide
@@ -286,14 +287,15 @@ describe("npc invariants", () => {
   });
 });
 
-describe("upsertSex", () => {
-  function sex(overrides: Record<string, unknown> = {}) {
+describe("upsertBody", () => {
+  function body(overrides: Record<string, unknown> = {}) {
     return {
       npcKind: "creature" as const,
       npcId,
+      race: "gnome",
       sex: 3 as const,
-      race: "human",
-      flavor: "official",
+      weight: null,
+      flavor: null,
       provenance: "corpus" as const,
       confirmed: true,
       doubtful: false,
@@ -303,30 +305,54 @@ describe("upsertSex", () => {
     };
   }
 
-  it("answers a sex of an NPC, gendered by the sex", async () => {
-    await upsertResolution(resolution({ race: "human", flavor: "official" }));
-    const stored = await upsertSex(sex());
-    expect(stored).toMatchObject({ sex: 3, gender: "female", race: "human", flavor: "official" });
-    expect((await listSexes()).get(`creature:${npcId}`)?.map((row) => row.sex)).toEqual([3]);
+  it("answers a body of an NPC, gendered by the sex", async () => {
+    await upsertResolution(resolution({ race: "dwarf", gender: "male" }));
+    const stored = await upsertBody(body());
+    expect(stored).toMatchObject({ race: "gnome", sex: 3, gender: "female" });
+    expect((await listBodies()).get(`creature:${npcId}`)?.map((row) => [row.race, row.sex])).toEqual([["gnome", 3]]);
   });
 
-  it("refuses a sex of an NPC nobody answered for", async () => {
-    await expect(upsertSex(sex())).rejects.toThrow();
+  it("keeps two races of one sex apart", async () => {
+    await upsertResolution(resolution({ race: "dwarf", gender: "male" }));
+    await upsertBody(body({ race: "dwarf", sex: 2, weight: 25 }));
+    await upsertBody(body({ race: "gnome", sex: 2, weight: 25 }));
+    expect((await getBodies("creature", npcId)).map((row) => row.race)).toEqual(["dwarf", "gnome"]);
   });
 
-  it("keeps a moderator's answer over a client's", async () => {
-    await upsertResolution(resolution());
-    await upsertSex(sex({ provenance: "moderator", flavor: "warrior" }));
-    const stored = await upsertSex(sex({ provenance: "client", confirmed: false, flavor: "standard" }));
-    expect(stored.flavor).toBe("warrior");
+  it("orders a sex's bodies by weight, the unweighted last", async () => {
+    await upsertResolution(resolution({ race: "dwarf", gender: "male" }));
+    await upsertBody(body({ race: "gnome", sex: 2, weight: null }));
+    await upsertBody(body({ race: "dwarf", sex: 2, weight: 10 }));
+    expect((await getBodies("creature", npcId)).map((row) => row.race)).toEqual(["dwarf", "gnome"]);
   });
 
-  it("goes with the NPC, and unsplit takes every sex away", async () => {
-    await upsertResolution(resolution());
-    await upsertSex(sex({ sex: 2 }));
-    await upsertSex(sex());
-    expect((await getSexes("creature", npcId)).map((row) => row.gender)).toEqual(["male", "female"]);
+  it("refuses a body of an NPC nobody answered for", async () => {
+    await expect(upsertBody(body())).rejects.toThrow();
+  });
+
+  it("keeps a moderator's body over a client's guess", async () => {
+    await upsertResolution(resolution({ race: "dwarf", gender: "male" }));
+    await upsertBody(body({ provenance: "moderator", flavor: "warrior" }));
+    const stored = await upsertBody(body({ provenance: "client", confirmed: false, flavor: "standard" }));
+    expect(stored).toMatchObject({ provenance: "moderator", flavor: "warrior" });
+  });
+
+  it("deleting the second-last body unsplits the NPC", async () => {
+    await upsertResolution(resolution({ race: "dwarf", gender: "male" }));
+    await upsertBody(body({ race: "dwarf", sex: 2 }));
+    await upsertBody(body({ race: "gnome", sex: 2 }));
+    await upsertBody(body({ race: "gnome", sex: 3 }));
+    await deleteBody("creature", npcId, "gnome", 3);
+    expect((await getBodies("creature", npcId)).length).toBe(2);
+    await deleteBody("creature", npcId, "gnome", 2);
+    expect(await getBodies("creature", npcId)).toEqual([]);
+  });
+
+  it("goes with the NPC, and unsplit takes every body away", async () => {
+    await upsertResolution(resolution({ race: "dwarf", gender: "male" }));
+    await upsertBody(body({ race: "dwarf", sex: 2 }));
+    await upsertBody(body());
     await unsplit("creature", npcId);
-    expect(await getSexes("creature", npcId)).toEqual([]);
+    expect(await getBodies("creature", npcId)).toEqual([]);
   });
 });

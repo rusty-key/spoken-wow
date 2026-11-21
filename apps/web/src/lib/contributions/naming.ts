@@ -5,13 +5,14 @@
  *
  * THE TWO MUST AGREE EXACTLY -- naming.py's own docstring says a filename off by one
  * character addresses a file the addon can never find, and fails silently. The same drift
- * hazard AGENTS.md documents for addons/Spoken_Books/Checksum.lua: two independent
+ * hazard AGENTS.md documents for addons/Spoken_Readables/Checksum.lua: two independent
  * implementations of one frozen format, pinned together by tests on both sides rather than
  * shared code, because one is Python and the other TypeScript.
  *
  * naming.py's `:{m|f}` suffix exists for a text that branches on the player's gender (`$G`).
  * Each language decides it from its own text (playerGenderForms), so one moment can be a
  * plain line in one language and two in another.
+ * naming.py's `:w{n}` is another wording of a moment, a line of its own.
  */
 import { createHash } from "node:crypto";
 
@@ -68,6 +69,25 @@ export function playerGenderForms(
  */
 export function answersQuestMomentSql(column: string, moment: string): string {
   return `${column} = any(array[${moment}, ${moment} || ':m', ${moment} || ':f'])`;
+}
+
+/** naming.py's quest_wording_line_id: another wording of a moment, n from 1. */
+export function questWordingLineId(questId: number, event: QuestEvent, n: number): string {
+  return `${questLineId(questId, event)}:w${n}`;
+}
+
+/** naming.py's quest_wording_file_name, before any player-gender prefix. */
+export function questWordingFileName(questId: number, event: QuestEvent, n: number): string {
+  return `${questFileName(questId, event)}-w${n}`;
+}
+
+/**
+ * Every line of a quest moment (`q:{questId}:{event}`) in SQL, each wording in any player-gender
+ * form: a quest line's id is its quest and event, which the row carries as `questId` and
+ * `source`, and the quest id is what quest_line is indexed on.
+ */
+export function wordingsOfMomentSql(questIdColumn: string, sourceColumn: string, moment: string): string {
+  return `${questIdColumn} = split_part(${moment}, ':', 2)::int and ${sourceColumn} = split_part(${moment}, ':', 3)`;
 }
 
 export function questFileName(questId: number, event: QuestEvent): string {

@@ -19,7 +19,10 @@ import { BASE_LANG, type Lang } from "@/lib/lang";
 import { speakPlayerTokens } from "@/lib/player-words";
 
 import { FALLBACK, fromFileShape, type GenerationConfig } from "./config";
+import { directionFor } from "./narration";
 import { applyPronunciation } from "./pronunciation";
+import type { Provider } from "./providers";
+import { SHAPE } from "./speakers/shape";
 
 export function generationPath(dir: string = VOICE_CONFIG_DIR): string {
   return path.join(dir, "generation.json");
@@ -103,4 +106,21 @@ export function sentText(
   playerGender: "m" | "f" | null,
 ): string {
   return committedPronunciation(speakPlayerTokens(text, lang, playerGender), lang);
+}
+
+/**
+ * A quest line speaking `text` as `provider` is sent it: sentText, then the provider's shaping
+ * with the line's voice's direction and `npc`, its file's NPC direction (npcDirection).
+ * Regenerating hashes this into the take, and the staleness check and an override's spoken
+ * hashes must arrive at the identical string.
+ */
+export function shapedText(
+  text: string,
+  lang: Lang,
+  line: { voice: string; playerGender: "m" | "f" | null },
+  provider: Provider,
+  raceTags: Record<string, string>,
+  npc?: string,
+): string {
+  return SHAPE[provider](sentText(text, lang, line.playerGender), directionFor(line.voice, raceTags), raceTags, npc);
 }

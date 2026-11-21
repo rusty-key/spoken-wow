@@ -9,11 +9,11 @@ local H = require("queue_helpers")
 local Expect, Failures = H.Expecter(stub.print)
 local SPOKEN = here .. "/../../addons/Spoken/"
 local QUESTS = here .. "/../../addons/Spoken_Quests/"
-local BOOKS = here .. "/../../addons/Spoken_Books/"
-local ZONES = here .. "/../../addons/Spoken_Zones/"
+local READABLES = here .. "/../../addons/Spoken_Readables/"
+local PLACES = here .. "/../../addons/Spoken_Places/"
 _G.UISpecialFrames = _G.UISpecialFrames or {}
 
-stub.SetClient("11509"); stub.ResetSound(); stub.ResetTimers(); stub.ResetFrames()
+stub.SetClient("16001"); stub.ResetSound(); stub.ResetTimers(); stub.ResetFrames()
 stub.settingsCategories = {}; stub.ldbObjects = {}; stub.dbIcons = {}
 stub.world.questID = 0; stub.ShowPanel(nil)
 -- Waypoint's art, as on a client that can nine-slice with the player loaded.
@@ -24,53 +24,57 @@ _G.C_AddOns = { IsAddOnLoaded = function() return true end }
 local VO = stub.LoadQuests(QUESTS, SPOKEN)
 VO.Addon:OnInitialize()
 local env = _G.SpokenEnv
-env.Sources:Register("books", { title = "Spoken Books", addon = "Spoken_Books", order = 2,
-    packs = function() return { "SpokenBooksAudio" } end })
-env.Sources:Register("zones", { title = "Spoken Zones", addon = "Spoken_Zones", order = 3,
-    packs = function() return { "SpokenZonesAudio" } end })
+env.Sources:Register("readables", { title = "Spoken Readables", addon = "Spoken_Readables", order = 2,
+    packs = function() return { "SpokenReadablesAudio" } end })
+env.Sources:Register("places", { title = "Spoken Places", addon = "Spoken_Places", order = 3,
+    packs = function() return { "SpokenPlacesAudio" } end })
+env.Sources:Register("bosses", { title = "Spoken Bosses", addon = "Spoken_Bosses", order = 5,
+    packs = function() return { "SpokenBossesAudio" } end })
 _G.Spoken:RegisterOptionalAction("report", "Report")
 env.Addon:Enable()
 local QuestsPanel = stub.LoadQuestsPanel(QUESTS, VO)
 QuestsPanel:Setup()
+VO.GossipSettingsPanel:Setup()
 local B = {}
 for _, file in ipairs({ "Locale/enUS", "Checksum", "Core", "Language", "Reader", "Audio", "Playlist",
-    "UI/Layout", "UI/Options", "Events", "Commands" }) do
-    assert(loadfile(BOOKS .. file .. ".lua"))("Spoken_Books", B)
+    "UI/Options", "Events", "Commands" }) do
+    assert(loadfile(READABLES .. file .. ".lua"))("Spoken_Readables", B)
 end
 B:InitDB(); B:SetupOptions()
 local Z = H.NewZoneLore()
-for _, file in ipairs({ "UI/Layout", "UI/Options" }) do
-    assert(loadfile(ZONES .. file .. ".lua"))("Spoken_Zones", Z)
+for _, file in ipairs({ "UI/Options" }) do
+    assert(loadfile(PLACES .. file .. ".lua"))("Spoken_Places", Z)
 end
 Z:SetupOptions()
--- Azeroth's Compendium, with the two tabs Spoken's page shows an Unlock switch for: stand-ins
--- that keep the switch, as Places' and Writings' real tabs keep it in their settings.
-assert(loadfile(ZONES .. "UI/Compendium.lua"))("Spoken_Zones", Z)
+-- Azeroth's Compendium, with the three tabs Spoken's page shows an Unlock switch for: stand-ins
+-- that keep the switch, as the real tabs keep it in their settings.
+dofile(here .. "/../../addons/Spoken/UI/Compendium.lua")
 local unlocked = {}
-for _, key in ipairs({ "places", "readables" }) do
-    SpokenCompendium:Register(key, { label = key, order = 1, build = function() end, open = function() end,
-        unlock = { get = function() return unlocked[key] == true end, set = function(v) unlocked[key] = v end } })
+for _, key in ipairs({ "places", "readables", "quests", "bosses" }) do
+    local tab = { label = key, order = 1, build = function() end, open = function() end,
+        unlock = { get = function() return unlocked[key] == true end, set = function(v) unlocked[key] = v end } }
+    SpokenCompendium:Register(key, tab)
 end
 -- The Spoken_Developer module and its page.
 local Dev = stub.LoadDeveloper(here .. "/../../addons/Spoken_Developer/")
 Dev:SetupOptions()
 
 
--- What the test's stand-ins lack and the real addons have: the zones addon here is a stand-in
+-- What the test's stand-ins lack and the real addons have: the Places addon here is a stand-in
 -- (queue_helpers.NewZoneLore) without its playback and language files, so the methods its page
--- calls are recorded rather than run -- every one of them is defined in SpokenZones itself.
+-- calls are recorded rather than run -- every one of them is defined in SpokenPlaces itself.
 local called = {}
 for _, method in ipairs({ "StopLore", "NotifyAudioChanged", "ShowCopyLink", "RefreshLoreWindow",
     "ApplyPanelOptions", "ResetOptions", "PlayTestLine", "ShowDiagnostics", "ToggleLoreWindow",
     "ForgetAutoplayHistory" }) do
     if not Z[method] then Z[method] = function() called[method] = (called[method] or 0) + 1 end end
 end
--- Stored as the real one stores it (SpokenZonesSettings.language), and read back the same way.
+-- Stored as the real one stores it (SpokenPlacesSettings.language), and read back the same way.
 local zonesLanguage
 Z.SetLanguage = function(_, code) zonesLanguage = code; return true end
 Z.GetLanguagePreference = function() return zonesLanguage end
--- The books addon's own copy dialog.
-assert(loadfile(BOOKS .. "UI/CopyLink.lua"))("Spoken_Books", B)
+-- The Readables addon's own copy dialog.
+assert(loadfile(READABLES .. "UI/CopyLink.lua"))("Spoken_Readables", B)
 -- The stub client measures no text; the subtitle's sample needs a height to lay out.
 do
     local build = env.Subtitle.Build
@@ -85,8 +89,12 @@ local pages = { { name = "Spoken", layout = _G.SpokenOptionsPanel.layout } }
 for _, page in ipairs(env.Options.pages or {}) do
     table.insert(pages, { name = page.name, layout = page.layout })
 end
--- The Developer page comes from the Spoken_Developer module.
-Expect("Spoken, the three modules' pages and the Developer page are all here", #pages, 5)
+-- The Developer page comes from the Spoken_Developer module; Contribute's is Spoken's own.
+Expect("Spoken, the four parts' pages, Contribute and the Developer page are all here", #pages, 7)
+local names = {}
+for _, page in ipairs(pages) do table.insert(names, page.name) end
+Expect("the parts' pages are listed Quests, Gossip, Places, Readables, then Developer and Contribute & Report",
+    table.concat(names, ", ", 2, 7), "Quests, Gossip, Places, Readables, Developer, Contribute & Report")
 
 local function Controls(layout)
     local list = {}
@@ -189,8 +197,8 @@ stub.print(string.format("settings_audit: %d checkboxes, %d sliders, %d menus, %
     worked.checkbox, worked.slider, worked.menu, worked.button))
 
 ---------------------------------------------------------------- a module switched off is off
-local PAGE_FOR = { quests = 2, books = 3, zones = 4 }
-for _, key in ipairs({ "quests", "books", "zones" }) do
+local PAGE_FOR = { quests = 2, gossip = 3, places = 4, readables = 5 }
+for _, key in ipairs({ "quests", "gossip", "places", "readables" }) do
     local page = pages[PAGE_FOR[key]]
     _G.Spoken:SetPartOn(key, false)
     env.Options:UpdateRows()
@@ -198,20 +206,73 @@ for _, key in ipairs({ "quests", "books", "zones" }) do
     local live = {}
     for _, control in ipairs(Controls(page.layout)) do
         local name = Name(control)
-        if not control.layoutReason and name ~= "Enable Module" then table.insert(live, name) end
+        if not control.layoutReason and name ~= "Enable" then table.insert(live, name) end
     end
-    Expect(page.name .. ", switched off, greys out everything on it but its switch", table.concat(live, ", "), "")
+    -- Read Automatically and NPC Voice Before Reading cover Gossip's window too: they stay live
+    -- on the Quests page while Gossip is on. Stop When Window Closes is quest-only.
+    local shared = key == "quests" and "Read Automatically, NPC Voice Before Reading" or ""
+    Expect(page.name .. ", switched off, greys out everything on it but its switch", table.concat(live, ", "), shared)
     _G.Spoken:SetPartOn(key, true)
     env.Options:UpdateRows()
     page.layout:Refresh()
 end
 
+---------------------------------------------------------------- the Developer page
+-- Every module's debug switch under one Chat Messages title, every testing tool under Testing,
+-- each in the modules' order; not a section per module.
+do
+    local sections, rows = {}, {}
+    for _, item in ipairs(pages[6].layout.items) do
+        if item.kind == "section" and item.text then
+            table.insert(sections, item.text)
+            local names = {}
+            for _, row in ipairs(item.rows) do
+                local label = row.control.layoutLabel and row.control.layoutLabel.text
+                if type(label) == "string" then table.insert(names, label) end
+            end
+            rows[item.text] = table.concat(names, ", ")
+        end
+    end
+    Expect("the Developer page's sections", table.concat(sections, "|"), table.concat({ Dev.L.OPT_LOG_SECTION,
+        Dev.L.OPT_CHAT_SECTION, Dev.L.OPT_TESTING_SECTION }, "|"))
+    Expect("...Chat Messages holding each module's debug switch, in the modules' order",
+        rows[Dev.L.OPT_CHAT_SECTION], VO.L.OPT_DEBUG .. ", " .. Z.L.OPT_DEV_DEBUG .. ", " .. B.L.OPT_DEV_DEBUG)
+    Expect("...Testing each module's tools", rows[Dev.L.OPT_TESTING_SECTION],
+        VO.L.OPT_DEV_MOCK_MISSING .. ", " .. Z.L.OPT_DEV_PREVIEW)
+end
+
 ---------------------------------------------------------------- Reset All and the Unlock switches
+local unlocks = {}
+for _, control in ipairs(Controls(pages[1].layout)) do
+    local name = Name(control)
+    if name:find("^Unlock ") then table.insert(unlocks, name) end
+end
+Expect("Spoken's page lists the Unlock switches in the order of the Compendium's tabs: Quests, Places, Readables, Bosses",
+    table.concat(unlocks, "|"), "Unlock Unstarted Quests|Unlock Undiscovered Places|Unlock Unfound Readables|Unlock Unfound Bosses")
+
+---------------------------------------------------------------- the Compendium's Text Size
+-- On Spoken's page, after Open Azeroth's Compendium, for every tab; no longer on the Places page.
+local afterOpen
+local controls = Controls(pages[1].layout)
+for index, control in ipairs(controls) do
+    if Name(control) == env.L.OPT_COMPENDIUM_OPEN and controls[index + 1] then afterOpen = Name(controls[index + 1]) end
+end
+Expect("Spoken's Compendium section has Text Size after its Open button", afterOpen, env.L.OPT_COMPENDIUM_FONT_SIZE)
+local onPlaces = {}
+for _, control in ipairs(Controls(pages[4].layout)) do
+    if Name(control) == env.L.OPT_COMPENDIUM_FONT_SIZE then table.insert(onPlaces, Name(control)) end
+end
+Expect("...and the Places page has none", table.concat(onPlaces, "|"), "")
+
 -- Kept with each part's settings, so Spoken's profile reset would not reach them.
-unlocked.places, unlocked.readables = true, true
+unlocked.places, unlocked.readables, unlocked.quests, unlocked.bosses = true, true, true, true
+-- The Text Size the Places page had, which Spoken's reads until it is set there.
+_G.SpokenPlacesSettings = { fontSize = 15 }
 local reset = _G.SpokenOptionsPanel.layout.defaults
 reset.scripts.OnClick(reset)
 stub.popups[#stub.popups].dialog.OnAccept()
-Expect("Reset All turns both Unlock switches off", (unlocked.places or unlocked.readables) and true or false, false)
+Expect("Reset All turns every Unlock switch off", (unlocked.places or unlocked.readables or unlocked.quests or unlocked.bosses) and true or false, false)
+Expect("...and puts the Compendium's Text Size back to 12, not to the Places page's", _G.Spoken:CompendiumFontSize(), 12)
+_G.SpokenPlacesSettings = nil
 
 os.exit(Failures() == 0 and 0 or 1)

@@ -9,7 +9,8 @@ The player shows a round native still portrait, the speaker name, the narration
 title and its words, with the progress line along their foot. Stop or Replay,
 Skip and Report are round buttons in the header, as in the DialogueUI window
 and the subtitles. Its Background setting draws it on parchment, the
-default, with dark words, or on the dark rock, with light words. The
+default, with dark words, or on the dark rock, with light words; in EllesmereUI's look it is dark
+whichever is chosen and the setting is hidden. The
 parchment is a band of the spellbook's page shipped with Spoken
 (`Textures/MinimalParchment.tga`); it, the rock and the metal trim are WoW
 artwork. The window fades in and out, and from one line to the next.
@@ -17,8 +18,7 @@ artwork. The window fades in and out, and from one line to the next.
 Nothing is installed separately: it is part of the player's zip. Choose it as
 the narrator style on Spoken's settings page, in the welcome window, or with
 `/sp player minimal`; `/sp player classic` gives the original layout (Large
-Window), `subtitle` the subtitles and `none` the voice alone. The 1.12, 2.4.3
-and 3.3.5 clients have no Small Window.
+Window), `subtitle` the subtitles and `none` the voice alone.
 
 In-game validation used the 2.0.4-based layout in the modern Classic beta
 client; the port onto 2.1.0 is checked with the offline suites. Other modern
@@ -31,13 +31,15 @@ flavors have not been visually verified.
 | Stop or Replay button | Stop the line, or Replay it from the beginning; "• (Stopped)" follows the title meanwhile |
 | Skip button | Skip the line |
 | Report button | Report a problem with the line, where its module offers it |
-| "• +N" after the title | How many lines wait behind this one |
-| Right-click portrait, speaker, title or panel | Playback menu and source actions |
+| "• +N" after the title | How many lines wait behind this one; point at it for the list |
+| Right-click portrait, speaker, title or panel outside the words | Playback menu and source actions |
+| Right-click the words | Skip the line; with Shift, the playback menu |
 | Drag speaker name or panel | Move the unlocked player |
 | Hover collapsed player | Reveal the resize grip |
+| Ctrl and the mouse wheel | Window Size; with Shift too, Text Size (not while locked) |
 | `/sp options` | Narrator style, scale, lock and the window's other settings |
 | `/sp player minimal` | Switch to this layout (`classic`, `subtitle` or `none` for the others) |
-| `/sp reset` | Reset the active layout's position and width |
+| `/sp reset` | Reset every window's position, and the Small Window's width |
 | `/sp diagnostics` | Inspect playback, UI state and captured callback errors |
 
 The hidden-portrait and optional-action settings remain effective in this

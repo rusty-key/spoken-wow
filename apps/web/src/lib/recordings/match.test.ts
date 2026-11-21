@@ -7,9 +7,9 @@ describe("recordingStem", () => {
     expect(recordingStem("quests", "quests/33-accept.mp3")).toBe("33-accept");
     expect(recordingStem("quests", "quests/m-33-accept.mp3")).toBe("m-33-accept");
     expect(recordingStem("quests", "gossip/31abcdef.mp3")).toBe("31abcdef");
-    expect(recordingStem("zones", "1411/razor-hill")).toBe("1411-razor-hill");
-    expect(recordingStem("zones", "947/zone")).toBe("947-zone");
-    expect(recordingStem("books", "1381")).toBe("1381");
+    expect(recordingStem("places", "1411/razor-hill")).toBe("1411-razor-hill");
+    expect(recordingStem("places", "947/zone")).toBe("947-zone");
+    expect(recordingStem("readables", "1381")).toBe("1381");
   });
 });
 
@@ -23,17 +23,17 @@ describe("parseUploadName", () => {
 });
 
 describe("matchUploads", () => {
-  const zones = ["1411/razor-hill", "1411/zone", "947/zone"];
+  const places = ["1411/razor-hill", "1411/zone", "947/zone"];
 
   it("pairs each name with its file", () => {
-    expect(matchUploads("zones", ["1411-razor-hill.ogg", "947-zone.mp3"], zones)).toEqual([
+    expect(matchUploads("places", ["1411-razor-hill.ogg", "947-zone.mp3"], places)).toEqual([
       { name: "1411-razor-hill.ogg", file: "1411/razor-hill", format: "ogg" },
       { name: "947-zone.mp3", file: "947/zone", format: "mp3" },
     ]);
   });
 
   it("says why a name lands nowhere", () => {
-    expect(matchUploads("zones", ["zone.mp3", "1411-razor-hill.wav"], zones)).toEqual([
+    expect(matchUploads("places", ["zone.mp3", "1411-razor-hill.wav"], places)).toEqual([
       { name: "zone.mp3", file: null, reason: "unmatched" },
       { name: "1411-razor-hill.wav", file: null, reason: "format" },
     ]);
@@ -47,7 +47,7 @@ describe("matchUploads", () => {
   });
 
   it("refuses both of two takes of one file, since which ships is the actor's call", () => {
-    expect(matchUploads("books", ["1381.mp3", "1381.ogg", "1382.mp3"], ["1381", "1382"])).toEqual([
+    expect(matchUploads("readables", ["1381.mp3", "1381.ogg", "1382.mp3"], ["1381", "1382"])).toEqual([
       { name: "1381.mp3", file: null, reason: "duplicate" },
       { name: "1381.ogg", file: null, reason: "duplicate" },
       { name: "1382.mp3", file: "1382", format: "mp3" },

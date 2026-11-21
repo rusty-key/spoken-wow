@@ -1,10 +1,9 @@
 setfenv(1, SpokenEnv)
 
 -- Turns the game's other sounds down while a line is spoken, and back up once the queue
--- falls quiet. Ported from LoreTeller Forever's ducking, with three things it lacked: each
--- channel has a level of its own, the channel the voice plays on is never lowered, and a
--- volume the player changes in the game's options mid-line is kept rather than overwritten
--- when the line ends.
+-- falls quiet. Each channel has a level of its own, the channel the voice plays on is never
+-- lowered, and a volume the player changes in the game's options mid-line is kept rather than
+-- overwritten when the line ends.
 --
 -- The volumes are client CVars, saved with the game's settings, so every value this file
 -- lowers is written down first: at logout it is put back directly, and if the session ended
@@ -25,10 +24,8 @@ end
 local function CVar(channel) return "Sound_" .. channel .. "Volume" end
 local function Read(channel) return tonumber(GetCVar(CVar(channel))) or 1 end
 
---- Not on the legacy clients: 2.4.3 and 3.3.5 speak through the music channel itself, and
---- 1.12 names its volumes differently.
 function OtherSounds:IsAvailable()
-    return not Version.IsAnyLegacy and Config() ~= nil
+    return Config() ~= nil
 end
 
 -- What each lowered channel goes back to, and what this file last set it to. A channel whose
@@ -61,11 +58,15 @@ local function Set(channel, value)
     OtherSounds.applied[channel] = Read(channel)
 end
 
-function OtherSounds:StopFade()
-    if self.fadeTimer then
-        Addon:CancelTimer(self.fadeTimer)
-        self.fadeTimer = nil
+local function CancelTimer(owner, field)
+    if owner[field] then
+        Addon:CancelTimer(owner[field])
+        owner[field] = nil
     end
+end
+
+function OtherSounds:StopFade()
+    CancelTimer(self, "fadeTimer")
 end
 
 --- Slide every channel that has an original towards `targets`, then call `done`.
@@ -124,10 +125,7 @@ end
 
 function OtherSounds:Restore(immediately)
     if not self.lowered then return end
-    if self.settleTimer then
-        Addon:CancelTimer(self.settleTimer)
-        self.settleTimer = nil
-    end
+    CancelTimer(self, "settleTimer")
     self.restoring = true
     local function Finished()
         self.lowered, self.voice, self.restoring = false, nil, false
@@ -144,17 +142,14 @@ function OtherSounds:Restore(immediately)
     self:FadeTo(self.original, Finished)
 end
 
---- Lowered while something is actually speaking, so a pause or a line held for combat lets
---- the game be heard again. Called on every queue change.
+--- Lowered while something is actually speaking, so a pause, a line held for combat or a line of
+--- words with no voice lets the game be heard. Called on every queue change.
 function OtherSounds:Sync()
     local cfg = Config()
     if not cfg then return end
     local head = SoundQueue:GetCurrentSound()
-    if cfg.Enabled and head and SoundQueue:IsPlaying() then
-        if self.settleTimer then
-            Addon:CancelTimer(self.settleTimer)
-            self.settleTimer = nil
-        end
+    if cfg.Enabled and head and not head.textOnly and SoundQueue:IsPlaying() then
+        CancelTimer(self, "settleTimer")
         local voice = head.source and head.source:GetChannel() or Sources:PlayerChannel()
         -- Also when the volumes are on their way back up: a line that starts then turns
         -- them down again from wherever the fade had reached.
@@ -200,7 +195,6 @@ local events = CreateFrame("Frame")
 events:RegisterEvent("PLAYER_LOGIN")
 events:RegisterEvent("PLAYER_LOGOUT")
 events:SetScript("OnEvent", function(_, event)
-    event = event or _G.event
     if event == "PLAYER_LOGOUT" then
         OtherSounds:Restore(true)
     elseif Addon.db and OtherSounds:IsAvailable() then

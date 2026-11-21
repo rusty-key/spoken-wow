@@ -1,7 +1,11 @@
 import os
+import shutil
+import subprocess
 
-from tts_cli.build import (MODULE_LUA, build_tables, escape_lua_string, module_toc,
-                           prune_quest_id_table, quest_search_text)
+import pytest
+
+from tts_cli.build import (module_lua, build_tables, escape_lua_string, module_toc,
+                           prune_quest_id_table, quest_search_text, write_lua_table)
 
 CORPUS = {
     "lines": [
@@ -16,7 +20,7 @@ CORPUS = {
         {"lineId": "q:7:progress", "source": "progress", "questId": 7,
          "questTitle": "Growling Gut", "npcId": 288, "npcName": "Jitters",
          "npcType": "creature", "fileName": "7-progress",
-         "originalText": "Not yet.", "generatable": False},
+         "originalText": "Not yet.", "generatable": True},
         {"lineId": "g:abc123", "source": "gossip", "questId": None, "questTitle": None,
          "npcId": 68, "npcName": "Stormwind City Guard", "npcType": "creature",
          "fileName": "abc123", "originalText": 'Move along, "citizen".',
@@ -96,9 +100,9 @@ def test_quest_id_lookup_is_keyed_by_source_then_title():
     assert table["complete"]["Growling Gut"] == 5
 
 
-def test_quest_id_lookup_omits_progress():
-    """Progress text is never voiced, so an entry for it would resolve to silence."""
-    assert "progress" not in _tables()["quest_id_lookups"]
+def test_quest_id_lookup_includes_progress():
+    """Progress text is voiced, so the addon can resolve its quest like any other line."""
+    assert "progress" in _tables()["quest_id_lookups"]
 
 
 def test_followup_lookup_maps_speaker_and_broadcast_id_to_the_bare_stem():
@@ -122,7 +126,7 @@ def test_followup_lookup_honours_ignores():
 
 
 def test_module_resolves_followup_sounds_only_where_the_player_knows_the_event():
-    lua = MODULE_LUA.format(module="Mod", extension=".ogg")
+    lua = module_lua("Mod", ".ogg")
     assert ("elseif Enums.SoundEvent.QuestFollowup and event == Enums.SoundEvent.QuestFollowup "
             "then\n        return format([[generated\\sounds\\followup\\%s.ogg]], fileName)") in lua
 
@@ -153,6 +157,40 @@ def test_escaping_matches_what_the_addon_expects():
     assert escape_lua_string('say "hi"\r\nthere') == "say 'hi'  there"
 
 
+# A contributed text is a table key, so a backslash it ends in has to reach the file as a
+# Lua escape: left bare, it escapes the closing quote and the whole file fails to compile.
+HOSTILE = {
+    "creature": {68: {"Greetings, traveler\\": "31ab9c", "a\\]": "b", "it's \"ok\"": "c",
+                      "tab\t9here": "d"}},
+    "gameobject": {},
+}
+
+
+def test_a_backslash_in_a_key_is_written_as_a_lua_escape(tmp_path):
+    path = os.path.join(tmp_path, "generated", "t.lua")
+    write_lua_table(path, "M", "T", HOSTILE)
+    text = open(path, encoding="utf-8").read()
+    assert '["Greetings, traveler\\\\"] = "31ab9c"' in text
+    assert '["a\\\\]"] = "b"' in text
+    assert '["it\'s \\"ok\\""] = "c"' in text
+    assert '["tab\\0099here"] = "d"' in text
+
+
+@pytest.mark.skipif(shutil.which("luajit") is None, reason="needs luajit")
+def test_a_generated_table_with_hostile_keys_loads_in_lua(tmp_path):
+    path = os.path.join(tmp_path, "generated", "t.lua")
+    write_lua_table(path, "M", "T", HOSTILE)
+    probe = os.path.join(tmp_path, "probe.lua")
+    with open(probe, "w", encoding="utf-8") as f:
+        f.write(f'VoiceOver = {{DataModules = {{}}}}\nM = {{}}\ndofile([[{path}]])\n'
+                'assert(M.T.creature[68]["Greetings, traveler\\\\"] == "31ab9c")\n'
+                'assert(M.T.creature[68]["tab\\t9here"] == "d")\n'
+                'print("ok")\n')
+    run = subprocess.run(["luajit", probe], capture_output=True, text=True)
+    assert run.returncode == 0, run.stderr
+    assert run.stdout.strip() == "ok"
+
+
 def test_quest_search_text_is_first_and_last_words():
     words = " ".join(str(i) for i in range(40))
     assert quest_search_text(words) == \
@@ -180,23 +218,36 @@ def test_toc_declares_both_generations_of_the_module_key():
     for suffix, value in (("Version", "1"), ("Priority", "100")):
         assert f"## X-SpokenQuests-DataModule-{suffix}: {value}\n" in toc
         assert f"## X-VoiceOver-DataModule-{suffix}: {value}\n" in toc
-    assert toc.count("-DataModule-Maps: ") == 2
-    # The two generations must agree, or the pack means one thing to each reader.
-    maps = [line.split(": ", 1)[1] for line in toc.splitlines() if "-DataModule-Maps: " in line]
-    assert maps[0] == maps[1]
+    # A map list would be read and never used: every pack loads on every map.
+    assert "-DataModule-Maps" not in toc
 
 
-def test_toc_nests_the_pack_under_the_player():
+def test_toc_carries_extra_keys_after_its_header():
+    # A team's pack names its team, and a language Spoken does not build in its names, in keys
+    # the addon reads from the TOC.
+    toc = module_toc("Mod", ["a.lua"], language="jaJP",
+                     extra=[("X-Spoken-LanguageName", "Japanese"), ("X-Spoken-Team", "stimmen")])
+
+    assert "## X-SpokenQuests-Language: jaJP\n" in toc
+    assert "## X-Spoken-LanguageName: Japanese\n## X-Spoken-Team: stimmen\n" in toc
+    assert toc.index("## X-Spoken-Team: stimmen") < toc.index("generated\\a.lua")
+
+
+def test_toc_without_extra_keys_is_unchanged():
+    assert module_toc("Mod", ["a.lua"], extra=()) == module_toc("Mod", ["a.lua"])
+
+
+def test_toc_nests_the_pack_under_spoken():
     # Group is the one the client reads (11.1.0+), and its value is the main addon's *name*,
     # so it is the folder and not the title. X-Part-Of carries the title for addon managers,
     # and X-Child-Of a folder again. Three keys a rename can silently swap between.
     toc = module_toc("VoiceOverReduxAudio", [])
 
-    # The folder the packs nest under is the addon's, which the rename moved; the pack
-    # folders themselves did not move, so these are the only names here that change.
-    assert "## Group: SpokenQuests\n" in toc
+    # Every addon and pack sits in the one Spoken group. Named after SpokenQuests, itself a
+    # member of that group, the packs showed at the top of the list instead.
+    assert "## Group: Spoken\n" in toc
     assert "## X-Part-Of: Spoken\n" in toc
-    assert "## X-Child-Of: SpokenQuests\n" in toc
+    assert "## X-Child-Of: Spoken_Quests\n" in toc
 
 
 def test_install_refuses_to_replace_without_force(tmp_path):
@@ -268,3 +319,99 @@ def test_a_gendered_twin_keeps_the_entry_its_own_line_still_needs():
 
 def test_ignoring_nothing_leaves_every_table_as_it_was():
     assert build_tables(CORPUS, ()) == build_tables(CORPUS)
+
+
+WORDINGS = {"lines": [
+    {"lineId": "q:20:accept", "source": "accept", "questId": 20, "questTitle": "T",
+     "npcId": 1, "npcName": "Celindra", "npcType": "creature", "fileName": "20-accept",
+     "originalText": "You are the Horde, $c.", "generatable": True},
+    {"lineId": "q:20:accept:w1", "source": "accept", "questId": 20, "questTitle": "T",
+     "npcId": 2, "npcName": "Modera", "npcType": "creature", "fileName": "20-accept-w1",
+     "originalText": "Oh, you are back.", "generatable": True},
+    {"lineId": "q:20:accept:w1~orc-male-standard", "source": "accept", "questId": 20,
+     "questTitle": "T", "npcId": 3, "npcName": "Grunt", "npcType": "creature",
+     "fileName": "20-accept-w1-orc-male-standard", "originalText": "Oh, you are back.",
+     "generatable": True},
+    {"lineId": "q:21:progress", "source": "progress", "questId": 21, "questTitle": "T",
+     "npcId": 1, "npcName": "Celindra", "npcType": "creature", "fileName": "21-progress",
+     "originalText": "Well?", "generatable": True},
+    {"lineId": "q:21:progress:w1", "source": "progress", "questId": 21, "questTitle": "T",
+     "npcId": 2, "npcName": "Modera", "npcType": "creature", "fileName": "21-progress-w1",
+     "originalText": "Back so soon?", "generatable": True},
+]}
+
+
+def _wording_tables(corpus=WORDINGS, ignored=()):
+    return {name: data for name, (_, data) in build_tables(corpus, ignored).items()}
+
+
+def test_a_moment_s_wordings_map_each_text_to_its_file():
+    assert _wording_tables()["quest_wording_lookups"] == {
+        "20-accept": {"You are the Horde, $c.": "20-accept", "Oh, you are back.": "20-accept-w1"},
+        "21-progress": {"Well?": "21-progress", "Back so soon?": "21-progress-w1"},
+    }
+
+
+def test_a_moment_with_one_wording_ships_none():
+    assert "5-accept" not in _tables()["quest_wording_lookups"]
+
+
+def test_a_wording_s_giver_of_another_voice_finds_its_own_file():
+    assert _wording_tables()["npc_quest_file_lookups"]["20-accept-w1"][3] == "20-accept-w1-orc-male-standard"
+
+
+def test_an_ignored_wording_leaves_one_and_no_table():
+    assert "20-accept" not in _wording_tables(ignored={"q:20:accept:w1"})["quest_wording_lookups"]
+
+
+def _speaker(npc_id, name, contribution=None, quest_id=40, kind="creature"):
+    line = {"lineId": f"q:{quest_id}:accept", "source": "accept", "questId": quest_id,
+            "questTitle": "T", "npcId": npc_id, "npcName": name, "npcType": kind,
+            "fileName": f"{quest_id}-accept", "originalText": "Words.", "generatable": True}
+    if contribution is not None:
+        line["contributionId"] = contribution
+    return line
+
+
+def _names(*lines, table="npc_name_lookups"):
+    return _wording_tables({"lines": list(lines)})[table]
+
+
+def test_an_extracted_name_beats_a_contributed_one_in_either_order():
+    # A contribution names the NPC as the contributor's client did, Russian or German, and
+    # the quest log showed that name to English players.
+    assert _names(_speaker(1, "Sam Sarsaparilla"), _speaker(1, "Sam R", 7, 41))[1] == "Sam Sarsaparilla"
+    assert _names(_speaker(1, "Sam R", 7, 41), _speaker(1, "Sam Sarsaparilla"))[1] == "Sam Sarsaparilla"
+
+
+def test_a_contributed_name_stands_where_there_is_no_other():
+    assert _names(_speaker(1, "Todeswache Kristof", 7))[1] == "Todeswache Kristof"
+
+
+def test_among_names_of_one_kind_the_last_stands():
+    assert _names(_speaker(1, "Vaelan"), _speaker(1, "Acride", None, 41))[1] == "Acride"
+
+
+def test_a_subname_is_not_part_of_the_name():
+    greeting = {"lineId": "g:ab12", "source": "gossip", "questId": None, "questTitle": None,
+                "npcId": 1, "npcName": "Ishlee Breezewhisper <Skinner>", "npcType": "creature",
+                "fileName": "ab12", "originalText": "Hides?", "generatable": True,
+                "contributionId": 7}
+    tables = _wording_tables({"lines": [greeting]})
+
+    assert tables["npc_name_lookups"][1] == "Ishlee Breezewhisper"
+    # The game names the unit without it, so a key that kept it would never match.
+    assert tables["npc_name_gossip_file_lookups"] == {"Ishlee Breezewhisper": {"Hides?": "ab12"}}
+
+
+def test_a_placeholder_is_never_a_name():
+    assert 1 not in _names(_speaker(1, "null", 7, kind="gameobject"), table="object_name_lookups")
+    assert _names(_speaker(1, "npc 1", 7), _speaker(1, "Raan Wildwind", 7, 41))[1] == "Raan Wildwind"
+    assert _names(_speaker(1, "Raan Wildwind", 7), _speaker(1, "npc 1", 7, 41))[1] == "Raan Wildwind"
+    assert _names(_speaker(1, "Keg", None, 40, "gameobject"),
+                  _speaker(1, "Doodad_BeerKeg101", None, 41, "gameobject"),
+                  table="object_name_lookups")[1] == "Keg"
+
+
+def test_a_name_with_digits_or_a_dash_is_a_name():
+    assert _names(_speaker(1, "Homing Robot OOX-17/TN"))[1] == "Homing Robot OOX-17/TN"

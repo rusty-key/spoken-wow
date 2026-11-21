@@ -9,7 +9,7 @@ import { clientOf } from "@/lib/contributions/client";
 import { summaryFromResolution } from "@/lib/contributions/speaker";
 import { localeHref } from "@/lib/lang";
 import { pageLang } from "@/lib/lang-server";
-import { listResolutions, listSexes, resolutionKey } from "@/lib/npc/store";
+import { listResolutions, listBodies, resolutionKey } from "@/lib/npc/store";
 import { isAdmin } from "@/lib/permissions";
 import { currentSession } from "@/lib/session";
 import { loadRoster } from "@/lib/voices/roster-store";
@@ -35,8 +35,8 @@ export default async function Page({
   if (!session || !isAdmin(session.user.role)) notFound();
 
   const tab = (await searchParams).tab === "types" ? "types" : "npcs";
-  const roster = await loadRoster();
-  const [resolutions, sexes] = tab === "types" ? [[], new Map()] : await Promise.all([listResolutions(), listSexes()]);
+  const roster = await loadRoster(lang);
+  const [resolutions, bodies] = tab === "types" ? [[], new Map()] : await Promise.all([listResolutions(), listBodies()]);
 
   return (
     <main className="pt-6 pb-24">
@@ -64,7 +64,7 @@ export default async function Page({
               ...summaryFromResolution(row, roster),
               // The client whose guess filed the NPC; none for one only the extract names.
               client: row.build ? clientOf(row.build).family : null,
-              sexes: sexes.get(resolutionKey(row.npcKind, row.npcId)) ?? [],
+              bodies: bodies.get(resolutionKey(row.npcKind, row.npcId)) ?? [],
               direction: row.direction ?? null,
             }))}
             roster={roster.data}

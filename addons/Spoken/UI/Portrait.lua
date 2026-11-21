@@ -12,22 +12,16 @@ setfenv(1, SpokenEnv)
 --
 -- A renderer's Update returns false when it has nothing to draw -- a model with no
 -- creature, a creature the client has not cached -- and the portrait then draws the
--- spec's `fallback` instead, once. That is VoiceOverRedux's ShouldShowBookFor turned
--- inside out: the book for Items, GameObjects, missing GUIDs, 2.4.3 and unloaded models
--- is now the quests addon's fallback rather than the player's knowledge.
+-- spec's `fallback` instead, once.
 Portrait = {}
 
-local TEXTURES = [[Interface\AddOns\Spoken\Textures\]]
 local WAIT_FOR_ANIMATION_FINISH_BEFORE_IDLE = true
-local CAN_MODEL_LOAD_CACHE = Version:IsRetailOrAboveLegacyVersion(60000)
 
 --------------------------------------------------------------------------------
--- Animation durations, by model FileDataID. Lifted whole from the quests addon's
--- Utils.lua: 200 lines about models, none about quests.
+-- Animation durations, by model FileDataID.
 --------------------------------------------------------------------------------
 local animationDurations = {
     ["Original"] = {
-        [130737]  = { [60] = 1533 }, -- interface/buttons/talktomequestion_white
         [116921]  = { [60] = 4000 }, [1100258] = { [60] = 4000 }, -- bloodelf female
         [117170]  = { [60] = 2000 }, [1100087] = { [60] = 2000 }, -- bloodelf male
         [117400]  = { [60] = 2934 }, [117412]  = { [60] = 2934 }, -- broken
@@ -66,20 +60,20 @@ local animationDurations = {
         [119376] = { [60] = 4667 },
     },
 }
-if Version.IsLegacyVanilla or Version.IsRetailVanilla then
-    -- Goblin models on vanilla (both 1.12 and 1.15) lack the talk animation; 0 makes
+if Version.Variant == "era" or Version.Variant == "sod" then
+    -- Goblin models on vanilla lack the talk animation; 0 makes
     -- them fall back to idle.
     animationDurations["Original"][119369][60] = 0
     animationDurations["Original"][119376][60] = 0
 end
 
---- Which model set durations are looked up in. Compat.lua overrides this for the
---- clients with HD model patches and for Mainline.
+--- Which model set durations are looked up in. Compat.lua overrides this for the clients
+--- with HD models.
 function Portrait:GetCurrentModelSet()
     return "Original"
 end
 
---- Frame a loaded model on its head. Every client this addon has run on embeds a
+--- Frame a loaded model on its head. Every client but Camelot embeds a
 --- portrait camera at index 0 in the creature's M2, and selecting it is what makes the
 --- portrait a portrait rather than a figure standing in a box; Compat.lua overrides this
 --- for Camelot, whose engine accepts the call and ignores it.
@@ -88,24 +82,6 @@ function Portrait:FrameHead(model)
 end
 
 ---@return number|nil seconds  0 if the model is known to lack the animation
---- Whether a model frame has something to draw.
----
---- Model:GetModel returned a path and was removed from the current clients, which answer
---- GetModelFileID instead; Compat.lua supplies GetModelFileID on the legacy ones
---- from their GetModel. Asking for the method this client does not have is an error, not
---- a nil, and one raised here abandons the whole frame update -- the portrait is drawn
---- before the rows, so the queue reads as empty.
-function Portrait:ModelLoaded(model)
-    if model.GetModelFileID then
-        return model:GetModelFileID() ~= nil
-    end
-    if model.GetModel then
-        return type(model:GetModel()) == "string"
-    end
-    -- Neither: assume it loaded rather than falling back on every clip forever.
-    return true
-end
-
 function Portrait:GetModelAnimationDuration(model, animation)
     if not model or model == 123 then return end
     local models = animationDurations[self:GetCurrentModelSet()] or animationDurations["Original"]
@@ -115,35 +91,22 @@ function Portrait:GetModelAnimationDuration(model, animation)
 end
 
 --------------------------------------------------------------------------------
--- The model frame. One per portrait on current clients; 1.12 and 2.4.3 cannot show an
--- arbitrary creature in a DressUpModel and get one from a pool instead (Compat.lua).
+-- The model frame, one per portrait.
 --------------------------------------------------------------------------------
 
-function Portrait:AcquireModelFrame(portrait, clip)
-    if not portrait.model then
-        portrait.model = CreateFrame("DressUpModel", nil, portrait)
-        portrait.model:SetAllPoints()
-    end
-    return portrait.model
-end
-
-function Portrait:ReleaseModelFrame(portrait, frame)
-end
-
-local function InitModelFrame(model)
-    if model._initialized then return end
-    model._initialized = true
+local function CreateModelFrame(portrait)
+    local model = CreateFrame("DressUpModel", nil, portrait)
+    model:SetAllPoints()
     model:HookScript("OnHide", function(self)
         self:ClearModel()
         self.oldCreatureID = nil
         self.animation = nil
         self.animDuration = nil
-        self.animDelay = nil
         self.animtimer = nil
     end)
     model:HookScript("OnUpdate", function(self, elapsed)
         -- If the creature was not cached, keep retrying until it is.
-        if CAN_MODEL_LOAD_CACHE and self.oldCreatureID and not self:GetModelFileID() then
+        if self.oldCreatureID and not self:GetModelFileID() then
             self:SetCreature(self.oldCreatureID)
             if not self:GetModelFileID() then return end
         end
@@ -155,19 +118,15 @@ local function InitModelFrame(model)
                 self:SetAnimation(self.animation)
             end
         end
-        if self.animDelay and not SoundQueue:IsPaused() then
-            self.animDelay = self.animDelay - elapsed
-            if self.animDelay < 0 then self.animDelay = nil else return end
-        end
         local isPaused = not SoundQueue:IsPlaying()
-        if not WAIT_FOR_ANIMATION_FINISH_BEFORE_IDLE and self.animation and self.animation ~= 0 and not self.animDelay and isPaused then
+        if not WAIT_FOR_ANIMATION_FINISH_BEFORE_IDLE and self.animation and self.animation ~= 0 and isPaused then
             self.animation = 0
             self.animtimer = nil
             self:SetAnimation(self.animation)
         end
         if self.animation and GetTime() - (self.animtimer or 0) >= (self.animDuration or 2) then
             if isPaused or self.animation == 0 then
-                if WAIT_FOR_ANIMATION_FINISH_BEFORE_IDLE and self.animation ~= 0 and not self.animDelay then
+                if WAIT_FOR_ANIMATION_FINISH_BEFORE_IDLE and self.animation ~= 0 then
                     self.animation = 0
                     self.animtimer = nil
                     self:SetAnimation(self.animation)
@@ -179,6 +138,7 @@ local function InitModelFrame(model)
         end
         self.wasPaused = isPaused
     end)
+    return model
 end
 
 --------------------------------------------------------------------------------
@@ -212,8 +172,8 @@ Renderers["texture"] = {
 
 Renderers["model"] = {
     Acquire = function(portrait, clip)
-        local model = Portrait:AcquireModelFrame(portrait, clip)
-        InitModelFrame(model)
+        portrait.model = portrait.model or CreateModelFrame(portrait)
+        local model = portrait.model
         model:Show()
         return model
     end,
@@ -221,22 +181,24 @@ Renderers["model"] = {
         local creatureID = spec.creatureID
         if not creatureID then return false end
         if creatureID ~= model.oldCreatureID then
-            if CAN_MODEL_LOAD_CACHE then model:ClearModel() end
-            model:SetCreature(creatureID)
+            model:ClearModel()
+            if spec.displayID then
+                model:SetDisplayInfo(spec.displayID)
+            else
+                model:SetCreature(creatureID)
+            end
             Portrait:FrameHead(model)
             model:SetModelScale(2)
             model.animation = spec.animation or 60
             model.animDuration = nil
-            model.animDelay = clip.delay
             model.animtimer = nil
             model.oldCreatureID = creatureID
         elseif model.wasPaused and SoundQueue:IsPlaying() then
             model.animation = spec.animation or 60
             model.animDuration = nil
-            model.animDelay = clip.delay
         end
         -- A model the client could not load draws nothing; say so, and the fallback shows.
-        return Portrait:ModelLoaded(model)
+        return model:GetModelFileID() ~= nil
     end,
     Release = function(model)
         model:Hide()

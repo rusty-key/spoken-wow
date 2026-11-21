@@ -1,0 +1,29 @@
+## Interface: 11509, 20506, 16001
+## Title: |cffb48cffSpoken|r Audio: Places
+## Notes: Narrated place lore for Spoken Places.|n|nKeep it enabled: it loads with the game, and Spoken Places plays from it.|n|nBeta: a proof-of-concept voice, being redesigned and re-generated.
+## Version: 2.1.0
+## Author: rusty
+## IconTexture: Interface\AddOns\SpokenPlacesAudio\Textures\AddonIcon.tga
+## Group: Spoken
+## X-Part-Of: Spoken
+## X-Child-Of: Spoken_Places
+## X-License: Audio generated with ElevenLabs from warcraft.wiki.gg lore text (CC BY-SA 4.0).
+## X-Credits: Lore text sourced from warcraft.wiki.gg contributors (CC BY-SA 4.0).
+
+# The tier this folder is. scripts/package-audio.sh rewrites these two lines, and
+# the Title above, once per tier it builds; the tree in the repository is the
+# 128kbps master every shipped tier is transcoded from, so it describes itself as
+# the high tier. Data/Sounds.lua reads these back at load time and reports them
+# to ZoneLore, which is how two tiers installed side by side can be told apart.
+## X-SpokenPlaces-Quality: high
+## X-SpokenPlaces-Bitrate: 128
+
+# The language this pack narrates, read back the same way. Spoken Zones loads that
+# language's lore for the captions and offers the pack under it; the player picks
+# which installed pack plays, so it can narrate a language the client is not in.
+## X-SpokenPlaces-Language: enUS
+
+# Defines the SpokenPlacesAudioPacks registry entry that Spoken Zones reads. No dependency
+# is declared in either direction: Spoken Zones reads its lore without narrating when
+# no pack is present, and a pack is inert without it.
+Data/Sounds.lua

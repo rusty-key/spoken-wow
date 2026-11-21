@@ -6,28 +6,33 @@
 // THE NOTES ARE THE CHANGELOG, NOT THE RELEASE BODY. Three different things write a release's
 // body -- GitHub's generated PR list for most addons, release-template.md's download tables for
 // quests, the changelog for the sound packs -- and the generated list runs from the previous tag
-// of ANY addon, so it would announce a quests pack's PRs under Spoken Player. The changelog is
+// of ANY addon, so it would announce a quests pack's PRs under Spoken. The changelog is
 // written for players and is what CurseForge and Wago already show.
 //
 // The name is the store page's, so Discord says exactly what the stores say. A pack's page names
 // its tag in `release:` (packs.mjs); the four addon pages are matched by their directory, which
-// is the tag prefix.
+// is the tag prefix. spoken's directory also holds the meta addons, Spoken: English (all.md) and
+// each language's (all-<lang>.md), whose pages have no `section` either.
+//
+// Spoken Manager (`manager/vX.Y.Z`) has no store page, so its name is fixed; its notes are its
+// own changelog's, docs/manager/CHANGELOG.md.
 import { readdirSync, readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
 import { parseFrontmatter } from "./frontmatter.mjs";
+import { unwrap } from "./changelog.mjs";
 import { changelogSection, isLanguageHeading, loadPacks } from "./packs.mjs";
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "../..");
 
-const ADDONS = ["spoken", "quests", "zones", "books"];
+const ADDONS = ["spoken", "quests", "places", "readables"];
 
-// Which `## <version> ...` heading in docs/<section>/CHANGELOG.md is this release's. The addon
-// and its English audio share one file and, in zones and books, one heading shape, so the kind
-// words are what tell them apart: quests says `— player` / `— sound pack(s)` or `— Spoken Quests
-// Audio`, zones marks its audio `— audio` or `(sound packs)`. Books numbers its English audio with
-// the addon, so a books-audio tag takes whichever heading carries its version.
+// Which `## <version> ...` heading in the section's CHANGELOG.md is this release's. The addon
+// and its English audio share one file and, in places and readables, one heading shape, so the
+// kind words are what tell them apart: quests says `— player` / `— sound pack(s)` or `— Spoken
+// Quests Audio`, places marks its audio `— audio` or `(sound packs)`. Readables numbers its
+// English audio with the addon, so a readables-audio tag takes whichever heading carries its version.
 const AUDIO_WORDS = /\b(audio|sound packs?)\b/i;
 
 function addonHeading(section) {
@@ -36,7 +41,7 @@ function addonHeading(section) {
 }
 
 function englishAudioHeading(section) {
-  if (section === "quests" || section === "zones") return (l) => AUDIO_WORDS.test(l);
+  if (section === "quests" || section === "places") return (l) => AUDIO_WORDS.test(l);
   return () => true;
 }
 
@@ -50,13 +55,13 @@ function sectionFor(text, version, matches) {
   for (let i = starts[0] + 1; i < lines.length; i++) {
     if (lines[i].startsWith("## ")) { end = i; break; }
   }
-  return lines.slice(starts[0] + 1, end).join("\n").trim();
+  return unwrap(lines.slice(starts[0] + 1, end).join("\n").trim());
 }
 
 function addonName(publishersDir, prefix) {
   let pages;
   try {
-    pages = readdirSync(join(publishersDir, prefix)).filter((f) => f.endsWith(".md"));
+    pages = readdirSync(join(publishersDir, prefix)).filter((f) => f.endsWith(".md") && !/^all(-.+)?\.md$/.test(f));
   } catch {
     return null;
   }
@@ -86,6 +91,9 @@ export function announcement(tag, { publishersDir = join(ROOT, "publishers"), do
         notes = null;
       }
     }
+  } else if (prefix === "manager") {
+    name = "Spoken Manager";
+    notes = sectionFor(readFileSync(join(docsDir, "manager", "CHANGELOG.md"), "utf8"), version, () => true);
   } else if (ADDONS.includes(prefix)) {
     name = addonName(publishersDir, prefix);
     section = prefix;

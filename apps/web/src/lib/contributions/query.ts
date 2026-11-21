@@ -8,6 +8,7 @@
  * contributions.ts and npc.ts, whose types this one only composes: ContributionTable is a client
  * component and calls this directly on every dropdown change.
  */
+import { listParam } from "../line-fields";
 import type { ClientFilter } from "./client";
 import type { ContributionStatus } from "./contributions";
 import type { EnvelopeSource } from "./envelope";
@@ -17,10 +18,11 @@ import type { QuestSummary } from "./triage";
 
 /**
  * Whether a row of the New tab can be accepted as it stands, the same in every language:
- * - a quest moment that already has a speaker, in any language, needs nothing more;
+ * - a quest moment that already has the row's NPC as a speaker, in any language, needs nothing
+ *   more (one whose speakers are others makes the NPC one more, so it needs an answer);
  * - any other quests row needs a speaker whose type, gender and flavor a voice reads, whoever
  *   set them (accept.ts's speakerFor);
- * - zones and books rows have no speaker to check.
+ * - places and readables rows have no speaker to check.
  */
 export const BUCKETS = ["ready", "blocked"] as const;
 
@@ -41,14 +43,50 @@ export function bucketOf(
   return roster.voiceFor(npc.race, npc.gender, npc.flavor) ? "ready" : "blocked";
 }
 
-export type { ClientFilter };
+/** Why a line waits on an admin, in groups the waiting tab counts. */
+export type WaitingKind = "no-npc" | "conflict" | "unresolved" | "no-voice";
+
+export type WaitingReason = {
+  kind: WaitingKind;
+  /** What is missing, in plain words, for the person who cannot fix it. */
+  why: string;
+  /** What an admin does about it. */
+  fix: string;
+};
+
+/** The waiting tab's headings, one per kind, in the order the tab lists them. */
+export const WAITING_KINDS: Record<WaitingKind, { title: string; fix: string }> = {
+  "no-voice": { title: "No voice for this kind of NPC yet", fix: "An admin adds a voice for it, or picks another one for the NPC." },
+  unresolved: { title: "We don't know who this NPC is", fix: "An admin sets the NPC's race and gender." },
+  conflict: { title: "Two answers disagree who this NPC is", fix: "An admin picks the right one." },
+  "no-npc": { title: "The game didn't say who speaks it", fix: "An admin names the NPC." },
+};
 
 /**
- * A section of /contributions, which is the page's path: an envelope source, or gossip -- the
- * quests rows tied to no quest, which the site shows apart although the addon files them as
- * quests.
+ * Why a row bucketOf sends to "blocked" is blocked, or null for a ready row: the same tests in the
+ * same order, read out for the language's editors, who see these rows but cannot act on them.
  */
-export const SECTIONS = ["quests", "gossip", "books", "zones"] as const;
+export function waitingReason(
+  row: { source: EnvelopeSource; quest: QuestSummary | null; hasSpeaker: boolean },
+  npc: { race: string | null; gender: string | null; flavor: string | null; conflict: readonly unknown[] } | null,
+  roster: Roster,
+  language: string,
+): WaitingReason | null {
+  if (row.source !== "quests") return null;
+  if (row.quest !== "gossip" && row.hasSpeaker) return null;
+  const reason = (kind: WaitingKind, why: string): WaitingReason => ({ kind, why, fix: WAITING_KINDS[kind].fix });
+  if (!npc) return reason("no-npc", "The player's client didn't say which NPC speaks this line.");
+  if (npc.conflict.length > 0) return reason("conflict", "The game data and an earlier answer disagree about who this NPC is.");
+  if (!npc.race) return reason("unresolved", "Nobody has said yet what race and gender this NPC is, so its voice is unknown.");
+  if (roster.voiceFor(npc.race, npc.gender, npc.flavor)) return null;
+  const kind = [npc.race, npc.gender, npc.flavor].filter(Boolean).join(", ");
+  return reason("no-voice", `The ${language} voices have none for ${kind} yet.`);
+}
+
+export type { ClientFilter };
+
+/** A section of /contributions, which is the page's path: an envelope source. */
+export const SECTIONS = ["quests", "readables", "places"] as const satisfies readonly EnvelopeSource[];
 
 export type Section = (typeof SECTIONS)[number];
 
@@ -56,19 +94,9 @@ export function isSection(value: unknown): value is Section {
   return SECTIONS.includes(value as Section);
 }
 
-/** The envelope source a section's rows are filed under. */
-export function sourceOfSection(section: Section): EnvelopeSource {
-  return section === "gossip" ? "quests" : section;
-}
-
 /** Whether a section's rows name a speaker, so they split into buckets and search by NPC. */
 export function namesSpeaker(section: Section): boolean {
-  return sourceOfSection(section) === "quests";
-}
-
-/** The section a row is listed under. */
-export function sectionOf(row: { source: EnvelopeSource }, quest: QuestSummary | null): Section {
-  return quest === "gossip" ? "gossip" : row.source;
+  return section === "quests";
 }
 
 /**
@@ -83,20 +111,28 @@ export function isQuestStage(value: unknown): value is QuestStage {
   return QUEST_STAGES.includes(value as QuestStage);
 }
 
-export type StageFilter = QuestStage | "all";
+/** What the Stage dropdown offers: a quest panel, or gossip -- the quests rows tied to no quest. */
+export const STAGES = [...QUEST_STAGES, "gossip"] as const;
 
-export function isStageFilter(value: unknown): value is StageFilter {
-  return isQuestStage(value) || value === "all";
+export type Stage = (typeof STAGES)[number];
+
+/** The stages picked, none meaning every row. */
+export type StageFilter = readonly Stage[];
+
+/** The `stage` query parameter, comma-separated, in STAGES order; anything else is dropped. */
+export function stagesOf(value: unknown): Stage[] {
+  return listParam(value, STAGES);
 }
 
 /**
  * Whether one row's Quest column satisfies the Stage dropdown. Any narrowed view drops every
- * row with no quest concept at all (zones, books).
+ * row with no quest concept at all (places, readables).
  */
 export function matchesStage(quest: QuestSummary | null, filter: StageFilter): boolean {
-  if (filter === "all") return true;
-  if (quest === null || quest === "gossip") return false;
-  return quest.stage === filter;
+  if (filter.length === 0) return true;
+  if (quest === null) return false;
+  if (quest === "gossip") return filter.includes("gossip");
+  return quest.stage !== null && filter.includes(quest.stage);
 }
 
 /**
@@ -147,10 +183,19 @@ export function sortOf(column: unknown, direction: unknown): ContributionSort {
   return { column, direction: isSortDirection(direction) ? direction : FIRST_DIRECTION[column] };
 }
 
+/** Which rows a section shows: new lines, corrections to lines we have, or both. */
+export type Show = "all" | "lines" | "corrections";
+
+export function isShow(value: unknown): value is Show {
+  return value === "all" || value === "lines" || value === "corrections";
+}
+
 export type ContributionFilters = {
   status: ContributionStatus;
   bucket: Bucket;
   client: ClientFilter;
+  /** A client build number; absent is every build. */
+  build?: string;
   /** The section, which is the page's path rather than a filter. */
   source: Section;
   stage: StageFilter;
@@ -159,16 +204,20 @@ export type ContributionFilters = {
   q?: string;
   /** Which field `q` is matched in; absent is "any". */
   searchIn?: Filter;
+  /** Absent is "all". */
+  show?: Show;
 };
 
 export type FilterChange = {
   status?: ContributionStatus;
   bucket?: Bucket;
   client?: ClientFilter;
+  build?: string;
   stage?: StageFilter;
   sort?: ContributionSort;
   q?: string;
   searchIn?: Filter;
+  show?: Show;
 };
 
 /**
@@ -188,11 +237,13 @@ export function nextContributionFilters(
     status: "status" in next ? (next.status ?? "new") : current.status,
     bucket: "bucket" in next ? (next.bucket ?? "ready") : current.bucket,
     client: "client" in next ? (next.client ?? "all") : current.client,
+    build: "build" in next ? next.build : current.build,
     source: current.source,
-    stage: "stage" in next ? (next.stage ?? "all") : current.stage,
+    stage: "stage" in next ? (next.stage ?? []) : current.stage,
     sort: "sort" in next ? (next.sort ?? DEFAULT_SORT) : current.sort,
     q: "q" in next ? next.q : current.q,
     searchIn: "searchIn" in next ? next.searchIn : current.searchIn,
+    show: "show" in next ? next.show : current.show,
   };
 }
 
@@ -218,10 +269,12 @@ export function contributionsHref(current: ContributionFilters, next: FilterChan
     status: filters.status,
     client: filters.client,
   });
-  if (filters.stage !== "all") params.set("stage", filters.stage);
+  if (filters.build) params.set("build", filters.build);
+  if (filters.stage.length) params.set("stage", filters.stage.join(","));
   if (filters.bucket !== "ready") params.set("bucket", filters.bucket);
   if (filters.q?.trim()) params.set("q", filters.q.trim());
   if (filters.searchIn && filters.searchIn !== "any") params.set("filter", filters.searchIn);
+  if (filters.show && filters.show !== "all") params.set("show", filters.show);
   if (filters.sort.column !== DEFAULT_SORT.column || filters.sort.direction !== DEFAULT_SORT.direction) {
     params.set("sort", filters.sort.column);
     params.set("dir", filters.sort.direction);

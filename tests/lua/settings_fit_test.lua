@@ -42,11 +42,11 @@ stub.TextWidth = function(fs)
 end
 local SPOKEN = here .. "/../../addons/Spoken/"
 local QUESTS = here .. "/../../addons/Spoken_Quests/"
-local BOOKS = here .. "/../../addons/Spoken_Books/"
-local ZONES = here .. "/../../addons/Spoken_Zones/"
+local READABLES = here .. "/../../addons/Spoken_Readables/"
+local PLACES = here .. "/../../addons/Spoken_Places/"
 _G.UISpecialFrames = _G.UISpecialFrames or {}
 
-stub.SetClient("11509"); stub.ResetSound(); stub.ResetTimers(); stub.ResetFrames()
+stub.SetClient("16001"); stub.ResetSound(); stub.ResetTimers(); stub.ResetFrames()
 stub.SetLocale(LANG)
 stub.settingsCategories = {}; stub.ldbObjects = {}; stub.dbIcons = {}
 stub.world.questID = 0; stub.ShowPanel(nil)
@@ -58,24 +58,32 @@ _G.C_AddOns = { IsAddOnLoaded = function() return true end }
 local VO = stub.LoadQuests(QUESTS, SPOKEN)
 VO.Addon:OnInitialize()
 local env = _G.SpokenEnv
-env.Sources:Register("books", { title = "Spoken Books", addon = "Spoken_Books", order = 2,
-    packs = function() return { "SpokenBooksAudio" } end })
-env.Sources:Register("zones", { title = "Spoken Zones", addon = "Spoken_Zones", order = 3,
-    packs = function() return { "SpokenZonesAudio" } end })
+env.Sources:Register("readables", { title = "Spoken Readables", addon = "Spoken_Readables", order = 4,
+    packs = function() return { "SpokenReadablesAudio" } end })
+env.Sources:Register("places", { title = "Spoken Places", addon = "Spoken_Places", order = 3,
+    packs = function() return { "SpokenPlacesAudio" } end })
 _G.Spoken:RegisterOptionalAction("report", "Report")
 env.Addon:Enable()
 local QuestsPanel = stub.LoadQuestsPanel(QUESTS, VO)
 QuestsPanel:Setup()
+VO.GossipSettingsPanel:Setup()
+VO.ChatterSettingsPanel:Setup()
 local B = {}
 for _, file in ipairs({ "Locale/enUS", "Locale/deDE", "Locale/esES", "Locale/frFR", "Locale/ptBR", "Locale/ruRU",
     "Locale/koKR", "Locale/zhCN", "Locale/zhTW", "Checksum", "Core", "Language", "Reader", "Audio", "Playlist",
-    "UI/Layout", "UI/TextView", "UI/Compendium", "UI/Readables", "UI/Options", "Events", "Commands" }) do
-    assert(loadfile(BOOKS .. file .. ".lua"))("Spoken_Books", B)
+    "UI/Readables", "UI/Options", "Events", "Commands" }) do
+    assert(loadfile(READABLES .. file .. ".lua"))("Spoken_Readables", B)
 end
 B:InitDB(); B:SetupOptions()
+-- Two of the Compendium's tabs, so Spoken's page shows their Unlock switches.
+B:SetupReadables()
+for _, file in ipairs({ "Data/Compendium", "Data/QuestText", "UI/QuestsTab" }) do
+    assert(loadfile(QUESTS .. file .. ".lua"))("Spoken_Quests", {})
+end
+VO.QuestsTab:Setup()
 local Z = H.NewZoneLore()
-for _, file in ipairs({ "UI/Layout", "UI/Options" }) do
-    assert(loadfile(ZONES .. file .. ".lua"))("Spoken_Zones", Z)
+for _, file in ipairs({ "UI/Options" }) do
+    assert(loadfile(PLACES .. file .. ".lua"))("Spoken_Places", Z)
 end
 Z:SetupOptions()
 -- The Spoken_Developer module and its page.
@@ -92,7 +100,13 @@ local pages = { { name = "General", layout = _G.SpokenOptionsPanel.layout } }
 for _, page in ipairs(env.Options.pages or {}) do
     table.insert(pages, { name = page.name, layout = page.layout })
 end
-Expect("General, the three parts' pages and the Developer page are all here", #pages, 5)
+Expect("General, the five parts' pages, Contribute and the Developer page are all here", #pages, 8)
+local ordered, shared = {}, {}
+for _, page in ipairs(env.Options.pages or {}) do
+    if ordered[page.order] then table.insert(shared, page.name) end
+    ordered[page.order] = true
+end
+Expect("no two pages share an order, which is how Settings opens one", table.concat(shared, ", "), "")
 
 local BOX = Layout.BOX_MARGIN
 local function Label(row)
@@ -174,17 +188,13 @@ for _, width in ipairs({ 470, 680, 740 }) do
     end
 end
 ---------------------------------------------------------------- the welcome window
--- The same boxes, cards and pictures, centred in the window: as far from its left side as
--- from its right, and nothing past a box's edges.
+-- The same boxes, cards and pictures as a settings page, in a scroller: nothing past a box's edges, and
+-- the window no taller than the screen however much there is.
 local Welcome = env.Welcome
 Welcome:Build(); Welcome:Sync()
 local welcome = Welcome.layout
-local frameWidth = Welcome.frame.width
 local boxLeft, boxRight = welcome.left - BOX, welcome.left + welcome:Width() + BOX
--- The page sits inside the window, so the window's own sides are measured the page's offset away.
-local pageX = Welcome.page.anchor and Welcome.page.anchor.x or 0
-Expect("the welcome's cards are centred in its window",
-    math.abs((pageX + boxLeft) - (frameWidth - (pageX + boxRight))) < 0.6, true)
+Expect("the welcome's rows scroll, as a settings page's do", welcome.parent.layoutScroller == Welcome.scroller, true)
 local outside = {}
 for _, item in ipairs(welcome.items) do
     if item.kind == "section" and item.shown then

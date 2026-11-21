@@ -32,11 +32,11 @@ function file(literals: string[]): string {
 describe("envelopesFromSavedVariables", () => {
   const quests = fixture("quests-accept.txt");
   const fenced = fixture("quests-fenced.txt");
-  const books = fixture("books-page.txt");
+  const readables = fixture("readables-page.txt");
 
   it("gives back every envelope byte for byte, as the game escapes them", () => {
-    const found = envelopesFromSavedVariables(file([escaped(quests), escaped(fenced), escaped(books)]));
-    expect(found).toEqual([quests, fenced, books]);
+    const found = envelopesFromSavedVariables(file([escaped(quests), escaped(fenced), escaped(readables)]));
+    expect(found).toEqual([quests, fenced, readables]);
     for (const envelope of found) expect(parseEnvelope(envelope).ok).toBe(true);
   });
 
@@ -45,7 +45,7 @@ describe("envelopesFromSavedVariables", () => {
   });
 
   it("keeps a repeated envelope once", () => {
-    expect(envelopesFromSavedVariables(file([escaped(books), escaped(books)]))).toEqual([books]);
+    expect(envelopesFromSavedVariables(file([escaped(readables), escaped(readables)]))).toEqual([readables]);
   });
 
   it("ignores every string that is not an envelope", () => {

@@ -1,10 +1,13 @@
 -- What the player had open that Spoken may or may not read, and whether anything of Spoken's is
 -- there to read it, for the log and its snapshots: the reading window (a book, a plaque, a sign,
--- a letter: Spoken Books' to read), an open letter in the mailbox, and which of Spoken's modules
+-- a letter: Spoken Readables' to read), an open letter in the mailbox, and which of Spoken's modules
 -- are installed. Spoken Quests says the quest and gossip windows itself. A book opened without
--- Spoken Books installed is silent and shows nothing, and this is how the log says why.
+-- Spoken Readables installed is silent and shows nothing, and this is how the log says why.
 
 local _, Developer = ...
+
+-- A value the game hands over as a secret, in an instance or in combat, reads as nil.
+local NotSecret = Spoken and Spoken.NotSecret or function(value) return value end
 
 local Log = Developer.Log
 
@@ -16,9 +19,9 @@ local GetAddOnInfo = (C_AddOns and C_AddOns.GetAddOnInfo) or GetAddOnInfo
 
 -- Spoken's modules, and what each one reads.
 local MODULES = {
-	{ name = "Spoken_Quests", reads = "quests and NPC gossip" },
-	{ name = "Spoken_Books", reads = "books, plaques, signs and letters" },
-	{ name = "Spoken_Zones", reads = "zone lore" },
+	{ name = "Spoken_Quests", reads = "quests" },
+	{ name = "Spoken_Places", reads = "place lore" },
+	{ name = "Spoken_Readables", reads = "books, plaques, signs and letters" },
 }
 
 -- How much of a page the log keeps: enough to tell one book from another.
@@ -39,11 +42,11 @@ local function Excerpt(text)
 	return text
 end
 
---- Who reads the reading window: Spoken Books, or nothing, and why.
+--- Who reads the reading window: Spoken Readables, or nothing, and why.
 local function BooksReader()
-	local state = Screen:AddonState("Spoken_Books")
-	if state == "loaded" then return "Spoken Books reads it (Spoken_Books loaded)" end
-	return "nothing of Spoken reads it: Spoken_Books is " .. state
+	local state = Screen:AddonState("Spoken_Readables")
+	if state == "loaded" then return "Spoken Readables reads it (Spoken_Readables loaded)" end
+	return "nothing of Spoken reads it: Spoken_Readables is " .. state
 end
 
 --- The reading window as words, or nil while it is closed. A letter a player wrote has a creator;
@@ -51,14 +54,14 @@ end
 function Screen:ReadingWindow()
 	local frame = _G.ItemTextFrame
 	if not (frame and frame:IsVisible()) then return nil end
-	local title = ItemTextGetItem and ItemTextGetItem()
-	local creator = ItemTextGetCreator and ItemTextGetCreator()
-	local material = ItemTextGetMaterial and ItemTextGetMaterial()
+	local title = ItemTextGetItem and NotSecret(ItemTextGetItem())
+	local creator = ItemTextGetCreator and NotSecret(ItemTextGetCreator())
+	local material = ItemTextGetMaterial and NotSecret(ItemTextGetMaterial())
 	return format("%s %q, page %s%s%s, starting %q", creator and creator ~= "" and "a letter" or "a book",
-		tostring(title or "?"), tostring(ItemTextGetPage and ItemTextGetPage() or "?"),
+		tostring(title or "?"), tostring(ItemTextGetPage and NotSecret(ItemTextGetPage()) or "?"),
 		creator and creator ~= "" and (", from " .. creator) or "",
 		material and (", " .. tostring(material)) or "",
-		Excerpt(ItemTextGetText and ItemTextGetText()))
+		Excerpt(ItemTextGetText and NotSecret(ItemTextGetText())))
 end
 
 --- The letter open in the mailbox, as words, or nil.
@@ -102,15 +105,15 @@ frame:SetScript("OnEvent", function(_, event)
 		return
 	end
 	-- READY can come before the frame shows: read the words, whether or not it is drawn yet.
-	local title = ItemTextGetItem and ItemTextGetItem()
-	local page = ItemTextGetPage and ItemTextGetPage()
+	local title = ItemTextGetItem and NotSecret(ItemTextGetItem())
+	local page = ItemTextGetPage and NotSecret(ItemTextGetPage())
 	local key = tostring(title) .. "#" .. tostring(page)
 	if key == shown then return end
 	shown = key
-	local creator = ItemTextGetCreator and ItemTextGetCreator()
+	local creator = ItemTextGetCreator and NotSecret(ItemTextGetCreator())
 	Log:Add("screen", "reading window: %s %q, page %s%s, starting %q; %s",
 		creator and creator ~= "" and "a letter" or "a book", tostring(title or "?"), tostring(page or "?"),
 		creator and creator ~= "" and (", from " .. creator) or "",
-		Excerpt(ItemTextGetText and ItemTextGetText()), BooksReader())
+		Excerpt(ItemTextGetText and NotSecret(ItemTextGetText())), BooksReader())
 end)
 Screen.eventFrame = frame

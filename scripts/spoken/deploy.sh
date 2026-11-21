@@ -3,7 +3,7 @@
 # Spoken's zip carries (scripts/spoken/package.sh), each symlinked to its source here, so an
 # edit is live after a /reload.
 #
-#   ./scripts/spoken/deploy.sh                    # the Forever beta
+#   ./scripts/spoken/deploy.sh                    # Forever
 #   CLIENT=era ./scripts/spoken/deploy.sh         # era, anniversary or forever
 #   ./scripts/spoken/deploy.sh --status           # what every installed client has
 #
@@ -11,11 +11,8 @@
 # into Interface/AddOns-replaced-<time>/ beside AddOns, never deleted. The sound packs are
 # separate downloads and separate folders, so they are left as they are.
 #
-# The SpokenPlayer tombstone is linked too (addons/SpokenPlayer): the zip carries it, and an
-# install that lacks it is not the one players get. The SpokenQuests, SpokenZones and SpokenBooks
-# tombstones are not: the retired projects' last releases ship those (package-retired.sh), not
-# Spoken's zip, so a real old copy under one of those names is left where it is, for Spoken's
-# leftover-folder warning to find.
+# A real old copy under a folder name Spoken used to have (SpokenPlayer, SpokenQuests and the
+# rest) is left where it is, for Spoken's leftover-folder warning to find.
 
 set -euo pipefail
 
@@ -23,13 +20,13 @@ REPO="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 WOW="/Applications/World of Warcraft"
 # Every folder Spoken's zip installs. scripts/spoken/package.sh is the source of truth; keep
 # this in step with its folder list.
-NAMES=(Spoken SpokenContributions SpokenPlayer Spoken_Quests Spoken_Books Spoken_Zones)
+NAMES=(Spoken SpokenContributions Spoken_Quests Spoken_Readables Spoken_Places Spoken_Bosses)
 
 CLIENTS=(era anniversary forever)
 client_flavour() { case "$1" in
   era)         echo "_classic_era_";;
   anniversary) echo "_anniversary_";;
-  forever)     echo "_classic_beta_";;
+  forever)     echo "_forever_";;
 esac; }
 addons_dir() { echo "$WOW/$(client_flavour "$1")/Interface/AddOns"; }
 

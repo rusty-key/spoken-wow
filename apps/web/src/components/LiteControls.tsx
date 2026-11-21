@@ -45,7 +45,7 @@ export function LiteCheckbox({ className, ...props }: Omit<ComponentProps<"input
   return (
     <input
       type="checkbox"
-      className={cn("accent-primary dark:scheme-dark size-4 cursor-pointer disabled:cursor-not-allowed disabled:opacity-50", className)}
+      className={cn("accent-primary-ink dark:scheme-dark size-4 cursor-pointer disabled:cursor-not-allowed disabled:opacity-50", className)}
       {...props}
     />
   );

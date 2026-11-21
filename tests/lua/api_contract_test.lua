@@ -12,7 +12,7 @@ local world = stub.world
 local SPOKEN = here .. "/../../addons/Spoken/"
 local Expect, Failures = H.Expecter(print)
 
-stub.SetClient("11509"); stub.ResetSound(); stub.ResetTimers()
+stub.SetClient("16001"); stub.ResetSound(); stub.ResetTimers()
 stub.LoadSpoken(SPOKEN)
 local Spoken = _G.Spoken
 
@@ -37,13 +37,20 @@ local METHODS = {
     "GetCurrent", "GetNowPlaying", "GetQueue", "GetQueueSize", "GetWaitingCount",
     "IsPlaying", "IsPaused", "GetHeldReason",
     "Pause", "Resume", "TogglePause", "Skip", "StopAll", "AddGate", "MuteChannel", "MuteGameDialogueAhead",
+    "EndMuteGameDialogueAhead",
+    -- Read in Battlegrounds
+    "ReadsHere",
     -- callbacks
     "RegisterCallback", "UnregisterCallback",
     -- packs
     "EnumerateAddonsWithKey",
     -- frame, settings
-    "GetPlayerFrame", "GetSettingsCategory", "OpenSettings", "AddSettingsLink", "RefreshPlayer",
+    "GetPlayerFrame", "GetSettingsCategory", "OpenSettings", "RefreshPlayer",
     "GetPlayerStyle", "SetPlayerHost", "AddDialogueUISettings",
+    -- Azeroth's Compendium's Text Size, which Places, Readables and Quests draw their words at
+    "CompendiumFontSize", "SetCompendiumFontSize",
+    -- the profile a feature addon's own AceDB settings start a new character on
+    "NewCharacterStartProfile",
     -- captions
     "GetCaption", "GetCaptionOptions", "SplitCaption", "CaptionWords",
     -- developer tools: the Spoken_Developer module's
@@ -51,7 +58,15 @@ local METHODS = {
     "AddLogSource", "ShowLogMenu", "LogMenuHint", "AddDeveloperSettings", "GetDeveloperSettings",
     "AddDiagnostics", "Diagnostics",
     -- contributions
-    "ShowContribution", "SetContributeHost", "AreContributeButtonsHidden",
+    "ShowContribution", "ShowReport", "SetContributeHost", "AreContributeButtonsHidden",
+    -- a speaker's face on a feature addon's page
+    "CreateSpeakerFace", "ItemIcon",
+    -- Play, Skip and Report on DialogueUI's quest window and book view
+    "CreateDialogueUIRow",
+    -- a dungeon's or a boss's story, for another addon's Play button
+    "RegisterStoryTeller", "HasStory", "PlayStory", "IsPlayingStory", "StopStory",
+    -- the voices the player hears, in order, and the voice a pack is in
+    "GetLanguageChoice", "GetVoiceOrder", "SetVoiceOrder", "VoiceOf", "SplitVoice", "VoiceName",
 }
 for _, name in ipairs(METHODS) do
     Expect("Spoken:" .. name .. " exists", type(Spoken[name]), "function")
@@ -104,6 +119,40 @@ Spoken:StopAll()
 Expect("StopAll empties", Spoken:GetQueueSize(), 0)
 Expect("...and unpauses", Spoken:IsPaused(), false)
 
+---------------------------------------------------------------- stories
+-- No teller for a kind, or no id: every answer is false.
+Expect("a kind no module tells has no story", tostring(Spoken:HasStory("contract", 1)) .. " "
+    .. tostring(Spoken:PlayStory("contract", 1)) .. " " .. tostring(Spoken:IsPlayingStory("contract", 1)) .. " "
+    .. tostring(Spoken:StopStory("contract", 1)), "false false false false")
+do
+    -- Story 7 has two parts, a locked "story:7a" and a playable "story:7b"; story 8 none playable.
+    local tellerSource = Spoken:RegisterSource("story-contract", { title = "Stories", addon = "X", order = 9 })
+    Spoken:RegisterStoryTeller("contract", {
+        source = tellerSource,
+        Keys = function(id) return { "story:" .. id .. "a", "story:" .. id .. "b" } end,
+        Clip = function(id, key)
+            if key == "story:7b" then local clip = H.Clip(); clip.key = key; return clip end
+        end,
+    })
+    Spoken:StopAll()
+    Expect("HasStory: a story with a playable part", tostring(Spoken:HasStory("contract", 7)) .. " "
+        .. tostring(Spoken:HasStory("contract", 8)) .. " " .. tostring(Spoken:HasStory("contract", nil)), "true false false")
+    Expect("PlayStory plays only a story with one", tostring(Spoken:PlayStory("contract", 8)) .. " "
+        .. tostring(Spoken:PlayStory("contract", 7)), "false true")
+    Expect("...the playable part, through the teller's source", Spoken:GetNowPlaying().key .. " "
+        .. tostring(Spoken:GetNowPlaying().source == tellerSource), "story:7b true")
+    SpokenEnv.Addon:Enable() -- the captions GetCaption reads
+    local story = Spoken:GetCaption().story
+    Expect("...which GetCaption names as PlayStory was asked", story.kind .. " " .. story.id, "contract 7")
+    Expect("IsPlayingStory: its own story only", tostring(Spoken:IsPlayingStory("contract", 7)) .. " "
+        .. tostring(Spoken:IsPlayingStory("contract", 8)), "true false")
+    Spoken:Pause()
+    Expect("...and not while paused", Spoken:IsPlayingStory("contract", 7), false)
+    Spoken:Resume()
+    Expect("StopStory takes it out", tostring(Spoken:StopStory("contract", 7)) .. " " .. Spoken:GetQueueSize(), "true 0")
+    Expect("...and a second stop finds nothing", Spoken:StopStory("contract", 7), false)
+end
+
 Spoken:AddGate(function() return "held by the player" end)
 local held = H.Clip()
 src:Enqueue(held)
@@ -118,6 +167,120 @@ Expect("a registered renderer is retrievable", type(Spoken:GetPortraitRenderer("
 Spoken.Packs:Register("contract", "SomePackFolder", { version = 1 })
 Expect("Packs.Get returns what was registered", Spoken.Packs:Get("contract")[1].version, 1)
 Expect("Packs.Get for an unknown source is empty", getn(Spoken.Packs:Get("nothing")), 0)
+
+---------------------------------------------------------------- a speaker's face
+-- The Small Window's portrait on a page of the caller's: the creature's still where the client
+-- has its appearance, else the book; an object's picture; the line's badge on its disc.
+do
+    local E = SpokenEnv
+    local BOOK = [[Interface\AddOns\Spoken\Textures\Book]]
+    local page = CreateFrame("Frame", nil, UIParent)
+    local face = Spoken:CreateSpeakerFace(page, 44)
+    local function Drawn()
+        if face.still:IsShown() then return "still " .. tostring(face.still.display) end
+        local texture = face.viewport.texture
+        return texture and texture:IsShown() and texture:GetTexture() or "nothing"
+    end
+    Expect("a face is the size asked for, on the page", face:GetWidth() .. " " .. tostring(face:GetParent() == page), "44 true")
+    Expect("...in the Small Window's ring", face.ring:GetTexture(), [[Interface\AddOns\Spoken\Textures\MinimalPortraitRing]])
+    Expect("...with no speaker, the book, never an empty socket", Drawn(), BOOK)
+    Expect("...and no badge", tostring(face.badge:IsShown()) .. " " .. tostring(face.badgeBackground:IsShown()), "false false")
+
+    world.creatureDisplays[197] = { 3258 }
+    face:SetSpeaker({ creatureID = 197, bullet = "quest-accept" })
+    Expect("a creature the client has: its still", Drawn(), "still 3258")
+    Expect("...with the bullet's badge on its disc", face.badge:IsShown() and face.badgeBackground:IsShown()
+        and face.badge:GetTexture(), E.Face.BADGES["quest-accept"])
+    Expect("...at least 12 across on a small face", face.badge:GetWidth(), 12)
+
+    world.creatureDisplays[240] = { 1990 }
+    world.displaysUncached = true
+    face:SetSpeaker({ creatureID = 240, bullet = "quest-complete" })
+    Expect("a creature the client has not cached: the book meanwhile", Drawn(), BOOK)
+    Expect("...asking for it while shown", type(face.scripts.OnUpdate), "function")
+    world.displaysUncached = false
+    world.time = world.time + 1
+    face.scripts.OnUpdate(face, 1)
+    Expect("...and its still once the client has it", Drawn(), "still 1990")
+    Expect("...then asking no more", face.scripts.OnUpdate, nil)
+
+    -- A model answers with the creature it held until the new one loads: each creature's face is its own.
+    world.modelLags = true
+    world.creatureDisplays[301], world.creatureDisplays[302], world.creatureDisplays[303] = { 4001 }, { 4002 }, { 4003 }
+    local primed = {}
+    for _, id in ipairs({ 301, 302, 303 }) do primed[#primed + 1] = tostring((E.StaticPortrait:Prime(id))) end
+    world.time = world.time + 1
+    for _, id in ipairs({ 301, 302, 303 }) do primed[#primed + 1] = tostring((E.StaticPortrait:Prime(id))) end
+    world.modelLags = false
+    Expect("creatures asked together keep their own appearances while the client loads them",
+        table.concat(primed, " "), "nil nil nil 4001 4002 4003")
+
+    -- A creature the client has not cached shows a stand-in face until the server replies: not a face.
+    world.blankDisplay = 5555
+    world.time = world.time + 0.1 -- the stand-ins are read once a frame
+    world.creatureDisplays[311], world.creatureDisplays[312] = { 4011 }, { 4012 }
+    world.unloaded = { [311] = true }
+    local own = {}
+    for _, id in ipairs({ 311, 312 }) do own[#own + 1] = tostring((E.StaticPortrait:Prime(id))) end
+    world.time = world.time + 0.1
+    own[#own + 1] = tostring((E.StaticPortrait:Prime(311)))
+    world.unloaded = nil
+    world.time = world.time + 1.1
+    own[#own + 1] = tostring((E.StaticPortrait:Prime(311)))
+    world.blankDisplay, world.unloaded = 5555, { [321] = true }
+    local shipped = E.StaticPortrait:FromCreature(321, 4321)
+    world.blankDisplay, world.unloaded = nil, nil
+    Expect("a creature with a shipped appearance is drawn from it, whatever the client has cached",
+        shipped and shipped.texture.display, 4321)
+    Expect("an uncached creature takes the default face for no creature's, and its own once cached",
+        table.concat(own, " "), "nil 4012 nil 4011")
+
+    world.displaysUncached = true
+    face:SetSpeaker({ creatureID = 6 })
+    world.time = world.time + 10
+    face.scripts.OnUpdate(face, 10)
+    Expect("one the client never answers for keeps the book, and is no longer asked for",
+        Drawn() .. " " .. tostring(face.scripts.OnUpdate), BOOK .. " nil")
+    world.displaysUncached = false
+
+    face:SetSpeaker({ objectOrItem = true, icon = [[Interface\Icons\INV_Misc_Book_08]] })
+    Expect("an object or an item: its picture", Drawn(), [[Interface\Icons\INV_Misc_Book_08]])
+    face:SetSpeaker({ objectOrItem = true })
+    Expect("...else a posted notice", Drawn(), [[Interface\Icons\INV_Misc_Note_01]])
+
+    -- Two faces of one NPC both show it: neither takes the other's texture.
+    local other = Spoken:CreateSpeakerFace(page, 44)
+    face:SetSpeaker({ creatureID = 197 })
+    other:SetSpeaker({ creatureID = 197 })
+    Expect("two faces of one creature each draw it", Drawn() .. " " .. tostring(other.still:IsShown()), "still 3258 true")
+end
+
+---------------------------------------------------------------- the voice list
+do
+    local language = SpokenEnv.Addon.db.profile.Language
+    local function Order() local list = Spoken:GetVoiceOrder(); return list and table.concat(list, ",") or nil end
+    Expect("no list yet: no order, and each module keeps its own", Order(), nil)
+    Expect("a list is stored", Spoken:SetVoiceOrder({ "deDE_stimmen", "deDE", "enUS" }), true)
+    Expect("...and read back", Order(), "deDE_stimmen,deDE,enUS")
+    Expect("...keeping the old voice language as the first entry's language", language.Voice, "deDE")
+    Expect("...and the fallback as the second's", language.Fallback, "deDE")
+    Expect("...so GetLanguageChoice still answers in languages", select(2, Spoken:GetLanguageChoice()), "deDE")
+    Spoken:SetVoiceOrder({ "deDE_stimmen" })
+    Expect("one entry: the fallback is Stay Silent", language.Fallback, "none")
+    Expect("an empty list is refused", Spoken:SetVoiceOrder({}), false)
+    Expect("a repeated voice is refused", Spoken:SetVoiceOrder({ "deDE", "deDE" }), false)
+    Expect("a value that is no voice is refused", Spoken:SetVoiceOrder({ "deDE", "Stimmen!" }), false)
+    Expect("...and the list stays as it was", Order(), "deDE_stimmen")
+    Spoken:SetVoiceOrder({ "auto", "frFR", "enUS" })
+    Expect("Auto is kept as Auto in the old voice language", language.Voice, "auto")
+    stub.SetLocale("frFR")
+    Expect("Auto resolves to the client's language, and a later repeat of it is dropped", Order(), "frFR,enUS")
+    stub.SetLocale("enUS")
+    Expect("the stored list keeps Auto", table.concat(language.Voices, ","), "auto,frFR,enUS")
+    Spoken:SetVoiceOrder({ "deDE", "auto" })
+    Expect("Auto second is the client's language as the old fallback", language.Fallback, "enUS")
+    language.Voices, language.Voice, language.Fallback = nil, nil, nil
+end
 
 if Failures() > 0 then print(string.format("\n%d failure(s)", Failures())); os.exit(1) end
 print("\nAll API contract tests passed")

@@ -1,5 +1,5 @@
 ## Interface: 11509, 20506, 16001
-## Title: Spoken Developer
+## Title: |cffb48cffSpoken|r |cff6cb8ffDeveloper|r
 ## Notes: Tools for trying Spoken out: a debug log to send with a report, and the Developer page.
 ## Notes-deDE: Werkzeuge zum Ausprobieren von Spoken: ein Debug-Protokoll für Meldungen und die Entwickler-Seite.
 ## Notes-esES: Herramientas para probar Spoken: un registro de depuración para enviar con un informe y la página de desarrollador.
@@ -15,12 +15,12 @@
 ## SavedVariables: SpokenDeveloperDB
 # Account-wide, not per character: a log is about the client, and the character played is in each
 # session line anyway.
-## OptionalDeps: Spoken, Spoken_Quests, Spoken_Zones, Spoken_Books
-# Spoken is what this registers with (Spoken:RegisterDeveloper); without it there is nothing to
-# log. Optional, as for every module, so a copy installed without it loads and says so. The
-# modules are listed for load order only: their Developer sections are handed to Spoken whether
-# this loads before or after them.
-## IconTexture: Interface\AddOns\Spoken\icon.tga
+## Dependencies: Spoken
+# Spoken is what this registers with (Spoken:RegisterDeveloper).
+## OptionalDeps: Spoken_Quests, Spoken_Places, Spoken_Readables
+# The modules are listed for load order only: their Developer sections are handed to Spoken
+# whether this loads before or after them.
+## IconTexture: Interface\AddOns\Spoken_Developer\icon.tga
 ## Group: Spoken
 ## X-License: MIT
 
@@ -33,17 +33,15 @@ Locale/ruRU.lua
 Locale/koKR.lua
 Locale/zhCN.lua
 Locale/zhTW.lua
+Locale/Interface.lua
 Core.lua
 Log.lua
 Copy.lua
 Write.lua
 Screen.lua
-UI/Layout.lua
+Camera.lua
 UI/Box.lua
 UI/Menu.lua
 UI/Options.lua
 Commands.lua
 Events.lua
-
-# UI/Layout.lua is byte-identical in every Spoken addon and must stay that way: the file says why,
-# and pipelines/quests/tests/test_package.py is what enforces it.

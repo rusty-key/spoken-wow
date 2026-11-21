@@ -11,7 +11,7 @@ local SPOKEN = here .. "/../../addons/Spoken/"
 local QUESTS = here .. "/../../addons/Spoken_Quests/"
 
 _G.UISpecialFrames = _G.UISpecialFrames or {}
-stub.SetClient("11509"); stub.ResetSound(); stub.ResetTimers(); stub.ResetFrames()
+stub.SetClient("16001"); stub.ResetSound(); stub.ResetTimers(); stub.ResetFrames()
 stub.settingsCategories = {}; stub.ldbObjects = {}; stub.dbIcons = {}
 stub.world.questID = 0; stub.ShowPanel(nil)
 stub.LoadQuests(QUESTS, SPOKEN)
@@ -105,6 +105,12 @@ Subtitle:Layout(short)
 Expect("...on again, the row is back over them", tostring(Subtitle.nameRow and Subtitle.nameRow:IsShown()) .. " " .. Subtitle.lines[1].anchor.y,
     "true " .. named)
 
+-- A line with neither a header nor a label has no title over its words: its key is no name.
+Subtitle:Prepare({ key = "q:123:accept:456", present = {} }, short)
+Expect("a line with no header and no label shows no title", Subtitle.title:GetText() .. "|" .. tostring(Subtitle.labelText), "|nil")
+Subtitle:Prepare({ key = "q:123:accept:456", present = { header = "Thrall", label = "A Task" } }, short)
+Expect("...and one with both shows them", Subtitle.title:GetText() .. "|" .. tostring(Subtitle.labelText), "Thrall|A Task")
+
 -- Each layout setting changed under the sample shows on it at once, not at the next line or page.
 local frame = _G.SpokenEnv.Addon.db.profile.Frame
 -- The measure follows Text Size here: 7 a character at the quest font's 12, more as it grows.
@@ -159,7 +165,83 @@ Subtitle:Update()
 Expect("Show Progress off: the sample's progress line goes", Subtitle.progressShown, false)
 cfg.SubtitleProgress = saved.SubtitleProgress
 Subtitle:Update()
+
+-- Ctrl and the wheel over the subtitles: Subtitle Size, and with Shift Text Size. Without Ctrl, or
+-- locked, it does not take the wheel, which zooms the camera.
+local ctrl, shift, wheelOn = false, false, nil
+local hadCtrl, hadShift = _G.IsControlKeyDown, _G.IsShiftKeyDown
+_G.IsControlKeyDown = function() return ctrl end
+_G.IsShiftKeyDown = function() return shift end
+Subtitle.frame.IsMouseOver = function() return true end
+Subtitle.frame.EnableMouseWheel = function(_, on) wheelOn = on end
+Subtitle:TakeWheel()
+Expect("the subtitles leave the wheel to the camera without Ctrl", wheelOn, nil)
+ctrl = true
+Subtitle:TakeWheel()
+Expect("...and take it while Ctrl is held over them", wheelOn, true)
+local before = cfg.SubtitleScale
+Subtitle.frame:GetScript("OnMouseWheel")(Subtitle.frame, 1)
+Expect("Ctrl and the wheel grow Subtitle Size", math.abs(cfg.SubtitleScale - before - 0.05) < 1e-9, true)
+Expect("...drawing them larger", math.abs(Subtitle.frame.spokenBaseScale - cfg.SubtitleScale) < 1e-9, true)
+Expect("...and saying so", _G.GameTooltip.text,
+    _G.SpokenEnv.L.OPT_SUBTITLE_SIZE .. ": " .. math.floor(cfg.SubtitleScale * 100 + 0.5) .. "%")
+cfg.SubtitleScale = 1.6
+Subtitle.frame:GetScript("OnMouseWheel")(Subtitle.frame, 1)
+Expect("...no further than the slider goes", cfg.SubtitleScale, 1.6)
+cfg.SubtitleScale = before
+shift = true
+Subtitle.frame:GetScript("OnMouseWheel")(Subtitle.frame, 1)
+Expect("Ctrl, Shift and the wheel grow Text Size", cfg.FontSize, saved.FontSize + 1)
+cfg.FontSize = saved.FontSize
+shift = false
+_G.SpokenEnv.Addon.db.profile.Frame.LockFrame = true
+Subtitle:TakeWheel()
+Expect("locked, they leave the wheel to the camera", wheelOn, false)
+Subtitle.frame:GetScript("OnMouseWheel")(Subtitle.frame, 1)
+Expect("...and a turn that reaches them changes nothing", cfg.SubtitleScale, before)
+_G.SpokenEnv.Addon.db.profile.Frame.LockFrame = false
+Subtitle:TakeWheel()
+Expect("...unlocked, they take it again", wheelOn, true)
+Subtitle.frame:Hide()
+Subtitle:TakeWheel()
+Expect("...and give it back once they hide", wheelOn, false)
+Subtitle.frame:Show()
+ctrl = false
+_G.IsControlKeyDown, _G.IsShiftKeyDown = hadCtrl, hadShift
+Subtitle:Update()
 Subtitle:ShowSample(false)
+
+-- A line held back shows, saying why after its title, as the windows do: the subtitles otherwise
+-- wait for the voice to start before they show.
+do
+    local env = _G.SpokenEnv
+    local held = env.Sources:Register("held", { title = "Held", addon = "Spoken", order = 9 })
+    local holding = true
+    held:AddGate(function() if holding then return "in combat" end end)
+    env.Addon:SetPlayerStyle("subtitle")
+    held:Enqueue(H.Clip({ length = 30, present = { header = "Grull", label = "Held",
+        transcript = "The kobolds dig deeper into the mine every night.", portrait = { kind = "none" } } }))
+    env.Transcript:Sync()
+    Subtitle:CountWaiting()
+    Expect("a held line shows in the subtitles, saying why after its title",
+        tostring(Subtitle.frame:IsShown()) .. " " .. tostring(Subtitle.held:IsShown()) .. " " .. Subtitle.held:GetText(),
+        "true true (in combat)")
+    cfg.SubtitleName = false
+    Subtitle:Update()
+    Subtitle:CountWaiting()
+    Expect("...and with Show Name and Title off, why it waits is the row",
+        tostring(Subtitle.nameRow:IsShown()) .. " " .. tostring(Subtitle.held:IsShown()) .. " "
+        .. tostring(Subtitle.heldDot:IsShown()), "true true false")
+    cfg.SubtitleName = true
+    Subtitle:Update()
+    held:Enqueue(H.Clip({ length = 30, present = { header = "Grull", label = "Next", transcript = "More.",
+        portrait = { kind = "none" } } }))
+    Subtitle:CountWaiting()
+    Expect("the subtitles' count lists the lines waiting under the pointer",
+        tostring(Subtitle.more:IsShown()) .. " " .. tostring(Subtitle.moreHover:IsShown()), "true true")
+    holding = false
+    env.SoundQueue:RemoveAllSoundsFromQueue()
+end
 
 if Failures() > 0 then print(string.format("\n%d failure(s)", Failures())); os.exit(1) end
 print("\nAll subtitle page tests passed")

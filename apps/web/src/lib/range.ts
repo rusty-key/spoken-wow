@@ -15,13 +15,11 @@ export function isSafeAudioPath(rel: string): boolean {
 
 export type Range = { start: number; end: number };
 
-/**
- * Parse a single-range `bytes=` header against a known file size.
- *
- * Returns null when there is no range to honour, and "unsatisfiable" when the client
- * asked for something outside the file - which must answer 416, not 206.
- */
-export function parseRange(header: string | null, size: number): Range | null | "unsatisfiable" {
+/** What a single-range `bytes=` header asks for, before the size is known. */
+export type RangeRequest = { start: number; end: number | null } | { suffix: number };
+
+/** Null when there is no range to honour. */
+export function requestedRange(header: string | null): RangeRequest | null {
   if (!header) return null;
 
   const match = /^bytes=(\d*)-(\d*)$/.exec(header.trim());
@@ -29,20 +27,29 @@ export function parseRange(header: string | null, size: number): Range | null | 
 
   const [, rawStart, rawEnd] = match;
   if (rawStart === "" && rawEnd === "") return null;
+  if (rawStart === "") return { suffix: Number(rawEnd) };
+  return { start: Number(rawStart), end: rawEnd === "" ? null : Number(rawEnd) };
+}
 
+/** "unsatisfiable" for a range outside the file, which must answer 416, not 206. */
+export function resolveRange(wanted: RangeRequest, size: number): Range | "unsatisfiable" {
   let start: number;
   let end: number;
-  if (rawStart === "") {
-    // Suffix form: the last N bytes.
-    const length = Number(rawEnd);
-    if (length === 0) return "unsatisfiable";
-    start = Math.max(0, size - length);
+  if ("suffix" in wanted) {
+    if (wanted.suffix === 0) return "unsatisfiable";
+    start = Math.max(0, size - wanted.suffix);
     end = size - 1;
   } else {
-    start = Number(rawStart);
-    end = rawEnd === "" ? size - 1 : Math.min(Number(rawEnd), size - 1);
+    start = wanted.start;
+    end = wanted.end === null ? size - 1 : Math.min(wanted.end, size - 1);
   }
 
   if (start > end || start >= size) return "unsatisfiable";
   return { start, end };
+}
+
+/** A `bytes=` header against a known size: requestedRange, then resolveRange. */
+export function parseRange(header: string | null, size: number): Range | null | "unsatisfiable" {
+  const wanted = requestedRange(header);
+  return wanted ? resolveRange(wanted, size) : null;
 }

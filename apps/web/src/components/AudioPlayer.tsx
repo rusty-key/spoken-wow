@@ -29,7 +29,7 @@ import { Contained } from "./Width";
  * and the bar at 0:00 with no explanation.
  *
  * WHAT IT DOES NOT KNOW. Not what a line is, not how its URL is built, not which section it
- * belongs to. Quests names files by NPC and event, zones by map id and slug, and zones adds a
+ * belongs to. Quests names files by NPC and event, places by map id and slug, and places adds a
  * language the path itself does not carry -- so each section keeps a small adapter that turns
  * its own line into these props. That seam is the whole reason this is one component: the two
  * were the same 200 lines written twice, and they had already drifted to different playback
@@ -38,7 +38,7 @@ import { Contained } from "./Width";
 const RATES = [0.75, 1, 1.25, 1.5, 2];
 
 // The volume outlives the page: every explorer mounts its own element, and a level set on
-// quests should still be the level on zones. Storage can be absent or throw (private windows,
+// quests should still be the level on places. Storage can be absent or throw (private windows,
 // blocked site data), in which case the element's own default of full volume stands.
 const VOLUME_KEY = "spoken:volume";
 
@@ -74,7 +74,7 @@ type Props = {
   /**
    * A duration known before the file loads, in seconds.
    *
-   * Zones records it on the take, so the total can be shown immediately rather than after
+   * Places records it on the take, so the total can be shown immediately rather than after
    * the first byte arrives. Quests does not, and passes nothing.
    */
   totalHint?: number;
@@ -199,7 +199,7 @@ export default function AudioPlayer({
 
   return (
     <div className="bg-card/95 border-t backdrop-blur">
-      <Contained className="flex items-center gap-4 py-3">
+      <Contained className="flex items-center gap-2 py-3 sm:gap-4">
         <Button
           size="icon"
           variant="secondary"
@@ -277,7 +277,8 @@ export default function AudioPlayer({
           }}
           disabled={!src}
           aria-label={muted || volume === 0 ? "Unmute" : "Mute"}
-          className="shrink-0"
+          // A phone has volume buttons, and at its width the seek bar needs the room more.
+          className="hidden shrink-0 sm:inline-flex"
         >
           {muted || volume === 0 ? <VolumeX /> : <Volume2 />}
         </Button>
@@ -288,7 +289,7 @@ export default function AudioPlayer({
           aria-label="Volume"
           // Not disabled with nothing playing: the level is worth setting before the first
           // line, and it is remembered either way. Same enlarged pointer target as the seek bar.
-          className="-my-2 w-20 shrink-0 cursor-pointer py-2"
+          className="-my-2 hidden w-20 shrink-0 cursor-pointer py-2 sm:flex"
           onValueChange={([value]) => changeVolume(value ?? 0)}
         />
 

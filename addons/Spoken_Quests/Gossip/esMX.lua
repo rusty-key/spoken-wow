@@ -26,6 +26,7 @@ GossipText = {
             ["Busca por el Casco Antiguo y en el cuartel o en la taberna El Cerdo Borracho. Si vas a la taberna, no olvides probar algunas de las mejores cervezas. Ponen en evidencia la mala calidad de los brebajes de los enanos, te lo digo yo."] = "c621f0b9a4a6a6290dd5972a302122fc",
             ["Buscas pistas sobre lo arcano, ¿verdad? Entonces no hay mejor lugar que el Sagrario del Mago, en el Barrio de los Magos."] = "0493aff58b480f500d524b265550d281",
             ["Eh, eso me recuerda que tengo que reparar mis botas cohete. Pero te daré un buen consejo, no mezcles las botas cohete con los grifos.   Oh, pero necesitas que te ayude con algunas señas... dirígete al Distrito de los Enanos, encontrarás a Lilliam Chispeje por la parte de atrás."] = "bb3fee63f3293484e591674a691d3c88",
+            ["Eh, eso me recuerda que tengo que reparar mis botas cohete. Pero te daré un buen consejo, no mezcles las botas cohete y los grifos.   Oh, pero necesitas que te ayude con algunas señas... dirígete al Distrito de los Enanos, encontrarás a Lilliam Chispeje por la parte de atrás."] = "bb3fee63f3293484e591674a691d3c88",
             ["El Banco de Ventormenta está ubicado en el Distrito de Mercaderes, exactamente al noroeste de las puertas de la ciudad. Mira, te lo muestro en el mapa."] = "8fedf8298f3edb222d5b5f4355c58675",
             ["El instructor en ingeniería que vive en Ventormenta es un gnomo ingenioso al que todos conocen como Lilliam Chispeje. Lo encontrarás al final del Distrito de los Enanos."] = "05e90b70ee82c6ab15e68fec597454c2",
             ["El maestro Woo Ping domina casi todas las armas que conoce el hombre. Es especialmente mortal con sus técnicas de espada. Pasa mucho tiempo en el Arsenal de Weller, esperando nuevos cargamentos de armas. Lo encontrarás allí si necesitas instrucción."] = "ea46258d498568523f3fadf071cc9af0",
@@ -60,6 +61,7 @@ GossipText = {
             ["Ojalá pudiera irme contigo, $n. Vete al Castillo de Ventormenta. Encontrarás a Thelman Puñopizarra en la sala de audiencias del rey. Te ayudará a llegar hasta el Valle de Alterac."] = "5da822272073a4d726872184c3421ca6",
             ["Podría atravesar a un orco y cortar un trol en pedazos, ¿sabes? Hasta podría tallar mis iniciales en las costillas de un ogro, pero soy incapaz de desollar a un animal. ¡Imagínate!   Bueno, si tú tienes suficiente estómago ve a ver a Maris Granger en la Piel Protectora del Casco Antiguo."] = "c7ce82c152a63bc669f1d309ce17f9bd",
             ["Si lo que deseas es convertirte en $gun gran cocinero:una gran cocinera;, ve a la taberna El Cerdo Borracho, situada en el Casco Antiguo, y habla con Stephen Lomocenteno. Ese hombre prepara unas costillas como nadie en el mundo.  Hombre, ya me ha entrado hambre y ahora daría cualquier cosas por comerme sus famosas costillas. Pero ¡no cuentes con que te dará la receta!"] = "dbe19e29f297c8e1fb35a95e50f89466",
+            ["Si lo que deseas es convertirte en $gun gran cocinero:una gran cocinera;, ve a la taberna El Cerdo Borracho, situada en el Casco Antiguo, y habla con Stephen Lomocenteno. Ese hombre sabe prepara unas costillas como nadie en el mundo.  Hombre, ya me ha entrado hambre y ahora daría cualquier cosas por comerme sus famosas costillas. Pero ¡no cuentes con que te dará la receta!"] = "dbe19e29f297c8e1fb35a95e50f89466",
             ["Si necesitas un alojamiento para tu mascota mientras estás entrenando a otra, deberías hablar con Jenova Petrescudo, en el Distrito de los Enanos."] = "b68ea919378ae726f910e862a386d16f",
             ["Si quieres convertirte en un poderoso paladín, no encontrarás mejor maestro que Lord Grisillo Quiebrasombras. Lo encontrarás en la Catedral de la Luz, en la Plaza de la Catedral."] = "2d22a7afddcc8d88b9c1353ae28daf09",
             ["Si quieres encontrar pícaros, ve al Casco Antiguo. Está en la zona noreste de Ventormenta."] = "cd52082b0fdc76c7dded230c974a2ebf",
@@ -69,6 +71,7 @@ GossipText = {
             ["Thorfin Petrescudo vino desde Forjaz para transmitirnos su pericia con la caza. Si no te importa respirar el aire contaminado del Distrito de los Enanos, entonces lo encontrarás en su casa, situada en la zona noreste del distrito."] = "8c8ac67be8a32d83d11e1119cbe8b9f8",
             ["Tienes que buscar a Jenova Petrescudo, está en el Distrito de los Enanos. Se encarga de cuidar a las mascotas de los cazadores mientras su padre las entrena."] = "9654c77653b91d446f531295982fbec7",
             ["Tienes que hablar con Thelman Puñopizarra. Le podrás encontrar en presencia del rey, en el Castillo de Ventormenta."] = "bcfcce27aafd9e54ef3d2fcdb27f4139",
+            ["Uno de los empleados de los Textiles de Duncan, Georgio Bolero, es uno de los mejores sastres de Ventormenta. Busca la tienda en el Barrio de los Magos."] = "8706ad14fe81bd7bfe9d6986ff68ed63",
             ["Uno de los empleados de los Textiles de Duncan, Georgio Bolero, es uno de los mejores sastres de Ventormenta. Busca la tienda en el Barrio de los magos."] = "8706ad14fe81bd7bfe9d6986ff68ed63",
             ["Vaya, vaya, veo que estás progresando. Lo que buscas es la Sala de los Campeones, y la encontrarás en la parte sureste del Casco Antiguo. Si eres oficial podrás entrar sin problemas. De lo contrario, habla con la oficial Areyn afuera. ¡Buena suerte!"] = "a0e2103ae01da9c6c1707056a504c6ae",
             ["¡Todo indica que quieres hablar con Maginor Dumas! Casi siempre está en el Sagrario del Mago, en el Barrio de los Magos. Por supuesto, nunca sabes hacia qué portal viajan esos magos, ni en qué momento lo hacen."] = "fa0d9c855011039c74c70b23db0b82ea",
@@ -77,6 +80,7 @@ GossipText = {
             ["¿Buscas instrucción? Podría instruirte mejor que cualquiera en Ventormenta, pero la guardia lo prohíbe. Creo que vas a tener que quedarte por aquí, pues uno de ellos anda por el cuartel o en la taberna El Cerdo Borracho en el Casco Viejo."] = "cd7fa3fdce25e94d80b36771810f1e93",
             ["¿Eres hijo de la naturaleza? Entonces no tienes que buscar en la Poza de la Luna que está en el parque."] = "a63f0a77a472eab18caf48ea8320d27e",
             ["¿Hacia dónde quieres dirigirte?"] = "2402ec9453525b4ec16e1180457c7cfb",
+            ["¿Otro negociante, eh? Puedes encontrar la casa de subastas en el Distrito de Mercaderes. Cerca del banco."] = "3b18fc0710278c6aa12fb30a85999aaf",
             ["¿Que vas a crear tu hermandad? Entonces, ¡buena suerte!  Ve a ver a Aldwin Risante en el Centro del Viajero de Ventormenta. Está en el Distrito de Mercaderes, que está justo al entrar desde el Valle de los Héroes."] = "dbd178f951b41e05c59af921ec3b7725",
             ["¿Quieres aprender el oficio de la peletería? Simon Peletero podría enseñártelo. Lo encontrarás en el Casco Antiguo en La Piel Protectora."] = "52ef93000b10574ffb40f6f451597e26",
             ["¿Quieres darte un paseo en grifo? Dungar tiene estos pájaros en la muralla del Distrito de Mercaderes. ¡No olvides agarrarte fuerte!"] = "7df84a254c23565acaa7fc468ead3ab2",
@@ -89,6 +93,10 @@ GossipText = {
             ["¿Te interesa el cuero, eh? Creo que deberías hablar con Simon Peletero en el Casco Antiguo. Lleva una tienda llamada La Piel Protectora."] = "02b8fd48e20c73453938adc9f4995c2c",
             ["¿Un cazador? Bien, entonces querrás hablar con Thorfin Petrescudo, en el Distrito de los Enanos.    Oh, ¡y asegúrate de decirle que si vuelvo a pisar algún regalo de su mascota tendrá que instruir a los cazadores desde detrás de las barras de las Mazmorras!"] = "d9d6fc265ce7e558402d3ca53747dac5",
             ["¿Un sastre? Bien, si te quedas por aquí un rato seguramente oirás hablar de Georgio Bolero. Ha estado marcando la moda durante meses. Si quieres instruirte con él podrás encontrarlo en el borde exterior del Barrio de los Magos."] = "9cba4dc5407b5b21f860b325ab149a86",
+        },
+        [167] = {
+            ["Saludos, $Uciudadano:ciudadana;."] = "b302043-dwarf-male-guard",
+            ["Saludos."] = "551b9295c0119ec334ab1eebcbac2bee",
         },
         [197] = {
             ["¡Eh, $gciudadano:ciudadana;! Pareces fuerte. Nosotros, los guardias, no tenemos una presencia demasiado densa ahí fuera, podría necesitar tu ayuda..."] = "2343fa9b01b2ca00b5bc7a390ac07935",
@@ -103,6 +111,12 @@ GossipText = {
         },
         [233] = {
             ["Son tiempos difíciles, ¿verdad, $n? Mires a donde mires, siempre hay alguien que necesita ayuda, y mi mujer y yo no somos ninguna excepción."] = "9331c7d44a0e3e3352a08f93cde78162",
+        },
+        [234] = {
+            ["Una fétida corrupción ha entrado en los Páramos de Poniente. Mientras yo estaba cumpliendo con mi deber en los campos de guerra de Lordaeron, estas granjas fueron conquistadas y se convirtieron en guaridas de ladrones y asesinos. La Milicia Popular necesita tu ayuda."] = "esMX-46a4ecaf62861aa7a190462928391148",
+        },
+        [235] = {
+            ["Te doy la bienvenida a nuestra humilde morada. Siempre es agradable ver una cara amiga. ¡Qué brazos más fuertes tienes! Mi marido y yo siempre estamos buscando algo de ayuda en la granja. Ahora que la mayoría de los buenos trabajadores se han ido, es difícil encontrar a alguien que pueda echar una mano."] = "esMX-9befbee8b3929bb2829c934061193333",
         },
         [239] = {
             ["Aventura desde tierras cercanas y lejanas$BReunirse con personas extrañas y cercanas$BPero si a mi me planteas una questión$B¡Primero debes completar una simple misión!"] = "a1d52eb492cdf995ec86b759ea732fcb",
@@ -127,6 +141,9 @@ GossipText = {
         },
         [267] = {
             ["$gBienvenido:Bienvenida; al pueblo de Villa Oscura. Secretario Daltry a su servicio. ¿Puedo ser de alguna ayuda?"] = "d61bc8d45a3d7848d3f2554737fea5fb",
+        },
+        [268] = {
+            ["¡Saludos, $c! Solo tengo un objetivo: catalogar y registrar todo el conocimiento relacionado con la historia del Bosque del Ocaso y Villa Oscura. ¿Quizás podrías ayudarme?"] = "03f838d0fd8d62823c7de29bd2556505",
         },
         [273] = {
             ["Deja la puerta cerrada, $c. Nunca se sabe cuándo volverán a pasar los Jinetes oscuros."] = "8682df03cf89f55d63077ee4506fd321",
@@ -180,6 +197,7 @@ GossipText = {
             ["Espero que la Luz esté contigo, $n. ¿Puedo ayudarte en algo?"] = "aebf3948f2b6eeebadd9d114b8e08bba",
             ["He tenido que realizar una rigurosa reconversión con muchos estudiantes de todo lo que habían aprendido, para poder enseñarles desde cero. El servicio que ofrezco aumenta de dificultad cada vez que se hace. Por esa razón, también aumenta el precio de cada nueva instrucción. ¿Quieres que elimine todos los talentos que has aprendido?"] = "768f0928588ebe52253715a9f6b21ad7",
             ["No des la espalda a la Luz, $c, puede ser lo único que te salve algún día."] = "120875f188ac12780f811009b51a783b",
+            ["Si lo deseas, además de la instrucción, tengo el poder de borrar el conocimiento de tus talentos de tu mente. Te advierto que cada vez que realizas este proceso es más difícil y, por lo tanto, es más caro."] = "b8263-human-female-warrior",
         },
         [377] = {
             ["Espero que la Luz esté contigo, $n. ¿Puedo ayudarte en algo?"] = "aebf3948f2b6eeebadd9d114b8e08bba",
@@ -223,6 +241,8 @@ GossipText = {
         },
         [514] = {
             ["Lo siento, estoy bastante ocupado ahora mismo haciendo herraduras para Verner Osbien de la Comarca del Lago."] = "80c8a703f2783e988393cdc3f26954dd",
+            ["Por supuesto que puedo ayudarte con tu instrucción. No soy más que un oficial, pero seguro que puedo enseñarte algo."] = "b5733-human-male-warrior",
+            ["Si te gustaría aprender a forjar tus propias armas y armaduras, con mucho gusto te ayudaré."] = "b320569-human-male-warrior",
         },
         [523] = {
             ["¿Qué estás haciendo? ¡Si quieres ir allí rápidamente, no sigas mirando!"] = "a8c3fee28c1869e9b77707e11b8cd0a2",
@@ -248,7 +268,9 @@ GossipText = {
         },
         [727] = {
             ["Ah, Petrocejas no se aleja mucho de Forjaz estos días, así que si quieres aprender la sastrería, lo mejor será que vayas allí a buscarlo."] = "63ec46e6d95ea9bc754d4ccb65dd8202",
+            ["Ah, sí, en la parte trasera de la taberna encontrarás a una visitante de Pico Nidal que quizá pueda ayudarte con su guía espiritual, o con lo que sea que haga un chamán. ¿Ingol? Ir... ¡Ingrid! Ese era su nombre, Ingrid."] = "b327809-dwarf-male-guard",
             ["Bien, no vas a tener mucha suerte si buscas por aquí a un sastre. Pero Forjaz es el hogar de algunos sastres muy dotados. ¿Por qué no vas y preguntas a uno de los guardias de la ciudad?"] = "720fafcfb6472426d4149a74769fda89",
+            ["Bien, parece que $Glos dos:las dos; estamos buscando a Hogral Bakkan. Es un enano de pura cepa, así que tarde o temprano irá a la Destilería Cebatruenos para tomar una cerveza. Puede que incluso ya esté ahí."] = "1f4384179f7f2eff7cf1e505f549b91e",
             ["Bien, parece que los dos estamos buscando a Hogral Bakkan. Es un enano de pura cepa, así que tarde o temprano irá a la Destilería Cebatruenos para tomar una cerveza. Puede que incluso ya esté ahí."] = "1f4384179f7f2eff7cf1e505f549b91e",
             ["Brujos... No me interesan mucho esos tipos. Como ese Grimrizz que tiene una tienda junto a la Destilería Cebatruenos. ¡Seguro que la cerveza acabará perdiendo todo el gas por su culpa! Brujos... ¡bah!"] = "60bf6744b34a4b35ea7e3f938b4de2fd",
             ["Bueno, bueno $gmuchacho:muchacha;, puedes encontrar a Shelby Petrepiedra justo fuera de la Destilería Cebatruenos en Kharanos. Cuidará bien de tus mascotas."] = "bee5611eb524aaf54dfb7c803d87d4c9",
@@ -402,6 +424,7 @@ GossipText = {
             ["¿Te parece que me sobra el tiempo para darle a la sinhueso?"] = "a14f5faf742204672310f8f5b8263cb5",
         },
         [963] = {
+            ["Hola, $c. Espero que hayas venido a reforzar nuestras filas. ¡Las bestias y los ladrones invaden nuestra querida Elwynn y apenas tenemos hombres para mantener los caminos a salvo!  Y si no has venido a ello, entonces lee la nota acerca de Hogger. Es una bestia que habita en el bosque y tenemos que neutralizarla."] = "esMX-d74620830d16703d5f42f3376ee23e01",
             ["No puedo creer en los funcionarios de Ventormenta, enviando a la mayor parte de nuestro ejército al extranjero... ¡cuando el frente interno está sometido a tanta presión!$B$BCon ladrones que vienen desde Páramos de Poniente y gnolls invadiéndonos desde el este y el oeste, es increíble que Ventormenta no esté sitiado a estas alturas."] = "e03d3aaa8df7e98fcb210403aad69ebd",
         },
         [985] = {
@@ -452,6 +475,7 @@ GossipText = {
             ["Espero que la Luz esté contigo, $n. ¿Puedo hacer algo por ti?"] = "238a7cdf16a7d258e1b3789d98c5e7fb",
             ["He tenido que realizar una rigurosa reconversión con muchos estudiantes de todo lo que habían aprendido, para poder enseñarles desde cero. El servicio que ofrezco aumenta de dificultad cada vez que se hace. Por esa razón, también aumenta el precio de cada nueva instrucción. ¿Quieres que elimine todos los talentos que has aprendido?"] = "31ab172e1a375db1c9157d594eb608d9",
             ["Que la Luz te proteja, $c."] = "852369f0d2fbc11e555e75fe5a433853",
+            ["Sirve bien a la Luz, $c."] = "esMX-4dc0ae243385e7f65645f748602b52be",
         },
         [1228] = {
             ["He tenido que realizar una rigurosa reconversión con muchos estudiantes de todo lo que habían aprendido, para poder enseñarles desde cero. El servicio que ofrezco aumenta de dificultad cada vez que se hace. Por esa razón, también aumenta el precio de cada nueva instrucción. ¿Quieres que elimine todos los talentos que has aprendido?"] = "a9083a5c3e3237e00bd856dcc0fd400d",
@@ -464,6 +488,7 @@ GossipText = {
             ["Quizás las grandes guerras hayan acabado por el momento, ¡pero seguimos teniendo que mantener nuestras habilidades a punto!"] = "ce85977b0f1b155023ca49641a927acd",
         },
         [1231] = {
+            ["Antes de empezar una caza, es conveniente preguntar a alguien por lo que estas buscando antes de empezar a buscarlo."] = "b7511-dwarf-male-grim",
             ["Bah, ayudar no puedo. Más te vale buscarte un instructor de $c."] = "65ffa984c80ec793cab656acd848ac8c",
             ["He tenido que realizar una rigurosa reconversión con muchos estudiantes de todo lo que habían aprendido, para poder enseñarles desde cero. El servicio que ofrezco aumenta de dificultad cada vez que se hace. Por esa razón, también aumenta el precio de cada nueva instrucción. ¿Quieres que elimine todos los talentos que has aprendido?"] = "31ab172e1a375db1c9157d594eb608d9",
             ["¿Qué puedo hacer por ti?"] = "ff4c1db50d39977890db3fe889ea21ae",
@@ -500,6 +525,7 @@ GossipText = {
             ["Llena tu jarra y coge una silla. Tenemos historias que contar y barriles que vaciar."] = "c3684d8296958c5935a2740fa7611b74",
             ["Si te echas colonia o perfume, podrás ver quién está buscando amor. Esos aceptarán pruebas de amor... y te entregarán un regalo a cambio.$B$BPero recuerda: para darle a alguien una prueba de amor, ¡deberás oler bien! A los hombres les gusta el perfume mientras que las mujeres prefieren el olor de la colonia."] = "e74b227d686c3a09c784a937420b00fc",
             ["Yo no, pero muchos por ahí sí buscan amor. ¡Deberías comprarme pruebas de amor, echarte un poco de colonia o perfume y pasar a su lado!"] = "e76319f8e0a3393f78b709a653ebd046",
+            ["¿Qué puedes hacer en una posada?  Bueno, cuando te quedas en una posada, descansas cómodamente. Por esta razón, estarás 'más descansado' en mucho menos tiempo que si lo haces en el bosque. Cuando descansas bien, aprendes más de la experiencia.  Asimismo, puedes pedirle al posadero que te consiga una piedra de hogar para luego usarla con el fin de regresar rápidamente a la posada."] = "esMX-baa7df01957410b0c534bedf426f66a9",
             ["¿Qué puedes hacer en una posada?$B$BBueno, cuando te quedas en una posada, descansas cómodamente. Por esta razón, estarás más descansado' en mucho menos tiempo que si lo haces en el bosque. Cuando descansas bien, aprendes más de la experiencia.$B$BAsimismo, puedes pedirle al posadero que te consiga una piedra de hogar para luego usarla con el fin de regresar rápidamente a la posada'.'"] = "7559d6906f8128171c86805ac0f7eaac",
         },
         [1257] = {
@@ -612,6 +638,7 @@ GossipText = {
         },
         [1317] = {
             ["No estás $gpreparado:preparada;. Habla con Betty Quinn, la encontrarás junto a las escaleras. Vuelve aquí cuando tu preparación haya mejorado."] = "a4f377c48a85cd98cb6b0a714f4f8dfb",
+            ["Pareces muy $gseguro:segura;, así que no te importará que ponga a prueba tus habilidades, ¿verdad?"] = "b7896-human-male-standard",
             ["Si tienes lo necesario, estaré encantado de enseñarte."] = "442191b2cfb08109059d8086031cf4ea",
             ["Tu confianza está bien fundada, $gviajero:viajera;. ¡Que comience tu verdadera educación!"] = "c1383f7b48e9dcb2540129e0a8e3528b",
             ["Un verdadero profesional conoce sus límites, y no me avergüenza admitir que tus habilidades superan a las mías. Quiero que hagas una visita a Kitta Vientofuego en la Torre de Azora. Tiene buena fama, y por buenas razones."] = "26d3bfbb22d8a54e39ab79db7fab0284",
@@ -738,6 +765,7 @@ GossipText = {
         },
         [1423] = {
             ["Adele Fielder se ha hecho famosa como peletera por todo Elwynn. Podrás encontrarla trabajando a las puertas de su hora, junto al Lago de Cristal."] = "055387f3f8f3d85f77a3586504bdb666",
+            ["Al parecer hay un enano en Ventormenta que se ha ganado algo de fama por su habilidad como cazador. Quizás deberías ir a ver si puede ayudarte."] = "0156f92878dd7185920a393b5853d47b",
             ["Al parecer hay un enano en Ventormenta que se ha ganado algo de fama por su habilidad como cazador. quizás deberías ir a ver si puede ayudarte."] = "0156f92878dd7185920a393b5853d47b",
             ["Apostaría que Keryn Sylvius conoce al tipo que estás buscando. Keryn Sylvius anda con unas compañías muy poco recomendables. Normalmente está merodeando por la Posada Orgullo de León."] = "cec94b6df353509053c932b86d356143",
             ["Apuesto que Josetta estaría encantada de enseñarte algunos hechizos. Seguramente la encontrarás en su habitación de la Posada Orgullo de León."] = "0131cac34dfe2c78da45684a609b5c32",
@@ -787,6 +815,7 @@ GossipText = {
             ["¿Qué estás buscando?"] = "ed1b18176e479fb1e0c5d47c9f1dd25d",
             ["¿Un banco? El más cercano es la contaduría de Ventormenta. Sigue el camino a Ventormenta, lo encontrarás cerca de las puertas de la ciudad."] = "f92f96da1792dd89dc40428e6b0fa147",
             ["¿Un brujo? Veamos, si yo fuera un brujo seguramente estaría en el lugar más oscuro de los alrededores... en los sótanos de la Posada Orgullo de León. Creo que deberías empezar por allí."] = "325caa33bcef35efcdd544756cf14f0f",
+            ["¿Un pícaro? Ummm... veamos, he oído que Keryn Sylvius merodea a esos tipos. Quizás deberías hablar con ella y ver qué puede enseñarte."] = "8e11642ef78ecb20aeb15e5bd3d4ac1d",
             ["¿Un pícaro? Ummm... veamos, he oído que Keryn Sylvius merodea a esos tipos. quizás deberías hablar con ella y ver qué puede enseñarte."] = "8e11642ef78ecb20aeb15e5bd3d4ac1d",
         },
         [1430] = {
@@ -803,6 +832,7 @@ GossipText = {
             ["¡Mis años de experiencia como criador y todos mis cuidados me otorgan el privilegio de mostrarte estos caballos! Por favor, tómate tu tiempo para examinarlos. Un caballo te acompañará durante años, $gamigo:amiga;. ¡Hazte valer y adquiere hoy mismo tu montura!"] = "b2eb329ecae1bc16999a40f0d3b30dc8",
         },
         [1464] = {
+            ["Antiguamente la capital de los enanos Hierro Negro, este laberinto volcánico ahora sirve como trono de poder de Ragnaros, el Señor del Fuego. Ragnaros ha descubierto cómo crear vida a partir de la piedra y planea formar un ejército de golems imparables para ayudarle a conquistar la Montaña Roca Negra. Ragnaros, obsesionado con derrotar a Nefarian y a sus esbirros dracónicos, hará lo que sea por conseguir la victoria final."] = "d4c8367f7e096bd61f9f2c15a639c5d5",
             ["Antiguamente la capital de los enanos Hierro Negro, este laberinto volcánico ahora sirve como trono de poder de Ragnaros, el Señor del Fuego. Ragnaros ha descubierto cómo crear vida a partir de la piedra y planea formar un ejército de gólems imparables para ayudarle a conquistar la Montaña Roca Negra. Ragnaros, obsesionado con derrotar a Nefarian y a sus esbirros dracónicos, hará lo que sea por conseguir la victoria final."] = "d4c8367f7e096bd61f9f2c15a639c5d5",
             ["Construida con las mismas vides que Horado Rajacieno, Zahúrda Rajacieno es la capital tradicional de la raza de los jabaespines. El laberinto de espinas que se extiende por todas partes, aloja un verdadero ejército de leales jabaespines junto con sus altos sacerdotes, la tribu Caramuerte. Sin embargo, recientemente una sombra de mal presagio ha caído sobre la rudimentaria guarida. Unos agentes de la Plaga de los no-muertos, a las órdenes del exánime Amnennar el Gélido, han tomado el control de la raza de los jabaespines y han convertido el laberinto de espinas en un bastión del poder de los no-muertos."] = "0696ddb759f36db8a31b0de8dfe773e6",
             ["Cuando entregues pruebas de amor a los habitantes de la ciudad, recibirás diferentes regalos a cambio. Algunos podrás guardarlos y utilizarlos, y otros ¡podrás juntarlos y dárselos a tu $ghéroe favorito:heroína favorita;! Visita a Kwee Q. Mercachifle y entrégaselos.$B$BEncontrarás a Kwee cerca de Bolvar, Magni o Tyrande."] = "490f61093d0ec9e8887f5611d0dde3c6",
@@ -817,6 +847,7 @@ GossipText = {
             ["Esta ciudad abrasada por los rayos del sol es el hogar de los trols Furiarena, famosos por su particular falta de piedad y su oscuro misticismo. Las leyendas de los trols hablan de una poderosa espada llamada Sul'thraze la Azotadora, un arma capaz de infundir miedo y flaqueza incluso a los enemigos más formidables. Mucho tiempo atrás, la espada fue partida por la mitad. Sin embargo, hay rumores que dicen que las dos mitades se encuentran en algún lugar dentro de los muros de Zul'Farrak."] = "ecab747cb61959b39b57ef0de545ae6e",
             ["Frustrado por la falta de progreso de los magos de Dalaran contra los no-muertos durante la Tercera Guerra, el archimago Arugal decidió invocar a los ferocanis extra-dimensionales para dar un empujón a sus tropas cada vez menores. Los lobizones atacaron a la Plaga y, rápidamente, se dirigieron a los magos y asediaron el bastión del noble barón Filargenta. Pronto, el fuerte fue presa de las sombras y se convirtió en cenizas. Enloquecido por la culpa, Arugal adoptó a los ferocanis como sus hijos y se retiró al Castillo de Colmillo Oscuro."] = "387741cc6b9473695e470695f72c685c",
             ["Gnomeregan se encuentra en la parte oeste de Dun Morogh."] = "b5a78d9a4eb2335b05dc3e74b7bf93d2",
+            ["Hace más de mil años, un grupo de sacerdotes trols conocidos como los Atal'ai, intentaron resucitar a un dios de la sangre ancestral llamado Hakkar el Cazador de Almas. Tras la consecuente guerra civil, los sacerdotes fueron derrotados y exiliados al Pantano de las Penas. Allí erigieron un templo en honor de Hakkar, para prepararse para su llegada al mundo físico. La Dragón Aspecto Ysera, pronto descubrió los planes de los Atal'ai y hundió el templo bajo el pantano. Hasta el día de hoy, las ruinas han estado protegidas por los poderosos dragones verdes."] = "d0b8820f2e1f29977d61ec36fbba4c37",
             ["Hace más de mil años, un grupo de sacerdotes trols conocidos como los Atal'ai, intentaron resucitar a un dios de la sangre ancestral llamado Hakkar el Cazador de Almas. Tras la consecuente guerra civil, los sacerdotes fueron derrotados y exiliados al Pantano de las Penas. Allí erigieron un templo en honor de Hakkar, para prepararse para su llegada al mundo físico. La dragón Aspecto Ysera, pronto descubrió los planes de los Atal'ai y hundió el templo bajo el pantano. Hasta el día de hoy, las ruinas han estado protegidas por los poderosos dragones Verdes."] = "d0b8820f2e1f29977d61ec36fbba4c37",
             ["Hace poco, un druida elfo de la noche llamado Naralex, descubrió una red de cuevas subterráneas en el corazón de Los Baldíos. Creyendo que podría usar los manantiales de las cuevas para restaurar la exuberancia de Los Baldíos, el druida comenzó a absorber las energías del legendario Sueño Esmeralda. De alguna forma, su visión se transformó en una pesadilla y pronto, las Cuevas de los Lamentos se convirtieron en una guarida de viciosos y letales depredadores. Se dice que Naralex sigue en algún lugar del laberinto, atrapado más allá de los límites del Sueño Esmeralda."] = "bddcb2f11ff849b592a1d76b4d46b5d1",
             ["Horado Rajacieno se encuentra en el extremo más al sur de Los Baldíos, en el lado oeste del camino."] = "41e7446de8a99d017f4dbbef7255bc13",
@@ -849,7 +880,9 @@ GossipText = {
             ["¿Te interesa explorar una de estas mazmorras?"] = "036da6474362e31b5c5b8714997221d3",
         },
         [1466] = {
+            ["Ayy... ¡qué mala suerte! Mis habilidades no te servirían de nada. Pero veamos... Ve a hablar con Fimble Bueneje, junto al telar. Ha trabajado con cuero mucho más tiempo que yo."] = "b7959-gnome-female-standard",
             ["Todavía no se puede trabajar con este pellejo, no está preparado. Ojalá no costara tanto trabajar con el cuero. Tiene que haber algún modo de reducir todo este tiempo de espera. No puede ser bueno para la salud, ¿sabes?"] = "d66a2bc101b5a2594db0e958f8da478a",
+            ["¡Oh, yupi! ¡Algo que hacer mientras espero! ¡Eres un auténtico salvavidas, $n!"] = "b7960-gnome-female-standard",
         },
         [1470] = {
             ["No creo que estés aquí para hablar de mi adorable Kali. Bueno, veamos. Se trata de pociones. ¿Te han dicho ya que eres de ideas fijas?"] = "888d5259091b04afd7e726170db3465b",
@@ -889,6 +922,7 @@ GossipText = {
             ["Supongo que tu primer ejercicio será exa-minar el camino hasta Entrañas. Je, ¿lo coges? Exa-minar... no importa. Para llegar a Entrañas ve a la parte trasera de las Ruinas de Lordaeron, al sur de Rémol, y baja con uno de los ascensores. Cuando llegues pide más ayuda a uno de los guardianes de Entrañas."] = "2e97c78ba8df38524753f0708f9146cd",
             ["Sí, buscas a Austil de Mon. Siempre está por el mesón, en el extremo sudeste de la ciudad. Se llama Mesón La Horca, no tiene pérdida."] = "b7899941266bd499f36628be4b089ec3",
             ["Sí, siempre verás a Clyde Kellen pescando a orillas del Lago Aguasclaras, al este de Rémol. Pero cuando estés ahí fuera ten cuidado con los psicópatas enmascarados. El año pasado tuvimos que cerrar el campamento de verano para niños."] = "90cd6156af4fabbed61c7d3ef0682ad3",
+            ["Toma, entonces. Parece que Zygand está demasiado ocupado para hacer el penoso viaje hasta aquí y buscarlo él mismo."] = "b326573-scourge-male-warrior",
             ["¡Ah! Tú buscas al clérigo oscuro Beryl. Está en el piso de arriba en la sala de lectura del Mesón La Horca. Leyendo, rezando... ¡a saber lo que hace! ¿Y quién se atreve a preguntar...?"] = "b0d229770be3e29c722b451fae65aa8a",
             ["¿A qué instructor buscas?"] = "453b9c8037ce4d9e2cd70e18ad1d9620",
             ["¿El carnicero dices? ¡Oh, perdón, el instructor de primeros auxilios! Lo mismo es. Cuando veas a la enfermera Neela en el Mesón La Horca, en la parte sureste de la ciudad, sabrás por qué lo digo."] = "d52cdea0c5a316cd91c993435b3f0346",
@@ -974,6 +1008,7 @@ GossipText = {
         },
         [1676] = {
             ["Eemm... ¡Todavía no puedo ayudarte! Antes tienes que aprender los principios básicos. ¿Por qué no vas a ver a Duendy Ruedadentada en Ventormenta?"] = "53a615c56f1bceea727ec102f86c7525",
+            ["Puedo enseñarte algunos trucos... si no te importa hacer algo antes, eso es."] = "b7828-gnome-male-zany",
             ["Sí que te estás esforzando... ¡llegarás más alto que yo a este paso! Ve a hablar con Muello Saltarín, en Forjaz. Él... ¿Ella...? te enseñará más de lo que yo podría enseñarte jamás."] = "3be14b269e4a2e88daaa7b79a48ea9d8",
             ["¡Fantástico! ¿Tú eres bastante $gtrabajador:trabajadora; verdad? Bien, empecemos, ¿te parece?"] = "25a871b4543c5397d1451590a62e502d",
             ["¡Nunca estoy demasiado ocupado para hablar con un extraño! Bueno, casi nunca..."] = "6fa11f689cf6d10432a1f4a482d4c9d4",
@@ -993,6 +1028,9 @@ GossipText = {
         },
         [1694] = {
             ["¡$gBienvenido:Bienvenida; al Almacén de Brasacerada!"] = "f4728e16ba0ebf0c0e140d78d64f6dd7",
+        },
+        [1698] = {
+            ["¿Qué quieres?"] = "b2875-dwarf-male-guard",
         },
         [1699] = {
             ["Busca a Shandrina en el Refugio Brisa de Plata. Te puede vender el 'Libro de cocina para expertos'."] = "fe8baba790f8edd0a4e3d2f680dfe89a",
@@ -1342,6 +1380,10 @@ GossipText = {
             ["¿Un herrero? No, el último que tuvimos se volvió en uno de esos estúpidos miembros de la Plaga. Hay uno en Entrañas, al sur de la ciudad. Entrañas está bajo las Ruinas de Lordaeron. Desciende con los ascensores que encontrarás al fondo de las ruinas y cuando hayas llegado habla con uno de los guardianes de Entrañas. Seguro que podrán indicarte la dirección correcta."] = "6635289d43d0b38e56c4dba6cd15143a",
             ["¿Un lugar desde el que volar? ¡Deberás ir a Entrañas para eso! Sigue el camino hacia el Sur, y luego hacia el suroeste, hacia las Ruinas de Lordaeron. Puedes coger el ascensor que desciende a Entrañas en la parte trasera de las ruinas. Cuando llegues allí pide ayuda a uno de los guardias."] = "f080ec403b25479b3bea6d34d7e97dda",
         },
+        [1748] = {
+            ["Te doy la bienvenida al Castillo de Ventormenta, ciudadana."] = "esMX-963019047f5218e9d8f5df425ab76a9a",
+            ["Welcome to Stormwind Keep, citizen."] = "77b2262706420111aeba4dc2c00014ef",
+        },
         [1749] = {
             ["<Lady Prestor te mira.>"] = "c3be4e90159eac26604380da9c7a81ce",
             ["Estaba justo al lado tuyo, imbécil. Sé lo que buscas."] = "a0f1f3ff9bb1cc58aeedfa5e124c36c4",
@@ -1359,6 +1401,10 @@ GossipText = {
             ["He tenido que realizar una rigurosa reconversión con muchos estudiantes de todo lo que habían aprendido, para poder enseñarles desde cero. El servicio que ofrezco aumenta de dificultad cada vez que se hace. Por esa razón, también aumenta el precio de cada nueva instrucción. ¿Quieres que elimine todos los talentos que has aprendido?"] = "31ab172e1a375db1c9157d594eb608d9",
             ["No eres $gun guerrero:una guerrera;... ¡Pero si no durarías ni un día siguiendo mi régimen de instrucción! $B$B¡$gUn:Una:c; $c que se cree ser $gun guerrero:una guerrera;! ¡Ja!"] = "64a04066374cb355ff1adeae11f4ae82",
             ["Quizás las grandes guerras hayan acabado por el momento, ¡pero seguimos teniendo que mantener nuestras habilidades a punto!"] = "ce85977b0f1b155023ca49641a927acd",
+        },
+        [1949] = {
+            ["Saludos, $gaventurero:aventurera;."] = "bb629dff984157364277eb3b8a3e5d58",
+            ["Saludos, aventurera."] = "esMX-86345d1722c7df1cd0aba7dbfc53fc9c",
         },
         [1976] = {
             ["A Tannysa la encontrarás en la entrada de El Rincón del Alquimista, en el Barrio de los Magos."] = "356b1700581f2c27333ab266a26bb077",
@@ -1638,6 +1684,7 @@ GossipText = {
             ["Puedo enseñarte técnicas de primeros auxilios."] = "6e0e069ae3df14ed20af0f9912ceff68",
         },
         [2352] = {
+            ["Antiguamente la capital de los enanos Hierro Negro, este laberinto volcánico ahora sirve como trono de poder de Ragnaros, el Señor del Fuego. Ragnaros ha descubierto cómo crear vida a partir de la piedra y planea formar un ejército de golems imparables para ayudarle a conquistar la Montaña Roca Negra. Ragnaros, obsesionado con derrotar a Nefarian y a sus esbirros dracónicos, hará lo que sea por conseguir la victoria final."] = "f8d10783a3c760d2420a46cb47298aa5",
             ["Antiguamente la capital de los enanos Hierro Negro, este laberinto volcánico ahora sirve como trono de poder de Ragnaros, el Señor del Fuego. Ragnaros ha descubierto cómo crear vida a partir de la piedra y planea formar un ejército de gólems imparables para ayudarle a conquistar la Montaña Roca Negra. Ragnaros, obsesionado con derrotar a Nefarian y a sus esbirros dracónicos, hará lo que sea por conseguir la victoria final."] = "f8d10783a3c760d2420a46cb47298aa5",
             ["Construida con las mismas vides que Horado Rajacieno, Zahúrda Rajacieno es la capital tradicional de la raza de los jabaespines. El laberinto de espinas que se extiende por todas partes, aloja un verdadero ejército de leales jabaespines junto con sus altos sacerdotes, la tribu Caramuerte. Sin embargo, recientemente una sombra de mal presagio ha caído sobre la rudimentaria guarida. Unos agentes de la Plaga de los no-muertos, a las órdenes del exánime Amnennar el Gélido, han tomado el control de la raza de los jabaespines y han convertido el laberinto de espinas en un bastión del poder de los no-muertos."] = "3cb878b29bbead8f6dd51327dc32625a",
             ["Cuando entregues pruebas de amor a los habitantes de la ciudad, recibirás diferentes regalos a cambio. Algunos podrás guardarlos y utilizarlos, y otros ¡podrás juntarlos y dárselos a tu $ghéroe favorito:heroína favorita;! Visita a Kwee Q. Mercachifle y entrégaselos.$B$BEncontrarás a Kwee cerca de Bolvar, Magni o Tyrande."] = "fa856e726cbf60331453148913410f70",
@@ -1652,6 +1699,7 @@ GossipText = {
             ["Esta ciudad abrasada por los rayos del sol es el hogar de los trols Furiarena, famosos por su particular falta de piedad y su oscuro misticismo. Las leyendas de los trols hablan de una poderosa espada llamada Sul'thraze la Azotadora, un arma capaz de infundir miedo y flaqueza incluso a los enemigos más formidables. Mucho tiempo atrás, la espada fue partida por la mitad. Sin embargo, hay rumores que dicen que las dos mitades se encuentran en algún lugar dentro de los muros de Zul'Farrak."] = "ea68efe1a61ecbb1e167a8048083d87a",
             ["Frustrado por la falta de progreso de los magos de Dalaran contra los no-muertos durante la Tercera Guerra, el archimago Arugal decidió invocar a los ferocanis extra-dimensionales para dar un empujón a sus tropas cada vez menores. Los lobizones atacaron a la Plaga y, rápidamente, se dirigieron a los magos y asediaron el bastión del noble barón Filargenta. Pronto, el fuerte fue presa de las sombras y se convirtió en cenizas. Enloquecido por la culpa, Arugal adoptó a los ferocanis como sus hijos y se retiró al Castillo de Colmillo Oscuro."] = "f3470ace9961a588dd6ef24942fdbf74",
             ["Gnomeregan se encuentra en la parte oeste de Dun Morogh."] = "ad9e028bbf4d1db826c98feaf297f9c3",
+            ["Hace más de mil años, un grupo de sacerdotes trols conocidos como los Atal'ai, intentaron resucitar a un dios de la sangre ancestral llamado Hakkar el Cazador de Almas. Tras la consecuente guerra civil, los sacerdotes fueron derrotados y exiliados al Pantano de las Penas. Allí erigieron un templo en honor de Hakkar, para prepararse para su llegada al mundo físico. La Dragón Aspecto Ysera, pronto descubrió los planes de los Atal'ai y hundió el templo bajo el pantano. Hasta el día de hoy, las ruinas han estado protegidas por los poderosos dragones verdes."] = "70e14cec1f3ddef25bb53cbea8c56ec7",
             ["Hace más de mil años, un grupo de sacerdotes trols conocidos como los Atal'ai, intentaron resucitar a un dios de la sangre ancestral llamado Hakkar el Cazador de Almas. Tras la consecuente guerra civil, los sacerdotes fueron derrotados y exiliados al Pantano de las Penas. Allí erigieron un templo en honor de Hakkar, para prepararse para su llegada al mundo físico. La dragón Aspecto Ysera, pronto descubrió los planes de los Atal'ai y hundió el templo bajo el pantano. Hasta el día de hoy, las ruinas han estado protegidas por los poderosos dragones Verdes."] = "70e14cec1f3ddef25bb53cbea8c56ec7",
             ["Hace poco, un druida elfo de la noche llamado Naralex, descubrió una red de cuevas subterráneas en el corazón de Los Baldíos. Creyendo que podría usar los manantiales de las cuevas para restaurar la exuberancia de Los Baldíos, el druida comenzó a absorber las energías del legendario Sueño Esmeralda. De alguna forma, su visión se transformó en una pesadilla y pronto, las Cuevas de los Lamentos se convirtieron en una guarida de viciosos y letales depredadores. Se dice que Naralex sigue en algún lugar del laberinto, atrapado más allá de los límites del Sueño Esmeralda."] = "442564e4ee5fc6e12bc08f7fc207c5ee",
             ["Horado Rajacieno se encuentra en el extremo más al sur de Los Baldíos, en el lado oeste del camino."] = "e581a9ed3de8105b6729f7dc085e1c17",
@@ -1693,6 +1741,7 @@ GossipText = {
             ["Tu habilidad supera a la mía, pero he oído que el Viejo Heming en la Bahía del Botín, tiene ejemplares de 'La lubina y tú'. Seguro que te ayuda a mejorar tu habilidad."] = "13d2af5f294a07ae2cff1bf240fa32c1",
         },
         [2388] = {
+            ["Antiguamente la capital de los enanos Hierro Negro, este laberinto volcánico ahora sirve como trono de poder de Ragnaros, el Señor del Fuego. Ragnaros ha descubierto cómo crear vida a partir de la piedra y planea formar un ejército de golems imparables para ayudarle a conquistar la Montaña Roca Negra. Ragnaros, obsesionado con derrotar a Nefarian y a sus esbirros dracónicos, hará lo que sea por conseguir la victoria final."] = "f3796e44c383e2f2dab079058435a9e6",
             ["Antiguamente la capital de los enanos Hierro Negro, este laberinto volcánico ahora sirve como trono de poder de Ragnaros, el Señor del Fuego. Ragnaros ha descubierto cómo crear vida a partir de la piedra y planea formar un ejército de gólems imparables para ayudarle a conquistar la Montaña Roca Negra. Ragnaros, obsesionado con derrotar a Nefarian y a sus esbirros dracónicos, hará lo que sea por conseguir la victoria final."] = "f3796e44c383e2f2dab079058435a9e6",
             ["Construida con las mismas vides que Horado Rajacieno, Zahúrda Rajacieno es la capital tradicional de la raza de los jabaespines. El laberinto de espinas que se extiende por todas partes, aloja un verdadero ejército de leales jabaespines junto con sus altos sacerdotes, la tribu Caramuerte. Sin embargo, recientemente una sombra de mal presagio ha caído sobre la rudimentaria guarida. Unos agentes de la Plaga de los no-muertos, a las órdenes del exánime Amnennar el Gélido, han tomado el control de la raza de los jabaespines y han convertido el laberinto de espinas en un bastión del poder de los no-muertos."] = "df15192a7814812aa87b737075049c7f",
             ["Cuando entregues pruebas de amor a los habitantes de la ciudad, recibirás diferentes regalos a cambio. Algunos podrás guardarlos y utilizarlos, y otros ¡podrás juntarlos y dárselos a tu $ghéroe favorito:heroína favorita;! Visita a Kwee Q. Mercachifle y entrégaselos.$B$BEncontrarás a Kwee cerca de Bolvar, Magni o Tyrande."] = "81a3af904e5e838f33cd0c337609ca1e",
@@ -1708,6 +1757,7 @@ GossipText = {
             ["Esta ciudad abrasada por los rayos del sol es el hogar de los trols Furiarena, famosos por su particular falta de piedad y su oscuro misticismo. Las leyendas de los trols hablan de una poderosa espada llamada Sul'thraze la Azotadora, un arma capaz de infundir miedo y flaqueza incluso a los enemigos más formidables. Mucho tiempo atrás, la espada fue partida por la mitad. Sin embargo, hay rumores que dicen que las dos mitades se encuentran en algún lugar dentro de los muros de Zul'Farrak."] = "4d9fe927578f203ba1f939866e8eb07f",
             ["Frustrado por la falta de progreso de los magos de Dalaran contra los no-muertos durante la Tercera Guerra, el archimago Arugal decidió invocar a los ferocanis extra-dimensionales para dar un empujón a sus tropas cada vez menores. Los lobizones atacaron a la Plaga y, rápidamente, se dirigieron a los magos y asediaron el bastión del noble barón Filargenta. Pronto, el fuerte fue presa de las sombras y se convirtió en cenizas. Enloquecido por la culpa, Arugal adoptó a los ferocanis como sus hijos y se retiró al Castillo de Colmillo Oscuro."] = "5561946a80fa1778f731cd1da49a7f21",
             ["Gnomeregan se encuentra en la parte oeste de Dun Morogh."] = "45400c7ff98d6669e16f6f738a544da2",
+            ["Hace más de mil años, un grupo de sacerdotes trols conocidos como los Atal'ai, intentaron resucitar a un dios de la sangre ancestral llamado Hakkar el Cazador de Almas. Tras la consecuente guerra civil, los sacerdotes fueron derrotados y exiliados al Pantano de las Penas. Allí erigieron un templo en honor de Hakkar, para prepararse para su llegada al mundo físico. La Dragón Aspecto Ysera, pronto descubrió los planes de los Atal'ai y hundió el templo bajo el pantano. Hasta el día de hoy, las ruinas han estado protegidas por los poderosos dragones verdes."] = "4af8645fc89247fb0892c4705462e74d",
             ["Hace más de mil años, un grupo de sacerdotes trols conocidos como los Atal'ai, intentaron resucitar a un dios de la sangre ancestral llamado Hakkar el Cazador de Almas. Tras la consecuente guerra civil, los sacerdotes fueron derrotados y exiliados al Pantano de las Penas. Allí erigieron un templo en honor de Hakkar, para prepararse para su llegada al mundo físico. La dragón Aspecto Ysera, pronto descubrió los planes de los Atal'ai y hundió el templo bajo el pantano. Hasta el día de hoy, las ruinas han estado protegidas por los poderosos dragones Verdes."] = "4af8645fc89247fb0892c4705462e74d",
             ["Hace poco, un druida elfo de la noche llamado Naralex, descubrió una red de cuevas subterráneas en el corazón de Los Baldíos. Creyendo que podría usar los manantiales de las cuevas para restaurar la exuberancia de Los Baldíos, el druida comenzó a absorber las energías del legendario Sueño Esmeralda. De alguna forma, su visión se transformó en una pesadilla y pronto, las Cuevas de los Lamentos se convirtieron en una guarida de viciosos y letales depredadores. Se dice que Naralex sigue en algún lugar del laberinto, atrapado más allá de los límites del Sueño Esmeralda."] = "5a0c8734a5baf412a3c8a6ea7f840971",
             ["Horado Rajacieno se encuentra en el extremo más al sur de Los Baldíos, en el lado oeste del camino."] = "2391b5317315d4d4a8941b336ba01d82",
@@ -1758,6 +1808,9 @@ GossipText = {
         [2409] = {
             ["¿Adónde quieres volar?"] = "f6ea55ad6f6344693225294350de4559",
         },
+        [2425] = {
+            ["No presumas de hablar conmigo como si fueras mi igual, $c. Sylvanas es mi reina y haré lo que ella disponga.$B$BSi no muestras el respeto adecuado te aseguro que podemos encontrar un lugar más apropiado para ti en El Vacío Abisal.$B$BPero si deseas ayudar a la Dama Oscura no hay ninguna razón por la que no podamos intercambiar algunas palabras..."] = "df026ba116c46347a0f53bb2c2836f20",
+        },
         [2432] = {
             ["¿Adónde quieres volar?"] = "f6ea55ad6f6344693225294350de4559",
         },
@@ -1791,6 +1844,14 @@ GossipText = {
         [2501] = {
             ["¡Oy! ¿Estás aquí por un juego de puñetazos?"] = "6f428d572fdc8ce3f0c460252a038a6f",
         },
+        [2504] = {
+            ["Límpiate antes de tocar nuestros tomos, te lo ruego."] = "esMX-394114149a297f91385c52755c355a89",
+        },
+        [2543] = {
+            ["As a member of the High Order of shen'dorei, you are most welcome here in our city, $c.  Your leader, Elaadrin Evengale and I have had quite the correspondence these recent months. I feel that the Kirin Tor and the High Order are cut from the same cloth, always in search of answers to the greater mysteries of the world. Now more than ever, seeking said answers is vital to all of our survival.  Just as you have experienced an interruption in your way of life on Zephras, the flow of magic on Azeroth has been chaotic as well. Disturbed, somehow... as if a rock has been dropped into still water, causing ripples to surge across the surface.  Ah, but talk of such troubles can wait for another time. For now, welcome to Azeroth."] = "esMX-e4653f8dde9b7999a32274cf9a390b3e",
+            ["Como miembro de la Suma Orden de los shen'dorei, eres más que $gbienvenido:bienvenida; aquí en nuestra ciudad, $c.    Estos últimos meses he intercambiado correspondencia con tu líder, Elaadrin Ventopar. Tengo la sensación de que el Kirin Tor y la Suma Orden están cortados con la misma tijera, siempre en busca de respuestas para los grandes misterios del mundo. Ahora más que nunca, es vital que busquemos dichas respuestas para sobrevivir.    Así como tu estilo de vida en Zephras se ha visto interrumpido, el flujo de la magia de Azeroth también se ha vuelto caótico. Perturbado, por algún motivo... como si alguien hubiera lanzado una roca sobre el agua estancada para provocar una oleada en la superficie.    Pero bueno, podemos conversar sobre esos problemas en otro momento. Por ahora, te doy la bienvenida a Azeroth."] = "e4653f8dde9b7999a32274cf9a390b3e",
+            ["Como miembro de la Suma Orden de los shen'dorei, eres más que bienvenida aquí en nuestra ciudad, $c.  Estos últimos meses he intercambiado correspondencia con tu líder, Elaadrin Ventopar. Tengo la sensación de que el Kirin Tor y la Suma Orden están cortados con la misma tijera, siempre en busca de respuestas para los grandes misterios del mundo. Ahora más que nunca, es vital que busquemos dichas respuestas para sobrevivir.  Así como tu estilo de vida en Zephras se ha visto interrumpido, el flujo de la magia de Azeroth también se ha vuelto caótico. Perturbado, por algún motivo... como si alguien hubiera lanzado una roca sobre el agua estancada para provocar una oleada en la superficie.  Pero bueno, podemos conversar sobre esos problemas en otro momento. Por ahora, te doy la bienvenida a Azeroth."] = "e4653f8dde9b7999a32274cf9a390b3e",
+        },
         [2627] = {
             ["Bueno, bueno, no está demasiado mal. Quizás PUEDA enseñarte un par de cosas..."] = "86645eb4b7a73026276b0f113606af33",
             ["Dicen que una puntada a tiempo ahorra... ¿cuántas, mil? Ah, no lo puedo recordar. Es un refrán estúpido de todas formas."] = "4695d885c5423f51c542ad1df66c86b0",
@@ -1804,6 +1865,9 @@ GossipText = {
         [2704] = {
             ["Ansekhwa, el maestro de arma' tauren, está en la parte baja de Cima del Trueno. Él da lecciones sobre mazos de una y dos manos, bastones y arma' de fuego.  Archibald, el maestro de arma no-muerto del Barrio de la Guerra en Entrañas, e' bueno con las ballestas, dagas, eh'padas de una y dos manos y armas de asta.  Sayoc, este orco feo de aquí, puede enseñarte sobre arcos, dagas, arma' de puño, hachas de una y dos manos, y armas arrojadizas."] = "00786fcaef5b82cb1cc4964e5ab1ea1a",
             ["Eh, colega. Has venio al sitio perfecto pa aprender a empuñar una nueva arma."] = "cc3e350a79b20307088a569e80902909",
+        },
+        [2784] = {
+            ["Te doy la bienvenida a Forjaz, $c."] = "da139f8c3bd6d9d5e183b9248e3b2403",
         },
         [2786] = {
             ["Bienvenido a la tienda de Agarrahueso, $c. Puedes mirar, pero no tocar.$B$BParte del conocimiento de aquí no está destinado a los... no iniciados."] = "e9122556274f96f9c44be0119beaa6bc",
@@ -1869,12 +1933,16 @@ GossipText = {
             ["¿Adónde quieres volar?"] = "f686b3319d4af5004c6ee3403aea3f5e",
         },
         [2878] = {
+            ["No puedes enseñarle a un perro viejo nuevos trucos. Al menos eso es lo que alguien me dijo en una ocasión. Por suerte para ti, he descubierto que esto no es así.  Sin embargo, las mascotas tienden a resistirse a mi técnica y necesito cada vez más comida para que estén contentas. Esto significa que me tendrás que pagar más cada vez que desentrene la misma mascota.  Así pues, ¿quieres que comience con el desentrenamiento?"] = "esMX-27465bf841c53e0949d07ebdd327bf8e",
             ["Oh, solo ayudo a los cazadores y sus mascotas."] = "b439ced1ada35971e9ff2706f428bff0",
             ["¿Has venido en busca de instrucción para poder pasársela a tus mascotas?"] = "12e2351404174f85aa98fa3a3524bcd0",
         },
         [2879] = {
             ["Oh, solo ayudo a los cazadores y sus mascotas."] = "b439ced1ada35971e9ff2706f428bff0",
             ["¿Has venido en busca de instrucción para poder pasársela a tus mascotas?"] = "12e2351404174f85aa98fa3a3524bcd0",
+        },
+        [2888] = {
+            ["¿Sí?"] = "b2873-model-317",
         },
         [2910] = {
             ["Los bastardos vinieron directamente a por nosotros por la noche, después de que nos hubiéramos tomado unas copas. De lo contrario, podríamos haberlos machacado, cuenta con ello.$B$BAhora han muertos todos... excepto algunos de nosotros."] = "d3bcb64fc7e64a57e763a59492127647",
@@ -1896,6 +1964,12 @@ GossipText = {
         },
         [2998] = {
             ["Pareces $ghombre:mujer; con sed de conocimiento. Quizás busques la enseñanza de la forja, así como del martillo. Tal vez yo pueda ayudarte a recorrer ese camino. Pero solo cuando hayas aceptado a los espíritus y hayas escuchado su llamada."] = "b0b47cf8dcffc971f677db7811e6e84d",
+            ["Tienes un gran potencial, pero primero debes conseguir el conocimiento, debes aceptar a los espíritus y escuchar su llamada. Solo entonces estarás $gpreparado:preparada; para el camino que debes seguir. Ve a hablar con Thrag, creo que podrían aprender mucho el uno del otro."] = "b5808-tauren-male-elder",
+            ["Tienes un gran potencial, pero primero debes conseguir el conocimiento, debes aceptar a los espíritus y escuchar su llamada. Solo entonces estarás preparado para el camino que debes seguir. Ve a hablar con Thrag, creo que podrían aprender mucho el uno del otro."] = "b5808-tauren-male-elder",
+            ["Todo tiene un espíritu y si aprendes a escucharlo, podrás cogerlo y darle la forma que quieras. La herrería no solo consiste en golpear el metal. Se trata de obligarlo a que se ciña a tu voluntad. Se trata de escuchar al espíritu que vive en el acero y guiarlo para que adquiera la forma que sabes que quiere alcanzar."] = "b3954-tauren-male-elder",
+        },
+        [3001] = {
+            ["Saludos."] = "ca7358e2cec09c600084b8744b9a5abb",
         },
         [3004] = {
             ["Debes aprender las cosas fundamentales antes de que pueda enseñarte. Ve a hablar con mi aprendiz, Vhan. Es amable y paciente, y te enseñará todo lo que necesitas saber."] = "b3710bc3fd8b71a4f79dd71616deb9a4",
@@ -2006,6 +2080,7 @@ GossipText = {
         },
         [3045] = {
             ["He tenido que realizar una rigurosa reconversión con muchos estudiantes de todo lo que habían aprendido, para poder enseñarles desde cero. El servicio que ofrezco aumenta de dificultad cada vez que se hace. Por esa razón, también aumenta el precio de cada nueva instrucción. ¿Quieres que elimine todos los talentos que has aprendido?"] = "a54fabb9fc0936c92134f8611f4e5e8b",
+            ["Si lo deseas, además de la instrucción, tengo el poder de borrar el conocimiento de tus talentos de tu mente. Te advierto que cada vez que realizas este proceso es más difícil y, por lo tanto, es más caro."] = "b8263-scourge-male-warrior",
             ["¿Qué puede hacer por ti este insignificante sirviente, $n? ¿Instrucción quizá?"] = "650cd75a030b0fef3f59f216d895e8d1",
             ["¿Sí, $c?"] = "901d3b1160b38eacb61be277a1eab438",
         },
@@ -2596,7 +2671,7 @@ GossipText = {
             ["Vira Pezuña Joven tiene su consulta en la casa grande de la parte occidental del poblado."] = "4f5f7ae4d60dbe2bd1bf43b0ad2e8786",
             ["Yaw Crinafilada te espera en el extremo septentrional del poblado. Podrá mostrarte la senda del cazador."] = "4c1b626c145d8077c5aa2db55852dcfa",
             ["¿A qué instructor buscas?"] = "c5fec459a17d0b54dc8cfb9f0c9066ae",
-            ["¿Qué estás buscando?"] = "b3d11178772212cc804676804bb92ca1",
+            ["¿Qué estás buscando?"] = "b4857-tauren-male-warrior",
             ["¿Qué profesión?"] = "4a850dc32d00c265e503622c595cebf4",
             ["¿Sastrería dices? Ummm... Ah sí, por supuesto. Deberás dirigirte a Cima del Trueno, al Norte. Sigue el camino que sale del poblado y ve allí. Cuando llegues a la base de los riscos sube con el ascensor hasta la cumbre y habla con uno de los vigías de la Cima."] = "aae10fc784263c4cb468d55cea4fd71e",
         },
@@ -2686,6 +2761,9 @@ GossipText = {
             ["¿Qué profesión?"] = "4a850dc32d00c265e503622c595cebf4",
             ["¿Sastrería dices? Ummm... Ah sí, por supuesto. Deberás dirigirte a Cima del Trueno, al Norte. Sigue el camino que sale del poblado y ve allí. Cuando llegues a la base de los riscos sube con el ascensor hasta la cumbre y habla con uno de los vigías de la Cima."] = "aae10fc784263c4cb468d55cea4fd71e",
         },
+        [3230] = {
+            ["<Nazgrel te examina y gruñe.>  Elfos nobles, aquí en Orgrimmar. Nunca pensé que sería testigo de algo así en mi vida, pero a esta altura ya nada me sorprende.  Sí, el Jefe de Guerra me pidió que redactara unas instrucciones para ti. Están en esta carta, tómala. Actúa con honor y muestra el respeto debido cuando te reúnas con nuestros líderes, elfo.  Cuando hayas terminado tu viaje, regresa con el Jefe de Guerra."] = "esMX-260358da3a234c7017b47fbebf98988b",
+        },
         [3290] = {
             ["Tus aptitudes superan mi capacidad para instruirte. ¡Deberías preguntar a mi compañero gnomo Trixie Chispaveloz de Forjaz!"] = "880b2c6f5cafdcebe50a0e9724a61989",
             ["¡Estaría encantado de ayudarte a comenzar tu tarea! Déjame coger mi centrifugador y nos pondremos en marcha..."] = "f0c3fcd8e5d2ce42560cdd3636e4af9e",
@@ -2702,6 +2780,7 @@ GossipText = {
             ["Busca la torre de aterrizaje de zepelines que está fuera de la ciudad en el sudeste."] = "3e4dab27994d3297fb026a55aa21667f",
             ["Buscas a Urtrun Aunaclanes en la embajada de la Horda. Encuéntrala en la zona oeste del Valle de la Fuerza."] = "71970291a3ab9199914f897241acc4b3",
             ["Búscala en la parte superior del lado oeste del Valle de la Fuerza. ¡Solo te dejarán entrar si eres oficial! De lo contrario, habla con la sargento Ba'sha afuera."] = "e7866663b8f38742244edaa262c62e11",
+            ["Creo que necesitamos a alguien que ponga los vendajes a los guerreros después de los enfrentamientos. Busca a Arnok en la cabaña de Supervivencia del Más Fuerte, que se encuentra cerca del Recinto de los Espíritus en el Valle de los Espíritus. Busca un lago que está allí arriba y al oeste del Valle de la Fuerza. Ahí es donde está."] = "6be79c4541f77d8d29acbf888f562299",
             ["Creo que necesitamos a alguien que ponga los vendajes a los guerreros después de los enfrentamientos. Busca a Arnok en la cabaña de la Supervivencia del Más Fuerte que se encuentra en la ribera del lago junto al Recinto de los Espíritus en el Valle de los Espíritus. Busca un lago que está allí arriba y al oeste del Valle de la Fuerza. Ahí es donde está."] = "6be79c4541f77d8d29acbf888f562299",
             ["Debemos eliminar a los elfos y su cobarde Alianza de la Garganta Grito de Guerra. Vete al Bastión de los Valientes en el Valle del Honor y habla con Brakgul Libramorte si tienes lo que se necesita para ayudar a la Horda."] = "970ddc32d4b7a525c189dc519ff7a728",
             ["El Banco de Orgrimmar está en el Valle de la Fuerza. Búscalo al norte de la entrada principal de la ciudad."] = "0d0d3b2be6dc0e0448bd8ad0d1a6199b",
@@ -2716,6 +2795,7 @@ GossipText = {
             ["Habla con Grezz Puñofuria en el Bastión de los Valientes, que está en el Valle del Honor. ¡Háblale bien de mí!"] = "d64d7b97dd43fd06735418ebd2a16c48",
             ["Habla con Pephredo, en la Cabaña de Brezo que está en el Valle de los Espíritus, arriba y al oeste del Valle de la Fuerza."] = "716e7e4fb54f6b7f439717f8e1cb509c",
             ["Habla con Saru Furiacerada en El Yunque Ardiente. Dirígete al Valle del Honor. Está situado al final del camino, a la derecha de la minería El Cañón Rojo."] = "e64f4df8c7e58b6297509a694416a3f4",
+            ["Hierbas... tienes que hablar con Jandi en su arboreto en la Calle Mayor. Hay unas escaleras de madera detrás del Mercado de Asoran en el Valle de la Sabiduría. Utilízalas para acceder al nivel superior de la Calle Mayor y la encontrarás."] = "f4d8e423146d1060237e65e944828604",
             ["Hierbas... tienes que hablar con Jandi en su arboreto en la calle Mayor. Hay unas escaleras de madera detrás del Mercado de Asoran en el Valle de la Sabiduría. Utilízalas para acceder al nivel superior de la Calle Mayor y la encontrarás."] = "f4d8e423146d1060237e65e944828604",
             ["Justo fuera de la Entrada Principal de la ciudad hay un poste indicador. Apunta hacia la torre del zepelín. Habla con el maestro de zepelines Frezza, en la parte superior de la torre."] = "ac0ba2a4466278a2ed6ceac133133a36",
             ["La casa de subastas de Orgrimmar está en el Valle de la Fuerza. Búscala en el este, junto a Importaciones Bocarda."] = "311c5f6a0a1dddef0371a0c113bb62ab",
@@ -2723,6 +2803,7 @@ GossipText = {
             ["La embajada de la Horda está en el Valle de la Fuerza, en la zona oeste."] = "96570b0e28f301933f76f87ab8b65194",
             ["Lo que buscas es la Sala de las Leyendas. Está en lo alto del Valle de la Fuerza, en el lado oeste. No puedes entrar a menos que seas oficial, pero aun así puedes hablar con la sargento Ba'sha afuera."] = "30dd36a9611a5248ae78a22056a25043",
             ["Los centinelas Ala de Plata no son lo que yo llamaría oponentes honorables. Pero si estás $gdecidido:decidida; a matarles, $c, busca a Brakgul Libramorte en el Bastión de los Valientes."] = "79112947d6abd6ba4573faecea150b38",
+            ["Me encantaría poder unirme a ti en tu gloriosa batalla, pero estoy aquí atrapado... El deber... Vete al Bastión de los Valientes, en el Valle del Honor de Orgrimmar y habla con Kartra Gruñido Sangriento. Ella te ayudará a llegar hasta el Valle de Alterac. ¡Haz que estemos orgullosos de ti, $N!"] = "85f1dfbc6635cf1f0129f8b498acbd11",
             ["Me encantaría poder unirme a ti en tu gloriosa batalla, pero estoy aquí atrapado... El deber... Vete al Bastión de los Valientes, en el Valle del Honor de Orgrimmar y habla con Kartra Gruñido Sangriento. Ella te ayudará a llegar hasta el Valle de Alterac. ¡Haz que estemos orgullosos de ti, $n!"] = "85f1dfbc6635cf1f0129f8b498acbd11",
             ["Pociones y aceites, son cosas sobre las que Yelmak te enseñará si eres $gdigno:digna; de ello. Busca su tienda en medio de la Calle Mayor."] = "fdeac495307fb2d96ba514b92ca0eb97",
             ["Puedes encontrar a Makaru a todas horas en la minería El Cañón Rojo en el Valle del Honor, junto al lago."] = "9735ac53d3d67045070581d0843fe26d",
@@ -2762,6 +2843,7 @@ GossipText = {
             ["¿Qué, no puedes girar ahí? Ve hacia la Cabaña de Brezo que está en el Valle de los Espíritus, arriba y al oeste del Valle de la Fuerza."] = "2eae00e94c3eecdbf2462e9dfa78b8a4",
         },
         [3305] = {
+            ["Mientras esos enanos se queden ahí, no tendremos problemas. ¿Dónde te diriges, $N?"] = "e335b9f12333a886ef964fef76e376d8",
             ["Mientras esos enanos se queden ahí, no tendremos problemas. ¿Dónde te diriges, $n?"] = "e335b9f12333a886ef964fef76e376d8",
         },
         [3306] = {
@@ -2798,6 +2880,7 @@ GossipText = {
         [3325] = {
             ["He tenido que realizar una rigurosa reconversión con muchos estudiantes de todo lo que habían aprendido, para poder enseñarles desde cero. El servicio que ofrezco aumenta de dificultad cada vez que se hace. Por esa razón, también aumenta el precio de cada nueva instrucción. ¿Quieres que elimine todos los talentos que has aprendido?"] = "28f6b8de934060edb89ab0339b080fcf",
             ["Sabes lo suficiente como para ser $gpeligroso:peligrosa;, pero a mí me parece que todavía necesitas instrucción, $n."] = "8dca5bea4ae2a0b9ce008425ae8ac006",
+            ["Si lo deseas, además de la instrucción, tengo el poder de borrar el conocimiento de tus talentos de tu mente. Te advierto que cada vez que realizas este proceso es más difícil y, por lo tanto, es más caro."] = "b8263-orc-female-shaman",
             ["Tu voluntad no es lo suficientemente fuerte como para manipular las fuerzas que controlamos, $c."] = "d02c9efbf965f15cf354f957643c58a4",
         },
         [3326] = {
@@ -2831,10 +2914,12 @@ GossipText = {
             ["He tenido que realizar una rigurosa reconversión con muchos estudiantes de todo lo que habían aprendido, para poder enseñarles desde cero. El servicio que ofrezco aumenta de dificultad cada vez que se hace. Por esa razón, también aumenta el precio de cada nueva instrucción. ¿Quieres que elimine todos los talentos que has aprendido?"] = "28f6b8de934060edb89ab0339b080fcf",
             ["Los espíritus te han guiado hasta mí. ¿Cómo puedo serte de ayuda?"] = "93ff0e2abb20dcd5c4b04b86b60d8ab3",
             ["Que los espíritus estén contigo."] = "7be5b41b6547e9fda9b4b9cb85616226",
+            ["Si lo deseas, además de la instrucción, tengo el poder de borrar el conocimiento de tus talentos de tu mente. Te advierto que cada vez que realizas este proceso es más difícil y, por lo tanto, es más caro."] = "b8263-orc-female-shaman",
         },
         [3345] = {
             ["Algunos aventureros creen que el encantamiento no funciona. ¡Si los retase a un combate cambiarían su opinión!"] = "3c96e38d8275bcb879a7e7eb43dca519",
             ["No estás $glisto:lista; para instruirte conmigo, $gforastero:forastera;. Antes deberás pasar un tiempo con mi asistente Jhag, ahí lo tienes."] = "e5af5d1c3def492a1f23240e2763be98",
+            ["Quizás tengas lo necesario. ¡Vamos a averiguarlo!"] = "b93a6715900dab13a0c551fe5830b1c0",
             ["Tus habilidades superan con creces a las mías, $gforastero:forastera;. Ve a hablar con Hgarth en el Refugio Roca del Sol de la Sierra Espolón. Con él podrás avanzar en tu conocimiento."] = "b763ebb2808596a973203acbe4b2c81b",
             ["¡Bien hecho! Tienes ese brillo especial en los ojos... Lo conozco bien... ¡es el mismo que tenía yo cuando era un cachorro! Ahora veamos si puedo enseñarte algo."] = "0535431e80accd3492c256c1ceb98fe1",
         },
@@ -2845,7 +2930,7 @@ GossipText = {
             ["¿Otro estudiante, eh? Muy bien. Veré qué puedo hacer para ayudarte."] = "d3bef4bf422a40408d5b3a0703f1e056",
         },
         [3348] = {
-            ["Mmm..."] = "c34ef3d11704ad9a5aadd00c5c258be2",
+            ["Mmm..."] = "b1087-orc-male-shady",
         },
         [3352] = {
             ["He tenido que realizar una rigurosa reconversión con muchos estudiantes de todo lo que habían aprendido, para poder enseñarles desde cero. El servicio que ofrezco aumenta de dificultad cada vez que se hace. Por esa razón, también aumenta el precio de cada nueva instrucción. ¿Quieres que elimine todos los talentos que has aprendido?"] = "3a364a4573d4825a6795e3bb454069d4",
@@ -2863,6 +2948,7 @@ GossipText = {
             ["¿Has venido para recibir instrucción? ¿O solo has venido para hacer perder el tiempo a un guerrero?"] = "141f23d07f540e8c7b0ef9335bda601e",
         },
         [3355] = {
+            ["¡Esto no es ningún juego, joven! Vete, habla con Gruños fuera. Quizás no sea más que una serpiente de mi guarida, pero sabe cómo manejar un yunque."] = "b5817-orc-male-guard",
             ["¿Qué buscas en mi herrería? ¿Acaso buscas instrucción? ¿Acaso deseas conocer los secretos del acero? ¿Los misterios de la forja? ¡Habla, Bruto!"] = "03b20e4ae05f8ecd44ff03f0c3561c3f",
         },
         [3362] = {
@@ -2911,6 +2997,7 @@ GossipText = {
             ["He tenido que realizar una rigurosa reconversión con muchos estudiantes de todo lo que habían aprendido, para poder enseñarles desde cero. El servicio que ofrezco aumenta de dificultad cada vez que se hace. Por esa razón, también aumenta el precio de cada nueva instrucción. ¿Quieres que elimine todos los talentos que has aprendido?"] = "857ea30c7f6e11d987a132b4e84da4dc",
             ["Que los espíritus estén con ti, colega. ¿Qué puede hacer este trol por ti?"] = "6c82842b379af58a9a58e28cb35a4d49",
             ["Que los espíritus te protejan, colega."] = "5bcfe44c67f5e0a247451c8d54a13c74",
+            ["Si lo deseas, además de la instrucción, tengo el poder de borrar el conocimiento de tus talentos de tu mente. Te advierto que cada vez que realizas este proceso es más difícil y, por lo tanto, es más caro."] = "b8263-troll-female-old",
         },
         [3406] = {
             ["Eh, colega, tendrás que ir con el inh'tructor de $c."] = "3a75f8b0a2ec11bc929978a4d421dc5a",
@@ -2937,6 +3024,11 @@ GossipText = {
         },
         [3429] = {
             ["Bienvenido a El Cruce, $c. Mi nombre es Thork, lidero las defensas de este lugar en nombre del Jefe de Guerra.$B$BPor favor, siéntete como en casa. Mantente en tus asuntos y a nadie le importará que estés por aquí.$B$BNuestra seguridad está muy amenazada. Si ya te has familiarizado con la situación del país habla con algún otro, quizás te puedan encomendar alguna tarea."] = "bc68f87f28d14f99d8f8ff4c267ffea2",
+        },
+        [3430] = {
+            ["Has <resopla> ayudado a Quebrantadientes más de lo que hubiera soñado, $r.$B$BGracias.$B$BMientras siga aquí cautivo puedes traerme esquirlas de sangre del jabaespín Erizapúas y te ungiré con la fuerza de Agamaggan."] = "0da686edfe28493d263fb69e6f40dad9",
+            ["¡Tú! ¡$R! Ven aquí.<resopla>$B$BEl tiempo es breve y mi fin -resopla-está cerca. Quebrantadientes vencerá, ya lo verás. -resopla-$B$BMi captura todavía puede ayudar <resopla> a mi gente. ¡La tribu Crines de Acero es más poderosa que los Erizapúas!$B$BLa Horda quiere averiguar quién lidera las incursiones sobre su pueblo. Tú <resopla> ayudarás a Quebrantadientes a cambio de la información que solo yo conozco. ¡Quebrantadientes puede ayudarte! <resopla> Pero debes ayudar a Quebrantadientes."] = "0ca78d01ff421bd9965061499907f558",
+            ["¡Tú! ¡No-muerto! Ven aquí.<resopla>  El tiempo es breve y mi fin -resopla-está cerca. Quebrantadientes vencerá, ya lo verás. -resopla-  Mi captura todavía puede ayudar <resopla> a mi gente. ¡La tribu Crines de Acero es más poderosa que los Erizapúas!  La Horda quiere averiguar quién lidera las incursiones sobre su pueblo. Tú <resopla> ayudarás a Quebrantadientes a cambio de la información que solo yo conozco. ¡Quebrantadientes puede ayudarte! <resopla> Pero debes ayudar a Quebrantadientes."] = "esMX-d598445914f3325d2ceb3b7e59a2d7b1",
         },
         [3432] = {
             ["Te lo agradezco, $n. Tu total entrega a mis súplicas, permite descansar al espíritu de mi esposa perdida y nunca podré darte suficiente recompensa.$B$BNo puedo decir que mi odio por el jabaespín vaya a desaparecer jamás, pero se ha saciado por el momento.$B$BDebo empezar a reconstruir mi vida."] = "bad017b3adfc64250ce72451884a2780",
@@ -2976,6 +3068,7 @@ GossipText = {
             ["Sí, te enseñaré algo. Veamos qué tal lo haces, ¡tal vez me lleve una sorpresa!"] = "af9ccb95467b25c6dc0eaa8a4d0cf1cf",
             ["¡Me temo que ya juegas a otro nivel, $gamigo:amiga;! Deberías ir a ver a Nogg en Orgrimmar, él te ayudará a seguir progresando."] = "f87c37944192073e24d10f1a070e94b4",
             ["¡No puedo ayudarte! Estás $glisto:lista; para ver a alguien con mucha más experiencia que yo. Veamos... eres de la Alianza, así que tendrás que hablar con Lilliam Chispeje de Ventormenta."] = "1389ded94ec799fa553e34c3557ac12c",
+            ["¡No tengo na más que enseñar! Vamos, no pa alguien que sabe tanto como yo. Ustedes, los de la Horda, tienen que hablar con Nogg en Orgrimmar."] = "b8276-goblin-male-guard",
             ["¿Qué? ¿Quieres algo?"] = "b0fb181dddc32fa304d6805b255e6bde",
         },
         [3516] = {
@@ -2993,6 +3086,9 @@ GossipText = {
             ["Así que... ¿Quieres ser un sastre? Muy bien, veamos si tienes lo que se necesita."] = "aa04b66da46a80a2753c940c3f9f1a2e",
             ["Es un placer conocerte. ¿Puedo ayudarte?"] = "e291d9ad0a70ad2cbfd236c26b801d03",
             ["Estoy bastante informado, pero no soy un experto. ¿Sabes con quién deberías hablar? ¡Rhiannon! No está lejos. Pregunta por ella en Entrañas."] = "e5260b81bc08d0a40f54722eafa81dcb",
+        },
+        [3537] = {
+            ["¿Qué quieres?"] = "5525d7b853cc23ec7b185864e1086dd9",
         },
         [3545] = {
             ["Oh, solo ayudo a los cazadores y sus mascotas."] = "043d1db9fcbabde933fe81bd22b51be2",
@@ -3108,6 +3204,7 @@ GossipText = {
         },
         [3605] = {
             ["$GBienvenido:Bienvenida; a nuestro hogar, $n. Radnaal y yo tenemos poco que ofrecerte, pero te acogemos con toda nuestra hospitalidad."] = "7c21b898f9ef9ba4951b9798a1a9fcd6",
+            ["Bienvenida a nuestro hogar, $N. Radnaal y yo tenemos poco que ofrecerte, pero te acogemos con toda nuestra hospitalidad."] = "7c21b898f9ef9ba4951b9798a1a9fcd6",
             ["Tienes que hacer los puntos más pequeños, $n. Algunos objetos se saldrían de los carcajes y bolsas de municiones. Además, a nadie le gusta una túnica llena de agujeros."] = "78c72b92c02d69f67b68bb8842819441",
         },
         [3606] = {
@@ -3119,6 +3216,10 @@ GossipText = {
             ["Puedo enseñarte a pescar."] = "a8d1f968e17b0d4c93ec75f0c6e5bfad",
             ["Tendrás que encontrar a Nat Pagle en el Marjal Revolcafango para mejorar tus habilidades."] = "2b445553ef42041e4fb79936cb957400",
             ["Tu habilidad supera a la mía, pero he oído que el Viejo Heming en la Bahía del Botín, tiene ejemplares de 'La lubina y tú'. Seguro que te ayuda a mejorar tu habilidad."] = "958a146c28400f9f9854e051f637dcfa",
+        },
+        [3608] = {
+            ["Saludos, $Uciudadano:ciudadana;."] = "b302043-nightelf-female-standard",
+            ["Saludos."] = "4cdb3f8d5c5634d4b3dfd884adc30a6c",
         },
         [3615] = {
             ["Mis jinetes del viento están entrenados para volar rápidamente atravesando el aire caliente de Los Baldíos."] = "27c5a394b6b942d2aa0a5871fb44a353",
@@ -3139,6 +3240,7 @@ GossipText = {
             ["Fuerzas oscuras acechan en nuestras fronteras, manchas ancestrales que resurgen y nuevos males emergen para inclinar la balanza del mundo. En tiempos tan oscuros, todos debemos estar atentos."] = "3f95b0f1e5a347161090771b0b06fba2",
         },
         [3663] = {
+            ["Buen día, $C."] = "b249029-human-male-official",
             ["¡Buenas, $Gchico:chica;! Quizás podrías ayudarme con un par de cositas."] = "91058db50d61e967510b5e5942d0d3a6",
         },
         [3678] = {
@@ -3179,6 +3281,7 @@ GossipText = {
             ["Hola, $r, encantada de conocerte."] = "5f95ec2be38e4f15ab9cd9f879175957",
         },
         [3703] = {
+            ["Este cuero azul atrae miradas, lo sé. Verás, tenemos a muchos reclutas ansiosos por aquí, cazando y matando con más entusiasmo que sabiduría. Hay que tomar precauciones."] = "b8004-tauren-male-elder",
             ["Los mejores pellejos son las de los kodos que han venido a descansar en esta tierra yerma."] = "67523c45386916357dd48fdb7eb1a7d6",
             ["No ofrezco instrucción a aprendices. Busca al tauren Waldor en las Cuevas de los Lamentos aquí, en Los Baldíos. Podrá ayudarte con lo que necesites."] = "4b0168981471cd2230e7238c590e1752",
             ["No puedo ayudarte con más lecciones. Tus habilidades me han sobrepasado. Vete a hablar con la tauren Una. La encontrarás en las tiendas del noroeste de la meseta central de Cima del Trueno. Puede ofrecerte una instrucción más avanzada."] = "bffaa502fd9b791647a5cfdc9c001744",
@@ -3234,6 +3337,7 @@ GossipText = {
         },
         [3934] = {
             ["Al igual que el viento de las llanuras, siempre eres $gbienvenido:bienvenida; aquí."] = "a98c33cf2b0c65fb09a0b00d67122e46",
+            ["Antiguamente la capital de los enanos Hierro Negro, este laberinto volcánico ahora sirve como trono de poder de Ragnaros, el Señor del Fuego. Ragnaros ha descubierto cómo crear vida a partir de la piedra y planea formar un ejército de golems imparables para ayudarle a conquistar la Montaña Roca Negra. Ragnaros, obsesionado con derrotar a Nefarian y a sus esbirros dracónicos, hará lo que sea por conseguir la victoria final."] = "d1d167264b852e04dcc247504cad2f84",
             ["Antiguamente la capital de los enanos Hierro Negro, este laberinto volcánico ahora sirve como trono de poder de Ragnaros, el Señor del Fuego. Ragnaros ha descubierto cómo crear vida a partir de la piedra y planea formar un ejército de gólems imparables para ayudarle a conquistar la Montaña Roca Negra. Ragnaros, obsesionado con derrotar a Nefarian y a sus esbirros dracónicos, hará lo que sea por conseguir la victoria final."] = "d1d167264b852e04dcc247504cad2f84",
             ["Construida con las mismas vides que Horado Rajacieno, Zahúrda Rajacieno es la capital tradicional de la raza de los jabaespines. El laberinto de espinas que se extiende por todas partes, aloja un verdadero ejército de leales jabaespines junto con sus altos sacerdotes, la tribu Caramuerte. Sin embargo, recientemente una sombra de mal presagio ha caído sobre la rudimentaria guarida. Unos agentes de la Plaga de los no-muertos, a las órdenes del exánime Amnennar el Gélido, han tomado el control de la raza de los jabaespines y han convertido el laberinto de espinas en un bastión del poder de los no-muertos."] = "1efdcf0d1f0182cadd7e556c2271b952",
             ["Cuando entregues pruebas de amor a los habitantes de la ciudad, recibirás diferentes regalos a cambio. Algunos podrás guardarlos y utilizarlos, y otros ¡podrás juntarlos y dárselos a tu $ghéroe favorito:heroína favorita;! Visita a Kwee Q. Mercachifle y entrégaselos.$B$BEncontrarás a Kwee cerca de Bolvar, Magni o Tyrande."] = "84004ad843c4e25945ff9c41c2c64e48",
@@ -3248,6 +3352,7 @@ GossipText = {
             ["Esta ciudad abrasada por los rayos del sol es el hogar de los trols Furiarena, famosos por su particular falta de piedad y su oscuro misticismo. Las leyendas de los trols hablan de una poderosa espada llamada Sul'thraze la Azotadora, un arma capaz de infundir miedo y flaqueza incluso a los enemigos más formidables. Mucho tiempo atrás, la espada fue partida por la mitad. Sin embargo, hay rumores que dicen que las dos mitades se encuentran en algún lugar dentro de los muros de Zul'Farrak."] = "134711fa5dcb6d2514b7dd12cb58353f",
             ["Frustrado por la falta de progreso de los magos de Dalaran contra los no-muertos durante la Tercera Guerra, el archimago Arugal decidió invocar a los ferocanis extra-dimensionales para dar un empujón a sus tropas cada vez menores. Los lobizones atacaron a la Plaga y, rápidamente, se dirigieron a los magos y asediaron el bastión del noble barón Filargenta. Pronto, el fuerte fue presa de las sombras y se convirtió en cenizas. Enloquecido por la culpa, Arugal adoptó a los ferocanis como sus hijos y se retiró al Castillo de Colmillo Oscuro."] = "131cac36cbe3c50c8b0b73b5a5cc8e31",
             ["Gnomeregan se encuentra en la parte oeste de Dun Morogh."] = "3a31427822c5fa1a87c7a675bd12855e",
+            ["Hace más de mil años, un grupo de sacerdotes trols conocidos como los Atal'ai, intentaron resucitar a un dios de la sangre ancestral llamado Hakkar el Cazador de Almas. Tras la consecuente guerra civil, los sacerdotes fueron derrotados y exiliados al Pantano de las Penas. Allí erigieron un templo en honor de Hakkar, para prepararse para su llegada al mundo físico. La Dragón Aspecto Ysera, pronto descubrió los planes de los Atal'ai y hundió el templo bajo el pantano. Hasta el día de hoy, las ruinas han estado protegidas por los poderosos dragones verdes."] = "5f4d64e508e2e540625383eeae8529e5",
             ["Hace más de mil años, un grupo de sacerdotes trols conocidos como los Atal'ai, intentaron resucitar a un dios de la sangre ancestral llamado Hakkar el Cazador de Almas. Tras la consecuente guerra civil, los sacerdotes fueron derrotados y exiliados al Pantano de las Penas. Allí erigieron un templo en honor de Hakkar, para prepararse para su llegada al mundo físico. La dragón Aspecto Ysera, pronto descubrió los planes de los Atal'ai y hundió el templo bajo el pantano. Hasta el día de hoy, las ruinas han estado protegidas por los poderosos dragones Verdes."] = "5f4d64e508e2e540625383eeae8529e5",
             ["Hace poco, un druida elfo de la noche llamado Naralex, descubrió una red de cuevas subterráneas en el corazón de Los Baldíos. Creyendo que podría usar los manantiales de las cuevas para restaurar la exuberancia de Los Baldíos, el druida comenzó a absorber las energías del legendario Sueño Esmeralda. De alguna forma, su visión se transformó en una pesadilla y pronto, las Cuevas de los Lamentos se convirtieron en una guarida de viciosos y letales depredadores. Se dice que Naralex sigue en algún lugar del laberinto, atrapado más allá de los límites del Sueño Esmeralda."] = "1631876c10990f6b69fb643f319f15da",
             ["Horado Rajacieno se encuentra en el extremo más al sur de Los Baldíos, en el lado oeste del camino."] = "b07c8c68897f70867bbb75e49138b18d",
@@ -3278,9 +3383,13 @@ GossipText = {
             ["Zahúrda Rajacieno se encuentra en el extremo más al sur de Los Baldíos, en el lado este del camino."] = "8960494e8735de52e731bccc5622764d",
             ["¿Te interesa explorar una de estas mazmorras?"] = "a61f3b373d7747d0767475c1b5dab2f6",
         },
+        [3955] = {
+            ["Saludos."] = "4cdb3f8d5c5634d4b3dfd884adc30a6c",
+        },
         [3963] = {
             ["He tenido que realizar una rigurosa reconversión con muchos estudiantes de todo lo que habían aprendido, para poder enseñarles desde cero. El servicio que ofrezco aumenta de dificultad cada vez que se hace. Por esa razón, también aumenta el precio de cada nueva instrucción. ¿Quieres que elimine todos los talentos que has aprendido?"] = "30ee103c545f987ab518c70f6d3e640e",
             ["No puedo entrenar a $gun:una; $c como tú."] = "f2c2c7d6984ce15c597fe07b1c728e29",
+            ["¿En qué puedo ayudarte, joven?"] = "b7641-nightelf-male-warrior",
         },
         [3964] = {
             ["Aunque me siento halagada por tu confianza en mis habilidades, instruirte queda fuera de mi alcance. Debes ir al Bancal del Artesano de Darnassus y hablar con la elfa de la noche Ainethil. Ella podrá ayudarte."] = "43727e4d616d6d0cb29a4d7c76050109",
@@ -3294,11 +3403,20 @@ GossipText = {
             ["Solo enseño a estudiantes que ya dominan los conceptos básicos. Ve a buscar a la elfa de la noche Darianna en el Bancal del Artesano de Darnassus. Su habilidad será el complemento perfecto de la tuya."] = "cc167e3fb84b9a39ae42b69bde413f14",
             ["Tu instrucción está por encima de mis habilidades. Ve a ver a Telonis en el Bancal del Artesano de Darnassus. Siempre está encantado de ayudar a estudiantes con talento."] = "5532319375f3bd5717bff7a213bcd295",
         },
+        [4047] = {
+            ["Saludos, caminante."] = "5a5cfd9b66c08e54d7f912c93f16aec1",
+        },
+        [4048] = {
+            ["¿En qué puedo ayudarte?"] = "de5edfa25096a2a517a954307d8a896e",
+        },
         [4077] = {
             ["Si puedo conseguir los ingredientes correctos, podremos crear algunos explosivos que no solo me permitirán entorpecer las operaciones de Ventura y Cía., sino también causar una distracción.$B$BSé que todo esto te impresiona, pues espera... Pronto te contaré más."] = "f48a8968831abb88b9bd8025776fcf51",
         },
         [4078] = {
             ["Hola amigo. ¿Qué puedo hacer por ti?"] = "8eb7a2a575507aa4826667286116ab7e",
+        },
+        [4086] = {
+            ["¿Qué quieres?"] = "5525d7b853cc23ec7b185864e1086dd9",
         },
         [4087] = {
             ["He tenido que realizar una rigurosa reconversión con muchos estudiantes de todo lo que habían aprendido, para poder enseñarles desde cero. El servicio que ofrezco aumenta de dificultad cada vez que se hace. Por esa razón, también aumenta el precio de cada nueva instrucción. ¿Quieres que elimine todos los talentos que has aprendido?"] = "002e3e2a721f2f5fb8a4b9da6cdeb661",
@@ -3420,13 +3538,13 @@ GossipText = {
         },
         [4218] = {
             ["$GBienvenido:Bienvenida;, $ghermano:hermana;. Si has venido aquí para instruirte, estaré encantado de hacerlo.$B$BHay rumores de disputas con el Círculo Cenarion, pero no deberías dar crédito a los que hablan así. ¡Nuestro archidruida, Fandral Corzocelada, nos guía a nosotros y a todo Teldrassil hacia la gloria!"] = "765d7c8eab15fae760b184c664fb9e9a",
-            ["He tenido que realizar una rigurosa reconversión con muchos estudiantes de todo lo que habían aprendido, para poder enseñarles desde cero. El servicio que ofrezco aumenta de dificultad cada vez que se hace. Por esa razón, también aumenta el precio de cada nueva instrucción. ¿Quieres que elimine todos los talentos que has aprendido?"] = "30ee103c545f987ab518c70f6d3e640e",
             ["Que Cenariuste bendiga, $c. ¡Nuestro líder, el archidruida Corzocelada, nos guía a nosotros y a todo Teldrassil hacia una vida renovada!"] = "04deb31038105cfd74ab05f52c151823",
         },
         [4219] = {
             ["$GBienvenido:Bienvenida;, $ghermano:hermana;. Si has venido aquí para instruirte, estaré encantado de hacerlo.$B$BHay rumores de disputas con el Círculo Cenarion, pero no deberías dar crédito a los que hablan así. ¡Nuestro archidruida, Fandral Corzocelada, nos guía a nosotros y a todo Teldrassil hacia la gloria!"] = "765d7c8eab15fae760b184c664fb9e9a",
             ["He tenido que realizar una rigurosa reconversión con muchos estudiantes de todo lo que habían aprendido, para poder enseñarles desde cero. El servicio que ofrezco aumenta de dificultad cada vez que se hace. Por esa razón, también aumenta el precio de cada nueva instrucción. ¿Quieres que elimine todos los talentos que has aprendido?"] = "30ee103c545f987ab518c70f6d3e640e",
             ["Que Cenariuste bendiga, $c. ¡Nuestro líder, el archidruida Corzocelada, nos guía a nosotros y a todo Teldrassil hacia una vida renovada!"] = "04deb31038105cfd74ab05f52c151823",
+            ["Si lo deseas, además de la instrucción, tengo el poder de borrar el conocimiento de tus talentos de tu mente. Te advierto que cada vez que realizas este proceso es más difícil y, por lo tanto, es más caro."] = "d8d678c1fa7a5d0ec00c8daf69cd26f9",
         },
         [4241] = {
             ["Es un honor poder suministrar a los aventureros, ya que son héroes en potencia."] = "1245860919a037af19c20e24c625c670",
@@ -3613,6 +3731,12 @@ GossipText = {
             ["No tengo tiempo que perder con los de tu clase, $c."] = "9514382213ea5206a797eeb5423a9138",
             ["Sabes lo suficiente como para ser $gpeligroso:peligrosa;, pero a mí me parece que todavía necesitas instrucción, $n."] = "40ed4acb596b8797e28b2e4ec74f6940",
         },
+        [4566] = {
+            ["He tenido que realizar una rigurosa reconversión con muchos estudiantes de todo lo que habían aprendido, para poder enseñarles desde cero. El servicio que ofrezco aumenta de dificultad cada vez que se hace. Por esa razón, también aumenta el precio de cada nueva instrucción. ¿Quieres que elimine todos los talentos que has aprendido?"] = "0d64590eddacb5c6f64026dd45e8d2c8",
+            ["Hola, $c. Mi consejo para ti es este: cuando viajes por el mundo, ten cuidado con la magia porque puede acabar con el profano."] = "4031c7427d8998bb7fe7c1d3b0b84add",
+            ["Saludos. Soy un instructor de magos no-muertos y tú eres $gun mago:una maga;."] = "ca41cfc324c9ff97239e297f99d28777",
+            ["Si lo deseas, además de la instrucción, tengo el poder de borrar el conocimiento de tus talentos de tu mente. Te advierto que cada vez que realizas este proceso es más difícil y, por lo tanto, es más caro."] = "b8263-scourge-female-magic",
+        },
         [4567] = {
             ["He tenido que realizar una rigurosa reconversión con muchos estudiantes de todo lo que habían aprendido, para poder enseñarles desde cero. El servicio que ofrezco aumenta de dificultad cada vez que se hace. Por esa razón, también aumenta el precio de cada nueva instrucción. ¿Quieres que elimine todos los talentos que has aprendido?"] = "a54fabb9fc0936c92134f8611f4e5e8b",
             ["Hola, $c. Mi consejo para ti es este: cuando viajes por el mundo, ten cuidado con la magia porque puede acabar con el profano."] = "449fe8a183d9fbd6474051e5e1ba406e",
@@ -3686,8 +3810,17 @@ GossipText = {
         [4596] = {
             ["¿Quieres ser un herrero? ¿Quieres fabricar hojas de espada para destripar a tu enemigo? ¿Quieres martillos para partirle el cráneo? Pues yo puedo ayudarte, y con gusto si se trata de derramar sangre con ellos."] = "a4f5b9fe64550e019e5c5fc4f9716103",
         },
+        [4598] = {
+            ["Saludos."] = "3a63f7cceeba74ce98846013cdffcaf7",
+        },
         [4605] = {
             ["Algún día, quiero forjar armas y armaduras con los huesos de mis enemigos."] = "69a0c87f4f69938bb74f9ba3c0752679",
+            ["No se trata de matar al yunque con el martillo sino de crear un arma para matar a tus enemigos. Deja que te enseñe lo que haces mal."] = "b5753-scourge-male-standard",
+        },
+        [4606] = {
+            ["He tenido que realizar una rigurosa reconversión con muchos estudiantes de todo lo que habían aprendido, para poder enseñarles desde cero. El servicio que ofrezco aumenta de dificultad cada vez que se hace. Por esa razón, también aumenta el precio de cada nueva instrucción. ¿Quieres que elimine todos los talentos que has aprendido?"] = "0d64590eddacb5c6f64026dd45e8d2c8",
+            ["¿Qué puede hacer por ti este insignificante sirviente, $N? ¿Instrucción quizá?"] = "65a3b6b9d50c63563e6e4c3211a93148",
+            ["¿Sí, $c?"] = "6cb32b3bfd2cfbdde35f3652a10058c8",
         },
         [4607] = {
             ["He tenido que realizar una rigurosa reconversión con muchos estudiantes de todo lo que habían aprendido, para poder enseñarles desde cero. El servicio que ofrezco aumenta de dificultad cada vez que se hace. Por esa razón, también aumenta el precio de cada nueva instrucción. ¿Quieres que elimine todos los talentos que has aprendido?"] = "a54fabb9fc0936c92134f8611f4e5e8b",
@@ -3721,7 +3854,23 @@ GossipText = {
             ["¡Si no hubiera estado aquí metida día tras día me habría hecho con la maestría necesaria para instruir a alguien como tu! Por desgracia, no es ese el caso. Ve a hablar con Hgarth en el Refugio Roca del Sol en la Sierra Espolón."] = "7217b0d1581a639542adae21f445f93d",
         },
         [4631] = {
+            ["Aquí en el puerto, veo pasar a muchos personajes interesantes. Ten cuidado, $N. Nunca se puede saber con seguridad en quien confiar, con toda la actividad sospechosa que hay por aquí..."] = "dcf0c1ee4db440b6fbbc86387f776c61",
             ["Aquí en el puerto, veo pasar a muchos personajes interesantes. Ten cuidado, $n. Nunca se puede saber con seguridad en quien confiar, con toda la actividad sospechosa que hay por aquí..."] = "dcf0c1ee4db440b6fbbc86387f776c61",
+        },
+        [4700] = {
+            ["¡Este kodo no se parece en nada a la bestia a la que atraje! Me pregunto si podría utilizar el combobulador sobre mí mismo."] = "2e6dc1ee740d51baecd404b37d41514b",
+            ["¿Cómo se las arreglan los goblins para asegurar la carga en estas bestias? ¡Los kodos son diez veces más grandes que ellos!"] = "92434af0ceaf40426f6723934db7cea4",
+            ["¿Por qué esas pequeñas criaturas como los goblins siempre están fascinadas por las criaturas grandes?"] = "d3f3a62c0bdf87cda737a7a603dc0962",
+        },
+        [4701] = {
+            ["¡Este kodo no se parece en nada a la bestia a la que atraje! Me pregunto si podría utilizar el combobulador sobre mí mismo."] = "2e6dc1ee740d51baecd404b37d41514b",
+            ["¿Cómo se las arreglan los goblins para asegurar la carga en estas bestias? ¡Los kodos son diez veces más grandes que ellos!"] = "92434af0ceaf40426f6723934db7cea4",
+            ["¿Por qué esas pequeñas criaturas como los goblins siempre están fascinadas por las criaturas grandes?"] = "d3f3a62c0bdf87cda737a7a603dc0962",
+        },
+        [4702] = {
+            ["¡Este kodo no se parece en nada a la bestia a la que atraje! Me pregunto si podría utilizar el combobulador sobre mí mismo."] = "2e6dc1ee740d51baecd404b37d41514b",
+            ["¿Cómo se las arreglan los goblins para asegurar la carga en estas bestias? ¡Los kodos son diez veces más grandes que ellos!"] = "92434af0ceaf40426f6723934db7cea4",
+            ["¿Por qué esas pequeñas criaturas como los goblins siempre están fascinadas por las criaturas grandes?"] = "d3f3a62c0bdf87cda737a7a603dc0962",
         },
         [4730] = {
             ["Por la gracia de Elune, estoy encantada de ofrecerte el mejor corcel que podrás encontrar en Teldrassil, y quizás en todo el mundo... el sable de la noche. Durante años, el ejército de los centinelas ha confiado en su valor.$B$BTómate tu tiempo para examinarlos cuanto desees. Estoy segura de que no quedarás $gdecepcionado:decepcionada;."] = "a781c38bfffdae4147fb52746afd65fc",
@@ -3751,6 +3900,9 @@ GossipText = {
             ["Es necesario que los Renegados de Entrañas te consideren $gun exaltado:una exaltada; para que te pueda enseñar la habilidad de equitación, $c."] = "dcd0a28a88596d37aad3b937bda5ab9f",
             ["No puedo enseñarle a $gun:una; tauren a montar una cabalgadura esquelética. Lo siento pero no puedo hacer nada por ti."] = "cfd3dc91c0e2de59b41ea2ec7cabbeff",
             ["Puedo enseñarte los mejores trucos para montar un caballo esquelético, ¡siempre que tengas suficiente oro para pagar la lección!"] = "2e65eb1fa48fb06278bb020f60a84d34",
+        },
+        [4876] = {
+            ["Al igual que el viento de las llanuras, siempre eres $gbienvenido:bienvenida; aquí."] = "a98c33cf2b0c65fb09a0b00d67122e46",
         },
         [4885] = {
             ["Lo siento, pero no estoy dispuesto a vender caballos a alguien a quien el Reino de Ventormenta no considere exaltado. Estos corceles son los mejores que se pueden encontrar y, ciertamente, no queremos que caigan en manos enemigas.$B$BNo estoy diciendo que seas $gun enemigo:una enemiga;, no... Solo tienes que ganarte la confianza de Ventormenta y después podremos hacer negocios."] = "3abbcc0541b691e0b8bbe9d7c11ad032",
@@ -3783,10 +3935,14 @@ GossipText = {
             ["Sí. La madre del Vuelo Negro utilizó ilusión y trucos para disfrazarse como un miembro de la corte real. Peor aún, logró controlar al actual alto Señor de Ventormenta, Bolvar Fordragon.$B$BNo es sorprendente que se hayan tomado unas decisiones militares tan estúpidas. Los últimos movimientos de las tropas de la Alianza nos dejaron estupefactos. Pero ahora comprendemos que el Vuelo Negro pretendía dividir el imperio, destruirlo desde dentro."] = "0dffdc856101982122f927ec598e0d13",
             ["Todos los miembros de la Horda son iguales ante mis ojos, $n. Todos hemos sufrido innumerables cargas y si no fuera por la sabiduría y el honor, no seríamos mejores que la Plaga o que mi propia gente cuando nuestra sangre estaba manchada por el demonio Mannoroth.$B$BEs tu deber ayudar a la Horda y defender nuestro modo de vida. Pero también lo es saber cuándo dar clemencia y compasión a amigos y enemigos por igual. Esto es la nueva Horda, no una prole de demonios sin voluntad propia."] = "9fdeb82237b72e8801030487901e690f",
         },
+        [4963] = {
+            ["Dame un par de minutos, $n. Hace un momento, todos estaban muy alterados por aquí. Solo quiero asegurarme de que la calma ha vuelto. Pronto hablaremos."] = "50ab02f29a0ca84f2eb232e907640d8b",
+        },
         [4967] = {
             ["Muy bien, $n. Debemos ser breves, hay mucho que hacer."] = "96a3daa8a4f7ab7babfc5a1c8d9f5ca1",
         },
         [4968] = {
+            ["Gracias a ti, $N, Hendel está bajo nuestra custodia.$B$BSi bien el interrogatorio es lento, te aseguro que nos dirá todo lo que sabe.$B$BPor ahora, ten paciencia. Te buscaré de inmediato si necesitamos ayuda.$B$BHasta entonces, disfruta de Theramore y te invito a quedarte el tiempo que quieras dentro de los muros de nuestra ciudad como amigo de la Alianza."] = "a078043dde2955ab1a66ca8a6e5495e0",
             ["Gracias a ti, $n, Hendel está bajo nuestra custodia.$B$BSi bien el interrogatorio es lento, te aseguro que nos dirá todo lo que sabe.$B$BPor ahora, ten paciencia. Te buscaré de inmediato si necesitamos ayuda.$B$BHasta entonces, disfruta de Theramore y te invito a quedarte el tiempo que quieras dentro de los muros de nuestra ciudad como amigo de la Alianza."] = "a078043dde2955ab1a66ca8a6e5495e0",
             ["Te doy la bienvenida a Theramore, $n.$B$BTe pido disculpas por ser tan cortante y por no tener tiempo para atenderte como es debido, pero mi ciudad es mi prioridad. Muchas cosas amenazan nuestra forma de vida y la santidad de la Alianza. Debo estar totalmente alerta frente a las fuerzas externas que escapan a nuestro control si quiero que mi gente esté segura y viva feliz.$B$BTal vez tengamos más tiempo para hablar después."] = "6a4b81d7d70a940c7734d52c5bd021ed",
         },
@@ -3801,6 +3957,7 @@ GossipText = {
             ["Nuestros ancestros nos han enseñado que, aunque los individuos deben ser fuertes, la seguridad está en los grupos grandes. ¿Quieres defender el honor de Cima del Trueno organizando una hermandad?"] = "3e32631ac3a950dee327a67b4a766065",
         },
         [5111] = {
+            ["Antiguamente la capital de los enanos Hierro Negro, este laberinto volcánico ahora sirve como trono de poder de Ragnaros, el Señor del Fuego. Ragnaros ha descubierto cómo crear vida a partir de la piedra y planea formar un ejército de golems imparables para ayudarle a conquistar la Montaña Roca Negra. Ragnaros, obsesionado con derrotar a Nefarian y a sus esbirros dracónicos, hará lo que sea por conseguir la victoria final."] = "d4c8367f7e096bd61f9f2c15a639c5d5",
             ["Antiguamente la capital de los enanos Hierro Negro, este laberinto volcánico ahora sirve como trono de poder de Ragnaros, el Señor del Fuego. Ragnaros ha descubierto cómo crear vida a partir de la piedra y planea formar un ejército de gólems imparables para ayudarle a conquistar la Montaña Roca Negra. Ragnaros, obsesionado con derrotar a Nefarian y a sus esbirros dracónicos, hará lo que sea por conseguir la victoria final."] = "d4c8367f7e096bd61f9f2c15a639c5d5",
             ["Construida con las mismas vides que Horado Rajacieno, Zahúrda Rajacieno es la capital tradicional de la raza de los jabaespines. El laberinto de espinas que se extiende por todas partes, aloja un verdadero ejército de leales jabaespines junto con sus altos sacerdotes, la tribu Caramuerte. Sin embargo, recientemente una sombra de mal presagio ha caído sobre la rudimentaria guarida. Unos agentes de la Plaga de los no-muertos, a las órdenes del exánime Amnennar el Gélido, han tomado el control de la raza de los jabaespines y han convertido el laberinto de espinas en un bastión del poder de los no-muertos."] = "0696ddb759f36db8a31b0de8dfe773e6",
             ["Cuando entregues pruebas de amor a los habitantes de la ciudad, recibirás diferentes regalos a cambio. Algunos podrás guardarlos y utilizarlos, y otros ¡podrás juntarlos y dárselos a tu $ghéroe favorito:heroína favorita;! Visita a Kwee Q. Mercachifle y entrégaselos.$B$BEncontrarás a Kwee cerca de Bolvar, Magni o Tyrande."] = "490f61093d0ec9e8887f5611d0dde3c6",
@@ -3815,6 +3972,7 @@ GossipText = {
             ["Esta ciudad abrasada por los rayos del sol es el hogar de los trols Furiarena, famosos por su particular falta de piedad y su oscuro misticismo. Las leyendas de los trols hablan de una poderosa espada llamada Sul'thraze la Azotadora, un arma capaz de infundir miedo y flaqueza incluso a los enemigos más formidables. Mucho tiempo atrás, la espada fue partida por la mitad. Sin embargo, hay rumores que dicen que las dos mitades se encuentran en algún lugar dentro de los muros de Zul'Farrak."] = "ecab747cb61959b39b57ef0de545ae6e",
             ["Frustrado por la falta de progreso de los magos de Dalaran contra los no-muertos durante la Tercera Guerra, el archimago Arugal decidió invocar a los ferocanis extra-dimensionales para dar un empujón a sus tropas cada vez menores. Los lobizones atacaron a la Plaga y, rápidamente, se dirigieron a los magos y asediaron el bastión del noble barón Filargenta. Pronto, el fuerte fue presa de las sombras y se convirtió en cenizas. Enloquecido por la culpa, Arugal adoptó a los ferocanis como sus hijos y se retiró al Castillo de Colmillo Oscuro."] = "387741cc6b9473695e470695f72c685c",
             ["Gnomeregan se encuentra en la parte oeste de Dun Morogh."] = "b5a78d9a4eb2335b05dc3e74b7bf93d2",
+            ["Hace más de mil años, un grupo de sacerdotes trols conocidos como los Atal'ai, intentaron resucitar a un dios de la sangre ancestral llamado Hakkar el Cazador de Almas. Tras la consecuente guerra civil, los sacerdotes fueron derrotados y exiliados al Pantano de las Penas. Allí erigieron un templo en honor de Hakkar, para prepararse para su llegada al mundo físico. La Dragón Aspecto Ysera, pronto descubrió los planes de los Atal'ai y hundió el templo bajo el pantano. Hasta el día de hoy, las ruinas han estado protegidas por los poderosos dragones verdes."] = "d0b8820f2e1f29977d61ec36fbba4c37",
             ["Hace más de mil años, un grupo de sacerdotes trols conocidos como los Atal'ai, intentaron resucitar a un dios de la sangre ancestral llamado Hakkar el Cazador de Almas. Tras la consecuente guerra civil, los sacerdotes fueron derrotados y exiliados al Pantano de las Penas. Allí erigieron un templo en honor de Hakkar, para prepararse para su llegada al mundo físico. La dragón Aspecto Ysera, pronto descubrió los planes de los Atal'ai y hundió el templo bajo el pantano. Hasta el día de hoy, las ruinas han estado protegidas por los poderosos dragones Verdes."] = "d0b8820f2e1f29977d61ec36fbba4c37",
             ["Hace poco, un druida elfo de la noche llamado Naralex, descubrió una red de cuevas subterráneas en el corazón de Los Baldíos. Creyendo que podría usar los manantiales de las cuevas para restaurar la exuberancia de Los Baldíos, el druida comenzó a absorber las energías del legendario Sueño Esmeralda. De alguna forma, su visión se transformó en una pesadilla y pronto, las Cuevas de los Lamentos se convirtieron en una guarida de viciosos y letales depredadores. Se dice que Naralex sigue en algún lugar del laberinto, atrapado más allá de los límites del Sueño Esmeralda."] = "bddcb2f11ff849b592a1d76b4d46b5d1",
             ["Horado Rajacieno se encuentra en el extremo más al sur de Los Baldíos, en el lado oeste del camino."] = "41e7446de8a99d017f4dbbef7255bc13",
@@ -3932,6 +4090,7 @@ GossipText = {
             ["El estimado doctor Gustav VanHowzen, puede darte una instrucción mejor. Puedes encontrarle en Theramore, cuidando a los enfermos en el cuartel."] = "199504472bb3974f17f406ea4b61db6d",
             ["He oído decir que Deneb Camino, en Stromgarde, tiene un libro que podría ayudarte a mejorar tus técnicas de primeros auxilios."] = "dd4639950203b6deff95ea3d06de8b2e",
             ["Puedo enseñarte técnicas de primeros auxilios."] = "8af3c5ccd98580aeb1ba4bd7aa80e766",
+            ["¿Estudias las ciencias médicas?"] = "e0c8f111a2df1b913ee0ffb875a8e166",
         },
         [5153] = {
             ["Mmm... parece que prometes, te concedo eso. ¿Y bien? ¿Dónde estábamos?"] = "fc2e2e0ae153eab86ed8c1d8e1012b1d",
@@ -3986,6 +4145,7 @@ GossipText = {
             ["El poder arcano solo corrompe a los débiles. Sigue con tu instrucción, o podrías acabar encontrando un destino similar."] = "073492d1b775dad17b73e4495accc8b7",
             ["He tenido que realizar una rigurosa reconversión con muchos estudiantes de todo lo que habían aprendido, para poder enseñarles desde cero. El servicio que ofrezco aumenta de dificultad cada vez que se hace. Por esa razón, también aumenta el precio de cada nueva instrucción. ¿Quieres que elimine todos los talentos que has aprendido?"] = "a9083a5c3e3237e00bd856dcc0fd400d",
             ["Me temo que tu grado de oscuridad no es suficiente como para que me moleste en seguir hablando contigo. Vete de aquí, por favor."] = "8045db4a1a25656b86eb87b955fbe642",
+            ["Si lo deseas, además de la instrucción, tengo el poder de borrar el conocimiento de tus talentos de tu mente. Te advierto que cada vez que realizas este proceso es más difícil y, por lo tanto, es más caro."] = "b8263-gnome-male-standard",
         },
         [5173] = {
             ["El poder arcano solo corrompe a los débiles. Sigue con tu instrucción, o podrías acabar encontrando un destino similar."] = "7533bf57cdb44c24f4dde1a0d3b1909a",
@@ -4007,6 +4167,14 @@ GossipText = {
         [5193] = {
             ["Te doy la bienvenida a las oficinas del Registro de hermandades de Ventormenta. ¿En qué puedo ayudarte hoy?"] = "597ed139334da6a50351437c63a259fd",
         },
+        [5353] = {
+            ["El dios que trajeron los trols Atal'ai tiene la culpa de esto. Destruimos la manifestación física del dios y sumergimos el templo, pero el dios era mucho más fuerte de lo que creíamos. Su semilla de corrupción prendió con fuerza, torciendo todo lo que encontraba a su paso.$B$BEranikus tenía encomendada la tarea de vigilar el templo sumergido para garantizar que ni los simples Atal’ai ni el dios volvieran a alzarse. Él fue una víctima involuntaria de esta descomposición y nosotros fuimos ilusos al subestimar su potencia."] = "388deaccc505575f8d4973ea40758234",
+            ["El hecho de que estés aquí es el primer paso... se trata de una elección acertada, si quieres, si se trata de ayudar al Vuelo de Ysera.$B$BTal vez estés aquí atraído por el mérito personal, o bien porque te sientes moralmente obligado. Ninguna de estas razones es importante por sí misma, pero ambas son ciertamente primordiales para lo que nos ocupa: La agonía que padece Eranikus es lo que me despertó de mi Sueño, y ahora tengo que encargarme de poner fin a su tormento. Ahora te pido que me ayudes en mi misión."] = "89092ebf86af15c920d117fa0f287c6f",
+            ["Sabes que sí, mortal. Dejaré de mentir y te recomiendo que hagas lo mismo.$B$BHas venido aquí claramente porque sabes que lo que posees, fruto de tus obras en el Templo Sumergido de los Atal'ai, te ha traído hasta mí por alguna razón. Esta razón es lograr que mi socio... mi hermano, logre descansar. Está atrapado en una pesadilla dentro del propio Sueño. No puede escapar solo."] = "c42d46a2ba786cd83cee9bdac9fef3d2",
+            ["Sé quién eres, $n. El destino y otras fuerzas te han traído hasta me por un motivo del cual no me complace formar parte. Tendrás que tomar muchas decisiones a partir de ahora y espero que seas lo suficientemente inteligente para hacerlo con acierto.$B$B$R, créeme cuando te digo que es posible."] = "89defc6255de548061e4c860609dfe75",
+            ["Te gusta saber y, esa curiosidad, deja traslucir una carencia general de conocimiento. Te lo digo porque si tu presencia aquí tuviera un propósito definido, tu pregunta carecería de sentido. $B$BCon eso, te deseo un buen día."] = "b28604b7e0e80e98d64dd0ae9304994e",
+            ["Te hago partícipe de mi cordial bienvenida, $r. Te has alejado mucho del camino solo para hablar con alguien que mora en una cueva. Confío en que habrá una razón para tu extraña, aunque no imprevista, visita. ¿Es así?"] = "fcd36466f88721a3043aa203cab6fdaa",
+        },
         [5396] = {
             ["La Alianza tiene mucho interés en Desolace, y nuestro dominio aquí es inestable.$B$B¿Nos ayudarias?"] = "eac41b497f36241ca7bb4b51e012da27",
         },
@@ -4024,6 +4192,9 @@ GossipText = {
             ["Ventormenta es el pilar de la raza humana, y se mantiene gracias a la fuerza de voluntad y al filo de una fuerte espada."] = "92efeb5a1bded9ddac09c94a148f02c4",
         },
         [5482] = {
+            ["Aquí no vienen demasiados cocineros para recibir instrucción, pero supongo que puedo enseñarte algo si estás $gpreparado:preparada;."] = "b3341-human-male-warrior",
+            ["Busca a Shandrina en el Refugio Brisa de Plata. Te puede vender el 'Libro de cocina para expertos'."] = "6adb3f498e428354df52f9e4254cab21",
+            ["Dirge Hojágil de Gadgetzan es un maestro de las artes culinarias. Búscale si quieres que tu habilidad mejore."] = "46bd22a73f998050e4834380890f65e5",
             ["¿Acaso doy la impresión de tener el tiempo o la energía para agasajar a todo turista que entra por mi puerta? Dime qué necesitas y lo haré rápido."] = "ba9110b33785b226537ef9b18e3923a1",
         },
         [5483] = {
@@ -4048,6 +4219,7 @@ GossipText = {
             ["Que la Luz te proteja hoy."] = "dc28bc0a4d37e6ffcda4039181cfd698",
         },
         [5493] = {
+            ["Ah, $gun compañero pescador:una compañera pescadora;. ¿Necesitas tal vez un poco de instrucción? Quizás pueda enseñarte un par de cosas."] = "b3339-human-male-standard",
             ["Te doy la bienvenida a Ventormenta Me llevó mucho tiempo reconstruirla, pero mereció la pena con creces. ¿Estás de visita o has venido por motivos de negocios?"] = "e980a3fd7dce3ba0d906cea472aaa320",
         },
         [5494] = {
@@ -4068,6 +4240,13 @@ GossipText = {
             ["Buenas, $gmago:maga;. ¿Quieres que te enseñe más secretos del mundo de la magia?"] = "385f571d2bb437e712de5a8637774ac6",
             ["He tenido que realizar una rigurosa reconversión con muchos estudiantes de todo lo que habían aprendido, para poder enseñarles desde cero. El servicio que ofrezco aumenta de dificultad cada vez que se hace. Por esa razón, también aumenta el precio de cada nueva instrucción. ¿Quieres que elimine todos los talentos que has aprendido?"] = "768f0928588ebe52253715a9f6b21ad7",
             ["Hola, $c. Mi consejo para ti es este: cuando viajes por el mundo, ten cuidado con la magia porque puede acabar con el profano."] = "99ae39f09db2040d0e2e3bcddb52b4b7",
+            ["Si lo deseas, además de la instrucción, tengo el poder de borrar el conocimiento de tus talentos de tu mente. Te advierto que cada vez que realizas este proceso es más difícil y, por lo tanto, es más caro."] = "b8263-human-female-warrior",
+        },
+        [5498] = {
+            ["Buenas, $gmago:maga;. ¿Quieres que te enseñe más secretos del mundo de la magia?"] = "bd39d1eccce03226970eea3678df1f48",
+            ["He tenido que realizar una rigurosa reconversión con muchos estudiantes de todo lo que habían aprendido, para poder enseñarles desde cero. El servicio que ofrezco aumenta de dificultad cada vez que se hace. Por esa razón, también aumenta el precio de cada nueva instrucción. ¿Quieres que elimine todos los talentos que has aprendido?"] = "7f786f2594b3975f17b2822cf41e0cc6",
+            ["Hola, $c. Mi consejo para ti es este: cuando viajes por el mundo, ten cuidado con la magia porque puede acabar con el profano."] = "4a0457a5a91ff673d65f9f260b812f6e",
+            ["Si lo deseas, además de la instrucción, tengo el poder de borrar el conocimiento de tus talentos de tu mente. Te advierto que cada vez que realizas este proceso es más difícil y, por lo tanto, es más caro."] = "b8263-nightelf-female-standard",
         },
         [5499] = {
             ["Encerrada en esta pequeña casa sueño unirme a las batallas que arden fuera de los muros de la ciudad. Pero el deber me obliga a compartir mi conocimiento con otros que combaten en mi lugar... por ahora."] = "ed08741e0fa329d057d7599e24228bde",
@@ -4096,6 +4275,7 @@ GossipText = {
             ["$GBienvenido:Bienvenida; $ghermano:hermana;. Si has venido para recibir instrucción, estaré encantado de hacerlo.$B$BPronto llegará el tiempo en el que la llamada del Sueño Esmeralda se apoderará de ti. Hibernarás durante muchos años y caminarás entre las más puras de las formas. Allí y entonces tendrá lugar tu último entrenamiento."] = "1d12fd8e421d229eea70c7677a2daeca",
             ["He tenido que realizar una rigurosa reconversión con muchos estudiantes de todo lo que habían aprendido, para poder enseñarles desde cero. El servicio que ofrezco aumenta de dificultad cada vez que se hace. Por esa razón, también aumenta el precio de cada nueva instrucción. ¿Quieres que elimine todos los talentos que has aprendido?"] = "30ee103c545f987ab518c70f6d3e640e",
             ["Incluso entre fríos muros de piedra como los que rodean esta ciudad, podría encontrarse paz y tranquilidad. De hecho, puedes encontrarlas donde quiera que estés... solo debes buscar en tu interior para encontrar ese equilibrio."] = "922a94a8f826437fe0370bdcd6a587ac",
+            ["Si lo deseas, además de la instrucción, tengo el poder de borrar el conocimiento de tus talentos de tu mente. Te advierto que cada vez que realizas este proceso es más difícil y, por lo tanto, es más caro."] = "d8d678c1fa7a5d0ec00c8daf69cd26f9",
         },
         [5505] = {
             ["$GBienvenido:Bienvenida; $ghermano:hermana;. Si has venido para recibir instrucción, estaré encantado de hacerlo.$B$BPronto llegará el tiempo en el que la llamada del Sueño Esmeralda se apoderará de ti. Hibernarás durante muchos años y caminarás entre las más puras de las formas. Allí y entonces tendrá lugar tu último entrenamiento."] = "1d12fd8e421d229eea70c7677a2daeca",
@@ -4114,6 +4294,8 @@ GossipText = {
             ["No dejes que te engañen los humanos que hay en el mercadillo, $gmuchacho:muchacha;, con el metro que esos gnomos construyeron, transportar mercancías desde Forjaz es más fácil de lo que crees. Si intentan cobrarte impuestos de importación, solo tienes que decirles que vas a comprarme equipamiento a mí."] = "5fa2b9d7e0e76cd011e8acc323829e46",
         },
         [5511] = {
+            ["Pareces $gun herrero:una herrera;. Hollín bajo las uñas, acero en los huesos. Sí, por tus venas corre sangre de herrero. Eso significa que has venido a aprender unas cuantas cosas. Está bien, $gmuchacho:muchacha;, coge un martillo. Vamos a ver lo que puedo enseñarte."] = "6d836253374e7258f1d26abac7475d18",
+            ["Tienes talento con el yunque y el martillo, pero no el suficiente. Ve a hablar con Dane Lindgren, te preparará y después podré entrenarte."] = "b5780-dwarf-male-guard",
             ["¿Así que quieres ser un herrero? Coge un mandil y un martillo, $gmuchacho:muchacha; y veamos qué sabes hacer."] = "fb6579870c6584e03dfb38ef8bc3ee7e",
         },
         [5512] = {
@@ -4146,6 +4328,7 @@ GossipText = {
             ["Veamos... catorce más siete, me llevo dos... ¿sí?"] = "fd0b861b10455c71be1e923c485a65a9",
             ["¡Bien, vas a toda velocidad! No puedo enseñarte nada que ya no sepas, ¡pero Muello Saltarín podrá! Lo encontrarás en Forjaz. ¡Buena suerte!"] = "6b140e4603fdd16e06d3034228aceaa4",
             ["¡No me has defraudado! ¡Ahora que te has quitado eso de en medio puede comenzar tu instrucción!"] = "6a74e89996624c797ad847ab32ebf1f8",
+            ["¡Quid pro quo! Te enseñaré lo que sé, pero antes quiero que te encargues de una pequeña tarea..."] = "b7833-gnome-male-zany",
         },
         [5519] = {
             ["Si introduces la pestaña A en la ranura B, ¡por supuesto que va a estallar! Mira, deja que te muestre lo que tengo y luego puedes preguntar a Lilliam sobre cómo armarlo para que no explote."] = "d1c3a174065be73fad87b0bff53c38b7",
@@ -4169,6 +4352,7 @@ GossipText = {
         },
         [5567] = {
             ["Que tengas un buen día."] = "488edc59d5f675d7b021f97325a0d71b",
+            ["Una buena demostración. Tu instrucción puede continuar."] = "b8140-nightelf-male-standard",
         },
         [5594] = {
             ["¿Necesitas suministros de alquimia? ¿O quieres tratar otros asuntos conmigo?"] = "53a7d87194caf01d2d8d40dc9e920aea",
@@ -4245,8 +4429,75 @@ GossipText = {
             ["He tenido que realizar una rigurosa reconversión con muchos estudiantes de todo lo que habían aprendido, para poder enseñarles desde cero. El servicio que ofrezco aumenta de dificultad cada vez que se hace. Por esa razón, también aumenta el precio de cada nueva instrucción. ¿Quieres que elimine todos los talentos que has aprendido?"] = "a9083a5c3e3237e00bd856dcc0fd400d",
             ["La oscuridad no te abraza, $c. ¡Déjate de chácharas y sal de mi vista! ¡Lárgate!"] = "b18ac3abb515a9b18a91daf4c6f17c2e",
         },
+        [5624] = {
+            ["A Archibald buscas. Él fuera de la tienda de armas, círculo interior del Barrio de la Guerra."] = "7921dbf070247044a2c488267fb4863f",
+            ["Anya Maulray está en la posada del cinturón central del Barrio del Comercio."] = "f8763be1e12249eafcb06e8bfa247a4a",
+            ["Armand Cromwell siempre está en los embarcaderos del Barrio de la Magia. Los peces del lodo verde son muy ricos. Tú probar."] = "9c08deabb10e4582598f9d2a45810c06",
+            ["Arthur Moore en anillo interior del Barrio de los Pícaros te enseñará peletería."] = "b8e36853c87c63d5b34946fa92e33835",
+            ["Banco en torre central, Barrio del Comercio. No perderse."] = "c7d3530044bee31a456f0be7bf75d795",
+            ["Brom Killian te enseñará a excavar para mí. Él en el cinturón interior del Barrio de la Guerra."] = "6f4b06c28651e95d0a3b0467ab4b3862",
+            ["Buscas a Martha Alliestar. Estar en el cinturón interior de El Apothecarium."] = "18d349358975ffc2a8e1eecb2e570dfe",
+            ["Buzón en el centro de la ciudad, Barrio del Comercio, cinturón superior... junto a la posada."] = "20b91207f4ba6d6513a25ff7f98e86ca",
+            ["Cinturón central. ¡Ve!"] = "d683db6cdfa3f72a16afe158e5b803fd",
+            ["Cinturón interior del Barrio de la Guerra, donde trabaja James Van Brunt. Él hacernos buena malla."] = "f4e5857be879ef7a977b09cb3bdcea02",
+            ["Con quien tienes que hablar es con el tabernero Norman en el cinturón superior del Barrio del Comercio."] = "310605ba33d6eec72ee2d50ec6e20714",
+            ["Conquistar Cuenca de Arathi a los blandengues humanos. Sir Malory Wheeler enviarte allí."] = "79350e4285d2b43cac884dbda94fe4cd",
+            ["Creer que él estar en Barrio Real. Kurden Zarpasangrante ser orco pequeño."] = "caa34685efa77d1b3148356598725757",
+            ["Debes ir a El Apothecarium en el cinturón interior. Allí Martha Alliestar te enseñará a coger flores."] = "8ea4e9df81848a851ef25c12727f0ac4",
+            ["Doctor Herbert Halsey en El Apothecarium, donde nosotros nacer. Podría coser tu espalda mejor como nosotros."] = "18a41ecafef04447761ce66d91a5780f",
+            ["El hombre de los murciélagos está en el nivel superior del Barrio del Comercio."] = "53c05d14cbec59afe91a990eefcbe104",
+            ["En edificio del Barrio de la Guerra, en el cinturón exterior de la ciudad."] = "64b3b3bac68ca19c43d58e7b5776afa1",
+            ["Están en el Barrio de la Magia. Búscalos en el tenebroso edificio de las calaveras."] = "81dc829b9b9bb6f7252bf3a92104368e",
+            ["Eunice Burch en el Barrio del Comercio."] = "2626f2a7400fe2faf7adba7d975d4da7",
+            ["Eunice Burch vende sobras. La encontrarás en el Barrio del Comercio."] = "7b62b79a08962f387fe3a1c75dbdca6d",
+            ["Graham Van Talen en el Barrio de los Pícaros, en el anillo exterior de Entrañas."] = "34bee2c281887b5c024adf8cd1cd4a61",
+            ["Heh, bombas, a nosotros gustan las bombas. Graham Van Talen te enseña a hacer. En el anillo exterior del Barrio de los Pícaros."] = "bcc791ca14dac1030653e231811c5cbc",
+            ["Instructores de brujos en el Barrio de la Magia, en el edificio del cinturón exterior con los magos."] = "8efa0ed8151b6d356e1901237cc7deef",
+            ["James Van Brunt en el Barrio de la Guerra en el cinturón exterior."] = "f19a5e26979c52e5c87c37e555020de9",
+            ["Killian Hagey enseña a desollar en el Barrio de los Pícaros, en el anillo interior."] = "2fcc8c49ee4863f0ded56f1f76a1381e",
+            ["La señora te enseña a hacer objetos mágicos. Está en el cinturón interior de El Apothecarium."] = "75f0f9939a63b7e4abd66f4f163302f6",
+            ["Lady cosernos y vendarnos si nos herimos. La encontrarás en el anillo interior del Barrio de los Pícaros."] = "ba0c31d1226e5db80b287ef0673d6289",
+            ["Los elfos de la Garganta Grito de Guerra hacen un ruido crujiente al aplastarlos. ¡Aplástalos bien! Habla con Kurden Zarpasangrante en el Barrio Real."] = "35c56fc7f1c6d528fb87991140b82e3b",
+            ["Los instructores de guerreros combaten bien. Tú los encuentras en el Barrio de la Guerra en el cinturón exterior de Entrañas."] = "173c8e0880411789e4c405a4438dda70",
+            ["Me enseñaron a moverme en sigilo. Los encontrarás en el Barrio de los Pícaros en el anillo exterior de Entrañas."] = "d9f1dfdd2a06bb6a4d7eb1d715114337",
+            ["Michael Garrett en el cinturón superior en el Barrio del Comercio."] = "154f0ddcfae4d954ce714e37d0a38ddb",
+            ["No olvidar a Armand Cromwell en el Barrio de la Magia. Está en los embarcaderos."] = "c5ec42dc7931e337992ac46af312fe24",
+            ["Nosotros conocerla bien. Ella Mary Edras, en el anillo interior del Barrio de los Pícaros."] = "2e1ed97ecc459488e6928f1bd7083136",
+            ["Nosotros necesitar cheque para ver si nuestro Rebana... Rebana... Rebanasesos se vendió en la subasta. Tú encuentras un buzón junto a la posada en el anillo superior del Barrio del Comercio."] = "db4fb4c7c27879a6093b00a3ddc0681f",
+            ["Nosotros querer muchas mascotas. Anya Maulray ayudarte a cuidarlas. Tú encontrarla en posada, cinturón central del Barrio del Comercio."] = "674dcf6270b057381366912a6a6e379c",
+            ["Nosotros querer un manáfago como mascota. Le alimentamos, tratamos bien y le enseñamos a buscar la pelota. Encontrarás brujos en el Barrio de la Magia, en el cinturón exterior de la ciudad."] = "27227a4c3065132f4fb1c19843181b33",
+            ["Nosotros tener gancho desollador Nos dio Killian Hagey que nos enseña desollar. Tú ser bastante $gdiestro:diestra;. Lo encontrarás en anillo interior de Barrio de los Pícaros."] = "0335609d0307789bfcac3e5f6941a3bb",
+            ["Nosotros ver un globo al norte de las ruinas, por arriba. Te llevará a lugares muy lejanos."] = "e0e960406195a02b2f28cb74035b5551",
+            ["Pequeño Renegado conoce todas las armas. Él Archibald. Tú busca en círculo interior del Barrio de la Guerra."] = "455145ce5d4e56fbef76f15eee912740",
+            ["Pequeño goblin encima del edificio al norte de las ruinas de Lordaeron. Deja Entrañas y ve allí."] = "c9d8aa44f74fb46f082f634e7c70dcbc",
+            ["Pícaros en el edificio en el anillo exterior del Barrio de los Pícaros."] = "8941215ec8e3f29f967fe6a83cf2a881",
+            ["Que no descanse el malvado, pero suponemos que no hay problema contigo. Encontrarás al tabernero Norman en el anillo superior del Barrio del Comercio."] = "f3a9a7e4258457aef659ab3a61668606",
+            ["Su nombre ser Osco Mediamelena. Estar en Barrio Real con reina alma en pena y Señor del Terror."] = "2e6029eb0163be834aa12dcb50387cf7",
+            ["Sí, buscas a Christopher Drakul en el Barrio del Comercio. En plataforma oriental."] = "95fd03dd32a67873f20e9d513be26559",
+            ["Tenemos casa de subastas en el cinturón central."] = "eba961acc66d09dcbe89aaaa485c4153",
+            ["Tú buscar a Josef Gregorian. En el Barrio de la Magia, cinturón interior junto al canal verde."] = "fad452416e75d936d397b3529f2b8ff0",
+            ["Tú ir a Barrio Real. Ver a Sir Malory Wheeler. Él dar miedo."] = "eb09c8f4b8fb5993e90515c0f1de2d60",
+            ["Tú miras en El Apothecarium. Allí consultas del doctor Herbert Halsey y del doctor Marsh."] = "02a75238b6dadc02984b4fccbd272719",
+            ["Ummmm, buena idea. Podíamos ir allí a que nos vuelvan a hacer algunos remiendos. Remienda bien. Encontrarás a Josef Gregorian en el cinturón interior del Barrio de la Magia."] = "16dda7a2686306646febdae14b233c03",
+            ["Uy, uy. Impuros en el Barrio de la Guerra alrededor del edificio principal en el cinturón exterior de la ciudad."] = "099068b367aea7e5f2bd4800a06162ca",
+            ["Ve al cinturón interior de El Apothecarium. Lavinia Crowe está allí."] = "8be13f6c7cfc2fc546646e0f0fde2ac6",
+            ["Ve al cinturón interior del Barrio de la Guerra. Allí Brom Killian."] = "56691a7bececabec522491685434c674",
+            ["¡Aquí hace frío! Vete al Barrio Real, habla con Osco Mediamelena."] = "b0d5b78e630efc0ede19e7a672145553",
+            ["¡Nosotros saber dónde están! Edificio de las calaveras en el Barrio de la Magia, en el cinturón exterior de la ciudad."] = "ff93ab1980d8b92cc288971f2ce5aa33",
+            ["¡Tenemos un ojo y vemos mejor que tú! ¡Banco en el centro de Entrañas!"] = "58f864b76666ea1299ac272fcc543dc7",
+            ["¿A qué instructor buscas?"] = "b5901-model-156",
+            ["¿Instructor de sacerdotes? Dirígete al cinturón exterior del Barrio de la Guerra y búscalos allí."] = "117855394f0d53d50ad389a208f13a7e",
+            ["¿Qué campo de batalla quieres?"] = "4bf480ec311132fe872b33fa9de87b85",
+            ["¿Qué estás buscando?"] = "b4857-model-156",
+            ["¿Qué profesión?"] = "b5888-model-156",
+            ["¿Unir a hermandad? Bien, encontrarás al maestro de hermandad en la plataforma oriental del Barrio del Comercio."] = "54ea33a00d07a216f5c400340a94ab03",
+            ["Él estar en el anillo interior del Barrio de los Pícaros."] = "596411fcc841893551a6b6777faf8295",
+        },
         [5638] = {
             ["Tengo muchas cosas que hacer aquí en Desolace, $n. Roetten quiere que recojamos algunos componentes para uno de nuestros clientes y que busquemos algunos de estos artículos perdidos.$B$BYa que estás aquí para ayudar, ¿por qué no empezamos?"] = "15bbb75d5db4a7d1de51de841bf00cdb",
+        },
+        [5675] = {
+            ["¿Sí, $c?"] = "901d3b1160b38eacb61be277a1eab438",
         },
         [5688] = {
             ["Cuando entregues pruebas de amor a los habitantes de la ciudad, recibirás diferentes regalos a cambio. Algunos podrás guardarlos y utilizarlos, ¡mientras que otros podrás juntarlos y dárselos a tu $ghéroe favorito:heroína favorita;! Visita a Kwee Q. Mercachifle y entrégaselos.$B$BEncontrarás a Kwee cerca de Bolvar, Magni o Tyrande."] = "3b6543a01c89085033a5b5129456612c",
@@ -4337,6 +4588,7 @@ GossipText = {
         },
         [5784] = {
             ["Las cavernas que yacen bajo nosotros están llenas de extraños y maravillosos pellejos, pero debes tener cuidado si te aventuras hacia las profundidades, $n. Recuerda que tu propia piel es mucho más valiosa."] = "6ac10856479660152ac493ee64b58f4e",
+            ["Tu conocimiento del cuero supera al mío. Quizás deberías visitar a Aayndia Vientofloral en la ciudad de Astranaar en el Bosque de Vallefresno. Tiene mucho que ofrecer a un estudiante de tu talento."] = "b8135-tauren-male-elder",
             ["Tu conocimiento del cuero supera al mío. Quizás deberías visitar al tauren Krulmoo Lunallena en el Campamento Taurajo en Los Baldíos. Tiene mucho que ofrecer a un estudiante de tu talento."] = "ebdbe70c30588d8e64ff468af9fbab81",
         },
         [5811] = {
@@ -4345,6 +4597,7 @@ GossipText = {
             ["¿Te gusta la alfombra? Yo misma maté y desollé a la bestia. Ojalá todos los centauros cayeran tan fácilmente."] = "de5e533462b3caa525719d3b51ff261a",
         },
         [5814] = {
+            ["Antiguamente la capital de los enanos Hierro Negro, este laberinto volcánico ahora sirve como trono de poder de Ragnaros, el Señor del Fuego. Ragnaros ha descubierto cómo crear vida a partir de la piedra y planea formar un ejército de golems imparables para ayudarle a conquistar la Montaña Roca Negra. Ragnaros, obsesionado con derrotar a Nefarian y a sus esbirros dracónicos, hará lo que sea por conseguir la victoria final."] = "727cf38438acf58ee35c39f6a28aa289",
             ["Antiguamente la capital de los enanos Hierro Negro, este laberinto volcánico ahora sirve como trono de poder de Ragnaros, el Señor del Fuego. Ragnaros ha descubierto cómo crear vida a partir de la piedra y planea formar un ejército de gólems imparables para ayudarle a conquistar la Montaña Roca Negra. Ragnaros, obsesionado con derrotar a Nefarian y a sus esbirros dracónicos, hará lo que sea por conseguir la victoria final."] = "727cf38438acf58ee35c39f6a28aa289",
             ["Construida con las mismas vides que Horado Rajacieno, Zahúrda Rajacieno es la capital tradicional de la raza de los jabaespines. El laberinto de espinas que se extiende por todas partes, aloja un verdadero ejército de leales jabaespines junto con sus altos sacerdotes, la tribu Caramuerte. Sin embargo, recientemente una sombra de mal presagio ha caído sobre la rudimentaria guarida. Unos agentes de la Plaga de los no-muertos, a las órdenes del exánime Amnennar el Gélido, han tomado el control de la raza de los jabaespines y han convertido el laberinto de espinas en un bastión del poder de los no-muertos."] = "bcc93e0f69a610e26e8a585d15e236ca",
             ["Cuando entregues pruebas de amor a los habitantes de la ciudad, recibirás diferentes regalos a cambio. Algunos podrás guardarlos y utilizarlos, y otros ¡podrás juntarlos y dárselos a tu $ghéroe favorito:heroína favorita;! Visita a Kwee Q. Mercachifle y entrégaselos.$B$BEncontrarás a Kwee cerca de Bolvar, Magni o Tyrande."] = "ab1b05dce1379cc50a508ec75bc5fecf",
@@ -4359,6 +4612,7 @@ GossipText = {
             ["Esta ciudad abrasada por los rayos del sol es el hogar de los trols Furiarena, famosos por su particular falta de piedad y su oscuro misticismo. Las leyendas de los trols hablan de una poderosa espada llamada Sul'thraze la Azotadora, un arma capaz de infundir miedo y flaqueza incluso a los enemigos más formidables. Mucho tiempo atrás, la espada fue partida por la mitad. Sin embargo, hay rumores que dicen que las dos mitades se encuentran en algún lugar dentro de los muros de Zul'Farrak."] = "8cdbbc96d739b730ea3dd0482497fe79",
             ["Frustrado por la falta de progreso de los magos de Dalaran contra los no-muertos durante la Tercera Guerra, el archimago Arugal decidió invocar a los ferocanis extra-dimensionales para dar un empujón a sus tropas cada vez menores. Los lobizones atacaron a la Plaga y, rápidamente, se dirigieron a los magos y asediaron el bastión del noble barón Filargenta. Pronto, el fuerte fue presa de las sombras y se convirtió en cenizas. Enloquecido por la culpa, Arugal adoptó a los ferocanis como sus hijos y se retiró al Castillo de Colmillo Oscuro."] = "b710141cbfed33e4215f9f02e57b1285",
             ["Gnomeregan se encuentra en la parte oeste de Dun Morogh."] = "a28655b7a8d174f6fdec53c01d3eecef",
+            ["Hace más de mil años, un grupo de sacerdotes trols conocidos como los Atal'ai, intentaron resucitar a un dios de la sangre ancestral llamado Hakkar el Cazador de Almas. Tras la consecuente guerra civil, los sacerdotes fueron derrotados y exiliados al Pantano de las Penas. Allí erigieron un templo en honor de Hakkar, para prepararse para su llegada al mundo físico. La Dragón Aspecto Ysera, pronto descubrió los planes de los Atal'ai y hundió el templo bajo el pantano. Hasta el día de hoy, las ruinas han estado protegidas por los poderosos dragones verdes."] = "f4ce8cc991dc9b8e53cbf5bafea7a20e",
             ["Hace más de mil años, un grupo de sacerdotes trols conocidos como los Atal'ai, intentaron resucitar a un dios de la sangre ancestral llamado Hakkar el Cazador de Almas. Tras la consecuente guerra civil, los sacerdotes fueron derrotados y exiliados al Pantano de las Penas. Allí erigieron un templo en honor de Hakkar, para prepararse para su llegada al mundo físico. La dragón Aspecto Ysera, pronto descubrió los planes de los Atal'ai y hundió el templo bajo el pantano. Hasta el día de hoy, las ruinas han estado protegidas por los poderosos dragones Verdes."] = "f4ce8cc991dc9b8e53cbf5bafea7a20e",
             ["Hace poco, un druida elfo de la noche llamado Naralex, descubrió una red de cuevas subterráneas en el corazón de Los Baldíos. Creyendo que podría usar los manantiales de las cuevas para restaurar la exuberancia de Los Baldíos, el druida comenzó a absorber las energías del legendario Sueño Esmeralda. De alguna forma, su visión se transformó en una pesadilla y pronto, las Cuevas de los Lamentos se convirtieron en una guarida de viciosos y letales depredadores. Se dice que Naralex sigue en algún lugar del laberinto, atrapado más allá de los límites del Sueño Esmeralda."] = "53cfb8044c1292d233012d45237f180d",
             ["Horado Rajacieno se encuentra en el extremo más al sur de Los Baldíos, en el lado oeste del camino."] = "b70df0c6d8237e82e8eab2e2cee97a1c",
@@ -4531,6 +4785,9 @@ GossipText = {
             ["He oído decir que Deneb Camino, en Stromgarde, tiene un libro que podría ayudarte a mejorar tus técnicas de primeros auxilios."] = "d64bde6554e9c8b2bd854db8a7bbe49b",
             ["Puedo enseñarte técnicas de primeros auxilios."] = "5b09af4b70a11e0b3b1b1c7ccc834d62",
         },
+        [6109] = {
+            ["¿Vas a hacerme daño, $r?"] = "410da37bbc0ae8189c7e9c0401c35f85",
+        },
         [6119] = {
             ["Espero que la nieve se haya derretido ya. ¡Siempre moja mi túnica y lo ensucia todo!"] = "0e1456f0d5c9168f7737048858545bb6",
         },
@@ -4554,6 +4811,7 @@ GossipText = {
             ["¿Has hablado ya con alguno de mis acólitos de la torre, $n? No podemos terminar tu orbe hasta que no hayas cumplido sus tareas. Ve a hablar con ellos si estás $gpreparado:preparada;."] = "50f36dcd4a09a1faf4becc16a0525cdf",
         },
         [6272] = {
+            ["Antiguamente la capital de los enanos Hierro Negro, este laberinto volcánico ahora sirve como trono de poder de Ragnaros, el Señor del Fuego. Ragnaros ha descubierto cómo crear vida a partir de la piedra y planea formar un ejército de golems imparables para ayudarle a conquistar la Montaña Roca Negra. Ragnaros, obsesionado con derrotar a Nefarian y a sus esbirros dracónicos, hará lo que sea por conseguir la victoria final."] = "e4835262a6e71a36692d90aedbb66c42",
             ["Antiguamente la capital de los enanos Hierro Negro, este laberinto volcánico ahora sirve como trono de poder de Ragnaros, el Señor del Fuego. Ragnaros ha descubierto cómo crear vida a partir de la piedra y planea formar un ejército de gólems imparables para ayudarle a conquistar la Montaña Roca Negra. Ragnaros, obsesionado con derrotar a Nefarian y a sus esbirros dracónicos, hará lo que sea por conseguir la victoria final."] = "e4835262a6e71a36692d90aedbb66c42",
             ["Construida con las mismas vides que Horado Rajacieno, Zahúrda Rajacieno es la capital tradicional de la raza de los jabaespines. El laberinto de espinas que se extiende por todas partes, aloja un verdadero ejército de leales jabaespines junto con sus altos sacerdotes, la tribu Caramuerte. Sin embargo, recientemente una sombra de mal presagio ha caído sobre la rudimentaria guarida. Unos agentes de la Plaga de los no-muertos, a las órdenes del exánime Amnennar el Gélido, han tomado el control de la raza de los jabaespines y han convertido el laberinto de espinas en un bastión del poder de los no-muertos."] = "ae6bac71d95fa9cc576583cb12b00b0a",
             ["Cuando entregues pruebas de amor a los habitantes de la ciudad, recibirás diferentes regalos a cambio. Algunos podrás guardarlos y utilizarlos, ¡mientras que otros podrás juntarlos y dárselos a tu $ghéroe favorito:heroína favorita;! Visita a Kwee Q. Mercachifle y entrégaselos.$B$BEncontrarás a Kwee cerca de Bolvar, Magni o Tyrande."] = "0838f3fe0e3c17a16a7ff7d504eec929",
@@ -4569,6 +4827,7 @@ GossipText = {
             ["Frustrado por la falta de progreso de los magos de Dalaran contra los no-muertos durante la Tercera Guerra, el archimago Arugal decidió invocar a los ferocanis extra-dimensionales para dar un empujón a sus tropas cada vez menores. Los lobisones atacaron a la Plaga y, rápidamente, se dirigieron a los magos y asediaron el bastión del noble barón FIlargenta. Pronto, el fuerte fue presa de las sombras y se convirtió en cenizas. Enloquecido por la culpa, Arugal adoptó a los ferocanis como sus hijos y se retiró al Castillo de Colmillo Oscuro."] = "b69ededa6dbdfe26a15fda5121e90a20",
             ["Gnomeregan se encuentra en la parte oeste de Dun Morogh."] = "1e16c8ae0545b101ebc5ad4d9c69c248",
             ["Hace más de mil años, un grupo de sacerdotes trols conocidos como los Atal'ai, intentaron resucitar a un dios de la sangre ancestral llamado Hakkar el Cazador de Almas. Tras la consecuente guerra civil, los sacerdotes fueron derrotados y exiliados al Pantano de las Penas. Allí erigieron un templo en honor de Hakkar, para prepararse para su llegada al mundo físico. La dragón Aspecto Ysera, pronto descubrió los planes de los Atal'ai y hundió el templo bajo el pantano. Hasta el día de hoy, las ruinas han estado protegidas por los poderosos dragones Verdes."] = "7dc247370c0f46388922e4ad2824f973",
+            ["Hace más de mil años, un grupo de sacerdotes trols conocidos como los Atal'ai, intentaron resucitar a un dios de la sangre ancestral llamado Hakkar el Cazador de Almas. Tras la consecuente guerra civil, los sacerdotes fueron derrotados y exiliados al Pantano de las Penas. Allí erigieron un templo en honor de Hakkar, para prepararse para su llegada al mundo físico. La dragón Aspecto Ysera, pronto descubrió los planes de los Atal'ai y hundió el templo bajo el pantano. Hasta el día de hoy, las ruinas han estado protegidas por los poderosos dragones verdes."] = "7dc247370c0f46388922e4ad2824f973",
             ["Hace poco, un druida elfo de la noche llamado Naralex, descubrió una red de cuevas subterráneas en el corazón de Los Baldíos. Creyendo que podría usar los manantiales de las cuevas para restaurar la exuberancia de Los Baldíos, el druida comenzó a absorber las energías del legendario Sueño Esmeralda. De alguna forma, su visión se transformó en una pesadilla y pronto, las Cuevas de los Lamentos se convirtieron en una guarida de viciosos y letales depredadores. Se dice que Naralex sigue en algún lugar del laberinto, atrapado más allá de los límites del Sueño Esmeralda."] = "4d1835c423b0ee4a6773a1481ea2d03e",
             ["Horado Rajacieno se encuentra en el extremo más al sur de Los Baldíos, en el lado oeste del camino."] = "4855c8dab63ff7e92429d6df87b7b3cd",
             ["La Montaña Roca Negra linda con La Garganta de Fuego al norte y Las Estepas Ardientes al sur."] = "7beb3ee244d9c85c277537d4ba4a2fe1",
@@ -4602,6 +4861,9 @@ GossipText = {
         [6286] = {
             ["Hola, $n. Si te interesa aprender algún truco de cocina, ven a verme cuando quieras."] = "292d23a69067576b9fc2d7040777f5f2",
         },
+        [6297] = {
+            ["Saludos."] = "551b9295c0119ec334ab1eebcbac2bee",
+        },
         [6299] = {
             ["Al parecer, no puedo ponerme cómodo si no es con un sólido techo de granito sobre mi cabeza. Todas esas estrellas allí arriba bastan para darte escalofríos."] = "e50375b7265f11678a108fd87e8a8a60",
             ["No hay demasiados herreros en un lugar tan distante de Forjaz como este. ¿Qué puedo hacer por ti?"] = "6c6565db7cbcd83084366295deee0bb4",
@@ -4609,6 +4871,10 @@ GossipText = {
         },
         [6301] = {
             ["Saludos, $gmuchacho:muchacha;, si buscas los mejores precios que hay fuera de Forjaz, has venido al lugar adecuado."] = "30788884689c5bb0102e781a007f9ad6",
+        },
+        [6306] = {
+            ["¿En qué puedo ayudarte?"] = "b1529-human-female-warrior",
+            ["¿Qué puedo hacer para ayudar?"] = "b9724-human-female-warrior",
         },
         [6328] = {
             ["No eres $gun brujo:una bruja; y no tengo tiempo para ti. ¡Largo!"] = "ba8b5b409d8e88979163e3833b3ca8f7",
@@ -4630,6 +4896,9 @@ GossipText = {
             ["No eres $gun brujo:una bruja; y no tengo tiempo para ti. ¡Largo!"] = "abe46b983f8b3369ae786ab9b4565c64",
             ["¿Quieres que tus demonios sean más poderosos? Te costará, pero has venido al lugar adecuado."] = "3b59c956dcfc2045fa9cad04b8290ca9",
         },
+        [6491] = {
+            ["Aún no te ha llegado la hora. Te ayudaré durante tu regreso al reino de los vivos... por un precio."] = "b2545-spirithealer",
+        },
         [6497] = {
             ["Sí, lo soy. ¿En qué puedo ayudarte?"] = "75ff43dd97408c7355a214344f6383ba",
             ["¿Qué deseas, $c? Llego tarde y a mi jefe no le gusta nada la impuntualidad."] = "4d9d8b2efc14201a6e931c1e0c7c9c54",
@@ -4644,6 +4913,7 @@ GossipText = {
             ["Debido a la autorización del señor Varimathras, el número de mortacechadores crece. Más espadas que clavar a nuestros enemigos cuando menos se lo esperan."] = "d727a9a6c19bda725fe90de6453f386d",
         },
         [6568] = {
+            ["Si la sastrería es lo que te gusta, Vizzklick tiene definitivamente todo lo que necesitas para ello. Echa un vistazo a tu alrededor, $N, y dime si deseas comprar algo."] = "910ba4b855e200d5675b3e6eabb50a83",
             ["Si la sastrería es lo que te gusta, Vizzklick tiene definitivamente todo lo que necesitas para ello. Echa un vistazo a tu alrededor, $n, y dime si deseas comprar algo."] = "910ba4b855e200d5675b3e6eabb50a83",
             ["¡Coge tus cosas, $n! Nilith Lokrak de la Garganta de Fuego acaba de comunicarme que el Mercado Negro ha establecido sus operaciones en el corazón de La Caldera. ¡Encuentra a Nilith Lokrav en La Garganta de Fuego y entérate de todo!"] = "9b4127810f51260020b2c2688447edd5",
         },
@@ -4655,6 +4925,14 @@ GossipText = {
         },
         [6586] = {
             ["¿Qué hace $gun:una; joven $c visitando a un viejo granjero como yo?"] = "9bf55e6c6132c78f689d4a846edbc4fd",
+        },
+        [6626] = {
+            ["Claro, te diré la frase. ¡Siempre y cuando no tenga que acercarme a Tirth!"] = "b2721-human-male-standard",
+            ["¡Eh! ¿Estás haciéndole un recado a Tirth? ¡Yo, en tu lugar, me alejaría de él todo lo que pudiera! ¡Sus neuronas están embriagadas con tanto alcohol, pero su magia sigue tan poderosa como siempre!"] = "b2706-human-male-standard",
+        },
+        [6669] = {
+            ["La llave de Gelkak se desliza por la ranura vacía."] = "b2741-narrator-male",
+            ["La máquina se ajusta a tu altura.  En la parte trasera de la máquina encontrarás una ranura deforme con el siguiente rótulo grabado: 'Propiedá del capitán Gelkak Gyromast'"] = "esMX-604eb72c66cd24ffe2c5077f0d76dfba",
         },
         [6706] = {
             ["¿Adónde quieres volar?"] = "8ee9e2b8b1fbeba82851331d36cb251c",
@@ -4668,6 +4946,7 @@ GossipText = {
             ["¿Adónde quieres volar?"] = "008491a7c8f31e3556f00e8c3fdc3190",
         },
         [6727] = {
+            ["Antiguamente la capital de los enanos Hierro Negro, este laberinto volcánico ahora sirve como trono de poder de Ragnaros, el Señor del Fuego. Ragnaros ha descubierto cómo crear vida a partir de la piedra y planea formar un ejército de golems imparables para ayudarle a conquistar la Montaña Roca Negra. Ragnaros, obsesionado con derrotar a Nefarian y a sus esbirros dracónicos, hará lo que sea por conseguir la victoria final."] = "e4835262a6e71a36692d90aedbb66c42",
             ["Antiguamente la capital de los enanos Hierro Negro, este laberinto volcánico ahora sirve como trono de poder de Ragnaros, el Señor del Fuego. Ragnaros ha descubierto cómo crear vida a partir de la piedra y planea formar un ejército de gólems imparables para ayudarle a conquistar la Montaña Roca Negra. Ragnaros, obsesionado con derrotar a Nefarian y a sus esbirros dracónicos, hará lo que sea por conseguir la victoria final."] = "e4835262a6e71a36692d90aedbb66c42",
             ["Construida con las mismas vides que Horado Rajacieno, Zahúrda Rajacieno es la capital tradicional de la raza de los jabaespines. El laberinto de espinas que se extiende por todas partes, aloja un verdadero ejército de leales jabaespines junto con sus altos sacerdotes, la tribu Caramuerte. Sin embargo, recientemente una sombra de mal presagio ha caído sobre la rudimentaria guarida. Unos agentes de la Plaga de los no-muertos, a las órdenes del exánime Amnennar el Gélido, han tomado el control de la raza de los jabaespines y han convertido el laberinto de espinas en un bastión del poder de los no-muertos."] = "ae6bac71d95fa9cc576583cb12b00b0a",
             ["Cuando entregues pruebas de amor a los habitantes de la ciudad, recibirás diferentes regalos a cambio. Algunos podrás guardarlos y utilizarlos, ¡mientras que otros podrás juntarlos y dárselos a tu $ghéroe favorito:heroína favorita;! Visita a Kwee Q. Mercachifle y entrégaselos.$B$BEncontrarás a Kwee cerca de Bolvar, Magni o Tyrande."] = "0838f3fe0e3c17a16a7ff7d504eec929",
@@ -4683,6 +4962,7 @@ GossipText = {
             ["Frustrado por la falta de progreso de los magos de Dalaran contra los no-muertos durante la Tercera Guerra, el archimago Arugal decidió invocar a los ferocanis extra-dimensionales para dar un empujón a sus tropas cada vez menores. Los lobisones atacaron a la Plaga y, rápidamente, se dirigieron a los magos y asediaron el bastión del noble barón FIlargenta. Pronto, el fuerte fue presa de las sombras y se convirtió en cenizas. Enloquecido por la culpa, Arugal adoptó a los ferocanis como sus hijos y se retiró al Castillo de Colmillo Oscuro."] = "b69ededa6dbdfe26a15fda5121e90a20",
             ["Gnomeregan se encuentra en la parte oeste de Dun Morogh."] = "1e16c8ae0545b101ebc5ad4d9c69c248",
             ["Hace más de mil años, un grupo de sacerdotes trols conocidos como los Atal'ai, intentaron resucitar a un dios de la sangre ancestral llamado Hakkar el Cazador de Almas. Tras la consecuente guerra civil, los sacerdotes fueron derrotados y exiliados al Pantano de las Penas. Allí erigieron un templo en honor de Hakkar, para prepararse para su llegada al mundo físico. La dragón Aspecto Ysera, pronto descubrió los planes de los Atal'ai y hundió el templo bajo el pantano. Hasta el día de hoy, las ruinas han estado protegidas por los poderosos dragones Verdes."] = "7dc247370c0f46388922e4ad2824f973",
+            ["Hace más de mil años, un grupo de sacerdotes trols conocidos como los Atal'ai, intentaron resucitar a un dios de la sangre ancestral llamado Hakkar el Cazador de Almas. Tras la consecuente guerra civil, los sacerdotes fueron derrotados y exiliados al Pantano de las Penas. Allí erigieron un templo en honor de Hakkar, para prepararse para su llegada al mundo físico. La dragón Aspecto Ysera, pronto descubrió los planes de los Atal'ai y hundió el templo bajo el pantano. Hasta el día de hoy, las ruinas han estado protegidas por los poderosos dragones verdes."] = "7dc247370c0f46388922e4ad2824f973",
             ["Hace poco, un druida elfo de la noche llamado Naralex, descubrió una red de cuevas subterráneas en el corazón de Los Baldíos. Creyendo que podría usar los manantiales de las cuevas para restaurar la exuberancia de Los Baldíos, el druida comenzó a absorber las energías del legendario Sueño Esmeralda. De alguna forma, su visión se transformó en una pesadilla y pronto, las Cuevas de los Lamentos se convirtieron en una guarida de viciosos y letales depredadores. Se dice que Naralex sigue en algún lugar del laberinto, atrapado más allá de los límites del Sueño Esmeralda."] = "4d1835c423b0ee4a6773a1481ea2d03e",
             ["Horado Rajacieno se encuentra en el extremo más al sur de Los Baldíos, en el lado oeste del camino."] = "4855c8dab63ff7e92429d6df87b7b3cd",
             ["La Montaña Roca Negra linda con La Garganta de Fuego al norte y Las Estepas Ardientes al sur."] = "7beb3ee244d9c85c277537d4ba4a2fe1",
@@ -4717,6 +4997,7 @@ GossipText = {
             ["Una vez seguí la senda del Martillo Crepuscular. Obsesionado con resucitar a los Antiguos Dioses, me interné en las profundidades de esta guarida para intentar absorber el poder de Aku'mai, bestia maldita!$b$bTras presenciar el sacrificio de incontables inocentes, recuperé el sentido.$b$b¡Estaba atrapado, pero ahora soy libre! ¡Y ahora estoy tan lejos de mi tierra natal Khaz Modan!$b$bValiente $gaventurero:aventurera;, te enseñaré el camino a una tierra muy especial a cambio de que mates a Aku'mai. Si lo deseas, puedo transportarte a la ciudad de Darnassus."] = "4057eacacb0243ce014c6ce4af544682",
         },
         [6734] = {
+            ["Antiguamente la capital de los enanos Hierro Negro, este laberinto volcánico ahora sirve como trono de poder de Ragnaros, el Señor del Fuego. Ragnaros ha descubierto cómo crear vida a partir de la piedra y planea formar un ejército de golems imparables para ayudarle a conquistar la Montaña Roca Negra. Ragnaros, obsesionado con derrotar a Nefarian y a sus esbirros dracónicos, hará lo que sea por conseguir la victoria final."] = "d4c8367f7e096bd61f9f2c15a639c5d5",
             ["Antiguamente la capital de los enanos Hierro Negro, este laberinto volcánico ahora sirve como trono de poder de Ragnaros, el Señor del Fuego. Ragnaros ha descubierto cómo crear vida a partir de la piedra y planea formar un ejército de gólems imparables para ayudarle a conquistar la Montaña Roca Negra. Ragnaros, obsesionado con derrotar a Nefarian y a sus esbirros dracónicos, hará lo que sea por conseguir la victoria final."] = "d4c8367f7e096bd61f9f2c15a639c5d5",
             ["Construida con las mismas vides que Horado Rajacieno, Zahúrda Rajacieno es la capital tradicional de la raza de los jabaespines. El laberinto de espinas que se extiende por todas partes, aloja un verdadero ejército de leales jabaespines junto con sus altos sacerdotes, la tribu Caramuerte. Sin embargo, recientemente una sombra de mal presagio ha caído sobre la rudimentaria guarida. Unos agentes de la Plaga de los no-muertos, a las órdenes del exánime Amnennar el Gélido, han tomado el control de la raza de los jabaespines y han convertido el laberinto de espinas en un bastión del poder de los no-muertos."] = "0696ddb759f36db8a31b0de8dfe773e6",
             ["Cuando entregues pruebas de amor a los habitantes de la ciudad, recibirás diferentes regalos a cambio. Algunos podrás guardarlos y utilizarlos, y otros ¡podrás juntarlos y dárselos a tu $ghéroe favorito:heroína favorita;! Visita a Kwee Q. Mercachifle y entrégaselos.$B$BEncontrarás a Kwee cerca de Bolvar, Magni o Tyrande."] = "490f61093d0ec9e8887f5611d0dde3c6",
@@ -4731,6 +5012,7 @@ GossipText = {
             ["Esta ciudad abrasada por los rayos del sol es el hogar de los trols Furiarena, famosos por su particular falta de piedad y su oscuro misticismo. Las leyendas de los trols hablan de una poderosa espada llamada Sul'thraze la Azotadora, un arma capaz de infundir miedo y flaqueza incluso a los enemigos más formidables. Mucho tiempo atrás, la espada fue partida por la mitad. Sin embargo, hay rumores que dicen que las dos mitades se encuentran en algún lugar dentro de los muros de Zul'Farrak."] = "ecab747cb61959b39b57ef0de545ae6e",
             ["Frustrado por la falta de progreso de los magos de Dalaran contra los no-muertos durante la Tercera Guerra, el archimago Arugal decidió invocar a los ferocanis extra-dimensionales para dar un empujón a sus tropas cada vez menores. Los lobizones atacaron a la Plaga y, rápidamente, se dirigieron a los magos y asediaron el bastión del noble barón Filargenta. Pronto, el fuerte fue presa de las sombras y se convirtió en cenizas. Enloquecido por la culpa, Arugal adoptó a los ferocanis como sus hijos y se retiró al Castillo de Colmillo Oscuro."] = "387741cc6b9473695e470695f72c685c",
             ["Gnomeregan se encuentra en la parte oeste de Dun Morogh."] = "b5a78d9a4eb2335b05dc3e74b7bf93d2",
+            ["Hace más de mil años, un grupo de sacerdotes trols conocidos como los Atal'ai, intentaron resucitar a un dios de la sangre ancestral llamado Hakkar el Cazador de Almas. Tras la consecuente guerra civil, los sacerdotes fueron derrotados y exiliados al Pantano de las Penas. Allí erigieron un templo en honor de Hakkar, para prepararse para su llegada al mundo físico. La Dragón Aspecto Ysera, pronto descubrió los planes de los Atal'ai y hundió el templo bajo el pantano. Hasta el día de hoy, las ruinas han estado protegidas por los poderosos dragones verdes."] = "d0b8820f2e1f29977d61ec36fbba4c37",
             ["Hace más de mil años, un grupo de sacerdotes trols conocidos como los Atal'ai, intentaron resucitar a un dios de la sangre ancestral llamado Hakkar el Cazador de Almas. Tras la consecuente guerra civil, los sacerdotes fueron derrotados y exiliados al Pantano de las Penas. Allí erigieron un templo en honor de Hakkar, para prepararse para su llegada al mundo físico. La dragón Aspecto Ysera, pronto descubrió los planes de los Atal'ai y hundió el templo bajo el pantano. Hasta el día de hoy, las ruinas han estado protegidas por los poderosos dragones Verdes."] = "d0b8820f2e1f29977d61ec36fbba4c37",
             ["Hace poco, un druida elfo de la noche llamado Naralex, descubrió una red de cuevas subterráneas en el corazón de Los Baldíos. Creyendo que podría usar los manantiales de las cuevas para restaurar la exuberancia de Los Baldíos, el druida comenzó a absorber las energías del legendario Sueño Esmeralda. De alguna forma, su visión se transformó en una pesadilla y pronto, las Cuevas de los Lamentos se convirtieron en una guarida de viciosos y letales depredadores. Se dice que Naralex sigue en algún lugar del laberinto, atrapado más allá de los límites del Sueño Esmeralda."] = "bddcb2f11ff849b592a1d76b4d46b5d1",
             ["Horado Rajacieno se encuentra en el extremo más al sur de Los Baldíos, en el lado oeste del camino."] = "41e7446de8a99d017f4dbbef7255bc13",
@@ -4763,6 +5045,7 @@ GossipText = {
             ["¿Te interesa explorar una de estas mazmorras?"] = "036da6474362e31b5c5b8714997221d3",
         },
         [6735] = {
+            ["Antiguamente la capital de los enanos Hierro Negro, este laberinto volcánico ahora sirve como trono de poder de Ragnaros, el Señor del Fuego. Ragnaros ha descubierto cómo crear vida a partir de la piedra y planea formar un ejército de golems imparables para ayudarle a conquistar la Montaña Roca Negra. Ragnaros, obsesionado con derrotar a Nefarian y a sus esbirros dracónicos, hará lo que sea por conseguir la victoria final."] = "9c2b22f32a137854d984166b2aaded4b",
             ["Antiguamente la capital de los enanos Hierro Negro, este laberinto volcánico ahora sirve como trono de poder de Ragnaros, el Señor del Fuego. Ragnaros ha descubierto cómo crear vida a partir de la piedra y planea formar un ejército de gólems imparables para ayudarle a conquistar la Montaña Roca Negra. Ragnaros, obsesionado con derrotar a Nefarian y a sus esbirros dracónicos, hará lo que sea por conseguir la victoria final."] = "9c2b22f32a137854d984166b2aaded4b",
             ["Construida con las mismas vides que Horado Rajacieno, Zahúrda Rajacieno es la capital tradicional de la raza de los jabaespines. El laberinto de espinas que se extiende por todas partes, aloja un verdadero ejército de leales jabaespines junto con sus altos sacerdotes, la tribu Caramuerte. Sin embargo, recientemente una sombra de mal presagio ha caído sobre la rudimentaria guarida. Unos agentes de la Plaga de los no-muertos, a las órdenes del exánime Amnennar el Gélido, han tomado el control de la raza de los jabaespines y han convertido el laberinto de espinas en un bastión del poder de los no-muertos."] = "bbbb6f1884cdacec9af6cb67e3e1abd4",
             ["Cuando entregues pruebas de amor a los habitantes de la ciudad, recibirás diferentes regalos a cambio. Algunos podrás guardarlos y utilizarlos, ¡mientras que otros podrás juntarlos y dárselos a tu $ghéroe favorito:heroína favorita;! Visita a Kwee Q. Mercachifle y entrégaselos.$B$BEncontrarás a Kwee cerca de Bolvar, Magni o Tyrande."] = "b19764fa4b6d3a891fa5f750b3dd2517",
@@ -4778,6 +5061,7 @@ GossipText = {
             ["Frustrado por la falta de progreso de los magos de Dalaran contra los no-muertos durante la Tercera Guerra, el archimago Arugal decidió invocar a los ferocanis extra-dimensionales para dar un empujón a sus tropas cada vez menores. Los lobisones atacaron a la Plaga y, rápidamente, se dirigieron a los magos y asediaron el bastión del noble barón FIlargenta. Pronto, el fuerte fue presa de las sombras y se convirtió en cenizas. Enloquecido por la culpa, Arugal adoptó a los ferocanis como sus hijos y se retiró al Castillo de Colmillo Oscuro."] = "5d076554d313584aa1c5611cf0129a23",
             ["Gnomeregan se encuentra en la parte oeste de Dun Morogh."] = "a4f613548f3f5a63415a978d891ce475",
             ["Hace más de mil años, un grupo de sacerdotes trols conocidos como los Atal'ai, intentaron resucitar a un dios de la sangre ancestral llamado Hakkar el Cazador de Almas. Tras la consecuente guerra civil, los sacerdotes fueron derrotados y exiliados al Pantano de las Penas. Allí erigieron un templo en honor de Hakkar, para prepararse para su llegada al mundo físico. La dragón Aspecto Ysera, pronto descubrió los planes de los Atal'ai y hundió el templo bajo el pantano. Hasta el día de hoy, las ruinas han estado protegidas por los poderosos dragones Verdes."] = "4b24ea6b391a2efd0be7d84cc947d159",
+            ["Hace más de mil años, un grupo de sacerdotes trols conocidos como los Atal'ai, intentaron resucitar a un dios de la sangre ancestral llamado Hakkar el Cazador de Almas. Tras la consecuente guerra civil, los sacerdotes fueron derrotados y exiliados al Pantano de las Penas. Allí erigieron un templo en honor de Hakkar, para prepararse para su llegada al mundo físico. La dragón Aspecto Ysera, pronto descubrió los planes de los Atal'ai y hundió el templo bajo el pantano. Hasta el día de hoy, las ruinas han estado protegidas por los poderosos dragones verdes."] = "4b24ea6b391a2efd0be7d84cc947d159",
             ["Hace poco, un druida elfo de la noche llamado Naralex, descubrió una red de cuevas subterráneas en el corazón de Los Baldíos. Creyendo que podría usar los manantiales de las cuevas para restaurar la exuberancia de Los Baldíos, el druida comenzó a absorber las energías del legendario Sueño Esmeralda. De alguna forma, su visión se transformó en una pesadilla y pronto, las Cuevas de los Lamentos se convirtieron en una guarida de viciosos y letales depredadores. Se dice que Naralex sigue en algún lugar del laberinto, atrapado más allá de los límites del Sueño Esmeralda."] = "4352ca0c9a3782df4f9b0a23c9c7f9d7",
             ["Horado Rajacieno se encuentra en el extremo más al sur de Los Baldíos, en el lado oeste del camino."] = "25a80704f18ee56676b132bdded0fe94",
             ["La Montaña Roca Negra linda con La Garganta de Fuego al norte y Las Estepas Ardientes al sur."] = "aab40b74860886caa96dcfdaf979e180",
@@ -4818,6 +5102,7 @@ GossipText = {
             ["¿Qué puedes hacer en una posada?$B$BBueno, cuando te quedas en una posada, descansas cómodamente. Por esta razón, estarás más descansado' en mucho menos tiempo que si lo haces en el bosque. Cuando descansas bien, aprendes más de la experiencia.$B$BAsimismo, puedes pedirle al posadero que te consiga una piedra de hogar para luego usarla con el fin de regresar rápidamente a la posada'.'"] = "c7e55aa073464fb6fc032bafb7831820",
         },
         [6737] = {
+            ["Antiguamente la capital de los enanos Hierro Negro, este laberinto volcánico ahora sirve como trono de poder de Ragnaros, el Señor del Fuego. Ragnaros ha descubierto cómo crear vida a partir de la piedra y planea formar un ejército de golems imparables para ayudarle a conquistar la Montaña Roca Negra. Ragnaros, obsesionado con derrotar a Nefarian y a sus esbirros dracónicos, hará lo que sea por conseguir la victoria final."] = "9c2b22f32a137854d984166b2aaded4b",
             ["Antiguamente la capital de los enanos Hierro Negro, este laberinto volcánico ahora sirve como trono de poder de Ragnaros, el Señor del Fuego. Ragnaros ha descubierto cómo crear vida a partir de la piedra y planea formar un ejército de gólems imparables para ayudarle a conquistar la Montaña Roca Negra. Ragnaros, obsesionado con derrotar a Nefarian y a sus esbirros dracónicos, hará lo que sea por conseguir la victoria final."] = "9c2b22f32a137854d984166b2aaded4b",
             ["Construida con las mismas vides que Horado Rajacieno, Zahúrda Rajacieno es la capital tradicional de la raza de los jabaespines. El laberinto de espinas que se extiende por todas partes, aloja un verdadero ejército de leales jabaespines junto con sus altos sacerdotes, la tribu Caramuerte. Sin embargo, recientemente una sombra de mal presagio ha caído sobre la rudimentaria guarida. Unos agentes de la Plaga de los no-muertos, a las órdenes del exánime Amnennar el Gélido, han tomado el control de la raza de los jabaespines y han convertido el laberinto de espinas en un bastión del poder de los no-muertos."] = "bbbb6f1884cdacec9af6cb67e3e1abd4",
             ["Cuando entregues pruebas de amor a los habitantes de la ciudad, recibirás diferentes regalos a cambio. Algunos podrás guardarlos y utilizarlos, ¡mientras que otros podrás juntarlos y dárselos a tu $ghéroe favorito:heroína favorita;! Visita a Kwee Q. Mercachifle y entrégaselos.$B$BEncontrarás a Kwee cerca de Bolvar, Magni o Tyrande."] = "b19764fa4b6d3a891fa5f750b3dd2517",
@@ -4833,6 +5118,7 @@ GossipText = {
             ["Frustrado por la falta de progreso de los magos de Dalaran contra los no-muertos durante la Tercera Guerra, el archimago Arugal decidió invocar a los ferocanis extra-dimensionales para dar un empujón a sus tropas cada vez menores. Los lobisones atacaron a la Plaga y, rápidamente, se dirigieron a los magos y asediaron el bastión del noble barón FIlargenta. Pronto, el fuerte fue presa de las sombras y se convirtió en cenizas. Enloquecido por la culpa, Arugal adoptó a los ferocanis como sus hijos y se retiró al Castillo de Colmillo Oscuro."] = "5d076554d313584aa1c5611cf0129a23",
             ["Gnomeregan se encuentra en la parte oeste de Dun Morogh."] = "a4f613548f3f5a63415a978d891ce475",
             ["Hace más de mil años, un grupo de sacerdotes trols conocidos como los Atal'ai, intentaron resucitar a un dios de la sangre ancestral llamado Hakkar el Cazador de Almas. Tras la consecuente guerra civil, los sacerdotes fueron derrotados y exiliados al Pantano de las Penas. Allí erigieron un templo en honor de Hakkar, para prepararse para su llegada al mundo físico. La dragón Aspecto Ysera, pronto descubrió los planes de los Atal'ai y hundió el templo bajo el pantano. Hasta el día de hoy, las ruinas han estado protegidas por los poderosos dragones Verdes."] = "4b24ea6b391a2efd0be7d84cc947d159",
+            ["Hace más de mil años, un grupo de sacerdotes trols conocidos como los Atal'ai, intentaron resucitar a un dios de la sangre ancestral llamado Hakkar el Cazador de Almas. Tras la consecuente guerra civil, los sacerdotes fueron derrotados y exiliados al Pantano de las Penas. Allí erigieron un templo en honor de Hakkar, para prepararse para su llegada al mundo físico. La dragón Aspecto Ysera, pronto descubrió los planes de los Atal'ai y hundió el templo bajo el pantano. Hasta el día de hoy, las ruinas han estado protegidas por los poderosos dragones verdes."] = "4b24ea6b391a2efd0be7d84cc947d159",
             ["Hace poco, un druida elfo de la noche llamado Naralex, descubrió una red de cuevas subterráneas en el corazón de Los Baldíos. Creyendo que podría usar los manantiales de las cuevas para restaurar la exuberancia de Los Baldíos, el druida comenzó a absorber las energías del legendario Sueño Esmeralda. De alguna forma, su visión se transformó en una pesadilla y pronto, las Cuevas de los Lamentos se convirtieron en una guarida de viciosos y letales depredadores. Se dice que Naralex sigue en algún lugar del laberinto, atrapado más allá de los límites del Sueño Esmeralda."] = "4352ca0c9a3782df4f9b0a23c9c7f9d7",
             ["Horado Rajacieno se encuentra en el extremo más al sur de Los Baldíos, en el lado oeste del camino."] = "25a80704f18ee56676b132bdded0fe94",
             ["La Montaña Roca Negra linda con La Garganta de Fuego al norte y Las Estepas Ardientes al sur."] = "aab40b74860886caa96dcfdaf979e180",
@@ -4864,6 +5150,7 @@ GossipText = {
             ["¿Te interesa explorar una de estas mazmorras?"] = "f70c987e98c43a9ac4f1ef6eb271008a",
         },
         [6738] = {
+            ["Antiguamente la capital de los enanos Hierro Negro, este laberinto volcánico ahora sirve como trono de poder de Ragnaros, el Señor del Fuego. Ragnaros ha descubierto cómo crear vida a partir de la piedra y planea formar un ejército de golems imparables para ayudarle a conquistar la Montaña Roca Negra. Ragnaros, obsesionado con derrotar a Nefarian y a sus esbirros dracónicos, hará lo que sea por conseguir la victoria final."] = "9c2b22f32a137854d984166b2aaded4b",
             ["Antiguamente la capital de los enanos Hierro Negro, este laberinto volcánico ahora sirve como trono de poder de Ragnaros, el Señor del Fuego. Ragnaros ha descubierto cómo crear vida a partir de la piedra y planea formar un ejército de gólems imparables para ayudarle a conquistar la Montaña Roca Negra. Ragnaros, obsesionado con derrotar a Nefarian y a sus esbirros dracónicos, hará lo que sea por conseguir la victoria final."] = "9c2b22f32a137854d984166b2aaded4b",
             ["Construida con las mismas vides que Horado Rajacieno, Zahúrda Rajacieno es la capital tradicional de la raza de los jabaespines. El laberinto de espinas que se extiende por todas partes, aloja un verdadero ejército de leales jabaespines junto con sus altos sacerdotes, la tribu Caramuerte. Sin embargo, recientemente una sombra de mal presagio ha caído sobre la rudimentaria guarida. Unos agentes de la Plaga de los no-muertos, a las órdenes del exánime Amnennar el Gélido, han tomado el control de la raza de los jabaespines y han convertido el laberinto de espinas en un bastión del poder de los no-muertos."] = "bbbb6f1884cdacec9af6cb67e3e1abd4",
             ["Cuando entregues pruebas de amor a los habitantes de la ciudad, recibirás diferentes regalos a cambio. Algunos podrás guardarlos y utilizarlos, ¡mientras que otros podrás juntarlos y dárselos a tu $ghéroe favorito:heroína favorita;! Visita a Kwee Q. Mercachifle y entrégaselos.$B$BEncontrarás a Kwee cerca de Bolvar, Magni o Tyrande."] = "b19764fa4b6d3a891fa5f750b3dd2517",
@@ -4879,6 +5166,7 @@ GossipText = {
             ["Frustrado por la falta de progreso de los magos de Dalaran contra los no-muertos durante la Tercera Guerra, el archimago Arugal decidió invocar a los ferocanis extra-dimensionales para dar un empujón a sus tropas cada vez menores. Los lobisones atacaron a la Plaga y, rápidamente, se dirigieron a los magos y asediaron el bastión del noble barón FIlargenta. Pronto, el fuerte fue presa de las sombras y se convirtió en cenizas. Enloquecido por la culpa, Arugal adoptó a los ferocanis como sus hijos y se retiró al Castillo de Colmillo Oscuro."] = "5d076554d313584aa1c5611cf0129a23",
             ["Gnomeregan se encuentra en la parte oeste de Dun Morogh."] = "a4f613548f3f5a63415a978d891ce475",
             ["Hace más de mil años, un grupo de sacerdotes trols conocidos como los Atal'ai, intentaron resucitar a un dios de la sangre ancestral llamado Hakkar el Cazador de Almas. Tras la consecuente guerra civil, los sacerdotes fueron derrotados y exiliados al Pantano de las Penas. Allí erigieron un templo en honor de Hakkar, para prepararse para su llegada al mundo físico. La dragón Aspecto Ysera, pronto descubrió los planes de los Atal'ai y hundió el templo bajo el pantano. Hasta el día de hoy, las ruinas han estado protegidas por los poderosos dragones Verdes."] = "4b24ea6b391a2efd0be7d84cc947d159",
+            ["Hace más de mil años, un grupo de sacerdotes trols conocidos como los Atal'ai, intentaron resucitar a un dios de la sangre ancestral llamado Hakkar el Cazador de Almas. Tras la consecuente guerra civil, los sacerdotes fueron derrotados y exiliados al Pantano de las Penas. Allí erigieron un templo en honor de Hakkar, para prepararse para su llegada al mundo físico. La dragón Aspecto Ysera, pronto descubrió los planes de los Atal'ai y hundió el templo bajo el pantano. Hasta el día de hoy, las ruinas han estado protegidas por los poderosos dragones verdes."] = "4b24ea6b391a2efd0be7d84cc947d159",
             ["Hace poco, un druida elfo de la noche llamado Naralex, descubrió una red de cuevas subterráneas en el corazón de Los Baldíos. Creyendo que podría usar los manantiales de las cuevas para restaurar la exuberancia de Los Baldíos, el druida comenzó a absorber las energías del legendario Sueño Esmeralda. De alguna forma, su visión se transformó en una pesadilla y pronto, las Cuevas de los Lamentos se convirtieron en una guarida de viciosos y letales depredadores. Se dice que Naralex sigue en algún lugar del laberinto, atrapado más allá de los límites del Sueño Esmeralda."] = "4352ca0c9a3782df4f9b0a23c9c7f9d7",
             ["Horado Rajacieno se encuentra en el extremo más al sur de Los Baldíos, en el lado oeste del camino."] = "25a80704f18ee56676b132bdded0fe94",
             ["La Montaña Roca Negra linda con La Garganta de Fuego al norte y Las Estepas Ardientes al sur."] = "aab40b74860886caa96dcfdaf979e180",
@@ -4910,6 +5198,7 @@ GossipText = {
             ["¿Te interesa explorar una de estas mazmorras?"] = "f70c987e98c43a9ac4f1ef6eb271008a",
         },
         [6739] = {
+            ["Antiguamente la capital de los enanos Hierro Negro, este laberinto volcánico ahora sirve como trono de poder de Ragnaros, el Señor del Fuego. Ragnaros ha descubierto cómo crear vida a partir de la piedra y planea formar un ejército de golems imparables para ayudarle a conquistar la Montaña Roca Negra. Ragnaros, obsesionado con derrotar a Nefarian y a sus esbirros dracónicos, hará lo que sea por conseguir la victoria final."] = "f3796e44c383e2f2dab079058435a9e6",
             ["Antiguamente la capital de los enanos Hierro Negro, este laberinto volcánico ahora sirve como trono de poder de Ragnaros, el Señor del Fuego. Ragnaros ha descubierto cómo crear vida a partir de la piedra y planea formar un ejército de gólems imparables para ayudarle a conquistar la Montaña Roca Negra. Ragnaros, obsesionado con derrotar a Nefarian y a sus esbirros dracónicos, hará lo que sea por conseguir la victoria final."] = "f3796e44c383e2f2dab079058435a9e6",
             ["Construida con las mismas vides que Horado Rajacieno, Zahúrda Rajacieno es la capital tradicional de la raza de los jabaespines. El laberinto de espinas que se extiende por todas partes, aloja un verdadero ejército de leales jabaespines junto con sus altos sacerdotes, la tribu Caramuerte. Sin embargo, recientemente una sombra de mal presagio ha caído sobre la rudimentaria guarida. Unos agentes de la Plaga de los no-muertos, a las órdenes del exánime Amnennar el Gélido, han tomado el control de la raza de los jabaespines y han convertido el laberinto de espinas en un bastión del poder de los no-muertos."] = "df15192a7814812aa87b737075049c7f",
             ["Cuando entregues pruebas de amor a los habitantes de la ciudad, recibirás diferentes regalos a cambio. Algunos podrás guardarlos y utilizarlos, y otros ¡podrás juntarlos y dárselos a tu $ghéroe favorito:heroína favorita;! Visita a Kwee Q. Mercachifle y entrégaselos.$B$BEncontrarás a Kwee cerca de Bolvar, Magni o Tyrande."] = "81a3af904e5e838f33cd0c337609ca1e",
@@ -4925,6 +5214,7 @@ GossipText = {
             ["Esta ciudad abrasada por los rayos del sol es el hogar de los trols Furiarena, famosos por su particular falta de piedad y su oscuro misticismo. Las leyendas de los trols hablan de una poderosa espada llamada Sul'thraze la Azotadora, un arma capaz de infundir miedo y flaqueza incluso a los enemigos más formidables. Mucho tiempo atrás, la espada fue partida por la mitad. Sin embargo, hay rumores que dicen que las dos mitades se encuentran en algún lugar dentro de los muros de Zul'Farrak."] = "4d9fe927578f203ba1f939866e8eb07f",
             ["Frustrado por la falta de progreso de los magos de Dalaran contra los no-muertos durante la Tercera Guerra, el archimago Arugal decidió invocar a los ferocanis extra-dimensionales para dar un empujón a sus tropas cada vez menores. Los lobizones atacaron a la Plaga y, rápidamente, se dirigieron a los magos y asediaron el bastión del noble barón Filargenta. Pronto, el fuerte fue presa de las sombras y se convirtió en cenizas. Enloquecido por la culpa, Arugal adoptó a los ferocanis como sus hijos y se retiró al Castillo de Colmillo Oscuro."] = "5561946a80fa1778f731cd1da49a7f21",
             ["Gnomeregan se encuentra en la parte oeste de Dun Morogh."] = "45400c7ff98d6669e16f6f738a544da2",
+            ["Hace más de mil años, un grupo de sacerdotes trols conocidos como los Atal'ai, intentaron resucitar a un dios de la sangre ancestral llamado Hakkar el Cazador de Almas. Tras la consecuente guerra civil, los sacerdotes fueron derrotados y exiliados al Pantano de las Penas. Allí erigieron un templo en honor de Hakkar, para prepararse para su llegada al mundo físico. La Dragón Aspecto Ysera, pronto descubrió los planes de los Atal'ai y hundió el templo bajo el pantano. Hasta el día de hoy, las ruinas han estado protegidas por los poderosos dragones verdes."] = "4af8645fc89247fb0892c4705462e74d",
             ["Hace más de mil años, un grupo de sacerdotes trols conocidos como los Atal'ai, intentaron resucitar a un dios de la sangre ancestral llamado Hakkar el Cazador de Almas. Tras la consecuente guerra civil, los sacerdotes fueron derrotados y exiliados al Pantano de las Penas. Allí erigieron un templo en honor de Hakkar, para prepararse para su llegada al mundo físico. La dragón Aspecto Ysera, pronto descubrió los planes de los Atal'ai y hundió el templo bajo el pantano. Hasta el día de hoy, las ruinas han estado protegidas por los poderosos dragones Verdes."] = "4af8645fc89247fb0892c4705462e74d",
             ["Hace poco, un druida elfo de la noche llamado Naralex, descubrió una red de cuevas subterráneas en el corazón de Los Baldíos. Creyendo que podría usar los manantiales de las cuevas para restaurar la exuberancia de Los Baldíos, el druida comenzó a absorber las energías del legendario Sueño Esmeralda. De alguna forma, su visión se transformó en una pesadilla y pronto, las Cuevas de los Lamentos se convirtieron en una guarida de viciosos y letales depredadores. Se dice que Naralex sigue en algún lugar del laberinto, atrapado más allá de los límites del Sueño Esmeralda."] = "5a0c8734a5baf412a3c8a6ea7f840971",
             ["Horado Rajacieno se encuentra en el extremo más al sur de Los Baldíos, en el lado oeste del camino."] = "2391b5317315d4d4a8941b336ba01d82",
@@ -4956,6 +5246,7 @@ GossipText = {
             ["¿Te interesa explorar una de estas mazmorras?"] = "488213bad6a40fbf7079b51dde4826ad",
         },
         [6740] = {
+            ["Antiguamente la capital de los enanos Hierro Negro, este laberinto volcánico ahora sirve como trono de poder de Ragnaros, el Señor del Fuego. Ragnaros ha descubierto cómo crear vida a partir de la piedra y planea formar un ejército de golems imparables para ayudarle a conquistar la Montaña Roca Negra. Ragnaros, obsesionado con derrotar a Nefarian y a sus esbirros dracónicos, hará lo que sea por conseguir la victoria final."] = "e4835262a6e71a36692d90aedbb66c42",
             ["Antiguamente la capital de los enanos Hierro Negro, este laberinto volcánico ahora sirve como trono de poder de Ragnaros, el Señor del Fuego. Ragnaros ha descubierto cómo crear vida a partir de la piedra y planea formar un ejército de gólems imparables para ayudarle a conquistar la Montaña Roca Negra. Ragnaros, obsesionado con derrotar a Nefarian y a sus esbirros dracónicos, hará lo que sea por conseguir la victoria final."] = "e4835262a6e71a36692d90aedbb66c42",
             ["Construida con las mismas vides que Horado Rajacieno, Zahúrda Rajacieno es la capital tradicional de la raza de los jabaespines. El laberinto de espinas que se extiende por todas partes, aloja un verdadero ejército de leales jabaespines junto con sus altos sacerdotes, la tribu Caramuerte. Sin embargo, recientemente una sombra de mal presagio ha caído sobre la rudimentaria guarida. Unos agentes de la Plaga de los no-muertos, a las órdenes del exánime Amnennar el Gélido, han tomado el control de la raza de los jabaespines y han convertido el laberinto de espinas en un bastión del poder de los no-muertos."] = "ae6bac71d95fa9cc576583cb12b00b0a",
             ["Cuando entregues pruebas de amor a los habitantes de la ciudad, recibirás diferentes regalos a cambio. Algunos podrás guardarlos y utilizarlos, ¡mientras que otros podrás juntarlos y dárselos a tu $ghéroe favorito:heroína favorita;! Visita a Kwee Q. Mercachifle y entrégaselos.$B$BEncontrarás a Kwee cerca de Bolvar, Magni o Tyrande."] = "0838f3fe0e3c17a16a7ff7d504eec929",
@@ -4971,6 +5262,7 @@ GossipText = {
             ["Frustrado por la falta de progreso de los magos de Dalaran contra los no-muertos durante la Tercera Guerra, el archimago Arugal decidió invocar a los ferocanis extra-dimensionales para dar un empujón a sus tropas cada vez menores. Los lobisones atacaron a la Plaga y, rápidamente, se dirigieron a los magos y asediaron el bastión del noble barón FIlargenta. Pronto, el fuerte fue presa de las sombras y se convirtió en cenizas. Enloquecido por la culpa, Arugal adoptó a los ferocanis como sus hijos y se retiró al Castillo de Colmillo Oscuro."] = "b69ededa6dbdfe26a15fda5121e90a20",
             ["Gnomeregan se encuentra en la parte oeste de Dun Morogh."] = "1e16c8ae0545b101ebc5ad4d9c69c248",
             ["Hace más de mil años, un grupo de sacerdotes trols conocidos como los Atal'ai, intentaron resucitar a un dios de la sangre ancestral llamado Hakkar el Cazador de Almas. Tras la consecuente guerra civil, los sacerdotes fueron derrotados y exiliados al Pantano de las Penas. Allí erigieron un templo en honor de Hakkar, para prepararse para su llegada al mundo físico. La dragón Aspecto Ysera, pronto descubrió los planes de los Atal'ai y hundió el templo bajo el pantano. Hasta el día de hoy, las ruinas han estado protegidas por los poderosos dragones Verdes."] = "7dc247370c0f46388922e4ad2824f973",
+            ["Hace más de mil años, un grupo de sacerdotes trols conocidos como los Atal'ai, intentaron resucitar a un dios de la sangre ancestral llamado Hakkar el Cazador de Almas. Tras la consecuente guerra civil, los sacerdotes fueron derrotados y exiliados al Pantano de las Penas. Allí erigieron un templo en honor de Hakkar, para prepararse para su llegada al mundo físico. La dragón Aspecto Ysera, pronto descubrió los planes de los Atal'ai y hundió el templo bajo el pantano. Hasta el día de hoy, las ruinas han estado protegidas por los poderosos dragones verdes."] = "7dc247370c0f46388922e4ad2824f973",
             ["Hace poco, un druida elfo de la noche llamado Naralex, descubrió una red de cuevas subterráneas en el corazón de Los Baldíos. Creyendo que podría usar los manantiales de las cuevas para restaurar la exuberancia de Los Baldíos, el druida comenzó a absorber las energías del legendario Sueño Esmeralda. De alguna forma, su visión se transformó en una pesadilla y pronto, las Cuevas de los Lamentos se convirtieron en una guarida de viciosos y letales depredadores. Se dice que Naralex sigue en algún lugar del laberinto, atrapado más allá de los límites del Sueño Esmeralda."] = "4d1835c423b0ee4a6773a1481ea2d03e",
             ["Horado Rajacieno se encuentra en el extremo más al sur de Los Baldíos, en el lado oeste del camino."] = "4855c8dab63ff7e92429d6df87b7b3cd",
             ["La Montaña Roca Negra linda con La Garganta de Fuego al norte y Las Estepas Ardientes al sur."] = "7beb3ee244d9c85c277537d4ba4a2fe1",
@@ -5002,6 +5294,7 @@ GossipText = {
             ["¿Te interesa explorar una de estas mazmorras?"] = "9211a5a83384bc6bf667f9e87661f2b5",
         },
         [6741] = {
+            ["Antiguamente la capital de los enanos Hierro Negro, este laberinto volcánico ahora sirve como trono de poder de Ragnaros, el Señor del Fuego. Ragnaros ha descubierto cómo crear vida a partir de la piedra y planea formar un ejército de golems imparables para ayudarle a conquistar la Montaña Roca Negra. Ragnaros, obsesionado con derrotar a Nefarian y a sus esbirros dracónicos, hará lo que sea por conseguir la victoria final."] = "f3796e44c383e2f2dab079058435a9e6",
             ["Antiguamente la capital de los enanos Hierro Negro, este laberinto volcánico ahora sirve como trono de poder de Ragnaros, el Señor del Fuego. Ragnaros ha descubierto cómo crear vida a partir de la piedra y planea formar un ejército de gólems imparables para ayudarle a conquistar la Montaña Roca Negra. Ragnaros, obsesionado con derrotar a Nefarian y a sus esbirros dracónicos, hará lo que sea por conseguir la victoria final."] = "f3796e44c383e2f2dab079058435a9e6",
             ["Construida con las mismas vides que Horado Rajacieno, Zahúrda Rajacieno es la capital tradicional de la raza de los jabaespines. El laberinto de espinas que se extiende por todas partes, aloja un verdadero ejército de leales jabaespines junto con sus altos sacerdotes, la tribu Caramuerte. Sin embargo, recientemente una sombra de mal presagio ha caído sobre la rudimentaria guarida. Unos agentes de la Plaga de los no-muertos, a las órdenes del exánime Amnennar el Gélido, han tomado el control de la raza de los jabaespines y han convertido el laberinto de espinas en un bastión del poder de los no-muertos."] = "df15192a7814812aa87b737075049c7f",
             ["Cuando entregues pruebas de amor a los habitantes de la ciudad, recibirás diferentes regalos a cambio. Algunos podrás guardarlos y utilizarlos, y otros ¡podrás juntarlos y dárselos a tu $ghéroe favorito:heroína favorita;! Visita a Kwee Q. Mercachifle y entrégaselos.$B$BEncontrarás a Kwee cerca de Bolvar, Magni o Tyrande."] = "81a3af904e5e838f33cd0c337609ca1e",
@@ -5017,6 +5310,7 @@ GossipText = {
             ["Esta ciudad abrasada por los rayos del sol es el hogar de los trols Furiarena, famosos por su particular falta de piedad y su oscuro misticismo. Las leyendas de los trols hablan de una poderosa espada llamada Sul'thraze la Azotadora, un arma capaz de infundir miedo y flaqueza incluso a los enemigos más formidables. Mucho tiempo atrás, la espada fue partida por la mitad. Sin embargo, hay rumores que dicen que las dos mitades se encuentran en algún lugar dentro de los muros de Zul'Farrak."] = "4d9fe927578f203ba1f939866e8eb07f",
             ["Frustrado por la falta de progreso de los magos de Dalaran contra los no-muertos durante la Tercera Guerra, el archimago Arugal decidió invocar a los ferocanis extra-dimensionales para dar un empujón a sus tropas cada vez menores. Los lobizones atacaron a la Plaga y, rápidamente, se dirigieron a los magos y asediaron el bastión del noble barón Filargenta. Pronto, el fuerte fue presa de las sombras y se convirtió en cenizas. Enloquecido por la culpa, Arugal adoptó a los ferocanis como sus hijos y se retiró al Castillo de Colmillo Oscuro."] = "5561946a80fa1778f731cd1da49a7f21",
             ["Gnomeregan se encuentra en la parte oeste de Dun Morogh."] = "45400c7ff98d6669e16f6f738a544da2",
+            ["Hace más de mil años, un grupo de sacerdotes trols conocidos como los Atal'ai, intentaron resucitar a un dios de la sangre ancestral llamado Hakkar el Cazador de Almas. Tras la consecuente guerra civil, los sacerdotes fueron derrotados y exiliados al Pantano de las Penas. Allí erigieron un templo en honor de Hakkar, para prepararse para su llegada al mundo físico. La Dragón Aspecto Ysera, pronto descubrió los planes de los Atal'ai y hundió el templo bajo el pantano. Hasta el día de hoy, las ruinas han estado protegidas por los poderosos dragones verdes."] = "4af8645fc89247fb0892c4705462e74d",
             ["Hace más de mil años, un grupo de sacerdotes trols conocidos como los Atal'ai, intentaron resucitar a un dios de la sangre ancestral llamado Hakkar el Cazador de Almas. Tras la consecuente guerra civil, los sacerdotes fueron derrotados y exiliados al Pantano de las Penas. Allí erigieron un templo en honor de Hakkar, para prepararse para su llegada al mundo físico. La dragón Aspecto Ysera, pronto descubrió los planes de los Atal'ai y hundió el templo bajo el pantano. Hasta el día de hoy, las ruinas han estado protegidas por los poderosos dragones Verdes."] = "4af8645fc89247fb0892c4705462e74d",
             ["Hace poco, un druida elfo de la noche llamado Naralex, descubrió una red de cuevas subterráneas en el corazón de Los Baldíos. Creyendo que podría usar los manantiales de las cuevas para restaurar la exuberancia de Los Baldíos, el druida comenzó a absorber las energías del legendario Sueño Esmeralda. De alguna forma, su visión se transformó en una pesadilla y pronto, las Cuevas de los Lamentos se convirtieron en una guarida de viciosos y letales depredadores. Se dice que Naralex sigue en algún lugar del laberinto, atrapado más allá de los límites del Sueño Esmeralda."] = "5a0c8734a5baf412a3c8a6ea7f840971",
             ["Horado Rajacieno se encuentra en el extremo más al sur de Los Baldíos, en el lado oeste del camino."] = "2391b5317315d4d4a8941b336ba01d82",
@@ -5049,6 +5343,7 @@ GossipText = {
         },
         [6746] = {
             ["Al igual que el viento de las llanuras, siempre eres $gbienvenido:bienvenida; aquí."] = "980ce6cc828845cb13bcbd8cd0b6917e",
+            ["Antiguamente la capital de los enanos Hierro Negro, este laberinto volcánico ahora sirve como trono de poder de Ragnaros, el Señor del Fuego. Ragnaros ha descubierto cómo crear vida a partir de la piedra y planea formar un ejército de golems imparables para ayudarle a conquistar la Montaña Roca Negra. Ragnaros, obsesionado con derrotar a Nefarian y a sus esbirros dracónicos, hará lo que sea por conseguir la victoria final."] = "4b2a582cee1f20d593eae9a388287135",
             ["Antiguamente la capital de los enanos Hierro Negro, este laberinto volcánico ahora sirve como trono de poder de Ragnaros, el Señor del Fuego. Ragnaros ha descubierto cómo crear vida a partir de la piedra y planea formar un ejército de gólems imparables para ayudarle a conquistar la Montaña Roca Negra. Ragnaros, obsesionado con derrotar a Nefarian y a sus esbirros dracónicos, hará lo que sea por conseguir la victoria final."] = "4b2a582cee1f20d593eae9a388287135",
             ["Construida con las mismas vides que Horado Rajacieno, Zahúrda Rajacieno es la capital tradicional de la raza de los jabaespines. El laberinto de espinas que se extiende por todas partes, aloja un verdadero ejército de leales jabaespines junto con sus altos sacerdotes, la tribu Caramuerte. Sin embargo, recientemente una sombra de mal presagio ha caído sobre la rudimentaria guarida. Unos agentes de la Plaga de los no-muertos, a las órdenes del exánime Amnennar el Gélido, han tomado el control de la raza de los jabaespines y han convertido el laberinto de espinas en un bastión del poder de los no-muertos."] = "18f70be5c25cb2ea163cd8d518bfdc66",
             ["Cuando entregues pruebas de amor a los habitantes de la ciudad, recibirás diferentes regalos a cambio. Algunos podrás guardarlos y utilizarlos, ¡mientras que otros podrás juntarlos y dárselos a tu $ghéroe favorito:heroína favorita;! Visita a Kwee Q. Mercachifle y entrégaselos.$B$BEncontrarás a Kwee cerca de Bolvar, Magni o Tyrande."] = "63f35b75e396252f797a4186f1286bee",
@@ -5064,6 +5359,7 @@ GossipText = {
             ["Frustrado por la falta de progreso de los magos de Dalaran contra los no-muertos durante la Tercera Guerra, el archimago Arugal decidió invocar a los ferocanis extra-dimensionales para dar un empujón a sus tropas cada vez menores. Los lobisones atacaron a la Plaga y, rápidamente, se dirigieron a los magos y asediaron el bastión del noble barón FIlargenta. Pronto, el fuerte fue presa de las sombras y se convirtió en cenizas. Enloquecido por la culpa, Arugal adoptó a los ferocanis como sus hijos y se retiró al Castillo de Colmillo Oscuro."] = "c08a11a40b198a8cdf5e21127dad1408",
             ["Gnomeregan se encuentra en la parte oeste de Dun Morogh."] = "d44d297c2cca8733f4d13c8c8c1f28d5",
             ["Hace más de mil años, un grupo de sacerdotes trols conocidos como los Atal'ai, intentaron resucitar a un dios de la sangre ancestral llamado Hakkar el Cazador de Almas. Tras la consecuente guerra civil, los sacerdotes fueron derrotados y exiliados al Pantano de las Penas. Allí erigieron un templo en honor de Hakkar, para prepararse para su llegada al mundo físico. La dragón Aspecto Ysera, pronto descubrió los planes de los Atal'ai y hundió el templo bajo el pantano. Hasta el día de hoy, las ruinas han estado protegidas por los poderosos dragones Verdes."] = "331713e1070e9f4f3576819f670ae53d",
+            ["Hace más de mil años, un grupo de sacerdotes trols conocidos como los Atal'ai, intentaron resucitar a un dios de la sangre ancestral llamado Hakkar el Cazador de Almas. Tras la consecuente guerra civil, los sacerdotes fueron derrotados y exiliados al Pantano de las Penas. Allí erigieron un templo en honor de Hakkar, para prepararse para su llegada al mundo físico. La dragón Aspecto Ysera, pronto descubrió los planes de los Atal'ai y hundió el templo bajo el pantano. Hasta el día de hoy, las ruinas han estado protegidas por los poderosos dragones verdes."] = "331713e1070e9f4f3576819f670ae53d",
             ["Hace poco, un druida elfo de la noche llamado Naralex, descubrió una red de cuevas subterráneas en el corazón de Los Baldíos. Creyendo que podría usar los manantiales de las cuevas para restaurar la exuberancia de Los Baldíos, el druida comenzó a absorber las energías del legendario Sueño Esmeralda. De alguna forma, su visión se transformó en una pesadilla y pronto, las Cuevas de los Lamentos se convirtieron en una guarida de viciosos y letales depredadores. Se dice que Naralex sigue en algún lugar del laberinto, atrapado más allá de los límites del Sueño Esmeralda."] = "af82564cf7ae1fe402a33ef253cb74cc",
             ["Horado Rajacieno se encuentra en el extremo más al sur de Los Baldíos, en el lado oeste del camino."] = "5a6a13f324242e75a6382d99c516cc94",
             ["La Montaña Roca Negra linda con La Garganta de Fuego al norte y Las Estepas Ardientes al sur."] = "06eb7bd37fd0c212607efd69ff668e03",
@@ -5122,6 +5418,7 @@ GossipText = {
             ["¿Osas poner el pie en la Mansión Ravenholdt, babosa?"] = "356d2f6aeda9087735082d9d27eccbf0",
         },
         [6790] = {
+            ["Antiguamente la capital de los enanos Hierro Negro, este laberinto volcánico ahora sirve como trono de poder de Ragnaros, el Señor del Fuego. Ragnaros ha descubierto cómo crear vida a partir de la piedra y planea formar un ejército de golems imparables para ayudarle a conquistar la Montaña Roca Negra. Ragnaros, obsesionado con derrotar a Nefarian y a sus esbirros dracónicos, hará lo que sea por conseguir la victoria final."] = "e4835262a6e71a36692d90aedbb66c42",
             ["Antiguamente la capital de los enanos Hierro Negro, este laberinto volcánico ahora sirve como trono de poder de Ragnaros, el Señor del Fuego. Ragnaros ha descubierto cómo crear vida a partir de la piedra y planea formar un ejército de gólems imparables para ayudarle a conquistar la Montaña Roca Negra. Ragnaros, obsesionado con derrotar a Nefarian y a sus esbirros dracónicos, hará lo que sea por conseguir la victoria final."] = "e4835262a6e71a36692d90aedbb66c42",
             ["Construida con las mismas vides que Horado Rajacieno, Zahúrda Rajacieno es la capital tradicional de la raza de los jabaespines. El laberinto de espinas que se extiende por todas partes, aloja un verdadero ejército de leales jabaespines junto con sus altos sacerdotes, la tribu Caramuerte. Sin embargo, recientemente una sombra de mal presagio ha caído sobre la rudimentaria guarida. Unos agentes de la Plaga de los no-muertos, a las órdenes del exánime Amnennar el Gélido, han tomado el control de la raza de los jabaespines y han convertido el laberinto de espinas en un bastión del poder de los no-muertos."] = "ae6bac71d95fa9cc576583cb12b00b0a",
             ["Cuando entregues pruebas de amor a los habitantes de la ciudad, recibirás diferentes regalos a cambio. Algunos podrás guardarlos y utilizarlos, ¡mientras que otros podrás juntarlos y dárselos a tu $ghéroe favorito:heroína favorita;! Visita a Kwee Q. Mercachifle y entrégaselos.$B$BEncontrarás a Kwee cerca de Bolvar, Magni o Tyrande."] = "0838f3fe0e3c17a16a7ff7d504eec929",
@@ -5137,6 +5434,7 @@ GossipText = {
             ["Frustrado por la falta de progreso de los magos de Dalaran contra los no-muertos durante la Tercera Guerra, el archimago Arugal decidió invocar a los ferocanis extra-dimensionales para dar un empujón a sus tropas cada vez menores. Los lobisones atacaron a la Plaga y, rápidamente, se dirigieron a los magos y asediaron el bastión del noble barón FIlargenta. Pronto, el fuerte fue presa de las sombras y se convirtió en cenizas. Enloquecido por la culpa, Arugal adoptó a los ferocanis como sus hijos y se retiró al Castillo de Colmillo Oscuro."] = "b69ededa6dbdfe26a15fda5121e90a20",
             ["Gnomeregan se encuentra en la parte oeste de Dun Morogh."] = "1e16c8ae0545b101ebc5ad4d9c69c248",
             ["Hace más de mil años, un grupo de sacerdotes trols conocidos como los Atal'ai, intentaron resucitar a un dios de la sangre ancestral llamado Hakkar el Cazador de Almas. Tras la consecuente guerra civil, los sacerdotes fueron derrotados y exiliados al Pantano de las Penas. Allí erigieron un templo en honor de Hakkar, para prepararse para su llegada al mundo físico. La dragón Aspecto Ysera, pronto descubrió los planes de los Atal'ai y hundió el templo bajo el pantano. Hasta el día de hoy, las ruinas han estado protegidas por los poderosos dragones Verdes."] = "7dc247370c0f46388922e4ad2824f973",
+            ["Hace más de mil años, un grupo de sacerdotes trols conocidos como los Atal'ai, intentaron resucitar a un dios de la sangre ancestral llamado Hakkar el Cazador de Almas. Tras la consecuente guerra civil, los sacerdotes fueron derrotados y exiliados al Pantano de las Penas. Allí erigieron un templo en honor de Hakkar, para prepararse para su llegada al mundo físico. La dragón Aspecto Ysera, pronto descubrió los planes de los Atal'ai y hundió el templo bajo el pantano. Hasta el día de hoy, las ruinas han estado protegidas por los poderosos dragones verdes."] = "7dc247370c0f46388922e4ad2824f973",
             ["Hace poco, un druida elfo de la noche llamado Naralex, descubrió una red de cuevas subterráneas en el corazón de Los Baldíos. Creyendo que podría usar los manantiales de las cuevas para restaurar la exuberancia de Los Baldíos, el druida comenzó a absorber las energías del legendario Sueño Esmeralda. De alguna forma, su visión se transformó en una pesadilla y pronto, las Cuevas de los Lamentos se convirtieron en una guarida de viciosos y letales depredadores. Se dice que Naralex sigue en algún lugar del laberinto, atrapado más allá de los límites del Sueño Esmeralda."] = "4d1835c423b0ee4a6773a1481ea2d03e",
             ["Horado Rajacieno se encuentra en el extremo más al sur de Los Baldíos, en el lado oeste del camino."] = "4855c8dab63ff7e92429d6df87b7b3cd",
             ["La Montaña Roca Negra linda con La Garganta de Fuego al norte y Las Estepas Ardientes al sur."] = "7beb3ee244d9c85c277537d4ba4a2fe1",
@@ -5168,6 +5466,7 @@ GossipText = {
             ["¿Te interesa explorar una de estas mazmorras?"] = "9211a5a83384bc6bf667f9e87661f2b5",
         },
         [6791] = {
+            ["Antiguamente la capital de los enanos Hierro Negro, este laberinto volcánico ahora sirve como trono de poder de Ragnaros, el Señor del Fuego. Ragnaros ha descubierto cómo crear vida a partir de la piedra y planea formar un ejército de golems imparables para ayudarle a conquistar la Montaña Roca Negra. Ragnaros, obsesionado con derrotar a Nefarian y a sus esbirros dracónicos, hará lo que sea por conseguir la victoria final."] = "be2a049bfff27090d42fa86864cded42",
             ["Antiguamente la capital de los enanos Hierro Negro, este laberinto volcánico ahora sirve como trono de poder de Ragnaros, el Señor del Fuego. Ragnaros ha descubierto cómo crear vida a partir de la piedra y planea formar un ejército de gólems imparables para ayudarle a conquistar la Montaña Roca Negra. Ragnaros, obsesionado con derrotar a Nefarian y a sus esbirros dracónicos, hará lo que sea por conseguir la victoria final."] = "be2a049bfff27090d42fa86864cded42",
             ["Construida con las mismas vides que Horado Rajacieno, Zahúrda Rajacieno es la capital tradicional de la raza de los jabaespines. El laberinto de espinas que se extiende por todas partes, aloja un verdadero ejército de leales jabaespines junto con sus altos sacerdotes, la tribu Caramuerte. Sin embargo, recientemente una sombra de mal presagio ha caído sobre la rudimentaria guarida. Unos agentes de la Plaga de los no-muertos, a las órdenes del exánime Amnennar el Gélido, han tomado el control de la raza de los jabaespines y han convertido el laberinto de espinas en un bastión del poder de los no-muertos."] = "882eca086e7584677b84ddb2508635b3",
             ["Cuando entregues pruebas de amor a los habitantes de la ciudad, recibirás diferentes regalos a cambio. Algunos podrás guardarlos y utilizarlos, y otros ¡podrás juntarlos y dárselos a tu $ghéroe favorito:heroína favorita;! Visita a Kwee Q. Mercachifle y entrégaselos.$B$BEncontrarás a Kwee cerca de Bolvar, Magni o Tyrande."] = "cbf722b9bc6acfc449c54911b738ba7a",
@@ -5182,6 +5481,7 @@ GossipText = {
             ["Esta ciudad abrasada por los rayos del sol es el hogar de los trols Furiarena, famosos por su particular falta de piedad y su oscuro misticismo. Las leyendas de los trols hablan de una poderosa espada llamada Sul'thraze la Azotadora, un arma capaz de infundir miedo y flaqueza incluso a los enemigos más formidables. Mucho tiempo atrás, la espada fue partida por la mitad. Sin embargo, hay rumores que dicen que las dos mitades se encuentran en algún lugar dentro de los muros de Zul'Farrak."] = "13f411422b98e7aa9efa1bd8d0fe3cc0",
             ["Frustrado por la falta de progreso de los magos de Dalaran contra los no-muertos durante la Tercera Guerra, el archimago Arugal decidió invocar a los ferocanis extra-dimensionales para dar un empujón a sus tropas cada vez menores. Los lobizones atacaron a la Plaga y, rápidamente, se dirigieron a los magos y asediaron el bastión del noble barón Filargenta. Pronto, el fuerte fue presa de las sombras y se convirtió en cenizas. Enloquecido por la culpa, Arugal adoptó a los ferocanis como sus hijos y se retiró al Castillo de Colmillo Oscuro."] = "1a6bf101d9b37ef4919e0a556e52c071",
             ["Gnomeregan se encuentra en la parte oeste de Dun Morogh."] = "7a98a6957f6b0f4f5b616f085bcbbc4f",
+            ["Hace más de mil años, un grupo de sacerdotes trols conocidos como los Atal'ai, intentaron resucitar a un dios de la sangre ancestral llamado Hakkar el Cazador de Almas. Tras la consecuente guerra civil, los sacerdotes fueron derrotados y exiliados al Pantano de las Penas. Allí erigieron un templo en honor de Hakkar, para prepararse para su llegada al mundo físico. La Dragón Aspecto Ysera, pronto descubrió los planes de los Atal'ai y hundió el templo bajo el pantano. Hasta el día de hoy, las ruinas han estado protegidas por los poderosos dragones verdes."] = "7d5abd50243eecd2ff36633a9410b8ea",
             ["Hace más de mil años, un grupo de sacerdotes trols conocidos como los Atal'ai, intentaron resucitar a un dios de la sangre ancestral llamado Hakkar el Cazador de Almas. Tras la consecuente guerra civil, los sacerdotes fueron derrotados y exiliados al Pantano de las Penas. Allí erigieron un templo en honor de Hakkar, para prepararse para su llegada al mundo físico. La dragón Aspecto Ysera, pronto descubrió los planes de los Atal'ai y hundió el templo bajo el pantano. Hasta el día de hoy, las ruinas han estado protegidas por los poderosos dragones Verdes."] = "7d5abd50243eecd2ff36633a9410b8ea",
             ["Hace poco, un druida elfo de la noche llamado Naralex, descubrió una red de cuevas subterráneas en el corazón de Los Baldíos. Creyendo que podría usar los manantiales de las cuevas para restaurar la exuberancia de Los Baldíos, el druida comenzó a absorber las energías del legendario Sueño Esmeralda. De alguna forma, su visión se transformó en una pesadilla y pronto, las Cuevas de los Lamentos se convirtieron en una guarida de viciosos y letales depredadores. Se dice que Naralex sigue en algún lugar del laberinto, atrapado más allá de los límites del Sueño Esmeralda."] = "f82b5fb869ffa62d622507892591005c",
             ["Horado Rajacieno se encuentra en el extremo más al sur de Los Baldíos, en el lado oeste del camino."] = "20a4628b9b8b27f0e7e3e970ab291b7e",
@@ -5214,6 +5514,7 @@ GossipText = {
             ["¿Te interesa explorar una de estas mazmorras?"] = "f4fe586e247e052e76cecae1d47adb94",
         },
         [6807] = {
+            ["Antiguamente la capital de los enanos Hierro Negro, este laberinto volcánico ahora sirve como trono de poder de Ragnaros, el Señor del Fuego. Ragnaros ha descubierto cómo crear vida a partir de la piedra y planea formar un ejército de golems imparables para ayudarle a conquistar la Montaña Roca Negra. Ragnaros, obsesionado con derrotar a Nefarian y a sus esbirros dracónicos, hará lo que sea por conseguir la victoria final."] = "be2a049bfff27090d42fa86864cded42",
             ["Antiguamente la capital de los enanos Hierro Negro, este laberinto volcánico ahora sirve como trono de poder de Ragnaros, el Señor del Fuego. Ragnaros ha descubierto cómo crear vida a partir de la piedra y planea formar un ejército de gólems imparables para ayudarle a conquistar la Montaña Roca Negra. Ragnaros, obsesionado con derrotar a Nefarian y a sus esbirros dracónicos, hará lo que sea por conseguir la victoria final."] = "be2a049bfff27090d42fa86864cded42",
             ["Construida con las mismas vides que Horado Rajacieno, Zahúrda Rajacieno es la capital tradicional de la raza de los jabaespines. El laberinto de espinas que se extiende por todas partes, aloja un verdadero ejército de leales jabaespines junto con sus altos sacerdotes, la tribu Caramuerte. Sin embargo, recientemente una sombra de mal presagio ha caído sobre la rudimentaria guarida. Unos agentes de la Plaga de los no-muertos, a las órdenes del exánime Amnennar el Gélido, han tomado el control de la raza de los jabaespines y han convertido el laberinto de espinas en un bastión del poder de los no-muertos."] = "882eca086e7584677b84ddb2508635b3",
             ["Cuando entregues pruebas de amor a los habitantes de la ciudad, recibirás diferentes regalos a cambio. Algunos podrás guardarlos y utilizarlos, y otros ¡podrás juntarlos y dárselos a tu $ghéroe favorito:heroína favorita;! Visita a Kwee Q. Mercachifle y entrégaselos.$B$BEncontrarás a Kwee cerca de Bolvar, Magni o Tyrande."] = "cbf722b9bc6acfc449c54911b738ba7a",
@@ -5228,6 +5529,7 @@ GossipText = {
             ["Esta ciudad abrasada por los rayos del sol es el hogar de los trols Furiarena, famosos por su particular falta de piedad y su oscuro misticismo. Las leyendas de los trols hablan de una poderosa espada llamada Sul'thraze la Azotadora, un arma capaz de infundir miedo y flaqueza incluso a los enemigos más formidables. Mucho tiempo atrás, la espada fue partida por la mitad. Sin embargo, hay rumores que dicen que las dos mitades se encuentran en algún lugar dentro de los muros de Zul'Farrak."] = "13f411422b98e7aa9efa1bd8d0fe3cc0",
             ["Frustrado por la falta de progreso de los magos de Dalaran contra los no-muertos durante la Tercera Guerra, el archimago Arugal decidió invocar a los ferocanis extra-dimensionales para dar un empujón a sus tropas cada vez menores. Los lobizones atacaron a la Plaga y, rápidamente, se dirigieron a los magos y asediaron el bastión del noble barón Filargenta. Pronto, el fuerte fue presa de las sombras y se convirtió en cenizas. Enloquecido por la culpa, Arugal adoptó a los ferocanis como sus hijos y se retiró al Castillo de Colmillo Oscuro."] = "1a6bf101d9b37ef4919e0a556e52c071",
             ["Gnomeregan se encuentra en la parte oeste de Dun Morogh."] = "7a98a6957f6b0f4f5b616f085bcbbc4f",
+            ["Hace más de mil años, un grupo de sacerdotes trols conocidos como los Atal'ai, intentaron resucitar a un dios de la sangre ancestral llamado Hakkar el Cazador de Almas. Tras la consecuente guerra civil, los sacerdotes fueron derrotados y exiliados al Pantano de las Penas. Allí erigieron un templo en honor de Hakkar, para prepararse para su llegada al mundo físico. La Dragón Aspecto Ysera, pronto descubrió los planes de los Atal'ai y hundió el templo bajo el pantano. Hasta el día de hoy, las ruinas han estado protegidas por los poderosos dragones verdes."] = "7d5abd50243eecd2ff36633a9410b8ea",
             ["Hace más de mil años, un grupo de sacerdotes trols conocidos como los Atal'ai, intentaron resucitar a un dios de la sangre ancestral llamado Hakkar el Cazador de Almas. Tras la consecuente guerra civil, los sacerdotes fueron derrotados y exiliados al Pantano de las Penas. Allí erigieron un templo en honor de Hakkar, para prepararse para su llegada al mundo físico. La dragón Aspecto Ysera, pronto descubrió los planes de los Atal'ai y hundió el templo bajo el pantano. Hasta el día de hoy, las ruinas han estado protegidas por los poderosos dragones Verdes."] = "7d5abd50243eecd2ff36633a9410b8ea",
             ["Hace poco, un druida elfo de la noche llamado Naralex, descubrió una red de cuevas subterráneas en el corazón de Los Baldíos. Creyendo que podría usar los manantiales de las cuevas para restaurar la exuberancia de Los Baldíos, el druida comenzó a absorber las energías del legendario Sueño Esmeralda. De alguna forma, su visión se transformó en una pesadilla y pronto, las Cuevas de los Lamentos se convirtieron en una guarida de viciosos y letales depredadores. Se dice que Naralex sigue en algún lugar del laberinto, atrapado más allá de los límites del Sueño Esmeralda."] = "f82b5fb869ffa62d622507892591005c",
             ["Horado Rajacieno se encuentra en el extremo más al sur de Los Baldíos, en el lado oeste del camino."] = "20a4628b9b8b27f0e7e3e970ab291b7e",
@@ -5272,6 +5574,7 @@ GossipText = {
             ["¿Qué puedes hacer en una posada?$B$BBueno, cuando te quedas en una posada, descansas cómodamente. Por esta razón, estarás más descansado' en mucho menos tiempo que si lo haces en el bosque. Cuando descansas bien, aprendes más de la experiencia.$B$BAsimismo, puedes pedirle al posadero que te consiga una piedra de hogar para luego usarla con el fin de regresar rápidamente a la posada'.'"] = "2c1d9480e123f8e1e386e141a695f2a7",
         },
         [6929] = {
+            ["Antiguamente la capital de los enanos Hierro Negro, este laberinto volcánico ahora sirve como trono de poder de Ragnaros, el Señor del Fuego. Ragnaros ha descubierto cómo crear vida a partir de la piedra y planea formar un ejército de golems imparables para ayudarle a conquistar la Montaña Roca Negra. Ragnaros, obsesionado con derrotar a Nefarian y a sus esbirros dracónicos, hará lo que sea por conseguir la victoria final."] = "1a4b0ce90f4422503651666ac7f00711",
             ["Antiguamente la capital de los enanos Hierro Negro, este laberinto volcánico ahora sirve como trono de poder de Ragnaros, el Señor del Fuego. Ragnaros ha descubierto cómo crear vida a partir de la piedra y planea formar un ejército de gólems imparables para ayudarle a conquistar la Montaña Roca Negra. Ragnaros, obsesionado con derrotar a Nefarian y a sus esbirros dracónicos, hará lo que sea por conseguir la victoria final."] = "1a4b0ce90f4422503651666ac7f00711",
             ["Construida con las mismas vides que Horado Rajacieno, Zahúrda Rajacieno es la capital tradicional de la raza de los jabaespines. El laberinto de espinas que se extiende por todas partes, aloja un verdadero ejército de leales jabaespines junto con sus altos sacerdotes, la tribu Caramuerte. Sin embargo, recientemente una sombra de mal presagio ha caído sobre la rudimentaria guarida. Unos agentes de la Plaga de los no-muertos, a las órdenes del exánime Amnennar el Gélido, han tomado el control de la raza de los jabaespines y han convertido el laberinto de espinas en un bastión del poder de los no-muertos."] = "d204a8a00341a429174e0dbb644ab882",
             ["Cuando entregues pruebas de amor a los habitantes de la ciudad, recibirás diferentes regalos a cambio. Algunos podrás guardarlos y utilizarlos, ¡mientras que otros podrás juntarlos y dárselos a tu $ghéroe favorito:heroína favorita;! Visita a Kwee Q. Mercachifle y entrégaselos.$B$BEncontrarás a Kwee cerca de Bolvar, Magni o Tyrande."] = "598c9e84f0150f5804083fb81cddb144",
@@ -5287,6 +5590,7 @@ GossipText = {
             ["Frustrado por la falta de progreso de los magos de Dalaran contra los no-muertos durante la Tercera Guerra, el archimago Arugal decidió invocar a los ferocanis extra-dimensionales para dar un empujón a sus tropas cada vez menores. Los lobisones atacaron a la Plaga y, rápidamente, se dirigieron a los magos y asediaron el bastión del noble barón FIlargenta. Pronto, el fuerte fue presa de las sombras y se convirtió en cenizas. Enloquecido por la culpa, Arugal adoptó a los ferocanis como sus hijos y se retiró al Castillo de Colmillo Oscuro."] = "12f0b7117e82d1920705e38b1acbd4d3",
             ["Gnomeregan se encuentra en la parte oeste de Dun Morogh."] = "2a62241f7676852d758c2bff35cb1c86",
             ["Hace más de mil años, un grupo de sacerdotes trols conocidos como los Atal'ai, intentaron resucitar a un dios de la sangre ancestral llamado Hakkar el Cazador de Almas. Tras la consecuente guerra civil, los sacerdotes fueron derrotados y exiliados al Pantano de las Penas. Allí erigieron un templo en honor de Hakkar, para prepararse para su llegada al mundo físico. La dragón Aspecto Ysera, pronto descubrió los planes de los Atal'ai y hundió el templo bajo el pantano. Hasta el día de hoy, las ruinas han estado protegidas por los poderosos dragones Verdes."] = "356949e6616d911ef559b61355e02894",
+            ["Hace más de mil años, un grupo de sacerdotes trols conocidos como los Atal'ai, intentaron resucitar a un dios de la sangre ancestral llamado Hakkar el Cazador de Almas. Tras la consecuente guerra civil, los sacerdotes fueron derrotados y exiliados al Pantano de las Penas. Allí erigieron un templo en honor de Hakkar, para prepararse para su llegada al mundo físico. La dragón Aspecto Ysera, pronto descubrió los planes de los Atal'ai y hundió el templo bajo el pantano. Hasta el día de hoy, las ruinas han estado protegidas por los poderosos dragones verdes."] = "356949e6616d911ef559b61355e02894",
             ["Hace poco, un druida elfo de la noche llamado Naralex, descubrió una red de cuevas subterráneas en el corazón de Los Baldíos. Creyendo que podría usar los manantiales de las cuevas para restaurar la exuberancia de Los Baldíos, el druida comenzó a absorber las energías del legendario Sueño Esmeralda. De alguna forma, su visión se transformó en una pesadilla y pronto, las Cuevas de los Lamentos se convirtieron en una guarida de viciosos y letales depredadores. Se dice que Naralex sigue en algún lugar del laberinto, atrapado más allá de los límites del Sueño Esmeralda."] = "c5bb28585e4ec2284a09cc538e5ea938",
             ["Horado Rajacieno se encuentra en el extremo más al sur de Los Baldíos, en el lado oeste del camino."] = "22e76f151640be474a52357149eab9fa",
             ["La Montaña Roca Negra linda con La Garganta de Fuego al norte y Las Estepas Ardientes al sur."] = "42c37076d3ae3863acfdd2d0f5533f7a",
@@ -5318,6 +5622,7 @@ GossipText = {
             ["¿Te interesa explorar una de estas mazmorras?"] = "f3aba6e9ee464fd9569a3498cd66780a",
         },
         [6930] = {
+            ["Antiguamente la capital de los enanos Hierro Negro, este laberinto volcánico ahora sirve como trono de poder de Ragnaros, el Señor del Fuego. Ragnaros ha descubierto cómo crear vida a partir de la piedra y planea formar un ejército de golems imparables para ayudarle a conquistar la Montaña Roca Negra. Ragnaros, obsesionado con derrotar a Nefarian y a sus esbirros dracónicos, hará lo que sea por conseguir la victoria final."] = "727cf38438acf58ee35c39f6a28aa289",
             ["Antiguamente la capital de los enanos Hierro Negro, este laberinto volcánico ahora sirve como trono de poder de Ragnaros, el Señor del Fuego. Ragnaros ha descubierto cómo crear vida a partir de la piedra y planea formar un ejército de gólems imparables para ayudarle a conquistar la Montaña Roca Negra. Ragnaros, obsesionado con derrotar a Nefarian y a sus esbirros dracónicos, hará lo que sea por conseguir la victoria final."] = "727cf38438acf58ee35c39f6a28aa289",
             ["Construida con las mismas vides que Horado Rajacieno, Zahúrda Rajacieno es la capital tradicional de la raza de los jabaespines. El laberinto de espinas que se extiende por todas partes, aloja un verdadero ejército de leales jabaespines junto con sus altos sacerdotes, la tribu Caramuerte. Sin embargo, recientemente una sombra de mal presagio ha caído sobre la rudimentaria guarida. Unos agentes de la Plaga de los no-muertos, a las órdenes del exánime Amnennar el Gélido, han tomado el control de la raza de los jabaespines y han convertido el laberinto de espinas en un bastión del poder de los no-muertos."] = "bcc93e0f69a610e26e8a585d15e236ca",
             ["Cuando entregues pruebas de amor a los habitantes de la ciudad, recibirás diferentes regalos a cambio. Algunos podrás guardarlos y utilizarlos, y otros ¡podrás juntarlos y dárselos a tu $ghéroe favorito:heroína favorita;! Visita a Kwee Q. Mercachifle y entrégaselos.$B$BEncontrarás a Kwee cerca de Bolvar, Magni o Tyrande."] = "ab1b05dce1379cc50a508ec75bc5fecf",
@@ -5332,6 +5637,7 @@ GossipText = {
             ["Esta ciudad abrasada por los rayos del sol es el hogar de los trols Furiarena, famosos por su particular falta de piedad y su oscuro misticismo. Las leyendas de los trols hablan de una poderosa espada llamada Sul'thraze la Azotadora, un arma capaz de infundir miedo y flaqueza incluso a los enemigos más formidables. Mucho tiempo atrás, la espada fue partida por la mitad. Sin embargo, hay rumores que dicen que las dos mitades se encuentran en algún lugar dentro de los muros de Zul'Farrak."] = "8cdbbc96d739b730ea3dd0482497fe79",
             ["Frustrado por la falta de progreso de los magos de Dalaran contra los no-muertos durante la Tercera Guerra, el archimago Arugal decidió invocar a los ferocanis extra-dimensionales para dar un empujón a sus tropas cada vez menores. Los lobizones atacaron a la Plaga y, rápidamente, se dirigieron a los magos y asediaron el bastión del noble barón Filargenta. Pronto, el fuerte fue presa de las sombras y se convirtió en cenizas. Enloquecido por la culpa, Arugal adoptó a los ferocanis como sus hijos y se retiró al Castillo de Colmillo Oscuro."] = "b710141cbfed33e4215f9f02e57b1285",
             ["Gnomeregan se encuentra en la parte oeste de Dun Morogh."] = "a28655b7a8d174f6fdec53c01d3eecef",
+            ["Hace más de mil años, un grupo de sacerdotes trols conocidos como los Atal'ai, intentaron resucitar a un dios de la sangre ancestral llamado Hakkar el Cazador de Almas. Tras la consecuente guerra civil, los sacerdotes fueron derrotados y exiliados al Pantano de las Penas. Allí erigieron un templo en honor de Hakkar, para prepararse para su llegada al mundo físico. La Dragón Aspecto Ysera, pronto descubrió los planes de los Atal'ai y hundió el templo bajo el pantano. Hasta el día de hoy, las ruinas han estado protegidas por los poderosos dragones verdes."] = "f4ce8cc991dc9b8e53cbf5bafea7a20e",
             ["Hace más de mil años, un grupo de sacerdotes trols conocidos como los Atal'ai, intentaron resucitar a un dios de la sangre ancestral llamado Hakkar el Cazador de Almas. Tras la consecuente guerra civil, los sacerdotes fueron derrotados y exiliados al Pantano de las Penas. Allí erigieron un templo en honor de Hakkar, para prepararse para su llegada al mundo físico. La dragón Aspecto Ysera, pronto descubrió los planes de los Atal'ai y hundió el templo bajo el pantano. Hasta el día de hoy, las ruinas han estado protegidas por los poderosos dragones Verdes."] = "f4ce8cc991dc9b8e53cbf5bafea7a20e",
             ["Hace poco, un druida elfo de la noche llamado Naralex, descubrió una red de cuevas subterráneas en el corazón de Los Baldíos. Creyendo que podría usar los manantiales de las cuevas para restaurar la exuberancia de Los Baldíos, el druida comenzó a absorber las energías del legendario Sueño Esmeralda. De alguna forma, su visión se transformó en una pesadilla y pronto, las Cuevas de los Lamentos se convirtieron en una guarida de viciosos y letales depredadores. Se dice que Naralex sigue en algún lugar del laberinto, atrapado más allá de los límites del Sueño Esmeralda."] = "53cfb8044c1292d233012d45237f180d",
             ["Horado Rajacieno se encuentra en el extremo más al sur de Los Baldíos, en el lado oeste del camino."] = "b70df0c6d8237e82e8eab2e2cee97a1c",
@@ -5366,6 +5672,27 @@ GossipText = {
         [7010] = {
             ["Corren tiempos difíciles, $r. Se está levantando un mal ancestral, y no le importa si perteneces a la Horda o a la Alianza."] = "9fdec023d3ece5864f7f1093641f767e",
         },
+        [7166] = {
+            ["La máquina cobra vida en cuanto la tocas."] = "4ac3a4137af0c7089446ec97edd9fe00",
+        },
+        [7172] = {
+            ["'Existen dos resultados potenciales cuando la matriz de síntesis de terráneos se desestabiliza. Iniciando representación de ayuda visual número uno.$B$BLa primera matriz de variante es un producto degenerativo de síntesis, denominada en este caso con la nomenclatura común de 'trogg'. Esta variante mantiene una fuerza y una resistencia comparables a las de los terráneos, pero su potencia de procesamiento cognitivo ha experimentado serios problemas. La fuerza de voluntad y una notable astucia son los únicos factores que mueven la psique de un trogg.'"] = "bc8095b226d97c93f029c53dad5cc573",
+            ["Antes de poder responder adecuadamente a esta pregunta, recibirás información adicional sobre los terráneos.$B$BProcesando.$B$BPara comprender las anomalías de los terráneos, antes hay que entender lo que ellos representaron en la fase de diseño. Los terráneos representan el intento de los Creadores de mejorar el paradigma de supervivencia estándar de la matriz de ente subterráneo. Esto se llevó a cabo incorporando bases resistentes de construcción inherentes al mundo en la mencionada matriz."] = "437e3e9566ba28be3f2648550e177a59",
+            ["En otras palabras, esto es correcto.$B$BLas características físicas de los terráneos son las de un humanoide de menor estatura, si bien su composición es la de varios compuestos de núcleo mineral de Azeroth. Su diseño potencia la fuerza y la energía sin sacrificar la capacidad de procesamiento cognitivo. Su piel y musculatura son prácticamente inmunes al daño físico y, una vez sometidos a cualquier modificación insignificante, los terráneos muestran una notable resistencia a fuerzas mágicas no deseadas."] = "6630fedd4b1c9dd3fe5a3f8c9ac08c4f",
+            ["Iniciando representación de ayuda visual número dos.$B$BLa segunda variante de resultado de la matriz de terráneos retiene numerosos elementos deseados cuando se los compara con la matriz subterránea estándar. La nomenclatura común para esta variante es 'Enano'.$B$BEsta variante conserva la fortaleza y la resistencia inherente a los terráneos. En algunos casos, el enano presenta incluso poderes cognitivos superiores a los de la matriz de los terráneos. No obstante, el enano no presenta la composición física de los compuestos del núcleo mineral de Azeroth.'"] = "0b4c728c913c2793ef79f9e545dbefa8",
+            ["La única anomalía en la síntesis de los terráneos es la tendencia a la desestabilización de la matriz cuando se los utiliza en entornos sometidos a grandes dosis de tensión.$B$BApéndice: la escultura profunda en barro resultaba adecuada al nuevo diseño de matriz y nunca se ajustó a los requerimientos de duplicación de un entorno sometido a altos niveles de tensión.$B$BLa desestabilización no se detectó sino hasta bien avanzado el ciclo primario de funcionamiento de los terráneos. Los Creadores empezaron a trabajar en modificaciones post síntesis, en lugar de proceder a la retirada y a la resíntesis."] = "48009dc1bdade49cb9d5b7fb76c93652",
+            ["Los Creadores conocen la magnitud de la información alojada en este depósito. A continuación, dispondrás de una copia portátil de los datos almacenados aquí una vez que entres en sintonía con los Discos de Norgannon.$B$BTen en cuenta los requisitos que deberás cumplir para garantizar la total asimilación de este conocimiento. Cuando te resulte cómodo, accede a los Discos de Norgannon para iniciar la síntesis de tus discos."] = "3bd8bcc4c6e17e85a778b609224cbf8b",
+            ["Los Creadores son... los Creadores.$B$BSon los seres que fundaron y configuraron este mundo de acuerdo con su propio diseño. Son la razón de la existencia de este mundo, así como la de muchos otros mundos. Son la fuente desde la cual fluye Azeroth."] = "bf997e7d7e8b66fa338d4ea69a80a25f",
+            ["Los datos almacenados en este depósito efectivamente se relacionan con tu astuta afirmación.$B$BEl enano guarda afinidad con la composición mineral de Azeroth, pero debido a anomalía medioambiental relacionada con las tensiones elevadas de la matriz de síntesis de los terráneos, el enano vuelve a una composición de biomasa predeterminada como la que se observa en la matriz subterránea estándar.$B$BPor esta razón, la variante de enano se sintetiza a partir de la degeneración de la matriz de creación de terráneos, tal y como has deducido en tu consulta."] = "fdb44904a5784053fc727e8ac1ab05be",
+            ["Los terráneos son una raza sintética que ha sido diseñada por los Creadores y que actúa como una de las razas originales que poblaron el mundo conocido como Azeroth. Los terráneos fueron creados para ayudar a los Creadores en la colonización de las regiones más recónditas de este mundo.$B$BSon una variante de matriz de ente subterráneo utilizado en otros mundos fundados por los Creadores. La construcción de esta raza prototipo produjo varias anomalías que se manifestaron tras la síntesis inicial."] = "5ea2eb7d04bbd772dcd284e8a228cdc0",
+            ["Me resulta imposible procesar su referencia cronológica en comparación con el registro de este dato, acepte mis disculpas.$B$BEl trogg retiene parte de la composición de los diferentes compuestos del centro de la piedra de Azeroth, pero la pérdida de poder cognitivo convierte a esta variante en inaceptable para los Creadores.$B$BEl trogg se procrea según una biomasa estándar. Por defecto consume piedra y cualquier otra cosa que pueda conseguir, incluyendo otros troggs. Los Creadores consideran inaceptable el canibalismo."] = "b882cb8e6da080b30e60116f3c0872e7",
+            ["No puedo procesar tu referencia cronológica en comparación con el registro de estos datos. Lo siento mucho.$B$BA pesar de que el enano conserva gran parte de la afinidad mental de los terráneos con la composición mineral de Azeroth, el retorno a la biomasa viviente constituye la mayor degeneración de la matriz. Los enanos se alimentan y procrean utilizando los medios típicos de otras biomasas estándar.$B$BLos Creadores ven al enano como variante aceptable, con su propio derecho de génesis."] = "ce7366515725bfde3e0373c2238835ac",
+            ["Para asimilar esta información, es preciso comprender que los Creadores querían sintetizar una raza que, tras su partida, constituyera por mucho tiempo una parte integral del ciclo de desarrollo de este mundo. Esta raza constituiría un instrumento para alcanzar los objetivos de desarrollo a largo plazo que los Creadores tenían en relación con Azeroth. $B$BCabría añadir que la denominación 'terráneo' fue considerada adecuada por los Creadores, ya que hacía referencia a su composición."] = "08dff474198889f264fcd3a4613a7841",
+            ["Saludos. Mi función consiste en proporcionar acceso y, si es admisible, explicaciones sobre la síntesis de terráneos por parte de los Creadores del lugar conocido como Azeroth. Esto listo para compartir esta información contigo cuando lo desees."] = "dbe98f46130325b3158beee50f932dba",
+            ["Se trata de una de las matrices de síntesis que los Creadores usaron durante la creación de uno de los mundos. Cada matriz de síntesis sirve para lograr los objetivos de los Creadores. En el caso de Azeroth, se modificó una matriz de ente subterráneo para crear un ser con una mayor durabilidad, compatible con la configuración profunda de las regiones. Los terráneos son el producto de esta modificación.$B$BCuando los terráneos fueron activados por los Creadores, presentaron anomalías no previstas que afectaron a sus matrices de síntesis debido al efecto de entornos de tensión excesiva."] = "37596dc24f9b36a845967560c770eb24",
+            ["Se trata del material básico utilizado en la síntesis de razas. Se empleó un corte transversal de la corteza de Azeroth como base de síntesis de los terráneos, en lugar de la base de construcción de biomasa típica utilizada por los Creadores.$B$BUna investigación sobre la composición del mundo permitió a los Creadores formular la teoría de que se podía sintetizar un ser mejorado que pudiera personificar la resistencia esencial de este mundo. Esto se logró eligiendo como base una mezcla de varios compuestos de núcleo mineral de Azeroth."] = "fa2c8acc870a2f11dc9e80c495429060",
+            ["[Se produce una pausa evidente tras formular esta pregunta.]$B$BLa información que solicitas no está actualmente disponible en este ciclo del depósito de datos. Realmente lamentamos esta omisión.B$BSolicita esta información una vez que se haya realizado la actualización del ciclo de datos en este depósito de información. También puede solicitar esta información en otro depósito de información situado en Azeroth."] = "69b3db29ce2f9befad2ca9b0d63c76d0",
+        },
         [7207] = {
             ["¿Puedo ayudarte?"] = "c51c67b1156baa959f6271d3c07c8740",
         },
@@ -5395,6 +5722,9 @@ GossipText = {
             ["No veo el espíritu del guerrero en ti. No tengo enseñanzas que puedan servir a $gun:una; $c como tú."] = "cc54bded9c0ad342e3ec1eb23083d5f2",
             ["Saludos. ¿Buscas instrucción en el arte de la guerra?"] = "45a2136a6992d2a4bd174e0b70ed104b",
         },
+        [7363] = {
+            ["Es fascinante... He oído que los orcos dicen que los humanos desprenden un olor nauseabundo, mientras que los humanos afirman que el olor de los orcos es espantoso. Sin embargo, para mí, todas las razas de estas tierras tienen el mismo olor! El olor hediondo y mareante de la codicia.$B$B¿Dudas de la validez de mi afirmación? ¿No crees que todo aquello que rige tu vida es el reflejo de la codicia que marca todas tus decisiones?$B$BPues entonces, que así sea. Si fue la codicia la que me empujó a abandonar mi hogar, que sea ella la que me haga volver."] = "541e8981488f53865f6bdd26ecd08906",
+        },
         [7406] = {
             ["Hola, $gmuchacho:muchacha;... mi nombre es Oglethorpe y es posible que sea el creador del aparato más fascinante que nunca hayas tenido en tu poder. Si te ha explotado, no soy responsable. Si por el contrario te ha hecho rico, ¡podemos empezar a hablar de los derechos de autor!$B$BAh, y si eres de Gnomeregan no tengo nada que hablar contigo."] = "47c3755d412dea585d1a4ce936b47720",
             ["¡Pero si es $n! Me alegro de verte otra vez. Apenas puedo expresar mi gratitud por la ayuda que nos has brindado hasta hoy a mí y a mi trabajo de inventor.$B$B¿Qué puedo hacer por ti hoy?"] = "5943501ff09a6c083506a7484daf7d10",
@@ -5403,12 +5733,16 @@ GossipText = {
             ["Mi nombre es Pasaquillas y soy el ingeniero jefe de la Compañía de Agua de Gadgetzan. ¿En qué te puedo ayudar?"] = "f94ad6c5b177a8f7172a8ec05456acf1",
         },
         [7410] = {
+            ["Espero que estés aquí para ir al Valle de Alterac, $N. Nos vendrá bien toda la ayuda que podamos conseguir."] = "42f1caebaf844b8ea5857f33ff4dbb1d",
             ["Espero que estés aquí para ir al Valle de Alterac, $n. Nos vendrá bien toda la ayuda que podamos conseguir."] = "42f1caebaf844b8ea5857f33ff4dbb1d",
             ["Lo siento, $c, pero necesitas más experiencia para sobrevivir en el Valle de Alterac."] = "f78c3c41a85a94fe125292149c2763de",
         },
         [7427] = {
             ["Lo siento, $c, pero necesitas más experiencia para sobrevivir en el Valle de Alterac."] = "28e0c95afd7e31800b8af63190876fb8",
             ["Nuestras tropas del Valle de Alterac necesitan sabiduría para conseguir la victoria, $c. Pareces ser alguien capaz de liderarlas."] = "0a2b21f41e7f09ad9d22fa7dc12ffe45",
+        },
+        [7505] = {
+            ["Las bestias de estas malditas tierras presentan atributos sobrenaturales, desconocidos hasta ahora en la naturaleza.$B$BHemos desarrollado la teoría de que la energía liberada durante la apertura del Portal Oscuro penetró en sus seres físicos y obligó a estas criaturas a evolucionar hacia su estado actual.$B$BSin duda se trata de bestias temibles, pero creemos que podrían ser muy útiles en nuestros estudios.$B$B¿No te interesaría ayudarnos en el estudio de estas bestias, $n?"] = "2c15e08c540b676fc549c879290f0597",
         },
         [7564] = {
             ["Bueno, ahora que lo mencionas, sí, vi algo que consideré un poco extraño ayer por la tarde.$B$BPasaba cerca de unas antiguas ruinas trol al sudeste de aquí. Bueno, en realidad no estaba corriendo, estaba saltando... ¡La arena está ardiendo!$B$BEn cualquier caso, iba saltando mientras pasaba junto a las ruinas, cuando descubrí un campamento instalado en ese lugar. En realidad, parece un lugar extraño para montar un campamento, si quieres saber mi opinión. Habría husmeado un poco más por la zona, pero uno de esos buitres grandes y peligrosos empezó a perseguirme."] = "2240dd2ff7335d7ff456813bd7964a8f",
@@ -5430,6 +5764,7 @@ GossipText = {
         },
         [7714] = {
             ["Al igual que el viento de las llanuras, siempre eres $gbienvenido:bienvenida; aquí."] = "a98c33cf2b0c65fb09a0b00d67122e46",
+            ["Antiguamente la capital de los enanos Hierro Negro, este laberinto volcánico ahora sirve como trono de poder de Ragnaros, el Señor del Fuego. Ragnaros ha descubierto cómo crear vida a partir de la piedra y planea formar un ejército de golems imparables para ayudarle a conquistar la Montaña Roca Negra. Ragnaros, obsesionado con derrotar a Nefarian y a sus esbirros dracónicos, hará lo que sea por conseguir la victoria final."] = "d1d167264b852e04dcc247504cad2f84",
             ["Antiguamente la capital de los enanos Hierro Negro, este laberinto volcánico ahora sirve como trono de poder de Ragnaros, el Señor del Fuego. Ragnaros ha descubierto cómo crear vida a partir de la piedra y planea formar un ejército de gólems imparables para ayudarle a conquistar la Montaña Roca Negra. Ragnaros, obsesionado con derrotar a Nefarian y a sus esbirros dracónicos, hará lo que sea por conseguir la victoria final."] = "d1d167264b852e04dcc247504cad2f84",
             ["Construida con las mismas vides que Horado Rajacieno, Zahúrda Rajacieno es la capital tradicional de la raza de los jabaespines. El laberinto de espinas que se extiende por todas partes, aloja un verdadero ejército de leales jabaespines junto con sus altos sacerdotes, la tribu Caramuerte. Sin embargo, recientemente una sombra de mal presagio ha caído sobre la rudimentaria guarida. Unos agentes de la Plaga de los no-muertos, a las órdenes del exánime Amnennar el Gélido, han tomado el control de la raza de los jabaespines y han convertido el laberinto de espinas en un bastión del poder de los no-muertos."] = "1efdcf0d1f0182cadd7e556c2271b952",
             ["Cuando entregues pruebas de amor a los habitantes de la ciudad, recibirás diferentes regalos a cambio. Algunos podrás guardarlos y utilizarlos, y otros ¡podrás juntarlos y dárselos a tu $ghéroe favorito:heroína favorita;! Visita a Kwee Q. Mercachifle y entrégaselos.$B$BEncontrarás a Kwee cerca de Bolvar, Magni o Tyrande."] = "84004ad843c4e25945ff9c41c2c64e48",
@@ -5444,6 +5779,7 @@ GossipText = {
             ["Esta ciudad abrasada por los rayos del sol es el hogar de los trols Furiarena, famosos por su particular falta de piedad y su oscuro misticismo. Las leyendas de los trols hablan de una poderosa espada llamada Sul'thraze la Azotadora, un arma capaz de infundir miedo y flaqueza incluso a los enemigos más formidables. Mucho tiempo atrás, la espada fue partida por la mitad. Sin embargo, hay rumores que dicen que las dos mitades se encuentran en algún lugar dentro de los muros de Zul'Farrak."] = "134711fa5dcb6d2514b7dd12cb58353f",
             ["Frustrado por la falta de progreso de los magos de Dalaran contra los no-muertos durante la Tercera Guerra, el archimago Arugal decidió invocar a los ferocanis extra-dimensionales para dar un empujón a sus tropas cada vez menores. Los lobizones atacaron a la Plaga y, rápidamente, se dirigieron a los magos y asediaron el bastión del noble barón Filargenta. Pronto, el fuerte fue presa de las sombras y se convirtió en cenizas. Enloquecido por la culpa, Arugal adoptó a los ferocanis como sus hijos y se retiró al Castillo de Colmillo Oscuro."] = "131cac36cbe3c50c8b0b73b5a5cc8e31",
             ["Gnomeregan se encuentra en la parte oeste de Dun Morogh."] = "3a31427822c5fa1a87c7a675bd12855e",
+            ["Hace más de mil años, un grupo de sacerdotes trols conocidos como los Atal'ai, intentaron resucitar a un dios de la sangre ancestral llamado Hakkar el Cazador de Almas. Tras la consecuente guerra civil, los sacerdotes fueron derrotados y exiliados al Pantano de las Penas. Allí erigieron un templo en honor de Hakkar, para prepararse para su llegada al mundo físico. La Dragón Aspecto Ysera, pronto descubrió los planes de los Atal'ai y hundió el templo bajo el pantano. Hasta el día de hoy, las ruinas han estado protegidas por los poderosos dragones verdes."] = "5f4d64e508e2e540625383eeae8529e5",
             ["Hace más de mil años, un grupo de sacerdotes trols conocidos como los Atal'ai, intentaron resucitar a un dios de la sangre ancestral llamado Hakkar el Cazador de Almas. Tras la consecuente guerra civil, los sacerdotes fueron derrotados y exiliados al Pantano de las Penas. Allí erigieron un templo en honor de Hakkar, para prepararse para su llegada al mundo físico. La dragón Aspecto Ysera, pronto descubrió los planes de los Atal'ai y hundió el templo bajo el pantano. Hasta el día de hoy, las ruinas han estado protegidas por los poderosos dragones Verdes."] = "5f4d64e508e2e540625383eeae8529e5",
             ["Hace poco, un druida elfo de la noche llamado Naralex, descubrió una red de cuevas subterráneas en el corazón de Los Baldíos. Creyendo que podría usar los manantiales de las cuevas para restaurar la exuberancia de Los Baldíos, el druida comenzó a absorber las energías del legendario Sueño Esmeralda. De alguna forma, su visión se transformó en una pesadilla y pronto, las Cuevas de los Lamentos se convirtieron en una guarida de viciosos y letales depredadores. Se dice que Naralex sigue en algún lugar del laberinto, atrapado más allá de los límites del Sueño Esmeralda."] = "1631876c10990f6b69fb643f319f15da",
             ["Horado Rajacieno se encuentra en el extremo más al sur de Los Baldíos, en el lado oeste del camino."] = "b07c8c68897f70867bbb75e49138b18d",
@@ -5475,6 +5811,7 @@ GossipText = {
             ["¿Te interesa explorar una de estas mazmorras?"] = "a61f3b373d7747d0767475c1b5dab2f6",
         },
         [7731] = {
+            ["Antiguamente la capital de los enanos Hierro Negro, este laberinto volcánico ahora sirve como trono de poder de Ragnaros, el Señor del Fuego. Ragnaros ha descubierto cómo crear vida a partir de la piedra y planea formar un ejército de golems imparables para ayudarle a conquistar la Montaña Roca Negra. Ragnaros, obsesionado con derrotar a Nefarian y a sus esbirros dracónicos, hará lo que sea por conseguir la victoria final."] = "1a4b0ce90f4422503651666ac7f00711",
             ["Antiguamente la capital de los enanos Hierro Negro, este laberinto volcánico ahora sirve como trono de poder de Ragnaros, el Señor del Fuego. Ragnaros ha descubierto cómo crear vida a partir de la piedra y planea formar un ejército de gólems imparables para ayudarle a conquistar la Montaña Roca Negra. Ragnaros, obsesionado con derrotar a Nefarian y a sus esbirros dracónicos, hará lo que sea por conseguir la victoria final."] = "1a4b0ce90f4422503651666ac7f00711",
             ["Construida con las mismas vides que Horado Rajacieno, Zahúrda Rajacieno es la capital tradicional de la raza de los jabaespines. El laberinto de espinas que se extiende por todas partes, aloja un verdadero ejército de leales jabaespines junto con sus altos sacerdotes, la tribu Caramuerte. Sin embargo, recientemente una sombra de mal presagio ha caído sobre la rudimentaria guarida. Unos agentes de la Plaga de los no-muertos, a las órdenes del exánime Amnennar el Gélido, han tomado el control de la raza de los jabaespines y han convertido el laberinto de espinas en un bastión del poder de los no-muertos."] = "d204a8a00341a429174e0dbb644ab882",
             ["Cuando entregues pruebas de amor a los habitantes de la ciudad, recibirás diferentes regalos a cambio. Algunos podrás guardarlos y utilizarlos, ¡mientras que otros podrás juntarlos y dárselos a tu $ghéroe favorito:heroína favorita;! Visita a Kwee Q. Mercachifle y entrégaselos.$B$BEncontrarás a Kwee cerca de Bolvar, Magni o Tyrande."] = "598c9e84f0150f5804083fb81cddb144",
@@ -5490,6 +5827,7 @@ GossipText = {
             ["Frustrado por la falta de progreso de los magos de Dalaran contra los no-muertos durante la Tercera Guerra, el archimago Arugal decidió invocar a los ferocanis extra-dimensionales para dar un empujón a sus tropas cada vez menores. Los lobisones atacaron a la Plaga y, rápidamente, se dirigieron a los magos y asediaron el bastión del noble barón FIlargenta. Pronto, el fuerte fue presa de las sombras y se convirtió en cenizas. Enloquecido por la culpa, Arugal adoptó a los ferocanis como sus hijos y se retiró al Castillo de Colmillo Oscuro."] = "12f0b7117e82d1920705e38b1acbd4d3",
             ["Gnomeregan se encuentra en la parte oeste de Dun Morogh."] = "2a62241f7676852d758c2bff35cb1c86",
             ["Hace más de mil años, un grupo de sacerdotes trols conocidos como los Atal'ai, intentaron resucitar a un dios de la sangre ancestral llamado Hakkar el Cazador de Almas. Tras la consecuente guerra civil, los sacerdotes fueron derrotados y exiliados al Pantano de las Penas. Allí erigieron un templo en honor de Hakkar, para prepararse para su llegada al mundo físico. La dragón Aspecto Ysera, pronto descubrió los planes de los Atal'ai y hundió el templo bajo el pantano. Hasta el día de hoy, las ruinas han estado protegidas por los poderosos dragones Verdes."] = "356949e6616d911ef559b61355e02894",
+            ["Hace más de mil años, un grupo de sacerdotes trols conocidos como los Atal'ai, intentaron resucitar a un dios de la sangre ancestral llamado Hakkar el Cazador de Almas. Tras la consecuente guerra civil, los sacerdotes fueron derrotados y exiliados al Pantano de las Penas. Allí erigieron un templo en honor de Hakkar, para prepararse para su llegada al mundo físico. La dragón Aspecto Ysera, pronto descubrió los planes de los Atal'ai y hundió el templo bajo el pantano. Hasta el día de hoy, las ruinas han estado protegidas por los poderosos dragones verdes."] = "356949e6616d911ef559b61355e02894",
             ["Hace poco, un druida elfo de la noche llamado Naralex, descubrió una red de cuevas subterráneas en el corazón de Los Baldíos. Creyendo que podría usar los manantiales de las cuevas para restaurar la exuberancia de Los Baldíos, el druida comenzó a absorber las energías del legendario Sueño Esmeralda. De alguna forma, su visión se transformó en una pesadilla y pronto, las Cuevas de los Lamentos se convirtieron en una guarida de viciosos y letales depredadores. Se dice que Naralex sigue en algún lugar del laberinto, atrapado más allá de los límites del Sueño Esmeralda."] = "c5bb28585e4ec2284a09cc538e5ea938",
             ["Horado Rajacieno se encuentra en el extremo más al sur de Los Baldíos, en el lado oeste del camino."] = "22e76f151640be474a52357149eab9fa",
             ["La Montaña Roca Negra linda con La Garganta de Fuego al norte y Las Estepas Ardientes al sur."] = "42c37076d3ae3863acfdd2d0f5533f7a",
@@ -5521,6 +5859,7 @@ GossipText = {
             ["¿Te interesa explorar una de estas mazmorras?"] = "f3aba6e9ee464fd9569a3498cd66780a",
         },
         [7733] = {
+            ["Antiguamente la capital de los enanos Hierro Negro, este laberinto volcánico ahora sirve como trono de poder de Ragnaros, el Señor del Fuego. Ragnaros ha descubierto cómo crear vida a partir de la piedra y planea formar un ejército de golems imparables para ayudarle a conquistar la Montaña Roca Negra. Ragnaros, obsesionado con derrotar a Nefarian y a sus esbirros dracónicos, hará lo que sea por conseguir la victoria final."] = "be2a049bfff27090d42fa86864cded42",
             ["Antiguamente la capital de los enanos Hierro Negro, este laberinto volcánico ahora sirve como trono de poder de Ragnaros, el Señor del Fuego. Ragnaros ha descubierto cómo crear vida a partir de la piedra y planea formar un ejército de gólems imparables para ayudarle a conquistar la Montaña Roca Negra. Ragnaros, obsesionado con derrotar a Nefarian y a sus esbirros dracónicos, hará lo que sea por conseguir la victoria final."] = "be2a049bfff27090d42fa86864cded42",
             ["Construida con las mismas vides que Horado Rajacieno, Zahúrda Rajacieno es la capital tradicional de la raza de los jabaespines. El laberinto de espinas que se extiende por todas partes, aloja un verdadero ejército de leales jabaespines junto con sus altos sacerdotes, la tribu Caramuerte. Sin embargo, recientemente una sombra de mal presagio ha caído sobre la rudimentaria guarida. Unos agentes de la Plaga de los no-muertos, a las órdenes del exánime Amnennar el Gélido, han tomado el control de la raza de los jabaespines y han convertido el laberinto de espinas en un bastión del poder de los no-muertos."] = "882eca086e7584677b84ddb2508635b3",
             ["Cuando entregues pruebas de amor a los habitantes de la ciudad, recibirás diferentes regalos a cambio. Algunos podrás guardarlos y utilizarlos, y otros ¡podrás juntarlos y dárselos a tu $ghéroe favorito:heroína favorita;! Visita a Kwee Q. Mercachifle y entrégaselos.$B$BEncontrarás a Kwee cerca de Bolvar, Magni o Tyrande."] = "cbf722b9bc6acfc449c54911b738ba7a",
@@ -5535,6 +5874,7 @@ GossipText = {
             ["Esta ciudad abrasada por los rayos del sol es el hogar de los trols Furiarena, famosos por su particular falta de piedad y su oscuro misticismo. Las leyendas de los trols hablan de una poderosa espada llamada Sul'thraze la Azotadora, un arma capaz de infundir miedo y flaqueza incluso a los enemigos más formidables. Mucho tiempo atrás, la espada fue partida por la mitad. Sin embargo, hay rumores que dicen que las dos mitades se encuentran en algún lugar dentro de los muros de Zul'Farrak."] = "13f411422b98e7aa9efa1bd8d0fe3cc0",
             ["Frustrado por la falta de progreso de los magos de Dalaran contra los no-muertos durante la Tercera Guerra, el archimago Arugal decidió invocar a los ferocanis extra-dimensionales para dar un empujón a sus tropas cada vez menores. Los lobizones atacaron a la Plaga y, rápidamente, se dirigieron a los magos y asediaron el bastión del noble barón Filargenta. Pronto, el fuerte fue presa de las sombras y se convirtió en cenizas. Enloquecido por la culpa, Arugal adoptó a los ferocanis como sus hijos y se retiró al Castillo de Colmillo Oscuro."] = "1a6bf101d9b37ef4919e0a556e52c071",
             ["Gnomeregan se encuentra en la parte oeste de Dun Morogh."] = "7a98a6957f6b0f4f5b616f085bcbbc4f",
+            ["Hace más de mil años, un grupo de sacerdotes trols conocidos como los Atal'ai, intentaron resucitar a un dios de la sangre ancestral llamado Hakkar el Cazador de Almas. Tras la consecuente guerra civil, los sacerdotes fueron derrotados y exiliados al Pantano de las Penas. Allí erigieron un templo en honor de Hakkar, para prepararse para su llegada al mundo físico. La Dragón Aspecto Ysera, pronto descubrió los planes de los Atal'ai y hundió el templo bajo el pantano. Hasta el día de hoy, las ruinas han estado protegidas por los poderosos dragones verdes."] = "7d5abd50243eecd2ff36633a9410b8ea",
             ["Hace más de mil años, un grupo de sacerdotes trols conocidos como los Atal'ai, intentaron resucitar a un dios de la sangre ancestral llamado Hakkar el Cazador de Almas. Tras la consecuente guerra civil, los sacerdotes fueron derrotados y exiliados al Pantano de las Penas. Allí erigieron un templo en honor de Hakkar, para prepararse para su llegada al mundo físico. La dragón Aspecto Ysera, pronto descubrió los planes de los Atal'ai y hundió el templo bajo el pantano. Hasta el día de hoy, las ruinas han estado protegidas por los poderosos dragones Verdes."] = "7d5abd50243eecd2ff36633a9410b8ea",
             ["Hace poco, un druida elfo de la noche llamado Naralex, descubrió una red de cuevas subterráneas en el corazón de Los Baldíos. Creyendo que podría usar los manantiales de las cuevas para restaurar la exuberancia de Los Baldíos, el druida comenzó a absorber las energías del legendario Sueño Esmeralda. De alguna forma, su visión se transformó en una pesadilla y pronto, las Cuevas de los Lamentos se convirtieron en una guarida de viciosos y letales depredadores. Se dice que Naralex sigue en algún lugar del laberinto, atrapado más allá de los límites del Sueño Esmeralda."] = "f82b5fb869ffa62d622507892591005c",
             ["Horado Rajacieno se encuentra en el extremo más al sur de Los Baldíos, en el lado oeste del camino."] = "20a4628b9b8b27f0e7e3e970ab291b7e",
@@ -5567,6 +5907,7 @@ GossipText = {
             ["¿Te interesa explorar una de estas mazmorras?"] = "f4fe586e247e052e76cecae1d47adb94",
         },
         [7736] = {
+            ["Antiguamente la capital de los enanos Hierro Negro, este laberinto volcánico ahora sirve como trono de poder de Ragnaros, el Señor del Fuego. Ragnaros ha descubierto cómo crear vida a partir de la piedra y planea formar un ejército de golems imparables para ayudarle a conquistar la Montaña Roca Negra. Ragnaros, obsesionado con derrotar a Nefarian y a sus esbirros dracónicos, hará lo que sea por conseguir la victoria final."] = "9c2b22f32a137854d984166b2aaded4b",
             ["Antiguamente la capital de los enanos Hierro Negro, este laberinto volcánico ahora sirve como trono de poder de Ragnaros, el Señor del Fuego. Ragnaros ha descubierto cómo crear vida a partir de la piedra y planea formar un ejército de gólems imparables para ayudarle a conquistar la Montaña Roca Negra. Ragnaros, obsesionado con derrotar a Nefarian y a sus esbirros dracónicos, hará lo que sea por conseguir la victoria final."] = "9c2b22f32a137854d984166b2aaded4b",
             ["Construida con las mismas vides que Horado Rajacieno, Zahúrda Rajacieno es la capital tradicional de la raza de los jabaespines. El laberinto de espinas que se extiende por todas partes, aloja un verdadero ejército de leales jabaespines junto con sus altos sacerdotes, la tribu Caramuerte. Sin embargo, recientemente una sombra de mal presagio ha caído sobre la rudimentaria guarida. Unos agentes de la Plaga de los no-muertos, a las órdenes del exánime Amnennar el Gélido, han tomado el control de la raza de los jabaespines y han convertido el laberinto de espinas en un bastión del poder de los no-muertos."] = "bbbb6f1884cdacec9af6cb67e3e1abd4",
             ["Cuando entregues pruebas de amor a los habitantes de la ciudad, recibirás diferentes regalos a cambio. Algunos podrás guardarlos y utilizarlos, ¡mientras que otros podrás juntarlos y dárselos a tu $ghéroe favorito:heroína favorita;! Visita a Kwee Q. Mercachifle y entrégaselos.$B$BEncontrarás a Kwee cerca de Bolvar, Magni o Tyrande."] = "b19764fa4b6d3a891fa5f750b3dd2517",
@@ -5582,6 +5923,7 @@ GossipText = {
             ["Frustrado por la falta de progreso de los magos de Dalaran contra los no-muertos durante la Tercera Guerra, el archimago Arugal decidió invocar a los ferocanis extra-dimensionales para dar un empujón a sus tropas cada vez menores. Los lobisones atacaron a la Plaga y, rápidamente, se dirigieron a los magos y asediaron el bastión del noble barón FIlargenta. Pronto, el fuerte fue presa de las sombras y se convirtió en cenizas. Enloquecido por la culpa, Arugal adoptó a los ferocanis como sus hijos y se retiró al Castillo de Colmillo Oscuro."] = "5d076554d313584aa1c5611cf0129a23",
             ["Gnomeregan se encuentra en la parte oeste de Dun Morogh."] = "a4f613548f3f5a63415a978d891ce475",
             ["Hace más de mil años, un grupo de sacerdotes trols conocidos como los Atal'ai, intentaron resucitar a un dios de la sangre ancestral llamado Hakkar el Cazador de Almas. Tras la consecuente guerra civil, los sacerdotes fueron derrotados y exiliados al Pantano de las Penas. Allí erigieron un templo en honor de Hakkar, para prepararse para su llegada al mundo físico. La dragón Aspecto Ysera, pronto descubrió los planes de los Atal'ai y hundió el templo bajo el pantano. Hasta el día de hoy, las ruinas han estado protegidas por los poderosos dragones Verdes."] = "4b24ea6b391a2efd0be7d84cc947d159",
+            ["Hace más de mil años, un grupo de sacerdotes trols conocidos como los Atal'ai, intentaron resucitar a un dios de la sangre ancestral llamado Hakkar el Cazador de Almas. Tras la consecuente guerra civil, los sacerdotes fueron derrotados y exiliados al Pantano de las Penas. Allí erigieron un templo en honor de Hakkar, para prepararse para su llegada al mundo físico. La dragón Aspecto Ysera, pronto descubrió los planes de los Atal'ai y hundió el templo bajo el pantano. Hasta el día de hoy, las ruinas han estado protegidas por los poderosos dragones verdes."] = "4b24ea6b391a2efd0be7d84cc947d159",
             ["Hace poco, un druida elfo de la noche llamado Naralex, descubrió una red de cuevas subterráneas en el corazón de Los Baldíos. Creyendo que podría usar los manantiales de las cuevas para restaurar la exuberancia de Los Baldíos, el druida comenzó a absorber las energías del legendario Sueño Esmeralda. De alguna forma, su visión se transformó en una pesadilla y pronto, las Cuevas de los Lamentos se convirtieron en una guarida de viciosos y letales depredadores. Se dice que Naralex sigue en algún lugar del laberinto, atrapado más allá de los límites del Sueño Esmeralda."] = "4352ca0c9a3782df4f9b0a23c9c7f9d7",
             ["Horado Rajacieno se encuentra en el extremo más al sur de Los Baldíos, en el lado oeste del camino."] = "25a80704f18ee56676b132bdded0fe94",
             ["La Montaña Roca Negra linda con La Garganta de Fuego al norte y Las Estepas Ardientes al sur."] = "aab40b74860886caa96dcfdaf979e180",
@@ -5614,6 +5956,7 @@ GossipText = {
         },
         [7737] = {
             ["Al igual que el viento de las llanuras, siempre eres $gbienvenido:bienvenida; aquí."] = "980ce6cc828845cb13bcbd8cd0b6917e",
+            ["Antiguamente la capital de los enanos Hierro Negro, este laberinto volcánico ahora sirve como trono de poder de Ragnaros, el Señor del Fuego. Ragnaros ha descubierto cómo crear vida a partir de la piedra y planea formar un ejército de golems imparables para ayudarle a conquistar la Montaña Roca Negra. Ragnaros, obsesionado con derrotar a Nefarian y a sus esbirros dracónicos, hará lo que sea por conseguir la victoria final."] = "4b2a582cee1f20d593eae9a388287135",
             ["Antiguamente la capital de los enanos Hierro Negro, este laberinto volcánico ahora sirve como trono de poder de Ragnaros, el Señor del Fuego. Ragnaros ha descubierto cómo crear vida a partir de la piedra y planea formar un ejército de gólems imparables para ayudarle a conquistar la Montaña Roca Negra. Ragnaros, obsesionado con derrotar a Nefarian y a sus esbirros dracónicos, hará lo que sea por conseguir la victoria final."] = "4b2a582cee1f20d593eae9a388287135",
             ["Construida con las mismas vides que Horado Rajacieno, Zahúrda Rajacieno es la capital tradicional de la raza de los jabaespines. El laberinto de espinas que se extiende por todas partes, aloja un verdadero ejército de leales jabaespines junto con sus altos sacerdotes, la tribu Caramuerte. Sin embargo, recientemente una sombra de mal presagio ha caído sobre la rudimentaria guarida. Unos agentes de la Plaga de los no-muertos, a las órdenes del exánime Amnennar el Gélido, han tomado el control de la raza de los jabaespines y han convertido el laberinto de espinas en un bastión del poder de los no-muertos."] = "18f70be5c25cb2ea163cd8d518bfdc66",
             ["Cuando entregues pruebas de amor a los habitantes de la ciudad, recibirás diferentes regalos a cambio. Algunos podrás guardarlos y utilizarlos, ¡mientras que otros podrás juntarlos y dárselos a tu $ghéroe favorito:heroína favorita;! Visita a Kwee Q. Mercachifle y entrégaselos.$B$BEncontrarás a Kwee cerca de Bolvar, Magni o Tyrande."] = "63f35b75e396252f797a4186f1286bee",
@@ -5629,6 +5972,7 @@ GossipText = {
             ["Frustrado por la falta de progreso de los magos de Dalaran contra los no-muertos durante la Tercera Guerra, el archimago Arugal decidió invocar a los ferocanis extra-dimensionales para dar un empujón a sus tropas cada vez menores. Los lobisones atacaron a la Plaga y, rápidamente, se dirigieron a los magos y asediaron el bastión del noble barón FIlargenta. Pronto, el fuerte fue presa de las sombras y se convirtió en cenizas. Enloquecido por la culpa, Arugal adoptó a los ferocanis como sus hijos y se retiró al Castillo de Colmillo Oscuro."] = "c08a11a40b198a8cdf5e21127dad1408",
             ["Gnomeregan se encuentra en la parte oeste de Dun Morogh."] = "d44d297c2cca8733f4d13c8c8c1f28d5",
             ["Hace más de mil años, un grupo de sacerdotes trols conocidos como los Atal'ai, intentaron resucitar a un dios de la sangre ancestral llamado Hakkar el Cazador de Almas. Tras la consecuente guerra civil, los sacerdotes fueron derrotados y exiliados al Pantano de las Penas. Allí erigieron un templo en honor de Hakkar, para prepararse para su llegada al mundo físico. La dragón Aspecto Ysera, pronto descubrió los planes de los Atal'ai y hundió el templo bajo el pantano. Hasta el día de hoy, las ruinas han estado protegidas por los poderosos dragones Verdes."] = "331713e1070e9f4f3576819f670ae53d",
+            ["Hace más de mil años, un grupo de sacerdotes trols conocidos como los Atal'ai, intentaron resucitar a un dios de la sangre ancestral llamado Hakkar el Cazador de Almas. Tras la consecuente guerra civil, los sacerdotes fueron derrotados y exiliados al Pantano de las Penas. Allí erigieron un templo en honor de Hakkar, para prepararse para su llegada al mundo físico. La dragón Aspecto Ysera, pronto descubrió los planes de los Atal'ai y hundió el templo bajo el pantano. Hasta el día de hoy, las ruinas han estado protegidas por los poderosos dragones verdes."] = "331713e1070e9f4f3576819f670ae53d",
             ["Hace poco, un druida elfo de la noche llamado Naralex, descubrió una red de cuevas subterráneas en el corazón de Los Baldíos. Creyendo que podría usar los manantiales de las cuevas para restaurar la exuberancia de Los Baldíos, el druida comenzó a absorber las energías del legendario Sueño Esmeralda. De alguna forma, su visión se transformó en una pesadilla y pronto, las Cuevas de los Lamentos se convirtieron en una guarida de viciosos y letales depredadores. Se dice que Naralex sigue en algún lugar del laberinto, atrapado más allá de los límites del Sueño Esmeralda."] = "af82564cf7ae1fe402a33ef253cb74cc",
             ["Horado Rajacieno se encuentra en el extremo más al sur de Los Baldíos, en el lado oeste del camino."] = "5a6a13f324242e75a6382d99c516cc94",
             ["La Montaña Roca Negra linda con La Garganta de Fuego al norte y Las Estepas Ardientes al sur."] = "06eb7bd37fd0c212607efd69ff668e03",
@@ -5659,6 +6003,7 @@ GossipText = {
             ["¿Te interesa explorar una de estas mazmorras?"] = "ccda04db92cbf011d170b7cae60f408c",
         },
         [7744] = {
+            ["Antiguamente la capital de los enanos Hierro Negro, este laberinto volcánico ahora sirve como trono de poder de Ragnaros, el Señor del Fuego. Ragnaros ha descubierto cómo crear vida a partir de la piedra y planea formar un ejército de golems imparables para ayudarle a conquistar la Montaña Roca Negra. Ragnaros, obsesionado con derrotar a Nefarian y a sus esbirros dracónicos, hará lo que sea por conseguir la victoria final."] = "d4c8367f7e096bd61f9f2c15a639c5d5",
             ["Antiguamente la capital de los enanos Hierro Negro, este laberinto volcánico ahora sirve como trono de poder de Ragnaros, el Señor del Fuego. Ragnaros ha descubierto cómo crear vida a partir de la piedra y planea formar un ejército de gólems imparables para ayudarle a conquistar la Montaña Roca Negra. Ragnaros, obsesionado con derrotar a Nefarian y a sus esbirros dracónicos, hará lo que sea por conseguir la victoria final."] = "d4c8367f7e096bd61f9f2c15a639c5d5",
             ["Construida con las mismas vides que Horado Rajacieno, Zahúrda Rajacieno es la capital tradicional de la raza de los jabaespines. El laberinto de espinas que se extiende por todas partes, aloja un verdadero ejército de leales jabaespines junto con sus altos sacerdotes, la tribu Caramuerte. Sin embargo, recientemente una sombra de mal presagio ha caído sobre la rudimentaria guarida. Unos agentes de la Plaga de los no-muertos, a las órdenes del exánime Amnennar el Gélido, han tomado el control de la raza de los jabaespines y han convertido el laberinto de espinas en un bastión del poder de los no-muertos."] = "0696ddb759f36db8a31b0de8dfe773e6",
             ["Cuando entregues pruebas de amor a los habitantes de la ciudad, recibirás diferentes regalos a cambio. Algunos podrás guardarlos y utilizarlos, y otros ¡podrás juntarlos y dárselos a tu $ghéroe favorito:heroína favorita;! Visita a Kwee Q. Mercachifle y entrégaselos.$B$BEncontrarás a Kwee cerca de Bolvar, Magni o Tyrande."] = "490f61093d0ec9e8887f5611d0dde3c6",
@@ -5673,6 +6018,7 @@ GossipText = {
             ["Esta ciudad abrasada por los rayos del sol es el hogar de los trols Furiarena, famosos por su particular falta de piedad y su oscuro misticismo. Las leyendas de los trols hablan de una poderosa espada llamada Sul'thraze la Azotadora, un arma capaz de infundir miedo y flaqueza incluso a los enemigos más formidables. Mucho tiempo atrás, la espada fue partida por la mitad. Sin embargo, hay rumores que dicen que las dos mitades se encuentran en algún lugar dentro de los muros de Zul'Farrak."] = "ecab747cb61959b39b57ef0de545ae6e",
             ["Frustrado por la falta de progreso de los magos de Dalaran contra los no-muertos durante la Tercera Guerra, el archimago Arugal decidió invocar a los ferocanis extra-dimensionales para dar un empujón a sus tropas cada vez menores. Los lobizones atacaron a la Plaga y, rápidamente, se dirigieron a los magos y asediaron el bastión del noble barón Filargenta. Pronto, el fuerte fue presa de las sombras y se convirtió en cenizas. Enloquecido por la culpa, Arugal adoptó a los ferocanis como sus hijos y se retiró al Castillo de Colmillo Oscuro."] = "387741cc6b9473695e470695f72c685c",
             ["Gnomeregan se encuentra en la parte oeste de Dun Morogh."] = "b5a78d9a4eb2335b05dc3e74b7bf93d2",
+            ["Hace más de mil años, un grupo de sacerdotes trols conocidos como los Atal'ai, intentaron resucitar a un dios de la sangre ancestral llamado Hakkar el Cazador de Almas. Tras la consecuente guerra civil, los sacerdotes fueron derrotados y exiliados al Pantano de las Penas. Allí erigieron un templo en honor de Hakkar, para prepararse para su llegada al mundo físico. La Dragón Aspecto Ysera, pronto descubrió los planes de los Atal'ai y hundió el templo bajo el pantano. Hasta el día de hoy, las ruinas han estado protegidas por los poderosos dragones verdes."] = "d0b8820f2e1f29977d61ec36fbba4c37",
             ["Hace más de mil años, un grupo de sacerdotes trols conocidos como los Atal'ai, intentaron resucitar a un dios de la sangre ancestral llamado Hakkar el Cazador de Almas. Tras la consecuente guerra civil, los sacerdotes fueron derrotados y exiliados al Pantano de las Penas. Allí erigieron un templo en honor de Hakkar, para prepararse para su llegada al mundo físico. La dragón Aspecto Ysera, pronto descubrió los planes de los Atal'ai y hundió el templo bajo el pantano. Hasta el día de hoy, las ruinas han estado protegidas por los poderosos dragones Verdes."] = "d0b8820f2e1f29977d61ec36fbba4c37",
             ["Hace poco, un druida elfo de la noche llamado Naralex, descubrió una red de cuevas subterráneas en el corazón de Los Baldíos. Creyendo que podría usar los manantiales de las cuevas para restaurar la exuberancia de Los Baldíos, el druida comenzó a absorber las energías del legendario Sueño Esmeralda. De alguna forma, su visión se transformó en una pesadilla y pronto, las Cuevas de los Lamentos se convirtieron en una guarida de viciosos y letales depredadores. Se dice que Naralex sigue en algún lugar del laberinto, atrapado más allá de los límites del Sueño Esmeralda."] = "bddcb2f11ff849b592a1d76b4d46b5d1",
             ["Horado Rajacieno se encuentra en el extremo más al sur de Los Baldíos, en el lado oeste del camino."] = "41e7446de8a99d017f4dbbef7255bc13",
@@ -5753,6 +6099,7 @@ GossipText = {
             ["Te lo juro... Si Quint intenta colocarme un cebo de peces más, ¡voy a cargarme a golpetazos este árbol con mi espada no tan oxidada!"] = "850288efe4dccb31f59391e76405f2b9",
         },
         [7853] = {
+            ["¡Hola, $N! Soy el maestro en ingeniería, Scooty."] = "22c7e447f05eaff769b8cae4f2f6e0c9",
             ["¡Hola, $n! Soy el maestro en ingeniería, Scooty."] = "22c7e447f05eaff769b8cae4f2f6e0c9",
         },
         [7854] = {
@@ -5788,6 +6135,18 @@ GossipText = {
         [7916] = {
             ["Hola, $n. Me encargo de entrenar y cuidar a los jóvenes hipogrifos; echa un vistazo tranquilamente."] = "de300aecfe64e2c0dd5018d277df9334",
             ["Los druidas son muy sensibles a las dificultades que padecen todas las criaturas del mundo. Cuando se descubrió que estas aves corrían peligro, ideamos un sistema para rescatarlas de la descomposición de Feralas.$B$BUna gnoma llamada Curgle Saltamanivela se ocupa del asunto. Recoge los huevos y los envía hasta aquí y yo me encargo de cuidarlos.$B$BPodríamos buscar más ayuda para nuestra causa, $n. Tal vez deberías dirigirte a Gadgetzan y buscar a Curgle."] = "b19ba63af1bb1e807752e1767b2f0b9c",
+        },
+        [7918] = {
+            ["Las placas de Uldum son discos sintetizados por los Creadores que permiten el acceso al dominio de Uldum. Estos discos almacenan datos específicos relacionados con las actividades de los Creadores en este lugar.$B$BFísicamente, son casi idénticos en circunferencia al conjunto de discos que posees en estos momentos. No obstante, sus marcas contienen datos directamente relacionados con Uldum, a diferencia del complejo de Uldaman."] = "6ca644d9e6d6498c43ac945526e72769",
+            ["Los Creadores utilizan la aparición como medio para restablecer el control sobre los mundos creados cada vez que las fuerzas, tanto externas como internas, desestabilizan la dinámica de la matriz relacionada con ellos. Dichas tácticas no deben subestimarse cuando las ejecutan los Creadores.$B$BPara obtener información adicional sobre la aparición programada para este mundo, consulta el banco de datos adecuado que contiene todas las consideraciones de planificación relacionadas con los Creadores."] = "674b6d160758ef89f9673db03f18e901",
+            ["Mi propósito es regular el acceso al dominio de Uldum en servicio de los Creadores. Permito la entrada a este dominio cuando el aspirante muestra los discos de acceso en la secuencia adecuada.$B$BTu conjunto de discos no incluye las placas de Uldum, requisito principal para entrar. No se permite el acceso a menos que las placas de Uldum estén presentes."] = "7e90d9af5caba89e9e610a179a4b71db",
+            ["Numerosos conjuntos de placas de Uldum han sido sintetizados por los Creadores para un uso específico. Los Creadores controlan la distribución de dichos discos para todos los dominios de este mundo. Por su parte, Azeroth ha sido reprogramado para la aparición de los Creadores y, por esta razón, ese momento será cuando los discos del futuro entren en circulación.$B$BLos discos existentes se han distribuido ampliamente entre aquellos que disponen de la autorización debida."] = "bd66975348b5ef46deba25cb0e1f7ca0",
+            ["Saludos. Soy un guardián de la entrada. A menos que tengas las placas de Uldum integradas en tus discos, no estás $gautorizado:autorizada; para entrar en el dominio de Uldum."] = "bc69ce180e86bbd2c2dfb575749ef8bd",
+            ["Uldum es un complejo de investigación para los Creadores en sus esfuerzos constantes de mejorar la biosfera de Azeroth. La información específica relacionada con su trabajo y, en concreto, con Uldum, se restringe a aquellos individuos que poseen las placas de Uldum en sus conjuntos de discos.$B$BLos bancos de datos guardados en el dominio de Uldum han sido programados para abordar experimentos específicos y compilaciones de datos determinadas. Consúltalos para obtener información detallada."] = "4c91f71a8ebe3da3d5d83ea4c719737d",
+        },
+        [7937] = {
+            ["Hola, $c. Soy el Manitas Mayor Mekkatorque, de los Exiliados de Gnomeregan."] = "38a1d69a314dd45283ba8da34ea6c8b5",
+            ["Oh yes, how wonderful! I have been expecting an emissary from your people, and I am very happy to make your acquaintance.    I do wish I could receive you in our home city of Gnomeregan, but our people have recently fallen on hard times and our homeland is, at present, lost to us.    King Bronzebeard is ever a friend to us gnomes, however, and has graciously opened his city to us in this difficult time.     I hope that your adventures on Azeroth treat you well, and I look forward to further opportunities to learn more of your people.     Farewell, $n."] = "deDE-4a180b4602e3fe3ca26abdfe8bd0b7f0",
         },
         [7944] = {
             ["Soy el maestro manitas Sobrechispa y soy el arquitecto jefe encargado de desarrollar los principios actuales de ingeniería gnómica del mundo. Mi trabajo es garantizar que el poder de la invención continúe brillando con mayor intensidad desde nuestras llaves inglesas arcoluz que desde cualquier otro lugar.$B$BAsimismo, si de casualidad conoces un buen sistema de eliminación de radiaciones, estamos buscando uno en el mercado ahora mismo..."] = "7b5fc421a7124f4ac3dff2f5ae6ae20e",
@@ -5825,6 +6184,13 @@ GossipText = {
             ["Si has venido buscando el don de la movilidad segura y rápida, ¡has llegado a tu destino! Acaban de llegar los nuevos modelos de mecazancudos ¡y estoy listo para enseñarte todas sus prestaciones!"] = "299711f9bfc91cd6e18b4f2a9bc2baae",
             ["Umm... Creo que es demasiado grande para montar un mecazancudo, $gseñor:señora;. ¡Podría aplastar los delicados servoestabilizadores!"] = "65e354785b26bc4ab909aec7cd4f43eb",
         },
+        [7998] = {
+            ["¡Gracias a la Luz que estás aquí! En estos momentos aceptaría ayuda de un ogro de dos cabezas.  ¡La ciudad está invadida por troggs! Los intentos por eliminarlos provocó una contaminación masiva. Pero hay esperanzas.  Nuestros científicos que fueron evacuados a Forjaz están trabajando en curar las enfermedades producidas por la lluvia radiactiva. Mientras tanto, si puedes ayudarme a detener la invasión de los troggs, quizás entonces podamos recuperar la ciudad."] = "b4083-gnome-female-nerdy",
+        },
+        [7999] = {
+            ["It pleases me greatly to at last meet one of your people. I've heard much of the shen'dorei and your long history, and I am glad to see our cousins return home to Kalimdor at long last.    I confess that our people have a... complicated relationship with the highborne. Some amongst the night elves are quick to distrust those of highborne descent such as those in your High Order. However, you have my assurance that you will be shown the utmost respect while a guest in our city.    Please, make yourself at home here. I'd encourage you to explore and familiarize yourself with our culture. It is, after all, your culture as well in a way."] = "a28116c165b329fe646b70fff5ad55de",
+            ["Saludos, $c. Soy Tyrande Susurravientos, suma sacerdotisa de Elune."] = "b325819-nightelf-female-standard",
+        },
         [8018] = {
             ["¿Adónde quieres volar?"] = "646a52da6f00e2b6b680741da2aab13f",
         },
@@ -5844,6 +6210,9 @@ GossipText = {
         [8126] = {
             ["Déjame enseñarte algo de mates: 'goblin' más 'ingeniería' igual a SABER. Si alguien te dice otra cosa es que no tiene ni idea de sumar."] = "cc919cf47bdafb636ea5a25ac2f0b460",
             ["¡Saludos! Si has venido para acceder a los sistemas de ingeniería goblin, prepara tu tarjeta de miembro del Club de Ingeniería Goblin para comprobarla."] = "e814cc2694856d5e9fb32efcf2ea7186",
+        },
+        [8139] = {
+            ["¿Qué quieres que haga por ti?"] = "b8275-goblin-male-gruff",
         },
         [8140] = {
             ["He tenido que realizar una rigurosa reconversión con muchos estudiantes de todo lo que habían aprendido, para poder enseñarles desde cero. El servicio que ofrezco aumenta de dificultad cada vez que se hace. Por esa razón, también aumenta el precio de cada nueva instrucción. ¿Quieres que elimine todos los talentos que has aprendido?"] = "f6708bdc5d32f47f0eaf4fce7cf2764c",
@@ -5893,6 +6262,9 @@ GossipText = {
             ["Grabada en una tablilla de oro puro quedó la prueba de mi arrepentimiento, vergüenza y tristeza. Desafortunadamente, los miembros del Martillo Crepuscular encontraron la tablilla y me llamaron blasfemo. Me ejecutaron inmediatamente y no pude terminar mis plegarias a Elune. Ahora estoy unido a este mundo como espíritu, incapaz de bajar al Infierno; atrapado en esta jaula como advertencia para todo aquel que ose traicionar la fe del Martillo Crepuscular."] = "19289f6d38df9ab14e68557b881b1054",
             ["¡Alabada sea Elune! Hace muchos años que no recibo visitantes."] = "f479d49557864313202d2081a17b0dc5",
         },
+        [8441] = {
+            ["¿¿Qué querer de Arrasa??"] = "429c35dd21c01c0096e636da22da936c",
+        },
         [8479] = {
             ["Como puedes ver, solo soy un hombre con un escudero medio idiota. El poder de los enanos Hierro Negro y las bestias en manos de Ragnaros seguramente me aplastarían si me encontrasen solo, pero confío plenamente en que un aventurero tan valiente y ambicioso como tú no tendría ningún problema para enfrentarse a los moradores de la caldera. En el caso de que decidieras ayudarme, te recompensaré con las riquezas que jamás hayas podido imaginar."] = "ef7bb97afba3c7564c9dafde000ac6fb",
             ["La escoria que vive en la Caldera asesinó a mi padre. El Magistrado de Ventormenta hizo oídos sordos a mis súplicas de ayuda. No, no quieren admitir que esta parte del mundo existe y mucho menos enviar a su valiosa milicia para administrar justicia.$B$BBusco venganza, $r, llanamente. ¿Existe una causa más apasionada en este mundo?"] = "8abf64ca79d3bfbfd5e67c8a51929983",
@@ -5901,6 +6273,9 @@ GossipText = {
         [8496] = {
             ["Eh, hola. No, Marvon no está aquí y no volverá hasta dentro de mucho. De hecho, estoy empezando a preocuparme...$B$BEspero que vuelva pronto. Llegó un gran cofre para él y es demasiado pesado para mí, no puedo meterlo dentro. He tenido que dejarlo fuera, al lado de la puerta..."] = "1810af4305cc03fe960af01e95020439",
             ["¡Hola! Este taller no es mío, no. Pero, algún día, cuando finalice mi instrucción, voy a ser una inventora, como mi héroe, Marvon Buscarroblones.$B$B¿Has oído hablar de él? Pues resulta que se fue hace algún tiempo para estudiar unas antiguas ruinas trol de las que no dejaba de hablar. Se fue en un zepelín... Aunque no tengo muy claro dónde exactamente...$B$B¿Tanarasin? ¿Tenkeris? ¿Taneranisany?$B$B<Liv niega con la cabeza.>$B$BNo, no era así..."] = "2ef43f4e9d19efefdd1007bc696621b9",
+        },
+        [8508] = {
+            ["¿Quieres pescar? Vas a necesitar las herramientas apropiadas."] = "2e120038d85f41ca7316542f6acb1110",
         },
         [8509] = {
             ["Vivo para servir al maestro."] = "a78bfb1ca9baf31083c2a2913d0f9ec6",
@@ -5949,6 +6324,13 @@ GossipText = {
         [8738] = {
             ["¡Saludos! Si has venido para acceder a los sistemas de ingeniería goblin, prepara tu tarjeta de miembro del Club de Ingeniería Goblin para comprobarla."] = "e814cc2694856d5e9fb32efcf2ea7186",
         },
+        [8767] = {
+            ["¡Gracias, $gpequeño:pequeña; $r!"] = "c4a567da4ff691c3c13ad992d6d0d5de",
+        },
+        [8816] = {
+            ["Estoy atado a este maldito mundo para toda la eternidad. ¿Cuál es tu deseo, mortal?"] = "f94a555f4b070d39b84c63a084ba700b",
+            ["Si deseas visitar el Alto de los Rapiñadores, tan solo tienes que pedirlo. Puedo llevarte a ti y a tus camaradas."] = "10ee645048a95cf25037c8042bfd0eb8",
+        },
         [8879] = {
             ["Avísame cuando estés $gpreparado:preparada; para oír la historia."] = "adf38cda6fa6748990bab76d2b44d039",
             ["Hace cientos de años, la gran ciudad de Thaurissan se erguía orgullosa en un terreno exuberante, convertido hoy en las ruinosas Estepas Ardientes.$B$BEn aquel tiempo, Thaurissan era el hogar de los enanos Hierro Negro, en medio de una guerra civil que asolaba a la nación de los enanos.$B$BMira, esa parte del mundo en algún momento formó parte de las montañas Crestagrana, hasta el día en que Thaurissan sucumbió por una gigantesca explosión. La cuidad acabó en la ruina y las zonas aledañas quedaron reducidas a páramos de ceniza."] = "d0574bdb32ceed44b19308184401ca58",
@@ -5964,6 +6346,7 @@ GossipText = {
             ["Saludos, $r. Soy Franclorn Forjador. ¿Has venido para aprender de la Cumbre y de los Hierro Negro?"] = "ee11d419f725f323959cf1466840e61b",
         },
         [8931] = {
+            ["Antiguamente la capital de los enanos Hierro Negro, este laberinto volcánico ahora sirve como trono de poder de Ragnaros, el Señor del Fuego. Ragnaros ha descubierto cómo crear vida a partir de la piedra y planea formar un ejército de golems imparables para ayudarle a conquistar la Montaña Roca Negra. Ragnaros, obsesionado con derrotar a Nefarian y a sus esbirros dracónicos, hará lo que sea por conseguir la victoria final."] = "e4835262a6e71a36692d90aedbb66c42",
             ["Antiguamente la capital de los enanos Hierro Negro, este laberinto volcánico ahora sirve como trono de poder de Ragnaros, el Señor del Fuego. Ragnaros ha descubierto cómo crear vida a partir de la piedra y planea formar un ejército de gólems imparables para ayudarle a conquistar la Montaña Roca Negra. Ragnaros, obsesionado con derrotar a Nefarian y a sus esbirros dracónicos, hará lo que sea por conseguir la victoria final."] = "e4835262a6e71a36692d90aedbb66c42",
             ["Construida con las mismas vides que Horado Rajacieno, Zahúrda Rajacieno es la capital tradicional de la raza de los jabaespines. El laberinto de espinas que se extiende por todas partes, aloja un verdadero ejército de leales jabaespines junto con sus altos sacerdotes, la tribu Caramuerte. Sin embargo, recientemente una sombra de mal presagio ha caído sobre la rudimentaria guarida. Unos agentes de la Plaga de los no-muertos, a las órdenes del exánime Amnennar el Gélido, han tomado el control de la raza de los jabaespines y han convertido el laberinto de espinas en un bastión del poder de los no-muertos."] = "ae6bac71d95fa9cc576583cb12b00b0a",
             ["Cuando entregues pruebas de amor a los habitantes de la ciudad, recibirás diferentes regalos a cambio. Algunos podrás guardarlos y utilizarlos, ¡mientras que otros podrás juntarlos y dárselos a tu $ghéroe favorito:heroína favorita;! Visita a Kwee Q. Mercachifle y entrégaselos.$B$BEncontrarás a Kwee cerca de Bolvar, Magni o Tyrande."] = "0838f3fe0e3c17a16a7ff7d504eec929",
@@ -5979,6 +6362,7 @@ GossipText = {
             ["Frustrado por la falta de progreso de los magos de Dalaran contra los no-muertos durante la Tercera Guerra, el archimago Arugal decidió invocar a los ferocanis extra-dimensionales para dar un empujón a sus tropas cada vez menores. Los lobisones atacaron a la Plaga y, rápidamente, se dirigieron a los magos y asediaron el bastión del noble barón FIlargenta. Pronto, el fuerte fue presa de las sombras y se convirtió en cenizas. Enloquecido por la culpa, Arugal adoptó a los ferocanis como sus hijos y se retiró al Castillo de Colmillo Oscuro."] = "b69ededa6dbdfe26a15fda5121e90a20",
             ["Gnomeregan se encuentra en la parte oeste de Dun Morogh."] = "1e16c8ae0545b101ebc5ad4d9c69c248",
             ["Hace más de mil años, un grupo de sacerdotes trols conocidos como los Atal'ai, intentaron resucitar a un dios de la sangre ancestral llamado Hakkar el Cazador de Almas. Tras la consecuente guerra civil, los sacerdotes fueron derrotados y exiliados al Pantano de las Penas. Allí erigieron un templo en honor de Hakkar, para prepararse para su llegada al mundo físico. La dragón Aspecto Ysera, pronto descubrió los planes de los Atal'ai y hundió el templo bajo el pantano. Hasta el día de hoy, las ruinas han estado protegidas por los poderosos dragones Verdes."] = "7dc247370c0f46388922e4ad2824f973",
+            ["Hace más de mil años, un grupo de sacerdotes trols conocidos como los Atal'ai, intentaron resucitar a un dios de la sangre ancestral llamado Hakkar el Cazador de Almas. Tras la consecuente guerra civil, los sacerdotes fueron derrotados y exiliados al Pantano de las Penas. Allí erigieron un templo en honor de Hakkar, para prepararse para su llegada al mundo físico. La dragón Aspecto Ysera, pronto descubrió los planes de los Atal'ai y hundió el templo bajo el pantano. Hasta el día de hoy, las ruinas han estado protegidas por los poderosos dragones verdes."] = "7dc247370c0f46388922e4ad2824f973",
             ["Hace poco, un druida elfo de la noche llamado Naralex, descubrió una red de cuevas subterráneas en el corazón de Los Baldíos. Creyendo que podría usar los manantiales de las cuevas para restaurar la exuberancia de Los Baldíos, el druida comenzó a absorber las energías del legendario Sueño Esmeralda. De alguna forma, su visión se transformó en una pesadilla y pronto, las Cuevas de los Lamentos se convirtieron en una guarida de viciosos y letales depredadores. Se dice que Naralex sigue en algún lugar del laberinto, atrapado más allá de los límites del Sueño Esmeralda."] = "4d1835c423b0ee4a6773a1481ea2d03e",
             ["Horado Rajacieno se encuentra en el extremo más al sur de Los Baldíos, en el lado oeste del camino."] = "4855c8dab63ff7e92429d6df87b7b3cd",
             ["La Montaña Roca Negra linda con La Garganta de Fuego al norte y Las Estepas Ardientes al sur."] = "7beb3ee244d9c85c277537d4ba4a2fe1",
@@ -6008,6 +6392,15 @@ GossipText = {
             ["Yo no, pero muchos por ahí sí buscan amor. ¡Deberías comprarme pruebas de amor, echarte un poco de colonia o perfume y pasar a su lado!"] = "54899ff43d9fa3680bd5231fd54eae44",
             ["Zahúrda Rajacieno se encuentra en el extremo más al sur de Los Baldíos, en el lado este del camino."] = "ae45cd449d9b601c1faa2ad7d470e04a",
             ["¿Te interesa explorar una de estas mazmorras?"] = "9211a5a83384bc6bf667f9e87661f2b5",
+        },
+        [8962] = {
+            ["Creo que mi collar cayó en el lago. Mi papá me lo regaló y ahora se va a enfadar conmigo."] = "b4615-model-80",
+            ["¡Gracias, $gseñor:señorita; por encontrar mi collar! ¡Eres lo mejor!"] = "b4616-human-female-kid",
+            ["¡Gracias, señorita por encontrar mi collar! ¡Eres lo mejor!"] = "b4616-human-female-kid",
+        },
+        [8965] = {
+            ["Hola, $gseñor:señora;... ¿tienes algo de tiempo para echarnos una mano? ¿Por favor?"] = "ef28db84b525a406d4e688bbedc3e068",
+            ["¡Gracias nuevamente por ayudar a Hilary, $gseñor:señorita;! ¡Cuando crezca quiero ser un héroe igual que tú!"] = "b217baf215f2d580b5f89ad5807da5fc",
         },
         [9021] = {
             ["<Kharan carraspea.>$B$BAtravesamos el túnel de la Garganta de Fuego y los páramos que la rodean. Visto ahora, todo estaba sospechosamente tranquilo. Los únicos peligros con que nos topamos fueron la flora y la fauna de la región, criaturas que mis hombres despacharon sin esfuerzo.$B$BLlegamos a la montaña Roca Negra con relativa facilidad y nos movimos por ella sin demasiada dificultad."] = "e1e6605df1bc6199e98f74408dedd4c1",
@@ -6116,6 +6509,7 @@ GossipText = {
             ["Por favor, deja en paz a un viejo espíritu."] = "75c7653932086fa3c6eb2d294f26bd7a",
         },
         [9356] = {
+            ["Antiguamente la capital de los enanos Hierro Negro, este laberinto volcánico ahora sirve como trono de poder de Ragnaros, el Señor del Fuego. Ragnaros ha descubierto cómo crear vida a partir de la piedra y planea formar un ejército de golems imparables para ayudarle a conquistar la Montaña Roca Negra. Ragnaros, obsesionado con derrotar a Nefarian y a sus esbirros dracónicos, hará lo que sea por conseguir la victoria final."] = "727cf38438acf58ee35c39f6a28aa289",
             ["Antiguamente la capital de los enanos Hierro Negro, este laberinto volcánico ahora sirve como trono de poder de Ragnaros, el Señor del Fuego. Ragnaros ha descubierto cómo crear vida a partir de la piedra y planea formar un ejército de gólems imparables para ayudarle a conquistar la Montaña Roca Negra. Ragnaros, obsesionado con derrotar a Nefarian y a sus esbirros dracónicos, hará lo que sea por conseguir la victoria final."] = "727cf38438acf58ee35c39f6a28aa289",
             ["Construida con las mismas vides que Horado Rajacieno, Zahúrda Rajacieno es la capital tradicional de la raza de los jabaespines. El laberinto de espinas que se extiende por todas partes, aloja un verdadero ejército de leales jabaespines junto con sus altos sacerdotes, la tribu Caramuerte. Sin embargo, recientemente una sombra de mal presagio ha caído sobre la rudimentaria guarida. Unos agentes de la Plaga de los no-muertos, a las órdenes del exánime Amnennar el Gélido, han tomado el control de la raza de los jabaespines y han convertido el laberinto de espinas en un bastión del poder de los no-muertos."] = "bcc93e0f69a610e26e8a585d15e236ca",
             ["Cuando entregues pruebas de amor a los habitantes de la ciudad, recibirás diferentes regalos a cambio. Algunos podrás guardarlos y utilizarlos, y otros ¡podrás juntarlos y dárselos a tu $ghéroe favorito:heroína favorita;! Visita a Kwee Q. Mercachifle y entrégaselos.$B$BEncontrarás a Kwee cerca de Bolvar, Magni o Tyrande."] = "ab1b05dce1379cc50a508ec75bc5fecf",
@@ -6130,6 +6524,7 @@ GossipText = {
             ["Esta ciudad abrasada por los rayos del sol es el hogar de los trols Furiarena, famosos por su particular falta de piedad y su oscuro misticismo. Las leyendas de los trols hablan de una poderosa espada llamada Sul'thraze la Azotadora, un arma capaz de infundir miedo y flaqueza incluso a los enemigos más formidables. Mucho tiempo atrás, la espada fue partida por la mitad. Sin embargo, hay rumores que dicen que las dos mitades se encuentran en algún lugar dentro de los muros de Zul'Farrak."] = "8cdbbc96d739b730ea3dd0482497fe79",
             ["Frustrado por la falta de progreso de los magos de Dalaran contra los no-muertos durante la Tercera Guerra, el archimago Arugal decidió invocar a los ferocanis extra-dimensionales para dar un empujón a sus tropas cada vez menores. Los lobizones atacaron a la Plaga y, rápidamente, se dirigieron a los magos y asediaron el bastión del noble barón Filargenta. Pronto, el fuerte fue presa de las sombras y se convirtió en cenizas. Enloquecido por la culpa, Arugal adoptó a los ferocanis como sus hijos y se retiró al Castillo de Colmillo Oscuro."] = "b710141cbfed33e4215f9f02e57b1285",
             ["Gnomeregan se encuentra en la parte oeste de Dun Morogh."] = "a28655b7a8d174f6fdec53c01d3eecef",
+            ["Hace más de mil años, un grupo de sacerdotes trols conocidos como los Atal'ai, intentaron resucitar a un dios de la sangre ancestral llamado Hakkar el Cazador de Almas. Tras la consecuente guerra civil, los sacerdotes fueron derrotados y exiliados al Pantano de las Penas. Allí erigieron un templo en honor de Hakkar, para prepararse para su llegada al mundo físico. La Dragón Aspecto Ysera, pronto descubrió los planes de los Atal'ai y hundió el templo bajo el pantano. Hasta el día de hoy, las ruinas han estado protegidas por los poderosos dragones verdes."] = "f4ce8cc991dc9b8e53cbf5bafea7a20e",
             ["Hace más de mil años, un grupo de sacerdotes trols conocidos como los Atal'ai, intentaron resucitar a un dios de la sangre ancestral llamado Hakkar el Cazador de Almas. Tras la consecuente guerra civil, los sacerdotes fueron derrotados y exiliados al Pantano de las Penas. Allí erigieron un templo en honor de Hakkar, para prepararse para su llegada al mundo físico. La dragón Aspecto Ysera, pronto descubrió los planes de los Atal'ai y hundió el templo bajo el pantano. Hasta el día de hoy, las ruinas han estado protegidas por los poderosos dragones Verdes."] = "f4ce8cc991dc9b8e53cbf5bafea7a20e",
             ["Hace poco, un druida elfo de la noche llamado Naralex, descubrió una red de cuevas subterráneas en el corazón de Los Baldíos. Creyendo que podría usar los manantiales de las cuevas para restaurar la exuberancia de Los Baldíos, el druida comenzó a absorber las energías del legendario Sueño Esmeralda. De alguna forma, su visión se transformó en una pesadilla y pronto, las Cuevas de los Lamentos se convirtieron en una guarida de viciosos y letales depredadores. Se dice que Naralex sigue en algún lugar del laberinto, atrapado más allá de los límites del Sueño Esmeralda."] = "53cfb8044c1292d233012d45237f180d",
             ["Horado Rajacieno se encuentra en el extremo más al sur de Los Baldíos, en el lado oeste del camino."] = "b70df0c6d8237e82e8eab2e2cee97a1c",
@@ -6161,12 +6556,20 @@ GossipText = {
             ["Zahúrda Rajacieno se encuentra en el extremo más al sur de Los Baldíos, en el lado este del camino."] = "1cdc3bb3780b30bc1ddb25b3e96eeb14",
             ["¿Te interesa explorar una de estas mazmorras?"] = "5e09760e17cbc670577373cc3a58f914",
         },
+        [9459] = {
+            ["<Los ojos de Cyrus brillan con intensidad>$B$B¿Te devoro o te dejo vivir?$B$BQuizás aún puedas resultar de utilidad... $B$BDesafía a mi esbirro, $r. Sobrevive y tráeme una prueba de tu victoria."] = "79446f80e8ca8a30ecca20456f34ee6f",
+            ["Solo un idiota se atreve a molestarme en mi guarida."] = "a95fa5846ebe0e9f40ba7740f04ece48",
+        },
         [9465] = {
             ["He tenido que realizar una rigurosa reconversión con muchos estudiantes de todo lo que habían aprendido, para poder enseñarles desde cero. El servicio que ofrezco aumenta de dificultad cada vez que se hace. Por esa razón, también aumenta el precio de cada nueva instrucción. ¿Quieres que elimine todos los talentos que has aprendido?"] = "30ee103c545f987ab518c70f6d3e640e",
             ["Te doy la bienvenida, $ghermano:hermana;. Si has venido en busca de instrucción, estaré encantado de ayudarte.$B$BSomos los protectores del equilibrio, ahora y siempre, mientras Malfurion siga sumido en el Sueño. Nunca lo olvides."] = "95baad8c0ee127ac815bdd480620f4f4",
         },
+        [9467] = {
+            ["Grrrmmm..."] = "607a3644b8ff49831028594868a51c18",
+        },
         [9501] = {
             ["Al igual que el viento de las llanuras, siempre eres $gbienvenido:bienvenida; aquí."] = "a98c33cf2b0c65fb09a0b00d67122e46",
+            ["Antiguamente la capital de los enanos Hierro Negro, este laberinto volcánico ahora sirve como trono de poder de Ragnaros, el Señor del Fuego. Ragnaros ha descubierto cómo crear vida a partir de la piedra y planea formar un ejército de golems imparables para ayudarle a conquistar la Montaña Roca Negra. Ragnaros, obsesionado con derrotar a Nefarian y a sus esbirros dracónicos, hará lo que sea por conseguir la victoria final."] = "d1d167264b852e04dcc247504cad2f84",
             ["Antiguamente la capital de los enanos Hierro Negro, este laberinto volcánico ahora sirve como trono de poder de Ragnaros, el Señor del Fuego. Ragnaros ha descubierto cómo crear vida a partir de la piedra y planea formar un ejército de gólems imparables para ayudarle a conquistar la Montaña Roca Negra. Ragnaros, obsesionado con derrotar a Nefarian y a sus esbirros dracónicos, hará lo que sea por conseguir la victoria final."] = "d1d167264b852e04dcc247504cad2f84",
             ["Construida con las mismas vides que Horado Rajacieno, Zahúrda Rajacieno es la capital tradicional de la raza de los jabaespines. El laberinto de espinas que se extiende por todas partes, aloja un verdadero ejército de leales jabaespines junto con sus altos sacerdotes, la tribu Caramuerte. Sin embargo, recientemente una sombra de mal presagio ha caído sobre la rudimentaria guarida. Unos agentes de la Plaga de los no-muertos, a las órdenes del exánime Amnennar el Gélido, han tomado el control de la raza de los jabaespines y han convertido el laberinto de espinas en un bastión del poder de los no-muertos."] = "1efdcf0d1f0182cadd7e556c2271b952",
             ["Cuando entregues pruebas de amor a los habitantes de la ciudad, recibirás diferentes regalos a cambio. Algunos podrás guardarlos y utilizarlos, y otros ¡podrás juntarlos y dárselos a tu $ghéroe favorito:heroína favorita;! Visita a Kwee Q. Mercachifle y entrégaselos.$B$BEncontrarás a Kwee cerca de Bolvar, Magni o Tyrande."] = "84004ad843c4e25945ff9c41c2c64e48",
@@ -6181,6 +6584,7 @@ GossipText = {
             ["Esta ciudad abrasada por los rayos del sol es el hogar de los trols Furiarena, famosos por su particular falta de piedad y su oscuro misticismo. Las leyendas de los trols hablan de una poderosa espada llamada Sul'thraze la Azotadora, un arma capaz de infundir miedo y flaqueza incluso a los enemigos más formidables. Mucho tiempo atrás, la espada fue partida por la mitad. Sin embargo, hay rumores que dicen que las dos mitades se encuentran en algún lugar dentro de los muros de Zul'Farrak."] = "134711fa5dcb6d2514b7dd12cb58353f",
             ["Frustrado por la falta de progreso de los magos de Dalaran contra los no-muertos durante la Tercera Guerra, el archimago Arugal decidió invocar a los ferocanis extra-dimensionales para dar un empujón a sus tropas cada vez menores. Los lobizones atacaron a la Plaga y, rápidamente, se dirigieron a los magos y asediaron el bastión del noble barón Filargenta. Pronto, el fuerte fue presa de las sombras y se convirtió en cenizas. Enloquecido por la culpa, Arugal adoptó a los ferocanis como sus hijos y se retiró al Castillo de Colmillo Oscuro."] = "131cac36cbe3c50c8b0b73b5a5cc8e31",
             ["Gnomeregan se encuentra en la parte oeste de Dun Morogh."] = "3a31427822c5fa1a87c7a675bd12855e",
+            ["Hace más de mil años, un grupo de sacerdotes trols conocidos como los Atal'ai, intentaron resucitar a un dios de la sangre ancestral llamado Hakkar el Cazador de Almas. Tras la consecuente guerra civil, los sacerdotes fueron derrotados y exiliados al Pantano de las Penas. Allí erigieron un templo en honor de Hakkar, para prepararse para su llegada al mundo físico. La Dragón Aspecto Ysera, pronto descubrió los planes de los Atal'ai y hundió el templo bajo el pantano. Hasta el día de hoy, las ruinas han estado protegidas por los poderosos dragones verdes."] = "5f4d64e508e2e540625383eeae8529e5",
             ["Hace más de mil años, un grupo de sacerdotes trols conocidos como los Atal'ai, intentaron resucitar a un dios de la sangre ancestral llamado Hakkar el Cazador de Almas. Tras la consecuente guerra civil, los sacerdotes fueron derrotados y exiliados al Pantano de las Penas. Allí erigieron un templo en honor de Hakkar, para prepararse para su llegada al mundo físico. La dragón Aspecto Ysera, pronto descubrió los planes de los Atal'ai y hundió el templo bajo el pantano. Hasta el día de hoy, las ruinas han estado protegidas por los poderosos dragones Verdes."] = "5f4d64e508e2e540625383eeae8529e5",
             ["Hace poco, un druida elfo de la noche llamado Naralex, descubrió una red de cuevas subterráneas en el corazón de Los Baldíos. Creyendo que podría usar los manantiales de las cuevas para restaurar la exuberancia de Los Baldíos, el druida comenzó a absorber las energías del legendario Sueño Esmeralda. De alguna forma, su visión se transformó en una pesadilla y pronto, las Cuevas de los Lamentos se convirtieron en una guarida de viciosos y letales depredadores. Se dice que Naralex sigue en algún lugar del laberinto, atrapado más allá de los límites del Sueño Esmeralda."] = "1631876c10990f6b69fb643f319f15da",
             ["Horado Rajacieno se encuentra en el extremo más al sur de Los Baldíos, en el lado oeste del camino."] = "b07c8c68897f70867bbb75e49138b18d",
@@ -6210,6 +6614,9 @@ GossipText = {
             ["Yo no, pero muchos por ahí sí buscan amor. ¡Deberías comprarme pruebas de amor, echarte un poco de colonia o perfume y pasar a su lado!"] = "a70be99ff08d4df4c93b09b77588a051",
             ["Zahúrda Rajacieno se encuentra en el extremo más al sur de Los Baldíos, en el lado este del camino."] = "8960494e8735de52e731bccc5622764d",
             ["¿Te interesa explorar una de estas mazmorras?"] = "a61f3b373d7747d0767475c1b5dab2f6",
+        },
+        [9502] = {
+            ["No disfruto conversando."] = "6adff6c8f33e15421b3e53c06f654bbe",
         },
         [9528] = {
             ["'¿Darnassae?'$B$BLa druida de los elfos de la noche te mira expectante, pero está claro que no puedes comunicarte verbalmente con ella. Impertérrita, se señala a sí misma y sonríe. Te señala a ti y sonríe de nuevo. Finalmente hace varios gestos señalando el camino hacia el norte.$B$BQuizás quiera indicarte que hay un druida con el que puedes hablar siguiendo el camino."] = "60d3b613b0964e6b175fb809f8530f6c",
@@ -6252,9 +6659,11 @@ GossipText = {
         },
         [9558] = {
             ["Parece como si necesitases atravesar el Mare Magnum. Pues has venido al lugar adecuado. Este es el atracadero de La Fantasía de la Doncella, el mejor barco de pasajeros que existe para navegar por estas aguas. Cuando llegue, simplemente sube a bordo y en un abrir y cerrar de ojos estarás disfrutando de las suaves playas de Tuercespina."] = "7384674c38fa1ede1c57e9601476e82b",
+            ["Parece como si necesitases atravesar el Mare Magnum. Pues has venido al lugar adecuado. Este es el atracadero de la Fantasía de la doncella, el mejor barco de pasajeros que existe para navegar por estas aguas. Cuando llegue, simplemente sube a bordo y en un abrir y cerrar de ojos estarás disfrutando de las suaves playas de Tuercespina."] = "7384674c38fa1ede1c57e9601476e82b",
         },
         [9559] = {
             ["Tengo que decir que la Bahía del Botín tiene la mejor sopa de almejas que se pueda probar en los Mares del Sur. Ah, ¿no te interesa la cocina? Pues deja que sea el primero en darte la bienvenida al atracadero de La Fantasía de la Doncella, el mejor barco de pasajeros que hay para navegar entre los Reinos del Este y Kalimdor. Pronto volverá para realizar otro viaje a Trinquete, así que ponte cómodo hasta que llegue."] = "892299cedeab9a28288583ccf9e05af2",
+            ["Tengo que decir que la Bahía del Botín tiene la mejor sopa de almejas que se pueda probar en los Mares del Sur. Ah, ¿no te interesa la cocina? Pues deja que sea el primero en darte la bienvenida al atracadero de la Fantasía de la doncella, el mejor barco de pasajeros que hay para navegar entre los Reinos del Este y Kalimdor. Pronto volverá para realizar otro viaje a Trinquete, así que ponte cómodo hasta que llegue."] = "892299cedeab9a28288583ccf9e05af2",
         },
         [9562] = {
             ["Saludos, $r."] = "0793fb444e9e3f6785a013caab465dd1",
@@ -6308,11 +6717,21 @@ GossipText = {
         [9679] = {
             ["¿Crest te envió?"] = "7594596aad831a20598b3e166ad2bda1",
         },
+        [9836] = {
+            ["Ah, así... que lo has encontrado.$B$B<Mathredis apunta al libro que está en tu poder.>$B$B¿Has reunido los componentes necesarios?$B$B¡Las manifestaciones que se detallan en el tratado, imbécil!"] = "447da93397ee19d1747cc4f97b12e21c",
+            ["Están perdidos, $r. Tratados escritos por los maestros elfos. Dispersos por el mundo cuando se desató la Plaga sobre Quel'Thalas.$B$BAhora estamos buscando esos tratados. Los buscamos para desentrañar los secretos que esconden - para recuperar el poder que una vez tuvimos.$B$BYo busco los diez tratados escritos por el maestro Kariel Winthalus. Si encuentras uno de esos tratados, déjame que absorba sus propiedades mágicas y te fabricaré una fusión de poder... por supuesto, todo tiene su precio. Mi precio te parecerá elevado, pero deberás pagarlo."] = "279d93b475a69b691d6d84fc9c943ada",
+        },
+        [9937] = {
+            ["Grrr..."] = "5d465e8581288e4a61a95c9766718f8c",
+        },
         [9990] = {
             ["Este lugar fue el escenario de una gran batalla... de muchas grandes batallas."] = "f9fe6067b476d43bd34c6ff1b4e89b22",
         },
         [9997] = {
             ["$GBienvenido:Bienvenida; al refugio, $n. Algunos vienen aquí con algún fin, otros por accidente... Pero todos tienen una historia única que contar."] = "291d560fcee6b61965630c94cc231833",
+        },
+        [10042] = {
+            ["Grrr..."] = "49e04aed44e25f386f3208ff996901e6",
         },
         [10043] = {
             ["Creo que Plugger llenó demasiado uno de estos barriles. ¡Parece que va a explotar!"] = "f85bd951c3aa0755cff0ab158e1d261b",
@@ -6351,6 +6770,7 @@ GossipText = {
             ["Saludos, $c. Soy Rexxar, campeón de la Horda, servidor de Thrall, maestro de las bestias de la naturaleza."] = "af40e357c59edbf15d948e3c6f65eeb5",
         },
         [10216] = {
+            ["... fritos en sartén, fritos en mucho aceite y a la plancha..."] = "b5533-dwarf-male-standard",
             ["¡Hola! Soy Gubber Blump."] = "363e9a32646c220ede74b874d124997b",
         },
         [10219] = {
@@ -6427,6 +6847,11 @@ GossipText = {
         [10431] = {
             ["Saludos, $gamigo:amiga;. Que el Alba te cuide en estos tiempos terribles."] = "9ec1c2021f5f1a32200d3ff28474b403",
         },
+        [10432] = {
+            ["¡Silencio! ¿Crees que los dragones apestados nacerán y se adiestrarán solos?"] = "2271dab6d6eaec966748c88065c2208e",
+            ["¿Has venido aquí desde Las Estepas Ardientes? ¿Tienes mis huevos de dragón Negro?"] = "684dde0b52cf81bed20d8cf39c917e98",
+            ["¿Qué, si se me permite preguntar, estás haciendo aquí? ¡Ponte el uniforme y estudia!"] = "30cbeec87198d04f5fda3d197d38a7e3",
+        },
         [10433] = {
             ["No pareces un estudiante..."] = "9a65e2620d90d094df252c8038ca632a",
             ["Siento que algo te perturba..."] = "18a7c71660d684204d4641014512c4b6",
@@ -6442,9 +6867,25 @@ GossipText = {
             ["Te recomiendo encarecidamente que visites a Sayge para que te adivine el futuro. Lo sé, lo sé... es un gnoll. ¡Pero es un gnoll muy especial con el poder de la adivinación!$B$B¡Y continuamente ampliamos la feria con todo tipo de atracciones nuevas!"] = "0e3b200f99409d7e38d9ee962e90629f",
             ["¡Excelente pregunta! Tenemos muchas cosas en esta feria. Si quieres comida o bebida, dirígete a la barraca de Stamp y Sylannia. Mi favorito es el Gran Reserva de la Luna Negra.  Si por el contrario prefieres comprar algo más exótico, Lhara seguro que tiene lo que buscas pues su especialidad son las rarezas de todas las partes del mundo.  Y luego está Flik, que andará por ahí en alguna parte. Si lo encuentras verás que vende pelotas para lanzar y ranas para tener como mascotas."] = "f65ade535c8771bc0c01fd7cb18abc05",
         },
+        [10475] = {
+            ["Dedica menos tiempo a hablar y más a escuchar."] = "4d1bad7af376297f73fca3367721ff01",
+            ["Vigila tus pasos aquí, $gchico:chica;. El maestro lo ve todo..."] = "333d11951b9b4a96dc4fba7aa0d0b458",
+            ["¡Debemos centrarnos si queremos que desove nuestro Vuelo!"] = "b601748c1bcd1821ca074af3a2982332",
+            ["¡Silencio! ¡No puedo permitirme perder ni una sola de sus palabras!"] = "c9264be62f646404252ba9e5e7f5fe65",
+            ["¡Silencio! ¿No puedes ver que está hablando el maestro?"] = "64cfc8290901cd7b5d66e365a067c0e7",
+            ["¿Has olvidado tu uniforme de alumno? ¿Crees que la moda es más importante que la dominación de la Plaga?"] = "1836bbc17960fdcb7f08141883cf0cc2",
+            ["¿Has traído tus libros de texto? ¿Puedo verlos contigo?"] = "24cd4f43089038e7b82f4d927f11e09a",
+            ["¿Terminaste las tareas de ayer? ¡Si es así, siéntate a mi lado!"] = "36ce0ed6ce4ec90a2d4a9413399136e4",
+        },
+        [10540] = {
+            ["Ah, sí, he oído hablar de lo' Formaviento'. Es un placer conocerte.  Mi pueblo ha luchado contra los elfo' durante mile' de año'. Si ere' la mitad de feroz que tu' pariente' de Darnassus o Quel'Thalas, los Lanza Negra estarán encantado' de considerarte su amigo.  Te deseo buena suerte en tus viajes, $c. Los Lanza Negra sabemo' muy bien lo que es no tener un hogar, así que espero que encuentre' lo que tu pueblo necesita para salvar el suyo."] = "esMX-f1aacc1799b605ffddd735a90b77d1e6",
+        },
         [10578] = {
             ["Ey colega. Ve hablar con mi maestro Gadrin allá. ¡Cuidado con el Zalazane, estar loco con él, y yo arreglar todo!"] = "5c340bf8d079d06c25dc98c4fde2c2c0",
             ["Sí, colega, yo asistente de Gadrin soy. Este ser trabajo voluntario que mi modo es de terminar con la Escuela de médicos brujos. Como tu ayudarme yo te ayudo gratis. ¿Qué necesitar?"] = "c47613e829659c77c1817810ed8fa886",
+        },
+        [10583] = {
+            ["¿Adónde quieres volar?"] = "3e057055259d660918d6daacb764fb05",
         },
         [10618] = {
             ["Hola $gviajero:viajera;. No son muchos los que me encuentran así.$B$BMi nombre es Rivern y entreno a los Sables de Hielo de Cuna del Inverno para convertirlos en monturas.$B$BEstos felinos son los más salvajes y difíciles de domar de todos los dientes de sable. Solo aquellos en los que tenemos más confianza, los exaltados, pueden intentar montar uno.$B$BNo venderé una montura así a todo el mundo. No, debes trabajar duro y ganarte mi aprobación y la de los propios dientes de sable."] = "36c8e9c4ac3bcc7350a02ddb82c11cbc",
@@ -6455,6 +6896,10 @@ GossipText = {
             ["¡Calculo que las probabilidades de obtener una pieza así serían de una entre un millón! ¡Una piel única en la vida! Incluso los artesanos con más disciplina fracasarían varios cientos de veces desollando la bestia antes de poder obtener una sola muestra prístina."] = "8a0cd35a24d37645220db16398cde660",
             ["¿Si consiguieras traerme el pellejo de la bestia? Bien... Déjame enseñarte..."] = "dcf2194937d4f71a8dcd75edc4a3df89",
         },
+        [10666] = {
+            ["Ah, sí. Nosotros tenerlo aquí mismito."] = "b326582-narrator-male",
+            ["¡Nosotros tener cosas importantes que hacer!"] = "b326579-narrator-male",
+        },
         [10667] = {
             ["Hola otra vez, $N. Siento que el flujo del tiempo se ve amenazado por fuerzas verdaderamente poderosas. Tu incondicional ayuda siempre es bien recibida por Vuelo de Bronce.$B$BMientras que el pasado permanece inalterable, el futuro sufre continuos cambios. Las decisiones que tomes en este momento pueden orientar ese cambio."] = "a1aab080f67d3f1164b33c4dc1a8628b",
             ["Hola, $N. Soy conocida como Chronormu, pero puedes llamarme Chromie. Me gusta que me traten con familiaridad.$B$BSeguro que te preguntas cómo puedo saber tu nombre. Soy miembro del Vuelo de Bronce en armonía eterna con el flujo y reflujo del tiempo. Podría decirse que ya nos habíamos encontrado y nos volveremos a encontrar.$B$BEspero que la presentación visual que he elegido no te perturbe. Se me pude acusar de ser un centinela de lugares llenos de aflicción, pero he decidido no ahogarme el desconsuelo de este lugar."] = "5fbeeb1ccae7f0a6c91aa94af815dd14",
@@ -6463,10 +6908,22 @@ GossipText = {
             ["El cuerpo es el de una guerrera orca.$B$BEstá claro que murió en combate, probablemente contra los jabaespines de la zona."] = "3b33513dae45313b3f3adfa0fe9a92e2",
             ["Giras el cuerpo y ves las marcas de espadas y hechizos en el cuerpo de la difunta orca... su armadura está totalmente destruida y su enredado cabello le oculta el rostro.$B$BSegún la descripción de Mankrik no tienes ninguna duda de que es su mujer.$B$BLe dolerán las noticias, pero sabes que debería conocer la verdad."] = "234801d843bf8cf2c310d7552c3d58d3",
         },
+        [10721] = {
+            ["Estoy listo."] = "esMX-4537179c465a560e850851de04699e93",
+            ["¿Estás lista para comenzar?"] = "esMX-6043646e65be04c3d16bc68ee811b757",
+            ["¿Estás listo para comenzar?"] = "esMX-95ea22da4aa1d7fde7c1c2a5aee7544a",
+            ["¿También estás aquí para demostrar tu valía?"] = "esMX-49fcbb88b51beda2398d72496c202be1",
+        },
         [10739] = {
             ["''...''$B$BEl cuerpo del druida tauren yace inmóvil. Parecería que finalmente ha abandonado este mundo para descubrir las maravillas del más allá."] = "08f10ccaf3a2c6de55534ebff038dd0f",
             ["Por favor, ayúdame $ghermano:hermana;...$B$BPronto dejaré este mundo y, aunque sufro, sé que dejaré de hacerlo en cuanto lo abandone. Pero la naturaleza, $ghermano;hermana;... la naturaleza también sufre y no conoce ninguna liberación. Te pido ayuda con mi último aliento de vida."] = "67169b2421921ed2ab7e41cf84226c3c",
             ["Sí, hablo un idioma que comprendes $r. No somos animales, aunque casi todos los de tu clase nos siguen tratando así. Pero nuestras diferencias empalidecen en vista de la tragedia que ha asolado estas tierras. Por favor, deja a un lado tus diferencias con los de mi clase y escucha mi agonizante súplica.$B$BVine a esta tierra para reparar todo lo que me fuera posible, pero todo habrá sido en vano a menos que puedas ayudarme. Te estoy pidiendo ayuda con el último aliento de vida."] = "fc72657a0b7757c758fbe98a28b4863d",
+        },
+        [10740] = {
+            ["Escucha, $r. Escúchame bien...$B$BLos jinetes de dragones vinieron por la noche, cabalgando a lomos del Vuelo Negro. Golpearon rápidamente y con una precisión letal, llevándose a las jóvenes crías, como yo, y escapando ocultos en el velo de la oscuridad.$B$BVi con horror cómo utilizaban a mis hermanos y hermanas para sus experimentos. Con nuestra esencia habrían de crear el Vuelo Cromático."] = "af5da392e19ebe1f7db682635515ad0c",
+            ["Estoy... estoy gravemente herido..."] = "634be68f13f15e15f34ae34a2299525b",
+            ["Nefarian había ordenado destruir inmediatamente a los sujetos no aptos, pero esas bestias repugnantes no iban a hacerlo sin someternos antes a una 'gran' tortura.$B$BCuando estuvimos 'destrozados', reunieron nuestros restos y nos arrojaron a estas bestias. Utilizaron nuestros cuerpos como instrumento para sus perversos juegos: fuimos arrojados a la lava o a algo aún peor: a los brazos abiertos y ansiosos de la sádica legión de ahí abajo."] = "e78dea4ab9cbb4b5010a40ae908378cd",
+            ["Viniste justo cuando iban a arrojarme a esos demonios, te doy las gracias. ¿Hay algún modo en el que yo, o mejor dicho, nosotros, los del Vuelo Azul, podamos ayudarte?$B$BHas llegado hasta aquí, $r, y has arriesgado mucho. ¿Seguirás adelante para combatir a Nefarian y a su legión de Roca Negra?"] = "f9e70b322a9aeac89103eddcfb7e0aa2",
         },
         [10776] = {
             ["Buah... Necesito un pitillo y la caricia de una hermosa mujer gnoma... ¡y no tiene por qué ser en ese orden!$B$B¡He estado metido en la tripa de esa cosa durante meses! ¿Pero qué día es hoy? Ah, da igual. Lo que importa es que por fin estoy fuera.$B$B¡YUHUUUUUU!"] = "5f1f0e28e348cf72010f73f014cb9b70",
@@ -6532,6 +6989,14 @@ GossipText = {
             ["Me alegra ver a otros que combaten la Plaga en Stratholme, porque es aquí donde son más fuertes.$B$BSaludos. Soy Aurius. Una vez fui paladín de la Mano de Plata, pero como otros que flaquearon en su fe... caí en desgracia. ¡La Plaga me sedujo y casi me transformó en un jinete de la muerte!$B$BPor último, y sintiendo los peligros que me amenazaban, me refugié en esta capilla. Es un lugar sagrado donde el primer paladín, Uther el Iluminado, fue ordenado miembro de la Orden de la Mano Plata."] = "838b9927288bcbb1e762b2ef266b1a9d",
             ["No me queda mucho tiempo en este mundo, pero si la Luz lo quiere, bastará para cumplir mi destino. Cuando te enfrentes al Barón Osahendido estaré a tu lado."] = "a30c5c705bd6b70241922ce37f6afcdb",
         },
+        [10918] = {
+            ["A cambio de su alma, yo le enseñaría los secretos de la forja demoníaca. El alma de un orco Roca Negra no es muy valiosa pero en estos tiempos difíciles, un alma, cualquier alma, es mejor que ninguna."] = "07b7bc1afa093c63dac922aa6bcaa543",
+            ["Cogió la coraza rúnica sin forjar, utilizado para la creación de la coraza demoníaca forjada y huyó sin pagar. Pero yo no soy ningún estúpido... la pieza es inútil sin conocimiento o sin la receta para aplicar ese conocimiento.$B$BMe pregunto... ¿seguirá a salvo en su ciudad de la Cumbre de Roca Negra intentando crear el objeto a partir de la materia prima? ¡Sé que no se atreve a salir!"] = "2502b0bf5781adae50fb34864a2d2776",
+            ["Muérdete la lengua, $r, para que no te la arranque del cráneo y la utilice como calientacuernos."] = "020d4ec09b9e3368ecc731ee1f13062c",
+            ["No pongas a prueba mi paciencia, mortal."] = "bcd150d44b6720c6a845b6625833c43a",
+            ["Qué es lo que hago... por supuesto. Medito. Me lamento. Odio. Conspiro. Y cuando se cierra el círculo vuelvo a empezar. ¿Qué quieres de mí? Tengo muchas cosas en la cabeza."] = "578fd3b0f0546a93f8fae9c581d81d86",
+            ["¿A ti?$B$B<Lorax ríe.>$B$BLo dudo.$B$BEstoy en estas ruinas y sueño. Sueño con el día en que agarre a ese miserable ladrón, Goraluk Yunquegrieta.$B$BHicimos un trato él y yo. Un trato que él rompió. Traicionado."] = "a70e13c87d633935eadddf7a2fe4251f",
+        },
         [10922] = {
             ["Te doy la bienvenida, $N. Y también el Círculo Esmeralda.$B$BCon suerte juntos podremos ayudar a rejuvenecer y proteger este bosque antaño poderoso. Muchas fuerzas pretenden destruirlo, desde dentro... y desde fuera.$B$BNo te dejes convencer por el poder que aquí reside... solo te corromperá, como lo ha hecho con toda esta tierra."] = "508c0975d055f561070f14c8877581b1",
         },
@@ -6596,6 +7061,9 @@ GossipText = {
         [11035] = {
             ["¡Las Tierras de la Peste son un lugar excelente para atacar a la Plaga!"] = "28182dcd5f66af0c7447e4efb15d0c5c",
         },
+        [11036] = {
+            ["Mediante el conocimiento, podremos encontrar la salvación."] = "esMX-740df8cff3eed78d6713498d3d466b91",
+        },
         [11037] = {
             ["Oh, aún tienes muchas cosas que aprender. Te enseñaría todo si pudiera, ¡pero yo también sigo aprendiendo! ¿Por qué no vas a hablar con Trixie Chispaveloz en Forjaz? ¡Te ayudará a seguir adelante con tu educación!"] = "b14de01992948f1b0553a6de31fee1d3",
             ["¡Hola! ¡Me llamo Jenna! ¿Y tú?"] = "7d443120bf24605ece221852345da227",
@@ -6656,6 +7124,7 @@ GossipText = {
         },
         [11052] = {
             ["He vestido a reyes. Con la instrucción adecuada, tú también podrás hacerlo."] = "e8371e1cc30433d550a506007485f833",
+            ["No puedo ayudarte hasta que hayas aprendido mejor los principios básicos. Vuelve a verme cuando lo hayas superado."] = "b8198-human-male-official",
         },
         [11053] = {
             ["Ahora que las calderas se han resquebrajado podemos introducir el contraagente en el entorno. ¡Daremos a probar al mal su propia medicina!$B$BVe a pedir al alquimista Arbingon más información sobre los componentes necesarios para las calderas. Yo me ocuparé de todos los informes sobre nuestros progresos en volver la peste contra la Plaga."] = "a399af1c21d429a0c89525c83777d4d9",
@@ -6746,6 +7215,7 @@ GossipText = {
             ["Si estás aquí para recibir más instrucción, has sobrestimado mis habilidades. Allí está Telonis. Ve a hablar con él, seguro que puede ayudarte."] = "08fd93ddedad6346d0a253b6fb302639",
         },
         [11083] = {
+            ["Oh, lo siento, pero en este momento ya sabes más sobre cuero que yo. Habla con Faldron y deseas seguir aprendiendo."] = "b7956-nightelf-female-sentinel",
             ["Si quieres coser cuero, has venido al lugar adecuado. Faldron y Telonis son auténticos artistas, yo espero aprender mucho de ellos."] = "ce221bcf9ee4474099d2525c5ca9f11a",
         },
         [11084] = {
@@ -6770,6 +7240,7 @@ GossipText = {
             ["Ojalá tuviera más estudiantes como tú. No hay muchos que se aventuren tan adentro en territorio enemigo. Aplaudo tu coraje."] = "01054e0f81cd813f7dd94d9b5ab20dcc",
         },
         [11103] = {
+            ["Antiguamente la capital de los enanos Hierro Negro, este laberinto volcánico ahora sirve como trono de poder de Ragnaros, el Señor del Fuego. Ragnaros ha descubierto cómo crear vida a partir de la piedra y planea formar un ejército de golems imparables para ayudarle a conquistar la Montaña Roca Negra. Ragnaros, obsesionado con derrotar a Nefarian y a sus esbirros dracónicos, hará lo que sea por conseguir la victoria final."] = "9c2b22f32a137854d984166b2aaded4b",
             ["Antiguamente la capital de los enanos Hierro Negro, este laberinto volcánico ahora sirve como trono de poder de Ragnaros, el Señor del Fuego. Ragnaros ha descubierto cómo crear vida a partir de la piedra y planea formar un ejército de gólems imparables para ayudarle a conquistar la Montaña Roca Negra. Ragnaros, obsesionado con derrotar a Nefarian y a sus esbirros dracónicos, hará lo que sea por conseguir la victoria final."] = "9c2b22f32a137854d984166b2aaded4b",
             ["Construida con las mismas vides que Horado Rajacieno, Zahúrda Rajacieno es la capital tradicional de la raza de los jabaespines. El laberinto de espinas que se extiende por todas partes, aloja un verdadero ejército de leales jabaespines junto con sus altos sacerdotes, la tribu Caramuerte. Sin embargo, recientemente una sombra de mal presagio ha caído sobre la rudimentaria guarida. Unos agentes de la Plaga de los no-muertos, a las órdenes del exánime Amnennar el Gélido, han tomado el control de la raza de los jabaespines y han convertido el laberinto de espinas en un bastión del poder de los no-muertos."] = "bbbb6f1884cdacec9af6cb67e3e1abd4",
             ["Cuando entregues pruebas de amor a los habitantes de la ciudad, recibirás diferentes regalos a cambio. Algunos podrás guardarlos y utilizarlos, ¡mientras que otros podrás juntarlos y dárselos a tu $ghéroe favorito:heroína favorita;! Visita a Kwee Q. Mercachifle y entrégaselos.$B$BEncontrarás a Kwee cerca de Bolvar, Magni o Tyrande."] = "b19764fa4b6d3a891fa5f750b3dd2517",
@@ -6785,6 +7256,7 @@ GossipText = {
             ["Frustrado por la falta de progreso de los magos de Dalaran contra los no-muertos durante la Tercera Guerra, el archimago Arugal decidió invocar a los ferocanis extra-dimensionales para dar un empujón a sus tropas cada vez menores. Los lobisones atacaron a la Plaga y, rápidamente, se dirigieron a los magos y asediaron el bastión del noble barón FIlargenta. Pronto, el fuerte fue presa de las sombras y se convirtió en cenizas. Enloquecido por la culpa, Arugal adoptó a los ferocanis como sus hijos y se retiró al Castillo de Colmillo Oscuro."] = "5d076554d313584aa1c5611cf0129a23",
             ["Gnomeregan se encuentra en la parte oeste de Dun Morogh."] = "a4f613548f3f5a63415a978d891ce475",
             ["Hace más de mil años, un grupo de sacerdotes trols conocidos como los Atal'ai, intentaron resucitar a un dios de la sangre ancestral llamado Hakkar el Cazador de Almas. Tras la consecuente guerra civil, los sacerdotes fueron derrotados y exiliados al Pantano de las Penas. Allí erigieron un templo en honor de Hakkar, para prepararse para su llegada al mundo físico. La dragón Aspecto Ysera, pronto descubrió los planes de los Atal'ai y hundió el templo bajo el pantano. Hasta el día de hoy, las ruinas han estado protegidas por los poderosos dragones Verdes."] = "4b24ea6b391a2efd0be7d84cc947d159",
+            ["Hace más de mil años, un grupo de sacerdotes trols conocidos como los Atal'ai, intentaron resucitar a un dios de la sangre ancestral llamado Hakkar el Cazador de Almas. Tras la consecuente guerra civil, los sacerdotes fueron derrotados y exiliados al Pantano de las Penas. Allí erigieron un templo en honor de Hakkar, para prepararse para su llegada al mundo físico. La dragón Aspecto Ysera, pronto descubrió los planes de los Atal'ai y hundió el templo bajo el pantano. Hasta el día de hoy, las ruinas han estado protegidas por los poderosos dragones verdes."] = "4b24ea6b391a2efd0be7d84cc947d159",
             ["Hace poco, un druida elfo de la noche llamado Naralex, descubrió una red de cuevas subterráneas en el corazón de Los Baldíos. Creyendo que podría usar los manantiales de las cuevas para restaurar la exuberancia de Los Baldíos, el druida comenzó a absorber las energías del legendario Sueño Esmeralda. De alguna forma, su visión se transformó en una pesadilla y pronto, las Cuevas de los Lamentos se convirtieron en una guarida de viciosos y letales depredadores. Se dice que Naralex sigue en algún lugar del laberinto, atrapado más allá de los límites del Sueño Esmeralda."] = "4352ca0c9a3782df4f9b0a23c9c7f9d7",
             ["Horado Rajacieno se encuentra en el extremo más al sur de Los Baldíos, en el lado oeste del camino."] = "25a80704f18ee56676b132bdded0fe94",
             ["La Montaña Roca Negra linda con La Garganta de Fuego al norte y Las Estepas Ardientes al sur."] = "aab40b74860886caa96dcfdaf979e180",
@@ -6817,6 +7289,7 @@ GossipText = {
         },
         [11106] = {
             ["Al igual que el viento de las llanuras, siempre eres $gbienvenido:bienvenida; aquí."] = "980ce6cc828845cb13bcbd8cd0b6917e",
+            ["Antiguamente la capital de los enanos Hierro Negro, este laberinto volcánico ahora sirve como trono de poder de Ragnaros, el Señor del Fuego. Ragnaros ha descubierto cómo crear vida a partir de la piedra y planea formar un ejército de golems imparables para ayudarle a conquistar la Montaña Roca Negra. Ragnaros, obsesionado con derrotar a Nefarian y a sus esbirros dracónicos, hará lo que sea por conseguir la victoria final."] = "4b2a582cee1f20d593eae9a388287135",
             ["Antiguamente la capital de los enanos Hierro Negro, este laberinto volcánico ahora sirve como trono de poder de Ragnaros, el Señor del Fuego. Ragnaros ha descubierto cómo crear vida a partir de la piedra y planea formar un ejército de gólems imparables para ayudarle a conquistar la Montaña Roca Negra. Ragnaros, obsesionado con derrotar a Nefarian y a sus esbirros dracónicos, hará lo que sea por conseguir la victoria final."] = "4b2a582cee1f20d593eae9a388287135",
             ["Construida con las mismas vides que Horado Rajacieno, Zahúrda Rajacieno es la capital tradicional de la raza de los jabaespines. El laberinto de espinas que se extiende por todas partes, aloja un verdadero ejército de leales jabaespines junto con sus altos sacerdotes, la tribu Caramuerte. Sin embargo, recientemente una sombra de mal presagio ha caído sobre la rudimentaria guarida. Unos agentes de la Plaga de los no-muertos, a las órdenes del exánime Amnennar el Gélido, han tomado el control de la raza de los jabaespines y han convertido el laberinto de espinas en un bastión del poder de los no-muertos."] = "18f70be5c25cb2ea163cd8d518bfdc66",
             ["Cuando entregues pruebas de amor a los habitantes de la ciudad, recibirás diferentes regalos a cambio. Algunos podrás guardarlos y utilizarlos, ¡mientras que otros podrás juntarlos y dárselos a tu $ghéroe favorito:heroína favorita;! Visita a Kwee Q. Mercachifle y entrégaselos.$B$BEncontrarás a Kwee cerca de Bolvar, Magni o Tyrande."] = "63f35b75e396252f797a4186f1286bee",
@@ -6832,6 +7305,7 @@ GossipText = {
             ["Frustrado por la falta de progreso de los magos de Dalaran contra los no-muertos durante la Tercera Guerra, el archimago Arugal decidió invocar a los ferocanis extra-dimensionales para dar un empujón a sus tropas cada vez menores. Los lobisones atacaron a la Plaga y, rápidamente, se dirigieron a los magos y asediaron el bastión del noble barón FIlargenta. Pronto, el fuerte fue presa de las sombras y se convirtió en cenizas. Enloquecido por la culpa, Arugal adoptó a los ferocanis como sus hijos y se retiró al Castillo de Colmillo Oscuro."] = "c08a11a40b198a8cdf5e21127dad1408",
             ["Gnomeregan se encuentra en la parte oeste de Dun Morogh."] = "d44d297c2cca8733f4d13c8c8c1f28d5",
             ["Hace más de mil años, un grupo de sacerdotes trols conocidos como los Atal'ai, intentaron resucitar a un dios de la sangre ancestral llamado Hakkar el Cazador de Almas. Tras la consecuente guerra civil, los sacerdotes fueron derrotados y exiliados al Pantano de las Penas. Allí erigieron un templo en honor de Hakkar, para prepararse para su llegada al mundo físico. La dragón Aspecto Ysera, pronto descubrió los planes de los Atal'ai y hundió el templo bajo el pantano. Hasta el día de hoy, las ruinas han estado protegidas por los poderosos dragones Verdes."] = "331713e1070e9f4f3576819f670ae53d",
+            ["Hace más de mil años, un grupo de sacerdotes trols conocidos como los Atal'ai, intentaron resucitar a un dios de la sangre ancestral llamado Hakkar el Cazador de Almas. Tras la consecuente guerra civil, los sacerdotes fueron derrotados y exiliados al Pantano de las Penas. Allí erigieron un templo en honor de Hakkar, para prepararse para su llegada al mundo físico. La dragón Aspecto Ysera, pronto descubrió los planes de los Atal'ai y hundió el templo bajo el pantano. Hasta el día de hoy, las ruinas han estado protegidas por los poderosos dragones verdes."] = "331713e1070e9f4f3576819f670ae53d",
             ["Hace poco, un druida elfo de la noche llamado Naralex, descubrió una red de cuevas subterráneas en el corazón de Los Baldíos. Creyendo que podría usar los manantiales de las cuevas para restaurar la exuberancia de Los Baldíos, el druida comenzó a absorber las energías del legendario Sueño Esmeralda. De alguna forma, su visión se transformó en una pesadilla y pronto, las Cuevas de los Lamentos se convirtieron en una guarida de viciosos y letales depredadores. Se dice que Naralex sigue en algún lugar del laberinto, atrapado más allá de los límites del Sueño Esmeralda."] = "af82564cf7ae1fe402a33ef253cb74cc",
             ["Horado Rajacieno se encuentra en el extremo más al sur de Los Baldíos, en el lado oeste del camino."] = "5a6a13f324242e75a6382d99c516cc94",
             ["La Montaña Roca Negra linda con La Garganta de Fuego al norte y Las Estepas Ardientes al sur."] = "06eb7bd37fd0c212607efd69ff668e03",
@@ -6863,6 +7337,7 @@ GossipText = {
         },
         [11116] = {
             ["Al igual que el viento de las llanuras, siempre eres $gbienvenido:bienvenida; aquí."] = "a98c33cf2b0c65fb09a0b00d67122e46",
+            ["Antiguamente la capital de los enanos Hierro Negro, este laberinto volcánico ahora sirve como trono de poder de Ragnaros, el Señor del Fuego. Ragnaros ha descubierto cómo crear vida a partir de la piedra y planea formar un ejército de golems imparables para ayudarle a conquistar la Montaña Roca Negra. Ragnaros, obsesionado con derrotar a Nefarian y a sus esbirros dracónicos, hará lo que sea por conseguir la victoria final."] = "d1d167264b852e04dcc247504cad2f84",
             ["Antiguamente la capital de los enanos Hierro Negro, este laberinto volcánico ahora sirve como trono de poder de Ragnaros, el Señor del Fuego. Ragnaros ha descubierto cómo crear vida a partir de la piedra y planea formar un ejército de gólems imparables para ayudarle a conquistar la Montaña Roca Negra. Ragnaros, obsesionado con derrotar a Nefarian y a sus esbirros dracónicos, hará lo que sea por conseguir la victoria final."] = "d1d167264b852e04dcc247504cad2f84",
             ["Construida con las mismas vides que Horado Rajacieno, Zahúrda Rajacieno es la capital tradicional de la raza de los jabaespines. El laberinto de espinas que se extiende por todas partes, aloja un verdadero ejército de leales jabaespines junto con sus altos sacerdotes, la tribu Caramuerte. Sin embargo, recientemente una sombra de mal presagio ha caído sobre la rudimentaria guarida. Unos agentes de la Plaga de los no-muertos, a las órdenes del exánime Amnennar el Gélido, han tomado el control de la raza de los jabaespines y han convertido el laberinto de espinas en un bastión del poder de los no-muertos."] = "1efdcf0d1f0182cadd7e556c2271b952",
             ["Cuando entregues pruebas de amor a los habitantes de la ciudad, recibirás diferentes regalos a cambio. Algunos podrás guardarlos y utilizarlos, y otros ¡podrás juntarlos y dárselos a tu $ghéroe favorito:heroína favorita;! Visita a Kwee Q. Mercachifle y entrégaselos.$B$BEncontrarás a Kwee cerca de Bolvar, Magni o Tyrande."] = "84004ad843c4e25945ff9c41c2c64e48",
@@ -6877,6 +7352,7 @@ GossipText = {
             ["Esta ciudad abrasada por los rayos del sol es el hogar de los trols Furiarena, famosos por su particular falta de piedad y su oscuro misticismo. Las leyendas de los trols hablan de una poderosa espada llamada Sul'thraze la Azotadora, un arma capaz de infundir miedo y flaqueza incluso a los enemigos más formidables. Mucho tiempo atrás, la espada fue partida por la mitad. Sin embargo, hay rumores que dicen que las dos mitades se encuentran en algún lugar dentro de los muros de Zul'Farrak."] = "134711fa5dcb6d2514b7dd12cb58353f",
             ["Frustrado por la falta de progreso de los magos de Dalaran contra los no-muertos durante la Tercera Guerra, el archimago Arugal decidió invocar a los ferocanis extra-dimensionales para dar un empujón a sus tropas cada vez menores. Los lobizones atacaron a la Plaga y, rápidamente, se dirigieron a los magos y asediaron el bastión del noble barón Filargenta. Pronto, el fuerte fue presa de las sombras y se convirtió en cenizas. Enloquecido por la culpa, Arugal adoptó a los ferocanis como sus hijos y se retiró al Castillo de Colmillo Oscuro."] = "131cac36cbe3c50c8b0b73b5a5cc8e31",
             ["Gnomeregan se encuentra en la parte oeste de Dun Morogh."] = "3a31427822c5fa1a87c7a675bd12855e",
+            ["Hace más de mil años, un grupo de sacerdotes trols conocidos como los Atal'ai, intentaron resucitar a un dios de la sangre ancestral llamado Hakkar el Cazador de Almas. Tras la consecuente guerra civil, los sacerdotes fueron derrotados y exiliados al Pantano de las Penas. Allí erigieron un templo en honor de Hakkar, para prepararse para su llegada al mundo físico. La Dragón Aspecto Ysera, pronto descubrió los planes de los Atal'ai y hundió el templo bajo el pantano. Hasta el día de hoy, las ruinas han estado protegidas por los poderosos dragones verdes."] = "5f4d64e508e2e540625383eeae8529e5",
             ["Hace más de mil años, un grupo de sacerdotes trols conocidos como los Atal'ai, intentaron resucitar a un dios de la sangre ancestral llamado Hakkar el Cazador de Almas. Tras la consecuente guerra civil, los sacerdotes fueron derrotados y exiliados al Pantano de las Penas. Allí erigieron un templo en honor de Hakkar, para prepararse para su llegada al mundo físico. La dragón Aspecto Ysera, pronto descubrió los planes de los Atal'ai y hundió el templo bajo el pantano. Hasta el día de hoy, las ruinas han estado protegidas por los poderosos dragones Verdes."] = "5f4d64e508e2e540625383eeae8529e5",
             ["Hace poco, un druida elfo de la noche llamado Naralex, descubrió una red de cuevas subterráneas en el corazón de Los Baldíos. Creyendo que podría usar los manantiales de las cuevas para restaurar la exuberancia de Los Baldíos, el druida comenzó a absorber las energías del legendario Sueño Esmeralda. De alguna forma, su visión se transformó en una pesadilla y pronto, las Cuevas de los Lamentos se convirtieron en una guarida de viciosos y letales depredadores. Se dice que Naralex sigue en algún lugar del laberinto, atrapado más allá de los límites del Sueño Esmeralda."] = "1631876c10990f6b69fb643f319f15da",
             ["Horado Rajacieno se encuentra en el extremo más al sur de Los Baldíos, en el lado oeste del camino."] = "b07c8c68897f70867bbb75e49138b18d",
@@ -6908,6 +7384,7 @@ GossipText = {
             ["¿Te interesa explorar una de estas mazmorras?"] = "a61f3b373d7747d0767475c1b5dab2f6",
         },
         [11118] = {
+            ["Antiguamente la capital de los enanos Hierro Negro, este laberinto volcánico ahora sirve como trono de poder de Ragnaros, el Señor del Fuego. Ragnaros ha descubierto cómo crear vida a partir de la piedra y planea formar un ejército de golems imparables para ayudarle a conquistar la Montaña Roca Negra. Ragnaros, obsesionado con derrotar a Nefarian y a sus esbirros dracónicos, hará lo que sea por conseguir la victoria final."] = "80c7791d0f726c6038424e4e9ec88b2e",
             ["Antiguamente la capital de los enanos Hierro Negro, este laberinto volcánico ahora sirve como trono de poder de Ragnaros, el Señor del Fuego. Ragnaros ha descubierto cómo crear vida a partir de la piedra y planea formar un ejército de gólems imparables para ayudarle a conquistar la Montaña Roca Negra. Ragnaros, obsesionado con derrotar a Nefarian y a sus esbirros dracónicos, hará lo que sea por conseguir la victoria final."] = "80c7791d0f726c6038424e4e9ec88b2e",
             ["Construida con las mismas vides que Horado Rajacieno, Zahúrda Rajacieno es la capital tradicional de la raza de los jabaespines. El laberinto de espinas que se extiende por todas partes, aloja un verdadero ejército de leales jabaespines junto con sus altos sacerdotes, la tribu Caramuerte. Sin embargo, recientemente una sombra de mal presagio ha caído sobre la rudimentaria guarida. Unos agentes de la Plaga de los no-muertos, a las órdenes del exánime Amnennar el Gélido, han tomado el control de la raza de los jabaespines y han convertido el laberinto de espinas en un bastión del poder de los no-muertos."] = "3ab3c8765d0c52d13b2628e8c4babaa6",
             ["Cuando entregues pruebas de amor a los habitantes de la ciudad, recibirás diferentes regalos a cambio. Algunos podrás guardarlos y utilizarlos, ¡mientras que otros podrás juntarlos y dárselos a tu $ghéroe favorito:heroína favorita;! Visita a Kwee Q. Mercachifle y entrégaselos.$B$BEncontrarás a Kwee cerca de Bolvar, Magni o Tyrande."] = "1634a5dccbea47f39276cf79744035f6",
@@ -6923,6 +7400,7 @@ GossipText = {
             ["Frustrado por la falta de progreso de los magos de Dalaran contra los no-muertos durante la Tercera Guerra, el archimago Arugal decidió invocar a los ferocanis extra-dimensionales para dar un empujón a sus tropas cada vez menores. Los lobisones atacaron a la Plaga y, rápidamente, se dirigieron a los magos y asediaron el bastión del noble barón FIlargenta. Pronto, el fuerte fue presa de las sombras y se convirtió en cenizas. Enloquecido por la culpa, Arugal adoptó a los ferocanis como sus hijos y se retiró al Castillo de Colmillo Oscuro."] = "11c3ea2689d0fd9a04ddb9557a48b4c4",
             ["Gnomeregan se encuentra en la parte oeste de Dun Morogh."] = "88767c2b09612db177541d67e62643f6",
             ["Hace más de mil años, un grupo de sacerdotes trols conocidos como los Atal'ai, intentaron resucitar a un dios de la sangre ancestral llamado Hakkar el Cazador de Almas. Tras la consecuente guerra civil, los sacerdotes fueron derrotados y exiliados al Pantano de las Penas. Allí erigieron un templo en honor de Hakkar, para prepararse para su llegada al mundo físico. La dragón Aspecto Ysera, pronto descubrió los planes de los Atal'ai y hundió el templo bajo el pantano. Hasta el día de hoy, las ruinas han estado protegidas por los poderosos dragones Verdes."] = "ab4e58f01968879f7f1069e0186c3f57",
+            ["Hace más de mil años, un grupo de sacerdotes trols conocidos como los Atal'ai, intentaron resucitar a un dios de la sangre ancestral llamado Hakkar el Cazador de Almas. Tras la consecuente guerra civil, los sacerdotes fueron derrotados y exiliados al Pantano de las Penas. Allí erigieron un templo en honor de Hakkar, para prepararse para su llegada al mundo físico. La dragón Aspecto Ysera, pronto descubrió los planes de los Atal'ai y hundió el templo bajo el pantano. Hasta el día de hoy, las ruinas han estado protegidas por los poderosos dragones verdes."] = "ab4e58f01968879f7f1069e0186c3f57",
             ["Hace poco, un druida elfo de la noche llamado Naralex, descubrió una red de cuevas subterráneas en el corazón de Los Baldíos. Creyendo que podría usar los manantiales de las cuevas para restaurar la exuberancia de Los Baldíos, el druida comenzó a absorber las energías del legendario Sueño Esmeralda. De alguna forma, su visión se transformó en una pesadilla y pronto, las Cuevas de los Lamentos se convirtieron en una guarida de viciosos y letales depredadores. Se dice que Naralex sigue en algún lugar del laberinto, atrapado más allá de los límites del Sueño Esmeralda."] = "b500cf9cb16697efa215b17db7bcfb10",
             ["Horado Rajacieno se encuentra en el extremo más al sur de Los Baldíos, en el lado oeste del camino."] = "6bffe49eafcf8df1848c2509da86730a",
             ["La Montaña Roca Negra linda con La Garganta de Fuego al norte y Las Estepas Ardientes al sur."] = "305d2bb0a0ec6f8c4279ffe77b2405cc",
@@ -7058,12 +7536,70 @@ GossipText = {
             ["Espero que la Luz esté contigo, $n. ¿Puedo hacer algo por ti?"] = "238a7cdf16a7d258e1b3789d98c5e7fb",
             ["He tenido que realizar una rigurosa reconversión con muchos estudiantes de todo lo que habían aprendido, para poder enseñarles desde cero. El servicio que ofrezco aumenta de dificultad cada vez que se hace. Por esa razón, también aumenta el precio de cada nueva instrucción. ¿Quieres que elimine todos los talentos que has aprendido?"] = "31ab172e1a375db1c9157d594eb608d9",
             ["Que la Luz te proteja, $c."] = "852369f0d2fbc11e555e75fe5a433853",
+            ["Si lo deseas, además de la instrucción, tengo el poder de borrar el conocimiento de tus talentos de tu mente. Te advierto que cada vez que realizas este proceso es más difícil y, por lo tanto, es más caro."] = "4145716fbb2d791ea5392285fe65f1b1",
         },
         [11407] = {
             ["Yo buscar a alguien, $c. Por favor, déjame en paz... es importante que yo encontrarlos."] = "139d2506ed562303b66f560b7502291c",
         },
+        [11441] = {
+            ["Cuando te miré mal antes... antes de que te convirtieras en $gel nuevo rey:la nueva reina;... Mmm... Solo estaba bromeando.$B$BSí."] = "46fbe9400b96a871968d8ad5b6a4e072",
+            ["Cuando te miré mal antes... antes de que te convirtieras en el nuevo rey... Mmm... Solo estaba bromeando.  Sí."] = "esMX-2c0cc7884ce6078dd583f19de8d1c5c6",
+            ["Mientras te quedes aquí con nosotros, tú ser $grey:reina;. Tú marcharte y algún otro ogro ocupará tu lugar. ¡Así funcionamos los Gordok!"] = "1413d1f2c3e639064b22b13c2174054c",
+            ["No te causaré problemas, $gjefe:jefa;."] = "174afe8aebb4df4a8e1d3c1e9e564032",
+            ["Nosotros mucho más limpios que los ogros de Tanaris. Por todo el desierto hasta donde poder ver, caca de ogro. ¡Aquí no, no $gseñor: señora;!"] = "70ab7d05479cb1f2de07f476fc11f631",
+            ["¡Los otros ogros fueron tontos por atacarte, $gjefe:jefa;! Por eso yo seguir con vida, ¡soy listo y todo eso!"] = "0091d474361752ff478d539c96c902d4",
+            ["¡Viva $gel nuevo rey:la nueva reina;!"] = "996f12cf6a125314d3106b7497e5e150",
+            ["¡Yo muy listo! ¡L-S-T-O!"] = "fba23b4df41d7193c6c4a81126bebced",
+            ["¿El viejo rey está muerto? ¡Imposible!"] = "e91c095c365f17aa173f8941dc2650df",
+        },
+        [11444] = {
+            ["Cuando te miré mal antes... antes de que te convirtieras en $gel nuevo rey:la nueva reina;... Mmm... Solo estaba bromeando.$B$BSí."] = "5e3691946bb265d92dc910ab9524b716",
+            ["Mientras te quedes aquí con nosotros, tú ser $grey:reina;. Tú marcharte y algún otro ogro ocupará tu lugar. ¡Así funcionamos los Gordok!"] = "5488e762086ba8c30e6aebd0e8ab5dd9",
+            ["Mientras te quedes aquí con nosotros, tú ser rey. Tú marcharte y algún otro ogro ocupará tu lugar. ¡Así funcionamos los Gordok!"] = "5488e762086ba8c30e6aebd0e8ab5dd9",
+            ["No te causaré problemas, $gjefe:jefa;."] = "a0c89c11e669483a87f0586d30daf458",
+            ["Nosotros mucho más limpios que los ogros de Tanaris. Por todo el desierto hasta donde poder ver, caca de ogro. ¡Aquí no, no $gseñor: señora;!"] = "6e165b143af9192fea949400fd8ef63e",
+            ["¡Los otros ogros fueron tontos por atacarte, $gjefe:jefa;! Por eso yo seguir con vida, ¡soy listo y todo eso!"] = "ce60a148cfa6bf59b8dc4b33f731e177",
+            ["¡Viva $gel nuevo rey:la nueva reina;!"] = "6ca1c942a650fbcdf947723d69da96d1",
+            ["¡Yo muy listo! ¡L-S-T-O!"] = "6d92fa1b140132db233943fa6a7367b5",
+            ["¿El viejo rey está muerto? ¡Imposible!"] = "054b623ad64d5d9399e1145623546620",
+        },
+        [11445] = {
+            ["Cuando te miré mal antes... antes de que te convirtieras en $gel nuevo rey:la nueva reina;... Mmm... Solo estaba bromeando.$B$BSí."] = "af7d3d4ee051b8219b12c757650f8d15",
+            ["Mientras te quedes aquí con nosotros, tú ser $grey:reina;. Tú marcharte y algún otro ogro ocupará tu lugar. ¡Así funcionamos los Gordok!"] = "506fe3a4babbc85f3cbc4c2791907d96",
+            ["No te causaré problemas, $gjefe:jefa;."] = "6e7381850d059700bebc552e49a93328",
+            ["Nosotros mucho más limpios que los ogros de Tanaris. Por todo el desierto hasta donde poder ver, caca de ogro. ¡Aquí no, no $gseñor: señora;!"] = "7393bf72507c55c5b665efe95bb4caa1",
+            ["¡Los otros ogros fueron tontos por atacarte, $gjefe:jefa;! Por eso yo seguir con vida, ¡soy listo y todo eso!"] = "83f6771efc6216dedaa1ff240f9cfb84",
+            ["¡Viva $gel nuevo rey:la nueva reina;!"] = "8a15510fa6e653f68711ca7b88fd196a",
+            ["¡Yo muy listo! ¡L-S-T-O!"] = "ac3d0fe5f6fa47222242c385977a2ccc",
+            ["¿El viejo rey está muerto? ¡Imposible!"] = "ad8a269e8a8a419dabdeb0b48d6d8e19",
+        },
+        [11448] = {
+            ["Cuando te miré mal antes... antes de que te convirtieras en $gel nuevo rey:la nueva reina;... Mmm... Solo estaba bromeando.$B$BSí."] = "5e3691946bb265d92dc910ab9524b716",
+            ["Mientras te quedes aquí con nosotros, tú ser $grey:reina;. Tú marcharte y algún otro ogro ocupará tu lugar. ¡Así funcionamos los Gordok!"] = "5488e762086ba8c30e6aebd0e8ab5dd9",
+            ["Mientras te quedes aquí con nosotros, tú ser rey. Tú marcharte y algún otro ogro ocupará tu lugar. ¡Así funcionamos los Gordok!"] = "5488e762086ba8c30e6aebd0e8ab5dd9",
+            ["No te causaré problemas, $gjefe:jefa;."] = "a0c89c11e669483a87f0586d30daf458",
+            ["Nosotros mucho más limpios que los ogros de Tanaris. Por todo el desierto hasta donde poder ver, caca de ogro. ¡Aquí no, no $gseñor: señora;!"] = "6e165b143af9192fea949400fd8ef63e",
+            ["¡Los otros ogros fueron tontos por atacarte, $gjefe:jefa;! Por eso yo seguir con vida, ¡soy listo y todo eso!"] = "ce60a148cfa6bf59b8dc4b33f731e177",
+            ["¡Viva $gel nuevo rey:la nueva reina;!"] = "6ca1c942a650fbcdf947723d69da96d1",
+            ["¡Yo muy listo! ¡L-S-T-O!"] = "6d92fa1b140132db233943fa6a7367b5",
+            ["¿El viejo rey está muerto? ¡Imposible!"] = "054b623ad64d5d9399e1145623546620",
+        },
+        [11450] = {
+            ["Cuando te miré mal antes... antes de que te convirtieras en $gel nuevo rey:la nueva reina;... Mmm... Solo estaba bromeando.$B$BSí."] = "46fbe9400b96a871968d8ad5b6a4e072",
+            ["Mientras te quedes aquí con nosotros, tú ser $grey:reina;. Tú marcharte y algún otro ogro ocupará tu lugar. ¡Así funcionamos los Gordok!"] = "1413d1f2c3e639064b22b13c2174054c",
+            ["No te causaré problemas, $gjefe:jefa;."] = "174afe8aebb4df4a8e1d3c1e9e564032",
+            ["Nosotros mucho más limpios que los ogros de Tanaris. Por todo el desierto hasta donde poder ver, caca de ogro. ¡Aquí no, no $gseñor: señora;!"] = "70ab7d05479cb1f2de07f476fc11f631",
+            ["¡Los otros ogros fueron tontos por atacarte, $gjefe:jefa;! Por eso yo seguir con vida, ¡soy listo y todo eso!"] = "0091d474361752ff478d539c96c902d4",
+            ["¡Viva $gel nuevo rey:la nueva reina;!"] = "996f12cf6a125314d3106b7497e5e150",
+            ["¡Yo muy listo! ¡L-S-T-O!"] = "fba23b4df41d7193c6c4a81126bebced",
+            ["¿El viejo rey está muerto? ¡Imposible!"] = "e91c095c365f17aa173f8941dc2650df",
+        },
         [11486] = {
             ["Durante 10000 años he gobernado este reino. Durante ese tiempo, quienes han pasado por los terrenos sagrados de la Casa de Shen’dralar, me han contado muchas historias fascinantes.$B$BYo estoy atado a este lugar y, a menudo, intercambio historias con los visitantes. ¿Tienes una historia para mí, o quizás quieras escuchar una?"] = "fb9a6eb92214ce1abb9831293212112b",
+        },
+        [11491] = {
+            ["Gracias, mortal. Solo puedo ofrecerte un servicio antes de regresar al Sueño.$B$BLa puerta del maestro Zevrim, Alzzin, bloquea tu camino. Seré tu instrumento de destrucción. La puerta se abrirá, solo tienes que darme la orden."] = "2d144cb5caeba9e2143eb224850296fd",
+            ["Incapaz... sin poder... restaurar... debo restaurar... Zevrim controla... acabar con este tormento..."] = "04f875d4d0b7356d2d82171b32556a21",
         },
         [11536] = {
             ["El Alba Argenta te da la bienvenida, $c. Soy Miranda Cerrobrecha, uno de los pocos intendentes de material y equipamiento autorizados de El Alba.$B$BCuando combatas al mal a nuestro servicio (ganando nuestro respeto y confianza) ganarás muestras de valor del duque Zverenhoff. Las muestras tienen dos fines: las puedes utilizar para ganar prestigio entre nuestras filas o como moneda para adquirir objetos especiales.$B$BA medida que ganes prestigio en El Alba verás que cada vez te ofreceremos más objetos."] = "76e62df07e05db88a7485a8b88c9987d",
@@ -7081,6 +7617,22 @@ GossipText = {
             ["No están aquí los dragones azules, sino los seguidores de Malygos. No sé la razón, pero puedo asegurarte una cosa: donde quiera que haya dragones azules prepárate para encontrar magia arcana. No me sorprendería saber que el dragauro está protegiendo algo... quizás algo que los Altonato dejaron aquí."] = "ff66933a79e40c4363ca877e0bc40aab",
             ["Saludos, $c. Esos centinelas me han permitido compartir su campamento mientras no haya ningún tipo de problemas... Estoy seguro de que podrás darte cuenta de cuánta diplomacia es necesaria por aquí, ¿verdad?$B$BMe dedico a investigar los disturbios del país, y como esa labor ayuda a su propia causa, han acordado que mi presencia no puede sino contribuir a la débil alianza que une a todas las razas de Azeroth. Si quieres ayudarme lo apreciaría pero, aunque decidas no hacerlo, procura no causar ningún problema."] = "f54143d6861ddef271769d60b550b493",
             ["Se rumorea que un poderoso mago humano vive al Norte; guardia vigilancia sobre el país por alguna razón desconocida. No he ido hasta allí yo mismo, pero se dice que los visitantes son bienvenidos y que incluso pueden ganarse su favor si están dispuestos a hacerle recados."] = "ce97a3f0d9b87cbf8e4913c174a68681",
+        },
+        [11554] = {
+            ["Somos la última raza fúrbolg... La tribu Fauces de Madera sigue incorrupta, aunque tenemos que enfrentarnos a la misma hostilidad por parte de los forasteros; la mayoría cree que es imposible... que no puede haber ningún fúrbolg que haya escapado a la corrupción... $B$BFuriosos con los que se esfuerzan por ganar enemigos demasiado deprisa, mis hermanos atacan a todo el que se acerca; no confían en nadie.$B$BPero quizá, y si te esfuerzas porque tu presencia sea pacífica, llegarán a verte como $gun aliado:una aliada;."] = "55587c19d0d40ee66828beeb209d1661",
+        },
+        [11555] = {
+            ["Sí, sí. Te veo.$B$BNo te separes de tu camino. Puede que te hayas ganado la confianza de unos pocos, ¡pero aún necesitarás más tiempo para probarte ante mí!"] = "ec39f6ded4aa998a2ee68b46ca8da28e",
+        },
+        [11556] = {
+            ["Los fúrbolgs Nevada que habitan en Cuna del Invierno fueron una vez nuestros aliados... Pero un día cambiaron.$B$BGuiados por las extrañas demandas de su gran jefe, comenzaron a atacar a todos con los que entraban en contacto, incluyendo a nuestra tribu. Ahora solo se relacionan entre ellos..."] = "4f8f7d9be64d641ea97c90c60e22cc8d",
+            ["Nosotros, los Fauces de Madera, podemos garantizarte un paso seguro a través del pasadizo, pero antes debes demostrar que mereces nuestra ayuda."] = "169df99c5f7de32d942594f5a6ea6166",
+        },
+        [11557] = {
+            ["Si demuestras que eres $gun verdadero aliado:una verdadera aliada;, quizás me plantee instruirte..."] = "459bb6b298604fc4bffb2355992f0efa",
+        },
+        [11558] = {
+            ["¿Qué es lo que buscas, $c?"] = "2b80db9222b8feedce56a3462ce23923",
         },
         [11608] = {
             ["Hola, $c. He acampado aquí, en El Baluarte, para organizar los preparativos para mi viaje a las Tierras de la Peste. He oído rumores de que un gran zahorí humano estableció su residencia en la Vega del Amparo no hace demasiado tiempo. La Cruzada Escarlata le había encomendado la creación de nuevos arcos y armas de fuego para sus guerreros y cazadores. Se dice que creó un arma extraordinaria antes de que la Cruzada le matara.$B$BSupongo que su desconfianza hacia la magia Arcana ha crecido."] = "bfa0aecd4815be32da4962b7c6f07ffe",
@@ -7102,6 +7654,11 @@ GossipText = {
         },
         [11626] = {
             ["Vaya, es tu día de suerte; acabo de terminar el mantenimiento del Supervendedor 680. Hay toneladas de objetos a la venta a precios de risa. Adelante y mira tu mismo... mi hermano Cork piensa que su Vende-Tron 1000 venderá más que mi robot."] = "f3da952cbd390a3e587b455be7a2577f",
+        },
+        [11627] = {
+            ["¡Este kodo no se parece en nada a la bestia a la que atraje! Me pregunto si podría utilizar el combobulador sobre mí mismo."] = "2e6dc1ee740d51baecd404b37d41514b",
+            ["¿Cómo se las arreglan los goblins para asegurar la carga en estas bestias? ¡Los kodos son diez veces más grandes que ellos!"] = "92434af0ceaf40426f6723934db7cea4",
+            ["¿Por qué esas pequeñas criaturas como los goblins siempre están fascinadas por las criaturas grandes?"] = "d3f3a62c0bdf87cda737a7a603dc0962",
         },
         [11798] = {
             ["En el Bosque de Argénteos, junto a los bordes de la Cala Mareanorte, descansa un barco abandonado en la orilla. Al oeste de ese punto está lo que buscas. Si nadas demasiado, el océano te matará de cansancio. Yace en el fondo del océano en una caja fuerte, esperando tu llegada.$B$BSufrirás una enorme presión a la hora de sobrevivir a una inmersión a tal profundidad sin ayuda, así que, concéntrate; una fisura oxigenada proporciona la posibilidad de respirar a los nadadores que buscan la mitad de este colgante. Utilízala sabiamente."] = "8f4726b4aaa640c64d970e27f5507d9f",
@@ -7193,6 +7750,19 @@ GossipText = {
         [11939] = {
             ["Si necesitas información que el Círculo Cenarion pueda tener archivada, yo soy la persona que buscas. Pero primero, necesitas saber qué información buscas para poder ayudarte.$B$B¿Te das cuenta de cómo va esto? ¡Fantástico!"] = "310c9f80926c7ac56d95a59b469ade54",
         },
+        [11956] = {
+            ["'El espíritu del oso mira hacia ti con una mirada tranquila y pacífica. Oyes una voz que se dirige a ti y que parece venir del oso, pero la criatura no hace ningún gesto.$B$B'Saludos, joven $gamigo:amiga;. Si has venido hasta aquí buscando mi guía, quizás pueda ayudarte a encontrar lo que buscas.'"] = "b2794cf09b4092d4684e667496402cd0",
+            ["El oso te mira con calma y paciencia, pero no dice nada."] = "d9f1ffb3d164e0c04c684e839afcf024",
+            ["La fuerza del corazón es lo que te da la determinación para emprender la acción... la acción enraizada en propósitos puros y nobles. Mantener el equilibrio no es ni banal ni autocomplaciente.$B$BDebes mostrar determinación en lo que crees, y debes desear luchar por ello. La madre oso muestra una convicción infinita en la defensa y protección de su osezno, al igual que un oso adulto protegiendo su guarida. Es esta determinación, esta fuerza del corazón, la que debes llegar a conocer si deseas dominar el camino de la zarpa."] = "36d7f5626545df44ecc60f71c7c12a9a",
+            ["La fuerza del cuerpo es el poder y la rapidez de acción. Debes mantenerte siempre en forma, mental y físicamente. La envergadura del oso destaca su fuerza, es un enemigo feroz en combate. Pero a su vez, esa envergadura, disfraza su agilidad y agudeza mental. Son sorpresas de las que podrás beneficiarte.$B$BDebes confiar en la fuerza del cuerpo del oso para llegar a dominar el camino de la zarpa."] = "c795bb125f2778c3c6d0cc0f61572679",
+            ["Represento la fuerza que te apoya como $gun:una; joven druida. Has venido hasta aquí para aprender esa fuerza, joven, y te la enseñaré. Te enseñaré qué es el espíritu del oso, siempre que lo escuches y comprendas.$B$BPara saber lo que significa recurrir a mi espíritu debes comprender la importancia de la fuerza del cuerpo y de la fuerza del corazón."] = "b8f813269aaa11acc499b0c1f173ed51",
+            ["Todavía está por ver si estás $gpreparado:preparada;, joven. Ni siquiera el más sabio y anciano de los druidas llega a estar nunca realmente listo cuando se acerca la hora de someterse a la última prueba.$B$BYa has oído mis palabras, ahora debes continuar. Presta atención a lo que te he enseñado. Llegará la hora en la que habrás mostrado tu fuerza. Debes enfrentarte a tu enemigo como lo haría el oso, con fuerza de cuerpo y con fuerza de corazón. Aprende de la lucha, joven. Y ahora vete... con mi bendición."] = "6cd1be498e0d68b7c13f9810db056810",
+        },
+        [12018] = {
+            ["El Señor del Fuego y sus hermanos una vez dominaron todo el mundo, mortal. Como siervo de los dioses antiguos, luchó contra los titanes por el control de este planeta. Los titanes, que se alzaron con la victoria, desterraron a mi maestro y a sus hermanos al Plano Elemental... para quedar allí prisioneros hasta el fin de los tiempos."] = "2441a9b6df24d37314c4606d699518bc",
+            ["Hace tan solo trescientos años, un temerario enano llamado Thaurissan invocó al maestro desde su reino de fuego. Su regreso a este despreciable mundo devastó las tierras circundantes y dio lugar a este Núcleo volcánico. Desde entonces el poderoso Ragnaros ha dormido bajo esta montaña."] = "df47cd4e37fcbd798449cce29cca21c9",
+            ["Nosotros, sus siervos, cumplimos sus mandatos y hacemos cumplir sus férreas reglas. Separado de las energías de su reino de fuego, Ragnaros solo es una sombra de su verdadero yo. Pero aún tiene fuerza más que suficiente para ser tu fin."] = "e7e6243c74ec55b04f9fe9828e31d0a5",
+        },
         [12031] = {
             ["Debería contratar a alguien para que me ayude, no me gusta estar aquí sentada todo el día, vendiendo material de pesca. Me gusta mucho más ir a pescar, y luego, vender."] = "6c9f3fe4497da2c378cdd9d41104d24e",
         },
@@ -7205,13 +7775,22 @@ GossipText = {
             ["$GBienvenido:Bienvenida; $ghermano:hermana;. Si has venido para recibir instrucción, estaré encantado de hacerlo.$B$BPronto llegará el tiempo en el que la llamada del Sueño Esmeralda se apoderará de ti. Hibernarás durante muchos años y caminarás entre las más puras de las formas. Allí y entonces tendrá lugar tu último entrenamiento."] = "1d12fd8e421d229eea70c7677a2daeca",
             ["Incluso entre fríos muros de piedra como los que rodean esta ciudad, podría encontrarse paz y tranquilidad. De hecho, puedes encontrarlas donde quiera que estés... solo debes buscar en tu interior para encontrar ese equilibrio."] = "922a94a8f826437fe0370bdcd6a587ac",
         },
+        [12097] = {
+            ["Casi no tenemos suministros. Si queremos lanzar un asalto terrestre en la Tierra de Disputa, vamos a necesitar muchos más."] = "b9114-orc-male-standard",
+            ["Hay quienes dicen que el éxito de un ejército depende de su fuerza y valentía. ¡Y qué cierto es! Pero un ejército también necesita suministros para estar en buena forma y mi trabajo es asegurarme de que tienen lo que necesitan."] = "b8855-orc-male-standard",
+        },
         [12136] = {
             ["$gEh monada, ¿necesitar viajar a Grom'gol? He oído que esas junglas se llegan a poner muy calientes... quizás me una a ti para ir de vacaciones, te mostraré lo que es un auténtico felino.:Ven, viaja a las maravillosas y estupendas selvas tropicales de Tuercespina. Está bien, puedes pasarte el tiempo tomando el sol junto a las aguas cristalinas mientras yo me quedo aquí con este calor insoportable y sin nada más que hacer que mirar todo el día a mi hermano Frezza! ¡Disfruta del viaje!;"] = "808af6c85a55d2308db805b9fb00b368",
         },
         [12137] = {
             ["Deja caer una moneda en la mano del jefe y mira lo que pasa. Adoro mi trabajo. Aunque si pudiera encontrar un modo de que reasignaran a ese petardo de Snurk a este puerto... bien, no puedo imaginar nada mejor. Pero supongo que no estás aquí por estas cosas. Buscas el zepelín a Entrañas, ¿me equivoco? Genial, porque el embarcadero está justo detrás de mí. Oh, y escucha, si ves a Snurk háblale bien de mí, ¿lo harás?"] = "c021420a6f84c190718c0e399aad7e67",
         },
+        [12144] = {
+            ["El espíritu asesinado de Garraluna te mira atentamente, como si quisiera algo de ti."] = "a82a33392976228002e85af39f417b6c",
+            ["El espíritu te mira atentamente a los ojos y aprieta tu mano. Sientes cómo el calor recorre tu cuerpo y casi te hace caer de rodillas.$B$BCuando pasa el calor, sientes en tu interior la ligera presencia de un espíritu osuno... dando fuerzas a tu determinación."] = "1305cafc0cf17e1c7597552e5828f874",
+        },
         [12196] = {
+            ["Antiguamente la capital de los enanos Hierro Negro, este laberinto volcánico ahora sirve como trono de poder de Ragnaros, el Señor del Fuego. Ragnaros ha descubierto cómo crear vida a partir de la piedra y planea formar un ejército de golems imparables para ayudarle a conquistar la Montaña Roca Negra. Ragnaros, obsesionado con derrotar a Nefarian y a sus esbirros dracónicos, hará lo que sea por conseguir la victoria final."] = "1a4b0ce90f4422503651666ac7f00711",
             ["Antiguamente la capital de los enanos Hierro Negro, este laberinto volcánico ahora sirve como trono de poder de Ragnaros, el Señor del Fuego. Ragnaros ha descubierto cómo crear vida a partir de la piedra y planea formar un ejército de gólems imparables para ayudarle a conquistar la Montaña Roca Negra. Ragnaros, obsesionado con derrotar a Nefarian y a sus esbirros dracónicos, hará lo que sea por conseguir la victoria final."] = "1a4b0ce90f4422503651666ac7f00711",
             ["Construida con las mismas vides que Horado Rajacieno, Zahúrda Rajacieno es la capital tradicional de la raza de los jabaespines. El laberinto de espinas que se extiende por todas partes, aloja un verdadero ejército de leales jabaespines junto con sus altos sacerdotes, la tribu Caramuerte. Sin embargo, recientemente una sombra de mal presagio ha caído sobre la rudimentaria guarida. Unos agentes de la Plaga de los no-muertos, a las órdenes del exánime Amnennar el Gélido, han tomado el control de la raza de los jabaespines y han convertido el laberinto de espinas en un bastión del poder de los no-muertos."] = "d204a8a00341a429174e0dbb644ab882",
             ["Cuando entregues pruebas de amor a los habitantes de la ciudad, recibirás diferentes regalos a cambio. Algunos podrás guardarlos y utilizarlos, ¡mientras que otros podrás juntarlos y dárselos a tu $ghéroe favorito:heroína favorita;! Visita a Kwee Q. Mercachifle y entrégaselos.$B$BEncontrarás a Kwee cerca de Bolvar, Magni o Tyrande."] = "598c9e84f0150f5804083fb81cddb144",
@@ -7227,6 +7806,7 @@ GossipText = {
             ["Frustrado por la falta de progreso de los magos de Dalaran contra los no-muertos durante la Tercera Guerra, el archimago Arugal decidió invocar a los ferocanis extra-dimensionales para dar un empujón a sus tropas cada vez menores. Los lobisones atacaron a la Plaga y, rápidamente, se dirigieron a los magos y asediaron el bastión del noble barón FIlargenta. Pronto, el fuerte fue presa de las sombras y se convirtió en cenizas. Enloquecido por la culpa, Arugal adoptó a los ferocanis como sus hijos y se retiró al Castillo de Colmillo Oscuro."] = "12f0b7117e82d1920705e38b1acbd4d3",
             ["Gnomeregan se encuentra en la parte oeste de Dun Morogh."] = "2a62241f7676852d758c2bff35cb1c86",
             ["Hace más de mil años, un grupo de sacerdotes trols conocidos como los Atal'ai, intentaron resucitar a un dios de la sangre ancestral llamado Hakkar el Cazador de Almas. Tras la consecuente guerra civil, los sacerdotes fueron derrotados y exiliados al Pantano de las Penas. Allí erigieron un templo en honor de Hakkar, para prepararse para su llegada al mundo físico. La dragón Aspecto Ysera, pronto descubrió los planes de los Atal'ai y hundió el templo bajo el pantano. Hasta el día de hoy, las ruinas han estado protegidas por los poderosos dragones Verdes."] = "356949e6616d911ef559b61355e02894",
+            ["Hace más de mil años, un grupo de sacerdotes trols conocidos como los Atal'ai, intentaron resucitar a un dios de la sangre ancestral llamado Hakkar el Cazador de Almas. Tras la consecuente guerra civil, los sacerdotes fueron derrotados y exiliados al Pantano de las Penas. Allí erigieron un templo en honor de Hakkar, para prepararse para su llegada al mundo físico. La dragón Aspecto Ysera, pronto descubrió los planes de los Atal'ai y hundió el templo bajo el pantano. Hasta el día de hoy, las ruinas han estado protegidas por los poderosos dragones verdes."] = "356949e6616d911ef559b61355e02894",
             ["Hace poco, un druida elfo de la noche llamado Naralex, descubrió una red de cuevas subterráneas en el corazón de Los Baldíos. Creyendo que podría usar los manantiales de las cuevas para restaurar la exuberancia de Los Baldíos, el druida comenzó a absorber las energías del legendario Sueño Esmeralda. De alguna forma, su visión se transformó en una pesadilla y pronto, las Cuevas de los Lamentos se convirtieron en una guarida de viciosos y letales depredadores. Se dice que Naralex sigue en algún lugar del laberinto, atrapado más allá de los límites del Sueño Esmeralda."] = "c5bb28585e4ec2284a09cc538e5ea938",
             ["Horado Rajacieno se encuentra en el extremo más al sur de Los Baldíos, en el lado oeste del camino."] = "22e76f151640be474a52357149eab9fa",
             ["La Montaña Roca Negra linda con La Garganta de Fuego al norte y Las Estepas Ardientes al sur."] = "42c37076d3ae3863acfdd2d0f5533f7a",
@@ -7258,11 +7838,21 @@ GossipText = {
             ["¿Te interesa explorar una de estas mazmorras?"] = "f3aba6e9ee464fd9569a3498cd66780a",
         },
         [12197] = {
+            ["$N, ¿tienes alguna idea de a lo que nos enfrentamos en el Valle de Alterac? ¿Tas $glisto:lista; para luchar al clan Lobo Gélido?"] = "fe70eb05a6a384f2150bdbcaad041ebd",
             ["$n, ¿tienes alguna idea de a lo que nos enfrentamos en el Valle de Alterac? ¿Tas $glisto:lista; para luchar al clan Lobo Gélido?"] = "fe70eb05a6a384f2150bdbcaad041ebd",
         },
         [12198] = {
             ["Lo siento, $c, pero necesitas tener más poder para que pueda permitirte entrar en la Cuenca de Arathi."] = "5d7befc434c3b284ff699c9b717bf554",
             ["¿Crees que tienes lo que hay que tener para destruir a la Liga de Arathor, $c? Eso espero. ¿Qué quieres, o estás aquí solo para hacerme perder el tiempo?"] = "59736d80c4279b69db8e94d24074d17a",
+        },
+        [12238] = {
+            ["Te saludo, $r."] = "f6a758b7661d261036b18b4c724d5d16",
+        },
+        [12245] = {
+            ["Mi programación no me permite rebajar el coste de ningún objeto."] = "31b59c2cf9a5a3c1bd237a52ec6d64a1",
+        },
+        [12246] = {
+            ["Soy la última encarnación de los vendedores automatizados... algún día dominaremos el mundo... no le diga a mi jefe que le estoy sisando dinero con su mercancía..."] = "aa21571a6fba524520b3e52f8d2d102c",
         },
         [12340] = {
             ["Si pretendes cazar nagas, necesitarás toda la ayuda que sea posible. En las profundidades del agua encontrarás fisuras burbujeantes que producen burbujas de aire. Te permitirán respirar bajo el agua. Acércate lo suficiente como para poder respirar las burbujas."] = "3c57610ceaac598ea2221dac45d2551c",
@@ -7355,6 +7945,7 @@ GossipText = {
             ["A cambio de un lingote de Sulfuron, estoy autorizado a darte una copia de los planos para forjar un martillo de Sulfuron.$B$BSí, seguro que $gun aventurero:una aventurera; como tú está pensando: '¿Para qué iba a querer un martillo cuando lo que tengo es mucho más superior?'$B$BBueno, deja que te diga algo, $gcaballerete:señorita;, no hay nada más superior que en lo que se puede convertir el martillo de Sulfuron."] = "2d38739dd99aac211a82868d39e682e5",
             ["La Hermandad del Torio no pierde el tiempo con hormigas. ¡Lárgate!"] = "807f545aa510396b39fd74ed72c9abcb",
             ["La Hermandad del Torio posee el conocimiento necesario para crear las armas y armamentos sagrados del Señor del Fuego, pero nos hace falta alguien que vaya a obtener los materiales necesarios para la fabricación.$B$BYo, Lokhtos Tratoscuro, estoy autorizado por la Hermandad para intercambiar las recetas exaltadas por materiales recogidos en El Núcleo de Magma.$B$BPresenta tu oferta, $r."] = "30d968320ab86521f066be7db8986c04",
+            ["La Hermandad del torio posee el conocimiento necesario para crear las armas y armamentos sagrados del Señor del Fuego, pero nos hace falta alguien que vaya a obtener los materiales necesarios para la fabricación.$B$BYo, Lokhtos Tratoscuro, estoy autorizado por la Hermandad para intercambiar las recetas exaltadas por materiales recogidos en El Núcleo de Magma.$B$BPresenta tu oferta, $r."] = "30d968320ab86521f066be7db8986c04",
             ["Verás, todo lo que tienes que hacer es forjar el martillo de Sulfuron y encontrar el Ojo de Sulfuras. Después, combina el Ojo de Sulfuras con el martillo de Sulfuron, ¡y se convertirá en Sulfuras! Bueno, no voy a aburrirte con información técnica sobre dónde o cómo encontrar el Ojo de Sulfuras. Estoy seguro de que lo puedes conseguir tranquilamente. Firma este contrato para que nuestro acuerdo sea vinculante y habremos terminado."] = "436fa6a143302d46598f8cf4299ea9d9",
             ["¡¿Un lingote de Sulfuron?! ¡Imposible! ¡Lo quiero! ¡Lo quiero! ¡Lo necesito!$B$B$R, estoy autorizado a proponerte un trato muy beneficioso para ti a cambio de ese lingote. ¿Quizás te interesaría saber los secretos de la Mano de Ragnaros? ¡Sulfuras, idiota! El legendario martillo del Señor del Fuego."] = "ffe6ef04a13e4da40d3147386221790a",
         },
@@ -7377,6 +7968,7 @@ GossipText = {
             ["Cualquier ocasión de luchar contra la Horda, especialmente contra los orcos, es una buena ocasión si me lo preguntas. Encontrarás toda la batalla que quieras en la Garganta Grito de Guerra, eso te lo digo yo. Dirígete a la Sala de Armas y habla con Lylandris. Ella te ayudará a ponerte en marcha."] = "fa89dafc6960a6d66ea3bc3288a08a03",
             ["El mejor sitio para encontrarse con gente siniestra e inquietante es el lugar más conflictivo de Forjaz, conocido como La Caverna Abandonada. Seguro que allí encontrarás a Corazón de Cardo, invocando alguna criatura siniestra para hacer lo que le plazca."] = "205d885c660f13d010f41ecd69423cc6",
             ["El otro día escuché por casualidad a Regnus Tronagranito en la Sala de Armas, jactándose de haber ganado un nuevo trofeo para su grupo. Si quieres instrucción de un cazador experto, Regnus es a quien tienes que ir a ver."] = "d93d0f3b1e5ea15a5dd989a27017ef56",
+            ["El pequeño encantador Bink, que está en la Sala de los Misterios, podría ayudarte en asuntos de magia.  La Sala de los Misterios está al norte de las puertas de Forjaz."] = "8d292d1b067d993333147a509e6e409c",
             ["El pequeño encantador Bink, que está en la Sala de los Misterios, podría ayudarte en asuntos relacionados con la magia.   La Sala de los Misterios está al norte de las puertas de Forjaz."] = "8d292d1b067d993333147a509e6e409c",
             ["Encontrarás un buzón al lado de la Taberna Roca de Fuego. Está justo al norte de las puertas de Forjaz."] = "164f8858641d9fa2782d051756979421",
             ["Entre Bixi y Buliwyf no habrá muchas armas con las que no hayan tenido el placer de despedazar o machacar a un orco. Si necesitas instrucción los podrás encontrar junto a la tienda Mil Maderas."] = "96990add552d311d4fe9f5b1e0e496d4",
@@ -7399,6 +7991,7 @@ GossipText = {
             ["Todos esos pícaros matan el tiempo en La Caverna Abandonada, al norte de las puertas de Forjaz. Apuesto a que allí encontrarás a Fenthwick, contando las monedas de otro monedero robado. ¡Uno de estos días lo cogeré!   Mientras tanto, no te quitaré los ojos de encima a ti tampoco, $gmuchacho:muchacha;."] = "9528aea502ae9f7db96fe57bfe2c7e48",
             ["Ulbrek Manofuego se toma muy en serio el cuidado de los animales. Si quieres que te cuide alguna mascota, generalmente está con los cazadores en la Sala de Armas."] = "02f503b66aaa06ff7cf2372c215ba1f0",
             ["Un brujo, ¿eh?... si tienes la intención de ir haciendo por aquí esas cosas, procura tener a tus demonios atados con una correa $gmuchachito:muchachita;. No me gustan los demonios pero me encanta darles con el hacha. ¿Me sigues?   Déjame en paz y piérdete en La Caverna Abandonada. Allí encontrarás a ese brujo, Corazón de Cardo."] = "8dd3f0d79f6df157dda9178efcf166dd",
+            ["Un brujo, ¿eh?... si tienes la intención de ir haciendo por aquí esas cosas, procura tener a tus demonios atados con una correa $gmuchachito:muchachita;. No me gustan los demonios pero me encanta darles con el hacha. ¿Me sigues?  Déjame en paz y piérdete en La Caverna Abandonada. Allí encontrarás a ese brujo, Corazón de Cardo."] = "8dd3f0d79f6df157dda9178efcf166dd",
             ["Una vez oí que el viejo Grimnur había pescado una espada. ¿O fue un pez espada? Maldito Grimnur, ha contado tantas historias de pescadores que ya no puedo distinguirlas. ¿Por qué no vas a verlo a La Caverna Abandonada y que te cuente él mismo cómo fue?"] = "b4e38865182ec7942e86379c3c9fcdf9",
             ["Vaya, todo el mundo quiere montarse en el tren, es para morirse de risa. Si quieres encontrarlo, está situado en Ciudad Manitas, al este de las Puertas de Forjaz"] = "e151e5a6629ea4a4c716bafbf9cf9641",
             ["Veamos, necesitarás papeles para crear una hermandad y Jondor Frenteacerada puede ayudarte a comenzar el proceso. Cuando estés $glisto:lista; para empezar podrás encontrarlo en el Centro del Viajero de Forjaz."] = "7b31a92e46c77d8643368a8d82916e89",
@@ -7429,6 +8022,7 @@ GossipText = {
             ["¿Seguro que no quieres ser $gherrero:herrera;? Bueno, si lo que te gusta es la peletería lo mejor es que hables con Fimble Bueneje en su tienda, está situada en la parte noroeste de La Gran Fundición."] = "a3b00fdf92a61d7b9b93fae27791e95f",
             ["¿Tienes el potencial para convertirte en un hábil cazador? Veamos $gmuchachito:muchachita;, solo lo diré una vez. No vayas disparando a gente con manzanas en la cabeza hasta que no hayas hablado con Regnus en la Sala de Armas."] = "4ee53decdddf5b8264e87b7865aae7ab",
             ["¿Tienes nuevos tesoros que desees conservar sanos y salvos? De ser así debes guardarlos en Las Arcas con los mantopétreos.   Las Arcas se encuentran a un tiro de martillo en dirección nordeste desde la entrada de Forjaz."] = "d3430aba4fb0b400b8dca87cf1df8b15",
+            ["¿Tienes nuevos tesoros que desees conservar sanos y salvos? Debes guardarlos en Las Arcas con los Mantopétreo. Las Arcas se encuentran a un tiro de martillo en dirección nordeste desde la entrada de Forjaz."] = "d3430aba4fb0b400b8dca87cf1df8b15",
         },
         [12997] = {
             ["Monty ser mi nombre y las ratas, mi juego preferido."] = "ca995c7f0f5f79ad1e87335c01749488",
@@ -7444,17 +8038,38 @@ GossipText = {
             ["¿Johnson? Creo que anda por aquí..."] = "5d227c61a514e3f0b41f912efe022c52",
         },
         [13018] = {
+            ["Parece que te vendría bien algo de trabajo, $gamigo:amiga;. Deberías subirte al tren y visitar a mi hermano Monty, en el Depósito de Tranvías Subterráneos. Seguro que tiene algo para ti."] = "9c1a2677d393fcf0e9dcefa2786aec2d",
             ["¡No encontrarás mejores kebabs de rata a este lado de Khaz Modan!"] = "d070931d907bc8487f4f4b1378bf8ea4",
         },
         [13084] = {
             ["Buliwyf, el maestro de armas enano aquí en Armas Mil Maderas, enseña a dominar las armas de puño, las armas de fuego, las hachas de una y dos manos y las mazas de una y dos manos.  Woo Ping, el maestro de armas humano de la tienda Arsenal de Weller de Ventormenta, enseña a dominar las ballestas, las dagas, las espadas de una y dos manos, las armas de asta y los bastones.  Ilyenia Fuegolunar, la maestra de armas elfa de la noche, se encuentra en el Bancal del Guerrero de Darnassus, donde enseña a dominar los arcos, las dagas, las armas de puño, los bastones y las armas arrojadizas."] = "24fbc29bbfa684d547e89fb18cc02719",
             ["¡Eh, hola! ¿Has venido a aprender cómo usar una nueva arma?"] = "aca797c5fc53636876bb9796d70dee29",
         },
+        [13154] = {
+            ["¿Has venido a aprender las artes de la guerra, $r? Has venido al lugar equivocado."] = "b9069-scourge-male-warrior",
+        },
+        [13176] = {
+            ["Necesito muchos más suministros para mejorar nuestras unidades."] = "b9132-orc-male-standard",
+            ["Nuestras unidades no están mejoradas y no tengo suficientes suministros para hacerlo."] = "b8802-orc-male-standard",
+        },
         [13177] = {
             ["¿Adónde quieres volar?"] = "f686b3319d4af5004c6ee3403aea3f5e",
         },
+        [13180] = {
+            ["¡Maldita sea! ¡Ya era hora de que alguien llegase! ¿Por qué has tardado tanto? Ah, olvídalo. Cúbreme, Soldado. ¡Tengo que llegar a la base!"] = "b8637-scourge-female-standard",
+        },
         [13220] = {
             ["El pasado vive en estos eriales, $c. Debemos tener cuidado y no despertarlo."] = "72d9e590ddf6bf219b208c8b157ddb5c",
+        },
+        [13236] = {
+            ["La sangre de nuestros enemigos se derramará sobre el campo de batalla. Los grandiosos elementales responderán a nuestra llamada y aplastarán a todo aquel que se interponga en nuestro camino."] = "b8621-tauren-female-shaman",
+        },
+        [13278] = {
+            ["$n, estás $glisto:lista; para la misión definitiva. Las runas ardientes incrustadas en el suelo del Núcleo de Magma son pasajes al Reino del Fuego y, su presencia, es una afronta hacia nosotros además de una fuente de poder para los señores del Fuego. ¡Hay que extinguirlas!$B$BPara extinguir una runa, coge un vial de quintaesencia de agua y viértelo sobre la runa. La llama se apagará dejando la runa extinguida y nuestro enemigo quedará debilitado."] = "157a89224c00e05440e1b2e2c9e3c28d",
+            ["Has servido a nuestra causa con gran lealtad, $n. Permíteme que te haga entrega de una fuente inagotable de nuestra quintaesencia elemental."] = "faaa07e4da99e33247f577428dd43789",
+            ["Me alegra verte de nuevo, $n. Nuestra guerra con los otros Señores Elementales sigue en pleno apogeo, pero tus esfuerzos ayudan a asegurar nuestra victoria."] = "a59a3d642f5997f5088b9bc70f086a13",
+            ["Soy Hydraxis, duque de los Señores del Agua. No eres $gun:una; elemental y, por lo tanto, no puedes comprender nuestra lucha, pero quizás podamos llegar a un pacto que nos beneficie a ambos..."] = "9fb4487bddd8ed7d8fd18496559b164d",
+            ["¡$gBienvenido:Bienvenida; de nuevo, $n! Has prestado tu valiosa ayuda en la lucha contra Ragnaros y siempre serás bien $grecibido:recibida; entre nosotros."] = "e27a1179415b13ee9118204798811bd7",
         },
         [13283] = {
             ["Creo que no te interesa lo que puedo enseñarte. Quizás te interese encontrar a un instructor de $c que te ayude."] = "0fac9f50e1fb5c48f7301ce81e131b5f",
@@ -7463,6 +8078,17 @@ GossipText = {
         },
         [13320] = {
             ["¿Has venido a aprender sobre las batallas ganadas y perdidas en este campo? Aquí no hay ganadores..."] = "1b77224af068edacdc86b986bb6acf01",
+        },
+        [13322] = {
+            ["Habla con Hydraxis."] = "c83aa6549db8ce20394faacfdc64682b",
+            ["Has hecho de nuestros enemigos los tuyos propios. Compartiré encantado mis aguas contigo."] = "3be00d51f4327fcf8dedd020c99fff34",
+            ["La próxima vez que vayas al Núcleo de Magma, mata a un señor del Fuego por mí, ¿de acuerdo?"] = "3c3e1919d960f68f9508036d09cd33b2",
+            ["No tienes nada que hablar conmigo, $gpequeñajo:pequeñaja;."] = "acb9d15bdc0c1fcf62818e43b99b40be",
+            ["Nuestro señor Hydraxis habla muy bien de ti. Mi agua es tu agua, $gamigo:amiga;."] = "8f390005485bf23f89fdd8e9530f7bec",
+            ["Quizás podrías contarme tus hazañas, $n. Me sentiría muy honrado."] = "3df32cf95d9325522844268dba9bf9cc",
+            ["Saludos, $gpequeñajo:pequeñaja;. ¿Tienes que hablar de algo con los Señores del Agua?"] = "81f349762bd8958ca04526c507aa6303",
+            ["Se cuentan historias sobre tus hazañas. Tu nombre no nos es desconocido, $n."] = "6b6a05b1b78a935094a80c9481e13b33",
+            ["¡No me hables en tu vulgar idioma! ¡Solo Hydraxis puede aguantarlo!"] = "53fdda4e1cebb562bd47d5af254911f6",
         },
         [13417] = {
             ["He tenido que realizar una rigurosa reconversión con muchos estudiantes de todo lo que habían aprendido, para poder enseñarles desde cero. El servicio que ofrezco aumenta de dificultad cada vez que se hace. Por esa razón, también aumenta el precio de cada nueva instrucción. ¿Quieres que elimine todos los talentos que has aprendido?"] = "9ccfbeb35c89e4770c3695a5c842eef7",
@@ -7584,6 +8210,9 @@ GossipText = {
         [13447] = {
             ["¡$n, me alegro de ver a veteranos como tú en el campo! Siento informarte de que nuestros suministros son demasiado escasos para lanzar asaltos terrestres a gran escala contra la Horda.$B$BHabla con nuestro intendente; tiene misiones de suministros disponibles."] = "be7b74ece350a6df351c868dce888f81",
         },
+        [13448] = {
+            ["Me alegra tener a veteranos como tú en el Valle de Alterac, $N. Nuestros suministros son demasiado escasos para lanzar un asalto terrestre en el Valle de Alterac... Vete a hablar con el intendente, te dirá como aumentar nuestros suministros."] = "b8989-orc-female-warrior",
+        },
         [13616] = {
             ["Muy bien, Soldado. Unas cuántas más y nuestros establos estarán llenos de monturas para que la caballería entre en combate."] = "28607f3a0d29a8585b7a800ababa8406",
             ["Saludos, Soldado. ¿Estás aquí para ayudar a la causa?"] = "b39eb5c882dee150f724b5b3066bf272",
@@ -7591,6 +8220,26 @@ GossipText = {
         [13617] = {
             ["Los carneros indígenas de Alterac son cruciales para nuestra caballería."] = "089e884fad1004ecb78852e5b6c1ed36",
             ["Solo unas cuántas más y nuestros establos estarán llenos de monturas. Déjalo conmigo, Soldado. Yo me haré cargo a partir de ahora."] = "6f240a341cad715c1ce2f4322f7f0c15",
+        },
+        [13698] = {
+            ["Que Cenariuste guíe, $c.$B$BEstoy aquí, con mis hermanas, en esta tierra corrupta en una misión de gran importancia para el Círculo Cenarion. Pero exijo que solo se dirijan a mí aquellos que tengan el suficiente poder... enviar a un ser de menos poder sería una insensatez."] = "a11ebe2254a411971d7fa8c936a88bea",
+        },
+        [13716] = {
+            ["Ah, Zaetar... <Celebras aparta su mirada.>$B$BMi padre, Remulos, intentó detenerle...$B$BZaetar era muy obstinado y, cuando se enamoró de una princesa elemental de la tierra, mi padre supo que esa unión estaba condenada, pero Zaetar se negó a escuchar.$B$BLos centauros son el resultado de su error. Nacieron deformes y llenos de odio; mi tío Zaetar murió a manos de sus hijos...$B$BLa malvada princesa, Theradras, sigue guardando sus restos aquí, en las Cuevas de Cristal."] = "d4cdbf849db5085929e3beb1e99c3b7f",
+            ["Cuando las toxinas que flotaban en Maraudon empezaron a filtrarse en mi mente, comencé a perder el contacto con la realidad. Mis hermanas dríades, preocupadas por si lo utilizaba para hacer el mal, me lo quitaron en secreto y lo partieron en dos antes de esconderlo en las cuevas.$B$BPronto, ellas también cayeron víctimas de la locura y las dos partes del cetro, desprotegidas, fueron a parar al malvado Lenguavil. El sátiro le confió una de las partes a Noxxion, un elemental malvado, y se quedó con la otra."] = "2283780f1630d7fa54881c95c5c7fd98",
+            ["Entre los colores, un camino.$B$BParpadea en la luz.$B$BDel agua, nacerás."] = "416f05a557f1f66885bcf285e643bfc1",
+            ["Entre los pasadizos naranja y púrpura, cerca de las puertas de Maraudon, encontrarás un tercer camino.$B$BEl cetro que llevas en tus manos, es la llave."] = "d20f050c92cfcb9e7a6190411b70bd96",
+            ["Gracias por lo que has hecho, $n.$B$BProtege el cetro. Que te ayude en tu lucha contra el mal que ha invadido este lugar..."] = "d2fa054e42796c6f8285262fdf016712",
+            ["Los Hijos de Cenarius, Remulos y Zaetar.$B$BMi padre, Remulos, era fuerte y hermoso, y mi tío, Zaetar, muy astuto y de complexión pequeña. Si bien eran respetados por igual, Zaetar siempre sintió que no recibía la misma gloria y atención que su hermano.$B$BDespués de que mis hermanas y yo nacimos, Zaetar, cegado por los celos, partió para intentar superar a su hermano... Fue el creador de su propio fin. Todavía me produce una gran tristeza, incluso con el paso del tiempo..."] = "0508c8c745382dbb9906b32dc9fc8d46",
+            ["Me estoy cansando...$B$BDesde aquí, puedes ver las cataratas, $n... El cetro te otorga el poder de viajar a este mismo lugar si alguna vez deseas atravesar de nuevo las puertas de Maraudon.$B$BCerca de la entrada de Maraudon, encontrarás un pasadizo que baja a las cuevas. Utiliza el cetro en el lugar del ritual ancestral para crear un portal y te encontrarás aquí de nuevo."] = "4bd6ebe8fe34292aa5ad1f129f18de22",
+            ["Mi cetro... Después de tantos años... ¡Lo has recuperado! ¡Realmente eres $gel salvador:la salvadora; de este lugar!$B$BEscucha con atención, $n. Solo es posible unir la cabeza y la vara en la Piedra de Maraudon."] = "7fe736d2944e8c8ad5033eb05a36c058",
+            ["Mucho tiempo atrás, mis hermanas dríades y yo entramos en estas cuevas para liberar el espíritu atormentado de mi tío, Zaetar. Sin embargo, la corrupción que ya se había extendido por estas cuevas, pronto se apoderó de nosotros.$B$BFuimos condenados a vagar por estos pasadizos; las toxinas envenenaban nuestras mentes...$B$BAunque mi espíritu ahora puede descasar, sé que he fallado en mi misión. Y me embarga una gran tristeza..."] = "0a303ef0ea9f4b88165b5f171d3046b8",
+            ["Por fin soy libre de la corrupción que me tenía atado a este lugar..."] = "a3b7c64b4ad4aa02dc96acfd07551e61",
+            ["Sin el conocimiento de los encantamientos necesarios para unir ambas partes, Lord Lenguavil no podía usar el cetro. Sin embargo, ahora que soy libre de la maldición de la corrupción de Lenguavil, podré ayudarte si quieres traerme las dos partes. La cabeza y la vara del cetro."] = "997d2c545e0f290eb9953bef6f5a4eaa",
+            ["¿Cómo ha podido suceder esto, $n? ¿Crees que un objeto como el cetro de Celebras no es importante?$B$BTe ayudaré esta vez, pero no descuides de esa manera un objeto tan valioso..."] = "9fc7155b8d75a2c60e886475af09f188",
+        },
+        [13717] = {
+            ["No necesito que nadie sepa que todavía tengo un lugar en este mundo, $c. Las tribus verán... todas ellas. Luchan entre ellas y, ¿para qué? Sobras de los buitres... tierras infectadas por la Legión... ¡Bah!$B$BEl centauro debería sentirse orgulloso de su herencia... es tan noble como la de cualquier elfo de la noche u orco... ¡Ya era hora de que empezáramos a actuar como tal!"] = "b488b5ccd35bef0653883eee13674e3f",
         },
         [13776] = {
             ["Has venido a aprender, ¿eh? Bueno, quizás tenga algo de trabajo para ti, escoria."] = "832d7cd84aaed062179a1a03bf687405",
@@ -7603,6 +8252,50 @@ GossipText = {
         },
         [13841] = {
             ["¡Saludos, $r! Soy el teniente Haggerdin, oficial a cargo del reclutamiento de la Guardia de Pico Tormenta.$B$BSegún vayas obteniendo prestigio y notoriedad dentro del clan, ven a hablar conmigo y veremos lo que puedo hacer para mejorar tu insignia. Si alguna vez pierdes tu insignia, podré darte una de repuesto."] = "3df9d5b384b97d45f30cd9ba4c8d25a8",
+        },
+        [14241] = {
+            ["Gracias, mortal. Solo puedo ofrecerte un servicio antes de regresar al Sueño.$B$BLa puerta del maestro Zevrim, Alzzin, bloquea tu camino. Seré tu instrumento de destrucción. La puerta se abrirá, solo tienes que darme la orden."] = "2d144cb5caeba9e2143eb224850296fd",
+            ["Incapaz... sin poder... restaurar... debo restaurar... Zevrim controla... acabar con este tormento..."] = "04f875d4d0b7356d2d82171b32556a21",
+        },
+        [14305] = {
+            ["Los champiñones siempre crecen en lugares húmedos, por eso parecen paraguas."] = "432a95b547070381db3a29516f3f64c2",
+            ["Si intentas fallar y tienes éxito, ¿qué acabas de hacer?"] = "1ebe665e6a76e627c057308f78409545",
+            ["Si los petos están sujetos por los tirantes de arriba, ¿por qué tienen hebillas para cinturón?"] = "00d81e2d0fb28b29ea4139497534a76a",
+            ["Ya he estado en Forjaz. Huele raro."] = "9b7cc4d14df4266062568258d232b937",
+            ["¡Cuando sea mayor, quiero ser el rey de Ventormenta!"] = "905ca6534bf286e8e52d3e47113654df",
+            ["¿Acabas de salir de una mazmorra? ¿Me has cogido algo?"] = "f9de82a94c82518433cf705f61bb0eab",
+            ["¿Alguna vez tienen sed los peces?"] = "cdf2d0caad312c1ff15104cce812da26",
+            ["¿Qué pasa si los mocos se te congelan en la nariz?"] = "98b8731101efe5781b7df22a5faedc2a",
+        },
+        [14321] = {
+            ["¡Fengus hacerte fiero! ¡Loco! ¡AAARR!"] = "3068151f438eea30490ef10dfc99b986",
+            ["¡Ser jefe ahora, perro!"] = "1c7c855590c85180bca83462a8078bb8",
+        },
+        [14322] = {
+            ["¿Tú ser $gnuevo jefe:nueva jefa;, no? ¡Viva $gel nuevo rey:la nueva reina;!$B$BKreeg dejarte ver el garrafón de Gordok. ¡El garrafón ogro ser mejor garrafón de todos, y garrafón de Gordok ser el mejor de todos los garrafones ogros! ¿Quizás quieras comprarme algo, $gjefe:jefa;?"] = "7517da6c4a86b6587d22d65089fd3dc3",
+            ["¿Tú ser nuevo jefe, no? ¡Viva el nuevo rey!  Kreeg dejarte ver el garrafón de Gordok. ¡El garrafón ogro ser mejor garrafón de todos, y garrafón de Gordok ser el mejor de todos los garrafones ogros! ¿Quizás quieras comprarme algo, jefe?"] = "esMX-c9c19201a200ef6329239bd11589c429",
+        },
+        [14323] = {
+            ["¡Tú traer buen jefe! ¿¿Cómo pasar por Slip'kik?? ¡Yo listo, mirar la próxima vez! ¡Arr, arr!  Nadie pasar por Slip'kik nunca más. ¡¡Slip'kik prometer!!"] = "esMX-09e79d2ac4db9d2de9be1ab8bd4df0cf",
+            ["¡Tú traer buen jefe! ¿¿Cómo pasar por Slip'kik?? ¡Yo listo, mirar la próxima vez! ¡Arr, arr!$B$BNadie pasar por Slip'kik nunca más. ¡¡Slip'kik prometer!!"] = "97fedb414dc8b96c6e85fd55b553c3fd",
+            ["¡Yo enseñarte lo listo que soy, $gjefe:jefa;! ¡Tú ser extra inteligente con poderoso mojo mágico ahora!$B$BMmm... Quizás Slip'kik usar magia consigo mismo. Sería una buena idea..."] = "824cfa14793b8d40797f9c0cf80658f3",
+            ["¡Yo enseñarte lo listo que soy, jefe! ¡Tú ser extra inteligente con poderoso mojo mágico ahora!  Mmm... Quizás Slip'kik usar magia consigo mismo. Sería una buena idea..."] = "esMX-411aaa50e73121dcce5b8e9781990b63",
+        },
+        [14324] = {
+            ["Eeeh... Siento haberte atacado, $gjefe:jefa;. Tú no matarme, por favor, ¿vale? ¡Tú $grey:reina; ahora y yo ayudarte a hacer tu tributo más grande!"] = "95fd58394fc7ba757c5eaece9ba99c6f",
+            ["Eeeh... Siento haberte atacado, jefe. Tú no matarme, por favor, ¿vale? ¡Tú rey ahora y yo ayudarte a hacer tu tributo más grande!"] = "95fd58394fc7ba757c5eaece9ba99c6f",
+            ["¡Si no hablar con Mizzle, nunca ser $grey:reina;! ¡Habla con Mizzle el Astuto!"] = "1a91c9e16ac8f2c13bc75b4447fe7573",
+        },
+        [14325] = {
+            ["¡Tú ahora $gel más fuerte:la más fuerte;! ¡Que todos saluden $gal nuevo rey:a la nueva reina; de los Gordok!"] = "0db2ad28128b2a86c2f8d90760bbc07f",
+            ["¿Es cierto lo que ven mis ojos? ¿Siguen con sus armas? ¿Por qué les has permitido quedarse con las armas?"] = "e0d9f0411974fb4db1c92b75b4207c88",
+            ["¿Qué hacer por aquí? ¿Por qué no estar los peleles con cadenas?"] = "6f38fa1ff6f5ce01952a49f67337a924",
+        },
+        [14326] = {
+            ["Yo oír que tú estar $gmuerto:muerta;... Bueno, ¡no será fácil que pases por cadáver después de esto!"] = "cdaa3e59b4a096041e9628a71212bd9f",
+            ["Yo oír que tú estar muerto... Bueno, ¡no será fácil que pases por cadáver después de esto!"] = "cdaa3e59b4a096041e9628a71212bd9f",
+            ["¡Tú ser $grey:reina; de los Gordok! ¡El número uno!"] = "2eb0258f96f47ed11e10c6f648e220fd",
+            ["¡Tú ser rey de los Gordok! ¡El número uno!"] = "2eb0258f96f47ed11e10c6f648e220fd",
         },
         [14347] = {
             ["<Demitrian cae sobre sus rodillas.>$B$B¡Has encontrado la prisión eterna de mi maestro!$B$B¡Oh, cuánto tiempo he esperado a que llegase este día y, al fin, lo ven mis ojos!$B$B¡Tenemos que liberarle!"] = "c7d0d5f0497c7bbd94f17ecb262de67c",
@@ -7618,6 +8311,26 @@ GossipText = {
             ["Sus formas manifestadas, debilitadas tras millones de batallas, estaban prisioneras bajo el mundo (el mundo que ellos mismos habían creado) cuya superficie penetró la corrupción de los Creadores de titanes y contaminó a los dioses antiguos.$B$BFue ahí y entonces cuando los hermanos se transformaron. Durante cinco milenios se luchó una gran batalla en el corazón del mundo."] = "c3df5cd0dcec466f8c0f5df4b18f5778",
             ["Sé mucho. Escucha y aprende, $r."] = "7624b1b9032ec89ab17724443dfdadf7",
             ["Thunderaan no tenía ni idea de los avances del Señor del Fuego. Antes de que mi Señor pudiera reaccionar, Sulfuras, el legendario martillo de Ragnaros, descargó un golpe mortal. Thunderaan cayó, derrotado.$B$BEl Señor del Fuego se dio un festín con la esencia de mi Señor, pero no consiguió consumirlo completamente."] = "e102fa0f9aa47c2f42746046e41a2b68",
+        },
+        [14348] = {
+            ["Sí, había conseguido lo que se creía imposible. ¡De la fisura salió un agente de Therazane!$B$BDesde donde yo estaba, pude ver al goblin hablando con el agente del dios antiguo. Lo que ocurrió después, fue terrible..."] = "05fd347cf49aa096aba342e0ba7a6202",
+            ["Un antiguo estudiante mío llamado Krixix, se pasó la vida entera intentando contactar con los dioses encadenados del inframundo. Perseguía aquello que surgió de la tierra devastada... Aquello que aparecía solo como resultado del choque de los elementos en un conflicto titánico.$B$BElementium, tal y como lo conocerían los mortales.$B$BUn día, hace casi una década, el ansia de Krixix tuvo como resultado una fisura que formó esta garganta."] = "1b38bfbe1a0a745e4dbeaa39bead45f1",
+            ["Yo estudio los elementos conocidos y desconocidos de nuestro mundo."] = "a7fc71d65a41413f50c42397741d69fc",
+            ["¡La fisura se cerró y Krixix desapareció! ¡La fisura se lo tragó!$B$BTen cuidado, $r, lo que deseas, podría convertirse fácilmente en lo que no quieres. ¡Estás jugando con seres y poderes arcanos mucho más viejos que el mismo tiempo!$B$BSi Krixix estuviera vivo, y tuviera la información que buscas, te aseguro que no te lo habría contado. Se ha enfrentado a terrores mucho más oscuros de los que jamás podrías soñar con perpetrar."] = "423d14a48962a2a3faa8622801877b8f",
+            ["¿Elementium? Hacía décadas que no escuchaba esa palabra en boca de un mortal."] = "75e6c53153e2f47f1a3cc30630199d95",
+        },
+        [14353] = {
+            ["Mmm... ¿Tú matar al rey, sí? Eso significa que tú ocupar su lugar. ¡Eso te convierte en $gel nuevo rey:la nueva reina;! ¡Viva $gel rey:la reina;!"] = "d6d7ce26d361f3b6dde70ba12e4e6d7d",
+            ["Mmm... ¿Tú matar al rey, sí? Eso significa que tú ocupar su lugar. ¡Eso te convierte en el nuevo rey! ¡Viva el rey!"] = "d6d7ce26d361f3b6dde70ba12e4e6d7d",
+            ["Todos los esbirros del jefe: el vapuleador Kreeg, los tres guardias, el capitán Kromcrush y el observador, dar tributo $gal nuevo jefe:a la nueva jefa;. Si te cargas a un esbirro, ese esbirro no podrá darte un tributo. Por cada uno que mantengas con vida, más tributo recibirás. ¡Mantenlos a todos con vida y tú recibir el GRAN tributo!$B$B¡Sí!"] = "6a90057cbf7f1d77b21eece8f1256afc",
+            ["Todos los esbirros del jefe: el vapuleador Kreeg, los tres guardias, el capitán Kromcrush y el observador, dar tributo al nuevo jefe. Si te cargas a un esbirro, ese esbirro no podrá darte un tributo. Por cada uno que mantengas con vida, más tributo recibirás. ¡Mantenlos a todos con vida y tú recibir el GRAN tributo!  ¡Sí!"] = "esMX-8ccf45e454894f4c7a31a3e8c5f15c46",
+            ["Vale, $gjefe:jefa;, cuando quieras el tributo de los esbirros, ¡decírmelo!"] = "ab743cf28912d8a59982fd23fe474add",
+            ["Vale, jefe, cuando quieras el tributo de los esbirros, ¡decírmelo!"] = "ab743cf28912d8a59982fd23fe474add",
+            ["¡Tú gran $gjefe:jefa; ahora! ¡Tú $grey:reina;! ¡Todos saludar $gal rey:a la reina; $N de Gordok!$B$B¡Ahora que tú ser $gjefe:jefa;, todos los esbirros te darán un tributo! ¿Has dejao algunos vivos, eh, $gjefe:jefa;?"] = "f7062c57e81ab7396be9bfca9bebd668",
+            ["¡Tú gran jefe ahora! ¡Tú rey! ¡Todos saludar al rey $N de Gordok!  ¡Ahora que tú ser jefe, todos los esbirros te darán un tributo! ¿Has dejao algunos vivos, eh, jefe?"] = "esMX-5688997d2c8d8bb6d7209087fb271a7f",
+        },
+        [14354] = {
+            ["¿Quieres jugar a un juego, $gapestoso:apestosa;?"] = "5a0946981d3ccf59887300b14fbff880",
         },
         [14358] = {
             ["El Príncipe planeó encarcelar a un demonio de gran poder en un campo de fuerza. Las torres canalizarían las energías latentes hacia el campo, manteniéndolo operativo.$B$BMientras estuviera atrapado, Immol'thar serviría como energía para el pueblo de Eldre'Thalas."] = "e087723e4de9c3a7afc0a6f3ff26dd25",
@@ -7654,6 +8367,9 @@ GossipText = {
         [14383] = {
             ["¡Los han robado, $r! Tres de nuestros libros más valiosos. Si nos devuelves los libros, muy probablemente recibirás una recompensa."] = "e5bc2020af21f8dc760efcc4b9b1641e",
         },
+        [14387] = {
+            ["La tela con la que está tejido nuestro mundo, es extremadamente delicada. Solo se necesita algo de conocimiento y saber aplicar dicho conocimiento para rasgar la tela. Así es como nacen las discordias."] = "b9488-nightelf-male-standard",
+        },
         [14392] = {
             ["Yo soy quien ejecuta las órdenes del Jefe de Guerra, nadie me puede cuestionar. Yo soy la Horda."] = "9f1fc0f188303aa506b43d5e4203e697",
             ["¡Observa al enemigo, $r! ¡Observa lo que el poder de la Horda hace con los dragones incluso más poderosos! Todos aquellos que se opongan a nosotros, sufrirán un destino parecido."] = "e84dc958c4a38bb68b73f260ddc8edec",
@@ -7667,6 +8383,16 @@ GossipText = {
         },
         [14437] = {
             ["¿Tienes arañas o alfazaques, $c? Son muy escurridizos, pero si eres más $grápido:rápida;, ¡descubrirás que son todo un manjar!"] = "767f180e80a535e7f390f3d311039337",
+        },
+        [14444] = {
+            ["Cuando un rayo cae sobre el océano, ¿por qué no mueren los peces?"] = "749ec125a48d3530b4d2786992790609",
+            ["Si tu guante es demasiado grande, ¿te sigue quedando como un guante?"] = "e2af044f367fbc20080fdc283321e7f3",
+            ["Si una tortuga no tiene caparazón, ¿es que no tiene casa o que está desnuda?"] = "d57fd66e88bdc582036932d2a23765c0",
+            ["Tengo una roca metida en la nariz."] = "5183c7d9ee10b62cc00c5dfd5189670c",
+            ["Tu armadura da miedo. ¿Tú das miedo también?"] = "91ab5f98862a8ec8c082666324b56746",
+            ["Un insecto volador sin alas, ¿se llamaría un insecto andador?"] = "ee673f2ad22462bb5e0d35679a582e14",
+            ["¡Si eres un verdadero héroe de la Horda, quiero ver cómo luchas contra un dragón! ¡Sí!"] = "069a3e2d32c76ed83c1695ae87c91519",
+            ["¿Qué significa 'zug zug'?"] = "bd5067ed68d06ab493843a8ed87d3602",
         },
         [14450] = {
             ["La guerra conlleva unos costes, $c... Unos que, a menudo, se pasan por alto. Esos costes son los huérfanos, niños que han perdido a sus padres en los demasiado numerosos conflictos que asolan Azeroth. Esos niños, que no tienen a quien acudir, a menudo vienen a vivir aquí hasta que son lo suficientemente mayores para no depender de nadie.$B$BUna semana al año, en la primavera, la Alianza intenta darles algo a estos inocentes. Y esto se llama la Semana de los Niños."] = "9452bcf77b2d46636d57c6303688913f",
@@ -7684,6 +8410,9 @@ GossipText = {
             ["¡Inclínate ante mí, insecto! Seguro que puedes sentir el poder que tengo sobre ti."] = "283fc5c382b274b565983a110dfbcccc",
             ["¡No interrumpas a Niby, insensato! Desgarraré la carne de tus huesos y utilizaré los restos de tu esqueleto como perchero. ¿Por dónde iba? Ah, sí, pues eso, Kroshius duró casi diez veces más que cualquier otro infernal. No sé muy bien por qué, pero creo que si lo estudio a fondo, podría descubrirlo.$B$BNecesito que recuperes el núcleo infernal de Kroshius."] = "71cbe27cb3eb26c72fce94d8e5036a76",
         },
+        [14470] = {
+            ["Algunos me llaman... ¿Diblis?"] = "20369114b6b242301e527e6151e9dc93",
+        },
         [14494] = {
             ["<Eris asiente.>$B$BEl Ojo ha visto demasiados horrores y demasiadas maravillas.$B$BMuestra lo que cree que quien lo mira está preparado para ver."] = "ea4195ca47ef46305b7808f45ac77cdc",
             ["Bendita sea la Luz, alguien ha respondido por fin a la llamada."] = "39d90b0020ac23a8583fafa6411a8ed8",
@@ -7691,6 +8420,9 @@ GossipText = {
             ["Nunca dije que tuvieras que redimirte, $gsacerdote:sacerdotisa;. Estás aquí para redimirnos a mí y a los inocentes asesinados mientras tratábamos de escapar de Stratholme.$B$BMi espíritu y el de aquellos que fallecieron, están atados a este lugar, condenados a revivir eternamente nuestras trágicas muertes."] = "bb679b37c4c78f1616884c32f720a75d",
             ["Sé que lo harás, $n.$B$BYo misma soy una sacerdotisa aunque, al contrario de ti, hace mucho que me he ido de este mundo. Sin embargo, mi espíritu permanece aquí, al igual que los espíritus de los miles que fueron brutalmente asesinados por el príncipe Arthas Menethil y su legión de no-muertos."] = "25632e7eb38d445fde6b26396d16d87d",
             ["Sí. El Ojo nunca se equivoca.$B$BDespués de todo, eres $gun sacerdote:una sacerdotisa;. Debes ser $gun poderoso sacerdote:una poderosa sacerdotisa;, si el Ojo te ha mostrado ese horrible recuerdo.$B$BHas venido buscando la redención y, sin embargo, no te das cuenta de ello... ¿Verdad?"] = "39cfa2183772f467fc19e87da36d78a9",
+        },
+        [14504] = {
+            ["El espíritu del corcel nefasto late con ira."] = "1c1e9829a170642f41bac267018c00fb",
         },
         [14508] = {
             ["¡Arr! Nada gustarme más que tipos luchando a muerte en la arena. Si estar aquí en el momento justo, quizás poder ser uno de ellos."] = "25938481b6c048114f6758db91eca1de",
@@ -7702,6 +8434,15 @@ GossipText = {
             ["¡Largo! Estoy en pleno consejo con los Señores del Terror, ¡y lo que estamos discutiendo no es de tu incumbencia!"] = "09af5cd652b4864bff857c89022d0037",
             ["¿Qué? ¿Pero cómo? ¡No! ¡No es posible! He tenido mucho cuidado... ¡No puede saberlo!$B$B¡Estás mintiendo! ¡Mientes y morirás por ello!"] = "0895ca3a8270e33abe5027f593574c7e",
             ["¿Un mensaje de Pesadilla? ¿Qué mensaje? ¿Necesita a su fiel consejero y sirviente, Ulathek? ¿Requiere mi presencia?"] = "d02f8235c277c2ac91b7975819950acb",
+        },
+        [14524] = {
+            ["Saludos, $n."] = "00ee25dc8ec2b9d495d1538ceae07d8e",
+        },
+        [14527] = {
+            ["¡Qué día tan maravilloso para estar viva! Mira la belleza que te rodea, $gamigo:amiga;. ¡Disfruta de todo lo que la vida nos puede ofrecer!"] = "b9744-troll-female-laidback",
+        },
+        [14528] = {
+            ["*GRRRR* *UFF* *UFF*"] = "4a384e073e6a50a80abb7b3335f0821a",
         },
         [14531] = {
             ["Es maravilloso ver a otra persona en esta remota región del mundo. Ven, camina conmigo. Deja que nuestros cuerpos se den calor."] = "592e299bd0edf1ea20bdb5dabf705526",
@@ -7761,6 +8502,52 @@ GossipText = {
         [14729] = {
             ["¡Eh, tú! Por tu bien, debes ayudar a los Renegados en estos tiempos nefastos. Escucha atentamente, no me gusta repetirme.$B$BActualmente tenemos una terrible escasez de paño. Nos estamos quedando sin vendajes y sin telas y aceptamos donaciones para aumentar los inventarios. Si bien no recibirás una compensación monetaria, por eso se llama donación, tu ayuda no pasará desapercibida."] = "142f4365ed15cdab171cacd75afb66fc",
         },
+        [14731] = {
+            ["Antiguamente la capital de los enanos Hierro Negro, este laberinto volcánico ahora sirve como trono de poder de Ragnaros, el Señor del Fuego. Ragnaros ha descubierto cómo crear vida a partir de la piedra y planea formar un ejército de golems imparables para ayudarle a conquistar la Montaña Roca Negra. Ragnaros, obsesionado con derrotar a Nefarian y a sus esbirros dracónicos, hará lo que sea por conseguir la victoria final."] = "21931101b2d4e5f7834392f8b2dd6827",
+            ["Construida con las mismas vides que Horado Rajacieno, Zahúrda Rajacieno es la capital tradicional de la raza de los jabaespines. El laberinto de espinas que se extiende por todas partes, aloja un verdadero ejército de leales jabaespines junto con sus altos sacerdotes, la tribu Caramuerte. Sin embargo, recientemente una sombra de mal presagio ha caído sobre la rudimentaria guarida. Unos agentes de la Plaga de los no-muertos, a las órdenes del exánime Amnennar el Gélido, han tomado el control de la raza de los jabaespines y han convertido el laberinto de espinas en un bastión del poder de los no-muertos."] = "528dcae422e891d6b2fa40dfa4842120",
+            ["Cuando entregues pruebas de amor a los habitantes de la ciudad, recibirás diferentes regalos a cambio. Algunos podrás guardarlos y utilizarlos, y otros ¡podrás juntarlos y dárselos a tu $ghéroe favorito:heroína favorita;! Visita a Kwee Q. Mercachifle y entrégaselos.$B$BEncontrarás a Kwee cerca de Bolvar, Magni o Tyrande."] = "10e3f1118f530e4dca0dfb77ef7711bb",
+            ["Cuando entregues pruebas de amor a los habitantes de la ciudad, recibirás diferentes regalos a cambio. Algunos podrás guardarlos y utilizarlos, ¡mientras que otros podrás juntarlos y dárselos a tu $ghéroe favorito:heroína favorita;! Visita a Kwee Q. Mercachifle y entrégaselos.$B$BEncontrarás a Kwee cerca de Cairne, Sylvanas o Thrall."] = "a63e53bcee0830ee7eb43308e5ea1362",
+            ["Durante La guerra de los Ancestros, el semidiós Agamaggan luchó contra la Legión Ardiente. El colosal jabalí fue derrotado y, con el tiempo, en las zonas donde su sangre se había derramado, brotaron unas enormes vides llenas de espinas. El jabaespín vino a ocupar estas regiones y encargarse de que se mantuvieran como un terreno sagrado. El corazón de estas enormes colonias de espinas, es Rajacieno. El brujo Charlga Filonavaja conquistó Horado Rajacieno, de quien se dice que ha estado negociando con agentes de la Plaga con algún propósito insidioso."] = "649bdf9da0afee9aa4f36b23b733ebea",
+            ["El Castillo de Colmillo Oscuro está en la parte sur de Argénteos, justo al norte de la Aldea Piroleña."] = "45f2ff59f8b658974ed2d4c53aeb950d",
+            ["El Monasterio Escarlata está en las colinas al noroeste de los Claros de Tirisfal."] = "33be706a3ca42ecacc7bb9aa90a4b78d",
+            ["El Monasterio fue antiguamente un centro de aprendizaje y conocimiento. Con la Plaga de los no-muertos durante la Tercera Guerra, el pacífico Monasterio se convirtió en una fortaleza de la fanática Cruzada Escarlata. Los Cruzados no toleran a ninguna raza que no sea la humana, sin tener en cuenta alianzas ni afiliaciones. Creen que todos los forasteros son portadores potenciales de la peste, y deben ser destruidos."] = "f1616764bec4aa073f8fde1172a64efe",
+            ["El Scholomance está en las criptas debajo del bastión de Castel Darrow. El bastión, que antiguamente pertenecía a la familia noble Barov, fue destruido tras la Segunda Guerra. El zahorí Kel'Thuzad reclutó seguidores para su Culto de los Malditos y prometió inmortalidad a quienes sirviesen a su rey Exánime. Los Barov cayeron bajo su influencia y donaron el bastión, pero los adeptos mataron a la familia y convirtieron las criptas en un colegio de necromancia. Si bien Kel'Thuzad ya no reside allí, todavía quedan adeptos e instructores."] = "804f985af7370a77ac81f20619df1abb",
+            ["El Templo Sumergido se encuentra en el centro de un gran lago, en la parte este del Pantano de las Penas."] = "0ee26cb053b6fb8ce56085429073d58a",
+            ["El colegio de nigromancia conocido como Scholomance, está en la isla en ruinas de Castel Darrow en las Tierras de la Peste del Oeste."] = "83a9c2ac2e1fc5e19aabcf0c4c54933f",
+            ["Esta ciudad abrasada por los rayos del sol es el hogar de los trols Furiarena, famosos por su particular falta de piedad y su oscuro misticismo. Las leyendas de los trols hablan de una poderosa espada llamada Sul'thraze la Azotadora, un arma capaz de infundir miedo y flaqueza incluso a los enemigos más formidables. Mucho tiempo atrás, la espada fue partida por la mitad. Sin embargo, hay rumores que dicen que las dos mitades se encuentran en algún lugar dentro de los muros de Zul'Farrak."] = "c30da11211ff29b7dc84cc0f45c78d13",
+            ["Frustrado por la falta de progreso de los magos de Dalaran contra los no-muertos durante la Tercera Guerra, el archimago Arugal decidió invocar a los ferocanis extra-dimensionales para dar un empujón a sus tropas cada vez menores. Los lobizones atacaron a la Plaga y, rápidamente, se dirigieron a los magos y asediaron el bastión del noble barón Filargenta. Pronto, el fuerte fue presa de las sombras y se convirtió en cenizas. Enloquecido por la culpa, Arugal adoptó a los ferocanis como sus hijos y se retiró al Castillo de Colmillo Oscuro."] = "94f148b3ca34c24b4cd7a4a3a832c353",
+            ["Gnomeregan se encuentra en la parte oeste de Dun Morogh."] = "b4e0a59a63426f86ca2d7c5be598b890",
+            ["Hace más de mil años, un grupo de sacerdotes trols conocidos como los Atal'ai, intentaron resucitar a un dios de la sangre ancestral llamado Hakkar el Cazador de Almas. Tras la consecuente guerra civil, los sacerdotes fueron derrotados y exiliados al Pantano de las Penas. Allí erigieron un templo en honor de Hakkar, para prepararse para su llegada al mundo físico. La Dragón Aspecto Ysera, pronto descubrió los planes de los Atal'ai y hundió el templo bajo el pantano. Hasta el día de hoy, las ruinas han estado protegidas por los poderosos dragones verdes."] = "20945ea06e6002d907feb138b6702cf9",
+            ["Hace poco, un druida elfo de la noche llamado Naralex, descubrió una red de cuevas subterráneas en el corazón de Los Baldíos. Creyendo que podría usar los manantiales de las cuevas para restaurar la exuberancia de Los Baldíos, el druida comenzó a absorber las energías del legendario Sueño Esmeralda. De alguna forma, su visión se transformó en una pesadilla y pronto, las Cuevas de los Lamentos se convirtieron en una guarida de viciosos y letales depredadores. Se dice que Naralex sigue en algún lugar del laberinto, atrapado más allá de los límites del Sueño Esmeralda."] = "73b9de5402e76776fbc1e8200e0221dd",
+            ["Horado Rajacieno se encuentra en el extremo más al sur de Los Baldíos, en el lado oeste del camino."] = "4fc4c9e5597410fff374cd47a78e0c11",
+            ["La Montaña Roca Negra linda con La Garganta de Fuego al norte y Las Estepas Ardientes al sur."] = "b579894af69dc71f7a6e62311ee66cb7",
+            ["La Sima Ígnea consiste en una red de cuevas volcánicas que se extiende bajo la nueva capital de los orcos, Orgrimmar. Recientemente, se han extendido rumores sobre un culto leal al Consejo de la Sombra que se ha asentado en las ardientes profundidades de la Sima. Este culto, conocido como el Filo Ardiente, amenaza la soberanía de Durotar. Hay muchos que creen que Thrall, el Jefe de Guerra orco, conoce la existencia del Filo y ha decidido no destruirlo, con la esperanza de que sus miembros le lleven directo al Consejo de la Sombra."] = "adf1d697d358d75c99edae4134347af2",
+            ["La Sima Ígnea está bajo el Circo de las Sombras, en el centro de Orgrimmar."] = "98b3652c532519a70698096ec3304949",
+            ["La antigua ciudad de Eldre'Thalas, construida hace doce mil años por una secta encubierta de encantadores elfos de la noche, se utilizó para proteger los secretos arcanos más valiosos de la reina Azshara. Aunque fue arrasada por el Gran Cataclismo del mundo, todavía permanece en pie gran parte de la maravillosa ciudad, elevándose como la imponente Masacre. Los tres diferentes distritos de la ciudad se han visto invadidos por todo tipo de criaturas, especialmente los espectrales Altonato, los malvados sátiros y los brutales ogros."] = "56d9b691317da0cd96744a855ba51dfb",
+            ["La antigua joya del norte de Lordaeron, la ciudad de Stratholme es donde el príncipe Arthas se volvió contra su mentor, Uther el Iluminado, y mató a cientos de sus propios súbditos de quien se creía que habían contraído la Peste de los no-muertos. Poco después tuvo lugar la rendición de Arthas al rey Exánime. Los restos de la ciudad son ahora el hogar de los no-muertos de la Plaga, liderados por el poderoso exánime Kel'Thuzad, y de un contingente de Cruzados Escarlata, a las órdenes del Gran Cruzado Dathrohan. Ambos bandos libran constantemente un violento combate."] = "717e7cb564f7e59e9d3ea4058ddf6a7f",
+            ["La ciudad en ruinas de Stratholme se encuentra en las Tierras de la Peste del Este, al norte del Bosque de la Peste."] = "c88acd617b9033a2618078f7016abec0",
+            ["La entrada de las Cuevas de los Lamentos está en el Oasis Aguaverde, al suroeste de El Cruce, en Los Baldíos."] = "dfa330011402871633eae2c4249fdd3f",
+            ["La poderosa fortaleza enclavada en las fieras entrañas de la Montaña Roca Negra, estuvo ocupada por los siniestros enanos Hierro Negro durante siglos, hasta que Nefarian, el astuto hijo del dragón Alamuerte, tomó el control de la Cumbre superior y declaró la guerra a los enanos en las profundidades volcánicas de la montaña. Al darse cuenta de que los enanos estaban a las órdenes del poderoso elemental de fuego Ragnaros, Nefarian juró aplastar a sus enemigos y reclamar toda la Montaña Roca Negra para sí."] = "473702e567a9498ba63c4f910960c1d5",
+            ["Lard mantener la paz aquí. Lard también vender peces. ¿Querer peces?"] = "4aa14554e3c8292085000b7062086109",
+            ["Las Cavernas de Brazanegra, en La Ensanada de Zoram, en Vallefresno, fueron antiguamente un glorioso templo de los elfos de la noche dedicado a la diosa de la luna, Elune. Sin embargo, el gran Cataclismo destruyó el templo, hundiéndolo bajo las olas del Mar de la Bruma. Y ahí permaneció, intacto, hasta que los nagas y los sátiros, atraídos por su ancestral poder, fueron en su busca para descubrir sus secretos. Según las leyendas, Aku'mai, la bestia ancestral, vive en las ruinas del templo."] = "f127b03d42cc699be6ab4e045476577b",
+            ["Las Mazmorras de Ventormenta se encuentran cerca del Barrio de los Magos, en Ventormenta."] = "13bc9de46f31f421edc489f6999cddd3",
+            ["Las Mazmorras son un complejo carcelario de alta seguridad, oculto bajo el distrito de Los Canales de la ciudad de Ventormenta. Las Mazmorras, presididas por el celador Thelagua, alojan desde ladronzuelos, hasta insurgentes políticos, asesinos, e incluso a parte de los criminales más peligrosos de la tierra. Hace poco, un motín de los prisioneros tuvo como consecuencia un verdadero pandemonio dentro de las Mazmorras. Los guardias fueron expulsados y los convictos recorrían las instalaciones libremente."] = "372a7841078b58e29c5728a5dce3a7db",
+            ["Las Minas de la Muerte se encuentran bajo el Arroyo de la Luna, al sur de los Páramos de Poniente."] = "e6e0149604beda2473116dd252aaf871",
+            ["Las Minas de la Muerte, antiguamente el mayor centro de producción de oro de las tierras humanas, están habitadas por la Hermandad Defias, que han convertido los oscuros túneles en su santuario privado. Se rumorea que los ladrones han reclutado a los astutos goblins, para ayudarles a construir algo terrible en la parte inferior de las minas, aunque se desconoce de qué se trata. Dicen que el camino que lleva a las Minas de la Muerte pasa por la tranquila y sencilla aldea Arroyo de la Luna."] = "19cdde0ca280812e9dc6a7b161b31681",
+            ["Las Ruinas de Zul'Farrak están situadas en el extremo noroeste del Desierto de Tanaris."] = "b4870122e699749c52b8d297f7bc5456",
+            ["Las pruebas de amor son mensajes de cariño que puedes entregar a la gente de la ciudad que esté buscando amor. Esas personas te recompensarán con un regalo de adoración.$B$BSi ya tienes a alguien que te adore, entonces te entregarán un regalo de amistad."] = "3aaff3d1331832f5180ed3811de0bea4",
+            ["Las ruinas de La Masacre yacen en el centro de Feralas."] = "ed5e14f38bb997b751cc384c8e40ceb5",
+            ["Maraudon es uno de los lugares más sagrados de Desolace. El gran templo caverna, es la sepultura de Zaetar, uno de los dos hijos inmortales del semidiós Cenarius. Dice la leyenda, que Zaetar y la princesa elemental de tierra, Theradras, engendraron a la malnacida raza centaura. Dicen que cuando aparecieron, los brutales centauros se volvieron contra su padre y le mataron. Algunos creen que Theradras, en su profunda pena, atrapó el espíritu de Zaetar en la cueva y utilizó sus energías con algún propósito maligno."] = "3f241773573f5a56d89d4f032862c5cf",
+            ["Maraudon está en el medio de la costa oeste de Desolace, en el Valle de las Lanzas."] = "0568e9d439b88b4c6a905d9f0988c910",
+            ["Puedes encontrar las Cavernas de Brazanegra en el extremo norte de La Ensenada de Zoram, junto a la costa de Vallefresno."] = "9ec53ea33fa1f87cf4f2579dfbfedc6c",
+            ["Si te echas colonia o perfume, podrás ver quién está buscando amor. Esos aceptarán pruebas de amor... y te entregarán un regalo a cambio.$B$BPero recuerda: para darle a alguien una prueba de amor, ¡deberás oler bien! A los hombres les gusta el perfume mientras que las mujeres prefieren el olor de la colonia."] = "8b6f7cab1366d030c81c56ff4eb8b9d8",
+            ["Situada en Dun Morogh, Gnomeregan ha sido la capital de los gnomos durante generaciones aunque, recientemente, ha sido tomada por unos troggs mutantes. En un intento desesperado de contraataque, el Manitas Mayor Mekkatorque, ordenó la apertura de emergencia de los tanques de residuos radioactivos de la ciudad. Si bien los troggs recibieron la radiación, su asedio continuó implacable y los gnomos se vieron forzados a refugiarse en la ciudad enana de Forjaz, donde el Manitas Mayor, ahora recluta almas valientes para ayudar a su pueblo a reconquistar su amada ciudad."] = "8304db78377f1f9dce072ac7f09295e1",
+            ["Uldaman es una antigua gruta titánica, profunda en la tierra desde el comienzo de los tiempos. Las recientes excavaciones de los enanos han liberado a una de las primeras creaciones fallidas de los titanes: los trogg. La leyenda cuenta que cuando los Titanes se percataron de su fallo con los trogg volvieron a intentarlo; entonces fue cuando apareció la raza enana. Estos secretos se encuentran guardados en los legendarios Discos de Norgannon: son unos artefactos gigantescos que se encuentran en las profundidades de la antigua ciudad y están protegidos por constructos gigantescos de piedra viva."] = "49dd3f211de203d51758ca662d5e10a8",
+            ["Uldaman se encuentra en el extremo más al norte de las Tierras Inhóspitas."] = "7ceb2c91a2d467f684cd555f6688bf1b",
+            ["Yo no, pero muchos por ahí sí buscan amor. ¡Deberías comprarme pruebas de amor, echarte un poco de colonia o perfume y pasar a su lado!"] = "ef5bfd44b3ad14f28f0cdc657a5000bc",
+            ["Zahúrda Rajacieno se encuentra en el extremo más al sur de Los Baldíos, en el lado este del camino."] = "e0c08594b7d3186042e7ea1e436cd7db",
+            ["¿Te interesa explorar una de estas mazmorras?"] = "073f51a382ddf51e29da1fc5952c2507",
+        },
         [14733] = {
             ["La batalla por la Garganta Grito de Guerra es una batalla que no podemos perder. ¡Luchamos por nuestro honor y por nuestra tierra, y ningún orco ni ningún aliado suyo podrá arrebatárnoslos!"] = "9701a4e7da22327ecb2b934e24b01980",
         },
@@ -7804,8 +8591,32 @@ GossipText = {
         [14781] = {
             ["Defender los intereses de la Horda en Vallefresno no es tarea fácil pero ¡nunca nos ha dado miedo la lucha! ¡Los elfos de la noche y sus aliados caerán!"] = "79b85c8b9c23c4e542b6d52221827c9e",
         },
+        [14822] = {
+            ["Aquí tienes tu fortuna, $n. Espero que te ayude."] = "9329f6d40853a5c540903f6fa724e88f",
+            ["Oh... Siento decirte que, ahora mismo, no puedo leer tu fortuna, ya lo he hecho una vez para ti.$B$BVuelve a verme dentro de unas horas. ¡Las fuerzas del Destino se habrán calibrado de nuevo y podré ver tu futuro otra vez!"] = "634fce600d07e5424f25f96881a310b8",
+            ["Pues muy bien...  Tu señor te ha encargado la tarea de proteger sus campos de maíz de cazadores furtivos y ladrones. Una noche de patrulla, te encuentras con un hombre demacrado con una túnica raída que está robando en el campo. Rápidamente, le confrontas y él te suplica que le perdones la vida. Dice que está robando maíz para alimentar a su familia porque el señor de la tierra, tu señor, exige demasiados impuestos. De hecho, tu señor es famoso por su dureza a la hora de imponer tasas en sus tierras.  Toma tu decisión."] = "esMX-bc0a32cbd3b0022bc4f551f4719b88de",
+            ["Pues muy bien...$B$BTu señor te ha encargado la tarea de proteger sus campos de maíz de cazadores furtivos y ladrones. Una noche de patrulla, te encuentras con un hombre demacrado con una túnica raída que está robando en el campo. Rápidamente, le confrontas y él te suplica que le perdones la vida. Dice que está robando maíz para alimentar a su familia porque el señor de la tierra, tu señor, exige demasiados impuestos. De hecho, tu señor es famoso por su dureza a la hora de imponer tasas en sus tierras.$B$BToma tu decisión."] = "6cdad60b960edca78b9cbe9acb24b5ef",
+            ["Sabía desde hace mucho tiempo que vendrías a buscarme, $N.  Todos los seres sensibles del mundo dependen en gran medida de las decisiones que toman. Las decisiones conllevan más decisiones y, estas, nos convierten en lo que somos. Ahí es yace tu fortuna, quién eres y las decisiones que tomas.  ¿Listo para descubrir dónde yace tu fortuna?"] = "esMX-968ebb1e6fd001a799a08887976605b0",
+            ["Sabía desde hace mucho tiempo que vendrías a buscarme, $N.$B$BTodos los seres sensibles del mundo dependen en gran medida de las decisiones que toman. Las decisiones conllevan más decisiones y, estas, nos convierten en lo que somos. Ahí es yace tu fortuna, quién eres y las decisiones que tomas.$B$B¿$gListo:lista; para descubrir dónde yace tu fortuna?"] = "46a146f0322d05c8049006539c2d968d",
+            ["Te aguarda tu siguiente elección.$B$BTu hermano desea unirse a las filas de de la prestigiosa orden militar de la que tú ya formas parte. Aunque no dudas de su compromiso y lealtad, cuestionas su talento y su habilidad para realizar las arduas tareas de la orden. Aunque no sabes con seguridad si podrá estar a la altura del desafío de la orden – poniéndote a ti y a otros en peligro – tienes por seguro de que solo tu palabra bastaría para permitirle que ingrese o se quede fuera.$B$BHaz tu elección."] = "ca397bab05857ed428dcc75fe6182660",
+            ["Te espera tu próxima decisión.  Eres el verdugo de tu señor. Te han enviado a un hombre para que le ejecutes por traicionar a tu señor y a tu pueblo. Conoces a este individuo. Era un buen amigo tuyo que, misteriosamente, desapareció un día. También sabes que los crímenes por los que ha sido juzgado, han causado la muerte de muchos civiles inocentes. Cuando te ve, te suplica que le perdones la vida y dice que una gran autoridad le tendió una trampa para incriminarle.  Toma tu decisión."] = "esMX-6e2f51226ffd5e04f1a87c647ca68f7b",
+            ["Te espera tu próxima decisión.$B$BEres el verdugo de tu señor. Te han enviado a un hombre para que le ejecutes por traicionar a tu señor y a tu pueblo. Conoces a este individuo. Era un buen amigo tuyo que, misteriosamente, desapareció un día. También sabes que los crímenes por los que ha sido juzgado, han causado la muerte de muchos civiles inocentes. Cuando te ve, te suplica que le perdones la vida y dice que una gran autoridad le tendió una trampa para incriminarle.$B$BToma tu decisión."] = "700afdef4e1b1e08e6f05d4a868cb169",
+            ["Te espera tu próxima decisión.$B$BEstás en una misión diplomática para tu señor, en un país cruel que está en guerra con el tuyo. La guerra ha sido muy penosa para ambas partes. Tu misión es asegurar una paz, honrosa para ambos países.$B$BEn una cena diplomática, escuchas decir al gobernador de esta tierra, insultar viciosamente a tu benevolente señor. Sabes con bastante seguridad, que el gobernador no pretendía que tú lo escuchases, pero de todas formas, ha deshonrado a tu señor.$B$BToma tu decisión."] = "b70def759953bddc09190453915466d4",
+            ["Te espera tu próxima decisión.$B$BHas vencido a una bestia terrible que estaba arrasando el país y le has cortado la oreja como trofeo. Más tarde, te enteras de que tu señor ha ofrecido una recompensa por la muerte de la bestia y que un caballero que se ha quedado en la indigencia, y de quien sabes que está sufriendo para mantener a su familia, ha dicho haber matado a la bestia. En realidad no necesitas el dinero, pero sabes que el caballero está mintiendo.$B$BToma tu decisión."] = "73f5fcf970554dc3839740214a2dab47",
+            ["Tu fortuna ha sido decidida, $c. Durante las próximas horas, encontrarás que tu espíritu adopta la naturaleza de tu verdadero ser. Ten cuidado, ya que tu fortuna, y tu destino, nunca son tan transparentes como puedes creer.$B$BSi quieres una pequeña visión para ayudarte a considerar tu futuro, dímelo. Te daré encantado tu fortuna por escrito, siempre que tengas espacio en tu inventario. Todo ha sido el resultado de tus respuestas a mis preguntas."] = "1b9c2a1f0e80486922a2098bdf978e4f",
+        },
         [14823] = {
             ["¡Hola, $gamigo:amiga;, te doy la bienvenida al mayor espectáculo de todo Azeroth!$B$BPor favor, pasa y disfruta de todo lo que podemos ofrecerte. ¡Sorpréndete con las maravillas que la Feria de la Luna Negra ha descubierto en este vasto y misterioso mundo! No hemos reparado en gastos para poder ofrecer una diversión tan increíble que deleitará a niños de todas las edades."] = "bcc4137261fe1b6312ba537a58e54584",
+        },
+        [14827] = {
+            ["Al contrario de muchos ogros, yo sí sé para lo que sirve una letrina exterior, para darte una paliza. Y ahora, déjalo."] = "c2ec263593832d71b3f22b30819a800c",
+            ["Esto no es una atracción, $gpaleto:paleta;. Lárgate."] = "4933d68ae747d18482861e20b08154d3",
+            ["Por si no ha quedado claro, no estoy aquí de relaciones públicas."] = "89636575c291c2abcfd0c4ebf55e3fa1",
+            ["Si estás intentando ganarme con tu simpatía, no gastes saliva. O mejor, trágatela toda a ver si te ahogas..."] = "0fa405ff12f7a51fb21047a8d48ed6b6",
+            ["Si te metes con Silas, te metes conmigo. Que tengas un buen día."] = "ec690a644beae0ef64ac79e79eef9dcd",
+            ["Tener una segunda cabeza me resultaría tan útil como perder la que tengo."] = "24761ac95c811cb5c7944bf5c6be8e9f",
+            ["Vete de aquí, $gpalurdo:palurda;."] = "003a8d484736c7aff565cb5d823857b4",
+            ["Viví en La Masacre durante un tiempo. Fue divertido. Mucho."] = "8609dbfc4feeae474b0461eedde7dd83",
         },
         [14828] = {
             ["¡Canje de vales! ¡Cambiamos sus vales por premios! ¡Vengan!"] = "41e1418f674fe4ab79111719d0059787",
@@ -7886,12 +8697,25 @@ GossipText = {
             ["¿No ves que tengo trabajo que hacer?"] = "28c0efd31165758238391b2842e87a69",
             ["¿Te lo estás pasando bien?"] = "597f943bfef4a0100928324418268a5a",
         },
+        [14860] = {
+            ["¡Eh, que alguien me ayude a coger esta cosa!"] = "8ae473a1e13da27667b495e8b6f5ea30",
+            ["¡Ranas y bolas de cuero a la venta!"] = "ef9ac6f9732e0b1ac0cd0aeb3f75c6f7",
+            ["¡Se escapa!"] = "216bda680ae1345c87012d7a7901e71b",
+            ["¡Vuelve aquí!"] = "494b8f695dfe994e3ff74bcbeac703be",
+        },
+        [14866] = {
+            ["Bésame."] = "beb346eb23de182bd3b4a6b23c3a1d5f",
+            ["¡Croac!"] = "197eef5ef620a8dba59e71b6b6a7cf10",
+        },
         [14871] = {
             ["No puedo encontrar a mi ranita, Jubjub. Le encanta la cerveza Hierro Negro, es lo único que bebe, ¡pero es tan difícil de conseguir! Me he quedado sin nada... ¡Y seguro que Jubjub se ha ido para encontrar más!$B$BOjalá vuelva..."] = "973e2ce5b84bdcdcff9a070880e9f347",
             ["¡Estoy tan contenta de que Jubjub haya vuelto! Solo espero no volver a quedarme pronto sin cerveza Hierro Negro, ¡o mi ranita volverá a escaparse!"] = "e3a9bceac350c8d4521ba30052baa2de",
         },
         [14875] = {
             ["Si has venido a salvar el mundo, has venido al lugar indicado. El ignoto, el dios de la sangre Hakkar, ¡ha vuelto a nuestro mundo!"] = "36ed78ad0299f724a3f13e2686290432",
+        },
+        [14902] = {
+            ["Soy Jin'rokh el Rompedor, enviado de Mugamba: ¡Puño de Rastakhan!$B$BSolo trato con guerreros y paganos."] = "e169868e98dd0dcfc935de9b7bfd7696",
         },
         [14903] = {
             ["Soy Al'tabim el que todo lo ve, enviado del rey Rastakhan.$B$BTrato con sacerdotes, magos y brujos."] = "c28cac378192770c4a9166d049115821",
@@ -7915,6 +8739,7 @@ GossipText = {
         },
         [14981] = {
             ["Lo siento $c, pero no tienes la experiencia suficiente para entrar en la Garganta Grito de Guerra."] = "c294a5b02c1f5243fbd10a47517dfdfb",
+            ["Te saludo, $N. ¿Quieres que te ayude en tu viaje a la Garganta Grito de Guerra?"] = "b10521-human-male-standard",
             ["Te saludo, $n. ¿Quieres que te ayude en tu viaje a la Garganta Grito de Guerra?"] = "7b7d94a359c45dac8bad00353884b2f8",
         },
         [14982] = {
@@ -7927,6 +8752,7 @@ GossipText = {
             ["Para ganar esta guerra, no podemos quedarnos sentados esperando a que las mareas nos lleven. Debemos atacar, dura y rápidamente, o Arathi nunca volverá a pertenecernos."] = "2d10a0bf75c6c86698196a262967b949",
         },
         [14990] = {
+            ["Necesitamos más ayuda en la Cuenca de Arathi de la que te puedas imaginar, $N. Tampoco podrías imaginarte el honor y la reputación que se pueden adquirir en este tiempo de gran necesidad. Te suplico que busques al maestro de batalla de la Cuenca de Arathi en esta ciudad."] = "36449905f0bb8e68d581301b2d6574fb",
             ["Necesitamos más ayuda en la Cuenca de Arathi de la que te puedas imaginar, $n. Tampoco podrías imaginarte el honor y la reputación que se pueden adquirir en este tiempo de gran necesidad. Te suplico que busques al maestro de batalla de la Cuenca de Arathi en esta ciudad."] = "36449905f0bb8e68d581301b2d6574fb",
             ["Todavía no tienes suficiente poder, $c. Vete."] = "4976af9b251b6de3b310c96fc5968bd8",
         },
@@ -7943,6 +8769,7 @@ GossipText = {
         },
         [15008] = {
             ["Lo siento, $c, pero necesitas tener más poder para que pueda permitirte entrar en la Cuenca de Arathi."] = "c3b7867dcd5ddb0aafe672da55946ea2",
+            ["Te he estado esperando, $N. ¿Estás $gpreparado:preparada; para ayudarnos en la Cuenca de Arathi?"] = "b727ba44e324145d664261f3c8ce9cc0",
             ["Te he estado esperando, $n. ¿Estás $gpreparado:preparada; para ayudarnos en la Cuenca de Arathi?"] = "b727ba44e324145d664261f3c8ce9cc0",
         },
         [15011] = {
@@ -7967,14 +8794,20 @@ GossipText = {
             ["Detrás de mí se encuentra el Altar de Zanza, un lugar sagrado para los Zandalar. Aquí rezamos para reafirmar nuestra determinación de luchar contra el Dios de la Sangre, Hakkar.$B$BPara demostrarle a la tribu de lo que eres capaz deberás utilizar el altar para destruir algunas de las Joyas Hakkari que encontrarás en Zul'Gurub. Además, te cambiaré muestras de honor que utiliza nuestra tribu por monedas que encontrarás en Zul'Gurub. Tráeme las monedas que quiero, ¡y obtendrás una recompensa!"] = "146cded4f6f6a9fde55acea952be56eb",
         },
         [15076] = {
+            ["Nosotros, los trols Zandalar llegamos aquí desde islas muy lejanas porque no podemos ignorar la amenaza que afronta nuestro mundo."] = "b10618-troll-male-dark",
             ["Nosotros, los trols Zandalar, llegamos aquí desde islas muy lejanas porque no podemos ignorar la amenaza que afronta nuestro mundo.$B$BEl líder de nuestra expedición, Molthor, nos ha traído hasta la Isla Yojamba, en las costas del norte de Tuercespina, y nunca deja de reclutar a valientes que se aventuren en la vieja ciudad de los trols... Zul'Gurub."] = "2b07aacfb7ec7aa8d2c6dc58fbefae37",
         },
         [15077] = {
+            ["Seas $gbienvenido:bienvenida; al concurso de pesca de Bahía del Botín, donde cada semana elegimos al mejor pescador para convertirse en Maestro pescador.    Entre las 2 y las 4, aparecen bancos de pezricos en la costa de Tuercespina. Cuando estés pescando, si el anzuelo cae en un banco de pezricos, entonces pescarás algún pez del banco, en lugar de los peces normales de Tuercespina."] = "5776ad2ab96a8574ffb8006cc2353824",
             ["Seas $gbienvenido:bienvenida; al concurso de pesca de Bahía del Botín, donde cada semana elegimos al mejor pescador para convertirse en Maestro pescador.  Entre las 2 y las 4, aparecen bancos de pezricos en la costa de Tuercespina. Cuando estés pescando, si el anzuelo cae en un banco de pezricos, entonces pescarás algún pez del banco, en lugar de los peces normales de Tuercespina."] = "5776ad2ab96a8574ffb8006cc2353824",
             ["Ya tenemos un ganador pero Jang está dispuesto a comprar los peces suculentos que hayas pescado.  ¡Siempre te quedará el próximo domingo para demostrar tu habilidad con la caña de pescar!"] = "e7cede3a6a5c6bfa97691dd12ed05122",
         },
         [15078] = {
+            ["El maestro de pesca Anzuelo ha llenado estas aguas con peces suculentos de primera para poder celebrar el torneo.    Cuando haya un ganador, ¡te pagaré por cada cinco peces suculentos que me traigas!"] = "ecb584ae4efebbbfe24eb728f55f4ace",
             ["El maestro de pesca Anzuelo ha llenado estas aguas con peces suculentos de primera para poder celebrar el torneo.  Cuando haya un ganador, ¡te pagaré por cada cinco peces suculentos que me traigas!"] = "ecb584ae4efebbbfe24eb728f55f4ace",
+        },
+        [15079] = {
+            ["*Ffff* *PLAF*    He sido instruido para aceptar peces exóticos de gran calidad y devolver valiosos accesorios de pesca de Nat Pagle. Peces solicitados.    *BUUM* *Bzzz*"] = "4bbd87639dbf808be0902014ed7f608c",
         },
         [15080] = {
             ["Los trols Zandalar han viajado desde muy lejos y han sufrido mucho para llegar a este lugar pero no hacer nada... es buscar nuestra condena..."] = "e0da321d08e8706f432c7322309f11f8",
@@ -7984,6 +8817,7 @@ GossipText = {
             ["La vida tiene etapas y cada una de ellas llega a su debido tiempo. Tú aún te encuentras en la primera etapa de tu vida. Por favor, $c, regresa a nosotros cuando hayas vivido más."] = "142259b01ef398530e6a98ed1a7c183f",
         },
         [15103] = {
+            ["$N, la Guardia Pico Tormenta necesita más que nunca tu ayuda en la batalla contra el clan Lobo Gélido en el Valle de Alterac. ¡Y hay más posibilidades que nunca de obtener honor y reputación! ¿Te unirás a la batalla?"] = "1bda910e93a73611cc7b700da4c7cb86",
             ["$n, la Guardia Pico Tormenta necesita más que nunca tu ayuda en la batalla contra el clan Lobo Gélido en el Valle de Alterac. ¡Y hay más posibilidades que nunca de obtener honor y reputación! ¿Te unirás a la batalla?"] = "1bda910e93a73611cc7b700da4c7cb86",
             ["Me temo que no durarías mucho en el Valle de Alterac, $c. Regresa cuando tengas unos cuantos años más."] = "7482b5799dee6ec1e4b78aa8db8bdd98",
         },
@@ -8036,6 +8870,7 @@ GossipText = {
             ["¿Preguntar qué? Es un mono, idiota. En cualquier caso, el mono se puso frenético al ver al viejo Brann caer desplomado sobre la arena. La elfa de la noche no podía hacer nada para detener a Glibb, que no paraba de darle golpes."] = "4419b499451d23fb555f4bbd5d1f3c98",
         },
         [15174] = {
+            ["Antiguamente la capital de los enanos Hierro Negro, este laberinto volcánico ahora sirve como trono de poder de Ragnaros, el Señor del Fuego. Ragnaros ha descubierto cómo crear vida a partir de la piedra y planea formar un ejército de golems imparables para ayudarle a conquistar la Montaña Roca Negra. Ragnaros, obsesionado con derrotar a Nefarian y a sus esbirros dracónicos, hará lo que sea por conseguir la victoria final."] = "9c2b22f32a137854d984166b2aaded4b",
             ["Antiguamente la capital de los enanos Hierro Negro, este laberinto volcánico ahora sirve como trono de poder de Ragnaros, el Señor del Fuego. Ragnaros ha descubierto cómo crear vida a partir de la piedra y planea formar un ejército de gólems imparables para ayudarle a conquistar la Montaña Roca Negra. Ragnaros, obsesionado con derrotar a Nefarian y a sus esbirros dracónicos, hará lo que sea por conseguir la victoria final."] = "9c2b22f32a137854d984166b2aaded4b",
             ["Construida con las mismas vides que Horado Rajacieno, Zahúrda Rajacieno es la capital tradicional de la raza de los jabaespines. El laberinto de espinas que se extiende por todas partes, aloja un verdadero ejército de leales jabaespines junto con sus altos sacerdotes, la tribu Caramuerte. Sin embargo, recientemente una sombra de mal presagio ha caído sobre la rudimentaria guarida. Unos agentes de la Plaga de los no-muertos, a las órdenes del exánime Amnennar el Gélido, han tomado el control de la raza de los jabaespines y han convertido el laberinto de espinas en un bastión del poder de los no-muertos."] = "bbbb6f1884cdacec9af6cb67e3e1abd4",
             ["Cuando entregues pruebas de amor a los habitantes de la ciudad, recibirás diferentes regalos a cambio. Algunos podrás guardarlos y utilizarlos, ¡mientras que otros podrás juntarlos y dárselos a tu $ghéroe favorito:heroína favorita;! Visita a Kwee Q. Mercachifle y entrégaselos.$B$BEncontrarás a Kwee cerca de Bolvar, Magni o Tyrande."] = "b19764fa4b6d3a891fa5f750b3dd2517",
@@ -8052,6 +8887,7 @@ GossipText = {
             ["Frustrado por la falta de progreso de los magos de Dalaran contra los no-muertos durante la Tercera Guerra, el archimago Arugal decidió invocar a los ferocanis extra-dimensionales para dar un empujón a sus tropas cada vez menores. Los lobisones atacaron a la Plaga y, rápidamente, se dirigieron a los magos y asediaron el bastión del noble barón FIlargenta. Pronto, el fuerte fue presa de las sombras y se convirtió en cenizas. Enloquecido por la culpa, Arugal adoptó a los ferocanis como sus hijos y se retiró al Castillo de Colmillo Oscuro."] = "5d076554d313584aa1c5611cf0129a23",
             ["Gnomeregan se encuentra en la parte oeste de Dun Morogh."] = "a4f613548f3f5a63415a978d891ce475",
             ["Hace más de mil años, un grupo de sacerdotes trols conocidos como los Atal'ai, intentaron resucitar a un dios de la sangre ancestral llamado Hakkar el Cazador de Almas. Tras la consecuente guerra civil, los sacerdotes fueron derrotados y exiliados al Pantano de las Penas. Allí erigieron un templo en honor de Hakkar, para prepararse para su llegada al mundo físico. La dragón Aspecto Ysera, pronto descubrió los planes de los Atal'ai y hundió el templo bajo el pantano. Hasta el día de hoy, las ruinas han estado protegidas por los poderosos dragones Verdes."] = "4b24ea6b391a2efd0be7d84cc947d159",
+            ["Hace más de mil años, un grupo de sacerdotes trols conocidos como los Atal'ai, intentaron resucitar a un dios de la sangre ancestral llamado Hakkar el Cazador de Almas. Tras la consecuente guerra civil, los sacerdotes fueron derrotados y exiliados al Pantano de las Penas. Allí erigieron un templo en honor de Hakkar, para prepararse para su llegada al mundo físico. La dragón Aspecto Ysera, pronto descubrió los planes de los Atal'ai y hundió el templo bajo el pantano. Hasta el día de hoy, las ruinas han estado protegidas por los poderosos dragones verdes."] = "4b24ea6b391a2efd0be7d84cc947d159",
             ["Hace poco, un druida elfo de la noche llamado Naralex, descubrió una red de cuevas subterráneas en el corazón de Los Baldíos. Creyendo que podría usar los manantiales de las cuevas para restaurar la exuberancia de Los Baldíos, el druida comenzó a absorber las energías del legendario Sueño Esmeralda. De alguna forma, su visión se transformó en una pesadilla y pronto, las Cuevas de los Lamentos se convirtieron en una guarida de viciosos y letales depredadores. Se dice que Naralex sigue en algún lugar del laberinto, atrapado más allá de los límites del Sueño Esmeralda."] = "4352ca0c9a3782df4f9b0a23c9c7f9d7",
             ["Horado Rajacieno se encuentra en el extremo más al sur de Los Baldíos, en el lado oeste del camino."] = "25a80704f18ee56676b132bdded0fe94",
             ["La Montaña Roca Negra linda con La Garganta de Fuego al norte y Las Estepas Ardientes al sur."] = "aab40b74860886caa96dcfdaf979e180",
@@ -8108,6 +8944,7 @@ GossipText = {
             ["Últimamente, el Comandante no es el de siempre. Su amada desapareció durante una excavación arqueológica en el desierto del sur. ¡Ni rastro de ella! Ciertamente, es muy extraño.$B$BSupongo que buscas trabajo, ¿no es así? ¿Es que tengo que darte más pistas?"] = "b60ac134e16be202debcce1733994a3f",
         },
         [15183] = {
+            ["¿No hubo suerte con el desertor del Martillo Crepuscular? Inspecciona minuciosamente las montañas hacia el sudeste. Se dice que un misterioso ermitaño habita allí."] = "b10689-dwarf-female-maternal",
             ["¿Puedes oírlo, $gforastero:forastera;? Cada día que pasa, el zumbido se hace más fuerte. Estos cristales son los que están volviendo locos a esos bichos."] = "923b9f247d112d5c467bec4f859d29b2",
         },
         [15190] = {
@@ -8118,9 +8955,17 @@ GossipText = {
             ["Es un placer volver a verte, $n. Tu ayuda ha sido crucial para preservar la seguridad de nuestras líneas de abastecimiento. Espero que comprendas la importancia de la logística implicada en una gran batalla como esta."] = "83301b049e11b44cec8144e74a752623",
             ["Saludos, $c. $gBienvenido:Bienvenida; al Fuerte Cenarion. Desde aquí atacaremos a los silítidos cuando estén en su apogeo. Espero que hayas venido a echar una mano."] = "602ace4ed716eca72ea8d2e7882f4a76",
         },
+        [15192] = {
+            ["Nosotros debemos realizar el primer ataque. No nos podemos permitir repetir los errores del pasado..."] = "f30dde51e3126251ffb8e6613022e0fa",
+        },
         [15194] = {
             ["¡Márchate inmediatamente! No tengo nada que tratar contigo."] = "e79d5d1fab3e655e71f596369ca816fa",
             ["¡Ya estás de vuelta! ¿Qué puedo hacer por ti en esta ocasión?"] = "48165a36b82154ca1c0e0b8bcd69e4a2",
+        },
+        [15195] = {
+            ["¡Adelante, Renegados! ¡Hurra por nosotros!"] = "a2ee1d108ad5927c09a044284699fb6e",
+            ["¡Feliz Halloween, $c!"] = "70affd608db41c517e96e54d371b5a75",
+            ["¿Te gustan los caramelos? Me gustan los caramelos."] = "f5141c51fa84bc8747dfd5a85d784c25",
         },
         [15197] = {
             ["¡Bienvenido al Festival del Hombre de Mimbre, $c!$B$BCon motivo de la celebración de Halloween, los Renegados queman un hombre de mimbre en honor de este día tan importante. Tal día como hoy, la mismísima reina alma en pena nos liberó de las garras del rey Exánime y la Plaga. Desde entonces somos libres. A aquellos que nos han visto caer le pagaremos a cambio... ¡con venganza!$B$B¡La quema del Hombre de Mimbre comienza a las 20.00!"] = "ade7be73d65eb161512d4630be4b5df0",
@@ -8141,10 +8986,20 @@ GossipText = {
         [15306] = {
             ["Tenemos más de un enemigo en Silithus, $n.$B$BMientras que todo el mundo centra su atención en los silítidos, mi hermano mayor y yo hemos estado vigilando de cerca a los chiflados del Martillo Crepuscular."] = "811433ddcfe17faa04dd7e7c06eddfcb",
         },
+        [15309] = {
+            ["¡Estoy triste! Es Halloween y estoy enferma. ¡Me voy a perder el juego del truco o trato porque no puedo salir!"] = "b10811-model-2031",
+        },
+        [15310] = {
+            ["¡Eres el mejor, $n! ¡Gracias por hacer el truco o trato por mí!"] = "be3c0582751b8c9aa7a55cb15df09466",
+            ["¡Estoy triste! Es Halloween y estoy enferma. ¡Me voy a perder el juego del truco o trato porque no puedo salir!"] = "b543897e8fd62a2c5d4fc59747d32310",
+            ["¡Estoy triste! Es Halloween y estoy enfermo. ¡Me voy a perder el juego del truco o trato porque no puedo salir!"] = "b10812-model-79",
+        },
         [15350] = {
+            ["La guerra se cierne sobre nosotros, $N. Es hora de que cada uno de los miembros de la Horda atienda la llamada y se una a la lucha contra la acobardada Alianza."] = "500674c7da105457382c51908165838f",
             ["La guerra se cierne sobre nosotros, $n. Es hora de que cada uno de los miembros de la Horda atienda la llamada y se una a la lucha contra la acobardada Alianza."] = "500674c7da105457382c51908165838f",
         },
         [15351] = {
+            ["La guerra contra la Horda está en su apogeo, $N. Es un momento de gran necesidad para la Alianza y es necesario que cada uno de nosotros cumplamos con nuestro cometido."] = "59639744f57566c294774d64cbef1436",
             ["La guerra contra la Horda está en su apogeo, $n. Es un momento de gran necesidad para la Alianza y es necesario que cada uno de nosotros cumplamos con nuestro cometido."] = "59639744f57566c294774d64cbef1436",
         },
         [15353] = {
@@ -8167,6 +9022,9 @@ GossipText = {
             ["El mundo está en deuda contigo y con tus aliados, $n."] = "fd10ddbf850f23ec3e5ca81dbb183556",
             ["¡Yo soy testigo de un milagro que se aparece ante mí! En el milenio que llevo en cautividad, no he visto ni a un solo SER vivo entrar en estas cámaras, aparte claro de esos repugnantes qiraji y silítidos."] = "fbec45aaafa3ad165557bf6abbdc4ac2",
         },
+        [15395] = {
+            ["Solo aquellos que hayan demostrado no ser hostiles con los Fauces de Madera pueden pasar por el fuerte sin recelos de ser atacados. ¿Te has esforzado para ganar nuestra confianza, forastero?"] = "6e6ef671fdbd0350b8c8e6580da29fbb",
+        },
         [15443] = {
             ["Ave, $c. La Brigada de Forjaz está emplazada aquí para vigilar Hive'Zora. Los druidas del Círculo Cenarion han estado controlando los movimientos de los silítidos y prevén que algo importante va a ocurrir en esta zona."] = "cea4e3e3ab05b82e1f49619ce41d48d8",
         },
@@ -8176,6 +9034,24 @@ GossipText = {
         },
         [15471] = {
             ["<Andorov te echa una mirada adusta.>$B$BSi sangra, podemos matarlo."] = "cbb32bb2891d6e835c05709df5717dc5",
+        },
+        [15481] = {
+            ["A ver... Tienes que fabricar una boya de arcanita y soltarla en el océano. Mi sardinilla se sentirá atraída por sus emanaciones mágicas. Cuando se encuentre cerca de la boya, ¡BLUM! Explotará proyectando una enorme cantidad de energía arcana, revelando la localización de la sardinilla. Aunque también es posible que despiertes la ira de Neptulon. Yo diría que hay un 50 por ciento de probabilidad."] = "0f99fb96a56ac55d14d426589bf216f3",
+            ["Como iba diciendo, me aferré a ese fragmento de cetro durante unos quinientos años y solamente me trajo problemas. Llamaba la atención de todos, muy a mi pesar. Quiero estar tranquilo para poder investigar en lugar de tener cuenta del pasaporte hacia la gloria de alguien. Así pues... Se lo di a un pez."] = "2e1a382a3a35c8cfca1be2ce0dca5626",
+            ["Eso es. ¡Ya lo has oído! Esa sardinilla es en realidad una criatura atroz que yo mismo creé. Para relajarme, suelo pensar en los pescadores que se hayan topado con esta sardinilla y que hayan acabado en su estómago. ¡Apuesto a que se quedaron perplejos!$B$B<Azuregos se ríe.>"] = "dc265d89553db901aaa16720a0930edf",
+            ["Llévale este libro a un viejo conocido mío en Tanaris. Su nombre es Narain Sabelotodo. ¡Como físico es malísimo pero es un ingeniero increíble! Él será capaz de darle sentido a todo eso.$B$BNo me des las gracias, $n. Es lo menos que podía hacer.$B$B¡Que tengas un buen día!"] = "c2a8d4e8e12f34b95c43ddfea5eb88ca",
+            ["Los genios somos unos incomprendidos, $r. Entonces, en cuanto al fragmento de cetro... Si quieres ese fragmento pero no estás dispuesto a pasarte los próximos diez mil años buscándolo, tendrás que escuchar con atención."] = "d2d7964377b8a0478e1fe120fb736f0f",
+            ["Mi vigilancia es permanente, mortal."] = "cf3332753292275fe117b551fa421557",
+            ["No a un pez cualquiera, mortal. Se trataba de una sardinilla. Una sardinilla muy especial."] = "6c3572c428cf0c9197737c664dc3eadf",
+            ["Pues claro que no tengo el fragmento. Sería de necios. ¡Estoy rodeado de salvajes en esta condenada tierra! No puedo dar dos pasos sin que un orco o un humano enloquecido intenten clavarme una estaca. Podrías perfectamente estar hablando con un fantasma.$B$BDe cualquier manera... Lo escondí.$B$BVenga... pregúntame dónde."] = "326cfffe386a3a9dd4b9efeef9f0b9bc",
+            ["Qué genio, ya lo sé... Nunca nadie la encontrará pero, en caso de que así sea, le concedí a la sardinilla algunos poderes especiales."] = "f7201e11e584898cabed2da038f800ba",
+            ["Si no lo supiera pensaría que te estabas burlando de mí, mortal. Pero sí, es más o menos así. Aunque puedes dejarte la ropa puesta."] = "9290167cc127c6cd7a5e08b074188c6c",
+            ["Te va a encantar esta historia, $r. Escucha. Tan pronto como Malygos me encargó la protección del fragmento de cetro, supe que iba a ser la causa de un eterno sufrimiento y preocupación.$B$BYo lo único que quiero es estudiar estas costas mágicas y recoger los artefactos que puedan quedar de la Ruptura. ¿Sabes? ¡En su día hubo aquí una próspera civilización de los Altonato! No hace falta que me digas que me voy a encontrar con algunos objetos mágicos por aquí, $r. ¡Ya lo intuyo!"] = "952805e11deb8720a7e2969a0337ac4f",
+            ["Tres palabras: boya de arcanita."] = "8ecede6b945767b335cc8e566a7d3a70",
+            ["¡Exacto!"] = "62693b7b0f002343825f89acaf92b09a",
+            ["¡QUE TENGAS UN BUEN DÍA, HE DICHO!"] = "844e0f7e4aeabe918f5265af702d15a8",
+            ["¿Estás buscando el fragmento de cetro verde confiado al Vuelo Azul?$B$B<Azuregos parece dibujar una sonrisa.>"] = "012353d581b9ded7b650cf6c539f5060",
+            ["¿No deberías estar salvando el mundo?"] = "2a11f9e16d83d4a09c9292245f52fe2b",
         },
         [15498] = {
             ["Nuestros progresos en la lucha contra los qiraji se deben a la ayuda que estamos recibiendo de casi todos los rincones de Kalimdor.$B$BNecesitas algo más que Soldados para luchar en una guerra, $n. Los héroes olvidados de la guerra son los comerciantes y artesanos que suministran a nuestras tropas todo lo que necesitan."] = "b3799b82bc9ff1942e4ac19ba2d4c105",
@@ -8192,10 +9068,14 @@ GossipText = {
             ["Ve con cuidado mortal. Muchos seres de gran poder encontraron aquí la muerte."] = "01a72b8a9ee3737b37605b3e99d6402a",
         },
         [15503] = {
+            ["Hace mil años, cuando la guerra del Mar de Dunas llegó a su fin, tres de los nuestros sacrificaron sus vidas y retuvieron a los Qiraji en el interior de estos muros mientras Anacronos y Corzocelada sellaban Ahn'Qiraj.$B$BTodos nosotros juramos volver a por Merithra, Arygos y Caelestrasz si algún día el Muro del Escarabajo se derrumbaba.$B$BY así fue... aquí estamos."] = "60e14cbaa8435b4075f83aeb3e80dcff",
             ["Hace mil años, cuando la guerra del Mar de Dunas llegó a su fin, tres de los nuestros sacrificaron sus vidas y retuvieron a los qiraji en el interior de estos muros mientras Anacronos y Corzocelada sellaban Ahn'Qiraj.$B$BTodos nosotros juramos volver a por Merithra, Arygos y Caelestrasz si algún día el Muro del Escarabajo se derrumbaba.$B$BY así fue... aquí estamos."] = "60e14cbaa8435b4075f83aeb3e80dcff",
         },
         [15504] = {
             ["Una atroz amenaza habita este lugar, mortal. C'Thun y sus devotos no solo son una afrenta para la naturaleza, sino que su existencia presagia destrucción para Azeroth.$B$BMerithra sacrificó su vida mil años atrás junto con Caelestrasz y Arygos pues ya lo sabían. Hemos venido debido al juramento que hicimos de volver a por ellos pero también porque hay que acabar con C'Thun."] = "0256593f191b79bf991a495678be7dce",
+        },
+        [15526] = {
+            ["El fondo marino me resulta muy apacible."] = "b11086-model-531",
         },
         [15539] = {
             ["Lok'tar, $r. Soy el general Zog, embajador de la Horda. Estoy aquí para informarte de los progresos realizados por la poderosa Horda en relación a la campaña de la guerra de Ahn'Qiraj. ¿Qué quieres saber?"] = "d2747cbf9e92ad97f5c16f908b596c77",
@@ -8540,6 +9420,10 @@ GossipText = {
             ["Que Elune esté contigo, $c."] = "9f0b1ccaf183a8e36a2849671ae33e26",
             ["Tyrande envía sus plegarias. La Madre Luna nos bendice a todos."] = "48d8bbdc83acab937796721b3e4db3ab",
         },
+        [15664] = {
+            ["En el cuello de este reno se encuentra una marca con el logotipo de Pastos Bosquehumeante y un nombre: Metzen'$B$BMetzen te mira con ojos de tristeza y desamparo. Parece como si algo, una fuerza oculta, hubiera inmovilizado al reno'."] = "8b88008eed8912bb786f6f742f322be9",
+            ["Los ojos de Metzen se iluminan con la felicidad del reno cuando esparces el polvo sobre él. Él agita sus cuernos y respira profundo, como suspirando, como sintiéndose aliviado.$B$BUna mágica energía comienza a brotar a tu alrededor. ¡Parece que algo está a punto de ocurrir!"] = "3d7c92cb6e46389e7660a4f292a53b47",
+        },
         [15694] = {
             ["No me vendría mal un beso. ¿Sabes dónde podría conseguir uno?"] = "b818b18848af77ff95b946be1fadd22d",
             ["No sé que hay en estos barriles ¡pero sabe a gloria!"] = "8698393913c403f236550da9075dd3d5",
@@ -8591,30 +9475,44 @@ GossipText = {
         },
         [15731] = {
             ["Saludos, $c. Soy un oficial encomiado en misión en nombre de Darnassus. Mi deber es ayudar a los aventureros que hayan recibido un sello de mención de honor de la Alianza.$B$BYo acepto sellos en diferentes cantidades, pero lo mejor para ti es que me entregues un lote de diez de una sola vez. Inscribiré tus hazañas en nuestros registros cuando entregues tus sellos. De esta forma, te ganarás el reconocimiento de Darnassus por tu cumplimiento del deber y buen servicio."] = "94e2524c35344ffbb05e9b1869c245f6",
+            ["Saludos, $c. Soy una oficial encomiado en misión en nombre de Darnassus. Mi deber es ayudar a los aventureros que hayan recibido un sello de mención de honor de la Alianza.$B$BYo acepto sellos en diferentes cantidades, pero lo mejor para ti es que me entregues un lote de diez de una sola vez. Inscribiré tus hazañas en nuestros registros cuando entregues tus sellos. De esta forma, te ganarás el reconocimiento de Darnassus por tu cumplimiento del deber y buen servicio."] = "94e2524c35344ffbb05e9b1869c245f6",
         },
         [15732] = {
             ["La última novedad este año: la PX-238 Maravoltio Invernal. ¡Acércate, no seas $gtímido:tímida;!$B$BY rellena estos formularios antes de probarla, aún estamos corrigiendo algunos problemas de este chisme..."] = "c7f6f228ba377038424bb81a6fc685cc",
         },
         [15733] = {
             ["Saludos, $c. Soy un oficial encomiado en misión en nombre de los Exiliados de Gnomeregan. Mi deber es ayudar a los aventureros que hayan recibido un sello de mención de honor de la Alianza.$B$BYo acepto sellos en diferentes cantidades, pero lo mejor para ti es que me entregues un lote de diez de una sola vez. Inscribiré tus hazañas en nuestros registros cuando entregues tus sellos. De esta forma, te ganarás el reconocimiento de los Exiliados de Gnomeregan por tu cumplimiento del deber y buen servicio."] = "c2a6c5d7d43cb3650eb787a68e5d0391",
+            ["Saludos, $c. Soy una oficial encomiada en misión en nombre de los Exiliados de Gnomeregan. Mi deber es ayudar a los aventureros que hayan recibido un sello de mención de honor de la Alianza.$B$BYo acepto sellos en diferentes cantidades, pero lo mejor para ti es que me entregues un lote de diez de una sola vez. Inscribiré tus hazañas en nuestros registros cuando entregues tus sellos. De esta forma, te ganarás el reconocimiento de los Exiliados de Gnomeregan por tu cumplimiento del deber y buen servicio."] = "c2a6c5d7d43cb3650eb787a68e5d0391",
         },
         [15734] = {
             ["Saludos, $c. Soy un oficial encomiado en misión en nombre de Forjaz. Mi deber es ayudar a los aventureros que hayan recibido un sello de mención de honor de la Alianza.$B$BYo acepto sellos en diferentes cantidades, pero lo mejor para ti es que me entregues un lote de diez de una sola vez. Inscribiré tus hazañas en nuestros registros cuando entregues tus sellos. De esta forma, te ganarás el reconocimiento de Forjaz por tu cumplimiento del deber y buen servicio."] = "a002d75a96a783b4847631d35c12cda1",
+            ["Saludos, $c. Soy una oficial encomiado en misión en nombre de Forjaz. Mi deber es ayudar a los aventureros que hayan recibido un sello de mención de honor de la Alianza.$B$BYo acepto sellos en diferentes cantidades, pero lo mejor para ti es que me entregues un lote de diez de una sola vez. Inscribiré tus hazañas en nuestros registros cuando entregues tus sellos. De esta forma, te ganarás el reconocimiento de Forjaz por tu cumplimiento del deber y buen servicio."] = "a002d75a96a783b4847631d35c12cda1",
         },
         [15735] = {
             ["Saludos, $c. Soy un oficial encomiado en misión en nombre de Ventormenta. Mi deber es ayudar a los aventureros que hayan recibido un sello de mención de honor de la Alianza.$B$BYo acepto sellos en diferentes cantidades, pero lo mejor para ti es que me entregues un lote de diez de una sola vez. Inscribiré tus hazañas en nuestros registros cuando entregues tus sellos. De esta forma, te ganarás el reconocimiento de Ventormenta por tu cumplimiento del deber y buen servicio."] = "a11a7d36f03be1a27def349ef4faa820",
+            ["Saludos, $c. Soy una oficial encomiada en misión en nombre de Ventormenta. Mi deber es ayudar a los aventureros que hayan recibido un sello de mención de honor de la Alianza.$B$BYo acepto sellos en diferentes cantidades, pero lo mejor para ti es que me entregues un lote de diez de una sola vez. Inscribiré tus hazañas en nuestros registros cuando entregues tus sellos. De esta forma, te ganarás el reconocimiento de Ventormenta por tu cumplimiento del deber y buen servicio."] = "a11a7d36f03be1a27def349ef4faa820",
         },
         [15736] = {
             ["Saludos, $c. Soy un oficial encomiado en misión en nombre de Orgrimmar. Mi deber es ayudar a los aventureros que hayan recibido un sello de honor de la Horda.$B$BYo acepto sellos en diferentes cantidades, pero lo mejor para ti es que me entregues un lote de diez de una sola vez. Inscribiré tus hazañas en nuestros registros cuando entregues tus sellos. De esta forma, te ganarás el reconocimiento de Orgrimmar por tu cumplimiento del deber y buen servicio."] = "721bb9d7821f092647a0f590fef91922",
+            ["Saludos, $c. Soy una oficial encomiada en misión en nombre de Orgrimmar. Mi deber es ayudar a los aventureros que hayan recibido un sello de honor de la Horda.$B$BYo acepto sellos en diferentes cantidades, pero lo mejor para ti es que me entregues un lote de diez de una sola vez. Inscribiré tus hazañas en nuestros registros cuando entregues tus sellos. De esta forma, te ganarás el reconocimiento de Orgrimmar por tu cumplimiento del deber y buen servicio."] = "721bb9d7821f092647a0f590fef91922",
         },
         [15737] = {
             ["Saludos, $c. Soy un oficial encomiado en misión en nombre de la tribu Lanza Negra. Mi deber es ayudar a los aventureros que hayan recibido un sello de honor de la Horda.$B$BYo acepto sellos en diferentes cantidades, pero lo mejor para ti es que me entregues un lote de diez de una sola vez. Inscribiré tus hazañas en nuestros registros cuando entregues tus sellos. De esta forma, te ganarás el reconocimiento de la tribu Lanza Negra por tu cumplimiento del deber y buen servicio."] = "39dff0023660d86508c6db5afb6c0d8a",
+            ["Saludos, $c. Soy una oficial encomiada en misión en nombre de la tribu Lanza Negra. Mi deber es ayudar a los aventureros que hayan recibido un sello de honor de la Horda.$B$BYo acepto sellos en diferentes cantidades, pero lo mejor para ti es que me entregues un lote de diez de una sola vez. Inscribiré tus hazañas en nuestros registros cuando entregues tus sellos. De esta forma, te ganarás el reconocimiento de la tribu Lanza Negra por tu cumplimiento del deber y buen servicio."] = "39dff0023660d86508c6db5afb6c0d8a",
         },
         [15738] = {
             ["Saludos, $c. Soy un oficial encomiado en misión en nombre de Entrañas. Mi deber es ayudar a los aventureros que hayan recibido un sello de honor de la Horda.$B$BYo acepto sellos en diferentes cantidades, pero lo mejor para ti es que me entregues un lote de diez de una sola vez. Inscribiré tus hazañas en nuestros registros cuando entregues tus sellos. De esta forma, te ganarás el reconocimiento de Entrañas por tu cumplimiento del deber y buen servicio."] = "89481ded6e9d55cdc37bf5cbd804a86c",
+            ["Saludos, $c. Soy una oficial encomiada en misión en nombre de Entrañas. Mi deber es ayudar a los aventureros que hayan recibido un sello de honor de la Horda.$B$BYo acepto sellos en diferentes cantidades, pero lo mejor para ti es que me entregues un lote de diez de una sola vez. Inscribiré tus hazañas en nuestros registros cuando entregues tus sellos. De esta forma, te ganarás el reconocimiento de Entrañas por tu cumplimiento del deber y buen servicio."] = "89481ded6e9d55cdc37bf5cbd804a86c",
         },
         [15739] = {
             ["Saludos, $c. Soy un oficial encomiado en misión en nombre de Cima del Trueno. Mi deber es ayudar a los aventureros que hayan recibido un sello de honor de la Horda.$B$BYo acepto sellos en diferentes cantidades, pero lo mejor para ti es que me entregues un lote de diez de una sola vez. Inscribiré tus hazañas en nuestros registros cuando entregues tus sellos. De esta forma, te ganarás el reconocimiento de Cima del Trueno por tu cumplimiento del deber y buen servicio."] = "e546a36a7eeaabafa3ea21329d0ac9da",
+            ["Saludos, $c. Soy una oficial encomiada en misión en nombre de Cima del Trueno. Mi deber es ayudar a los aventureros que hayan recibido un sello de honor de la Horda.$B$BYo acepto sellos en diferentes cantidades, pero lo mejor para ti es que me entregues un lote de diez de una sola vez. Inscribiré tus hazañas en nuestros registros cuando entregues tus sellos. De esta forma, te ganarás el reconocimiento de Cima del Trueno por tu cumplimiento del deber y buen servicio."] = "e546a36a7eeaabafa3ea21329d0ac9da",
+        },
+        [15760] = {
+            ["Ah, muérdago..."] = "10669c729a7ee48f162945ccd7a3c499",
+            ["¡Felices Fiestas y paz!"] = "4d6128a8cf523f10c6e33d70b7c93fb2",
+            ["¡Feliz Festival de Invierno a ti también, $gamigo:amiga;!"] = "20c96d48f978de0eeb8f6f7bfacc1fa4",
+            ["¡Te deseo felices fiestas, $gamigo:amiga;!"] = "4f922e209a1c848bba67d36ed1630de9",
         },
         [15761] = {
             ["Saludos, $c. Soy un oficial encomiado en misión en nombre de la tribu Lanza Negra. Mi deber es ayudar a los aventureros que hayan recibido un sello de honor de la Horda.$B$BYo acepto sellos en diferentes cantidades, pero lo mejor para ti es que me entregues un lote de diez de una sola vez. Inscribiré tus hazañas en nuestros registros cuando entregues tus sellos. De esta forma, te ganarás el reconocimiento de la tribu Lanza Negra por tu cumplimiento del deber y buen servicio."] = "39dff0023660d86508c6db5afb6c0d8a",
@@ -8715,6 +9613,12 @@ GossipText = {
         [16014] = {
             ["¡Saludos, $gamigo:amiga;! ¿Puedo ofrecerte un condensador ectoplásmico? ¿O quizás un fabuloso asimilador de espectros omnidireccional?"] = "2ee56c2d70a0c3bb5d140a53ddd3fa45",
         },
+        [16015] = {
+            ["Has demostrado gran habilidad en tu modo de entrar aquí, $n.$B$B¿Qué? ¿Te sorprende que sepa tu nombre? Soy un demonio, es nuestro trabajo. También conozco tu verdadero nombre así que es mejor que me compres algo caro."] = "5e811e0a917a1eaf29f60d4fefb6c5bb",
+            ["¡¿Qué?! ¿Cómo has logrado entrar sin que se diera cuenta mi... eh... mi esbirro que está ahí fuera? Bueno, supongo que es lo mejor. Últimamente, las ventas no van nada bien.$B$B¿Cómo puedo complacer tus infernales necesidades, $c?"] = "178dc48651b807840f69806b5eab868e",
+            ["¿Qué? No, no reparo armaduras. Vista Eterna está a tan solo una milla en dirección norte, $ghermano: hermana;.$B$B¡Y ahora compra algo o desaparece antes de que llame a mi brujo para que se ocupe de ti!"] = "356c967cd7432eeb31384d36235fff85",
+            ["¿Vienes a por la vara? ¿O simplemente quieres comprar runas?$B$B¡Espera un momento! ¿Intentas cargarme con un montón de porquerías? ¡Maldita sea mi eterna obsesión por comprar, comprar y comprar!"] = "93339fe6f2c3622d0b61c0176cd85155",
+        },
         [16031] = {
             ["Estaré bien, no te preocupes por mí. Saldré de aquí cuando haya realizado algunos rituales de purificación en esta habitación. Este lugar está contaminado con magia negativa, $n."] = "79424cf61ac27a09aeb2a6d5ab3cbd8e",
         },
@@ -8733,6 +9637,10 @@ GossipText = {
         },
         [16070] = {
             ["Ave $c. ¿No te he visto hace poco en una reunión privada? Me suena tu cara pero esta ciudad está tan concurrida...$B$BSi has estado en esa reunión, te habrán dado un código secreto. Dime tu código y recibirás como recompensa un premio especial."] = "c5afae87abc614718a9d01193dc59430",
+        },
+        [16075] = {
+            ["¡Hola! ¡Soy Kwee Q. Pies Rápidos! ¡He venido para averiguar quién es el héroe o la heroína más popular de Azeroth!$B$BMe gusta ver que los líderes tienen tantos seguidores adorándoles, pero... ¿sabes lo que me gustaría todavía más?$B$B¡Que me dieras un beso!"] = "935b1bd7b67ea8f26f1810ed14a89382",
+            ["¿Quieres saber quién es el héroe más popular del reino? ¡Esta es la clasificación actual!$B$BThrall: $2200w$BCairne: $2201w$BSylvanas: $2202w$BTotal de la Horda: $2207w$B$BBolvar: $2203w$BMagni: $2204w$BTyrande: $2205w$BTotal de la Alianza: $2206w$B$BSi deseas emitir tu voto, ¡no olvides entregar tu colección de regalos!"] = "23271b2d8602544021625f506dc1e7ea",
         },
         [16076] = {
             ["Ave $c. ¿No te he visto hace poco en una reunión privada? Me suena tu cara pero esta ciudad está tan concurrida...$B$BSi has estado en esa reunión, te habrán dado un código secreto. Dime tu código y recibirás como recompensa un premio especial."] = "28755471b38e6eb285e0d80db6c9498a",
@@ -8814,7 +9722,8 @@ GossipText = {
             ["No tengas miedo de la espada. ¡Es el cordero!"] = "aa468b41ee1967bb79c4f9ff0c0d575f",
         },
         [16227] = {
-            ["¿Adónde quieres volar?"] = "8d5a94fecd48af8f93d9d75d365ea743",
+            ["¿Adónde quieres volar?"] = "3e057055259d660918d6daacb764fb05",
+            ["¿Hacia dónde quieres dirigirte?"] = "b2974-goblin-male-zany",
         },
         [16230] = {
             ["Este cultor está en estado de trance..."] = "73f0462573697c404b28308bec6f882a",
@@ -8824,6 +9733,7 @@ GossipText = {
         },
         [16256] = {
             ["$gBienvenido:Bienvenida; a la Capilla de la Esperanza de la Luz, $gforastero:forastera;."] = "62d77d311ff95b739586b58c132d853b",
+            ["Antiguamente la capital de los enanos Hierro Negro, este laberinto volcánico ahora sirve como trono de poder de Ragnaros, el Señor del Fuego. Ragnaros ha descubierto cómo crear vida a partir de la piedra y planea formar un ejército de golems imparables para ayudarle a conquistar la Montaña Roca Negra. Ragnaros, obsesionado con derrotar a Nefarian y a sus esbirros dracónicos, hará lo que sea por conseguir la victoria final."] = "e4835262a6e71a36692d90aedbb66c42",
             ["Antiguamente la capital de los enanos Hierro Negro, este laberinto volcánico ahora sirve como trono de poder de Ragnaros, el Señor del Fuego. Ragnaros ha descubierto cómo crear vida a partir de la piedra y planea formar un ejército de gólems imparables para ayudarle a conquistar la Montaña Roca Negra. Ragnaros, obsesionado con derrotar a Nefarian y a sus esbirros dracónicos, hará lo que sea por conseguir la victoria final."] = "e4835262a6e71a36692d90aedbb66c42",
             ["Construida con las mismas vides que Horado Rajacieno, Zahúrda Rajacieno es la capital tradicional de la raza de los jabaespines. El laberinto de espinas que se extiende por todas partes, aloja un verdadero ejército de leales jabaespines junto con sus altos sacerdotes, la tribu Caramuerte. Sin embargo, recientemente una sombra de mal presagio ha caído sobre la rudimentaria guarida. Unos agentes de la Plaga de los no-muertos, a las órdenes del exánime Amnennar el Gélido, han tomado el control de la raza de los jabaespines y han convertido el laberinto de espinas en un bastión del poder de los no-muertos."] = "ae6bac71d95fa9cc576583cb12b00b0a",
             ["Cuando entregues pruebas de amor a los habitantes de la ciudad, recibirás diferentes regalos a cambio. Algunos podrás guardarlos y utilizarlos, ¡mientras que otros podrás juntarlos y dárselos a tu $ghéroe favorito:heroína favorita;! Visita a Kwee Q. Mercachifle y entrégaselos.$B$BEncontrarás a Kwee cerca de Bolvar, Magni o Tyrande."] = "0838f3fe0e3c17a16a7ff7d504eec929",
@@ -8839,6 +9749,7 @@ GossipText = {
             ["Frustrado por la falta de progreso de los magos de Dalaran contra los no-muertos durante la Tercera Guerra, el archimago Arugal decidió invocar a los ferocanis extra-dimensionales para dar un empujón a sus tropas cada vez menores. Los lobisones atacaron a la Plaga y, rápidamente, se dirigieron a los magos y asediaron el bastión del noble barón FIlargenta. Pronto, el fuerte fue presa de las sombras y se convirtió en cenizas. Enloquecido por la culpa, Arugal adoptó a los ferocanis como sus hijos y se retiró al Castillo de Colmillo Oscuro."] = "b69ededa6dbdfe26a15fda5121e90a20",
             ["Gnomeregan se encuentra en la parte oeste de Dun Morogh."] = "1e16c8ae0545b101ebc5ad4d9c69c248",
             ["Hace más de mil años, un grupo de sacerdotes trols conocidos como los Atal'ai, intentaron resucitar a un dios de la sangre ancestral llamado Hakkar el Cazador de Almas. Tras la consecuente guerra civil, los sacerdotes fueron derrotados y exiliados al Pantano de las Penas. Allí erigieron un templo en honor de Hakkar, para prepararse para su llegada al mundo físico. La dragón Aspecto Ysera, pronto descubrió los planes de los Atal'ai y hundió el templo bajo el pantano. Hasta el día de hoy, las ruinas han estado protegidas por los poderosos dragones Verdes."] = "7dc247370c0f46388922e4ad2824f973",
+            ["Hace más de mil años, un grupo de sacerdotes trols conocidos como los Atal'ai, intentaron resucitar a un dios de la sangre ancestral llamado Hakkar el Cazador de Almas. Tras la consecuente guerra civil, los sacerdotes fueron derrotados y exiliados al Pantano de las Penas. Allí erigieron un templo en honor de Hakkar, para prepararse para su llegada al mundo físico. La dragón Aspecto Ysera, pronto descubrió los planes de los Atal'ai y hundió el templo bajo el pantano. Hasta el día de hoy, las ruinas han estado protegidas por los poderosos dragones verdes."] = "7dc247370c0f46388922e4ad2824f973",
             ["Hace poco, un druida elfo de la noche llamado Naralex, descubrió una red de cuevas subterráneas en el corazón de Los Baldíos. Creyendo que podría usar los manantiales de las cuevas para restaurar la exuberancia de Los Baldíos, el druida comenzó a absorber las energías del legendario Sueño Esmeralda. De alguna forma, su visión se transformó en una pesadilla y pronto, las Cuevas de los Lamentos se convirtieron en una guarida de viciosos y letales depredadores. Se dice que Naralex sigue en algún lugar del laberinto, atrapado más allá de los límites del Sueño Esmeralda."] = "4d1835c423b0ee4a6773a1481ea2d03e",
             ["Horado Rajacieno se encuentra en el extremo más al sur de Los Baldíos, en el lado oeste del camino."] = "4855c8dab63ff7e92429d6df87b7b3cd",
             ["La Montaña Roca Negra linda con La Garganta de Fuego al norte y Las Estepas Ardientes al sur."] = "7beb3ee244d9c85c277537d4ba4a2fe1",
@@ -8874,6 +9785,10 @@ GossipText = {
         [16284] = {
             ["¡Tengo mucho que hacer y poco tiempo para hacerlo, $r! Por favor, apártate de mi camino."] = "f21ac82310364bee548aaa65db9ae740",
             ["¡Tengo mucho que hacer y poco tiempo para hacerlo, $r! Por favor, apártate de mi camino.$B$BSi te has contagiado con baba de gusano o la putrefacción de los necrófagos, quizás pueda ayudarte."] = "69087ca98832c4d531ebd24380d184e3",
+        },
+        [16285] = {
+            ["A llegado la hora de que la Horda y la Alianza miren hacia el norte y la invasión de la Plaga. En días recientes, los territorios a través de Kalimdor y los Reinos del Este han sufrido ataques. ¿Levantarás armas para salvar tu tierra de la destrucción a manos de ellos?"] = "b12109-human-male-official",
+            ["El azote de la guerra regresa de nuevo. Desde el frío norte, las necrópolis del rey Exánime han asediado nuestras tierras. Él y su maldito general, Kel'Thuzad, envían a sus necrópolis flotantes a invadir el mundo."] = "b12180-human-male-official",
         },
         [16376] = {
             ["El maestro artesano Omarion simplemente desapareció una noche, como un susurro al viento... ¡Paf! ¡Y desapareció! Ahora soy el único que puede fabricar los objetos para los chicos que están en primera línea de batalla."] = "9cb182e6099250bd1e21445a5a8a786a",
@@ -8943,6 +9858,7 @@ GossipText = {
             ["¿Quieres decir que no lo sabes? La espada que llevas a tu espalda se conoce como Crematoria, nombre de su dueño original."] = "aff37574b814f55f881169f5208b9e95",
         },
         [16458] = {
+            ["Antiguamente la capital de los enanos Hierro Negro, este laberinto volcánico ahora sirve como trono de poder de Ragnaros, el Señor del Fuego. Ragnaros ha descubierto cómo crear vida a partir de la piedra y planea formar un ejército de golems imparables para ayudarle a conquistar la Montaña Roca Negra. Ragnaros, obsesionado con derrotar a Nefarian y a sus esbirros dracónicos, hará lo que sea por conseguir la victoria final."] = "9c2b22f32a137854d984166b2aaded4b",
             ["Antiguamente la capital de los enanos Hierro Negro, este laberinto volcánico ahora sirve como trono de poder de Ragnaros, el Señor del Fuego. Ragnaros ha descubierto cómo crear vida a partir de la piedra y planea formar un ejército de gólems imparables para ayudarle a conquistar la Montaña Roca Negra. Ragnaros, obsesionado con derrotar a Nefarian y a sus esbirros dracónicos, hará lo que sea por conseguir la victoria final."] = "9c2b22f32a137854d984166b2aaded4b",
             ["Construida con las mismas vides que Horado Rajacieno, Zahúrda Rajacieno es la capital tradicional de la raza de los jabaespines. El laberinto de espinas que se extiende por todas partes, aloja un verdadero ejército de leales jabaespines junto con sus altos sacerdotes, la tribu Caramuerte. Sin embargo, recientemente una sombra de mal presagio ha caído sobre la rudimentaria guarida. Unos agentes de la Plaga de los no-muertos, a las órdenes del exánime Amnennar el Gélido, han tomado el control de la raza de los jabaespines y han convertido el laberinto de espinas en un bastión del poder de los no-muertos."] = "bbbb6f1884cdacec9af6cb67e3e1abd4",
             ["Cuando entregues pruebas de amor a los habitantes de la ciudad, recibirás diferentes regalos a cambio. Algunos podrás guardarlos y utilizarlos, ¡mientras que otros podrás juntarlos y dárselos a tu $ghéroe favorito:heroína favorita;! Visita a Kwee Q. Mercachifle y entrégaselos.$B$BEncontrarás a Kwee cerca de Bolvar, Magni o Tyrande."] = "b19764fa4b6d3a891fa5f750b3dd2517",
@@ -8958,6 +9874,7 @@ GossipText = {
             ["Frustrado por la falta de progreso de los magos de Dalaran contra los no-muertos durante la Tercera Guerra, el archimago Arugal decidió invocar a los ferocanis extra-dimensionales para dar un empujón a sus tropas cada vez menores. Los lobisones atacaron a la Plaga y, rápidamente, se dirigieron a los magos y asediaron el bastión del noble barón FIlargenta. Pronto, el fuerte fue presa de las sombras y se convirtió en cenizas. Enloquecido por la culpa, Arugal adoptó a los ferocanis como sus hijos y se retiró al Castillo de Colmillo Oscuro."] = "5d076554d313584aa1c5611cf0129a23",
             ["Gnomeregan se encuentra en la parte oeste de Dun Morogh."] = "a4f613548f3f5a63415a978d891ce475",
             ["Hace más de mil años, un grupo de sacerdotes trols conocidos como los Atal'ai, intentaron resucitar a un dios de la sangre ancestral llamado Hakkar el Cazador de Almas. Tras la consecuente guerra civil, los sacerdotes fueron derrotados y exiliados al Pantano de las Penas. Allí erigieron un templo en honor de Hakkar, para prepararse para su llegada al mundo físico. La dragón Aspecto Ysera, pronto descubrió los planes de los Atal'ai y hundió el templo bajo el pantano. Hasta el día de hoy, las ruinas han estado protegidas por los poderosos dragones Verdes."] = "4b24ea6b391a2efd0be7d84cc947d159",
+            ["Hace más de mil años, un grupo de sacerdotes trols conocidos como los Atal'ai, intentaron resucitar a un dios de la sangre ancestral llamado Hakkar el Cazador de Almas. Tras la consecuente guerra civil, los sacerdotes fueron derrotados y exiliados al Pantano de las Penas. Allí erigieron un templo en honor de Hakkar, para prepararse para su llegada al mundo físico. La dragón Aspecto Ysera, pronto descubrió los planes de los Atal'ai y hundió el templo bajo el pantano. Hasta el día de hoy, las ruinas han estado protegidas por los poderosos dragones verdes."] = "4b24ea6b391a2efd0be7d84cc947d159",
             ["Hace poco, un druida elfo de la noche llamado Naralex, descubrió una red de cuevas subterráneas en el corazón de Los Baldíos. Creyendo que podría usar los manantiales de las cuevas para restaurar la exuberancia de Los Baldíos, el druida comenzó a absorber las energías del legendario Sueño Esmeralda. De alguna forma, su visión se transformó en una pesadilla y pronto, las Cuevas de los Lamentos se convirtieron en una guarida de viciosos y letales depredadores. Se dice que Naralex sigue en algún lugar del laberinto, atrapado más allá de los límites del Sueño Esmeralda."] = "4352ca0c9a3782df4f9b0a23c9c7f9d7",
             ["Horado Rajacieno se encuentra en el extremo más al sur de Los Baldíos, en el lado oeste del camino."] = "25a80704f18ee56676b132bdded0fe94",
             ["La Montaña Roca Negra linda con La Garganta de Fuego al norte y Las Estepas Ardientes al sur."] = "aab40b74860886caa96dcfdaf979e180",
@@ -8992,14 +9909,62 @@ GossipText = {
             ["Ten cuidado en el desierto, $c."] = "ba66fca13d25f11aec60b7a40abc3055",
             ["¡Ah! Tú eres quien ha encontrado la carta. Gracias por... las noticias, supongo, de mi familia. Puedes comer y beber de todo lo que hay."] = "db0fd82a2e87168de7f37ba74147a476",
         },
+        [16587] = {
+            ["¿Adónde quieres volar?"] = "008491a7c8f31e3556f00e8c3fdc3190",
+        },
         [16817] = {
             ["¿Estás disfrutando del festival, $c?$b$bMientras el guardián de la llama se ocupa de las hogueras del presente, yo soy más bien un historiador y me interesan mucho los festivales anteriores. Por supuesto, estoy documentando las celebraciones de este año. De momento, todo está saliendo bien, ¿no crees?$b$b¿Sabes, $n? Hay un poder inherente a todas las hogueras del festival que se prenderán durante estas fiestas. Nosotros cuidamos las nuestras pero estoy seguro de que en las ciudades enemigas arden hogueras sagradas..."] = "5c66a04a03f0c09ed64da9dc7d5312b6",
         },
         [16818] = {
             ["¿Estás disfrutando del festival, $c?$b$bMientras el guardián de la llama se ocupa de las hogueras del presente, yo soy más bien un historiador y me interesan mucho los festivales anteriores. Por supuesto, estoy documentando las celebraciones de este año. De momento, todo está saliendo bien, ¿no crees?$b$b¿Sabes, $n? Hay un poder inherente a todas las hogueras del festival que se prenderán durante estas fiestas. Nosotros cuidamos las nuestras pero estoy seguro de que en las ciudades enemigas arden hogueras sagradas..."] = "0b4060988eee47f0f6a9f5aadfb007a3",
         },
+        [16822] = {
+            ["¿Adónde quieres volar?"] = "43540ff7458382b18eb66468d4ff2856",
+        },
+        [16999] = {
+            ["'Saludos, $n. Veo que ya llevas la marca de haber completado la misión para poder entrar en Naxxramas. Asegúrate de hablar con el comandante Eligor Albar en la Capilla de la Esperanza de la Luz en las Tierras de la Peste del Este para obtener la misión 'Ecos de Guerra'. Primero tendrás que completar esa misión para poder acceder a las misiones para conseguir tu armadura de Nivel 3.$B$BYo puedo teletransportarte directamente a Naxxramas o puedes utilizar el portal situado en el Bosque de la Peste, al oeste'."] = "6a5bb71550a304cc28b7d2bae4771a81",
+            ["Greetings, $N. I am Johnny McWeaksauce. I am used as a tool by developers to carry out specific functions for the purpose of testing. For this test period, I am set to do two specific things:$B$B(1) Flag you as having done the Naxxramas attunement quest so that you are able to accept the next quest, 'Echoes of War' from Commander Eligor Dawnbringer. You must first complete that quest to be able to access the quests for your Tier 3 armor set.$B$B(2) Teleport you to Naxxramas.$B$BWhat is it that you require?"] = "38921cd829ce0256aece4a48c2339b21",
+        },
         [17209] = {
             ["No te asustes... puede que mis grifos no estén muy vivos que digamos, pero aun así te llevarán sin problemas a tu destino. Dime... ¿qué torre buscas?"] = "8c3e5d1b67a507ae3bf5d583b20cea89",
+        },
+        [17804] = {
+            ["Saludos, $gciudadano:ciudadana;. Te ruego que sigas tu camino si es que no tienes nada que preguntarme."] = "b14385-human-male-warrior",
+        },
+        [18938] = {
+            ["¿Adónde quieres volar?"] = "3e057055259d660918d6daacb764fb05",
+        },
+        [19583] = {
+            ["¿Adónde quieres volar?"] = "3e057055259d660918d6daacb764fb05",
+        },
+        [20515] = {
+            ["¿Adónde quieres volar?"] = "3e057055259d660918d6daacb764fb05",
+        },
+        [22931] = {
+            ["¿Adónde quieres volar?"] = "008491a7c8f31e3556f00e8c3fdc3190",
+        },
+        [23612] = {
+            ["¿Adónde quieres volar?"] = "3e057055259d660918d6daacb764fb05",
+        },
+        [24366] = {
+            ["¿Adónde quieres volar?"] = "3e057055259d660918d6daacb764fb05",
+        },
+        [28989] = {
+            ["¡Espero abrir mi propia tienda pronto! Mientras tanto, ¿deseas comprar algo?    ¡Todo, por mínimo que sea, sirve para hacer realidad mi sueño!"] = "cbca42c4de87472daaebfb21b58007c1",
+            ["¡Espero abrir mi propia tienda pronto! Mientras tanto, ¿deseas comprar algo?  ¡Todo, por mínimo que sea, sirve para hacer realidad mi sueño!"] = "esMX-98bccfaef3f1f565d12236faaf33c61a",
+        },
+        [29049] = {
+            ["¿Te apetece una bebida, $gaventurero:aventurera;? Tengo un surtido selecto de todos los rincones del mundo."] = "esMX-e3118895361dcba5b1bc75d133c62dbe",
+        },
+        [32287] = {
+            ["Saludos. Soy el archimago Alvereaux y me encargo de los suministros y la logística del Kirin Tor.    Por desgracia, tenemos pocos objetos útiles disponibles para entregar a nuestros amigos y aliados en este momento.    Sugiero que me visites con frecuencia; mis existencias varían todo el tiempo."] = "esMX-cc3ee7b417bccde90cac136a4a9f3a59",
+            ["Saludos. Soy el archimago Alvereaux y me encargo de los suministros y la logística del Kirin Tor.  Por desgracia, tenemos pocos objetos útiles disponibles para entregar a nuestros amigos y aliados en este momento.  Sugiero que me visites con frecuencia; mis existencias varían todo el tiempo."] = "esMX-cc3ee7b417bccde90cac136a4a9f3a59",
+        },
+        [32413] = {
+            ["Te doy la bienvenida a mi taberna, $gfatigado viajero:fatigada viajera;. ¿En qué puedo ayudarte?"] = "b2821-nightelf-female-standard",
+        },
+        [216289] = {
+            ["Saludos, joven $c."] = "b5989-ancient",
         },
         [230317] = {
             ["Thrall ha sido muy generoso acogiéndome en su dominio. De ningún modo quisiera abusar de su hospitalidad. Causarle problemas a nuestro líder sería una gran deshonra para mí."] = "b9ca2ade5c180a21e305ffe165d2771c",
@@ -9007,72 +9972,602 @@ GossipText = {
         [230319] = {
             ["Intenta no llamar mucho la atención. Estoy esperando a que el Rey me dé audiencia. No es que me importe esperar... de hecho, me siento bastante segura rodeada de todos estos fornidos guardias."] = "f555efebf575408048587026c0aa3577",
         },
+        [243815] = {
+            ["Tu cuerpo parece desfallecido y tu espíritu agotado. Descansa bajo nuestro techo y deja que Elune inspire tus sueños."] = "88ed28bad52992326e81df54efce5146",
+        },
+        [244808] = {
+            ["Puede que no seas un paladín, pero aún puedes hallar consuelo en la Luz, si lo buscas."] = "esMX-0908b908ea5860bec99bc85eda2d6702",
+            ["Te damos la bienvenida de nuevo a la Luz. ¿Necesitas entrenamiento?"] = "deDE-cbc8319002b5e4ebcc238cec5de37aae",
+        },
+        [246143] = {
+            ["¡Aléjate de mí, monstruo!"] = "deDE-40dbf44f3af1766f97275431272b2370",
+            ["¡No! ¡No, no, no! No puede ser. ¡Prefiero estar muerta antes que ser una Renegada!  <¡La $c asustada alza el arma y se prepara para atacar!>"] = "esMX-74b30cb128ded48c5b7ac4f43e1b182a",
+        },
+        [246152] = {
+            ["La Luz es un faro que brilla para todos. ¿En qué puedo ayudarte, $c?"] = "5214953ffc58367673f42ef84358ed00",
+            ["Puedo enseñarte los mejores trucos para montar un caballo esquelético, ¡siempre que tengas suficiente oro para pagar la lección!"] = "2e65eb1fa48fb06278bb020f60a84d34",
+        },
+        [246344] = {
+            ["Te damos la bienvenida de nuevo a la Luz. ¿Necesitas entrenamiento?"] = "deDE-cbc8319002b5e4ebcc238cec5de37aae",
+        },
+        [246752] = {
+            ["Por desgracia, los rumores acerca de nuestra crisis son ciertos. Las perturbaciones que han sufrido nuestras líneas ley han develado una anomalía entre las fuerzas arcanas de nuestra ciudad.    Ahora que Dalaran está a punto de abrir sus fronteras nuevamente para nuestros aliados, necesitamos solucionar este inconveniente de inmediato."] = "b299703-human-male-standard",
+        },
         [246848] = {
+            ["¿Puedo ayudarte en algo?"] = "052cf71096c7baff3a0d693775601cb4",
+            ["¿Qué buscas?"] = "esMX-68a5bd7529415422edaf8580bd3c7aa2",
+            ["¿Qué despierta tu curiosidad?"] = "4a605cf97ec7148d2b14abbe8192ce12",
             ["¿Qué estás buscando?"] = "ed1b18176e479fb1e0c5d47c9f1dd25d",
+        },
+        [247226] = {
+            ["Al demonio con estos kóbolds. Corren de aquí para allá, se meten en medio y no me dejan trabajar. Bueno, tampoco tengo nada mejor que hacer. ¿Quieres que te enseñe técnicas de minería? ¿O quizá solo necesitas herramientas nuevas?"] = "esMX-9d901a793f6ce1c05e16106d6c2c841b",
+            ["Blast these kobolds. I can't get any work done with them running back and forth, getting in my way. Well, I've got nothing better to do. Would you like to learn about mining techniques? Or perhaps you just need some new tools?"] = "b293810-human-female-standard",
+        },
+        [247227] = {
+            ["¿Quieres aprender a obtener cuero de las bestias asesinadas? ¿O necesitas herramientas nuevas?"] = "5ef49377b8dd68254ffba79ca4353eea",
+        },
+        [247229] = {
+            ["Las profesiones se dividen en dos categorías principales: primarias y secundarias.    Solo puedes tener un máximo de dos profesiones primarias a la vez. Puedes renunciar a tu habilidad en una profesión primaria cuando quieras, pero perderás todo el conocimiento que hayas acumulado. Si decides volver a tu profesión original, tendrás que volver a entrenar desde cero y buscar las recetas que ya tenías para volver a aprenderlas.    Las profesiones secundarias no tienen límite. Estas habilidades tienden a enfocarse en la autosuficiencia para cubrir tus necesidades básicas de supervivencia. Puedes entrenarte en una o en todas a la vez, pero es posible que ofrezcan menos oportunidades para generar ganancias."] = "5f0f285172f8b3fead4c49f9c56d6553",
+            ["¡Hola, $N! ¿Has pensado en aprender una habilidad comercial?  Con mucho gusto responderé a cualquier pregunta que tengas o te indicaré dónde encontrar a los instructores de la zona.  Si te parece demasiado por el momento, ¡no te preocupes! Siempre puedes volver aquí o acudir a los instructores de las capitales para empezar tu recorrido profesional en el mundo de la artesanía."] = "esMX-b563de30d6d4e59866f21fb5eabc0ca4",
+            ["¡Hola, $n! ¿Has pensado en aprender una habilidad comercial?    Con mucho gusto responderé a cualquier pregunta que tengas o te indicaré dónde encontrar a los instructores de la zona.    Si te parece demasiado por el momento, ¡no te preocupes! Siempre puedes volver aquí o acudir a los instructores de las capitales para empezar tu recorrido profesional en el mundo de la artesanía."] = "b292949-human-male-standard",
+            ["¿Y ahora qué necesita el hermano Paxton?"] = "b296872-human-male-standard",
         },
         [248415] = {
             ["Bah, ayudar no puedo. Más te vale buscarte un instructor de $c."] = "65ffa984c80ec793cab656acd848ac8c",
+            ["Oí por ahí que el viejo alguacil McBride te mandaba en mi dirección."] = "b294064-dwarf-male-standard",
+            ["¿Qué puedo hacer por ti?"] = "ff4c1db50d39977890db3fe889ea21ae",
+        },
+        [249363] = {
+            ["Los espíritus de viento nos han abandonado.    Ahora, solo quedan ecos sin sentido. Pero ten cuidado: estos vientos no son cálidos ni suaves."] = "esES-aad6f5e6d33ffeb0509ae9a20c763e56",
+        },
+        [249713] = {
+            ["¡Shhh! ¡Vas a revelar mi escondite!"] = "b296775-human-female-standard",
+        },
+        [250929] = {
+            ["<A medida que te acercas al enorme ensamblaje de ciclones, oyes un ligero zumbido debajo de sus gruesas placas de armadura. Si escuchas con cuidado, crees que se pueden llegar a oír algunas palabras, pero suenan demasiado distorsionadas como para descifrarlas.>"] = "b299774-narrator-male",
         },
         [251001] = {
+            ["Procura que lo lea de inmediato. Me temo que nuestro problema con la Plaga recién empieza.    Vuelve a buscarme cuando sea el momento. Creo que estoy cerca de descubrir algo y voy a necesitar una espada dispuesta."] = "312d3576ca8a4cae2c1cad9d65ab17bb",
             ["¿Qué estás buscando?"] = "2496e7dedec4748fa10b50cbb971b275",
+            ["¿Qué profesión?"] = "68b0bdb01281865de220bb8ce19e964a",
+        },
+        [251361] = {
+            ["¿Qué necesitas de mí, $Uhijo:hija; de Zephras?"] = "1394be9de1e0b36dc8ca9962d38734d0",
+            ["¿Qué necesitas de mí, hija de Zephras?"] = "esMX-47ba89f5c4669619e1317bcea658e67e",
+            ["¿Qué necesitas de mí, hijo de Zephras?"] = "1394be9de1e0b36dc8ca9962d38734d0",
+        },
+        [251362] = {
+            ["Hola, $c."] = "a99c6cb6931916301d9f42a914c6f800",
+        },
+        [251371] = {
+            ["La magia puede lograr casi cualquier cosa, pero la inercia y la pasividad nos hicieron perder buena parte de nuestra esencia en los miles de años desde que dejamos Kalimdor. La Suma Orden quiere recuperar la herencia de los Altonato que abandonamos y volver a ser dueños de nuestro destino.    Los Formavientos nos tachan de imprudentes y arrogantes, así de simple. El colmo de la hipocresía, si me preguntas. Los Formavientos no escuchan a nadie más que a sí mismos cuando se trata de esta crisis. Dime, ¿quiénes son los verdaderos arrogantes?"] = "dadcb63a8ca0a60db74bbb61c6c34baa",
+            ["La magia puede lograr casi cualquier cosa, pero la inercia y la pasividad nos hicieron perder buena parte de nuestra esencia en los miles de años desde que dejamos Kalimdor. La Suma Orden quiere recuperar la herencia de los Altonato que abandonamos y volver a ser dueños de nuestro destino.  Los Formavientos nos tachan de imprudentes y arrogantes, así de simple. El colmo de la hipocresía, si me preguntas. Los Formavientos no escuchan a nadie más que a sí mismos cuando se trata de esta crisis. Dime, ¿quiénes son los verdaderos arrogantes?"] = "esMX-ebcae900cfb2967e9e2021141e51771b",
+            ["Saludos, colega $Uiniciado:iniciada; de la Suma Orden."] = "e3b1e80443822ef0533f362d56abf362",
+            ["Saludos, colega iniciada de la Suma Orden."] = "esMX-6b50212c18744bd8375752a76c87177f",
+            ["Saludos, colega iniciado de la Suma Orden."] = "e3b1e80443822ef0533f362d56abf362",
+            ["Saludos... Formavientos.    Aquellos que se hacen llamar miembros de los Formavientos tienen poco en común con la mayoría de los miembros de la Suma Orden, como seguramente ya sabes. Fuera de la relativa armonía de la Arboleda Thendal, descubrirás que estas divisiones son muy profundas y que la rivalidad puede llegar a tener resultados violentos, en algunos casos.    No diré nada más sobre esto, salvo que deberías ocuparte de tus propios asuntos y no interferir con los objetivos de la Suma Orden una vez que salgas de la arboleda. Esta es posiblemente la única advertencia que recibirás."] = "esMX-08d39d8e3a4c46aa537a82fc82e0850d",
+            ["Saludos... Formavientos.  Aquellos que se hacen llamar miembros de los Formavientos tienen poco en común con la mayoría de los miembros de la Suma Orden, como seguramente ya sabes. Fuera de la relativa armonía de la Arboleda Thendal, descubrirás que estas divisiones son muy profundas y que la rivalidad puede llegar a tener resultados violentos, en algunos casos.  No diré nada más sobre esto, salvo que deberías ocuparte de tus propios asuntos y no interferir con los objetivos de la Suma Orden una vez que salgas de la arboleda. Esta es posiblemente la única advertencia que recibirás."] = "esMX-08d39d8e3a4c46aa537a82fc82e0850d",
+            ["Zephras corre un grave peligro. Los espíritus de viento elementales que nos trajeron a Muro Celeste hace miles y miles de años nos dieron la espalda, y quedamos a merced de este reino inestable. Nuestra sociedad, otrora floreciente, abarcaba múltiples santuarios insulares en nuestro rincón de Muro Celeste, pero hoy ni siquiera sabemos si quedan otros shen'dorei fuera de esta pequeña isla.    La situación es desesperada, pero la Suma Orden está decidida a enfrentar este desafío."] = "0ad0b46c05f2db722e3b617913228055",
+            ["Zephras corre un grave peligro. Los espíritus de viento elementales que nos trajeron a Muro Celeste hace miles y miles de años nos dieron la espalda, y quedamos a merced de este reino inestable. Nuestra sociedad, otrora floreciente, abarcaba múltiples santuarios insulares en nuestro rincón de Muro Celeste, pero hoy ni siquiera sabemos si quedan otros shen'dorei fuera de esta pequeña isla.  La situación es desesperada, pero la Suma Orden está decidida a enfrentar este desafío."] = "esMX-efc3fae1397dfa3748257fad8cade9a2",
+        },
+        [251373] = {
+            ["Si tienes aptitud para las artes druídicas, puedo enseñarte."] = "1ea64f748398637656111a11ee37ed4c",
+        },
+        [251374] = {
+            ["Puede que los espíritus del viento nos hayan abandonado, pero el poder de los elementos no está fuera del alcance para aquellos que tienen la paciencia para buscarlos.    Si tienes experiencia en el camino del chamán, puedo ayudarte a canalizarlos."] = "a8629a3a51401438c39d419bc9bdbb73",
+            ["Puede que los espíritus del viento nos hayan abandonado, pero el poder de los elementos no está fuera del alcance para aquellos que tienen la paciencia para buscarlos.  Si tienes experiencia en el camino del chamán, puedo ayudarte a canalizarlos."] = "esMX-2f6e3765bab80fef5548f5564abdeaf5",
+        },
+        [251376] = {
+            ["Los cazadores y exploradores de Zephras son más necesarios que nunca. Los vientos son cada vez más feroces y la magia que sustenta nuestra isla se está desvaneciendo. La naturaleza salvaje es más salvaje que nunca, y se necesita gente como yo que proteja a los nuestros.    Si tienes la aptitud adecuada como cazadora, puedo darte las herramientas para sobrevivir a la naturaleza."] = "00b7bd0169e1e588ba81af180c4d0608",
+            ["Los cazadores y exploradores de Zephras son más necesarios que nunca. Los vientos son cada vez más feroces y la magia que sustenta nuestra isla se está desvaneciendo. La naturaleza salvaje es más salvaje que nunca, y se necesita gente como yo que proteja a los nuestros.  Si tienes la aptitud adecuada como cazadora, puedo darte las herramientas para sobrevivir a la naturaleza."] = "esMX-8765c59bf78ad3df8f234765a3c6be80",
+        },
+        [251379] = {
+            ["Los seguidores de las viejas costumbres altonato nunca tuvimos tanta sed de conocimiento ni ansias por recuperar lo que perdimos. Si quieres empuñar el poder arcano y tienes la aptitud necesaria, puedo ayudarte a dar tus próximos pasos."] = "deDE-96e4855959e11e9c97ae1285a80aaebd",
+        },
+        [251389] = {
+            ["Mata a tus enemigos y cautiva a tus amores con este peculiar truco.    Si sigues el camino del pícaro, te puedo enseñar... por un precio, claro."] = "103e9ca0f5830b69f6114d7590edd362",
+            ["Mata a tus enemigos y cautiva a tus amores con este peculiar truco.  Si sigues el camino del $c, te puedo enseñar... por un precio, claro."] = "esMX-b18479d4f822a8b239a70de29077af5a",
+            ["Mata a tus enemigos y cautiva a tus amores con este peculiar truco.  Si sigues el camino del pícaro, te puedo enseñar... por un precio, claro."] = "esMX-757513873cd49538dfac765c6ccbb35d",
+        },
+        [251487] = {
+            ["Los shen'dorei siempre estaremos en deuda con los espíritus por su ayuda, y los Formavientos juraron saldar esa deuda y devolver las cosas a como eran antes. Por desgracia, sin los espíritus que nos guíen, estamos a ciegas ante lo que sucede a nuestro alrededor en Muro Celeste.    La Suma Orden es miope y arrogante, igual que sus ancestros altonato. Quieren dominar y controlar la magia de este lugar. Es el mismo camino que nos llevó a huir de Kalimdor y refugiarnos aquí en primer lugar. Me temo que, como nuestros antepasados, su soberbia va muy por delante de su capacidad, y las consecuencias podrían ser desastrosas."] = "c9fbb5dc51724d2ce58657f32047c0b9",
+            ["Los shen'dorei siempre estaremos en deuda con los espíritus por su ayuda, y los Formavientos juraron saldar esa deuda y devolver las cosas a como eran antes. Por desgracia, sin los espíritus que nos guíen, estamos a ciegas ante lo que sucede a nuestro alrededor en Muro Celeste.  La Suma Orden es miope y arrogante, igual que sus ancestros altonato. Quieren dominar y controlar la magia de este lugar. Es el mismo camino que nos llevó a huir de Kalimdor y refugiarnos aquí en aquel entonces. Me temo que, como nuestros antepasados, su soberbia va muy por delante de su capacidad, y las consecuencias podrían ser desastrosas."] = "esMX-51031e801904afc54fbed4d834799fe5",
+            ["Los shen'dorei siempre estaremos en deuda con los espíritus por su ayuda, y los Formavientos juraron saldar esa deuda y devolver las cosas a como eran antes. Por desgracia, sin los espíritus que nos guíen, estamos a ciegas ante lo que sucede a nuestro alrededor en Muro Celeste.  La Suma Orden es miope y arrogante, igual que sus ancestros altonato. Quieren dominar y controlar la magia de este lugar. Es el mismo camino que nos llevó a huir de Kalimdor y refugiarnos aquí en primer lugar. Me temo que, como nuestros antepasados, su soberbia va muy por delante de su capacidad, y las consecuencias podrían ser desastrosas."] = "esMX-fa8c55ecf9122047a9f6d62d6c3bbae7",
+            ["Por tu aura, veo que eres de linaje altonato, ¿cierto? Los que se hacen llamar miembros de la Suma Orden tienen poco o nada en común con los de mi orden, los Formavientos. Fuera de la relativa armonía de la Arboleda Thendal, podrías descubrir que estas divisiones son muy profundas, lo suficiente como para generar discordia e incluso violencia.    Ten esto presente mientras te mueves por la Isla Zephras. Ah, y una única advertencia... No te interpongas en el camino de los Formavientos."] = "d6527a9e90852ebcc7fa2b05ffd68c7f",
+            ["Por tu aura, veo que eres de linaje altonato, ¿cierto? Los que se hacen llamar miembros de la Suma Orden tienen poco o nada en común con los de mi orden, los Formavientos. Fuera de la relativa armonía de la Arboleda Thendal, podrías descubrir que estas divisiones son muy profundas, lo suficiente como para generar discordia e incluso violencia.  Ten esto presente mientras te mueves por la Isla Zephras. Ah, y una única advertencia... No te interpongas en el camino de los Formavientos."] = "esMX-e7741339d2a655a6cf657b9a95452342",
+            ["Zephras está en decadencia, por desgracia. Los espíritus de viento elementales que nos trajeron a Muro Celeste hace miles y miles de años se esfumaron, y perdimos buena parte de la magia de la que dependíamos desde hace milenios.    La isla también es cada vez más inestable, y hasta hemos perdido contacto con las demás provincias insulares de los shen'dorei. Los pocos Formavientos que aún tienen el don de la vista celestial intentaron comunicarse con nuestros hermanos y hermanas en las otras islas, pero no hubo respuesta.    Son muchos los que temen que quienes estamos aquí en Zephras seamos los últimos de nuestro pueblo."] = "35d0ae2242eb0e2ed1c98cf9ed7db825",
+            ["Zephras está en decadencia, por desgracia. Los espíritus de viento elementales que nos trajeron a Muro Celeste hace miles y miles de años se esfumaron, y perdimos buena parte de la magia de la que dependíamos desde hace milenios.  La isla también es cada vez más inestable, y hasta hemos perdido contacto con las demás provincias insulares de los shen'dorei. Los pocos Formavientos que aún tienen el don de la vista celestial intentaron comunicarse con nuestros hermanos y hermanas en las otras islas, pero no hubo respuesta.  Son muchos los que temen que quienes estamos aquí en Zephras seamos los últimos de nuestro pueblo."] = "esMX-6403918e7c65adcb891f9335a9f3a58c",
+            ["¿Qué puedo hacer por ti, colega Formavientos?"] = "b6034470b68a563dfc2e198b04e42010",
+        },
+        [251507] = {
+            ["Lo siento, no parece que puedas tensar bien un arco largo ni cargar un mosquete. Yo enseño a cazadores de verdad."] = "esMX-9f189d4cb5d2e777e300ec5ec6faf371",
+        },
+        [251523] = {
+            ["<La agente Aonda está absorta en sus pensamientos con una mirada seria en el rostro.>"] = "091a88c7a06456b236801b45b26373f4",
+            ["Más de los que me gustaría, me temo. Un grupo de bandidos apostados en una cueva al norte nos tiene hostigados, y hace poco el culto Al'Aketh se apoderó del Poblado Falaath, al sur de aquí. Confío en cada pacificador y ciudadano de este pueblo, pero somos muy pocos como para mantenerlo seguro.     Si el culto decide seguir expandiéndose hacia aquí, poco podremos hacer para detenerlos."] = "1a4d22b0bffdff6275a0b7cde6e7c0e8",
+            ["Más de los que me gustaría, me temo. Un grupo de bandidos apostados en una cueva al norte nos tiene hostigados, y hace poco el culto Al'Aketh se apoderó del Poblado Falaath, al sur de aquí. Confío en cada pacificador y ciudadano de este pueblo, pero somos muy pocos como para mantenerlo seguro.  Si el culto decide seguir expandiéndose hacia aquí, poco podremos hacer para detenerlos."] = "esMX-a84a848a9f2098524c54c291895c99b0",
+        },
+        [251662] = {
+            ["<La nube turbia de relámpagos vivientes delante de ti parece crepitar amenazante cuando te acercas. Quizá lo mejor sea largarse. Rápido.>"] = "esMX-b6b623ed5555bc7fb4ffc1a6b619319e",
+        },
+        [251684] = {
+            ["Ah, no te preocupes. E-estaré aquí si quieres venir a aprender en otro momento. ¡G-gracias por hablarme!"] = "717afcce6d71c311468b41ed92c9b2e0",
+            ["Esa es... una muy buena pregunta. Me cuesta mucho escarbar en mi memoria, pero sí recuerdo algo... ¿'Ingeniero', tal vez? Creo que eso es lo que era... o quién era.    Más allá de eso, lo único que logro recordar es que surcaba el cielo cuando vi un destello de luz. Luego, todo se puso muy movidito. Y después... hubo un estampido.     Ha pasado... mucho tiempo. Muchísimo tiempo."] = "fa7afd56f1dead83066ec992a6951dc6",
+            ["Esa es... una muy buena pregunta. Me cuesta mucho escarbar en mi memoria, pero sí recuerdo algo... ¿'Ingeniero', tal vez? Creo que eso es lo que era... o quién era.  Más allá de eso, lo único que logro recordar es que surcaba el cielo cuando vi un destello de luz. Luego, todo se puso muy movidito. Y después... hubo un estampido.  Ha pasado... mucho tiempo. Muchísimo tiempo."] = "esMX-58c6af28b04522cfdc1b28097a66c111",
+            ["H-hola. Espero sepas disculparme, en general los de tu especie huyen de mí."] = "08e163fa7eb8b9f7dbe98b4d86726acc",
+            ["¿Ah, estas cosas? Las hice yo. Mis amiguitos me ayudaron. No tengo buena memoria, pero... emm, sí sé que en algún momento hacía muchas cosas. ¡Cosas enormes! Pero luego, como te dije... Me encontré aquí. Las cosas que construyo ya no son tan grandes ni impresionantes. Pero igual me hacen f-feliz, je.    P-pero... si quieres, ¡te puedo enseñar a construir cosas!"] = "5ce9305b1ff139391c9ddbc2c191b656",
+            ["¿Ah, estas cosas? Las hice yo. Mis amiguitos me ayudaron. No tengo buena memoria, pero... emm, sí sé que en algún momento hacía muchas cosas. ¡Cosas enormes! Pero luego, como te dije... Me encontré aquí. Las cosas que construyo ya no son tan grandes ni impresionantes. Pero igual me hacen f-feliz, je.  P-pero... si quieres, ¡te puedo enseñar a construir cosas!"] = "esMX-df16c9d1c74e63bc94f2e3a80f106fc8",
+        },
+        [251902] = {
+            ["No tengo nada personal contra los miembros de la Suma Orden como tú, pero tampoco estoy obligada a charlar contigo. Ve en paz, $c, pero te aconsejo encarecidamente que no te entrometas en asuntos de los Formavientos durante tus aventuras en la Isla Zephras.  No te conviene. Los Formavientos no somos de perdonar ofensas contra aquello que consideramos sagrado."] = "esMX-c39dab3767e49505d93bc24693d8daa1",
+            ["No tengo nada personal contra los miembros de la Suma Orden como tú, pero tampoco estoy obligada a charlar contigo. Ve en paz, $c, pero te aconsejo encarecidamente que no te entrometas en los asuntos de los Formavientos durante tus aventuras en la Isla Zephras.    No te conviene. Los Formavientos no somos de perdonar ofensas contra aquello que consideramos sagrado."] = "esMX-c39dab3767e49505d93bc24693d8daa1",
+            ["No tengo nada personal contra los miembros de la Suma Orden como tú, pero tampoco estoy obligada a charlar contigo. Ve en paz, $c, pero te aconsejo encarecidamente que no te entrometas en los asuntos de los Formavientos durante tus aventuras en la Isla Zephras.  No te conviene. Los Formavientos no somos de perdonar ofensas contra aquello que consideramos sagrado."] = "esMX-c6957201bddbc31dc689ab594a97043b",
+            ["Saludos. Soy Illaya Ventámbar y soy la anciana Formavientos de la Isla Zephras. Siempre es un placer conocer a los jóvenes que llegan desde la arboleda.  No dejes que esta vieja $c te detenga, sin duda tienes muchas aventuras por delante. No obstante, no dudes en venir a visitarme si quieres."] = "esMX-deb1f8a0bc9da27c2bc5ce4c04d2f75e",
+            ["¿El Culto? Son fanáticos y asesinos. Creen que estamos sufriendo un castigo por algún pecado desconocido. La realidad es que sus líderes son oportunistas que provienen de una dudosa orden de supuestos 'sacerdotes' de Al'Akir, el Señor del Viento.    Ahora se encuentran en posición de usar el miedo de nuestra gente como arma para consolidar su propio poder... y no han tardado en hacerlo."] = "b301035-skybourneelf-female-3773",
+            ["¿Por dónde empiezo? Nuestro hogar está en decadencia. Los resguardos han caído y las tres provincias comenzaron a distanciarse. Hace no mucho, las torres de Shen'dramar se podían ver desde la torre de vigilancia occidental. Ya no. Los pilones de anclaje se debilitan y si las cadenas llegaran a romperse..."] = "esMX-91b87b75dfab51fe9dc1a3cb05a8c96b",
+            ["¿Por qué está pasando esto? Es sencillo, los espíritus del viento... se esfumaron. Un día estaban ahí, y al siguiente... ya no. No puedo ni describir lo que sentimos nosotros, los Formavientos, cuando ocurrió. Fue como si un gran silencio nos invadiera a todos y luego... una profunda ausencia.  Esos espectros insignificantes que seguro te has encontrado por ahí son apenas una sombra de la gloria de los verdaderos espíritus del viento. No tienen conciencia ni rumbo fijo y no les llegan ni a los talones a los espíritus amables con los que convivimos en armonía por miles de años."] = "esMX-77406e524afa28de7fdc6cdf2d6180ab",
+        },
+        [251903] = {
+            ["Ay, ya hablé demasiado. Si andas por el puerto de Valanaar, busca a Elaadrin Ventopar. Elaadrin fue mi alumno alguna vez, pero ahora es el alto magíster de la Suma Orden. Es testarudo y capaz, y ahora les toca a él y a los jóvenes cielonato como tú llevar la antorcha de la esperanza de nuestra gente."] = "7957de210cb420c60905de65a8050458",
+            ["Debes recordar que, aunque este reino ha sido nuestro hogar durante varios milenios, siempre seremos un poco ajenos a este lugar. No estamos en el mundo terrestre que dio origen a nuestro pueblo. Estamos en el reino del Muro Celeste, el plano elemental del aire.    Llegamos aquí como invitados de los espíritus con quienes forjamos una alianza hace muchos años. Ahora que los shen'dorei nos encontramos faltos de su presencia, y potencialmente de su protección, no sabemos cómo nos percibirán los demás habitantes de este plano."] = "ccef18929dc3288b617faafc9eb54a48",
+            ["Debes recordar que, aunque este reino ha sido nuestro hogar durante varios milenios, siempre seremos un poco ajenos a este lugar. No estamos en el mundo terrestre que dio origen a nuestro pueblo. Estamos en el reino del Muro Celeste, el plano elemental del aire.  Llegamos aquí como invitados de los espíritus con quienes compartimos una alianza hace muchos años. Ahora que los shen'dorei nos encontramos faltos de su presencia, y potencialmente de su protección, no sabemos cómo nos percibirán los demás habitantes de este plano."] = "esMX-bf218f5bf83b51ff364c8a804d39410c",
+            ["Debes recordar que, aunque este reino ha sido nuestro hogar durante varios milenios, siempre seremos un poco ajenos a este lugar. No estamos en el mundo terrestre que dio origen a nuestro pueblo. Estamos en el reino del Muro Celeste, el plano elemental del aire.  Llegamos aquí como invitados de los espíritus con quienes forjamos una alianza hace muchos años. Ahora que los shen'dorei nos encontramos faltos de su presencia, y potencialmente de su protección, no sabemos cómo nos percibirán los demás habitantes de este plano."] = "esMX-2543d96a630bb982f3d63f31e46f89a0",
+            ["Hasta los Formavientos te dirán que los espíritus jamás mencionaron a una entidad suprema entre ellos. Reconocían la existencia de un ser llamado Al'Akir, pero evitaban invocar su nombre, parecía incluso como si le temieran.    Incluso si este Al'Akir fuera un 'Señor del Viento' todopoderoso o el líder de los elementales de viento, depender de los elementales fue lo que nos condujo hasta aquí. Ahora, debemos librarnos de esto por nuestros medios."] = "64bcc159fe14a8f3925e4b50f47a55e3",
+            ["Hasta los Formavientos te dirán que los espíritus jamás mencionaron a una entidad suprema entre ellos. Reconocían la existencia de un ser llamado Al'Akir, pero evitaban invocar su nombre, parecía incluso como si le temieran.  Incluso si este Al'Akir fuera un 'Señor del Viento' todopoderoso o el líder de los elementales de viento, depender de los elementales fue lo que nos condujo hasta aquí. Ahora, debemos librarnos de esto por nuestros medios."] = "esMX-af2bb88aadc7abafac2465b2a2c9a2dc",
+            ["Hola, joven $c. Soy Rathiril Lanzasol, un anciano magíster de la Suma Orden aquí en la Isla Zephras. Siempre es bueno ver a jóvenes shen'dorei con brillo en los ojos, listos para cumplir su deber al servicio de su patria.    Pero no dejes que este viejo mago te retenga. Sin duda tienes muchas aventuras por delante. Ven a visitarme en otro momento si quieres hablar otro rato."] = "esMX-0193b3ca4091ce2b6bebbb7b78a5234b",
+            ["Hola, joven $c. Soy Rathiril Lanzasol, un anciano magíster de la Suma Orden aquí en la Isla Zephras. Siempre es bueno ver a jóvenes shen'dorei con brillo en los ojos, listos para cumplir su deber al servicio de su patria.  Pero no dejes que este viejo mago te retenga. Sin duda tienes muchas aventuras por delante. Ven a visitarme en otro momento si quieres hablar otro rato."] = "esMX-f65718945a38c2663d99ea52221ddd5e",
+            ["Muchos no están de acuerdo con esto. Los Formavientos te harían creer que con solo unir las manos y esperar el regreso de los espíritus será suficiente. Sin embargo, el poder de su orden ha menguado y su camino se basa en regresarnos al ciclo de dependencia que nos trajo hasta este punto. Por otro lado, nosotros, la Suma Orden... creemos en un enfoque más directo."] = "esMX-32254a5023c2452b14280a5132fb1424",
+            ["¿El Culto? Son fanáticos y asesinos. Creen que estamos sufriendo un castigo por algún pecado desconocido. La realidad es que sus líderes son oportunistas que provienen de una dudosa orden de supuestos 'sacerdotes' de Al'Akir, el Señor del Viento.    Ahora se encuentran en posición de usar el miedo de nuestra gente como arma para consolidar su propio poder... y no han tardado en hacerlo."] = "esMX-0d6c4466ea96fc3f59d6c4739efeee6b",
+            ["¿El Culto? Son fanáticos y asesinos. Creen que estamos sufriendo un castigo por algún pecado desconocido. La realidad es que sus líderes son oportunistas que provienen de una dudosa orden de supuestos 'sacerdotes' de Al'Akir, el Señor del Viento.  Ahora se encuentran en posición de usar el miedo de nuestra gente como arma para consolidar su propio poder... y no han tardado en hacerlo."] = "esMX-0d6c4466ea96fc3f59d6c4739efeee6b",
+            ["¿Por dónde empiezo? Nuestro hogar está en decadencia. Los resguardos han caído y las tres provincias comenzaron a distanciarse. Hace no mucho, las torres de Shen'dramar se podían ver desde la torre de vigilancia occidental. Ya no. Con cada día que pasa, los pilones de viento que sujetan nuestro hogar a esta isla se debilitan más..."] = "941abdf670b7128c8662847e932c6a33",
+            ["¿Por qué está pasando esto? Es sencillo, los espíritus del viento... se esfumaron.    Esos duendes insignificantes y elementales menores que seguro te has encontrado por ahí son apenas una imitación burda de los verdaderos espíritus del viento. No tienen conciencia ni rumbo fijo y no les llegan ni a los talones a los espíritus amables con los que convivimos en armonía por miles de años."] = "22342a8892082f0c6c59c805de80023b",
+            ["¿Por qué está pasando esto? Es sencillo, los espíritus del viento... se esfumaron.  Esos duendes insignificantes y elementales menores que seguro te has encontrado por ahí son apenas una imitación burda de los verdaderos espíritus del viento. No tienen conciencia ni rumbo fijo y no les llegan ni a los talones a los espíritus amables con los que convivimos en armonía por miles de años."] = "esMX-4389c2b5ad79a9ce938cb39557fff929",
+        },
+        [251904] = {
+            ["Hola, $uamigo:amiga;. Me llamo Sania Brisargenta y soy misionera al servicio de nuestro amo todopoderoso, Al'Akir el Señor del Viento.     Los Al'Aketh recibimos la denominación despectiva de 'secta' violenta, pero en realidad buscamos la paz y la iluminación. Nuestro señor Al'Akir es la fuerza suprema en el reino de Muro Celeste, y es gracias a su benevolencia que podremos sobrevivir a los desafíos que enfrenta nuestro pueblo.    Si quieres saber más sobre nuestras buenas acciones, búscame y te contaré más. Que las bendiciones del Señor del Viento te acompañen, $uamigo:amiga;."] = "b9fe1be8ddf9d15cdd101321f744c353",
+            ["Hola, amiga. Me llamo Sania Brisargenta y soy misionera al servicio de nuestro amo todopoderoso, Al'Akir el Señor del Viento.  Los Al'Aketh recibimos la denominación despectiva de 'secta' violenta, pero en realidad buscamos la paz y la iluminación. Nuestro señor Al'Akir es la fuerza suprema en el reino de Muro Celeste, y es gracias a su benevolencia que podremos sobrevivir a los desafíos que enfrenta nuestro pueblo.  Si quieres saber más sobre nuestras buenas acciones, búscame y te contaré más. Que las bendiciones del Señor del Viento te acompañen, amiga."] = "esMX-f035654dccc9f730b68c36d4e321b4d0",
+            ["Saludos, $c. ¿Vienes en busca de las bendiciones del Señor del Viento?"] = "esMX-2929fcb546f4f1f55298e7b0ae7fb313",
+        },
+        [251905] = {
+            ["Si necesitas entrenamiento para cocinar, ¡tengo algunos trucos que podría enseñarte! ¡Jo, jo! ¡Ponte un delantal y empecemos!"] = "36b4143cf787c80e54c234543d6e82b8",
+            ["¡Hola, $Uviajero:viajera;! ¿Eres $Unuevo:nueva; por aquí? Bueno, cuando te instales, búscame si quieres trabajo. ¡He estado haciendo horas extra para prepararme para el Festival de los Vientos y toda la ayuda que pueda conseguir para mantener las alacenas llenas es más que bienvenida!"] = "esMX-e9ffc8988c7f98608c8acb8c08b8c322",
+            ["¡Hola, viajera! ¿Eres nueva por aquí? Bueno, cuando te instales, búscame si quieres trabajo. ¡He estado haciendo horas extra para prepararme para el Festival de los Vientos y toda la ayuda que pueda conseguir para mantener las alacenas llenas es más que bienvenida!"] = "esMX-e9ffc8988c7f98608c8acb8c08b8c322",
+        },
+        [251906] = {
+            ["A menos que vengas por asuntos relacionados con las O.P.A., me temo que no tendré mucho tiempo para charlar. Aunque si quieres darnos una mano y ayudar al pueblo, tengo mucho para hacer.  Ah, ¿qué significa O.P.A.? Operaciones del Poblado Activas, claro. Hasta los pueblos fronterizos como estos no se administran solos. Entre incidentes importantes, cortes de energía eólica no programados e infestaciones de insectos, mantener este lugar en marcha no es nada sencillo."] = "esMX-45f8b424111e981cb9b86baf1459517a",
+            ["Estoy a cargo de las operaciones de la Aldea Shen'dar, y hay muchas cosas a las que prestar atención aquí. Entre los bandidos, los cultores y otros incidentes aleatorios que ocurren cada tanto, mantener esta aldea a flote es complicado."] = "a829f77ca56d2bc7e2ef9ee3dc73d519",
         },
         [251913] = {
             ["No está mal, pero déjame enseñarte algunos trucos que encontrarás útiles."] = "26ed40a424790a3c88b546813bd8632c",
+            ["Puedo enseñarte a usar un martillo de herrería si te interesa aprender."] = "3eeda264aba442e3d1fd6679960bdedd",
+        },
+        [251964] = {
+            ["El guerrero que duda, muere. Si eres una guerrera capaz de mirar a la muerte a la cara, te enseñaré a no dudar."] = "8e72071ac74c912ab2cf7088a192e1e1",
+        },
+        [251968] = {
+            ["<Ayessa Cantoalba te observa con una furia que apenas logra contener.>  Eres muy osada o muy estúpida para venir tan desvergonzadamente a nuestro dominio tras derramar sangre Formavientos. Nos cuesta perdonar, pero jamás olvidamos.  Deberías largarte de aquí de inmediato. Si no estuviéramos en el centro de Zephras, ya estarías muerta."] = "esMX-d8e86cb6da3d155a5c8639e529d8b072",
+            ["Mmm, ya veo. Muy bien, $c. Los Formavientos prestarán ayuda. Informa a Valennia que cuenta con nosotros para esta pelea.  <Ayessa baja la voz en tono amenazante.>  No confundas nuestra colaboración con cualquier indicio de perdón. Tienes una deuda de sangre con los Formavientos y algún día la cobraremos."] = "esMX-939d74b451eee422998c76c741d7c0e2",
+            ["Saludos, soy Ayessa Cantoalba, la Gran Vidente del Cielo de los Formavientos actual. ¿Qué puedo hacer por ti?"] = "1832ca4ef40be8e606cbfb8bdb62ee60",
+        },
+        [251991] = {
+            ["El arte de la confección de los shen'dorei es una imitación armoniosa de las corrientes fluidas y despreocupadas del viento. Aunque los espíritus nos han abandonado y no sé cuándo volveré a verlos bailar... encuentro gran consuelo en mi arte, aunque solo sea una distracción.    Puedo enseñarte a trabajar la tela, si quieres aprender."] = "49fa7d7be8e9e2cf68f90675f429a01c",
+            ["El arte de la confección de los shen'dorei es una imitación armoniosa de las corrientes fluidas y despreocupadas del viento. Aunque los espíritus nos han abandonado y no sé cuándo volveré a verlos bailar... encuentro gran consuelo en mi arte, aunque solo sea una distracción.  Puedo enseñarte a trabajar la tela, si quieres aprender."] = "esMX-0d99dfc51845f49db4cfd7afdbc3a541",
+        },
+        [251993] = {
+            ["Puedo enseñarte a fabricar armadura de cuero refinada, si tienes la aptitud necesaria."] = "3ed52d3d1044761a7eea004096bcf4a0",
+        },
+        [252068] = {
+            ["Pronto todos los shen'dorei verán la verdad... y aquellos que se rehúsen a hacerlo, ¡serán arrasados por la tormenta inminente!"] = "esMX-c6e14ee2a55ad96461af662f3ca41c59",
+            ["¡Las bendiciones del Señor del Viento fluyen por mi cuerpo!"] = "esMX-33e488cc089886d3e55eab8ea5bff878",
+            ["¿Por qué me molestas, recluta? Si quieres hablar con otros ingenuos con ojos de carnero, ve a la posada del lado norte del pueblo. Los reclutas que se juntan ahí suelen tener el cerebro tan liso como sus cabezas huecas y afeitadas.  Ah, y aféitate la cabeza. Lo único que el Señor del Viento detesta más que a los reclutas parlanchines son los reclutas parlanchines con una melena.  Ahora, fuera de mi vista."] = "esMX-028de2f70cb2a0e9db2f144c05cd6ab3",
+        },
+        [252085] = {
+            ["¿Sí? Estoy bastante ocupada."] = "9bf44a08081d504fe49548f0f2a20e9b",
+        },
+        [252155] = {
+            ["<El cadáver que yace ante ti está cubierto de marcas de quemaduras. Parece tener algo en la mano a lo que se aferra.>"] = "esMX-6705f6cc69acc623c1bd862eabf696d5",
+        },
+        [252359] = {
+            ["Nuestro pueblo escasea últimamente, pero hay aquellos que aún sueñan en esmeralda entre los shen'dorei."] = "949dd3bb37d6e5d2118d83c5e2befb83",
+            ["Si lo deseas, además de la instrucción, tengo el poder de borrar el conocimiento de tus talentos de tu mente. Te advierto que cada vez que realizas este proceso es más difícil y, por lo tanto, es más caro."] = "b8263-skybourneelf-male-3776",
+        },
+        [252373] = {
+            ["Los seguidores de las viejas costumbres altonato nunca tuvimos tanta sed de conocimiento ni ansias por recuperar lo que perdimos. Si quieres empuñar el poder arcano y tienes la aptitud necesaria, puedo ayudarte a dar tus próximos pasos."] = "deDE-8c3555ecf533d6642e2ffef649b9517c",
+            ["Los seguidores de las viejas costumbres altonato nunca tuvimos tanta sed de conocimiento y ansias por recuperar lo que perdimos. Si quieres empuñar el poder arcano y tienes la aptitud necesaria, puedo ayudarte a dar tus próximos pasos."] = "esMX-c94a661a02f70159b08e8d681aa27104",
+        },
+        [252376] = {
+            ["¿Buscas entrenamiento de peletería?"] = "esMX-20e84150710dedaaa03fd828591451be",
+        },
+        [252377] = {
+            ["El guerrero que duda, muere. Si eres una guerrera capaz de mirar a la muerte a la cara, te enseñaré a no dudar."] = "8e72071ac74c912ab2cf7088a192e1e1",
+        },
+        [252378] = {
+            ["¡Que las tormentas maldigan a estos fanáticos de Al'Aketh!"] = "esMX-c663cb5e22bc93d7ad6d92e467943d39",
+        },
+        [252379] = {
+            ["Mata a tus enemigos y cautiva a tus amores con este peculiar truco.    Si sigues el camino del pícaro, te puedo enseñar... por un precio, claro."] = "88d752491140063a73b340e28d9551d8",
+            ["Mata a tus enemigos y cautiva a tus amores con este peculiar truco.  Si sigues el camino del $c, te puedo enseñar... por un precio, claro."] = "esMX-89b01c8ec77e3d4b36e0e04f8dfac561",
+        },
+        [252380] = {
+            ["Buenos vientos. ¿Qué puedo hacer por ti?"] = "esMX-b1bf206766442f9910ea73c4eb9bf653",
+            ["La brisa te saluda, amiga. ¿Puedo ayudarte con algo?"] = "5a56faeceb0518e365bb866d2f122071",
+        },
+        [252382] = {
+            ["Puede que los espíritus del viento nos hayan abandonado, pero el poder de los elementos no está fuera del alcance para aquellos que tienen la paciencia para buscarlos.    Si tienes experiencia en el camino del chamán, puedo ayudarte a canalizarlos."] = "b302815-skybourneelf-female-3773",
         },
         [252383] = {
+            ["<Valenna desvía la mirada un instante antes de volver a mirarte, con algo de duda.>    El Shal'nan era lo mejor que teníamos. Fue él quien dio la cara por nuestro pueblo ante la locura y la opresión en Eldre'thalas, hace casi diez mil años. Fue el Shal'nan quien nos condujo a través de un mar inexplorado para escapar de la sed de venganza de nuestros antiguos enemigos.    Fue el Shal'nan quien selló el pacto de amistad con los espíritus de viento que nos permitió ascender al Muro Celeste... y sobrevivir.    Fue siempre un líder al servicio de su pueblo, aun después de renunciar al poder y retirarse."] = "esMX-23eecc14edf2f073105d55b16dcf36f2",
+            ["<Valenna desvía la mirada un instante antes de volver a mirarte, con algo de duda.>  El Shal'nan era lo mejor que teníamos. Fue él quien dio la cara por nuestro pueblo ante la locura y la opresión en Eldre'thalas, hace casi diez mil años. Fue el Shal'nan quien nos condujo a través de un mar inexplorado para escapar de la sed de venganza de nuestros antiguos enemigos.  Fue el Shal'nan quien selló el pacto de amistad con los espíritus de viento que nos permitió ascender al Muro Celeste... y sobrevivir.  Fue siempre un líder al servicio de su pueblo, aun después de renunciar al poder y retirarse."] = "esMX-23eecc14edf2f073105d55b16dcf36f2",
+            ["<Valennia looks away briefly before looking hesitantly back in your direction.>  The Shal'nan was the very best of us. It was he who stood up for our people against madness and oppression in Eldre'Thalas nearly ten thousand years ago. It was the Shal'nan who led us across the uncharted sea to escape the murderous vengeance of our ancient enemies.  It was the Shal'nan who brokered the pact of friendship with the wind spirits that allowed us to ascend to Skywall... and survive.  He was ever the servant leader to his people, even after he abdicated his position of power and retired."] = "esMX-889f20908e1a307c1d1ac49d739d45e2",
+            ["Es posible que sea la única shen'dorei con vida entre los nuestros que intercambió más que unas pocas palabras con él.    Fui la capitana de sus Hojas Empíreas durante casi nueve siglos, hasta que... nos dejó.    Aun así, no podría decir que lo 'conocí' de verdad. Siempre fue reservado, solitario. Pasaba casi todo el tiempo a solas o en comunión con los espíritus en las torres que se alzaban sobre el Santuario de los Cuatro Vientos... el lugar que el culto ahora llama el 'Santuario de Akir'."] = "7d02b0734a6c09d86a59db08a4cb1d34",
+            ["Es posible que sea la única shen'dorei con vida entre los nuestros que intercambió más que unas pocas palabras con él.  Fui la capitana de sus Hojas Empíreas durante casi nueve siglos, hasta que... nos dejó.  Aun así, no podría decir que lo 'conocí' de verdad. Siempre fue reservado, solitario. Pasaba casi todo el tiempo a solas o en comunión con los espíritus en las torres que se alzaban sobre el Santuario de los Cuatro Vientos... el lugar que el culto ahora llama el 'Santuario de Akir'."] = "esMX-27c4c3b428d39d4644aef7b61e789a71",
+            ["I suppose that is true. I and the rest of my elites used to belong to an order known as the Empyrean Blades. We were the personal guard of our former leader, the Shal'nan.  In the current, uncertain times we do what we can to help lead the peacekeepers' citizen militia, since we are the closest thing to professional soldiers left on Zephras."] = "esMX-04ece4cba5d75c0af76b00360331c50f",
+            ["Saludos, $Uciudadano:ciudadana;."] = "197733e5d24c96d857606a47d7038088",
             ["Saludos, $gciudadano:ciudadana;."] = "197733e5d24c96d857606a47d7038088",
+            ["Saludos, ciudadana."] = "197733e5d24c96d857606a47d7038088",
+            ["Si lo supiera, la vida aquí en Zephras sería mucho, mucho más sencilla. Buena parte de nuestras luchas y conflictos giran en torno a ese misterio.    Te agradezco el interés, pero me temo que eso es todo lo que puedo decir por hoy."] = "3af1a98c7b3e89ff1e145713a5a2e71d",
+            ["Si lo supiera, la vida aquí en Zephras sería mucho, mucho más sencilla. Buena parte de nuestras luchas y conflictos giran en torno a ese misterio.  Te agradezco el interés, pero me temo que eso es todo lo que puedo decir por hoy."] = "esMX-8cfed4924b2c5e364f508ef0da56485b",
+            ["Supongo que sí. Mis élites y yo formábamos parte de una orden conocida como las Hojas Empíreas. Éramos la guardia personal de nuestro antiguo líder, el Shal'nan.     En estos tiempos inciertos, hacemos lo que podemos para ayudar a dirigir la milicia ciudadana de los pacificadores, ya que somos lo más cercano a soldados profesionales que queda en Zephras."] = "esMX-e4c0e021292bb449a75652b7fc9e7166",
+            ["Supongo que sí. Mis élites y yo formábamos parte de una orden conocida como las Hojas Empíreas. Éramos la guardia personal de nuestro antiguo líder, el Shal'nan.  En estos tiempos inciertos, hacemos lo que podemos para ayudar a dirigir la milicia ciudadana de los pacificadores, ya que somos lo más cercano a soldados profesionales que queda en Zephras."] = "esMX-e4c0e021292bb449a75652b7fc9e7166",
+            ["The Peacekeepers can't hope to muster the numbers needed for an outright assault on the shrine. Without the Windshapers and the High Order bolstering our numbers, we stand no chance. They both pledged their aid when we need it. Now is the time.  Unfortunately, some recent events have led to outright bloodshed between the two factions, and tensions are high.  How do you feel about a bit of diplomacy?"] = "esMX-4f7ce53f23facb51cc8cd5713d6167b4",
+        },
+        [252388] = {
+            ["Quizás pienses que, solo porque vivimos en una isla flotante, no hacen falta mineros como yo. Pero después de tantos miles de años, aún logramos desenterrar muchas cosas interesantes.  Pareciera que hay una fuerza invisible que crea constantemente nuevos depósitos minerales cada cierto tiempo. Así obra la magia, ¿verdad?  De todas formas, si necesitas entrenamiento de minería, soy el shen'dorei que buscas."] = "esMX-7cad59aa1bd8366e39eb068146f964ab",
+            ["Quizás pienses que, solo porque vivimos en una isla flotante, no hacen falta mineros como yo. Sin embargo, después de tantos milenios, aún logramos desenterrar muchas cosas interesantes.    Pareciera que hay una fuerza invisible que crea constantemente nuevos depósitos minerales cada cierto tiempo. Así obra la magia, ¿verdad?    De todas formas, si necesitas entrenamiento de minería, soy tu shen'dorei de confianza."] = "b302824-skybourneelf-male-3776",
+            ["Quizás pienses que, solo porque vivimos en una isla flotante, no hacen falta mineros como yo. Sin embargo, después de tantos milenios, aún logramos desenterrar muchas cosas interesantes.  Pareciera que hay una fuerza invisible que crea constantemente nuevos depósitos minerales cada cierto tiempo. Así obra la magia, ¿verdad?  De todas formas, si necesitas entrenamiento de minería, soy tu shen'dorei de confianza."] = "b302824-skybourneelf-male-3776",
+        },
+        [252389] = {
+            ["Los cazadores y exploradores de Zephras son más necesarios que nunca. Los vientos son cada vez más feroces y la magia que sustenta nuestra isla se está desvaneciendo. La naturaleza salvaje es más salvaje que nunca, y se necesita gente como yo que proteja a los nuestros.    Si tienes la aptitud adecuada como cazador, puedo darte las herramientas para sobrevivir a la naturaleza."] = "esMX-d806cca9e1552552e9ab39594f40cdb3",
+            ["Los cazadores y exploradores de Zephras son más necesarios que nunca. Los vientos son cada vez más feroces y la magia que sustenta nuestra isla se está desvaneciendo. La naturaleza salvaje es más salvaje que nunca, y se necesita gente como yo que proteja a los nuestros.  Si tienes la aptitud adecuada como cazador, puedo darte las herramientas para sobrevivir a la naturaleza."] = "esMX-d806cca9e1552552e9ab39594f40cdb3",
+        },
+        [252392] = {
+            ["Saludos, joven $c. Te damos la bienvenida al salón del Gremio de Mercaderes. Los recursos escasean en Zephras en este momento, pero deberías poder encontrar una variedad de materiales y artículos aquí que te ayuden a mantenerte en condiciones óptimas para la aventura.    No dudes en consultarme si tienes alguna pregunta."] = "0f149915a6efebb93d4e9bf438c43ef7",
+            ["Saludos, joven $c. Te damos la bienvenida al salón del Gremio de Mercaderes. Los recursos escasean en Zephras en este momento, pero deberías poder encontrar una variedad de materiales y artículos aquí que te ayuden a mantenerte en condiciones óptimas para la aventura.  No dudes en consultarme si tienes alguna pregunta."] = "esMX-3988dca5516fc590b5deaebcfa7a7587",
+        },
+        [252448] = {
+            ["<El hombre que yace frente a ti no deja de agitarse de un lado a otro. Está recuperándose de unas heridas muy graves.>"] = "a7706c001be19b9f911c402d0c8cfd0e",
+            ["Mmm, qué pregunta tan extraña. Supongo que no tiene muchos usos. Mi madre solía usarlo como polvo para evitar el sarpullido por los pañales en los bebés. Fuera de eso, no sé qué otros usos tiene.    ¿Por qué preguntas?"] = "esMX-c7dfc07d6f858550fa90a0b2ced21fb6",
+            ["Mmm, qué pregunta tan extraña. Supongo que no tiene muchos usos. Mi madre solía usarlo como polvo para evitar el sarpullido por los pañales en los bebés. Fuera de eso, no sé qué otros usos tiene.  ¿Por qué preguntas?"] = "esMX-c7dfc07d6f858550fa90a0b2ced21fb6",
+            ["Siempre es un placer verte, $N."] = "esMX-1ea6795b4f41fe59b47047d0d296b669",
+            ["Siempre es un placer verte, $n."] = "75180d4ba26fde28d9daf2d2a3217f04",
+        },
+        [252475] = {
+            ["Saludos, soy Elaadrin Ventopar, el magíster supremo de la Suma Orden. ¿Cómo puedo ayudarte?"] = "ef98e16f5fd760579d7587066fb80776",
+            ["The Windshapers are almost wholly to blame for everything that has happened. Their refusal to change has damaged our ability to save ourselves from our current peril. They speak in absolutes and treat assumptions and superstitious hope as fact.  Do you know who else deals only in absolutes? The Al'Aketh.  I for one do not intend to let blind adherence to dangerous beliefs doom our people. If it weren't for the threat of the cult, I'd march our mages over to the other side of Valanaar and wipe the Windshapers out."] = "esMX-5a12f799aa00b311df8c7e2c3730cfe8",
+            ["Ya veo. Esto parece extremadamente peligroso, pero la situación parece exigir que se tomen ciertos riesgos.  Muy bien, la Suma Orden prestará su ayuda. Informa a Valennia que cuenta con nosotros para esta pelea."] = "esMX-caecfd2ceb917f5bc7808b8a0b29f969",
+        },
+        [252476] = {
+            ["It is vital that we learn more about what the cult is planning, and with the turncoat dead, the information may have died with him..."] = "esMX-5a07b3b9ecf53eef88c6b1c9c49b6711",
+            ["Te doy la bienvenida a Valanaar, $c."] = "e0d890d3a39a39b25e5f7297115adafd",
         },
         [252477] = {
+            ["El banco y la casa de subastas están en la parte oeste de Valanaar, cerca del muelle del cortacielos de los Formavientos."] = "b315467-skybourneelf-male-3776",
+            ["El buzón está justo afuera de la posada, cerca del camino que sale hacia el norte de la ciudad."] = "b315469-skybourneelf-male-3776",
+            ["El transporte de la Suma Orden hacia Azeroth está en el muelle más alejado, en el extremo sureste de Valanaar."] = "b315471-skybourneelf-male-3776",
+            ["Encontrarás a Lotheluum Brisa Estelar en un risco con vistas a la cascada, en el extremo este del poblado."] = "b321422-skybourneelf-male-3776",
+            ["La persona que instruye chamanes se encuentra cerca de las piedras erguidas de los Formavientos, en el extremo oeste del pueblo."] = "b321419-skybourneelf-male-3776",
+            ["La posada está en el lado este del camino que sale de la ciudad hacia el norte."] = "b315468-skybourneelf-male-3776",
+            ["Puedes encontrar a la instructora de cocina en una casita en el extremo norte del poblado."] = "esMX-bcc6abfbe3afb034e176a67096d8f726",
+            ["Puedes encontrar a la instructora de magos en la cabaña de la Suma Orden, en el extremo sureste del poblado."] = "esMX-9799b75e51f06cd2186a1a2e67b4f24b",
+            ["Puedes encontrar a la instructora de pesca cerca del estanque, al pie de la cascada, en el extremo este del poblado."] = "esMX-33f7f05a39f466a153569efd5a420a99",
+            ["Puedes encontrar a la instructora en el extremo sureste del poblado, cerca del muelle de la Suma Orden."] = "esMX-1ee95e4df4f3e0670727a40e2617d225",
+            ["Puedes encontrar a la instructora en la Sala del Artesano, en el lado oeste de Valanaar."] = "2217ca238b923c9bca5833821ea3d635",
+            ["Puedes encontrar a la instructora en una casa cerca del muelle de la Suma Orden, en el extremo sureste del poblado."] = "esMX-84d9edd82745c84fe3a5ed0893986095",
+            ["Puedes encontrar al instructor en la Sala del Artesano, en el lado oeste de Valanaar."] = "2217ca238b923c9bca5833821ea3d635",
+            ["Puedes encontrar al médico del poblado en la torre del extremo noreste de Valanaar."] = "esMX-413aa77ace31fbef662d416075a599fb",
+            ["Saludos, $Uciudadano:ciudadana;."] = "5875ba8782b9c88fccbb0ac99305a130",
             ["Saludos, $gciudadano:ciudadana;."] = "5875ba8782b9c88fccbb0ac99305a130",
+            ["Saludos, ciudadana."] = "5875ba8782b9c88fccbb0ac99305a130",
+            ["Te conviene ir a la Sala de Armas, en la zona norte de Valanaar."] = "71c6f94b5afcb1b77bb85b7b3c146616",
+            ["¿Ingeniero? ¿Qué diantres de Muro Celeste es eso?    Ahora que lo dices... me parece que oí al borracho de Sirrocas en la posada hablar de un espíritu del bosque que, según él, se hacía llamar 'ingeniero'.    Fue la primera vez en mi vida que escuché algo así.    Si no me equivoco, dijo que ese espíritu andaba por algún lugar de Bosque Ventarrosombra, ¡pero yo que tú no iría a ese maldito lugar!"] = "b321429-skybourneelf-male-3776",
+            ["¿Ingeniero? ¿Qué diantres de Muro Celeste es eso?  Ahora que lo dices... me parece que oí al borracho de Sirrocas en la posada hablar de un espíritu del bosque que, según él, se hacía llamar 'ingeniero'.  Fue la primera vez en mi vida que escuché algo así.  Si no me equivoco, dijo que ese espíritu andaba por algún lugar de Bosque Ventarrosombra, ¡pero yo que tú no iría a ese maldito lugar!"] = "b321429-skybourneelf-male-3776",
+            ["¿Puedo ayudarte a encontrar algo, $Uciudadano:ciudadana;?"] = "827622580df32f9f325f4c57cdaf35e5",
+            ["¿Puedo ayudarte a encontrar algo, ciudadana?"] = "827622580df32f9f325f4c57cdaf35e5",
             ["¿Puedo ayudarte a encontrar algo?"] = "3e7fde842b8f5cb2598b0db02605dab3",
+            ["¿Qué buscas, $Uciudadano:ciudadana;?"] = "ac15bcb9c16fc2ebbe2029d0c4ee152a",
+            ["¿Qué buscas, ciudadana?"] = "esMX-59ef825f077452aea8fda53084b6b405",
+            ["¿Qué estás buscando?"] = "b3425-skybourneelf-male-3776",
             ["¿Qué profesión?"] = "c50676554146e52c8e32712568d0b14d",
             ["¿Qué tipo de instructor estás buscando?"] = "2460af8e9e9e3105d631e90f11310908",
         },
+        [252478] = {
+            ["Los cortacielos y los transbordadores llevan años sin funcionar. Hasta donde sabemos, puede que no queden otras islas de las que importar nada. Pero bueno, aquí sigo... por si acaso."] = "8ba831c32d2891c99edf38d524f0a5aa",
+        },
+        [252479] = {
+            ["Ah, hola. Parece que tienes una pregunta para mí."] = "e8bc55b3146d4148b0aa9367e4b085a5",
+            ["Buenos vientos. ¿Qué puedo hacer por ti?"] = "bd332f5d7d3458235a87a234fc01b179",
+            ["Espero que tu interrupción obedezca a una buena causa. Justo estaba haciendo algo muy importante."] = "b306273-skybourneelf-male-3776",
+            ["La brisa te saluda, amigo. ¿Puedo ayudarte con algo?"] = "3cf816ad18453f687be2eac93856cb8a",
+            ["No está mal, pero déjame enseñarte algunos trucos que encontrarás útiles."] = "26ed40a424790a3c88b546813bd8632c",
+        },
+        [252800] = {
+            ["El Huerto de Campo de Viento ha conocido tiempos mejores..."] = "esMX-d64a9ef5cb0ecf3cb6e629d6f9dea874",
+        },
+        [253002] = {
+            ["<El cielonato que yace ante ti está inconsciente.>"] = "esMX-ef2f76e92cc60938a8c6d059d149e22d",
+        },
         [253004] = {
-            ["Espero que tu interrupción obedezca a una buena causa. Justo estaba haciendo algo muy importante."] = "f203e1b5ce93c4ff82e3d2176bc2b7df",
+            ["$gOtro:Otra; alquimista, mmm... Dudo que tus habilidades sean tan buenas como las mías, así que tal vez pueda instruirte en unas cuantas técnicas."] = "b3335-skybourneelf-female-3773",
+            ["Ah, hola. Parece que tienes una pregunta para mí."] = "1373e5b71bcab7f7f19fe2a14fa4d10d",
+            ["Buenos vientos. ¿Qué puedo hacer por ti?"] = "cb3388b4766bf50c80bb641b1201c18d",
+            ["Espero que tu interrupción obedezca a una buena causa. Justo estaba haciendo algo muy importante."] = "b306273-skybourneelf-female-3773",
+            ["I hope that your interruption is for a good cause. I was in the middle of some important work."] = "esMX-7faa788c441726ce5cd4468168bd6df6",
+            ["La brisa te saluda, amiga. ¿Puedo ayudarte con algo?"] = "5a56faeceb0518e365bb866d2f122071",
+        },
+        [253092] = {
+            ["Tengo entendido que las granjas de Páramos de Poniente abastecían a Ventormenta de abundantes cosechas. Pero ahora la tierra es árida y la mayoría de los granjeros huyó.  En nombre de Darnassus, quisiera ofrecer mi ayuda para restaurar estas tierras. ¿Me ayudarás?"] = "esMX-2d0e29dec349e501b4c23ae852e257eb",
+        },
+        [253372] = {
+            ["<Este cultor está muerto. Tras una inspección más de cerca, descubres que parece estar aferrando algo contra el pecho, como si intentara protegerlo.>"] = "esMX-15dbdecd2e1f3ac8790a2c3a405a78df",
         },
         [253474] = {
+            ["El banco y la casa de subastas están en la parte oeste de Valanaar, cerca del muelle del cortacielos de los Formavientos."] = "b315467-skybourneelf-female-3773",
+            ["El buzón está justo afuera de la posada, cerca del camino que sale hacia el norte de la ciudad."] = "b315469-skybourneelf-female-3773",
+            ["El transporte de la Suma Orden hacia Azeroth está en el muelle más alejado, en el extremo sureste de Valanaar."] = "b315471-skybourneelf-female-3773",
+            ["Encontrarás a Lotheluum Brisa Estelar en un risco con vistas a la cascada, en el extremo este del poblado."] = "b321422-skybourneelf-female-3773",
+            ["La persona que instruye chamanes se encuentra cerca de las piedras erguidas de los Formavientos, en el extremo oeste del pueblo."] = "b321419-skybourneelf-female-3773",
+            ["La posada está en el lado este del camino que sale de la ciudad hacia el norte."] = "b315468-skybourneelf-female-3773",
+            ["No bajes la guardia en las tierras altas, $Uciudadano:ciudadana;. Hay muchos peligros, entre las bestias que acechan en la naturaleza, los bandidos asesinos y la amenaza inminente de Al'Aketh."] = "1864d4c839c755040c940686dc36744f",
+            ["No bajes la guardia en las tierras altas, ciudadana. Hay muchos peligros, entre las bestias que acechan en la naturaleza, los bandidos asesinos y la amenaza inminente de Al'Aketh."] = "esMX-3b0bdd2320f0d78c830fe8f27051c87e",
+            ["Puedes encontrar a la instructora de cocina en una casita en el extremo norte del poblado."] = "b321426-skybourneelf-female-3773",
+            ["Puedes encontrar a la instructora de magos en la cabaña de la Suma Orden, en el extremo sureste del poblado."] = "b321417-skybourneelf-female-3773",
+            ["Puedes encontrar a la instructora de pesca cerca del estanque, al pie de la cascada, en el extremo este del poblado."] = "b321425-skybourneelf-female-3773",
+            ["Puedes encontrar a la instructora en el extremo sureste del poblado, cerca del muelle de la Suma Orden."] = "b321423-skybourneelf-female-3773",
+            ["Puedes encontrar a la instructora en la Sala del Artesano, en el lado oeste de Valanaar."] = "82dab12358fb22aeacb2a306f95b7362",
+            ["Puedes encontrar a la instructora en una casa cerca del muelle de la Suma Orden, en el extremo sureste del poblado."] = "b321424-skybourneelf-female-3773",
+            ["Puedes encontrar al instructor de cocina en una casita en el extremo norte del poblado."] = "b321426-skybourneelf-female-3773",
+            ["Puedes encontrar al instructor de magos en la cabaña de la Suma Orden, en el extremo sureste del poblado."] = "b321417-skybourneelf-female-3773",
+            ["Puedes encontrar al instructor de pesca cerca del estanque, al pie de la cascada, en el extremo este del poblado."] = "b321425-skybourneelf-female-3773",
+            ["Puedes encontrar al instructor en el extremo sureste del poblado, cerca del muelle de la Suma Orden."] = "b321423-skybourneelf-female-3773",
+            ["Puedes encontrar al instructor en la Sala del Artesano, en el lado oeste de Valanaar."] = "82dab12358fb22aeacb2a306f95b7362",
+            ["Puedes encontrar al instructor en una casa cerca del muelle de la Suma Orden, en el extremo sureste del poblado."] = "b321424-skybourneelf-female-3773",
+            ["Puedes encontrar al médico del poblado en la torre del extremo noreste de Valanaar."] = "b321428-skybourneelf-female-3773",
+            ["Puedes encontrar al médico del poblado en la torre del extremo noreste."] = "b321428-skybourneelf-female-3773",
+            ["Saludos, $Uciudadano:ciudadana;."] = "197733e5d24c96d857606a47d7038088",
             ["Saludos, $gciudadano:ciudadana;."] = "197733e5d24c96d857606a47d7038088",
+            ["Saludos, ciudadana."] = "197733e5d24c96d857606a47d7038088",
+            ["Te conviene ir a la Sala de Armas, en la zona norte de Valanaar."] = "71c6f94b5afcb1b77bb85b7b3c146616",
+            ["¿Ingeniero? ¿Qué diantres de Muro Celeste es eso?    Ahora que lo dices... me parece que oí al borracho de Sirrocas en la posada hablar de un espíritu del bosque que, según él, se hacía llamar 'ingeniero'.    Fue la primera vez en mi vida que escuché algo así.    Si no me equivoco, dijo que ese espíritu andaba por algún lugar de Bosque Ventarrosombra, ¡pero yo que tú no iría a ese maldito lugar!"] = "b321429-skybourneelf-female-3773",
+            ["¿Ingeniero? ¿Qué diantres de Muro Celeste es eso?  Ahora que lo dices... me parece que oí al borracho de Sirrocas en la posada hablar de un espíritu del bosque que, según él, se hacía llamar 'ingeniero'.  Fue la primera vez en mi vida que escuché algo así.  Si no me equivoco, dijo que ese espíritu andaba por algún lugar de Bosque Ventarrosombra, ¡pero yo que tú no iría a ese maldito lugar!"] = "b321429-skybourneelf-female-3773",
+            ["¿Puedo ayudarte a encontrar algo, $Uciudadano:ciudadana;?"] = "f0e3faba5c11611c6839bacab407ded1",
+            ["¿Puedo ayudarte a encontrar algo, ciudadana?"] = "f0e3faba5c11611c6839bacab407ded1",
             ["¿Puedo ayudarte a encontrar algo?"] = "d12db9ab4977c86763980f145ab34801",
+            ["¿Qué buscas, $Uciudadano:ciudadana;?"] = "e434dac8de41d64ce18cd11d04a9074a",
+            ["¿Qué buscas, ciudadana?"] = "e434dac8de41d64ce18cd11d04a9074a",
+            ["¿Qué estás buscando?"] = "b3425-skybourneelf-female-3773",
             ["¿Qué profesión?"] = "8dae195bab01b5be86934ae013831231",
             ["¿Qué tipo de instructor estás buscando?"] = "bc624c7cb35ed2690ff2bd380033d8bd",
         },
+        [253576] = {
+            ["Most of the cultists at the Sanctum of Storms seem to have come out to respond to our attack. I never would have expected this to go so well. This was almost too easy...  I think that the Windshapers and High Order have made their push. Valennia should be with them. You should head inside and find her. We'll stay here and keep watch while Valennia and the others finish what they came here to do."] = "esMX-97219e4584bdb08d1506218f822d244c",
+        },
+        [253590] = {
+            ["<Valennia está gravemente herida y apenas sigue consciente.>"] = "esMX-9287a1021eeea99f456601b853689dd4",
+        },
         [253844] = {
+            ["Saludos, $Uciudadano:ciudadana;."] = "197733e5d24c96d857606a47d7038088",
             ["Saludos, $gciudadano:ciudadana;."] = "197733e5d24c96d857606a47d7038088",
+            ["Saludos, ciudadana."] = "197733e5d24c96d857606a47d7038088",
+        },
+        [253847] = {
+            ["Lorthuna está llevando a cabo una especie de ritual allá arriba. ¡Puede que esté intentando derribar los resguardos!  La ayuda que pedimos aún no llegó, pero tendremos que arreglarnos con lo que tenemos. Cuando quieras, avísame y vamos a enfrentarla."] = "esMX-7f47783af76ab717ddac5246dd0105fc",
+        },
+        [254081] = {
+            ["Si tienes aptitud para las artes druídicas, puedo enseñarte."] = "b7f007cbed33a833f5a6f0d72ba226eb",
+        },
+        [254082] = {
+            ["Puede que los espíritus del viento nos hayan abandonado, pero el poder de los elementos no está fuera del alcance para aquellos que tienen la paciencia para buscarlos.    Si tienes experiencia en el camino del chamán, puedo ayudarte a canalizarlos."] = "a8629a3a51401438c39d419bc9bdbb73",
+            ["Puede que los espíritus del viento nos hayan abandonado, pero el poder de los elementos no está fuera del alcance para aquellos que tienen la paciencia para buscarlos.  Si tienes experiencia en el camino del chamán, puedo ayudarte a canalizarlos."] = "esMX-2f6e3765bab80fef5548f5564abdeaf5",
+        },
+        [254084] = {
+            ["Los cazadores y exploradores de Zephras son más necesarios que nunca. Los vientos son cada vez más feroces y la magia que sustenta nuestra isla se está desvaneciendo. La naturaleza salvaje es más salvaje que nunca, y se necesita gente como yo que proteja a los nuestros.    Si tienes la aptitud adecuada como cazadora, puedo darte las herramientas para sobrevivir a la naturaleza."] = "00b7bd0169e1e588ba81af180c4d0608",
+            ["Los cazadores y exploradores de Zephras son más necesarios que nunca. Los vientos son cada vez más feroces y la magia que sustenta nuestra isla se está desvaneciendo. La naturaleza salvaje es más salvaje que nunca, y se necesita gente como yo que proteja a los nuestros.  Si tienes la aptitud adecuada como cazadora, puedo darte las herramientas para sobrevivir a la naturaleza."] = "esMX-8765c59bf78ad3df8f234765a3c6be80",
+        },
+        [254086] = {
+            ["Los seguidores de las viejas costumbres altonato nunca tuvimos tanta sed de conocimiento ni ansias por recuperar lo que perdimos. Si quieres empuñar el poder arcano y tienes la aptitud necesaria, puedo ayudarte a dar tus próximos pasos."] = "deDE-8c3555ecf533d6642e2ffef649b9517c",
+            ["Los seguidores de las viejas costumbres altonato nunca tuvimos tanta sed de conocimiento y ansias por recuperar lo que perdimos. Si quieres empuñar el poder arcano y tienes la aptitud necesaria, puedo ayudarte a dar tus próximos pasos."] = "esMX-c94a661a02f70159b08e8d681aa27104",
+        },
+        [254087] = {
+            ["Mata a tus enemigos y cautiva a tus amores con este peculiar truco.    Si sigues el camino del pícaro, te puedo enseñar... por un precio, claro."] = "88d752491140063a73b340e28d9551d8",
+            ["Mata a tus enemigos y cautiva a tus amores con este peculiar truco.  Si sigues el camino del $c, te puedo enseñar... por un precio, claro."] = "esMX-89b01c8ec77e3d4b36e0e04f8dfac561",
+        },
+        [254088] = {
+            ["El guerrero que duda, muere. Si eres un guerrero capaz de mirar a la muerte a la cara, te enseñaré a no dudar."] = "60866ecc4847f737666b9ef7d2f7a2a8",
+        },
+        [254089] = {
+            ["Bienvenida a la Posada Brisacalma, viajera. ¿Quieres un refrigerio?"] = "1b9a413cc5a0c37395ffce5a1833577f",
+        },
+        [254100] = {
+            ["Desconfía de cualquiera que veas con togas grises y la cabeza afeitada. Se hacen llamar los Al'Aketh, y son un peligro.     Hasta me enteré de que han estado interfiriendo con los pilones de anclaje por toda la isla.    Si lo que dicen los Formavientos es verdad, esos pilones son lo único que mantiene Zephras a flote en el plano elemental. ¡Hay que estar demente para meterse con los pilones!"] = "42655ee5336fd221bf884ee01510fd63",
+            ["Desconfía de cualquiera que veas con togas grises y la cabeza afeitada. Se hacen llamar los Al'Aketh, y son un peligro.  Hasta me enteré de que han estado interfiriendo con los pilones de anclaje por toda la isla.  Si lo que dicen los Formavientos es verdad, esos pilones son lo único que mantiene Zephras a flote en el plano elemental. ¡Hay que estar demente para meterse con los pilones!"] = "42655ee5336fd221bf884ee01510fd63",
+            ["Desconfía de cualquiera que veas con togas grises y la cabeza afeitada. Se hacen llamar los Al'Aketh, y son un peligro.  Hasta me enteré de que le han estado haciendo cosas a los pilones de anclaje por toda la isla.  Si lo que dicen los Formavientos es verdad, esos pilones son lo único que mantiene Zephras a flote en el plano elemental. ¡Hay que estar demente para meterse con los pilones!"] = "esMX-adee555ba045d333d4dd6e7667351b0d",
+            ["El culto Al'Aketh dice que Al'Akir, el 'Señor del viento', va a salvarnos de todos los infortunios actuales aquí en Zephras. Si Al'Akir existe y de verdad gobierna el Muro Celeste, ¿por qué los espíritus de viento se negaron a hablar de él durante tanto tiempo?    O bien, no existe, o peor aún, existe y no es tan bondadoso como el culto quiere hacernos creer. Sea como sea, nada de lo que hace el culto nos beneficia a la gente común como nosotros."] = "b228ef340887825030346d0f869c0c8e",
+            ["El culto Al'Aketh dice que Al'Akir, el 'Señor del viento', va a salvarnos de todos los infortunios actuales aquí en Zephras. Si Al'Akir existe y de verdad gobierna el Muro Celeste, ¿por qué los espíritus de viento se negaron a hablar de él durante tanto tiempo?  O bien, no existe, o peor aún, existe y no es tan bondadoso como el culto quiere hacernos creer. Sea como sea, nada de lo que hace el culto nos beneficia a la gente común como nosotros."] = "b228ef340887825030346d0f869c0c8e",
+            ["El culto Al'Aketh se está volviendo un problema serio y los pacificadores no pueden hacer nada para frenarlo. Solo nos queda esperar que los Formavientos y la Suma Orden dejen de discutir entre ellos y colaboren con los pacificadores para protegernos.    ¡Yo al culto no me meto ni en sueños!"] = "be402a4764cbd38f893fef4c3a89b6ff",
+            ["El culto Al'Aketh se está volviendo un problema serio y los pacificadores no pueden hacer nada para frenarlo. Solo nos queda esperar que los Formavientos y la Suma Orden dejen de discutir entre ellos y colaboren con los pacificadores para protegernos.  ¡Yo al culto no me meto ni en sueños!"] = "esMX-fa1efaf787f061fb2000b2a9ad66f1bb",
+            ["Los Formavientos y la Suma Orden se traen algo entre manos. Según los rumores, los dos grupos planean hacer que los cortacielos vuelvan a estar en marcha y usarlos para abandonar el Muro Celeste. ¿ABANDONAR EL MURO CELESTE? Qué disparate. ¿Y adónde se supone que irían?"] = "2ca840e8d169c16b90e27a9246e42485",
+            ["Si no frenan al culto Al'Aketh pronto, nos van a obligar a todos a unirnos a esos fanáticos. Y yo con la cabeza afeitada NO me veo bien."] = "19b97ab0f6cfedc90d4b7cfb464436c7",
+            ["¿Los has visto? ¡Los cortacielos están en marcha de nuevo! Me dijeron que seguimos sin contacto con las otras islas shen'dorei, eso sí.    Espero que restablezcamos contacto con Shen'dramar y Eldranaar pronto... si es que aún existen."] = "c97ac1621254ed985362b3d92cdc2488",
+            ["¿Los has visto? ¡Los cortacielos están en marcha de nuevo! Me dijeron que seguimos sin contacto con las otras islas shen'dorei, eso sí.  Espero que restablezcamos contacto con Shen'dramar y Eldranaar pronto... si es que aún existen."] = "esMX-348435832d458f185815a26f91ea03b3",
+            ["¿Supiste lo que pasó con Ban'aethal? Los pacificadores le están pidiendo a todo el mundo que se mantenga lejos de las ruinas y del Bosque Ventarrosombra.    Escuché a alguien en la posada decir que había visto espíritus de viento malévolos que no eran más que una silueta débil, como si los hubieran... vaciado por dentro.    Solo de pensarlo me da escalofríos."] = "0e3fa2b97b7e428c451bb991a8539b65",
+            ["¿Supiste lo que pasó con Ban'aethal? Los pacificadores le están pidiendo a todo el mundo que se mantenga lejos de las ruinas y del Bosque Ventarrosombra.  Escuché a alguien en la posada decir que había visto espíritus de viento malévolos que no eran más que una silueta débil, como si los hubieran... vaciado por dentro.  Solo de pensarlo me da escalofríos."] = "esMX-1a3e67af596dacf26938f7d6e9ca7fe8",
+            ["Últimamente he visto los cortacielos surcando el cielo cada vez más seguido. Qué bueno saber que están en marcha otra vez. Si tan solo los ancianos nos contaran qué pasa. Lo único que nos dicen es que nada cambió y que seguimos sin contacto con las otras islas.    INo dejo de preguntarme qué significa todo esto..."] = "9095a70ca2b4288ff73cca3fa79463b7",
+            ["Últimamente he visto los cortacielos surcando el cielo cada vez más seguido. Qué bueno saber que están en marcha otra vez. Si tan solo los ancianos nos contaran qué pasa. Lo único que nos dicen es que nada cambió y que seguimos sin contacto con las otras islas.  INo dejo de preguntarme qué significa todo esto..."] = "esMX-0906d8381be79a96b3c03e21e43d6ac1",
+        },
+        [254128] = {
+            ["<Los dos cultores cercanos están hablando. Quizá puedas descubrir algo si te escondes detrás de este guardarropas y escuchas a escondidas.>"] = "esMX-8051341edfc54deddc587393f200e59d",
+        },
+        [254149] = {
+            ["<El cielonato se tambalea frente a ti, claramente embriagado.>    Yo era marinero, ¿sabes? Antes de que empezaran los problemas, los cortacielos iban de isla en isla. Ahora es peligroso o no sé qué... Eso dicen.    Veo que los cortacielos de la Suma Orden y los Formavientos ya están otra vez en marcha, ¡y yo estoy aquí varado en tierra!    ¡¿Qué nos están ocultando?!    <Se da vuelta y le grita al tabernero.>    ¡¿QUÉ NOS ESTÁN OCULTANDO, DONAAL?!"] = "9a6564b67d6f7606022edf983f8f6972",
+            ["<El cielonato se tambalea frente a ti, claramente embriagado.>  Yo era marinero, ¿sabes? Antes de que empezaran los problemas, los cortacielos iban de isla en isla. Ahora es peligroso o no sé qué... Eso dicen.  Veo que los cortacielos de la Suma Orden y los Formavientos ya están otra vez en marcha, ¡y yo estoy aquí varado en tierra!  ¡¿Qué nos están ocultando?!  <Se da vuelta y le grita al tabernero.>  ¡¿QUÉ NOS ESTÁN OCULTANDO, DONAAL?!"] = "esMX-9b6ff9383b57aa3588a8af8c4d0e18c4",
+            ["<The skyborne before you sways unsteadily, clearly very inebriated.>  I used to be a sailor, you know? Before the trouble started. The skycutters used to run between the islands. Now it's unsafe or some such, or so they say.  I see the High Order and the Windshapers have their skycutters running again, but I'm stuck here, grounded!  What aren't we being told!  <He turns and yells loudly at the innkeeper.>  WHAT AREN'T WE BEING TOLD, DONAAL!?"] = "esMX-9a6564b67d6f7606022edf983f8f6972",
+            ["¡El Bosque Ventarrosombra!    ¡Está embrujado! ¡Tan embrujado como que el cielo es azul! ¡Espíritus del bosque terribles, pájaros del terror con garfas grandes como tu brazo! ¡Es... una pesadilla!    <Nadador se voltea hacia Donaal y eructa con fuerza.>    ¡NO EXAGERO, DONAAL!"] = "fc7e37daadaaad08a057a722b71207b6",
+            ["¡El Bosque Ventarrosombra!  ¡Está embrujado! ¡Tan embrujado como que el cielo es azul! ¡Espíritus del bosque terribles, pájaros del terror con garfas grandes como tu brazo! ¡Es... una pesadilla!  <Nadador se voltea hacia Donaal y eructa con fuerza.>  ¡NO EXAGERO, DONAAL!"] = "fc7e37daadaaad08a057a722b71207b6",
+        },
+        [254151] = {
+            ["Los Garra Nocturna no reciben bien a intrusos imprudentes. Ve con cuidado durante tu visita a Ventarrosombra, $c."] = "esMX-3208405865e7aedc20f9e2145f1d4ba5",
+            ["Te has ganado cierta confianza entre los Garra Nocturna, $c. No tenemos mucho que ofrecerte como recompensa, pero logramos recuperar varios planos de fabricación de las ruinas de Ban'aethal.  Los magos de Ban'aethal eran reconocidos como los mejores artesanos de todas las Islas Cielonatas. Los Garra Nocturna somos naturalistas, no artesanos, así que estos registros nos son de poca utilidad.  Sigue demostrando ser una aliada valiosa, y pondré estos secretos a tu alcance."] = "esMX-f8fbf338053350c87bc35067e104e009",
+        },
+        [254345] = {
+            ["$gOtro:Otra; herborista, mmm... Dudo que tus habilidades sean tan buenas como las mías, así que tal vez pueda instruirte en unas cuantas técnicas."] = "b3337-skybourneelf-male-3776",
+            ["Ah, hola. Parece que tienes una pregunta para mí."] = "e8bc55b3146d4148b0aa9367e4b085a5",
+            ["La brisa te saluda, amigo. ¿Puedo ayudarte con algo?"] = "esMX-10eb2ef6ad1a06bef802b346b97c7d61",
         },
         [254411] = {
             ["Oh, solo ayudo a los cazadores y sus mascotas."] = "b50387cdfaa021b93b00c9395fdcd709",
             ["¿Has venido en busca de instrucción para poder pasársela a tus mascotas?"] = "758bb9641b1f6e1d5a0914f0f9fae645",
         },
+        [255877] = {
+            ["Puedo enseñarte a pescar."] = "b285645e1bdb1be37d7bfdc440534eec",
+        },
+        [255940] = {
+            ["Bienvenido a la Posada Brisacalma, viajero. ¿Quieres un refrigerio?"] = "92f5764071224797e5f9ed7dc4b1a23e",
+        },
+        [256076] = {
+            ["<A faint whirring sound can be heard coming from underneath the construct's metal armor plates. The wind powering this machine is present but is listless and only faintly churning. You don't need to know much about air constructs to know that this unit is clearly not in good repair.>"] = "esMX-1397542c9f8accc41dcabe9bf19f9fb5",
+            ["<Se escucha un tenue zumbido debajo de las placas de armadura de metal del ensamblaje. El viento que potencia esta máquina sigue allí, pero sin fuerza y apenas gira. No hace falta saber mucho sobre ensamblajes de aire para darse cuenta de que esta unidad no está en buen estado.>"] = "b304681-narrator-male",
+        },
+        [256083] = {
+            ["<Riaani parece estar muy concentrado en su trabajo con el ensamblaje de viento.>"] = "a737aa6fce1609bef044e8192877549b",
+        },
+        [256306] = {
+            ["Welcome to Dalaran, $c.  Please pay no mind to some of the construction that is still underway. Oh, and should you encounter a rogue arcane anomaly, demon, or other malign entity, please feel free to seek assistance from the nearest member of the Kirin Tor before fleeing--um... proceeding--to the nearest exit in an orderly fashion!  <Arcanist Laurain laughs nervously.>  Thank you for visiting!"] = "esMX-619ca4f59f0b51909dd142eb09085ee6",
+        },
+        [256390] = {
+            ["Están desapareciendo nuestros cargamentos por todo Azeroth. Si encuentras alguno, agradecería que me lo trajeras de vuelta."] = "esMX-35f65b46e709da6d2f125a701ffe263e",
+        },
+        [256391] = {
+            ["¡Santo cielo, me tomaste por sorpresa! Me alegra verte, $N. La Autoridad Comercial de Azeroth siempre anda en busca de nuevos contratistas.  Si te gusta pasear por el bosque mientras recolectas materiales útiles o posees las habilidades necesarias para fabricar algo desde cero, ¡entonces viniste al lugar indicado!  En caso de que tengas alguna pregunta, no dudes en consultarme."] = "esMX-99fd011350fdc7160e57c828c6d190d0",
+        },
+        [256514] = {
+            ["¿Qué quieres?"] = "1ce9bc82bb6914c043375c43adea804e",
+        },
+        [256655] = {
+            ["Dirge Hojágil de Gadgetzan es un maestro de las artes culinarias. Búscale si quieres que tu habilidad mejore."] = "fa94f3b2a7756a7206f2d739132e099b",
+        },
+        [256658] = {
+            ["Aprendes rápido, eso es bueno. Pero asegúrate de hacer bien tu trabajo y tómate el tiempo que necesites para que sea así. Ahora, me temo que debo enviarte con Gruños para continuar tu instrucción. Aprende todo lo que pueda enseñarte, pero no tomes en serio sus duras palabras. Se enfada muchísimo cuando las hijas de Saru se ríen de él."] = "24f51d17fe915ec4494f6d0e34a9f697",
+        },
+        [256729] = {
+            ["Ya sé lo que estás pensando, pero no te preocupes. ¡Siempre separamos los ingredientes de cocina y de alquimia!  ¿Cómo puedo ayudarte?"] = "esMX-f24148290363e67ae00127c81f039b65",
+        },
+        [256730] = {
+            ["¡Los lingotes son solo de muestra!"] = "esMX-11f911c826450c22fd8767674792331a",
+        },
+        [256732] = {
+            ["Parece que te vendrían bien algunos encantamientos. ¡Viniste al lugar adecuado!"] = "esMX-7681129c73f870d3bcac1837e687acf0",
+        },
+        [256733] = {
+            ["¡Es un placer conocerte! Si te gustan las invenciones, ¡has venido al lugar indicado!"] = "esMX-25f683195be950adac633846b2e839fb",
+        },
+        [256734] = {
+            ["¡Ah, hola! Tengo los mejores cueros de todo Ventormenta. ¿Te interesa?"] = "esMX-8d21116b9f77dc14ef4e8784a43b1738",
+        },
+        [256735] = {
+            ["<Sin decir una palabra, Mivin hace un gesto para señalar su mercancía antes de mirarte con una sonrisa.>"] = "esMX-a187506eb9009bcdac572b6de4f3b58d",
+        },
+        [256930] = {
+            ["Casi todos, sí. Lo que nos une es que no nos queda adónde ir y que preferimos robar antes que ser esclavos de algún culto de locos."] = "1a805a968ec63be0827b8f2a0145bef2",
+            ["La mayoría de los míos, también. Desplazados por el suelo que se desmoronaba bajo nuestros pies. Algunos venían de otras islas. Yo soy de la ciudad de Shen'dramar, en la isla grande. Bueno, lo que alguna vez fue la isla grande, supongo.    Mi familia y yo alcanzamos a subirnos a uno de los últimos cortacielos antes de que toda la isla se desintegrara. Pensábamos que Zephras nos iba a salvar. No fue así. Hace mucho que están todos muertos, y ahora estoy aquí, esperando que me ejecuten."] = "b765eca303d743aeaa8fcbfd2dbe0ae7",
+            ["La mayoría de los míos, también. Desplazados por el suelo que se desmoronaba bajo nuestros pies. Algunos venían de otras islas. Yo soy de la ciudad de Shen'dramar, en la isla grande. Bueno, lo que alguna vez fue la isla grande, supongo.  Mi familia y yo alcanzamos a subirnos a uno de los últimos cortacielos antes de que toda la isla se desintegrara. Pensábamos que Zephras nos iba a salvar. No fue así. Hace mucho que están todos muertos, y ahora estoy aquí, esperando que me ejecuten."] = "esMX-b6973adfb4c5e4d709f44df7dd8bf445",
+            ["Maté a un pacificador y robé unas piedras de viento."] = "301f08afeaaf0bae76748990cd7d1828",
+            ["¿De qué sirve negarlo? La agente ya dictó su sentencia. No tiene sentido mentir."] = "6277f0e1648b69a7767a3d0300ba4a81",
+            ["¿Desesperación? ¿Hambre? No estoy aquí haciendo esto porque me fascine robar y matar gente. Perdí mi hogar, no tenía adónde ir y no tengo el menor interés en raparme y adorar a un dios del viento imaginario. Así que me volví bandido. Lo demás ya te lo imaginas."] = "7620e00a703b5f8d7e481b9db4d4866d",
+            ["¿Qué miras?"] = "60338cc8e4cadc013adcc8a789c2338a",
+        },
         [257003] = {
+            ["Espero que tu interrupción obedezca a una buena causa. Justo estaba haciendo algo muy importante."] = "b306273-skybourneelf-female-3773",
             ["No suelo recibir a muchos desolladores aquí buscando instrucción, pero supongo que puedo enseñarte algo si estás $gpreparado:preparada;."] = "799ff33e2991e4c6cd2bd945a2770456",
+            ["No suelo recibir a muchos desolladores aquí buscando instrucción, pero supongo que puedo enseñarte algo si estás preparada."] = "799ff33e2991e4c6cd2bd945a2770456",
+        },
+        [257004] = {
+            ["Ah, hola. Parece que tienes una pregunta para mí."] = "1373e5b71bcab7f7f19fe2a14fa4d10d",
+            ["Buenos vientos. ¿Qué puedo hacer por ti?"] = "cb3388b4766bf50c80bb641b1201c18d",
+            ["Espero que tu interrupción obedezca a una buena causa. Justo estaba haciendo algo muy importante."] = "f203e1b5ce93c4ff82e3d2176bc2b7df",
+            ["La brisa te saluda, amiga. ¿Puedo ayudarte con algo?"] = "5a56faeceb0518e365bb866d2f122071",
         },
         [257005] = {
+            ["Buenos vientos. ¿Qué puedo hacer por ti?"] = "cb3388b4766bf50c80bb641b1201c18d",
             ["Espero que tu interrupción obedezca a una buena causa. Justo estaba haciendo algo muy importante."] = "f203e1b5ce93c4ff82e3d2176bc2b7df",
+            ["La brisa te saluda, amiga. ¿Puedo ayudarte con algo?"] = "esMX-53e476f8c8ec9f9693764b02e4f86356",
         },
         [257006] = {
             ["Aquí no vienen demasiados cocineros para recibir instrucción, pero supongo que puedo enseñarte algo si estás $gpreparado:preparada;."] = "c79cc83d99b9f2d5d4f2e8a8afa4e9e3",
+            ["Aquí no vienen demasiados cocineros para recibir instrucción, pero supongo que puedo enseñarte algo si estás preparada."] = "c79cc83d99b9f2d5d4f2e8a8afa4e9e3",
+        },
+        [257007] = {
+            ["Ah, hola. Parece que tienes una pregunta para mí."] = "esMX-86860406825810f7e09678d6b27ab365",
+            ["Buenos vientos. ¿Qué puedo hacer por ti?"] = "cb3388b4766bf50c80bb641b1201c18d",
+            ["Espero que tu interrupción obedezca a una buena causa. Justo estaba haciendo algo muy importante."] = "b306273-skybourneelf-female-3773",
+            ["La brisa te saluda, amiga. ¿Puedo ayudarte con algo?"] = "5a56faeceb0518e365bb866d2f122071",
+            ["Oh, un compañero médico. Será un placer para mí enseñarte cualquier cosa que pueda servirte en tus viajes."] = "c180e031cf35ac323be516595b2f83d8",
         },
         [257008] = {
             ["Ah, $gun compañero pescador:una compañera pescadora;. ¿Necesitas tal vez un poco de instrucción? Quizás pueda enseñarte un par de cosas."] = "f10237f873964a58febdec53abb705e4",
+            ["Ah, hola. Parece que tienes una pregunta para mí."] = "e8bc55b3146d4148b0aa9367e4b085a5",
+            ["Espero que tu interrupción obedezca a una buena causa. Justo estaba haciendo algo muy importante."] = "18f39204b5258528e030327d79360cad",
+            ["La brisa te saluda, amigo. ¿Puedo ayudarte con algo?"] = "3cf816ad18453f687be2eac93856cb8a",
         },
         [257018] = {
-            ["Espero que tu interrupción obedezca a una buena causa. Justo estaba haciendo algo muy importante."] = "f203e1b5ce93c4ff82e3d2176bc2b7df",
+            ["Ah, hola. Parece que tienes una pregunta para mí."] = "1373e5b71bcab7f7f19fe2a14fa4d10d",
+            ["Buenos vientos. ¿Qué puedo hacer por ti?"] = "cb3388b4766bf50c80bb641b1201c18d",
+            ["Espero que tu interrupción obedezca a una buena causa. Justo estaba haciendo algo muy importante."] = "b306273-skybourneelf-female-3773",
+            ["La brisa te saluda, amiga. ¿Puedo ayudarte con algo?"] = "esMX-53e476f8c8ec9f9693764b02e4f86356",
             ["Oh, un compañero médico. Será un placer para mí enseñarte cualquier cosa que pueda servirte en tus viajes."] = "c180e031cf35ac323be516595b2f83d8",
         },
         [257019] = {
-            ["Espero que tu interrupción obedezca a una buena causa. Justo estaba haciendo algo muy importante."] = "f203e1b5ce93c4ff82e3d2176bc2b7df",
+            ["$gOtro:Otra; alquimista, mmm... Dudo que tus habilidades sean tan buenas como las mías, así que tal vez pueda instruirte en unas cuantas técnicas."] = "b3335-skybourneelf-female-3773",
+            ["Ah, hola. Parece que tienes una pregunta para mí."] = "1373e5b71bcab7f7f19fe2a14fa4d10d",
+            ["Buenos vientos. ¿Qué puedo hacer por ti?"] = "deDE-c70b6d5f52ae8d75b0bf4ce35fd360ec",
+            ["Espero que tu interrupción obedezca a una buena causa. Justo estaba haciendo algo muy importante."] = "b306273-skybourneelf-female-3773",
+            ["La brisa te saluda, amiga. ¿Puedo ayudarte con algo?"] = "5a56faeceb0518e365bb866d2f122071",
         },
         [257020] = {
-            ["Espero que tu interrupción obedezca a una buena causa. Justo estaba haciendo algo muy importante."] = "f203e1b5ce93c4ff82e3d2176bc2b7df",
+            ["Ah, hola. Parece que tienes una pregunta para mí."] = "1373e5b71bcab7f7f19fe2a14fa4d10d",
+            ["Buenos vientos. ¿Qué puedo hacer por ti?"] = "cb3388b4766bf50c80bb641b1201c18d",
+            ["Espero que tu interrupción obedezca a una buena causa. Justo estaba haciendo algo muy importante."] = "b306273-skybourneelf-female-3773",
+            ["La brisa te saluda, amiga. ¿Puedo ayudarte con algo?"] = "5a56faeceb0518e365bb866d2f122071",
         },
         [257021] = {
             ["$gOtro:Otra; herborista, mmm... Dudo que tus habilidades sean tan buenas como las mías, así que tal vez pueda instruirte en unas cuantas técnicas."] = "5e3106d656d1e19c87aab693c964dd04",
-            ["Espero que tu interrupción obedezca a una buena causa. Justo estaba haciendo algo muy importante."] = "f203e1b5ce93c4ff82e3d2176bc2b7df",
+            ["Espero que tu interrupción obedezca a una buena causa. Justo estaba haciendo algo muy importante."] = "b306273-skybourneelf-female-3773",
+            ["La brisa te saluda, amiga. ¿Puedo ayudarte con algo?"] = "5a56faeceb0518e365bb866d2f122071",
+        },
+        [257022] = {
+            ["Quizás pienses que, solo porque vivimos en una isla flotante, no hacen falta mineras como yo. Pero después de tantos miles de años, aún logramos desenterrar muchas cosas interesantes.  Pareciera que hay una fuerza invisible que crea constantemente nuevos depósitos minerales cada cierto tiempo. Así obra la magia, ¿verdad?  De todas formas, si necesitas entrenamiento de minería, soy la shen'dorei que buscas."] = "esMX-af03f38b44845e09465fbddd3d69db25",
+            ["Quizás pienses que, solo porque vivimos en una isla flotante, no hacen falta mineros como yo. Sin embargo, después de tantos milenios, aún logramos desenterrar muchas cosas interesantes.    Pareciera que hay una fuerza invisible que crea constantemente nuevos depósitos minerales cada cierto tiempo. Así obra la magia, ¿verdad?    De todas formas, si necesitas entrenamiento de minería, soy tu shen'dorei de confianza."] = "b302824-skybourneelf-female-3773",
+            ["Quizás pienses que, solo porque vivimos en una isla flotante, no hacen falta mineros como yo. Sin embargo, después de tantos milenios, aún logramos desenterrar muchas cosas interesantes.  Pareciera que hay una fuerza invisible que crea constantemente nuevos depósitos minerales cada cierto tiempo. Así obra la magia, ¿verdad?  De todas formas, si necesitas entrenamiento de minería, soy tu shen'dorei de confianza."] = "esMX-a274b0e9df1cbe0a5e6f842ee9ebaa88",
         },
         [257024] = {
+            ["Ah, hola. Parece que tienes una pregunta para mí."] = "e8bc55b3146d4148b0aa9367e4b085a5",
+            ["Buenos vientos. ¿Qué puedo hacer por ti?"] = "bd332f5d7d3458235a87a234fc01b179",
             ["Espero que tu interrupción obedezca a una buena causa. Justo estaba haciendo algo muy importante."] = "18f39204b5258528e030327d79360cad",
             ["No suelo recibir a muchos desolladores aquí buscando instrucción, pero supongo que puedo enseñarte algo si estás $gpreparado:preparada;."] = "fc47ea411175750a7d770f6b3bb182ef",
+            ["No suelo recibir a muchos desolladores aquí buscando instrucción, pero supongo que puedo enseñarte algo si estás preparada."] = "fc47ea411175750a7d770f6b3bb182ef",
+        },
+        [257065] = {
+            ["¿Vienes en busca de las bendiciones del Señor del viento?"] = "esMX-0f8a38340fb87036119c56b8168b1b80",
+        },
+        [257446] = {
+            ["Si logras acallar el ruido de tu corazón y prestas atención, la piedra y la tierra dicen más verdades que cualquier idioma.  Si tienes potencial chamánico, puedo enseñarte."] = "esMX-87e06896a0542a99815e8e6029cbf871",
+        },
+        [257554] = {
+            ["<El forestal frente a ti tiene la mirada clavada en el enorme pilón de anclaje a lo lejos.>"] = "a4a46a36be7098226552afb81f3f4f65",
+        },
+        [257595] = {
+            ["Durante La guerra de los Ancestros, el semidiós Agamaggan luchó contra la Legión Ardiente. El colosal jabalí fue derrotado y, con el tiempo, en las zonas donde su sangre se había derramado, brotaron unas enormes vides llenas de espinas. El jabaespín vino a ocupar estas regiones y encargarse de que se mantuvieran como un terreno sagrado. El corazón de estas enormes colonias de espinas, es Rajacieno. El brujo Charlga Filonavaja conquistó Horado Rajacieno, de quien se dice que ha estado negociando con agentes de la Plaga con algún propósito insidioso."] = "0b5e7969b8b45594985feae2eb2ed564",
+            ["Gnomeregan se encuentra en la parte oeste de Dun Morogh."] = "ad9e028bbf4d1db826c98feaf297f9c3",
+            ["Horado Rajacieno se encuentra en el extremo más al sur de Los Baldíos, en el lado oeste del camino."] = "e581a9ed3de8105b6729f7dc085e1c17",
+            ["Las Cavernas de Brazanegra, en La Ensanada de Zoram, en Vallefresno, fueron antiguamente un glorioso templo de los elfos de la noche dedicado a la diosa de la luna, Elune. Sin embargo, el gran Cataclismo destruyó el templo, hundiéndolo bajo las olas del Mar de la Bruma. Y ahí permaneció, intacto, hasta que los nagas y los sátiros, atraídos por su ancestral poder, fueron en su busca para descubrir sus secretos. Según las leyendas, Aku'mai, la bestia ancestral, vive en las ruinas del templo."] = "4770f436e4721b1e363a54416ff3594f",
+            ["Las Mazmorras de Ventormenta se encuentran cerca del Barrio de los Magos, en Ventormenta."] = "9cd348728ba38505c5456af01f1ea6f5",
+            ["Las Mazmorras son un complejo carcelario de alta seguridad, oculto bajo el distrito de Los Canales de la ciudad de Ventormenta. Las Mazmorras, presididas por el celador Thelagua, alojan desde ladronzuelos, hasta insurgentes políticos, asesinos, e incluso a parte de los criminales más peligrosos de la tierra. Hace poco, un motín de los prisioneros tuvo como consecuencia un verdadero pandemonio dentro de las Mazmorras. Los guardias fueron expulsados y los convictos recorrían las instalaciones libremente."] = "39cefc621bbcaa9de4f15bf64910a0dd",
+            ["Puedes encontrar las Cavernas de Brazanegra en el extremo norte de La Ensenada de Zoram, junto a la costa de Vallefresno."] = "9b605670acd65783140b807060cc5459",
+            ["Situada en Dun Morogh, Gnomeregan ha sido la capital de los gnomos durante generaciones aunque, recientemente, ha sido tomada por unos troggs mutantes. En un intento desesperado de contraataque, el Manitas Mayor Mekkatorque, ordenó la apertura de emergencia de los tanques de residuos radioactivos de la ciudad. Si bien los troggs recibieron la radiación, su asedio continuó implacable y los gnomos se vieron forzados a refugiarse en la ciudad enana de Forjaz, donde el Manitas Mayor, ahora recluta almas valientes para ayudar a su pueblo a reconquistar su amada ciudad."] = "b414305e416528da2000301e3515fa68",
+            ["Te doy la bienvenida a mi taberna, $gfatigado viajero:fatigada viajera;. ¿En qué puedo ayudarte?"] = "e3e01e02de026cbe5e2560a468bbdebb",
+            ["¿Te interesa explorar una de estas mazmorras?"] = "338674bfb1edb2117c563bae8305e5f2",
+        },
+        [258043] = {
+            ["Has llegado más lejos que nadie, $n. Respeta los elementos que te rodean y te irá mejor que a nadie."] = "b4385-dwarf-male-guard",
         },
         [258098] = {
             ["Los espíritus te han guiado hasta mí. ¿Cómo puedo serte de ayuda?"] = "b2302e24c21151f089da09b386cec376",
@@ -9081,30 +10576,276 @@ GossipText = {
         [258113] = {
             ["Los espíritus te han guiado hasta mí. ¿Cómo puedo serte de ayuda?"] = "688528dc8617e517315b28f774aec457",
         },
+        [258380] = {
+            ["Llena tu jarra y coge una silla. Tenemos historias que contar y barriles que vaciar."] = "b2826-dwarf-female-maternal",
+        },
         [258568] = {
+            ["Los mejores precios en todo Ventormenta, no encontrarás mejores precios. Y bien, ¿en qué puedo ayudarte?"] = "0a50227fd4a79a221c5e74147031f06e",
             ["¿Solo estás examinando mis mercancías o hay algo específico que quieras encontrar hoy?"] = "a86de99ac7614f683ab7eab24b0a0b93",
         },
         [258572] = {
             ["En el mundo pueden encontrarse muchos de los suministros que necesitan los comerciantes. Pero yo tengo una limitada selección, a buen precio, de lo que no puede encontrarse por ahí."] = "7da2e914119cbb34e9c1d90ccae3ddca",
         },
+        [258785] = {
+            ["Si lo deseas, además de la instrucción, tengo el poder de borrar el conocimiento de tus talentos de tu mente. Te advierto que cada vez que realizas este proceso es más difícil y, por lo tanto, es más caro."] = "b8263-gnome-female-standard",
+        },
         [258930] = {
+            ["Oh, solo ayudo a los cazadores y sus mascotas."] = "b8407-human-male-standard",
             ["¿Has venido en busca de instrucción para poder pasársela a tus mascotas?"] = "530f50b228568790a32debd04b5b6e3e",
+        },
+        [259012] = {
+            ["Hace unos años, todas las islas cielonato comenzaron a desestabilizarse y a alejarse unas de otras. Como si eso no fuera suficiente, ahora grandes fragmentos de Zephras empiezan a desprenderse. Cuesta imaginar que tu hogar se desplome hacia el cielo, pero esa es mi realidad."] = "0b31b9f39f80394c757cec12b82b7267",
+        },
+        [259084] = {
+            ["Los vientos te saludan, $gamigo mío:amiga mía;. Me han autorizado para brindarles a los demás cielonato un traslado expeditivo a la ciudad de Ventormenta. Este portal está a tu disposición. Úsalo cuando quieras."] = "9d279b0794dd38e052e655b98e7128b9",
+            ["Los vientos te saludan, amiga mía. Me han autorizado para brindarles a los demás cielonato un traslado expeditivo a la ciudad de Ventormenta. Este portal está a tu disposición. Úsalo cuando quieras."] = "esMX-a4e964de7b5c93a4863711bfaf8cdaeb",
         },
         [260093] = {
             ["He tenido que realizar una rigurosa reconversión con muchos estudiantes de todo lo que habían aprendido, para poder enseñarles desde cero. El servicio que ofrezco aumenta de dificultad cada vez que se hace. Por esa razón, también aumenta el precio de cada nueva instrucción. ¿Quieres que elimine todos los talentos que has aprendido?"] = "a54fabb9fc0936c92134f8611f4e5e8b",
+        },
+        [260558] = {
+            ["Puedo enseñarte a pescar."] = "2d127f614bfaf60be0fcf5c914c9f116",
+            ["Tendrás que encontrar a Nat Pagle en el Marjal Revolcafango para mejorar tus habilidades."] = "0bf837bea513c0c82387777d0998bdfb",
+        },
+        [260568] = {
+            ["Hoy no hay peleas, $gamigo:amiga;. ¡La Horda y la Alianza están demasiado ocupadas matándose entre sí en los campos de batalla cuando pueden hacerlo en mi arena y llevarse un buen dinerillo! Pero bueno...    Regresa cuando vuelva a poner este lugar en marcha."] = "c47745487b8785a2b025de0216199676",
+        },
+        [260628] = {
+            ["<Valennia hace un gesto de dolor al girarse para mirarte.>    No me mires así. Voy a estar bien. A pesar de todos los esfuerzos de los preocupados sanadores del gran ancestro, en un abrir y cerrar de ojos estaré de pie y lista para volver a luchar.    Ahora vete... No dejes que esta vieja soldado te retrase. Los vientos te traerán buena suerte en tu camino; lo sé."] = "b309795-skybourneelf-female-3773",
+            ["<Valennia hace un gesto de dolor al girarse para mirarte.>  No me mires así. Voy a estar bien. A pesar de todos los esfuerzos de los preocupados sanadores del gran ancestro, en un abrir y cerrar de ojos estaré de pie y lista para volver a luchar.  Ahora vete... No dejes que esta vieja soldado te retrase. Los vientos te traerán buena suerte en tu camino; lo sé."] = "b309795-skybourneelf-female-3773",
+        },
+        [262492] = {
+            ["Estaba espe...$B$B<Rimblat tose.>$B$B¡Oh, perdona! Soy Rimblat del Anillo de la Tierra."] = "2c121d996480b972ca128fe4dd17568b",
+        },
+        [262560] = {
+            ["$n, ¿cómo puedo fomentar tu instrucción a los ojos de la Madre Tierra?"] = "063a1ed21bb6a2c6ec6017ba2087cd70",
+        },
+        [263113] = {
+            ["Te imaginarás que aquí arriba a veces se vuelve aburrido. Hasta llega un punto en que me canso de molestar a ese miserable pesado de Halaan."] = "36bb26fecf6b2a6dee69ac2dad990d3a",
+        },
+        [263349] = {
+            ["Lo siento, $c, pero no tienes la experiencia suficiente para entrar a las Islas Lanza Negra."] = "b312929-human-male-official",
+        },
+        [263399] = {
+            ["¡Aló, $uviajero:viajera;!"] = "b313261-human-male-standard",
+            ["¡Aló, viajera!"] = "esMX-a20f1be33492252d9219dcfc32c2d850",
+            ["¡Aló, viajero!"] = "b313261-human-male-standard",
+        },
+        [263643] = {
+            ["Lo siento, $c, pero no tienes la experiencia suficiente para entrar a las Islas Lanza Negra."] = "b312929-human-male-official",
+        },
+        [263644] = {
+            ["Lo siento, $c, pero no tienes la experiencia suficiente para entrar a las Islas Lanza Negra."] = "b312929-human-male-official",
+        },
+        [263646] = {
+            ["Lo siento, $c, pero no tienes la experiencia suficiente para entrar a las Islas Lanza Negra."] = "e8a51cbf4e844efc1033bd3da4a159e3",
+        },
+        [263647] = {
+            ["Lo siento, $c, pero no tienes la experiencia suficiente para entrar a las Islas Lanza Negra."] = "cfbb9dd825963098fabf6f1387dc7fd1",
+        },
+        [263664] = {
+            ["Saludos, caminante."] = "0d7b934ce917e404afb4e83f996fa321",
+        },
+        [263930] = {
+            ["Saludos, $Uciudadano:ciudadana;."] = "197733e5d24c96d857606a47d7038088",
+            ["Saludos, $gciudadano:ciudadana;."] = "197733e5d24c96d857606a47d7038088",
+            ["Saludos, ciudadana."] = "197733e5d24c96d857606a47d7038088",
+            ["¿Puedo ayudarte a encontrar algo, $Uciudadano:ciudadana;?"] = "f0e3faba5c11611c6839bacab407ded1",
+            ["¿Puedo ayudarte a encontrar algo, ciudadana?"] = "f0e3faba5c11611c6839bacab407ded1",
+            ["¿Qué buscas, $Uciudadano:ciudadana;?"] = "ac15bcb9c16fc2ebbe2029d0c4ee152a",
+        },
+        [264936] = {
+            ["En un día despejado, hasta puedes ver la Montaña Roca Negra desde aquí. Es hermosa y aterradora al mismo tiempo."] = "esMX-12c4915d6ad9ddfe95677207a6686cb5",
+        },
+        [265654] = {
+            ["Te doy la bienvenida al registro de gremios de Valanaar. ¿En qué puedo ayudarte?"] = "34d79e8ae95363092d6c7a4c7b28f67c",
+        },
+        [265760] = {
+            ["<El zancudo deja de moverse tan agitadamente y fija en ti sus ojos dorados.>"] = "esMX-77d3a8c796b5c0baaddde35b85e4c90b",
+        },
+        [265809] = {
+            ["Saludos, caminante."] = "5a5cfd9b66c08e54d7f912c93f16aec1",
+        },
+        [265810] = {
+            ["Saludos, caminante."] = "db1e160d72699cbbfdba9c1198424caa",
+        },
+        [265811] = {
+            ["Saludos, caminante."] = "426fca3f52df4f5b27be5a2162136f84",
+        },
+        [265812] = {
+            ["Saludos, caminante."] = "c06f809139a8fb0583142df2083a555d",
+        },
+        [265813] = {
+            ["Saludos, caminante."] = "d8461992f589cbc9e251cd2872a33b62",
         },
         [265944] = {
             ["Cocinar es algo para toda la vida, y veo que compartimos la misma pasión."] = "6f112dba70f131803f2dc5fb76026cdd",
             ["Puedo enseñarte a cocinar."] = "ad9a13f780148372887f7e98605d6f7b",
         },
+        [267000] = {
+            ["Solo vendo el mejor equipamiento, probado y comprobado. Y los precios son fijos, así que si quieres regatear, vete a hablar con un goblin."] = "1d035ef80655c9d2cd4e435e275a7bba",
+        },
         [267007] = {
             ["La fortaleza de Woo Ping es realmente increíble. Cuando le veo practicar sus técnicas durante horas acabo sintiendo lástima por el muñeco con el que practica. No imagino a nadie más apropiado para instruirte en el combate con armas."] = "6f12e63d28cd113b0102efd2daec5b54",
+            ["No hay nada como pasar un día pescando en el Lago de Cristal. Arnold Leland es quien me enseñó. Suele estar en el muelle del Distrito del Canal, pescando durante todo el día.   Ah, y no le creas ninguna de las historias que cuenta sobre monstruos en los canales."] = "b3009-human-female-official",
+            ["No sé cómo lo hacen... esos buzones deben ser portales mágicos o algo así. ¡No paro de ver a gente amontonada alrededor del buzón que está junto al banco sacando espadas, escudos y armaduras de esa diminuta cosa!"] = "b6395-human-female-official",
             ["Si necesitas un alojamiento para tu mascota mientras estás entrenando a otra, deberías hablar con Jenova Petrescudo, en el Distrito de los Enanos."] = "b68ea919378ae726f910e862a386d16f",
             ["¿Hacia dónde quieres dirigirte?"] = "2402ec9453525b4ec16e1180457c7cfb",
             ["¿Qué campo de batalla te interesa?"] = "b6520e33f086305457ba706034aea691",
+            ["¿Qué tipo de instructor de profesión estás buscando?"] = "b2941-human-female-official",
+            ["¿Te interesa el cuero, eh? Creo que deberías hablar con Simon Peletero en el Casco Antiguo. Lleva una tienda llamada La Piel Protectora."] = "b6321-human-female-official",
+        },
+        [267279] = {
+            ["Las profesiones se dividen en dos categorías principales: primarias y secundarias.    Solo puedes tener un máximo de dos profesiones primarias a la vez. Puedes renunciar a tu habilidad en una profesión primaria cuando quieras, pero perderás todo el conocimiento que hayas acumulado. Si decides volver a tu profesión original, tendrás que volver a entrenar desde cero y buscar las recetas que ya tenías para volver a aprenderlas.    Las profesiones secundarias no tienen límite. Estas habilidades tienden a enfocarse en la autosuficiencia para cubrir tus necesidades básicas de supervivencia. Puedes entrenarte en una o en todas a la vez, pero es posible que ofrezcan menos oportunidades para generar ganancias."] = "frFR-17a391fd8248a22663b4c1a9d3af0cb4",
+            ["¡Hola, $N! ¿Has pensado en aprender una habilidad comercial?  Con mucho gusto responderé a cualquier pregunta que tengas o te indicaré dónde encontrar a los instructores de la zona.  Si te parece demasiado por el momento, ¡no te preocupes! Siempre puedes volver aquí o acudir a los instructores de las capitales para empezar tu recorrido profesional en el mundo de la artesanía."] = "esMX-517dd9b3377ee2878f0dba4784badb45",
+            ["¡Hola, $n! ¿Has pensado en aprender una habilidad comercial?    Con mucho gusto responderé a cualquier pregunta que tengas o te indicaré dónde encontrar a los instructores de la zona.    Si te parece demasiado por el momento, ¡no te preocupes! Siempre puedes volver aquí o acudir a los instructores de las capitales para empezar tu recorrido profesional en el mundo de la artesanía."] = "f2b255bf99830e58fd3542f57058da15",
+        },
+        [267287] = {
+            ["¡Hola, $n! ¿Has pensado en aprender una habilidad comercial?    Con mucho gusto responderé a cualquier pregunta que tengas o te indicaré dónde encontrar a los instructores de la zona.    Si te parece demasiado por el momento, ¡no te preocupes! Siempre puedes volver aquí o acudir a los instructores de las capitales para empezar tu recorrido profesional en el mundo de la artesanía."] = "e18e5d7e3ad60eec2792a2af044515f1",
+        },
+        [267321] = {
+            ["Excelente elección. Ya marqué la ubicación en tu mapa."] = "esMX-0548fdc525fdc6e6d7d48a27188c1ab0",
+            ["Las profesiones se dividen en dos categorías principales: primarias y secundarias.    Solo puedes tener un máximo de dos profesiones primarias a la vez. Puedes renunciar a tu habilidad en una profesión primaria cuando quieras, pero perderás todo el conocimiento que hayas acumulado. Si decides volver a tu profesión original, tendrás que volver a entrenar desde cero y buscar las recetas que ya tenías para volver a aprenderlas.    Las profesiones secundarias no tienen límite. Estas habilidades tienden a enfocarse en la autosuficiencia para cubrir tus necesidades básicas de supervivencia. Puedes entrenarte en una o en todas a la vez, pero es posible que ofrezcan menos oportunidades para generar ganancias."] = "e7fccc6c2e5a9fc7b530de23bd52b9ee",
+            ["¡Claro! ¿Qué profesión te interesa?  Marcaré en el mapa la ubicación del instructor local más cercano. Recuerda que puedes acudir a los instructores de las capitales para recibir una formación más completa."] = "esMX-e4c88e977a711c06dd1c0c3ca50d6d65",
+            ["¡Hola, $N! ¿Has pensado en aprender una habilidad comercial?  Con mucho gusto responderé a cualquier pregunta que tengas o te indicaré dónde encontrar a los instructores de la zona.  Si te parece demasiado por el momento, ¡no te preocupes! Siempre puedes volver aquí o acudir a los instructores de las capitales para empezar tu recorrido profesional en el mundo de la artesanía."] = "b292949-tauren-male-warrior",
+            ["¡Hola, $n! ¿Has pensado en aprender una habilidad comercial?    Con mucho gusto responderé a cualquier pregunta que tengas o te indicaré dónde encontrar a los instructores de la zona.    Si te parece demasiado por el momento, ¡no te preocupes! Siempre puedes volver aquí o acudir a los instructores de las capitales para empezar tu recorrido profesional en el mundo de la artesanía."] = "b292949-tauren-male-warrior",
+        },
+        [267322] = {
+            ["¡Hola, $N! ¿Has pensado en aprender una habilidad comercial?  Con mucho gusto responderé a cualquier pregunta que tengas o te indicaré dónde encontrar a los instructores de la zona.  Si te parece demasiado por el momento, ¡no te preocupes! Siempre puedes volver aquí o acudir a los instructores de las capitales para empezar tu recorrido profesional en el mundo de la artesanía."] = "b292949-orc-female-standard",
+            ["¡Hola, $n! ¿Has pensado en aprender una habilidad comercial?    Con mucho gusto responderé a cualquier pregunta que tengas o te indicaré dónde encontrar a los instructores de la zona.    Si te parece demasiado por el momento, ¡no te preocupes! Siempre puedes volver aquí o acudir a los instructores de las capitales para empezar tu recorrido profesional en el mundo de la artesanía."] = "b292949-orc-female-standard",
+        },
+        [267323] = {
+            ["Las profesiones se dividen en dos categorías principales: primarias y secundarias.    Solo puedes tener un máximo de dos profesiones primarias a la vez. Puedes renunciar a tu habilidad en una profesión primaria cuando quieras, pero perderás todo el conocimiento que hayas acumulado. Si decides volver a tu profesión original, tendrás que volver a entrenar desde cero y buscar las recetas que ya tenías para volver a aprenderlas.    Las profesiones secundarias no tienen límite. Estas habilidades tienden a enfocarse en la autosuficiencia para cubrir tus necesidades básicas de supervivencia. Puedes entrenarte en una o en todas a la vez, pero es posible que ofrezcan menos oportunidades para generar ganancias."] = "b292961-scourge-male-standard",
+            ["¡Hola, $n! ¿Has pensado en aprender una habilidad comercial?    Con mucho gusto responderé a cualquier pregunta que tengas o te indicaré dónde encontrar a los instructores de la zona.    Si te parece demasiado por el momento, ¡no te preocupes! Siempre puedes volver aquí o acudir a los instructores de las capitales para empezar tu recorrido profesional en el mundo de la artesanía."] = "268b520ae32f6604b9459bcf3825be70",
+        },
+        [267324] = {
+            ["¿Quieres aprender a obtener cuero de las bestias asesinadas? ¿O necesitas herramientas nuevas?"] = "deDE-17f858a6e0c8654e035ac42df7bd3f5d",
+        },
+        [267325] = {
+            ["¿En qué puedo ayudarte?"] = "a62dbbcac0879e2964c0e3e181dd44a1",
+            ["¿Puedo ayudarte?"] = "b9531-scourge-male-warrior",
+        },
+        [267327] = {
+            ["¿Quieres aprender a obtener cuero de las bestias asesinadas? ¿O necesitas herramientas nuevas?"] = "b293818-orc-male-guard",
+        },
+        [267330] = {
+            ["¿Quieres aprender a obtener cuero de las bestias asesinadas? ¿O necesitas herramientas nuevas?"] = "b293818-tauren-female-shaman",
+        },
+        [267331] = {
+            ["¿En qué puedo ayudarte?"] = "9b44465789a930be0794cd177cfa8d89",
+            ["¿Qué puedo hacer para ayudar?"] = "b9724-tauren-female-standard",
+        },
+        [267333] = {
+            ["¿Quieres aprender a obtener cuero de las bestias asesinadas? ¿O necesitas herramientas nuevas?"] = "8dc3ebd11bd6b9260124d94a023ee95a",
+        },
+        [267334] = {
+            ["¿En qué puedo ayudarte?"] = "b1529-nightelf-male-official",
+        },
+        [267336] = {
+            ["¿Quieres aprender a obtener cuero de las bestias asesinadas? ¿O necesitas herramientas nuevas?"] = "d946f44a23da83262fe2d024db084c06",
+        },
+        [267337] = {
+            ["¿En qué puedo ayudarte?"] = "e59a031ae9f2e24540044783dc7ab1c7",
+            ["¿Puedo ayudarte?"] = "b9531-gnome-female-nerdy",
+            ["¿Qué puedo hacer para ayudar?"] = "b9724-gnome-female-nerdy",
+        },
+        [268047] = {
+            ["$N, la Guardia Pico Tormenta necesita más que nunca tu ayuda en la batalla contra el clan Lobo Gélido en el Valle de Alterac. ¡Y hay más posibilidades que nunca de obtener honor y reputación! ¿Te unirás a la batalla?"] = "b10569-human-female-standard",
+            ["Lo siento, $c, pero no tienes la experiencia suficiente para entrar a las Islas Lanza Negra."] = "b312929-human-female-standard",
+        },
+        [268048] = {
+            ["Hola, $c. En estos momentos, en el Valle del Honor hay tanta necesidad como honor y renombre para el que vaya a ayudar. ¿Te unirás a nuestra lucha contra la Guardia Pico Tormenta?"] = "b10558-troll-female-standard",
+            ["Lo siento, $c, pero no tienes la experiencia suficiente para entrar a las Islas Lanza Negra."] = "b312929-troll-female-standard",
+        },
+        [268511] = {
+            ["El trabajo en el puerto está abierto a todos, pero tu seguridad personal es tu propia responsabilidad."] = "esMX-648ca89d4073af7d87bcef3a4758bb5c",
+        },
+        [268568] = {
+            ["El alfabetismo debe celebrarse y compartirse."] = "esMX-46911aff63f31a0c0780be0f8a471f03",
+        },
+        [269152] = {
+            ["Mi pueblo no te conoce. Los kodos son poderosos corceles, y el producto del amor y el cuidado de mi pueblo; por esa razón, no los vendemos a extranjeros. Hasta que los ancestros de Cima del Trueno te consideren $gexaltado:exaltada;, no puedo venderte un kodo."] = "eda6ce1de991cac856d16991fbd14569",
+        },
+        [270459] = {
+            ["Esta ciudad es un lugar asombroso, pero también me resulta inquietante. Reunir tanta magia en un solo lugar conlleva muchos peligros, que mi pueblo conoce muy bien."] = "b51dcb605a87c7d3da985a82499527a9",
+        },
+        [270513] = {
+            ["Saludos, $c.    Puedo enseñarte a tejer magia a tu alrededor para cambiar el aspecto de tu equipo, si lo deseas. ¿Quieres hacer uso de mis servicios?"] = "b321055-nightelf-male-standard",
+        },
+        [270570] = {
+            ["Solo vendo el mejor equipamiento, probado y comprobado. Y los precios son fijos, así que si quieres regatear, vete a hablar con un goblin."] = "1d035ef80655c9d2cd4e435e275a7bba",
+        },
+        [270581] = {
+            ["Saludos, $c.    Puedo enseñarte a tejer magia a tu alrededor para cambiar el aspecto de tu equipo, si lo deseas. ¿Quieres hacer uso de mis servicios?"] = "7daa88a73732c05396945623649a82b5",
+            ["Saludos, $c.  Puedo enseñarte a tejer magia a tu alrededor para cambiar el aspecto de tu equipo, si lo deseas. ¿Quieres hacer uso de mis servicios?"] = "esMX-b0a0175d49bf1f7627173df0277b9a45",
+        },
+        [270582] = {
+            ["Saludos, $c.    Puedo enseñarte a tejer magia a tu alrededor para cambiar el aspecto de tu equipo, si lo deseas. ¿Quieres hacer uso de mis servicios?"] = "35da71c883eec22c22999a7c44dee8dc",
+        },
+        [271465] = {
+            ["Saludos, $c. ¿Necesitas armas?    Me entrenó Antarion de Ban'aethal, con secretos heredados de los antiguos maestros magos de Kalimdor.    No encontrarás mejores armas en la Isla Zephras que las mías."] = "ee9be0e55455d0a3cd04d112b77f9b62",
+            ["Saludos, $c. ¿Necesitas armas?  Me entrenó Antarion de Ban'aethal, con secretos heredados de los antiguos maestros magos de Kalimdor.  No encontrarás mejores armas en la Isla Zephras que las mías."] = "ee9be0e55455d0a3cd04d112b77f9b62",
+        },
+        [271546] = {
+            ["¿Buscas al mensajero? Salió volando como una avecilla.    No lo culpo, pobre criatura. Estos wendigos son cosa seria."] = "682af36b98761a235fc70a1a7114c7e1",
+            ["¿Buscas al mensajero? Salió volando como una avecilla.  No lo culpo, pobre criatura. Estos wendigos son cosa seria."] = "esMX-aa76805163e0ed6e10200480bdca6e1b",
         },
         [272101] = {
+            ["Encontrarás a Vance Bajopenumbra en una habitación del primer piso del Mesón La Horca, en la parte sureste de Rémol."] = "f3fcdf2085aaeddd3fb4d9eb72210d18",
             ["¿Qué estás buscando?"] = "2cce376a7f0e367a39a45e26216ab5f2",
+            ["¿Qué profesión?"] = "8d09546b60b6d39bda2ac4ec0471ced5",
+        },
+        [274757] = {
+            ["Aquí en Darnassus encontrarás expertos instructores que han perfeccionado las habilidades de su clase elegida en años de entrenamiento y dedicación. Puedo ponerte en contacto con el que podría ser tu mentor. Basta que digas que este es el camino que has elegido."] = "05f41dc20d172bc58dcbca463c852a7a",
+            ["De todos los lugares maravillosos de Darnassus, ¿en qué dirección quieres que te oriente?"] = "5f49a0ce5b3654379f0db519a20b64a4",
+            ["Existen algunos que intentan seguir el camino de los pícaros, pero solo los elfos de la noche disfrutan del cobijo de la noche. Si quieres seguir el camino tenebroso, busca a Syurna en el Enclave Cenarion."] = "9955006745f984da2926e3193c72c1bf",
+            ["Recibí casi toda mi instrucción en armas de Ilyenia Fuegolunar, en el Bancal del Guerrero. Harías bien en buscarla si deseas aprender el uso de una nueva arma."] = "3fdb5882d52420a10cedda5c6704aa3b",
+        },
+        [274781] = {
+            ["Con quien tienes que hablar es con Brandur Martiyerro. Lo encontrarás en la Sala de los Misterios, al norte de las puertas de Forjaz."] = "b5103-dwarf-female-guard",
+            ["Jormund Petrocejas tiene una gran habilidad con la aguja. Si necesitas instrucción, lo encontrarás en la Sastrería Petrocejas, al norte de La Gran Fundición."] = "b5145-dwarf-female-guard",
+            ["¿Adónde deseas ir?"] = "b5077-dwarf-female-guard",
+            ["¿Dónde está la casa de subastas? Veamos, está junto a las puertas de Forjaz cuando entras en nuestra bella ciudad. Está justo delante de la Cámara."] = "b5317-dwarf-female-guard",
+            ["¿Qué instructor de clase estás buscando?"] = "b5089-dwarf-female-guard",
+            ["¿Qué instructor de profesión estás buscando?"] = "b5113-dwarf-female-guard",
+            ["¿Tienes nuevos tesoros que desees conservar sanos y salvos? De ser así debes guardarlos en Las Arcas con los mantopétreos.   Las Arcas se encuentran a un tiro de martillo en dirección nordeste desde la entrada de Forjaz."] = "b5079-dwarf-female-guard",
+            ["¿Tienes nuevos tesoros que desees conservar sanos y salvos? Debes guardarlos en Las Arcas con los Mantopétreo. Las Arcas se encuentran a un tiro de martillo en dirección nordeste desde la entrada de Forjaz."] = "b5079-dwarf-female-guard",
+        },
+        [275269] = {
+            ["El cortacielos que llega aquí te llevará directo a Ciudad de Dalaran."] = "esMX-ce331c9a308df01a526fc31a52c653d8",
+            ["Toma el bote aquí para viajar a Ciudad de Dalaran, rodeada por las Montañas de Alterac."] = "esMX-0bc263ca502b4b179c2f65f31659b450",
+        },
+        [275491] = {
+            ["Ah, sí. Mencionó que $gun:una; agente de la Suma Orden llegaría pronto a Ventormenta. Me pidió que te redactara algunas instrucciones.    <Randal te entrega una nota sellada con cuidado.>    Esto contiene toda la información que necesitas. Te espera un viaje intenso, $n. De parte de Ventormenta y la Alianza, te deseo mucha suerte."] = "cca49c4ac507c3bee94f4472a17a381a",
+            ["Ah, sí. Mencionó que una agente de la Suma Orden llegaría pronto a Ventormenta. Me pidió que te redactara algunas instrucciones.  <Randal te entrega una nota sellada con cuidado.>  Esto contiene toda la información que necesitas. Te espera un viaje intenso, $N. De parte de Ventormenta y la Alianza, te deseo mucha suerte."] = "esMX-1db5647bd263e0244539cbf397637f94",
+            ["Saludos, $gciudadano:ciudadana;. ¿En qué puedo ayudarte hoy?"] = "8b85ae310fd2f874930b3b4ec50d8e52",
+            ["Saludos, ciudadana. ¿En qué puedo ayudarte hoy?"] = "esMX-b60a93e1efe87c896138e81896119cd5",
+        },
+        [276170] = {
+            ["Soy Belanaa Velovento, agente de la Suma Orden en Azeroth. Si deseas hacer una donación de paños a nuestra organización, te lo agradeceríamos mucho."] = "74c1447e02baffde1a5e7a50b06c5597",
+        },
+        [276235] = {
+            ["Ah, $N. Me alegro de verte. Por tu ayuda eres más que bienvenida en nuestros salones.  Siéntete como en casa, es lo mínimo que Dalaran puede hacer por ti."] = "esMX-6623c693de309ab0ce95b1e323e83ad8",
+            ["Ah, $n. Me alegro de verte. Por tu ayuda eres más que $gbienvenido:bienvenida; en nuestros salones.    Siéntete como en casa, es lo mínimo que Dalaran puede hacer por ti."] = "89c8b1d5557d0d3ea0c9093ca12be746",
+        },
+        [276318] = {
+            ["Este muelle conecta Ventormenta con las tierras de los kaldorei a través de Auberdine, la ciudad portuaria de Costa Oscura. Si quieres ir allí, el bote llega con frecuencia."] = "b327144-nightelf-male-standard",
+            ["Si quieres viajar a Auberdine en Costa Oscura, estás en el lugar correcto. Nuestra gente acoge a todo miembro de la Alianza que quiera comerciar, viajar o ayudar a otros en nuestras tierras."] = "esMX-bb0d646bfdbabefcf055e7be00b90f25",
+        },
+        [276731] = {
+            ["<Mientras te acercas, el gran felino estira sus largas y ágiles patas, sin hacer el menor ruido.>"] = "f110da42dc6d50571d3e377c7785ab41",
+        },
+        [276800] = {
+            ["<El raptor se gira y fija sus dos ojos naranjas brillantes en ti.>"] = "dabd4a08af75f145a4ea17005de3d92f",
+        },
+        [277311] = {
+            ["<El hombre demacrado murmura incoherencias por lo bajo.>"] = "5c709125b8579bf1be7ab2d275225245",
+        },
+        [278305] = {
+            ["<El dios salvaje que yace inmóvil frente a ti es transparente e incorpóreo, como si fuera a... desvanecerse. Apenas se mueve cuando te acercas, y sus ojos vidriosos siguen tus movimientos con dificultad.>"] = "b329728-narrator-male",
+        },
+        [278680] = {
+            ["What can I do for ya?"] = "b330058-goblin-female-zany",
         },
     },
     GossipLookupByObjectID = {
@@ -9354,6 +11095,35 @@ GossipText = {
             ["El diario de Jandice Barov está lleno de calumnias y sandeces sobre los no-muertos. Ya casi al final del libro, se encuentra lo que parece ser un patrón de sastrería para confeccionar algún tipo de bolsa. Tus conocimientos de confección son insuficientes para descifrar el patrón."] = "ac3bf49b09e574e839ef683378f6e79d",
             ["El diario de Jandice Barov está lleno de calumnias y sandeces sobre los no-muertos. Ya casi al final del libro, se encuentra lo que parece ser un patrón de sastrería para confeccionar una bolsa de tela de inferi. Esta bolsa la utilizan los brujos para guardar fragmentos de alma. Ya sabes cómo confeccionar esta bolsa."] = "36abb8fc0a6fcba22ad534dedab0826c",
             ["El diario de Jandice Barov está lleno de calumnias y sandeces sobre los no-muertos. Ya casi al final del libro, se encuentra lo que parece ser un patrón de sastrería para confeccionar una bolsa de tela de inferi. Esta bolsa la utilizan los brujos para guardar fragmentos de alma. ¿Deseas copiar el patrón en tu propio diario?"] = "2e4d9884e93c29c98746aa5d29d39c35",
+        },
+        [619896] = {
+            ["La marca distintiva de esta piedra, tallada con métodos misteriosos en un material desconocido, es el elemento agua."] = "esMX-dd1e5ea19f3584ddceddf753931899e8",
+        },
+    },
+    QuestWordingLookup = {
+        ["488-accept"] = {
+            ["Veo que tienes ganas de trabajar. Por suerte para ti, no hay día que pase que no desee tener cerca a un $c que haga mi voluntad.  ¿Sabes, $N? Puedo hacerte muy feliz y ofrecerte cosas que jamás hubieras soñado tener, pero para eso deberás traerme una serie de objetos.  Para desempeñar mi trabajo en el bosque a veces necesito ciertos... componentes. Tráeme 3 colmillos de sable de la noche, 3 plumas de lechuza estrígida y 3 muestras de seda de araña Tejemadera.  Y que esto quede entre nosotros, $r."] = "488-accept",
+            ["Veo que tienes ganas de trabajar. Por suerte para ti, no hay día que pase que no desee tener cerca a una $c que haga mi voluntad.  ¿Sabes, $N? Puedo hacerte muy feliz y ofrecerte cosas que jamás hubieras soñado tener, pero para eso deberás traerme una serie de objetos.  Para desempeñar mi trabajo en el bosque a veces necesito ciertos... componentes. Tráeme 3 colmillos de sable de la noche, 3 plumas de lechuza estrígida y 3 muestras de seda de araña Tejemadera.  Y que esto quede entre nosotros, $r."] = "488-accept-w1",
+        },
+        ["6395-complete"] = {
+            ["Hoy has hecho una buena acción, $N. Aunque nuestra lucha contra la Plaga continúa, esperemos que Marla y Samuel encuentren la paz, juntos, en su última morada. Como muestra de mi gratitud, toma uno de estos manuales que encontré."] = "6395-complete-w1",
+            ["Hoy has hecho una buena acción, $n. Aunque nuestra lucha contra la Plaga continúa, esperemos que Marla y Samuel encuentren la paz, juntos, en su última morada."] = "6395-complete",
+        },
+        ["96608-accept"] = {
+            ["Saludos, $c. Veo que tienes aspecto de aventurera. ¡Qué bien! El mundo necesita más almas inquietas como nosotros, en busca de fortuna y gloria.  Tendrás que aprender a sobrevivir en la naturaleza para tener éxito en este oficio. No conozco tus habilidades al aire libre, pero creo que puedo enseñarte un par de cosas, si estás dispuesta a aprenderlas.  Siéntate cerca del fuego y ponte cómoda. Te lo explicaré todo."] = "96608-accept-w1",
+            ["Saludos, $c. Veo que tienes aspecto de aventurero. ¡Qué bien! El mundo necesita más almas inquietas como nosotros, en busca de fortuna y gloria.  Tendrás que aprender a sobrevivir en la naturaleza para tener éxito en este oficio. No conozco tus habilidades al aire libre, pero creo que puedo enseñarte un par de cosas, si estás dispuesto a aprenderlas.  Siéntate cerca del fuego y ponte cómodo. Te lo explicaré todo."] = "96608-accept",
+        },
+        ["96628-complete"] = {
+            ["¿Dices que son de los montaraces? Sí, me vienen bien. Gracias, $c.  Oye, tú también tienes pinta de aventurera. ¿Qué te parecería aprender a acampar?"] = "96628-complete-w1",
+            ["¿Dices que son de los montaraces? Sí, me vienen bien. Gracias, $c.  Oye, tú también tienes pinta de aventurero. ¿Qué te parecería aprender a acampar?"] = "96628-complete",
+        },
+        ["98321-accept"] = {
+            ["¡Hala! Qué bueno ver a un $r que no le hace asco a mancharse las manos.  Si buscas trabajo, me temo que ahora ando un poco corto de suministros. Los wendigos invadieron nuestra fuente más confiable de minerales, y la cueva quedó abandonada. ¡Los mineros tuvieron que dejar todo atrás cuando huyeron!  Ey, ¿por qué no te das una vuelta por el Cubil Pardo, al oeste, a ver si encuentras algunos de nuestros envíos desaparecidos? Nos ahorrarías un montón de problemas."] = "98321-accept",
+            ["¡Hala! Qué bueno ver a una $r que no le hace asco a mancharse las manos.  Si buscas trabajo, me temo que ahora ando un poco corto de suministros. Los wendigos invadieron nuestra fuente más confiable de minerales, y la cueva quedó abandonada. ¡Los mineros tuvieron que dejar todo atrás cuando huyeron!  Ey, ¿por qué no te das una vuelta por el Cubil Pardo, al oeste, a ver si encuentras algunos de nuestros envíos desaparecidos? Nos ahorrarías un montón de problemas."] = "98321-accept-w1",
+        },
+        ["98601-accept"] = {
+            ["Mientras estabas por ahí ocupándote de la Plaga, llegó este pergamino para ti. Apesta a la Luz, así que supongo que debe ser algo importante para un paladín como tú.  Léelo antes de ponerte en marcha otra vez. Solo te pediré que lo hagas afuera; los paladines me ponen incómodo."] = "98601-accept-w1",
+            ["Mientras estabas por ahí ocupándote de la Plaga, llegó este pergamino para ti. Apesta a la Luz, así que supongo que debe ser algo importante para una $c como tú.  Léelo antes de ponerte en marcha otra vez. Solo te pediré que lo hagas afuera; los paladines me ponen incómodo."] = "98601-accept",
         },
     },
 }

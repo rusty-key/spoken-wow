@@ -7,7 +7,7 @@ local H = require("queue_helpers")
 local print = stub.print
 local Expect, Failures = H.Expecter(print)
 local world = stub.world
-stub.SetClient("11509"); stub.ResetSound(); stub.ResetTimers()
+stub.SetClient("16001"); stub.ResetSound(); stub.ResetTimers()
 
 -- The client's abandon, which Spoken Quests hooks: the quest chosen to abandon, then the call.
 local abandoning

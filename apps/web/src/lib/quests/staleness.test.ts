@@ -7,7 +7,8 @@
  */
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from "vitest";
 
-const { closeDb, db } = await import("@/lib/db");
+const { closeDb } = await import("@/lib/db");
+const { asSystem } = await import("@/lib/teams/testing");
 const { audioRelPath, fileIndex } = await import("@/lib/audio");
 const { lineIndex } = await import("@/lib/quests/catalogue");
 const { fileDefaults } = await import("@/lib/generation/files");
@@ -35,18 +36,18 @@ async function currentHash(provider: "elevenlabs" | "fish" = "elevenlabs"): Prom
 }
 
 async function liveTake(hash: string | null, provider: "elevenlabs" | "fish" = "elevenlabs") {
-  await db().query(
+  await asSystem.query(
     `insert into "take"
        ("source", "file", "version", "isCurrent", "origin", "lineId", "voice", "bytes",
-        "spokenHash", "provider")
-     values ('quests', $1, 9999, true, 'generated', $2, 'human-male-standard', 1, $3, $4)`,
+        "spokenHash", "provider", "teamId")
+     values ('quests', $1, 9999, true, 'generated', $2, 'human-male-standard', 1, $3, $4, team_of_lang('enUS'))`,
     [file, LINE, hash, provider],
   );
 }
 
 beforeAll(async () => {
   try {
-    await db().query(`select 1 from "take" limit 1`);
+    await asSystem.query(`select 1 from "take" limit 1`);
   } catch (error) {
     throw new Error(
       "staleness.test.ts needs a migrated database. Run:\n" +
@@ -64,7 +65,7 @@ beforeAll(async () => {
 let deposed: number[] = [];
 
 beforeEach(async () => {
-  const { rows } = await db().query<{ id: string }>(
+  const { rows } = await asSystem.query<{ id: string }>(
     `update "take" set "isCurrent" = false
       where "source" = 'quests' and "file" = $1 and "isCurrent"
      returning "id"`,
@@ -74,16 +75,16 @@ beforeEach(async () => {
 });
 
 afterEach(async () => {
-  await db().query(
+  await asSystem.query(
     `delete from "take" where "source" = 'quests' and "file" = $1 and "version" = 9999`,
     [file],
   );
   if (deposed.length > 0) {
-    await db().query(`update "take" set "isCurrent" = true where "id" = any($1::bigint[])`, [
+    await asSystem.query(`update "take" set "isCurrent" = true where "id" = any($1::bigint[])`, [
       deposed,
     ]);
   }
-  await clearOverride(file, null);
+  await clearOverride("enUS", file, null);
 });
 
 afterAll(async () => {
@@ -98,13 +99,13 @@ describe("staleFiles", () => {
 
   it("catches a take made before the text was rewritten", async () => {
     await liveTake(await currentHash());
-    await writeOverride(file, LINE, "Something else entirely.", null);
+    await writeOverride("enUS", file, LINE, "Something else entirely.", null);
 
     expect(await staleFiles([file])).toEqual(new Set([file]));
   });
 
   it("clears once a take is made from the new text", async () => {
-    await writeOverride(file, LINE, "Something else entirely.", null);
+    await writeOverride("enUS", file, LINE, "Something else entirely.", null);
     await liveTake(spokenHash(applyPronunciation("Something else entirely.", fileDefaults().rules)));
 
     expect(await staleFiles([file])).toEqual(new Set());
@@ -121,12 +122,14 @@ describe("staleFiles", () => {
     await liveTake(await currentHash("fish"), "fish");
     expect(await staleFiles([file])).toEqual(new Set());
 
-    await writeOverride(file, LINE, "Something else entirely.", null);
+    await writeOverride("enUS", file, LINE, "Something else entirely.", null);
     expect(await staleFiles([file])).toEqual(new Set([file]));
   });
 
   it("catches a take made before its NPC had a direction, and clears with one made after", async () => {
     const { npcType: kind, npcId, text } = (await fileIndex()).get(file)!;
+    const pirate = (words: string, provider: "elevenlabs" | "fish" = "elevenlabs") =>
+      spokenHash(SHAPE[provider](applyPronunciation(words, fileDefaults().rules), undefined, undefined, "[pirate accent]"));
     const before = await getResolution(kind, npcId);
     if (!before) {
       await upsertResolution({
@@ -140,12 +143,43 @@ describe("staleFiles", () => {
       await setDirection(kind, npcId, "[pirate accent]");
       expect(await staleFiles([file])).toEqual(new Set([file]));
 
-      await db().query(`delete from "take" where "source" = 'quests' and "file" = $1 and "version" = 9999`, [file]);
-      await liveTake(spokenHash(accentTagged(applyPronunciation(text, fileDefaults().rules), "[pirate accent]")));
+      await asSystem.query(`delete from "take" where "source" = 'quests' and "file" = $1 and "version" = 9999`, [file]);
+      await liveTake(pirate(text));
       expect(await staleFiles([file])).toEqual(new Set());
+
+      // An override saved now predicts the take it will be spoken with, direction and all.
+      await writeOverride("enUS", file, LINE, "Something else entirely.", null);
+      const { rows } = await asSystem.query<{ spokenHashes: string[] }>(
+        `select "spokenHashes" from "line_override" where "file" = $1 and "lang" = 'enUS'`,
+        [file],
+      );
+      for (const provider of ["elevenlabs", "fish"] as const) {
+        expect(rows[0].spokenHashes).toContain(pirate("Something else entirely.", provider));
+      }
     } finally {
       if (before) await setDirection(kind, npcId, before.direction ?? null);
-      else await db().query(`delete from "npc" where "npcKind" = $1 and "npcId" = $2`, [kind, npcId]);
+      else await asSystem.query(`delete from "npc" where "npcKind" = $1 and "npcId" = $2`, [kind, npcId]);
+    }
+  });
+
+  it("judges by the index a caller hands it", async () => {
+    await liveTake(await currentHash());
+    const line = (await fileIndex()).get(file)!;
+
+    const changed = new Map([[file, { ...line, text: "Something else entirely." }]]);
+
+    expect(await staleFiles([file], "enUS", undefined, changed)).toEqual(new Set([file]));
+  });
+
+  it("gives an override the hash a fresh take of it carries, by either provider", async () => {
+    await writeOverride("enUS", file, LINE, "Something else entirely.", null);
+    const { rows } = await asSystem.query<{ spokenHashes: string[] }>(
+      `select "spokenHashes" from "line_override" where "file" = $1 and "lang" = 'enUS'`,
+      [file],
+    );
+    for (const provider of ["elevenlabs", "fish"] as const) {
+      const hash = spokenHash(SHAPE[provider](applyPronunciation("Something else entirely.", fileDefaults().rules), undefined));
+      expect(rows[0].spokenHashes).toContain(hash);
     }
   });
 
@@ -168,7 +202,7 @@ describe("a race with an accent tag", () => {
   let deposedDwarf: number[] = [];
 
   beforeEach(async () => {
-    const { rows } = await db().query<{ id: string }>(
+    const { rows } = await asSystem.query<{ id: string }>(
       `update "take" set "isCurrent" = false
         where "source" = 'quests' and "file" = $1 and "isCurrent"
        returning "id"`,
@@ -178,23 +212,23 @@ describe("a race with an accent tag", () => {
   });
 
   afterEach(async () => {
-    await db().query(
+    await asSystem.query(
       `delete from "take" where "source" = 'quests' and "file" = $1 and "version" = 9999`,
       [dwarfFile],
     );
     if (deposedDwarf.length > 0) {
-      await db().query(`update "take" set "isCurrent" = true where "id" = any($1::bigint[])`, [
+      await asSystem.query(`update "take" set "isCurrent" = true where "id" = any($1::bigint[])`, [
         deposedDwarf,
       ]);
     }
   });
 
   async function dwarfTake(hash: string) {
-    await db().query(
+    await asSystem.query(
       `insert into "take"
          ("source", "file", "version", "isCurrent", "origin", "lineId", "voice", "bytes",
-          "spokenHash")
-       values ('quests', $1, 9999, true, 'generated', $2, 'dwarf-male-grim', 1, $3)`,
+          "spokenHash", "teamId")
+       values ('quests', $1, 9999, true, 'generated', $2, 'dwarf-male-grim', 1, $3, team_of_lang('enUS'))`,
       [dwarfFile, DWARF_LINE, hash],
     );
   }

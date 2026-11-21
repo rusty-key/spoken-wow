@@ -3,7 +3,7 @@
  *
  * Against a real Postgres, because the thing being tested lives only there. Adding a
  * section means widening a check constraint on every table that carries one, and the cost
- * of missing one is invisible until the one code path that writes that table runs: books
+ * of missing one is invisible until the one code path that writes that table runs: readables
  * shipped with `regeneration_batch` and `report` still refusing it, so single-page
  * regeneration worked and the first "Regenerate these" click returned a 500.
  *
@@ -30,6 +30,8 @@ it("every source check constraint accepts every section", async () => {
             pg_get_constraintdef(oid) as "def"
        from pg_constraint
       where contype = 'c' and pg_get_constraintdef(oid) like '%''quests''%'
+        -- A community pack's section is where the Manager installs it, not a voice source.
+        and conrelid <> 'community_pack'::regclass
       order by 1`,
   );
 

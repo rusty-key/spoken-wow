@@ -3,7 +3,7 @@
  *
  * NDJSON rather than a write into a staging table, because there is no staging table to write
  * into: the quests corpus is built in pipelines/quests against vmangos, not in this database,
- * and the books corpus is built from the same world DB. A file the pipeline pulls is the
+ * and the readables corpus is built from the same world DB. A file the pipeline pulls is the
  * boundary those two already have.
  *
  * Behind English regenerate, like the other moderator routes: accepted text is still text

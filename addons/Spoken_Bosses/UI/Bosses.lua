@@ -1,0 +1,737 @@
+-- Spoken Bosses -- the bosses in Azeroth's Compendium (Spoken's UI/Compendium.lua): every boss of every
+-- dungeon and raid, with the instance it is in and its story.
+--
+-- The list is laid out as the places' (Spoken Places' tab): a banner for each continent, a line for
+-- each of its dungeons or raids, and in an opened dungeon its bosses. World bosses have no line of
+-- their own and are listed straight under their continent. After the continents, Other Lands' banner
+-- lists the dungeons on none. Which bosses a dungeon has comes from Data/Bosses.lua, and their
+-- stories from Data/Stories.lua, where there is one. A boss not met yet is listed greyed, with a
+-- padlock, and its page says so, until Unlock Unfound Bosses (Spoken's page) is on; Found Only
+-- leaves out what holds none met. A search lists the bosses and dungeons whose name has the words,
+-- each opened.
+
+local _, Bosses = ...
+
+local L = Bosses.L
+
+local C = SpokenCompendium
+local CONTINENTS, CITY_IN = C.CONTINENTS, C.CITY_IN
+local MapName, ContinentOf = C.MapName, C.ContinentOf
+local Dungeon, DungeonName = C.Dungeon, C.DungeonName
+
+local list, page
+local selection          -- { boss = true, map = map, key = key } | { dungeon = map }
+                         -- | { mapID = continent } | { lands = true } | nil
+local landed             -- the selection made for the player, where they stood; any other they chose
+local dungeonOpen = {}   -- [map] = true: a dungeon's line, opened
+local continentOpen = { [1414] = true, [1415] = true }
+local bannerOpen = {}    -- .lands = true: Other Lands' banner, opened
+local filter = ""
+
+--------------------------------------------------------------------------------
+-- What there is
+--------------------------------------------------------------------------------
+
+-- A boss's or a dungeon's name in the client's language, else English: the name the game shows,
+-- which matching it reads (MapLore.lua, Leatrix.lua, OpenMap.lua).
+local function Name(entry)
+	return entry[GetLocale and GetLocale() or "enUS"] or entry[1]
+end
+
+-- The Text Language where the player chose one, else nil: on Auto every page reads as it always did.
+local function ChosenLanguage()
+	local code, chosen = Spoken:TextLanguage()
+	return chosen and code or nil
+end
+
+-- What a data entry (Data/Bosses.lua's boss, Data/Stories.lua's story) has in `language`: English
+-- is its first, or the whole of a story that is only English; any other is under its code.
+local function In(entry, language)
+	if language == "enUS" then return type(entry) == "table" and entry[1] or entry end
+	return type(entry) == "table" and entry[language] or nil
+end
+
+-- The boss `boss` of `map` as a page and a list name it: in the Text Language, a text pack's name
+-- else the one Data/Bosses.lua has in it, and the client's otherwise.
+local function ShownName(map, boss)
+	local language = ChosenLanguage()
+	if language then
+		local known = Spoken:TextIn(language, "bosses", "names", map, boss.key) or In(boss, language)
+		if known then return known end
+	end
+	return Name(boss)
+end
+
+local index
+-- zones[zone][map] = the bosses of the dungeon `map` whose entrance is in `zone`, a city's
+-- dungeons filed under the zone around it; zoneOf[map] = zone; world[map] = true for the map of
+-- a world boss, which has no line of its own (the map of world bosses in different zones files
+-- each under its own, `bossZone["map:key"]`); byKey["map:key"] = the boss, whatever zone it stands
+-- in; count = every boss listed. on[continent or "lands"], the zones, and under[continent or
+-- "lands"], the banner's maps, are kept once worked out.
+
+local function ClientHasMap(map)
+	-- Spoken Bosses shares its boss data between clients. The shared API knows which instances this
+	-- client can actually have, including Season of Discovery's instances on Era.
+	return not Spoken or not Spoken.IsDungeonOnClient or Spoken:IsDungeonOnClient(map)
+end
+
+local function Index()
+	if index then return index end
+	index = { zones = {}, zoneOf = {}, world = {}, bossZone = {}, byKey = {}, on = {}, under = {}, count = 0 }
+	local maps = _G.SpokenBosses and SpokenBosses.maps or {}
+	local worlds = _G.SpokenDungeons and SpokenDungeons.worldBosses or {}
+	for map, bosses in pairs(maps) do
+		local dungeon = Dungeon(map)
+		local world = worlds[map]
+		local home = (dungeon or world) and (dungeon or world).zone
+		if home and #bosses > 0 then
+			-- Keep the complete lookup for encounters and stories. Only the lists below are
+			-- client-visible, so a shared Forever boss entry remains usable by the module.
+			for _, boss in ipairs(bosses) do index.byKey[map .. ":" .. boss.key] = boss end
+			if not dungeon or ClientHasMap(map) then
+				local zone = CITY_IN[home] or home
+				if world and dungeon == nil and world.bossZones then
+					for _, boss in ipairs(bosses) do
+						local at = world.bossZones[boss.key] or home
+						at = CITY_IN[at] or at
+						index.zones[at] = index.zones[at] or {}
+						index.zones[at][map] = index.zones[at][map] or {}
+						table.insert(index.zones[at][map], boss)
+						index.bossZone[map .. ":" .. boss.key] = at
+					end
+				else
+					index.zones[zone] = index.zones[zone] or {}
+					index.zones[zone][map] = bosses
+				end
+				index.zoneOf[map] = zone
+				index.world[map] = world ~= nil and dungeon == nil or nil
+				index.count = index.count + #bosses
+			end
+		end
+	end
+	return index
+end
+
+local function Found(map, key)
+	return Bosses:IsBossFound(map, key)
+end
+
+--- Whether Unlock Unfound Bosses is on: every boss openable, met or not.
+function Bosses:IsUnlocked()
+	return SpokenBossesSettings ~= nil and SpokenBossesSettings.unlockUnfound == true
+end
+
+local function Unlocked()
+	return Bosses:IsUnlocked()
+end
+
+-- Whether a boss's page and model are shown: met, or Unlock Unfound Bosses is on.
+function Bosses:IsRevealed(map, key)
+	return Found(map, key) or Unlocked()
+end
+
+local function OnlyFound()
+	return SpokenBossesSettings ~= nil and SpokenBossesSettings.compendiumFoundOnly == true and not Unlocked()
+end
+
+-- Whether Found Only keeps what holds `found` bosses met.
+local function Listed(found)
+	return not OnlyFound() or found > 0
+end
+
+local function Matches(text)
+	return filter == "" or (text and string.find(string.lower(text), filter, 1, true) ~= nil)
+end
+
+local function ByDungeonName(a, b)
+	local na, nb = DungeonName(a), DungeonName(b)
+	if na == nb then return a < b end
+	return na < nb
+end
+
+-- The zones that have a dungeon or a raid on `continent`; nil for the zones on none, which the
+-- game has a map for: a line for a map this client has never heard of would lead nowhere.
+local function ZonesOn(continent)
+	local memo = continent or "lands"
+	if Index().on[memo] then return Index().on[memo] end
+	local out = {}
+	for zone in pairs(Index().zones) do
+		if continent then
+			if ContinentOf(zone) == continent then table.insert(out, zone) end
+		elseif not ContinentOf(zone) and not (C_Map and C_Map.GetMapInfo and C_Map.GetMapInfo(zone) == nil) then
+			table.insert(out, zone)
+		end
+	end
+	Index().on[memo] = out
+	return out
+end
+
+-- Bosses met of one dungeon's, or, given `zone`, of those of its map that stand in that zone.
+local function TallyOf(map, zone)
+	zone = zone or Index().zoneOf[map]
+	local found, total = 0, 0
+	for _, boss in ipairs(zone and Index().zones[zone][map] or {}) do
+		total = total + 1
+		if Found(map, boss.key) then found = found + 1 end
+	end
+	return found, total
+end
+
+-- Bosses met out of all the dungeons of `zones` hold.
+local function Tally(zones)
+	local found, total = 0, 0
+	for _, zone in ipairs(zones) do
+		for map in pairs(Index().zones[zone] or {}) do
+			local f, t = TallyOf(map, zone)
+			found, total = found + f, total + t
+		end
+	end
+	return found, total
+end
+
+-- A boss's story (key = its key) and the language it is in: a string, or the client's language
+-- beside the English that is its first.
+local function CoreStory(map, key)
+	local stories = _G.SpokenBossStories
+	local text = stories and stories[map] and stories[map][key]
+	local language = "enUS"
+	if type(text) == "table" then
+		local locale = GetLocale and GetLocale()
+		if locale and text[locale] then language = locale end
+		text = Name(text)
+	end
+	if type(text) ~= "string" or text == "" then return nil end
+	return text, language
+end
+
+-- The story in the Text Language the player chose: a voice pack's words in it, which are what its
+-- voice says, else a text pack's, else Data/Stories.lua's own. Nil where none has it. The second
+-- value is true for a text pack's, which no recording says, the third for a voice pack's.
+local function ChosenStory(map, key, language)
+	local voiced = Bosses.PackStoryText and Bosses:PackStoryText(map, key, language)
+	if voiced then return voiced, nil, true end
+	local packed = Spoken:TextIn(language, "bosses", "stories", map, key)
+	if packed then return packed, true end
+	local stories = _G.SpokenBossStories
+	local text = In(stories and stories[map] and stories[map][key], language)
+	if type(text) == "string" and text ~= "" then return text end
+	return nil
+end
+
+-- A pack's words win only on a boss core already has, but for the Text Language the player chose,
+-- whose words may be the only ones. The third value is true where they are a text pack's, the
+-- fourth where they are a voice pack's.
+local function Story(map, key)
+	local chosen = ChosenLanguage()
+	local words, unsaid, voiced
+	if chosen then words, unsaid, voiced = ChosenStory(map, key, chosen) end
+	if words then return words, chosen, unsaid, voiced end
+	local text, language = CoreStory(map, key)
+	if not text then return nil end
+	local locale = GetLocale and GetLocale()
+	local packed = locale and Bosses:PackStoryText(map, key, locale)
+	if packed then return packed, locale, nil, true end
+	return text, language
+end
+
+-- What Data/Creatures.lua knows of a boss (its creature and appearance), or nil.
+local function Creature(map, key)
+	local known = _G.SpokenBossCreatures
+	return known and known[map] and known[map][key]
+end
+
+-- The display draws the model; the creature is for the portrait.
+local function Model(map, key)
+	local entry = Creature(map, key)
+	return entry and entry.display and { creatureID = entry.creature, displayID = entry.display }
+end
+
+-- Whether a boss has a story and a known appearance.
+local function Complete(map, key)
+	local entry = Creature(map, key)
+	return CoreStory(map, key) ~= nil and entry ~= nil and entry.display ~= nil
+end
+
+-- Every zone that has a dungeon or a raid.
+local function AllZones()
+	local out = {}
+	for zone in pairs(Index().zones) do table.insert(out, zone) end
+	return out
+end
+
+--------------------------------------------------------------------------------
+-- The rows
+--------------------------------------------------------------------------------
+
+-- A dungeon's or a banner's line, with the bosses met out of those it holds.
+local function Group(item, found, total)
+	item.style = "group"
+	item.count, item.total = found, total
+	item.tick = total > 0 and found == total
+	item.none = found == 0
+	return item
+end
+
+-- `item`, then `inside` while it is shown.
+local function Holding(item, inside, shown)
+	local rows = { item }
+	if shown then
+		for _, row in ipairs(inside) do table.insert(rows, row) end
+	end
+	return rows
+end
+
+-- A dungeon's or a raid's line and, opened (or a search finds a boss in it), its bosses. `whole`:
+-- what holds it was named by the search, so every boss is listed.
+local function DungeonRows(zone, map, nest, whole)
+	local world = Index().world[map] == true
+	local name = world and "" or DungeonName(map)
+	whole = whole or (filter ~= "" and not world and Matches(name))
+	local found, total = TallyOf(map, zone)
+	if not Listed(found) then return {} end
+	local open = world or dungeonOpen[map] == true or filter ~= ""
+	local inside = {}
+	local at = world and nest or nest + 1
+	for _, boss in ipairs(open and Index().zones[zone][map] or {}) do
+		local met = Found(map, boss.key)
+		local name = ShownName(map, boss)
+		if (met or not OnlyFound()) and (whole or Matches(name)) then
+			table.insert(inside, { kind = "boss", leaf = true, map = map, key = boss.key, label = name, nest = at,
+				locked = not met and not Unlocked(), done = met,
+				missing = (met or Unlocked()) and not Complete(map, boss.key) })
+		end
+	end
+	-- A world boss has no line of its own: its lines stand directly under the continent.
+	if world then return inside end
+	if filter ~= "" and #inside == 0 then return {} end
+	return Holding(Group({ kind = "dungeon", dungeon = map, label = name, nest = nest, open = open },
+		found, total), inside, open)
+end
+
+-- A banner's dungeons and raids by name, and its world bosses' maps with the zone each stands in,
+-- as one map can hold world bosses in several.
+local function MapsOn(continent)
+	local memo = continent or "lands"
+	if Index().under[memo] then return Index().under[memo] end
+	local dungeons, worlds = {}, {}
+	for _, zone in ipairs(ZonesOn(continent)) do
+		for map in pairs(Index().zones[zone]) do
+			if Index().world[map] then
+				table.insert(worlds, { zone = zone, map = map })
+			else
+				table.insert(dungeons, map)
+			end
+		end
+	end
+	table.sort(dungeons, ByDungeonName)
+	Index().under[memo] = { dungeons = dungeons, worlds = worlds }
+	return Index().under[memo]
+end
+
+-- The lines under a banner: its dungeons and raids, then its world bosses by name.
+local function RowsOn(continent, nest, whole)
+	local under, rows, bosses = MapsOn(continent), {}, {}
+	for _, map in ipairs(under.dungeons) do
+		for _, row in ipairs(DungeonRows(Index().zoneOf[map], map, nest, whole)) do table.insert(rows, row) end
+	end
+	for _, at in ipairs(under.worlds) do
+		for _, row in ipairs(DungeonRows(at.zone, at.map, nest, whole)) do table.insert(bosses, row) end
+	end
+	table.sort(bosses, function(a, b) return a.label < b.label end)
+	for _, row in ipairs(bosses) do table.insert(rows, row) end
+	return rows
+end
+
+-- A banner and, opened (or a search finds something under it), a line for each dungeon or raid.
+local function Banner(item, continent, opened)
+	local whole = filter ~= "" and Matches(item.label)
+	local open = filter ~= "" or opened == true
+	local rows = open and RowsOn(continent, 0, whole) or {}
+	if filter ~= "" and #rows == 0 then return {} end
+	local found, total = Tally(ZonesOn(continent))
+	if not Listed(found) then return {} end
+	Group(item, found, total).style = "banner"
+	item.open = open and #rows > 0
+	return Holding(item, rows, open)
+end
+
+local function Continents()
+	local out = {}
+	for _, continent in ipairs(CONTINENTS) do
+		if #ZonesOn(continent) > 0 then table.insert(out, continent) end
+	end
+	return out
+end
+
+local function BuildRows()
+	local out = {}
+	local continents = Continents()
+	table.sort(continents, function(a, b) return MapName(a) < MapName(b) end)
+	for _, continent in ipairs(continents) do
+		for _, row in ipairs(Banner({ kind = "continent", mapID = continent, label = MapName(continent) },
+			continent, continentOpen[continent])) do
+			table.insert(out, row)
+		end
+	end
+	local lands = ZonesOn(nil)
+	if #lands > 0 then
+		for _, row in ipairs(Banner({ kind = "lands", label = L.GROUP_LANDS }, nil, bannerOpen.lands)) do
+			table.insert(out, row)
+		end
+	end
+	return out
+end
+
+local function IsSelected(row)
+	if not selection then return false end
+	if row.kind == "boss" then return selection.boss == true and selection.map == row.map and selection.key == row.key end
+	if row.kind == "lands" then return selection.lands == true end
+	if row.kind == "dungeon" then return selection.dungeon == row.dungeon end
+	return selection.mapID == row.mapID and not selection.boss and not selection.dungeon
+end
+
+--------------------------------------------------------------------------------
+-- The page
+--------------------------------------------------------------------------------
+
+-- A boss's page plays its story where an installed pack voices it. `target` = { map, key }.
+local PLAY = {
+	has = function(target) return Bosses.GetAudioClip ~= nil and Bosses:GetAudioClip(target[1], target[2]) ~= nil end,
+	find = function(target) return Bosses:QueuedStory(target[1], target[2]) end,
+	start = function(target) Bosses:PlayStory(target[1], target[2]) end,
+}
+local REPORT_LABEL = SpokenEnv.L.DIALOGUE_REPORT_PROBLEM
+-- The page's Report is about the words on screen, so it files under their language.
+local REPORT = {
+	has = function() return true end,
+	open = function(target)
+		local _, language = Story(target[1], target[2])
+		Bosses:ShowReport(target[1], target[2], language)
+	end,
+	title = REPORT_LABEL,
+}
+Bosses.ReportAction = REPORT
+Bosses.Name = Name
+
+--- The font file to write `code` (the Text Language by default) in where a page uses `fontObject`,
+--- or nil where none draws it: a text pack's language may need its own.
+function Bosses:FontFor(fontObject, code)
+	code = code or (Spoken and Spoken.TextLanguage and Spoken:TextLanguage()) or "enUS"
+	if Spoken and Spoken.FontForLanguage then return Spoken:FontForLanguage(fontObject, code, self) end
+	return fontObject and fontObject.GetFont and fontObject:GetFont() or nil
+end
+-- The narrator's Report is about what was heard, so it files under the clip's language.
+local NARRATOR_REPORT = {
+	id = "report",
+	icon = [[Interface\HelpFrame\HelpIcon-Bug]],
+	label = REPORT_LABEL,
+	anchor = "topright",
+	tooltip = function(tooltip) tooltip:SetText(REPORT_LABEL) end,
+	onClick = function(clip) Bosses:ShowReport(clip.mapID, clip.bossKey, clip.language, clip) end,
+}
+
+local function Boss(map, key)
+	return Index().byKey[map .. ":" .. key]
+end
+
+-- The zone a boss is filed under: its own where the map's bosses stand in several, else the map's.
+local function BossZone(map, key)
+	return Index().bossZone[map .. ":" .. key] or Index().zoneOf[map]
+end
+
+-- How fast a story is read, in words a second, and the least time one stays in the narrator.
+local READING_SPEED, LEAST_SECONDS = 2.5, 6
+
+-- A raid's or a world boss's: the elite skull, where a dungeon's has the normal one.
+local SKULLS = {
+	boss = [[Interface\Minimap\Minimap_skull_normal]],
+	["boss-raid"] = [[Interface\Minimap\Minimap_skull_elite]],
+}
+
+local function BossBullet(map)
+	return (Spoken:IsRaid(map) or Index().world[map]) and "boss-raid" or "boss"
+end
+
+-- No boss is selected yet, so there is no creature portrait to show.
+local SECTION_ICON = { objectOrItem = true, icon = Bosses.ICON, bullet = "boss" }
+
+--- The story of the boss `key` of `map` as a line for Spoken's narrator: voiced where an installed
+--- pack has it (Audio.lua), else words alone; nil where it has none.
+function Bosses:StoryClip(map, key)
+	local story, language, unsaid, voiced = Story(map, key)
+	if not story then return nil end
+	local boss = Boss(map, key)
+	if not boss then return nil end
+	local _, words = story:gsub("%S+", "")
+	local model = Model(map, key)
+	local clip = {
+		key = "boss:" .. map .. ":" .. key,
+		mapID = map,
+		bossKey = key,
+		length = math.max(LEAST_SECONDS, words / READING_SPEED),
+		present = {
+			header = Index().world[map] and MapName(BossZone(map, key)) or DungeonName(map),
+			label = ShownName(map, boss),
+			transcript = story,
+			bullet = BossBullet(map),
+			portrait = model and { kind = "model", creatureID = model.creatureID, displayID = model.displayID }
+				or { kind = "texture", texture = SKULLS[BossBullet(map)] },
+			actions = { NARRATOR_REPORT },
+		},
+	}
+	-- A text pack's language may need a font the game's lacks.
+	clip.present.font = Spoken:ClipFont(language, self)
+	local recording = self.GetAudioClip and self:GetAudioClip(map, key)
+	clip.language = recording and recording.language or language
+	if recording then
+		clip.path, clip.length = recording.path, recording.len or clip.length
+		-- The pack it plays from and its voice, which a report names.
+		clip.packFolder, clip.voice = recording.packFolder, recording.voice
+		-- Timed to the recording's own words, so not under a story in another language, nor under a
+		-- text pack's words in its language.
+		if language == recording.language and not unsaid then
+			clip.present.timings = recording.times
+			-- A voice pack's words are the playing pack's own: another pack of the language, the
+			-- best of it, may say it otherwise.
+			if voiced and recording.text then clip.present.transcript = recording.text end
+		end
+	else
+		clip.textOnly = true
+	end
+	return clip
+end
+
+local function Count(found, total)
+	return L.BOSSES_FOUND_FMT:format(found, total)
+end
+
+local function CountLine(where, found, total)
+	return L.BOSS_IN_FMT:format(where) .. " · " .. Count(found, total)
+end
+
+-- One table for each picture, so the page draws a portrait again only for another one.
+local portraits = {}
+local unknown = {}
+-- The skull in the ring's small socket, where a quest's portrait has its badge.
+for bullet, skull in pairs(SKULLS) do
+	if Spoken and Spoken.RegisterBullet then Spoken:RegisterBullet(bullet, skull, 16) end
+	unknown[bullet] = C.UnknownIcon(bullet)
+end
+
+local function Unknown(map)
+	return unknown[BossBullet(map)]
+end
+
+--- A boss's portrait, at the left of its name on the page's header.
+function Bosses:Portrait(map, key)
+	local model = Model(map, key)
+	-- A portrait only from a known appearance: asked of the client, a creature it has not met answers
+	-- with the player's own face.
+	if not model then return Unknown(map) end
+	local id = map .. ":" .. key
+	local portrait = portraits[id]
+	if not (portrait and portrait.creatureID == model.creatureID and portrait.displayID == model.displayID) then
+		portrait = { creatureID = model.creatureID, displayID = model.displayID, bullet = BossBullet(map) }
+		portraits[id] = portrait
+	end
+	return portrait
+end
+
+--- The line under a boss's name: the dungeon, and where it is. A map the client does not list has
+--- no zone to name.
+function Bosses:Where(map, key)
+	local dungeon = DungeonName(map)
+	local zone = BossZone(map, key)
+	if zone and Index().world[map] then return L.BOSS_IN_FMT:format(MapName(zone)) end
+	if not dungeon then return "" end
+	local where = L.BOSS_IN_FMT:format(dungeon)
+	return zone and (where .. " · " .. MapName(zone)) or where
+end
+
+--- A boss's page header, the same in the Compendium and on the map panel: { title, subtitle, icon,
+--- model, revealed }. A boss not revealed has its own portrait and no model.
+function Bosses:Head(map, boss)
+	local revealed = self:IsRevealed(map, boss.key)
+	return { title = ShownName(map, boss), subtitle = self:Where(map, boss.key), icon = self:Portrait(map, boss.key),
+		model = revealed and Model(map, boss.key) or nil, revealed = revealed }
+end
+
+local function ShowEntry()
+	if not page then return end
+	if not selection then
+		page:Show({ title = L.COMPENDIUM_BOSSES, subtitle = Count(Tally(AllZones())), icon = SECTION_ICON })
+		return
+	end
+	if selection.boss then
+		local map, key = selection.map, selection.key
+		local boss = Boss(map, key)
+		if not boss then return end
+		local head = Bosses:Head(map, boss)
+		if not head.revealed then
+			page:Show({ title = head.title, subtitle = head.subtitle, text = L.BOSS_NOT_FOUND, icon = head.icon })
+			return
+		end
+		local story = Story(map, key)
+		page:Show({ title = head.title, subtitle = head.subtitle, icon = head.icon, model = head.model,
+			text = story or C.NotWritten(), unwritten = story == nil, target = story and { map, key } or nil })
+		return
+	end
+	if selection.dungeon then
+		page:Show({ title = DungeonName(selection.dungeon),
+			subtitle = CountLine(MapName(Index().zoneOf[selection.dungeon]), TallyOf(selection.dungeon)),
+			icon = C.PlaceIcon(nil, selection.dungeon) })
+		return
+	end
+	local continent = not selection.lands and selection.mapID or nil
+	page:Show({ title = continent and MapName(continent) or L.GROUP_LANDS,
+		subtitle = Count(Tally(ZonesOn(continent))), icon = continent and C.PlaceIcon(continent) or nil })
+end
+
+--------------------------------------------------------------------------------
+-- The tab
+--------------------------------------------------------------------------------
+
+-- The continent the player is on where the list shows it, else the first it shows.
+local function PlayerContinent()
+	local listed = {}
+	for _, continent in ipairs(Continents()) do
+		if Listed(Tally(ZonesOn(continent))) then table.insert(listed, continent) end
+	end
+	return C.PlayerContinent(listed)
+end
+
+-- The dungeon or raid the player is in, and the zone it is filed under.
+local function PlayerDungeon()
+	local map = Bosses:InstanceMap()
+	local zone = map and Index().zoneOf[map]
+	if zone then return map, zone end
+end
+
+local function OpenAround(zone) C.OpenAround(zone, continentOpen, bannerOpen) end
+
+-- Choose where the player stands: the line of the dungeon they are in, opened, else their
+-- continent's banner. Never a line Found Only leaves out: the tab would show a page for no row.
+local function LandOnPlayer()
+	local map, zone = PlayerDungeon()
+	if map and Listed(TallyOf(map, zone)) then
+		selection = { dungeon = map }
+		dungeonOpen[map] = true
+		OpenAround(zone)
+	else
+		local continent = PlayerContinent()
+		selection = continent and { mapID = continent } or nil
+		if continent then continentOpen[continent] = true end
+	end
+	landed = selection
+end
+
+local function OnClick(row)
+	local searching = filter ~= ""
+	if row.kind == "boss" then
+		selection = { boss = true, map = row.map, key = row.key }
+	elseif row.kind == "lands" then
+		if not searching then bannerOpen.lands = not bannerOpen.lands end
+		selection = { lands = true }
+	elseif row.kind == "continent" then
+		if not searching then continentOpen[row.mapID] = not continentOpen[row.mapID] end
+		selection = { mapID = row.mapID }
+	elseif row.kind == "dungeon" then
+		if not searching then dungeonOpen[row.dungeon] = not dungeonOpen[row.dungeon] or nil end
+		selection = { dungeon = row.dungeon }
+	end
+	Bosses:RefreshBosses()
+end
+
+function Bosses:RefreshBosses(scrollToSelection)
+	if not list then return end
+	if not selection then
+		LandOnPlayer()
+		scrollToSelection = true
+	end
+	local items = list:Render()
+	if scrollToSelection and selection then list:ScrollToChosen(items) end
+	ShowEntry()
+end
+
+local function Build(panel)
+	list = SpokenCompendium.NewList(panel, {
+		search = L.BOSSES_SEARCH,
+		none = L.BOSSES_NONE,
+		only = L.BOSSES_FOUND_ONLY,
+		onlyGet = OnlyFound,
+		onlySet = function(on) if SpokenBossesSettings then SpokenBossesSettings.compendiumFoundOnly = on end end,
+		locked = function() return SpokenCompendium.LockedReason("OPT_UNLOCK_BOSSES") end,
+		-- Found Only left the chosen row out: back to where the player stands.
+		onHidden = function()
+			selection = nil
+			Bosses:RefreshBosses(true)
+		end,
+		build = BuildRows,
+		isSelected = IsSelected,
+		onClick = OnClick,
+		onSearch = function(text)
+			filter = text
+			Bosses:RefreshBosses()
+		end,
+		addScrollBar = function(scroll, child, inset) return SpokenTextView.AddScrollBar(scroll, child, inset) end,
+	})
+	panel.Refresh = function() Bosses:RefreshBosses() end
+	panel.inset, panel.filterButton, panel.filterMenu, panel.noMatch = list.inset, list.filterButton, list.filterMenu, list.noMatch
+
+	page = C.NewPage(C.PageHolder(panel, list), Bosses, PLAY, REPORT)
+	-- Text Size, on Spoken's page, fires no game event: the page is drawn again at the new size.
+	if Spoken and Spoken.RegisterCallback then Spoken:RegisterCallback("COMPENDIUM_FONT_CHANGED", ShowEntry) end
+	panel.page = page
+	Bosses.bosses, Bosses.list = panel, list
+end
+
+local function OpenTab()
+	if list then
+		list:ClearSearch()
+		filter = ""
+	end
+	SpokenCompendium:Open("bosses")
+	SpokenCompendium:Expand()
+	Bosses:RefreshBosses(true)
+end
+
+--- Open the bosses, on where the player stands now, unless they chose something here.
+function Bosses:ShowBosses()
+	if not SpokenCompendium then return end
+	if selection == landed then selection = nil end
+	OpenTab()
+end
+
+--- Open the Compendium on one boss's page, its dungeon and continent opened round it. A boss Found
+--- Only leaves out has no row: the bosses open where the player stands.
+function Bosses:ShowBoss(map, key)
+	if not (SpokenCompendium and Boss(map, key)) then return end
+	if OnlyFound() and not Found(map, key) then return Bosses:ShowBosses() end
+	selection = { boss = true, map = map, key = key }
+	if not Index().world[map] then dungeonOpen[map] = true end
+	local zone = BossZone(map, key)
+	if zone then OpenAround(zone) end
+	OpenTab()
+end
+
+function Bosses:SetupBosses()
+	if not SpokenCompendium or SpokenCompendium:Tab("bosses") then return end
+	SpokenCompendium:Register("bosses", {
+		label = L.COMPENDIUM_BOSSES,
+		order = 3,
+		build = Build,
+		open = function() Bosses:ShowBosses() end,
+		-- Come back to from another tab: where the player stands now, unless they chose here.
+		onShow = function() if selection == landed then selection = nil end end,
+		enabled = function() return Index().count > 0 end,
+		-- Unlock Unfound Bosses, on Spoken's page.
+		unlock = {
+			get = function() return Unlocked() end,
+			set = function(value)
+				if SpokenBossesSettings then SpokenBossesSettings.unlockUnfound = value end
+				Bosses:RefreshBosses()
+			end,
+		},
+	})
+end

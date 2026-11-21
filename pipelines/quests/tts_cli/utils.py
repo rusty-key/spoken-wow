@@ -37,7 +37,5 @@ def language_code_to_language_number(local_code: str) -> int:
             return 8
         case "ptBR":    # not vmangos's: tools/fill_locales_from_tdb.py adds *_loc9
             return 9
-        case "itIT":    # no client runs in it, so the world database has no Italian text
-            raise Exception("itIT has no vmangos column: its text comes from QuestIT (make quests-import-questit)")
         case _:
             raise Exception("Unsupported local code!")

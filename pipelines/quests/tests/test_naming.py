@@ -9,6 +9,10 @@ from tts_cli.naming import (
     gossip_stem_rank,
     line_id_for_row,
     localized_gossip_stem,
+    quest_moment_stem,
+    quest_stem_from_line_id,
+    quest_wording_file_name,
+    quest_wording_line_id,
     split_voice,
     subfolder_from_line_id,
     variant_file_name,
@@ -148,3 +152,23 @@ def test_the_lookup_stems_of_a_voice_carry_it_without_the_player_gender():
     assert gossip_hash_from_line_id("g:abc123:m~human-male-warrior") == "abc123-human-male-warrior"
     assert followup_stem_from_line_id("f:4377:dwarf-male-standard~dwarf-male-grim") == \
         "4377-dwarf-male-standard-dwarf-male-grim"
+
+
+def test_a_wording_is_its_own_line_and_file():
+    assert quest_wording_line_id(97287, "accept", 1) == "q:97287:accept:w1"
+    assert quest_wording_file_name(97287, "accept", 1) == "97287-accept-w1"
+
+
+def test_a_wording_s_file_is_not_read_as_a_player_gender():
+    assert filename_from_line_id("q:97287:accept:w1") == "97287-accept-w1"
+    assert filename_from_line_id("q:97287:accept:w2:f") == "f-97287-accept-w2"
+    assert filename_from_line_id("q:97287:accept:m") == "m-97287-accept"
+    assert filename_from_line_id("q:97287:accept:w1~orc-male-standard") == "97287-accept-w1-orc-male-standard"
+
+
+def test_a_quest_line_s_stem_and_moment():
+    assert quest_stem_from_line_id("q:5:accept") == "5-accept"
+    assert quest_stem_from_line_id("q:5:accept:m") == "5-accept"
+    assert quest_stem_from_line_id("q:5:accept:w3:f") == "5-accept-w3"
+    assert quest_moment_stem("q:5:accept:w3:f") == "5-accept"
+    assert quest_moment_stem("q:5:complete") == "5-complete"

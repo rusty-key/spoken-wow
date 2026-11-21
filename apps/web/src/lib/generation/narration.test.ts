@@ -136,15 +136,43 @@ describe("accentTagged", () => {
     );
   });
 
-  it("repeats the tag before every sentence, which eleven_v4 otherwise forgets", () => {
-    expect(accentTagged("Ahoy. Ye'll do!\n\nWhat say \"ye?\" Go.", "[pirate accent]")).toBe(
-      "[pirate accent] Ahoy. [pirate accent] Ye'll do!\n\n[pirate accent] What say \"ye?\" [pirate accent] Go.",
+  it("sends the race's tag once per stretch, not per sentence", () => {
+    expect(accentTagged("Aye. Off with ye.", "[Scottish accent]")).toBe("[Scottish accent] Aye. Off with ye.");
+  });
+
+  it("repeats an NPC's direction before every sentence, which eleven_v4 otherwise forgets", () => {
+    expect(accentTagged("Ahoy. Ye'll do!\n\nWhat say \"ye?\" Go.", "[Scottish accent]", {}, undefined, "[pirate accent]")).toBe(
+      "[Scottish accent] [pirate accent] Ahoy. [pirate accent] Ye'll do!\n\n[pirate accent] What say \"ye?\" [pirate accent] Go.",
+    );
+    expect(accentTagged("Ahoy. Go.", undefined, {}, undefined, "[pirate accent]")).toBe(
+      "[pirate accent] Ahoy. [pirate accent] Go.",
     );
   });
 
-  it("does not end a sentence at an ellipsis", () => {
-    expect(accentTagged("Adventurer... yeah. Aye.", "[pirate accent]")).toBe(
-      "[pirate accent] Adventurer... yeah. [pirate accent] Aye.",
+  it("does not end a sentence at an ellipsis, spaced or not", () => {
+    expect(accentTagged("Adventurer... yeah. Aye.", undefined, {}, undefined, "[pirate]")).toBe(
+      "[pirate] Adventurer... yeah. [pirate] Aye.",
+    );
+    expect(accentTagged("Well. . . maybe. Aye.", undefined, {}, undefined, "[pirate]")).toBe(
+      "[pirate] Well. . . maybe. [pirate] Aye.",
+    );
+  });
+
+  it("does not end a sentence after a title", () => {
+    expect(accentTagged("Ask Mr. Flint and Mrs. Dalson. Go.", undefined, {}, undefined, "[pirate]")).toBe(
+      "[pirate] Ask Mr. Flint and Mrs. Dalson. [pirate] Go.",
+    );
+  });
+
+  it("does not split a direction at its own full stop", () => {
+    expect(accentTagged("Hello. Bye.", undefined, {}, undefined, "[quiet. Slow]")).toBe(
+      "[quiet. Slow] Hello. [quiet. Slow] Bye.",
+    );
+  });
+
+  it("leaves an NPC's direction off a stretch a marker hands to another slot", () => {
+    expect(accentTagged("Aye. _goblin-male-zany_ Wizbang. Here!", undefined, {}, undefined, "[pirate]")).toBe(
+      "[pirate] Aye. _goblin-male-zany_ Wizbang. Here!",
     );
   });
 
@@ -256,11 +284,6 @@ describe("directionFor", () => {
 
   it("does not read a race's direction twice for a slot named by the race alone", () => {
     expect(directionFor("dwarf", tags)).toBe("[Scottish accent]");
-  });
-
-  it("adds an NPC's direction after its voice's", () => {
-    expect(directionFor("dwarf-female-young", tags, "[pirate accent]")).toBe("[Scottish accent] [girlish] [pirate accent]");
-    expect(directionFor("human-male-standard", tags, "[pirate accent]")).toBe("[pirate accent]");
   });
 });
 

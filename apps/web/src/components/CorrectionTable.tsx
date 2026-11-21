@@ -1,46 +1,52 @@
 "use client";
 
 /**
- * The corrections tab: a quest line as the corpus has it, beside the text a player's client
- * showed for the same quest and moment, with the words that differ marked on each side.
- *
- * Both texts are shown open, not behind a `<details>` as the triage table's are: the
- * difference is the whole reason the row is here, and it is usually a word or two in a
- * paragraph -- the marks are what make it a glance rather than a read.
- *
- * Takes `CorrectionRow`, not the stored row, for the reason ContributionTable's docstring gives:
- * a client component's props are readable in the page's payload.
+ * Keep both wordings visible so reviewers can compare them before replacing one. Pass only fields
+ * reviewers may see, because client props are visible in the page payload.
  */
 import Link from "next/link";
-import { useCallback, useState } from "react";
+import { useCallback, useRef, useState } from "react";
 
 import { useLang } from "@/components/LangProvider";
-import ClientSelect from "@/components/ClientSelect";
-import { SEARCH_IN_OPTIONS } from "@/components/contribution-chips";
-import FilterChip, { type ChipOption } from "@/components/FilterChip";
-import { LiteButton } from "@/components/LiteControls";
-import { Refreshing } from "@/components/Loading";
+import { STAGE_LABELS } from "@/components/contribution-chips";
 import SendersButton from "@/components/SendersButton";
-import StatusTabs from "@/components/StatusTabs";
-import { Input } from "@/components/ui/input";
-import { usePendingPush } from "@/components/usePendingPush";
-import { useSearchBox } from "@/components/useSearchBox";
+import { useLocalDates } from "@/components/useLocalDates";
 import type { ClientSummary } from "@/lib/contributions/client";
-import { wordDiff, type DiffPart } from "@/lib/contributions/compare";
+import { genderSplit, hasClassSlot, readerSide, wordDiff, type DiffPart } from "@/lib/contributions/compare";
 import type { ContributionStatus } from "@/lib/contributions/contributions";
-import { QUEST_STAGES, type ClientFilter, type QuestStage, type StageFilter } from "@/lib/contributions/query";
-import { localeHref } from "@/lib/lang";
-import { explorerHref } from "@/lib/links";
-import type { Filter } from "@/lib/search";
+import { GENDER_NAMES, otherGender, type ReaderGender } from "@/lib/contributions/gender";
+import type { QuestStage } from "@/lib/contributions/query";
+import { langName, localeHref } from "@/lib/lang";
 import { cn } from "@/lib/utils";
+import DropReasons from "@/components/backstage/DropReasons";
+import { correctionDropReasons } from "@/lib/contributions/reasons";
 import { wowheadQuestUrl } from "@/lib/wowhead";
+
+/** One wording of the moment as the corpus has it. */
+export type CorrectionWording = {
+  lineId: string;
+  variant: number;
+  /** Where the line is edited, locale prefix not yet applied. */
+  editHref: string;
+  /** The corpus's current text, its `$B` breaks already made line breaks. */
+  before: string;
+  /** One side of a moment already split by player gender. */
+  split: boolean;
+  /** The player genders whose client has shown this text word for word (lib/contributions/readers.ts). */
+  readBy: ReaderGender[];
+};
 
 export type CorrectionRow = {
   id: number;
-  /** The corpus line `before` is the text of. */
-  lineId: string;
-  /** Null only for stored meta naming no quest, which a correction always does. */
-  quest: { title: string; questId: number; stage: QuestStage | null } | null;
+  /** The moment's wordings, one for a book page or a moment with only its first. */
+  wordings: CorrectionWording[];
+  /** The index in `wordings` of the one closest to `after`. */
+  closest: number;
+  /**
+   * Null for a book page, and for stored meta naming no quest, which a quest correction always
+   * does. `classWord`: the quest names a class as a word of its own (lib/contributions/class-words.ts).
+   */
+  quest: { title: string; questId: number; stage: QuestStage | null; classWord: boolean } | null;
   /** Who the player's client said speaks the line; null when the envelope named nobody. */
   npc: { npcId: number; npcName: string | null } | null;
   client: ClientSummary;
@@ -48,328 +54,399 @@ export type CorrectionRow = {
   count: number;
   createdAt: string;
   status: ContributionStatus;
-  /** The corpus's current text, its `$B` breaks already made line breaks. */
-  before: string;
+  /** A book page's title, with its number; null for a quest. */
+  title: string | null;
   /** What the player's client showed. */
   after: string;
+  /** The gender of the character it was shown to, where the addon said: the side of every `$G` it took. */
+  readerGender: ReaderGender | null;
   body: string | null;
+  rejectReason: string | null;
 };
 
-const STAGE_LABELS: Record<QuestStage, string> = {
-  accept: "Accept",
-  progress: "Progress",
-  complete: "Complete",
-};
+/**
+ * What an accept sends beside the id: the wording it fixes, and the player gender the player's
+ * text is for where it splits that wording instead; or that it is another wording. With the
+ * moderator's edit of the player's text where there is one.
+ */
+type Accept = ({ lineId: string; variant: number; split?: ReaderGender } | { as: "wording" }) & { text?: string };
+type Extra = Accept | { reason: string };
 
-const STAGE_CHIP_OPTIONS: ChipOption[] = QUEST_STAGES.map((option) => ({ value: option, label: STAGE_LABELS[option] }));
+export type CorrectionSource = "quests" | "readables";
 
-type Filters = { status: ContributionStatus; client: ClientFilter; stage: StageFilter; q: string; searchIn: Filter };
-
-function correctionsHref(filters: Filters): string {
-  // Client always written, "all" included: left out, it means the Era and Forever default.
-  const params = new URLSearchParams({ status: filters.status, client: filters.client });
-  if (filters.stage !== "all") params.set("stage", filters.stage);
-  if (filters.q.trim()) params.set("q", filters.q.trim());
-  if (filters.searchIn !== "any") params.set("filter", filters.searchIn);
-  return `/contributions/quests/corrections?${params}`;
-}
-
-function when(at: string): string {
-  return new Date(at).toLocaleString(undefined, {
-    month: "short",
-    day: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-  });
-}
+/** How many corrections render at first, and how many more each "Show more" adds. */
+const CORRECTIONS_SHOWN = 25;
 
 export default function CorrectionTable({
+  source,
   initial,
-  status,
-  client,
-  stage,
-  q,
-  searchIn,
 }: {
+  source: CorrectionSource;
+  /** The rows the contributions page's own tabs and filters picked. */
   initial: CorrectionRow[];
-  status: ContributionStatus;
-  client: ClientFilter;
-  stage: StageFilter;
-  q: string;
-  searchIn: Filter;
 }) {
+  const when = useLocalDates();
   const lang = useLang();
-  const { pending, push } = usePendingPush();
-  const filters: Filters = { status, client, stage, q, searchIn };
-  const go = (next: Partial<Filters>) => push(localeHref(lang, correctionsHref({ ...filters, ...next })));
-  const [query, setQuery] = useSearchBox(q, (next) => go({ q: next }));
-  /** Statuses changed here since the page loaded, shown without waiting for a reload. */
-  const [resolved, setResolved] = useState<Record<number, ContributionStatus>>({});
-  const [busy, setBusy] = useState<number | null>(null);
+  /**
+   * Statuses changed here, with the server's status they were changed from: once a refresh brings
+   * another status for the row (another tab reopened it), the server's wins.
+   */
+  const [resolved, setResolved] = useState<Record<number, { next: ContributionStatus; from: ContributionStatus }>>({});
+  /** Rows with a request in flight: each stays locked until its own request answers. */
+  const [busy, setBusy] = useState<ReadonlySet<number>>(new Set());
+  const inFlight = useRef(new Set<number>());
+  const [droppingId, setDroppingId] = useState<number | null>(null);
+  /** The row whose Keep both choices are open. */
+  const [keepingId, setKeepingId] = useState<number | null>(null);
+  const [reasonsOf, setReasonsOf] = useState<Record<number, string>>({});
+  /** A long backlog renders a page at a time: every row diffs both texts. */
+  const [limit, setLimit] = useState(CORRECTIONS_SHOWN);
   const [refusals, setRefusals] = useState<Record<number, string>>({});
+  /** The wording each row is set against, where a moderator picked one other than the closest. */
+  const [picked, setPicked] = useState<Record<number, number>>({});
+  /** Player texts changed on the server since the page loaded: edited, or a class word put back. */
+  const [texts, setTexts] = useState<Record<number, string>>({});
+  /** Rows whose player text is open for editing, with the text as typed so far. */
+  const [drafts, setDrafts] = useState<Record<number, string>>({});
+  /** Quests marked or unmarked here since the page loaded. */
+  const [classWords, setClassWords] = useState<Record<number, boolean>>({});
 
-  /** An "Accept all" run in flight, for its progress line and to hold every row's buttons still. */
-  const [bulk, setBulk] = useState<{ done: number; total: number } | null>(null);
-  /** What the last "Accept all" came to, until the next one starts. */
-  const [bulkOutcome, setBulkOutcome] = useState<string | null>(null);
-  /** "Accept all" asks twice: every row it accepts writes a quest line's text. */
-  const [confirmAll, setConfirmAll] = useState(false);
-
-  // Accepting writes the player's text as the line's (api/contributions/correction); rejecting
-  // and reopening are resolve's plain status flips.
-  const send = useCallback(async (id: number, next: ContributionStatus): Promise<boolean> => {
-    const response = await fetch(
-      next === "accepted" ? "/api/contributions/correction" : "/api/contributions/resolve",
-      {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({ id, status: next }),
-      },
-    ).catch(() => null);
-    if (response?.ok) {
-      setResolved((current) => ({ ...current, [id]: next }));
-      setRefusals(({ [id]: _, ...rest }) => rest);
-      return true;
-    }
+  /** A row's POST: its answer's body, or null with the refusal shown under the row. */
+  const post = useCallback(async (url: string, id: number, payload: object): Promise<Record<string, unknown> | null> => {
+    const response = await fetch(url, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ id, ...payload }),
+    }).catch(() => null);
     const body = await response?.json().catch(() => null);
+    if (response?.ok) {
+      setRefusals(({ [id]: _, ...rest }) => rest);
+      return body ?? {};
+    }
     const message = typeof body?.error === "string" ? body.error : "That didn't go through -- try again.";
     setRefusals((current) => ({ ...current, [id]: message }));
-    return false;
+    return null;
+  }, []);
+
+  // Accepting writes the player's text as the picked wording's, or beside them as another
+  // (api/contributions/correction); rejecting and reopening are resolve's plain status flips.
+  const send = useCallback(
+    async (id: number, next: ContributionStatus, as?: Extra): Promise<boolean> => {
+      const url = next === "accepted" ? "/api/contributions/correction" : "/api/contributions/resolve";
+      const body = await post(url, id, { status: next, ...as });
+      if (!body) return false;
+      const from = initial.find((row) => row.id === id)?.status ?? "new";
+      setResolved((current) => ({ ...current, [id]: { next, from } }));
+      // The text as the server saved it, normalised, rather than as typed.
+      const saved = (body.contribution as { text?: unknown } | undefined)?.text;
+      if (as && "text" in as && as.text !== undefined && typeof saved === "string") setTexts((current) => ({ ...current, [id]: saved }));
+      setDrafts(({ [id]: _, ...rest }) => rest);
+      return true;
+    },
+    [post, initial],
+  );
+
+  /** Runs `work` for a row unless one of its requests is already in flight. */
+  const held = useCallback(async <T,>(id: number, work: () => Promise<T>): Promise<T | undefined> => {
+    if (inFlight.current.has(id)) return undefined;
+    inFlight.current.add(id);
+    setBusy(new Set(inFlight.current));
+    try {
+      return await work();
+    } finally {
+      inFlight.current.delete(id);
+      setBusy(new Set(inFlight.current));
+    }
   }, []);
 
   const resolve = useCallback(
-    async (id: number, next: ContributionStatus) => {
-      setBusy(id);
-      await send(id, next);
-      setBusy(null);
-    },
-    [send],
-  );
-
-  /**
-   * One accept after another, as each row's own button sends it: a refused row keeps its
-   * refusal under it and the rest carry on. Not side by side, because two corrections can
-   * name the same line and each writes its text.
-   */
-  const acceptAll = useCallback(
-    async (ids: number[]) => {
-      setBulkOutcome(null);
-      setBulk({ done: 0, total: ids.length });
-      let refused = 0;
-      for (const [index, id] of ids.entries()) {
-        if (!(await send(id, "accepted"))) refused++;
-        setBulk({ done: index + 1, total: ids.length });
+    async (id: number, next: ContributionStatus, as?: Extra): Promise<boolean> => {
+      const ok = (await held(id, () => send(id, next, as))) ?? false;
+      if (ok && next === "accepted") {
+        setDroppingId((open) => (open === id ? null : open));
+        setKeepingId((open) => (open === id ? null : open));
       }
-      setBulk(null);
-      setBulkOutcome(
-        `Accepted ${ids.length - refused} of ${ids.length}` + (refused > 0 ? ` -- ${refused} refused.` : "."),
-      );
+      return ok;
     },
-    [send],
+    [send, held],
   );
 
-  const toAccept = initial.filter((row) => (resolved[row.id] ?? row.status) === "new").map((row) => row.id);
+  const markClassWord = useCallback(
+    async (id: number, questId: number, kept: boolean) => {
+      await held(id, async () => {
+        const body = await post("/api/contributions/class-word", id, { kept });
+        if (!body) return;
+        const rewritten = body.texts as Record<number, string>;
+        setClassWords((current) => ({ ...current, [questId]: kept }));
+        setTexts((current) => ({ ...current, ...rewritten }));
+        // An open edit of a rewritten row holds the slot just put back, and Accept would send it.
+        setDrafts((current) => Object.fromEntries(Object.entries(current).filter(([open]) => !(open in rewritten))));
+      });
+    },
+    [post, held],
+  );
 
+  /** The player's text as it now stands, or as typed where the row is open for editing. */
+  const savedOf = (row: CorrectionRow): string => texts[row.id] ?? row.after;
+  const afterOf = (row: CorrectionRow): string => drafts[row.id] ?? savedOf(row);
+  /** The edit an accept sends, where the text was edited and differs from what is saved. */
+  const editOf = (row: CorrectionRow): { text?: string } =>
+    drafts[row.id] !== undefined && drafts[row.id] !== savedOf(row) ? { text: drafts[row.id] } : {};
+  const classWordOf = (row: CorrectionRow): boolean =>
+    row.quest ? (classWords[row.quest.questId] ?? row.quest.classWord) : false;
+
+  /** The wording a row is set against, and its Accept fixes: the one picked, or the closest. */
+  const chosenOf = (row: CorrectionRow): number => picked[row.id] ?? row.closest;
+  const fixOf = (row: CorrectionRow): Accept => {
+    const { lineId, variant } = row.wordings[chosenOf(row)];
+    return { lineId, variant, ...editOf(row) };
+  };
+  /**
+   * The template a split by gender writes, theirs on either side, for the buttons and their
+   * previews; null where our line is not one plain quest line the two texts can split. The server
+   * builds its own from the line as it then stands.
+   */
+  const splitsOf = (wording: CorrectionWording, after: string): Record<ReaderGender, string> | null => {
+    if (source !== "quests" || wording.split) return null;
+    const f = genderSplit(wording.before, after, "f");
+    return f ? { f, m: genderSplit(wording.before, after, "m")! } : null;
+  };
   return (
-    <>
-      <StatusTabs
-        active={status}
-        onGo={push}
-        hrefFor={(next) => localeHref(lang, correctionsHref({ ...filters, status: next }))}
-      />
-      <nav className="mb-4 flex flex-wrap items-center gap-2">
-        <Input
-          type="search"
-          value={query}
-          placeholder="NPC, quest, or either text…"
-          aria-label="Search"
-          className="h-8 min-w-0 basis-64"
-          onChange={(event) => setQuery(event.target.value)}
-        />
-        <FilterChip
-          label="search in"
-          value={searchIn === "any" ? undefined : searchIn}
-          options={SEARCH_IN_OPTIONS}
-          onChange={(next) => go({ searchIn: (next ?? "any") as Filter })}
-        />
-        <FilterChip
-          label="stage"
-          value={stage === "all" ? undefined : stage}
-          options={STAGE_CHIP_OPTIONS}
-          onChange={(next) => go({ stage: (next ?? "all") as StageFilter })}
-        />
-        <span className="text-muted-foreground text-xs">
-          {initial.length} {initial.length === 1 ? "correction" : "corrections"}
-        </span>
-        {pending && <Refreshing />}
-        <ClientSelect value={client} onChange={(next) => go({ client: next })} />
-      </nav>
+    <div className="bs-rows">
+      {initial.slice(0, limit).map((row) => {
+        const change = resolved[row.id];
+        const current = change && change.from === row.status ? change.next : row.status;
+        const chosen = chosenOf(row);
+        const wording = row.wordings[chosen];
+        const after = afterOf(row);
+        const diff = wordDiff(wording.before, after);
+        const editing = drafts[row.id] !== undefined;
+        const classWord = classWordOf(row);
+        const hold = busy.has(row.id);
+        const dropping = droppingId === row.id && current === "new";
+        const splits = current === "new" ? splitsOf(wording, after) : null;
+        // Offered outright where the evidence says which side theirs is.
+        const side = splits && readerSide(row.readerGender, wording.readBy);
+        const chooser = keepingId === row.id ? splits : null;
+        const keepAsWording = () => void resolve(row.id, "accepted", { as: "wording", ...editOf(row) });
+        const splitAs = (theirsFor: ReaderGender) =>
+          void resolve(row.id, "accepted", { lineId: wording.lineId, variant: wording.variant, split: theirsFor, ...editOf(row) });
+        return (
+          <div key={row.id} id={`contribution-${row.id}`} className="bs-review-row" data-moved={current !== row.status ? "" : undefined}>
+            <div className="bs-who">
+              {row.npc ? <div className="bs-who-name">{row.npc.npcName ?? "unnamed"}</div> : null}
+              {row.quest ? (
+                <span className="bs-who-sub">
+                  {row.quest.title}{" "}
+                  <a href={wowheadQuestUrl(row.quest.questId)} target="_blank" rel="noreferrer" className="hover:underline">
+                    #{row.quest.questId}
+                  </a>
+                  {row.quest.stage ? ` · ${STAGE_LABELS[row.quest.stage]}` : null}
+                </span>
+              ) : (
+                <span className="bs-who-sub">{row.title ?? wording.lineId}</span>
+              )}
+            </div>
 
-      {status === "new" && initial.length > 0 ? (
-        <div className="mb-3 flex flex-wrap items-center gap-2 text-xs">
-          {bulk ? (
-            <span className="text-muted-foreground">
-              Accepted: {bulk.done} of {bulk.total}…
-            </span>
-          ) : confirmAll ? (
-            <>
+            <div className="min-w-0">
+              <p className="bs-label">{row.wordings.length > 1 ? "Ours now · pick the wording it changes" : "Ours now"}</p>
+              {row.wordings.length > 1 ? (
+                <ul className="flex flex-col gap-2">
+                  {row.wordings.map((line, index) => (
+                    <li key={`${line.lineId}|${line.variant}`}>
+                      {index === chosen ? (
+                        <Marked parts={diff.before} tone="removed" />
+                      ) : (
+                        <button
+                          type="button"
+                          title="Set the player's text against this wording"
+                          className="text-muted-foreground hover:text-foreground text-left whitespace-pre-wrap"
+                          onClick={() => setPicked((all) => ({ ...all, [row.id]: index }))}
+                        >
+                          {line.before}
+                        </button>
+                      )}
+                    </li>
+                  ))}
+                </ul>
+              ) : (
+                <div className="bs-text-en">
+                  <Marked parts={diff.before} tone="removed" />
+                </div>
+              )}
+            </div>
+
+            <div className="min-w-0">
+              <p className="bs-label">Theirs</p>
+              {editing ? (
+                <textarea
+                  className="bs-textarea"
+                  value={after}
+                  aria-label="The player's text"
+                  rows={Math.max(3, after.split("\n").length + 1)}
+                  onChange={(event) => setDrafts((all) => ({ ...all, [row.id]: event.target.value }))}
+                />
+              ) : (
+                <Marked parts={diff.after} tone="added" />
+              )}
+              {row.quest && current === "new" && (classWord || hasClassSlot(after)) ? (
+                <button
+                  type="button"
+                  disabled={hold}
+                  title={
+                    classWord
+                      ? "Stop putting this quest's class word back in contributions"
+                      : "This quest names a class as a word of its own, not the reader's class: put the word back in this quest's waiting and future contributions"
+                  }
+                  className="text-muted-foreground hover:text-foreground mt-1 text-xs underline-offset-2 hover:underline"
+                  onClick={() => row.quest && void markClassWord(row.id, row.quest.questId, !classWord)}
+                >
+                  {classWord ? "Class word kept for this quest · undo" : "$c is this quest's own word"}
+                </button>
+              ) : null}
+              {current === "rejected" ? (
+                <ul className="bs-findings">
+                  <li className="bs-finding bs-finding-drop">
+                    {(reasonsOf[row.id] ?? row.rejectReason) ? `Rejected: ${reasonsOf[row.id] ?? row.rejectReason}` : "Rejected, no reason given."}
+                  </li>
+                </ul>
+              ) : null}
+            </div>
+
+            <div className="bs-actions">
+              {current === "new" ? (
+                <>
+                  <button
+                    type="button"
+                    className="bs-btn"
+                    disabled={hold}
+                    title={source === "readables" ? "Take the player's text as this page's words" : "Take the player's text as what this line speaks"}
+                    onClick={() => void resolve(row.id, "accepted", fixOf(row))}
+                  >
+                    Replace ours
+                  </button>
+                  {splits && side ? (
+                    <button
+                      type="button"
+                      className="bs-btn"
+                      disabled={hold}
+                      title={`Ours for ${GENDER_NAMES[otherGender(side)]} players, theirs for ${GENDER_NAMES[side]} ones:\n${splits[side]}`}
+                      onClick={() => splitAs(side)}
+                    >
+                      Split by gender
+                    </button>
+                  ) : null}
+                  {source === "quests" ? (
+                    <button
+                      type="button"
+                      className="bs-btn"
+                      disabled={hold}
+                      title={
+                        splits
+                          ? "Keep our text and add the player's beside it: as another wording, or one for each player gender"
+                          : "Keep our text and add the player's as another wording of this moment"
+                      }
+                      onClick={() => (splits ? setKeepingId(chooser ? null : row.id) : keepAsWording())}
+                    >
+                      {splits ? "Keep both…" : "Keep both"}
+                    </button>
+                  ) : null}
+                  <button
+                    type="button"
+                    className="bs-btn bs-btn-text"
+                    disabled={hold}
+                    onClick={() =>
+                      setDrafts(({ [row.id]: open, ...rest }) => (open === undefined ? { ...rest, [row.id]: savedOf(row) } : rest))
+                    }
+                  >
+                    {editing ? "Cancel edit" : "Edit text"}
+                  </button>
+                  <button type="button" className="bs-btn bs-btn-text" disabled={hold} onClick={() => setDroppingId(dropping ? null : row.id)}>
+                    Drop…
+                  </button>
+                </>
+              ) : (
+                <button type="button" className="bs-btn bs-btn-text" disabled={hold} onClick={() => void resolve(row.id, "new")}>
+                  Reopen
+                </button>
+              )}
+              {refusals[row.id] ? <p className="bs-refusal">{refusals[row.id]}</p> : null}
+            </div>
+
+            <div className="bs-meta">
               <span>
-                Accept all {toAccept.length} shown? Each writes the player&apos;s text as what its line speaks.
+                {row.client.label} · {row.locale}
+                {row.client.buildNumber ? ` · ${row.client.buildNumber}` : null}
               </span>
-              <LiteButton
-                variant="accept"
-                onClick={() => {
-                  setConfirmAll(false);
-                  void acceptAll(toAccept);
+              {row.readerGender ? <span>Theirs read by a {GENDER_NAMES[row.readerGender]} character</span> : null}
+              {wording.readBy.length ? <span>Ours read by {wording.readBy.map((g) => GENDER_NAMES[g]).join(" and ")} characters</span> : null}
+              <span className="inline-flex items-center gap-1">
+                Sent by <SendersButton id={row.id} count={row.count} />
+              </span>
+              <span>Filed {when(row.createdAt)}</span>
+              <Link href={localeHref(lang, wording.editHref)} className="underline underline-offset-[3px]">
+                {source === "readables" ? "Open the page" : "Open the line"}
+              </Link>
+            </div>
+            {row.body ? (
+              <div className="bs-aside">
+                <p className="bs-label">What the player said was wrong</p>
+                <p className="bs-text">{row.body}</p>
+              </div>
+            ) : null}
+            {chooser ? (
+              <div className="bs-reasons bs-choices">
+                <p>Keep both how? A split plays ours to one gender and theirs to the other.</p>
+                <button type="button" className="bs-reason" disabled={hold} onClick={keepAsWording}>
+                  As another wording
+                </button>
+                {(row.readerGender === "m" ? (["m", "f"] as const) : (["f", "m"] as const)).map((side) => (
+                  <button
+                    key={side}
+                    type="button"
+                    className="bs-reason"
+                    disabled={hold}
+                    title={chooser[side]}
+                    onClick={() => splitAs(side)}
+                  >
+                    Theirs for {GENDER_NAMES[side]} players{row.readerGender === side ? " · the reader's gender" : ""}
+                  </button>
+                ))}
+                <button type="button" className="bs-btn bs-btn-text" onClick={() => setKeepingId(null)}>
+                  Cancel
+                </button>
+              </div>
+            ) : null}
+            {dropping ? (
+              <DropReasons
+                reasons={correctionDropReasons(langName(lang))}
+                disabled={hold}
+                onPick={(why) => {
+                  void resolve(row.id, "rejected", { reason: why }).then((ok) => {
+                    if (!ok) return;
+                    setDroppingId(null);
+                    setReasonsOf((all) => ({ ...all, [row.id]: why }));
+                  });
                 }}
-              >
-                Accept {toAccept.length}
-              </LiteButton>
-              <LiteButton variant="ghost" onClick={() => setConfirmAll(false)}>
-                Cancel
-              </LiteButton>
-            </>
-          ) : (
-            <LiteButton variant="accept" disabled={toAccept.length === 0} onClick={() => setConfirmAll(true)}>
-              Accept all ({toAccept.length})
-            </LiteButton>
-          )}
-          {bulkOutcome && !bulk ? <span className="text-muted-foreground ml-2">{bulkOutcome}</span> : null}
+                onCancel={() => setDroppingId(null)}
+              />
+            ) : null}
+          </div>
+        );
+      })}
+      {initial.length > limit ? (
+        <div className="px-4 py-3">
+          <button type="button" className="bs-btn bs-btn-text" onClick={() => setLimit((shown) => shown + CORRECTIONS_SHOWN)}>
+            Show {Math.min(CORRECTIONS_SHOWN, initial.length - limit)} more of {initial.length - limit}
+          </button>
         </div>
       ) : null}
-
-      {initial.length === 0 ? (
-        <p className="text-muted-foreground text-sm">Nothing here.</p>
-      ) : (
-        <table
-          aria-busy={pending}
-          className={cn("w-full border-separate border-spacing-0 text-sm transition-opacity", pending && "opacity-60")}
-        >
-          <thead className="text-muted-foreground text-left text-xs">
-            <tr>
-              <th className="border-b py-2 pr-3 font-normal">Quest</th>
-              <th className="border-b py-2 pr-3 font-normal">Client</th>
-              <th className="border-b py-2 pr-3 font-normal">Count</th>
-              <th className="w-[38%] border-b py-2 pr-3 font-normal">Corpus has</th>
-              <th className="w-[38%] border-b py-2 pr-3 font-normal">Player saw</th>
-              <th className="border-b py-2 font-normal" />
-            </tr>
-          </thead>
-          <tbody>
-            {initial.map((row) => {
-              const current = resolved[row.id] ?? row.status;
-              const diff = wordDiff(row.before, row.after);
-              return (
-                <tr
-                  key={row.id}
-                  id={`contribution-${row.id}`}
-                  className={cn(
-                    "align-top [&>td]:border-b [&>td]:py-2 [&>td]:leading-5",
-                    current !== row.status && "opacity-50",
-                  )}
-                >
-                  <td className="max-w-[14rem] pr-3 text-xs">
-                    {row.quest ? (
-                      <>
-                        <span>{row.quest.title}</span>{" "}
-                        <a
-                          href={wowheadQuestUrl(row.quest.questId)}
-                          target="_blank"
-                          rel="noreferrer"
-                          className="text-muted-foreground hover:underline"
-                        >
-                          #{row.quest.questId}
-                        </a>
-                        {row.quest.stage ? (
-                          <div className="text-muted-foreground">{STAGE_LABELS[row.quest.stage]}</div>
-                        ) : null}
-                      </>
-                    ) : (
-                      row.lineId
-                    )}
-                    {row.npc ? (
-                      <div className="text-muted-foreground">
-                        {row.npc.npcName ?? "unnamed"} #{row.npc.npcId}
-                      </div>
-                    ) : null}
-                    <div className="text-muted-foreground mt-1">{when(row.createdAt)}</div>
-                  </td>
-
-                  <td className="pr-3 text-xs whitespace-nowrap">
-                    <div>{row.client.label}</div>
-                    <div className="text-muted-foreground">
-                      {row.locale}
-                      {row.client.buildNumber ? ` · ${row.client.buildNumber}` : null}
-                    </div>
-                  </td>
-
-                  <td className="pr-3 text-xs whitespace-nowrap"><SendersButton id={row.id} count={row.count} /></td>
-
-                  <td className="pr-3">
-                    <Marked parts={diff.before} tone="removed" />
-                  </td>
-                  <td className="pr-3">
-                    <Marked parts={diff.after} tone="added" />
-                    {row.body ? (
-                      <div className="mt-2 rounded border p-2">
-                        <p className="text-muted-foreground text-xs font-medium">What they said was wrong:</p>
-                        <p className="mt-1 whitespace-pre-wrap">{row.body}</p>
-                      </div>
-                    ) : null}
-                  </td>
-
-                  <td>
-                    <div className="flex items-center justify-end gap-1">
-                      <Link
-                        href={localeHref(lang, explorerHref("quests", row.lineId))}
-                        className="border-border bg-background hover:bg-muted inline-flex h-7 items-center rounded-md border px-2.5 text-[0.8rem] font-medium whitespace-nowrap"
-                      >
-                        Edit line
-                      </Link>
-                      {current === "new" ? (
-                        <>
-                          <LiteButton
-                            variant="accept"
-                            disabled={busy === row.id || bulk !== null}
-                            title="Take the player's text as what this line speaks"
-                            onClick={() => void resolve(row.id, "accepted")}
-                          >
-                            Accept
-                          </LiteButton>
-                          <LiteButton
-                            variant="reject"
-                            disabled={busy === row.id || bulk !== null}
-                            onClick={() => void resolve(row.id, "rejected")}
-                          >
-                            Reject
-                          </LiteButton>
-                        </>
-                      ) : (
-                        <LiteButton
-                          variant="ghost"
-                          disabled={busy === row.id || bulk !== null}
-                          onClick={() => void resolve(row.id, "new")}
-                        >
-                          Reopen
-                        </LiteButton>
-                      )}
-                    </div>
-                    {refusals[row.id] ? (
-                      <p className="text-destructive mt-1 text-right text-xs">{refusals[row.id]}</p>
-                    ) : null}
-                  </td>
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
-      )}
-    </>
+    </div>
   );
 }
 
 /** One side of a correction, its differing words marked. */
-function Marked({ parts, tone }: { parts: DiffPart[]; tone: "removed" | "added" }) {
+export function Marked({ parts, tone }: { parts: DiffPart[]; tone: "removed" | "added" }) {
   return (
     <p className="whitespace-pre-wrap">
       {parts.map((part, index) =>

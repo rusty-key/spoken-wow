@@ -168,20 +168,22 @@ describe("validateConfig", () => {
  * Needs DATABASE_URL and migrations applied:
  *   deploy/web/bin/migrate.sh "$PWD/apps/web"
  */
-const { closeDb, db } = await import("@/lib/db");
+const { closeDb } = await import("@/lib/db");
 const { readSettings, writeRaceTags } = await import("./settings");
+const { asSystem, ownTeam, unowned } = await import("@/lib/teams/testing");
 
 /**
  * The settings row, put back after every case.
  *
- * One row forever, and it is whatever this database generates with. A test that deleted it
- * would silently reset the settings of whatever DATABASE_URL points at - the mistake
- * dictionary.test.ts records having made with the lexicon.
+ * The english team's row, and it is whatever this database generates English with. A test
+ * that deleted it would silently reset the settings of whatever DATABASE_URL points at.
  */
 let snapshot: Record<string, unknown> | undefined;
 
 beforeAll(async () => {
-  const { rows } = await db().query("select * from generation_setting where id");
+  const { rows } = await asSystem.query(
+    `select * from "generation_setting" where "teamId" = (select "id" from "team" where "slug" = 'english')`,
+  );
   snapshot = rows[0];
 });
 
@@ -192,17 +194,17 @@ beforeAll(async () => {
  * settings of whatever DATABASE_URL points at, and this file is careful with it.
  */
 async function noRow() {
-  await db().query(`delete from "generation_setting" where "id"`);
+  await asSystem.query(`delete from "generation_setting" where "teamId" = (select "id" from "team" where "slug" = 'english')`);
 }
 
 afterEach(async () => {
-  await db().query(`delete from "generation_setting_locale" where "lang" = 'koKR'`);
-  await db().query(`delete from "generation_setting" where "id"`);
+  await asSystem.query(`delete from "generation_setting_locale" where "lang" = 'koKR'`);
+  await asSystem.query(`delete from "generation_setting" where "teamId" = (select "id" from "team" where "slug" = 'english')`);
   if (snapshot) {
-    await db().query(
+    await asSystem.query(
       `insert into "generation_setting"
-         ("id", "modelId", "voiceSettings", "seedStrategy", "raceTags", "updatedAt", "updatedBy")
-       values (true, $1, $2, $3, $4, $5, $6)`,
+         ("teamId", "modelId", "voiceSettings", "seedStrategy", "raceTags", "updatedAt", "updatedBy")
+       values ((select "id" from "team" where "slug" = 'english'), $1, $2, $3, $4, $5, $6)`,
       [
         snapshot.modelId,
         JSON.stringify(snapshot.voiceSettings),
@@ -246,8 +248,8 @@ describe("writeRaceTags", () => {
 
   it("leaves the rest of an existing row alone", async () => {
     await writeRaceTags({}, null);
-    await db().query(
-      `update "generation_setting" set "modelId" = 'eleven_flash_v2_5', "seedStrategy" = 'none' where "id"`,
+    await asSystem.query(
+      `update "generation_setting" set "modelId" = 'eleven_flash_v2_5', "seedStrategy" = 'none' where "teamId" = (select "id" from "team" where "slug" = 'english')`,
     );
 
     await writeRaceTags({ orc: "[gruff]" }, null);
@@ -263,6 +265,46 @@ describe("writeRaceTags", () => {
     await writeRaceTags({}, null);
 
     expect((await readSettings()).config.raceTags).toEqual({});
+  });
+});
+
+describe("base settings across teams", () => {
+  const ENGLISH_ROW = `"teamId" = (select "id" from "team" where "slug" = 'english')`;
+
+  it("are written to every team's base, so a language on a team of its own reads the edit", async () => {
+    const german = await ownTeam("deDE");
+    try {
+      await noRow();
+      await writeRaceTags({ orc: "[gruff]" }, null);
+      await asSystem.query(`update "generation_setting" set "modelId" = 'eleven_flash_v2_5' where ${ENGLISH_ROW}`);
+      await writeRaceTags({ dwarf: "[Scottish accent]" }, null);
+
+      const { rows } = await asSystem.query(
+        `select "modelId", "raceTags" from "generation_setting" where "teamId" = $1`,
+        [german.team],
+      );
+      // Created from the file with the first edit, then given the second edit's tags.
+      expect(rows[0].raceTags).toEqual({ dwarf: "[Scottish accent]" });
+      const settings = await readSettings("deDE");
+      expect(settings.source).toBe("english");
+      expect(settings.config.modelId).toBe(settings.defaults.modelId);
+      expect(settings.config.raceTags).toEqual({});
+    } finally {
+      await german.restore();
+    }
+  });
+
+  it("are English's for a language nobody owns", async () => {
+    await writeRaceTags({}, null);
+    await asSystem.query(`update "generation_setting" set "modelId" = 'eleven_flash_v2_5' where ${ENGLISH_ROW}`);
+    const italian = await unowned("itIT");
+    try {
+      const settings = await readSettings("itIT");
+      expect(settings.source).toBe("english");
+      expect(settings.config.modelId).toBe("eleven_flash_v2_5");
+    } finally {
+      await italian.restore();
+    }
   });
 });
 

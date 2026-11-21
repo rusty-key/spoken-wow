@@ -14,8 +14,7 @@ local WORDS_TOP, PROGRESS_GAP, FOOT = 44, 6, 27
 -- The content's inset from the frame's top and right; its left edge clears the portrait.
 local INSET, BESIDE_PORTRAIT, NO_PORTRAIT = 18, 96, 16
 -- Between the name or the title and the header's buttons; between the buttons.
-local CONTROLS_CLEAR, ROUND_GAP = 8, 4
-local BRONZE = Actions.BRONZE
+local CONTROLS_CLEAR, ROUND_GAP = 8, Actions.ROUND_GAP
 -- The narrowest the window goes, and the room the portrait takes left of the panel.
 local function MinWidth() return Addon:Profile("Frame").HidePortrait and 200 or 280 end
 local function PortraitWidth() return Addon:Profile("Frame").HidePortrait and 80 or 0 end
@@ -24,61 +23,24 @@ local function PortraitWidth() return Addon:Profile("Frame").HidePortrait and 80
 local LOOKS = {
     parchment = { name = { .19, .17, .13 }, title = { .19, .17, .13 }, tail = { .50, .36, .24 }, shadow = 0,
         words = { color = { .19, .17, .13 }, shadow = false, highlight = "|cff9c1a1a" } },
-    dark = { name = { 1, .82, 0 }, title = { .88, .84, .76 }, tail = { .62, .58, .46 }, shadow = 1 },
+    dark = { name = { 1, .82, 0 }, title = Actions.TITLE_COLOR, tail = { .62, .58, .46 }, shadow = 1 },
+    -- EllesmereUI's shell: white, as its windows write their names.
+    ellesmere = { name = { 1, 1, 1 }, title = { .85, .85, .85 }, tail = { .6, .6, .6 }, shadow = 1,
+        words = { color = { .9, .9, .9 } } },
 }
 -- Shipped with Spoken: the Classic clients list the retail parchment atlases without their art,
 -- so those draw nothing.
 local PARCHMENT = ART .. "MinimalParchment"
--- Portrait badges by bullet id. Quests use trimmed copies of their own glyphs; books
--- and zones take native ones, since their registered bullet (or none) is not a badge.
-local BADGES = {
-    ["quest-accept"] = ART .. "MinimalBulletAccept",
-    ["quest-progress"] = ART .. "MinimalBulletProgress",
-    ["quest-complete"] = ART .. "MinimalBulletComplete",
-    gossip = ART .. "MinimalBulletGossip",
-    book = [[Interface\GossipFrame\TrainerGossipIcon]],
-    zone = [[Interface\WorldMap\UI-World-Icon]],
-}
-MinimalPlayer.BADGES = BADGES
+-- The right-click menu's border, where Bronze Border does not tint it.
+local MENU_EDGE = { .6, .57, .48 }
 local function Clamp(n, low, high) return math.max(low, math.min(high, n)) end
 -- The frame still resizes while the UI is torn down, after AceDB strips it (Addon:Profile).
 local function Config() return Addon:Profile("Frame") end
-local function Waiting() return math.max(0, SoundQueue:GetQueueSize() - 1) end
--- A line with no label (a one-page letter) goes by its header: its key means nothing to a player.
-local function Label(clip)
-    local present = clip and clip.present
-    return clip and (present and (present.label or present.header) or clip.key) or ""
-end
--- The name over the title: the header, unless it is already the title (a line with no label).
-local function Name(clip)
-    local present = clip and clip.present
-    return present and present.label and present.header or ""
-end
-local function Font(parent, size, r, g, b)
-    local text = parent:CreateFontString(nil, "OVERLAY")
-    text:SetFont(GameFontNormal:GetFont(), size, "")
-    text:SetShadowColor(0, 0, 0, 1)
-    text:SetShadowOffset(1, -1)
-    text:SetJustifyH("LEFT")
-    text:SetWordWrap(false)
-    text:SetTextColor(r, g, b)
-    return text
-end
-local function BelongsTo(frame, root)
-    while frame do
-        if frame == root then return true end
-        frame = frame.GetParent and frame:GetParent()
-    end
-    return false
-end
+local Label, Waiting, BelongsTo, Font = Actions.Label, Actions.Waiting, Actions.BelongsTo, Actions.Text
 
 function MinimalPlayer:IsEnabled()
     return Addon.db and Addon:DisplayStyle() == "minimal"
 end
-
--- Shared with the DialogueUI window, so both windows' text behaves alike.
-MinimalPlayer.parts = { Font = Font, Label = Label, Name = Name, Clamp = Clamp, Waiting = Waiting,
-    BelongsTo = BelongsTo }
 
 function MinimalPlayer:HideTooltip()
     local owner = GameTooltip:GetOwner()
@@ -110,6 +72,10 @@ function MinimalPlayer:Initialize(original)
     frame:SetScript("OnMouseUp", function(_, button)
         if button == "RightButton" then self:ToggleMenu() end
     end)
+    -- It takes the wheel only while Ctrl is held over it, unlocked (MinimalPlayer:Tick), so the
+    -- camera zooms otherwise. The captions take the wheel first and hand it here when Ctrl is held.
+    frame:SetScript("OnMouseWheel", function(_, delta) self:Wheel(delta) end)
+    frame.spokenWheel = function(delta) return self:Wheel(delta) end
     frame:Hide()
     self.fader = Actions.Fader(frame, function() return { self.viewport and self.viewport.model } end, function()
         -- Faded out for a turn: show the next line.
@@ -168,15 +134,16 @@ function MinimalPlayer:Initialize(original)
     self.title:SetHeight(TITLE_HEIGHT)
     self.title:SetPoint("TOPLEFT", content, "TOPLEFT", 0, -NAME_HEIGHT)
     self.title:SetPoint("RIGHT", self.controls, "LEFT", -CONTROLS_CLEAR, 0)
-    self.title.text = Font(self.title, 12, .88, .84, .76)
+    self.title.text = Font(self.title, 12, unpack(Actions.TITLE_COLOR))
     self.stopped = Font(self.title, 12, .62, .58, .46)
-    self.stopped:SetText(format("• (%s)", L.SUBTITLE_STOPPED))
+    self.stopped:SetText(format("· (%s)", L.SUBTITLE_STOPPED))
     self.stopped:Hide()
     self.count = Font(self.title, 12, .62, .58, .46)
     self.count:Hide()
     self.held = Font(self.title, 12, .62, .58, .46)
     self.held:Hide()
     self.tail = Actions.Tail(self.stopped, self.count, self.held)
+    for _, text in ipairs({ self.name, self.title.text, self.stopped, self.count, self.held }) do Ellesmere:Refont(text) end
 
     self.progress = Actions.ProgressBar(content)
 
@@ -187,7 +154,8 @@ function MinimalPlayer:Initialize(original)
     self.resizer = CreateFrame("Button", nil, frame)
     self.resizer:SetSize(12, 12)
     self.resizer:SetPoint("BOTTOMRIGHT", -5, 12)
-    self.resizer:SetNormalTexture(ART .. "SizeGrabber-Up")
+    -- The client's own, as Azeroth's Compendium's.
+    self.resizer:SetNormalTexture([[Interface\ChatFrame\UI-ChatIM-SizeGrabber-Up]])
     self.resizer:SetAlpha(0)
     self.resizer:SetScript("OnMouseDown", function(_, button)
         if button ~= "LeftButton" or Addon:IsFrameLocked() then return end
@@ -204,40 +172,16 @@ function MinimalPlayer:Initialize(original)
     frame:SetScript("OnHide", function()
         self.menu:Hide()
         self:HideTooltip()
+        Actions.DropWheel(frame)
     end)
 end
 
 function MinimalPlayer:BuildPortrait()
-    local host = CreateFrame("Frame", nil, self.frame)
+    local host = Face.Build(self.frame, 90, self.content:GetFrameLevel() + 2)
     self.portrait, self.frame.portrait = host, host
     host:SetPoint("TOPLEFT", 0, -4)
-    host:SetSize(90, 90)
-    host:SetFrameLevel(self.content:GetFrameLevel() + 2)
-    local background = host:CreateTexture(nil, "BACKGROUND")
-    background:SetAllPoints()
-    background:SetTexture(ART .. "MinimalPortraitBackground")
-
-    self.viewport = CreateFrame("Frame", nil, host)
-    self.viewport:SetSize(78, 78)
-    self.viewport:SetPoint("CENTER", host, "TOPLEFT", 90 * 35 / 71, -90 * 34 / 71)
-    self.viewport:SetClipsChildren(true)
-    local chrome = CreateFrame("Frame", nil, host)
-    chrome:SetAllPoints()
-    chrome:SetFrameLevel(host:GetFrameLevel() + 8)
-    -- Unit-frame badge centres are backed separately from their metal ring.
-    -- Without this disc the speaker's face shows through the speech-bubble badge.
-    self.badgeBackground = chrome:CreateTexture(nil, "BACKGROUND")
-    self.badgeBackground:SetSize(24, 24)
-    self.badgeBackground:SetPoint("CENTER", host, "TOPLEFT", 90 * 56.5 / 71, -90 * 56.5 / 71)
-    self.badgeBackground:SetTexture(ART .. "MinimalPortraitMask")
-    self.badgeBackground:SetVertexColor(.04, .04, .035, 1)
-    local ring = chrome:CreateTexture(nil, "ARTWORK")
-    ring:SetAllPoints()
-    ring:SetTexture(ART .. "MinimalPortraitRing")
-    self.ring = ring
-    self.badge = chrome:CreateTexture(nil, "OVERLAY")
-    self.badge:SetSize(16, 16)
-    self.badge:SetPoint("CENTER", host, "TOPLEFT", 90 * 56.5 / 71, -90 * 56.5 / 71)
+    self.viewport, self.ring = host.viewport, host.ring
+    self.badgeBackground, self.badge = host.badgeBackground, host.badge
 end
 
 function MinimalPlayer:BuildMenu()
@@ -251,7 +195,8 @@ function MinimalPlayer:BuildMenu()
         edgeFile = [[Interface\Tooltips\UI-Tooltip-Border]], tile = true, tileSize = 16, edgeSize = 12,
         insets = { left = 3, right = 3, top = 3, bottom = 3 } })
     menu:SetBackdropColor(.07, .065, .05, .98)
-    menu:SetBackdropBorderColor(.6, .57, .48, 1)
+    menu:SetBackdropBorderColor(MENU_EDGE[1], MENU_EDGE[2], MENU_EDGE[3], 1)
+    Ellesmere:When(function(skin) skin.Panel(menu) end)
     menu:Hide()
     table.insert(UISpecialFrames, "SpokenMinimalPlayerMenu")
     menu:RegisterEvent("GLOBAL_MOUSE_DOWN")
@@ -268,6 +213,8 @@ function MinimalPlayer:BuildMenu()
     self.menuPlay = Item(L.STOP, function() if SoundQueue:CanBePaused() then SoundQueue:TogglePauseQueue() end end)
     self.menuSkip = Item(L.MIN_SKIP, function() SoundQueue:Skip() end)
     self.menuStop = Item(L.MIN_STOP_ALL, function() SoundQueue:RemoveAllSoundsFromQueue() end)
+    -- The minimap menu's rows too: the Compendium and the settings.
+    Item(L.OPT_COMPENDIUM_OPEN, function() Options:ToggleCompendium() end)
     Item(L.SETTINGS, function() Options:Open() end)
     self.actionRows = {}
 end
@@ -340,12 +287,32 @@ function MinimalPlayer:ToggleMenu()
     self.menu:Show()
 end
 
+--- Ctrl-wheel steps Window Size, Ctrl-Shift-wheel Text Size (Actions.WheelSize), its top-left
+--- corner staying put. True when the wheel was taken.
+function MinimalPlayer:Wheel(delta)
+    local frame = self.frame
+    local left, top, before = frame:GetLeft(), frame:GetTop(), frame:GetEffectiveScale()
+    local text = Actions.WheelSize(delta, "FrameScale")
+    if not text then return false end
+    if left and top then
+        local after = frame:GetEffectiveScale()
+        frame:ClearAllPoints()
+        frame:SetPoint("TOPLEFT", UIParent, "BOTTOMLEFT", left * before / after, top * before / after)
+        if Addon:Layout().Minimal then self:SaveLayout() end
+    end
+    Actions.WheelTip(frame, text)
+    return true
+end
+
 function MinimalPlayer:StartDrag()
-    if not Addon:IsFrameLocked() then self.menu:Hide(); self.frame:StartMoving() end
+    if not Addon:IsFrameLocked() then
+        self.menu:Hide()
+        Snap.Start(self.frame, { locked = function() return Addon:IsFrameLocked() end })
+    end
 end
 
 function MinimalPlayer:StopDrag()
-    self.frame:StopMovingOrSizing()
+    Snap.Stop()
     if not Addon:IsFrameLocked() then self:SaveLayout() end
 end
 
@@ -356,13 +323,7 @@ end
 
 function MinimalPlayer:ConfigurePortrait()
     if Config().HidePortrait then return end
-    if not StaticPortrait:Configure(self.viewport, self.clip) then Portrait:Configure(self.viewport, self.clip) end
-    local viewport = self.viewport
-    if viewport.active == "texture" and viewport.texture then StaticPortrait:Mask(viewport, viewport.texture) end
-    local id = self.clip.present and self.clip.present.bullet
-    local texture = BADGES[id] or Bullets[id] and Bullets[id].texture
-    self.badge:SetTexture(texture)
-    self.badge:SetShown(texture ~= nil)
+    Face.Show(self.portrait, self.clip)
 end
 
 --- The rock repeats once per 256 units, inside the inset.
@@ -374,8 +335,10 @@ end
 
 --- Paints the panel's background, and the text in colours that read on it.
 function MinimalPlayer:Dress()
-    local dark = Config().MinimalBackground == "dark"
-    local look = dark and LOOKS.dark or LOOKS.parchment
+    -- EllesmereUI's shell is dark whichever background is chosen; a shell that failed left Spoken's.
+    local shell = self.panel.spokenEllesmere == true
+    local dark = Config().MinimalBackground == "dark" or shell
+    local look = shell and LOOKS.ellesmere or dark and LOOKS.dark or LOOKS.parchment
     local paper = self.paper
     self.dark = dark
     if dark then
@@ -416,23 +379,12 @@ end
 
 --- Puts the tail after the title: the title is cut short, not it.
 function MinimalPlayer:Count(waiting)
-    local tail = self.tail
-    tail:SetCount(waiting)
-    local room = tail:Room()
-    local text = self.title.text
-    text:ClearAllPoints()
-    text:SetPoint("TOPLEFT")
-    text:SetPoint("BOTTOMRIGHT", -room, 0)
-    if room == 0 then return end
-    tail:Place(text, math.min(text:GetStringWidth() or 0, math.max(0, (self.title:GetWidth() or 0) - room)))
-    tail:Paint()
+    self.tail:SetCount(waiting)
+    self.tail:Fit(self.title.text, self.title:GetWidth() or 0)
 end
 
 function MinimalPlayer:UpdateProgress()
-    local clip = self.clip
-    if not clip then return end
-    self.seconds = Actions.Elapsed(clip, self.seconds)
-    Actions.SetProgress(self.progress, SoundQueue:Share(clip, self.seconds))
+    Actions.FollowProgress(self)
 end
 
 --- The window as tall as its words, with the progress line along their foot.
@@ -456,7 +408,9 @@ function MinimalPlayer:Layout()
     self.panel:ClearAllPoints()
     -- The panel starts behind the portrait's centre and is centred on it vertically,
     -- so its left corners sit beneath the opaque disc and the text gets even margins.
-    self.panel:SetPoint("TOPLEFT", self.frame, "TOPLEFT", cfg.HidePortrait and 0 or 44, -6)
+    -- In EllesmereUI's shell the whole frame: its edge, drawn above the portrait, would run down the
+    -- portrait's middle from the panel's left side.
+    self.panel:SetPoint("TOPLEFT", self.frame, "TOPLEFT", (cfg.HidePortrait or self.panel.spokenEllesmere == true) and 0 or 44, -6)
     self.panel:SetPoint("BOTTOMRIGHT", self.frame, "BOTTOMRIGHT", 0, 10)
     self.resizer:SetShown(not Addon:IsFrameLocked())
     self.layingOut = false
@@ -470,6 +424,7 @@ function MinimalPlayer:SetVisible(visible, immediate)
 end
 
 function MinimalPlayer:Tick(elapsed)
+    Actions.TakeWheel(self.frame, Addon:IsFrameLocked())
     if not self.wanted then return end
     -- Once "(Stopped)" has faded out, the title gets its room back.
     if self.tail:Step(elapsed) then self:Count(Waiting()) end
@@ -490,25 +445,38 @@ function MinimalPlayer:RefreshConfig(original)
     frame:SetFrameStrata(cfg.FrameStrata)
     frame:SetResizeBounds(MinWidth(), frame:GetHeight(), 1000, frame:GetHeight())
     local saved = Addon:Layout().Minimal
-    frame:SetWidth(Clamp((saved and saved.width or cfg.MinimalWidth or WIDTH) - PortraitWidth(), MinWidth(), 1000))
+    frame:SetWidth(Clamp((saved and saved.width or WIDTH) - PortraitWidth(), MinWidth(), 1000))
     self.content:ClearAllPoints()
     self.content:SetPoint("TOPLEFT", cfg.HidePortrait and NO_PORTRAIT or BESIDE_PORTRAIT, -INSET)
     self.content:SetPoint("TOPRIGHT", -INSET, -INSET)
     self.portrait:SetShown(not cfg.HidePortrait)
+    local bronze = Actions.Bronze()
     local r, g, b = 1, 1, 1
-    if BRONZE and Addon:Bronze() then r, g, b = BRONZE[1], BRONZE[2], BRONZE[3] end
-    self.panel:SetBackdropBorderColor(r, g, b)
+    if bronze then r, g, b = bronze[1], bronze[2], bronze[3] end
+    if self.panel.spokenEllesmere ~= true then self.panel:SetBackdropBorderColor(r, g, b) end
     Actions.TintProgress(self.progress, r, g, b)
-    self.ring:SetVertexColor(r, g, b)
+    local edge = bronze or MENU_EDGE
+    -- EllesmereUI's panel in its look: the stock border stays faded.
+    if not Ellesmere:On() then self.menu:SetBackdropBorderColor(edge[1], edge[2], edge[3], 1) end
+    Ellesmere:Dress(self.panel)
+    -- Every refresh: a style switch draws the stock border and paper again. Only once the shell is
+    -- on: a shell that failed leaves Spoken's own.
+    if self.panel.spokenEllesmere == true then
+        Ellesmere:When(function()
+            if self.panel.SetBackdrop then self.panel:SetBackdrop(nil) end
+            self.paper:SetAlpha(0)
+            -- The portrait over the shell's edge: under it, the edge would draw across the picture.
+            local level = self.panel:GetFrameLevel() + Ellesmere.OVER_SHELL
+            self.portrait:SetFrameLevel(level)
+            self.portrait.viewport:SetFrameLevel(level + 1)
+            self.portrait.chrome:SetFrameLevel(level + 9)
+        end)
+    end
     self:Dress()
     if Addon:IsFrameLocked() then frame:StopMovingOrSizing(); self.sizing = false end
-    -- Locked, clicks on the window pass through to the game, as the subtitle's do; its buttons
-    -- still take theirs, and the header still opens the menu. Where the client cannot tell a
-    -- click from the pointer passing over, the window keeps both.
-    if frame.SetMouseClickEnabled and frame.SetMouseMotionEnabled then
-        frame:SetMouseMotionEnabled(true)
-        frame:SetMouseClickEnabled(not Addon:IsFrameLocked())
-    end
+    -- Locked, clicks on the window pass through to the game, as the subtitle's do; the header
+    -- still opens the menu.
+    Actions.ClickThrough(frame)
     Addon:ApplyHost(frame)
     self:Update()
 end
@@ -538,9 +506,7 @@ function MinimalPlayer:Update()
         self.clip, self.seconds = clip, 0
     end
     self:SetVisible(true)
-    -- A speaker name the same as the line's own is left off, so it is not said twice.
-    local name = Name(clip)
-    self.name:SetText(name ~= Label(clip) and name or "")
+    self.name:SetText(Actions.Speaker(clip))
     Addon:ClipFont(self.name, clip)
     self:ConfigurePortrait()
     self:ConfigureActions()
@@ -549,14 +515,15 @@ function MinimalPlayer:Update()
     self:UpdateControls()
 end
 
+--- Its saved place and width forgotten, and back at its default spot. Drawn again only while it
+--- is the style shown; another picks the default up when it switches.
 function MinimalPlayer:Reset()
+    Addon:Layout().Minimal = nil
     if not self.frame then return end
     self.frame:StopMovingOrSizing()
-    Config().MinimalWidth = WIDTH
-    Addon:Layout().Minimal = nil
     self.frame:ClearAllPoints()
     self.frame:SetPoint("BOTTOM", UIParent, "BOTTOM", 0, 200)
-    self:RefreshConfig(PlayerFrame)
+    if self:IsEnabled() then self:RefreshConfig(PlayerFrame) end
 end
 
 function MinimalPlayer:Describe()

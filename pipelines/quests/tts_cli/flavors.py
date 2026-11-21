@@ -22,7 +22,7 @@ import re
 from collections import Counter
 from typing import Iterable, Mapping
 
-from tts_cli.naming import FOLLOWUP, followup_stem
+from tts_cli.naming import BROADCAST_SOURCES, followup_stem
 
 # The sound entry names spell undead "Undead"; the corpus and the voice slots use the
 # client's internal race name.
@@ -196,7 +196,7 @@ def file_key(source: str, quest, text_hash: str, broadcast_text_id,
     on the text hash instead, a dwarf-male-grim ender would be recorded in the standard
     voice of whoever else says the line - the one thing its naming exists to prevent.
     """
-    if source == FOLLOWUP:
+    if source in BROADCAST_SOURCES:
         # rsplit: a model slot's race has a dash of its own (model-29-male).
         return followup_stem(broadcast_text_id, voice_name(*race_gender.rsplit("-", 1), flavor)), \
             race_gender

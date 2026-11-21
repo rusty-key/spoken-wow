@@ -11,6 +11,7 @@ import type { Report } from "./reports";
 
 function report(overrides: Partial<Report> = {}): Report {
   return {
+    queue: "audio",
     id: 1,
     source: "quests",
     lineId: "q:374:accept",
@@ -24,6 +25,7 @@ function report(overrides: Partial<Report> = {}): Report {
     createdAt: "2026-09-01T00:00:00Z",
     resolvedAt: null,
     resolvedBy: null,
+    context: null,
     ...overrides,
   };
 }
@@ -58,7 +60,7 @@ describe("groupByLine", () => {
   });
 
   it("keeps the same line id in two sections apart", () => {
-    const groups = groupByLine([report({ id: 2, source: "zones" }), report({ id: 1 })]);
+    const groups = groupByLine([report({ id: 2, source: "places" }), report({ id: 1 })]);
     expect(groups).toHaveLength(2);
   });
 

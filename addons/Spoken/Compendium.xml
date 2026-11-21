@@ -1,0 +1,9 @@
+<Ui xsi:schemaLocation="http://www.blizzard.com/wow/ui/ ..\FrameXML\UI.xsd">
+    <!--
+        Azeroth's Compendium, the window every module's tab shares, the dungeons its tabs list
+        and the text view its pages scroll in.
+    -->
+    <Include file="Data\Dungeons.lua"/>
+    <Include file="UI\TextView.lua"/>
+    <Include file="UI\Compendium.lua"/>
+</Ui>

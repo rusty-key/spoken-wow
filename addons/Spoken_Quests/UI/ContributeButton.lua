@@ -2,7 +2,7 @@ setfenv(1, VoiceOver)
 
 -- The Contribute button, on the Blizzard quest frame itself.
 --
--- Modeled on SpokenBooks/UI/PlayButton.lua, the closest precedent in this repo for a button
+-- Modeled on Spoken_Readables/UI/PlayButton.lua, the closest precedent in this repo for a button
 -- the game's own frame has to host because ours cannot. There the reason is that the book
 -- addon has no player frame of its own at all; here the reason is narrower but just as final:
 -- this button's whole precondition, Contribute:HasGap(), is true exactly when nothing was
@@ -14,8 +14,8 @@ setfenv(1, VoiceOver)
 -- ReportButton's own copy-link popup for exactly this reason, is the game's own frame.
 --
 -- A TEXT button, not an icon, for PlayButton.lua's reason, unchanged: an icon path cannot be
--- verified without launching the client, and a texture missing on a legacy client
--- draws nothing at all -- an invisible button is a worse failure than a plain one.
+-- verified without launching the client, and a missing texture draws nothing at all -- an
+-- invisible button is a worse failure than a plain one.
 --
 -- Hidden rather than disabled when there is nothing to send, for PlayButton.lua's reason,
 -- unchanged: a greyed-out button on every quest and every NPC this client has no line for is
@@ -30,7 +30,7 @@ local BUTTON_HEIGHT = 20
 local BUTTON_WIDTH = 90
 local GAP = 2
 -- From the close button's bottom edge down into the middle of the strip under the title bar.
-local STRIP_OFFSET = 12
+local STRIP_OFFSET = 8
 local CORNER_INSET = 32
 -- Fallback margins under and beside DialogueUI's footer buttons: its bottom (36) and side (26)
 -- paddings at its default size (1.1).
@@ -155,14 +155,12 @@ local function OnLeave()
     end
 end
 
---- Report what DialogueUI's window shows, in the language its line would be heard in.
+--- Report what DialogueUI's window shows.
 function ContributeButton:ReportFromDialogueUI()
     local target = ReportButton:CurrentTarget()
-    if not target then
-        return
+    if target then
+        ReportButton:ShowLink(target)
     end
-    local ok, line = pcall(Addon.GetVisibleLine, Addon, Utils:DialogueUIPage())
-    ReportButton:ShowLink(target, ok and line and line.language or nil)
 end
 
 --- The game's tooltip is a child of UIParent, which DialogueUI hides, so its window gets its
@@ -208,7 +206,6 @@ function ContributeButton:DialogueUICorner(frame)
         else
             tooltip:SetOwner(owner, "ANCHOR_RIGHT")
             tooltip:SetText(L.OPT_REPORT_PROBLEM)
-            tooltip:AddLine(L.OPT_REPORT_LINE_TIP, 1, 0.8, 0.2, true)
             tooltip:Show()
         end
     end
@@ -282,7 +279,9 @@ function ContributeButton:Refresh()
     if not button then
         return
     end
-    if not Addon:IsPartOn() then
+    -- The part of the window in front: its page under DialogueUI, else the panel showing.
+    local page = Utils:DialogueUIPage()
+    if not Addon:IsPageOn(page or (QuestPanelOnScreen() and "QUEST_DETAIL" or "GOSSIP_SHOW")) then
         button:Hide()
         self:HideOnDialogueUI()
         return
@@ -290,7 +289,6 @@ function ContributeButton:Refresh()
 
     -- DialogueUI's window: the corner is there on every page, Report or Contribute, Report
     -- unless Hide Report Buttons is on.
-    local page = Utils:DialogueUIPage()
     if page then
         button:Hide()
         self.gossip = page == "GOSSIP_SHOW"
@@ -361,8 +359,7 @@ function ContributeButton:Setup()
 
     -- The refresh frame. Ignores its own event argument entirely -- every one of
     -- REFRESH_EVENTS means only "something may have changed," so there is nothing to read out
-    -- of it, which sidesteps 1.12's OnEvent calling convention (no arguments; the event name
-    -- arrives in the global `event` instead) rather than having to account for it.
+    -- of it.
     local watcher = CreateFrame("Frame")
     for _, event in ipairs(REFRESH_EVENTS) do
         pcall(watcher.RegisterEvent, watcher, event)

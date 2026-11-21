@@ -1,6 +1,6 @@
 from tts_cli.build import build_tables, locale_tables
 from tts_cli.ignores import ignored_files
-from tts_cli.npc_sexes import SEX_GENDER
+from tts_cli.npc_bodies import SEX_GENDER
 from tts_cli.voice_files import npc_voices, stored_stems, with_voice_files
 
 
@@ -194,10 +194,11 @@ def test_a_languages_greeting_joins_english_by_moment_whatever_its_own_shape():
     assert tables["npc_gossip_file_lookups"][1] == {5: {"Geh zu Gryan.": "abc"}}
 
 
-def sex(npc_id, value, race, flavor):
+def body(npc_id, race, value, flavor, weight=None):
     gender = SEX_GENDER[value]
-    return {"npcType": "creature", "npcId": npc_id, "sex": value, "race": race, "gender": gender,
-            "flavor": flavor, "provenance": "corpus", "voice": f"{race}-{gender}-{flavor}"}
+    return {"npcType": "creature", "npcId": npc_id, "race": race, "sex": value, "gender": gender,
+            "weight": weight, "flavor": flavor, "provenance": "corpus",
+            "voice": f"{race}-{gender}-{flavor}"}
 
 
 GUARD = {
@@ -209,25 +210,34 @@ GUARD = {
         line(7, "human-male-official", line_id="g:abc", file_name="abc", source="gossip"),
     ],
     "npcs": [npc(68, "human", "male", "official"), npc(7, "human", "female", "official")],
-    "npcSexes": [sex(68, 2, "human", "official"), sex(68, 3, "human", "official")],
+    "npcBodies": [body(68, "human", 2, "official"), body(68, "human", 3, "official")],
+}
+
+
+REVELER = {
+    "lines": [line(15906, "dwarf-male-standard", line_id="g:abc", file_name="abc", source="gossip"),
+              line(15906, "dwarf-male-standard")],
+    "npcs": [npc(15906, "dwarf", "male", "standard")],
+    "npcBodies": [body(15906, "dwarf", 2, "standard", 25), body(15906, "gnome", 2, "standard", 25),
+                  body(15906, "gnome", 3, "standard", 25)],
 }
 
 
 def test_a_split_npc_speaks_a_line_per_sex_the_other_sexs_once_its_file_is_stored():
     stems = stored_stems(["gossip/abc.mp3", "gossip/abc-human-female-official.mp3",
                           "quests/109-accept.mp3"])
-    rows = [(row["npcId"], row.get("npcSex"), row["lineId"])
+    rows = [(row["npcId"], row.get("npcSex"), row.get("npcBody"), row["lineId"])
             for row in with_voice_files(GUARD, stems)["lines"]]
     assert rows == [
-        (68, 2, "g:abc"),
-        (68, 3, "g:abc~human-female-official"),
-        (68, 2, "q:109:accept"),
+        (68, 2, "human-male", "g:abc"),
+        (68, 3, "human-female", "g:abc~human-female-official"),
+        (68, 2, "human-male", "q:109:accept"),
         # Not stored yet: the man's file until it is.
-        (68, 3, "q:109:accept"),
-        # Never voiced, so never split.
-        (68, None, "q:109:progress"),
+        (68, 3, "human-female", "q:109:accept"),
+        (68, 2, "human-male", "q:109:progress"),
+        (68, 3, "human-female", "q:109:progress"),
         # Somebody else's NPC is as it was.
-        (7, None, "g:abc~human-female-official"),
+        (7, None, None, "g:abc~human-female-official"),
     ]
 
 
@@ -239,11 +249,17 @@ def test_a_split_npcs_line_is_found_by_its_own_stem_and_each_sex_asked_after():
     assert tables["npc_sex_gossip_file_lookups"][1] == {
         68: {2: {"abc": "abc"}, 3: {"abc": "abc-human-female-official"}}}
     assert tables["npc_sex_quest_file_lookups"][1] == {
-        "109-accept": {68: {2: "109-accept", 3: "109-accept-human-female-official"}}}
+        "109-accept": {68: {2: "109-accept", 3: "109-accept-human-female-official"}},
+        # Not stored yet in the woman's voice: the man's file until it is.
+        "109-progress": {68: {2: "109-progress", 3: "109-progress"}}}
     # The giver table an older addon reads still names no voice for the split NPC.
     assert tables["npc_quest_file_lookups"][1] == {}
     # Every other creature's sex, for the addon to notice a voice of the wrong one.
     assert tables["npc_sex_lookups"][1] == {7: 3}
+    assert tables["npc_body_gossip_file_lookups"][1] == {
+        68: {"human-male": {"abc": "abc"}, "human-female": {"abc": "abc-human-female-official"}}}
+    assert tables["npc_bodies_lookups"][1] == {
+        68: {"human-male": True, "human-female": True}, 7: {"human-female": True}}
 
 
 def test_a_split_npcs_follow_up_is_a_file_per_sex_and_the_mans_without_one():
@@ -263,3 +279,71 @@ def test_a_split_npcs_line_in_a_client_locale_is_its_own_stem():
     rows = [{"lineId": "g:abc", "originalText": "Go to Gryan.", "localeText": "Geht zu Gryan."}]
     tables = locale_tables(with_voice_files(GUARD, stems), rows)
     assert tables["npc_gossip_file_lookups"][1][68] == {"Geht zu Gryan.": "abc"}
+
+
+def test_a_split_npcs_line_is_a_row_per_body_and_each_sex_falls_back_to_one():
+    stems = stored_stems(["gossip/abc.mp3", "gossip/abc-gnome-male-standard.mp3",
+                          "gossip/abc-gnome-female-standard.mp3", "quests/109-accept.mp3",
+                          "quests/109-accept-gnome-male-standard.mp3"])
+    rows = [(row.get("npcBody"), row.get("npcSex"), row.get("sexBody"), row["lineId"])
+            for row in with_voice_files(REVELER, stems)["lines"]]
+    assert rows == [
+        ("dwarf-male", 2, True, "g:abc"),
+        ("gnome-male", 2, False, "g:abc~gnome-male-standard"),
+        ("gnome-female", 3, True, "g:abc~gnome-female-standard"),
+        ("dwarf-male", 2, True, "q:109:accept"),
+        ("gnome-male", 2, False, "q:109:accept~gnome-male-standard"),
+        # Not stored yet: the line's own file until it is.
+        ("gnome-female", 3, True, "q:109:accept"),
+    ]
+    assert all("bodyVoice" not in row for row in with_voice_files(REVELER, stems)["lines"])
+
+
+def test_the_packs_carry_each_body_and_each_sexs_fallback_body():
+    stems = stored_stems(["gossip/abc.mp3", "gossip/abc-gnome-male-standard.mp3",
+                          "gossip/abc-gnome-female-standard.mp3", "quests/109-accept.mp3",
+                          "quests/109-accept-gnome-male-standard.mp3"])
+    tables = build_tables(with_voice_files(REVELER, stems))
+    assert tables["npc_body_gossip_file_lookups"][1] == {15906: {
+        "dwarf-male": {"abc": "abc"}, "gnome-male": {"abc": "abc-gnome-male-standard"},
+        "gnome-female": {"abc": "abc-gnome-female-standard"}}}
+    # The dwarf is the NPC's own race, so a man heard by sex alone is the dwarf.
+    assert tables["npc_sex_gossip_file_lookups"][1] == {15906: {
+        2: {"abc": "abc"}, 3: {"abc": "abc-gnome-female-standard"}}}
+    assert tables["npc_body_quest_file_lookups"][1] == {"109-accept": {15906: {
+        "dwarf-male": "109-accept", "gnome-male": "109-accept-gnome-male-standard",
+        "gnome-female": "109-accept"}}}
+    assert tables["npc_sex_quest_file_lookups"][1] == {"109-accept": {15906: {
+        2: "109-accept", 3: "109-accept"}}}
+    assert tables["npc_bodies_lookups"][1] == {15906: {
+        "dwarf-male": True, "gnome-male": True, "gnome-female": True}}
+
+
+def test_a_sex_of_two_races_is_heard_as_the_npcs_own_race_over_a_heavier_one():
+    # Export order puts the heavier gnome first; the sex rule still picks the dwarf.
+    corpus = {**REVELER, "npcBodies": [body(15906, "gnome", 2, "standard", 75),
+                                       body(15906, "dwarf", 2, "standard", 25)]}
+    stems = stored_stems(["gossip/abc.mp3", "gossip/abc-gnome-male-standard.mp3",
+                          "quests/109-accept.mp3", "quests/109-accept-gnome-male-standard.mp3",
+                          "followup/4377-dwarf-male-standard.mp3",
+                          "followup/4377-dwarf-male-standard-gnome-male-standard.mp3"])
+    followup = line(15906, "dwarf-male-standard", line_id="f:4377:dwarf-male-standard",
+                    file_name="4377-dwarf-male-standard", source="followup")
+    tables = build_tables(with_voice_files({**corpus, "lines": corpus["lines"] + [followup]}, stems))
+    assert tables["npc_sex_gossip_file_lookups"][1] == {15906: {2: {"abc": "abc"}}}
+    assert tables["npc_sex_quest_file_lookups"][1] == {"109-accept": {15906: {2: "109-accept"}}}
+    assert tables["npc_sex_followup_lookups"][1] == {15906: {4377: {2: "4377-dwarf-male-standard"}}}
+    assert tables["followup_lookups"][1] == {15906: {4377: "4377-dwarf-male-standard"}}
+    assert tables["npc_body_gossip_file_lookups"][1] == {15906: {
+        "gnome-male": {"abc": "abc-gnome-male-standard"}, "dwarf-male": {"abc": "abc"}}}
+    assert tables["npc_body_quest_file_lookups"][1] == {"109-accept": {15906: {
+        "gnome-male": "109-accept-gnome-male-standard", "dwarf-male": "109-accept"}}}
+    assert tables["npc_body_followup_lookups"][1] == {15906: {4377: {
+        "gnome-male": "4377-dwarf-male-standard-gnome-male-standard",
+        "dwarf-male": "4377-dwarf-male-standard"}}}
+
+
+def test_the_model_map_names_bodies():
+    tables = build_tables(GUARD)
+    assert tables["body_model_lookups"][1][119159] == "gnome-male"
+    assert tables["body_model_lookups"][1][119563] == "human-female"

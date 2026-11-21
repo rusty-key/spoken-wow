@@ -17,6 +17,7 @@ import type { Lang } from "@/lib/lang";
 import type { Failure } from "../errors";
 import type { SeedStrategy } from "../config";
 import type { Provider } from "../providers";
+import type { WordStart } from "../word-times";
 
 export type { Provider } from "../providers";
 
@@ -67,6 +68,11 @@ export type Spoken =
        * to credits would be wrong without looking wrong.
        */
       costUsd: number | null;
+      /**
+       * Each spoken word's start in `audio`, from a provider that says. Null, the take is
+       * stored without times and the captions estimate them.
+       */
+      words: WordStart[] | null;
       made: Made;
     }
   | { ok: false; failure: Failure };

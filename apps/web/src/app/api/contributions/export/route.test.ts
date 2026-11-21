@@ -6,6 +6,7 @@
 import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from "vitest";
 
 import { closeDb, db } from "@/lib/db";
+import { asSystem } from "@/lib/teams/testing";
 import { createContribution, setContributionNpcKind, setContributionStatus } from "@/lib/contributions/store";
 import { upsertResolution } from "@/lib/npc/store";
 
@@ -23,7 +24,7 @@ const ip = `test-${Math.random().toString(36).slice(2, 10)}`;
 const npcId = 900_000_000 + Math.floor(Math.random() * 99_999_999);
 
 beforeAll(async () => {
-  await db().query(
+  await asSystem.query(
     `insert into "user" ("id", "name", "email", "emailVerified")
      values ($1, 'Test Resolver', $2, false)
      on conflict ("id") do nothing`,
@@ -32,17 +33,17 @@ beforeAll(async () => {
 });
 
 afterEach(async () => {
-  await db().query(
+  await asSystem.query(
     `delete from "activity" where "kind" like 'contribution.%'
         and "subject" in (select "id"::text from "contribution" where "ip" = $1)`,
     [ip],
   );
-  await db().query(`delete from "contribution" where "ip" = $1`, [ip]);
-  await db().query(`delete from "npc" where "npcId" = $1`, [npcId]);
+  await asSystem.query(`delete from "contribution" where "ip" = $1`, [ip]);
+  await asSystem.query(`delete from "npc" where "npcId" = $1`, [npcId]);
 });
 
 afterAll(async () => {
-  await db().query(`delete from "user" where "id" = $1`, [RESOLVER]);
+  await asSystem.query(`delete from "user" where "id" = $1`, [RESOLVER]);
   await closeDb();
 });
 
@@ -62,7 +63,7 @@ async function acceptedRow(key: string, meta: Record<string, string>) {
     userId: null,
     ip,
   });
-  const { rows } = await db().query<{ id: number }>(
+  const { rows } = await asSystem.query<{ id: number }>(
     `select "id" from "contribution" where "dedup" = $1`,
     [`dedup:${key}:${ip}`],
   );

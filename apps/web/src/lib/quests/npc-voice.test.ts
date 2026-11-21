@@ -6,7 +6,8 @@
  */
 import { afterAll, afterEach, beforeEach, describe, expect, it } from "vitest";
 
-const { closeDb, db } = await import("@/lib/db");
+const { closeDb } = await import("@/lib/db");
+const { asSystem } = await import("@/lib/teams/testing");
 const { corpus } = await import("./catalogue");
 
 const WHOLE_CORPUS = { timeout: 20_000 };
@@ -22,10 +23,10 @@ beforeEach(() => {
 });
 
 afterEach(async () => {
-  await db().query(`delete from "quest_line_speaker" where "lineId" = $1`, [lineId]);
-  await db().query(`delete from "quest_line" where "lineId" = $1`, [lineId]);
-  await db().query(`delete from "npc" where "npcId" = any($1::int[])`, [npcIds]);
-  await db().query(`delete from "entity_name" where "entityId" = any($1::text[])`, [npcIds.map(String)]);
+  await asSystem.query(`delete from "quest_line_speaker" where "lineId" = $1`, [lineId]);
+  await asSystem.query(`delete from "quest_line" where "lineId" = $1`, [lineId]);
+  await asSystem.query(`delete from "npc" where "npcId" = any($1::int[])`, [npcIds]);
+  await asSystem.query(`delete from "entity_name" where "entityId" = any($1::text[])`, [npcIds.map(String)]);
 });
 
 afterAll(closeDb);
@@ -35,7 +36,7 @@ async function line(
   speakers: { npcId: number; race: string; gender: string; flavor: string | null }[],
   source: "accept" | "gossip" | "progress" = "accept",
 ) {
-  await db().query(
+  await asSystem.query(
     `insert into "quest_line"
        ("lineId", "variant", "lang", "version", "isCurrent", "origin", "source", "questId",
         "questTitle", "fileName", "text", "originalText", "generatable")
@@ -44,7 +45,7 @@ async function line(
     [lineId, source === "accept" ? questId : null, `${questId}-accept`, source],
   );
   for (const [index, speaker] of speakers.entries()) {
-    await db().query(
+    await asSystem.query(
       `insert into "quest_line_speaker"
          ("lineId", "variant", "lang", "ord", "npcType", "npcId", "npcName", "race", "gender",
           "flavor", "voice")
@@ -59,7 +60,7 @@ async function line(
 }
 
 async function npc(npcId: number, values: { race: string | null; gender: string | null; flavor: string | null; provenance: string }) {
-  await db().query(
+  await asSystem.query(
     `insert into "npc" ("npcKind", "npcId", "race", "gender", "flavor", "provenance", "confirmed")
      values ('creature', $1, $2, $3, $4, $5, $5 in ('corpus', 'moderator'))`,
     [npcId, values.race, values.gender, values.flavor, values.provenance],
@@ -123,19 +124,19 @@ describe("a quest moment's voice", WHOLE_CORPUS, () => {
   it("speaks in a voice given to its NPC's type, with nothing else written", async () => {
     const type = `t${questId}`;
     await line([{ npcId: npcIds[0], race: type, gender: "male", flavor: null }]);
-    await db().query(`insert into "race" ("key") values ($1)`, [type]);
+    await asSystem.query(`insert into "race" ("key") values ($1)`, [type]);
     await npc(npcIds[0], { race: type, gender: null, flavor: null, provenance: "moderator" });
     try {
       expect(await spoken()).toEqual([`${lineId}~${type} ${questId}-accept-${type} ${type} (no-voice)`]);
       // As the Types tab does it, which writes no speaker and no npc row.
-      await db().query(`insert into "voice" ("name", "race", "gender") values ($1, $1, '')`, [type]);
-      await db().query(`insert into "voice_assignment" ("race", "voice") values ($1, $1)`, [type]);
+      await asSystem.query(`insert into "voice" ("name", "race", "gender", "teamId") values ($1, $1, '', team_of_lang('enUS'))`, [type]);
+      await asSystem.query(`insert into "voice_assignment" ("race", "voice", "teamId") values ($1, $1, team_of_lang('enUS'))`, [type]);
       expect(await spoken()).toEqual([`${lineId}~${type} ${questId}-accept-${type} ${type}`]);
     } finally {
-      await db().query(`delete from "npc" where "npcId" = $1`, [npcIds[0]]);
-      await db().query(`delete from "voice_assignment" where "race" = $1`, [type]);
-      await db().query(`delete from "voice" where "name" = $1`, [type]);
-      await db().query(`delete from "race" where "key" = $1`, [type]);
+      await asSystem.query(`delete from "npc" where "npcId" = $1`, [npcIds[0]]);
+      await asSystem.query(`delete from "voice_assignment" where "race" = $1`, [type]);
+      await asSystem.query(`delete from "voice" where "name" = $1`, [type]);
+      await asSystem.query(`delete from "race" where "key" = $1`, [type]);
     }
   });
 
@@ -162,74 +163,108 @@ describe("a greeting's voice", WHOLE_CORPUS, () => {
   });
 });
 
-describe("an NPC split by sex", WHOLE_CORPUS, () => {
-  async function sex(npcId: number, value: 2 | 3, race: string, flavor: string | null) {
-    await db().query(
-      `insert into "npc_sex" ("npcKind", "npcId", "sex", "race", "flavor", "provenance", "confirmed")
+describe("an NPC split by body", WHOLE_CORPUS, () => {
+  async function body(npcId: number, race: string, value: 2 | 3, flavor: string | null) {
+    await asSystem.query(
+      `insert into "npc_body" ("npcKind", "npcId", "race", "sex", "flavor", "provenance", "confirmed")
        values ('creature', $1, $2, $3, $4, 'corpus', true)`,
-      [npcId, value, race, flavor],
+      [npcId, race, value, flavor],
     );
   }
 
-  /** As spoken(), with the sex each row is the NPC drawn as. */
-  async function bySex(): Promise<string[]> {
+  /** As spoken(), with the body each row is the NPC drawn as. */
+  async function byBody(): Promise<string[]> {
     return (await corpus()).lines
       .filter((candidate) => candidate.lineId === lineId || candidate.lineId.startsWith(`${lineId}~`))
-      .sort((a, b) => a.npcId - b.npcId || (a.npcSex ?? 0) - (b.npcSex ?? 0))
-      .map((l) => `${l.npcSex ?? "-"} ${l.lineId} ${l.voice}`);
+      .sort((a, b) => a.npcId - b.npcId || (a.npcBody ?? "").localeCompare(b.npcBody ?? ""))
+      .map((l) => `${l.npcBody ?? "-"} ${l.lineId} ${l.voice}`);
   }
 
-  it("speaks each line once per sex, the other sex's in a file of its own voice", async () => {
+  it("speaks each line once per body, the other sex's in a file of its own voice", async () => {
     await line([{ npcId: npcIds[0], race: "human", gender: "male", flavor: "official" }], "gossip");
     await npc(npcIds[0], { race: "human", gender: "male", flavor: "official", provenance: "corpus" });
-    await sex(npcIds[0], 2, "human", "official");
-    await sex(npcIds[0], 3, "human", "official");
+    await body(npcIds[0], "human", 2, "official");
+    await body(npcIds[0], "human", 3, "official");
 
-    expect(await bySex()).toEqual([
-      `2 ${lineId} human-male-official`,
-      `3 ${lineId}~human-female-official human-female-official`,
+    expect(await byBody()).toEqual([
+      `human-female ${lineId}~human-female-official human-female-official`,
+      `human-male ${lineId} human-male-official`,
     ]);
   });
 
-  it("lists a line once when both sexes are read by one voice", async () => {
+  it("lists a line once when both bodies are read by one voice", async () => {
     await line([{ npcId: npcIds[0], race: "orc", gender: "male", flavor: "guard" }], "gossip");
     await npc(npcIds[0], { race: "orc", gender: "male", flavor: "guard", provenance: "corpus" });
     // A race with no genders is read by one voice whatever the sex.
     const type = `t${questId}`;
-    await db().query(`insert into "race" ("key") values ($1)`, [type]);
-    await db().query(`insert into "voice" ("name", "race", "gender") values ($1, $1, '')`, [type]);
-    await db().query(`insert into "voice_assignment" ("race", "voice") values ($1, $1)`, [type]);
+    await asSystem.query(`insert into "race" ("key") values ($1)`, [type]);
+    await asSystem.query(`insert into "voice" ("name", "race", "gender", "teamId") values ($1, $1, '', team_of_lang('enUS'))`, [type]);
+    await asSystem.query(`insert into "voice_assignment" ("race", "voice", "teamId") values ($1, $1, team_of_lang('enUS'))`, [type]);
     try {
-      await sex(npcIds[0], 2, type, null);
-      await sex(npcIds[0], 3, type, null);
-      expect(await bySex()).toEqual([`2 ${lineId}~${type} ${type}`]);
+      await body(npcIds[0], type, 2, null);
+      await body(npcIds[0], type, 3, null);
+      expect(await byBody()).toEqual([`${type}-male ${lineId}~${type} ${type}`]);
     } finally {
-      await db().query(`delete from "npc" where "npcId" = $1`, [npcIds[0]]);
-      await db().query(`delete from "voice_assignment" where "race" = $1`, [type]);
-      await db().query(`delete from "voice" where "name" = $1`, [type]);
-      await db().query(`delete from "race" where "key" = $1`, [type]);
+      await asSystem.query(`delete from "npc" where "npcId" = $1`, [npcIds[0]]);
+      await asSystem.query(`delete from "voice_assignment" where "race" = $1`, [type]);
+      await asSystem.query(`delete from "voice" where "name" = $1`, [type]);
+      await asSystem.query(`delete from "race" where "key" = $1`, [type]);
     }
   });
 
-  it("lists a line nobody voices once", async () => {
-    await line([{ npcId: npcIds[0], race: "human", gender: "male", flavor: "official" }], "progress");
+  it("speaks each line once per race of one sex, each in its own voice", async () => {
+    await line([{ npcId: npcIds[0], race: "human", gender: "male", flavor: "official" }], "gossip");
     await npc(npcIds[0], { race: "human", gender: "male", flavor: "official", provenance: "corpus" });
-    await sex(npcIds[0], 2, "human", "official");
-    await sex(npcIds[0], 3, "human", "official");
+    await body(npcIds[0], "human", 2, "official");
+    await body(npcIds[0], "dwarf", 2, "standard");
 
-    expect(await bySex()).toEqual([`2 ${lineId} human-male-official`]);
+    expect(await byBody()).toEqual([
+      `dwarf-male ${lineId}~dwarf-male-standard dwarf-male-standard`,
+      `human-male ${lineId} human-male-official`,
+    ]);
+  });
+
+  it("lists a line once when two races are read by one voice", async () => {
+    await line([{ npcId: npcIds[0], race: "human", gender: "male", flavor: "official" }], "gossip");
+    await npc(npcIds[0], { race: "human", gender: "male", flavor: "official", provenance: "corpus" });
+    const other = `k${questId}`;
+    await asSystem.query(`insert into "race" ("key") values ($1)`, [other]);
+    await asSystem.query(
+      `insert into "voice_assignment" ("race", "gender", "flavor", "voice", "teamId")
+       values ($1, 'male', 'official', 'human-male-official', team_of_lang('enUS'))`,
+      [other],
+    );
+    try {
+      await body(npcIds[0], "human", 2, "official");
+      await body(npcIds[0], other, 2, "official");
+      expect(await byBody()).toEqual([`human-male ${lineId} human-male-official`]);
+    } finally {
+      await asSystem.query(`delete from "npc" where "npcId" = $1`, [npcIds[0]]);
+      await asSystem.query(`delete from "voice_assignment" where "race" = $1`, [other]);
+      await asSystem.query(`delete from "race" where "key" = $1`, [other]);
+    }
   });
 
   it("leaves the NPC's other speakers in one voice", async () => {
     await line(npcIds.slice(0, 2).map((npcId) => ({ npcId, race: "human", gender: "male", flavor: "official" })), "gossip");
     await npc(npcIds[0], { race: "human", gender: "male", flavor: "official", provenance: "corpus" });
     await npc(npcIds[1], { race: "human", gender: "male", flavor: "official", provenance: "corpus" });
-    await sex(npcIds[0], 3, "human", "warrior");
+    await body(npcIds[0], "human", 2, "official");
+    await body(npcIds[0], "human", 3, "warrior");
 
-    expect(await bySex()).toEqual([
-      `3 ${lineId}~human-female-warrior human-female-warrior`,
+    expect(await byBody()).toEqual([
+      `human-female ${lineId}~human-female-warrior human-female-warrior`,
+      `human-male ${lineId} human-male-official`,
       `- ${lineId} human-male-official`,
     ]);
+  });
+
+  it("is not split by one row alone: the NPC's answer voices it", async () => {
+    await line([{ npcId: npcIds[0], race: "human", gender: "male", flavor: "official" }], "gossip");
+    await npc(npcIds[0], { race: "human", gender: "male", flavor: "official", provenance: "corpus" });
+    await body(npcIds[0], "human", 3, "warrior");
+
+    expect(await byBody()).toEqual([`- ${lineId} human-male-official`]);
   });
 });
 
@@ -239,7 +274,7 @@ describe("the catalogue", WHOLE_CORPUS, () => {
     await npc(npcIds[0], { race: "tauren", gender: "male", flavor: "warrior", provenance: "moderator" });
     expect(await spoken()).toEqual([`${lineId} ${questId}-accept tauren-male-warrior`]);
 
-    await db().query(
+    await asSystem.query(
       `update "npc" set "flavor" = 'elder', "updatedAt" = now() where "npcKind" = 'creature' and "npcId" = $1`,
       [npcIds[0]],
     );

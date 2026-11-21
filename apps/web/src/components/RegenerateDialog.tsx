@@ -22,7 +22,6 @@ const SKIP_REASONS: [BatchSkip, string][] = [
   ["no-voice", "no voice"],
   ["untranslated", "not translated"],
   ["invalid-chars", "unspeakable characters ($, < or >)"],
-  ["progress", "quest progress text, never voiced"],
   ["shared-file", "same audio file as another line, generated once"],
 ];
 
@@ -30,6 +29,11 @@ export type PendingBatch = {
   label: string;
   /** Null while the set is still being fetched, so the dialog opens on the click. */
   estimate: Estimate | null;
+  /**
+   * The lines of voices pinned to fish.audio, priced in its dollars apart from `estimate`,
+   * which then holds the rest. Null or absent when the batch has none.
+   */
+  pinnedEstimate?: Estimate | null;
   /** The fetch failed, which the dialog says rather than waiting forever. */
   failed?: boolean;
   /** Lines matched, and why some of them are not in `estimate`. Quests only. */
@@ -59,6 +63,8 @@ export default function RegenerateDialog({ pending, status, onConfirm, onCancel 
   }
 
   const { estimate, label } = pending;
+  const pinned = pending.pinnedEstimate ?? null;
+  const total = (count: "lines" | "files" | "characters") => estimate[count] + (pinned?.[count] ?? 0);
   const skips = SKIP_REASONS.flatMap(([why, text]) => {
     const count = pending.skipped?.[why] ?? 0;
     return count > 0 ? [{ why, text, count }] : [];
@@ -95,13 +101,13 @@ export default function RegenerateDialog({ pending, status, onConfirm, onCancel 
 
         <dl className="grid grid-cols-[auto_1fr] gap-x-6 gap-y-1.5 text-sm">
           <dt className="text-muted-foreground">Lines</dt>
-          <dd className="text-right font-mono">{n(estimate.lines)}</dd>
+          <dd className="text-right font-mono">{n(total("lines"))}</dd>
 
           <dt className="text-muted-foreground">Audio files</dt>
-          <dd className="text-right font-mono">{n(estimate.files)}</dd>
+          <dd className="text-right font-mono">{n(total("files"))}</dd>
 
           <dt className="text-muted-foreground">Characters</dt>
-          <dd className="text-right font-mono">{n(estimate.characters)}</dd>
+          <dd className="text-right font-mono">{n(total("characters"))}</dd>
 
           <dt className="text-muted-foreground">Estimated cost</dt>
           <dd className="text-right font-mono">
@@ -111,6 +117,21 @@ export default function RegenerateDialog({ pending, status, onConfirm, onCancel 
                 ? `up to ${amount(cost)}`
                 : `~${amount(cost)}`}
           </dd>
+
+          {pinned && (
+            <>
+              <dt className="text-muted-foreground">
+                Pinned to fish.audio, {n(pinned.files)} {pinned.files === 1 ? "file" : "files"}
+              </dt>
+              <dd className="text-right font-mono">
+                {pinned.usd === null
+                  ? "unknown"
+                  : pinned.rate.samples === 0
+                    ? `up to ${usd(pinned.usd)}`
+                    : `~${usd(pinned.usd)}`}
+              </dd>
+            </>
+          )}
 
           {remaining !== null && (
             <>
@@ -185,8 +206,8 @@ export default function RegenerateDialog({ pending, status, onConfirm, onCancel 
           <Button variant="ghost" size="sm" onClick={onCancel}>
             Cancel
           </Button>
-          <Button size="sm" onClick={onConfirm} disabled={estimate.files === 0}>
-            Regenerate {n(estimate.files)} {estimate.files === 1 ? "file" : "files"}
+          <Button size="sm" onClick={onConfirm} disabled={total("files") === 0}>
+            Regenerate {n(total("files"))} {total("files") === 1 ? "file" : "files"}
           </Button>
         </DialogFooter>
       </DialogContent>

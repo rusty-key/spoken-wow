@@ -26,14 +26,14 @@ export function isStatus(value: unknown): value is ContributionStatus {
 export const COMPLAINT_MAX = 4000;
 
 /**
- * A zones contribution's description of the place: required, since the addon can name a place
+ * A places contribution's description of the place: required, since the addon can name a place
  * but has nothing to say about it, and the description is the whole contribution. The floor is
  * what separates a sentence from "idk"; the ceiling is COMPLAINT_MAX's, for the same reason.
  */
 export const DESCRIPTION_MIN = 20;
 export const DESCRIPTION_MAX = COMPLAINT_MAX;
 
-/** The description a zones contribution needs, trimmed, or null when it is too short to keep. */
+/** The description a places contribution needs, trimmed, or null when it is too short to keep. */
 export function descriptionFrom(value: unknown): string | null {
   if (typeof value !== "string") return null;
   const trimmed = value.trim().slice(0, DESCRIPTION_MAX);
@@ -65,7 +65,7 @@ export type EnvelopeCheck = { ok: true; key: string } | { ok: false; message: st
  * `map` is digits-only it can never itself contain the ":" separator, so the first ":" in the
  * key always marks the exact end of `map` no matter what `subzone` contains (including more
  * colons). Two different (map, subzone) pairs can never produce the same key string. A subzone
- * of "" -- the open part of a zone, which is the normal case and the main zones gap, not an
+ * of "" -- the open part of a zone, which is the normal case and the main places gap, not an
  * edge case -- keys on the bare map instead, mirroring the frozen `z:{mapID}` / `s:{mapID}:{key}`
  * split the design already draws; existing.ts's corpusLookup reads a colon-less key back the
  * same way.
@@ -91,7 +91,7 @@ export function checkEnvelope(envelope: Envelope): EnvelopeCheck {
     return withText(envelope, `npc:${npc}`);
   }
 
-  if (envelope.source === "books") {
+  if (envelope.source === "readables") {
     if (!f.page) return { ok: false, message: "This has no page id to key it on." };
     if (!DIGITS.test(f.page)) {
       return { ok: false, message: "The page id is not a number -- this paste was edited by hand." };
@@ -107,18 +107,18 @@ export function checkEnvelope(envelope: Envelope): EnvelopeCheck {
 }
 
 function withText(envelope: Envelope, key: string): EnvelopeCheck {
-  if (envelope.source === "zones") {
-    // Zones carries no text because the client has none to give; one that does wasn't written
+  if (envelope.source === "places") {
+    // Places carries no text because the client has none to give; one that does wasn't written
     // by our addon, so it's rejected rather than silently kept under a key whose triage view
     // won't show it.
     if (envelope.text != null) {
-      return { ok: false, message: "This carries text, but a zones paste from the addon never does." };
+      return { ok: false, message: "This carries text, but a places paste from the addon never does." };
     }
   } else if (!envelope.text?.trim()) {
-    // For quests and books the text is the entire payload, so one without it is a report, not
+    // For quests and readables the text is the entire payload, so one without it is a report, not
     // a contribution. Whitespace counts as none: the addon fences a lone space, which
     // normalises to an empty row.
-    return { ok: false, message: "This has no text, which for quests and books is the whole point of the paste." };
+    return { ok: false, message: "This has no text, which for quests and readables is the whole point of the paste." };
   }
   return { ok: true, key };
 }

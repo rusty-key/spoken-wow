@@ -1,14 +1,12 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Check, Loader2, Pencil, Sparkles } from "lucide-react";
+import { Check, Loader2, Pencil, SlidersHorizontal, Sparkles } from "lucide-react";
 
 import { useLang } from "@/components/LangProvider";
 import Link from "@/components/LocaleLink";
 import VoiceSlotList from "@/components/VoiceSlotList";
 import type { ReferenceView } from "@/components/FishReference";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
 import { PROVIDER_NAME, PROVIDERS, type Provider } from "@/lib/generation/providers";
 import { langName, withLang } from "@/lib/lang";
 import { cn } from "@/lib/utils";
@@ -24,11 +22,22 @@ import {
   type Settings,
 } from "./GeneratorSettings";
 import PopulateDialog from "./PopulateDialog";
+import { useSettled } from "@/components/useSettled";
 
 /** Where each provider's key is set, on /profile. */
 const KEY_ANCHOR: Record<Provider, string> = {
   elevenlabs: "/profile#elevenlabs-key",
   fish: "/profile#fish-key",
+};
+
+/** The viewer's ElevenLabs account as the page needs it, once ElevenLabs has answered. */
+type AccountView = {
+  /** Null when the account could not be read. */
+  models: ElevenLabsModelOption[] | null;
+  /** Voice names in the account, or null when it could not be read. */
+  existing: string[] | null;
+  /** Why the account could not be read, or null. */
+  error: string | null;
 };
 
 type Props = {
@@ -37,7 +46,11 @@ type Props = {
   active: Provider;
   keys: Record<Provider, boolean>;
   settings: Settings;
-  elevenLabsModels: ElevenLabsModelOption[] | null;
+  /**
+   * The account, still being read when the page arrives: ElevenLabs is not allowed to hold
+   * the page back. Resolves to null when there is no key to read it with.
+   */
+  account: Promise<AccountView | null>;
   fishModels: FishModelOption[];
   slots: VoiceSlot[];
   initialSamples: Record<string, Sample[]>;
@@ -45,11 +58,9 @@ type Props = {
   seedSlots: string[];
   initialReferences: Record<string, ReferenceView>;
   raceTags: Record<string, string>;
-  /** Voice names in the viewer's ElevenLabs account, or null when it could not be read. */
-  existing: string[] | null;
-  /** Why the account could not be read, when there is a key to read it with. */
-  accountError: string | null;
   manager: boolean;
+  /** May change this language's directions. */
+  directs: boolean;
 };
 
 /**
@@ -60,6 +71,18 @@ type Props = {
  * batch. The tab is kept in the URL without a navigation: the page reads the ElevenLabs
  * account on every render, and flipping a tab is no reason to ask it again.
  */
+/** What the ElevenLabs settings say under the model picker about where its options stand. */
+function modelsNote(
+  hasKey: boolean,
+  reading: boolean,
+  account: AccountView | null | undefined,
+): string | null {
+  if (!hasKey) return "The models your account offers appear once an ElevenLabs key is stored.";
+  if (reading) return "Reading the models your account offers…";
+  if (account?.models) return null;
+  return "Your account's models could not be read, so only the saved one is offered.";
+}
+
 export default function VoicesTabs(props: Props) {
   const lang = useLang();
   const [tab, setTab] = useState(props.initialTab);
@@ -69,11 +92,23 @@ export default function VoicesTabs(props: Props) {
   const [settings, setSettings] = useState(props.settings);
   const [editing, setEditing] = useState(false);
   const [populating, setPopulating] = useState(false);
+  const [showSettings, setShowSettings] = useState(false);
   const [samples, setSamples] = useState(props.initialSamples);
   const [references, setReferences] = useState(props.initialReferences);
+  const settled = useSettled(props.account);
+  const account: AccountView | null | undefined =
+    settled &&
+    ("value" in settled ? settled.value : { models: null, existing: null, error: settled.error });
+  const reading = props.keys.elevenlabs && settled === undefined;
   // Held as state so a voice flips to "in your account" without a reload; the server value
-  // is the account, read fresh on every page view.
-  const [present, setPresent] = useState(props.existing === null ? null : new Set(props.existing));
+  // is the account, read fresh on every page view. Null until it is read, and if it cannot be.
+  const [present, setPresent] = useState<Set<string> | null>(null);
+  // Merged, not replaced: a voice cloned while the read was in flight is in the account
+  // whether or not the read saw it.
+  const existing = account?.existing;
+  useEffect(() => {
+    if (existing) setPresent((current) => new Set([...existing, ...(current ?? [])]));
+  }, [existing]);
   // Counted up as the dialog fills slots, so its "free" never promises room already spent.
   // Null until /api/voices/subscription answers: ElevenLabs takes a second or more to say,
   // and nothing else on the page should wait for it.
@@ -140,126 +175,174 @@ export default function VoicesTabs(props: Props) {
   const referenced = props.slots.filter((slot) => slot.name in references).length;
   const hasKey = props.keys[tab];
 
+  const model =
+    tab === "elevenlabs"
+      ? (account?.models?.find((each) => each.id === settings.elevenlabs.modelId)?.name ??
+        settings.elevenlabs.modelId)
+      : (props.fishModels.find((each) => each.id === settings.fish.model)?.label ??
+        settings.fish.model);
+  const voice = settings.elevenlabs.voiceSettings;
+
   return (
     <>
-      <div className="mb-4 flex flex-wrap items-center gap-3 border-b">
-        <div role="tablist" aria-label="Generator" className="flex gap-1">
+      <div className="vo-tabbar">
+        <div role="tablist" aria-label="Generator" className="bs-tabs">
           {PROVIDERS.map((provider) => (
             <button
               key={provider}
+              type="button"
               role="tab"
               aria-selected={tab === provider}
+              aria-current={tab === provider ? "page" : undefined}
               onClick={() => choose(provider)}
-              className={cn(
-                "-mb-px flex items-center gap-2 border-b-2 px-3 py-2 text-sm",
-                tab === provider
-                  ? "border-foreground font-medium"
-                  : "text-muted-foreground hover:text-foreground border-transparent",
-              )}
+              className="bs-tab"
             >
               {PROVIDER_NAME[provider]}
-              {active === provider && <Check className="size-3.5 text-emerald-400" aria-label="active" />}
+              {active === provider && (
+                <Check className="vo-active-mark" aria-label={`active in ${langName(lang)}`} />
+              )}
+              <span className="bs-count">
+                {provider === "elevenlabs"
+                  ? created === null
+                    ? total
+                    : `${created} / ${total}`
+                  : `${referenced} / ${total}`}
+              </span>
             </button>
           ))}
         </div>
 
         {props.manager && (
-          <Button
-            size="xs"
-            variant={editing ? "secondary" : "ghost"}
-            className="mb-1 ml-auto"
+          <button
+            type="button"
+            className={cn("bs-btn vo-sm", editing ? "bs-btn-primary" : "bs-btn-text")}
             aria-pressed={editing}
             onClick={() => setEditing(!editing)}
           >
             <Pencil />
             {editing ? "Done editing sources" : "Edit sources"}
-          </Button>
+          </button>
         )}
       </div>
 
-      <section role="tabpanel" aria-label={PROVIDER_NAME[tab]} className="space-y-4">
-        <div className="flex flex-wrap items-center gap-3 text-sm">
+      <section role="tabpanel" aria-label={PROVIDER_NAME[tab]}>
+        <div className="vo-gen">
           {active === tab ? (
-            <Badge variant="outline" className="text-emerald-400">
+            <span className="vo-pill">
+              <Check aria-hidden />
               Active in {langName(lang)}
-            </Badge>
+            </span>
           ) : (
-            <Button size="sm" disabled={!hasKey || activating} onClick={activate}>
+            <button
+              type="button"
+              className="bs-btn bs-btn-primary vo-sm"
+              disabled={!hasKey || activating}
+              onClick={activate}
+            >
               {activating && <Loader2 className="animate-spin" />}
               Activate for {langName(lang)}
-            </Button>
+            </button>
           )}
           {!hasKey && (
-            <span className="text-muted-foreground text-xs">
+            <span className="vo-note">
               Needs a {PROVIDER_NAME[tab]} key —{" "}
-              <Link href={KEY_ANCHOR[tab]} className="text-foreground underline underline-offset-2">
+              <Link href={KEY_ANCHOR[tab]} className="vo-link">
                 add one on your profile
               </Link>
-              .
             </span>
           )}
-          <span className="text-muted-foreground ml-auto text-xs tabular-nums">
-            {tab === "elevenlabs"
-              ? created === null
-                ? `${total} voices`
-                : `${created} of ${total} voices in your account`
-              : `${referenced} of ${total} voices have a reference`}
+
+          <span className="vo-summary">
+            <b>{model}</b>
+            {tab === "elevenlabs" ? (
+              <>
+                <i>·</i>Stability {decimal(voice.stability)}
+                <i>·</i>Similarity {decimal(voice.similarity_boost)}
+                <i>·</i>Style {decimal(voice.style)}
+                {voice.use_speaker_boost && (
+                  <>
+                    <i>·</i>Speaker boost
+                  </>
+                )}
+                <i>·</i>
+                {settings.elevenlabs.seedStrategy === "npc" ? "Seed per NPC" : "No seed"}
+              </>
+            ) : (
+              <>
+                <i>·</i>Temperature {decimal(settings.fish.temperature)}
+                <i>·</i>Top P {decimal(settings.fish.topP)}
+                <i>·</i>Speed {decimal(settings.fish.speed)}
+              </>
+            )}
+          </span>
+
+          <span className="vo-gen-actions">
+            {tab === "elevenlabs" && reading && (
+              <span className="vo-note inline-flex items-center gap-1.5">
+                <Loader2 className="size-3 animate-spin" aria-hidden />
+                Reading your ElevenLabs account…
+              </span>
+            )}
+            <button
+              type="button"
+              className="bs-btn bs-btn-text vo-sm"
+              aria-expanded={showSettings}
+              aria-controls="voice-settings"
+              onClick={() => setShowSettings(!showSettings)}
+            >
+              <SlidersHorizontal />
+              Settings
+            </button>
+            {tab === "elevenlabs" && props.keys.elevenlabs && present !== null && (
+              <button type="button" className="bs-btn vo-outline vo-sm" onClick={() => setPopulating(true)}>
+                <Sparkles />
+                Populate my account…
+              </button>
+            )}
           </span>
         </div>
 
         {activateError && (
-          <p role="alert" className="text-destructive text-sm">
+          <p role="alert" className="vo-alert">
             {activateError}
           </p>
         )}
-        {tab === "elevenlabs" && props.keys.elevenlabs && props.accountError && (
-          <div
-            role="alert"
-            className="border-destructive/40 bg-destructive/10 text-destructive rounded-md border px-3 py-2 text-sm"
-          >
-            Could not read your ElevenLabs account: {props.accountError}
-          </div>
+        {tab === "elevenlabs" && props.keys.elevenlabs && account?.error && (
+          <p role="alert" className="vo-alert">
+            Could not read your ElevenLabs account: {account.error}
+          </p>
         )}
 
-        <details className="rounded-md border px-3 py-2">
-          <summary className="cursor-pointer text-sm font-medium">
-            {PROVIDER_NAME[tab]} settings
-          </summary>
-          <div className="pt-3">
-            {tab === "elevenlabs" ? (
-              <ElevenLabsSettingsForm
-                key={JSON.stringify(settings.elevenlabs)}
-                saved={settings.elevenlabs}
-                models={props.elevenLabsModels}
-                onSave={(elevenlabs) => save({ elevenlabs })}
-              />
-            ) : (
-              <FishSettingsForm
-                key={JSON.stringify(settings.fish)}
-                saved={settings.fish}
-                models={props.fishModels}
-                onSave={(fish) => save({ fish })}
-              />
-            )}
-          </div>
-        </details>
+        {/* Hidden rather than unmounted, so closing it keeps an unsaved edit. */}
+        <div id="voice-settings" className="vo-settings" hidden={!showSettings}>
+          {tab === "elevenlabs" ? (
+            <ElevenLabsSettingsForm
+              key={JSON.stringify(settings.elevenlabs)}
+              saved={settings.elevenlabs}
+              models={account?.models ?? null}
+              modelsNote={modelsNote(props.keys.elevenlabs, reading, account)}
+              onSave={(elevenlabs) => save({ elevenlabs })}
+            />
+          ) : (
+            <FishSettingsForm
+              key={JSON.stringify(settings.fish)}
+              saved={settings.fish}
+              models={props.fishModels}
+              onSave={(fish) => save({ fish })}
+            />
+          )}
+        </div>
 
         {tab === "elevenlabs" && props.keys.elevenlabs && present !== null && (
-          <div>
-            <Button size="sm" variant="outline" onClick={() => setPopulating(true)}>
-              <Sparkles />
-              Populate my account…
-            </Button>
-            <PopulateDialog
-              open={populating}
-              onClose={() => setPopulating(false)}
-              cloneable={cloneable.map((slot) => slot.name)}
-              present={present}
-              slotsUsed={slotsUsed}
-              slotLimit={slotLimit}
-              onCloned={cloned}
-            />
-          </div>
+          <PopulateDialog
+            open={populating}
+            onClose={() => setPopulating(false)}
+            cloneable={cloneable.map((slot) => slot.name)}
+            present={present}
+            slotsUsed={slotsUsed}
+            slotLimit={slotLimit}
+            onCloned={cloned}
+          />
         )}
 
         <VoiceSlotList
@@ -273,11 +356,16 @@ export default function VoicesTabs(props: Props) {
           references={references}
           setReferences={setReferences}
           raceTags={props.raceTags}
-          manager={props.manager}
+          directs={props.directs}
           editing={editing}
           canClone={props.keys.elevenlabs}
         />
       </section>
     </>
   );
+}
+
+/** A 0-1 setting in the viewer's own decimal style, as the number inputs show it. */
+function decimal(value: number): string {
+  return value.toLocaleString(undefined, { maximumFractionDigits: 2 });
 }

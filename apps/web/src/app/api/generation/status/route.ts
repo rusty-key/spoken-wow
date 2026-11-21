@@ -15,10 +15,12 @@
 import { readApiKey } from "@/lib/api-key";
 import { requireIn } from "@/lib/generation/authz";
 import { observedFishRate, observedRate } from "@/lib/generation/calibration";
-import { readPreference, speakingConfig } from "@/lib/generation/preference";
+import { readPreference, speakingConfig, type Preference } from "@/lib/generation/preference";
 import { speakerFrom } from "@/lib/generation/speakers/for";
 import { getWallet } from "@/lib/voices/fish";
 import { generationStatus } from "@/lib/generation/status";
+import type { Lang } from "@/lib/lang";
+import { pinnedVoices } from "@/lib/voices/references";
 
 export const dynamic = "force-dynamic";
 
@@ -58,11 +60,13 @@ export async function GET(request: Request) {
 
   // The rate is calibrated from what this account has actually been charged for this model,
   // because it is a property of the plan and cannot be read from the API. See billing.ts.
-  const [status, rate] = await Promise.all([
+  const [status, rate, pinned] = await Promise.all([
     generationStatus(apiKey ? { apiKey } : {}, lang),
     observedRate(preference.elevenlabs.modelId),
+    pinnedStatus(session.user.id, lang, preference),
   ]);
   return Response.json({
+    pinned,
     voices: status.voices,
     subscription: status.subscription,
     error: status.error,
@@ -71,4 +75,25 @@ export async function GET(request: Request) {
     rate,
     provider: "elevenlabs",
   });
+}
+
+/**
+ * The voices pinned to fish.audio in `lang`, and what the explorer needs to block and price
+ * their lines the way the server will speak them: fish.audio's references, the collaborator's
+ * fish.audio key and its rate. Null when nothing is pinned.
+ */
+async function pinnedStatus(userId: string, lang: Lang, preference: Preference) {
+  const voices = await pinnedVoices(lang);
+  if (voices.size === 0) return null;
+  const fishKey = await readApiKey(userId, "fish").catch(() => null);
+  const [references, rate] = await Promise.all([
+    speakerFrom("fish", fishKey ?? "", preference).voices(lang),
+    observedFishRate(preference.fish.model, lang),
+  ]);
+  return {
+    voices: [...voices].sort(),
+    references: [...references.ids.keys()].sort(),
+    noApiKey: !fishKey,
+    rate,
+  };
 }

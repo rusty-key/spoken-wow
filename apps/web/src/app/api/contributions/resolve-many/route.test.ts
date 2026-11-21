@@ -3,9 +3,10 @@
  *
  * Needs DATABASE_URL and migrations applied.
  */
-import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from "vitest";
+import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { closeDb, db } from "@/lib/db";
+import { asSystem } from "@/lib/teams/testing";
 
 /** resolvedBy has a foreign key, so resolving needs a user that exists (contributions/store.test.ts). */
 const RESOLVER = "test-contributions-resolve-many-route";
@@ -24,7 +25,7 @@ const ip = `test-${Math.random().toString(36).slice(2, 10)}`;
 const dedup = `test-${Math.random().toString(36).slice(2, 10)}`;
 
 beforeAll(async () => {
-  await db().query(
+  await asSystem.query(
     `insert into "user" ("id", "name", "email", "emailVerified")
      values ($1, 'Test Resolver', $2, false)
      on conflict ("id") do nothing`,
@@ -33,16 +34,16 @@ beforeAll(async () => {
 });
 
 afterEach(async () => {
-  await db().query(
+  await asSystem.query(
     `delete from "activity" where "kind" = 'contribution.resolved'
         and "subject" in (select "id"::text from "contribution" where "ip" = $1)`,
     [ip],
   );
-  await db().query(`delete from "contribution" where "ip" = $1`, [ip]);
+  await asSystem.query(`delete from "contribution" where "ip" = $1`, [ip]);
 });
 
 afterAll(async () => {
-  await db().query(`delete from "user" where "id" = $1`, [RESOLVER]);
+  await asSystem.query(`delete from "user" where "id" = $1`, [RESOLVER]);
   await closeDb();
 });
 
@@ -56,10 +57,10 @@ function post(body: unknown): Request {
 
 describe("POST /api/contributions/resolve-many", () => {
   it("resolves every row it is sent and answers each by id", async () => {
-    // Books, not quests: the plain status flip (accept.test.ts covers quest lines in a batch).
-    const { rows } = await db().query<{ id: number }>(
+    // Readables, not quests: the plain status flip (accept.test.ts covers quest lines in a batch).
+    const { rows } = await asSystem.query<{ id: number }>(
       `insert into "contribution" ("source", "key", "raw", "dedup", "text", "ip")
-       values ('books', '1', 'raw', $2, 'Words.', $1), ('books', '2', 'raw', $3, 'More.', $1)
+       values ('readables', '1', 'raw', $2, 'Words.', $1), ('readables', '2', 'raw', $3, 'More.', $1)
        returning "id"`,
       [ip, `${dedup}-a`, `${dedup}-b`],
     );
@@ -71,11 +72,155 @@ describe("POST /api/contributions/resolve-many", () => {
     expect(results[ids[1]]).toEqual({ ok: true });
     expect(results[999_999_999]).toEqual({ ok: false, error: "unknown contribution" });
 
-    const { rows: statuses } = await db().query<{ status: string }>(
+    const { rows: statuses } = await asSystem.query<{ status: string }>(
       `select "status" from "contribution" where "id" = any($1::int[])`,
       [ids],
     );
     expect(statuses.map((row) => row.status)).toEqual(["rejected", "rejected"]);
+  });
+
+  it("records one reason on every row a bulk reject landed on", async () => {
+    const { rows } = await asSystem.query<{ id: number }>(
+      `insert into "contribution" ("source", "key", "raw", "dedup", "text", "ip")
+       values ('readables', '3', 'raw', $2, 'Words.', $1), ('readables', '4', 'raw', $3, 'More.', $1)
+       returning "id"`,
+      [ip, `${dedup}-reason-a`, `${dedup}-reason-b`],
+    );
+    const ids = rows.map((row) => row.id);
+    expect((await POST(post({ ids, status: "rejected", reason: "Not German" }))).status).toBe(200);
+    const reasons = async () =>
+      (await asSystem.query<{ rejectReason: string | null }>(`select "rejectReason" from "contribution" where "id" = any($1::int[])`, [ids])).rows.map(
+        (row) => row.rejectReason,
+      );
+    expect(await reasons()).toEqual(["Not German", "Not German"]);
+    // Reopening clears them.
+    expect((await POST(post({ ids, status: "new" }))).status).toBe(200);
+    expect(await reasons()).toEqual([null, null]);
+  });
+
+  it("leaves a row decided since the page was loaded as it was", async () => {
+    // A reject, which the route sends straight to the resolve: only the locked status check refuses it.
+    const { rows } = await asSystem.query<{ id: number }>(
+      `insert into "contribution" ("source", "key", "raw", "dedup", "text", "ip", "status")
+       values ('readables', '5', 'raw', $2, 'Words.', $1, 'accepted') returning "id"`,
+      [ip, `${dedup}-decided`],
+    );
+    const { results } = await (await POST(post({ ids: [rows[0].id], status: "rejected" }))).json();
+    expect(results[rows[0].id]).toEqual({ ok: false, error: "Someone decided this line meanwhile; reload to see it." });
+    const { rows: after } = await asSystem.query(`select "status" from "contribution" where "id" = $1`, [rows[0].id]);
+    expect(after[0].status).toBe("accepted");
+  });
+
+  describe("accepting readables rows", () => {
+    let base: number;
+    let lineIds: string[] = [];
+
+    async function seedPage(lineId: string, bookId: string, pageNumber: number, texts: [string, string, string][]) {
+      lineIds.push(lineId);
+      await asSystem.query(
+        `insert into "book_page" ("lineId", "pageTextId", "bookId", "pageNumber") values ($1, $2, $3, $4)`,
+        [lineId, Number(lineId.slice(2)), bookId, pageNumber],
+      );
+      for (const [lang, title, text] of texts) {
+        await asSystem.query(
+          `insert into "book_line" ("lineId", "lang", "version", "isCurrent", "origin", "title", "text")
+           values ($1, $2, 1, true, 'extracted', $3, $4)`,
+          [lineId, lang, title, text],
+        );
+      }
+    }
+
+    async function readablesRow(locale: string, text: string, meta: Record<string, string>): Promise<number> {
+      const key = `test-${Math.random().toString(36).slice(2, 10)}`;
+      const { rows } = await asSystem.query<{ id: number }>(
+        `insert into "contribution" ("source", "key", "locale", "raw", "dedup", "text", "meta", "ip")
+         values ('readables', $1, $2, 'raw', $1, $3, $4, $5) returning "id"`,
+        [key, locale, text, JSON.stringify({ page: key, ...meta }), ip],
+      );
+      return rows[0].id;
+    }
+
+    const statusOf = async (id: number) =>
+      (await asSystem.query<{ status: string }>(`select "status" from "contribution" where "id" = $1`, [id])).rows[0].status;
+
+    beforeEach(async () => {
+      base = 900_000_000 + Math.floor(Math.random() * 90_000_000);
+      await seedPage(`b:${base}`, String(base), 1, [["enUS", `Tome ${base}`, `Words one ${base}.`]]);
+      await seedPage(`b:${base + 10}`, String(base + 10), 1, [["enUS", `Dusty ${base}`, `Dust one ${base}.`]]);
+      await seedPage(`b:${base + 20}`, String(base + 20), 1, [["enUS", `Dusty ${base}`, `Dust two ${base}.`]]);
+    });
+
+    afterEach(async () => {
+      // What an accept minted for the new book's row, were one let through.
+      const { rows: minted } = await asSystem.query<{ lineId: string }>(
+        `select "lineId" from "book_line" where "title" = $1`,
+        [`Brand New ${base}`],
+      );
+      lineIds.push(...minted.map((m) => m.lineId));
+      await asSystem.query(`delete from "book_line" where "lineId" = any($1::text[])`, [lineIds]);
+      await asSystem.query(`delete from "book_page" where "lineId" = any($1::text[])`, [lineIds]);
+      lineIds = [];
+    });
+
+    it("accepts a translation, and leaves an ambiguous row and a new book unaccepted", async () => {
+      const translation = await readablesRow("esES", `Words one ${base}.`, { book: "Libro", number: "1" });
+      const ambiguous = await readablesRow("enUS", `Unseen ${base}.`, { book: `Dusty ${base}`, number: "1" });
+      const fresh = await readablesRow("esES", `Nueva ${base}.`, { book: `Brand New ${base}`, number: "1" });
+
+      const { results } = await (await POST(post({ ids: [translation, ambiguous, fresh], status: "accepted" }))).json();
+      expect(results[translation]).toEqual({ ok: true });
+      expect(results[ambiguous]).toMatchObject({ ok: false, error: expect.stringContaining("pick it first") });
+      expect(results[fresh]).toMatchObject({ ok: false, error: expect.stringContaining("one row at a time") });
+
+      expect(await statusOf(translation)).toBe("accepted");
+      expect(await statusOf(ambiguous)).toBe("new");
+      expect(await statusOf(fresh)).toBe("new");
+      const { rows: minted } = await asSystem.query(`select 1 from "book_line" where "title" = $1`, [`Brand New ${base}`]);
+      expect(minted).toEqual([]);
+    });
+
+    it("writes the first of two rows for one page and language, and refuses the second", async () => {
+      await asSystem.query(`update "book_page" set "ownerKind" = 'item', "ownerIds" = $2 where "lineId" = $1`, [`b:${base}`, [base]]);
+      const meta = { book: "Libro", number: "1", item: String(base) };
+      const first = await readablesRow("esES", `Palabras ${base}.`, meta);
+      const second = await readablesRow("esES", `Otras palabras ${base}.`, meta);
+
+      const { results } = await (await POST(post({ ids: [first, second], status: "accepted" }))).json();
+      const outcomes = [results[first], results[second]];
+      expect(outcomes).toContainEqual({ ok: true });
+      expect(outcomes).toContainEqual({ ok: false, error: expect.stringContaining("changed since you looked") });
+
+      const { rows } = await asSystem.query<{ origin: string }>(
+        `select "origin" from "book_line" where "lineId" = $1 and "lang" = 'esES'`,
+        [`b:${base}`],
+      );
+      expect(rows).toEqual([{ origin: "contributed" }]);
+    });
+
+    it("accepts a row a moderator pointed at a page, and skips one the corpus already has", async () => {
+      const pointed = await readablesRow("esES", `Otra cosa ${base}.`, { book: "Libro", number: "1" });
+      await asSystem.query(`update "contribution" set "matchLineId" = $2 where "id" = $1`, [pointed, `b:${base + 10}`]);
+      const known = await readablesRow("enUS", `Words one ${base}.`, { book: `Tome ${base}`, number: "1" });
+
+      const { results } = await (await POST(post({ ids: [pointed, known], status: "accepted" }))).json();
+      expect(results[pointed]).toEqual({ ok: true });
+      expect(results[known]).toMatchObject({ ok: false, error: expect.stringContaining("already has these words") });
+      expect(await statusOf(pointed)).toBe("accepted");
+      expect(await statusOf(known)).toBe("new");
+    });
+
+    it("leaves a correction to the changes to lines we already have", async () => {
+      const correction = await readablesRow("enUS", `Words won ${base}.`, { book: `Tome ${base}`, number: "1" });
+      const { results } = await (await POST(post({ ids: [correction], status: "accepted" }))).json();
+      expect(results[correction]).toMatchObject({ ok: false, error: expect.stringContaining("changes to lines we already have") });
+      expect(await statusOf(correction)).toBe("new");
+    });
+
+    it("still rejects a new-book row", async () => {
+      const fresh = await readablesRow("esES", `Nueva ${base}.`, { book: `Brand New ${base}`, number: "1" });
+      const { results } = await (await POST(post({ ids: [fresh], status: "rejected" }))).json();
+      expect(results[fresh]).toEqual({ ok: true });
+    });
   });
 
   it("refuses a status it does not know", async () => {

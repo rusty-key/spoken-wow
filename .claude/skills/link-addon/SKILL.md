@@ -1,7 +1,7 @@
 ---
 name: link-addon
-description: Use when asked to link, install or point the addons at a WoW client, or when invoked as /link-addon [client]. Symlinks every addon folder of the current worktree into the client's Interface/AddOns, so the client runs this checkout's code. Client is beta (default), era or tbc.
-argument-hint: "[beta|era|tbc]"
+description: Use when asked to link, install or point the addons at a WoW client, or when invoked as /link-addon [client]. Symlinks every addon folder of the current worktree into the client's Interface/AddOns, so the client runs this checkout's code. Client is forever (default), era or tbc.
+argument-hint: "[forever|era|tbc]"
 ---
 
 # Link addon
@@ -12,11 +12,11 @@ linked last, so relink whenever you switch worktree.
 
 ## 1. Pick the client
 
-The argument names the client. Without one, use `beta`.
+The argument names the client. Without one, use `forever`.
 
 | Argument | Client                       | Folder under `/Applications/World of Warcraft` |
 |----------|------------------------------|------------------------------------------------|
-| `beta`   | WoW: Forever beta            | `_classic_beta_`                               |
+| `forever`| WoW: Forever                 | `_forever_`                                    |
 | `era`    | Classic Era                  | `_classic_era_`                                |
 | `tbc`    | TBC Anniversary (2.5.x)      | `_anniversary_`                                |
 
@@ -36,8 +36,11 @@ For each folder, the destination is `<client>/Interface/AddOns/<folder name>`:
 
 - Destination is a symlink: replace it (`ln -sfn`).
 - Destination does not exist: create the symlink.
-- Destination is a real directory: leave it and report it. It may hold the only copy of
-  something, so never delete or move it without asking.
+- Destination is a real directory (usually an installed release): move it into
+  `<client>/Interface/AddOns.bak/<YYYYMMDD-HHMMSS>/`, one timestamped folder per run, then
+  create the symlink. Left in place, the client would run the release beside this checkout's
+  other addons. The backup sits outside `AddOns` so the client never loads it. Never delete a
+  backup.
 
 SavedVariables live under `WTF/`, so relinking never touches settings.
 
@@ -45,7 +48,7 @@ SavedVariables live under `WTF/`, so relinking never touches settings.
 
 Show the client and, for each addon, where it now points. Then list:
 
-- real directories that were left in place;
+- real directories that were moved, and the backup folder they went to;
 - Spoken symlinks in that `AddOns` folder that point into a different worktree and were not
   replaced (for example audio packs linked to another checkout's `dist/`), so a stale link is
   visible.

@@ -1,0 +1,8 @@
+!SPOKEN1 places
+addon=SpokenZones/2.0.1
+build=11509
+locale=enUS
+map=1537
+zone=Ironforge
+subzone=
+sum=1982552744

@@ -27,7 +27,7 @@ export function activeFilterCount(filters: LineFilters): number {
     filters.gender,
     filters.flavor,
     filters.voice,
-    filters.source,
+    filters.source?.length,
     filters.npcType,
     filters.narration || undefined,
     filters.line,
@@ -41,5 +41,11 @@ export function activeFilterCount(filters: LineFilters): number {
     filters.author,
     filters.recorded,
     filters.broadcast,
+    filters.playerGender,
+    // Compared, because level 0 is a real bound and the filter below would drop it.
+    filters.minLevel !== undefined,
+    filters.maxLevel !== undefined,
+    // Era + Forever is the default, not a narrowing; any other bin is a choice to clear.
+    filters.client !== undefined && filters.client !== "focus",
   ].filter(Boolean).length;
 }

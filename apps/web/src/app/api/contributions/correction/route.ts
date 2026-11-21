@@ -2,20 +2,33 @@
  * Accepting a correction: the player's text taken as what the corpus line speaks
  * (lib/contributions/correction.ts). Rejecting one is resolve's plain status flip.
  *
- * Gated as resolve is, and as the corrections page is: whoever may edit the language the
- * player sent it in. That includes English, whose rewrite is a line_override -- which the
- * explorer's own override route keeps to `regenerate`, but a correction is text the game
- * itself shows, not a rewrite someone composed.
+ * Needs `text` in the language the player sent it in, English included: it changes the original,
+ * unlike a team's override, which needs `regenerate`.
+ *
+ * `as: "wording"` keeps the corpus text and adds the player's as another wording of the
+ * moment (acceptAsWording). Otherwise `lineId` and `variant`, where given, name the wording the
+ * correction fixes; without them it is the closest one. `split`, "m" or "f", keeps both
+ * instead, the player's text for that player gender and ours for the other. `text`, where given,
+ * is the moderator's edit of the player's text, saved on the row before it is accepted.
  */
-import { acceptCorrection } from "@/lib/contributions/correction";
-import { contributionLocale } from "@/lib/contributions/store";
+import { acceptAsWording, acceptCorrection, editCorrectionText } from "@/lib/contributions/correction";
+import { isReaderGender } from "@/lib/contributions/gender";
+import { contributionLocale, rewriteWaitingTexts } from "@/lib/contributions/store";
 import { requireCapability } from "@/lib/generation/authz";
-import { BASE_LANG, isLang } from "@/lib/lang";
+import { BASE_LANG } from "@/lib/lang";
+import { knownLang } from "@/lib/languages/catalogue";
 
 export const dynamic = "force-dynamic";
 
 export async function POST(request: Request) {
-  const body = (await request.json().catch(() => ({}))) as { id?: unknown };
+  const body = (await request.json().catch(() => ({}))) as {
+    id?: unknown;
+    as?: unknown;
+    lineId?: unknown;
+    variant?: unknown;
+    split?: unknown;
+    text?: unknown;
+  };
 
   const id = Number(body.id);
   if (!Number.isInteger(id) || id <= 0) {
@@ -25,14 +38,30 @@ export async function POST(request: Request) {
   // The permission before the existence check, as resolve does, so a member learns nothing
   // about which ids exist.
   const locale = await contributionLocale(id);
-  const { session, denied } = await requireCapability("edit", isLang(locale) ? locale : BASE_LANG);
+  const { session, denied } = await requireCapability("text", (await knownLang(locale)) ?? BASE_LANG);
   if (denied) return denied;
   if (locale === null) {
     return Response.json({ error: "unknown contribution" }, { status: 404 });
   }
 
-  const outcome = await acceptCorrection(id, session.user.id);
+  let previous: string | null = null;
+  if (typeof body.text === "string") {
+    const edited = await editCorrectionText(id, body.text, session.user.id);
+    if (!edited.ok) return Response.json({ error: edited.message, kind: edited.reason }, { status: 400 });
+    previous = edited.previous;
+  }
+
+  const pick =
+    typeof body.lineId === "string" && Number.isInteger(body.variant)
+      ? { lineId: body.lineId, variant: body.variant as number }
+      : undefined;
+  const outcome =
+    body.as === "wording"
+      ? await acceptAsWording(id, session.user.id)
+      : await acceptCorrection(id, session.user.id, pick, undefined, isReaderGender(body.split) ? body.split : undefined);
   if (!outcome.ok) {
+    // A refused accept leaves the row as it was, the edit with it.
+    if (previous !== null) await rewriteWaitingTexts([{ id, text: previous }]);
     if (outcome.reason === "not-found") {
       return Response.json({ error: "unknown contribution" }, { status: 404 });
     }

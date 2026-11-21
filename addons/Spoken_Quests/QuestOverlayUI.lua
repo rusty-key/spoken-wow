@@ -44,21 +44,12 @@ function QuestOverlayUI:CreatePlayButton(questID)
     self.questPlayButtons[questID] = self:MakePlayButton()
 end
 
---- Contribute.lua, or nil where it is not loaded: the legacy clients leave it out
---- (Contribute.xml), and this file runs on them too. rawget, so a global of the same name from
---- some other addon is never mistaken for it.
-local function ContributeModule()
-    return rawget(VoiceOver, "Contribute")
-end
-
 --- The Contribute button for a quest the log has no sound for, sitting where its Play would,
---- or nil when this client cannot offer one (no Contribute.lua, buttons hidden, or no sound
---- pack at all -- see Contribute:CanOfferFromLog). The client's own plus icon, the same size as
+--- or nil when this client cannot offer one (buttons hidden, or no sound pack at all -- see Contribute:CanOfferFromLog). The client's own plus icon, the same size as
 --- Play: the row has room for an icon and not for a word, and the tooltip says what it does.
 ---@return Button?
 function QuestOverlayUI:ContributeButtonFor(questID, title)
-    local contribute = ContributeModule()
-    if not (contribute and contribute.CanOfferFromLog and contribute:CanOfferFromLog()) then
+    if not Contribute:CanOfferFromLog() then
         return nil
     end
     local button = self.questContributeButtons[questID]
@@ -71,26 +62,28 @@ function QuestOverlayUI:ContributeButtonFor(questID, title)
         button:SetPushedTexture("Interface\\Buttons\\UI-PlusButton-Down")
         button:SetHighlightTexture("Interface\\Buttons\\UI-PlusButton-Hilight")
         button:SetScript("OnEnter", function(self)
-            contribute:ShowTooltip(self)
+            Contribute:ShowTooltip(self)
         end)
         button:SetScript("OnLeave", function()
             if GameTooltip then
                 GameTooltip:Hide()
             end
         end)
-        contribute:OfferLogMenu(button)
+        Contribute:OfferLogMenu(button)
         self.questContributeButtons[questID] = button
     end
     button:SetScript("OnClick", function()
-        contribute:ShowFromLog(questID, title)
+        Contribute:ShowFromLog(questID, title)
     end)
     return button
 end
 
 local prefix
-function QuestOverlayUI:UpdateQuestTitle(questLogTitleFrame, playButton, normalText, questCheck)
+
+--- Spaces ahead of the title, as wide as Play, so the button sits before the title's first glyph.
+local function PadTitle(normalText)
+    local text = normalText:GetText() or ""
     if not prefix then
-        local text = normalText:GetText()
         for i = 1, 20 do
             normalText:SetText(string.rep(" ", i))
             if normalText:GetStringWidth() >= 24 then
@@ -101,13 +94,29 @@ function QuestOverlayUI:UpdateQuestTitle(questLogTitleFrame, playButton, normalT
         prefix = prefix or "  "
         normalText:SetText(text)
     end
+    local padded = prefix .. string.trim(text)
+    if padded ~= text then normalText:SetText(padded) end
+    return padded
+end
 
+--- Re-pads the title whenever anything rewrites it: addons hooking QuestLog_Update after Spoken
+--- (Leatrix Plus adds the level) drop the padding. The left margin holds the party-member count.
+local function KeepTitlePadded(row, i, normalText)
+    if row.spokenKeepsPadding then return end
+    row.spokenKeepsPadding = true
+    hooksecurefunc(row, "SetText", function()
+        if not QuestOverlayUI:ShowsQuestLogButtons() then return end
+        local questIndex = i + Utils:GetQuestLogScrollOffset()
+        local numEntries = GetNumQuestLogEntries()
+        if questIndex > numEntries or select(4, GetQuestLogTitle(questIndex)) then return end
+        PadTitle(normalText)
+    end)
+end
+
+function QuestOverlayUI:UpdateQuestTitle(questLogTitleFrame, playButton, normalText, questCheck)
     playButton:SetPoint("LEFT", normalText, "LEFT", 4, 0)
 
-    local formatedText = prefix .. string.trim(normalText:GetText() or "")
-
-    normalText:SetText(formatedText)
-    QuestLogDummyText:SetText(formatedText)
+    QuestLogDummyText:SetText(PadTitle(normalText))
 
     questCheck:SetPoint("LEFT", normalText, "LEFT", normalText:GetStringWidth(), 0)
 end
@@ -115,14 +124,33 @@ end
 --- Play or stop, read off the button's own sound data rather than the quest log's table:
 --- the details view has a button that belongs to no quest in particular. A button drawn its
 --- own way (the details view's round one) carries its own `setPlayState`.
+local function SetPlayTexture(playButton, stop)
+    playButton:SetNormalTexture(TEXTURES .. (stop and "QuestLogStopButton" or "QuestLogPlayButton"))
+end
+
 function QuestOverlayUI:SetPlayButtonState(playButton)
     local isPlaying = playButton.soundData and Player:Contains(playButton.soundData) or false
     if playButton.setPlayState then
         playButton.setPlayState(playButton, isPlaying)
         return
     end
-    local texturePath = isPlaying and (TEXTURES .. "QuestLogStopButton") or (TEXTURES .. "QuestLogPlayButton")
-    playButton:SetNormalTexture(texturePath)
+    SetPlayTexture(playButton, isPlaying)
+end
+
+function QuestOverlayUI:ShowsQuestLogButtons()
+    return Addon:IsPartOn() and (not Addon.db or Addon.db.profile.QuestLogPlayButton ~= false)
+end
+
+--- Redraws only Spoken's quest log buttons. Calling the client's own QuestLog_Update or
+--- QuestLogQuests_Update from here would taint the log's later protected actions.
+function QuestOverlayUI:RefreshQuestLog()
+    if _G.QuestLogFrame or QuestLogQuests_Update then self:Update() end
+end
+
+--- Whether a tracker shows Play on this quest: the part and the setting are on and a pack voices it.
+function QuestOverlayUI:ShowsTrackerButton(questID)
+    return Addon:IsPartOn() and (not Addon.db or Addon.db.profile.TrackerPlayButton ~= false)
+        and DataModules:PrepareSound({ event = Enums.SoundEvent.QuestAccept, questID = questID }) and true or false
 end
 
 function QuestOverlayUI:UpdatePlayButtonTexture(questID)
@@ -150,8 +178,9 @@ local function PrimeGiver(questID)
 end
 
 --- What a play button does when it is clicked, for whichever quest it currently stands for.
---- Shared by the buttons in the quest log and the one in the quest details view.
-function QuestOverlayUI:BindPlayButton(playButton, questID, soundTitle)
+--- Shared by the buttons in the quest log, the objective tracker and the one in the quest details
+--- view. `origin` names the screen for the debug log.
+function QuestOverlayUI:BindPlayButton(playButton, questID, soundTitle, origin)
     PrimeGiver(questID)
     playButton:SetScript("OnClick", function(self)
         if not self.soundData then
@@ -162,8 +191,10 @@ function QuestOverlayUI:BindPlayButton(playButton, questID, soundTitle)
                 name = id and DataModules:GetObjectName(type, id) or "Unknown Name",
                 title = soundTitle,
                 unitGUID = id and Enums.GUID:CanHaveID(type) and Utils:MakeGUID(type, id) or nil,
+                -- A poster or an item has no face to draw: the line shows a notice, as the dialog's does.
+                unitIsObjectOrItem = id ~= nil and not Enums.GUID:IsCreature(type),
                 -- For the debug log: which screen queued it.
-                origin = "the quest log's Play button",
+                origin = origin or "the quest log's Play button",
             }
         end
 
@@ -183,6 +214,90 @@ function QuestOverlayUI:BindPlayButton(playButton, questID, soundTitle)
             Player:Remove(soundData)
         end
     end)
+    if playButton.setPlayState then self:AddStopReplay(playButton, questID) end
+end
+
+--- This quest's accept line in the queue, whoever queued it: autoplay, a button or the windows.
+--- Found again each time, since a rebind or a reopened panel starts afresh.
+function QuestOverlayUI:QueuedLine(questID)
+    if not questID then return nil end
+    for _, clip in ipairs(Player:Queued()) do
+        if clip.questID == questID and clip.event == Enums.SoundEvent.QuestAccept then return clip end
+    end
+end
+
+--- Stop while this quest's line speaks, Replay while it is stopped at the head, Play otherwise.
+--- Also the line, where it is queued.
+function QuestOverlayUI:StateOf(questID)
+    local clip = self:QueuedLine(questID)
+    if not clip or Spoken:GetCurrent() ~= clip then return "play", clip end
+    if Spoken:IsPaused() then return "replay", clip end
+    if Spoken:GetNowPlaying() == clip then return "stop", clip end
+    return "play", clip
+end
+
+--- A button's `setPlayState`, for one that stops and replays: its glyph is what the queue says its quest is doing.
+function QuestOverlayUI.FollowQueue(button)
+    local state = QuestOverlayUI:StateOf(button.questID)
+    if button.SetState then
+        button:SetState(state)
+    else
+        button.state = state
+        SetPlayTexture(button, state == "stop" or state == "replay")
+    end
+end
+
+local TIPS = { play = "OPT_PLAY", stop = "OPT_STOP", replay = "OPT_REPLAY" }
+
+function QuestOverlayUI:ShowPlayTip(button)
+    GameTooltip:SetOwner(button, "ANCHOR_LEFT")
+    GameTooltip:SetText(L[TIPS[button.state or "play"]])
+    GameTooltip:Show()
+end
+
+-- Every button that stops and replays, to follow the queue.
+local stoppable = setmetatable({}, { __mode = "k" })
+local listening
+
+--- Stopped or replayed from the subtitle or the windows, every such button's glyph follows.
+function QuestOverlayUI:RefreshStates()
+    for button in pairs(stoppable) do
+        if button:IsShown() then self:SetPlayButtonState(button) end
+    end
+end
+
+--- A button drawn its own way (it carries `setPlayState`) stops and replays as the round buttons do:
+--- Stop or Replay this quest's line while it is the head, Play it where it waits behind a stopped
+--- one, queue it otherwise. Bound after `BindPlayButton`, which it wraps.
+function QuestOverlayUI:AddStopReplay(playButton, questID)
+    playButton.questID = questID
+    stoppable[playButton] = true
+    if not listening and Spoken and Spoken.RegisterCallback then
+        listening = true
+        Spoken:RegisterCallback("AUDIO_CHANGED", function() QuestOverlayUI:RefreshStates() end)
+    end
+    local bound = playButton:GetScript("OnClick")
+    playButton:SetScript("OnClick", function(button, mouse, down)
+        -- Looked up each click, never the copy kept when the button was bound: a line that has since
+        -- finished is no longer in the queue, and holding on to it left the button dead.
+        local state, clip = QuestOverlayUI:StateOf(button.questID)
+        if state == "stop" or state == "replay" then
+            SpokenLayout.Sound("U_CHAT_SCROLL_BUTTON")
+            Spoken:TogglePause()
+        elseif clip and Spoken:IsPaused() and Player.source then
+            -- Waiting behind a stopped line: Play on it plays it, and takes the queue out of its stop.
+            SpokenLayout.Sound("U_CHAT_SCROLL_BUTTON")
+            Player.source:PlayNow(clip)
+        elseif not clip and bound then
+            -- The bound handler queues the line it holds, so it starts from a fresh one.
+            button.soundData = nil
+            bound(button, mouse, down)
+        end
+        QuestOverlayUI:SetPlayButtonState(button)
+        if GameTooltip:GetOwner() == button then QuestOverlayUI:ShowPlayTip(button) end
+    end)
+    playButton:SetScript("OnEnter", function(button) QuestOverlayUI:ShowPlayTip(button) end)
+    playButton:SetScript("OnLeave", function() GameTooltip:Hide() end)
 end
 
 function QuestOverlayUI:UpdatePlayButton(soundTitle, questID, questLogTitleFrame, normalText, questCheck)
@@ -205,8 +320,7 @@ function QuestOverlayUI:Update()
     for _, button in pairs(self.displayedButtons) do
         button:Hide()
     end
-    -- Switched off, the part puts nothing on the log.
-    if not Addon:IsPartOn() then
+    if not self:ShowsQuestLogButtons() then
         table.wipe(self.displayedButtons)
         return
     end
@@ -229,6 +343,7 @@ function QuestOverlayUI:Update()
         local questLogTitleFrame = Utils:GetQuestLogTitleFrame(i)
         local normalText = Utils:GetQuestLogTitleNormalText(i)
         local questCheck = Utils:GetQuestLogTitleCheck(i)
+        KeepTitlePadded(questLogTitleFrame, i, normalText)
         local title, level, suggestedGroup, isHeader, isCollapsed, isComplete, frequency, questID = GetQuestLogTitle(
             questIndex)
 

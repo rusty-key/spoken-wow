@@ -7,9 +7,22 @@
  */
 import { afterAll, afterEach, beforeEach, describe, expect, it } from "vitest";
 
-import { closeDb, db } from "@/lib/db";
+import { closeDb, db, type TeamId } from "@/lib/db";
+import type { Lang } from "@/lib/lang";
+import { asTeam } from "@/lib/teams/acting";
+import { forgetTeams } from "@/lib/teams/store";
+import { asSystem, dropLang, dropTeam, newTeamIn, ownTeam, systemRows, testUser, uniqueLang } from "@/lib/teams/testing";
 
-import { countRecent, createReport, listReports, reportsForLine, setStatus } from "./store";
+import {
+  countRecent,
+  createReport,
+  listReports,
+  queueFor,
+  queueHolders,
+  reportsForLine,
+  setQueue,
+  setStatus,
+} from "./store";
 
 /** resolvedBy has a foreign key, so resolving needs a user that exists. */
 const RESOLVER = "test-report-resolver";
@@ -34,7 +47,7 @@ function submission(overrides: Partial<Parameters<typeof createReport>[0]> = {})
 
 beforeEach(async () => {
   ip = `test-${Math.random().toString(36).slice(2, 10)}`;
-  await db().query(
+  await asSystem.query(
     `insert into "user" ("id", "name", "email", "emailVerified")
      values ($1, 'Test Resolver', $2, false)
      on conflict ("id") do nothing`,
@@ -43,12 +56,12 @@ beforeEach(async () => {
 });
 
 afterEach(async () => {
-  await db().query(`delete from "report" where "ip" like $1`, [`${ip}%`]);
+  await asSystem.query(`delete from "report" where "ip" like $1`, [`${ip}%`]);
 });
 
 afterAll(async () => {
-  await db().query(`delete from "activity" where "actorId" = $1`, [RESOLVER]);
-  await db().query(`delete from "user" where "id" = $1`, [RESOLVER]);
+  await asSystem.query(`delete from "activity" where "actorId" = $1`, [RESOLVER]);
+  await asSystem.query(`delete from "user" where "id" = $1`, [RESOLVER]);
   await closeDb();
 });
 
@@ -57,17 +70,25 @@ describe("createReport and countRecent", () => {
     await createReport(submission());
     await createReport(submission({ ip: `${ip}-other` }));
 
-    expect(await countRecent(ip, 60 * 60 * 1000)).toBe(1);
+    expect(await countRecent({ ip }, 60 * 60 * 1000)).toBe(1);
+  });
+
+  it("counts a signed-in reporter's own reports from any address", async () => {
+    await createReport(submission({ userId: RESOLVER }));
+    await createReport(submission({ userId: RESOLVER, ip: `${ip}-other` }));
+    await createReport(submission());
+
+    expect(await countRecent({ userId: RESOLVER }, 60 * 60 * 1000)).toBe(2);
   });
 
   it("ignores rows older than the window", async () => {
     await createReport(submission());
-    await db().query(
+    await asSystem.query(
       `update "report" set "createdAt" = now() - interval '2 hours' where "ip" = $1`,
       [ip],
     );
 
-    expect(await countRecent(ip, 60 * 60 * 1000)).toBe(0);
+    expect(await countRecent({ ip }, 60 * 60 * 1000)).toBe(0);
   });
 
   it("stores a report that resolved to no line", async () => {
@@ -92,7 +113,7 @@ describe("setStatus", () => {
     await createReport(submission());
     const [report] = await reportsForLine("quests", "q:1:accept");
 
-    const updated = await setStatus(report.id, "fixed", RESOLVER);
+    const updated = await setStatus(report.id, "fixed", RESOLVER, "enUS");
 
     expect(updated?.status).toBe("fixed");
     expect(updated?.resolvedAt).not.toBeNull();
@@ -103,43 +124,53 @@ describe("setStatus", () => {
     await createReport(submission());
     const [report] = await reportsForLine("quests", "q:1:accept");
 
-    await setStatus(report.id, "fixed", RESOLVER);
-    const reopened = await setStatus(report.id, "open", RESOLVER);
+    await setStatus(report.id, "fixed", RESOLVER, "enUS");
+    const reopened = await setStatus(report.id, "open", RESOLVER, "enUS");
 
     expect(reopened?.resolvedAt).toBeNull();
     expect(reopened?.resolvedBy).toBeNull();
   });
 
+  it("sets a report aside as minor, out of the open list", async () => {
+    await createReport(submission({ body: "Minor quibble." }));
+    const [report] = (await reportsForLine("quests", "q:1:accept")).filter((each) => each.body === "Minor quibble.");
+
+    expect((await setStatus(report.id, "minor", RESOLVER, "enUS"))?.status).toBe("minor");
+    const ids = async (status: "open" | "minor") => (await listReports(status)).map((each) => each.id);
+    expect(await ids("open")).not.toContain(report.id);
+    expect(await ids("minor")).toContain(report.id);
+  });
+
   it("returns null for an id that does not exist", async () => {
-    expect(await setStatus(2147483000, "fixed", RESOLVER)).toBeNull();
+    expect(await setStatus(2147483000, "fixed", RESOLVER, "enUS")).toBeNull();
   });
 });
 
 /**
  * The reason the source is part of every read rather than a label on the row: both sides of
  * the site name lines and files by their own frozen rules, and nothing guarantees the two
- * namespaces stay apart. A read that forgot the source would hand a zones report to the
+ * namespaces stay apart. A read that forgot the source would hand a places report to the
  * quests triage view, where the line it names resolves to something else or to nothing.
  */
 describe("the two sources", () => {
   it("keeps a line's reports to the source that filed them", async () => {
     await createReport(submission({ lineId: "shared:1" }));
-    await createReport(submission({ source: "zones", lineId: "shared:1", target: null }));
+    await createReport(submission({ source: "places", lineId: "shared:1", target: null }));
 
     expect(await reportsForLine("quests", "shared:1")).toHaveLength(1);
-    expect(await reportsForLine("zones", "shared:1")).toHaveLength(1);
+    expect(await reportsForLine("places", "shared:1")).toHaveLength(1);
   });
 
   it("lists both by default and one when asked", async () => {
     await createReport(submission());
-    await createReport(submission({ source: "zones", target: null }));
+    await createReport(submission({ source: "places", target: null }));
 
     const mine = (reports: Awaited<ReturnType<typeof listReports>>) =>
       reports.filter((report) => report.body === "Said Thrall wrong.");
 
     expect(mine(await listReports("open"))).toHaveLength(2);
-    expect(mine(await listReports("open", "zones"))).toHaveLength(1);
-    expect(mine(await listReports("open", "zones"))[0]?.source).toBe("zones");
+    expect(mine(await listReports("open", "places"))).toHaveLength(1);
+    expect(mine(await listReports("open", "places"))[0]?.source).toBe("places");
   });
 
   it("narrows to one complaint, across sources", async () => {
@@ -148,7 +179,7 @@ describe("the two sources", () => {
     await createReport(submission({ body: `${ip} said it wrong` }));
     await createReport(submission({ category: "wrong_voice", body: `${ip} wrong voice` }));
     await createReport(
-      submission({ source: "zones", target: null, category: "wrong_voice", body: `${ip} zone` }),
+      submission({ source: "places", target: null, category: "wrong_voice", body: `${ip} zone` }),
     );
 
     const mine = (reports: Awaited<ReturnType<typeof listReports>>) =>
@@ -162,11 +193,266 @@ describe("the two sources", () => {
     expect(mine(await listReports("open", "all", "pronunciation"))).toHaveLength(1);
   });
 
-  /** The zones side reaches its report page with the line already known, so it has none. */
+  /** The places side reaches its report page with the line already known, so it has none. */
   it("stores a report with no target at all", async () => {
-    await createReport(submission({ source: "zones", lineId: "z:1411", target: null }));
+    await createReport(submission({ source: "places", lineId: "z:1411", target: null }));
 
-    const [report] = await reportsForLine("zones", "z:1411");
+    const [report] = await reportsForLine("places", "z:1411");
     expect(report.target).toBeNull();
+  });
+});
+
+describe("a report's team", () => {
+  it("is its language's, for an anonymous report from the addon", async () => {
+    const french = await ownTeam("frFR");
+    try {
+      await createReport(submission({ lang: "frFR", userId: null }));
+      const { rows } = await asSystem.query(`select "teamId" from "report" where "ip" = $1`, [ip]);
+      expect(rows).toEqual([{ teamId: french.team }]);
+
+      const [report] = await reportsForLine("quests", "q:1:accept", "frFR");
+      expect((await setStatus(report.id, "fixed", RESOLVER, "frFR"))?.status).toBe("fixed");
+    } finally {
+      await french.restore();
+    }
+  });
+});
+
+describe("a report on a team's pack", () => {
+  let lang: Lang;
+  let other: Lang;
+  let plain: TeamId;
+  let second: TeamId;
+  let elsewhere: TeamId;
+  const slugOf = async (team: TeamId) =>
+    (await systemRows<{ slug: string }>(`select "slug" from "team" where "id" = $1`, [team]))[0].slug;
+  const filed = async () =>
+    systemRows<{ teamId: TeamId; queue: string }>(`select "teamId", "queue" from "report" where "ip" = $1`, [ip]);
+
+  beforeEach(async () => {
+    forgetTeams();
+    lang = await uniqueLang();
+    other = await uniqueLang();
+    plain = await newTeamIn(lang, true, "test-report-plain");
+    second = await newTeamIn(lang, false, "test-report-stimmen");
+    elsewhere = await newTeamIn(other, true, "test-report-elsewhere");
+  });
+
+  afterEach(async () => {
+    await asSystem.query(`delete from "report" where "ip" like $1`, [`${ip}%`]);
+    await asSystem.query(`delete from "line_override" where "teamId" = any($1::uuid[])`, [[plain, second, elsewhere]]);
+    for (const team of [plain, second, elsewhere]) await dropTeam(team);
+    for (const each of [lang, other]) await dropLang(each);
+    forgetTeams();
+  });
+
+  const context = (fields: Record<string, string>) => ({ fields: { pack: lang, ...fields }, text: null });
+
+  it("is filed with the team whose pack played", async () => {
+    await createReport(submission({ lang, context: context({ packTeam: await slugOf(second) }) }));
+    expect(await filed()).toEqual([{ teamId: second, queue: "audio" }]);
+  });
+
+  it("is filed with the team with plain packs when a plain pack played", async () => {
+    await createReport(submission({ lang, context: context({ packFolder: "SpokenQuestsAudioHorde_xqXQ" }) }));
+    expect(await filed()).toEqual([{ teamId: plain, queue: "audio" }]);
+  });
+
+  it("is filed with the team with plain packs when the team named does not voice the language", async () => {
+    await createReport(submission({ lang, context: context({ packTeam: await slugOf(elsewhere) }) }));
+    expect(await filed()).toEqual([{ teamId: plain, queue: "audio" }]);
+  });
+
+  it("is filed with the reporter's own team when no pack is named", async () => {
+    await asTeam(lang, second, () => createReport(submission({ lang, context: context({}) })));
+    expect(await filed()).toEqual([{ teamId: second, queue: "audio" }]);
+  });
+
+  describe("in a language none of whose teams has plain packs", () => {
+    let bare: Lang;
+    let x: TeamId;
+    let y: TeamId;
+
+    beforeEach(async () => {
+      bare = await uniqueLang();
+      x = await newTeamIn(bare, false, "test-report-x");
+      y = await newTeamIn(bare, false, "test-report-y");
+    });
+
+    afterEach(async () => {
+      await asSystem.query(`delete from "report" where "ip" like $1`, [`${ip}%`]);
+      for (const team of [x, y]) await dropTeam(team);
+      await dropLang(bare);
+    });
+
+    it("files an audio report naming no team with every team, each seeing its own", async () => {
+      await createReport(submission({ lang: bare }));
+      const rows = await systemRows<{ teamId: TeamId; queue: string }>(
+        `select "teamId", "queue" from "report" where "ip" = $1 order by "teamId" = $2 desc`,
+        [ip, x],
+      );
+      expect(rows).toEqual([
+        { teamId: x, queue: "audio" },
+        { teamId: y, queue: "audio" },
+      ]);
+      expect(await asTeam(bare, x, () => reportsForLine("quests", "q:1:accept", bare))).toHaveLength(1);
+      expect(await asTeam(bare, y, () => reportsForLine("quests", "q:1:accept", bare))).toHaveLength(1);
+    });
+
+    it("files a text report naming no team once, for the language's text holders", async () => {
+      await createReport(submission({ lang: bare, category: "wrong_text" }));
+      expect(await filed()).toEqual([{ teamId: x, queue: "text" }]);
+    });
+
+    it("files a report naming one team with that team alone", async () => {
+      await createReport(submission({ lang: bare, context: { fields: { pack: bare, packTeam: await slugOf(y) }, text: null } }));
+      expect(await filed()).toEqual([{ teamId: y, queue: "audio" }]);
+    });
+  });
+
+  it("judges a wrong_text report by the filing team's overrides", async () => {
+    const file = `quests/${ip}.mp3`;
+    await asSystem.query(
+      `insert into "line_override" ("teamId", "lang", "file", "lineId", "text") values ($1, $2, $3, 'q:1:accept', 'Ours.')`,
+      [second, lang, file],
+    );
+    await createReport(
+      submission({ lang, file, category: "wrong_text", context: context({ packTeam: await slugOf(second) }) }),
+    );
+    await createReport(submission({ lang, file, category: "wrong_text", ip: `${ip}-plain`, context: context({}) }));
+    const rows = await systemRows<{ teamId: TeamId; queue: string; ip: string }>(
+      `select "teamId", "queue", "ip" from "report" where "ip" like $1 order by "ip"`,
+      [`${ip}%`],
+    );
+    expect(rows).toEqual([
+      { teamId: second, queue: "audio", ip },
+      { teamId: plain, queue: "text", ip: `${ip}-plain` },
+    ]);
+  });
+});
+
+describe("queues", () => {
+  it.each([
+    ["wrong_text", "text"],
+    ["other", "text"],
+    ["pronunciation", "audio"],
+    ["wrong_voice", "audio"],
+    ["audio_quality", "audio"],
+    ["missing", "audio"],
+  ] as const)("routes %s to %s", async (category, queue) => {
+    expect(await queueFor(category, "enUS", null)).toBe(queue);
+    expect(await queueFor(category, "deDE", null)).toBe(queue);
+  });
+
+  it("sends wrong_text on an English override to the team, who wrote what the player heard", async () => {
+    const file = `quests/${ip}.mp3`;
+    await asSystem.query(
+      `insert into "line_override" ("teamId", "file", "lineId", "text") values (team_of_lang('enUS'), $1, 'q:1:accept', 'Mine.')`,
+      [file],
+    );
+    try {
+      expect(await queueFor("wrong_text", "enUS", file)).toBe("audio");
+      expect(await queueFor("other", "enUS", file)).toBe("text");
+      expect(await queueFor("wrong_text", "deDE", file)).toBe("text");
+    } finally {
+      await asSystem.query(`delete from "line_override" where "file" = $1`, [file]);
+    }
+  });
+
+  it("counts a voice's file as overridden when its line's is", async () => {
+    const file = `quests/${ip}.mp3`;
+    await asSystem.query(
+      `insert into "line_override" ("teamId", "file", "lineId", "text") values (team_of_lang('enUS'), $1, 'q:1:accept', 'Mine.')`,
+      [file],
+    );
+    try {
+      expect(await queueFor("wrong_text", "enUS", `quests/${ip}-voice.mp3`)).toBe("audio");
+    } finally {
+      await asSystem.query(`delete from "line_override" where "file" = $1`, [file]);
+    }
+  });
+
+  it("stores the queue and lists only the queues asked for", async () => {
+    await createReport(submission({ category: "pronunciation" }));
+    const [report] = (await listReports("open", "all", "all", null)).filter((each) => each.lineId === "q:1:accept");
+    expect(report.queue).toBe("audio");
+
+    const has = async (queues: ("text" | "audio")[]) =>
+      (await listReports("open", "all", "all", null, "enUS", queues)).some((each) => each.id === report.id);
+    expect(await has(["text"])).toBe(false);
+    expect(await has(["audio"])).toBe(true);
+    expect(await has(["text", "audio"])).toBe(true);
+    const onLine = async (queues: ("text" | "audio")[]) =>
+      (await reportsForLine("quests", "q:1:accept", "enUS", queues)).some((each) => each.id === report.id);
+    expect(await onLine(["text"])).toBe(false);
+    expect(await onLine(["audio"])).toBe(true);
+  });
+
+  it("leaves a site owner out of who works each queue, whatever rows they hold", async () => {
+    const owner = await testUser("test-queue-owner");
+    const maintainer = await testUser("test-queue-maintainer");
+    await asSystem.query(`update "user" set "role" = 'admin' where "id" = $1`, [owner.id]);
+    try {
+      for (const user of [owner, maintainer]) {
+        await asSystem.query(
+          `insert into "language_grant" ("userId", "lang", "capability") values ($1, 'itIT', 'edit')`,
+          [user.id],
+        );
+      }
+      await asSystem.query(
+        `insert into "team_member" ("teamId", "userId", "lang", "capability")
+         values (team_of_lang('itIT'), $1, 'itIT', 'admin')`,
+        [owner.id],
+      );
+
+      const holders = await queueHolders("itIT");
+
+      expect(holders.text.has(maintainer.id)).toBe(true);
+      expect(holders.text.has(owner.id)).toBe(false);
+      expect(holders.audio.has(owner.id)).toBe(false);
+    } finally {
+      for (const user of [owner, maintainer]) {
+        await asSystem.query(`delete from "language_grant" where "userId" = $1`, [user.id]);
+        await asSystem.query(`delete from "team_member" where "userId" = $1`, [user.id]);
+        await user.cleanup();
+      }
+    }
+  });
+
+  it("moves a report to the other queue, once, and logs it", async () => {
+    await createReport(submission({ category: "pronunciation" }));
+    const [report] = await reportsForLine("quests", "q:1:accept");
+
+    expect((await setQueue(report.id, "text", RESOLVER, "enUS"))?.queue).toBe("text");
+    expect((await setQueue(report.id, "text", RESOLVER, "enUS"))?.queue).toBe("text");
+
+    const { rows } = await asSystem.query(
+      `select "detail" from "activity" where "kind" = 'report.passed' and "subject" = $1`,
+      [String(report.id)],
+    );
+    expect(rows).toEqual([{ detail: { to: "text" } }]);
+    await asSystem.query(`delete from "activity" where "kind" = 'report.passed' and "subject" = $1`, [String(report.id)]);
+  });
+
+  it("lists a text report with no team, as a deleted team leaves one, resolves it, and passes it to audio as the acting team's", async () => {
+    const lang = await uniqueLang();
+    const team = await newTeamIn(lang, true);
+    try {
+      const [{ id }] = await systemRows<{ id: string }>(
+        `insert into "report" ("source", "lang", "lineId", "category", "body", "ip", "teamId", "queue")
+         values ('quests', $1, 'q:1:accept', 'other', 'x', $2, null, 'text') returning "id"`,
+        [lang, ip],
+      );
+      const listed = await asTeam(lang, team, () => listReports("open", "all", "all", null, lang, ["text"]));
+      expect(listed.map((report) => String(report.id))).toEqual([id]);
+      expect((await asTeam(lang, team, () => setStatus(Number(id), "minor", RESOLVER, lang)))?.status).toBe("minor");
+      expect((await asTeam(lang, team, () => setQueue(Number(id), "audio", RESOLVER, lang)))?.queue).toBe("audio");
+      expect(await systemRows(`select "teamId" from "report" where "id" = $1`, [id])).toEqual([{ teamId: team }]);
+    } finally {
+      await asSystem.query(`delete from "report" where "lang" = $1`, [lang]);
+      await asSystem.query(`delete from "activity" where "lang" = $1`, [lang]);
+      await dropTeam(team);
+      await dropLang(lang);
+    }
   });
 });

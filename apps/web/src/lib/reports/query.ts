@@ -1,16 +1,25 @@
 /**
  * The query string /reports/[section] reads, and the rules that turn the stored reports into
- * one page of it: which section a report belongs to, what a search matches, the order and
- * the page.
+ * one page of it: what a search matches, the order and the page.
  *
  * Node-free, like reports.ts: ReportTable is a client component and builds its links here.
  */
-import { SECTIONS, type Section } from "@/lib/contributions/query";
+import type { Source } from "@/lib/sections";
 
 import { groupByLine, type ReportGroup } from "./rows";
 import { STATUSES, type Category, type Report, type Status } from "./reports";
 
-export { SECTIONS, type Section };
+/**
+ * The inbox's tabs. Not the contributions sections: a boss can be reported but not contributed
+ * to, and a report filed under a source with no tab could never be read.
+ */
+export const SECTIONS = ["quests", "readables", "places", "bosses"] as const satisfies readonly Source[];
+
+export type Section = (typeof SECTIONS)[number];
+
+export function isSection(value: unknown): value is Section {
+  return SECTIONS.includes(value as Section);
+}
 
 export type StatusView = Status | "all";
 
@@ -18,20 +27,6 @@ export const STATUS_VIEWS: readonly StatusView[] = [...STATUSES, "all"];
 
 export function isStatusView(value: unknown): value is StatusView {
   return STATUS_VIEWS.includes(value as StatusView);
-}
-
-/**
- * The tab a report is listed under, the same split /contributions makes.
- *
- * Gossip is filed under quests, so it is told apart by its address: a `g:` line id
- * (tts_cli/naming.py), or with no line picked, the NPC address gossip travels on. A
- * follow-up travels on an NPC address too but resolves to a quests line id, so it stays
- * with quests, as it does in the explorers (links.ts's explorerHref).
- */
-export function sectionOfReport(report: Pick<Report, "source" | "lineId" | "target">): Section {
-  if (report.source !== "quests") return report.source;
-  if (report.lineId) return report.lineId.startsWith("g:") ? "gossip" : "quests";
-  return report.target?.startsWith("npc/") ? "gossip" : "quests";
 }
 
 /** Case-blind substring over everything a triager can read on the row, address included. */

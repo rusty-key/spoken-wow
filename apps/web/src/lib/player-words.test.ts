@@ -1,7 +1,24 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it } from "vitest";
 
-import { branchesOnPlayerGender, speakPlayerTokens } from "./player-words";
+import { registerPlayerWords } from "../../../../pipelines/lib/player-words.mjs";
+import { type LanguageInfo, type PlayerWords, registerLanguages } from "./lang";
+import {
+  branchesOnPlayerGender,
+  hasBuiltinPlayerWords,
+  playerGenderSides,
+  playerTokenCounts,
+  speakPlayerTokens,
+  validPlayerWords,
+} from "./player-words";
 import { isVoiceable, skipReasonFor } from "./text-gate";
+
+const TEAM_LANGUAGE: LanguageInfo = {
+  code: "xxXX", name: "Test", native: "Test", bcp47: "xx-XX", provider: "xx", client: false,
+};
+const ITALIAN: PlayerWords = {
+  m: { name: "avventuriero", race: "viaggiatore" },
+  f: { name: "avventuriera", race: "viaggiatrice" },
+};
 
 describe("speakPlayerTokens", () => {
   it("addresses the reader with the language's word, lowercase mid-sentence", () => {
@@ -30,10 +47,60 @@ describe("speakPlayerTokens", () => {
     expect(speakPlayerTokens("Merci, $N.", "frFR", "f")).toBe("Merci, aventurière.");
   });
 
-  it("speaks QuestIT's Italian, agreeing with the reader where the line has a gender", () => {
-    const line = "Sì, possente $C. Sei $Gun:una; $R coraggioso.";
-    expect(speakPlayerTokens(line, "itIT")).toBe("Sì, possente avventuriero. Sei un viaggiatore coraggioso.");
-    expect(speakPlayerTokens("Grazie, $N.", "itIT", "f")).toBe("Grazie, avventuriera.");
+  describe("a team's language, whose words are its row's", () => {
+    afterEach(() => registerLanguages([]));
+
+    it("speaks the registered words, agreeing with the reader where the line has a gender", () => {
+      registerLanguages([{ ...TEAM_LANGUAGE, playerWords: ITALIAN }]);
+      const line = "Sì, possente $C. Sei $Gun:una; $R coraggioso.";
+      expect(speakPlayerTokens(line, "xxXX")).toBe("Sì, possente avventuriero. Sei un viaggiatore coraggioso.");
+      expect(speakPlayerTokens("Grazie, $N.", "xxXX", "f")).toBe("Grazie, avventuriera.");
+    });
+
+    it("leaves the tokens with none, so the gate refuses the line", () => {
+      registerLanguages([{ ...TEAM_LANGUAGE, playerWords: null }]);
+      expect(speakPlayerTokens("Grazie, $N.", "xxXX")).toBe("Grazie, $N.");
+    });
+
+    it("speaks a writ's count with the row's words, and keeps the token without them", () => {
+      const line = "la nota chiede $2oa Elixir of Ogre's Strength e riporta";
+      registerLanguages([{ ...TEAM_LANGUAGE, playerWords: { ...ITALIAN, quantity: "una fornitura di" } }]);
+      expect(speakPlayerTokens(line, "xxXX")).toBe("la nota chiede una fornitura di Elixir of Ogre's Strength e riporta");
+      registerLanguages([{ ...TEAM_LANGUAGE, playerWords: ITALIAN }]);
+      expect(speakPlayerTokens(line, "xxXX")).toBe(line);
+    });
+
+    it("never lets a row change a built-in language's words", () => {
+      registerPlayerWords([["frFR", ITALIAN]]);
+      expect(speakPlayerTokens("Merci, $N.", "frFR")).toBe("Merci, aventurier.");
+      expect(hasBuiltinPlayerWords("frFR")).toBe(true);
+      expect(hasBuiltinPlayerWords("xxXX")).toBe(false);
+    });
+  });
+
+  describe("validPlayerWords", () => {
+    it("trims, and drops an empty optional form", () => {
+      expect(
+        validPlayerWords({ m: { name: " avventuriero ", race: "viaggiatore", classPlural: "" }, f: ITALIAN.f }),
+      ).toEqual(ITALIAN);
+    });
+
+    it("keeps a writ's count, trimmed, and drops an empty one", () => {
+      expect(validPlayerWords({ ...ITALIAN, quantity: " una fornitura di " })).toEqual({
+        ...ITALIAN,
+        quantity: "una fornitura di",
+      });
+      expect(validPlayerWords({ ...ITALIAN, quantity: "" })).toEqual(ITALIAN);
+      expect(validPlayerWords({ ...ITALIAN, quantity: "$2oa" })).toBeNull();
+    });
+
+    it("refuses a missing reader, an empty word, and one that would read as a token or a branch", () => {
+      expect(validPlayerWords({ m: ITALIAN.m })).toBeNull();
+      expect(validPlayerWords({ m: { name: "", race: "x" }, f: ITALIAN.f })).toBeNull();
+      expect(validPlayerWords({ m: { name: "$N", race: "x" }, f: ITALIAN.f })).toBeNull();
+      expect(validPlayerWords({ m: { name: "a:b", race: "x" }, f: ITALIAN.f })).toBeNull();
+      expect(validPlayerWords({ m: { name: "x".repeat(41), race: "x" }, f: ITALIAN.f })).toBeNull();
+    });
   });
 
   it("resolves ruRU's three-field $g by the player gender, agreeing with the noun", () => {
@@ -47,11 +114,46 @@ describe("speakPlayerTokens", () => {
     expect(speakPlayerTokens("Olá, $Nama.", "ptBR")).toBe("Olá, $Nama.");
   });
 
+  it("speaks a token in Chinese or Korean text, which puts no space after it", () => {
+    expect(speakPlayerTokens("不过，你这$c似乎是正想找点什么事情做做呀。", "zhCN")).toBe(
+      "不过，你这冒险者似乎是正想找点什么事情做做呀。",
+    );
+    expect(speakPlayerTokens("$N們，快去吧。", "zhTW")).toBe("冒險者們，快去吧。");
+    expect(speakPlayerTokens("고맙네, $N님.", "koKR")).toBe("고맙네, 모험가님.");
+    expect(speakPlayerTokens("你好，$$N朋友。", "zhCN")).toBe("你好，冒险者朋友。");
+  });
+
   it("reads $u as the gender branch $g is, in every language", () => {
     // q:87288:accept and q:98321:accept, as the client sent them.
     expect(speakPlayerTokens("Seid gegrüßt, $uReisender:Reisende;.", "deDE")).toBe("Seid gegrüßt, Reisender.");
     expect(speakPlayerTokens("Ihr seid $uEin:Eine:r; $R.", "deDE", "f")).toBe("Ihr seid Eine Reisende.");
     expect(speakPlayerTokens("Olá, $uamigo:amiga;.", "ptBR", "f")).toBe("Olá, amiga.");
+  });
+
+  it("reads Forever's $u with its separators swapped, male first", () => {
+    // Gossip of npc:253474 and npc:252477 (Friedensbewahrer), as Forever 1.60.1 sent it.
+    const line = "Wonach sucht Ihr, $uBürger;Bürgerin:?";
+    expect(speakPlayerTokens(line, "deDE")).toBe("Wonach sucht Ihr, Bürger?");
+    expect(speakPlayerTokens(line, "deDE", "f")).toBe("Wonach sucht Ihr, Bürgerin?");
+    expect(playerGenderSides(line)).toEqual(["Wonach sucht Ihr, Bürger?", "Wonach sucht Ihr, Bürgerin?"]);
+    // A $u whose `:` is lost stays refused rather than reading on to the sentence's colon.
+    const lost = "Ihr seid $uHeld Heldin; hört gut: geht.";
+    expect(speakPlayerTokens(lost, "deDE")).toBe(lost);
+    expect(branchesOnPlayerGender(lost)).toBe(false);
+    const lostBeforeComma = "Ihr seid $uHeld Heldin;, hört gut: geht.";
+    expect(speakPlayerTokens(lostBeforeComma, "deDE")).toBe(lostBeforeComma);
+    expect(branchesOnPlayerGender(lostBeforeComma)).toBe(false);
+  });
+
+  it("reads a doubled $ before the reader's name, class or race as the token", () => {
+    // q:10221:accept, q:2521:accept and gossip of npc:14982, as TBC Anniversary and Forever sent them.
+    expect(speakPlayerTokens("$$N, mein früherer Schützling", "deDE")).toBe("Abenteurer, mein früherer Schützling");
+    expect(speakPlayerTokens("$$R, kann Euer winziges Gehirn", "deDE")).toBe("Reisender, kann Euer winziges Gehirn");
+    expect(speakPlayerTokens("$$C, wir brauchen Eure Unterstützung", "deDE", "f")).toBe(
+      "Abenteurerin, wir brauchen Eure Unterstützung",
+    );
+    expect(speakPlayerTokens("Die Legion $$Ns wartet.", "deDE")).toBe("Die Legion Abenteurers wartet.");
+    expect(speakPlayerTokens("Es kostet $$5.", "deDE")).toBe("Es kostet $$5.");
   });
 
   it("leaves a branch whose ; is lost, rather than reading on to a later sentence's ;", () => {
@@ -72,10 +174,36 @@ describe("speakPlayerTokens", () => {
     expect(speakPlayerTokens("Merci, $Ns.", "frFR")).toBe("Merci, $Ns.");
   });
 
+  it("speaks frFR's class plural $cs as the plural of the reader's word", () => {
+    expect(speakPlayerTokens("Les $cs du marais vous attendent.", "frFR")).toBe("Les aventuriers du marais vous attendent.");
+    expect(speakPlayerTokens("Les $cs du marais vous attendent.", "frFR", "f")).toBe("Les aventurières du marais vous attendent.");
+    expect(speakPlayerTokens("Merci. $cs, en avant !", "frFR")).toBe("Merci. Aventuriers, en avant !");
+    expect(speakPlayerTokens("Les $rs du marais.", "frFR")).toBe("Les $rs du marais.");
+    expect(speakPlayerTokens("Les $$cs du marais.", "frFR")).toBe("Les aventuriers du marais.");
+    expect(speakPlayerTokens("Les $cs'il le faut.", "frFR")).toBe("Les $cs'il le faut.");
+  });
+
   it("speaks English's own word, for the book pages that still carry tokens", () => {
     expect(speakPlayerTokens("$N, bring me my hammer, $gBrother:Sister;.", "enUS")).toBe(
       "Adventurer, bring me my hammer, Brother.",
     );
+  });
+
+  it("speaks a writ's count as an order, in the languages that have the words", () => {
+    // q:94360:accept, q:94219:accept, q:94241:accept and q:94004:accept, as players sent them.
+    expect(speakPlayerTokens("the note is requesting $2oa Soul Pouch, along with", "enUS")).toBe(
+      "the note is requesting an order of Soul Pouch, along with",
+    );
+    expect(speakPlayerTokens("o bilhete solicita $2oax Tisana de Respiração Aquática, além", "ptBR")).toBe(
+      "o bilhete solicita algumas unidades de Tisana de Respiração Aquática, além",
+    );
+    expect(speakPlayerTokens("заказ на $2oa темных кожаных мундира:темных кожаных мундиров, а также", "ruRU")).toBe(
+      "заказ на несколько темных кожаных мундиров, а также",
+    );
+    expect(speakPlayerTokens("заказ на $2oa порции:порций эликсира силы огра, а также", "ruRU")).toBe(
+      "заказ на несколько порций эликсира силы огра, а также",
+    );
+    expect(speakPlayerTokens("verlangt $2oa Seelenbeutel", "deDE")).toBe("verlangt $2oa Seelenbeutel");
   });
 
   it("leaves a token it has no word for", () => {
@@ -88,6 +216,7 @@ describe("branchesOnPlayerGender", () => {
     expect(branchesOnPlayerGender("Willkommen, $uReisender:Reisende;.")).toBe(true);
     expect(branchesOnPlayerGender("Willkommen, $gReisender:Reisende;.")).toBe(true);
     expect(branchesOnPlayerGender("Olá, $uamigo:amiga;.")).toBe(true);
+    expect(branchesOnPlayerGender("Wonach sucht Ihr, $uBürger;Bürgerin:?")).toBe(true);
     expect(branchesOnPlayerGender("Willkommen, $N.")).toBe(false);
   });
 });
@@ -97,11 +226,61 @@ describe("the text gate on a translation", () => {
     const line = { skipReason: "invalid-chars", lang: "deDE" as const };
     expect(isVoiceable(line, "Gut gemacht, $N.")).toBe(true);
     expect(isVoiceable(line, "$2113w Kisten, $N.")).toBe(false);
+    expect(isVoiceable(line, "$$N, welche Neuigkeiten bringt Ihr aus Blackfathom?")).toBe(true);
+    expect(isVoiceable(line, "Wonach sucht Ihr, $uBürger;Bürgerin:?")).toBe(true);
   });
 
   it("stores a translated line as voiceable", () => {
-    expect(skipReasonFor("complete", "Merci, $N.", "frFR")).toBeNull();
-    expect(skipReasonFor("complete", "Merci, $Nama.", "frFR")).toBe("invalid-chars");
-    expect(skipReasonFor("progress", "Merci, $N.", "frFR")).toBe("progress");
+    expect(skipReasonFor("Merci, $N.", "frFR")).toBeNull();
+    expect(skipReasonFor("Merci, $Nama.", "frFR")).toBe("invalid-chars");
+  });
+
+  it("voices a frFR line with the class plural $cs", () => {
+    expect(skipReasonFor("Les $cs de Comté-du-Nord vous attendent, $n.", "frFR")).toBeNull();
+    expect(skipReasonFor("Les $cs de Comté-du-Nord vous attendent, $n.", "frFR", "f")).toBeNull();
+  });
+});
+
+describe("playerTokenCounts", () => {
+  const reader = (N: number, C: number, R: number) => ({ N, C, R });
+
+  it("counts each token the client would fill in, as #548's deDE corrections lost them", () => {
+    expect(playerTokenCounts("wissen, $C, dass", "deDE")).toEqual({ G: 0, m: reader(0, 1, 0), f: reader(0, 1, 0) });
+    expect(playerTokenCounts("wissen, Krieger, dass", "deDE")).toEqual({ G: 0, m: reader(0, 0, 0), f: reader(0, 0, 0) });
+    expect(playerTokenCounts("Seid gegrüßt, $GBruder:Schwester;.", "deDE")).toEqual({
+      G: 1,
+      m: reader(0, 0, 0),
+      f: reader(0, 0, 0),
+    });
+    expect(playerTokenCounts("Vielen Dank, $c. Geht, $n, und $r!", "deDE")).toEqual({
+      G: 0,
+      m: reader(1, 1, 1),
+      f: reader(1, 1, 1),
+    });
+  });
+
+  it("counts a token where the language speaks it, as the text gate does", () => {
+    expect(playerTokenCounts("$$N, kommt her.", "deDE").m).toEqual(reader(1, 0, 0));
+    expect(playerTokenCounts("die Legion $Ns", "deDE").m).toEqual(reader(1, 0, 0));
+    expect(playerTokenCounts("谢谢你，$$N朋友。", "zhCN").m).toEqual(reader(1, 0, 0));
+    expect(playerTokenCounts("Hallo, $uBürger;Bürgerin:.", "deDE").G).toBe(1);
+    // Glued to a letter the language does not speak it, so the gate refuses the line.
+    expect(playerTokenCounts("Merci, $Nama.", "frFR").m).toEqual(reader(0, 0, 0));
+    expect(playerTokenCounts("Merci, $Ns.", "frFR").m).toEqual(reader(0, 0, 0));
+  });
+
+  it("counts the tokens inside a branch on the side each reader takes", () => {
+    const line = "Sei $Gun $C:una $C; coraggioso.";
+    expect(playerTokenCounts(line, "esES")).toEqual({ G: 1, m: reader(0, 1, 0), f: reader(0, 1, 0) });
+    expect(playerTokenCounts("Sei $Gun guerriero:una guerriera; coraggioso.", "esES").f).toEqual(reader(0, 0, 0));
+    expect(playerTokenCounts("Sei $Gun $C $C:una guerriera; coraggioso.", "esES")).toEqual({
+      G: 1,
+      m: reader(0, 2, 0),
+      f: reader(0, 0, 0),
+    });
+  });
+
+  it("does not read a token into the text around a branch", () => {
+    expect(playerTokenCounts("$$gHerr:Dame;Name", "deDE")).toEqual({ G: 1, m: reader(0, 0, 0), f: reader(0, 0, 0) });
   });
 });

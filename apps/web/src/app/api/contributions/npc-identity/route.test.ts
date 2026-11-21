@@ -112,7 +112,7 @@ describe("POST /api/contributions/npc-identity", () => {
   });
 
   it("leaves a row that is not a quest's alone", async () => {
-    const id = await contribution({}, "zones");
+    const id = await contribution({}, "places");
     admin = true;
     expect((await POST(post({ id, npcKind: "creature", npcId: 240, npcName: "Y" }))).status).toBe(409);
   });

@@ -10,16 +10,9 @@ setfenv(1, VoiceOver)
 -- Marks go into the paragraph's own text: colour codes take no width and a left-aligned
 -- prefix wraps as the whole did, so nothing moves. The original text goes back when the line
 -- ends, because DialogueUI reads it for its own text-to-speech.
---
--- Parses as Lua 5.0 (no #, no %) because addon.xml is shared with the 1.12 client.
 
 DialogueUIBridge = { status = "waiting" }
 local Bridge = DialogueUIBridge
-
-if Version.IsAnyLegacy then
-    Bridge.status = "legacy client"
-    return
-end
 
 -- A page can be built again (an item reward resolving, QUEST_DETAIL firing twice).
 local HANDLERS = { "HandleQuestDetail", "HandleQuestProgress", "HandleQuestComplete",
@@ -73,8 +66,6 @@ function Bridge:Problem(feature)
     elseif (feature == "Captions" or feature == "AutoScroll")
         and not (Spoken.GetCaption and Spoken.SplitCaption and Spoken.WordMarks) then
         return L.OPT_DUI_OLD_PLAYER
-    elseif feature == "ShowPlayer" and not Spoken.SetPlayerHost then
-        return L.OPT_DUI_OLD_PLAYER
     end
 end
 
@@ -123,7 +114,7 @@ local function Collect()
         if not fs.isTranslation and (fs.ttsFlag ~= nil or fs.isTranslation == false) then
             local text = fs:GetText()
             local words = type(text) == "string" and Spoken:SplitCaption(text)
-            if words and table.getn(words) > 0 then
+            if words and #words > 0 then
                 table.insert(paragraphs, { fs = fs, text = text, shown = text, words = Marks.MarkLinks(text, words),
                     color = Marks.ColorFor(fs:GetTextColor()) })
             end
@@ -198,8 +189,9 @@ local function Tick()
     end
     local caption = Spoken:GetCaption()
     local clip = caption and caption.clip
-    -- This addon's lines only: a zone's or a book's never match DialogueUI's text anyway.
-    if clip and clip.source == Player.source then
+    -- This addon's lines only: a zone's or a book's never match DialogueUI's text anyway, and an NPC's
+    -- chat in the world is not on the page.
+    if clip and Player:Owns(clip) and clip.event ~= Enums.SoundEvent.NPCChatter then
         if clip ~= state.clip then
             -- Put back and drawn again in this one call: nothing shows in between.
             Restore()
@@ -222,9 +214,10 @@ local function Tick()
         return
     end
     -- A line is about to be queued for this page: its words wait blank, unless another part's
-    -- line (a zone's lore, a book page) is playing, which the quest's waits behind.
+    -- line (a zone's lore, a book page, what an NPC says in the world) is playing, which the quest's
+    -- waits behind.
     local pending = state.pending
-    local otherPart = clip ~= nil and clip.source ~= Player.source
+    local otherPart = clip ~= nil and (not Player:Owns(clip) or clip.event == Enums.SoundEvent.NPCChatter)
     if pending and not otherPart and GetTime() < pending.untilTime then
         if not pending.span then
             pending.map, pending.span = Marks.Align(pending.words, state.paragraphs)
@@ -255,7 +248,7 @@ function Bridge.Expect(handler)
     end
     local ok, text = pcall(Addon.ExpectedLine, Addon, event, true)
     local words = ok and type(text) == "string" and Spoken:SplitCaption(text)
-    if words and table.getn(words) > 0 then
+    if words and #words > 0 then
         state.pending = { event = event, words = words, untilTime = GetTime() + HOLD }
     end
 end
@@ -265,25 +258,6 @@ end
 function Bridge:Read(event, queued)
     if not queued and state.pending and state.pending.event == event then
         state.pending = nil
-    end
-end
-
---------------------------------------------------------------------------------
--- The player over the window
---------------------------------------------------------------------------------
-
-local hosting = false
-
---- Put the player on DialogueUI's window while it is open and the setting is on; back on
---- UIParent otherwise.
-function Bridge:UpdatePlayerHost()
-    if not (_G.Spoken and Spoken.SetPlayerHost and self.driver) then
-        return
-    end
-    local want = self.driver:IsVisible() and Config().ShowPlayer and true or false
-    if want ~= hosting then
-        hosting = want
-        Spoken:SetPlayerHost(want and DUIQuestFrame or nil)
     end
 end
 
@@ -330,7 +304,7 @@ end
 -- Report icon (through its dialogueUISlot). Read Automatically, never DialogueUI's Auto Play,
 -- decides whether a line reads on its own.
 
-local ROUND, ROUND_GAP = 24, 4
+local ROUND = 24
 -- DialogueUI's own speaker button, as it draws it.
 local THEIRS_ALPHA = 0.6
 -- How often the row looks again for the page's line while the window is open: a quest's ID
@@ -344,8 +318,8 @@ local AUTOPLAY_DELAY = 0.5
 -- When DialogueUI's autoplay will call playFile. It asks the delay (getAutoPlayDelay) just
 -- before it waits, and a click on its button never does, which is how the two are told apart.
 local autoplayAt
--- { frame, play, skip }, built the first time the window shows a page; `report` is
--- ContributeButton's icon once it is handed over.
+-- Spoken's row (Spoken:CreateDialogueUIRow), built the first time the window shows a page, with
+-- `open`, the Compendium's button; `report` is ContributeButton's icon once it is handed over.
 local row, report
 
 --- Whether `soundData` is the line at the head of the player's queue, and not stopped there:
@@ -396,39 +370,26 @@ local function Tooltip()
 end
 
 --- What a click on Play does now, and Read Automatically, which a right-click switches.
-local function ShowPlayTooltip(button)
-    local tooltip = Tooltip()
+local function PlayTip(tooltip)
     local speaking = line ~= nil and IsSpeaking(line)
-    tooltip:SetOwner(button, "ANCHOR_RIGHT")
     tooltip:SetText(speaking and L.OPT_STOP or L.OPT_LISTEN)
     tooltip:AddLine(speaking and L.OPT_DIALOG_STOP_TIP or L.OPT_READ_TIP, 1, 1, 1, true)
     local on = Addon:IsAutoplayOn()
     tooltip:AddDoubleLine(L.OPT_PANEL_AUTOPLAY, on and L.OPT_DUI_ON or L.OPT_DUI_OFF, 1, 1, 1,
         on and 0.1 or 1, on and 1 or 0.125, on and 0.1 or 0.125)
     tooltip:AddLine(L.OPT_DUI_PLAY_RIGHT_CLICK, 1, 0.82, 0, true)
-    tooltip:Show()
-    button.tooltip = tooltip
 end
 
-local function HideTooltip(button)
-    if button.tooltip then
-        button.tooltip:Hide()
-    end
-end
-
---- Play and Skip in a row on the window: children of it, so they show while DialogueUI hides
---- UIParent and close with it, and drawn above it.
+--- Play and Skip in Spoken's row on the window, which shows while DialogueUI hides UIParent and
+--- closes with it.
 local function Row()
     if row then
         return row
     end
     local frame = DUIQuestFrame
-    local holder = CreateFrame("Frame", nil, frame)
-    holder:SetFrameStrata("FULLSCREEN")
-    holder:SetSize(ROUND, ROUND)
-    local play = Spoken:CreateRoundButton(holder, "play")
-    play:SetFrameStrata("FULLSCREEN")
-    play:RegisterForClicks("LeftButtonUp", "RightButtonUp")
+    row = Spoken:CreateDialogueUIRow(frame, Tooltip)
+    local play = row.play
+    row:SetTip(play, PlayTip)
     play:SetScript("OnClick", function(_, mouse)
         if mouse == "RightButton" then
             Addon:SetAutoplay(not Addon:IsAutoplayOn())
@@ -438,33 +399,19 @@ local function Row()
             PlayLine("Spoken's Play button on DialogueUI")
         end
         Bridge:DrawPlayButton()
-        if play.tooltip and play.tooltip:IsShown() then
-            ShowPlayTooltip(play)
-        end
+        row:RefreshTip(play)
     end)
-    -- Skips by itself.
-    local skip = Spoken:CreateRoundButton(holder, "skip")
-    skip:SetFrameStrata("FULLSCREEN")
-    local function ShowSkipTooltip()
-        local tooltip = Tooltip()
-        tooltip:SetOwner(skip, "ANCHOR_RIGHT")
-        tooltip:SetText(SpokenEnv.L.BIND_SKIP)
-        tooltip:Show()
-        skip.tooltip = tooltip
+    -- Open in Azeroth's Compendium, on a quest's page. The window is a child of UIParent, which
+    -- DialogueUI hides while it is open, so DialogueUI's window closes first.
+    local tab = rawget(VoiceOver, "QuestsTab")
+    local open = tab and tab.NewOpenButton and tab:NewOpenButton(row.frame, Tooltip)
+    if open then
+        open:SetFrameStrata("FULLSCREEN")
+        open.beforeOpen = function()
+            if type(frame.HideUI) == "function" then frame:HideUI() else frame:Hide() end
+        end
     end
-    -- Brighter under the pointer as the ring's own hover has it, and the tooltip on the window's.
-    for button, Show in pairs({ [play] = ShowPlayTooltip, [skip] = ShowSkipTooltip }) do
-        button:SetScript("OnEnter", function(self)
-            if self:IsEnabled() then self.glyph:SetAlpha(1) end
-            Show(self)
-        end)
-        button:SetScript("OnLeave", function(self)
-            if self:IsEnabled() then self.glyph:SetAlpha(0.85) end
-            HideTooltip(self)
-        end)
-    end
-    holder:Hide()
-    row = { frame = holder, play = play, skip = skip }
+    row.open = open
     return row
 end
 
@@ -544,7 +491,7 @@ end
 --- DialogueUI scrolls by, shorter by as much. Measured from the title, not the portrait beside
 --- it.
 local function Lower()
-    if not Addon:IsPartOn() then
+    if not Addon:IsPageOn(Bridge:Page()) then
         return
     end
     local frame = DUIQuestFrame
@@ -575,17 +522,15 @@ local function Lower()
     end
 end
 
---- Lay the row out right to left from the close button, on its middle: Report, Skip, Play, 24 at
---- UIParent's scale whatever DialogueUI's own size, in the same place on every page.
---- DialogueUI's buttons in that corner (Copy Text, the translator's) go left of it.
-local placedKey
+--- Lay the row out right to left from the close button, on its middle: Report, Skip, Play, in the
+--- same place on every page. DialogueUI's buttons in that corner (Copy Text, the translator's) go
+--- left of it.
 -- Reused on every tick, which runs while the window is open.
 local list = {}
 local THEIRS = { "TranslatorButton", "CopyTextButton" }
 
 local function PlaceRow(force)
     local frame = DUIQuestFrame
-    local scale = UIParent:GetEffectiveScale() / math.max(0.01, frame:GetEffectiveScale() or 1)
     for i = #list, 1, -1 do
         list[i] = nil
     end
@@ -596,26 +541,11 @@ local function PlaceRow(force)
     if row.play:IsShown() then
         table.insert(list, row.play)
     end
-    local holder = row.frame
-    local key = #list * 100000 + math.floor(scale * 1000 + 0.5)
-    if key ~= placedKey or force then
-        placedKey = key
-        holder:SetSize((#list * ROUND + (#list - 1) * ROUND_GAP) * scale, ROUND * scale)
-        local right
-        for _, button in ipairs(list) do
-            button:SetScale(scale)
-            button:SetSize(ROUND, ROUND)
-            button:ClearAllPoints()
-            if right then
-                button:SetPoint("RIGHT", right, "LEFT", -ROUND_GAP, 0)
-            else
-                button:SetPoint("RIGHT", holder, "RIGHT", 0, 0)
-            end
-            right = button
-        end
-        holder:ClearAllPoints()
-        holder:SetPoint("RIGHT", CloseButton(), "LEFT", -ROUND_GAP, 0)
+    if row.open and row.open:IsShown() then
+        table.insert(list, row.open)
     end
+    local holder = row.frame
+    row:Place(list, CloseButton(), force)
     -- DialogueUI's first button there (Copy Text, else the translator's) left of the row, on its
     -- middle; the other keeps its place left of that one. Again whenever DialogueUI lays them out.
     local first
@@ -627,7 +557,7 @@ local function PlaceRow(force)
     end
     if first and select(2, first:GetPoint(1)) ~= holder then
         first:ClearAllPoints()
-        first:SetPoint("RIGHT", holder, "LEFT", -ROUND_GAP, 0)
+        first:SetPoint("RIGHT", holder, "LEFT", -4, 0)
     end
 end
 
@@ -672,15 +602,14 @@ end
 --- setting on, greyed with no line to read and Stop while that line speaks; Skip greyed with
 --- nothing speaking. Run as a page is built, as the window opens, and on the driver's tick.
 function Bridge:DrawPlayButton()
-    if self:Page() == nil or not Addon:IsPartOn() then
+    if self:Page() == nil or not Addon:IsPageOn(self:Page()) then
         CoverTheirs(false)
         if close then
             close:Hide()
         end
         if row and row.frame:IsShown() then
             row.frame:Hide()
-            HideTooltip(row.play)
-            HideTooltip(row.skip)
+            row:HideTips()
         end
         return
     end
@@ -696,6 +625,15 @@ function Bridge:DrawPlayButton()
         r.play:SetState(state)
     end
     SetEnabled(r.skip, Spoken.GetCurrent ~= nil and Spoken:GetCurrent() ~= nil)
+    if r.open then
+        local page = self:Page()
+        local id = (page == "QUEST_DETAIL" or page == "QUEST_PROGRESS" or page == "QUEST_COMPLETE")
+            and GetQuestID and NotSecret(GetQuestID()) or nil
+        local tab = rawget(VoiceOver, "QuestsTab")
+        local shown = tab ~= nil and tab:Has(id)
+        r.open.questID = shown and id or nil
+        if (r.open:IsShown() and true or false) ~= shown then r.open:SetShown(shown) end
+    end
     PlaceRow()
 end
 
@@ -876,7 +814,6 @@ function Bridge:Hook()
         end
     end)
     driver:SetScript("OnShow", function()
-        self:UpdatePlayerHost()
         HostContributeBox(frame)
         self:RefreshPlayButton()
         RefreshContribute()
@@ -886,7 +823,6 @@ function Bridge:Hook()
         state.pending = nil
         -- Closed before it showed in full: the player walked on, and the line is not read.
         waiting = nil
-        self:UpdatePlayerHost()
         HostContributeBox(nil)
         self:DrawPlayButton()
         RefreshContribute()
@@ -930,14 +866,13 @@ function Bridge:Refresh()
         Restore()
     end
     self:RefreshPlayButton()
-    self:UpdatePlayerHost()
 end
 
 --- One line for /spq diagnostics.
 function Bridge:Describe()
     local cfg = Config()
-    return format("DialogueUI: %s; words=%s scroll=%s player=%s play=%s button=%s provider=%s", tostring(self.status),
-        tostring(cfg.Captions), tostring(cfg.AutoScroll), tostring(cfg.ShowPlayer),
+    return format("DialogueUI: %s; words=%s scroll=%s play=%s button=%s provider=%s", tostring(self.status),
+        tostring(cfg.Captions), tostring(cfg.AutoScroll),
         tostring(cfg.PlayButton), row and row.frame:IsShown() and row.play:IsShown() and "shown" or "hidden",
         tostring(self.provider == true))
 end

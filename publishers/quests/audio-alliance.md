@@ -6,9 +6,9 @@ section: quests
 lang: enUS
 pack: alliance
 github: false
-slug: spoken-quests-audio-alliance
-name: Spoken Quests Audio: Alliance
-summary: Alliance-only quest dialogue, voiced. Pair it with the Shared pack. Needs Spoken Player.
+slug: spoken-audio-quests-alliance
+name: Spoken Audio: Quests - Alliance
+summary: Alliance-only quest dialogue, voiced. Pair it with the Shared pack. Needs Spoken.
 categories:
   - Audio & Video
   - Roleplay
@@ -20,20 +20,20 @@ Voiced dialogue for the quests only an Alliance character can take.
 
 **You need two more addons for this to do anything:**
 
-1. **[Spoken Player](https://www.curseforge.com/wow/addons/spoken-player)** — the player. Without it no pack plays.
-2. **[Spoken Quests Audio: Shared Quests](https://www.curseforge.com/wow/addons/spoken-quests-audio-shared)** — the quests both factions can take, including everything in the neutral hubs like Booty Bay and Gadgetzan. Without it an Alliance character hears only part of their quests.
+1. **[Spoken](https://www.curseforge.com/wow/addons/spoken)** — the player. Without it no pack plays.
+2. **[Spoken Audio: Quests - Shared](https://www.curseforge.com/wow/addons/spoken-audio-quests-shared)** — the quests both factions can take, including everything in the neutral hubs like Booty Bay and Gadgetzan. Without it an Alliance character hears only part of their quests.
 
 ## The packs
 
 | Pack | Holds | |
 | --- | --- | --- |
 <!-- only:curseforge -->
-| [All](https://www.curseforge.com/wow/addons/spoken-quests-audio-all) | installs the four below | |
+| [All](https://www.curseforge.com/wow/addons/spoken-audio-quests-all) | installs the four below | |
 <!-- /only -->
 | **Alliance** | Alliance-only quests | **this pack** |
-| [Horde](https://www.curseforge.com/wow/addons/spoken-quests-audio-horde) | Horde-only quests | |
-| [Shared](https://www.curseforge.com/wow/addons/spoken-quests-audio-shared) | quests both factions can take | |
-| [Gossip](https://www.curseforge.com/wow/addons/spoken-quests-audio-gossip) | NPC gossip chatter | |
+| [Horde](https://www.curseforge.com/wow/addons/spoken-audio-quests-horde) | Horde-only quests | |
+| [Shared](https://www.curseforge.com/wow/addons/spoken-audio-quests-shared) | quests both factions can take | |
+| [Gossip](https://www.curseforge.com/wow/addons/spoken-audio-gossip) | NPC gossip chatter | |
 
 Gossip — the chatter NPCs give you when you talk to them without a quest — is optional on top.
 
@@ -41,7 +41,7 @@ Gossip — the chatter NPCs give you when you talk to them without a quest — i
 This pack is not installable from Wago: at several hundred megabytes it is over the upload limit here. Take it from CurseForge, or take all four packs in one download, [All](https://github.com/rusty-key/spoken-wow/releases?q=quests-audio), from GitHub; unzip it into `Interface/AddOns` and the addon finds them.
 <!-- /only -->
 <!-- only:curseforge -->
-If you would rather have one install and not think about it, take **[All](https://www.curseforge.com/wow/addons/spoken-quests-audio-all)** instead. It holds no audio itself - it just tells your addon manager to fetch all four packs.
+If you would rather have one install and not think about it, take **[All](https://www.curseforge.com/wow/addons/spoken-audio-quests-all)** instead. It holds no audio itself - it just tells your addon manager to fetch all four packs.
 <!-- /only -->
 
 ## Why the pack is split

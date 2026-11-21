@@ -1,38 +1,52 @@
 # Captions
 
-Spoken can show quest dialogue, NPC dialogue, zone lore and book pages inside the
-player. Compact captions show one or two lines; expanded captions show eight.
-The captions follow the recording: with **Type Words Out** on (the default) the
-words appear as the voice reaches them, and with **Highlight Words** on (off by
-default) two adjacent words are lit in gold. They move, resize and scale with
-the player in both window layouts.
+Spoken shows the words of the line it reads (quest dialogue, NPC dialogue, place stories and
+readables' pages) in each window, and as subtitles. The Small Window and the DialogueUI window show
+Rows at Once of them, one or two rows, and the Small Window's **+** button expands them to eight;
+the Large Window shows as many rows as its box holds, up to three. The captions follow the
+recording: with **Type Words Out** on (off by default) the words appear as the voice reaches them,
+and with **Highlight Words** on (the default) two adjacent words are lit, in gold, or in deep
+red on parchment. They move, resize and scale with their window.
 
-The **Subtitles Only** narrator style shows the words without a window instead,
-low in the middle of the screen, four lines at a time, typed in a little ahead
-of the voice. It lights no words: with the timing an estimate, a word lit as it
-is typed in front of the reader shows every miss. `/spoken player subtitle`
-switches to it.
+The **Subtitles Only** narrator style shows the words without a window instead, low in the middle
+of the screen, under the speaker's face, name and the line's title: a page of whole sentences at a
+time (Sentences at Once, 1 to 4, and never more than four rows), or row by row, typed in a little
+ahead of the voice. It lights the word being read only with Type Words Out off: with the timing an
+estimate, a word lit as it is typed in front of the reader shows every miss. `/sp style subtitles`
+switches to it; see [`PLAYER-STYLES.md`](PLAYER-STYLES.md) for each style and the rows of its
+settings.
 
 ![Quest captions in the WoW Forever player](captions.png)
 
 The screenshot above is from WoW Forever on Linux. The player confirmed the
-layout and approximate timing in game. Other clients have not been checked
-visually. The expanded view and zone/book captions still need an in-game visual check.
+layout and approximate timing in game. The expanded view and place and readable captions still need
+an in-game visual check.
 
 ## Controls
 
-- `/spoken transcript` toggles captions; `on` and `off` also work.
-- The small **+** button expands captions to eight lines. **−** restores your
-  compact line setting. The player grows downward and keeps the unit icon in place.
-- `/spoken transcript 1` sets one compact line; `/spoken transcript 2` sets two.
-- `/spoken options` has settings for line count, font size, highlighting, typing
-  out, **Auto-Scroll** (below), and the subtitles' size and background.
-- Scroll over the captions to read back or ahead; they hold there. Click the
-  text to follow the recording again. Right-click opens the player menu, or
-  settings in the original layout. With **Type Words Out** on, a line the voice
-  has not reached yet shows blank until it does; turn the setting off to read ahead.
-- `/spoken transcript reset` restores the caption and subtitle defaults and
+- `/sp narrator` turns the window and subtitles (Show Narrator) on and off; `on` and `off` also work, and
+  `/sp words` still answers to it.
+- In the Small Window, the small **+** button expands the captions to eight rows, and **−**
+  goes back to Rows at Once. The window grows downward and keeps its portrait in place. The Large
+  Window and the DialogueUI window have no such button.
+- `/sp rows 1` sets Rows at Once to one row; `/sp rows 2` to two.
+- `/sp settings` opens Spoken's page. Its rows for the captions are Show Narrator, Rows at Once,
+  Word Size, Highlight Words, Type Words Out, Type Out By and **Auto-Scroll** (below), and for the
+  subtitles Subtitle Size, Sentences at Once, Shadow Behind Words, Show Name and Title, Hide
+  Portrait and Show Progress Bar. Each style shows only the rows it reads.
+- Scroll over the captions in a window to read back or ahead; they hold there. Click the
+  text to follow the recording again. With Ctrl held the wheel changes Window Size instead (Subtitle
+  Size over the subtitles), and with Ctrl and Shift Word Size; with Lock Position on it does
+  neither. Right-click the text to skip the line whose words it shows, as Skip does; a right-drag
+  begun on it skips nothing. Shift-right-click opens the Small Window's menu, or the settings over
+  the other windows. With
+  **Type Words Out** on, a row the voice has not reached yet shows blank until it does; turn
+  the setting off to read ahead. The subtitles cannot be scrolled by hand.
+- `/sp transcript reset` restores the caption and subtitle defaults and
   moves the subtitles back to where they start.
+
+The older `/spoken transcript`, `/spoken transcript on`, `/spoken transcript 1` and `/spoken
+options` work as well.
 
 ## Auto-Scroll
 
@@ -40,34 +54,78 @@ How the captions in the window follow the voice:
 
 | Mode | Behaviour |
 |---|---|
-| **Line by Line** (default) | The text glides up a line at a time as the voice reaches each line, about a quarter of a second per line, so there is no jump. The line being read is on the last row with **Type Words Out** on (below), and in the middle with it off, as synced-lyrics players (Apple Music, Spotify) keep the sung line. |
+| **Row by Row** (default) | The text glides up a row at a time as the voice reaches each row, about a quarter of a second per row, so there is no jump. The row being read is the last one with **Type Words Out** on (below), and the middle one with it off, as synced-lyrics players (Apple Music, Spotify) keep the sung line. |
 | **Page by Page** | A whole page turns when the voice reaches its end, as the captions always did. Closest to broadcast pop-on captions, which read best when the text should not move while it is read. |
-| **Off** | The text holds still; the wheel moves it. Clicking the captions turns following back on, line by line. |
+| **Off** | The text holds still; the wheel moves it. Clicking the captions turns following back on, row by row. |
 
-With **Type Words Out** on, the lines below the voice are still blank, so Line by Line keeps the
-line being read on the last row instead, with what has been read above it, as roll-up broadcast
+With **Type Words Out** on, the rows below the voice are still blank, so Row by Row keeps the
+row being read last instead, with what has been read above it, as roll-up broadcast
 captions do. The glide needs the client to clip the captions' frame (`SetClipsChildren`); where it
-cannot, the text steps a line at a time. While the text moves, a line partly past the top or bottom
-edge fades by as much of it as is out of view, so lines fade out and in at the edges instead of
-ending on a hard cut. `Transcript:GetScroll` and `Transcript:ScrollTo` let a player draw its own
-scrollbar. Subtitles Only pages on its own and is not affected.
+cannot, the text steps a row at a time. While the text moves, a row partly past the top or bottom
+edge fades by as much of it as is out of view, so rows fade out and in at the edges instead of
+ending on a hard cut. The subtitles have an Auto-Scroll of their own, Page by Page (the default)
+or Row by Row, and no Off.
 
 Stopping freezes the text. Replay restarts it with the recording. Skipping
-shows the next clip's text, and a clip without text hides the captions.
+shows the next clip's text, and a clip without text hides the captions. After the line's title the
+windows and the subtitles say why a line waits, "(Stopped)" and the "+N" lines waiting behind it;
+pointing at "+N" lists them (see [`PLAYER-STYLES.md`](PLAYER-STYLES.md)).
 
 ## Settings language
 
-Caption settings and tooltips follow the game client language. Translations cover
-German, Spanish (EU and Latin America), French, Brazilian Portuguese, Russian,
-Korean, Simplified Chinese and Traditional Chinese. English is the fallback.
-The caption text itself follows the recording language.
+Caption settings and tooltips follow the Interface Language, in the Language section of Spoken's
+page: the client's language on Auto, or another the player chose. Translations cover German, Spanish
+(EU and Latin America), French, Brazilian Portuguese, Russian, Korean, Simplified Chinese and
+Traditional Chinese, and an interface pack can bring another
+([`docs/contributors/INTERFACE-PACKS.md`](../contributors/INTERFACE-PACKS.md)). English is the
+fallback.
+The words of a caption are in the Text Language, whatever the voice and whichever language a
+fallback recording is in. It is one setting for every module, Text Language in the Language section
+of Spoken's page, and takes effect after a reload. Auto is the client's language, as the game shows
+a page: on a German client a readable's German words, on an English client its English ones; on
+Auto a voice no client runs in is captioned in its own words where
+its pack has them, as its players are on a client in another language. Places reads Auto as the
+client's language once its stories are finished in it, English until then. A language with no
+client, such as Polish, comes as a text pack (`docs/contributors/TEXT-PACKS.md`): its words, and no
+voice, read wherever it is the Text Language. A recording in the Text Language captions its own
+words, timed by the recording; any other words are timed by estimate. The recording's
+language gives the words only where the Text Language has none for that place or page. A readable
+is decided page by page, so a book can be partly in the client's language and partly in the
+recording's. A book's title follows its words: the one the client showed this session, else the one
+in the index of the pack in that language, else the English title. The recording's timing does not
+follow words other than the ones it says, so a caption is timed by the title's lead only where its
+words are the playing pack's own, or the corpus's under an English recording.
+
+Quest and gossip captions are the game window's words on Auto, or a voice pack's own where it is in
+the client's language. With a Text Language chosen they are the words of a voice pack in that
+language, the one playing or another installed, else a text pack's (by line id, `$N`, `$C`, `$R` and `$G` filled in for the player),
+else the window's. Matching a line always reads the window's words. A quests pack built before the
+Text Language loads its words only on a client in its own language. A boss's story is in the Text
+Language where a voice pack, a text pack or Spoken Bosses' own stories have it, else the client's,
+else English.
 
 ## Timing and text
 
-The sound packs have recording durations but no word timestamps. Timing is
-estimated from word length, punctuation and the total duration. Two neighboring
-words are highlighted to give the estimate some room. At the end of a page,
-the previous word stays highlighted instead of advancing the page early.
+A sound pack carries the words of the lines it voices, and they win over the module's own text and
+the game window's, on captions and Compendium pages, where the pack's language is the language the
+player reads. The words are what the take saved when it was cut (`take."shownText"`): the line's
+normal text with its tokens as the voice says them, never a pencil rewrite, which can hold
+respellings. A take from before that column ships the line's current text instead, which may have
+moved on since its take. A text edit with no new take therefore does not reach players on a line
+whose take saved its words, until the line is revoiced. A brand new place or boss still needs a core
+release, because the module has to know the entry.
+
+The words are for display only. Matching a game string to a line keeps reading the modules' own
+tables, and `clip.text` stays the window's string.
+
+A recording the site made with ElevenLabs after word times were kept carries them in its sound
+pack: one start per word of the text the take was cut from (`take."wordTimes"`), packed into one
+string per clip, which `clip.present.timings` takes as it is and the captions unpack when the clip plays. Quests, gossip, places and
+readables pass them as `clip.present.timings`, but only where the captions show the recording's own
+words. A take without them, a fish.audio take, and captions in another language are estimated from word length, punctuation and the total duration. Two neighboring
+words are highlighted to give the estimate some room, in the windows; the subtitles
+light one word. At the end of a page, the previous word stays highlighted instead of
+advancing the page early.
 
 A source that knows when each word is spoken passes `clip.present.timings`: one
 start time per word, in seconds from the start of the recording, in the order
@@ -85,10 +143,10 @@ log replays can use the quest description. A completion recording never uses
 the acceptance text as a substitute. Different quest wording and pauses in a
 recording can still make the highlight drift.
 
-Zone and subzone captions use the full lore in the actual voice language, including
-English audio fallback. Book clips carry their own page text, so turning or closing
-the book does not change the captions of a queued recording. The English addon
-export includes every page. New book sound pack exports include the voice language's
+Zone and area captions use the full story in the Text Language, and in the voice's language,
+fallback included, only where it has none. Readable clips carry their own page text, so turning
+or closing the book does not change the captions of a queued recording. The English addon
+export includes every page. New readables voice pack exports include the voice language's
 text; older translated packs can caption pages opened during the current session.
 Mail is excluded. Captions stay hidden when matching text is unavailable.
 
@@ -96,27 +154,32 @@ Other sources can supply `clip.present.transcript`; the player also accepts
 `clip.text`. A source whose text is in a script the game's font cannot draw (Czech on a
 Western client, for one) names a font file in `clip.present.font`. The captions, the subtitle
 and every window then draw that clip's header, label and text in it, at the player's own size;
-a clip without one stays in the player's font, and so does a file the client cannot load. Book captions are exported by `pipelines/books/tools/lib/lua.mjs`
+a clip without one stays in the player's font, and so does a file the client cannot load. Readable captions are exported by `pipelines/readables/tools/lib/lua.mjs`
 using the same plain text conversion as narration. The current English export
-was regenerated from the public `/api/books/search?lang=enUS` catalogue on
+was regenerated from the public `/api/readables/search?lang=enUS` catalogue on
 2026-09-27; page IDs, book order and lookup checksums are unchanged.
 
 The DialogueUI window draws the captions in DialogueUI's font, size and colours, with an
-empty line between paragraphs, at the player's Text Size and Lines Shown like the other
+empty row between paragraphs, at the player's Word Size and Rows at Once like the other
 windows. See
 [`PLAYER-STYLES.md`](PLAYER-STYLES.md).
 
 ## Captions in another window
 
-`Spoken:GetCaption()` returns the clip, the words and the reading position the captions use,
-and whether **Highlight Words** and **Type Words Out** are on. It stays current while the
-captions are hidden or turned off. `Spoken:SplitCaption(text)` splits any text the way the
-captions do, and records where each word sits in that text. With the two, another addon can
-mark the same words in its own copy of the line. Spoken Quests does this inside DialogueUI's
-window: see [`docs/quests/DIALOGUEUI-BRIDGE.md`](../quests/DIALOGUEUI-BRIDGE.md). So with
-DialogueUI installed, **Show Words**, **Highlight Words** and **Type Words Out** stay on
-Spoken's page under Voice Only too, and their tooltips say they apply to DialogueUI's quest and
-gossip text. **Type By** does not: DialogueUI's text is typed by whole words.
+`Spoken:GetCaption()` returns the clip, the words and the reading position the captions use, whether
+**Highlight Words** and **Type Words Out** are on, and **Type Out By** (`typewriterBy`). It stays
+current while the captions are hidden or turned off. `Spoken:SplitCaption(text)` splits any text the
+way the captions do, and records where each word sits in that text. With the two, another addon can
+mark the same words in its own copy of the line. Spoken Quests does this inside DialogueUI's window
+(see [`docs/quests/DIALOGUEUI-BRIDGE.md`](../quests/DIALOGUEUI-BRIDGE.md)), and Spoken Readables in
+its book view. So **Show Narrator**, **Highlight Words** and **Type Words Out** apply to
+DialogueUI's own text under every narrator style, Voice Only included, when Mark Words in DialogueUI
+is on; with DialogueUI installed Spoken's page offers them under Voice Only
+(`DialogueUIOptions:WordRowsShown`). **Type Out By** applies there too.
+
+The caption's `story` is the `{ kind, id }` that `Spoken:PlayStory` was asked for when it played
+the line, so an addon that played a story knows the caption is its line without comparing text. It
+is nil for any other line, a story that autoplays included.
 
 ## Checks
 
@@ -125,13 +188,13 @@ Run from the repository root:
 ```sh
 make test-player
 node scripts/check-addon-xml.mjs
-make zones-check
-make books-test
+make places-check
+make readables-test
 ```
 
 The caption suite is `tests/captions/verify.lua`. It runs the real queue,
 player layouts, actions and quest adapter with simulated widgets and time.
 It checks playback changes, page boundaries, Unicode, resizing, attachment,
-queue placement, expansion and settings. The books and zones suites also cover
+queue placement, expansion and settings. The readables and places suites also cover
 caption sources, language fallback and queued pages. The fixture models layout and text width; it
 does not reproduce the game's font rendering or audio.

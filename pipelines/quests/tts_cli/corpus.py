@@ -20,17 +20,21 @@ from datetime import datetime, timezone
 
 from tts_cli.flavors import is_model_voice
 from tts_cli.naming import filename_for_row, line_id_for_row
-from tts_cli.npc_sexes import npc_sexes
+from tts_cli.npc_bodies import npc_bodies
 
 #: 3: a row a player contributed carries its "contributionId". The extract has none to mark,
 #: but the number says the file's unmarked rows are all the dump's -- which is what lets
 #: corpus_db's import let them overtake a contribution (see CONTRIBUTIONS_MARKED there).
+#: A speaker an admin added by hand carries its "addedBy" the same way; no number marks that,
+#: since a file without the key has no such speaker to keep.
 #: 4: "npcs", each NPC once with its own race, gender and flavor and whose answer that is
 #: (`provenance`), which every line the NPC speaks is voiced in (the npc table, migration 0070).
 #: The extract's are `corpus`; an export carries every answer the site has.
 #: 5: "npcSexes", each sex of an NPC drawn as a man and as a woman under one id, answered as an
 #: NPC is (the npc_sex table, migration 0072). Every line such an NPC speaks is voiced per sex.
-SCHEMA_VERSION = 5
+#: 6: "npcBodies" replaces "npcSexes": each body (race and sex) of an NPC drawn as two or more
+#: under one id (the npc_body table, migration 0075). A file of schema 5 still imports.
+SCHEMA_VERSION = 6
 DEFAULT_CORPUS_PATH = "corpus/corpus.json.gz"
 INVALID_CHARS = "$<>"
 #: The skipReason of a line whose voice is a model slot nobody has chosen a voice for yet.
@@ -50,8 +54,7 @@ def spawn_key(entity_type: str, entity_id) -> str:
 def _skip_reason(row):
     """Why the generator would not synthesize this row, or None.
 
-    Mirrors TTSProcessor.process_row (tts_cli/tts_utils.py:175-187): progress text is
-    deliberately never voiced, and unresolved template tokens would be read aloud.
+    Unresolved template tokens would be read aloud.
 
     A line in a model voice (flavors.model_voice) has nobody to speak it yet: which voice a
     model gets is still to be chosen, so the line is gathered - it has a line id, a file name
@@ -59,8 +62,6 @@ def _skip_reason(row):
     reason no rewrite of the text can lift; the site asks the voice, not this, for the same
     answer (apps/web/src/lib/text-gate.ts).
     """
-    if row["source"] == "progress":
-        return "progress"
     if is_model_voice(row.get("voice_name")):
         return NO_VOICE
     if any(c in row["cleanedText"] for c in INVALID_CHARS):
@@ -111,7 +112,7 @@ def build_corpus(df, spawn_rows, display_rows=()) -> dict:
         "lines": lines,
         "spawns": spawns,
         "npcs": npcs,
-        "npcSexes": npc_sexes(display_rows, npcs),
+        "npcBodies": npc_bodies(display_rows, npcs),
     }
 
 

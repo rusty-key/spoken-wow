@@ -12,11 +12,6 @@ setfenv(1, VoiceOver)
 -- data module failed to load there is no soundData at all, and that is the case most worth
 -- sending.
 
--- The merged domain, not the frozen voiceover.rusty.one that ReportButton.lua points at: the
--- contribute page is new and exists only on the site the three sections share. That file's
--- SITE_URL is a local of its own and deliberately stays where it is -- a report link that moved
--- would be a report link that breaks for everyone still running the shipped addon.
-local SITE_URL = "https://spoken.rusty.one"
 
 local EVENT_PATHS =
 {
@@ -27,9 +22,19 @@ local EVENT_PATHS =
 
 Contribute = {}
 
+--- Whether the Spoken folder beside this addon has what contributing and the gathering call. An
+--- older one does not, and a player on it has no contribute button rather than an error.
+local function CoreIsCurrent()
+    local contribute, gather = _G.Spoken and Spoken.Contribute, _G.Spoken and Spoken.Gather
+    return contribute and contribute.NameWords and contribute.ReplaceWord and contribute.Parse
+        and contribute.ReaderFields and contribute.Detemplate
+        and (not gather or (gather.Lines and gather.Get and gather.Remove and gather.IsTidied))
+        and true or false
+end
+
 local function GUIDType()
     local guid = Utils:GetNPCGUID()
-    if not guid or not Utils.GetGUIDType then
+    if not guid then
         return nil
     end
     local ok, guidType = pcall(Utils.GetGUIDType, Utils, guid)
@@ -47,34 +52,56 @@ local function QuestItem()
     if guidType ~= nil and guidType ~= Enums.GUID.Item then
         return nil
     end
-    local questID = GetQuestID and GetQuestID() or 0
+    local questID = GetQuestID and NotSecret(GetQuestID()) or 0
     if not (questID and questID > 0 and Spoken and Spoken.QuestItem) then
         return nil
     end
     return Spoken:QuestItem(questID)
 end
 
-local function NPCID()
-    local guid = Utils:GetNPCGUID()
+local function IDFromGUID(guid)
     if guid and Utils.GetIDFromGUID then
         local ok, read = pcall(Utils.GetIDFromGUID, Utils, guid)
         if ok and read then
             return read
         end
     end
-    return (QuestItem())
 end
 
-local function NPCField()
-    local id = NPCID()
-    local name = UnitName and UnitName("npc") or nil
-    if not name then
-        name = select(2, QuestItem())
-    end
+local function NPCID()
+    return IDFromGUID(Utils:GetNPCGUID()) or (QuestItem())
+end
+
+--- The npc field as the site reads it: "<id> <name>", or whichever half is known.
+local function NPCLabel(id, name)
     if id and name then
         return format("%d %s", id, name)
     end
     return id and tostring(id) or name
+end
+
+--- Whether a GUID is a player's. A quest a party member shares opens the window with them as its
+--- "npc", and a player's name never goes with a line.
+local function IsPlayerGUID(guid)
+    local ok, guidType = pcall(Utils.GetGUIDType, Utils, guid)
+    return ok and guidType == Enums.GUID.Player
+end
+
+--- Whether the window's "npc" is another player, who shares the quest: nothing about them is a
+--- quest giver's to send.
+local function SharedByPlayer()
+    return Utils:IsNPCPlayer() or IsPlayerGUID(Utils:GetNPCGUID())
+end
+
+local function NPCField()
+    if SharedByPlayer() then
+        return nil
+    end
+    local name = UnitName and NotSecret(UnitName("npc")) or nil
+    if not name then
+        name = select(2, QuestItem())
+    end
+    return NPCLabel(NPCID(), name)
 end
 
 --- Which id space the unit's GUID belongs to.
@@ -93,222 +120,6 @@ local function NPCKind()
     return QuestItem() and "item" or nil
 end
 
--- PlayerModel loads asynchronously: probed against a live client, SetUnit followed
--- immediately by GetModelFileID answers nothing, and the same read a moment later answers
--- the real file id. So the model is never read on the click -- it is pre-warmed on the
--- refresh path, into this cache, while the player is still reading the panel (seconds, not
--- one frame), and Capture only ever looks the guid up here.
---
--- Keyed by the NPC's guid, since the probe is asked about a different unit every time a
--- different NPC comes on screen, and a load that already finished for one says nothing
--- about another. `false` remembers "asked, and nothing came back" (a gameobject, a client
--- with no GUID, or a load that genuinely resolves to nothing) so a miss is asked for at most
--- once per guid rather than retried on every refresh; a guid missing from this table entirely
--- has simply never been asked about.
-local modelCache = {}
-
--- The one guid currently waiting on a load, and how many refreshes it has waited without
--- resolving. A second refresh for the same guid while it is still loading must not call
--- SetUnit again -- that is the whole point of keying by guid at all -- and a guid that never
--- resolves must eventually be given up on rather than left loading (and the probe shown)
--- forever.
-local loadingGUID
-local loadingRefreshes
-
--- How many refreshes a guid may wait, once primed, before PollLoadingGUID gives up on it and
--- caches a miss instead. OnModelLoaded is the fast path -- most of the time this bound is
--- never reached, because the callback (when this client fires it at all) resolves the guid
--- first. This is what makes the client behaving either way converge on the same outcome.
-local MAX_LOAD_REFRESHES = 2
-
--- The frame itself, made once and kept, rather than one per prime: it is only ever handed a
--- different unit. What is NOT kept is it being shown -- a PlayerModel left shown keeps
--- driving a 3D scene draw for as long as the addon runs, and this client has hung its GPU on
--- model rendering before. UI/Portrait.lua's pooled-model Acquire/Release (Compat.lua, for the
--- clients that cannot show an arbitrary creature in a DressUpModel) is this repo's existing
--- answer to the same problem: show it while a load is in flight, then Hide/ClearModel once
--- read, the way Release does.
-local modelProbe
-
-local function ModelProbeFrame()
-    if not CreateFrame then
-        return nil
-    end
-    if not modelProbe then
-        local ok, frame = pcall(CreateFrame, "PlayerModel", nil, UIParent)
-        if not ok or not frame then
-            return nil
-        end
-        modelProbe = frame
-        if modelProbe.SetSize then modelProbe:SetSize(64, 64) end
-        if modelProbe.SetPoint then modelProbe:SetPoint("CENTER") end
-        if modelProbe.SetAlpha then modelProbe:SetAlpha(0) end
-    end
-    return modelProbe
-end
-
---- Read back whatever the probe currently has for `guid`, cache it, and put the probe away.
---- The one place that finalises a load, regardless of what noticed it was time to: the
---- OnModelLoaded callback (the fast path), or PollLoadingGUID reading the probe directly
---- (the fallback that does not depend on that callback ever firing).
--- Defined further down, beside the gap checks it needs; FinishModelLoad calls it once the
--- model it waited for is in.
-local GatherLine
-
-local function FinishModelLoad(guid)
-    -- First act, not last: ClearModel below can itself fire OnModelLoaded on some clients, and
-    -- that callback is this same function closed over this same guid. Clearing the script
-    -- before touching the model at all means a re-entrant call has nothing left to run.
-    local probe = modelProbe
-    if probe and probe.SetScript then
-        pcall(probe.SetScript, probe, "OnModelLoaded", nil)
-    end
-    -- Not `probe and pcall(...)`: `and` truncates pcall's two return values down to one, so
-    -- `id` would be nil even on a successful read. Separate statements keep both.
-    local ok, id = false, nil
-    if probe then
-        ok, id = pcall(probe.GetModelFileID, probe)
-    end
-    if probe then
-        -- pcall'd like every other probe call here: ClearModel is exactly the kind of call
-        -- that can itself trigger a client callback, and one client's blowup on it must not
-        -- skip the Hide beneath it.
-        if probe.ClearModel then pcall(probe.ClearModel, probe) end
-        if probe.Hide then probe:Hide() end
-    end
-    if loadingGUID == guid then
-        loadingGUID, loadingRefreshes = nil, nil
-    end
-    -- Absent rather than zero: the site reads a missing model as "race unknown", and 0 is a
-    -- file id that would mean something.
-    modelCache[guid] = (ok and type(id) == "number" and id > 0) and id or false
-    -- A line gathered while this load was in flight was kept without its model. Take it again
-    -- now the model is known, if the same NPC is still on screen: the same key replaces it.
-    if GatherLine and Utils:GetNPCGUID() == guid then
-        GatherLine()
-    end
-end
-
---- Put the probe away without deciding anything about `guid` -- the difference between this
---- and FinishModelLoad is exactly that it never writes modelCache. Used when there is simply
---- nothing left on screen to keep the probe up for: the player closed the dialog, or clicked
---- away, with no retarget to another NPC to trigger the guard PrimeModelCache already has.
---- Left uncached, a guid abandoned this way is primed again (one more SetUnit) the next time
---- it is a gap, rather than permanently remembered as a miss it never actually resolved to --
---- only PollLoadingGUID's MAX_LOAD_REFRESHES bound is allowed to decide that.
-local function AbandonModelLoad(guid)
-    local probe = modelProbe
-    if probe and probe.SetScript then
-        pcall(probe.SetScript, probe, "OnModelLoaded", nil)
-    end
-    if probe then
-        if probe.ClearModel then pcall(probe.ClearModel, probe) end
-        if probe.Hide then probe:Hide() end
-    end
-    if loadingGUID == guid then
-        loadingGUID, loadingRefreshes = nil, nil
-    end
-end
-
---- A refresh for a guid that is still loading, with no cached answer yet: OnModelLoaded may
---- or may not exist on this client, and may or may not have fired already -- there is no way
---- to tell from here, and no need to. The probe is still shown regardless (nothing but
---- FinishModelLoad ever hides it), so read it directly. Finalise on success, or once this
---- guid has waited long enough that leaving the probe shown any longer is not worth it either.
-local function PollLoadingGUID(guid)
-    loadingRefreshes = loadingRefreshes + 1
-    local probe = modelProbe
-    local ok, id = false, nil
-    if probe then
-        ok, id = pcall(probe.GetModelFileID, probe)
-    end
-    if (ok and type(id) == "number" and id > 0) or loadingRefreshes >= MAX_LOAD_REFRESHES then
-        FinishModelLoad(guid)
-    end
-end
-
---- Start a model load for this NPC's guid, if nothing has asked about it yet. Everything
---- this does is one-shot per guid -- HasGap calls it on every quest and gossip event, and a
---- second call for a guid already cached or already loading must be free.
-local function PrimeModelCache(guid)
-    -- Whatever is on screen now, a load left in flight for a DIFFERENT guid is no longer
-    -- relevant to anything -- retargeting between two quest givers faster than a load
-    -- resolves is ordinary play, not an edge case. Finalise it (whatever it resolved to, or
-    -- nothing) before doing anything else, so the probe is never left associated with an
-    -- abandoned target: not while priming the new one, and not indefinitely afterward if the
-    -- player then lingers on a guid that happens to already be cached.
-    if loadingGUID and loadingGUID ~= guid then
-        FinishModelLoad(loadingGUID)
-    end
-
-    if not guid or modelCache[guid] ~= nil then
-        return
-    end
-    if loadingGUID == guid then
-        PollLoadingGUID(guid)
-        return
-    end
-
-    local probe = ModelProbeFrame()
-    if not probe or not probe.SetUnit or not probe.GetModelFileID then
-        modelCache[guid] = false
-        return
-    end
-
-    loadingGUID = guid
-    loadingRefreshes = 0
-    if probe.Show then probe:Show() end
-    -- Before SetUnit, not after: SetUnit can itself deliver the model synchronously enough on
-    -- some clients (or fire OnModelLoaded off the same tick) that a script installed afterward
-    -- would miss it, and every refresh in between would then still find a stale closure from
-    -- whatever guid this probe last loaded, briefly live for the wrong NPC. A fast path, not a
-    -- requirement either way: PollLoadingGUID below reads the probe directly on the next
-    -- refresh regardless of whether this ever fires, so correctness here never depends on this
-    -- client generation supporting the script at all, only on how many refreshes it costs
-    -- before the fallback notices. SetScript on an unrecognised script type is a Lua error on a
-    -- real client, which is what the pcall is for.
-    if probe.SetScript then
-        pcall(probe.SetScript, probe, "OnModelLoaded", function() FinishModelLoad(guid) end)
-    end
-    pcall(probe.SetUnit, probe, "npc")
-end
-
---- What the model probe has cached for the NPC on screen, reading it directly as a last
---- resort on a miss for the guid that is still loading.
----
---- A gossip interaction fires exactly one refresh (GOSSIP_SHOW) before the player reads and
---- clicks -- there is no second refresh for PollLoadingGUID to ever run on, so the poll bound
---- is never reached by click time, and a cache built only from refreshes would omit the model
---- on almost every gossip contribution. But SetUnit happened when the panel opened, seconds
---- before this click, and live-client evidence says that is enough: read the probe (never
---- SetUnit it again -- that would be asking a second time, which PrimeModelCache already
---- guards against).
----
---- Only a successful read finalises anything here. A click quick enough to beat the load --
---- distinct from a load that has genuinely finished with nothing to show -- must not write
---- `false`: doing so would clear loadingGUID and cache a permanent miss, foreclosing the
---- callback or the next poll from ever resolving this guid for the rest of the session. Only
---- PollLoadingGUID's MAX_LOAD_REFRESHES bound is allowed to give up for real; this is not
---- that, so an empty read here simply leaves the guid exactly as it was and omits the field
---- for this one capture.
-local function CachedModelFileID()
-    local guid = Utils:GetNPCGUID()
-    if not guid then
-        return nil
-    end
-    if modelCache[guid] == nil and loadingGUID == guid then
-        local probe = modelProbe
-        local ok, id = false, nil
-        if probe then
-            ok, id = pcall(probe.GetModelFileID, probe)
-        end
-        if ok and type(id) == "number" and id > 0 then
-            FinishModelLoad(guid)
-        end
-    end
-    return modelCache[guid] or nil
-end
-
 -- Which appearances the NPC on screen can wear. No API names the one a unit is drawn with --
 -- GetDisplayInfo on a model built with SetUnit answers 0 -- but SetCreature(npcId) builds the
 -- creature from the client's cache and rolls one of its appearances (at most four) by spawn
@@ -321,8 +132,8 @@ end
 -- One frame, made once, with no parent and never shown: an unshown model draws nothing, and
 -- this client has hung its GPU on model rendering before.
 local DISPLAY_ROLLS = 32
--- nil until first asked for; false once this client turned out not to have what it takes
--- (the 1.12-3.3.5 clients have no GetDisplayInfo), so it is never asked again.
+-- nil until first asked for; false once this client turned out not to have what it takes,
+-- so it is never asked again.
 local displayRoller
 -- npcId -> the appearance ids as the envelope carries them. Only ever set to a real answer: a
 -- creature the client has not cached yet answers 0 to every roll, and the next capture, after
@@ -373,8 +184,13 @@ local function CachedDisplays()
     return displayCache[npcID]
 end
 
---- What the client can see about who is speaking. The site decides what it means.
-local function Observations(fields)
+--- What the client can see about who is speaking. The site decides what it means. Nothing where
+--- the one on screen is a player: their sex, kind and model are not a quest giver's. No displays
+--- for a `reworded` line: the site already knows who speaks it, and rolling them is model work.
+local function Observations(fields, reworded)
+    if SharedByPlayer() then
+        return
+    end
     local function add(key, value)
         if value ~= nil and value ~= "" then
             fields[#fields + 1] = { key, value }
@@ -382,33 +198,33 @@ local function Observations(fields)
     end
     local kind = NPCKind()
     add("kind", kind)
-    add("model", CachedModelFileID())
+    add("model", NPCModel:Get(Utils:GetNPCGUID()))
     -- Creatures only: a gameobject id is a different id space, and SetCreature would roll the
     -- creature that happens to share its number.
-    if kind == "creature" then
+    if kind == "creature" and not reworded then
         add("displays", CachedDisplays())
     end
-    add("sex", UnitSex and UnitSex("npc") or nil)
-    add("creature", UnitCreatureType and UnitCreatureType("npc") or nil)
+    add("sex", UnitSex and NotSecret(UnitSex("npc")) or nil)
+    add("creature", UnitCreatureType and NotSecret(UnitCreatureType("npc")) or nil)
 end
 
 --- Which panel the player is looking at, as the event it would have played.
 local function EventOnScreen()
     if QuestFrameRewardPanel and QuestFrameRewardPanel:IsShown() then
-        return Enums.SoundEvent.QuestComplete, GetRewardText and GetRewardText()
+        return Enums.SoundEvent.QuestComplete, GetRewardText and NotSecret(GetRewardText())
     elseif QuestFrameProgressPanel and QuestFrameProgressPanel:IsShown() then
-        return Enums.SoundEvent.QuestProgress, GetProgressText and GetProgressText()
+        return Enums.SoundEvent.QuestProgress, GetProgressText and NotSecret(GetProgressText())
     elseif QuestFrameDetailPanel and QuestFrameDetailPanel:IsShown() then
-        return Enums.SoundEvent.QuestAccept, GetQuestText and GetQuestText()
+        return Enums.SoundEvent.QuestAccept, GetQuestText and NotSecret(GetQuestText())
     end
     -- The quest API answers for the dialog whichever window draws it.
     local page = Utils:DialogueUIPage()
     if page == "QUEST_COMPLETE" then
-        return Enums.SoundEvent.QuestComplete, GetRewardText and GetRewardText()
+        return Enums.SoundEvent.QuestComplete, GetRewardText and NotSecret(GetRewardText())
     elseif page == "QUEST_PROGRESS" then
-        return Enums.SoundEvent.QuestProgress, GetProgressText and GetProgressText()
+        return Enums.SoundEvent.QuestProgress, GetProgressText and NotSecret(GetProgressText())
     elseif page == "QUEST_DETAIL" then
-        return Enums.SoundEvent.QuestAccept, GetQuestText and GetQuestText()
+        return Enums.SoundEvent.QuestAccept, GetQuestText and NotSecret(GetQuestText())
     end
     return nil, nil
 end
@@ -420,110 +236,25 @@ end
 --- taken at its word.
 local function GossipOnScreen()
     if Utils:DialogueUIPage() == "GOSSIP_SHOW" then
-        return GetGossipText and GetGossipText()
+        return GetGossipText and NotSecret(GetGossipText())
     end
     local frame = _G.GossipFrame
     if frame and frame.IsVisible and not frame:IsVisible() then
         return nil
     end
-    return GetGossipText and GetGossipText()
+    return GetGossipText and NotSecret(GetGossipText())
 end
 
--- A letter, a digit, or any byte of a multi-byte UTF-8 character. Byte-wise rather than %w,
--- which knows nothing past ASCII: a Cyrillic or accented name is all high bytes, and the word
--- next to it must still count as a word.
-local function IsWordByte(b)
-    return b ~= nil and (b >= 128 or (b >= 48 and b <= 57) or (b >= 65 and b <= 90) or (b >= 97 and b <= 122))
-end
-
---- Every whole-word occurrence of `word` in `text` replaced by `token`.
----
---- A plain find and a hand-made boundary check rather than a pattern: a name is the player's
---- own input, so it would have to be escaped first, and %f -- the one pattern item that would
---- make the boundary easy -- is not something every client's Lua is safe to lean on. Whole
---- words only, so a player called Mist does not turn "Mistwood" into "$Nwood"; "Mist's" still
---- matches, the apostrophe not being a word byte.
-local function ReplaceWord(text, word, token)
-    local out, pos = {}, 1
-    while true do
-        local first, last = string.find(text, word, pos, true)
-        if not first then
-            break
-        end
-        if IsWordByte(string.byte(text, first - 1)) or IsWordByte(string.byte(text, last + 1)) then
-            out[#out + 1] = string.sub(text, pos, last)
-        else
-            out[#out + 1] = string.sub(text, pos, first - 1)
-            out[#out + 1] = token
-        end
-        pos = last + 1
+--- Who is reading, onto `fields`, beside a text sent as shown, and the classes `questID` is for
+--- where the Compendium says: on a quest only the reader's class can take, the class is the
+--- quest's own word and the site leaves it as written.
+local function ReaderFields(fields, questID)
+    local quests = _G.SpokenQuestsCompendium and _G.SpokenQuestsCompendium.quests
+    local quest = questID and quests and quests[questID]
+    if quest and quest.classes then
+        fields[#fields + 1] = { "questClasses", quest.classes }
     end
-    out[#out + 1] = string.sub(text, pos)
-    return table.concat(out)
-end
-
---- The text with this character's name, class and race put back as the game's own tokens.
----
---- The client hands us quest text with $N, $C and $R already expanded to whoever is reading
---- it, and a line voiced from that would greet every other player by this one's name. The
---- extract never has the problem -- it reads the templates -- so the fix is to send what the
---- extract would have seen: the site substitutes a token the same way the extract does, and a
---- gossip line hashes to the same id the world database's copy of it would.
----
---- Only this client knows which words were substituted. Once the text leaves, "Thrall" in a
---- line is as likely an NPC as the player, which is why this is done here and not on arrival.
----
---- Class and race are replaced wherever they occur as words, so a warrior reading "a warrior's
---- discipline" sends "a $c's discipline" -- a known cost, taken over voicing someone's class
---- at every other player. $G cannot be undone at all: the client picked one side of the
---- branch, and the words of the other side are not on screen.
-function Contribute:Detemplate(text)
-    local swaps = {}
-    local function add(word, token)
-        if type(word) == "string" and word ~= "" then
-            swaps[#swaps + 1] = { word, token }
-        end
-    end
-    local function addCased(word, upper, lower)
-        add(word, upper)
-        if type(word) == "string" and string.lower(word) ~= word then
-            add(string.lower(word), lower)
-        end
-    end
-
-    local name = UnitName and UnitName("player")
-    add(name, "$N")
-    -- A character with a surname (the Classic beta gives Skybourne elves one) is named whole by
-    -- UnitName -- "Valaas Dawnsight" -- while a line greets them by one part: "Greetings, young
-    -- Valaas". Each part is the player too.
-    if type(name) == "string" then
-        for part in string.gmatch(name, "%S+") do
-            if part ~= name then
-                add(part, "$N")
-            end
-        end
-    end
-    if UnitClass then
-        local localized, classFile = UnitClass("player")
-        addCased(localized, "$C", "$c")
-        -- The locales that inflect a class by gender (deDE "Kriegerin") render the form for
-        -- this character, which is the one UnitClass already answered; both are asked for in
-        -- case a line names the other.
-        for _, names in ipairs({ _G.LOCALIZED_CLASS_NAMES_MALE or {}, _G.LOCALIZED_CLASS_NAMES_FEMALE or {} }) do
-            addCased(classFile and names[classFile], "$C", "$c")
-        end
-    end
-    if UnitRace then
-        addCased((UnitRace("player")), "$R", "$r")
-    end
-
-    -- Longest first, so "Night Elf" goes as one race before a shorter word inside it can be
-    -- taken for something else.
-    table.sort(swaps, function(a, b) return string.len(a[1]) > string.len(b[1]) end)
-    for _, pair in ipairs(swaps) do
-        text = ReplaceWord(text, pair[1], pair[2])
-    end
-    return text
+    Spoken.Contribute:ReaderFields(fields)
 end
 
 --- The fields every quests envelope starts with: which addon, which client, which language.
@@ -545,27 +276,54 @@ local function BaseFields()
         -- The language of the packs the player hears, said outright so triage can see that a
         -- German client listening to English packs is missing the line in both.
         { "pack", DataModules:GetPackLanguage() },
+        { "packVersion", DataModules:GetPackVersion(DataModules:GetPackLanguage()) },
     }
 end
 
---- The envelope for what is on screen, or nil when there is nothing to send.
-function Contribute:Capture()
+--- The pack folder that holds a line, and that folder's .toc version, onto `fields`. A language's
+--- quests ship as several folders and a release bumps only the ones it changed, so the folder's
+--- own version is what tells the site whether the player has the line's newest recording.
+---@param module table|nil the data module the line resolved to (soundData.module)
+local function FolderFields(fields, module)
+    local metadata = module and module.METADATA
+    if not (metadata and metadata.AddonName) then
+        return
+    end
+    fields[#fields + 1] = { "packFolder", metadata.AddonName }
+    fields[#fields + 1] = { "packFolderVersion", metadata.ContentVersion or "none" }
+    -- The team whose pack played, so the site files the report with them; none for a plain pack,
+    -- which is the language's own team's.
+    if metadata.Team then
+        fields[#fields + 1] = { "packTeam", metadata.Team }
+    end
+end
+
+--- The envelope for what is on screen, or nil when there is nothing to send. `reworded` for a
+--- line that plays in other words, which leaves out the displays. `module` is the data module
+--- the line plays from, for a report.
+function Contribute:Capture(reworded, module)
+    if not CoreIsCurrent() then
+        return nil
+    end
     local event, text = EventOnScreen()
     local fields = BaseFields()
+    FolderFields(fields, module)
 
     if event and text and text ~= "" then
-        local questID = GetQuestID and GetQuestID() or 0
+        local questID = GetQuestID and NotSecret(GetQuestID()) or 0
         if questID and questID > 0 then
             fields[#fields + 1] = { "quest", questID }
         end
         fields[#fields + 1] = { "event", EVENT_PATHS[event] }
         fields[#fields + 1] = { "npc", NPCField() }
-        Observations(fields)
-        fields[#fields + 1] = { "title", GetTitleText and GetTitleText() or "" }
+        Observations(fields, reworded)
+        fields[#fields + 1] = { "title", GetTitleText and NotSecret(GetTitleText()) or "" }
+        ReaderFields(fields, questID)
         -- The second value is what Gather keys the line on: the quest, the moment and who said
-        -- it. The text is left out on purpose -- the same panel read twice is one line.
-        return Spoken.Contribute:Envelope("quests", fields, Contribute:Detemplate(text)),
-            format("q:%s:%s:%s", tostring(questID or 0), EVENT_PATHS[event], tostring(NPCID() or ""))
+        -- it. The text is left out on purpose -- the same panel read twice is one line. The
+        -- third is the text the envelope carries.
+        return Spoken.Contribute:Envelope("quests", fields, text),
+            format("q:%s:%s:%s", tostring(questID or 0), EVENT_PATHS[event], tostring(NPCID() or "")), text
     end
 
     -- Gossip: no quest and no event, but an NPC saying something this corpus has never heard.
@@ -573,37 +331,90 @@ function Contribute:Capture()
     -- The creature id is required rather than merely included. A gossip contribution is keyed on
     -- it and nothing else -- there is no quest id to fall back on -- so an envelope without one
     -- is refused on arrival, and offering a button that leads to a refusal is worse than
-    -- offering none. Two ways to arrive here without an id: the frame closing under us, where
-    -- the words are still readable and the unit is already gone, and the 1.12 client, which has
-    -- no UnitGUID and so can never name the creature.
+    -- offering none. The way to arrive here without an id is the frame closing under us, where
+    -- the words are still readable and the unit is already gone.
     local gossip = GossipOnScreen()
     if gossip and gossip ~= "" and NPCID() then
-        -- Detemplated before the key is taken too, so the same line gathered on two
-        -- characters is one line rather than one per name.
-        gossip = Contribute:Detemplate(gossip)
         fields[#fields + 1] = { "npc", NPCField() }
-        Observations(fields)
-        -- An NPC can say several different things, so gossip is keyed on the words as well.
-        -- Keyed on the sex too, so a man and a woman saying the same words are two lines.
-        local sex = UnitSex and UnitSex("npc")
+        Observations(fields, reworded)
+        ReaderFields(fields)
+        -- An NPC can say several different things, so gossip is keyed on the words as well,
+        -- detemplated so the same line gathered on two characters is one line rather than one
+        -- per name. Keyed on the sex too, so a man and a woman saying the same words are two lines.
+        local sex = UnitSex and NotSecret(UnitSex("npc"))
         return Spoken.Contribute:Envelope("quests", fields, gossip),
-            format("g:%d:%d%s", NPCID(), Spoken.Contribute:Checksum(gossip), sex == 3 and ":f" or "")
+            format("g:%d:%d%s", NPCID(), Spoken.Contribute:Checksum(Spoken.Contribute:Detemplate(gossip)),
+                sex == 3 and ":f" or "")
     end
 
     return nil
 end
 
---- Whether this client's data module has a line for what is on screen.
+--- Whether the window on screen is still showing the line `clip` played.
+local function ShowsClip(clip)
+    if clip.questID and EVENT_PATHS[clip.event] then
+        local event = EventOnScreen()
+        return event == clip.event and (GetQuestID and GetQuestID()) == clip.questID
+    end
+    return clip.unitGUID ~= nil and clip.unitGUID == Utils:GetNPCGUID() and GossipOnScreen() ~= nil
+end
+
+--- What a report carries beside its address: this client, and the line as the player met it.
+---
+--- The window on screen first, since only it can still be asked about the NPC's model and sex.
+--- A clip the window no longer shows -- Report is offered after the window closes -- is sent
+--- as the clip remembers it, with no observations rather than another NPC's.
+---@param clip table|nil  the clip being reported, { fromLog, questID, title } for a quest in
+---                        the log, or nil for the window on screen
+---@return string|nil envelope
+function Contribute:ReportContext(clip)
+    if not CoreIsCurrent() then
+        return nil
+    end
+    if clip and clip.fromLog then
+        return self:CaptureFromLog(clip.questID, clip.title)
+    end
+    if not clip or ShowsClip(clip) then
+        local envelope = self:Capture(nil, clip and clip.module or self:ModuleForCurrent())
+        if envelope or not clip then
+            return envelope
+        end
+    end
+
+    local fields = BaseFields()
+    FolderFields(fields, clip.module)
+    local path = EVENT_PATHS[clip.event]
+    if clip.questID and clip.questID > 0 and path then
+        fields[#fields + 1] = { "quest", clip.questID }
+        fields[#fields + 1] = { "event", path }
+    end
+    local npc = NPCLabel(IDFromGUID(clip.unitGUID), not IsPlayerGUID(clip.unitGUID) and clip.name or nil)
+    if npc then
+        fields[#fields + 1] = { "npc", npc }
+    end
+    if clip.title and clip.title ~= "" then
+        fields[#fields + 1] = { "title", clip.title }
+    end
+    local text = type(clip.text) == "string" and clip.text ~= "" and clip.text or nil
+    if text then
+        ReaderFields(fields, clip.questID)
+    end
+    return Spoken.Contribute:Envelope("quests", fields, text)
+end
+
+--- A throwaway soundData for what is on screen, for DataModules:PrepareSound to resolve, or nil.
 ---
 --- Neither VoiceOver.lua nor Player.lua expose a lookup by that name: what actually decides
 --- there is nothing to enqueue is DataModules:PrepareSound, called from Player:Enqueue. Run
 --- against a throwaway table rather than a soundData already headed for playback -- PrepareSound
 --- mutates whatever it is given (fileName, filePath, length, module), and a table built only to
 --- ask the question must not be mistaken afterwards for a clip that plays.
-local function HasSoundForCurrent()
+local function SoundDataForCurrent()
     local event, text = EventOnScreen()
     if event and text and text ~= "" then
-        return DataModules:PrepareSound({ event = event, questID = GetQuestID and GetQuestID() or 0 })
+        -- The text and giver too: a moment in several wordings is found by the words on screen.
+        return { event = event, questID = GetQuestID and NotSecret(GetQuestID()) or 0,
+            text = text, unitGUID = Utils:GetNPCGUID() }
     end
 
     local gossip = GossipOnScreen()
@@ -616,18 +427,34 @@ local function HasSoundForCurrent()
     -- GUID, and hands that name to string.gsub, so a nil one is an error thrown at a player
     -- who only walked away from a conversation.
     if gossip and gossip ~= "" and (guid or name) then
-        local soundData = {
+        return {
             event = Enums.SoundEvent.Gossip,
             unitGUID = guid,
             name = name,
             unitIsObjectOrItem = Utils:IsNPCObjectOrItem(),
             text = gossip,
         }
-        -- A woman speaking in the man's voice plays, and is still a line the site lacks.
-        return DataModules:PrepareSound(soundData) and not DataModules:IsOtherSex(soundData)
     end
+end
 
-    return false
+--- The line on screen resolved by DataModules:PrepareSound, or nil when no pack has it.
+local function PreparedForCurrent()
+    local soundData = SoundDataForCurrent()
+    return soundData and DataModules:PrepareSound(soundData) and soundData or nil
+end
+
+--- Whether this client's data module has a line for what is on screen.
+local function HasSoundForCurrent()
+    local soundData = PreparedForCurrent()
+    -- Drawn as a body its voice is not, a line plays, and is still a line the site lacks.
+    return soundData ~= nil
+        and not (soundData.event == Enums.SoundEvent.Gossip and DataModules:IsOtherBody(soundData))
+end
+
+--- The data module the line on screen plays from, or nil when no pack has it.
+function Contribute:ModuleForCurrent()
+    local soundData = PreparedForCurrent()
+    return soundData and soundData.module
 end
 
 --- Whether Capture would build an envelope, without paying to build one.
@@ -648,7 +475,7 @@ local function HasSomethingToSend()
     return false
 end
 
---- Off while the player listens in a language no client runs in (Italian). HasSoundForCurrent
+--- Off while the player listens in a language no client runs in. HasSoundForCurrent
 --- asks the voice language, so every line its pack has not voiced yet would read as missing
 --- text and send English the corpus already has. Its text comes from its translators, not
 --- from the client, so there is nothing for a player to send for it.
@@ -659,52 +486,216 @@ local function IsMissing()
     return HasSomethingToSend() and not HasSoundForCurrent()
 end
 
+--- Whether the line on screen is one the corpus has in other words (DataModules:IsTextKnown):
+--- Blizzard changed it, or the corpus copy came from a client that wrote a player's name into
+--- it. It may well play, so it offers no button; it is only gathered, for the site to correct.
+local function IsChanged()
+    local event, text = EventOnScreen()
+    if event and text and text ~= "" then
+        return DataModules:IsTextKnown({ event = event, questID = GetQuestID and NotSecret(GetQuestID()) or 0,
+            text = text }) == false
+    end
+    local gossip = GossipOnScreen()
+    if gossip and gossip ~= "" and NPCID() then
+        return DataModules:IsTextKnown({ event = Enums.SoundEvent.Gossip, unitGUID = Utils:GetNPCGUID(),
+            name = Utils:GetNPCName(), unitIsObjectOrItem = Utils:IsNPCObjectOrItem(), text = gossip }) == false
+    end
+    return false
+end
+
+-- A quest line is kept as "q:<quest>:<moment>:<speaker>". The speaker is empty when the window
+-- closes under a capture (QUEST_FINISHED, the frame's OnHide): its text still reads, and the
+-- unit is already gone. That copy is the line just kept with its speaker, less the speaker.
+local function QuestMoment(key)
+    return string.match(key, "^(q:[^:]*:[^:]*:)(.*)$")
+end
+
+local function TextOf(envelope)
+    return (select(3, Spoken.Contribute:Parse(envelope)))
+end
+
+-- Line endings as Envelope writes them, which is how Parse reads a text back.
+local function Unix(text)
+    return text and (string.gsub(string.gsub(text, "\r\n", "\n"), "\r", "\n"))
+end
+
+-- Quest moment -> the words last kept for it with a speaker this session: the window's closing
+-- copy of the same words has no speaker, and is not kept.
+local keptWith = {}
+
 --- Keep the line on screen for later. Only reached once a caller has established it is
---- missing (HasGap), or when its model has just arrived (FinishModelLoad) -- so it re-checks
---- only what the latter cannot know: that the line is still a gap.
-function GatherLine()
-    if not (Spoken.Gather and Spoken.Gather:IsEnabled()) or not IsMissing() then
+--- missing or changed (HasGap, which passes `reworded`), or when its model has just arrived
+--- (NPCModel.onLoaded) -- so that one re-checks that the line is still one of those.
+local function GatherLine(reworded)
+    if not (Spoken.Gather and Spoken.Gather:IsEnabled()) then
         return false
     end
-    local envelope, key = Contribute:Capture()
-    return envelope and Spoken.Gather:Add(key, envelope) or false
+    if reworded == nil then
+        if IsMissing() then
+            reworded = false
+        elseif IsChanged() then
+            reworded = true
+        else
+            return false
+        end
+    end
+    local envelope, key, said = Contribute:Capture(reworded)
+    if not envelope then
+        return false
+    end
+    said = Unix(said)
+    -- A quest no one on screen speaks is still kept, without a speaker, until a copy with one
+    -- comes in to take its place.
+    local stem, speaker = QuestMoment(key)
+    if stem and speaker == "" and keptWith[stem] == said then
+        return false
+    end
+    local stored = Spoken.Gather:Add(key, envelope)
+    if stored and stem and speaker ~= "" then
+        keptWith[stem] = said
+        -- The copy kept before it, without its speaker, saying the same.
+        local twin = Spoken.Gather:Get(stem)
+        if twin and TextOf(twin) == said then
+            Spoken.Gather:Remove(stem)
+        end
+    end
+    return stored
 end
+
+--- The fields of a quest line kept before a shared quest stopped sending them: the sharing
+--- player's model, sex and creature type as the speaker's. Their name, the npc, is blanked.
+local PLAYER_FIELDS = { model = true, displays = true, sex = true, creature = true }
+
+--- Whether a speakerless quest line's fields say a player shared it: an npc of one word, with no
+--- id and no kind. An NPC is kept with its id or its kind, so this cannot tell a player from an
+--- NPC that has neither and a one-word name; a player whose name has two words is not found.
+local function SharedByAPlayer(fields)
+    local npc, kind
+    for _, field in ipairs(fields) do
+        if field[1] == "npc" then npc = field[2] elseif field[1] == "kind" then kind = field[2] end
+    end
+    return npc ~= nil and npc ~= "" and kind == nil and not string.find(npc, "^%d") and not string.find(npc, "%s")
+end
+
+--- Tidy the quest lines kept by earlier versions, once, at login: drop a speakerless line where the
+--- same moment is kept with a speaker saying the same words, and take a sharing player's name and
+--- look out of the rest. This character's name stays: the file is the account's, and a line
+--- another character kept is not this one's to read.
+function Contribute:TidyGathered()
+    local gather = _G.Spoken and Spoken.Gather
+    if not (gather and CoreIsCurrent()) or gather:IsTidied() then
+        return
+    end
+    local lines = gather:Lines()
+    local said = {}
+    for _, line in ipairs(lines) do
+        local stem, speaker = QuestMoment(line.key)
+        if stem and speaker ~= "" then
+            said[stem] = said[stem] or {}
+            local text = TextOf(line.envelope)
+            if text then said[stem][text] = true end
+        end
+    end
+    -- Backwards, so a removed line leaves the indices still to come where they were.
+    for i = #lines, 1, -1 do
+        local line = lines[i]
+        local stem, speaker = QuestMoment(line.key)
+        if stem and speaker == "" then
+            local source, fields, text = Spoken.Contribute:Parse(line.envelope)
+            if text and said[stem] and said[stem][text] then
+                table.remove(lines, i)
+            elseif source == "quests" and SharedByAPlayer(fields) then
+                local kept = {}
+                for _, field in ipairs(fields) do
+                    if field[1] == "npc" then
+                        kept[#kept + 1] = { "npc", "" }
+                    elseif not PLAYER_FIELDS[field[1]] then
+                        kept[#kept + 1] = field
+                    end
+                end
+                line.envelope = Spoken.Contribute:Envelope(source, kept, text)
+            end
+        end
+    end
+    gather:SetTidied()
+end
+
+if CreateFrame then
+    local tidier = CreateFrame("Frame")
+    tidier:RegisterEvent("PLAYER_LOGIN")
+    tidier:SetScript("OnEvent", function()
+        pcall(Contribute.TidyGathered, Contribute)
+    end)
+end
+
+-- Once a model is in, if the same NPC is still on screen: a line gathered while it was loading
+-- was kept without it, so take it again (the same key replaces it); and the model can show the
+-- line is a body its voice is not, so the button asks again.
+table.insert(NPCModel.onLoaded, function(guid)
+    if Utils:GetNPCGUID() ~= guid then
+        return
+    end
+    GatherLine()
+    if ContributeButton then
+        ContributeButton:Refresh()
+    end
+end)
 
 --- Whether the contribute button belongs on screen: something to send, and nothing to play.
 ---
---- Priming the model cache happens here, not in Capture, and only when there is actually a
---- gap: most NPCs already have sound, and there is no reason to ever ask a model to load for
---- one of those. One SetUnit per NPC encountered while a gap is showing, not one per event --
---- a player reads a quest for seconds, which is ample for the load PrimeModelCache started to
---- finish before a click ever reads it back.
+--- Priming the model cache happens here, not in Capture, and only where a model can matter:
+--- a gap, a creature whose bodies the packs list while its gap could be shown or gathered, or
+--- a split creature, whose model picks the file it plays. Most NPCs are none of those, and no
+--- model is ever loaded for them. Once per NPC, not once per event -- a player reads a quest
+--- for seconds, which is ample for the load NPCModel:Prime started to finish before a click
+--- ever reads it back.
 function Contribute:HasGap()
-    if not (_G.Spoken and Spoken.Contribute and Spoken.ShowContribution) then
+    if not (CoreIsCurrent() and Spoken.ShowContribution) then
         return false
     end
-    -- Hidden in the Spoken settings: no gap to show, and so no model to prime. The
+    -- Hidden in the Spoken settings: no gap to show, and so no model to prime for one. The
     -- method is guarded because an older bundled player does not have it.
     local hidden = Spoken.AreContributeButtonsHidden and Spoken:AreContributeButtonsHidden()
     -- Gathering needs the model primed as much as a click does, and runs with the buttons
     -- hidden as readily as with them shown.
     local gathering = Spoken.Gather and Spoken.Gather:IsEnabled()
+    -- A body the voice is not can only be seen in the model, so a creature whose bodies the
+    -- packs list has it read whatever the gap, where a gap could be shown or gathered. A split
+    -- creature has it read regardless, since the model picks the file it plays. Once per guid,
+    -- as for a gap, and at most once per pass, since each Prime of a guid still loading counts
+    -- towards giving up on it.
+    local guid = Utils:GetNPCGUID()
+    local id = guid and Utils:GetCreatureIDFromGUID(guid)
+    local readBody = id and DataModules:HasBodies(id)
+        and ((not hidden or gathering) or DataModules:IsSplit(id))
+    if readBody then
+        NPCModel:Prime(guid, "npc")
+    end
     local missing = (not hidden or gathering) and IsMissing()
     local gap = not hidden and missing
     if missing then
-        PrimeModelCache(Utils:GetNPCGUID())
+        if not readBody and not SharedByPlayer() then
+            NPCModel:Prime(guid, "npc")
+        end
         -- Gathered here, on the one pass that already knows the line is missing, rather than
         -- by a second caller asking PrepareSound all over again. This runs on every quest and
         -- gossip event through ContributeButton's refresh, which is what drives gathering.
         if gathering then
-            GatherLine()
+            GatherLine(false)
         end
-    elseif loadingGUID then
+    elseif gathering and IsChanged() then
+        -- A line that plays in other words, kept for the site to correct. No model is loaded
+        -- for it: the site already knows who speaks a line it has, and a load is kept for gaps.
+        GatherLine(true)
+    end
+    if not missing and NPCModel:IsLoading() and not readBody then
         -- No gap, but a load is still in flight for whatever NPC started it: the player closed
         -- the dialog, or a pack picked up the line, with no click and no retarget to trigger
-        -- PrimeModelCache's own guid-switch guard. Left alone, this is unbounded exposure --
+        -- NPCModel:Prime's own guid-switch guard. Left alone, this is unbounded exposure --
         -- the PlayerModel keeps driving a 3D draw until the next gap NPC, which this session
         -- may never show, and this client has hung its GPU on model rendering before. Put the
         -- probe away without caching anything: this is not a resolution, just a stop.
-        AbandonModelLoad(loadingGUID)
+        NPCModel:Abandon()
     end
     return gap
 end
@@ -724,7 +715,7 @@ function Contribute:QuestLogDescription(questID)
             if id == questID then
                 local previous = GetQuestLogSelection()
                 SelectQuestLogEntry(index)
-                local description = GetQuestLogQuestText and GetQuestLogQuestText()
+                local description = GetQuestLogQuestText and NotSecret(GetQuestLogQuestText())
                 SelectQuestLogEntry(previous or 0)
                 return description
             end
@@ -747,7 +738,7 @@ end
 --- contribution sent from the quest giver's own dialog. `from=log` says which of the two this
 --- was.
 function Contribute:CaptureFromLog(questID, title)
-    local text = questID and self:QuestLogDescription(questID)
+    local text = CoreIsCurrent() and questID and self:QuestLogDescription(questID)
     if not text or text == "" then
         return nil
     end
@@ -756,7 +747,8 @@ function Contribute:CaptureFromLog(questID, title)
     fields[#fields + 1] = { "event", "accept" }
     fields[#fields + 1] = { "title", title or "" }
     fields[#fields + 1] = { "from", "log" }
-    return Spoken.Contribute:Envelope("quests", fields, Contribute:Detemplate(text))
+    ReaderFields(fields, questID)
+    return Spoken.Contribute:Envelope("quests", fields, text)
 end
 
 --- Whether the quest log should offer Contribute in place of a Play it cannot give.
@@ -765,7 +757,7 @@ end
 --- sound, and offering to contribute all of them would say the corpus is missing what is in
 --- fact simply not installed.
 function Contribute:CanOfferFromLog()
-    if not (_G.Spoken and Spoken.Contribute and Spoken.ShowContribution) then
+    if not (CoreIsCurrent() and Spoken.ShowContribution) then
         return false
     end
     if Spoken.AreContributeButtonsHidden and Spoken:AreContributeButtonsHidden() then
@@ -784,22 +776,15 @@ function Contribute:ShowTooltip(owner, gossip, tooltip)
     tooltip:SetOwner(owner, "ANCHOR_RIGHT")
     tooltip:SetText(gossip and L.OPT_CONTRIBUTE_TIP_LINE or L.OPT_CONTRIBUTE_TIP_QUEST)
     tooltip:AddLine(L.OPT_CONTRIBUTE_TIP_SHARE, 1, 0.8, 0.2, true)
-    -- Its right-click opens the debug log's menu, where Spoken Developer is installed. Not on
-    -- DialogueUI's window, whose own tooltip this is and whose corner has no such menu.
-    local hint = tooltip == GameTooltip and Spoken and Spoken.LogMenuHint and Spoken:LogMenuHint()
-    if hint then
-        tooltip:AddLine(hint, 0.6, 0.6, 0.6, true)
-    end
     tooltip:Show()
 end
 
 --- Right-click opens Spoken's debug log menu, as Report's does, where the Spoken Developer module
 --- is installed: a Contribute button is up exactly when a line did not play, which is when the log
 --- says why. Hooked on mouse-up rather than set as the click, so the button's own OnClick, set
---- again each time it stands for another quest, keeps the left button. No HookScript on 1.12,
---- where the module does not run anyway.
+--- again each time it stands for another quest, keeps the left button.
 function Contribute:OfferLogMenu(button)
-    if not button or button.offersLogMenu or not button.HookScript then
+    if not button or button.offersLogMenu then
         return
     end
     button.offersLogMenu = true
@@ -817,11 +802,11 @@ end
 --- Hand the player an envelope: as one link where the bundled player can build one, and as the
 --- raw text and the address otherwise.
 local function Offer(envelope, key)
-    local address = format("%s/contribute", SITE_URL)
+    local address = format("%s/contribute", Spoken.SITE_URL)
     -- What the first-click choice gathers if the player takes it. Only for a line with a key:
     -- a quest log entry has no NPC in front of it, so it is sent but never kept.
     local gather = key and { key = key, envelope = envelope } or nil
-    -- Encode is absent on an older Spoken a legacy-client zip can still bundle; Link
+    -- Encode is absent on an older Spoken; Link
     -- returns nil for that or for an oversized result. Either way, the two-copy fallback still
     -- works, which is the whole point of shipping it alongside the link instead of replacing it.
     local link = Spoken.Contribute.Encode and Spoken.Contribute:Link(address, envelope)

@@ -1,4 +1,4 @@
-"""The rule deciding which store files scripts/package-audio.sh has to re-encode."""
+"""The rule deciding which store files scripts/quests/package-audio.sh has to re-encode."""
 import importlib.util
 import os
 
