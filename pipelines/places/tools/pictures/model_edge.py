@@ -33,9 +33,8 @@ COUNT = 4
 DESIGN_W, DESIGN_H = 320, 256
 W, H = 512, 256
 HOLD = 14
-# The places' generator makes a frame's edge from a seed. Of the twenty tried (400 to 419, the left side as
-# deep as the others, as there is no text to line up with) these four, with a HOLD band round them, cover
-# the model's cut on frames from 136x109 to 275x220 with no run of alpha under 0.9.
+# Edge seeds that, with a HOLD band, cover the model's cut on frames from 136x109 to 275x220 with no run of
+# alpha under 0.9.
 SEEDS = (408, 415, 413, 414)
 # The model's cut, in UI units in from the frame's border, and the model's
 # size at the largest frame: the preview's stand-in.
