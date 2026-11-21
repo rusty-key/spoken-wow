@@ -21,15 +21,9 @@ export const CONFIDENCES = ["high", "check"] as const;
 export type Confidence = (typeof CONFIDENCES)[number];
 
 /**
- * How each model that honours a phoneme rule takes IPA written inline in the text, which is
- * what the preview sends. Everything not listed ignores phoneme rules entirely.
- *
- *   ssml   <phoneme alphabet="ipa" ph="...">word</phoneme>. Documented for eleven_flash_v2.
- *   slash  /ipa/ in place of the word. Documented for eleven_v4.
- *
- * eleven_v3 and eleven_v4_turbo honour dictionary phoneme rules, but ElevenLabs documents
- * neither inline form for them. v3 keeps the tag it has always been previewed with; v4_turbo
- * follows v4.
+ * The inline IPA form each phoneme model reads; every model not listed ignores phoneme rules.
+ * ElevenLabs documents ssml only for eleven_flash_v2 and slash only for eleven_v4, so v3 keeps
+ * the tag it was always previewed with and v4_turbo follows v4.
  */
 export const PHONEME_SYNTAX = {
   eleven_v3: "ssml",
@@ -41,8 +35,12 @@ export const PHONEME_SYNTAX = {
 export type PhonemeModel = keyof typeof PHONEME_SYNTAX;
 export const PHONEME_MODELS = Object.keys(PHONEME_SYNTAX) as PhonemeModel[];
 
-export function honoursPhonemes(modelId: string): modelId is PhonemeModel {
-  return Object.hasOwn(PHONEME_SYNTAX, modelId);
+export function phonemeSyntax(modelId: string): "ssml" | "slash" | undefined {
+  return Object.hasOwn(PHONEME_SYNTAX, modelId) ? PHONEME_SYNTAX[modelId as PhonemeModel] : undefined;
+}
+
+export function honoursPhonemes(modelId: string): boolean {
+  return phonemeSyntax(modelId) !== undefined;
 }
 
 export type LexiconEntry = {

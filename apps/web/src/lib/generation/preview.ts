@@ -25,7 +25,7 @@ import { PREVIEW_DIR } from "@/lib/paths";
 import type { ElevenLabsOptions } from "@/lib/voices/elevenlabs";
 
 import type { GenerationConfig } from "./config";
-import { honoursPhonemes, kindOf, PHONEME_SYNTAX, type LexiconEntry } from "./lexicon";
+import { honoursPhonemes, kindOf, phonemeSyntax, type LexiconEntry } from "./lexicon";
 import type { PreviewMode } from "./preview-modes";
 
 export { PREVIEW_MODES, isPreviewMode, type PreviewMode } from "./preview-modes";
@@ -169,12 +169,9 @@ export function sampleSentence(grapheme: string, lines: CorpusLine[]): Sample {
 }
 
 /**
- * Put the entry's pronunciation into the sentence, in the syntax the model reads.
- *
- * An alias is substituted outright, which is exactly what an alias rule does. IPA goes in
- * inline, which is what the dictionary does by another route: a phoneme tag or slashes,
- * whichever PHONEME_SYNTAX gives the model. Only the first occurrence is touched: one is
- * enough to hear, and every extra tag is billed.
+ * An alias replaces the word, as an alias rule does; IPA goes inline in the model's
+ * PHONEME_SYNTAX form. Only the first occurrence is touched: one is enough to hear, and every
+ * extra tag is billed.
  */
 export function speakable(entry: LexiconEntry, sentence: string, modelId: string): string {
   const escaped = entry.grapheme.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
@@ -183,7 +180,7 @@ export function speakable(entry: LexiconEntry, sentence: string, modelId: string
   return sentence.replace(pattern, (matched) => {
     if (kindOf(entry) === "alias") return entry.alias!;
     const ipa = entry.ipa!.replace(/"/g, "");
-    return honoursPhonemes(modelId) && PHONEME_SYNTAX[modelId] === "slash"
+    return phonemeSyntax(modelId) === "slash"
       ? `/${ipa}/`
       : `<phoneme alphabet="ipa" ph="${ipa}">${matched}</phoneme>`;
   });

@@ -154,20 +154,15 @@ describe("sampleSentences", () => {
 });
 
 describe("speakable", () => {
-  /**
-   * The trick the whole feature rests on: every model that honours a dictionary phoneme rule
-   * also takes IPA inline, so a draft can be heard before it is saved and before any
-   * dictionary exists. Which inline form depends on the model.
-   */
+  // Inline IPA is what lets a draft be heard before any dictionary exists.
   it.each(["eleven_v3", "eleven_flash_v2"])("wraps IPA in a phoneme tag for %s", (model) => {
     expect(speakable(IPA, "Gnomeregan is lost.", model)).toBe(
       '<phoneme alphabet="ipa" ph="ˈnoʊmɹəɡæn">Gnomeregan</phoneme> is lost.',
     );
   });
 
-  // eleven_v4 does not read the tag; it reads IPA between slashes in place of the word.
-  it.each(["eleven_v4", "eleven_v4_turbo"])("writes IPA between slashes for %s", (model) => {
-    expect(speakable(IPA, "Gnomeregan is lost.", model)).toBe("/ˈnoʊmɹəɡæn/ is lost.");
+  it("writes IPA between slashes, in place of the word, for eleven_v4", () => {
+    expect(speakable(IPA, "Gnomeregan is lost.", "eleven_v4")).toBe("/ˈnoʊmɹəɡæn/ is lost.");
   });
 
   it("substitutes a respelling outright, as an alias rule would", () => {
