@@ -266,7 +266,7 @@ describe("planQuestsByFilters", () => {
   it("reads the pronunciation context for dirty=1, without which no line matches", async () => {
     catalogues.realFilters = true;
     await planQuestsByFilters("dirty=1", "enUS", "elevenlabs");
-    expect(searchContext).toHaveBeenCalledWith(false, true, "enUS", true, false);
+    expect(searchContext).toHaveBeenCalledWith(false, true, "enUS", true, false, undefined, false);
   });
 
   it("dirty=1 selects a dirty file's job and leaves out a clean one", async () => {
@@ -289,7 +289,7 @@ describe("planQuestsByFilters", () => {
   it("does not read it otherwise", async () => {
     catalogues.realFilters = true;
     await planQuestsByFilters("q=hello", "enUS", "elevenlabs");
-    expect(searchContext).toHaveBeenCalledWith(false, false, "enUS", true, false);
+    expect(searchContext).toHaveBeenCalledWith(false, false, "enUS", true, false, undefined, false);
   });
 });
 
