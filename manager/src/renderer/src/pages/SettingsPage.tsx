@@ -336,8 +336,8 @@ function SharingSection(): ReactNode {
     setResult(null)
     setResult(await actions.shareNow())
   }
-  // Failures speak through sharing.error; a later one hides this click's line.
-  const resultText = sharing.sending || sharing.error || !result ? null : result.outcome === 'sent' ? S.settings.sendDone(result.count) : result.outcome === 'nothing' ? S.settings.sendNothing : null
+  // Failures show as sharing.error, which also hides this line when a later send fails.
+  const resultText = result?.outcome === 'sent' ? S.settings.sendDone(result.count) : result?.outcome === 'nothing' ? S.settings.sendNothing : null
   const resetId = async (): Promise<void> => {
     await api().resetShareId()
     setReset(true)
@@ -371,7 +371,7 @@ function SharingSection(): ReactNode {
           {S.settings.resetId}
         </button>
       </div>
-      {resultText && (
+      {resultText && !sharing.sending && !sharing.error && (
         <p className="status status-ok-text setting-result" role="status">
           {resultText}
         </p>

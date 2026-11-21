@@ -110,6 +110,16 @@ describe('sendPending', () => {
     expect(site.posted[0]!.installId).toBe(site.posted[1]!.installId)
   })
 
+  it('fails when a file it could not read left nothing to send, and sends the readable ones', async () => {
+    const { game, dataPath } = await setup()
+    fs.mkdirSync(contributionsFile(game, 'B'), { recursive: true })
+    const site = fakeSite()
+    expect(await sendPending({ dataPath, games: [game], appVersion: '0.1.0', fetchImpl: site.fetchImpl })).toMatchObject({ outcome: 'failed', count: 0, error: expect.stringContaining('Could not read') })
+    write(contributionsFile(game, 'A'), savedVariables([envelope(1)]))
+    expect(await sendPending({ dataPath, games: [game], appVersion: '0.1.0', fetchImpl: site.fetchImpl })).toEqual({ outcome: 'sent', count: 1 })
+    expect(site.posted).toHaveLength(1)
+  })
+
   it('stops on a 429 and keeps the chunks that went before it', async () => {
     const { game, dataPath } = await setup()
     const many = Array.from({ length: 2001 }, (_, i) => envelope(i))

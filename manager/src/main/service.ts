@@ -2,7 +2,7 @@
 // the settings and the catalog, and runs jobs.
 import path from 'node:path'
 import { CHANNELS, type AddGameResult, type ClearDownloadsResult, type InstallOptions } from '../shared/api'
-import { isSupportedFlavor, type Catalog, type CatalogUpdate, type CommunityCatalog, type GameInstall, type JobProgress, type Product, type ProductStatus, type ReleaseInfo, type Settings, type SharingChoice, type SharingStatus, type Snapshot } from '../shared/types'
+import { isSupportedFlavor, type Catalog, type CatalogUpdate, type CommunityCatalog, type GameInstall, type JobProgress, type Product, type ProductStatus, type ReleaseInfo, type SendResult, type Settings, type SharingChoice, type SharingStatus, type Snapshot } from '../shared/types'
 import { installedVoiceProduct, languagesFor, productById, productsFor } from '../shared/products'
 import { compareVersions } from '../shared/version'
 import { buildCatalog, latestFor, loadCatalog, saveCatalog } from './catalog'
@@ -25,7 +25,7 @@ import { fetchIndex, fetchManifest, loadCachedIndex, loadCachedManifest, type Ch
 import { dropPackState, loadPackState } from './packs-state'
 import { normalizeProxy } from './proxy'
 import { syncPacks } from './packs-sync'
-import { loadLedger, resetInstallId, sendPending, type SendResult, type ShareLedger } from './share'
+import { loadLedger, resetInstallId, sendPending, type ShareLedger } from './share'
 import { getRecord, loadSettings, loadState, log, sanitizeSettings, saveSettings, type StateFile } from './state'
 import { computeStatuses } from './status'
 
@@ -648,8 +648,7 @@ export class ManagerService {
 
   /**
    * "Send now": reads every file, whatever the backoff says, after any send already running.
-   * Resolves with how this send ended, null when Sharing went off meanwhile. The status also
-   * arrives on sharingChanged.
+   * Null when Sharing went off meanwhile.
    */
   async sendNow(): Promise<SendResult | null> {
     if (this.settings.sharing !== 'on') throw new PlainError(t('service.turnOnSharing'))

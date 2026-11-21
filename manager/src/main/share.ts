@@ -112,8 +112,6 @@ export interface SendOptions {
   all?: boolean
 }
 
-export type { SendResult }
-
 function remember(ledger: ShareLedger, hashes: Iterable<string>, at: string): void {
   for (const h of hashes) {
     // Deleted first so a hash sent again moves to the newest end.
@@ -140,6 +138,7 @@ export async function sendPending(opts: SendOptions): Promise<SendResult> {
   /** The envelopes not sent yet, by hash. */
   const fresh = new Map<string, string>()
   const seen: ShareLedger['seen'] = {}
+  let unread: string | undefined
   for (const game of opts.games) {
     for (const file of await findContributionFiles(game)) {
       let st: fs.Stats
@@ -156,6 +155,7 @@ export async function sendPending(opts: SendOptions): Promise<SendResult> {
         text = await fs.promises.readFile(file, 'utf8')
       } catch (err) {
         log('Sharing: could not read', file, err)
+        unread = t('share.readFile', { file, why: err instanceof Error ? err.message : String(err) })
         delete seen[file]
         continue
       }
@@ -174,7 +174,8 @@ export async function sendPending(opts: SendOptions): Promise<SendResult> {
     }
     return result
   }
-  if (fresh.size === 0) return done({ outcome: 'nothing' })
+  // An unreadable file may hold unsent lines, so it is not "nothing new".
+  if (fresh.size === 0) return done(unread ? { outcome: 'failed', count: 0, error: unread } : { outcome: 'nothing' })
 
   const doFetch = opts.fetchImpl ?? fetch
   const hashes = [...fresh.keys()]

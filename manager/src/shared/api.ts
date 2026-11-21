@@ -121,7 +121,7 @@ export interface ManagerApi {
   /** Deletes the downloaded zips (and half-finished ones) kept in the downloads folder. Refused while a job runs. */
   clearDownloads(): Promise<ClearDownloadsResult>
   /**
-   * Sends the collected lines now and resolves with how it ended; null when Sharing went off
+   * Sends the collected lines now and resolves with how it ended, null when Sharing went off
    * meanwhile. Refused while Sharing is off. The status also comes through onSharing.
    */
   shareNow(): Promise<SendResult | null>
