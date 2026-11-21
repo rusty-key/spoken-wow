@@ -2,6 +2,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 
 import {
+  discord as discordFor,
   channelName, isLanguageChannel, isNamed, languageOf, latestReleases, oldPosts, postText,
 } from "./language-post.mjs";
 
@@ -83,4 +84,15 @@ test("a new post replaces any bot's pinned post, but no person's and no other pi
     pin("4", true, "Welcome to the channel"),
   ]);
   assert.deepEqual(old.map((m) => m.id), ["1", "2"]);
+});
+
+test("discord waits out a rate limit and retries", async () => {
+  const replies = [
+    new Response(JSON.stringify({ retry_after: 0.5 }), { status: 429 }),
+    new Response(JSON.stringify({ id: "1" }), { status: 200 }),
+  ];
+  const waited = [];
+  const api = discordFor("t", { fetch: async () => replies.shift(), wait: async (ms) => waited.push(ms) });
+  assert.deepEqual(await api("GET", "/users/@me"), { id: "1" });
+  assert.deepEqual(waited, [600]);
 });

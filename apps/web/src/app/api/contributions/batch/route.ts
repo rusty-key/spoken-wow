@@ -11,7 +11,8 @@
  * A file the Spoken Manager sends carries the install id it made when its player turned
  * Sharing on. Then a line the corpus already knows is counted as a missing-audio hit
  * (lib/contributions/missing-audio.ts) rather than dropped, and the install has an allowance of
- * its own beside the IP's. Without one, as from /contribute, known lines are dropped as before.
+ * its own beside the IP's. Without one, as from a file uploaded on /contribute, known lines are
+ * dropped as before.
  *
  * Places are refused here. A places contribution is the description the player writes on the
  * page, and a file has none; the addon never gathers them, so one arriving is a hand-built file.
@@ -25,11 +26,11 @@ import { parseEnvelope } from "@/lib/contributions/envelope";
 import {
   CONTRIBUTION_WINDOW_MS,
   CONTRIBUTIONS_PER_HOUR,
+  intakeStates,
   resolveSpeakers,
   speakersOf,
   stringOrNull,
 } from "@/lib/contributions/intake";
-import { lineStates } from "@/lib/contributions/known";
 import {
   INSTALL_UPLOADS_PER_HOUR,
   hitFrom,
@@ -108,7 +109,7 @@ export async function POST(request: Request) {
       refuse("describe");
       continue;
     }
-    const submission = submissionFrom(parsed.value, raw, null);
+    const submission = submissionFrom(parsed.value, null);
     if (!submission) {
       refuse("incomplete");
       continue;
@@ -118,9 +119,9 @@ export async function POST(request: Request) {
   const submissions = await keepClassWords(sent);
 
   // Lines the corpus already has are counted as accepted -- the player sent nothing wrong --
-  // and not stored as contributions: known.ts's lineStates, asked once for the file. With an
-  // install id each is a line that player heard in silence, and is counted as one.
-  const states = await lineStates(submissions);
+  // and not stored as contributions: intakeStates, asked once for the file. With an install id
+  // each is a line that player heard in silence, and is counted as one.
+  const states = await intakeStates(submissions);
   const hits: MissingAudioHit[] = [];
   const unknown: Submission[] = [];
   let known = 0;
@@ -131,7 +132,7 @@ export async function POST(request: Request) {
       continue;
     }
     known++;
-    const hit = installId ? hitFrom(submission, state.lineId) : null;
+    const hit = installId ? await hitFrom(submission, state.lineId) : null;
     if (hit) hits.push(hit);
   }
   await createContributions(unknown, identity);

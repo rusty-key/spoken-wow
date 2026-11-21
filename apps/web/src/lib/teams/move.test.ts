@@ -6,7 +6,7 @@ import { afterAll, afterEach, beforeEach, describe, expect, it } from "vitest";
 import { closeDb, db } from "@/lib/db";
 
 import { forgetTeams } from "./store";
-import { asSystem, dropTeam, ownTeam, runningJob, systemRows, testUser } from "./testing";
+import { asSystem, dropTeam, ownTeam, plainTeam, runningJob, systemRows, testUser } from "./testing";
 
 /** Tables the target may end up with rows in beyond what dropTeam deletes, children first. */
 const TARGET_ROWS = [
@@ -18,10 +18,6 @@ let source: Awaited<ReturnType<typeof ownTeam>>;
 let target: string;
 let tag: string;
 let user: Awaited<ReturnType<typeof testUser>>;
-
-async function teamOfLang(lang: string): Promise<string | null> {
-  return (await systemRows<{ team: string | null }>(`select team_of_lang($1) as "team"`, [lang]))[0].team;
-}
 
 /**
  * A base settings row and a dismissal mark on `team` where it has none, as a database that has
@@ -77,6 +73,21 @@ afterEach(async () => {
 afterAll(closeDb);
 
 describe("move_team_lang", () => {
+  it("takes the language's open invites to the new team and its plain packs with it", async () => {
+    const [invite] = await systemRows<{ id: string }>(
+      `insert into "invite" ("email", "lang", "capabilities", "tokenHash", "invitedBy", "expiresAt", "joinTeamId")
+       values ($1, 'deDE', '{edit}', $2, $3, now() + interval '1 day', $4) returning "id"`,
+      [`move-${tag}@example.invalid`, `hash-move-${tag}`, user.id, source.team],
+    );
+    await move("deDE", target);
+    expect(await systemRows(`select "joinTeamId" from "invite" where "id" = $1`, [invite.id])).toEqual([
+      { joinTeamId: target },
+    ]);
+    expect(
+      await systemRows(`select "packName" from "team_language" where "teamId" = $1 and "lang" = 'deDE'`, [target]),
+    ).toEqual([{ packName: "plain" }]);
+  });
+
   it("moves the language's overrides and leaves a same-named file's in another language", async () => {
     const file = `quests/${tag}-move.mp3`;
     const insert = `insert into "line_override" ("teamId", "lang", "file", "lineId", "text") values ($1, $2, $3, 'q:1:accept', 'x')`;
@@ -153,7 +164,7 @@ describe("move_team_lang", () => {
       [take[0].id, report[0].id, `move-${tag}`, issue[0].id, user.id, release[0].id],
     );
     expect(teams.map((row) => row.team)).toEqual(Array(8).fill(target));
-    expect(await teamOfLang("deDE")).toBe(target);
+    expect(await plainTeam("deDE")).toBe(target);
   });
 
   it("copies the roster to a team that has none", async () => {
@@ -176,7 +187,7 @@ describe("move_team_lang", () => {
     const job = await runningJob("deDE", source.team);
 
     await expect(move("deDE", target)).rejects.toMatchObject({ code: "55006", message: expect.stringMatching(/running/) });
-    expect(await teamOfLang("deDE")).toBe(source.team);
+    expect(await plainTeam("deDE")).toBe(source.team);
 
     await job.cleanup();
   });
@@ -187,12 +198,12 @@ describe("move_team_lang", () => {
 
   it("refuses an unknown team", async () => {
     await expect(move("deDE", randomUUID())).rejects.toThrow(/no team/);
-    expect(await teamOfLang("deDE")).toBe(source.team);
+    expect(await plainTeam("deDE")).toBe(source.team);
   });
 
   it("refuses a team that already holds the language", async () => {
     await expect(move("deDE", source.team)).rejects.toThrow(/already holds/);
-    expect(await teamOfLang("deDE")).toBe(source.team);
+    expect(await plainTeam("deDE")).toBe(source.team);
   });
 
   it("leaves another language's rows alone", async () => {
@@ -209,7 +220,7 @@ describe("move_team_lang", () => {
   });
 });
 
-describe("adopt_lang", () => {
+describe("adopt_lang and found_lang_team", () => {
   // A code no fixture or suite uses, so it is unowned and its team is new.
   const LANG = "qaQA";
 
@@ -221,18 +232,24 @@ describe("adopt_lang", () => {
 
   afterEach(drop);
 
-  it("gives an unowned language a team of its own with English's roster", async () => {
+  it("adopt_lang gives no language but English a team", async () => {
+    await drop();
+    await db().query(`select adopt_lang($1)`, [LANG]);
+    expect(await plainTeam(LANG)).toBeNull();
+  });
+
+  it("found_lang_team gives a language a team of its own with English's roster", async () => {
     await drop();
     const english = (await systemRows<{ id: string }>(`select "id" from "team" where "slug" = 'english'`))[0].id;
     const unseed = await baseRows(english);
     try {
       // As the app calls it: its own role, acting as no team.
-      await db().query(`select adopt_lang($1)`, [LANG]);
+      await db().query(`select found_lang_team($1)`, [LANG]);
     } finally {
       await unseed();
     }
 
-    const team = await teamOfLang(LANG);
+    const team = await plainTeam(LANG);
     const counts = await systemRows<{ english: number; adopted: number }>(
       `select (select count(*)::int from "voice" v join "team" t on t."id" = v."teamId" where t."slug" = 'english') as "english",
               (select count(*)::int from "voice" where "teamId" = $1) as "adopted"`,
@@ -244,14 +261,14 @@ describe("adopt_lang", () => {
     expect(await hasRow("queue_dismissal", team!)).toBe(true);
   });
 
-  it("leaves the caller acting as the team it was, whether it adopts or finds a team", async () => {
+  it("leaves the caller acting as the team it was", async () => {
     const caller = randomUUID();
     const client = await db().connect();
     try {
       await client.query("begin");
       await client.query(`select set_config('spoken.team', $1, true)`, [caller]);
-      for (const _ of ["adopts", "finds"]) {
-        await client.query(`select adopt_lang($1)`, [LANG]);
+      for (const call of ["found_lang_team", "adopt_lang"]) {
+        await client.query(`select ${call}($1)`, [LANG]);
         const { rows } = await client.query(`select current_setting('spoken.team') as "team"`);
         expect(rows[0].team).toBe(caller);
       }

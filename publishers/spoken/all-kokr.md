@@ -1,10 +1,10 @@
 ---
 curseforge: 1746509
 lang: koKR
-version: 1.0.0
+version: 1.2.0
 slug: spoken-korean
 name: Spoken: Korean
-summary: Meta package: installs Spoken with every Korean voice pack, quests, gossip, zones and books. Install through the CurseForge app.
+summary: Meta package: installs Spoken with every Korean voice pack, quests, gossip, zones, books and boss stories. Install through the CurseForge app.
 categories:
   - Audio & Video
   - Roleplay
@@ -18,14 +18,17 @@ license: MIT
 
 ## What it installs
 
-[Spoken](https://www.curseforge.com/wow/addons/spoken), which carries Spoken Quests, Spoken Places and Spoken Readables inside it, and the Korean voice packs:
+[Spoken](https://www.curseforge.com/wow/addons/spoken), which carries Spoken Quests, Spoken Places, Spoken Readables and Spoken Bosses inside it, and the Korean voice packs:
 
 | Module | Voices | Its audio |
 | --- | --- | --- |
-| Spoken Quests | quest dialogue | [Spoken Korean Audio: Quests](https://www.curseforge.com/wow/addons/spoken-korean-audio-quests-shared) |
+| Spoken Quests | quest dialogue | [Spoken Korean Audio: Quests - Alliance](https://www.curseforge.com/wow/addons/spoken-korean-audio-quests-alliance)<br>[Spoken Korean Audio: Quests - Horde](https://www.curseforge.com/wow/addons/spoken-korean-audio-quests-horde)<br>[Spoken Korean Audio: Quests - Shared](https://www.curseforge.com/wow/addons/spoken-korean-audio-quests-shared) |
 | Spoken Quests | NPC gossip | [Spoken Korean Audio: Gossip](https://www.curseforge.com/wow/addons/spoken-korean-audio-gossip) |
 | Spoken Places | zone and subzone lore | [Spoken Korean Audio: Places](https://www.curseforge.com/wow/addons/spoken-korean-audio-places) |
 | Spoken Readables | books, letters, notes and plaques | [Spoken Korean Audio: Readables](https://www.curseforge.com/wow/addons/spoken-korean-audio-readables) |
+| Spoken Bosses | the story of each dungeon and raid boss | [Spoken Korean Audio: Bosses](https://www.curseforge.com/wow/addons/spoken-korean-audio-bosses) |
+
+The quest dialogue comes as three packs, one per faction plus the quests both sides share, and this installs all of them: it does not know which side you play. Remove the other faction's pack afterwards if you want the disk space back.
 
 ## Language
 

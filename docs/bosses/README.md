@@ -46,6 +46,15 @@ Where no pack has the clip, the story is words alone (`textOnly`), shown for its
 the sound off.
 Opened, the tab lands on the dungeon the player is in, else the continent.
 
+A pack entry may carry `text`, the words its take was voiced from, else the story's current ones.
+It wins over `Data/Stories.lua` on a client in the pack's language (`docs/spoken/CAPTIONS.md`).
+
+Another addon plays a boss's story through Spoken's `HasStory`, `PlayStory`, `IsPlayingStory` and
+`StopStory` with `"boss"` and the game's encounter id (`addons/Spoken/API.lua`), not through
+`SpokenBossesAddon`, whose methods are not frozen. `EncounterClip` in `Story.lua` builds the clip: only a
+voiced story, of a boss met or with Unlock Unfound Bosses on, and the part on. A world boss has no
+encounter id, so it cannot be asked for. Played this way a story is not marked shown.
+
 The Dungeons and Raids come from `addons/Spoken/Data/Dungeons.lua`, which every tab shares
 ([COMPENDIUM.md](../places/COMPENDIUM.md)).
 
@@ -61,10 +70,8 @@ The bosses come from `pipelines/lib/bosses.mjs` (`make bosses-extract`), which w
 `DungeonEncounter` table (Forever's build, wago.tools), for each instance map in
 `pipelines/lib/dungeons.json`: the bosses in Forever's order (the client's difficulty 0 and 1 rows, a
 boss only other difficulties list after them; Forever splits a dungeon's bosses over both on one scale),
-each once, named as the difficulty that lists the most of them names it, with its name in every language
-(retail's `DungeonEncounter`, by id or else English name, where wago has no strings of Forever's in a
-language, as for Italian) and a `key` (its English name lowercased, without
-punctuation). The client lists a boss for each difficulty, the Season of Discovery's raid-sized
+each once, named as the difficulty that lists the most of them names it, with its name in every client
+language and a `key` (its English name lowercased, without punctuation). The client lists a boss for each difficulty, the Season of Discovery's raid-sized
 Blackfathom Deeps, Gnomeregan and Sunken Temple among them; a "A and B" row is dropped where A or B is
 a boss on its own, and a name the client spells two ways is one boss (`SAME`).
 
@@ -84,8 +91,10 @@ table (`apply-boss-stories.mjs` records them). A boss with no entry says its sto
 
 ## What the sources hold
 
-- The client's table has the 29 dungeons and raids of the Dungeons table and eight more maps Forever
-  has, now listed under the zone of their entrance (`pipelines/lib/dungeons.json`): Demon Fall Canyon
+- The client's table has the 29 dungeons and raids of the Dungeons table, the five dungeons client
+  1.60.1.70959 added (The Drowned City, Krol'dok Stronghold, Alcaz Prison, Blackmaw Hold and The
+  Shaper's Terrace, 34 bosses) and eight more maps Forever has, now listed under the zone of their
+  entrance (`pipelines/lib/dungeons.json`): Demon Fall Canyon
   (Ashenvale), The Tainted Scar (Lord Kazzak, Blasted Lands), Storm Cliffs (Azuregos, Azshara), The
   Crystal Vale (Prince Thunderaan, Silithus), Nightmare Grove (the Emerald Dragons, each under its
   own zone by `bossZones`: Emeriss in Duskwood, Lethon in Feralas, Taerar in Ashenvale, Ysondre in
@@ -100,8 +109,9 @@ table (`apply-boss-stories.mjs` records them). A boss with no entry says its sto
   Defenders, The Vault, The Molten Core, Three Little Wolves and Mana Wraith. One goes back in when a
   source confirms it.
 - The vmangos-style world database of the Forever repack (`world`, port 3317, the one `make compendium`
-  reads) has 21,116 `creature_text` lines. 240 of the 267 bosses match a `creature_template` by name, and
-  111 of them have lines of their own to say.
+  reads) has 21,116 `creature_text` lines. 240 of the first 267 bosses match a `creature_template` by
+  name, and 111 of them have lines of their own to say. The bosses added since, the 34 of 1.60.1.70959
+  among them, are not yet matched against it.
 - Efficient Games' open data (EG Link, CC BY 4.0) has, per Forever build, `encounters` (pulls, kills,
   the creatures of each fight, where it begins) and `creatures` (the spells each casts), and the lines
   NPCs say in each language (`broadcast_text`).

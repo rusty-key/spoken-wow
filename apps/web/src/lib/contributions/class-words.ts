@@ -1,8 +1,8 @@
 /**
  * Quests whose text names a class as a word of its own (migration 0105): "There's a priest out
- * in the mountains" is about a priest whoever reads it. The addon cannot tell that word from the
- * reader's class, so a priest reading it sends `$c` (Contribute.lua, Detemplate), and accepting
- * that would have every player hear "adventurer".
+ * in the mountains" is about a priest whoever reads it. Intake cannot tell that word from the
+ * reader's class, so a priest's copy arrives as `$c` (reader.ts), and accepting that would have
+ * every player hear "adventurer".
  *
  * A language's text maintainer marks the quest from the corrections tab, for that language. From
  * then on intake puts the word back from the corpus line before the text is stored or

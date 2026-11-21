@@ -350,13 +350,16 @@ export type CacheState = Record<PreviewMode, boolean>;
  */
 export async function previewCache(
   entries: LexiconEntry[],
-  pickVoice: (line: CorpusLine | null) => string | null,
+  // May be still on its way: the account's voices come from ElevenLabs, and the corpus need
+  // not wait for them.
+  picker: VoicePicker | Promise<VoicePicker>,
   config: GenerationConfig,
   dir: string = PREVIEW_DIR,
 ): Promise<Record<string, CacheState>> {
+  const [{ lines }, pickVoice] = await Promise.all([corpus(), picker]);
   const samples = sampleSentences(
     entries.map((entry) => entry.grapheme),
-    (await corpus()).lines,
+    lines,
   );
 
   const cache: Record<string, CacheState> = {};
@@ -404,7 +407,9 @@ export const NO_VOICE = failure(
  * wrong voice is far more useful than a page that cannot preview anything until all 20
  * voices exist.
  */
-export function voicePicker(voiceIds: Map<string, string>) {
-  return (line: CorpusLine | null): string | null =>
+type VoicePicker = (line: CorpusLine | null) => string | null;
+
+export function voicePicker(voiceIds: Map<string, string>): VoicePicker {
+  return (line) =>
     (line && voiceIds.get(line.voice)) ?? voiceIds.values().next().value ?? null;
 }

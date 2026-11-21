@@ -6,7 +6,7 @@
 
 setfenv(1, VoiceOver)
 
-if GetLocale() ~= "deDE" then
+if not Spoken:InterfaceIn("deDE") then
 	return
 end
 
@@ -57,7 +57,9 @@ L.OPT_DIALOG_STOP_TIP = "Vorlesen stoppen"
 L.OPT_READ_TIP = "Dies laut vorlesen"
 L.OPT_GREETING = "Begrüßung"
 L.OPT_AUTOPLAY_OFF_TIP = "„Automatisch vorlesen“ ist auf der Seite „Quests“ der Spoken-Einstellungen ausgeschaltet."
+L.OPT_PROGRESS_OFF_TIP = "„Quest-Fortschritt vorlesen“ ist auf der Seite „Quests“ der Spoken-Einstellungen ausgeschaltet."
 L.OPT_NEVER_TIP = "„Begrüßungen vorlesen“ steht auf der Seite „Gespräche“ der Spoken-Einstellungen auf „Nie“."
+L.OPT_MUTED_TIP = "Du hast diesen NPC stummgeschaltet. Hebe das unter „Stummgeschaltete NPCs“ auf der Seite „Gespräche“ der Spoken-Einstellungen auf."
 L.OPT_CONTRIBUTE = "Mitwirken"
 L.OPT_REPORT = "Melden"
 L.OPT_REPORT_COPY = "Spoken Quests|n|nKopiere diese Adresse und öffne sie in deinem Webbrowser."
@@ -78,6 +80,7 @@ L.OPT_CMD_FOLLOWUP_DESC = "Spielt die Folgezeilen der NPCs zu einer Quest erneut
 L.OPT_CMD_CHATTER = "Weltgeplauder"
 L.OPT_CMD_CHATTER_DESC = "Spielt ab, was ein NPC laut sagt, als hättest du es gerade gehört: /spq chatter [NPC-ID] (ohne Angabe die deines Ziels)"
 L.OPT_PANEL_FOLLOWUP = "NPC-Chat nach Quests vorlesen"
+L.OPT_PANEL_PROGRESS = "Quest-Fortschritt vorlesen"
 L.OPT_PANEL_GREETINGS = "Begrüßungen vorlesen"
 L.OPT_GREETING_LABEL_ALWAYS = "Jedes Mal"
 L.OPT_GREETING_LABEL_ONCE_QUEST = "Einmal bei Questgebern"
@@ -87,6 +90,15 @@ L.OPT_OG_THRALL = "Originale Thrall-Rede"
 L.OPT_FORGET_GREETINGS = "Gehörte Begrüßungen vergessen"
 L.REASON_FORGET_GREETINGS = "Stelle „Begrüßungen vorlesen“ auf „Einmal pro Begrüßung“ oder „Einmal bei Questgebern“, um dies zu nutzen."
 L.OPT_FORGET_GREETINGS_DONE = "Die Liste gehörter Begrüßungen dieses Charakters wurde gelöscht."
+L.OPT_MUTE_NPC = "Gespräche dieses NPCs stummschalten"
+L.OPT_UNMUTE_NPC = "Stummschaltung aufheben"
+L.OPT_UNMUTE_NPC_GOSSIP = "Stummschaltung der Gespräche dieses NPCs aufheben"
+L.MUTE_NPC_DONE = "Automatische Begrüßungen von %s sind jetzt stummgeschaltet."
+L.UNMUTE_NPC_DONE = "Automatische Begrüßungen von %s sind nicht mehr stummgeschaltet."
+L.OPT_MUTED_NPCS = "Stummgeschaltete NPCs"
+L.OPT_NO_MUTED_NPCS = "Kein NPC ist stummgeschaltet. Schalte einen mit dem Lautsprecher in seinem Gesprächsfenster stumm."
+L.OPT_FORGET_MUTED_NPCS = "Stummgeschaltete NPCs vergessen"
+L.OPT_FORGET_MUTED_NPCS_DONE = "Die Liste der stummgeschalteten NPCs dieses Charakters wurde gelöscht."
 L.OPT_PANEL_GAME_GREETING_FIRST = "NPC-Stimme vor dem Vorlesen"
 L.GREETING_DIALOG_APART = "Spoken: Dialoglautstärke auf %1$d%% gesetzt, abweichend von den anderen Lautstärkereglern, damit „NPC-Stimme vor dem Vorlesen“ erkennt, wann ein NPC ausgesprochen hat."
 L.OPT_REPORT_PROBLEM = "Problem melden"
@@ -149,5 +161,6 @@ L.QUESTS_MORE_FMT = " und %1$d weitere"
 L.QUESTS_TITLE_NTH_FMT = "%1$s (%2$d)"
 L.QUEST_IN_PROGRESS = "In Arbeit"
 L.QUEST_PART_ACCEPT = "Beschreibung"
+L.QUEST_PART_PROGRESS = "Fortschritt"
 L.QUEST_PART_COMPLETE = "Abschluss"
 L.QUEST_PART_NO_TEXT = "Zu diesem Teil ist kein Text bekannt."

@@ -17,49 +17,61 @@ local scroller
 -- is built with too, so the pages read alike.
 local Layout = SpokenLayout
 
+-- Spoken's files name their strings here, and the words are looked up as they are read: an
+-- interface pack's strings arrive after these files load (Interface.lua), and a word copied as a
+-- file loads would stay in the language before them. tests/lua/interface_packs_test.lua holds them
+-- to it.
+local function Words(keys)
+    return setmetatable({}, { __index = function(_, name) return keys[name] and L[keys[name]] end })
+end
+
 local CHANNELS = { "Master", "SFX", "Music", "Ambience", "Dialog" }
 -- Stored names stay English: playback passes them to the sound API.
-local CHANNEL_LABELS = {
-    Master = L.OPT_CHANNEL_MASTER,
-    SFX = L.OPT_CHANNEL_SFX,
-    Music = L.OPT_CHANNEL_MUSIC,
-    Ambience = L.OPT_CHANNEL_AMBIENCE,
-    Dialog = L.OPT_CHANNEL_DIALOG,
-}
+local CHANNEL_LABELS = Words({
+    Master = "OPT_CHANNEL_MASTER",
+    SFX = "OPT_CHANNEL_SFX",
+    Music = "OPT_CHANNEL_MUSIC",
+    Ambience = "OPT_CHANNEL_AMBIENCE",
+    Dialog = "OPT_CHANNEL_DIALOG",
+})
 
 -- The ways of showing a line, by the name Addon:PlayerStyle gives each.
-local STYLE_LABELS = {
-    minimal = L.OPT_STYLE_MINIMAL,
-    classic = L.OPT_STYLE_CLASSIC,
-    dialogueui = L.OPT_STYLE_DIALOGUEUI,
-    subtitle = L.OPT_STYLE_SUBTITLE,
-    none = L.OPT_STYLE_NONE,
+local STYLE_LABELS = Words({
+    minimal = "OPT_STYLE_MINIMAL",
+    classic = "OPT_STYLE_CLASSIC",
+    dialogueui = "OPT_STYLE_DIALOGUEUI",
+    subtitle = "OPT_STYLE_SUBTITLE",
+    none = "OPT_STYLE_NONE",
+})
+
+-- The game's key bindings list these in a Spoken category (Bindings.xml): each by its binding and
+-- its string's key.
+local BINDINGS = {
+    { "SPOKEN_PLAYPAUSE", "BIND_PLAYPAUSE" },
+    { "SPOKEN_SKIP", "BIND_SKIP" },
+    { "SPOKEN_STOP", "BIND_STOP" },
+    { "SPOKEN_COMPENDIUM", "BIND_COMPENDIUM" },
 }
 
--- The game's key bindings list these in a Spoken category (Bindings.xml). The category is
--- the name of a string global the client shows as its title. Set here, after the locale
--- files, so the names are in the player's language.
-_G.BINDING_HEADER_SPOKEN = "Spoken"
-_G.BINDING_NAME_SPOKEN_PLAYPAUSE = L.BIND_PLAYPAUSE
-_G.BINDING_NAME_SPOKEN_SKIP = L.BIND_SKIP
-_G.BINDING_NAME_SPOKEN_STOP = L.BIND_STOP
-_G.BINDING_NAME_SPOKEN_COMPENDIUM = L.BIND_COMPENDIUM
-local BINDINGS = {
-    { "SPOKEN_PLAYPAUSE", L.BIND_PLAYPAUSE },
-    { "SPOKEN_SKIP", L.BIND_SKIP },
-    { "SPOKEN_STOP", L.BIND_STOP },
-    { "SPOKEN_COMPENDIUM", L.BIND_COMPENDIUM },
-}
--- The parts of Spoken by source key, named as their pages are, each with the game's own icon
--- for what it reads and the order its page is listed in under Spoken.
+--- Name the bindings in the player's language. The category is the name of a string global the
+--- client shows as its title. Called as this file loads, after the locale files, and again when an
+--- interface pack's strings are laid over them.
+function Options:NameBindings()
+    _G.BINDING_HEADER_SPOKEN = "Spoken"
+    for _, binding in ipairs(BINDINGS) do _G["BINDING_NAME_" .. binding[1]] = L[binding[2]] end
+end
+Options:NameBindings()
+
+-- The parts of Spoken by source key, named as their pages are (the keys of their strings), each
+-- with the game's own icon for what it reads and the order its page is listed in under Spoken.
 local PARTS = {
-    { key = "quests", label = L.OPT_PART_QUESTS, text = L.OPT_PART_QUESTS_TEXT,
+    { key = "quests", label = "OPT_PART_QUESTS", text = "OPT_PART_QUESTS_TEXT",
         icon = [[Interface\Icons\INV_Scroll_03]], order = 1 },
-    { key = "gossip", label = L.OPT_PART_GOSSIP, text = L.OPT_PART_GOSSIP_TEXT,
+    { key = "gossip", label = "OPT_PART_GOSSIP", text = "OPT_PART_GOSSIP_TEXT",
         icon = [[Interface\Icons\UI_Chat]], order = 2 },
-    { key = "places", label = L.OPT_PART_PLACES, text = L.OPT_PART_PLACES_TEXT,
+    { key = "places", label = "OPT_PART_PLACES", text = "OPT_PART_PLACES_TEXT",
         icon = [[Interface\Icons\INV_Misc_Map02]], order = 3 },
-    { key = "readables", label = L.OPT_PART_READABLES, text = L.OPT_PART_READABLES_TEXT,
+    { key = "readables", label = "OPT_PART_READABLES", text = "OPT_PART_READABLES_TEXT",
         icon = [[Interface\Icons\INV_Misc_Book_09]], order = 4 },
 }
 
@@ -68,7 +80,8 @@ local PARTS = {
 function Options:Parts()
     local parts, known = {}, {}
     for _, part in ipairs(PARTS) do
-        table.insert(parts, part)
+        table.insert(parts, { key = part.key, label = L[part.label], text = L[part.text], icon = part.icon,
+            order = part.order })
         known[part.key] = true
     end
     for key, source in Sources:Iterate() do
@@ -138,37 +151,13 @@ local SKETCHES = {
         end
     end,
 }
-local STYLE_TEXTS = {
-    minimal = L.OPT_STYLE_MINIMAL_TEXT,
-    classic = L.OPT_STYLE_CLASSIC_TEXT,
-    dialogueui = L.OPT_STYLE_DIALOGUEUI_TEXT,
-    subtitle = L.OPT_STYLE_SUBTITLE_TEXT,
-    none = L.OPT_STYLE_NONE_TEXT,
-}
--- The languages a voice pack can speak: the same list, in the same order, as each module's
--- (SpokenQuests' Language.LOCALES, SpokenReadables.LOCALES).
-LANGUAGES = {
-    { code = "enUS", native = "English", english = "English" },
-    { code = "deDE", native = "Deutsch", english = "German" },
-    { code = "esES", native = "Español (España)", english = "Spanish (Spain)" },
-    { code = "esMX", native = "Español (América Latina)", english = "Spanish (Latin America)" },
-    { code = "frFR", native = "Français", english = "French" },
-    -- No client runs in Italian, so "Auto" never lands on it; a player picks it by hand.
-    { code = "itIT", native = "Italiano", english = "Italian" },
-    { code = "plPL", native = "Polski", english = "Polish" },
-    { code = "ptBR", native = "Português", english = "Portuguese (Brazil)" },
-    { code = "ruRU", native = "Русский", english = "Russian", script = "cyrillic" },
-    { code = "koKR", native = "한국어", english = "Korean", script = "korean" },
-    -- `sample`: characters only that Chinese has, which a font must draw beside the name. A Korean
-    -- font with Hanja draws "繁體中文" and still lacks most of Traditional Chinese.
-    { code = "zhCN", native = "简体中文", english = "Chinese (Simplified)", script = "han", sample = "们这简国" },
-    { code = "zhTW", native = "繁體中文", english = "Chinese (Traditional)", script = "han", sample = "嗎妳麼為" },
-    -- No client runs in it either, and its stacked accents are glyphs a Latin font can lack.
-    -- `hidden` keeps it out of the menus until its pack is released: picked before then, every
-    -- line would play in the fallback language.
-    { code = "viVN", native = "Tiếng Việt", english = "Vietnamese", script = "vietnamese", hidden = true },
-}
-
+local STYLE_TEXTS = Words({
+    minimal = "OPT_STYLE_MINIMAL_TEXT",
+    classic = "OPT_STYLE_CLASSIC_TEXT",
+    dialogueui = "OPT_STYLE_DIALOGUEUI_TEXT",
+    subtitle = "OPT_STYLE_SUBTITLE_TEXT",
+    none = "OPT_STYLE_NONE_TEXT",
+})
 -- Whether a font draws `text`: the settings' font object, or the file `path`. A glyph the font
 -- lacks draws as nothing or as a box, so the text is measured against as many U+0378, a code point
 -- Unicode has never assigned and so no font has: the same width means none of it drew. Han and
@@ -217,35 +206,80 @@ local function FontDraws(text, path)
     return drew
 end
 
-local function Locale(code)
-    for _, locale in ipairs(LANGUAGES) do
-        if locale.code == code then return locale end
-    end
-end
-
--- Whether a font draws the language `code`: its own name, and the characters only it has.
+-- Whether a font draws the language `code`: its own name, and the characters only it has. A
+-- language the registry does not know, or that names itself in no script, draws nothing.
 function Options:LanguageDraws(code, path)
-    local locale = Locale(code)
-    return locale ~= nil and FontDraws(locale.native .. (locale.sample or ""), path)
+    local language = Languages:Get(code)
+    return language ~= nil and language.native ~= nil
+        and FontDraws(language.native .. (language.sample or ""), path)
 end
 
---- A language's name in the lists, one for every module: its own, and in English where this
---- client's font cannot draw its script (Korean on a German client).
+--- A language's name in text drawn in the game's font, one for every module: its own where the
+--- settings' font can draw it, in English where it cannot (Korean on a German client), and the code
+--- where a pack names it in neither. A built-in Latin language needs no probe. A name only a
+--- pack's font draws stays English here, because this text has no way to wear that font.
 function Options:LanguageName(code)
-    local locale = Locale(code)
-    if not locale then return code end
-    if not locale.script then return locale.native end
-    return self:LanguageDraws(code) and locale.native or locale.english
+    local language = Languages:Get(code)
+    if not language then return code end
+    if language.builtin and language.script == "latin" then return language.native end
+    if self:LanguageDraws(code) then return language.native end
+    return language.name or code
 end
 
---- The client's language, as "Auto" reads it: English where the client's is not one of ours.
-function Options:ClientLanguage()
-    local locale = GetLocale and GetLocale()
-    if locale == "enGB" then return "enUS" end
-    for _, each in ipairs(LANGUAGES) do
-        if each.code == locale then return locale end
-    end
-    return "enUS"
+--- A voice's name: its language's, as `LanguageName` gives it ("Deutsch"), or for a team's voice
+--- with the team's name after it ("Deutsch · Stimmen"). `menu` names the language as
+--- `MenuLanguageName` does, for a row drawn in `LanguageFace`.
+function Options:VoiceName(code, menu)
+    local lang, team = Languages:SplitVoice(code)
+    if not lang then return tostring(code) end
+    local name = menu and self:MenuLanguageName(lang) or self:LanguageName(lang)
+    if not team then return name end
+    local voice = Languages:Voice(code)
+    return format(L.OPT_VOICE_TEAM_FMT, name, voice and voice.teamName or team)
+end
+
+--- The name a menu entry shows, for a menu that draws it in `LanguageFace`: its own where only the
+--- pack's font can draw it, else what `LanguageName` gives.
+function Options:MenuLanguageName(code)
+    if self:LanguageFace(code) then return Languages:Get(code).native end
+    return self:LanguageName(code)
+end
+
+--- The pack's font for a language's name in the lists, where the settings' font cannot draw it
+--- but the pack's can; else nil, and the menu keeps the game's font.
+function Options:LanguageFace(code)
+    local language = Languages:Get(code)
+    if not (language and language.font) then return nil end
+    if language.builtin and language.script == "latin" then return nil end
+    if self:LanguageDraws(code) then return nil end
+    return self:LanguageDraws(code, language.font) and language.font or nil
+end
+
+
+
+--- The voices a player may add to their list: "auto", then every installed voice, each language's
+--- own followed by its teams' (Languages:Voices). Read when the menu opens, so that a pack
+--- installed since is there.
+function Options:VoiceChoices()
+    local list = { "auto" }
+    for _, voice in ipairs(Languages:Voices()) do table.insert(list, voice.code) end
+    return list
+end
+
+--- Whether a pack in the voice `code` is installed. "auto" always is: it reads whatever the
+--- client's language has.
+function Options:VoiceInstalled(code)
+    if code == "auto" then return true end
+    local voice = Languages:Voice(code)
+    return voice ~= nil and #voice.folders > 0
+end
+
+--- The voices as the settings list them: the player's list, or while there is none what it would be
+--- built from the old voice language and fallback, which the first change stores.
+function Options:VoiceList()
+    local language = Addon.db.profile.Language
+    if type(language.Voices) == "table" and #language.Voices > 0 then return language.Voices end
+    return Addon:VoiceListFrom(language.Voice, language.Fallback)
 end
 
 --- Show `style` on screen with a sample line, or nil to stop.
@@ -261,7 +295,8 @@ end
 -- unable to open a web page.
 local WEBSITE = "https://spoken.quest"
 local function WebsiteURL()
-    local language = Options:ClientLanguage()
+    -- In the interface's language, where the site has it: a built-in one.
+    local language = Interface:Base()
     return language == "enUS" and WEBSITE or WEBSITE .. "/" .. language
 end
 
@@ -272,7 +307,6 @@ local CURSEFORGE_PAGES = {
     esES = "spoken-spanish-eu",
     esMX = "spoken-spanish-al",
     frFR = "spoken-french",
-    itIT = "spoken-italian",
     ptBR = "spoken-portuguese",
     ruRU = "spoken-russian",
     koKR = "spoken-korean",
@@ -280,15 +314,15 @@ local CURSEFORGE_PAGES = {
     zhTW = "spoken-chinese-traditional",
 }
 local function CurseForgeURL()
-    return CURSEFORGE .. (CURSEFORGE_PAGES[Options:ClientLanguage()] or "spoken")
+    return CURSEFORGE .. (CURSEFORGE_PAGES[Interface:Base()] or "spoken")
 end
 
 local LINKS = {
-    { name = L.OPT_LINKS_WEBSITE, icon = [[Interface\AddOns\Spoken\icon]], url = WebsiteURL() },
+    { nameKey = "OPT_LINKS_WEBSITE", icon = [[Interface\AddOns\Spoken\icon]], url = WebsiteURL() },
     { name = "GitHub", icon = [[Interface\AddOns\Spoken\Textures\LinkGitHub]],
         url = "https://github.com/rusty-key/spoken-wow" },
     { name = "Discord", icon = [[Interface\AddOns\Spoken\Textures\LinkDiscord]],
-        url = "https://discord.gg/KgeQhjv9Rd" },
+        url = "https://spoken.quest/discord" },
     { name = "CurseForge", icon = [[Interface\AddOns\Spoken\Textures\LinkCurseForge]],
         url = CurseForgeURL() },
     { name = "Wago", icon = [[Interface\AddOns\Spoken\Textures\LinkWago]],
@@ -302,7 +336,7 @@ function Options:AddLinks(layout)
     layout:Section(L.OPT_LINKS_TITLE)
     local frames = {}
     for _, link in ipairs(LINKS) do
-        table.insert(frames, layout:Link({ icon = link.icon, title = link.name, url = link.url,
+        table.insert(frames, layout:Link({ icon = link.icon, title = link.name or L[link.nameKey], url = link.url,
             tooltip = L.OPT_LINKS_TIP }))
     end
     return frames
@@ -539,28 +573,58 @@ local function Build()
     Only(wheel, function() return Small() or DUI() or Subtitles() end)
     layout:OnRefresh(function() wheel:SetText(Subtitles() and L.SUBTITLE_WHEEL_HINT or L.WINDOW_WHEEL_HINT) end)
 
-    -- The voice language, once for every module: they share the same list of languages, and a
-    -- player who picks Portuguese means it for quests and readables alike.
+    -- The voices, once for every module, in the order a line tries them: they share the same list
+    -- of languages, and a player who picks Portuguese means it for quests and readables alike.
     layout:Section(L.OPT_LANGUAGE_TITLE)
-    local language = function() return Addon.db.profile.Language end
-    local voices, fallbacks = { "auto" }, { "none" }
-    for _, locale in ipairs(LANGUAGES) do
-        if not locale.hidden then
-            table.insert(voices, locale.code)
-            table.insert(fallbacks, locale.code)
-        end
+    -- A language as the language rows name it: Auto with what it reads now, a pack's in its font.
+    local function Label(code)
+        if code == "auto" then return format(L.OPT_LANG_AUTO_FMT, Options:LanguageName(Languages:Client())) end
+        return Options:MenuLanguageName(code)
     end
-    layout:Dropdown(L.OPT_VOICE_LANGUAGE, nil, voices,
-        function() return language().Voice or "auto" end,
-        function(code) language().Voice = code end, function() Options:UpdateRows() end,
+    local function Face(code)
+        if code == "auto" then return nil end
+        return Options:LanguageFace((Languages:SplitVoice(code)))
+    end
+    layout:OrderedList(L.OPT_VOICES, L.OPT_VOICES_TIP, function() return Options:VoiceList() end,
+        function(list) Spoken:SetVoiceOrder(list) end, function() return Options:VoiceChoices() end,
         function(code)
-            if code == "auto" then return format(L.OPT_LANG_AUTO_FMT, Options:LanguageName(Options:ClientLanguage())) end
-            return Options:LanguageName(code)
-        end)
-    layout:Dropdown(L.OPT_FALLBACK_LANGUAGE, nil, fallbacks,
-        function() return language().Fallback or "enUS" end,
-        function(code) language().Fallback = code end, function() Options:UpdateRows() end,
-        function(code) return code == "none" and L.OPT_FALLBACK_NONE or Options:LanguageName(code) end)
+            if code == "auto" then return Label(code) end
+            local name = Options:VoiceName(code, true)
+            if Options:VoiceInstalled(code) then return name end
+            return format("%s %s", name, L.OPT_VOICE_MISSING)
+        end, Face,
+        { add = L.OPT_VOICE_ADD, earlier = L.OPT_VOICE_EARLIER, later = L.OPT_VOICE_LATER, remove = L.OPT_VOICE_REMOVE,
+            available = function(code) return Options:VoiceInstalled(code) end })
+    -- A language read as Spoken and its modules load, `owner` keeping the choice (Texts, Interface):
+    -- a change waits for a reload, which is asked at once, as a player who switches and sees no change
+    -- concludes it is broken; until then the note says so, while `pending()`.
+    local function LanguageRow(title, setFmt, owner, pending)
+        layout:Dropdown(title, nil, function() return owner:Choices() end,
+            function() return owner:Choice() or "auto" end,
+            function(code)
+                -- Asked only where the next load would read something else: Auto and the client's
+                -- own language read the same interface.
+                if owner:SetChoice(code ~= "auto" and code or nil) and pending() then
+                    Layout.AskReload(format(setFmt,
+                        Options:LanguageName(code ~= "auto" and code or Languages:Client())),
+                        L.OPT_RELOAD_NOW, L.OPT_LATER)
+                end
+            end, function() Options:UpdateRows() end,
+            Label, Face)
+        layout:ShowWhen(layout:Note(L.OPT_TEXT_LANGUAGE_RELOAD, nil, 16), pending)
+    end
+    -- The words' language, apart from the voice's: a Polish reader hears English where no Polish
+    -- voice exists. Choosing the client's own language is a change too: chosen, it comes first
+    -- everywhere.
+    LanguageRow(L.OPT_TEXT_LANGUAGE, L.OPT_TEXT_LANGUAGE_SET_FMT, Texts, function()
+        local wanted, chosen = Texts:Language()
+        local reading, read = Texts:Reading()
+        return wanted ~= reading or chosen ~= read
+    end)
+    -- Spoken's own words, account-wide: the locale files read it before any profile is chosen
+    -- (Interface.lua). A built-in language or an interface pack's, only where the game's font draws it.
+    LanguageRow(L.OPT_INTERFACE_LANGUAGE, L.OPT_INTERFACE_LANGUAGE_SET_FMT, Interface,
+        function() return Interface:Pending() end)
 
     layout:Section(L.OPT_AUDIO_TITLE)
     layout:Dropdown(L.OPT_CHANNEL, nil, CHANNELS,
@@ -621,7 +685,7 @@ local function Build()
         layout:Refresh()
     end
     for _, binding in ipairs(BINDINGS) do
-        local name, label = binding[1], binding[2]
+        local name, label = binding[1], L[binding[2]]
         layout:Key(label, function()
             local key = GetBindingKey and GetBindingKey(name)
             if not key then return "off", L.OPT_KEY_NONE end
@@ -923,6 +987,7 @@ local function Build()
             -- to its default.
             Addon.db.profile.CompendiumFontSize = 12
             Addon.db.global.Layout = nil
+            Addon.db.global.InterfaceLanguage = nil
             ReloadUI()
         end)
     end, L.OPT_RESET_ALL_TIP)

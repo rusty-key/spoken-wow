@@ -14,7 +14,7 @@
 import { readFile } from "node:fs/promises";
 import { join } from "node:path";
 
-import { BASE_LOCALE, isClientLocale, isLocale } from "../../../lib/locales.mjs";
+import { BASE_LOCALE, isLocale } from "../../../lib/locales.mjs";
 import { loadEnvFile } from "../lib/env.mjs";
 import { decideImport } from "../../../lib/promote.mjs";
 import { namesForLines } from "../lib/area-names.mjs";
@@ -28,12 +28,6 @@ const lang = process.argv[process.argv.indexOf("--lang") + 1];
 if (!process.argv.includes("--lang") || !isLocale(lang) || lang === BASE_LOCALE) {
   console.error("usage: import-names.mjs --lang <code>, a language other than English");
   process.exit(2);
-}
-// The names come from what a client shows, and no client runs in this language: its place
-// names are written on the site.
-if (!isClientLocale(lang)) {
-  console.log(`${lang}: no client runs in it, so there are no game place names to import`);
-  process.exit(0);
 }
 if (!isEnabled()) {
   console.error("error: DATABASE_URL is not set, so there is nothing to import into.");

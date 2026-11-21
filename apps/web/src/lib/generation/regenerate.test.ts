@@ -35,8 +35,7 @@ const SOLO = "q:5:accept";
 const SHARED = "q:109:accept";
 /** A dwarf line: "Hiccup! Ho Ho!", spoken by Grimand Elmore. The race with an accent tag. */
 const DWARF = "q:48:complete";
-/** Progress text, which the generator never voices. */
-const NEVER_VOICED = "q:6:progress";
+const PROGRESS = "q:6:progress";
 /** A whole line of stage direction: "<Sirra begins translating…>". The narrator reads it. */
 const STAGE_DIRECTION = "q:251:complete";
 /**
@@ -144,7 +143,7 @@ async function fileFor(lineId: string): Promise<string> {
  * to assert on, and it must not be the thing that clears it permanently. So the fixtures'
  * rows are lifted out before each test and put back after.
  */
-const FIXTURE_LINES = [SOLO, SHARED, NEVER_VOICED, STAGE_DIRECTION, TEMPLATE_TOKEN, DWARF];
+const FIXTURE_LINES = [SOLO, SHARED, PROGRESS, STAGE_DIRECTION, TEMPLATE_TOKEN, DWARF];
 let displaced: Record<string, unknown>[] = [];
 
 async function fixtureFiles(): Promise<string[]> {
@@ -411,13 +410,12 @@ describe("refusals that cost nothing", () => {
 
   it("refuses a line the generator never voices, without calling out", async () => {
     const { options, calls } = stub();
-    const result = await regenerateLine(NEVER_VOICED, "user", options);
+    const result = await regenerateLine(TEMPLATE_TOKEN, "user", options);
 
     expect(result.ok).toBe(false);
     if (result.ok) return;
     expect(result.failure.status).toBe(409);
     expect(result.failure.message).toContain("never voiced");
-    expect(result.failure.message).toContain("progress");
     // One bad line must not abandon the batch around it.
     expect(result.failure.fatal).toBe(false);
     expect(calls).toHaveLength(0);
@@ -483,7 +481,7 @@ describe("a line whose spoken text has been rewritten", () => {
   afterEach(async () => {
     await clearOverride("enUS", await fileFor(SOLO), null);
     await clearOverride("enUS", await fileFor(STAGE_DIRECTION), null);
-    await clearOverride("enUS", await fileFor(NEVER_VOICED), null);
+    await clearOverride("enUS", await fileFor(PROGRESS), null);
     await clearOverride("enUS", await fileFor(TEMPLATE_TOKEN), null);
   });
 
@@ -500,6 +498,41 @@ describe("a line whose spoken text has been rewritten", () => {
     expect(result.spokenText).toBe("Say this instead.");
     // Billed for what was sent, so the version row is not describing a different take.
     expect(result.characters).toBe("Say this instead.".length);
+  });
+
+  it("adds the take's hash to the override it spoke, so another team's view can show it", async () => {
+    const { options } = stub();
+    const file = await fileFor(SOLO);
+    await writeOverride("enUS", file, SOLO, "Say this instead.", null);
+    await asSystem.query(`update "line_override" set "spokenHashes" = null where "file" = $1 and "lang" = 'enUS'`, [file]);
+
+    const result = await regenerate(SOLO, options);
+
+    expect(result.ok).toBe(true);
+    const { rows } = await asSystem.query<{ spokenHashes: string[]; spokenHash: string }>(
+      `select o."spokenHashes", t."spokenHash" from "line_override" o
+         join "take" t on t."file" = o."file" and t."lang" = o."lang" and t."teamId" = o."teamId" and t."isCurrent"
+        where o."file" = $1 and o."lang" = 'enUS'`,
+      [file],
+    );
+    expect(rows[0].spokenHashes).toEqual([rows[0].spokenHash]);
+  });
+
+  it("saves the line's normal text on the take, because a rewrite can hold respellings", async () => {
+    const { options } = stub();
+    await writeOverride("enUS", await fileFor(SOLO), SOLO, "Say this instead.", null);
+
+    const result = await regenerate(SOLO, options);
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    const { rows } = await asSystem.query(
+      `select "shownText" from "take" where "file" = $1 order by "version" desc limit 1`,
+      [result.file],
+    );
+    const [line] = (await lineIndex()).get(SOLO)!;
+    expect(rows[0].shownText).toBe(line.text);
+    expect(rows[0].shownText).not.toBe("Say this instead.");
   });
 
   it("voices a line the corpus had given up on, once the template token is gone", async () => {
@@ -614,16 +647,14 @@ describe("a line whose spoken text has been rewritten", () => {
     expect(calls.some((call) => call.url.endsWith("/v1/text-to-dialogue/with-timestamps"))).toBe(false);
   });
 
-  it("still refuses progress text, which no rewrite can make voiceable", async () => {
+  it("voices progress text like any other line", async () => {
     const { options, calls } = stub();
-    await writeOverride("enUS", await fileFor(NEVER_VOICED), NEVER_VOICED, "perfectly ordinary text", null);
+    await writeOverride("enUS", await fileFor(PROGRESS), PROGRESS, "perfectly ordinary text", null);
 
-    const result = await regenerateLine(NEVER_VOICED, "user", options);
+    const result = await regenerate(PROGRESS, options);
 
-    expect(result.ok).toBe(false);
-    if (result.ok) return;
-    expect(result.failure.message).toContain("progress");
-    expect(calls).toHaveLength(0);
+    expect(result.ok).toBe(true);
+    expect(calls.some((call) => call.url.includes("/v1/text-to-speech/"))).toBe(true);
   });
 
   it("refuses a rewrite that puts the offending characters back", async () => {

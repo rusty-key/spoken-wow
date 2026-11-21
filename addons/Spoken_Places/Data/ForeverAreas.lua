@@ -14,11 +14,14 @@ SpokenPlaces.ForeverOnlyAreas = {
 		["skywatcher plateau"] = true,
 	},
 	[1416] = {
+		["city of dalaran"] = true,
 		["eventide"] = true,
 		["old dalaran ruins"] = true,
 	},
 	[1420] = {
 		["bandarion keep"] = true,
+		["kings alley"] = true,
+		["lordaeron graveyard"] = true,
 		["shadowvale"] = true,
 		["whispering forest"] = true,
 	},
@@ -41,6 +44,9 @@ SpokenPlaces.ForeverOnlyAreas = {
 		["dragonmaw retreat"] = true,
 		["drunken dwarf"] = true,
 		["excavation site wetlands"] = true,
+		["lost marsh"] = true,
+		["site of the guardian"] = true,
+		["stalkers thicket"] = true,
 	},
 	[1441] = {
 		["scalding ridge"] = true,
@@ -57,6 +63,9 @@ SpokenPlaces.ForeverOnlyAreas = {
 	},
 	[1453] = {
 		["stormwind harbor"] = true,
+	},
+	[1455] = {
+		["hall of thanes"] = true,
 	},
 	[2482] = {
 		["cradle of tranquility"] = true,

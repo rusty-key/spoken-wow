@@ -8,13 +8,13 @@ import {
   type ClientFilter,
 } from "@/lib/contributions/client";
 
-const LABELS: Record<ClientFilter, string> = {
+export const CLIENT_FILTER_LABELS: Record<ClientFilter, string> = {
   ...CLIENT_BIN_LABELS,
   ...CLIENT_FAMILY_LABELS,
   all: "All clients",
 };
 
-const OPTIONS: ClientFilter[] = ["focus", "low-effort", ...CLIENT_FAMILIES, "all"];
+export const CLIENT_FILTER_OPTIONS: ClientFilter[] = ["focus", "low-effort", ...CLIENT_FAMILIES, "all"];
 
 /**
  * The client filter, as quiet text rather than a FilterChip: it is on by default, and a filled
@@ -35,13 +35,13 @@ export default function ClientSelect({
       >
         {/* Through SelectValue for FilterChip's reason: Radix anchors the dropdown on it. */}
         <SelectValue>
-          <span className="underline decoration-dotted underline-offset-4">{LABELS[value]}</span>
+          <span className="underline decoration-dotted underline-offset-4">{CLIENT_FILTER_LABELS[value]}</span>
         </SelectValue>
       </SelectTrigger>
       <SelectContent>
-        {OPTIONS.map((option) => (
+        {CLIENT_FILTER_OPTIONS.map((option) => (
           <SelectItem key={option} value={option}>
-            {LABELS[option]}
+            {CLIENT_FILTER_LABELS[option]}
           </SelectItem>
         ))}
       </SelectContent>

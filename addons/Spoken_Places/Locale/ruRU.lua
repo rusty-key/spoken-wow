@@ -7,7 +7,7 @@
 
 local _, SpokenPlaces = ...
 
-if GetLocale() ~= "ruRU" then
+if not Spoken:InterfaceIn("ruRU") then
 	return
 end
 
@@ -23,10 +23,11 @@ L.OPT_AUTOPLAY = "Читать автоматически"
 L.OPT_AUTOPLAY_SUB = "Включать малые области"
 L.OPT_AUTOPLAY_EXPLORED = "Включать места, открытые раньше"
 L.OPT_AUTOPLAY_COMBAT = "Останавливать в начале боя"
-L.OPT_LANG_RELOAD = "Введите /reload, чтобы переключиться на него."
-L.OPT_LANGUAGE = "Язык текста"
-L.OPT_LANG_AUTO_FMT = "Авто (%1$s)"
-L.OPT_LANG_SET_FMT = "После перезагрузки интерфейса истории будут на языке: %1$s."
+L.OPT_AUTOPLAY_EVERY_VISIT = "Читать при каждом посещении"
+L.OPT_AUTOPLAY_GAP = "Перерыв между чтениями"
+L.OPT_GAP_1D = "1 день"
+L.OPT_GAP_1W = "1 неделя"
+L.OPT_GAP_1MO = "1 месяц"
 L.OPT_LANG_PROFILE_FMT = "Этот профиль читает истории на языке: %1$s. Введите /reload, чтобы переключиться."
 L.OPT_REPORT_PROBLEM = "Сообщить о проблеме"
 L.MENU_LORE_WINDOW = "Открыть Компендиум"
@@ -81,10 +82,9 @@ L.LORE_DISCOVERED_ONLY = "Только открытые"
 L.LORE_VOICED_ONLY = "Только озвученные"
 L.LORE_SEARCH_NONE = "Ничего не найдено."
 L.REASON_DISCOVERY = "Включите «Читать автоматически», чтобы пользоваться этим."
+L.REASON_EVERY_VISIT = "Выключите «Читать при каждом посещении», чтобы пользоваться этим."
 L.REASON_MAP_PANEL = "Включите «История у карты», чтобы пользоваться этим."
 L.OPT_RESET_PAGE_CONFIRM = "Вернуть все настройки мест к значениям по умолчанию?"
-L.OPT_RELOAD_NOW = "Перезагрузить сейчас"
-L.OPT_LATER = "Позже"
 L.OPT_PAGE_TITLE = "Места"
 L.OPT_DEV_DEBUG = "Отладка: Места"
 L.OPT_DEV_PREVIEW = "Незаконченные переводы"

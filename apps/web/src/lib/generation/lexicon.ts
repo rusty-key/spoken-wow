@@ -45,6 +45,11 @@ export function kindOf(entry: LexiconEntry): "ipa" | "alias" {
 
 export class LexiconError extends Error {}
 
+/** Two entries are the same rule when this matches: ElevenLabs matches graphemes ignoring case. */
+export function ruleKey(grapheme: string): string {
+  return grapheme.toLowerCase();
+}
+
 /**
  * A rule as the add-from-rules endpoint wants it.
  *
@@ -150,8 +155,8 @@ function text(raw: Record<string, unknown>, key: string, where: string): string 
  * reviewer matches against the corpus by eye, so "Kel'Thuzad" has to stay "Kel'Thuzad" -
  * case-insensitivity is a property of the rule ElevenLabs applies, not of the record here.
  */
-export function validateEntry(input: unknown, index: number): LexiconEntry {
-  const where = `entry ${index}`;
+export function validateEntry(input: unknown, index?: number): LexiconEntry {
+  const where = index === undefined ? "entry" : `entry ${index}`;
   if (!input || typeof input !== "object" || Array.isArray(input)) {
     throw new LexiconError(`${where} must be an object`);
   }
@@ -222,7 +227,7 @@ export function validateLexicon(input: unknown): LexiconEntry[] {
 
   const seen = new Map<string, string>();
   for (const entry of entries) {
-    const key = entry.grapheme.toLowerCase();
+    const key = ruleKey(entry.grapheme);
     const first = seen.get(key);
     if (first !== undefined) {
       throw new LexiconError(

@@ -7,17 +7,18 @@ import { useLang } from "@/components/LangProvider";
 import Link from "@/components/LocaleLink";
 import { signIn, signOut } from "@/lib/auth-client";
 import { localeHref } from "@/lib/lang";
+import { fill } from "@/lib/site-text/format";
 
 import { BACKSTAGE_HREF } from "./backstage";
+import { useSiteText } from "./SiteTextProvider";
 import { useLandingSession } from "./useLandingSession";
-
-const FAILED = "Something went wrong. Try again.";
 
 /**
  * The sign-in card on the front page. It reads the session in the browser, so the page itself
  * stays free of a database read. Signed in, it offers the way through.
  */
 export default function LoginPanel() {
+  const t = useSiteText().login;
   const router = useRouter();
   const lang = useLang();
   const { session, pending: loading } = useLandingSession();
@@ -33,7 +34,7 @@ export default function LoginPanel() {
     try {
       const { error } = await signIn.email({ email, password });
       if (error) {
-        setError(error.message || FAILED);
+        setError(error.message || t.failed);
         setPending(false);
         return;
       }
@@ -41,7 +42,7 @@ export default function LoginPanel() {
       router.refresh();
     } catch {
       // A dropped connection throws instead of returning an error.
-      setError(FAILED);
+      setError(t.failed);
       setPending(false);
     }
   }
@@ -49,23 +50,23 @@ export default function LoginPanel() {
   if (session) {
     return (
       <div className="bn-login">
-        <h3 className="bn-display">Welcome back</h3>
-        <p>Signed in as {session.user.email}</p>
+        <h3 className="bn-display">{t.welcome}</h3>
+        <p>{fill(t.signedInAs, { email: session.user.email })}</p>
         <Link className="bn-btn bn-btn-primary bn-btn-lg" href={BACKSTAGE_HREF}>
-          Open Backstage
+          {t.open}
         </Link>
         <p className="bn-login-foot">
-          Not you?{" "}
+          {t.notYou}{" "}
           <button
             type="button"
             className="bn-textbtn"
             onClick={() => {
               signOut()
                 .then(() => router.refresh())
-                .catch(() => setError("Could not sign out. Try again."));
+                .catch(() => setError(t.signOutFailed));
             }}
           >
-            Sign out
+            {t.signOut}
           </button>
         </p>
         {error && (
@@ -79,10 +80,10 @@ export default function LoginPanel() {
 
   return (
     <form className={loading ? "bn-login bn-login-wait" : "bn-login"} onSubmit={onSubmit} aria-busy={loading} inert={loading}>
-      <h3 className="bn-display">Sign in</h3>
-      <p>Use your Spoken account.</p>
+      <h3 className="bn-display">{t.signInTitle}</h3>
+      <p>{t.account}</p>
       <label className="bn-field">
-        <span>Email</span>
+        <span>{t.email}</span>
         <input
           type="email"
           required
@@ -92,7 +93,7 @@ export default function LoginPanel() {
         />
       </label>
       <label className="bn-field">
-        <span>Password</span>
+        <span>{t.password}</span>
         <input
           type="password"
           required
@@ -107,12 +108,12 @@ export default function LoginPanel() {
         </p>
       )}
       <button type="submit" className="bn-btn bn-btn-primary bn-btn-lg" disabled={pending}>
-        {pending ? "Signing in..." : "Sign in"}
+        {pending ? t.signingIn : t.signInTitle}
       </button>
       <p className="bn-login-foot">
-        No account yet? <Link href="/register">Register</Link>
+        {t.noAccount} <Link href="/register">{t.register}</Link>
         {" · "}
-        <Link href="/forgot-password">Forgot your password?</Link>
+        <Link href="/forgot-password">{t.forgot}</Link>
       </p>
     </form>
   );

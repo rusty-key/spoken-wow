@@ -6,7 +6,7 @@ local _, SpokenReadables = ...
 
 local L = SpokenReadables.L
 
-if GetLocale() ~= "ruRU" then
+if not Spoken:InterfaceIn("ruRU") then
 	return
 end
 L.OPT_AUTOPLAY = "Читать автоматически"

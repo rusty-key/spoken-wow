@@ -11,12 +11,15 @@
 // sha1 of the SPOKEN text. If these two ever disagree, the explorer is lying about what
 // needs regenerating.
 
+import { byState, type StateCounts } from "@/lib/audio-state";
 import { isDirty } from "@/lib/generation/dirty";
 import { recordedMatches, type LiveRecording } from "@/lib/recordings/live";
 import { madeByFacets, madeByMatches, type MadeBy, type MadeByFacets } from "@/lib/takes/made-by";
+import type { OverrideView } from "@/lib/text-overrides/types";
 
 import type { CatalogueEntry, SearchContext, Take } from "./catalogue";
-import { PAGE_SIZE, SHORT_LINE, type LineFilters, type State } from "./filters";
+import { PAGE_SIZE } from "@/lib/page-size";
+import { SHORT_LINE, type LineFilters, type State } from "./filters";
 
 export type ResultLine = {
   /** 'z:1411' | 's:1411:razor hill'. Unique by construction -- naming.mjs guarantees
@@ -59,6 +62,8 @@ export type ResultLine = {
   madeBy: MadeBy | null;
   /** The live voice-actor recording, or null. Absent for anybody who does not record here. */
   recording?: LiveRecording | null;
+  /** The acting team's rewrite, which `spoken` already says; null where it has none. */
+  override: OverrideView | null;
 };
 
 export type SearchResult = {
@@ -67,7 +72,8 @@ export type SearchResult = {
   total: number;
   /** What the current filter selects, for the header and the regenerate quote. */
   totalChars: number;
-  counts: Record<State, number>;
+  /** For the audio buttons; see StateCounts. */
+  counts: StateCounts;
   /** How many of the matched lines are dirty. Not a fourth state; see ResultLine.dirty. */
   dirty: number;
   offset: number;
@@ -97,6 +103,7 @@ export function decorate(entry: CatalogueEntry, context: SearchContext): ResultL
     name: entry.name || entry.key || entry.zoneName,
     text: entry.full,
     spoken: entry.spoken,
+    override: entry.override ?? null,
     chars: entry.spoken.length,
     short: entry.spoken.length < SHORT_LINE,
     file: entry.file,
@@ -186,11 +193,13 @@ export function matching(lines: ResultLine[], filters: LineFilters = {}): Result
 }
 
 // Deterministic and total, because paging a list whose order can shift drops and
-// repeats rows between pages. Zone line first within a zone, then subzones by name.
+// repeats rows between pages. Zone line first within a zone, then subzones by name. Map
+// after name keeps two zones of one name apart, each under its own heading.
 function order(lines: ResultLine[]): ResultLine[] {
   return [...lines].sort(
     (a, b) =>
       a.zoneName.localeCompare(b.zoneName) ||
+      a.mapID - b.mapID ||
       Number(a.kind === "subzone") - Number(b.kind === "subzone") ||
       a.name.localeCompare(b.name) ||
       a.id.localeCompare(b.id),
@@ -205,13 +214,12 @@ export function search(
   limit = PAGE_SIZE,
 ): SearchResult {
   const all = entries.map((entry) => decorate(entry, context));
-  const matched = order(matching(all, filters));
+  const { counts, matched: unordered } = byState(matching(all, { ...filters, state: undefined }), filters.state);
+  const matched = order(unordered);
 
-  const counts: Record<State, number> = { missing: 0, stale: 0, current: 0 };
   let totalChars = 0;
   let dirty = 0;
   for (const line of matched) {
-    counts[line.state]++;
     if (line.dirty) dirty++;
     totalChars += line.chars;
   }

@@ -7,6 +7,11 @@ The pack numbers itself. A section for the English pack is headed `## <version> 
 and a language's by its release tag, `## <version> — bosses-audio-deDE`: the release scripts
 match the heading whole.
 
+## Unreleased
+
+- **The pack has the bosses' icon in the AddOns list, and a language's pack shows its language on
+  it.** *([Nucabe](https://github.com/Nucabe))*
+
 ## 1.0.0 — bosses-audio-deDE — 2026-11-02
 
 - **Boss stories are read aloud in German.** *([rusty-key](https://github.com/rusty-key))*

@@ -51,13 +51,6 @@ describe("counting what is in force", () => {
     expect(activeFilterCount({ narration: false })).toBe(0);
   });
 
-  it("ignores showing progress text, which widens rather than narrows", () => {
-    // Progress is hidden by default, so asking for it back is not a filter on the results -
-    // and counting it would put "1 filter active" on a page nobody has filtered.
-    expect(activeFilterCount({ includeProgress: true })).toBe(0);
-    expect(activeFilterCount({ includeProgress: false })).toBe(0);
-  });
-
   it("counts a line deep-link, which narrows harder than anything else", () => {
     expect(activeFilterCount({ line: "q:33:accept" })).toBe(1);
   });

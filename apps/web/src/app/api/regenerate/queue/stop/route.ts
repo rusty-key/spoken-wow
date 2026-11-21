@@ -17,6 +17,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { requireAnyRegenerate } from "@/lib/generation/authz";
 import { ensureQueueRunning } from "@/lib/generation/boot";
 import { cancelPending } from "@/lib/generation/queue";
+import { isAdmin } from "@/lib/permissions";
 
 export const dynamic = "force-dynamic";
 
@@ -37,6 +38,7 @@ export async function POST(request: NextRequest) {
     batchId,
     langs,
     by: session.user.id,
+    everyTeam: isAdmin(session.user.role),
   });
   return NextResponse.json({ cancelled });
 }

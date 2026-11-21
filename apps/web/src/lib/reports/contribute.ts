@@ -2,9 +2,9 @@
  * A report's text as a contribution: what the reporter's addon sent with the report (its
  * context), handled as the same text sent from /contribute would be.
  *
- * The context is the contribute envelope with its checksum and fences dropped, so it is written
- * back out (formatEnvelope) and goes through the contribute route's own submission and the
- * contributions page's own accepts. Which accept is the corpus's answer, as it is for a stored
+ * The context is the contribute envelope with its checksum and fences dropped, and goes through
+ * the contribute route's own submission, which writes it back out, and the contributions page's
+ * own accepts. Which accept is the corpus's answer, as it is for a stored
  * row (known.ts): a moment or greeting the corpus lacks is a contribution, accepted as the
  * contributions tab accepts one (accept.ts); a moment it has with other text is a correction,
  * accepted as the corrections tab does (correction.ts) -- as a fix of one of the moment's
@@ -27,7 +27,7 @@ import { resolveContribution } from "@/lib/contributions/accept";
 import { readable } from "@/lib/contributions/compare";
 import type { ContributionStatus, Submission } from "@/lib/contributions/contributions";
 import { acceptAsWording, acceptCorrection, type WordingPick } from "@/lib/contributions/correction";
-import { formatEnvelope, isEnvelopeSource } from "@/lib/contributions/envelope";
+import { isEnvelopeSource } from "@/lib/contributions/envelope";
 import { storeSubmission } from "@/lib/contributions/intake";
 import { lineStates, stateOfMoment, type LineState } from "@/lib/contributions/known";
 import { wordingsOfMomentSql } from "@/lib/contributions/naming";
@@ -73,7 +73,7 @@ export function reportSubmission(report: Report): Submission | string {
   }
   const envelope = { source, fields: context.fields, text: context.text };
   return (
-    submissionFrom(envelope, formatEnvelope(envelope), report.body) ??
+    submissionFrom(envelope, report.body) ??
     "The addon did not say which line this text is."
   );
 }

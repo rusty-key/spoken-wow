@@ -6,7 +6,7 @@ local _, Bosses = ...
 
 local L = Bosses.L
 
-if GetLocale() ~= "deDE" then
+if not Spoken:InterfaceIn("deDE") then
 	return
 end
 L.COMPENDIUM_BOSSES = "Bosse"

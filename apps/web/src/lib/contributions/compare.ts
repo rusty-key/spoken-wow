@@ -6,7 +6,7 @@
  * the player's name, `$Gman:woman;` for a word that follows the player's gender), and a
  * contribution is what one player's client displayed, with the paragraph breaks as real
  * newlines, one branch of every `$G` already picked, and the player's name, class and race put
- * back as `$N`, `$C` and `$R` by the addon (addons/Spoken_Quests/Contribute.lua, Detemplate).
+ * back as `$N`, `$C` and `$R` (reader.ts).
  *
  * That last step guesses, and guesses both ways. A paladin reading "the paladins of the
  * alliance" sends "$C" where the corpus has the plain word, and a client that missed the name
@@ -23,6 +23,8 @@
  *
  * Node-free, so the corrections tab's client component can split a line the same way.
  */
+
+import { otherGender, type ReaderGender } from "./gender";
 
 export type Token = { kind: "word" | "mark" | "slot"; value: string };
 
@@ -149,6 +151,17 @@ export function hasClassSlot(text: string): boolean {
   return tokensOf(text).some((token) => token.value === "$C" || token.value === "$CS");
 }
 
+/**
+ * Two texts as words and the spacing between them (words at the even indices), and each of
+ * `x`'s words' index in `y`'s along their longest common sequence, or -1.
+ */
+function wordPairs(x: string, y: string): { a: string[]; b: string[]; pair: Int32Array } {
+  const a = x.split(/(\s+)/);
+  const b = y.split(/(\s+)/);
+  const words = (pieces: string[]) => pieces.filter((_, index) => index % 2 === 0);
+  return { a, b, pair: lcsPairs(words(a), words(b)) };
+}
+
 /** A run of one side's text, and whether the other side lacks it. */
 export type DiffPart = { text: string; changed: boolean };
 
@@ -158,13 +171,8 @@ export type DiffPart = { text: string; changed: boolean };
  * kept as each side has it and never marked, and letter case is not a change.
  */
 export function wordDiff(before: string, after: string): { before: DiffPart[]; after: DiffPart[] } {
-  const a = before.split(/(\s+)/);
-  const b = after.split(/(\s+)/);
   // Case-blind, as sameLine is: `$n` against `$N` is not a difference worth marking.
-  const pair = lcsPairs(
-    a.filter((_, index) => index % 2 === 0),
-    b.filter((_, index) => index % 2 === 0),
-  );
+  const { a, b, pair } = wordPairs(before, after);
   const keptA = new Set<number>();
   const keptB = new Set<number>();
   for (const [i, j] of pair.entries()) {
@@ -188,6 +196,84 @@ export function wordDiff(before: string, after: string): { before: DiffPart[]; a
     return out;
   };
   return { before: parts(a, keptA), after: parts(b, keptB) };
+}
+
+/** Leading and trailing marks two branch sides share ("boss-mon," and "boss-lady," end in ","). */
+const SHARED_EDGE = /^([^\p{L}\p{N}]*)[\s\S]*?([^\p{L}\p{N}]*)$/u;
+
+function sharedEdges(x: string, y: string): [string, string] {
+  const [, xLead, xTail] = x.match(SHARED_EDGE)!;
+  const [, yLead, yTail] = y.match(SHARED_EDGE)!;
+  let lead = 0;
+  while (lead < xLead.length && lead < yLead.length && xLead[lead] === yLead[lead]) lead++;
+  let tail = 0;
+  while (tail < xTail.length && tail < yTail.length && xTail.at(-1 - tail) === yTail.at(-1 - tail)) tail++;
+  // Never all of a side: a branch keeps a word on each side it has one.
+  if (lead + tail >= Math.min(x.length, y.length)) return ["", ""];
+  return [x.slice(0, lead), tail ? x.slice(-tail) : ""];
+}
+
+/** What a branch side cannot hold and still read back as one (player-words.mjs FIELD). */
+const UNBRANCHABLE = /[:;$\n.!?…。！？]/;
+
+/**
+ * One template for a line two readers were shown differently: the words `male` and `female` share
+ * as they are, and each run where they differ as a `$Gmale:female;` branch, whatever the
+ * language. Null where they differ in nothing but spacing and case, and wherever a branch could
+ * not be read back (player-words.mjs's BRANCH): a side with no words, or a run holding a `:`, `;`,
+ * `$`, line break or sentence end.
+ */
+export function genderTemplate(male: string, female: string): string | null {
+  const { a, b, pair } = wordPairs(male, female);
+  const wordsA = (a.length + 1) / 2;
+  const wordsB = (b.length + 1) / 2;
+  /** Words [from, to) of a side, with the spacing between them. */
+  const run = (pieces: string[], from: number, to: number) => (to > from ? pieces.slice(from * 2, to * 2 - 1).join("") : "");
+
+  let out = "";
+  let branches = 0;
+  let i = 0;
+  let j = 0;
+  while (i < wordsA || j < wordsB) {
+    if (i < wordsA && pair[i] === j) {
+      out += a[i * 2] + (a[i * 2 + 1] ?? "");
+      i++;
+      j++;
+      continue;
+    }
+    let nextI = i;
+    while (nextI < wordsA && pair[nextI] === -1) nextI++;
+    const nextJ = nextI < wordsA ? pair[nextI] : wordsB;
+    const ours = run(a, i, nextI);
+    const theirs = run(b, j, nextJ);
+    const after = (nextI > i ? a[nextI * 2 - 1] : b[nextJ * 2 - 1]) ?? "";
+    const [lead, tail] = sharedEdges(ours, theirs);
+    const inner = (side: string) => side.slice(lead.length, side.length - tail.length);
+    if (!inner(ours).trim() || !inner(theirs).trim() || UNBRANCHABLE.test(inner(ours) + inner(theirs))) return null;
+    out += `${lead}$G${inner(ours)}:${inner(theirs)};${tail}${after}`;
+    branches++;
+    i = nextI;
+    j = nextJ;
+  }
+  return branches ? out : null;
+}
+
+/**
+ * The side a correction's text is of a `$G` our line lost, where the evidence says so: our text
+ * has been shown to the other gender and never to the reader's (`readBy`). A text both have seen
+ * branches on nothing, and theirs is a change to it. Null otherwise.
+ */
+export function readerSide(reader: ReaderGender | null, readBy: readonly ReaderGender[]): ReaderGender | null {
+  return reader && !readBy.includes(reader) && readBy.includes(otherGender(reader)) ? reader : null;
+}
+
+/**
+ * A plain corpus line and a player's text as one template, theirs for `theirsFor` and ours for the
+ * other gender. Null where ours already branches, or genderTemplate makes none.
+ */
+export function genderSplit(ours: string, theirs: string, theirsFor: ReaderGender): string | null {
+  if (/\$[gGuU]/.test(ours)) return null;
+  return theirsFor === "f" ? genderTemplate(ours, theirs) : genderTemplate(theirs, ours);
 }
 
 /**

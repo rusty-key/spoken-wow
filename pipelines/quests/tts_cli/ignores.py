@@ -20,7 +20,7 @@ import json
 import os
 
 from tts_cli.naming import moment_of, split_voice, subfolder_from_line_id
-from tts_cli.quest_text import MOMENTS, PROGRESS, left_out, removed_quests
+from tts_cli.quest_text import MOMENTS, left_out, removed_quests
 
 DEFAULT_IGNORED_PATH = "corpus/ignored.json"
 DEFAULT_OVERRIDES_PATH = "corpus/compendium_overrides.json"
@@ -53,7 +53,7 @@ def pack_ignored(corpus: dict, ignored: dict, removed=()) -> dict:
         base = split_voice(line["lineId"])[0]
         if base in out:
             continue
-        if line.get("source") in MOMENTS + (PROGRESS,) and line.get("questId") in dropped:
+        if line.get("source") in MOMENTS and line.get("questId") in dropped:
             out[base] = "a quest the Compendium leaves out"
     return out
 

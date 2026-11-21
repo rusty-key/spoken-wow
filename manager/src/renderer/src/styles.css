@@ -42,7 +42,7 @@
   /* Shape and type */
   --radius-s: 4px;
   --radius-m: 8px;
-  --font: 'Noto Sans', 'Segoe UI', 'Malgun Gothic', 'Microsoft YaHei', sans-serif;
+  --font: 'Noto Sans', 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', 'Noto Sans CJK SC', 'Source Han Sans SC', 'Malgun Gothic', sans-serif;
   --font-display: 'Cinzel', 'Palatino Linotype', Georgia, serif;
   --fs-body: 14px;
   --fs-small: 13px;
@@ -383,6 +383,11 @@ h2 {
 .is-spinning svg,
 svg.is-spinning {
   animation: spin 0.9s linear infinite;
+}
+
+/* The refresh icon's arrows run anticlockwise, so it turns the way they point. */
+.icon-btn.is-spinning svg {
+  animation-direction: reverse;
 }
 
 @keyframes spin {
@@ -1981,6 +1986,12 @@ svg.is-spinning {
   margin-bottom: 4px;
 }
 
+/* A second heading inside one section. */
+.settings-h-sub {
+  margin-top: 24px;
+  font-size: 15px;
+}
+
 .settings-text {
   margin-bottom: 14px;
   color: var(--muted);
@@ -2514,6 +2525,19 @@ svg.is-spinning {
 
 .contrib-hint {
   font-size: 12px;
+}
+
+.contrib-zip {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 12px;
+  margin-top: 4px;
+}
+
+.contrib-zip-actions {
+  display: flex;
+  gap: 12px;
 }
 
 .contrib-result {

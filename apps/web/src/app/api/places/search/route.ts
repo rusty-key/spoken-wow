@@ -4,11 +4,15 @@
  * The URL carries `page`, not `offset`, so a shared link survives a change to PAGE_SIZE.
  * The arithmetic stays here.
  */
+import type { Lang } from "@/lib/lang";
 import { langParam, worksHere } from "@/lib/lang-server";
 import { recordingsFor } from "@/lib/recordings/store";
-import { catalogue, isCorpusEmpty, loadContext } from "@/lib/places/catalogue";
-import { filtersFromParams, PAGE_SIZE } from "@/lib/places/filters";
+import { baseCatalogue, catalogue, isCorpusEmpty, loadContext, publicContext } from "@/lib/places/catalogue";
+import { PAGE_SIZE } from "@/lib/page-size";
+import { filtersFromParams, type LineFilters } from "@/lib/places/filters";
 import { search } from "@/lib/places/search";
+import type { TeamId } from "@/lib/teams/store";
+import { asHeard, asPublished, teamLiveOverrides, viewedOther, viewOnly } from "@/lib/teams/viewing";
 
 export const dynamic = "force-dynamic";
 
@@ -29,13 +33,8 @@ function corpusEmpty(error: unknown): Response {
   );
 }
 
-export async function GET(request: Request) {
-  const params = new URL(request.url).searchParams;
-  const { lang, denied } = await langParam(request);
-  if (denied) return denied;
-  const filters = filtersFromParams(params);
-  // English, until the site has a language selector again. The library below takes a
-  const page = Math.max(1, Number(params.get("page")) || 1);
+/** The lines and context as the acting team works on them. */
+async function own(lang: Lang, filters: LineFilters) {
   // Who made each take is for the people working in the language. For anybody else the
   // filters are dropped rather than left to match nothing, so a translator's link still
   // shows a visitor the lines.
@@ -44,19 +43,44 @@ export async function GET(request: Request) {
     filters.model = undefined;
     filters.author = undefined;
   }
+  const [entries, context, recordings] = await Promise.all([
+    catalogue(lang),
+    loadContext(lang, seesMadeBy),
+    recordingsFor("places", lang),
+  ]);
+  // Dropped for anybody who may not see recordings, as the made-by filters are above.
+  if (!recordings) filters.recorded = undefined;
+  return {
+    entries: seesMadeBy ? entries : await asPublished(entries, () => baseCatalogue(lang), "places", lang),
+    context: { ...context, recordings },
+    filters,
+  };
+}
 
-  let entries;
-  let context;
+/** The lines as another team is heard: the original text, its live takes and the overrides they speak. */
+async function heard(lang: Lang, team: TeamId, filters: LineFilters) {
+  const [base, context, overrides] = await Promise.all([
+    baseCatalogue(lang),
+    publicContext("places", lang, team),
+    teamLiveOverrides(team, "places", lang),
+  ]);
+  return { ...asHeard(base, context, overrides), filters: viewOnly(filters) };
+}
+
+export async function GET(request: Request) {
+  const params = new URL(request.url).searchParams;
+  const { lang, denied } = await langParam(request);
+  if (denied) return denied;
+  const page = Math.max(1, Number(params.get("page")) || 1);
+  // Whose takes play: the acting team's unless `team` names another of the language.
+  const other = await viewedOther(params, lang);
+  if (other instanceof Response) return other;
+
+  let entries, context, filters;
   try {
-    let recordings;
-    [entries, context, recordings] = await Promise.all([
-      catalogue(lang),
-      loadContext(lang, seesMadeBy),
-      recordingsFor("places", lang),
-    ]);
-    // Dropped for anybody who may not see recordings, as the made-by filters are above.
-    if (!recordings) filters.recorded = undefined;
-    context = { ...context, recordings };
+    ({ entries, context, filters } = await (other
+      ? heard(lang, other, filtersFromParams(params))
+      : own(lang, filtersFromParams(params))));
   } catch (error) {
     if (isCorpusEmpty(error)) return corpusEmpty(error);
     throw error;

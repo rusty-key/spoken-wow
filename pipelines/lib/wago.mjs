@@ -16,8 +16,8 @@ import { fileURLToPath } from "node:url";
 
 // Classic Era's client, which other clients' players still run.
 export const ERA_BUILD = "1.15.9.69109";
-// World of Warcraft Forever's client (wago.tools' wow_classic_beta).
-export const FOREVER_BUILD = "1.60.1.70450";
+// World of Warcraft Forever's client (wago.tools' wowf).
+export const FOREVER_BUILD = "1.60.1.70959";
 // Retail's, whose Adventure Guide (the Journal tables) the boss tools read.
 export const RETAIL_BUILD = "12.1.5.70448";
 
@@ -76,8 +76,13 @@ export async function wagoTable(name, { build = FOREVER_BUILD, locale = "enUS", 
     const url = `https://wago.tools/db2/${name}/csv?build=${build}&locale=${locale}`;
     const response = await fetcher(url, { headers: { "User-Agent": "curl/8.0" } });
     if (!response.ok) throw new Error(`HTTP ${response.status} for ${url}`);
+    const body = await response.text();
+    const rows = parseCsv(body);
+    // A cached empty table would fail every later run until someone deleted the file.
+    if (!rows.length) return rows;
     await mkdir(cache, { recursive: true });
-    await writeFile(file, await response.text());
+    await writeFile(file, body);
+    return rows;
   }
   return parseCsv(await readFile(file, "utf8"));
 }
