@@ -23,6 +23,7 @@ import Pagination from "@/components/Pagination";
 import ClientSelect from "@/components/ClientSelect";
 import { clientFilterOf, DEFAULT_CLIENT_FILTER, matchesClient, type ClientFamily, type ClientFilter } from "@/lib/contributions/client";
 import { flavorOptionsFor, summaryFromResolution, summaryFromBody } from "@/lib/contributions/speaker";
+import { bareDirection } from "@/lib/generation/narration";
 import type { Roster, RosterData } from "@/lib/voices/roster";
 import type { NpcSummary } from "@/lib/contributions/triage";
 import { localeHref } from "@/lib/lang";
@@ -201,6 +202,70 @@ function lookups(npcId: number, client: ClientFilter): { label: string; path: st
 
 const SEX_WORDS: Record<number, string> = { 2: "man", 3: "woman" };
 
+/** The NPC's own direction, typed bare; the route stores it bracketed. */
+function DirectionCell({
+  direction,
+  busy,
+  onSave,
+}: {
+  direction: string | null;
+  busy: boolean;
+  /** Resolves to the server's reason when the save was refused, null when it went through. */
+  onSave: (direction: string) => Promise<string | null>;
+}) {
+  const [draft, setDraft] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const bare = direction ? bareDirection(direction) : "";
+  if (draft === null) {
+    return (
+      <div className={ROW_LINE}>
+        {bare ? <span>[{bare}]</span> : null}
+        <LiteButton
+          className={ROW_BUTTON}
+          onClick={() => setDraft(bare)}
+          title="A direction sent in front of every line only this NPC speaks, after its voice's"
+        >
+          {bare ? "Edit" : "Add"}
+        </LiteButton>
+      </div>
+    );
+  }
+  const trimmed = draft.trim();
+  const close = () => {
+    setDraft(null);
+    setError(null);
+  };
+  return (
+    <form
+      onSubmit={async (event) => {
+        event.preventDefault();
+        if (trimmed === bare) return close();
+        // Open until the save lands, so a refused direction is still there to fix.
+        const refused = await onSave(trimmed);
+        if (refused) setError(refused);
+        else close();
+      }}
+    >
+      <div className={ROW_LINE}>
+        <input
+          aria-label="NPC direction"
+          autoFocus
+          maxLength={200}
+          placeholder="pirate accent"
+          value={draft}
+          onChange={(event) => setDraft(event.target.value)}
+          onKeyDown={(event) => event.key === "Escape" && close()}
+          className="border-input bg-background h-7 w-44 rounded-md border px-2"
+        />
+        <LiteButton type="submit" className={ROW_BUTTON} disabled={busy}>
+          {trimmed || !bare ? "Save" : "Clear"}
+        </LiteButton>
+      </div>
+      {error ? <p className="text-destructive mt-1">{error}</p> : null}
+    </form>
+  );
+}
+
 /** "As a gnome woman": what a body row is labelled with. */
 function bodyLabel(answer: NpcBodyAnswer): string {
   return `As a ${answer.race} ${SEX_WORDS[answer.sex]}`;
@@ -292,10 +357,10 @@ export default function NpcEditor({
   roster: rosterData,
 }: {
   /**
-   * Each with the client family whose guess filed it, null for one only the extract names, and
-   * its bodies where it is split by body.
+   * Each with the client family whose guess filed it, null for one only the extract names, its
+   * bodies where it is split by body, and its own direction.
    */
-  initial: (NpcSummary & { client: ClientFamily | null; bodies: NpcBodyAnswer[] })[];
+  initial: (NpcSummary & { client: ClientFamily | null; bodies: NpcBodyAnswer[]; direction: string | null })[];
   /** The roster, for SpeakerCell's pickers, and grown by their "New" entries. */
   roster: RosterData;
 }) {
@@ -344,6 +409,12 @@ export default function NpcEditor({
     () => new Map(initial.filter((row) => row.bodies.length).map((row) => [key(row.npcKind, row.npcId), row.bodies])),
     [initial],
   );
+  /** Each direction this session saved, over the server's, keyed by NPC. */
+  const [savedDirections, setSavedDirections] = useState<Record<string, string | null>>({});
+  const initialDirections = useMemo(
+    () => new Map(initial.map((row) => [key(row.npcKind, row.npcId), row.direction])),
+    [initial],
+  );
   const [busy, setBusy] = useState<string | null>(null);
   const [failed, setFailed] = useState<string | null>(null);
   /** Rows ticked for the bulk saves, keyed by NPC. */
@@ -385,6 +456,21 @@ export default function NpcEditor({
     },
     [post],
   );
+
+  const postDirection = useCallback(async (npc: NpcSummary, direction: string): Promise<string | null> => {
+    const k = key(npc.npcKind, npc.npcId);
+    setBusy(k);
+    const response = await fetch("/api/npcs/direction", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ direction, npcKind: npc.npcKind, npcId: npc.npcId }),
+    }).catch(() => null);
+    setBusy(null);
+    const saved = (await response?.json().catch(() => null)) as { direction?: string | null; error?: string } | null;
+    if (!response?.ok) return saved?.error ?? "That didn't go through -- try again.";
+    setSavedDirections((current) => ({ ...current, [k]: saved?.direction ?? null }));
+    return null;
+  }, []);
 
   const postBody = useCallback(async (npc: NpcSummary, body: Record<string, unknown>) => {
     const k = key(npc.npcKind, npc.npcId);
@@ -580,6 +666,7 @@ export default function NpcEditor({
                 Name
               </SortHeader>
               <th className="border-b py-2 pr-3 font-normal">Type / gender / flavor</th>
+              <th className="border-b py-2 pr-3 font-normal">Direction</th>
               <th className="border-b py-2 font-normal" />
             </tr>
           </thead>
@@ -641,6 +728,13 @@ export default function NpcEditor({
                     {failed === k ? (
                       <p className="text-destructive mt-1">That didn&apos;t go through -- try again.</p>
                     ) : null}
+                  </td>
+                  <td className="pr-3 text-xs">
+                    <DirectionCell
+                      direction={k in savedDirections ? savedDirections[k] : (initialDirections.get(k) ?? null)}
+                      busy={busy === k || bulk !== null}
+                      onSave={(direction) => postDirection(npc, direction)}
+                    />
                   </td>
                   <td className="text-right whitespace-nowrap">
                     {lookups(npc.npcId, client).map(({ label, path, where }) => (

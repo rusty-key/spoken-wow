@@ -132,6 +132,7 @@ export type ActivityDetail = {
     npcId: number;
     from: { npcName?: string | null; npcType: string; npcId: number };
   };
+  "npc.direction": { npcName?: string | null; direction?: string | null };
   "type.changed": {
     action: string;
     gender?: string | null;

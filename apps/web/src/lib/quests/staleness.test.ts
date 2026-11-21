@@ -17,6 +17,7 @@ const { applyPronunciation } = await import("@/lib/generation/pronunciation");
 const { accentTagged } = await import("@/lib/generation/narration");
 const { currentConfig } = await import("@/lib/generation/settings");
 const { clearOverride, writeOverride } = await import("./overrides");
+const { getResolution, setDirection, upsertResolution } = await import("@/lib/npc/store");
 const { SHAPE } = await import("@/lib/generation/speakers/shape");
 const { staleFiles } = await import("./staleness");
 
@@ -123,6 +124,42 @@ describe("staleFiles", () => {
 
     await writeOverride("enUS", file, LINE, "Something else entirely.", null);
     expect(await staleFiles([file])).toEqual(new Set([file]));
+  });
+
+  it("catches a take made before its NPC had a direction, and clears with one made after", async () => {
+    const { npcType: kind, npcId, text } = (await fileIndex()).get(file)!;
+    const pirate = (words: string, provider: "elevenlabs" | "fish" = "elevenlabs") =>
+      spokenHash(SHAPE[provider](applyPronunciation(words, fileDefaults().rules), undefined, { npc: "[pirate accent]" }));
+    const before = await getResolution(kind, npcId);
+    if (!before) {
+      await upsertResolution({
+        npcKind: kind, npcId, npcName: null, race: null, gender: null, flavor: null, provenance: "none",
+        confirmed: false, doubtful: false, modelFileId: null, sex: null, creatureType: null, build: null,
+        note: null, resolvedBy: null,
+      });
+    }
+    try {
+      await liveTake(await currentHash());
+      await setDirection(kind, npcId, "[pirate accent]");
+      expect(await staleFiles([file])).toEqual(new Set([file]));
+
+      await asSystem.query(`delete from "take" where "source" = 'quests' and "file" = $1 and "version" = 9999`, [file]);
+      await liveTake(pirate(text));
+      expect(await staleFiles([file])).toEqual(new Set());
+
+      // An override saved now predicts the take it will be spoken with, direction and all.
+      await writeOverride("enUS", file, LINE, "Something else entirely.", null);
+      const { rows } = await asSystem.query<{ spokenHashes: string[] }>(
+        `select "spokenHashes" from "line_override" where "file" = $1 and "lang" = 'enUS'`,
+        [file],
+      );
+      for (const provider of ["elevenlabs", "fish"] as const) {
+        expect(rows[0].spokenHashes).toContain(pirate("Something else entirely.", provider));
+      }
+    } finally {
+      if (before) await setDirection(kind, npcId, before.direction ?? null);
+      else await asSystem.query(`delete from "npc" where "npcKind" = $1 and "npcId" = $2`, [kind, npcId]);
+    }
   });
 
   it("judges by the index a caller hands it", async () => {
