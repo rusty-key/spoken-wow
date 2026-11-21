@@ -110,13 +110,14 @@ describe('sendPending', () => {
     expect(site.posted[0]!.installId).toBe(site.posted[1]!.installId)
   })
 
-  it('fails when a file it could not read left nothing to send, and sends the readable ones', async () => {
+  it('names the files it could not read, and still sends the readable ones', async () => {
     const { game, dataPath } = await setup()
-    fs.mkdirSync(contributionsFile(game, 'B'), { recursive: true })
+    const locked = contributionsFile(game, 'B')
+    fs.mkdirSync(locked, { recursive: true })
     const site = fakeSite()
-    expect(await sendPending({ dataPath, games: [game], appVersion: '0.1.0', fetchImpl: site.fetchImpl })).toMatchObject({ outcome: 'failed', count: 0, error: expect.stringContaining('Could not read') })
+    expect(await sendPending({ dataPath, games: [game], appVersion: '0.1.0', fetchImpl: site.fetchImpl })).toEqual({ outcome: 'nothing', unread: [locked] })
     write(contributionsFile(game, 'A'), savedVariables([envelope(1)]))
-    expect(await sendPending({ dataPath, games: [game], appVersion: '0.1.0', fetchImpl: site.fetchImpl })).toEqual({ outcome: 'sent', count: 1 })
+    expect(await sendPending({ dataPath, games: [game], appVersion: '0.1.0', fetchImpl: site.fetchImpl })).toEqual({ outcome: 'sent', count: 1, unread: [locked] })
     expect(site.posted).toHaveLength(1)
   })
 
@@ -214,6 +215,15 @@ describe('ManagerService sharing', () => {
     expect(await svc.sendNow()).toEqual({ outcome: 'nothing' })
     expect(site.posted).toHaveLength(1)
     expect(svc.sharingStatus.lastSent?.count).toBe(1)
+  })
+
+  it('a file it could not read shows no error and does not delay the next send', async () => {
+    const { svc, game } = await service()
+    fs.mkdirSync(contributionsFile(game, 'A'), { recursive: true })
+    svc.setSettings({ sharing: 'on' })
+    expect(await svc.sendNow()).toMatchObject({ outcome: 'nothing', unread: [expect.any(String)] })
+    expect(svc.sharingStatus.error).toBeUndefined()
+    expect(await svc.shareTick(false)).toMatchObject({ outcome: 'nothing' })
   })
 
   it('waits after a failure, and Send Now does not', async () => {

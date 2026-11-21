@@ -1,4 +1,4 @@
-import { useRef, useState, type ReactNode } from 'react'
+import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { formatBytes, formatDate, formatTime } from '../format'
 import { proxyFieldAfter, shouldWriteProxy } from '../proxy-field'
 import { api, errorText } from '../api'
@@ -336,8 +336,12 @@ function SharingSection(): ReactNode {
     setResult(null)
     setResult(await actions.shareNow())
   }
-  // Failures show as sharing.error, which also hides this line when a later send fails.
+  // A later send, or Sharing going off, makes the click's result stale. Failures show as sharing.error.
+  useEffect(() => {
+    if (sharing.sending || !on) setResult(null)
+  }, [sharing.sending, on])
   const resultText = result?.outcome === 'sent' ? S.settings.sendDone(result.count) : result?.outcome === 'nothing' ? S.settings.sendNothing : null
+  const unread = result && 'unread' in result ? (result.unread?.length ?? 0) : 0
   const resetId = async (): Promise<void> => {
     await api().resetShareId()
     setReset(true)
@@ -371,9 +375,14 @@ function SharingSection(): ReactNode {
           {S.settings.resetId}
         </button>
       </div>
-      {resultText && !sharing.sending && !sharing.error && (
+      {resultText && (
         <p className="status status-ok-text setting-result" role="status">
           {resultText}
+        </p>
+      )}
+      {unread > 0 && (
+        <p className="status status-warn setting-result" role="status">
+          {S.settings.sendUnread(unread)}
         </p>
       )}
       {reset && (

@@ -106,7 +106,6 @@ const EN = {
 
   'share.reachSite': 'The site could not be reached ({why}).',
   'share.siteStatus': 'The site answered {status}.',
-  'share.readFile': 'Could not read {file} ({why}).',
 
   'upload.reachStore': 'Could not reach {store}.',
   'upload.storeHttp': '{store} answered HTTP {status}{text}',
@@ -231,7 +230,6 @@ const ZH: Record<MessageKey, string> = {
 
   'share.reachSite': '无法连接网站（{why}）。',
   'share.siteStatus': '网站返回 {status}。',
-  'share.readFile': '无法读取 {file}（{why}）。',
 
   'upload.reachStore': '无法连接 {store}。',
   'upload.storeHttp': '{store} 返回 HTTP {status}{text}',

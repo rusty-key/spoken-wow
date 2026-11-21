@@ -579,7 +579,7 @@ export function createMockApi(): ManagerApi {
       const error = 'The site could not be reached (fetch failed).'
       if (offline) {
         emit({ ...sharingStatus, sending: false, error })
-        return { outcome: 'failed', count: 12, error }
+        return { outcome: 'failed', count: 0, error }
       }
       if (sharingStatus.lastSent) {
         emit({ ...sharingStatus, sending: false })

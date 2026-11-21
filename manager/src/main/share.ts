@@ -138,7 +138,7 @@ export async function sendPending(opts: SendOptions): Promise<SendResult> {
   /** The envelopes not sent yet, by hash. */
   const fresh = new Map<string, string>()
   const seen: ShareLedger['seen'] = {}
-  let unread: string | undefined
+  const unread: string[] = []
   for (const game of opts.games) {
     for (const file of await findContributionFiles(game)) {
       let st: fs.Stats
@@ -155,7 +155,7 @@ export async function sendPending(opts: SendOptions): Promise<SendResult> {
         text = await fs.promises.readFile(file, 'utf8')
       } catch (err) {
         log('Sharing: could not read', file, err)
-        unread = t('share.readFile', { file, why: err instanceof Error ? err.message : String(err) })
+        unread.push(file)
         delete seen[file]
         continue
       }
@@ -174,8 +174,8 @@ export async function sendPending(opts: SendOptions): Promise<SendResult> {
     }
     return result
   }
-  // An unreadable file may hold unsent lines, so it is not "nothing new".
-  if (fresh.size === 0) return done(unread ? { outcome: 'failed', count: 0, error: unread } : { outcome: 'nothing' })
+  const read = unread.length ? { unread } : {}
+  if (fresh.size === 0) return done({ outcome: 'nothing', ...read })
 
   const doFetch = opts.fetchImpl ?? fetch
   const hashes = [...fresh.keys()]
@@ -204,7 +204,7 @@ export async function sendPending(opts: SendOptions): Promise<SendResult> {
     ledger.lastSent = { at, count }
     saveLedger(opts.dataPath, ledger)
   }
-  return done({ outcome: 'sent', count })
+  return done({ outcome: 'sent', count, ...read })
 }
 
 /** A new install id; what was sent stays sent. */

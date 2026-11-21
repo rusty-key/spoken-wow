@@ -191,7 +191,7 @@ export interface Actions {
   scan(): Promise<void>
   /** The saved settings, which the main process may have normalized: a field shows what came back. */
   setSettings(patch: Partial<Settings>): Promise<Settings>
-  /** Sends the collected lines now; null when it was refused, with the reason in `state.sharing.error`. */
+  /** Sends the collected lines now; null when refused (the reason is in `state.sharing.error`) or when Sharing went off meanwhile. */
   shareNow(): Promise<SendResult | null>
   applyContributor(view: ContributorView): void
   refreshContributor(): Promise<void>

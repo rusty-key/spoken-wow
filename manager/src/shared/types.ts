@@ -264,11 +264,14 @@ export const SHARING_CHOICES = ['unset', 'on', 'off'] as const
 
 export type SharingChoice = (typeof SHARING_CHOICES)[number]
 
-/** How one send ended. Failures also land in `SharingStatus.error`. */
+/**
+ * How one send ended. Failures also land in `SharingStatus.error`. `unread` lists files that
+ * could not be read; they are tried again next time and do not make the send a failure.
+ */
 export type SendResult =
-  | { outcome: 'sent'; count: number }
+  | { outcome: 'sent'; count: number; unread?: string[] }
   /** Nothing new: no file changed, or every envelope in them was sent before. */
-  | { outcome: 'nothing' }
+  | { outcome: 'nothing'; unread?: string[] }
   | { outcome: 'rate-limited'; count: number }
   | { outcome: 'failed'; count: number; error: string }
 

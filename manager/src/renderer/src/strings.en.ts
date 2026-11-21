@@ -264,6 +264,7 @@ export const S_EN = {
     sendNow: 'Send Now',
     sendDone: (count: number) => `Sent ${count} ${pluralForm(count, { one: 'line', other: 'lines' })}.`,
     sendNothing: 'Nothing new to send. Spoken saves new lines when you log out or type /reload.',
+    sendUnread: (count: number) => `Could not read ${count} ${pluralForm(count, { one: 'file', other: 'files' })} of collected lines. The next send tries again.`,
     resetId: 'Reset Id',
     resetDone: 'This manager has a new id. Lines already sent are not sent again.',
     contributor: 'Contributor',
