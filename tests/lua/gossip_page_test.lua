@@ -63,6 +63,8 @@ for _, child in ipairs(content.children) do
     if child.dropdownInit and child.layoutLabel and child.layoutLabel.text == L.OPT_PANEL_GREETINGS then greetings = child end
 end
 Expect("the rows under it are live", greetings.dropdownDisabled or false, false)
+local originalThrall = boxes[L.OPT_OG_THRALL]
+Expect("Original Thrall Speech is shown to an English client", originalThrall and originalThrall:IsShown(), true)
 switch:SetChecked(false)
 switch:GetScript("OnClick")(switch)
 Expect("clicking it turns the part off for Spoken", Spoken:IsPartOn("gossip"), false)
@@ -73,6 +75,13 @@ Expect("...but not the switch itself", switch.layoutReason, nil)
 switch:SetChecked(true)
 switch:GetScript("OnClick")(switch)
 Expect("turning it on again makes the part read", Spoken:IsPartOn("gossip"), true)
+
+stub.SetLocale("deDE")
+Panel.panel.layout:Refresh()
+Expect("Original Thrall Speech is hidden from a non-English client", originalThrall:IsShown(), false)
+stub.SetLocale("enUS")
+Panel.panel.layout:Refresh()
+Expect("Original Thrall Speech returns for an English client", originalThrall:IsShown(), true)
 
 ---------------------------------------------------------------- shared rows on the Quests page
 -- Read Automatically covers the Gossip window too, so the Quests page keeps it live while Gossip

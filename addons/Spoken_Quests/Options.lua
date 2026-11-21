@@ -99,6 +99,9 @@ local GeneralTab =
                     order = 8,
                     width = 2,
                     name = L.OPT_OG_THRALL,
+                    -- The original VoiceOver recording only has a matching English-pack
+                    -- variant, so it has no use on another client language.
+                    hidden = function() return Language:GetClientLanguage() ~= "enUS" end,
                     get = function(info) return Addon.db.profile.Audio.OGThrall end,
                     set = function(info, value)
                         Addon.db.profile.Audio.OGThrall = value
