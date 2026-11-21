@@ -74,7 +74,6 @@ async function openReports(lang: Lang): Promise<Map<string, number>> {
  *   override no live take speaks yet (publishedOverrides).
  * @param levels whether a level bound is in force. Reads the whole table, so only those searches pay.
  * @param index the file index of a corpus the caller already read, which saves its stamp check.
- * @param zones whether a zone filter is in force, which reads the vouched sightings.
  */
 export async function searchContext(
   outdated = false,
@@ -83,7 +82,6 @@ export async function searchContext(
   seesMadeBy = false,
   levels = false,
   index?: Map<string, CorpusLine>,
-  zones = false,
 ): Promise<{ voiced: Set<string>; context: SearchContext }> {
   const live = await liveTakes("quests", lang);
   const voiced = new Set(live.map((row) => row.file));
@@ -99,7 +97,8 @@ export async function searchContext(
       openReports(lang),
       dirty ? dirtyQuestFiles(undefined, lang, undefined, index) : null,
       levels ? questLevels() : null,
-      zones ? confirmedSightings() : null,
+      // Kept a minute, and already read for the facets of this same request.
+      confirmedSightings(),
     ]);
     // From the live takes and overrides just read, rather than a second query for both.
     const stale = outdated ? await staleAmong(live, lang, overrides, index) : null;
@@ -110,7 +109,7 @@ export async function searchContext(
         ignores,
         reports,
         levels: questLevelsByQuest ?? undefined,
-        sightings: sightings ?? undefined,
+        sightings,
         takes,
         generatedAt,
         madeBy,
@@ -130,19 +129,17 @@ export async function searchContext(
  * its private rows, so a voiced file reads as current.
  *
  * @param levels whether a level bound is in force; the levels are shared, not the team's.
- * @param zones whether a zone filter is in force; sightings are shared too.
  */
 export async function publicSearchContext(
   lang: Lang,
   team: TeamId,
   levels = false,
-  zones = false,
 ): Promise<{ voiced: Set<string>; context: SearchContext }> {
   const [live, overrides, questLevelsByQuest, sightings] = await Promise.all([
     teamLiveTakes(team, "quests", lang),
     teamLiveOverrides(team, "quests", lang),
     levels ? questLevels() : null,
-    zones ? confirmedSightings().catch(() => null) : null,
+    confirmedSightings(),
   ]);
   return {
     voiced: new Set(live.map((row) => row.file)),
@@ -160,7 +157,7 @@ export async function publicSearchContext(
       stale: new Set(),
       dirty: new Set(),
       levels: questLevelsByQuest ?? undefined,
-      sightings: sightings ?? undefined,
+      sightings,
     },
   };
 }

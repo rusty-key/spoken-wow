@@ -524,31 +524,17 @@ end
 local keptWith = {}
 
 --- The zone map (uiMapID) the player stands in: a town's or a district's map is walked up to its
---- zone's. A dungeon's map walks up to whatever the client puts it under, and nil where that is no
---- zone, as a continent is.
+--- zone's, and nil where none is above it, as in a dungeon the client files under no zone.
 local ZONE_MAP = (Enum and Enum.UIMapType and Enum.UIMapType.Zone) or 3
 local function ZoneHere()
-    if not (C_Map and C_Map.GetBestMapForUnit and C_Map.GetMapInfo) then
-        return nil
-    end
-    local id = NotSecret(C_Map.GetBestMapForUnit("player"))
-    for _ = 1, 6 do
-        local info = id and C_Map.GetMapInfo(id)
-        if not info then
-            return nil
-        end
-        if info.mapType == ZONE_MAP then
-            return id
-        end
-        id = info.parentMapID
-    end
+    return SpokenCompendium and SpokenCompendium.PlayerZone(function(map)
+        local info = C_Map.GetMapInfo and C_Map.GetMapInfo(map)
+        return info ~= nil and info.mapType == ZONE_MAP
+    end)
 end
 
 -- More zones than any NPC stands in: past this, an envelope's zones are a hand-built list.
 local MAX_ZONES = 8
--- npc -> the zone last kept for it this session, so a window opened again rewrites nothing while
--- its envelope is still there: Clear Collected Lines empties the store, not this.
-local seenIn = {}
 
 --- Keep the zone the player met the NPC on screen in, beside the zones met before: the site
 --- learns where a speaker stands from the game itself, gossip and quest givers alike, whether
@@ -566,38 +552,21 @@ local function SeeSpeaker()
         return
     end
     local npc = format("%s:%d", kind, id)
-    if seenIn[npc] == zone and Spoken.Gather:GetSeen(npc) then
-        return
-    end
-    local zones, listed = {}, {}
-    local kept, fields = Spoken.Gather:GetSeen(npc), nil
-    if kept then
-        fields = select(2, Spoken.Contribute:Parse(kept))
-    end
-    for _, field in ipairs(fields or {}) do
-        if field[1] == "zones" then
-            for z in string.gmatch(field[2], "%d+") do
-                local number = tonumber(z)
-                if not listed[number] and #zones < MAX_ZONES then
-                    listed[number] = true
-                    zones[#zones + 1] = number
-                end
-            end
+    local zones = {}
+    for _, known in ipairs(select(2, Spoken.Gather:GetSeen(npc)) or {}) do
+        if known == zone then
+            return
         end
+        zones[#zones + 1] = known
     end
-    if not listed[zone] then
-        if #zones >= MAX_ZONES then
-            table.remove(zones, 1)
-        end
-        zones[#zones + 1] = zone
+    if #zones >= MAX_ZONES then
+        table.remove(zones, 1)
     end
+    zones[#zones + 1] = zone
     local base = BaseFields()
-    local envelope = Spoken.Contribute:Envelope("seen", {
+    Spoken.Gather:See(npc, zones, Spoken.Contribute:Envelope("seen", {
         base[1], base[2], { "npc", npc }, { "zones", table.concat(zones, ",") },
-    })
-    if Spoken.Gather:See(npc, envelope) then
-        seenIn[npc] = zone
-    end
+    }))
 end
 
 --- Keep the line on screen for later. Only reached once a caller has established it is

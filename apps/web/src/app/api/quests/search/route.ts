@@ -15,7 +15,7 @@ import { publicSearchContext, searchContext } from "@/lib/quests/context";
 import { dirtyQuestFiles } from "@/lib/quests/dirtiness";
 import { staleFiles } from "@/lib/quests/staleness";
 import { recordingsFor } from "@/lib/recordings/store";
-import { filtersFromParams, needsDirty, needsLevels, needsZones, withoutMadeBy } from "@/lib/search-request";
+import { filtersFromParams, needsDirty, needsLevels, withoutMadeBy } from "@/lib/search-request";
 import { PAGE_SIZE } from "@/lib/page-size";
 import { search } from "@/lib/search";
 import { asTeam } from "@/lib/teams/acting";
@@ -72,10 +72,10 @@ export async function GET(request: NextRequest) {
   if (!recordings) filters = { ...filters, recorded: undefined };
   const index = fileIndexOf(lines, lang);
   const { voiced, context: base } = other
-    ? await publicSearchContext(lang, other, needsLevels(filters), needsZones(filters))
+    ? await publicSearchContext(lang, other, needsLevels(filters))
     : // Staleness for the whole corpus on every search, not only under an outdated filter: the
       // Outdated button counts it. One query and a hash per take.
-      await searchContext(true, needsDirty(filters), lang, seesMadeBy, needsLevels(filters), index, needsZones(filters));
+      await searchContext(true, needsDirty(filters), lang, seesMadeBy, needsLevels(filters), index);
   const context = { ...base, recordings, broadcast: broadcastStatus };
 
   // "Clear all" needs every dirty file the filter matches, not a page of rows. The same

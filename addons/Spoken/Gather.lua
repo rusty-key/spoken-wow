@@ -18,7 +18,9 @@ setfenv(1, SpokenEnv)
 -- own checksum: an envelope captured again a second later can differ only in the NPC model a
 -- slow cache has since answered, and that should replace the first rather than sit beside it.
 
-Gather = { CAP = 2000, SEEN_CAP = 2000 } -- a few kilobytes each, so a full store stays a file the site will take
+-- A line is a few kilobytes and a sighting about a hundred bytes, so a full store stays a file the
+-- site will take.
+Gather = { CAP = 2000, SEEN_CAP = 2000 }
 Spoken.Gather = Gather
 
 -- Read through _G on every call rather than cached: the client assigns the table when the
@@ -56,38 +58,43 @@ function Gather:SetIntroduced()
     Store().Introduced = true
 end
 
-local function IndexOf(key, lines)
-    lines = lines or Store().Lines
-    for i = 1, #lines do
-        if lines[i].key == key then
+local function IndexOf(key, list)
+    list = list or Store().Lines
+    for i = 1, #list do
+        if list[i].key == key then
             return i
         end
     end
     return nil
 end
 
+-- Keep `entry` in `list` under its key, replacing what that key held, oldest out past `cap`. The
+-- player has almost certainly uploaded those already, or was never going to, and a file that
+-- grows forever is one the site eventually refuses whole.
+local function Keep(list, cap, entry)
+    local at = IndexOf(entry.key, list)
+    if at then
+        list[at] = entry
+        return
+    end
+    list[#list + 1] = entry
+    while #list > cap do
+        table.remove(list, 1)
+    end
+end
+
+local function Valid(key, envelope)
+    return type(key) == "string" and key ~= "" and type(envelope) == "string" and envelope ~= ""
+end
+
 --- Keep one envelope under `key`, replacing whatever that key held. Does nothing unless the
 --- player opted in: a feature addon may call this on every panel without asking first.
 ---@return boolean stored
 function Gather:Add(key, envelope)
-    if not self:IsEnabled() then
+    if not (self:IsEnabled() and Valid(key, envelope)) then
         return false
     end
-    if type(key) ~= "string" or key == "" or type(envelope) ~= "string" or envelope == "" then
-        return false
-    end
-    local lines = Store().Lines
-    local at = IndexOf(key)
-    if at then
-        lines[at].envelope = envelope
-        return true
-    end
-    lines[#lines + 1] = { key = key, envelope = envelope }
-    -- Oldest out first. The player has almost certainly uploaded those already, or was never
-    -- going to, and a file that grows forever is one the site eventually refuses whole.
-    while #lines > self.CAP do
-        table.remove(lines, 1)
-    end
+    Keep(Store().Lines, self.CAP, { key = key, envelope = envelope })
     return true
 end
 
@@ -127,36 +134,28 @@ function Gather:SetTidied()
     Store().Tidied = true
 end
 
---- Keep one NPC's sighting envelope under `npc` ("creature:3429"), replacing the one it held:
---- which zones the player met it in, for the site's zone filter. Beside the lines rather than
---- among them, so sightings never push a line out of CAP. The upload finds every envelope in
---- the file wherever it sits. Does nothing unless the player opted in.
+--- Keep one NPC's sighting envelope under `npc` ("creature:3429"), with the zones it names, so
+--- the next sighting adds to them without reading the envelope back. Beside the lines rather than
+--- among them, so sightings never push a line out of CAP; the upload finds every envelope in the
+--- file wherever it sits. Does nothing unless the player opted in.
 ---@return boolean stored
-function Gather:See(npc, envelope)
-    if not self:IsEnabled() then
+function Gather:See(npc, zones, envelope)
+    if not (self:IsEnabled() and Valid(npc, envelope) and type(zones) == "table") then
         return false
     end
-    if type(npc) ~= "string" or npc == "" or type(envelope) ~= "string" or envelope == "" then
-        return false
-    end
-    local seen = Store().Seen
-    local at = IndexOf(npc, seen)
-    if at then
-        seen[at].envelope = envelope
-        return true
-    end
-    seen[#seen + 1] = { key = npc, envelope = envelope }
-    while #seen > self.SEEN_CAP do
-        table.remove(seen, 1)
-    end
+    Keep(Store().Seen, self.SEEN_CAP, { key = npc, zones = zones, envelope = envelope })
     return true
 end
 
----@return string|nil
+--- The envelope kept for `npc`, and the zones it names.
+---@return string|nil envelope
+---@return table|nil zones
 function Gather:GetSeen(npc)
     local seen = Store().Seen
     local at = IndexOf(npc, seen)
-    return at and seen[at].envelope or nil
+    if at then
+        return seen[at].envelope, seen[at].zones
+    end
 end
 
 function Gather:SeenCount()

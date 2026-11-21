@@ -83,10 +83,6 @@ export function needsStale(filters: LineFilters): boolean {
   return filters.state === "stale" || filters.state === "current";
 }
 
-export function needsZones(filters: LineFilters): boolean {
-  return filters.zone !== undefined;
-}
-
 export function needsLevels(filters: LineFilters): boolean {
   return filters.minLevel !== undefined || filters.maxLevel !== undefined;
 }

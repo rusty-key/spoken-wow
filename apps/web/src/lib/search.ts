@@ -13,7 +13,6 @@
  */
 import { DEFAULT_CLIENT_FILTER, type ClientFilter } from "./contributions/client";
 import { lineMatchesClient } from "./quests/line-client";
-import { zonesOf } from "./quests/zones";
 import type { Corpus, CorpusLine } from "./corpus";
 import { npcKey } from "./corpus";
 import { baseLineId } from "./contributions/naming";
@@ -492,7 +491,11 @@ export function matchingLines(
   if (source?.length) lines = lines.filter((line) => source.includes(line.source));
   if (client !== "all" && !lineId) lines = lines.filter((line) => lineMatchesClient(line, client));
   if (npcType) lines = lines.filter((line) => line.npcType === npcType);
-  if (zone !== undefined) lines = lines.filter((line) => zonesOf(line, sightings).includes(zone));
+  if (zone !== undefined) {
+    // The speakers vouched for in the zone, gathered once rather than looked up and scanned per line.
+    const inZone = new Set([...(sightings ?? [])].flatMap(([npc, zones]) => (zones.includes(zone) ? [npc] : [])));
+    lines = lines.filter((line) => inZone.has(npcKey(line)));
+  }
   // The *effective* text, matching the chip on the row and the text regeneration will send.
   // Reading line.text instead hid every line whose direction was restored by an override -
   // which is 314 of them, and the ones most worth finding.

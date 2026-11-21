@@ -14,8 +14,7 @@
  * their lists live next to the type in lib/search.ts.
  */
 import type { Lang } from "./lang";
-import { offeredZones } from "./quests/sightings";
-import type { QuestZone } from "./quests/zones";
+import { offeredZones, type QuestZone } from "./quests/sightings";
 import type { Roster } from "./voices/roster";
 import { loadRoster } from "./voices/roster-store";
 import { GENDERS } from "./voices/voices";

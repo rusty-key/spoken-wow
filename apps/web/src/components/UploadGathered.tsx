@@ -12,7 +12,9 @@ import { useRef, useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import { envelopesFromSavedVariables } from "@/lib/contributions/saved-variables";
-import { isSightingEnvelope, sightingFrom } from "@/lib/contributions/sighting";
+import { parseGatheredEnvelope, type Envelope } from "@/lib/contributions/envelope";
+import { sightingFrom } from "@/lib/contributions/sighting";
+import { plural } from "@/lib/plural";
 import { sendFailureMessage } from "@/lib/contributions/send-failure";
 import { sendInChunks } from "@/lib/contributions/upload";
 
@@ -33,8 +35,9 @@ function summarise(candidates: readonly string[]): Loaded {
   let unreadable = 0;
   for (const envelope of candidates) {
     // Where the player met an NPC: no line to preview, only whether it reads.
-    if (isSightingEnvelope(envelope)) {
-      if (sightingFrom(envelope).ok) {
+    const gathered = parseGatheredEnvelope(envelope);
+    if (gathered.ok && gathered.value.source === "seen") {
+      if (sightingFrom(gathered.value as Envelope<"seen">)) {
         envelopes.push(envelope);
         counts.seen = (counts.seen ?? 0) + 1;
       } else {
@@ -55,13 +58,10 @@ function summarise(candidates: readonly string[]): Loaded {
   return { envelopes, counts, unreadable, titles: [...titles] };
 }
 
-const NOTHING_CARRIED = { accepted: 0, refused: 0 };
+const NOTHING_CARRIED = { accepted: 0, refused: 0, seen: 0 };
 
 function gotten(lines: number, seen: number): string {
-  const parts = [
-    lines || !seen ? `${lines} ${lines === 1 ? "line" : "lines"}` : "",
-    seen ? `where you met ${seen} ${seen === 1 ? "character" : "characters"}` : "",
-  ];
+  const parts = [lines || !seen ? plural(lines, "line") : "", seen ? `where you met ${plural(seen, "character")}` : ""];
   return parts.filter(Boolean).join(" and ");
 }
 
@@ -123,8 +123,7 @@ export default function UploadGathered({ signedInAs }: { signedInAs: string | nu
     setBusy(false);
 
     if (outcome.failedWith === undefined) {
-      // The route counts sightings among what it accepted; they are no lines.
-      setResult({ accepted: outcome.accepted, refused: outcome.refused, seen: loaded.counts.seen ?? 0 });
+      setResult({ accepted: outcome.accepted, refused: outcome.refused, seen: outcome.seen });
       setCarried(NOTHING_CARRIED);
       setLoaded(null);
       return;
@@ -137,7 +136,7 @@ export default function UploadGathered({ signedInAs }: { signedInAs: string | nu
     // Only what did not arrive stays, so nobody is told to clear lines the site never got.
     const rest = loaded.envelopes.slice(outcome.sent);
     setLoaded(summarise(rest));
-    setCarried({ accepted: outcome.accepted, refused: outcome.refused });
+    setCarried({ accepted: outcome.accepted, refused: outcome.refused, seen: outcome.seen });
     const unused = outcome.refused ? ` ${outcome.refused} could not be used.` : "";
     setError(`${outcome.accepted} of them arrived.${unused} ${message} The other ${rest.length} are still here to send.`);
   }
@@ -145,7 +144,7 @@ export default function UploadGathered({ signedInAs }: { signedInAs: string | nu
   if (result) {
     return (
       <p role="status" className="rounded border p-4 text-sm">
-        Got {gotten(Math.max(0, result.accepted - result.seen), result.seen)} — thank you.
+        Got {gotten(result.accepted, result.seen)} — thank you.
         {result.refused ? ` ${result.refused} could not be used.` : ""} You can clear the collected lines
         in the game now: Spoken's settings, Clear Collected Lines.
       </p>

@@ -38,13 +38,15 @@ Expect("...holding the newer capture", _G.SpokenContributionsDB.Lines[1].envelop
 Expect("an empty key is refused", Gather:Add("", "x"), false)
 Expect("an empty envelope is refused", Gather:Add("k", ""), false)
 
-Expect("a sighting is kept beside the lines", Gather:See("creature:1", "!SPOKEN1 seen\n"), true)
+Expect("a sighting is kept beside the lines", Gather:See("creature:1", { 1 }, "!SPOKEN1 seen\n"), true)
 Expect("...not among them", Gather:Count(), 1)
-Gather:See("creature:1", "!SPOKEN1 seen\nzones=1\n")
+Gather:See("creature:1", { 1, 2 }, "!SPOKEN1 seen\nzones=1,2\n")
 Expect("...once per NPC, holding the newer one", Gather:SeenCount(), 1)
-Expect("...read back by its NPC", Gather:GetSeen("creature:1"), "!SPOKEN1 seen\nzones=1\n")
+local kept, zones = Gather:GetSeen("creature:1")
+Expect("...read back by its NPC", kept, "!SPOKEN1 seen\nzones=1,2\n")
+Expect("...with the zones it names", table.concat(zones, ","), "1,2")
 Gather:SetEnabled(false)
-Expect("...and opting out keeps none", Gather:See("creature:2", "!SPOKEN1 seen\n"), false)
+Expect("...and opting out keeps none", Gather:See("creature:2", { 1 }, "!SPOKEN1 seen\n"), false)
 Gather:SetEnabled(true)
 
 for i = 1, Gather.CAP + 5 do

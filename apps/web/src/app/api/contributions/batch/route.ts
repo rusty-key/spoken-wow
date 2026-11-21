@@ -25,7 +25,7 @@ import { after } from "next/server";
 
 import { auth } from "@/lib/auth";
 import { clientIp } from "@/lib/reports/client-ip";
-import { parseEnvelope } from "@/lib/contributions/envelope";
+import { parseGatheredEnvelope, type Envelope } from "@/lib/contributions/envelope";
 import {
   CONTRIBUTION_WINDOW_MS,
   CONTRIBUTIONS_PER_HOUR,
@@ -49,7 +49,7 @@ import {
   recordContributionHit,
 } from "@/lib/contributions/store";
 import { keepClassWords } from "@/lib/contributions/class-words";
-import { isSightingEnvelope, sightingFrom, type Sighting } from "@/lib/contributions/sighting";
+import { sightingFrom, type Sighting } from "@/lib/contributions/sighting";
 import { submissionFrom } from "@/lib/contributions/submission";
 import { recordSightings, uploaderOf } from "@/lib/quests/sightings";
 import type { Submission } from "@/lib/contributions/contributions";
@@ -61,7 +61,7 @@ export async function POST(request: Request) {
 
   // 200 and not 400, as on the single route: a bot that believes it succeeded stops adapting.
   if (typeof body.website === "string" && body.website.trim()) {
-    return Response.json({ ok: true, accepted: 0, known: 0, counted: 0, refused: {} });
+    return Response.json({ ok: true, accepted: 0, known: 0, counted: 0, seen: 0, refused: {} });
   }
 
   const envelopes = body.envelopes;
@@ -104,24 +104,24 @@ export async function POST(request: Request) {
       refuse("malformed");
       continue;
     }
-    if (isSightingEnvelope(raw)) {
-      const sighting = sightingFrom(raw);
-      if (sighting.ok) sightings.push(sighting.value);
-      else refuse(sighting.error);
-      continue;
-    }
-    // parseEnvelope refuses an oversized one itself; the single route measures first only
-    // because it answers that case with its own status code.
-    const parsed = parseEnvelope(raw);
+    // Parsing refuses an oversized one itself; the single route measures first only because it
+    // answers that case with its own status code.
+    const parsed = parseGatheredEnvelope(raw);
     if (!parsed.ok) {
       refuse(parsed.error);
+      continue;
+    }
+    if (parsed.value.source === "seen") {
+      const sighting = sightingFrom(parsed.value as Envelope<"seen">);
+      if (sighting) sightings.push(sighting);
+      else refuse("incomplete");
       continue;
     }
     if (parsed.value.source === "places") {
       refuse("describe");
       continue;
     }
-    const submission = submissionFrom(parsed.value, null);
+    const submission = submissionFrom(parsed.value as Envelope, null);
     if (!submission) {
       refuse("incomplete");
       continue;
@@ -160,7 +160,7 @@ export async function POST(request: Request) {
 
   return Response.json({
     ok: true,
-    accepted: submissions.length + sightings.length,
+    accepted: submissions.length,
     known,
     seen: sightings.length,
     counted: hits.length,

@@ -6,8 +6,8 @@ import { readFileSync } from "node:fs";
 
 import { describe, expect, it } from "vitest";
 
-import { checksum, parseEnvelope } from "./envelope";
-import { isSightingEnvelope, sightingFrom } from "./sighting";
+import { checksum, parseEnvelope, parseGatheredEnvelope, type Envelope } from "./envelope";
+import { sightingFrom } from "./sighting";
 
 const captured = readFileSync(
   new URL("../../../../../tests/fixtures/contributions/captured-seen-npc.txt", import.meta.url),
@@ -19,20 +19,27 @@ function seen(fields: string): string {
   return `${body}sum=${checksum(body)}\n`;
 }
 
+function read(raw: string) {
+  const parsed = parseGatheredEnvelope(raw);
+  if (!parsed.ok) throw new Error(parsed.error);
+  expect(parsed.value.source).toBe("seen");
+  return sightingFrom(parsed.value as Envelope<"seen">);
+}
+
 describe("a sighting", () => {
   it("reads the envelope the addon writes", () => {
-    expect(isSightingEnvelope(captured)).toBe(true);
-    expect(sightingFrom(captured)).toEqual({ ok: true, value: { npcType: "creature", npcId: 12345, zones: [1411] } });
+    expect(read(captured)).toEqual({ npcType: "creature", npcId: 12345, zones: [1411] });
   });
 
-  it("is no contribution", () => {
+  it("is gathered, but no contribution", () => {
     expect(parseEnvelope(captured)).toEqual({ ok: false, error: "source" });
   });
 
   it("keeps each zone once, gameobjects too", () => {
-    expect(sightingFrom(seen("npc=gameobject:7\nzones=1413,1411,1413\n"))).toEqual({
-      ok: true,
-      value: { npcType: "gameobject", npcId: 7, zones: [1413, 1411] },
+    expect(read(seen("npc=gameobject:7\nzones=1413,1411,1413\n"))).toEqual({
+      npcType: "gameobject",
+      npcId: 7,
+      zones: [1413, 1411],
     });
   });
 
@@ -47,16 +54,11 @@ describe("a sighting", () => {
       "npc=creature:2147483648\nzones=1411\n",
       "npc=creature:5\nzones=2147483648\n",
     ]) {
-      expect(sightingFrom(seen(fields)).ok, fields).toBe(false);
+      expect(read(seen(fields)), fields).toBeNull();
     }
   });
 
   it("refuses one whose checksum does not match", () => {
-    expect(sightingFrom(captured.replace("zones=1411", "zones=1413"))).toEqual({ ok: false, error: "checksum" });
-  });
-
-  it("tells a line from a sighting by the header alone", () => {
-    expect(isSightingEnvelope(seen("npc=creature:5\nzones=1411\n"))).toBe(true);
-    expect(isSightingEnvelope("!SPOKEN1 quests\nnpc=5\n")).toBe(false);
+    expect(parseGatheredEnvelope(captured.replace("zones=1411", "zones=1413"))).toEqual({ ok: false, error: "checksum" });
   });
 });

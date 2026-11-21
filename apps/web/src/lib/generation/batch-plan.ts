@@ -20,7 +20,7 @@ import { recordingsFor } from "@/lib/recordings/store";
 import { batchPlan, dayStart, matchingLines, type LineFilters } from "@/lib/search";
 import { AUDIO_STATES } from "@/lib/audio-state";
 import { CLIENT_FILTERS } from "@/lib/contributions/client";
-import { filtersFromParams, needsDirty, needsLevels, needsStale, needsZones } from "@/lib/search-request";
+import { filtersFromParams, needsDirty, needsLevels, needsStale } from "@/lib/search-request";
 import type { Source } from "@/lib/sections";
 import { deletingResponse } from "@/lib/teams/deleting";
 import { pinnedVoices } from "@/lib/voices/references";
@@ -176,7 +176,7 @@ export async function planQuestsByFilters(
     corpus(lang),
     // Behind `regenerate`, which is working in the language, so the model and author
     // filters narrow the batch exactly as they narrowed the page it was quoted from.
-    searchContext(needsStale(parsed), needsDirty(parsed), lang, true, needsLevels(parsed), undefined, needsZones(parsed)),
+    searchContext(needsStale(parsed), needsDirty(parsed), lang, true, needsLevels(parsed)),
     // The recorded filter, as /api/quests/search/lines narrowed the quote.
     parsed.recorded ? recordingsFor("quests", lang) : undefined,
     parsed.broadcast ? broadcastStatuses() : undefined,

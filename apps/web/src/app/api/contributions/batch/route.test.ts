@@ -257,7 +257,7 @@ describe("where the player met each NPC", () => {
 
   it("keeps a sighting beside the lines, under the uploader and never as a contribution", async () => {
     const response = await POST(post({ envelopes: [seen("1413,1411"), readables] }));
-    expect(await response.json()).toMatchObject({ accepted: 2, seen: 1, refused: {} });
+    expect(await response.json()).toMatchObject({ accepted: 1, seen: 1, refused: {} });
     const rows = await sightings();
     expect(rows.map((row) => row.uiMapID)).toEqual([1411, 1413]);
     // No account and no install: this upload is its own voucher, and no address is kept.
