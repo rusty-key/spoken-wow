@@ -6,7 +6,6 @@ import type { SiteText } from "@/lib/site-text/en";
 
 const TextContext = createContext<SiteText | null>(null);
 
-/** The front page's words in the page's language, for its client components. */
 export function SiteTextProvider({ text, children }: { text: SiteText; children: React.ReactNode }) {
   return <TextContext.Provider value={text}>{children}</TextContext.Provider>;
 }

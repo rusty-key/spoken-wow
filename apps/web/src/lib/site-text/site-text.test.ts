@@ -3,12 +3,11 @@ import { readdirSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 
 import { GALLERY } from "@/components/landing/shots";
-import { LANG_SHAPE } from "@/lib/lang";
+import { BUILTIN, LANG_SHAPE } from "@/lib/lang";
 
 import { EN } from "./en";
 import { fill } from "./format";
 import { merge } from "./merge";
-import { FRONT_PAGE_LANGS } from "./names";
 
 /** Every string in a dictionary with the path that reaches it, arrays by position. */
 function leaves(value: unknown, path = ""): [string, string][] {
@@ -49,8 +48,8 @@ describe("the front page's dictionaries", () => {
     expect(GALLERY).toHaveLength(EN.gallery.items.length);
   });
 
-  it("lists as front page languages English and the ones with a dictionary, so the select offers no English page under another name", () => {
-    expect([...FRONT_PAGE_LANGS].sort()).toEqual(["enUS", ...written].sort());
+  it("has a dictionary for every language a game client runs in, and for no team's", () => {
+    expect(["enUS", ...written].sort()).toEqual(BUILTIN.map((language) => language.code).sort());
   });
 
   for (const code of written) {

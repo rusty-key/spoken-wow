@@ -98,7 +98,6 @@ const zhTW: Dictionary = {
         "在「顯示首領故事」中選擇選取目標時或擊殺時",
       ],
       browse: "瀏覽首領",
-      position: "首領範例的播放位置",
     },
     examplesLabel: "{part}範例",
     noVoice: "首領故事由 Spoken Audio: Bosses 語音包配音。沒有它時，故事只會以文字形式顯示在旁白中。",
@@ -135,9 +134,7 @@ const zhTW: Dictionary = {
     title: "安裝 Spoken",
     intro: "任選一種。每種都會安裝 Spoken 和你所用語言的語音包。安裝後請重新啟動遊戲。",
     waysLabel: "安裝 Spoken 的方式",
-    tabManager: "Spoken Manager",
-    tabCurseforge: "CurseForge",
-    tabManual: "手動",
+    tabs: { manager: "Spoken Manager", curseforge: "CurseForge", manual: "手動" },
     recommended: "推薦",
     managerText:
       "下載 Manager，開啟後按「Install」。它會找到你的遊戲資料夾，安裝 Spoken 和你所選語言的語音包，並在有新版本時更新。更新只下載有變動的檔案，所以新增一段錄音不用再下載整個語音包。",
@@ -167,7 +164,6 @@ const zhTW: Dictionary = {
     addonNote: "插件本體，必須安裝。",
     packName: "{name}語音",
     githubAll: "GitHub：全部",
-    curseforgePart: "CurseForge：{part}",
     sections: {
       quests: { name: "任務和閒聊", note: "任務對話和 NPC 說的話" },
       places: { name: "地點", note: "每個地區的故事" },

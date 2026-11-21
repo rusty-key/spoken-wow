@@ -104,7 +104,6 @@ const fr: Dictionary = {
         "Choisissez cible ou mort sous «\u00a0Afficher le récit d'un boss\u00a0»",
       ],
       browse: "Parcourir les boss",
-      position: "Position dans l'exemple des boss",
     },
     examplesLabel: "Exemples\u00a0: {part}",
     noVoice:
@@ -142,9 +141,7 @@ const fr: Dictionary = {
     title: "Installer Spoken",
     intro: "Choisissez une méthode. Chacune installe Spoken et les packs de voix de votre langue. Redémarrez ensuite le jeu.",
     waysLabel: "Façons d'installer Spoken",
-    tabManager: "Spoken Manager",
-    tabCurseforge: "CurseForge",
-    tabManual: "À la main",
+    tabs: { manager: "Spoken Manager", curseforge: "CurseForge", manual: "À la main" },
     recommended: "Recommandé",
     managerText:
       "Téléchargez le Manager, ouvrez-le et appuyez sur Install. Il trouve le dossier de votre jeu, installe Spoken et les packs de voix des langues que vous choisissez, et les met à jour à chaque nouvelle version. Une mise à jour ne télécharge que les fichiers modifiés\u00a0: un nouvel enregistrement n'oblige pas à retélécharger tout le pack.",
@@ -178,7 +175,6 @@ const fr: Dictionary = {
     addonNote: "L'addon. Obligatoire.",
     packName: "Voix\u00a0: {name}",
     githubAll: "GitHub\u00a0: tout",
-    curseforgePart: "CurseForge\u00a0: {part}",
     sections: {
       quests: { name: "Quêtes et discussions", note: "Dialogues de quêtes et ce que disent les PNJ" },
       places: { name: "Lieux", note: "Le récit de chaque zone" },

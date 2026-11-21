@@ -45,10 +45,10 @@ export default function Showcase() {
       </ul>
       <div className="bn-stage-part">
         <div className="bn-stage-art">
-          {voices ? (
+          {voices && "position" in text ? (
             <VoicePlayer key={part.id} voices={voices} part={text.title} position={text.position} />
           ) : (
-            <VoicePlaceholder icon={part.icon} name={text.title} text={t.noVoice} position={text.position} />
+            <VoicePlaceholder icon={part.icon} name={text.title} text={t.noVoice} />
           )}
         </div>
         <div className="bn-stage-body" aria-live="polite">

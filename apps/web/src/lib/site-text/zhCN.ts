@@ -98,7 +98,6 @@ const zhCN: Dictionary = {
         "在“显示首领剧情”中选择选中目标时或击杀时",
       ],
       browse: "浏览首领",
-      position: "首领示例的播放位置",
     },
     examplesLabel: "{part}示例",
     noVoice: "首领剧情由 Spoken Audio: Bosses 语音包配音。没有它时，剧情只会以文字形式显示在旁白中。",
@@ -135,9 +134,7 @@ const zhCN: Dictionary = {
     title: "安装 Spoken",
     intro: "任选一种。每种都会安装 Spoken 和你所用语言的语音包。安装后请重启游戏。",
     waysLabel: "安装 Spoken 的方式",
-    tabManager: "Spoken Manager",
-    tabCurseforge: "CurseForge",
-    tabManual: "手动",
+    tabs: { manager: "Spoken Manager", curseforge: "CurseForge", manual: "手动" },
     recommended: "推荐",
     managerText:
       "下载 Manager，打开后点击“Install”。它会找到你的游戏文件夹，安装 Spoken 和你所选语言的语音包，并在有新版本时更新。更新只下载有变化的文件，所以新增一段录音不用再下载整个语音包。",
@@ -167,7 +164,6 @@ const zhCN: Dictionary = {
     addonNote: "插件本体，必须安装。",
     packName: "{name}语音",
     githubAll: "GitHub：全部",
-    curseforgePart: "CurseForge：{part}",
     sections: {
       quests: { name: "任务和闲聊", note: "任务对话和 NPC 说的话" },
       places: { name: "地点", note: "每个地区的剧情" },

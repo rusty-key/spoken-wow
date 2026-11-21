@@ -72,8 +72,8 @@ describe("packDownloads", () => {
       "GitHub: all",
     ]);
     expect(packDownloads(english, partOf(english, "SpokenQuestsAudioHorde"))).toEqual([
-      { kind: "curseforge", label: "CurseForge", href: "https://www.curseforge.com/wow/addons/spoken-audio-quests-horde" },
-      { kind: "github", label: "GitHub: all", href: "https://github.com/rusty-key/spoken-wow/releases?q=quests-audio", all: true },
+      { label: "CurseForge", href: "https://www.curseforge.com/wow/addons/spoken-audio-quests-horde" },
+      { label: "GitHub: all", href: "https://github.com/rusty-key/spoken-wow/releases?q=quests-audio" },
     ]);
   });
 

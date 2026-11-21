@@ -18,7 +18,7 @@ const behavior = (): ScrollBehavior => (window.matchMedia("(prefers-reduced-moti
  * the words below it, lit as they are spoken by the start times measured against this audio. The
  * file downloads when it is played.
  */
-function Clip({ voice, position, disabled = false, textLang = "en" }: { voice: Voice; position: string; disabled?: boolean; textLang?: string | null }) {
+function Clip({ voice, position, disabled = false }: { voice: Voice; position?: string; disabled?: boolean }) {
   const t = useSiteText().showcase;
   const audio = useRef<HTMLAudioElement>(null);
   const pending = useRef<number | null>(null);
@@ -155,7 +155,7 @@ function Clip({ voice, position, disabled = false, textLang = "en" }: { voice: V
           {t.failed}
         </p>
       )}
-      <p className="bn-voice-text" lang={textLang ?? undefined} ref={text}>
+      <p className="bn-voice-text" lang={disabled ? undefined : "en"} ref={text}>
         {voice.words.map((word, i) => (
           <span key={i} className={i === current ? "now" : i < current ? "said" : undefined}>
             {word}{" "}
@@ -170,7 +170,7 @@ function Clip({ voice, position, disabled = false, textLang = "en" }: { voice: V
  * A part with no recording yet, in the shape of the others so the section does not change size:
  * one example button, the speaker, a flat waveform and a Play button that cannot be pressed.
  */
-export function VoicePlaceholder({ icon, name, text, position }: { icon: string; name: string; text: string; position: string }) {
+export function VoicePlaceholder({ icon, name, text }: { icon: string; name: string; text: string }) {
   const t = useSiteText().showcase;
   const none: Voice = { label: name, name, sub: t.noRecording, icon, audio: "", duration: 0, peaks: Array(96).fill(0.06), words: [text], times: [] };
   return (
@@ -185,7 +185,7 @@ export function VoicePlaceholder({ icon, name, text, position }: { icon: string;
           </li>
         </ul>
       </div>
-      <Clip voice={none} position={position} disabled textLang={null} />
+      <Clip voice={none} disabled />
     </div>
   );
 }

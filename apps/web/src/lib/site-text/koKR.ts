@@ -104,7 +104,6 @@ const ko: Dictionary = {
         "“우두머리 이야기 표시”에서 대상 지정 또는 처치를 고릅니다",
       ],
       browse: "우두머리 둘러보기",
-      position: "우두머리 예시의 재생 위치",
     },
     examplesLabel: "{part} 예시",
     noVoice:
@@ -142,9 +141,7 @@ const ko: Dictionary = {
     title: "Spoken 설치",
     intro: "한 가지를 고르세요. 어느 쪽이든 Spoken과 사용하는 언어의 음성 팩이 설치됩니다. 설치한 뒤에는 게임을 다시 시작하세요.",
     waysLabel: "Spoken 설치 방법",
-    tabManager: "Spoken Manager",
-    tabCurseforge: "CurseForge",
-    tabManual: "직접 설치",
+    tabs: { manager: "Spoken Manager", curseforge: "CurseForge", manual: "직접 설치" },
     recommended: "추천",
     managerText:
       "Manager를 내려받아 열고 Install을 누르세요. 게임 폴더를 찾아 Spoken과 고른 언어의 음성 팩을 설치하고, 새 버전이 나오면 업데이트합니다. 업데이트할 때는 바뀐 파일만 내려받으므로, 녹음 하나가 추가되어도 팩 전체를 다시 받지 않습니다.",
@@ -174,7 +171,6 @@ const ko: Dictionary = {
     addonNote: "애드온 본체입니다. 필수입니다.",
     packName: "{name} 음성",
     githubAll: "GitHub: 전체",
-    curseforgePart: "CurseForge: {part}",
     sections: {
       quests: { name: "퀘스트와 잡담", note: "퀘스트 대화와 NPC가 하는 말" },
       places: { name: "장소", note: "각 지역의 전승" },

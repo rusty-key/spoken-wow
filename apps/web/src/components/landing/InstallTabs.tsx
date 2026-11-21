@@ -9,7 +9,7 @@ import BrandIcon from "./BrandIcon";
 import { CURSEFORGE } from "./links";
 import { useSiteText } from "./SiteTextProvider";
 
-export type InstallLink = { kind: "curseforge" | "wago" | "github"; label: string; href: string };
+export type InstallLink = { kind: "wago" | "github"; label: string; href: string };
 export type InstallRow = { name: string; note: string; links: InstallLink[] };
 export type InstallLanguage = {
   code: Lang;
@@ -50,7 +50,6 @@ export default function InstallTabs({
   const [lang, setLang] = useState<Lang>(initial);
   const chosen = languages.find((entry) => entry.code === lang) ?? languages[0];
   const maintained = languages.filter((entry) => entry.curseforge);
-  const tabLabel = { manager: t.tabManager, curseforge: t.tabCurseforge, manual: t.tabManual };
 
   return (
     <div>
@@ -83,7 +82,7 @@ export default function InstallTabs({
             ) : (
               <BrandIcon name={entry.icon} />
             )}
-            {tabLabel[entry.id]}
+            {t.tabs[entry.id]}
             {entry.id === "manager" && <span className="bn-tag">{t.recommended}</span>}
           </button>
         ))}
@@ -185,30 +184,27 @@ export default function InstallTabs({
               </select>
             </label>
             <div className="bn-manual">
-              {chosen.rows.map((row) => {
-                const downloads = row.links.filter((link) => link.kind !== "curseforge");
-                return (
-                  <div key={row.name} className="bn-pack">
-                    <div>
-                      <b>{row.name}</b>
-                      <small>{row.note}</small>
-                    </div>
-                    <div className="bn-links-row">
-                      {row.links.some((link) => link.kind === "github") ? (
-                        downloads.map((link) => (
-                          <a key={link.href} className="bn-btn bn-btn-sm" href={link.href} target="_blank" rel="noreferrer">
-                            {link.kind === "github" && <BrandIcon name="github" size={16} />}
-                            {link.label}
-                            {newTab}
-                          </a>
-                        ))
-                      ) : (
-                        <span className="none">{t.noPack}</span>
-                      )}
-                    </div>
+              {chosen.rows.map((row) => (
+                <div key={row.name} className="bn-pack">
+                  <div>
+                    <b>{row.name}</b>
+                    <small>{row.note}</small>
                   </div>
-                );
-              })}
+                  <div className="bn-links-row">
+                    {row.links.length > 0 ? (
+                      row.links.map((link) => (
+                        <a key={link.href} className="bn-btn bn-btn-sm" href={link.href} target="_blank" rel="noreferrer">
+                          {link.kind === "github" && <BrandIcon name="github" size={16} />}
+                          {link.label}
+                          {newTab}
+                        </a>
+                      ))
+                    ) : (
+                      <span className="none">{t.noPack}</span>
+                    )}
+                  </div>
+                </div>
+              ))}
             </div>
             <p className="bn-note">{t.oldClients}</p>
           </>
