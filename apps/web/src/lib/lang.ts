@@ -33,7 +33,8 @@ export type LanguageInfo = {
 
 /** One reader's words: `name` for $N and $C, `race` for $R. */
 export type PlayerForms = { name: string; race: string; nameGenitive?: string; classPlural?: string };
-export type PlayerWords = { m: PlayerForms; f: PlayerForms };
+/** `quantity` is what a Craftsman's Writ's `$2oa` says, for either reader. */
+export type PlayerWords = { m: PlayerForms; f: PlayerForms; quantity?: string };
 
 /** The ten languages the site ships with: those a game client runs in. Never overwritten or removed by registration. */
 export const BUILTIN = [

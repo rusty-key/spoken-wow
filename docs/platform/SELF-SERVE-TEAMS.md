@@ -136,8 +136,8 @@ without a database call. The pipelines' list (`pipelines/lib/locales.mjs`) stays
 the ten client locales.
 
 A row also carries what code knows of a built-in language and a team's would otherwise lack
-(migration 0125): `playerWords`, what its recordings say where the game writes `$N`, `$C` and `$R`
-(`pipelines/lib/player-words.mjs`), and `bytesPerCharacter`, its width for fish.audio's list price
+(migration 0125): `playerWords`, what its recordings say where the game writes `$N`, `$C` and `$R`,
+and optionally a Craftsman's Writ's `$2oa` (`pipelines/lib/player-words.mjs`), and `bytesPerCharacter`, its width for fish.audio's list price
 (`apps/web/src/lib/generation/calibration.ts`). A language with no words voices no line holding a
 token: the text gate refuses it. Its text maintainers set them on `/<lang>/player-words`
 (`PUT /api/languages/player-words?lang=`, `text`); a built-in language's words are code, and its

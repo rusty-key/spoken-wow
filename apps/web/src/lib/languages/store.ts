@@ -91,13 +91,14 @@ export async function giveTextToTeam(client: ClientBase, lang: string): Promise<
   await client.query(`update "language" set "textByTeam" = true where "code" = $1`, [lang]);
 }
 
-/** "name / race" for each reader, for the activity log. */
+/** "name / race" for each reader, and the writ's count, for the activity log. */
 function wordsSummary(words: PlayerWords | null): string | null {
   if (!words) return null;
   const forms = (side: PlayerWords["m"]) => `${side.name} / ${side.race}`;
   const m = forms(words.m);
   const f = forms(words.f);
-  return m === f ? m : `${m}; ${f}`;
+  const readers = m === f ? m : `${m}; ${f}`;
+  return words.quantity ? `${readers}; $2oa: ${words.quantity}` : readers;
 }
 
 /**

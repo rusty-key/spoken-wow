@@ -44,7 +44,11 @@
  * ("vous êtes venu").
  */
 const WORDS = {
-  enUS: { m: { name: "adventurer", race: "traveler" }, f: { name: "adventurer", race: "traveler" } },
+  enUS: {
+    m: { name: "adventurer", race: "traveler" },
+    f: { name: "adventurer", race: "traveler" },
+    quantity: "an order of",
+  },
   deDE: {
     m: { name: "Abenteurer", race: "Reisender", nameGenitive: "Abenteurers" },
     f: { name: "Abenteurerin", race: "Reisende", nameGenitive: "Abenteurerin" },
@@ -55,7 +59,11 @@ const WORDS = {
     m: { name: "aventurier", race: "voyageur", classPlural: "aventuriers" },
     f: { name: "aventurière", race: "voyageuse", classPlural: "aventurières" },
   },
-  ptBR: { m: { name: "aventureiro", race: "viajante" }, f: { name: "aventureira", race: "viajante" } },
+  ptBR: {
+    m: { name: "aventureiro", race: "viajante" },
+    f: { name: "aventureira", race: "viajante" },
+    quantity: "algumas unidades de",
+  },
   ruRU: { m: { name: "путник", race: "странник" }, f: { name: "путница", race: "странница" } },
   koKR: { m: { name: "모험가", race: "여행자" }, f: { name: "모험가", race: "여행자" } },
   zhCN: { m: { name: "冒险者", race: "旅行者" }, f: { name: "冒险者", race: "旅行者" } },
@@ -115,23 +123,30 @@ function validForms(value) {
     forms[key] = word;
   }
   for (const key of OPTIONAL) {
-    if (value[key] == null || value[key] === "") continue;
-    const word = validWord(value[key]);
-    if (!word) return null;
-    forms[key] = word;
+    const word = optionalWord(value[key]);
+    if (word === null) return null;
+    if (word) forms[key] = word;
   }
   return forms;
 }
 
+/** An optional word: undefined when absent or empty, null when unspeakable. */
+function optionalWord(value) {
+  return value == null || value === "" ? undefined : validWord(value);
+}
+
 /**
- * Words as `{ m: { name, race, nameGenitive?, classPlural? }, f: {...} }`, trimmed, or null when
- * any is missing, empty, longer than WORD_LIMIT, or holds a `$`, `:`, `;` or line break.
+ * Words as `{ m: { name, race, nameGenitive?, classPlural? }, f: {...}, quantity? }`, trimmed, or
+ * null when any is missing, empty, longer than WORD_LIMIT, or holds a `$`, `:`, `;` or line break.
+ * `quantity` is what a Craftsman's Writ's `$2oa` says.
  */
 export function validPlayerWords(value) {
   if (!value || typeof value !== "object") return null;
   const m = validForms(value.m);
   const f = validForms(value.f);
-  return m && f ? { m, f } : null;
+  const quantity = optionalWord(value.quantity);
+  if (!m || !f || quantity === null) return null;
+  return quantity ? { m, f, quantity } : { m, f };
 }
 
 /** German capitalises every noun; the rest only at the start of a sentence. */
@@ -175,16 +190,12 @@ const SENTENCE_START = new RegExp(String.raw`(?:^|[${ENDS}]|\n)[\s"'«„“¡¿
 // objective, which no recording can know. Each language says "some" in words that keep the
 // sentence's grammar. ruRU writes the noun phrase twice, "мундира:мундиров", as the count's
 // two plural forms, the second having as many words as the first; its "несколько" takes the
-// second. ptBR writes a glued "x" ("5x Tisana"). A language with no entry keeps the token,
-// so the gate still refuses the line.
+// second. ptBR writes a glued "x" ("5x Tisana"). Every other language says its words'
+// `quantity`; one with none keeps the token, so the gate still refuses the line.
 const QUANTITY = /\$\d+oax?\s+/g;
-const QUANTITY_WORDS = {
-  enUS: "an order of ",
-  ptBR: "algumas unidades de ",
-};
 const RU_FORMS = /\$\d+oa\s+([^\s:]+(?:\s+[^\s:]+)*):((?:\s*[^\s,.;:!?]+)+)/g;
 
-function speakQuantities(text, lang) {
+function speakQuantities(text, lang, forms) {
   if (lang === "ruRU") {
     return text.replace(RU_FORMS, (whole, few, rest) => {
       const count = few.split(/\s+/).length;
@@ -195,8 +206,7 @@ function speakQuantities(text, lang) {
       return `несколько ${many}${after ? ` ${after}` : ""}`;
     });
   }
-  const words = QUANTITY_WORDS[lang];
-  return words ? text.replace(QUANTITY, words) : text;
+  return forms.quantity ? text.replace(QUANTITY, `${forms.quantity} `) : text;
 }
 
 /** Whether a text branches on the player's gender, and so is two lines rather than one. */
@@ -238,7 +248,7 @@ export function playerGenderSides(text) {
 export function speakPlayerTokens(text, lang, playerGender = null) {
   const forms = playerWordsOf(lang);
   if (!forms) return text;
-  text = speakQuantities(text, lang);
+  text = speakQuantities(text, lang, forms);
   const words = playerGender === "f" ? forms.f : forms.m;
   const cased = (word, at, whole) =>
     ALWAYS_CAPITAL.has(lang) || SENTENCE_START.test(whole.slice(0, at))
