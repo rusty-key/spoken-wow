@@ -30,18 +30,18 @@ const READERS: { key: Reader; label: string }[] = [
 /** A language's player words, for its text maintainers: what every recording says for the reader. */
 export default function PlayerWordsEditor({ lang, initial }: { lang: Lang; initial: PlayerWords | null }) {
   const router = useRouter();
-  const [words, setWords] = useState<Record<Reader, PlayerForms>>({
+  const [words, setWords] = useState<PlayerWords>({
     m: { ...EMPTY, ...initial?.m },
     f: { ...EMPTY, ...initial?.f },
+    quantity: initial?.quantity ?? "",
   });
-  const [quantity, setQuantity] = useState(initial?.quantity ?? "");
   const [error, setError] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
   const [busy, setBusy] = useState(false);
 
-  const set = (reader: Reader, field: Field, value: string) => {
+  const update = (change: (was: PlayerWords) => PlayerWords) => {
     setSaved(false);
-    setWords((was) => ({ ...was, [reader]: { ...was[reader], [field]: value } }));
+    setWords(change);
   };
 
   async function save(next: PlayerWords | null) {
@@ -50,10 +50,7 @@ export default function PlayerWordsEditor({ lang, initial }: { lang: Lang; initi
     const result = await send(withLang(lang, "/api/languages/player-words"), "PUT", { words: next });
     setBusy(false);
     if (!result.ok) return setError(result.error);
-    if (!next) {
-      setWords({ m: { ...EMPTY }, f: { ...EMPTY } });
-      setQuantity("");
-    }
+    if (!next) setWords({ m: { ...EMPTY }, f: { ...EMPTY }, quantity: "" });
     setSaved(true);
     router.refresh();
   }
@@ -63,40 +60,35 @@ export default function PlayerWordsEditor({ lang, initial }: { lang: Lang; initi
       className="flex max-w-xl flex-col gap-6"
       onSubmit={(event) => {
         event.preventDefault();
-        save({ ...words, quantity });
+        save(words);
       }}
     >
       {READERS.map((reader) => (
         <fieldset key={reader.key} className="flex flex-col gap-2">
           <legend className="mb-1 text-sm font-semibold">{reader.label}</legend>
           {FIELDS.map((field) => (
-            <label key={field.key} className="grid grid-cols-[14rem_1fr] items-center gap-3 text-sm">
-              <span>{field.label}</span>
-              <Input
-                required={field.required}
-                maxLength={PLAYER_WORD_LIMIT}
-                placeholder={field.hint}
-                value={words[reader.key][field.key] ?? ""}
-                onChange={(event) => set(reader.key, field.key, event.target.value)}
-              />
-            </label>
+            <WordRow
+              key={field.key}
+              label={field.label}
+              hint={field.hint}
+              required={field.required}
+              value={words[reader.key][field.key] ?? ""}
+              onChange={(value) =>
+                update((was) => ({ ...was, [reader.key]: { ...was[reader.key], [field.key]: value } }))
+              }
+            />
           ))}
         </fieldset>
       ))}
       <fieldset className="flex flex-col gap-2">
         <legend className="mb-1 text-sm font-semibold">Every reader</legend>
-        <label className="grid grid-cols-[14rem_1fr] items-center gap-3 text-sm">
-          <span>A writ&apos;s count ($2oa)</span>
-          <Input
-            maxLength={PLAYER_WORD_LIMIT}
-            placeholder="Optional: an order of"
-            value={quantity}
-            onChange={(event) => {
-              setSaved(false);
-              setQuantity(event.target.value);
-            }}
-          />
-        </label>
+        <WordRow
+          label="A writ's count ($2oa)"
+          hint="Optional: an order of"
+          required={false}
+          value={words.quantity ?? ""}
+          onChange={(value) => update((was) => ({ ...was, quantity: value }))}
+        />
       </fieldset>
       {error && (
         <p role="alert" className="text-destructive text-sm">
@@ -115,5 +107,26 @@ export default function PlayerWordsEditor({ lang, initial }: { lang: Lang; initi
         )}
       </div>
     </form>
+  );
+}
+
+function WordRow(props: {
+  label: string;
+  hint: string;
+  required: boolean;
+  value: string;
+  onChange: (value: string) => void;
+}) {
+  return (
+    <label className="grid grid-cols-[14rem_1fr] items-center gap-3 text-sm">
+      <span>{props.label}</span>
+      <Input
+        required={props.required}
+        maxLength={PLAYER_WORD_LIMIT}
+        placeholder={props.hint}
+        value={props.value}
+        onChange={(event) => props.onChange(event.target.value)}
+      />
+    </label>
   );
 }

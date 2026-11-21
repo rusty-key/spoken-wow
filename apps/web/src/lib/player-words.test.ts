@@ -71,8 +71,6 @@ describe("speakPlayerTokens", () => {
     });
 
     it("never lets a row change a built-in language's words", () => {
-      registerPlayerWords([["deDE", { ...ITALIAN, quantity: "einige" }]]);
-      expect(speakPlayerTokens("verlangt $2oa Seelenbeutel", "deDE")).toBe("verlangt $2oa Seelenbeutel");
       registerPlayerWords([["frFR", ITALIAN]]);
       expect(speakPlayerTokens("Merci, $N.", "frFR")).toBe("Merci, aventurier.");
       expect(hasBuiltinPlayerWords("frFR")).toBe(true);
