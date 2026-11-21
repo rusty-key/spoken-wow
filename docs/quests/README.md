@@ -1944,7 +1944,20 @@ and the second on Classic clients, which send the quest log index first; a secre
 nothing. They cover a client that keeps reporting the quest ID after the dialog closed. A page
 recorded with neither a quest ID nor a title names no quest and is not kept, since no later
 event could tie it to one. A declined quest sends neither event, so a decline reads what it did
-before. Records live ten seconds. It is a fallback, not a second dispatcher: a page the player
+before. Some auto turn-ins move the Blizzard frame from the progress to the reward panel
+without `QUEST_PROGRESS`, so the watcher also records each progress or reward panel it sees,
+once per page. A page it records while the quest ID is 0 is kept only if the pack's index names
+its quest. A page whose event already recorded it is not recorded again. When the progress panel gives way
+to its own quest's reward panel before the progress page could be read, and only the watcher
+recorded that progress page, the watcher reads it then, before the reward page marks it read. A
+progress page whose event arrived was the player's to skip, as before. Read When Window Closes
+reads nothing while the window is open: it plays the last page read in the window, then any page
+the window closed on before it could be read, so a progress page held before a fast close plays
+ahead of the reward page it gave way to. A progress page the watcher recorded just before another
+quest's reward page is dropped: it was that reward page, shown while the globals still named the
+previous quest. A reward page that names no quest, by client ID or the pack's index, drops
+nothing. Records live
+ten seconds. It is a fallback, not a second dispatcher: a page the player
 reads in the open dialog is dispatched by the watcher as before. That page is the newest record
 of its event, whatever quest the globals named when the event arrived, and it and the earlier
 pages of the quest the watcher read are marked read; another quest's pages still wait for their

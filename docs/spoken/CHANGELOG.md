@@ -88,6 +88,9 @@ Spoken Player until 3.0.0, when it became Spoken and took its modules into one d
 - **Item-started quests show their item.** The Compendium and the Small Window now show the real
   icon of the item that starts a quest, even after the item has left your bags, rather than a
   posted notice. *([anon1231823](https://github.com/anon1231823))*
+- **Automatic quest turn-ins keep their progress line** when the quest window moves from the
+  progress page to the reward page without the client announcing the progress page.
+  *([anon1231823](https://github.com/anon1231823))*
 
 ## 3.9.0 — 2026-11-14
 
