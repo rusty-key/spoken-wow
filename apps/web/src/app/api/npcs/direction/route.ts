@@ -1,11 +1,6 @@
 /**
- * An admin's direction for one NPC's voice, or clearing it:
- *
- *   { npcKind, npcId, direction: "pirate accent" }   sent in front of every line only it speaks
- *   { npcKind, npcId, direction: "" }                cleared
- *
- * Admin only, as the race directions are: it changes every line the NPC speaks, in every
- * language, and marks their takes outdated.
+ * `{ npcKind, npcId, direction }` sets an NPC's direction; an empty `direction` clears it.
+ * Admin only: it changes every line the NPC speaks, in every language, and outdates their takes.
  */
 import { recordActivity } from "@/lib/activity/store";
 import { requireAdmin } from "@/lib/generation/authz";
@@ -29,20 +24,18 @@ export async function POST(request: Request) {
     return Response.json({ error: "unknown npc" }, { status: 400 });
   }
 
-  let direction: string | null = null;
-  if (typeof body.direction !== "string" || body.direction.trim()) {
-    try {
-      direction = validateDirection(body.direction, "NPC's");
-    } catch (error) {
-      if (error instanceof SettingsError) return Response.json({ error: error.message }, { status: 400 });
-      throw error;
-    }
+  const cleared = typeof body.direction === "string" && !body.direction.trim();
+  let direction: string | null;
+  try {
+    direction = cleared ? null : validateDirection(body.direction, "NPC's");
+  } catch (error) {
+    if (error instanceof SettingsError) return Response.json({ error: error.message }, { status: 400 });
+    throw error;
   }
 
   const npc = await getResolution(npcKind, npcId);
-  if (!npc || !(await setDirection(npcKind, npcId, direction))) {
-    return Response.json({ error: "unknown npc" }, { status: 404 });
-  }
+  if (!npc) return Response.json({ error: "unknown npc" }, { status: 404 });
+  await setDirection(npcKind, npcId, direction);
   await recordActivity({
     kind: "npc.direction", lang, actorId: session.user.id, subject: resolutionKey(npcKind, npcId),
     detail: { npcName: npc.npcName, direction },

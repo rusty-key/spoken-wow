@@ -202,10 +202,7 @@ function lookups(npcId: number, client: ClientFilter): { label: string; path: st
 
 const SEX_WORDS: Record<number, string> = { 2: "man", 3: "woman" };
 
-/**
- * The NPC's own direction, sent after its voice's (narration.ts npcDirection): "pirate accent"
- * for a pirate among human men. Typed bare; the route stores it bracketed.
- */
+/** The NPC's own direction, typed bare; the route stores it bracketed. */
 function DirectionCell({
   direction,
   busy,

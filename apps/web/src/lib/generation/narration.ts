@@ -9,6 +9,8 @@
  * in the browser. Same reasoning as the note atop lib/line-fields.ts.
  */
 
+import { npcKey, type CorpusLine } from "@/lib/corpus";
+
 /**
  * The one narrator, for now.
  *
@@ -86,18 +88,15 @@ export function directionFor(voice: string, tags: Record<string, string>): strin
 }
 
 /**
- * The NPC direction for a file (npc.direction), sent after the slot's (accentTagged): one NPC's
- * accent on top of its voice's, "Pretty Boy" Duncan's pirate on a human man.
- *
- * Only when every NPC speaking the file has the same one. A gossip file is shared by every NPC
- * of a voice who says the same words, and one pirate must not make that line a pirate's for
- * all of them. `directions` is keyed as listDirections keys it, `kind:id`.
+ * The NPC direction for a file, only when every NPC speaking it has the same one: a gossip file
+ * is shared by every NPC of a voice saying the same words, and one pirate must not make it a
+ * pirate's line for all of them. `directions` is keyed by npcKey.
  */
 export function npcDirection(
-  lines: { npcType: string; npcId: number }[],
+  lines: Pick<CorpusLine, "npcType" | "npcId">[],
   directions: Map<string, string>,
 ): string | undefined {
-  const found = new Set(lines.map((line) => directions.get(`${line.npcType}:${line.npcId}`)));
+  const found = new Set(lines.map((line) => directions.get(npcKey(line))));
   const [only] = found;
   return found.size === 1 ? only : undefined;
 }
@@ -135,26 +134,30 @@ export function audioTags(text: string): string {
 }
 
 /**
- * Where a sentence ends and the next begins: a full stop, `!` or `?`, any closing quotes or
- * brackets, then whitespace and something other than a dot. Not in an ellipsis, spaced or not
- * ("coin... [hic]", "Well. . . maybe"), and not after a title ("Mr. Flint", "Mrs. Dalson"),
- * which is where the corpus puts a full stop mid-sentence.
+ * Where a sentence ends: `.`, `!` or `?`, any closing quotes or brackets, then whitespace. Not
+ * inside an ellipsis, spaced or not, and not after a title ("Mr. Flint"), the corpus's two
+ * mid-sentence full stops.
  */
 const SENTENCE_END = /((?<!\b(?:Mr|Mrs|Ms|Dr|Lt|Sgt|Capt|Prof)|\.\s?)[.!?]["'\u201d\u2019)\]]*)(\s+)(?=[^\s.])/g;
 
 /**
+ * `raceTags` is the whole map, for a stretch a voice marker hands to another slot; `voice` is
+ * the slot already speaking where the text starts; `npc` is the NPC's own direction.
+ */
+export type Shaping = { raceTags?: Record<string, string>; voice?: string; npc?: string };
+
+/**
  * The direction for a slot (see directionFor), prefixed to the words the NPC says, then the
- * NPC's own direction (npcDirection) after it and again in front of every later sentence.
+ * NPC's own direction after it and again in front of every later sentence.
  *
  * Dwarves are the reason this exists: they are meant to have a strong Scottish brogue, and
  * an instant clone read by eleven_v3 returns something closer to RP. The model has no other
  * channel for direction - a text-to-speech request carries text, settings and a seed,
  * nothing else - so the direction has to travel inside the text.
  *
- * The NPC's direction is repeated because eleven_v4 performs it for the first few words and
- * then drifts back to the voice's own delivery: "Pretty Boy" Duncan was a pirate for half a
- * sentence of a 400-character line. The slot's is not, so the takes made with it stay current
- * and its characters are paid once; only an NPC's pays per sentence.
+ * The NPC's direction is repeated because eleven_v4 performs it for a few words and then
+ * drifts back to the voice's own delivery. The slot's is not, so its takes stay current and
+ * its characters are paid once.
  *
  * Applied per stretch of speech rather than once at the front, because a line can be
  * interrupted by a stage direction that `narrator-male` reads. Tagging the whole string would
@@ -165,13 +168,8 @@ const SENTENCE_END = /((?<!\b(?:Mr|Mrs|Ms|Dr|Lt|Sgt|Capt|Prof)|\.\s?)[.!?]["'\u2
  * the speech that makes them. Angle brackets are still what separates a direction from
  * speech here, and an unbalanced one is left as damage for the gate to refuse.
  */
-export function accentTagged(
-  text: string,
-  tag: string | undefined,
-  raceTags: Record<string, string> = {},
-  voice?: string,
-  npc?: string,
-): string {
+export function accentTagged(text: string, tag: string | undefined, options: Shaping = {}): string {
+  const { raceTags = {}, voice, npc } = options;
   let current = voice;
   return text
     .split(CUT)

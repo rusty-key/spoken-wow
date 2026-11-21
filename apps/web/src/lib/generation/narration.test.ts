@@ -141,37 +141,37 @@ describe("accentTagged", () => {
   });
 
   it("repeats an NPC's direction before every sentence, which eleven_v4 otherwise forgets", () => {
-    expect(accentTagged("Ahoy. Ye'll do!\n\nWhat say \"ye?\" Go.", "[Scottish accent]", {}, undefined, "[pirate accent]")).toBe(
+    expect(accentTagged("Ahoy. Ye'll do!\n\nWhat say \"ye?\" Go.", "[Scottish accent]", { npc: "[pirate accent]" })).toBe(
       "[Scottish accent] [pirate accent] Ahoy. [pirate accent] Ye'll do!\n\n[pirate accent] What say \"ye?\" [pirate accent] Go.",
     );
-    expect(accentTagged("Ahoy. Go.", undefined, {}, undefined, "[pirate accent]")).toBe(
+    expect(accentTagged("Ahoy. Go.", undefined, { npc: "[pirate accent]" })).toBe(
       "[pirate accent] Ahoy. [pirate accent] Go.",
     );
   });
 
   it("does not end a sentence at an ellipsis, spaced or not", () => {
-    expect(accentTagged("Adventurer... yeah. Aye.", undefined, {}, undefined, "[pirate]")).toBe(
+    expect(accentTagged("Adventurer... yeah. Aye.", undefined, { npc: "[pirate]" })).toBe(
       "[pirate] Adventurer... yeah. [pirate] Aye.",
     );
-    expect(accentTagged("Well. . . maybe. Aye.", undefined, {}, undefined, "[pirate]")).toBe(
+    expect(accentTagged("Well. . . maybe. Aye.", undefined, { npc: "[pirate]" })).toBe(
       "[pirate] Well. . . maybe. [pirate] Aye.",
     );
   });
 
   it("does not end a sentence after a title", () => {
-    expect(accentTagged("Ask Mr. Flint and Mrs. Dalson. Go.", undefined, {}, undefined, "[pirate]")).toBe(
+    expect(accentTagged("Ask Mr. Flint and Mrs. Dalson. Go.", undefined, { npc: "[pirate]" })).toBe(
       "[pirate] Ask Mr. Flint and Mrs. Dalson. [pirate] Go.",
     );
   });
 
   it("does not split a direction at its own full stop", () => {
-    expect(accentTagged("Hello. Bye.", undefined, {}, undefined, "[quiet. Slow]")).toBe(
+    expect(accentTagged("Hello. Bye.", undefined, { npc: "[quiet. Slow]" })).toBe(
       "[quiet. Slow] Hello. [quiet. Slow] Bye.",
     );
   });
 
   it("leaves an NPC's direction off a stretch a marker hands to another slot", () => {
-    expect(accentTagged("Aye. _goblin-male-zany_ Wizbang. Here!", undefined, {}, undefined, "[pirate]")).toBe(
+    expect(accentTagged("Aye. _goblin-male-zany_ Wizbang. Here!", undefined, { npc: "[pirate]" })).toBe(
       "[pirate] Aye. _goblin-male-zany_ Wizbang. Here!",
     );
   });
@@ -241,20 +241,20 @@ describe("voice markers", () => {
 
   it("gives a marked stretch its own race's accent", () => {
     const tags = { dwarf: "[Scottish accent]", goblin: "[fast, nasal]" };
-    expect(accentTagged("Aye. _goblin-male-zany_ Wizbang here!", tags.dwarf, tags)).toBe(
+    expect(accentTagged("Aye. _goblin-male-zany_ Wizbang here!", tags.dwarf, { raceTags: tags })).toBe(
       "[Scottish accent] Aye. _goblin-male-zany_ [fast, nasal] Wizbang here!",
     );
   });
 
   it("gives a marked stretch its own flavor's direction after its race's", () => {
     const tags = { goblin: "[fast, nasal]", "goblin-male-zany": "[manic]" };
-    expect(accentTagged("Hm. _goblin-male-zany_ Wizbang here!", undefined, tags)).toBe(
+    expect(accentTagged("Hm. _goblin-male-zany_ Wizbang here!", undefined, { raceTags: tags })).toBe(
       "Hm. _goblin-male-zany_ [fast, nasal] [manic] Wizbang here!",
     );
   });
 
   it("leaves a stretch untagged when the marked race has no direction", () => {
-    expect(accentTagged("Aye. _narrator-male_ He left.", "[Scottish accent]", {})).toBe(
+    expect(accentTagged("Aye. _narrator-male_ He left.", "[Scottish accent]", { raceTags: {} })).toBe(
       "[Scottish accent] Aye. _narrator-male_ He left.",
     );
   });
@@ -289,7 +289,7 @@ describe("directionFor", () => {
 
 describe("npcDirection", () => {
   const directions = new Map([["creature:1", "[pirate accent]"], ["creature:2", "[pirate accent]"], ["creature:3", "[lisp]"]]);
-  const npc = (npcId: number) => ({ npcType: "creature", npcId });
+  const npc = (npcId: number) => ({ npcType: "creature" as const, npcId });
 
   it("is the NPC's direction for a file only it speaks", () => {
     expect(npcDirection([npc(1)], directions)).toBe("[pirate accent]");
@@ -303,7 +303,7 @@ describe("npcDirection", () => {
   });
 
   it("keys by kind as well as id", () => {
-    expect(npcDirection([{ npcType: "gameobject", npcId: 1 }], directions)).toBeUndefined();
+    expect(npcDirection([{ npcType: "gameobject" as const, npcId: 1 }], directions)).toBeUndefined();
   });
 });
 

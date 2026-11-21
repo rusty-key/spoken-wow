@@ -13,15 +13,13 @@ import { recordActivity } from "../activity/store";
 import { fileIndex } from "../audio";
 import type { CorpusLine } from "../corpus";
 import { shapedText } from "../generation/files";
-import { npcDirection } from "../generation/narration";
+import { npcDirections } from "../generation/npc-direction";
 import { PROVIDERS } from "../generation/providers";
 import { currentConfig } from "../generation/settings";
 import { spokenHash } from "../generation/spoken-hash";
 import type { Lang } from "../lang";
 import { memoByTeamLang } from "../memo";
-import { listDirections } from "../npc/store";
 import { queryAs, readAs } from "../teams/store";
-import { lineIndex } from "./catalogue";
 import { overrideOf, type LineOverride } from "./override";
 
 type OverrideRow = {
@@ -140,15 +138,12 @@ async function spokenHashes(
   const stem = file.replace(/\.mp3$/, "");
   const lines = [...index].filter(([f]) => f.startsWith(stem) && overrideOf(own, f)).map(([, line]) => line);
   if (lines.length === 0) return null;
-  const { raceTags } = await currentConfig(lang);
-  const groups = await lineIndex(lang);
-  const directions = await listDirections();
+  const [{ raceTags }, npcDirectionOf] = await Promise.all([currentConfig(lang), npcDirections(lang)]);
   return [
     ...new Set(
-      lines.flatMap((line) => {
-        const npc = npcDirection(groups.get(line.lineId) ?? [line], directions);
-        return PROVIDERS.map((p) => spokenHash(shapedText(text, lang, line, p, raceTags, npc)));
-      }),
+      lines.flatMap((line) =>
+        PROVIDERS.map((p) => spokenHash(shapedText(text, lang, line, p, raceTags, npcDirectionOf(line)))),
+      ),
     ),
   ];
 }

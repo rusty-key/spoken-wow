@@ -19,9 +19,7 @@ import type { CorpusLine } from "../corpus";
 import { readAs } from "../teams/store";
 import { shapedText } from "../generation/files";
 import { spokenHash } from "../generation/spoken-hash";
-import { npcDirection } from "../generation/narration";
-import { listDirections } from "../npc/store";
-import { lineIndex } from "./catalogue";
+import { npcDirections } from "../generation/npc-direction";
 import { currentConfig } from "../generation/settings";
 import { overrideOf } from "./override";
 import type { LineOverride } from "./override";
@@ -75,12 +73,10 @@ export async function staleAmong(
   // language goes without, speaking with its own lexicon.
   const overrides = known ?? (await readOverrides(lang));
   const lines = index ?? (await fileIndex(lang));
-  const groups = await lineIndex(lang);
   // Once for the whole sweep, unlike regenerate.ts which reads it per line: this answers a
   // question about the takes as they stand, and a settings change landing mid-sweep would
   // only make half the answer describe a configuration that was never used to generate.
-  const { raceTags } = await currentConfig(lang);
-  const directions = await listDirections();
+  const [{ raceTags }, npcDirectionOf] = await Promise.all([currentConfig(lang), npcDirections(lang)]);
 
   const stale = new Set<string>();
   for (const row of rows) {
@@ -92,8 +88,8 @@ export async function staleAmong(
     // "<hic>", and a dwarf take against its accent direction and its NPC's - otherwise every
     // dwarf line reads as stale forever rather than once. By the provider that made the take:
     // what it would be sent now is its question.
-    const npc = npcDirection(groups.get(line.lineId) ?? [line], directions);
-    if (spokenHash(shapedText(text, lang, line, row.provider, raceTags, npc)) !== row.spokenHash) {
+    const shaped = shapedText(text, lang, line, row.provider, raceTags, npcDirectionOf(line));
+    if (spokenHash(shaped) !== row.spokenHash) {
       stale.add(row.file);
     }
   }

@@ -129,7 +129,7 @@ describe("staleFiles", () => {
   it("catches a take made before its NPC had a direction, and clears with one made after", async () => {
     const { npcType: kind, npcId, text } = (await fileIndex()).get(file)!;
     const pirate = (words: string, provider: "elevenlabs" | "fish" = "elevenlabs") =>
-      spokenHash(SHAPE[provider](applyPronunciation(words, fileDefaults().rules), undefined, undefined, "[pirate accent]"));
+      spokenHash(SHAPE[provider](applyPronunciation(words, fileDefaults().rules), undefined, { npc: "[pirate accent]" }));
     const before = await getResolution(kind, npcId);
     if (!before) {
       await upsertResolution({

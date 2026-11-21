@@ -40,10 +40,7 @@ export type NpcResolution = {
   build: string | null;
   note: string | null;
   resolvedBy: string | null;
-  /**
-   * Bracketed, sent in front of every line only this NPC speaks (migration 0126). Every read
-   * carries it; optional because tests build a resolution by hand.
-   */
+  /** Bracketed. Every read carries it; optional because tests build a resolution by hand. */
   direction?: string | null;
   updatedAt: string;
 };
@@ -134,21 +131,19 @@ export async function upsertResolution(
 }
 
 /**
- * An admin's direction for one NPC, or null to clear it. Apart from upsertResolution because it
- * is no answer to who the NPC is: no provenance outranks it, and a fresh corpus read must not
- * clear it. Leaves updatedAt alone for the same reason: it is in every catalogue's stamp, and
- * the catalogue does not carry directions, so moving it would rebuild them all for nothing.
- * Returns whether the NPC exists.
+ * Apart from upsertResolution because a direction is no answer to who the NPC is: no provenance
+ * outranks it and a corpus refresh must not clear it. Leaves updatedAt alone: every catalogue's
+ * stamp reads it, and no catalogue carries directions.
  */
-export async function setDirection(kind: NpcRowKind, npcId: number, direction: string | null): Promise<boolean> {
-  const { rowCount } = await db().query(
-    `update "npc" set "direction" = $3 where "npcKind" = $1 and "npcId" = $2`,
-    [kind, npcId, direction],
-  );
-  return (rowCount ?? 0) > 0;
+export async function setDirection(kind: NpcRowKind, npcId: number, direction: string | null): Promise<void> {
+  await db().query(`update "npc" set "direction" = $3 where "npcKind" = $1 and "npcId" = $2`, [
+    kind,
+    npcId,
+    direction,
+  ]);
 }
 
-/** Every NPC's direction, keyed by resolutionKey: what generation reads for each line. */
+/** Every NPC's direction, keyed by resolutionKey. */
 export async function listDirections(): Promise<Map<string, string>> {
   const { rows } = await db().query<{ npcKind: NpcRowKind; npcId: number; direction: string }>(
     `select "npcKind", "npcId", "direction" from "npc" where "direction" is not null`,

@@ -1,8 +1,4 @@
-/**
- * An admin's direction for one NPC. Modelled on api/npcs/sex/route.test.ts.
- *
- * Needs DATABASE_URL and migrations applied.
- */
+/** Needs DATABASE_URL and migrations applied. */
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { closeDb, db } from "@/lib/db";

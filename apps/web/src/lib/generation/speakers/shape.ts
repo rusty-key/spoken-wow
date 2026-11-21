@@ -7,22 +7,15 @@
  * against its own provider's shaping, so it never reads as stale because another provider
  * would be sent the line differently.
  */
-import { accentTagged, audioTags, voiceAfter } from "../narration";
+import { accentTagged, audioTags, voiceAfter, type Shaping } from "../narration";
 import type { Provider } from "../providers";
 
 /**
- * Audio tags as brackets, and the race's accent direction and the NPC's own in front of the
- * NPC's words. Last, so the direction sits before the words rather than before a `<hic>` not
- * yet rewritten.
+ * Audio tags as brackets, then the directions. In that order, so a direction sits before the
+ * words rather than before a `<hic>` not yet rewritten.
  */
-function bracketed(
-  text: string,
-  raceTag: string | undefined,
-  raceTags?: Record<string, string>,
-  npc?: string,
-  voice?: string,
-): string {
-  return accentTagged(audioTags(text), raceTag, raceTags, voice, npc);
+function bracketed(text: string, raceTag: string | undefined, options: Shaping = {}): string {
+  return accentTagged(audioTags(text), raceTag, options);
 }
 
 /**
@@ -44,19 +37,14 @@ export const PARAGRAPH_BREAK = "\n";
  * marker does carry over: it hands the rest of the line to its slot, paragraphs included, so
  * each paragraph is shaped knowing who is speaking when it starts.
  */
-function paragraphed(
-  text: string,
-  raceTag: string | undefined,
-  raceTags?: Record<string, string>,
-  npc?: string,
-): string {
+function paragraphed(text: string, raceTag: string | undefined, options: Shaping = {}): string {
   let voice: string | undefined;
   return text
     .split(/\s*\n\s*/)
     .map((paragraph) => paragraph.replace(/\s+/g, " ").trim())
     .filter(Boolean)
     .map((paragraph) => {
-      const shaped = bracketed(paragraph, raceTag, raceTags, npc, voice);
+      const shaped = bracketed(paragraph, raceTag, { ...options, voice });
       voice = voiceAfter(paragraph, voice);
       return shaped;
     })
@@ -66,11 +54,10 @@ function paragraphed(
 // fish.audio's S2 models read [bracketed] cues as directions too, so it is shaped the same
 // way until listening shows which of them it performs.
 //
-// `raceTag` is the line's own slot's direction (directionFor); `raceTags` is the whole map, for
-// a stretch a voice marker hands to another slot; `npc` is the NPC's own (npcDirection).
+// `raceTag` is the line's own slot's direction (directionFor).
 export const SHAPE: Record<
   Provider,
-  (text: string, raceTag: string | undefined, raceTags?: Record<string, string>, npc?: string) => string
+  (text: string, raceTag: string | undefined, options?: Omit<Shaping, "voice">) => string
 > = {
   elevenlabs: bracketed,
   fish: paragraphed,
