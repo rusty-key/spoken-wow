@@ -62,7 +62,17 @@ describe("speakPlayerTokens", () => {
       expect(speakPlayerTokens("Grazie, $N.", "xxXX")).toBe("Grazie, $N.");
     });
 
+    it("speaks a writ's count with the row's words, and keeps the token without them", () => {
+      const line = "la nota chiede $2oa Elixir of Ogre's Strength e riporta";
+      registerLanguages([{ ...TEAM_LANGUAGE, playerWords: { ...ITALIAN, quantity: "una fornitura di" } }]);
+      expect(speakPlayerTokens(line, "xxXX")).toBe("la nota chiede una fornitura di Elixir of Ogre's Strength e riporta");
+      registerLanguages([{ ...TEAM_LANGUAGE, playerWords: ITALIAN }]);
+      expect(speakPlayerTokens(line, "xxXX")).toBe(line);
+    });
+
     it("never lets a row change a built-in language's words", () => {
+      registerPlayerWords([["deDE", { ...ITALIAN, quantity: "einige" }]]);
+      expect(speakPlayerTokens("verlangt $2oa Seelenbeutel", "deDE")).toBe("verlangt $2oa Seelenbeutel");
       registerPlayerWords([["frFR", ITALIAN]]);
       expect(speakPlayerTokens("Merci, $N.", "frFR")).toBe("Merci, aventurier.");
       expect(hasBuiltinPlayerWords("frFR")).toBe(true);
@@ -75,6 +85,15 @@ describe("speakPlayerTokens", () => {
       expect(
         validPlayerWords({ m: { name: " avventuriero ", race: "viaggiatore", classPlural: "" }, f: ITALIAN.f }),
       ).toEqual(ITALIAN);
+    });
+
+    it("keeps a writ's count, trimmed, and drops an empty one", () => {
+      expect(validPlayerWords({ ...ITALIAN, quantity: " una fornitura di " })).toEqual({
+        ...ITALIAN,
+        quantity: "una fornitura di",
+      });
+      expect(validPlayerWords({ ...ITALIAN, quantity: "" })).toEqual(ITALIAN);
+      expect(validPlayerWords({ ...ITALIAN, quantity: "$2oa" })).toBeNull();
     });
 
     it("refuses a missing reader, an empty word, and one that would read as a token or a branch", () => {

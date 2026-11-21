@@ -25,10 +25,15 @@ export default async function Page({ params }: { params: Promise<{ lang: string 
     <main className="pt-6 pb-36">
       <Contained>
         <h1 className="text-xl font-semibold">Player words</h1>
-        <p className="text-muted-foreground mt-1 mb-5 text-sm">
+        <p className="text-muted-foreground mt-1 mb-3 text-sm">
           The game writes $N, $C and $R where it says the player&apos;s name, class and race. A recording is one
           file for everybody, so in {langName(lang)} it says these words there instead. Every team of the language
           voices them. Without them, a line holding one of those tokens cannot be generated.
+        </p>
+        <p className="text-muted-foreground mb-5 text-sm">
+          A Craftsman&apos;s Writ asks for $2oa of an item, a count the game fills in. The writ&apos;s count words
+          stand in for it, before the item&apos;s name, so they must read with any item: English says &quot;an order
+          of&quot;. Without them, a line holding $2oa cannot be generated.
         </p>
         <PlayerWordsEditor lang={lang} initial={playerWordsOf(lang)} />
       </Contained>

@@ -34,6 +34,7 @@ export default function PlayerWordsEditor({ lang, initial }: { lang: Lang; initi
     m: { ...EMPTY, ...initial?.m },
     f: { ...EMPTY, ...initial?.f },
   });
+  const [quantity, setQuantity] = useState(initial?.quantity ?? "");
   const [error, setError] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -49,7 +50,10 @@ export default function PlayerWordsEditor({ lang, initial }: { lang: Lang; initi
     const result = await send(withLang(lang, "/api/languages/player-words"), "PUT", { words: next });
     setBusy(false);
     if (!result.ok) return setError(result.error);
-    if (!next) setWords({ m: { ...EMPTY }, f: { ...EMPTY } });
+    if (!next) {
+      setWords({ m: { ...EMPTY }, f: { ...EMPTY } });
+      setQuantity("");
+    }
     setSaved(true);
     router.refresh();
   }
@@ -59,7 +63,7 @@ export default function PlayerWordsEditor({ lang, initial }: { lang: Lang; initi
       className="flex max-w-xl flex-col gap-6"
       onSubmit={(event) => {
         event.preventDefault();
-        save(words);
+        save({ ...words, quantity });
       }}
     >
       {READERS.map((reader) => (
@@ -79,6 +83,21 @@ export default function PlayerWordsEditor({ lang, initial }: { lang: Lang; initi
           ))}
         </fieldset>
       ))}
+      <fieldset className="flex flex-col gap-2">
+        <legend className="mb-1 text-sm font-semibold">Every reader</legend>
+        <label className="grid grid-cols-[14rem_1fr] items-center gap-3 text-sm">
+          <span>A writ&apos;s count ($2oa)</span>
+          <Input
+            maxLength={PLAYER_WORD_LIMIT}
+            placeholder="Optional: an order of"
+            value={quantity}
+            onChange={(event) => {
+              setSaved(false);
+              setQuantity(event.target.value);
+            }}
+          />
+        </label>
+      </fieldset>
       {error && (
         <p role="alert" className="text-destructive text-sm">
           {error}

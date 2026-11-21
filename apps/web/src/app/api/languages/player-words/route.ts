@@ -1,5 +1,5 @@
 /**
- * What a language's recordings say for the player's name, class and race (?lang=).
+ * What a language's recordings say for the player's name, class and race, and a writ's count (?lang=).
  *
  * Only a language whose words are not code has any here: a team's. They change the text every
  * team of the language voices, so they take `text`, as the original text does.
@@ -24,7 +24,7 @@ export async function PUT(request: Request) {
   if (body.words !== null && !words) {
     return Response.json(
       {
-        error: `each reader needs a name and a race, of at most ${PLAYER_WORD_LIMIT} characters, with no $, :, ; or line break`,
+        error: `each reader needs a name and a race; every word, the writ's count too, at most ${PLAYER_WORD_LIMIT} characters, with no $, :, ; or line break`,
       },
       { status: 400 },
     );

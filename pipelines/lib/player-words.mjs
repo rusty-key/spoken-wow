@@ -124,14 +124,18 @@ function validForms(value) {
 }
 
 /**
- * Words as `{ m: { name, race, nameGenitive?, classPlural? }, f: {...} }`, trimmed, or null when
- * any is missing, empty, longer than WORD_LIMIT, or holds a `$`, `:`, `;` or line break.
+ * Words as `{ m: { name, race, nameGenitive?, classPlural? }, f: {...}, quantity? }`, trimmed, or
+ * null when any is missing, empty, longer than WORD_LIMIT, or holds a `$`, `:`, `;` or line break.
+ * `quantity` is what a writ's `$2oa` says (speakQuantities), the same for either reader.
  */
 export function validPlayerWords(value) {
   if (!value || typeof value !== "object") return null;
   const m = validForms(value.m);
   const f = validForms(value.f);
-  return m && f ? { m, f } : null;
+  if (!m || !f) return null;
+  if (value.quantity == null || value.quantity === "") return { m, f };
+  const quantity = validWord(value.quantity);
+  return quantity ? { m, f, quantity } : null;
 }
 
 /** German capitalises every noun; the rest only at the start of a sentence. */
@@ -175,8 +179,8 @@ const SENTENCE_START = new RegExp(String.raw`(?:^|[${ENDS}]|\n)[\s"'«„“¡¿
 // objective, which no recording can know. Each language says "some" in words that keep the
 // sentence's grammar. ruRU writes the noun phrase twice, "мундира:мундиров", as the count's
 // two plural forms, the second having as many words as the first; its "несколько" takes the
-// second. ptBR writes a glued "x" ("5x Tisana"). A language with no entry keeps the token,
-// so the gate still refuses the line.
+// second. ptBR writes a glued "x" ("5x Tisana"). A team's language takes its row's `quantity`.
+// A language with neither keeps the token, so the gate still refuses the line.
 const QUANTITY = /\$\d+oax?\s+/g;
 const QUANTITY_WORDS = {
   enUS: "an order of ",
@@ -184,7 +188,7 @@ const QUANTITY_WORDS = {
 };
 const RU_FORMS = /\$\d+oa\s+([^\s:]+(?:\s+[^\s:]+)*):((?:\s*[^\s,.;:!?]+)+)/g;
 
-function speakQuantities(text, lang) {
+function speakQuantities(text, lang, forms) {
   if (lang === "ruRU") {
     return text.replace(RU_FORMS, (whole, few, rest) => {
       const count = few.split(/\s+/).length;
@@ -195,7 +199,7 @@ function speakQuantities(text, lang) {
       return `несколько ${many}${after ? ` ${after}` : ""}`;
     });
   }
-  const words = QUANTITY_WORDS[lang];
+  const words = hasBuiltinPlayerWords(lang) ? QUANTITY_WORDS[lang] : forms.quantity && `${forms.quantity} `;
   return words ? text.replace(QUANTITY, words) : text;
 }
 
@@ -238,7 +242,7 @@ export function playerGenderSides(text) {
 export function speakPlayerTokens(text, lang, playerGender = null) {
   const forms = playerWordsOf(lang);
   if (!forms) return text;
-  text = speakQuantities(text, lang);
+  text = speakQuantities(text, lang, forms);
   const words = playerGender === "f" ? forms.f : forms.m;
   const cased = (word, at, whole) =>
     ALWAYS_CAPITAL.has(lang) || SENTENCE_START.test(whole.slice(0, at))
