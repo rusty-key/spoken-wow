@@ -56,7 +56,7 @@ I = "/landing/icons/"
 ICON_VOICES = {("orc", "male"), ("nightelf", "female"), ("dwarf", "male"), ("tauren", "female"),
                ("human", "male"), ("human", "female")}
 
-# What the English set uses, in order. Quests and gossip are by line id; the rest by id too.
+# The lines the English set uses, in order.
 QUESTS = ["f:8566:orc-male-shady", "f:1282:nightelf-female-standard", "f:3503:dwarf-male-guard", "f:765:tauren-female-official"]
 GOSSIP = ["g:072bbffeb611bfaace92898c40fcf12c", "g:0131cac34dfe2c78da45684a609b5c32",
           "g:06c875e93cfe3fa732719481017369a8", "g:01054e0f81cd813f7dd94d9b5ab20dcc"]
@@ -173,7 +173,6 @@ def align(path, text, lang):
             if mine[b + k]:
                 times[b + k] = heard[a + k][1]
     matched = sum(1 for t in times if t is not None) / max(1, sum(1 for m in mine if m))
-    # Fill the gaps between matched words, then the ends.
     known = [i for i, t in enumerate(times) if t is not None]
     if not known:
         return words, [0.0] * len(words), 0.0
@@ -249,7 +248,7 @@ def good_line(l):
 
 def icon_for(l):
     if os.path.exists(os.path.join(WEB, "public", "landing", "icons", f"npc-{l['npcId']}.png")):
-        return f"{I}npc-{l['npcId']}.png"  # the speaker's own picture
+        return f"{I}npc-{l['npcId']}.png"
     key = (l.get("race"), l.get("gender"))
     return f"{I}voice-{key[0]}-{key[1]}.png" if key in ICON_VOICES else None
 

@@ -11,10 +11,9 @@ type Voices = Record<string, Voice[]>;
 const load = async (lang: Lang): Promise<Voices> => (await import(`./voices/${lang}.json`)).default;
 
 /**
- * The voice samples of the page's language, a part at a time. English keeps the lines in
- * voices.ts and takes its boss stories from its file. A part the language has no recording for
- * plays the English clips, since a sample in the wrong language still shows what the part does.
- * Loaded on the server so a visitor is sent one language's data, not twelve.
+ * The page language's voice samples, with English for each part it has no recording of: a sample
+ * in the wrong language still shows what the part does. Loaded on the server so a visitor is sent
+ * one language's data, not thirteen.
  */
 export const voicesFor = cache(async (lang: Lang): Promise<Voices> => {
   const parts: Voices = { ...VOICES, ...(await load("enUS")) };

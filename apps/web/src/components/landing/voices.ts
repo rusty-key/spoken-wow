@@ -16,7 +16,7 @@ export type Voice = {
   peaks: number[];
   words: string[];
   times: number[];
-  /** The language of the words, as html lang. English clips leave it out. */
+  /** The language of the words, as an HTML lang tag; absent means English. */
   lang?: string;
   /** What goes between two words on screen: a space unless the language has none (Chinese). */
   joiner?: string;
