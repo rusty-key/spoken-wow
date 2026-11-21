@@ -81,6 +81,8 @@ const EN = {
   'service.turnOnSharing': 'Turn on Sharing first.',
   'service.upToDate': 'Spoken is up to date.',
 
+  'proxy.invalid': 'That is not a proxy the manager can use. Write it as http://127.0.0.1:8080 or socks5://127.0.0.1:10808.',
+
   'packs.notTrusted': 'The voice pack list could not be trusted ({why}), so it was not used.',
   'packs.serverStatus': 'The voice pack server answered {status}. Try again later.',
 
@@ -202,6 +204,8 @@ const ZH: Record<MessageKey, string> = {
   'service.waitForJobs': '请先等待正在进行的下载和安装结束。',
   'service.turnOnSharing': '请先开启共享。',
   'service.upToDate': 'Spoken 已是最新。',
+
+  'proxy.invalid': '管理器无法使用这个代理。请写成 http://127.0.0.1:8080 或 socks5://127.0.0.1:10808。',
 
   'packs.notTrusted': '无法信任语音包列表（{why}），因此未使用它。',
   'packs.serverStatus': '语音包服务器返回 {status}。请稍后重试。',

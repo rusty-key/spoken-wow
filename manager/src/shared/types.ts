@@ -253,6 +253,11 @@ export interface Settings {
   lastGameId: string
   /** Sending what Spoken collects to the site: 'unset' until the player answers the first-start question. */
   sharing: SharingChoice
+  /**
+   * `scheme://host:port`, or '' for the system proxy. Empty leaves publishing and the site going direct: Node
+   * cannot read the system setting.
+   */
+  proxy: string
 }
 
 export const SHARING_CHOICES = ['unset', 'on', 'off'] as const
@@ -282,7 +287,8 @@ export const DEFAULT_SETTINGS: Settings = {
   voiceLanguage: 'enUS',
   voiceAuthors: {},
   lastGameId: '',
-  sharing: 'unset'
+  sharing: 'unset',
+  proxy: ''
 }
 
 /** The Author filter's choice that shows every author. Not a slug, so no team can take it. */
