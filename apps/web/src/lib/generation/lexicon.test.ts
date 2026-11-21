@@ -109,7 +109,7 @@ describe("validateLexicon", () => {
 });
 
 // The other way to say how a name sounds, for anyone who cannot write IPA. Approximate, but
-// honoured by every model rather than only by eleven_v3 and eleven_flash_v2.
+// honoured by every model rather than only by the models with phoneme support.
 const RESPELLED = {
   grapheme: "Gnomeregan",
   alias: "nomeregan",
@@ -249,6 +249,8 @@ describe("honoursPhonemes", () => {
   // took effect.
   it("knows which models honour a phoneme rule", () => {
     expect(honoursPhonemes("eleven_v3")).toBe(true);
+    expect(honoursPhonemes("eleven_v4")).toBe(true);
+    expect(honoursPhonemes("eleven_v4_turbo")).toBe(true);
     expect(honoursPhonemes("eleven_flash_v2")).toBe(true);
     expect(honoursPhonemes("eleven_multilingual_v2")).toBe(false);
     expect(honoursPhonemes("eleven_turbo_v2_5")).toBe(false);

@@ -442,6 +442,15 @@ describe("renderPreview", () => {
     expect(calls).not.toHaveBeenCalled();
   });
 
+  it("previews an IPA pronunciation on Eleven v4", async () => {
+    const { calls, options } = elevenlabs();
+    const config = { ...CONFIG, modelId: "eleven_v4" };
+    const result = await renderPreview(IPA, "sentence", pick, config, options, scratch());
+
+    expect(result.ok).toBe(true);
+    expect(calls).toHaveBeenCalledTimes(1);
+  });
+
   // A respelling is plain text. Every model reads it, so there is nothing to refuse.
   it("still previews a respelling on such a model", async () => {
     const { calls, options } = elevenlabs();
