@@ -4,6 +4,10 @@ Spoken Launcher until 0.1.2, when it became Spoken Manager.
 
 ## Unreleased
 
+- **A proxy for the Manager, in Settings > General > Network.** Enter `socks5://127.0.0.1:10808`,
+  `http://127.0.0.1:8080` or just `127.0.0.1:8080`, and downloads, updates, the pack list, publishing
+  and site sign-in all go through it. Left empty, the Manager follows the system proxy as before.
+  *([Loukky](https://github.com/Loukky))*
 - **Italian, Vietnamese and Polish voice packs come from their own teams.** The Manager lists
   them like any team's language, and they are no longer built in.
   *([rusty-key](https://github.com/rusty-key))*
