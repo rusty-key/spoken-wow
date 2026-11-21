@@ -2,6 +2,11 @@
 
 Spoken Player until 3.0.0, when it became Spoken and took its modules into one download.
 
+## Unreleased
+
+- **The Compendium's lists take the professions window's look,** with gold header bars and a yellow light on
+  the chosen row. *([Nucabe](https://github.com/Nucabe))*
+
 ## 3.11.0 — 2026-11-21
 
 - **Original Thrall Speech plays only for players who listen in English**, as the recording is

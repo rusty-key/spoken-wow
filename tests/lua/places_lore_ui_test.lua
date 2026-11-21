@@ -311,8 +311,6 @@ Expect("...its page with the zone's round portrait left of the title, the zone b
 RowFor("Durotar").scripts.OnClick(RowFor("Durotar"))
 Expect("...and another opens it again", Shown(), "Eastern Kingdoms|Dun Morogh|Kalimdor|Durotar|Orgrimmar|Sen'jin Village|Valley of Trials")
 Expect("...open once more", RowFor("Durotar").row.open, true)
-Expect("...the banner's line beside it solid again, not left fading from when the line ended it",
-    RowFor("Durotar").bannerRail.gradient.from.a, RowFor("Durotar").bannerRail.gradient.to.a)
 RowFor("Valley of Trials").scripts.OnClick(RowFor("Valley of Trials"))
 RowFor("Durotar").scripts.OnClick(RowFor("Durotar"))
 Expect("an area chosen, a click on its zone's line still closes it", Shown(), "Eastern Kingdoms|Dun Morogh|Kalimdor|Durotar")
@@ -326,16 +324,7 @@ Expect("...a line, one level in, as an area is", RowFor("Orgrimmar").row.style =
     RowFor("Valley of Trials").row.nest)
 Expect("...indented under its zone's line, 16 further in",
     RowFor("Orgrimmar").indent - RowFor("Durotar").indent, 16)
-Expect("...with the line down the open zone's contents beside it", RowFor("Orgrimmar").rails[1]:IsShown()
-    and RowFor("Valley of Trials").rails[1]:IsShown(), true)
-Expect("...the line fading out at the last row it runs past, not before", RowFor("Valley of Trials").rails[1].fades
-    and not RowFor("Orgrimmar").rails[1].fades, true)
-Expect("...and the banner's line at the last row under the banner", RowFor("Valley of Trials").bannerRail.fades
-    and not RowFor("Durotar").bannerRail.fades, true)
 Expect("...and with no areas of its own, no numbers on it", RowFor("Orgrimmar").count.text, "")
-Expect("...a line down the left of what a continent's banner holds, as down an open zone's",
-    RowFor("Durotar").bannerRail ~= nil and RowFor("Durotar").bannerRail:IsShown()
-    and RowFor("Kalimdor").bannerRail == nil or not RowFor("Kalimdor").bannerRail:IsShown(), true)
 Expect("...a found area's tick at the end of its row, where a padlock goes", RowFor("Valley of Trials").status.anchor.point,
     "CENTER")
 Expect("...counted with the zone's areas", RowFor("Durotar").count.text:match("/(%d+)"), "3")
@@ -1220,21 +1209,6 @@ do
         .. tostring(banner.label.justifyV) .. " | " .. banner.count.anchor.point .. " " .. banner.count.anchor.y .. " "
         .. tostring(banner.count.justifyV) .. " | " .. banner.toggle.anchor.point .. " " .. banner.toggle.anchor.y,
         "RIGHT>LEFT 0 MIDDLE | RIGHT 0 MIDDLE | LEFT -1.5")
-    -- A line reaches up through the gap above its row, 4 at most (under a banner), to the foot of the
-    -- box above, and no further: inside it, it crossed the box's edge or the group's plus or minus.
-    local railed, reach = 0, 0
-    for _, row in ipairs(rows) do
-        local lines = { row.bannerRail }
-        for _, rail in ipairs(row.rails or {}) do table.insert(lines, rail) end
-        for _, rail in pairs(lines) do
-            if rail:IsShown() then
-                railed = railed + 1
-                reach = math.max(reach, rail.top or 0)
-            end
-        end
-    end
-    Expect("...its tree lines drawn, each from the foot of the box above its row, never into it",
-        tostring(railed > 0) .. " " .. reach, "true 4")
     banner.selected = true
     banner.scripts.OnEnter(banner)
     Expect("...a chosen row lit flat, with the accent edge, no streak",
@@ -1243,9 +1217,9 @@ do
     banner.scripts.OnLeave(banner)
     local search
     for _, child in ipairs(window.children or {}) do if child.template == "SearchBoxTemplate" then search = child end end
-    -- Level with the rows (the list's 6, the scroll frame's 4 and the rows' 3), to the arrow's 26.
+    -- Level with the rows (the list's 6, the scroll frame's 4 and the rows' 6), to the arrow's 26.
     Expect("the search box level with the rows, to the filter menu's arrow, with no tome over its corner",
-        tostring(search.anchor.x) .. " " .. tostring(search:GetWidth()), "13 312")
+        tostring(search.anchor.x) .. " " .. tostring(search:GetWidth()), "16 317")
     _G.SpokenCompendium:Select("places")
     local tab, other
     for i = 1, 6 do

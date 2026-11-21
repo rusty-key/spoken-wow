@@ -97,6 +97,16 @@ end
 -- Scrollbar
 --------------------------------------------------------------------------------
 
+--- For a bar on a caller's scroll frame (AddScrollBar): stands it `side` in from the frame's right,
+--- `head` down and `foot` up, and ends the scroll child `room` short of it while it shows.
+function TextView:SetBarInsets(side, head, foot, room)
+	self.bar:ClearAllPoints()
+	self.bar:SetPoint("TOPRIGHT", self.frame, "TOPRIGHT", -side, -head)
+	self.bar:SetPoint("BOTTOMRIGHT", self.frame, "BOTTOMRIGHT", -side, foot)
+	self.barRoom = side + room
+	self:UpdateScrollBar()
+end
+
 function TextView:UpdateScrollBar()
 	local viewHeight = self.frame:GetHeight() or 0
 	local contentHeight = self.child:GetHeight() or 0
@@ -114,7 +124,7 @@ function TextView:UpdateScrollBar()
 	-- A caller's scroll child (AddScrollBar) as wide as the frame, less the bar's room only while
 	-- there is something to scroll: rows reach the edge when the bar is not there.
 	if self.fitsChild then
-		local width = (self.frame:GetWidth() or 0) - (scrollable and (self.barWidth + 6) or 0)
+		local width = (self.frame:GetWidth() or 0) - (scrollable and (self.barWidth + self.barRoom) or 0)
 		if width > 0 and math.abs((self.child:GetWidth() or 0) - width) > 0.5 then self.child:SetWidth(width) end
 	end
 
@@ -583,7 +593,7 @@ end
 --- `child` its scroll child, `parent` what the bar is drawn in. Leaves the bar's width plus a
 --- gap free on the right of `child`, so nothing in it runs under the bar.
 function SpokenTextView.AddScrollBar(scroll, child, parent)
-	local view = setmetatable({ frame = scroll, child = child, range = 0 }, TextView)
+	local view = setmetatable({ frame = scroll, child = child, range = 0, barRoom = 6 }, TextView)
 	BuildScrollBar(view, parent)
 	-- The child as wide as the frame, but for the bar's room while the bar shows (UpdateScrollBar).
 	view.fitsChild = true
