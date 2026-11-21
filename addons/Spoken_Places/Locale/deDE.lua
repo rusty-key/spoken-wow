@@ -60,13 +60,16 @@ L.CMD_VOICE = "  /spp voice      -- „Geschichten vorlesen“ an oder aus"
 L.CMD_AUTOPLAY = "  /spp autoplay   -- „Automatisch vorlesen“ an oder aus"
 L.CMD_AUDIO = "  /spp audio      -- die installierten Sprachpakete"
 L.CMD_LANG = "  /spp lang       -- Textsprache: Liste, oder wechseln mit /spp lang <code> oder auto"
-L.CMD_FORGET = "  /spp forget     -- Gehörte Orte vergessen"
+L.CMD_FORGET = "  /spp forget     -- Besuchte Orte vergessen"
 
 
 -- Added in this release (deDE).
 L.REASON_VOICE = "Schalte „Geschichten vorlesen“ ein, um dies zu nutzen."
-L.OPT_FORGET_PLACES = "Gehörte Orte vergessen"
+L.OPT_FORGET_PLACES = "Besuchte Orte vergessen"
 L.OPT_FORGET_PLACES_DONE = "Die Liste gehörter Orte dieses Charakters wurde gelöscht."
+L.OPT_FORGET_PLACES_CONFIRM = "Du vergisst %d Orte."
+L.OPT_FORGET_PLACES_CONFIRM_ONE = "Du vergisst 1 Ort."
+L.OPT_FORGET = "Vergessen"
 L.OPT_DOWNLOAD_ADDRESS = "Kopiere diese Adresse in deinen Webbrowser, um das Sprachpaket herunterzuladen."
 L.OTHER_LANDS = "Andere Länder"
 L.BATTLEGROUNDS = "Schlachtfelder"

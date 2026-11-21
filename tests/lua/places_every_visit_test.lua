@@ -123,12 +123,12 @@ ArriveAndListen(Z)
 Z:OnAreaDiscovered("Razor Hill")
 Expect("a discovery of a place just read does not read it again", Spoken:GetQueueSize(), 0)
 
--- Forget Places Heard clears the times too.
+-- Forget Visited Places clears the times too.
 Z = Boot({ autoplayEveryVisit = true, autoplayEveryVisitGap = 7 * DAY })
 ArriveAndListen(Z)
 Z:ForgetAutoplayHistory()
 ZoneChanged(Z)
-Expect("after Forget Places Heard, the place is read on the next arrival", Spoken:GetQueueSize(), 2)
+Expect("after Forget Visited Places, the place is read on the next arrival", Spoken:GetQueueSize(), 2)
 
 if Failures() > 0 then print(string.format("\n%d failure(s)", Failures())); os.exit(1) end
 print("\nAll every-visit tests passed")

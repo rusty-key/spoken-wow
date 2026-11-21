@@ -4,6 +4,9 @@ Spoken Player until 3.0.0, when it became Spoken and took its modules into one d
 
 ## Unreleased
 
+- **Forget Places Heard is now Forget Visited Places, and asks before it clears.** The button
+  shows how many places the character has heard, and the question says how many it will forget.
+  *([Ozzadar](https://github.com/Ozzadar))*
 - **Area Highlight no longer shows Blizzard's zone art through OpenMap's map.** On OpenMap's map
   the area under the cursor now lights in a gold glow in the area's shape, over OpenMap's own art.
   Blizzard's map lights as before. *([Loukky](https://github.com/Loukky))*

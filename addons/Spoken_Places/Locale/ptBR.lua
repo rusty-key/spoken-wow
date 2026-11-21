@@ -60,13 +60,16 @@ L.CMD_VOICE = "  /spp voice      -- Ler histórias em voz alta, liga ou desliga"
 L.CMD_AUTOPLAY = "  /spp autoplay   -- Ler automaticamente, liga ou desliga"
 L.CMD_AUDIO = "  /spp audio      -- os pacotes de voz instalados"
 L.CMD_LANG = "  /spp lang       -- Idioma do texto: lista, ou troca com /spp lang <code> ou auto"
-L.CMD_FORGET = "  /spp forget     -- Esquecer lugares ouvidos"
+L.CMD_FORGET = "  /spp forget     -- Esquecer lugares visitados"
 
 
 -- Added in this release.
 L.REASON_VOICE = "Marque Ler histórias em voz alta para usar isto."
-L.OPT_FORGET_PLACES = "Esquecer lugares ouvidos"
+L.OPT_FORGET_PLACES = "Esquecer lugares visitados"
 L.OPT_FORGET_PLACES_DONE = "A lista de lugares ouvidos deste personagem foi limpa."
+L.OPT_FORGET_PLACES_CONFIRM = "Você vai esquecer %d lugares."
+L.OPT_FORGET_PLACES_CONFIRM_ONE = "Você vai esquecer 1 lugar."
+L.OPT_FORGET = "Esquecer"
 L.OPT_DOWNLOAD_ADDRESS = "Copie este endereço no seu navegador para baixar o pacote de voz."
 L.OTHER_LANDS = "Outras terras"
 L.BATTLEGROUNDS = "Campos de batalha"

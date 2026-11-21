@@ -125,7 +125,7 @@ No: the game gives addons no way to see a Discord voice channel. Stop it yoursel
 
 ## Places are only read once
 
-Places reads each zone and area once per character by default. Turn on **Read Every Visit** under When to Read on the **Places** page and choose how long to wait before the same place is read again. **Forget Places Heard** (`/spp forget`) clears this character's list.
+Places reads each zone and area once per character by default. Turn on **Read Every Visit** under When to Read on the **Places** page and choose how long to wait before the same place is read again. **Forget Visited Places** (`/spp forget`) clears this character's list.
 
 ## What are the slash commands?
 
