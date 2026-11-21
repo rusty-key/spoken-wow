@@ -147,13 +147,11 @@ Expect("the part lists the packs that hold gossip, not Alliance's", table.concat
 Expect("the minimap menu heads its entries with the page's name", Spoken:GetSource("gossip").title, L.OPT_GOSSIP_PAGE_TITLE)
 
 ---------------------------------------------------------------- no English voice pack
-local language = Spoken.Language
-function Spoken:Language(code)
-    if code == "enUS" then return { folders = {} } end
-    return language(self, code)
-end
+local presentModules = VO.DataModules.presentModulesOrdered
+VO.DataModules.presentModulesOrdered = {}
 Panel.panel.layout:Refresh()
 Expect("Original Thrall Speech is hidden without an English pack", originalThrall:IsShown(), false)
+VO.DataModules.presentModulesOrdered = presentModules
 
 if Failures() > 0 then print(string.format("\n%d failure(s)", Failures())); os.exit(1) end
 print("\nAll gossip page tests passed")
