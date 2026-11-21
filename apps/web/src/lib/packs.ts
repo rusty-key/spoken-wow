@@ -330,19 +330,24 @@ export function partOf(pack: Pack | undefined, folder: string | undefined): Pack
   return folder ? pack?.split?.find((part) => part.folder === folder) : undefined;
 }
 
+/** `part` names a split pack's part, and `all` marks the GitHub link that has every part: a page in another language labels them itself. */
+export type PackDownload = { kind: "curseforge" | "github"; label: string; href: string; part?: string; all?: boolean };
+
 /**
  * Where a pack downloads by hand: its CurseForge projects (a split pack's parts, labelled, or only
  * `only`) and its GitHub releases.
  */
-export function packDownloads(pack: Pack, only?: PackPart): { label: string; href: string }[] {
-  const links: { label: string; href: string }[] = [];
+export function packDownloads(pack: Pack, only?: PackPart): PackDownload[] {
+  const links: PackDownload[] = [];
   if (only) {
-    links.push({ label: "CurseForge", href: `${CURSEFORGE}/${only.slug}` });
+    links.push({ kind: "curseforge", label: "CurseForge", href: `${CURSEFORGE}/${only.slug}` });
   } else if (pack.split) {
-    for (const part of pack.split) links.push({ label: `CurseForge: ${part.label}`, href: `${CURSEFORGE}/${part.slug}` });
+    for (const part of pack.split) {
+      links.push({ kind: "curseforge", label: `CurseForge: ${part.label}`, href: `${CURSEFORGE}/${part.slug}`, part: part.label });
+    }
   } else if (pack.curseforge) {
-    links.push({ label: "CurseForge", href: `${CURSEFORGE}/${pack.curseforge}` });
+    links.push({ kind: "curseforge", label: "CurseForge", href: `${CURSEFORGE}/${pack.curseforge}` });
   }
-  links.push({ label: pack.split ? "GitHub: all" : "GitHub", href: githubReleases(pack.release) });
+  links.push({ kind: "github", label: pack.split ? "GitHub: all" : "GitHub", href: githubReleases(pack.release), all: !!pack.split });
   return links;
 }
