@@ -47,6 +47,13 @@ describe("zonesOf", () => {
     expect(zonesOf(line(1500, 3352), FILE)).toEqual([1454, 1413]);
   });
 
+  it("adds the zones players vouch for to where the map files place the speaker", () => {
+    const sighted = new Map([["creature:3429", [1454, 1413]], ["creature:1", [1411]]]);
+    expect(zonesOf(line(null, 3429), FILE, sighted)).toEqual([1413, 1454]);
+    expect(zonesOf(line(null, 1), FILE, sighted)).toEqual([1411]);
+    expect(zonesOf(line(7, 3429), FILE, sighted)).toEqual([1429]);
+  });
+
   it("keeps creatures and objects with the same id apart, and places neither it does not know", () => {
     expect(zonesOf({ ...line(null, 3429), npcType: "gameobject" }, FILE)).toEqual([]);
   });

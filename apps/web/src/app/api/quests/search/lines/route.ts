@@ -13,7 +13,7 @@ import { corpus } from "@/lib/quests/catalogue";
 import { publicSearchContext, searchContext } from "@/lib/quests/context";
 import { broadcastStatuses } from "@/lib/broadcast/store";
 import { recordingsFor } from "@/lib/recordings/store";
-import { filtersFromParams, needsDirty, needsLevels, needsStale, withoutMadeBy } from "@/lib/search-request";
+import { filtersFromParams, needsDirty, needsLevels, needsStale, needsZones, withoutMadeBy } from "@/lib/search-request";
 import { batchPlan, matchingLines } from "@/lib/search";
 import { asTeam } from "@/lib/teams/acting";
 import { viewedOther, viewOnly } from "@/lib/teams/viewing";
@@ -37,8 +37,8 @@ export async function GET(request: NextRequest) {
   const [catalogue, { voiced, context }, recordings, broadcast] = await Promise.all([
     other ? asTeam(lang, other, () => corpus(lang)) : corpus(lang),
     other
-      ? publicSearchContext(lang, other, needsLevels(filters))
-      : searchContext(needsStale(filters), needsDirty(filters), lang, seesMadeBy, needsLevels(filters)),
+      ? publicSearchContext(lang, other, needsLevels(filters), needsZones(filters))
+      : searchContext(needsStale(filters), needsDirty(filters), lang, seesMadeBy, needsLevels(filters), undefined, needsZones(filters)),
     // So "regenerate everything not yet recorded" means what the page showed. Only asked
     // when filtering on it; recordingsFor is undefined for anybody who may not see them, and
     // the filter then matches on nothing -- recordedMatches without the recordings.

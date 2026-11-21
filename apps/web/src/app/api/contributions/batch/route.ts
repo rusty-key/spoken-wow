@@ -14,6 +14,9 @@
  * its own beside the IP's. Without one, as from a file uploaded on /contribute, known lines are
  * dropped as before.
  *
+ * A `seen` envelope is no contribution: it says which zones the player met an NPC in
+ * (lib/contributions/sighting.ts), and goes to npc_sighting under who sent it (lib/quests/sightings.ts).
+ *
  * Places are refused here. A places contribution is the description the player writes on the
  * page, and a file has none; the addon never gathers them, so one arriving is a hand-built file.
  */
@@ -46,7 +49,9 @@ import {
   recordContributionHit,
 } from "@/lib/contributions/store";
 import { keepClassWords } from "@/lib/contributions/class-words";
+import { isSightingEnvelope, sightingFrom, type Sighting } from "@/lib/contributions/sighting";
 import { submissionFrom } from "@/lib/contributions/submission";
+import { recordSightings, uploaderOf } from "@/lib/quests/sightings";
 import type { Submission } from "@/lib/contributions/contributions";
 
 export const dynamic = "force-dynamic";
@@ -88,6 +93,7 @@ export async function POST(request: Request) {
   };
 
   const sent: Submission[] = [];
+  const sightings: Sighting[] = [];
   const refused: Record<string, number> = {};
   const refuse = (reason: string) => {
     refused[reason] = (refused[reason] ?? 0) + 1;
@@ -96,6 +102,12 @@ export async function POST(request: Request) {
   for (const raw of envelopes) {
     if (typeof raw !== "string") {
       refuse("malformed");
+      continue;
+    }
+    if (isSightingEnvelope(raw)) {
+      const sighting = sightingFrom(raw);
+      if (sighting.ok) sightings.push(sighting.value);
+      else refuse(sighting.error);
       continue;
     }
     // parseEnvelope refuses an oversized one itself; the single route measures first only
@@ -137,6 +149,8 @@ export async function POST(request: Request) {
   }
   await createContributions(unknown, identity);
   if (installId) await recordMissingAudio(installId, hits);
+  const uploader = uploaderOf({ userId: identity.userId, installId, ip });
+  if (uploader && sightings.length > 0) await recordSightings(sightings, uploader);
 
   await recordContributionHit(ip, installId);
 
@@ -147,8 +161,9 @@ export async function POST(request: Request) {
 
   return Response.json({
     ok: true,
-    accepted: submissions.length,
+    accepted: submissions.length + sightings.length,
     known,
+    seen: sightings.length,
     counted: hits.length,
     refused,
   });

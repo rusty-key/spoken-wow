@@ -508,8 +508,10 @@ quest filed under a class, profession or season, counts in each zone its speaker
 zones come from the committed `pipelines/quests/corpus/zones.json`, which `make quests-zones` writes
 from `Compendium.lua` and the corpus's spawns. The spawns are placed by the server's map files
 (`COMPENDIUM_MAPS`), as the Compendium places a giver, because the zones' rectangles overlap along
-every border. Rerun it after `make quests-compendium` or a corpus export. The filter offers only
-the zones some line is in, and an item or an unspawned object is in none.
+every border. Rerun it after `make quests-compendium` or a corpus export. A speaker is also in
+each zone two players' uploads say they met it in (`npc_sighting`, `lib/quests/sightings.ts`, the
+collecting described under contributions), which places the NPCs the dump never spawned. The filter
+offers only the zones some line is in, and an item or an unspawned object is in none.
 
 **The player filter is for voicing one side of a split line first.** `?playerGender=m` or `f` keeps
 that side's `:m` or `:f` lines and every line that does not branch on the player, and a batch started
@@ -1101,6 +1103,13 @@ case and spacing aside (`DataModules:IsTextKnown`), so the site can correct it: 
 the speaker's lines in the client's language, a quest moment against its wordings, or for one
 wording against the Compendium's English accept and complete text. Progress text, and a quest
 moment of one wording in another language, have nothing to compare with and are not checked.
+
+With collecting on, every quest or gossip window also keeps where its NPC was met, missing line or
+not: a `seen` envelope per NPC (`SeeSpeaker`, beside the lines in `Gather.lua`, at most
+`SEEN_CAP`), naming it and each zone map the player stood in, a town's map walked up to its zone's.
+It goes up with the lines and is stored in `npc_sighting` under who sent it (an account, the
+Manager's install id, or a hash of the address), never as a contribution. A zone counts for the
+zone filter once two uploaders send it.
 
 The same text pasted again — by the same player or a different one — bumps a count on the
 existing row rather than filing a second one; different text under the same key stays its own

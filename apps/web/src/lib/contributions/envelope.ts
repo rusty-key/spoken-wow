@@ -63,8 +63,11 @@ export function checksum(body: string): number {
   return sum;
 }
 
-export function parseEnvelope(raw: string): Result {
-  return parse(raw, SOURCES);
+export function parseEnvelope(raw: string): Result;
+/** The same read for another kind of envelope: a sighting (sighting.ts) is no contribution. */
+export function parseEnvelope<S extends string>(raw: string, accepted: readonly S[]): Result<S>;
+export function parseEnvelope(raw: string, accepted: readonly string[] = SOURCES): Result<string> {
+  return parse(raw, accepted);
 }
 
 /** parseEnvelope for a report's context, which may also be a boss's. */

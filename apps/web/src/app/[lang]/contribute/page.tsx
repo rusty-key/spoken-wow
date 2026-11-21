@@ -52,7 +52,8 @@ export default async function Page({ params }: { params: Promise<{ lang: string 
         <div className="mt-10 grid gap-10 md:grid-cols-2">
           <Section title="Everything you gathered">
             <p className="text-muted-foreground text-sm">
-              Every line the addon collected while you played.
+              Every line the addon collected while you played, and which zone you met each
+              speaker in.
             </p>
             <Step n={1}>
               Turn on <strong>Gather as I play</strong> in the game, then log out or{" "}

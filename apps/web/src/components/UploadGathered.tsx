@@ -12,12 +12,17 @@ import { useRef, useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import { envelopesFromSavedVariables } from "@/lib/contributions/saved-variables";
+import { isSightingEnvelope, sightingFrom } from "@/lib/contributions/sighting";
 import { sendFailureMessage } from "@/lib/contributions/send-failure";
 import { sendInChunks } from "@/lib/contributions/upload";
 
 import { previewOf } from "./ContributeForm";
 
-const SOURCE_LABELS: Record<string, string> = { quests: "quest and conversation lines", readables: "book pages" };
+const SOURCE_LABELS: Record<string, string> = {
+  quests: "quest and conversation lines",
+  readables: "book pages",
+  seen: "characters, with the zones you met them in",
+};
 
 type Loaded = { envelopes: string[]; counts: Record<string, number>; unreadable: number; titles: string[] };
 
@@ -27,6 +32,16 @@ function summarise(candidates: readonly string[]): Loaded {
   const envelopes: string[] = [];
   let unreadable = 0;
   for (const envelope of candidates) {
+    // Where the player met an NPC: no line to preview, only whether it reads.
+    if (isSightingEnvelope(envelope)) {
+      if (sightingFrom(envelope).ok) {
+        envelopes.push(envelope);
+        counts.seen = (counts.seen ?? 0) + 1;
+      } else {
+        unreadable += 1;
+      }
+      continue;
+    }
     const preview = previewOf(envelope);
     if (!preview.ok) {
       unreadable += 1;

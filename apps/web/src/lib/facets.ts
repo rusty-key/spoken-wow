@@ -7,13 +7,15 @@
  * Being closed sets also makes them a whitelist, which is what lets /api/search take these
  * straight from a query string.
  *
- * The zones are the committed corpus/zones.json's (lib/quests/zones.ts), the ones some line is in.
+ * The zones are corpus/zones.json's and any players' sightings add (lib/quests/sightings.ts), asked
+ * on every call rather than kept with the roster, since sightings arrive between roster moves.
  *
  * `source` and `npcType` are absent on purpose: they are closed unions on CorpusLine, so
  * their lists live next to the type in lib/search.ts.
  */
 import type { Lang } from "./lang";
-import { QUEST_ZONES, type QuestZone } from "./quests/zones";
+import { offeredZones } from "./quests/sightings";
+import type { QuestZone } from "./quests/zones";
 import type { Roster } from "./voices/roster";
 import { loadRoster } from "./voices/roster-store";
 import { GENDERS } from "./voices/voices";
@@ -38,7 +40,7 @@ export type Facets = {
 const sorted = (values: Iterable<string>) => [...new Set(values)].sort((a, b) => a.localeCompare(b));
 
 /** Per roster: /api/search asks on every request, and the roster is one instance until it moves. */
-const built = new WeakMap<Roster, Facets>();
+const built = new WeakMap<Roster, Omit<Facets, "zones">>();
 
 export async function facets(lang: Lang): Promise<Facets> {
   const roster = await loadRoster(lang);
@@ -51,9 +53,8 @@ export async function facets(lang: Lang): Promise<Facets> {
       voices: roster.voiceNames,
       // A genderless type's flavors match a race with no gender chosen.
       flavorScopes: roster.flavorScopes().map((scope) => ({ ...scope, gender: scope.gender ?? "" })),
-      zones: QUEST_ZONES,
     };
     built.set(roster, value);
   }
-  return value;
+  return { ...value, zones: await offeredZones() };
 }

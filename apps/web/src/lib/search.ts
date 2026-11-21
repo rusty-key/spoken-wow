@@ -188,6 +188,8 @@ export type SearchContext = {
   broadcast?: Map<string, Exclude<BroadcastStatus, "none">>;
   /** Absent means nobody asked, or the database could not be reached. */
   levels?: Map<number, number>;
+  /** npcKey -> the zones players vouch an NPC stands in (lib/quests/sightings.ts), asked for by a zone filter. */
+  sightings?: ReadonlyMap<string, readonly number[]>;
 };
 
 export const NO_CONTEXT: SearchContext = { overrides: new Map() };
@@ -463,6 +465,7 @@ export function matchingLines(
     recordings,
     broadcast: broadcastOf,
     levels,
+    sightings,
   }: SearchContext = NO_CONTEXT,
 ): CorpusLine[] {
   const query = q.trim();
@@ -489,7 +492,7 @@ export function matchingLines(
   if (source?.length) lines = lines.filter((line) => source.includes(line.source));
   if (client !== "all" && !lineId) lines = lines.filter((line) => lineMatchesClient(line, client));
   if (npcType) lines = lines.filter((line) => line.npcType === npcType);
-  if (zone !== undefined) lines = lines.filter((line) => zonesOf(line).includes(zone));
+  if (zone !== undefined) lines = lines.filter((line) => zonesOf(line, undefined, sightings).includes(zone));
   // The *effective* text, matching the chip on the row and the text regeneration will send.
   // Reading line.text instead hid every line whose direction was restored by an override -
   // which is 314 of them, and the ones most worth finding.
