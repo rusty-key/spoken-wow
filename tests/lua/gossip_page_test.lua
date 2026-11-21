@@ -78,7 +78,7 @@ Expect("turning it on again makes the part read", Spoken:IsPartOn("gossip"), tru
 
 stub.SetLocale("deDE")
 Panel.panel.layout:Refresh()
-Expect("Original Thrall Speech is hidden from a non-English client", originalThrall:IsShown(), false)
+Expect("Original Thrall Speech stays shown with an English pack", originalThrall:IsShown(), true)
 stub.SetLocale("enUS")
 Panel.panel.layout:Refresh()
 Expect("Original Thrall Speech returns for an English client", originalThrall:IsShown(), true)
@@ -145,6 +145,15 @@ Expect("...which clears this character's muted NPCs", next(db.char.ignoredGossip
 Expect("the part lists the packs that hold gossip, not Alliance's", table.concat(Spoken:GetSource("gossip").packs(), "|"),
     "Spoken Audio: Gossip")
 Expect("the minimap menu heads its entries with the page's name", Spoken:GetSource("gossip").title, L.OPT_GOSSIP_PAGE_TITLE)
+
+---------------------------------------------------------------- no English voice pack
+local language = Spoken.Language
+function Spoken:Language(code)
+    if code == "enUS" then return { folders = {} } end
+    return language(self, code)
+end
+Panel.panel.layout:Refresh()
+Expect("Original Thrall Speech is hidden without an English pack", originalThrall:IsShown(), false)
 
 if Failures() > 0 then print(string.format("\n%d failure(s)", Failures())); os.exit(1) end
 print("\nAll gossip page tests passed")
