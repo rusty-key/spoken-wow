@@ -22,7 +22,8 @@ from tts_cli.naming import (BROADCAST_SOURCES, followup_stem_from_line_id, gossi
                             several_wordings, split_voice, subfolder_from_line_id,
                             variant_file_name)
 from tts_cli.npc_bodies import GENDER_SEX, body_name
-from tts_cli.store import SUBFOLDERS, audio_extension, durations, stored_files, take_text, word_times
+from tts_cli.store import (SUBFOLDERS, audio_extension, durations, line_text, stored_files, take_text,
+                           word_times)
 from tts_cli.utils import (get_first_n_words, get_last_n_words,
                            replace_dollar_bs_with_space)
 
@@ -575,6 +576,11 @@ def build_module(corpus: dict, store_dir: str, dist_dir: str = DEFAULT_DIST_DIR,
     words = take_text(store_dir)
     texts = {os.path.basename(stem): words[stem]
              for stem in (os.path.splitext(rel)[0] for rel in audio) if stem in words}
+    # And the words of this pack's lines that have no take yet, so a quest page reads them in the
+    # pack's language rather than in English.
+    for stem, text in line_text(store_dir).items():
+        if stem not in skip and (include is None or stem in include):
+            texts.setdefault(os.path.basename(stem), text)
     write_lua_table(os.path.join(generated_dir, "text_table.lua"),
                     module_name, "TextByFileName", texts, only_on=language or "enUS")
     written.append("text_table.lua")

@@ -969,18 +969,20 @@ local function Generalise(text, english)
     return text
 end
 
--- Each moment's words as stored: those kept in this client's language, else the English, or nil.
--- Kept words filled for the other sex are not used where the English has a word for each.
+-- Each moment's words as stored: those kept in this client's language, else the English, or nil,
+-- and whether they were kept. Kept words filled for the other sex are not used where the English
+-- has a word for each.
 local function Stored(id, moment)
     local english = English(id)
     local kept = Kept()
     kept = kept and kept[id]
     local own = kept and kept[moment]
     local text = english[moment]
+    local seen = false
     if type(own) == "table" and own.text and not (own.sex ~= Sex() and (text or ""):find("%$[Gg]")) then
-        text = own.text
+        text, seen = own.text, true
     end
-    if text and text ~= "" then return text end
+    if text and text ~= "" then return text, seen end
 end
 
 local EVENTS = { accept = VO.Enums.SoundEvent.QuestAccept, progress = VO.Enums.SoundEvent.QuestProgress,
@@ -996,10 +998,20 @@ end
 
 -- A text pack's words in the Text Language come after a pack's own, as on the captions.
 local function PartText(id, moment)
-    local soundData = { event = EVENTS[moment], questID = id, text = SeenText(id, moment) }
+    local stored, seen = Stored(id, moment)
+    local soundData = { event = EVENTS[moment], questID = id, text = stored and QuestsTab:Fill(stored) }
     VO.DataModules:PrepareSound(soundData)
     if soundData.packText then return QuestsTab:Fill(soundData.packText) end
-    return VO.DataModules:TextPackText(soundData) or soundData.text
+    local text = VO.DataModules:TextPackText(soundData)
+    if text then return text end
+    -- A window this client never showed leaves only the English. The packs in the Text Language
+    -- carry the words of lines they have no recording of, so the page need not fall back to it.
+    local language = VO.Language:GetTextLanguage()
+    if not seen and language ~= VO.Language.BASE then
+        local words = VO.DataModules:WordsIn(soundData, language)
+        if words then return QuestsTab:Fill(words) end
+    end
+    return soundData.text
 end
 
 --- Keep what the open quest window shows, in this client's language.

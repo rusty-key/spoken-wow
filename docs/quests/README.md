@@ -237,6 +237,12 @@ them. `build` writes `text_table.lua` (`TextByFileName`) for the clips the pack 
 shows it where the pack is in the client's language (`docs/spoken/CAPTIONS.md`). It does not reach
 the lookup tables, which match the window's words.
 
+A language other than English also gets `audio/line-text.json`: every current line's `quest_line`
+text, recorded or not, its tokens left for the addon to fill. `build` adds the lines of the pack's
+share that have no take to `TextByFileName`, so a quest page reads a line in the pack's language
+before anyone has voiced it, where no window of it was kept (`UI/QuestsTab.lua` `PartText`). About
+3.7 MB of Spanish across a language's four packs, loaded only where it is the Text Language.
+
 `install` moves any existing install aside to `<module>.replaced` rather than deleting it.
 
 **Icons.** Every addon here carries an `icon.tga` and a `## IconTexture:` line naming

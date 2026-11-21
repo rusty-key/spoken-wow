@@ -212,6 +212,18 @@ async function writeTakeText() {
     if (text) texts[take.stem] = text;
   }
   await writeFile(join(paths.out, "take-text.json"), `${JSON.stringify(texts)}\n`);
+  await writeLineText(rows);
+}
+
+// Every current line's words, recorded or not, so a quest page can show a line in the pack's
+// language before anyone voiced it (UI/QuestsTab.lua). Kept as written, tokens and all: the addon
+// fills them for the player. English has none: its words ship with the addon (Data/QuestText.lua).
+async function writeLineText(rows) {
+  const texts = {};
+  if (lang !== BASE_LANG) {
+    for (const { stem, text } of rows) if (text && !(stem in texts)) texts[stem] = text;
+  }
+  await writeFile(join(paths.out, "line-text.json"), `${JSON.stringify(texts)}\n`);
 }
 
 /** The takes the folder holds, for a staged release's review; nothing without SPOKEN_SELECTED_TAKES. */

@@ -1014,6 +1014,21 @@ do
         page.body.lastParts[#page.body.lastParts].text, "Pack words.")
     Expect("...leaving the shipped words alone, which matching reads", SpokenQuestsText[KOBOLDS].complete, nil)
     testPack.TextByFileName = nil
+    -- A Spanish client, its Spanish pack with no recording of a line but its words: those, not
+    -- the English.
+    stub.SetLocale("esMX")
+    local packLanguage = testPack.METADATA.Language
+    testPack.METADATA.Language = "esMX"
+    testPack.TextByFileName = { ["60-accept"] = "Hola, $N." }
+    Click("Kobold Candles")
+    Expect("a line no pack recorded shows the words its pack in the client's language carries",
+        PartOf(L.QUEST_PART_ACCEPT).text, "Hola, " .. UnitName("player") .. ".")
+    testPack.TextByFileName = nil
+    Click("Kobold Candles")
+    Expect("...and the English where that pack has none", PartOf(L.QUEST_PART_ACCEPT).text ~= nil
+        and PartOf(L.QUEST_PART_ACCEPT).text:find("Hola", 1, true) == nil, true)
+    testPack.METADATA.Language = packLanguage
+    stub.SetLocale("enUS")
     -- Polish chosen as the Text Language: a text pack's words (Spoken's Texts.lua), where no pack in
     -- Polish voices the part.
     H.ReadText("plPL")
