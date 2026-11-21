@@ -430,7 +430,6 @@ function TextView:PaintModelEdge()
 	self.modelShade:SetShown(drawn)
 end
 
---- The model, its edge and its backing out of sight.
 function TextView:HideModel()
 	self.model:Hide()
 	self.modelEdgeFrame:Hide()
