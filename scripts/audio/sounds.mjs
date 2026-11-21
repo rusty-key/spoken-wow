@@ -215,9 +215,9 @@ async function writeTakeText() {
   await writeLineText(rows);
 }
 
-// Every current line's words, recorded or not, so a quest page can show a line in the pack's
-// language before anyone voiced it (UI/QuestsTab.lua). Kept as written, tokens and all: the addon
-// fills them for the player. English has none: its words ship with the addon (Data/QuestText.lua).
+// Every current line's words, recorded or not, so a quest page shows a line in the pack's language
+// before anyone voiced it. Tokens stay as written for the addon to fill. English ships its words in
+// the addon itself.
 async function writeLineText(rows) {
   if (lang === BASE_LANG) return;
   const texts = {};

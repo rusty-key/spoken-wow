@@ -577,8 +577,7 @@ def build_module(corpus: dict, store_dir: str, dist_dir: str = DEFAULT_DIST_DIR,
     words = take_text(store_dir)
     texts = {os.path.basename(stem): words[stem]
              for stem in (os.path.splitext(rel)[0] for rel in audio) if stem in words}
-    # And the words of this pack's lines that have no take yet, so a quest page reads them in the
-    # pack's language rather than in English.
+    # Lines with no take yet too, so a quest page reads them in the pack's language, not English.
     for stem, text in line_text(store_dir).items():
         if carried(stem):
             texts.setdefault(os.path.basename(stem), text)
