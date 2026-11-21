@@ -60,13 +60,16 @@ L.CMD_VOICE = "  /spp voice      -- «Читать истории вслух»: 
 L.CMD_AUTOPLAY = "  /spp autoplay   -- «Читать автоматически»: вкл. или выкл."
 L.CMD_AUDIO = "  /spp audio      -- установленные пакеты озвучки"
 L.CMD_LANG = "  /spp lang       -- Язык текста: список или смена через /spp lang <code> или auto"
-L.CMD_FORGET = "  /spp forget     -- Забыть услышанные места"
+L.CMD_FORGET = "  /spp forget     -- Забыть посещённые места"
 
 
 -- Added for Lore of Azeroth, Zone Lore, voice packs and the settings page.
 L.REASON_VOICE = "Включите «Читать истории вслух», чтобы пользоваться этим."
-L.OPT_FORGET_PLACES = "Забыть услышанные места"
+L.OPT_FORGET_PLACES = "Забыть посещённые места"
 L.OPT_FORGET_PLACES_DONE = "Список услышанных мест этого персонажа очищен."
+L.OPT_FORGET_PLACES_CONFIRM = "Будет забыто мест: %d."
+L.OPT_FORGET_PLACES_CONFIRM_ONE = "Будет забыто мест: 1."
+L.OPT_FORGET = "Забыть"
 L.OPT_DOWNLOAD_ADDRESS = "Скопируйте этот адрес в браузер, чтобы скачать пакет озвучки."
 L.OTHER_LANDS = "Другие земли"
 L.BATTLEGROUNDS = "Поля боя"

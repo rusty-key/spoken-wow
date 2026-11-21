@@ -60,13 +60,16 @@ L.CMD_VOICE = "  /spp voice      -- 「朗讀故事」開/關"
 L.CMD_AUTOPLAY = "  /spp autoplay   -- 「自動朗讀」開/關"
 L.CMD_AUDIO = "  /spp audio      -- 已安裝的語音包"
 L.CMD_LANG = "  /spp lang       -- 文字語言：列出，或用 /spp lang <代碼> 或 auto 切換"
-L.CMD_FORGET = "  /spp forget     -- 忘記已聽過的地方"
+L.CMD_FORGET = "  /spp forget     -- 忘記去過的地方"
 
 
 -- Added in this release: subtitles, profiles, module pages and windows.
 L.REASON_VOICE = "開啟「朗讀故事」才能使用。"
-L.OPT_FORGET_PLACES = "忘記已聽過的地方"
+L.OPT_FORGET_PLACES = "忘記去過的地方"
 L.OPT_FORGET_PLACES_DONE = "已清除此角色已聽過的地方清單。"
+L.OPT_FORGET_PLACES_CONFIRM = "你將忘記 %d 個地方。"
+L.OPT_FORGET_PLACES_CONFIRM_ONE = "你將忘記 1 個地方。"
+L.OPT_FORGET = "忘記"
 L.OPT_DOWNLOAD_ADDRESS = "將此位址複製到網頁瀏覽器以下載語音包。"
 L.OTHER_LANDS = "其他地區"
 L.BATTLEGROUNDS = "戰場"

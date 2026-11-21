@@ -53,7 +53,7 @@ local defaults = {
 	autoplay = true,
 	autoplaySubzones = true,
 	-- On, because the game announces a discovery once per character: off, a character who
-	-- explored before installing hears nothing there, and Forget Places Heard reads nothing again.
+	-- explored before installing hears nothing there, and Forget Visited Places reads nothing again.
 	-- A new character hears its zone right after its valley at login, and a place it has heard,
 	-- from the Play button too, is not read again when the game announces its discovery.
 	autoplayExplored = true,

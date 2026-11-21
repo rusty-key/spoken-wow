@@ -60,7 +60,7 @@ L.CMD_VOICE = "  /spp voice      -- Lire les récits à voix haute, activé ou n
 L.CMD_AUTOPLAY = "  /spp autoplay   -- Lire automatiquement, activé ou non"
 L.CMD_AUDIO = "  /spp audio      -- les packs de voix installés"
 L.CMD_LANG = "  /spp lang       -- Langue du texte : liste, ou change avec /spp lang <code> ou auto"
-L.CMD_FORGET = "  /spp forget     -- Oublier les lieux entendus"
+L.CMD_FORGET = "  /spp forget     -- Oublier les lieux visités"
 
 
 -- Settings page
@@ -76,8 +76,11 @@ L.REASON_MAP_PANEL = "Activez l'option Récit à côté de la carte pour utilise
 L.OPT_DOWNLOAD_ADDRESS = "Copiez cette adresse dans votre navigateur pour télécharger le pack de voix."
 
 -- Reading history
-L.OPT_FORGET_PLACES = "Oublier les lieux entendus"
+L.OPT_FORGET_PLACES = "Oublier les lieux visités"
 L.OPT_FORGET_PLACES_DONE = "La liste des lieux entendus par ce personnage est effacée."
+L.OPT_FORGET_PLACES_CONFIRM = "Vous oublierez %d lieux."
+L.OPT_FORGET_PLACES_CONFIRM_ONE = "Vous oublierez 1 lieu."
+L.OPT_FORGET = "Oublier"
 
 -- Fix a problem
 

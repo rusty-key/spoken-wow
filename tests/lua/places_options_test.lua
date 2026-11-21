@@ -120,13 +120,33 @@ do
     -- and the dungeon stories read the list whatever Include Places Found Before is.
     local forget = Row(Z.L.OPT_FORGET_PLACES)
     Z:Set("voiceEnabled", false); layout:Refresh()
-    Expect("Forget Places Heard greys out with the voice off, saying why", forget and forget.layoutReason,
+    Expect("Forget Visited Places greys out with the voice off, saying why", forget and forget.layoutReason,
         Z.L.REASON_VOICE)
     Z:Set("voiceEnabled", true); Z:Set("autoplay", false); layout:Refresh()
     Expect("...and with Read Automatically off", forget and forget.layoutReason, Z.L.REASON_DISCOVERY)
     Z:Set("autoplay", true); Z:Set("autoplayExplored", false); layout:Refresh()
     Expect("...but not with Include Places Found Before off", forget and forget.layoutReason, nil)
     Z:Set("autoplayExplored", true)
+
+    -- It clears every place at once, so it asks first.
+    local forgotten, forgetAll, count = 0, Z.ForgetAutoplayHistory, Z.HeardCount
+    Z.ForgetAutoplayHistory = function() forgotten = forgotten + 1 end
+    Z.HeardCount = function() return 12 end
+    layout:Refresh()
+    Expect("the button shows how many places are heard", forget:GetText(), "Forget Visited Places (12)")
+    local popups = #stub.popups
+    forget:Click()
+    Expect("Forget Visited Places asks before forgetting", #stub.popups, popups + 1)
+    Expect("...saying how many places it forgets", stub.popups[#stub.popups].args[1],
+        "You will forget 12 places.")
+    Expect("...with Forget to accept", stub.popups[#stub.popups].dialog.button1, "Forget")
+    Expect("...and forgets nothing until answered", forgotten, 0)
+    stub.popups[#stub.popups].dialog.OnAccept()
+    Expect("...then forgets every place on Yes", forgotten, 1)
+    Z.HeardCount = function() return 1 end
+    forget:Click()
+    Expect("one place is said as one", stub.popups[#stub.popups].args[1], "You will forget 1 place.")
+    Z.ForgetAutoplayHistory, Z.HeardCount = forgetAll, count
 
     -- Read Every Visit reads every place on a zone change, so Include Places Found Before would
     -- look live and change nothing.
