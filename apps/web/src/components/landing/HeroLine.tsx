@@ -32,6 +32,10 @@ export default function HeroLine({ lines: LINES }: { lines: HeroLineData[] }) {
   const figure = useRef<HTMLElement>(null);
 
   useEffect(() => {
+    // New lines without a remount (a refreshed payload) restart the timer at line 0; the state must follow it.
+    setLine(0);
+    setSpoken(0);
+    setFading(false);
     if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
       setSpoken(LINES[0].words.length);
       return;
