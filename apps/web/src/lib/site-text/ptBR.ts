@@ -104,6 +104,7 @@ const pt: Dictionary = {
         "Escolha entre selecioná-lo como alvo ou derrotá-lo em “Mostrar a história de um chefe”",
       ],
       browse: "Ver os chefes",
+      position: "Posição no exemplo de chefes",
     },
     examplesLabel: "Exemplos: {part}",
     noVoice: "As histórias dos chefes têm voz no pacote Spoken Audio: Bosses. Sem ele, aparecem como palavras no narrador.",

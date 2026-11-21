@@ -155,10 +155,10 @@ function Clip({ voice, position, disabled = false }: { voice: Voice; position?: 
           {t.failed}
         </p>
       )}
-      <p className="bn-voice-text" lang={disabled ? undefined : "en"} ref={text}>
+      <p className="bn-voice-text" lang={disabled ? undefined : (voice.lang ?? "en")} ref={text}>
         {voice.words.map((word, i) => (
           <span key={i} className={i === current ? "now" : i < current ? "said" : undefined}>
-            {word}{" "}
+            {word}{voice.joiner ?? " "}
           </span>
         ))}
       </p>
@@ -259,7 +259,7 @@ export default function VoicePlayer({ voices, part, position }: { voices: Voice[
           {CHEVRON("M8 4l6 6-6 6")}
         </button>
       </div>
-      <Clip key={pick} voice={voices[pick]} position={position} />
+      <Clip key={voices[pick].audio} voice={voices[pick]} position={position} />
     </div>
   );
 }
