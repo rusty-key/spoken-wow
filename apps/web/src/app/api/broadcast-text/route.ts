@@ -7,7 +7,8 @@
  */
 import { relinkGossip } from "@/lib/broadcast/relink";
 import { recordUpload, sameAsEnglish, uniqueById, type BroadcastRow } from "@/lib/broadcast/store";
-import { BASE_LANG, isClientLang, isLang } from "@/lib/lang";
+import { BASE_LANG, isClientLang } from "@/lib/lang";
+import { knownLang } from "@/lib/languages/catalogue";
 import { currentSession } from "@/lib/session";
 
 export const dynamic = "force-dynamic";
@@ -28,9 +29,9 @@ export async function POST(request: Request) {
   const body = (await request.json().catch(() => null)) as
     | { lang?: unknown; build?: unknown; texts?: unknown }
     | null;
-  const lang = body?.lang;
-  // A cache is written by a game client, and no client runs in Italian.
-  if (!isLang(lang) || !isClientLang(lang)) return Response.json({ error: "unknown language" }, { status: 400 });
+  const lang = await knownLang(body?.lang);
+  // A cache is written by a game client, and not one in a language no client runs in.
+  if (!lang || !isClientLang(lang)) return Response.json({ error: "unknown language" }, { status: 400 });
   const raw = body?.build;
   const build = typeof raw === "number" && Number.isInteger(raw) && raw > 0 ? raw : null;
   if (!Array.isArray(body?.texts) || body.texts.length > MAX_TEXTS) {

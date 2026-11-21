@@ -18,9 +18,9 @@ import { useFileDrop } from "@/components/useFileDrop";
 import type { RecordedTexts } from "@/lib/broadcast/store";
 import { parseBroadcastCache, type CachedBroadcastText } from "@/lib/broadcast/cache";
 import { sendFailureMessage } from "@/lib/contributions/send-failure";
-import { BASE_LANG, isClientLang, LOCALES, type Lang } from "@/lib/lang";
+import { BASE_LANG, BUILTIN, isClientLang, type Lang } from "@/lib/lang";
 
-const CLIENT_LOCALES = LOCALES.filter((locale) => isClientLang(locale.code));
+const CLIENT_LOCALES = BUILTIN.filter((locale) => locale.client);
 
 /** Every text the files hold, grouped by the client build that sent it. */
 type Loaded = { files: number; texts: number; byBuild: Map<number, CachedBroadcastText[]> };

@@ -13,14 +13,11 @@ import { existsSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
+import { quote } from "../../../lib/lua-text.mjs";
 import { packTimes } from "../../../lib/word-times.mjs";
 import { loadEnvFile } from "../lib/env.mjs";
 import { readLines, shipped } from "../lib/loredata.mjs";
-import { close as closeStore, loadManifest, packDir, soundsDir } from "./store.mjs";
-
-function luaString(text) {
-  return `"${text.replace(/\\/g, "\\\\").replace(/"/g, '\\"')}"`;
-}
+import { close as closeStore, loadCurrentLore, loadManifest, packDir, soundsDir } from "./store.mjs";
 
 // The manifest stores a POSIX path because that is what the files on disk are.
 // WoW addresses its own files with backslashes, and Audio.lua already builds the
@@ -28,14 +25,25 @@ function luaString(text) {
 // "Interface\AddOns\ZoneLoreAudio\Sounds\1411/zone.mp3" -- a mixed-separator path
 // that is not worth finding out about in-game, where it plays silence.
 function luaPath(file) {
-  return luaString(file.replace(/\//g, "\\"));
+  return quote(file.replace(/\//g, "\\"));
 }
 
 // A take with no word times has no `times`, and its captions estimate. The field is additive,
 // so the pack format stays 1: an addon that predates it ignores it.
-function fields(row) {
-  const times = row.times ? `, times = ${luaString(packTimes(row.times))}` : "";
-  return `file = ${luaPath(row.file)}, len = ${row.len}${times}`;
+export function fields(row) {
+  const times = row.times ? `, times = ${quote(packTimes(row.times))}` : "";
+  const text = row.text ? `, text = ${quote(row.text)}` : "";
+  return `file = ${luaPath(row.file)}, len = ${row.len}${times}${text}`;
+}
+
+// With neither text the field is left out, and the addon falls back to its own lore.
+export function packRow(record, currentText) {
+  return {
+    file: record.file,
+    len: record.durationSec,
+    times: record.wordTimes,
+    text: record.shownText ?? currentText,
+  };
 }
 
 /**
@@ -47,6 +55,7 @@ function fields(row) {
  */
 export async function buildLookup() {
   const manifest = await loadManifest();
+  const currentLore = await loadCurrentLore();
   const lore = shipped(await readLines());
 
   const zones = new Map();      // mapID -> row
@@ -67,7 +76,7 @@ export async function buildLookup() {
 
     const [kind, mapIDText, ...rest] = id.split(":");
     const mapID = Number(mapIDText);
-    const row = { file: record.file, len: record.durationSec, times: record.wordTimes };
+    const row = packRow(record, currentLore.get(id));
 
     if (kind === "z") {
       zones.set(mapID, row);
@@ -113,7 +122,7 @@ export async function buildLookup() {
     const table = subzones.get(mapID);
     for (const key of [...table.keys()].sort()) {
       const row = table.get(key);
-      lines.push(`\t\t\t[${luaString(key)}] = { ${fields(row)} },`);
+      lines.push(`\t\t\t[${quote(key)}] = { ${fields(row)} },`);
     }
     lines.push("\t\t},");
   }

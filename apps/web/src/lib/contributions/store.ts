@@ -25,7 +25,7 @@ import { DEFAULT_SORT, type ContributionSort, type SortColumn } from "./query";
 export const CONTRIBUTION_COLUMNS = `"id", "source", "key", "locale", "build", "text", "meta", "raw", "count",
                  "status", "body", "name", "email", "userId", "createdAt"::text,
                  "updatedAt"::text, "resolvedBy", "npcKind", "npcId", "npcName", "pageId",
-                 "matchLineId", "matchBookId", "matchPageNumber", "matchNewBook"`;
+                 "matchLineId", "matchBookId", "matchPageNumber", "matchNewBook", "rejectReason"`;
 const COLUMNS = CONTRIBUTION_COLUMNS;
 
 export type Contribution = {
@@ -58,6 +58,8 @@ export type Contribution = {
   matchBookId: string | null;
   matchPageNumber: number | null;
   matchNewBook: boolean;
+  /** Why a reviewer rejected the row (migration 0117); null when it is not rejected or no reason was given. */
+  rejectReason: string | null;
 };
 
 /**
@@ -457,3 +459,6 @@ export async function contributionLocales(ids: readonly number[]): Promise<Map<n
   );
   return new Map(rows.map((row) => [row.id, row.locale]));
 }
+
+/** The longest reason a reject may carry (migration 0117's check). */
+export const REJECT_REASON_MAX = 200;

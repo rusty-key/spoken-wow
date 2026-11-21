@@ -78,7 +78,7 @@ export async function PUT(request: Request) {
     return Response.json({ error: `reason must be ${MAX_REASON} characters or fewer` }, { status: 400 });
   }
 
-  return Response.json({ ignore: await writeIgnore(lineId, reason, userId, lang) });
+  return Response.json({ ignore: await writeIgnore(lineId, reason, userId, { lang }) });
 }
 
 export async function DELETE(request: Request) {

@@ -2,8 +2,9 @@
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { closeDb } from "@/lib/db";
-import { forgetTeams, teamOf } from "@/lib/teams/store";
-import { asSystem, dropTeam, runningJob, systemRows, testUser } from "@/lib/teams/testing";
+import { forgetLanguages, loadLanguages } from "@/lib/languages/catalogue";
+import { forgetTeams, teamsOf } from "@/lib/teams/store";
+import { addMember, asSystem, dropTeam, plainTeam, systemRows, testUser } from "@/lib/teams/testing";
 
 const who = vi.hoisted(() => ({ role: "admin" as string | null, signedOut: false, id: "" }));
 
@@ -35,12 +36,10 @@ beforeEach(async () => {
   who.signedOut = false;
   made = [];
   forgetTeams();
-  was = await teamOf("deDE");
+  was = await plainTeam("deDE");
 });
 
 afterEach(async () => {
-  const now = (await systemRows<{ team: string }>(`select team_of_lang('deDE') as "team"`))[0].team;
-  if (now !== was) await asSystem.query(`select move_team_lang('deDE', $1)`, [was]);
   await asSystem.query(`delete from "activity" where "actorId" = $1`, [who.id]);
   for (const team of made) await dropTeam(team);
   forgetTeams();
@@ -56,6 +55,76 @@ async function post(body: unknown): Promise<Response> {
   if (response.ok) made.push(((await response.clone().json()) as { team: { id: string } }).team.id);
   return response;
 }
+
+const letters = () => String.fromCharCode(65 + Math.floor(Math.random() * 26));
+const freshCode = () => `xq${letters()}${letters()}`;
+
+async function dropLanguages(codes: string[]) {
+  const held = await systemRows<{ teamId: string }>(`select "teamId" from "team_language" where "lang" = any($1::text[])`, [codes]);
+  await asSystem.query(`delete from "activity" where "lang" = any($1::text[])`, [codes]);
+  await asSystem.query(`delete from "language_grant" where "lang" = any($1::text[])`, [codes]);
+  await asSystem.query(`delete from "language" where "code" = any($1::text[])`, [codes]);
+  for (const { teamId } of held) await dropTeam(teamId);
+  forgetLanguages();
+  await loadLanguages();
+  forgetTeams();
+}
+
+describe("new language", () => {
+  const codes: string[] = [];
+  const code = () => {
+    const fresh = freshCode();
+    codes.push(fresh);
+    return fresh;
+  };
+  const body = (extra: Record<string, unknown>, lang: string) => ({
+    name: "Testish",
+    newLanguage: { code: lang, name: "Testish", native: "Testisch" },
+    ...extra,
+  });
+  afterEach(async () => {
+    await dropLanguages(codes);
+    codes.length = 0;
+  });
+
+  it("founds the language and its team, with the named admin", async () => {
+    const lang = code();
+    const response = await POST(json("POST", body({ slug: `test-${lang.toLowerCase()}-${tag}`, adminEmail: `${who.id}@example.invalid` }, lang)));
+    expect(response.status).toBe(200);
+    const { team } = (await response.json()) as { team: { langs: string[] } };
+    expect(team.langs).toEqual([lang]);
+    const [row] = await systemRows<{ enabled: boolean; textByTeam: boolean }>(
+      `select "enabled", "textByTeam" from "language" where "code" = $1`,
+      [lang],
+    );
+    expect(row).toEqual({ enabled: true, textByTeam: true });
+    const grants = await systemRows<{ capability: string }>(
+      `select "capability" from "team_member" where "lang" = $1 and "userId" = $2 order by 1`,
+      [lang, who.id],
+    );
+    expect(grants.map((g) => g.capability)).toEqual(["admin"]);
+    expect(await systemRows(`select 1 from "language_grant" where "lang" = $1 and "userId" = $2 and "capability" = 'edit'`, [lang, who.id])).toHaveLength(1);
+    expect((await POST(json("POST", body({ slug: `again-${tag}` }, lang)))).status).toBe(409);
+  });
+
+  it("leaves nothing behind when the slug is taken", async () => {
+    const taken = await post({ slug: `taken-${tag}`, name: "T", langs: [] });
+    expect(taken.status).toBe(200);
+    const teams = await systemRows(`select 1 from "team"`);
+    const lang = code();
+    expect((await POST(json("POST", body({ slug: `taken-${tag}` }, lang)))).status).toBe(409);
+    expect(await systemRows(`select 1 from "language" where "code" = $1`, [lang])).toHaveLength(0);
+    expect(await systemRows(`select 1 from "team"`)).toHaveLength(teams.length);
+  });
+
+  it("answers 400 with langs beside newLanguage, and 403 to a member", async () => {
+    const lang = code();
+    expect((await POST(json("POST", body({ slug: `both-${tag}`, langs: ["deDE"] }, lang)))).status).toBe(400);
+    expect(await systemRows(`select 1 from "language" where "code" = $1`, [lang])).toHaveLength(0);
+    who.role = "member";
+    expect((await POST(json("POST", body({ slug: `mem-${tag}` }, lang)))).status).toBe(403);
+  });
+});
 
 describe("teams routes", () => {
   it("answers 403 to a member on all four", async () => {
@@ -73,27 +142,28 @@ describe("teams routes", () => {
     expect((await POST(json("POST", { slug: `o-${tag}`, name: "O", langs: [] }))).status).toBe(403);
   });
 
-  it("keeps what moved and grants admin there when a later language is refused", async () => {
-    const job = await runningJob("frFR", await teamOf("frFR"));
+  it("keeps the languages it joined and grants admin there when a later grant is refused", async () => {
+    // The admin already works on frFR in its team, so the grant there is refused.
+    await addMember(await plainTeam("frFR"), who.id, "frFR", "record");
     try {
       const response = await POST(json("POST", { slug: `part-${tag}`, name: "P", langs: ["deDE", "frFR"], adminEmail: `${who.id}@example.invalid` }));
       const team = (await systemRows<{ id: string }>(`select "id" from "team" where "slug" = $1`, [`part-${tag}`]))[0].id;
       made.push(team);
       expect(response.status).toBe(409);
-      expect(((await response.json()) as { error: string }).error).toMatch(/^moved deDE; frFR refused/);
+      expect(((await response.json()) as { error: string }).error).toMatch(/^joined deDE, frFR; /);
       forgetTeams();
-      expect(await teamOf("deDE")).toBe(team);
+      expect((await teamsOf("deDE")).map((each) => each.id)).toContain(team);
       const grants = await systemRows<{ capability: string }>(
         `select "capability" from "team_member" where "teamId" = $1 and "userId" = $2 and "lang" = 'deDE'`,
         [team, who.id],
       );
       expect(grants.map((g) => g.capability)).toEqual(["admin"]);
     } finally {
-      await job.cleanup();
+      await asSystem.query(`delete from "team_member" where "userId" = $1 and "lang" = 'frFR'`, [who.id]);
     }
   });
 
-  it("creates a team holding the language it was given, with its admin", async () => {
+  it("creates a team voicing the language it was given, with its admin", async () => {
     const response = await post({ slug: `german-${tag}`, name: "German", langs: ["deDE"], adminEmail: `${who.id}@example.invalid` });
     expect(response.status).toBe(200);
     const { team } = (await response.json()) as { team: { langs: string[]; members: { userId: string; capability: string }[] } };
@@ -121,7 +191,7 @@ describe("teams routes", () => {
     expect(await systemRows(`select 1 from "team" where "slug" like $1`, [`%-${tag}`])).toHaveLength(0);
   });
 
-  it("hands over a language named twice once", async () => {
+  it("joins a language named twice once", async () => {
     const response = await post({ slug: `twice-${tag}`, name: "T", langs: ["deDE", "deDE"] });
     expect(response.status).toBe(200);
     expect(((await response.json()) as { team: { langs: string[] } }).team.langs).toEqual(["deDE"]);
@@ -145,22 +215,18 @@ describe("teams routes", () => {
     expect((await PATCH(json("PATCH", { name: " " }), ctx(id))).status).toBe(400);
   });
 
-  it("hands a language over", async () => {
-    const id = ((await (await post({ slug: `hand-${tag}`, name: "H", langs: [] })).json()) as { team: { id: string } }).team.id;
+  it("adds a team to a language beside its team, which keeps its plain packs", async () => {
+    const id = ((await (await post({ slug: `join-${tag}`, name: "J", langs: [] })).json()) as { team: { id: string } }).team.id;
     const response = await PUT(json("PUT", { lang: "deDE" }), ctx(id));
     expect(response.status).toBe(200);
     forgetTeams();
-    expect(await teamOf("deDE")).toBe(id);
+    expect((await teamsOf("deDE")).map((each) => each.id)).toEqual([was, id]);
+    expect(await plainTeam("deDE")).toBe(was);
   });
 
-  it("answers 409 while a job of the language runs", async () => {
-    const id = ((await (await post({ slug: `busy-${tag}`, name: "B", langs: [] })).json()) as { team: { id: string } }).team.id;
-    const job = await runningJob("deDE", was);
-    try {
-      expect((await PUT(json("PUT", { lang: "deDE" }), ctx(id))).status).toBe(409);
-    } finally {
-      await job.cleanup();
-    }
+  it("answers 409 for a language the team already voices", async () => {
+    const id = ((await (await post({ slug: `busy-${tag}`, name: "B", langs: ["deDE"] })).json()) as { team: { id: string } }).team.id;
+    expect((await PUT(json("PUT", { lang: "deDE" }), ctx(id))).status).toBe(409);
   });
 
   it("answers 400 to a language it does not know", async () => {

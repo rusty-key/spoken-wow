@@ -2,8 +2,10 @@
 
 import { useState } from "react";
 
+import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
-import { BASE_LANG, type Lang } from "@/lib/lang";
+import { Input } from "@/components/ui/input";
+import { BASE_LANG, derivedTags, type Lang } from "@/lib/lang";
 
 type Row = { code: Lang; name: string; enabled: boolean };
 
@@ -16,24 +18,67 @@ type Row = { code: Lang; name: string; enabled: boolean };
  */
 export default function LanguageTable({ initial }: { initial: Row[] }) {
   const [rows, setRows] = useState(initial);
-  const [pending, setPending] = useState<Lang | null>(null);
+  // One change at a time: each answer is the whole list, so an older one landing after a newer
+  // one would put back the list from before it, dropping a language just added.
+  const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   async function toggle(code: Lang, enabled: boolean) {
-    setPending(code);
+    setBusy(true);
     setError(null);
-    const response = await fetch("/api/languages", {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ code, enabled }),
-    }).catch(() => null);
-    setPending(null);
-    if (!response?.ok) {
-      setError(`Could not switch ${code} ${enabled ? "on" : "off"}.`);
-      return;
+    try {
+      const response = await fetch("/api/languages", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ code, enabled }),
+      }).catch(() => null);
+      if (!response?.ok) {
+        setError(`Could not switch ${code} ${enabled ? "on" : "off"}.`);
+        return;
+      }
+      const body = (await response.json()) as { languages: Row[] };
+      setRows(body.languages);
+    } finally {
+      setBusy(false);
     }
-    const body = (await response.json()) as { languages: Row[] };
-    setRows(body.languages);
+  }
+
+  const [form, setForm] = useState({ code: "", name: "", native: "", bcp47: "", provider: "" });
+  // The tag and provider code follow the code until they are typed over: jaJP -> ja-JP, ja.
+  const [touched, setTouched] = useState({ bcp47: false, provider: false });
+
+  function setCode(code: string) {
+    const derived = derivedTags(code);
+    setForm((f) => ({
+      ...f,
+      code,
+      bcp47: touched.bcp47 ? f.bcp47 : code.length >= 4 ? derived.bcp47 : "",
+      provider: touched.provider ? f.provider : derived.provider,
+    }));
+  }
+
+  async function add(event: React.FormEvent) {
+    event.preventDefault();
+    setBusy(true);
+    setError(null);
+    try {
+      const response = await fetch("/api/languages", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(form),
+      }).catch(() => null);
+      if (!response?.ok) {
+        const message = (await response?.json().catch(() => null))?.error as string | undefined;
+        setError(message ?? `Could not add ${form.code}.`);
+        return;
+      }
+      const body = (await response.json()) as { languages: Row[] };
+      setRows(body.languages);
+      setForm({ code: "", name: "", native: "", bcp47: "", provider: "" });
+      setTouched({ bcp47: false, provider: false });
+    } finally {
+      setBusy(false);
+    }
   }
 
   return (
@@ -42,7 +87,7 @@ export default function LanguageTable({ initial }: { initial: Row[] }) {
         <label key={row.code} className="flex items-center gap-3 text-sm">
           <Checkbox
             checked={row.enabled}
-            disabled={row.code === BASE_LANG || pending === row.code}
+            disabled={row.code === BASE_LANG || busy}
             onCheckedChange={(checked) => toggle(row.code, checked === true)}
           />
           <span className="w-32">{row.name}</span>
@@ -54,6 +99,15 @@ export default function LanguageTable({ initial }: { initial: Row[] }) {
           </a>
         </label>
       ))}
+      <form onSubmit={add} className="mt-3 flex flex-wrap items-center gap-2">
+        <span className="text-sm font-medium">Add a language</span>
+        <Input className="w-24" placeholder="Code (jaJP)" aria-label="Code" value={form.code} onChange={(e) => setCode(e.target.value)} />
+        <Input className="w-36" placeholder="English name" aria-label="English name" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} />
+        <Input className="w-36" placeholder="Native name" aria-label="Native name" value={form.native} onChange={(e) => setForm({ ...form, native: e.target.value })} />
+        <Input className="w-24" placeholder="BCP 47" aria-label="BCP 47 tag" value={form.bcp47} onChange={(e) => { setTouched((t) => ({ ...t, bcp47: true })); setForm({ ...form, bcp47: e.target.value }); }} />
+        <Input className="w-20" placeholder="Provider" aria-label="Provider code" value={form.provider} onChange={(e) => { setTouched((t) => ({ ...t, provider: true })); setForm({ ...form, provider: e.target.value }); }} />
+        <Button type="submit" size="sm" disabled={busy}>Add</Button>
+      </form>
       {error ? <p className="text-destructive text-sm">{error}</p> : null}
     </div>
   );

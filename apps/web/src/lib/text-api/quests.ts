@@ -7,16 +7,16 @@
 import { LEVEL_PARAM } from "@/lib/line-fields";
 import "server-only";
 
-import { audioRelPath } from "@/lib/audio";
+import { audioRelPath, fileIndex } from "@/lib/audio";
 import { momentOf, momentSql, answersQuestMomentSql } from "@/lib/contributions/naming";
 import { query } from "@/lib/db";
 import { BASE_LANG, type Lang } from "@/lib/lang";
 import { branchesOnPlayerGender } from "@/lib/player-words";
-import { overrideOf, type LineOverride } from "@/lib/quests/override";
-import { readOverrides } from "@/lib/quests/overrides";
+import { OverrideError, overrideOf, validateOverride, type LineOverride } from "@/lib/quests/override";
+import { clearOverride, readOverrides, writeOverride } from "@/lib/quests/overrides";
 import { restoreQuestText, retireQuestText, saveQuestText } from "@/lib/quests/text";
 
-import { Refused } from "./errors";
+import { checkOriginalVersion, Refused, untranslated } from "./errors";
 import { decodeCursor, encodeCursor, hasNul, isVariant, keyOf, type SectionApi, type TextItem } from "./types";
 
 type Row = {
@@ -138,6 +138,18 @@ export function listSql(
   return { text: linesSql(where, `limit ${add(limit + 1)}`, scope), params };
 }
 
+async function lineOf(lang: Lang, id: string, variant: number): Promise<Row | null> {
+  if (hasNul(id)) return null;
+  const rows = await query<Row>(
+    linesSql(`where ln."lineId" = $3 and ln."variant" = $4`, "", (alias) => answersQuestMomentSql(`${alias}."lineId"`, "$5")),
+    [lang, BASE_LANG, id, variant, momentOf(id)],
+  );
+  return rows[0] ?? null;
+}
+
+const GENDER_SPLIT = "an override cannot split a line by the reader's gender; that changes the original text";
+const VOICE_LINE = "this line is spoken in another voice; override it on the site";
+
 export const quests: SectionApi = {
   filters: {
     quest: /^\d{1,9}$/,
@@ -155,17 +167,8 @@ export const quests: SectionApi = {
   },
 
   async one(lang, id, variant) {
-    if (hasNul(id)) return null;
-    const [rows, overrides] = await Promise.all([
-      query<Row>(
-        linesSql(`where ln."lineId" = $3 and ln."variant" = $4`, "", (alias) =>
-          answersQuestMomentSql(`${alias}."lineId"`, "$5"),
-        ),
-        [lang, BASE_LANG, id, variant, momentOf(id)],
-      ),
-      readOverrides(lang),
-    ]);
-    return rows[0] ? toItem(rows[0], overrides) : null;
+    const [line, overrides] = await Promise.all([lineOf(lang, id, variant), readOverrides(lang)]);
+    return line ? toItem(line, overrides) : null;
   },
 
   async known(lang, asked) {
@@ -216,6 +219,38 @@ export const quests: SectionApi = {
       expectedVersion,
       audit,
     });
+  },
+
+  async saveOverride({ lang, id, variant, text, by, expectedVersion, audit }) {
+    const line = await lineOf(lang, id, variant);
+    if (!line) throw untranslated(lang);
+    // The file the Explorer's rewrite writes: named by the language's row, else by English's, so
+    // the site and the API edit one override.
+    const file = audioRelPath(line);
+    const done = (wrote: boolean, removed: boolean) => ({ version: line.version, lines: [id], wrote, removed });
+    // Where the line's speakers all moved to another voice, the corpus lists only that voice's line
+    // and file, and an override on this file would never be spoken or shown.
+    const unlisted = async () => !(await fileIndex(lang)).has(file);
+    // Taking an override back needs no original under it, so one over a retired line can still go.
+    if (text === null) {
+      if (!(await readOverrides(lang)).has(file) && (await unlisted())) throw new Refused(VOICE_LINE);
+      const removed = await clearOverride(lang, file, by, audit);
+      return done(removed, removed);
+    }
+    if (line.text === null) throw untranslated(lang);
+    checkOriginalVersion(line.version, expectedVersion);
+    // A split rewrites the moment's original lines, which every team voices.
+    if (branchesOnPlayerGender(text)) throw new Refused(GENDER_SPLIT);
+    if (await unlisted()) throw new Refused(VOICE_LINE);
+    let draft;
+    try {
+      draft = validateOverride({ file, lineId: line.lineId, text }, lang);
+    } catch (error) {
+      if (error instanceof OverrideError) throw new Refused(error.message);
+      throw error;
+    }
+    const { before } = await writeOverride(lang, file, draft.lineId, draft.text, by, audit);
+    return done(before !== draft.text, false);
   },
 
   async nameTarget(lang, id, variant) {

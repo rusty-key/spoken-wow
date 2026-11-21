@@ -112,4 +112,71 @@ describe("POST /api/contributions/resolve", () => {
     const { rows: after } = await asSystem.query(`select "status" from "contribution" where "id" = $1`, [rows[0].id]);
     expect(after[0].status).toBe("new");
   });
+
+  it("accepts a row with the reviewer's edit of its text", async () => {
+    const { rows } = await asSystem.query<{ id: number }>(
+      `insert into "contribution" ("source", "key", "raw", "dedup", "text", "ip")
+       values ('places', '124', 'raw', $2, 'Hallo, Digawen.', $1) returning "id"`,
+      [ip, `${dedup}-edit`],
+    );
+    const response = await POST(post({ id: rows[0].id, status: "accepted", text: "Hallo, $N." }));
+    expect(response.status).toBe(200);
+    const { rows: after } = await asSystem.query(`select "status", "text" from "contribution" where "id" = $1`, [rows[0].id]);
+    expect(after[0]).toEqual({ status: "accepted", text: "Hallo, $N." });
+  });
+
+  it("puts the sent text back when an accept with an edit is refused", async () => {
+    const npcId = 970_000_000 + Math.floor(Math.random() * 20_000_000);
+    const { rows } = await asSystem.query<{ id: number }>(
+      `insert into "contribution" ("source", "key", "raw", "dedup", "text", "ip", "meta")
+       values ('quests', $4, 'raw', $2, 'Hallo, Digawen.', $1, $3::jsonb) returning "id"`,
+      [ip, `${dedup}-edit-refused`, JSON.stringify({ kind: "creature", npc: `${npcId} Nobody` }), `npc:${npcId}`],
+    );
+    const response = await POST(post({ id: rows[0].id, status: "accepted", text: "Hallo, $N." }));
+    expect(response.status).toBe(409);
+    const { rows: after } = await asSystem.query(`select "status", "text" from "contribution" where "id" = $1`, [rows[0].id]);
+    expect(after[0]).toEqual({ status: "new", text: "Hallo, Digawen." });
+  });
+
+  it("refuses an edit to a row someone decided meanwhile, keeping its text", async () => {
+    const { rows } = await asSystem.query<{ id: number }>(
+      `insert into "contribution" ("source", "key", "raw", "dedup", "text", "ip", "status")
+       values ('places', '127', 'raw', $2, 'Words.', $1, 'rejected') returning "id"`,
+      [ip, `${dedup}-decided`],
+    );
+    const response = await POST(post({ id: rows[0].id, status: "accepted", text: "Other words." }));
+    expect(response.status).toBe(409);
+    expect((await response.json()).kind).toBe("changed");
+    const { rows: after } = await asSystem.query(`select "status", "text" from "contribution" where "id" = $1`, [rows[0].id]);
+    expect(after[0]).toEqual({ status: "rejected", text: "Words." });
+  });
+
+  it("refuses an empty edit without touching the row", async () => {
+    const { rows } = await asSystem.query<{ id: number }>(
+      `insert into "contribution" ("source", "key", "raw", "dedup", "text", "ip")
+       values ('places', '125', 'raw', $2, 'Words.', $1) returning "id"`,
+      [ip, `${dedup}-empty`],
+    );
+    expect((await POST(post({ id: rows[0].id, status: "accepted", text: "   " }))).status).toBe(400);
+    const { rows: after } = await asSystem.query(`select "status", "text" from "contribution" where "id" = $1`, [rows[0].id]);
+    expect(after[0]).toEqual({ status: "new", text: "Words." });
+  });
+
+  it("records a reject's reason, and drops it when the row is reopened", async () => {
+    const { rows } = await asSystem.query<{ id: number }>(
+      `insert into "contribution" ("source", "key", "raw", "dedup", "text", "ip")
+       values ('places', '126', 'raw', $2, 'Words', $1) returning "id"`,
+      [ip, `${dedup}-reason`],
+    );
+    const id = rows[0].id;
+    expect((await POST(post({ id, status: "rejected", reason: "  Cut off  " }))).status).toBe(200);
+    const reasonOf = async () =>
+      (await asSystem.query(`select "rejectReason" from "contribution" where "id" = $1`, [id])).rows[0].rejectReason;
+    expect(await reasonOf()).toBe("Cut off");
+    expect((await POST(post({ id, status: "new" }))).status).toBe(200);
+    expect(await reasonOf()).toBeNull();
+    // A reason sent with anything but a reject is not recorded.
+    expect((await POST(post({ id, status: "accepted", reason: "Cut off" }))).status).toBe(200);
+    expect(await reasonOf()).toBeNull();
+  });
 });

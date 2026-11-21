@@ -1,6 +1,6 @@
 -- Every locale file of Spoken, Quests, Places, Readables and Developer holds the same keys as
--- its English base, none left over, and each string takes the same arguments (a %s stays a %s,
--- possibly as %1$s). Places' own data files are checked by its language tests. Run with `make test-player`.
+-- its English base, none left over, and each string takes the same arguments in the same positions
+-- (a %s stays a %s, possibly as %1$s). Places' own data files are checked by its language tests. Run with `make test-player`.
 local here = arg[0]:match("^(.*)/[^/]*$") or "."
 package.path = here .. "/?.lua;" .. package.path
 local H = require("queue_helpers")
@@ -26,10 +26,15 @@ local function Strings(path, inTable)
         local key, value = line:match("^%s*L%.([%w_]+)%s*=%s*(.*)$")
         if not key and inTable then key, value = line:match("^%s*([%w_]+)%s*=%s*(\".*)$") end
         if key then
-            local letters = {}
-            for spec in value:gsub("%%%%", ""):gmatch("%%%d*%$?[%d%.]*([%a])") do letters[#letters + 1] = spec end
-            table.sort(letters)
-            found[key] = table.concat(letters)
+            -- By position, so a translation may move an argument but not repeat or drop one:
+            -- "%1$s of %2$d" is "1s 2d", and an unnumbered one takes its place in order.
+            local arguments, n = {}, 0
+            for spec, letter in value:gsub("%%%%", ""):gmatch("%%([^%a%%]*)(%a)") do
+                n = n + 1
+                arguments[#arguments + 1] = (spec:match("^(%d+)%$") or tostring(n)) .. letter
+            end
+            table.sort(arguments)
+            found[key] = table.concat(arguments, " ")
         end
     end
     return found

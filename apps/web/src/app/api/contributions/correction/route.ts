@@ -7,13 +7,16 @@
  *
  * `as: "wording"` keeps the corpus text and adds the player's as another wording of the
  * moment (acceptAsWording). Otherwise `lineId` and `variant`, where given, name the wording the
- * correction fixes; without them it is the closest one. `text`, where given, is the moderator's
- * edit of the player's text, saved on the row before it is accepted.
+ * correction fixes; without them it is the closest one. `split`, "m" or "f", keeps both
+ * instead, the player's text for that player gender and ours for the other. `text`, where given,
+ * is the moderator's edit of the player's text, saved on the row before it is accepted.
  */
 import { acceptAsWording, acceptCorrection, editCorrectionText } from "@/lib/contributions/correction";
+import { isReaderGender } from "@/lib/contributions/gender";
 import { contributionLocale, rewriteWaitingTexts } from "@/lib/contributions/store";
 import { requireCapability } from "@/lib/generation/authz";
-import { BASE_LANG, isLang } from "@/lib/lang";
+import { BASE_LANG } from "@/lib/lang";
+import { knownLang } from "@/lib/languages/catalogue";
 
 export const dynamic = "force-dynamic";
 
@@ -23,6 +26,7 @@ export async function POST(request: Request) {
     as?: unknown;
     lineId?: unknown;
     variant?: unknown;
+    split?: unknown;
     text?: unknown;
   };
 
@@ -34,7 +38,7 @@ export async function POST(request: Request) {
   // The permission before the existence check, as resolve does, so a member learns nothing
   // about which ids exist.
   const locale = await contributionLocale(id);
-  const { session, denied } = await requireCapability("text", isLang(locale) ? locale : BASE_LANG);
+  const { session, denied } = await requireCapability("text", (await knownLang(locale)) ?? BASE_LANG);
   if (denied) return denied;
   if (locale === null) {
     return Response.json({ error: "unknown contribution" }, { status: 404 });
@@ -54,7 +58,7 @@ export async function POST(request: Request) {
   const outcome =
     body.as === "wording"
       ? await acceptAsWording(id, session.user.id)
-      : await acceptCorrection(id, session.user.id, pick);
+      : await acceptCorrection(id, session.user.id, pick, undefined, isReaderGender(body.split) ? body.split : undefined);
   if (!outcome.ok) {
     // A refused accept leaves the row as it was, the edit with it.
     if (previous !== null) await rewriteWaitingTexts([{ id, text: previous }]);

@@ -128,7 +128,7 @@ describe("search", () => {
   it("counts every matching line's state, not just the page shown", () => {
     const takes = new Map([["b:10", take()]]);
     const result = search(pages, context({ takes }));
-    expect(result.counts).toEqual({ missing: 2, stale: 0, current: 1 });
+    expect(result.counts).toEqual({ all: 3, missing: 2, stale: 0, current: 1 });
     expect(result.total).toBe(3);
   });
 

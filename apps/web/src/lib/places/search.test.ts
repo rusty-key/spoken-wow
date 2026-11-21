@@ -175,6 +175,17 @@ describe("search", () => {
     expect(result.totalChars).toBe(entries.reduce((n, e) => n + e.spoken.length, 0));
   });
 
+  it("counts every state under a pressed one, so Missing does not zero Outdated", () => {
+    const takes = new Map([
+      ["z:1", take({ file: "1411/zone" })],
+      ["z:2", take({ file: "1411/zone", textHash: "an-older-text" })],
+    ]);
+    const result = search(entries, context({ takes }), { state: "missing" });
+
+    expect(result.total).toBe(3);
+    expect(result.counts).toEqual({ all: 5, missing: 3, stale: 1, current: 1 });
+  });
+
   /**
    * Paging a list whose order can shift drops and repeats rows between pages, so the
    * order is total: zone line first within a zone, then subzones by name, then the id.

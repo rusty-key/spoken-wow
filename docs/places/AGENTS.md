@@ -76,7 +76,6 @@ make lint                 # what CI gates on
   `addons/Spoken_Places/Audio.lua`. That is a format number, unrelated to either `.toc` version.
   Bump it only when the pack's data shape changes.
 - `make places-full-release` chains sync, pull-live, package-audio and the upload, and asks
-  before uploading. English's CurseForge zip also carries the bosses pack (Spoken Audio: Places
-  and Bosses), so an English run builds that first; GitHub's stays Places only. See
-  [VOICE.md](VOICE.md).
-- `scripts/places/release.sh` uploads the English pack, or one language's pack with `--lang`.
+  before uploading. See [VOICE.md](VOICE.md).
+- `scripts/places/release.sh` uploads the English pack, or one language's pack with `--lang`, and
+  the bosses' pack with `--section=bosses`.

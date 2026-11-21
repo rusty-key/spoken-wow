@@ -125,6 +125,19 @@ for _, queued in ipairs(env.SoundQueue.sounds) do if queued.questID == 103 then 
 Expect("a quest from an item shows the item's icon", fromItem and fromItem.present.portrait.texture, 134939)
 Expect("...the icon found by name too, for a book read from the bags", Spoken:BagItemIcon("Gold Pickup Schedule"), 134939)
 _G.C_Container = nil
+-- Once the item has left the bags, the packs name it and the client has its icon.
+do
+    local oldCItem, pack = _G.C_Item, nil
+    for _, module in VO.DataModules:GetModules() do pack = module end
+    _G.C_Item = { GetItemInfoInstant = function(id) if id == 1307 then return id, nil, nil, nil, 134940 end end }
+    pack.ItemIDLookupByQuestID = { [103] = 1307 }
+    env.SoundQueue:RemoveAllSoundsFromQueue()
+    VO.Addon:QUEST_DETAIL()
+    fromItem = nil
+    for _, queued in ipairs(env.SoundQueue.sounds) do if queued.questID == 103 then fromItem = queued end end
+    Expect("...and the packs' item's icon once it has left the bags", fromItem and fromItem.present.portrait.texture, 134940)
+    pack.ItemIDLookupByQuestID, _G.C_Item = nil, oldCItem
+end
 Expect("a city has an icon of its own", Spoken:ZoneIcon(1455), [[Interface\AddOns\Spoken\Textures\Zones\Ironforge]])
 Expect("...an area the icon of the zone it is in", Spoken:ZoneIcon(1426), [[Interface\AddOns\Spoken\Textures\Zones\DunMorogh]])
 Expect("...a Forever zone the icon drawn for it", Spoken:ZoneIcon(2524), [[Interface\AddOns\Spoken\Textures\Zones\DarkspearIslands]])

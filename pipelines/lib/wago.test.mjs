@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { mkdtempSync, readFileSync } from "node:fs";
+import { existsSync, mkdtempSync, readFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { test } from "node:test";
@@ -33,4 +33,17 @@ test("a table is fetched once per build and locale, then read from the cache", a
   // The name tools/export_compendium.py reads the same file under.
   assert.equal(readFileSync(cachePath("AreaTable", { locale: "deDE", cache }), "utf8"), "ID,Name\n1,Elwynn\n");
   assert.ok(cachePath("AreaTable", { locale: "deDE", cache }).endsWith(`AreaTable-deDE-${FOREVER_BUILD}.csv`));
+});
+
+test("a table with no rows is not cached, so the next run asks again", async () => {
+  const cache = mkdtempSync(join(tmpdir(), "wago-"));
+  let asked = 0;
+  const fetcher = async () => {
+    asked++;
+    return { ok: true, text: async () => "ID,Name\n" };
+  };
+  assert.deepEqual(await wagoTable("Map", { locale: "deDE", cache, fetcher }), []);
+  assert.equal(existsSync(cachePath("Map", { locale: "deDE", cache })), false);
+  await wagoTable("Map", { locale: "deDE", cache, fetcher });
+  assert.equal(asked, 2);
 });

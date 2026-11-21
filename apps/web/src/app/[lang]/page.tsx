@@ -9,16 +9,18 @@ import BrandIcon from "@/components/landing/BrandIcon";
 import Gallery from "@/components/landing/Gallery";
 import HeroLine from "@/components/landing/HeroLine";
 import InstallTabs, { type InstallLanguage, type InstallLink, type InstallRow } from "@/components/landing/InstallTabs";
-import { CURSEFORGE, GITHUB, WAGO } from "@/components/landing/links";
+import { CURSEFORGE, GITHUB, MANAGER_URL, RELEASES, WAGO, githubReleases } from "@/components/landing/links";
 import LoginPanel from "@/components/landing/LoginPanel";
 import ManagerWindow from "@/components/landing/ManagerWindow";
 import NavMenu from "@/components/landing/NavMenu";
 import { NAV } from "@/components/landing/nav";
 import NavSession from "@/components/landing/NavSession";
 import Showcase from "@/components/landing/Showcase";
-import { LOCALES, type Lang } from "@/lib/lang";
+import { DISCORD_INVITE as DISCORD } from "@/lib/discord";
+import { BUILTIN, type BuiltinLang, type Lang } from "@/lib/lang";
 import { pageLang } from "@/lib/lang-server";
-import { packFor, type Section } from "@/lib/packs";
+import { packDownloads, packFor, type Section } from "@/lib/packs";
+import "@/components/landing/brand.css";
 import "@/components/landing/landing.css";
 
 export const metadata: Metadata = {
@@ -27,8 +29,6 @@ export const metadata: Metadata = {
     "Spoken reads quest dialogue, NPC greetings, zone lore and in-world books aloud in WoW: Forever and Classic Era. Install it with the Spoken Manager, CurseForge or by hand.",
 };
 
-const RELEASES = `${GITHUB}/releases`;
-const MANAGER_URL = `${RELEASES}/tag/manager-latest`;
 const MANAGER_FILES = `${RELEASES}/download/manager-latest/Spoken-Manager`;
 const MANAGER_DOWNLOADS = {
   windows: `${MANAGER_FILES}-Setup.exe`,
@@ -36,24 +36,20 @@ const MANAGER_DOWNLOADS = {
   macIntel: `${MANAGER_FILES}-mac-x64.dmg`,
   linux: `${MANAGER_FILES}-linux.AppImage`,
 };
-const DISCORD = "https://discord.gg/KgeQhjv9Rd";
 
 /** CurseForge's one meta addon per language: Spoken, plus every voice pack in it. */
-const META: Partial<Record<Lang, string>> = {
+const META: Partial<Record<BuiltinLang, string>> = {
   enUS: "spoken-english",
   deDE: "spoken-german",
   esES: "spoken-spanish-eu",
   esMX: "spoken-spanish-al",
   frFR: "spoken-french",
-  itIT: "spoken-italian",
   ptBR: "spoken-portuguese",
   ruRU: "spoken-russian",
   koKR: "spoken-korean",
   zhCN: "spoken-chinese-simplified",
   zhTW: "spoken-chinese-traditional",
 };
-
-const github = (release: string) => `${RELEASES}?q=${encodeURIComponent(release)}`;
 
 const SECTIONS: { section: Section; name: string; note: string }[] = [
   { section: "quests", name: "Quests and Gossip", note: "Quest dialogue and what NPCs say" },
@@ -70,27 +66,19 @@ function installRows(lang: Lang): InstallRow[] {
       links: [
         { label: "CurseForge", href: `${CURSEFORGE}/spoken-player` },
         { label: "Wago", href: `${WAGO}/spoken-quests` },
-        { label: "GitHub", href: github("spoken/") },
+        { label: "GitHub", href: githubReleases("spoken/") },
       ],
     },
   ];
   for (const { section, name, note } of SECTIONS) {
     const pack = packFor(section, lang);
-    const links: InstallLink[] = [];
-    if (pack?.split) {
-      for (const part of pack.split) {
-        links.push({ label: `CurseForge: ${part.label}`, href: `${CURSEFORGE}/${part.slug}` });
-      }
-    } else if (pack?.curseforge) {
-      links.push({ label: "CurseForge", href: `${CURSEFORGE}/${pack.curseforge}` });
-    }
-    if (pack) links.push({ label: pack.split ? "GitHub: all" : "GitHub", href: github(pack.release) });
+    const links: InstallLink[] = pack ? packDownloads(pack) : [];
     rows.push({ name: `${name} voices`, note, links });
   }
   return rows;
 }
 
-const LANGUAGES: InstallLanguage[] = LOCALES.map(({ code, name }) => ({
+const LANGUAGES: InstallLanguage[] = BUILTIN.map(({ code, name }) => ({
   code,
   name,
   curseforge: META[code] ?? null,
@@ -192,7 +180,7 @@ export default async function Page({ params }: { params: Promise<{ lang: string 
                 <h3>Languages</h3>
                 <p>
                   English, German, Spanish (Spain and Latin America), French, Portuguese, Russian, Korean
-                  and both Chinese scripts. Italian is made by the community.
+                  and both Chinese scripts. Teams on this site voice other languages themselves.
                 </p>
               </div>
               <div>
@@ -324,8 +312,7 @@ export default async function Page({ params }: { params: Promise<{ lang: string 
                 </ul>
                 <p>
                   Menus and settings follow the game&apos;s text language. The language you hear is a separate
-                  choice, Voice Language, and plays once its voice pack is installed. Italian is made by the
-                  community.
+                  choice, Voice Language, and plays once its voice pack is installed.
                 </p>
               </div>
 

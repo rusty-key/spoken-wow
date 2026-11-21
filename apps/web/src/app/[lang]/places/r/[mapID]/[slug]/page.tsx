@@ -5,9 +5,10 @@ import Link from "@/components/LocaleLink";
 import { notFound } from "next/navigation";
 
 import ReportForm from "@/components/ReportForm";
+import { packReleases } from "@/lib/releases/store";
 import ListenFirst from "@/components/reports/ListenFirst";
 import { audioRelPath } from "@/lib/places/audio";
-import { isCorpusEmpty, lineByPath, loadContext } from "@/lib/places/catalogue";
+import { isCorpusEmpty, loadContext, teamLineByPath } from "@/lib/places/catalogue";
 import { Contained } from "@/components/Width";
 
 /**
@@ -34,7 +35,7 @@ async function resolve(params: Promise<Params>) {
   const lang = await pageLang(params);
   const { mapID, slug } = await params;
   try {
-    return await lineByPath(Number(mapID), slug, lang);
+    return await teamLineByPath(Number(mapID), slug, lang);
   } catch (error) {
     // An unseeded corpus names no lines, so no address resolves to one. The page a player
     // arriving from the game should see is the same one an unknown place gives them.
@@ -67,7 +68,8 @@ export default async function Page({ params }: { params: Promise<Params> }) {
   // The current take is the only thing here that is not derivable from committed files,
   // and it answers one question: is there narration to listen to before complaining about
   // it.
-  const take = (await loadContext(lang)).takes.get(entry.id);
+  const [context, releases] = await Promise.all([loadContext(lang), packReleases("places", lang)]);
+  const take = context.takes.get(entry.id);
 
   return (
     <main className="pt-8 pb-24">
@@ -78,7 +80,7 @@ export default async function Page({ params }: { params: Promise<Params> }) {
             {entry.kind === "subzone" ? `In ${entry.zoneName}` : "Zone lore"}
           </p>
 
-          {take ? <ListenFirst className="mt-4" /> : null}
+          {take ? <ListenFirst className="mt-4" source="places" recordedAt={take.generatedAt} releases={releases} /> : null}
 
           {take ? (
             // The native control rather than the explorer's Player: that one carries a rate
@@ -99,7 +101,16 @@ export default async function Page({ params }: { params: Promise<Params> }) {
           )}
 
           {entry.full ? (
-            <p className="mt-5 whitespace-pre-line">{entry.full}</p>
+            <>
+              <p className="mt-5 whitespace-pre-line">{entry.full}</p>
+              {/* Under the original, which is what the game shows, and only while the live take speaks it:
+                  until then the override is the team's work in progress and the narration says the original. */}
+              {entry.override && take?.textHash === entry.hash && (
+                <p className="mt-2 border-l-2 border-sky-400/60 pl-2 whitespace-pre-line" title="What the narration says">
+                  {entry.override.text}
+                </p>
+              )}
+            </>
           ) : (
             // Said plainly rather than left as an empty gap, because somebody arriving from
             // the game is here to report a problem and "there is no text yet" is the answer

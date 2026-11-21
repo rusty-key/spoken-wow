@@ -1,7 +1,12 @@
+import { randomInt } from "node:crypto";
+import { mkdtempSync, readFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { test } from "node:test";
 import assert from "node:assert/strict";
 
-import { localeEntries, lookupPath, packLua } from "./lookup.mjs";
+import { seedDatabase } from "../../../lib/test-db.mjs";
+import { buildLookup, localeEntries, lookupPath, packLua } from "./lookup.mjs";
 import { pageChecksum } from "./naming.mjs";
 
 test("English's lookup stays in the pack folder", () => {
@@ -11,13 +16,23 @@ test("English's lookup stays in the pack folder", () => {
 test("a voiced page carries caption text from its current language row", () => {
   const lua = packLua("esMX", [{ pageId: 15, file: "15", durationSec: 2.5,
     text: "<H1>Registro</H1>Hola.$BAdiós." }]);
-  assert.match(lua, /text = "Registro Hola\. Adiós\."/);
+  assert.match(lua, /text = "Registro\\010Hola\. Adiós\."/);
 });
 
-test("an English clip carries no text: Books.lua has the words", () => {
-  const lua = packLua("enUS", [{ pageId: 15, file: "15", durationSec: 2.5, text: "<H1>Ledger</H1>Three crates." }]);
-  assert.match(lua, /\[15\] = \{ file = "15", len = 2\.5 \},/);
-  assert.doesNotMatch(lua, /Three crates/);
+test("an English clip carries its words too: Books.lua can lag what the voice says", () => {
+  const lua = packLua("enUS", [{ pageId: 15, file: "15", durationSec: 2.5, text: "Three crates." }]);
+  assert.match(lua, /\[15\] = \{ file = "15", len = 2\.5, text = "Three crates\." \},/);
+});
+
+test("a take's own words win over the page's words today", () => {
+  const lua = packLua("enUS", [{ pageId: 15, file: "15", durationSec: 2.5, text: "Edited since.", shownText: "Voiced." }]);
+  assert.match(lua, /text = "Voiced\."/);
+  assert.doesNotMatch(lua, /Edited since/);
+});
+
+test("a page's words today keep their paragraphs and say their tokens", () => {
+  const lua = packLua("deDE", [{ pageId: 15, file: "15", durationSec: 2.5, text: "Hallo, $N.$B$BEnde." }]);
+  assert.ok(lua.includes('text = "Hallo, Abenteurer.\\010\\010Ende."'));
 });
 
 test("a take with word times carries them packed, and one without carries none", () => {
@@ -119,4 +134,41 @@ test("a corrected page is still found by the wording the client shows", () => {
 test("an absorbed page keeps the file its take was cut to under the real numeric id", () => {
   const lua = packLua("esMX", [{ pageId: 38, file: "n1b2c", durationSec: 2.5 }]);
   assert.match(lua, /\[38\] = \{ file = "n1b2c", len = /);
+});
+
+// Needs DATABASE_URL naming a migrated test database (spoken_ci_pin), as an owner that bypasses
+// row-level security; skipped without one.
+test("a release's lookup lists its own team's live take of a page, and a build outside one the plain team's", {
+  skip: process.env.DATABASE_URL ? false : "DATABASE_URL is not set",
+}, async () => {
+  const seed = seedDatabase();
+  try {
+    const { sql, lit } = seed;
+    const lang = seed.language();
+    const a = seed.team(lang);
+    const b = seed.team(lang, { packName: "slug" });
+    const page = 900_000_000 + randomInt(1e8);
+    const lineId = `b:${page}`;
+    seed.onCleanup(`delete from "entity_name" where "lang" = ${lit(lang)}`);
+    seed.onCleanup(`delete from "book_line" where "lineId" = ${lit(lineId)}`);
+    seed.onCleanup(`delete from "book_page" where "lineId" = ${lit(lineId)}`);
+    sql(`insert into "book_page" ("lineId", "pageTextId", "bookId", "pageNumber") values (${lit(lineId)}, ${page}, ${lit(String(page))}, 1)`);
+    sql(`insert into "book_line" ("lineId", "lang", "version", "isCurrent", "origin", "title", "text")
+         values (${lit(lineId)}, ${lit(lang)}, 1, true, 'extracted', 'Xq Ledger', 'Words today.')`);
+    seed.take({ team: a.id, source: "readables", lang, file: String(page), lineId, sha256: "a".repeat(64), shownText: "Words of A." });
+    seed.take({ team: b.id, source: "readables", lang, file: String(page), lineId, sha256: "b".repeat(64), shownText: "Words of B." });
+
+    const out = join(mkdtempSync(join(tmpdir(), "readables-lookup-")), "Sounds.lua");
+    process.env.SPOKEN_RELEASE_TEAM = b.id;
+    await buildLookup({ lang, out });
+    assert.match(readFileSync(out, "utf8"), /Words of B\./);
+    assert.doesNotMatch(readFileSync(out, "utf8"), /Words of A\./);
+    delete process.env.SPOKEN_RELEASE_TEAM;
+    await buildLookup({ lang, out });
+    assert.match(readFileSync(out, "utf8"), /Words of A\./);
+    assert.doesNotMatch(readFileSync(out, "utf8"), /Words of B\./);
+  } finally {
+    delete process.env.SPOKEN_RELEASE_TEAM;
+    seed?.cleanup();
+  }
 });
