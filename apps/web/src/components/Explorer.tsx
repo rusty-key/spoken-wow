@@ -75,6 +75,7 @@ function filterParams(filters: LineFilters): URLSearchParams {
   if (filters.voice) params.set("voice", filters.voice);
   if (filters.source?.length) params.set("source", filters.source.join(","));
   if (filters.npcType) params.set("type", filters.npcType);
+  if (filters.zone !== undefined) params.set("zone", String(filters.zone));
   if (filters.client && filters.client !== DEFAULT_CLIENT_FILTER) params.set("client", filters.client);
   if (filters.narration) params.set("narration", "1");
   if (filters.line) params.set("line", filters.line);
@@ -153,6 +154,8 @@ export default function Explorer({ facets, teams, viewed, home }: { facets: Face
       voice: params.get("voice") ?? undefined,
       source: sourcesFromParam(params.get("source")),
       npcType: (params.get("type") as LineFilters["npcType"]) ?? undefined,
+      // Only a zone on offer, as the server reads it: an unknown one would show as a filter in force.
+      zone: facets.zones.find((zone) => String(zone.uiMapID) === params.get("zone"))?.uiMapID,
       client: clientFilterOf(params.get("client")),
       narration: params.get("narration") === "1",
       line: params.get("line") ?? undefined,
@@ -170,7 +173,7 @@ export default function Explorer({ facets, teams, viewed, home }: { facets: Face
       maxLevel: levelFromParam(params.get("maxLevel")),
       playerGender: (["m", "f"] as const).find((value) => value === params.get("playerGender")),
     }),
-    [params, urlQuery],
+    [params, urlQuery, facets.zones],
   );
 
   const [query, setQuery] = useState(urlQuery);
@@ -316,6 +319,7 @@ export default function Explorer({ facets, teams, viewed, home }: { facets: Face
         ...("voice" in next ? { voice: next.voice } : {}),
         ...("source" in next ? { source: next.source?.join(",") } : {}),
         ...("npcType" in next ? { type: next.npcType } : {}),
+        ...("zone" in next ? { zone: next.zone === undefined ? undefined : String(next.zone) } : {}),
         ...("narration" in next ? { narration: next.narration ? "1" : undefined } : {}),
         ...("client" in next ? { client: next.client === DEFAULT_CLIENT_FILTER ? undefined : next.client } : {}),
         ...("line" in next ? { line: next.line } : {}),

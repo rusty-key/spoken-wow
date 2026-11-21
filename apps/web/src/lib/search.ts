@@ -13,6 +13,7 @@
  */
 import { DEFAULT_CLIENT_FILTER, type ClientFilter } from "./contributions/client";
 import { lineMatchesClient } from "./quests/line-client";
+import { zonesOf } from "./quests/zones";
 import type { Corpus, CorpusLine } from "./corpus";
 import { npcKey } from "./corpus";
 import { baseLineId } from "./contributions/naming";
@@ -52,6 +53,8 @@ export type LineFilters = {
   /** Lines of any of these sources. */
   source?: Source[];
   npcType?: NpcType;
+  /** A uiMapID (lib/quests/zones.ts says which zones a line is in). */
+  zone?: number;
   /** Only lines carrying a capitalised <stage direction>, which a narrator reads. */
   narration?: boolean;
   /**
@@ -431,6 +434,7 @@ export function matchingLines(
     voice,
     source,
     npcType,
+    zone,
     client = DEFAULT_CLIENT_FILTER,
     narration = false,
     line: lineId,
@@ -485,6 +489,7 @@ export function matchingLines(
   if (source?.length) lines = lines.filter((line) => source.includes(line.source));
   if (client !== "all" && !lineId) lines = lines.filter((line) => lineMatchesClient(line, client));
   if (npcType) lines = lines.filter((line) => line.npcType === npcType);
+  if (zone !== undefined) lines = lines.filter((line) => zonesOf(line).includes(zone));
   // The *effective* text, matching the chip on the row and the text regeneration will send.
   // Reading line.text instead hid every line whose direction was restored by an override -
   // which is 314 of them, and the ones most worth finding.
