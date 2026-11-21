@@ -734,6 +734,13 @@ function SoundQueue:Add(clip, source, front)
     return clip
 end
 
+--- True where Play queues its line rather than playing it: a line speaking or held by a gate goes
+--- on. Only an idle or stopped queue plays a line at once, which also ends the stop. Play buttons
+--- read this for their glyph, so it says what a click does.
+function SoundQueue:WouldQueue()
+    return self:GetCurrentSound() ~= nil and not self:IsPaused()
+end
+
 --- Put this at the front and start it now. The one deliberate interruption: the player
 --- clicked Play, and appending would break that twice over -- behind a backlog it is a
 --- wait, behind a held head it may never arrive. Whatever was speaking is stopped and
@@ -749,10 +756,7 @@ function SoundQueue:PlayNow(clip, source)
         return false, refused
     end
 
-    -- A line speaking or held by a gate goes on, and this one queues behind it. Only an idle or
-    -- stopped queue plays it at once, which also ends the stop.
-    local current = self:GetCurrentSound()
-    if current and not self:IsPaused() then
+    if self:WouldQueue() then
         if IsQueued(clip.key) then return true end
         local queued, why = self:Add(clip, source)
         return queued and true or false, why

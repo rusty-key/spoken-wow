@@ -391,13 +391,17 @@ end
 
 --- The row's visible width, so it centres on what shows. The title is cut to keep it within WIDTH.
 function Subtitle:RowWidth(paused)
-    -- Show Name off still shows Stopped and why the line waits: Wanted keeps such a line on screen
-    -- to say why it is not being read.
+    -- Show Name off still shows Stopped, why the line waits and, behind a stop, the count: Wanted
+    -- keeps such a line on screen to say why it is not being read, and a line queued behind the stop
+    -- would otherwise wait with nothing on screen to say so (#706).
     if not self:NameShown() then
         local width = paused and (self.pausedLabel:GetStringWidth() or 0) or 0
         if self.heldText then
             if paused then width = width + LABEL_GAP + (self.heldDot:GetStringWidth() or 0) + LABEL_GAP end
             width = width + (self.held:GetStringWidth() or 0)
+        end
+        if paused and (self.waiting or 0) > 0 then
+            width = width + LABEL_GAP + (self.moreDot:GetStringWidth() or 0) + LABEL_GAP + (self.more:GetStringWidth() or 0)
         end
         return width
     end
@@ -444,10 +448,10 @@ function Subtitle:PlaceRow(left)
         self.pausedLabel:SetPoint("TOPLEFT", self.frame, "TOP", left, textY)
     end
     -- Then why it waits and the count, each after a dot; with Show Name off and nothing before it,
-    -- why it waits starts the row, and there is no count.
+    -- why it waits starts the row, and the count shows only behind a stop.
     local last = self.shownPaused and self.pausedLabel or (named and (self.labelText and self.label or self.title))
     local parts = { { self.heldDot, self.held, self.heldText ~= nil },
-        { self.moreDot, self.more, named and (self.waiting or 0) > 0 } }
+        { self.moreDot, self.more, (named or self.shownPaused) and (self.waiting or 0) > 0 } }
     for _, part in ipairs(parts) do
         local dot, text, shown = part[1], part[2], part[3]
         dot:SetShown(shown and last and true or false)

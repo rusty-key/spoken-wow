@@ -283,7 +283,8 @@ local Pulse = {}
 --- The swell for `text`, a waiting count: a larger copy of it drawn over it, and a glow.
 function Actions.Pulse(text)
     local parent = text:GetParent()
-    local glow = parent:CreateTexture(nil, "OVERLAY")
+    -- Under the copy: added over it, the gold glow would wash out the gold number.
+    local glow = parent:CreateTexture(nil, "OVERLAY", nil, -1)
     glow:SetTexture(COUNT_GLOW)
     if glow.SetBlendMode then glow:SetBlendMode("ADD") end
     glow:SetVertexColor(unpack(PULSE_GOLD))
@@ -297,6 +298,11 @@ function Actions.Pulse(text)
     burst:Hide()
     local pulse = { text = text, glow = glow, burst = burst }
     for key, fn in pairs(Pulse) do pulse[key] = fn end
+    -- A window's Tick stops while it is hidden: left running, the swell would keep the count
+    -- unseen and play out of context when the window comes back.
+    if parent.HasScript and parent:HasScript("OnHide") then
+        parent:HookScript("OnHide", function() pulse:Stop() end)
+    end
     return pulse
 end
 
@@ -307,6 +313,7 @@ function Pulse:Start()
     self.font, self.size, self.flags = font, size or 12, flags or ""
     local r, g, b = self.text:GetTextColor()
     self.color = { r or 1, g or 1, b or 1 }
+    self.drawn = nil
     self.t = 0
 end
 
@@ -320,12 +327,18 @@ function Pulse:Step(elapsed)
     local swell = self.t < PULSE_PEAK and EaseOut(self.t / PULSE_PEAK)
         or 1 - EaseOut((self.t - PULSE_PEAK) / (PULSE_TIME - PULSE_PEAK))
     local burst, color = self.burst, self.color
-    burst:SetFont(self.font, self.size * (1 + (PULSE_GROW - 1) * swell), self.flags)
-    burst:SetText(self.text:GetText())
+    -- Whole sizes, each set once: the client renders a font afresh at every size it is given.
+    local size = math.floor(self.size * (1 + (PULSE_GROW - 1) * swell) + .5)
+    local text = self.text:GetText()
+    if size ~= self.drawn or text ~= burst:GetText() then
+        self.drawn = size
+        burst:SetText(text)
+        burst:SetFont(self.font, size, self.flags)
+        self.glow:SetSize((burst:GetStringWidth() or 0) + self.size * 3, self.size * 3.5)
+    end
     burst:SetTextColor(color[1] + (PULSE_GOLD[1] - color[1]) * swell, color[2] + (PULSE_GOLD[2] - color[2]) * swell,
         color[3] + (PULSE_GOLD[3] - color[3]) * swell)
     burst:Show()
-    self.glow:SetSize((burst:GetStringWidth() or 0) + self.size * 3, self.size * 3.5)
     self.glow:SetAlpha(.8 * swell)
     self.glow:Show()
     self.text:SetAlpha(0)

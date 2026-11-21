@@ -236,7 +236,7 @@ function QuestOverlayUI:StateOf(questID)
         if Spoken:GetNowPlaying() == clip then return "stop", clip end
         return "play", clip
     end
-    if current and not Spoken:IsPaused() then return clip and "queued" or "queue", clip end
+    if Spoken:WouldQueue() then return clip and "queued" or "queue", clip end
     return "play", clip
 end
 

@@ -876,6 +876,11 @@ function Spoken:IsPaused()
     return SoundQueue:IsPaused()
 end
 
+--- True where Play would queue a line behind the one going on rather than play it at once.
+function Spoken:WouldQueue()
+    return SoundQueue:WouldQueue()
+end
+
 function Spoken:GetHeldReason(clip)
     return SoundQueue:GetHeldReason(clip)
 end

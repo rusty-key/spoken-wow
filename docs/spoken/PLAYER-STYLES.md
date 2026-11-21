@@ -126,8 +126,8 @@ they do in the windows.
   Out By). **Highlight Words** lights the word being read only while the words show whole, with
   Type Words Out off: an estimated timing lit as it is typed in front of the reader shows every
   miss.
-- **Show Name and Title** off leaves the row out; it still says "(Stopped)" or why a line waits,
-  and Hide Portrait waits on it.
+- **Show Name and Title** off leaves the row out; it still says "(Stopped)", with "+N" after it
+  when lines wait behind the stop, or why a line waits, and Hide Portrait waits on it.
 - The words do nothing when clicked, and there is no right-click menu: a subtitle in the middle
   of the screen is clicked by accident, and a right-drag there is the camera turning. Stop or
   Replay, Skip and Report fade in under it while the pointer is over it.

@@ -243,5 +243,31 @@ do
     env.SoundQueue:RemoveAllSoundsFromQueue()
 end
 
+-- With Show Name and Title off, a line queued behind a stop is counted after "(Stopped)" and the
+-- count swells: otherwise it waits with nothing on screen to say so (#706).
+do
+    local env = _G.SpokenEnv
+    local quests = env.Sources:Register("stopped", { title = "Stopped", addon = "Spoken", order = 10 })
+    local function Line(label)
+        return H.Clip({ length = 30, present = { header = "Grull", label = label, transcript = "The mine.",
+            portrait = { kind = "none" } } })
+    end
+    cfg.SubtitleName = false
+    quests:Enqueue(Line("One"))
+    env.Transcript:Sync()
+    Subtitle:Update()
+    env.SoundQueue:PauseQueue()
+    Subtitle:CountWaiting()
+    quests:Enqueue(Line("Two"))
+    Subtitle:CountWaiting()
+    Subtitle:Update()
+    Expect("with Show Name off, a line queued behind a stop is counted after Stopped",
+        tostring(Subtitle.more:IsShown()) .. " " .. Subtitle.more:GetText() .. " " .. tostring(Subtitle.moreDot:IsShown()),
+        "true +1 true")
+    Expect("...the count swelling", Subtitle.morePulse:Active(), true)
+    cfg.SubtitleName = true
+    env.SoundQueue:RemoveAllSoundsFromQueue()
+end
+
 if Failures() > 0 then print(string.format("\n%d failure(s)", Failures())); os.exit(1) end
 print("\nAll subtitle page tests passed")

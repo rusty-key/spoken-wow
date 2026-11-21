@@ -1487,10 +1487,13 @@ do
     Spoken:StopAll()
     B.following = {}
     B.source:Enqueue(B:ClipFor(kurdranPage))
+    page:Show({ title = "Ranger Captain Alleria Windrunner", target = ALLERIA })
+    Expect("behind another line speaking, Play shows the plus, a click queueing it",
+        page.play.pageState .. " " .. Tip(), "queue " .. S.QUEUE)
     page.play.scripts.OnClick(page.play)
-    Expect("behind another line speaking, Play queues it behind that", Spoken:GetQueueSize() .. " " .. tostring(Head()),
+    Expect("...a click queues it behind that", Spoken:GetQueueSize() .. " " .. tostring(Head()),
         "2 " .. kurdranPage)
-    Expect("...still Play", page.play.pageState, "play")
+    Expect("...the plus staying while it waits", page.play.pageState .. " " .. Tip(), "queued " .. S.QUEUED)
     page.play.scripts.OnClick(page.play)
     Expect("...a second click leaving it where it is", Spoken:GetQueueSize() .. " " .. tostring(Head()), "2 " .. kurdranPage)
     Spoken:Pause()
