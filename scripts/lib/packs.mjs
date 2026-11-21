@@ -22,6 +22,7 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
 import { BASE_LOCALE, CODES } from "../../pipelines/lib/locales.mjs";
+import { unwrap } from "./changelog.mjs";
 import { parseFrontmatter } from "./frontmatter.mjs";
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "../..");
@@ -284,7 +285,7 @@ export function changelogSection(text, version, release) {
   for (let i = starts[0] + 1; i < lines.length; i++) {
     if (lines[i].startsWith("## ")) { end = i; break; }
   }
-  return lines.slice(starts[0], end).join("\n").trim();
+  return unwrap(lines.slice(starts[0], end).join("\n").trim());
 }
 
 function main([command, ...args]) {
