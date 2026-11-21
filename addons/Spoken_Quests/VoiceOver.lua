@@ -607,8 +607,8 @@ local function GiveVoiceBack(event)
 end
 local currentQuestSoundData
 local currentGossipSoundData
--- Greetings heard as hasSeenGossipForNPC keeps them, but never saved: Once per Session reads
--- this, so every NPC greets again after a reload or relog.
+-- Once per Session reads this instead of hasSeenGossipForNPC, which still records every
+-- greeting. In memory only, so every NPC greets again after a reload or relog.
 local sessionGreetingsHeard = {}
 
 local function IsQuestTurnInSoundData(soundData)
@@ -1505,7 +1505,7 @@ function Addon:HasHeardAnyGreeting(guid)
     return type(HeardStore(self)[SpeakerKey(guid)]) == "table"
 end
 
---- Every NPC greets this character again, this session's greetings included.
+--- Clears this session's greetings too.
 function Addon:ForgetGreetingsHeard()
     self.db.char.hasSeenGossipForNPC = {}
     sessionGreetingsHeard = {}

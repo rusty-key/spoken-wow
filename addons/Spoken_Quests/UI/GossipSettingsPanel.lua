@@ -12,9 +12,7 @@ local MUTED_ROW = 26
 local ICON = [[Interface\Icons\UI_Chat]]
 local panel
 
--- The enum is stored as a number and read as a name. Ordered as the menu lists them: from
--- reading the most to the least.
-local GOSSIP_ORDER = { "Always", "OncePerQuestNPC", "OncePerNPC", "OncePerSession", "Never" }
+-- The enum is stored as a number and read as a name.
 local GOSSIP_LABELS = {
     Always = L.OPT_GREETING_LABEL_ALWAYS,
     OncePerQuestNPC = L.OPT_GREETING_LABEL_ONCE_QUEST,
@@ -59,7 +57,7 @@ function GossipSettingsPanel:Setup()
     layout:Section(W.MODULE_WHEN)
     local function AutoplayOn() return Addon:IsAutoplayOn() end
     local greetings = layout:Dropdown(L.OPT_PANEL_GREETINGS, nil,
-        GOSSIP_ORDER,
+        Enums.GossipFrequency:MenuOrder(),
         GossipName,
         function(name)
             Addon.db.profile.Audio.GossipFrequency = Enums.GossipFrequency[name]
@@ -81,7 +79,7 @@ function GossipSettingsPanel:Setup()
     end)
     layout:Requires(forget, function()
         local name = GossipName()
-        return name == "OncePerNPC" or name == "OncePerQuestNPC" or name == "OncePerSession"
+        return name ~= "Always" and name ~= "Never"
     end, L.REASON_FORGET_GREETINGS)
 
     -- A muted NPC never plays on its own again, so this list is where it is unmuted.

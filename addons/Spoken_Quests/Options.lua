@@ -57,14 +57,14 @@ local GeneralTab =
                         [Enums.GossipFrequency.OncePerSession] = L.OPT_GREETING_LABEL_ONCE_SESSION,
                         [Enums.GossipFrequency.Never] = L.OPT_GREETING_LABEL_NEVER,
                     },
-                    -- Never is stored as 4, so by value it would sort above Once per Session.
-                    sorting = {
-                        Enums.GossipFrequency.Always,
-                        Enums.GossipFrequency.OncePerQuestNPC,
-                        Enums.GossipFrequency.OncePerNPC,
-                        Enums.GossipFrequency.OncePerSession,
-                        Enums.GossipFrequency.Never,
-                    },
+                    -- By value, Never (4) would sort above Once per Session (5).
+                    sorting = function()
+                        local values = {}
+                        for i, name in ipairs(Enums.GossipFrequency:MenuOrder()) do
+                            values[i] = Enums.GossipFrequency[name]
+                        end
+                        return values
+                    end,
                     get = function(info) return Addon.db.profile.Audio.GossipFrequency end,
                     set = function(info, value)
                         Addon.db.profile.Audio.GossipFrequency = value
