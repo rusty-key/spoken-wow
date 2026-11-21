@@ -54,6 +54,17 @@ describe("the front page's voice samples", () => {
     });
   }
 
+  it("ships no recording that its language's file does not play", () => {
+    const voiceDir = join(publicDir, "landing", "voice");
+    for (const lang of readdirSync(voiceDir).filter((name) => !name.endsWith(".mp3"))) {
+      const set: Record<string, Voice[]> = JSON.parse(readFileSync(join(dir, `${lang}.json`), "utf8"));
+      const played = new Set(Object.values(set).flat().map((voice) => voice.audio));
+      for (const file of readdirSync(join(voiceDir, lang))) {
+        expect(played.has(`/landing/voice/${lang}/${file}`), `${lang}/${file}`).toBe(true);
+      }
+    }
+  });
+
   it("has three hero subtitle lines in every file, with words and no replacement character", () => {
     const heroDir = join(__dirname, "hero");
     expect(existsSync(join(heroDir, "enUS.json"))).toBe(true);

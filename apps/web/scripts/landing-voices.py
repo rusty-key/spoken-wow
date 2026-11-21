@@ -35,10 +35,10 @@ AUDIO_OUT = os.path.join(WEB, "public", "landing", "voice")
 DATA_OUT = os.path.join(WEB, "src", "components", "landing", "voices")
 HERO_OUT = os.path.join(WEB, "src", "components", "landing", "hero")
 CACHE = os.environ.get("LANDING_VOICES_CACHE") or os.path.join(tempfile.gettempdir(), "landing-voices")
-LANGS = ["enUS", "deDE", "esES", "esMX", "frFR", "itIT", "ptBR", "ruRU", "koKR", "zhCN", "zhTW", "viVN"]
-WHISPER = {"deDE": "de", "esES": "es", "esMX": "es", "frFR": "fr", "itIT": "it", "ptBR": "pt", "ruRU": "ru",
+LANGS = ["enUS", "deDE", "esES", "esMX", "frFR", "itIT", "plPL", "ptBR", "ruRU", "koKR", "zhCN", "zhTW", "viVN"]
+WHISPER = {"deDE": "de", "esES": "es", "esMX": "es", "frFR": "fr", "itIT": "it", "plPL": "pl", "ptBR": "pt", "ruRU": "ru",
            "koKR": "ko", "zhCN": "zh", "zhTW": "zh", "viVN": "vi", "enUS": "en"}
-BCP47 = {"enUS": "en-US", "deDE": "de-DE", "esES": "es-ES", "esMX": "es-MX", "frFR": "fr-FR", "itIT": "it-IT",
+BCP47 = {"enUS": "en-US", "deDE": "de-DE", "esES": "es-ES", "esMX": "es-MX", "frFR": "fr-FR", "itIT": "it-IT", "plPL": "pl-PL",
          "ptBR": "pt-BR", "ruRU": "ru-RU", "koKR": "ko-KR", "zhCN": "zh-CN", "zhTW": "zh-TW", "viVN": "vi-VN"}
 MATCH_GATE = 0.85
 # Whisper answers Chinese in Simplified characters unless told otherwise; the clips' text is Traditional.
@@ -264,10 +264,12 @@ def icon_for(l):
 
 def quest_like(lang, part, ids, source):
     out, used, speakers = [], set(), set()
+    # A Chinese character says about what three Latin letters do; one bound for both drops most Chinese lines.
+    low, high = (20, 140) if lang in ("zhCN", "zhTW") else (60, 420)
 
     def take(l):
         icon = icon_for(l)
-        if not icon or l["lineId"] in used or l["npcName"] in speakers or not good_line(l) or not 60 <= len(l["text"]) <= 420:
+        if not icon or l["lineId"] in used or l["npcName"] in speakers or not good_line(l) or not low <= len(l["text"]) <= high:
             return False
         sub = l.get("questTitle") or "Gossip"
         if source == "gossip":
@@ -346,7 +348,8 @@ def short_text(text, lang):
     cjk = lang in ("zhCN", "zhTW")
     low, high = (20, 50) if cjk else (40, 110)
     text = re.sub(r"\s+", " ", clean(text)).strip()
-    parts = re.findall(r".+?(?:[.!?。！？…]+[\"'”’」』)]*(?:\s+|$)|$)", text)
+    # Chinese stops are not followed by a space, so they end a sentence on their own.
+    parts = re.findall(r".+?(?:[.!?…]+[\"'”’」』)]*(?:\s+|$)|[。！？]+[”’」』)]*|$)", text)
     out = ""
     for part in parts:
         if out and len(out) + len(part) > high:
@@ -400,8 +403,10 @@ def write_hero(lang):
 
 def build(lang):
     log(f"== {lang}")
+    # Clip numbers are reused on every run: a run with fewer clips would leave the old files shipped.
+    shutil.rmtree(os.path.join(AUDIO_OUT, lang), ignore_errors=True)
     data = {}
-    if lang != "enUS":  # English keeps the lines Rusty already reviewed in voices.ts
+    if lang != "enUS":  # English's quests, gossip, places and readables stay in voices.ts
         for part, fn in (("quests", lambda: quest_like(lang, "quests", QUESTS, "quests")),
                          ("gossip", lambda: quest_like(lang, "gossip", GOSSIP, "gossip")),
                          ("places", lambda: places(lang)), ("readables", lambda: readables(lang))):
