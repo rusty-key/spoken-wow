@@ -138,7 +138,7 @@ function optionalWord(value) {
 /**
  * Words as `{ m: { name, race, nameGenitive?, classPlural? }, f: {...}, quantity? }`, trimmed, or
  * null when any is missing, empty, longer than WORD_LIMIT, or holds a `$`, `:`, `;` or line break.
- * `quantity` is what a writ's `$2oa` says (speakQuantities), the same for either reader.
+ * `quantity` is what a Craftsman's Writ's `$2oa` says.
  */
 export function validPlayerWords(value) {
   if (!value || typeof value !== "object") return null;
